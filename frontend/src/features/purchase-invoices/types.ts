@@ -42,6 +42,8 @@ export interface PurchaseInvoiceLine {
   vat_amount: string
   total_amount: string
   sort_order: number
+  /** Billable remainder (3 decimals); only on draft rows that come from an ODA row (spec 0254). */
+  available_quantity?: string
 }
 
 /** Installment of the document, as `PurchaseInvoiceInstallmentResource` (gated fields may be absent). */

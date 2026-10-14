@@ -8,6 +8,7 @@ use App\Enums\PurchaseInvoiceType;
 use App\Models\PaymentMethod;
 use App\Models\PurchaseInvoice;
 use App\Models\User;
+use App\Services\PurchaseOrders\PurchaseOrderInvoiceReceiptService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Arr;
@@ -51,6 +52,7 @@ class PurchaseInvoiceService
         private readonly PurchaseInvoiceInstallmentPlanner $planner,
         private readonly PurchaseInvoiceScheduleRebalancer $schedule,
         private readonly PurchaseInvoiceLineGuard $lineGuard,
+        private readonly PurchaseOrderInvoiceReceiptService $invoiceReceipts,
         private readonly RegisteredPurchaseInvoiceGuard $registeredGuard,
         private readonly PurchaseInvoiceHeaderGuard $headerGuard,
     ) {}
@@ -80,6 +82,11 @@ class PurchaseInvoiceService
                 'created_by' => $actor->id,
             ]);
             $this->writeChildren($document, $prepared);
+
+            // Step 3: an invoice receives what it bills and is not received yet (spec 0254, D-12)
+            if ($type === PurchaseInvoiceType::Invoice) {
+                $this->invoiceReceipts->receive($document, $actor, true);
+            }
 
             return $this->detail($document);
         }));
@@ -138,6 +145,7 @@ class PurchaseInvoiceService
 
         $this->guardingDuplicates(fn () => DB::transaction(function () use ($document, $attributes, $actor): void {
             $locked = PurchaseInvoice::query()->whereKey($document->getKey())->lockForUpdate()->firstOrFail();
+            $converting = false;
 
             if (array_key_exists('document_number', $attributes)) {
                 $this->registeredGuard->assertNumberChangeAllowed($locked, $attributes['document_number'], $actor);
@@ -145,9 +153,16 @@ class PurchaseInvoiceService
                 if ($attributes['document_type'] === PurchaseInvoiceType::Invoice) {
                     $this->registeredGuard->assertNumberUnique($locked->supplier_id, $attributes['document_number'], $locked->document_date->year, $locked->id);
                 }
+
+                $converting = $attributes['document_type'] === PurchaseInvoiceType::Invoice && ! $locked->isRegistered();
             }
 
             $locked->update($attributes);
+
+            // A proforma becoming an invoice receives what it bills and is not received yet (spec 0254, D-12)
+            if ($converting) {
+                $this->invoiceReceipts->receive($locked, $actor, false);
+            }
         }));
 
         return $this->detail($document);
@@ -247,15 +262,13 @@ class PurchaseInvoiceService
         $document->purchaseOrders()->sync($prepared['order_ids']);
     }
 
-    /** The unique indexes (supplier number per year, order line billed once) back the application checks under concurrency. */
+    /** The unique index (supplier number per year) backs the application check under concurrency. */
     private function guardingDuplicates(callable $write): mixed
     {
         try {
             return $write();
-        } catch (UniqueConstraintViolationException $exception) {
-            throw ValidationException::withMessages(str_contains($exception->getMessage(), 'purchase_order_line_id')
-                ? ['lines' => [__('purchase_invoices.line_already_invoiced')]]
-                : ['document_number' => [__('purchase_invoices.duplicate_number')]]);
+        } catch (UniqueConstraintViolationException) {
+            throw ValidationException::withMessages(['document_number' => [__('purchase_invoices.duplicate_number')]]);
         }
     }
 

@@ -9,15 +9,16 @@ use App\Models\CompanySite;
 use App\Models\CostType;
 use App\Models\PaymentMethod;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderLine;
 use App\Models\PurchaseRequestLine;
 use App\Models\Registry;
 use App\Models\User;
 use App\Models\VatRate;
 use App\Models\WorkOrder;
 use App\Services\PurchaseOrders\PurchaseOrderFromRequestLinesService;
+use App\Services\PurchaseOrders\PurchaseOrderReceiptService;
 use App\Services\PurchaseOrders\PurchaseOrderService;
 use App\Services\PurchaseOrders\PurchaseOrderStatusService;
-use App\Services\PurchaseRequests\PurchaseRequestLineStatusService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 
@@ -26,26 +27,32 @@ use Illuminate\Support\Collection;
  * the approved, not yet ordered RDA lines become orders through the real
  * generation (the other half stays in the "to order" queue), then a batch of
  * direct orders, some lines charged to a work order. Every new order is
- * walked through PurchaseOrderStatusService to one of the states, and the RDA
- * lines of a fulfilled order are marked received.
+ * walked through PurchaseOrderStatusService to one of the states; the
+ * fulfilled states come from real receipts (spec 0254), which also mark the
+ * linked RDA lines received.
  */
 class DemoSamplePurchaseOrderSeeder extends Seeder
 {
     public const int DEFAULT_ORDERS = 6;
 
+    private const string RECEIVE_ALL = 'all';
+
+    private const string RECEIVE_PARTIAL = 'partial';
+
     /**
-     * Target state => the transitions that reach it from a draft (D-9 matrix).
+     * Target state => the transitions that reach it from a draft (D-9 matrix)
+     * and the receipt that derives it (spec 0254, D-3).
      *
-     * @var array<string, array<int, PurchaseOrderStatus>>
+     * @var array<string, array{0: array<int, PurchaseOrderStatus>, 1: string|null}>
      */
     private const array STATUS_PATHS = [
-        'draft' => [],
-        'in_validation' => [PurchaseOrderStatus::InValidation],
-        'approved' => [PurchaseOrderStatus::Approved],
-        'sent_to_supplier' => [PurchaseOrderStatus::Approved, PurchaseOrderStatus::SentToSupplier],
-        'partially_fulfilled' => [PurchaseOrderStatus::Approved, PurchaseOrderStatus::SentToSupplier, PurchaseOrderStatus::PartiallyFulfilled],
-        'fulfilled' => [PurchaseOrderStatus::Approved, PurchaseOrderStatus::SentToSupplier, PurchaseOrderStatus::Fulfilled],
-        'cancelled' => [PurchaseOrderStatus::Cancelled],
+        'draft' => [[], null],
+        'in_validation' => [[PurchaseOrderStatus::InValidation], null],
+        'approved' => [[PurchaseOrderStatus::Approved], null],
+        'sent_to_supplier' => [[PurchaseOrderStatus::Approved, PurchaseOrderStatus::SentToSupplier], null],
+        'partially_fulfilled' => [[PurchaseOrderStatus::Approved, PurchaseOrderStatus::SentToSupplier], self::RECEIVE_PARTIAL],
+        'fulfilled' => [[PurchaseOrderStatus::Approved, PurchaseOrderStatus::SentToSupplier], self::RECEIVE_ALL],
+        'cancelled' => [[PurchaseOrderStatus::Cancelled], null],
     ];
 
     /** @var array<int, array{0: string, 1: string, 2: string}> [description, quantity, unit price] */
@@ -63,7 +70,7 @@ class DemoSamplePurchaseOrderSeeder extends Seeder
         private readonly PurchaseOrderFromRequestLinesService $fromRequestLines,
         private readonly PurchaseOrderService $orders,
         private readonly PurchaseOrderStatusService $statuses,
-        private readonly PurchaseRequestLineStatusService $lineStatuses,
+        private readonly PurchaseOrderReceiptService $receipts,
     ) {}
 
     public function run(User $actor, int $orders = self::DEFAULT_ORDERS): void
@@ -91,14 +98,12 @@ class DemoSamplePurchaseOrderSeeder extends Seeder
             $created->push($this->direct($index, $actor, $sites->random(), $supplierIds->random(), $costTypeIds, $vatRateId, $methodId, $workOrderIds));
         }
 
-        // Step 4: walk every new order to its state, then receive the RDA lines of the fulfilled ones
+        // Step 4: walk every new order to its state (receipts derive the fulfilled ones)
         $targets = array_keys(self::STATUS_PATHS);
 
         foreach ($created->values() as $position => $order) {
             $this->walk($order, $targets[$position % count($targets)], $actor);
         }
-
-        $this->receive($created, $actor);
     }
 
     /**
@@ -150,26 +155,33 @@ class DemoSamplePurchaseOrderSeeder extends Seeder
 
     private function walk(PurchaseOrder $order, string $target, User $actor): void
     {
-        foreach (self::STATUS_PATHS[$target] as $status) {
+        [$path, $receive] = self::STATUS_PATHS[$target];
+
+        foreach ($path as $status) {
             $order = $this->statuses->change($order, $status, $actor);
+        }
+
+        if ($receive !== null) {
+            $this->receive($order->load('lines'), $receive, $actor);
         }
     }
 
-    /**
-     * @param  Collection<int, PurchaseOrder>  $orders
-     */
-    private function receive(Collection $orders, User $actor): void
+    /** Full: every line in one delivery. Partial: half of the first line only. */
+    private function receive(PurchaseOrder $order, string $mode, User $actor): void
     {
-        $lineIds = PurchaseRequestLine::query()
-            ->where('status', PurchaseRequestLineStatus::Ordered)
-            ->whereHas('purchaseOrderLine.purchaseOrder', fn ($query) => $query
-                ->whereKey($orders->pluck('id'))
-                ->where('status', PurchaseOrderStatus::Fulfilled))
-            ->pluck('id')
-            ->all();
+        $lines = $order->lines->map(fn (PurchaseOrderLine $line): array => [
+            'purchase_order_line_id' => $line->id,
+            'quantity' => $mode === self::RECEIVE_ALL ? (string) $line->quantity : bcdiv((string) $line->quantity, '2', 3),
+        ]);
 
-        if ($lineIds !== []) {
-            $this->lineStatuses->change($actor, $lineIds, PurchaseRequestLineStatus::Received, null);
+        if ($mode === self::RECEIVE_PARTIAL) {
+            $lines = $lines->take(1);
         }
+
+        $this->receipts->create($order, [
+            'receipt_date' => now()->toDateString(),
+            'delivery_note_number' => 'DEMO-DDT-'.$order->number,
+            'delivery_note_date' => now()->toDateString(),
+        ], $lines->values()->all(), $actor);
     }
 }

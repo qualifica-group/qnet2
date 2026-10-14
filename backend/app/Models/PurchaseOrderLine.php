@@ -8,6 +8,7 @@ use Database\Factories\PurchaseOrderLineFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Line of a purchase order (spec 0210). Only the editable content is fillable:
@@ -30,6 +31,8 @@ class PurchaseOrderLine extends BaseModel
         return [
             'position' => 'int',
             'quantity' => 'decimal:3',
+            'received_quantity' => 'decimal:3',
+            'residual_closed_at' => 'datetime',
             'unit_price' => 'decimal:2',
             'taxable_amount' => 'decimal:2',
             'vat_amount' => 'decimal:2',
@@ -91,5 +94,29 @@ class PurchaseOrderLine extends BaseModel
     public function purchaseRequestLine(): BelongsTo
     {
         return $this->belongsTo(PurchaseRequestLine::class);
+    }
+
+    /**
+     * @return HasMany<PurchaseOrderReceiptLine, $this>
+     */
+    public function receiptLines(): HasMany
+    {
+        return $this->hasMany(PurchaseOrderReceiptLine::class);
+    }
+
+    /**
+     * @return HasMany<PurchaseInvoiceLine, $this>
+     */
+    public function invoiceLines(): HasMany
+    {
+        return $this->hasMany(PurchaseInvoiceLine::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function residualClosedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'residual_closed_by_id');
     }
 }

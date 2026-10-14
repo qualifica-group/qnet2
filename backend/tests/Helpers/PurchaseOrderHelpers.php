@@ -8,6 +8,7 @@ use App\Models\CompanySite;
 use App\Models\CostType;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderLine;
+use App\Models\PurchaseOrderReceipt;
 use App\Models\Registry;
 use App\Models\User;
 use App\Models\VatRate;
@@ -22,7 +23,7 @@ if (! function_exists('purchaseOrderUserWith')) {
      */
     function purchaseOrderUserWith(array $abilities): User
     {
-        foreach (['view', 'create', 'update', 'delete', 'changeStatus', 'approve', 'merge', 'send', 'export', 'viewActivity'] as $ability) {
+        foreach (['view', 'create', 'update', 'delete', 'changeStatus', 'approve', 'merge', 'send', 'receive', 'export', 'viewActivity'] as $ability) {
             // Explicit guard: Sanctum::actingAs() switches the default one to `sanctum`.
             Permission::findOrCreate("purchase-orders.{$ability}", 'web');
         }
@@ -124,5 +125,60 @@ if (! function_exists('purchaseOrderUpdatePayload')) {
         ];
 
         return array_merge($payload, $overrides);
+    }
+}
+
+if (! function_exists('purchaseOrderReceive')) {
+    /**
+     * Records a receipt and keeps received_quantity in sync, as the receipt service does.
+     *
+     * @param  array<int, string|int|float>  $quantities  order line id => received quantity
+     * @param  array<string, mixed>  $attributes  receipt attributes
+     */
+    function purchaseOrderReceive(PurchaseOrder $order, array $quantities, array $attributes = []): PurchaseOrderReceipt
+    {
+        $receipt = PurchaseOrderReceipt::factory()->create(['purchase_order_id' => $order->id] + $attributes);
+
+        foreach ($quantities as $lineId => $quantity) {
+            $receipt->lines()->create(['purchase_order_line_id' => $lineId, 'quantity' => $quantity]);
+            PurchaseOrderLine::query()->whereKey($lineId)->increment('received_quantity', (float) $quantity);
+        }
+
+        return $receipt;
+    }
+}
+
+if (! function_exists('purchaseOrderReceiptPayload')) {
+    /**
+     * A POST receipts payload; by default every line of the order in full.
+     *
+     * @param  array<int, string|int|float>|null  $quantities  order line id => quantity
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    function purchaseOrderReceiptPayload(PurchaseOrder $order, ?array $quantities = null, array $overrides = []): array
+    {
+        $quantities ??= $order->lines->mapWithKeys(fn (PurchaseOrderLine $line): array => [$line->id => $line->quantity])->all();
+
+        $lines = [];
+
+        foreach ($quantities as $lineId => $quantity) {
+            $lines[] = ['purchase_order_line_id' => $lineId, 'quantity' => $quantity];
+        }
+
+        return array_merge(['receipt_date' => now()->toDateString(), 'lines' => $lines], $overrides);
+    }
+}
+
+if (! function_exists('purchaseOrderReceivable')) {
+    /**
+     * A persisted order ready to receive: every line orders `$quantity`.
+     */
+    function purchaseOrderReceivable(PurchaseOrderStatus $status = PurchaseOrderStatus::SentToSupplier, int $lineCount = 2, string $quantity = '10.000'): PurchaseOrder
+    {
+        $order = purchaseOrderWithLines($status, $lineCount);
+        PurchaseOrderLine::query()->where('purchase_order_id', $order->id)->update(['quantity' => $quantity]);
+
+        return $order->fresh('lines');
     }
 }

@@ -42,6 +42,7 @@ export const purchaseInvoices = {
     loadError: 'Impossibile caricare il documento.',
     paymentsLockedHint:
       'Sono presenti pagamenti: data, modalità di pagamento e fornitore non sono modificabili e le scadenze vengono ribilanciate.',
+    receiptNotice: 'Salvando come Fattura verrà registrata la ricezione delle quantità non ancora ricevute sugli ODA.',
     defaultsHint: 'Tipo di costo e commessa di testata sono proposti alle nuove righe; ogni riga ha i propri.',
     sections: {
       header: 'Testata',
@@ -98,6 +99,7 @@ export const purchaseInvoices = {
       product: 'Prodotto',
       freeDescription: 'Descrizione della riga libera',
       addFreeLine: 'Aggiungi riga',
+      maxQuantity: 'max {{max}}',
     },
     orders: {
       loading: 'Caricamento degli ODA...',
@@ -105,6 +107,9 @@ export const purchaseInvoices = {
       loadError: 'Impossibile caricare gli ODA.',
       added: 'Aggiunto',
       add: 'Aggiungi',
+      notice: {
+        empty: 'Nessuna quantità da fatturare sull’ordine: le righe sono già fatturate.',
+      },
       addOrder: 'Aggiungi le righe dell’ODA {{code}}',
     },
     installments: {
@@ -137,6 +142,7 @@ export const purchaseInvoices = {
       quantityInvalid: 'Inserisci una quantità valida.',
       quantityPositive: 'La quantità deve essere maggiore di zero.',
       quantityMax: 'La quantità è troppo grande.',
+      quantityAboveAvailable: 'La quantità supera quella fatturabile della riga ODA (disponibile {{max}}).',
       unitPriceInvalid: 'Inserisci un prezzo valido.',
       unitPriceRange: 'Il prezzo è fuori dai limiti consentiti.',
       costTypeRequired: 'Il tipo di costo è obbligatorio.',
@@ -157,6 +163,7 @@ export const purchaseInvoices = {
     description: 'Il numero del fornitore trasforma la proforma in fattura registrata.',
     documentNumber: 'Numero documento fornitore',
     numberHint: 'Compilando il numero la proforma diventa fattura e non è più modificabile.',
+    receiptNotice: 'Registrando il numero la proforma diventa Fattura: verrà registrata la ricezione delle quantità non ancora ricevute sugli ODA.',
     numberLockedHint: 'Fattura registrata: serve il permesso di declassamento per cambiare o svuotare il numero.',
     notes: 'Note',
     cancel: 'Annulla',

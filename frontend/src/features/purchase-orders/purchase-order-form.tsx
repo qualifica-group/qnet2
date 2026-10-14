@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { PurchaseOrderDocuments } from '@/features/purchase-orders/purchase-order-documents'
+import { PurchaseOrderFulfillmentSection } from '@/features/purchase-orders/purchase-order-fulfillment-section'
 import { PurchaseOrderFormActions } from '@/features/purchase-orders/purchase-order-form-actions'
 import { PurchaseOrderHeaderFields } from '@/features/purchase-orders/purchase-order-header-fields'
 import { PurchaseOrderLinesSection } from '@/features/purchase-orders/purchase-order-lines-section'
+import { PurchaseOrderReceiptsSection } from '@/features/purchase-orders/purchase-order-receipts-section'
 import { isOrderReadOnly } from '@/features/purchase-orders/purchase-order-permissions'
 import { orderRefs } from '@/features/purchase-orders/purchase-order-refs'
 import { PurchaseOrderStatusBadge } from '@/features/purchase-orders/purchase-order-status-badge'
@@ -107,6 +109,13 @@ export function PurchaseOrderForm({ order, onSaved, onCancel, onDeleted }: Purch
           readOnly={readOnly}
           error={form.formState.errors.lines?.root?.message ?? form.formState.errors.lines?.message}
         />
+
+        {order && statusLocked ? (
+          <>
+            <PurchaseOrderFulfillmentSection order={order} />
+            <PurchaseOrderReceiptsSection order={order} />
+          </>
+        ) : null}
 
         <section className={SECTION_CLASS} aria-label={t('purchaseOrderForm.sections.documents')}>
           <h2 className="text-base font-semibold">{t('purchaseOrderForm.sections.documents')}</h2>

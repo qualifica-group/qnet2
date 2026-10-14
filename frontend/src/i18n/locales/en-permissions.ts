@@ -86,6 +86,8 @@ export const permissions = {
     approve: 'Approve',
     merge: 'Merge',
     send: 'Send to supplier',
+    // Spec 0254: receipts and residuals of ODA lines.
+    receive: 'Register receipts',
     // Spec 0201 D-10: work order Contract data tab and per-line payment management.
     viewContractData: 'View contract data',
     managePayments: 'Manage payments',

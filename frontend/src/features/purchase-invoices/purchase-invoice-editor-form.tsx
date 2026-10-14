@@ -47,8 +47,14 @@ export function PurchaseInvoiceEditorForm({ source, target, onSaved, onCancel }:
               companyId={editor.companyId}
               linkedOrderIds={editor.orderIds}
               isAdding={editor.isAddingOrder}
+              notice={editor.ordersNotice}
               onAdd={editor.addOrder}
             />
+          ) : null}
+          {editor.showReceiptNotice ? (
+            <p role="note" className="rounded-md border bg-surface px-3 py-2 text-xs text-muted-foreground">
+              {t('purchaseInvoices.editor.receiptNotice')}
+            </p>
           ) : null}
           <PurchaseInvoiceEditorLinesSection
             form={editor.form}

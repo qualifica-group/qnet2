@@ -149,14 +149,14 @@ it('keeps a merge log with a null source when the source order is deleted', func
         ->and($log->moved_line_ids)->toBe([1]);
 });
 
-it('allows the transitions of the D-9 matrix and nothing else', function () {
+it('allows the transitions of the D-9 matrix as reduced by spec 0254 D-3 and nothing else', function () {
     $matrix = [
         'draft' => ['in_validation', 'approved', 'cancelled'],
         'in_validation' => ['draft', 'approved', 'cancelled'],
         'approved' => ['in_validation', 'sent_to_supplier', 'cancelled'],
-        'sent_to_supplier' => ['partially_fulfilled', 'fulfilled', 'cancelled'],
-        'partially_fulfilled' => ['sent_to_supplier', 'fulfilled'],
-        'fulfilled' => ['partially_fulfilled'],
+        'sent_to_supplier' => ['cancelled'],
+        'partially_fulfilled' => [],
+        'fulfilled' => [],
         'cancelled' => ['draft'],
     ];
 

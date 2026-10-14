@@ -48,6 +48,7 @@ export function newLine(
     unit_price: 0,
     vat_rate_id: null,
     work_order_id: defaults.work_order_id,
+    available_quantity: null,
     ...fields,
     cost_type_id: defaults.cost_type_id ?? fields.cost_type_id ?? NO_ID,
   }
@@ -65,6 +66,7 @@ export function lineFromDraft(line: Omit<PurchaseInvoiceLine, 'id'>): PurchaseIn
     vat_rate_id: line.vat_rate?.id ?? null,
     cost_type_id: line.cost_type.id,
     work_order_id: line.work_order?.id ?? null,
+    available_quantity: line.available_quantity === undefined ? null : Number(line.available_quantity),
   }
 }
 
@@ -99,8 +101,18 @@ export function amountsOf(lines: readonly PurchaseInvoiceLineFormValues[], vatRe
 }
 
 function toLineWrite(line: PurchaseInvoiceLineFormValues): PurchaseInvoiceLineWrite {
-  const { id, ...rest } = line
-  return id === null ? rest : { id, ...rest }
+  // available_quantity is a client-side limit only: the server recomputes it, so it is not sent.
+  const write: PurchaseInvoiceLineWrite = {
+    purchase_order_line_id: line.purchase_order_line_id,
+    product_id: line.product_id,
+    description: line.description,
+    quantity: line.quantity,
+    unit_price: line.unit_price,
+    vat_rate_id: line.vat_rate_id,
+    cost_type_id: line.cost_type_id,
+    work_order_id: line.work_order_id,
+  }
+  return line.id === null ? write : { id: line.id, ...write }
 }
 
 /** Empty notes travel as null; totals are never sent. Number/type only exist at creation. */

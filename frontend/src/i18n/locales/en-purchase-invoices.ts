@@ -42,6 +42,7 @@ export const purchaseInvoices = {
     loadError: 'Unable to load the document.',
     paymentsLockedHint:
       'Payments exist: date, payment method and supplier cannot change and the due dates are rebalanced.',
+    receiptNotice: 'Saving as an Invoice will register the receipt of the quantities not yet received on the purchase orders.',
     defaultsHint: 'The header cost type and work order are proposed to new rows; each row keeps its own.',
     sections: {
       header: 'Header',
@@ -98,6 +99,7 @@ export const purchaseInvoices = {
       product: 'Product',
       freeDescription: 'Free row description',
       addFreeLine: 'Add row',
+      maxQuantity: 'max {{max}}',
     },
     orders: {
       loading: 'Loading purchase orders...',
@@ -105,6 +107,9 @@ export const purchaseInvoices = {
       loadError: 'Unable to load the purchase orders.',
       added: 'Added',
       add: 'Add',
+      notice: {
+        empty: 'Nothing left to bill on the order: its rows are already invoiced.',
+      },
       addOrder: 'Add the rows of order {{code}}',
     },
     installments: {
@@ -137,6 +142,7 @@ export const purchaseInvoices = {
       quantityInvalid: 'Enter a valid quantity.',
       quantityPositive: 'The quantity must be greater than zero.',
       quantityMax: 'The quantity is too large.',
+      quantityAboveAvailable: 'The quantity exceeds the billable quantity of the order row (available {{max}}).',
       unitPriceInvalid: 'Enter a valid price.',
       unitPriceRange: 'The price is out of the allowed range.',
       costTypeRequired: 'The cost type is required.',
@@ -157,6 +163,7 @@ export const purchaseInvoices = {
     description: 'The supplier number turns the proforma into a registered invoice.',
     documentNumber: 'Supplier document number',
     numberHint: 'Filling in the number turns the proforma into an invoice, which can no longer be edited.',
+    receiptNotice: 'Entering the number turns the proforma into an Invoice: the receipt of the quantities not yet received on the purchase orders will be registered.',
     numberLockedHint: 'Registered invoice: the downgrade permission is required to change or clear the number.',
     notes: 'Notes',
     cancel: 'Cancel',

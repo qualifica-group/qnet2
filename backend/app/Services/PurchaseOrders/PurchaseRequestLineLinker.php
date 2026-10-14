@@ -65,8 +65,9 @@ final class PurchaseRequestLineLinker
     }
 
     /**
-     * The order was fulfilled (D-3): its `ordered` request lines become received.
-     * Returns the locked requests involved, so the caller can close the complete ones.
+     * The given order lines became complete (spec 0254, D-7): their `ordered`
+     * request lines become received. Returns the locked requests involved, so
+     * the caller can close the complete ones.
      *
      * @param  iterable<PurchaseOrderLine>  $orderLines
      * @return Collection<int, PurchaseRequest>
@@ -83,6 +84,26 @@ final class PurchaseRequestLineLinker
         }
 
         return $this->locker->requests($lines);
+    }
+
+    /**
+     * The given order lines are no longer complete (receipt deleted, residual
+     * reopened; spec 0254, D-7): their `received` request lines go back to
+     * ordered, unless the request is closed (a closed request is never reopened).
+     *
+     * @param  iterable<PurchaseOrderLine>  $orderLines
+     */
+    public function revertReceive(iterable $orderLines, User $actor): void
+    {
+        $reason = __('purchase_request_line_links.order_receipt_reverted');
+        $lines = $this->lockLinked($orderLines);
+        $requests = $this->locker->requests($lines);
+
+        foreach ($lines as $line) {
+            if ($line->status === PurchaseRequestLineStatus::Received && ! $requests[$line->purchase_request_id]->isClosed()) {
+                $this->transition($line, PurchaseRequestLineStatus::Ordered, $actor, $reason);
+            }
+        }
     }
 
     /**

@@ -109,11 +109,10 @@ it('AC-001: the unique index refuses a duplicated invoice number and ignores the
     expect(PurchaseInvoice::query()->where('document_number', 'U-1')->count())->toBe(3);
 });
 
-it('AC-004: the unique index refuses an order line billed twice and allows many free lines', function () {
+it('AC-004: the order line index is plain: several document lines may reference one order line', function () {
     $orderLine = PurchaseOrderLine::factory()->create();
-    PurchaseInvoiceLine::factory()->create(['purchase_order_line_id' => $orderLine->id]);
+    PurchaseInvoiceLine::factory()->count(2)->create(['purchase_order_line_id' => $orderLine->id]);
     PurchaseInvoiceLine::factory()->count(2)->create(['purchase_order_line_id' => null]);
 
-    expect(fn () => PurchaseInvoiceLine::factory()->create(['purchase_order_line_id' => $orderLine->id]))
-        ->toThrow(UniqueConstraintViolationException::class);
+    expect(PurchaseInvoiceLine::query()->where('purchase_order_line_id', $orderLine->id)->count())->toBe(2);
 });

@@ -11,7 +11,8 @@ use Illuminate\Database\Eloquent\Model;
  * checks: whoever has `view` sees every order (no per-user scope), and the
  * status rule of D-10 is a 409 raised by the services, not a 403. There is no
  * `viewAny`/`import` permission (browsing is gated by `view`); `changeStatus`,
- * `approve`, `merge` and `send` are dedicated abilities.
+ * `approve`, `merge`, `send` and `receive` (deliveries and residual closing,
+ * spec 0254, D-6) are dedicated abilities.
  */
 class PurchaseOrderPolicy extends BasePolicy
 {
@@ -25,7 +26,7 @@ class PurchaseOrderPolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return ['view', 'create', 'update', 'delete', 'changeStatus', 'approve', 'merge', 'send', 'export', 'viewActivity'];
+        return ['view', 'create', 'update', 'delete', 'changeStatus', 'approve', 'merge', 'send', 'receive', 'export', 'viewActivity'];
     }
 
     public function viewAny(User $user): bool
@@ -51,5 +52,10 @@ class PurchaseOrderPolicy extends BasePolicy
     public function send(User $user, Model $model): bool
     {
         return $user->can($this->permission('send'));
+    }
+
+    public function receive(User $user, Model $model): bool
+    {
+        return $user->can($this->permission('receive'));
     }
 }

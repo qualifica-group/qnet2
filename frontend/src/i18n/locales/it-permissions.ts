@@ -89,6 +89,8 @@ export const permissions = {
     approve: 'Approvare',
     merge: 'Unificare',
     send: 'Inviare al fornitore',
+    // Spec 0254: ricezioni e residui delle righe ODA.
+    receive: 'Registrare ricezioni',
     // Spec 0201 D-10: tab Dati contrattuali della commessa e gestione dei pagamenti per riga.
     viewContractData: 'Vedere i dati contrattuali',
     managePayments: 'Gestire i pagamenti',

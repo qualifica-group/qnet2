@@ -77,7 +77,15 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'Una riga d’ordine si può fatturare **una sola volta**: le righe già presenti su un’altra fattura passiva non vengono proposte e un tentativo di riutilizzarle viene rifiutato. Non puoi mescolare ODA di fornitori o società diversi.',
+          text: 'Le righe d’ordine si fatturano **per quantità**, anche in più documenti. La quantità proposta è quella ancora da fatturare: sia **proforma** sia **fattura** possono coprire la quantità ordinata non ancora fatturata; se il residuo della riga è stato chiuso, il tetto è la quantità ricevuta. Ogni riga da ODA mostra il **massimo** disponibile (“max X”) e una quantità superiore viene rifiutata. Nello stesso documento puoi mettere più righe di più ODA, purché dello stesso fornitore e della stessa società.',
+        },
+        {
+          type: 'list',
+          items: [
+            'Cambiare il **tipo di documento** non modifica le righe da ODA: restano come le hai compilate.',
+            'Se la bozza risulta vuota, l’ordine non ha più nulla da fatturare.',
+            'L’editor e **Dettagli fornitore** avvisano che salvare come **Fattura** registra la ricezione delle quantità non ancora ricevute (vedi “Proforma e fattura”).',
+          ],
         },
       ],
     },
@@ -92,6 +100,9 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
+            'Salvando come **Fattura** (o dando a un proforma il numero del fornitore) il sistema registra **in automatico una ricezione** su ogni ODA collegato, per le quantità fatturate non ancora ricevute: data del documento, nota “Ricezione da fattura n. X”; lo stato dell’ODA e le righe RDA collegate si aggiornano. Per più ODA si registra una ricezione per ODA. Il **proforma non riceve**. Non serve il permesso **Registra ricezioni**.',
+            'Se un ODA non è ricevibile (bozza, in validazione, annullato) e servirebbe una ricezione, la fattura viene rifiutata.',
+            'La ricezione automatica compare nell’ODA come “da fattura n. X” e non si può annullare finché esiste la fattura; se la fattura torna proforma la ricezione resta.',
             'Una **fattura** è **bloccata**: righe, importi, fornitore, data ed eliminazione sono rifiutati.',
             'Cambiare o svuotare numero e data di una fattura richiede il permesso **Correggi/annulla registrazione** e viene registrato nell’attività; svuotando il numero il documento torna proforma.',
             'Il numero del fornitore deve essere **unico** per lo stesso fornitore e lo stesso anno tra le fatture; non vale per i proforma.',

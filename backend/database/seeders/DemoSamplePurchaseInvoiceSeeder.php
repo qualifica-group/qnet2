@@ -15,7 +15,8 @@ use Illuminate\Database\Seeder;
  * Additive payable documents (spec 0211) for DemoAccountingSampleSeeder: one
  * document on every order sent to the supplier (or further) that nothing bills
  * yet, with its real schedule and a mix of paid, partially paid and open
- * installments. A partially fulfilled order is billed by a proforma.
+ * installments. Only a fulfilled order is billed by an invoice; the others get a
+ * proforma (an advance), since an invoice would receive them (spec 0254, D-12).
  */
 class DemoSamplePurchaseInvoiceSeeder extends Seeder
 {
@@ -52,7 +53,7 @@ class DemoSamplePurchaseInvoiceSeeder extends Seeder
 
         // Step 2: one document per order, with its schedule, then the payments
         foreach ($orders->values() as $position => $order) {
-            $type = $order->status === PurchaseOrderStatus::PartiallyFulfilled ? PurchaseInvoiceType::Proforma : PurchaseInvoiceType::Invoice;
+            $type = $order->status === PurchaseOrderStatus::Fulfilled ? PurchaseInvoiceType::Invoice : PurchaseInvoiceType::Proforma;
             $invoice = $this->writer->document(
                 $type,
                 sprintf('FT %s', $order->code()),

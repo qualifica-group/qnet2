@@ -3,6 +3,38 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0254 — Ricezioni ODA per riga, stato derivato, fatturazione per quantita', fattura che evade — COMMITTATO (2026-10-14)
+
+- Spec `docs/specs/0254-purchase-order-line-receipts.xml` (D-1..D-12, AC-001..016). Supera 0210 out "evasione per riga",
+  0244 D-3 e 0250 D-8. D-2 rivista e D-12 aggiunta su richiesta utente (la FATTURA evade, la proforma no).
+- Schema: purchase_order_receipts (created_by, purchase_invoice_id nullable), purchase_order_receipt_lines;
+  purchase_order_lines += received_quantity (denormalizzato, solo via service), residual_closed_at/by_id/reason;
+  purchase_invoice_lines: unique(purchase_order_line_id) -> indice semplice; backfill ricezione per gli ODA fulfilled.
+- Fonte unica quantita': `PurchaseOrderLineBillingLedger::forLines(ids, ignoreInvoiceId, lock)` ->
+  `PurchaseOrderLineBalance` (ceiling = ricevuto se residuo chiuso altrimenti ordinato; available() = ceiling -
+  invoicedTotal, uguale per proforma e fattura; invoicedInvoice usato da D-8/D-12; fulfillment open/partial/complete).
+- Servizi: PurchaseOrderReceiptService (create/record/delete), PurchaseOrderLineResidualService (close/reopen),
+  PurchaseOrderFulfillmentSynchronizer (stato D-3 + propagazione RDA per riga D-7), PurchaseOrderInvoiceReceiptService
+  (ricezione automatica da fattura su POST invoice e PATCH details proforma -> invoice, una per ODA, nota "Ricezione da
+  fattura n. X"). Matrice ridotta: partially_fulfilled/fulfilled solo derivati; ODA con ricezioni o residuo chiuso non
+  torna in validazione/bozza ne' si annulla. Permesso nuovo purchase-orders.receive (la ricezione da fattura non lo richiede).
+- Endpoint: GET/POST /purchase-orders/{po}/receipts, DELETE .../receipts/{receipt}, POST/DELETE
+  .../lines/{line}/close-residual (scopeBindings). Draft e invoiceable-orders SENZA document_type.
+- Consuntivo (0252 D-2 rivista): impegnato = round(max(ceiling - fatturato, 0) x unit_price, 2) per riga ODA.
+- FE: sezioni "Evasione righe" e "Ricezioni" sul dettaglio ODA, dialog Registra ricezione, Chiudi/Riapri residuo;
+  editor fattura passiva con "max X", avviso ricezione automatica (editor e Dettagli fornitore), ricezione "da fattura n. X".
+- Seeder: DemoPurchaseOrderSeeder e DemoSamplePurchaseOrderSeeder passano dalle ricezioni vere; DemoSamplePurchaseInvoiceSeeder
+  fattura solo gli ODA evasi (proforma sugli altri, altrimenti la fattura li evaderebbe).
+- Test aggiornati per requisito cambiato: rollback step (PurchaseOrderMigrationTest 33->36, QuoteWorkflowMigrationTest
+  184->187, SupplierCommissionDirectionTest 48->51), matrice stati, propagazione RDA, D-8 billed once, bozza.
+- Verifica 2026-10-14: Pest parallelo 10967/10971 (3 soffice, 1 skip); Vitest 8172/8176 con 4 flaky chart/dashboard
+  sotto carico, verdi isolati (4/4); tsc -b --force pulito; Pint pulito; ESLint solo
+  l'errore preesistente in quotes/column-renderers.tsx. Seed demo completo NON verificabile su SQLite (locations:add usa SQL
+  MySQL, preesistente) e non eseguito su MySQL (migrate:fresh distruttivo): coperto dai test dei seeder.
+- Aperti: manuale Claude Docs (sezioni Ordini di acquisto e Fatture passive) non aggiornabile dal connettore (doc non
+  condiviso con la sessione); dopo il deploy: `php artisan migrate`, `permissions:sync`, `roles:create-super-admin`.
+- AppServiceProvider (357 righe gia' prima) ha 2 voci morph map in piu': fuori soglia soft preesistente.
+
 ## Spec 0253 — Motore importi unico bcmath + IVA per aliquota (ADR 0018 decisione 4, COS-09, ATT-06) — COMMITTATO (2026-10-14)
 
 - Spec `docs/specs/0253-unified-amounts-vat-per-rate.xml` (+ casi condivisi `0253-amount-cases.json`), AC-001..011.

@@ -60,16 +60,16 @@ it('AC-003: orders of another supplier or company, or not invoiceable, are refus
     expect(PurchaseInvoice::query()->count())->toBe(0);
 });
 
-it('AC-004: an order line already on a document is refused on another one, and on the same line twice', function () {
+it('AC-007: an order line billed in full is refused on another document, also when its rows add up beyond the ordered quantity', function () {
     $payload = purchaseInvoicePayload();
     $order = invoiceableOrderOf($payload);
 
     $this->postJson('/api/purchase-invoices', [...$payload, 'lines' => [orderLinePayload($order->lines[0])]])->assertCreated();
 
     $this->postJson('/api/purchase-invoices', [...$payload, 'lines' => [orderLinePayload($order->lines[0])]])
-        ->assertUnprocessable()->assertJsonValidationErrors('lines.0.purchase_order_line_id');
+        ->assertUnprocessable()->assertJsonValidationErrors('lines.0.quantity');
     $this->postJson('/api/purchase-invoices', [...$payload, 'lines' => [orderLinePayload($order->lines[1]), orderLinePayload($order->lines[1])]])
-        ->assertUnprocessable()->assertJsonValidationErrors('lines.1.purchase_order_line_id');
+        ->assertUnprocessable()->assertJsonValidationErrors('lines.0.quantity');
 
     $this->postJson('/api/purchase-invoices', [...$payload, 'lines' => [orderLinePayload($order->lines[1])]])->assertCreated();
 });

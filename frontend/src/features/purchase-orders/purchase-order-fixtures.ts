@@ -1,4 +1,4 @@
-import type { PurchaseOrder, PurchaseOrderLine } from '@/features/purchase-orders/types'
+import type { PurchaseOrder, PurchaseOrderLine, PurchaseOrderReceipt } from '@/features/purchase-orders/types'
 
 /** Test fixture: one persisted line of Collaboratori. */
 export function makeOrderLine(overrides: Partial<PurchaseOrderLine> = {}): PurchaseOrderLine {
@@ -17,6 +17,29 @@ export function makeOrderLine(overrides: Partial<PurchaseOrderLine> = {}): Purch
     total_amount: '244.00',
     work_order: null,
     purchase_request_line: null,
+    received_quantity: '0.000',
+    invoiced_quantity: '0.000',
+    invoiced_invoice_quantity: '0.000',
+    residual_quantity: '2.000',
+    fulfillment: 'open',
+    residual_closed: null,
+    ...overrides,
+  }
+}
+
+/** Test fixture: a receipt of 1 unit of line 11. */
+export function makeReceipt(overrides: Partial<PurchaseOrderReceipt> = {}): PurchaseOrderReceipt {
+  return {
+    id: 70,
+    receipt_date: '2026-10-13',
+    delivery_note_number: 'DDT-9',
+    delivery_note_date: '2026-10-12',
+    notes: 'Left at the gate',
+    created_by: { id: 3, name: 'Mario Rossi' },
+    created_at: '2026-10-13T09:00:00Z',
+    lines: [{ id: 700, purchase_order_line_id: 11, position: 1, description: 'Consulting', quantity: '1.000' }],
+    purchase_invoice: null,
+    abilities: { delete: true },
     ...overrides,
   }
 }
@@ -58,6 +81,7 @@ export function makePurchaseOrder(overrides: Partial<PurchaseOrder> = {}): Purch
       delete: true,
       merge: true,
       send: true,
+      receive: true,
       view_activity: true,
       transitions: ['in_validation', 'approved', 'cancelled'],
     },

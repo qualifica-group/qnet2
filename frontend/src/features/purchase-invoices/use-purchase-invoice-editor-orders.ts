@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import type { UseFieldArrayReturn, UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -8,6 +8,9 @@ import { fetchPurchaseInvoiceDraft } from '@/features/purchase-invoices/api'
 import { lineFromDraft } from '@/features/purchase-invoices/purchase-invoice-editor-lines'
 import type { PurchaseInvoiceWriteFormValues } from '@/features/purchase-invoices/purchase-invoice-schema'
 import type { PurchaseInvoiceDraft } from '@/features/purchase-invoices/types'
+
+/** Inline notice under the orders list: nothing left to bill on the order. */
+export type OrdersNotice = 'empty' | null
 
 interface AddOrdersArgs {
   form: UseFormReturn<PurchaseInvoiceWriteFormValues>
@@ -24,6 +27,7 @@ export function useAddOrderToInvoice({ form, lineArray, rememberVat }: AddOrders
   const { t } = useTranslation()
   const { getValues, setValue } = form
   const { append } = lineArray
+  const [notice, setNotice] = useState<OrdersNotice>(null)
 
   const { mutate, isPending } = useMutation({
     mutationFn: (orderId: number) => fetchPurchaseInvoiceDraft([orderId]),
@@ -31,6 +35,11 @@ export function useAddOrderToInvoice({ form, lineArray, rememberVat }: AddOrders
 
   const apply = useCallback(
     (draft: PurchaseInvoiceDraft) => {
+      if (draft.lines.length === 0) {
+        setNotice('empty')
+        return
+      }
+      setNotice(null)
       const present = new Set(getValues('lines').map((line) => line.purchase_order_line_id))
       const fresh = draft.lines.filter(
         (line) => line.purchase_order_line_id === null || !present.has(line.purchase_order_line_id),
@@ -64,5 +73,5 @@ export function useAddOrderToInvoice({ form, lineArray, rememberVat }: AddOrders
     [apply, mutate, t],
   )
 
-  return { addOrder, isAdding: isPending }
+  return { addOrder, isAdding: isPending, notice }
 }

@@ -77,7 +77,15 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'An order line can be invoiced **only once**: lines already on another passive invoice are not offered and an attempt to reuse them is rejected. You cannot mix ODAs of different suppliers or companies.',
+          text: 'Order lines are billed **by quantity**, also across several documents. The proposed quantity is the one still to be billed: both a **proforma** and an **invoice** can cover the ordered quantity not yet billed; if the line residual has been closed, the ceiling is the received quantity. Each line from an ODA shows the available **maximum** (“max X”) and a higher quantity is rejected. The same document can hold several lines of several ODAs, as long as they share the same supplier and company.',
+        },
+        {
+          type: 'list',
+          items: [
+            'Changing the **document type** does not modify the lines from ODA: they stay as you filled them in.',
+            'If the draft comes out empty, the order has nothing left to bill.',
+            'The editor and **Supplier details** warn that saving as **Invoice** registers the receipt of the quantities not yet received (see “Proforma and invoice”).',
+          ],
         },
       ],
     },
@@ -92,6 +100,9 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
+            'Saving as **Invoice** (or giving a proforma the supplier number) automatically registers **a receipt** on each linked ODA for the billed quantities not yet received: dated as the document, note “Ricezione da fattura n. X”; the ODA status and the linked RDA lines are updated. With several ODAs, one receipt per ODA is registered. The **proforma does not receive**. The **Register receipts** permission is not needed.',
+            'If an ODA is not receivable (draft, in validation, cancelled) and a receipt would be needed, the invoice is refused.',
+            'The automatic receipt appears in the ODA as “from invoice no. X” and cannot be cancelled while the invoice exists; if the invoice goes back to proforma the receipt stays.',
             'An **invoice** is **locked**: lines, amounts, supplier, date and deletion are rejected.',
             'Changing or clearing the number and date of an invoice requires the **Correct/undo registration** permission and is recorded in the activity; clearing the number turns the document back into a proforma.',
             'The supplier number must be **unique** for the same supplier and year among invoices; it does not apply to proformas.',

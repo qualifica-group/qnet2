@@ -21,20 +21,38 @@ const nullableId = z.number().int().nullable()
 /** One document row; amounts are numbers, the server recomputes net/VAT/total. */
 export function buildPurchaseInvoiceLineSchema(t: TFunction) {
   const e = (key: string) => t(`purchaseInvoices.editor.errors.${key}`)
-  return z.object({
-    id: nullableId,
-    purchase_order_line_id: nullableId,
-    product_id: nullableId,
-    description: z.string().trim().min(1, e('descriptionRequired')).max(DESCRIPTION_MAX, e('descriptionMax')),
-    quantity: z.number(e('quantityInvalid')).gt(0, e('quantityPositive')).max(QUANTITY_MAX, e('quantityMax')),
-    unit_price: z
-      .number(e('unitPriceInvalid'))
-      .min(-UNIT_PRICE_LIMIT, e('unitPriceRange'))
-      .max(UNIT_PRICE_LIMIT, e('unitPriceRange')),
-    vat_rate_id: nullableId,
-    cost_type_id: z.number(e('costTypeRequired')).int(),
-    work_order_id: nullableId,
-  })
+  return z
+    .object({
+      id: nullableId,
+      purchase_order_line_id: nullableId,
+      product_id: nullableId,
+      description: z.string().trim().min(1, e('descriptionRequired')).max(DESCRIPTION_MAX, e('descriptionMax')),
+      quantity: z.number(e('quantityInvalid')).gt(0, e('quantityPositive')).max(QUANTITY_MAX, e('quantityMax')),
+      unit_price: z
+        .number(e('unitPriceInvalid'))
+        .min(-UNIT_PRICE_LIMIT, e('unitPriceRange'))
+        .max(UNIT_PRICE_LIMIT, e('unitPriceRange')),
+      vat_rate_id: nullableId,
+      cost_type_id: z.number(e('costTypeRequired')).int(),
+      work_order_id: nullableId,
+      /** Billable remainder of an ODA row taken from the draft (spec 0254); UI-only, never sent. */
+      available_quantity: z.number().nullable(),
+    })
+    .superRefine((line, ctx) => {
+      const max = line.available_quantity
+      if (max !== null && toThousandths(line.quantity) > toThousandths(max)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['quantity'],
+          message: t('purchaseInvoices.editor.errors.quantityAboveAvailable', { max }),
+        })
+      }
+    })
+}
+
+/** Compares quantities on their 3 decimals, free of float noise. */
+function toThousandths(value: number): number {
+  return Math.round(value * 1000)
 }
 
 /** Write form (create + edit): header, defaults, notes and 1..200 rows. */

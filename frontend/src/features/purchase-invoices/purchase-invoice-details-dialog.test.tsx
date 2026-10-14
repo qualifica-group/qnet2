@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AxiosError, type AxiosResponse } from 'axios'
 import i18n from '@/i18n'
 import { purchaseInvoices } from '@/i18n/locales/en-purchase-invoices'
 import { PurchaseInvoiceDetailsDialog } from '@/features/purchase-invoices/purchase-invoice-details-dialog'
@@ -14,12 +15,18 @@ vi.mock('@/features/purchase-invoices/api', async (importOriginal) => ({
 }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-function invoiceWith(type: PurchaseInvoiceType, downgrade: boolean, number: string | null): PurchaseInvoice {
+function invoiceWith(
+  type: PurchaseInvoiceType,
+  downgrade: boolean,
+  number: string | null,
+  purchaseOrders: PurchaseInvoice['purchase_orders'] = [],
+): PurchaseInvoice {
   return {
     id: 7,
     document_type: type,
     document_number: number,
     notes: null,
+    purchase_orders: purchaseOrders,
     permissions: { resource: {}, fields: {}, actions: { downgrade } },
   } as unknown as PurchaseInvoice
 }
@@ -40,6 +47,26 @@ beforeAll(async () => {
 
 beforeEach(() => {
   patchMock.mockReset().mockResolvedValue({ id: 7 } as PurchaseInvoice)
+})
+
+describe('PurchaseInvoiceDetailsDialog receipt notice (spec 0254 D-12)', () => {
+  const ORDERS = [{ id: 5, code: 'ODA-5' }] as unknown as PurchaseInvoice['purchase_orders']
+  const NOTICE = /the receipt of the quantities not yet received/
+
+  it('warns that a proforma linked to ODAs registers the receipt when it becomes an invoice', () => {
+    renderDialog(invoiceWith('proforma', false, null, ORDERS))
+    expect(screen.getByRole('note')).toHaveTextContent(NOTICE)
+  })
+
+  it('shows no notice for a proforma without ODAs or for an already registered invoice', () => {
+    renderDialog(invoiceWith('proforma', false, null))
+    expect(screen.queryByRole('note')).not.toBeInTheDocument()
+  })
+
+  it('shows no notice for a registered invoice linked to ODAs', () => {
+    renderDialog(invoiceWith('invoice', true, 'FA-1', ORDERS))
+    expect(screen.queryByRole('note')).not.toBeInTheDocument()
+  })
 })
 
 describe('PurchaseInvoiceDetailsDialog (spec 0250 D-2)', () => {
@@ -69,5 +96,21 @@ describe('PurchaseInvoiceDetailsDialog (spec 0250 D-2)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(patchMock).toHaveBeenCalledWith(7, { document_number: 'FA-2', notes: null }))
+  })
+
+  it('spec 0254 AC-008: shows the 422 document_number message on the field with the accessible triad', async () => {
+    const message = "La riga ODA supera il ricevuto (disponibile 1.000)"
+    const response = { status: 422, data: { message: 'Invalid', errors: { document_number: [message] } } } as AxiosResponse
+    patchMock.mockRejectedValue(new AxiosError('Invalid', 'ERR_BAD_REQUEST', undefined, undefined, response))
+    renderDialog(invoiceWith('proforma', false, null))
+
+    fireEvent.change(screen.getByLabelText('Supplier document number'), { target: { value: 'FA-2' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    const alert = await screen.findByText(message)
+    const input = screen.getByLabelText('Supplier document number')
+    expect(alert).toHaveAttribute('role', 'alert')
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(input.getAttribute('aria-describedby')).toContain(alert.id)
   })
 })

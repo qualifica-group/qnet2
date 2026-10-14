@@ -56,6 +56,8 @@ use App\Models\PurchaseInvoice;
 use App\Models\PurchaseInvoiceInstallment;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderLine;
+use App\Models\PurchaseOrderReceipt;
+use App\Models\PurchaseOrderReceiptLine;
 use App\Models\PurchaseOrderStatusLabel;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestLine;
@@ -226,6 +228,8 @@ class AppServiceProvider extends ServiceProvider
             'purchase_invoice_installment' => PurchaseInvoiceInstallment::class,
             'purchase_order' => PurchaseOrder::class,
             'purchase_order_line' => PurchaseOrderLine::class,
+            'purchase_order_receipt' => PurchaseOrderReceipt::class,
+            'purchase_order_receipt_line' => PurchaseOrderReceiptLine::class,
             'cost_type' => CostType::class,
             'purchase_request_priority' => PurchaseRequestPriority::class,
             'purchase_order_status_label' => PurchaseOrderStatusLabel::class,

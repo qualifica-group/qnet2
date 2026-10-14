@@ -8,7 +8,6 @@ use App\Enums\PurchaseOrderStatus;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderLine;
 use App\Models\User;
-use App\Services\PurchaseRequests\PurchaseRequestClosureService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -16,14 +15,14 @@ use Illuminate\Validation\ValidationException;
 /**
  * Status changes of a purchase order (spec 0210, D-9): the matrix lives in the
  * PurchaseOrderStatus enum, the permission depends on the target (approved
- * needs `approve`, every other state `changeStatus`). Cancelling or fulfilling
- * an order propagates to its request lines (spec 0244, D-3).
+ * needs `approve`, every other state `changeStatus`). Cancelling an order
+ * releases its request lines (spec 0244, D-3); fulfilment is derived from the
+ * receipts (spec 0254), so it has no manual transition here.
  */
 class PurchaseOrderStatusService
 {
     public function __construct(
         private readonly PurchaseRequestLineLinker $linker,
-        private readonly PurchaseRequestClosureService $closure,
     ) {}
 
     public function change(PurchaseOrder $order, PurchaseOrderStatus $to, User $actor): PurchaseOrder
@@ -41,10 +40,13 @@ class PurchaseOrderStatusService
                 throw ValidationException::withMessages(['to_status' => [__('This status change is not allowed for the order.')]]);
             }
 
-            // Step 3: apply
+            // Step 3: an order with deliveries cannot go back or be cancelled (D-5)
+            $this->assertNoReceiptsToDiscard($locked, $to);
+
+            // Step 4: apply
             $locked->forceFill(['status' => $to])->save();
 
-            // Step 4: propagate to the linked request lines (same transaction)
+            // Step 5: propagate to the linked request lines (same transaction)
             $this->propagate($locked, $to, $actor);
 
             return $locked;
@@ -70,21 +72,22 @@ class PurchaseOrderStatusService
      */
     private function propagate(PurchaseOrder $order, PurchaseOrderStatus $to, User $actor): void
     {
-        if (! in_array($to, [PurchaseOrderStatus::Cancelled, PurchaseOrderStatus::Fulfilled], true)) {
+        if ($to !== PurchaseOrderStatus::Cancelled) {
             return;
         }
 
         $lines = $order->lines()->orderBy('id')->lockForUpdate()->get();
 
-        if ($to === PurchaseOrderStatus::Cancelled) {
-            $this->linker->unlink($lines, $actor, __('purchase_request_line_links.order_cancelled'));
-            $lines->each(fn (PurchaseOrderLine $line): bool => $line->forceFill(['purchase_request_line_id' => null])->save());
+        $this->linker->unlink($lines, $actor, __('purchase_request_line_links.order_cancelled'));
+        $lines->each(fn (PurchaseOrderLine $line): bool => $line->forceFill(['purchase_request_line_id' => null])->save());
+    }
 
-            return;
-        }
+    private function assertNoReceiptsToDiscard(PurchaseOrder $order, PurchaseOrderStatus $to): void
+    {
+        $discarding = in_array($to, [PurchaseOrderStatus::InValidation, PurchaseOrderStatus::Draft, PurchaseOrderStatus::Cancelled], true);
 
-        foreach ($this->linker->receive($lines, $actor) as $request) {
-            $this->closure->closeIfComplete($request, $actor);
+        if ($discarding && ($order->receipts()->exists() || $order->lines()->whereNotNull('residual_closed_at')->exists())) {
+            throw ValidationException::withMessages(['to_status' => [__('purchase_orders.has_receipts')]]);
         }
     }
 

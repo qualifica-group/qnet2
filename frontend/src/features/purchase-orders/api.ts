@@ -4,11 +4,14 @@ import { filenameFromContentDisposition, normalizeBlobError, saveBlob } from '@/
 import {
   PURCHASE_ORDERS_DOMAIN,
   type CreatedPurchaseOrder,
+  type CreatedReceipt,
   type MergeCandidate,
   type MergeLog,
   type MergeResult,
   type PurchaseOrder,
   type PurchaseOrderPayload,
+  type PurchaseOrderReceipt,
+  type PurchaseOrderReceiptPayload,
   type PurchaseOrderStatus,
 } from '@/features/purchase-orders/types'
 
@@ -20,6 +23,7 @@ export const purchaseOrderKeys = {
   detail: (id: number) => [PURCHASE_ORDERS_DOMAIN, 'detail', id] as const,
   mergeCandidates: (id: number) => [PURCHASE_ORDERS_DOMAIN, 'merge-candidates', id] as const,
   mergeLogs: (id: number) => [PURCHASE_ORDERS_DOMAIN, 'merge-logs', id] as const,
+  receipts: (id: number) => [PURCHASE_ORDERS_DOMAIN, 'receipts', id] as const,
 }
 
 export async function fetchPurchaseOrder(id: number): Promise<PurchaseOrder> {
@@ -72,6 +76,41 @@ export async function mergePurchaseOrders(id: number, lineIds: number[]): Promis
 /** Merge history of an order, most recent first. */
 export async function fetchMergeLogs(id: number): Promise<MergeLog[]> {
   const { data } = await apiClient.get<ApiResponse<MergeLog[]>>(`${ENDPOINT}/${id}/merge-logs`)
+  return data.data
+}
+
+/** Receipts of an order, most recent first (spec 0254). */
+export async function fetchReceipts(orderId: number): Promise<PurchaseOrderReceipt[]> {
+  const { data } = await apiClient.get<ApiResponse<PurchaseOrderReceipt[]>>(`${ENDPOINT}/${orderId}/receipts`)
+  return data.data
+}
+
+/** 409 when the order cannot receive (D-5); 422 `lines.N.quantity` / `lines.N.purchase_order_line_id`. */
+export async function createReceipt(orderId: number, payload: PurchaseOrderReceiptPayload): Promise<CreatedReceipt> {
+  const { data } = await apiClient.post<ApiResponse<CreatedReceipt>>(`${ENDPOINT}/${orderId}/receipts`, payload)
+  return data.data
+}
+
+/** Cancels a receipt; 409 when it would drop the received quantity below the invoiced one (D-8). */
+export async function deleteReceipt(orderId: number, receiptId: number): Promise<PurchaseOrder> {
+  const { data } = await apiClient.delete<ApiResponse<PurchaseOrder>>(`${ENDPOINT}/${orderId}/receipts/${receiptId}`)
+  return data.data
+}
+
+/** Closes the missing quantity of a line; 409 on a complete/closed line or an over-invoiced one; 422 `reason`. */
+export async function closeLineResidual(orderId: number, lineId: number, reason: string): Promise<PurchaseOrder> {
+  const { data } = await apiClient.post<ApiResponse<PurchaseOrder>>(
+    `${ENDPOINT}/${orderId}/lines/${lineId}/close-residual`,
+    { reason },
+  )
+  return data.data
+}
+
+/** Reopens a closed residual; 409 when it is not closed. */
+export async function reopenLineResidual(orderId: number, lineId: number): Promise<PurchaseOrder> {
+  const { data } = await apiClient.delete<ApiResponse<PurchaseOrder>>(
+    `${ENDPOINT}/${orderId}/lines/${lineId}/close-residual`,
+  )
   return data.data
 }
 

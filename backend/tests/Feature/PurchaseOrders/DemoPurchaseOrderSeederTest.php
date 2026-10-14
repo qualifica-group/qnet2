@@ -4,6 +4,7 @@ use App\Enums\PurchaseOrderStatus;
 use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderReceipt;
 use App\Models\Registry;
 use App\Models\User;
 use Database\Seeders\DemoPurchaseOrderSeeder;
@@ -17,7 +18,7 @@ it('skips quietly when the reference data is missing', function () {
     expect(PurchaseOrder::query()->count())->toBe(0);
 });
 
-it('seeds five numbered orders once, whatever the number of runs', function () {
+it('seeds six numbered orders once, whatever the number of runs', function () {
     User::factory()->create();
     CompanySite::factory()->create(['company_id' => Company::factory()->create()->id]);
     Registry::factory()->supplier()->create();
@@ -27,8 +28,9 @@ it('seeds five numbered orders once, whatever the number of runs', function () {
 
     $orders = PurchaseOrder::query()->with('lines')->orderBy('id')->get();
 
-    expect($orders)->toHaveCount(5)
-        ->and($orders->pluck('status')->all())->toBe([PurchaseOrderStatus::Draft, PurchaseOrderStatus::Approved, PurchaseOrderStatus::SentToSupplier, PurchaseOrderStatus::Approved, PurchaseOrderStatus::SentToSupplier])
-        ->and($orders->pluck('number')->all())->toBe([1, 2, 3, 4, 5])
+    expect($orders)->toHaveCount(6)
+        ->and($orders->pluck('status')->all())->toBe([PurchaseOrderStatus::Draft, PurchaseOrderStatus::Fulfilled, PurchaseOrderStatus::SentToSupplier, PurchaseOrderStatus::Fulfilled, PurchaseOrderStatus::Fulfilled, PurchaseOrderStatus::PartiallyFulfilled])
+        ->and($orders->pluck('number')->all())->toBe([1, 2, 3, 4, 5, 6])
+        ->and(PurchaseOrderReceipt::query()->count())->toBe(4)
         ->and($orders->every(fn (PurchaseOrder $order): bool => $order->lines->isNotEmpty() && (float) $order->grand_total > 0))->toBeTrue();
 });

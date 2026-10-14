@@ -45,7 +45,9 @@ enum PurchaseOrderStatus: string
 
     /**
      * The states an order in this state may move to (D-9). Permissions are
-     * applied on top of this matrix by the status service.
+     * applied on top of this matrix by the status service. Partially fulfilled
+     * and fulfilled are derived from the receipts and never set by hand
+     * (spec 0254, D-3).
      *
      * @return array<int, self>
      */
@@ -55,9 +57,8 @@ enum PurchaseOrderStatus: string
             self::Draft => [self::InValidation, self::Approved, self::Cancelled],
             self::InValidation => [self::Draft, self::Approved, self::Cancelled],
             self::Approved => [self::InValidation, self::SentToSupplier, self::Cancelled],
-            self::SentToSupplier => [self::PartiallyFulfilled, self::Fulfilled, self::Cancelled],
-            self::PartiallyFulfilled => [self::SentToSupplier, self::Fulfilled],
-            self::Fulfilled => [self::PartiallyFulfilled],
+            self::SentToSupplier => [self::Cancelled],
+            self::PartiallyFulfilled, self::Fulfilled => [],
             self::Cancelled => [self::Draft],
         };
     }
@@ -74,6 +75,15 @@ enum PurchaseOrderStatus: string
     public function isSendable(): bool
     {
         return in_array($this, [self::Approved, self::SentToSupplier], true);
+    }
+
+    /**
+     * Deliveries can be registered only on an approved, sent or partially
+     * fulfilled order (spec 0254, D-5).
+     */
+    public function isReceivable(): bool
+    {
+        return in_array($this, [self::Approved, self::SentToSupplier, self::PartiallyFulfilled], true);
     }
 
     /**

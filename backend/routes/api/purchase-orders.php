@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\PurchaseOrders\PurchaseOrderController;
 use App\Http\Controllers\PurchaseOrders\PurchaseOrderFromRequestLinesController;
+use App\Http\Controllers\PurchaseOrders\PurchaseOrderLineResidualController;
 use App\Http\Controllers\PurchaseOrders\PurchaseOrderPdfController;
+use App\Http\Controllers\PurchaseOrders\PurchaseOrderReceiptController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -26,3 +28,12 @@ Route::get('purchase-orders/{purchaseOrder}/merge-candidates', [PurchaseOrderCon
 Route::post('purchase-orders/{purchaseOrder}/merge', [PurchaseOrderController::class, 'merge']);
 Route::get('purchase-orders/{purchaseOrder}/merge-logs', [PurchaseOrderController::class, 'mergeLogs']);
 Route::post('purchase-request-lines/purchase-orders', [PurchaseOrderFromRequestLinesController::class, 'store']);
+
+// Deliveries and residual closing (spec 0254): the children are resolved through the order
+Route::scopeBindings()->group(function (): void {
+    Route::get('purchase-orders/{purchaseOrder}/receipts', [PurchaseOrderReceiptController::class, 'index']);
+    Route::post('purchase-orders/{purchaseOrder}/receipts', [PurchaseOrderReceiptController::class, 'store']);
+    Route::delete('purchase-orders/{purchaseOrder}/receipts/{receipt}', [PurchaseOrderReceiptController::class, 'destroy']);
+    Route::post('purchase-orders/{purchaseOrder}/lines/{line}/close-residual', [PurchaseOrderLineResidualController::class, 'store']);
+    Route::delete('purchase-orders/{purchaseOrder}/lines/{line}/close-residual', [PurchaseOrderLineResidualController::class, 'destroy']);
+});

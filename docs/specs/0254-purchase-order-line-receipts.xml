@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0254-purchase-order-line-receipts" status="draft" owner="ciro" date="2026-10-14">
+
+  <goal>
+    Evasione degli ODA per riga: le consegne del fornitore si registrano come ricezioni (anche piu' d'una per ODA) con
+    le quantita' ricevute per riga, lo stato di testata deriva dalle righe e i documenti passivi da ODA fatturano per
+    quantita' (proforma e fattura sull'ordinato non ancora fatturato); una fattura da ODA evade da sola le quantita' che
+    fattura e non risultano ancora ricevute (D-12). Supera la spec 0210 out "evasione per riga", la spec 0244
+    D-3 (propagazione all'evasione di testata) e la spec 0250 D-8 (riga ODA fatturata una sola volta).
+  </goal>
+
+  <context>
+    Decisioni utente 2026-10-14:
+    - D-1 Ricezione = documento: data ricezione, numero e data DDT/bolla (facoltativi), note, quantita' per riga ODA.
+      Piu' ricezioni per ODA. Ricevuto della riga = somma delle sue righe di ricezione. Una ricezione si annulla
+      (DELETE, traccia nell'activity log).
+    - D-2 Fatturazione per quantita' (sostituisce 0250 D-8). Per riga ODA: fatturato_totale = somma quantita' delle righe
+      passive (proforma + fattura) che la referenziano; fatturato_fattura = solo document_type=invoice.
+      Tetto = ricevuto se il residuo e' chiuso, altrimenti quantita' ordinata. Vincolo unico per proforma e fattura:
+      fatturato_totale &lt;= tetto; disponibile = tetto - fatturato_totale. Una proforma copre l'ordinato non ancora
+      ricevuto (anticipo) senza evaderlo; una fattura evade (D-12). [rivista 2026-10-14: prima la fattura era limitata al
+      ricevuto e la conversione proforma -&gt; fattura oltre il ricevuto dava 422]
+    - D-12 (decisione utente 2026-10-14) Una fattura da ODA evade le righe che fattura. Quando un documento diventa
+      document_type=invoice (POST come fattura, oppure PATCH details che converte una proforma), per ogni riga ODA che
+      referenzia: da_ricevere = max(fatturato_fattura - ricevuto, 0) (sempre &lt;= ordinato - ricevuto perche'
+      fatturato_fattura &lt;= tetto). Se almeno una riga ha da_ricevere &gt; 0 si crea UNA ricezione automatica per ODA
+      (receipt_date = data documento, delivery_note_number nullo, note "Ricezione da fattura n. X", purchase_invoice_id
+      = il documento) con quelle quantita', poi ricalcolo stato e propagazione RDA (D-3, D-7) nella stessa transazione.
+      La proforma non evade. Se l'ODA non e' in uno stato ricevibile (D-5) la fattura e' rifiutata (422 su
+      purchase_order_ids / lines.N.purchase_order_line_id) solo quando servirebbe una ricezione. Il downgrade di una
+      fattura a proforma non annulla la ricezione automatica (la merce resta ricevuta); la ricezione automatica si
+      annulla come le altre, con il vincolo D-8 (ricevuto &gt;= fatturato_fattura), quindi finche' la fattura esiste non
+      scende sotto il fatturato. Nessuna ricezione automatica nel backfill (D-11). La ricezione automatica e' un effetto
+      del permesso sul documento passivo (purchase-invoices.create / details), non richiede purchase-orders.receive.
+      Poiche' proforma e fattura hanno lo stesso disponibile, document_type sparisce da draft e invoiceable-orders e
+      l'editor non ricalcola piu' le righe al cambio tipo.
+    - D-3 Stato di testata automatico. Riga completa = ricevuto &gt;= ordinato oppure residuo chiuso. Dopo ogni ricezione,
+      annullamento, chiusura o riapertura del residuo: tutte complete -&gt; fulfilled; almeno una ricezione o una chiusura
+      -&gt; partially_fulfilled; nulla -&gt; sent_to_supplier (se l'ordine era partially_fulfilled/fulfilled), altrimenti
+      invariato. Le transizioni manuali verso partially_fulfilled / fulfilled e da esse (fulfilled-&gt;partially_fulfilled,
+      partially_fulfilled-&gt;sent_to_supplier/fulfilled, sent_to_supplier-&gt;partially_fulfilled/fulfilled) escono dalla matrice.
+      "Chiudi residuo" su una riga (motivo obbligatorio): la merce mancante non arrivera', la riga conta come completa e
+      il residuo esce dall'impegnato. "Riapri residuo" la riporta aperta.
+    - D-4 Ricevuto &lt;= ordinato: eccedenza -&gt; 422 sulla riga.
+    Decisioni tecniche derivate (proposte, da validare):
+    - D-5 Si riceve su ODA in stato approved, sent_to_supplier, partially_fulfilled (stati "ricevibili"); fulfilled
+      accetta solo annullamenti di ricezione e riapertura residuo. Un ODA con ricezioni o con un residuo chiuso non
+      puo' andare in in_validation, draft o cancelled (422 su to_status).
+    - D-6 Nuovo permesso purchase-orders.receive (ability `receive` della PurchaseOrderPolicy): registra/annulla
+      ricezioni, chiude/riapre residui. La lettura delle ricezioni segue purchase-orders.view.
+    - D-7 Propagazione RDA per riga (sostituisce 0244 D-3): quando una riga ODA diventa completa, la riga RDA collegata
+      ordered -&gt; received e la RDA si chiude se completa (PurchaseRequestClosureService::closeIfComplete); quando torna
+      incompleta (annullamento/riapertura), received -&gt; ordered solo se la RDA non e' chiusa (una RDA chiusa non si
+      riapre, regola esistente del PurchaseRequestLineLinker).
+    - D-8 Annullare una ricezione e' vietato (409) se porterebbe il ricevuto di una riga sotto il suo fatturato_fattura
+      (o, su una riga col residuo chiuso, sotto il fatturato_totale: il tetto scenderebbe sotto il gia' fatturato);
+      chiudere il residuo e' vietato (409) se il fatturato_totale supera il ricevuto (proforma oltre il ricevuto: va
+      prima ridotta).
+    - D-9 Impegnato in consuntivo (0252 D-2 rivista): per riga ODA della commessa in stato fatturabile,
+      impegnato = round(max(tetto - fatturato_totale, 0) x unit_price, 2). Fatturato invariato (righe passive).
+    - D-10 received_quantity denormalizzato su purchase_order_lines (scritto solo dal service, sotto lock), cosi' la
+      lista, il consuntivo e le guardie non sommano le ricezioni a ogni lettura.
+    - D-11 Backfill: gli ODA gia' fulfilled ricevono una ricezione generata (data = updated_at, note di migrazione,
+      autore = created_by) con le quantita' ordinate; i partially_fulfilled restano senza ricezioni e lo stato si
+      ricalcola al primo evento. I documenti passivi esistenti non vengono rivalidati.
+
+    Codice esistente (verificato): purchase_order_lines (quantity decimal 12,3; purchase_request_line_id unico),
+    PurchaseOrderStatus (matrice allowedTransitions), PurchaseOrderStatusService::propagate (Cancelled/Fulfilled),
+    PurchaseRequestLineLinker (link/unlink/receive), PurchaseRequestClosureService, PurchaseOrderPolicy::abilities()
+    [view, create, update, delete, changeStatus, approve, merge, send, export, viewActivity], PurchaseOrderResource
+    (lines, abilities.transitions), POST /api/purchase-orders/{purchaseOrder}/status.
+    Ciclo passivo: purchase_invoice_lines (unique purchase_order_line_id = backstop D-8, nessun soft delete),
+    PurchaseInvoiceLineGuard, PurchaseInvoiceDraftBuilder (INVOICEABLE_STATUSES, openLines/invoicedLineIds),
+    PurchaseInvoiceService::updateDetails (proforma -&gt; invoice), WorkOrderPassiveCostAggregator::committedQuery.
+    FE: features/purchase-orders (purchase-order-lines-section, purchase-order-form-actions con "Registra fattura"),
+    features/purchase-invoices (purchase-invoice-editor-orders-section, use-purchase-invoice-editor-orders).
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazioni: purchase_order_receipts (con purchase_invoice_id nullable, FK nullOnDelete, D-12), purchase_order_receipt_lines; purchase_order_lines += received_quantity, residual_closed_at, residual_closed_by_id, residual_close_reason; purchase_invoice_lines: unique(purchase_order_line_id) sostituito da indice semplice; backfill D-11. Tutte reversibili.</item>
+      <item>Model PurchaseOrderReceipt, PurchaseOrderReceiptLine (fillable, casts, LogsModelActivity, factory) e relazioni su PurchaseOrder/PurchaseOrderLine.</item>
+      <item>PurchaseOrderLineBillingLedger: per un insieme di righe ODA restituisce ordinato, ricevuto, tetto, fatturato_totale, fatturato_fattura, residuo fatturabile per tipo documento (escludendo un documento in modifica). Unica fonte per guardie, bozza, consuntivo.</item>
+      <item>PurchaseOrderReceiptService (create, delete), PurchaseOrderLineResidualService (close, reopen), PurchaseOrderFulfillmentSynchronizer (ricalcolo stato D-3 + propagazione RDA D-7); PurchaseRequestLineLinker esteso per riga (receive su righe complete, revert).</item>
+      <item>PurchaseOrderStatus: matrice ridotta (D-3); PurchaseOrderStatusService: niente propagazione su Fulfilled, blocco D-5 con ricezioni.</item>
+      <item>Endpoint ricezioni e residuo (data_contract), FormRequest, Resource, policy ability `receive`, permesso nel catalogo (permissions:sync), etichetta i18n del permesso.</item>
+      <item>PurchaseOrderResource: campi di riga e abilities.receive (data_contract).</item>
+      <item>Ciclo passivo: PurchaseInvoiceLineGuard per quantita' (D-2, vincolo unico sul tetto), PurchaseInvoiceDraftBuilder con quantita' proposta = disponibile (senza document_type), ricezione automatica da fattura su POST come invoice e su PATCH details proforma -&gt; invoice (D-12), riusando PurchaseOrderReceiptService e il synchronizer.</item>
+      <item>WorkOrderPassiveCostAggregator: impegnato D-9 (shape di GET /api/work-orders/{id}/costs invariata).</item>
+      <item>Seeder demo: DemoPurchaseOrderSeeder crea ricezioni coerenti con gli stati; DemoPurchaseInvoiceSeeder rispetta i limiti D-2.</item>
+      <item>FE ODA: colonne Ordinato/Ricevuto/Fatturato/Residuo sulle righe con indicatore residuo chiuso; sezione "Ricezioni" (elenco, annulla); dialog "Registra ricezione" (data, DDT, note, righe aperte con residuo precompilato, "Ricevi tutto"); azioni di riga "Chiudi residuo" (motivo) / "Riapri residuo"; tutto sotto abilities.receive.</item>
+      <item>FE fatture passive: quantita' proposta e massimo disponibile mostrati sulla riga; errori di quantita' mappati sul campo (triade accessibile); niente document_type nella bozza ne' ricalcolo al cambio tipo (D-12); avviso nell'editor che salvare come Fattura registra la ricezione delle quantita' non ancora ricevute; messaggio se la bozza non ha nulla da fatturare. FE ODA: nell'elenco ricezioni, la ricezione da fattura mostra "da fattura n. X".</item>
+      <item>Guide in-app IT/EN: purchase-orders (status, nuova sezione receipts, register-invoice, permissions), purchase-invoices (righe da ODA per quantita'), work-order-costs se descrive l'impegnato; manuale Claude Docs (sezione Acquisti).</item>
+    </in>
+    <out>
+      <item>Gestione magazzino/giacenze, lotti, matricole, ubicazioni.</item>
+      <item>Note di credito / righe passive a quantita' negativa; resi a fornitore.</item>
+      <item>Ricezione oltre l'ordinato (D-4) e tolleranze percentuali.</item>
+      <item>Allegati sulla ricezione (il DDT si allega all'ODA con il sistema esistente).</item>
+      <item>"Maturato" (ricevuto non fatturato) come terza colonna del consuntivo.</item>
+      <item>Rivalidazione dei documenti passivi esistenti (D-11) e ricostruzione ricezioni dei partially_fulfilled legacy.</item>
+      <item>Ricezione massiva da lista ODA o da griglia; import ricezioni.</item>
+      <item>Invio email al fornitore o notifiche alla ricezione.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <types>
+      PurchaseOrderLine (in PurchaseOrderResource.lines, campi aggiunti) = { ...esistenti,
+        received_quantity: string(3 dec), invoiced_quantity: string(3 dec) (fatturato_totale),
+        invoiced_invoice_quantity: string(3 dec) (fatturato_fattura), residual_quantity: string(3 dec)
+        (0 se completa, altrimenti ordinato - ricevuto), fulfillment: "open"|"partial"|"complete",
+        residual_closed: { at: ISO datetime, by: {id,name}, reason: string } | null }
+      PurchaseOrder.abilities += receive: bool (permesso receive e stato ricevibile o fulfilled).
+      PurchaseOrder.abilities.transitions: senza partially_fulfilled / fulfilled (D-3).
+      PurchaseOrderReceipt = { id, receipt_date: Y-m-d, delivery_note_number: string|null, delivery_note_date: Y-m-d|null,
+        notes: string|null, created_by: {id,name}, created_at: ISO,
+        purchase_invoice: { id, document_number: string|null } | null (D-12, ricezione da fattura),
+        lines: [{ id, purchase_order_line_id, position, description, quantity: string(3 dec) }],
+        abilities: { delete: bool } }
+    </types>
+
+    <endpoint method="GET" path="/api/purchase-orders/{purchaseOrder}/receipts">
+      <response status="200">{ success, data: PurchaseOrderReceipt[] } ordinate per receipt_date desc, id desc.</response>
+      <errors>403 senza purchase-orders.view sull'ordine.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/purchase-orders/{purchaseOrder}/receipts">
+      <request>{ receipt_date: Y-m-d (&lt;= oggi), delivery_note_number?: string|null (max 50), delivery_note_date?: Y-m-d|null,
+        notes?: string|null (max 2000), lines: [{ purchase_order_line_id: int, quantity: decimal &gt; 0, 3 dec }] (1..200, righe distinte) }</request>
+      <response status="201">{ success, message, data: { receipt: PurchaseOrderReceipt, order: PurchaseOrder (detail) } }</response>
+      <errors>403 senza receive; 409 ordine non ricevibile (D-5); 422 lines.N.quantity eccedenza (D-4), lines.N.purchase_order_line_id riga di altro ordine o con residuo chiuso, riga duplicata.</errors>
+    </endpoint>
+    <endpoint method="DELETE" path="/api/purchase-orders/{purchaseOrder}/receipts/{receipt}">
+      <response status="200">{ success, message, data: PurchaseOrder (detail) }</response>
+      <errors>403 senza receive; 404 ricezione di altro ordine (scopeBindings); 409 ordine annullato o ricevuto sotto il fatturato_fattura (D-8).</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/purchase-orders/{purchaseOrder}/lines/{line}/close-residual">
+      <request>{ reason: string (1..500) }</request>
+      <response status="200">{ success, message, data: PurchaseOrder (detail) }</response>
+      <errors>403 senza receive; 404 riga di altro ordine; 409 ordine non ricevibile, riga gia' completa o chiusa, fatturato_totale &gt; ricevuto (D-8); 422 reason.</errors>
+    </endpoint>
+    <endpoint method="DELETE" path="/api/purchase-orders/{purchaseOrder}/lines/{line}/close-residual">
+      <response status="200">{ success, message, data: PurchaseOrder (detail) }</response>
+      <errors>403 senza receive; 404 riga di altro ordine; 409 residuo non chiuso o ordine annullato.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/purchase-orders/{purchaseOrder}/status">
+      <errors>invariato; in piu' 422 to_status verso partially_fulfilled/fulfilled (fuori matrice) e verso in_validation/draft/cancelled con ricezioni (D-5).</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/purchase-invoices/draft?purchase_order_ids[]=">
+      <response status="200">shape 0250 invariata; ogni riga quantity = disponibile (tetto - fatturato_totale), importi ricalcolati sulla quantita', in piu' available_quantity: string(3 dec). Righe con disponibile 0 escluse; nessuna riga disponibile -&gt; 200 con lines: [] e purchase_order_ids valorizzato.</response>
+      <errors>422 come 0250.</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/purchase-invoices/invoiceable-orders?supplier_id=&amp;company_id=">
+      <response status="200">shape 0250 invariata; ODA con almeno una riga con disponibile &gt; 0.</response>
+    </endpoint>
+    <endpoint method="POST|PUT" path="/api/purchase-invoices[/{purchaseInvoice}]">
+      <errors>422 lines.N.quantity "supera la quantita' fatturabile della riga ODA (disponibile X)" al posto di 0250 D-8; stessa riga ODA su piu' righe dello stesso documento ammessa, il vincolo vale sulla somma. POST con document_type=invoice: ricezione automatica D-12 nella stessa transazione; 422 lines.N.purchase_order_line_id se servirebbe una ricezione su un ODA non ricevibile.</errors>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/purchase-invoices/{purchaseInvoice}/details">
+      <errors>proforma -&gt; invoice: ricezione automatica D-12 nella stessa transazione; 422 document_number se servirebbe una ricezione su un ODA non ricevibile (documento invariato).</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Migrazioni up/down su SQLite: tabelle e colonne create e rimosse; il backfill crea per ogni ODA fulfilled una ricezione con quantita' = ordinato e received_quantity allineato; i partially_fulfilled restano senza ricezioni.</criterion>
+    <criterion id="AC-002">POST ricezione parziale su ODA sent_to_supplier: 201, received_quantity della riga aggiornato, ordine partially_fulfilled; seconda ricezione che completa tutte le righe -&gt; fulfilled e righe RDA collegate received, RDA chiusa se completa.</criterion>
+    <criterion id="AC-003">POST ricezione: quantita' oltre il residuo -&gt; 422 su lines.N.quantity senza scritture; riga di altro ordine o con residuo chiuso -&gt; 422; ordine draft/in_validation/cancelled -&gt; 409; utente senza receive -&gt; 403.</criterion>
+    <criterion id="AC-004">DELETE ricezione: ricevuto e stato ricalcolati (fulfilled -&gt; partially_fulfilled -&gt; sent_to_supplier), riga RDA received -&gt; ordered se la RDA non e' chiusa; ricezione di altro ordine -&gt; 404; ricevuto sotto il fatturato_fattura -&gt; 409.</criterion>
+    <criterion id="AC-005">Chiudi residuo con motivo: riga completa, ordine fulfilled se le altre sono complete, propagazione RDA; senza motivo -&gt; 422; fatturato_totale &gt; ricevuto -&gt; 409. Riapri residuo: riga di nuovo aperta, stato ricalcolato.</criterion>
+    <criterion id="AC-006">Matrice: POST status verso partially_fulfilled o fulfilled -&gt; 422; ODA con ricezioni verso in_validation o cancelled -&gt; 422; abilities.transitions non contiene piu' quegli stati.</criterion>
+    <criterion id="AC-007">Fatturazione D-2: proforma e fattura da ODA fino all'ordinato non fatturato -&gt; 201; oltre il tetto -&gt; 422 lines.N.quantity; due documenti che insieme superano il tetto -&gt; 422 sul secondo; residuo chiuso -&gt; tetto = ricevuto; in modifica le quantita' del documento stesso non contano.</criterion>
+    <criterion id="AC-008">PATCH details che converte in invoice una proforma su righe non ricevute: documento invoice, una ricezione automatica per ODA con da_ricevere per riga, stato ODA ricalcolato, righe RDA propagate; ODA non ricevibile -&gt; 422 document_number e nessuna scrittura; righe gia' ricevute -&gt; nessuna ricezione.</criterion>
+    <criterion id="AC-009">GET draft su piu' ODA dello stesso fornitore/societa' (righe di piu' ordini, ricevute in parte): quantita' proposte = disponibile, available_quantity, importi ricalcolati; righe esaurite escluse; nessuna riga -&gt; 200 lines [] con purchase_order_ids; invoiceable-orders esclude gli ODA esauriti.</criterion>
+    <criterion id="AC-016">D-12: POST fattura su righe di DUE ODA (una non ricevuta, una ricevuta a meta', una gia' ricevuta): una ricezione automatica per ciascun ODA che ne ha bisogno (receipt_date = data documento, purchase_invoice_id, note col numero), ricevuto = fatturato_fattura dove serviva, righe gia' ricevute intatte, stati ODA e RDA ricalcolati; POST proforma -&gt; nessuna ricezione; annullare la ricezione automatica finche' la fattura esiste -&gt; 409 (D-8); downgrade a proforma -&gt; la ricezione resta; utente con purchase-invoices.create senza purchase-orders.receive -&gt; la ricezione avviene comunque.</criterion>
+    <criterion id="AC-010">Consuntivo D-9: riga ODA da 10 a 5,00 con proforma da 4 -&gt; impegnato 30,00 e fatturato 20,00; residuo chiuso dopo ricevuto 6 senza documenti -&gt; impegnato 30,00; ODA annullato o in bozza -&gt; 0.</criterion>
+    <criterion id="AC-011">GET receipts: ordinate per data desc; 403 senza view. PurchaseOrderResource espone i nuovi campi di riga e abilities.receive (false senza permesso o su ODA in bozza).</criterion>
+    <criterion id="AC-012">Concorrenza: ricezione e documento passivo sulla stessa riga serializzati (lock ordine -&gt; righe ODA in ordine di id -&gt; righe passive); nessuna sequenza porta ricevuto &gt; ordinato o fatturato oltre i vincoli (test che verifica l'ordine dei lock e i ricontrolli dentro la transazione).</criterion>
+    <criterion id="AC-013">(Vitest) Dettaglio ODA: colonne Ordinato/Ricevuto/Fatturato/Residuo, indicatore residuo chiuso; dialog "Registra ricezione" con residui precompilati, "Ricevi tutto", errori server sulla riga (triade accessibile); elenco ricezioni con annulla; azioni nascoste senza abilities.receive.</criterion>
+    <criterion id="AC-014">(Vitest) Chiudi residuo (motivo obbligatorio) e Riapri residuo dalla riga; editor fattura passiva: la bozza viene richiesta senza document_type, il cambio tipo non ricalcola le righe, la riga mostra il massimo disponibile, con tipo Fattura e righe da ODA compare l'avviso di ricezione automatica, errore lines.N.quantity mappato sul campo; elenco ricezioni ODA mostra "da fattura n. X".</criterion>
+    <criterion id="AC-015">Guide in-app IT/EN aggiornate con gli stessi id di sezione; help-content-parity.test.ts verde; permesso purchase-orders.receive presente dopo permissions:sync con etichetta IT/EN.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Quantita' e importi in bcmath (motore della spec 0253 se committata); centesimi interi nel consuntivo.</item>
+    <item>Transazioni con lockForUpdate: ordine, poi righe ODA in ordine di id, poi righe passive; il PurchaseInvoiceLineGuard blocca anche le righe ODA. Ricontrollo dei vincoli dopo i lock (niente check-then-act).</item>
+    <item>Migrazione dell'indice: in MySQL la FK purchase_order_line_id usa l'indice unico; creare prima l'indice semplice, poi rimuovere l'unico (down inverso).</item>
+    <item>Espressioni SQL dell'impegnato portabili MySQL/SQLite (CASE WHEN, niente GREATEST); nessun input utente in selectRaw.</item>
+    <item>Authz server-side: policy ability receive + view; route annidate con scopeBindings; FormRequest con $request->safe(); Resource, mai model raw; envelope { success, message, data }.</item>
+    <item>Nessun throttle (regola progetto). Activity log su ricezioni e chiusure residuo.</item>
+    <item>File entro 300/500 righe: logica di quantita' nel ledger, non dentro guard/draft/aggregator gia' corposi.</item>
+    <item>FE: TanStack Query (invalidazione ordine + ricezioni + bozza fatture), RHF + Zod, componenti components/ui, UI compatta, i18n IT/EN.</item>
+  </constraints>
+
+</spec>

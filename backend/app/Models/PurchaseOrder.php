@@ -181,4 +181,12 @@ class PurchaseOrder extends BaseModel
     {
         return $this->hasMany(PurchaseOrderMergeLog::class, 'destination_purchase_order_id')->latest('id');
     }
+
+    /**
+     * @return HasMany<PurchaseOrderReceipt, $this>
+     */
+    public function receipts(): HasMany
+    {
+        return $this->hasMany(PurchaseOrderReceipt::class)->orderByDesc('receipt_date')->orderByDesc('id');
+    }
 }

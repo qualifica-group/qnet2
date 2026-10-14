@@ -74,6 +74,26 @@ export interface PurchaseOrderLine {
   work_order: WorkOrderRef | null
   /** Set only for lines generated from an RDA line (D-17); drives the "RDA #id" badge. */
   purchase_request_line: { id: number; purchase_request_id: number } | null
+  /** Fulfilment of the line (spec 0254), quantities as 3-decimal strings. */
+  received_quantity: string
+  /** Invoiced total: proforma plus invoice lines that reference this line. */
+  invoiced_quantity: string
+  /** Invoiced by invoice documents only. */
+  invoiced_invoice_quantity: string
+  /** 0 when the line is complete, otherwise ordered minus received. */
+  residual_quantity: string
+  fulfillment: LineFulfillment
+  /** Set when the missing goods will not arrive: the line then counts as complete. */
+  residual_closed: ResidualClosure | null
+}
+
+export const LINE_FULFILLMENTS = ['open', 'partial', 'complete'] as const
+export type LineFulfillment = (typeof LINE_FULFILLMENTS)[number]
+
+export interface ResidualClosure {
+  at: string
+  by: NamedRef
+  reason: string
 }
 
 export interface PurchaseOrderAbilities {
@@ -81,8 +101,47 @@ export interface PurchaseOrderAbilities {
   delete: boolean
   merge: boolean
   send: boolean
+  /** Register/cancel receipts and close/reopen line residuals (spec 0254 D-6). */
+  receive: boolean
   view_activity: boolean
   transitions: PurchaseOrderStatus[]
+}
+
+export interface PurchaseOrderReceiptLine {
+  id: number
+  purchase_order_line_id: number
+  position: number
+  description: string
+  quantity: string
+}
+
+/** A goods receipt (spec 0254 D-1): date, optional delivery note, quantities per ODA line. */
+export interface PurchaseOrderReceipt {
+  id: number
+  receipt_date: string
+  delivery_note_number: string | null
+  delivery_note_date: string | null
+  notes: string | null
+  created_by: NamedRef
+  created_at: string
+  lines: PurchaseOrderReceiptLine[]
+  /** Set when the receipt was registered by saving an invoice from this order (spec 0254 D-12). */
+  purchase_invoice: { id: number; document_number: string | null } | null
+  abilities: { delete: boolean }
+}
+
+export interface PurchaseOrderReceiptPayload {
+  receipt_date: string
+  delivery_note_number: string | null
+  delivery_note_date: string | null
+  notes: string | null
+  lines: { purchase_order_line_id: number; quantity: string }[]
+}
+
+/** POST receipts result: the new receipt plus the refreshed order (lines and status). */
+export interface CreatedReceipt {
+  receipt: PurchaseOrderReceipt
+  order: PurchaseOrder
 }
 
 export interface OrderFieldPermission {

@@ -8,6 +8,8 @@ use App\Models\Contact;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderLine;
 use App\Models\Registry;
+use App\Services\PurchaseOrders\PurchaseOrderLineBalance;
+use App\Services\PurchaseOrders\PurchaseOrderLineBillingLedger;
 use App\Services\PurchaseOrders\PurchaseOrderStatusService;
 use App\Support\OperationalSiteLabel;
 use Illuminate\Http\Request;
@@ -38,6 +40,8 @@ class PurchaseOrderResource extends JsonResource
     public function toArray(Request $request): array
     {
         $actions = $this->permissions['actions'];
+        // One ledger read for all the lines (no N+1)
+        $balances = app(PurchaseOrderLineBillingLedger::class)->forLines($this->lines->modelKeys());
 
         return [
             'id' => $this->id,
@@ -75,7 +79,7 @@ class PurchaseOrderResource extends JsonResource
             'grand_total' => $this->grand_total,
             'copy_group_id' => $this->copy_group_id,
             'created_by' => ['id' => $this->createdBy->id, 'name' => $this->createdBy->name],
-            'lines' => $this->lines->map(fn (PurchaseOrderLine $line): array => $this->lineArray($line))->all(),
+            'lines' => $this->lines->map(fn (PurchaseOrderLine $line): array => $this->lineArray($line, $balances[$line->id]))->all(),
             'merge_logs_count' => (int) $this->merge_logs_count,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
@@ -84,6 +88,8 @@ class PurchaseOrderResource extends JsonResource
                 'delete' => $actions['delete'],
                 'merge' => $actions['merge'],
                 'send' => $actions['send'],
+                'receive' => $request->user()->can('receive', $this->resource)
+                    && ($this->status->isReceivable() || $this->status === PurchaseOrderStatus::Fulfilled),
                 'view_activity' => $actions['view_activity'],
                 'transitions' => array_map(
                     static fn (PurchaseOrderStatus $status): string => $status->value,
@@ -97,7 +103,7 @@ class PurchaseOrderResource extends JsonResource
     /**
      * @return array<string, mixed>
      */
-    private function lineArray(PurchaseOrderLine $line): array
+    private function lineArray(PurchaseOrderLine $line, PurchaseOrderLineBalance $balance): array
     {
         return [
             'id' => $line->id,
@@ -111,6 +117,16 @@ class PurchaseOrderResource extends JsonResource
                 'symbol' => $line->unitOfMeasure->symbol,
             ],
             'quantity' => $line->quantity,
+            'received_quantity' => $balance->received,
+            'invoiced_quantity' => $balance->invoicedTotal,
+            'invoiced_invoice_quantity' => $balance->invoicedInvoice,
+            'residual_quantity' => $balance->residual(),
+            'fulfillment' => $balance->fulfillment(),
+            'residual_closed' => $line->residual_closed_at === null ? null : [
+                'at' => $line->residual_closed_at,
+                'by' => $line->residualClosedBy === null ? null : ['id' => $line->residualClosedBy->id, 'name' => $line->residualClosedBy->name],
+                'reason' => $line->residual_close_reason,
+            ],
             'unit_price' => $line->unit_price,
             'vat_rate' => $line->vatRate === null ? null : [
                 'id' => $line->vatRate->id,

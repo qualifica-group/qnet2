@@ -63,7 +63,10 @@ export async function deletePurchaseInvoice(id: number): Promise<void> {
   await apiClient.delete(`${BASE_PATH}/${id}`)
 }
 
-/** Prefilled draft from one or more purchase orders of the same supplier and company. */
+/**
+ * Prefilled draft from one or more purchase orders of the same supplier and company.
+ * Quantities are the billable remainder, the same for proforma and invoice (spec 0254 D-2).
+ */
 export async function fetchPurchaseInvoiceDraft(orderIds: readonly number[]): Promise<PurchaseInvoiceDraft> {
   const { data } = await apiClient.get<ApiResponse<PurchaseInvoiceDraft>>(`${BASE_PATH}/draft`, {
     params: { purchase_order_ids: orderIds },
@@ -71,7 +74,7 @@ export async function fetchPurchaseInvoiceDraft(orderIds: readonly number[]): Pr
   return data.data
 }
 
-/** Orders that can still be invoiced for a supplier and company. */
+/** Orders with something still billable, for a supplier and company. */
 export async function fetchInvoiceableOrders(supplierId: number, companyId: number): Promise<InvoiceableOrder[]> {
   const { data } = await apiClient.get<ApiResponse<InvoiceableOrder[]>>(`${BASE_PATH}/invoiceable-orders`, {
     params: { supplier_id: supplierId, company_id: companyId },

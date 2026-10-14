@@ -11,6 +11,7 @@ function DetailsForm({ invoice, onClose }: { invoice: PurchaseInvoice; onClose: 
   const { t } = useTranslation()
   // The server decides: a registered invoice only lets holders of purchase-invoices.downgrade change the number.
   const numberLocked = invoice.document_type === 'invoice' && invoice.permissions.actions.downgrade !== true
+  const showReceiptNotice = invoice.document_type === 'proforma' && invoice.purchase_orders.length > 0
   const { form, submit, isPending } = usePurchaseInvoiceDetailsForm(invoice, onClose)
 
   return (
@@ -37,6 +38,11 @@ function DetailsForm({ invoice, onClose }: { invoice: PurchaseInvoice; onClose: 
         <p className="-mt-1 text-xs text-muted-foreground">
           {t(numberLocked ? 'purchaseInvoices.details.numberLockedHint' : 'purchaseInvoices.details.numberHint')}
         </p>
+        {showReceiptNotice ? (
+          <p role="note" className="rounded-md border bg-surface px-3 py-2 text-xs text-muted-foreground">
+            {t('purchaseInvoices.details.receiptNotice')}
+          </p>
+        ) : null}
         <FormField
           control={form.control}
           name="notes"

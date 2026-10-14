@@ -108,9 +108,9 @@ const guide: HelpGuide = {
             ['**Draft**', 'In validation, Approved, Cancelled'],
             ['**In validation**', 'Draft, Approved, Cancelled'],
             ['**Approved**', 'In validation, Sent to supplier, Cancelled'],
-            ['**Sent to supplier**', 'Partially fulfilled, Fulfilled, Cancelled'],
-            ['**Partially fulfilled**', 'Sent to supplier, Fulfilled'],
-            ['**Fulfilled**', 'Partially fulfilled'],
+            ['**Sent to supplier**', 'Cancelled (without receipts)'],
+            ['**Partially fulfilled**', 'No manual step'],
+            ['**Fulfilled**', 'No manual step'],
             ['**Cancelled**', 'Draft'],
           ],
         },
@@ -124,7 +124,39 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Statuses also affect the linked RDA lines (see **Link with RDA**): **Cancelled** frees them, **Fulfilled** moves them to **Received**. Going back from **Fulfilled** to **Partially fulfilled**, or from **Cancelled** to **Draft**, does not change the RDA.',
+          text: '**Partially fulfilled** and **Fulfilled** are not chosen by hand: they follow the receipts. When all lines are received or have the residual closed the order becomes **Fulfilled**; if only some do, **Partially fulfilled**; deleting all the receipts brings it back to **Sent to supplier**. An order with receipts cannot go back to validation or draft, nor be cancelled.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Statuses also affect the linked RDA lines (see **Link with RDA**): **Cancelled** frees them, receiving the lines moves them to **Received** (see **Line fulfilment and receipts**). Going back from **Cancelled** to **Draft** does not change the RDA.',
+        },
+      ],
+    },
+    {
+      id: 'receipts',
+      title: 'Line fulfilment and receipts',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'On orders that are not in Draft the page shows the **Line fulfilment** table, with for each line the **Ordered**, **Received**, **Invoiced** and **Residual** columns and a status badge (open, partial, complete). The **Received** quantity of a line is the sum of its quantities in the receipts; **Invoiced** adds up the quantities on the linked passive invoices and proformas.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'From an order that is **Approved**, **Sent to supplier** or **Partially fulfilled** press **Register receipt** (requires the **Register receipts** permission).',
+            'Enter the **receipt date** (it cannot be in the future) and, if you wish, the **delivery note number** and **date** and the **notes**.',
+            'For each line the **quantity** is prefilled with the **residual**: edit it or press **Receive all**. Rows at 0 are skipped and the quantity cannot exceed the residual.',
+            'Confirm: the receipt is recorded and the order status updates by itself.',
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            'The **Receipts** section lists the order receipts, newest first. Receipts created by an invoice appear as “from invoice no. X” and cannot be cancelled while the invoice exists; the others can be **cancelled**.',
+            '**Close residual** (row action) is used when the missing goods **will not arrive**: the **reason is mandatory**, the line counts as complete and the residual is no longer committed. It is not allowed if a proforma covers more than what was received: reduce the proforma first.',
+            '**Reopen residual** puts the line back among the open ones.',
+            'Linked RDA lines become **Received** when their order line is complete and go back to **Ordered** if it reopens (unless the RDA is already closed).',
+          ],
         },
       ],
     },
@@ -171,7 +203,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'A **cancelled** ODA loses its link to the RDA lines even if you reopen it (back to Draft): the RDA lines do not change. Moving the ODA to **Fulfilled** turns the **Ordered** RDA lines into **Received**, and the RDA closes by itself if all its lines are concluded. Going back to **Partially fulfilled** does not change the RDA.',
+          text: 'A **cancelled** ODA loses its link to the RDA lines even if you reopen it (back to Draft): the RDA lines do not change. When an ODA line is complete, the linked **Ordered** RDA line becomes **Received**, and the RDA closes by itself if all its lines are concluded.',
         },
       ],
     },
@@ -195,7 +227,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'An order line can be invoiced **only once**: lines already on another passive invoice are not offered again. See the **Passive invoices** guide.',
+          text: 'The document bills **quantities**: both a **proforma** and an **invoice** can cover the ordered quantity not yet billed (if the residual is closed, the ceiling is the received quantity). Saving as **Invoice** automatically registers a receipt on the ODA for the billed quantities not yet received (dated as the document, note “Ricezione da fattura n. X”), updating the ODA status and the linked RDA lines; the proforma does not receive. If the ODA is not receivable (draft, in validation, cancelled) the invoice is refused. See the **Passive invoices** guide.',
         },
       ],
     },
@@ -227,6 +259,7 @@ const guide: HelpGuide = {
             ['**Approve**', 'Move the order to Approved.'],
             ['**Merge**', 'Use Merge ODA.'],
             ['**Send to supplier**', 'Send the email with the PDF.'],
+            ['**Register receipts**', 'Register and cancel receipts, close and reopen the residual of lines.'],
             ['**Register invoice** (Create permission of passive invoices)', 'Open the passive invoice editor from the ODA.'],
             ['**Export**, **View activity**', 'Export the list and see the change history.'],
           ],

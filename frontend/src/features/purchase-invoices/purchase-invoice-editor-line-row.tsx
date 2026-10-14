@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { Control } from 'react-hook-form'
+import { useWatch, type Control } from 'react-hook-form'
 import { Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
@@ -94,9 +94,11 @@ interface NumberFieldProps {
   name: 'quantity' | 'unit_price'
   label: string
   step: string
+  /** Compact note under the input (e.g. the billable maximum). */
+  hint?: string
 }
 
-function LineNumberField({ control, index, name, label, step }: NumberFieldProps) {
+function LineNumberField({ control, index, name, label, step, hint }: NumberFieldProps) {
   return (
     <FormField
       control={control}
@@ -114,6 +116,7 @@ function LineNumberField({ control, index, name, label, step }: NumberFieldProps
               onChange={(event) => field.onChange(toNumber(event.target.value))}
             />
           </FormControl>
+          {hint ? <p className="text-right text-xs text-muted-foreground">{hint}</p> : null}
           <FormMessage className="text-xs" />
         </FormItem>
       )}
@@ -132,6 +135,7 @@ export function PurchaseInvoiceEditorLineRow({
   const { t } = useTranslation()
   const n = index + 1
   const label = (key: string) => `${t(`purchaseInvoices.editor.lines.${key}`)} ${n}`
+  const availableQuantity = useWatch({ control, name: `lines.${index}.available_quantity` })
 
   return (
     <li className="grid gap-2 rounded-md border bg-background p-2">
@@ -151,7 +155,18 @@ export function PurchaseInvoiceEditorLineRow({
             </FormItem>
           )}
         />
-        <LineNumberField control={control} index={index} name="quantity" label={label('quantity')} step={QUANTITY_STEP} />
+        <LineNumberField
+          control={control}
+          index={index}
+          name="quantity"
+          label={label('quantity')}
+          step={QUANTITY_STEP}
+          hint={
+            availableQuantity === null || availableQuantity === undefined
+              ? undefined
+              : t('purchaseInvoices.editor.lines.maxQuantity', { max: availableQuantity })
+          }
+        />
         <LineNumberField control={control} index={index} name="unit_price" label={label('unitPrice')} step="any" />
         <LineSelect
           control={control}

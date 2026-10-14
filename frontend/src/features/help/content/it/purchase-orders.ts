@@ -108,9 +108,9 @@ const guide: HelpGuide = {
             ['**Bozza**', 'In validazione, Approvato, Annullato'],
             ['**In validazione**', 'Bozza, Approvato, Annullato'],
             ['**Approvato**', 'In validazione, Inviato al fornitore, Annullato'],
-            ['**Inviato al fornitore**', 'Parzialmente evaso, Evaso, Annullato'],
-            ['**Parzialmente evaso**', 'Inviato al fornitore, Evaso'],
-            ['**Evaso**', 'Parzialmente evaso'],
+            ['**Inviato al fornitore**', 'Annullato (senza ricezioni)'],
+            ['**Parzialmente evaso**', 'Nessun passaggio manuale'],
+            ['**Evaso**', 'Nessun passaggio manuale'],
             ['**Annullato**', 'Bozza'],
           ],
         },
@@ -124,7 +124,39 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Gli stati influiscono anche sulle righe RDA collegate (vedi **Collegamento con le RDA**): **Annullato** le libera, **Evaso** le porta a **Ricevuta**. Tornare da **Evaso** a **Parzialmente evaso**, o da **Annullato** a **Bozza**, non cambia le RDA.',
+          text: '**Parzialmente evaso** ed **Evaso** non si scelgono a mano: seguono le ricezioni. Quando tutte le righe sono ricevute o hanno il residuo chiuso l’ordine diventa **Evaso**; se solo alcune lo sono, **Parzialmente evaso**; eliminando tutte le ricezioni torna a **Inviato al fornitore**. Un ordine con ricezioni non può tornare in validazione o in bozza né essere annullato.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Gli stati influiscono anche sulle righe RDA collegate (vedi **Collegamento con le RDA**): **Annullato** le libera, la ricezione delle righe le porta a **Ricevuta** (vedi **Evasione delle righe e ricezioni**). Tornare da **Annullato** a **Bozza** non cambia le RDA.',
+        },
+      ],
+    },
+    {
+      id: 'receipts',
+      title: 'Evasione delle righe e ricezioni',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Negli ordini che non sono in Bozza la pagina mostra la tabella **Evasione righe**, con per ogni riga le colonne **Ordinato**, **Ricevuto**, **Fatturato** e **Residuo** e un badge di stato (aperta, parziale, completa). Il **Ricevuto** di una riga è la somma delle sue quantità nelle ricezioni; il **Fatturato** somma le quantità presenti nelle fatture passive e nei proforma collegati.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Da un ordine **Approvato**, **Inviato al fornitore** o **Parzialmente evaso** premi **Registra ricezione** (serve il permesso **Registra ricezioni**).',
+            'Indica la **data di ricezione** (non può essere futura) e, se vuoi, **numero** e **data del DDT** e le **note**.',
+            'Per ogni riga la **quantità** è precompilata con il **residuo**: modificala oppure premi **Ricevi tutto**. Le righe a 0 vengono ignorate e la quantità non può superare il residuo.',
+            'Conferma: la ricezione viene registrata e lo stato dell’ordine si aggiorna da solo.',
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            'La sezione **Ricezioni** elenca le ricezioni dell’ordine, dalla più recente. Le ricezioni create da una fattura compaiono come “da fattura n. X” e non si possono annullare finché la fattura esiste; le altre si possono **annullare**.',
+            '**Chiudi residuo** (azione di riga) si usa quando la merce mancante **non arriverà**: il **motivo è obbligatorio**, la riga conta come completa e il residuo non è più impegnato. Non è consentito se un proforma copre più di quanto ricevuto: riduci prima il proforma.',
+            '**Riapri residuo** riporta la riga tra quelle aperte.',
+            'Le righe RDA collegate diventano **Ricevute** quando la loro riga d’ordine è completa e tornano **Ordinate** se si riapre (a meno che la RDA sia già chiusa).',
+          ],
         },
       ],
     },
@@ -171,7 +203,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Un’ODA **annullata** perde il collegamento con le righe RDA anche se la riapri (torna in Bozza): le righe RDA non cambiano. Portando l’ODA a **Evaso**, le righe RDA **Ordinate** diventano **Ricevute** e la RDA si chiude da sola se tutte le sue righe sono concluse. Tornando a **Parzialmente evaso** le RDA non cambiano.',
+          text: 'Un’ODA **annullata** perde il collegamento con le righe RDA anche se la riapri (torna in Bozza): le righe RDA non cambiano. Quando una riga dell’ODA è completa, la riga RDA **Ordinata** collegata diventa **Ricevuta** e la RDA si chiude da sola se tutte le sue righe sono concluse.',
         },
       ],
     },
@@ -195,7 +227,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Una riga d’ordine si può fatturare **una sola volta**: le righe già presenti su un’altra fattura passiva non vengono riproposte. Vedi la guida **Fatture passive**.',
+          text: 'Il documento fattura le **quantità**: sia un **proforma** sia una **fattura** possono coprire la quantità ordinata non ancora fatturata (se il residuo è chiuso, il tetto è la quantità ricevuta). Salvare come **Fattura** registra in automatico una ricezione sull’ODA per le quantità fatturate non ancora ricevute (data del documento, nota “Ricezione da fattura n. X”), aggiornando lo stato dell’ODA e le righe RDA collegate; il proforma non riceve. Se l’ODA non è ricevibile (bozza, in validazione, annullato) la fattura è rifiutata. Vedi la guida **Fatture passive**.',
         },
       ],
     },
@@ -227,6 +259,7 @@ const guide: HelpGuide = {
             ['**Approvare**', 'Portare l’ordine allo stato Approvato.'],
             ['**Unificare**', 'Usare Unifica ODA.'],
             ['**Inviare al fornitore**', 'Inviare l’email con il PDF.'],
+            ['**Registra ricezioni**', 'Registrare e annullare ricezioni, chiudere e riaprire il residuo delle righe.'],
             ['**Registra fattura** (permesso Crea delle fatture passive)', 'Aprire l’editor della fattura passiva dall’ODA.'],
             ['**Esportare**, **Visualizzare attività**', 'Esportare l’elenco e vedere lo storico delle modifiche.'],
           ],

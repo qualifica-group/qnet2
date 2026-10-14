@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\PurchaseInvoices;
 
-use App\Models\PurchaseInvoiceLine;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderLine;
 use Illuminate\Support\Collection;
@@ -12,13 +11,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Rules on the purchase orders a payable document bills (spec 0250, D-1, D-8):
- * same supplier and company as the document, an invoiceable status, and a
- * purchase order line on one document only. The orders involved are locked in
- * id order so two concurrent documents cannot bill the same line.
+ * Rules on the purchase orders a payable document bills (spec 0250, D-1; spec
+ * 0254, D-2): same supplier and company as the document, an invoiceable status,
+ * and quantities within what the order line still allows. The orders involved
+ * are locked in id order, then the quantity guard locks the order lines and
+ * the document lines, so concurrent documents cannot bill beyond the limits.
  */
 final class PurchaseInvoiceLineGuard
 {
+    public function __construct(private readonly PurchaseInvoiceQuantityGuard $quantities) {}
+
     /**
      * Validates the payload and returns the ids of the orders to link (the
      * explicit ones plus the orders of the lines), ascending.
@@ -45,8 +47,13 @@ final class PurchaseInvoiceLineGuard
         $linked = $this->alreadyLinked($ignoreInvoiceId);
         $errors = $this->orderErrors($orders, $data, $linked, $explicitIds);
 
-        // Step 3: the lines
-        $errors += $this->lineErrors($lines, $orderLines, $orders, $data, $linked, $ignoreInvoiceId);
+        // Step 3: the lines, then their quantities under lock (only the lines that passed)
+        $lineErrors = $this->lineErrors($lines, $orderLines, $orders, $data, $linked);
+        $errors += $lineErrors;
+        $errors += $this->quantities->lineErrors(
+            array_filter($lines, fn (int $index): bool => ! isset($lineErrors["lines.{$index}.purchase_order_line_id"]), ARRAY_FILTER_USE_KEY),
+            $ignoreInvoiceId,
+        );
 
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
@@ -103,10 +110,8 @@ final class PurchaseInvoiceLineGuard
      * @param  array<int, int>  $linked
      * @return array<string, array<int, string>>
      */
-    private function lineErrors(array $lines, Collection $orderLines, Collection $orders, array $data, array $linked, ?int $ignoreInvoiceId): array
+    private function lineErrors(array $lines, Collection $orderLines, Collection $orders, array $data, array $linked): array
     {
-        $taken = $this->invoicedElsewhere($orderLines->keys()->all(), $ignoreInvoiceId);
-        $seen = [];
         $errors = [];
 
         foreach ($lines as $index => $line) {
@@ -120,12 +125,6 @@ final class PurchaseInvoiceLineGuard
             $message = $orderLine === null
                 ? __('purchase_invoices.line_order_unknown')
                 : $this->orderProblem($orders->get($orderLine->purchase_order_id), $data, $linked);
-
-            if ($message === null && (in_array($orderLineId, $taken, true) || isset($seen[$orderLineId]))) {
-                $message = __('purchase_invoices.line_already_invoiced');
-            }
-
-            $seen[$orderLineId] = true;
 
             if ($message !== null) {
                 $errors["lines.{$index}.purchase_order_line_id"] = [$message];
@@ -147,25 +146,5 @@ final class PurchaseInvoiceLineGuard
             ! in_array($order->id, $linked, true) && ! in_array($order->status, PurchaseInvoiceDraftBuilder::INVOICEABLE_STATUSES, true) => __('purchase_invoices.order_not_invoiceable'),
             default => null,
         };
-    }
-
-    /**
-     * @param  array<int, int>  $orderLineIds
-     * @return array<int, int>
-     */
-    private function invoicedElsewhere(array $orderLineIds, ?int $ignoreInvoiceId): array
-    {
-        if ($orderLineIds === []) {
-            return [];
-        }
-
-        // Locking read: it sees the latest committed rows, not the transaction snapshot taken before the order locks.
-        return PurchaseInvoiceLine::query()
-            ->whereIn('purchase_order_line_id', $orderLineIds)
-            ->lockForUpdate()
-            ->when($ignoreInvoiceId !== null, fn ($query) => $query->where('purchase_invoice_id', '!=', $ignoreInvoiceId))
-            ->pluck('purchase_order_line_id')
-            ->map(fn ($id): int => (int) $id)
-            ->all();
     }
 }

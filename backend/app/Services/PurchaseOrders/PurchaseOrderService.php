@@ -45,6 +45,7 @@ class PurchaseOrderService
         'lines.vatRate:id,name,rate',
         'lines.workOrder:id,code,title',
         'lines.purchaseRequestLine:id,purchase_request_id',
+        'lines.residualClosedBy:id,name',
     ];
 
     /** Computed columns of a line. */

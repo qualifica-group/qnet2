@@ -7,17 +7,18 @@ namespace App\Services\PurchaseInvoices;
 use App\Enums\PurchaseOrderStatus;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderLine;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Query\Builder as QueryBuilder;
+use App\Services\PurchaseOrders\PurchaseOrderLineBalance;
+use App\Services\PurchaseOrders\PurchaseOrderLineBillingLedger;
+use App\Support\Amounts\LineAmountCalculator;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Read model of "Registra fattura" (spec 0250, D-1): the document defaults and
  * the invoice lines pre-filled from one or more purchase orders of the same
- * supplier and company, plus the orders that can still be invoiced. A purchase
- * order line already on a payable document is never offered again (D-8).
+ * supplier and company, plus the orders that can still be invoiced. Each line
+ * is proposed for the quantity the ledger still lets a document bill
+ * (spec 0254, D-2: the same for proforma and invoice); lines with nothing left are not offered.
  */
 final class PurchaseInvoiceDraftBuilder
 {
@@ -28,6 +29,13 @@ final class PurchaseInvoiceDraftBuilder
         PurchaseOrderStatus::PartiallyFulfilled,
         PurchaseOrderStatus::Fulfilled,
     ];
+
+    private const int QUANTITY_SCALE = 3;
+
+    public function __construct(
+        private readonly PurchaseOrderLineBillingLedger $ledger,
+        private readonly LineAmountCalculator $engine,
+    ) {}
 
     /**
      * @param  array<int, int>  $purchaseOrderIds
@@ -47,33 +55,46 @@ final class PurchaseInvoiceDraftBuilder
         // Step 2: same parties, invoiceable statuses
         $this->assertInvoiceable($orders);
 
-        // Step 3: lines not yet invoiced, then the defaults
-        $lines = $this->openLines($orders->modelKeys())
+        // Step 3: the lines with a billable quantity left (one ledger read for all of them)
+        $allLines = PurchaseOrderLine::query()
+            ->whereIn('purchase_order_id', $orders->modelKeys())
             ->with(['product:id,name', 'vatRate:id,name,rate', 'costType:id,name,color', 'workOrder:id,code,title'])
+            ->orderBy('purchase_order_id')->orderBy('position')->orderBy('id')
             ->get();
+        $balances = $this->ledger->forLines($allLines->modelKeys());
+        $lines = $allLines->filter(fn (PurchaseOrderLine $line): bool => $this->isBillable($balances->get($line->id)))->values();
+
+        // Step 4: the defaults and the lines at the proposed quantity
         $codes = $orders->mapWithKeys(fn (PurchaseOrder $order): array => [$order->id => $order->code()]);
 
         return [
             'defaults' => $this->defaults($orders, $lines),
-            'lines' => $lines->values()->map(fn (PurchaseOrderLine $line, int $index): array => $this->line($line, $codes, $index))->all(),
+            'lines' => $lines->map(fn (PurchaseOrderLine $line, int $index): array => $this->line($line, $balances[$line->id]->available(), $codes, $index))->all(),
             'purchase_order_ids' => $orders->modelKeys(),
         ];
     }
 
     /**
-     * Orders of the supplier and company that still have a line to invoice.
+     * Orders of the supplier and company with at least one line a document
+     * can still bill. One ledger read whatever the number of orders.
      *
      * @return array<int, array<string, mixed>>
      */
     public function invoiceableOrders(int $supplierId, int $companyId): array
     {
-        return PurchaseOrder::query()
+        $orders = PurchaseOrder::query()
             ->where('supplier_id', $supplierId)
             ->where('company_id', $companyId)
             ->whereIn('status', array_map(fn (PurchaseOrderStatus $status): string => $status->value, self::INVOICEABLE_STATUSES))
-            ->whereHas('lines', fn ($lines) => $lines->whereNotIn('purchase_order_lines.id', $this->invoicedLineIds()))
             ->orderByDesc('order_date')->orderByDesc('id')
-            ->get(['id', 'number', 'year', 'order_date', 'grand_total', 'status'])
+            ->get(['id', 'number', 'year', 'order_date', 'grand_total', 'status']);
+        $lines = PurchaseOrderLine::query()->whereIn('purchase_order_id', $orders->modelKeys())->get(['id', 'purchase_order_id']);
+        $balances = $this->ledger->forLines($lines->modelKeys());
+        $billable = $lines->filter(fn (PurchaseOrderLine $line): bool => $this->isBillable($balances->get($line->id)))
+            ->pluck('purchase_order_id')->flip();
+
+        return $orders
+            ->filter(fn (PurchaseOrder $order): bool => $billable->has($order->id))
             ->map(fn (PurchaseOrder $order): array => [
                 'id' => $order->id,
                 'code' => $order->code(),
@@ -81,7 +102,13 @@ final class PurchaseInvoiceDraftBuilder
                 'grand_total' => $order->grand_total,
                 'status' => $order->status->value,
             ])
+            ->values()
             ->all();
+    }
+
+    private function isBillable(?PurchaseOrderLineBalance $balance): bool
+    {
+        return $balance !== null && bccomp($balance->available(), '0', self::QUANTITY_SCALE) > 0;
     }
 
     /**
@@ -96,23 +123,6 @@ final class PurchaseInvoiceDraftBuilder
         if ($orders->contains(fn (PurchaseOrder $order): bool => ! in_array($order->status, self::INVOICEABLE_STATUSES, true))) {
             throw ValidationException::withMessages(['purchase_order_ids' => [__('purchase_invoice_drafts.not_invoiceable')]]);
         }
-    }
-
-    /**
-     * @param  array<int, int>  $orderIds
-     * @return Builder<PurchaseOrderLine>
-     */
-    private function openLines(array $orderIds): Builder
-    {
-        return PurchaseOrderLine::query()
-            ->whereIn('purchase_order_id', $orderIds)
-            ->whereNotIn('id', $this->invoicedLineIds())
-            ->orderBy('purchase_order_id')->orderBy('position')->orderBy('id');
-    }
-
-    private function invoicedLineIds(): QueryBuilder
-    {
-        return DB::table('purchase_invoice_lines')->whereNotNull('purchase_order_line_id')->select('purchase_order_line_id');
     }
 
     /**
@@ -141,25 +151,29 @@ final class PurchaseInvoiceDraftBuilder
     }
 
     /**
+     * @param  string  $available  quantity a document can still bill: the proposed one
      * @param  Collection<int, string>  $codes  order id => "n/year"
      * @return array<string, mixed>
      */
-    private function line(PurchaseOrderLine $line, Collection $codes, int $index): array
+    private function line(PurchaseOrderLine $line, string $available, Collection $codes, int $index): array
     {
+        $amounts = $this->engine->line($available, $line->unit_price, $line->vatRate?->rate, self::QUANTITY_SCALE);
+
         return [
             'id' => null,
             'purchase_order_line_id' => $line->id,
             'purchase_order' => ['id' => $line->purchase_order_id, 'code' => $codes[$line->purchase_order_id]],
             'product' => $this->named($line->product),
             'description' => $line->description,
-            'quantity' => $line->quantity,
-            'unit_price' => $line->unit_price,
+            'quantity' => $amounts['quantity'],
+            'available_quantity' => $amounts['quantity'],
+            'unit_price' => $amounts['unit_price'],
             'vat_rate' => $line->vatRate === null ? null : ['id' => $line->vatRate->id, 'name' => $line->vatRate->name, 'rate' => $line->vatRate->rate],
             'cost_type' => ['id' => $line->costType->id, 'name' => $line->costType->name, 'color' => $line->costType->color],
             'work_order' => $this->workOrder($line->workOrder),
-            'net_amount' => $line->taxable_amount,
-            'vat_amount' => $line->vat_amount,
-            'total_amount' => $line->total_amount,
+            'net_amount' => $amounts['net'],
+            'vat_amount' => $amounts['vat'],
+            'total_amount' => $amounts['total'],
             'sort_order' => $index,
         ];
     }

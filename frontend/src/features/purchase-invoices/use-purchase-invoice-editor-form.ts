@@ -75,6 +75,7 @@ export function usePurchaseInvoiceEditorForm({ source, target, onSaved }: UsePur
   const supplierId = useWatch({ control, name: 'supplier_id' })
   const documentType = useWatch({ control, name: 'document_type' })
   const orderIds = useWatch({ control, name: 'purchase_order_ids' })
+  const hasOrderLines = lines.some((line) => line.purchase_order_line_id != null)
   const amounts = useMemo(() => amountsOf(lines, vatRefs), [lines, vatRefs])
   const totals = amounts.totals
   const isEdit = target.mode === 'edit'
@@ -134,6 +135,7 @@ export function usePurchaseInvoiceEditorForm({ source, target, onSaved }: UsePur
     companyId,
     supplierId,
     documentType,
+    showReceiptNotice: documentType === 'invoice' && hasOrderLines,
     orderIds,
     totals,
     lineAmounts: amounts.lines,
@@ -141,6 +143,7 @@ export function usePurchaseInvoiceEditorForm({ source, target, onSaved }: UsePur
     generalErrors,
     addLine,
     addOrder: orders.addOrder,
+    ordersNotice: orders.notice,
     isAddingOrder: orders.isAdding,
     submit,
     isSaving: mutation.isPending,

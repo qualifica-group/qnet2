@@ -14,14 +14,22 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The commessa's actual costs by cost type and source (spec 0252, ADR 0018):
- * manual costs, committed purchase order lines (invoiceable orders, not yet on
- * a payable document) and payable document lines. An order line billed by a
- * document stops counting: the document line replaces it (D-2, D-6). Three
+ * manual costs, committed purchase order lines (invoiceable orders, quantity
+ * not yet billed by a payable document, spec 0254 D-9) and payable document
+ * lines. Billed quantity leaves the committed: the document line replaces it. Three
  * aggregate queries plus one for the cost types, whatever the number of rows.
  * Amounts are net, summed as integer cents.
  */
 final class WorkOrderPassiveCostAggregator
 {
+    /**
+     * Committed net of one order line: the billable ceiling (received once the
+     * residual is closed, ordered otherwise) minus what documents bill, never
+     * below zero, times the unit price, per line to the cent. CASE WHEN instead
+     * of GREATEST so it runs on MySQL and SQLite; constant text, no input.
+     */
+    private const string COMMITTED_AMOUNT = 'ROUND(CASE WHEN (CASE WHEN purchase_order_lines.residual_closed_at IS NOT NULL THEN purchase_order_lines.received_quantity ELSE purchase_order_lines.quantity END) - COALESCE(billed.billed_quantity, 0) > 0 THEN (CASE WHEN purchase_order_lines.residual_closed_at IS NOT NULL THEN purchase_order_lines.received_quantity ELSE purchase_order_lines.quantity END) - COALESCE(billed.billed_quantity, 0) ELSE 0 END * purchase_order_lines.unit_price, 2)';
+
     /**
      * Ordered by cost type sort order, the row without a type last.
      *
@@ -32,7 +40,7 @@ final class WorkOrderPassiveCostAggregator
         // Step 1: the three sources, summed per cost type id (0 = no type)
         $sources = [
             'manual_cents' => $this->sums(DB::table('work_order_costs')->where('work_order_id', $workOrder->id), 'net_amount', 'cost_type_id'),
-            'committed_cents' => $this->sums($this->committedQuery($workOrder), 'purchase_order_lines.taxable_amount', 'purchase_order_lines.cost_type_id'),
+            'committed_cents' => $this->sums($this->committedQuery($workOrder), self::COMMITTED_AMOUNT, 'purchase_order_lines.cost_type_id'),
             'invoiced_cents' => $this->sums(DB::table('purchase_invoice_lines')->where('work_order_id', $workOrder->id), 'net_amount', 'cost_type_id'),
         ];
 
@@ -53,18 +61,22 @@ final class WorkOrderPassiveCostAggregator
     }
 
     /**
-     * Order lines of the commessa on invoiceable orders that no document line references.
+     * Order lines of the commessa on invoiceable orders, with the quantity
+     * billed on them by any payable document (spec 0254, D-2, D-9).
      */
     private function committedQuery(WorkOrder $workOrder): Builder
     {
         $statuses = array_map(fn (PurchaseOrderStatus $status): string => $status->value, PurchaseInvoiceDraftBuilder::INVOICEABLE_STATUSES);
+        $billed = DB::table('purchase_invoice_lines')
+            ->whereNotNull('purchase_order_line_id')
+            ->groupBy('purchase_order_line_id')
+            ->selectRaw('purchase_order_line_id, SUM(quantity) as billed_quantity');
 
         return DB::table('purchase_order_lines')
             ->join('purchase_orders', 'purchase_orders.id', '=', 'purchase_order_lines.purchase_order_id')
+            ->leftJoinSub($billed, 'billed', 'billed.purchase_order_line_id', '=', 'purchase_order_lines.id')
             ->where('purchase_order_lines.work_order_id', $workOrder->id)
-            ->whereIn('purchase_orders.status', $statuses)
-            ->whereNotExists(fn (Builder $billed) => $billed->select(DB::raw(1))->from('purchase_invoice_lines')
-                ->whereColumn('purchase_invoice_lines.purchase_order_line_id', 'purchase_order_lines.id'));
+            ->whereIn('purchase_orders.status', $statuses);
     }
 
     /**

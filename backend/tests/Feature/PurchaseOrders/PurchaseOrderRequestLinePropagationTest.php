@@ -110,11 +110,11 @@ it('AC-007: cancelling releases the request lines, clears the link, and going ba
         ->and($linked->fresh()->purchase_request_line_id)->toBeNull();
 });
 
-it('AC-008: fulfilling receives the ordered lines and closes a request that is complete', function () {
-    Sanctum::actingAs(purchaseOrderUserWith(['view', 'changeStatus']));
+it('AC-008: receiving every line receives the ordered request line and closes a request that is complete', function () {
+    Sanctum::actingAs(purchaseOrderUserWith(['view', 'receive']));
     [$order, , $request] = orderLinkedTo(OrderStatus::SentToSupplier, [LineStatus::Ordered, LineStatus::Rejected]);
 
-    $this->postJson("/api/purchase-orders/{$order->id}/status", ['to_status' => 'fulfilled'])->assertOk();
+    $this->postJson("/api/purchase-orders/{$order->id}/receipts", purchaseOrderReceiptPayload($order))->assertCreated();
 
     $line = linkedRequestLine($request);
     expect($line->status)->toBe(LineStatus::Received)
@@ -122,22 +122,48 @@ it('AC-008: fulfilling receives the ordered lines and closes a request that is c
         ->and($request->fresh()->isClosed())->toBeTrue();
 });
 
-it('AC-008: a request with another open line stays open after fulfilling', function () {
-    Sanctum::actingAs(purchaseOrderUserWith(['view', 'changeStatus']));
+it('AC-008: a request with another open line stays open after the receipt', function () {
+    Sanctum::actingAs(purchaseOrderUserWith(['view', 'receive']));
     [$order, , $request] = orderLinkedTo(OrderStatus::SentToSupplier, [LineStatus::Ordered, LineStatus::Approved]);
 
-    $this->postJson("/api/purchase-orders/{$order->id}/status", ['to_status' => 'fulfilled'])->assertOk();
+    $this->postJson("/api/purchase-orders/{$order->id}/receipts", purchaseOrderReceiptPayload($order))->assertCreated();
 
     expect(linkedRequestLine($request)->status)->toBe(LineStatus::Received)
         ->and($request->fresh()->isClosed())->toBeFalse();
 });
 
-it('AC-009: going from fulfilled back to partially_fulfilled leaves the request lines received', function () {
-    Sanctum::actingAs(purchaseOrderUserWith(['view', 'changeStatus']));
+it('AC-008: only the lines that became complete are received, a partial receipt changes nothing', function () {
+    Sanctum::actingAs(purchaseOrderUserWith(['view', 'receive']));
+    [$order, $linked, $request] = orderLinkedTo(OrderStatus::SentToSupplier, [LineStatus::Ordered, LineStatus::Approved]);
+    $other = $order->lines->firstWhere('id', '!=', $linked->id);
+
+    $this->postJson("/api/purchase-orders/{$order->id}/receipts", purchaseOrderReceiptPayload($order, [$other->id => '1']))->assertCreated();
+    expect(linkedRequestLine($request)->status)->toBe(LineStatus::Ordered);
+
+    $this->postJson("/api/purchase-orders/{$order->id}/receipts", purchaseOrderReceiptPayload($order, [$linked->id => '1']))->assertCreated();
+    expect(linkedRequestLine($request)->status)->toBe(LineStatus::Received);
+});
+
+it('AC-009: cancelling the receipt puts a received request line back to ordered when the request is open', function () {
+    Sanctum::actingAs(purchaseOrderUserWith(['view', 'receive']));
     [$order, , $request] = orderLinkedTo(OrderStatus::SentToSupplier, [LineStatus::Ordered, LineStatus::Approved]);
 
-    $this->postJson("/api/purchase-orders/{$order->id}/status", ['to_status' => 'fulfilled'])->assertOk();
-    $this->postJson("/api/purchase-orders/{$order->id}/status", ['to_status' => 'partially_fulfilled'])->assertOk();
+    $receiptId = $this->postJson("/api/purchase-orders/{$order->id}/receipts", purchaseOrderReceiptPayload($order))->json('data.receipt.id');
+    $this->deleteJson("/api/purchase-orders/{$order->id}/receipts/{$receiptId}")->assertOk();
 
-    expect(linkedRequestLine($request)->status)->toBe(LineStatus::Received);
+    expect(linkedRequestLine($request)->status)->toBe(LineStatus::Ordered)
+        ->and(PurchaseRequestLineStatusLog::query()->where('purchase_request_line_id', linkedRequestLine($request)->id)->count())->toBe(2);
+});
+
+it('AC-009: a closed request is never reopened, its received line stays received', function () {
+    Sanctum::actingAs(purchaseOrderUserWith(['view', 'receive']));
+    [$order, , $request] = orderLinkedTo(OrderStatus::SentToSupplier, [LineStatus::Ordered, LineStatus::Rejected]);
+
+    $receiptId = $this->postJson("/api/purchase-orders/{$order->id}/receipts", purchaseOrderReceiptPayload($order))->json('data.receipt.id');
+    expect($request->fresh()->isClosed())->toBeTrue();
+
+    $this->deleteJson("/api/purchase-orders/{$order->id}/receipts/{$receiptId}")->assertOk();
+
+    expect(linkedRequestLine($request)->status)->toBe(LineStatus::Received)
+        ->and($request->fresh()->isClosed())->toBeTrue();
 });

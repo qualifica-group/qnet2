@@ -16,13 +16,15 @@ use Laravel\Sanctum\Sanctum;
  */
 uses(RefreshDatabase::class);
 
-/** An order line of the commessa on an order with the given status. */
+/** An order line of the commessa on an order with the given status: one unit at `$amount` (committed = quantity x unit price, spec 0254 D-9). */
 function passiveOrderLine(WorkOrder $workOrder, PurchaseOrderStatus $status, string $amount, ?CostType $type = null, ?WorkOrder $lineWorkOrder = null): PurchaseOrderLine
 {
     return PurchaseOrderLine::factory()->create([
         'purchase_order_id' => PurchaseOrder::factory()->withStatus($status),
         'work_order_id' => ($lineWorkOrder ?? $workOrder)->id,
         'cost_type_id' => ($type ?? CostType::factory()->create())->id,
+        'quantity' => '1.000',
+        'unit_price' => $amount,
         'taxable_amount' => $amount,
     ]);
 }
@@ -81,6 +83,50 @@ it('AC-002: a billed order line stops counting as committed, the document amount
     expect($totals['committed_order_cost_net'])->toBe('0.00')
         ->and($totals['invoiced_cost_net'])->toBe('270.00')
         ->and($totals['total_actual_cost_net'])->toBe('270.00');
+});
+
+it('AC-010: the committed is the billable ceiling minus the billed quantity, per unit price', function () {
+    $workOrder = WorkOrder::factory()->create();
+    $line = passiveOrderLine($workOrder, PurchaseOrderStatus::PartiallyFulfilled, '5.00');
+    $line->forceFill(['quantity' => '10.000', 'received_quantity' => '6.000'])->save();
+    PurchaseInvoiceLine::factory()->create([
+        'purchase_order_line_id' => $line->id, 'work_order_id' => $workOrder->id, 'cost_type_id' => $line->cost_type_id,
+        'quantity' => '4.000', 'unit_price' => '5.00', 'net_amount' => '20.00',
+    ]);
+
+    $totals = passiveTotals($workOrder)['totals'];
+
+    expect($totals['committed_order_cost_net'])->toBe('30.00')
+        ->and($totals['invoiced_cost_net'])->toBe('20.00')
+        ->and($totals['total_actual_cost_net'])->toBe('50.00');
+});
+
+it('AC-010: a closed residual commits only what was received and not yet billed', function () {
+    $workOrder = WorkOrder::factory()->create();
+    $line = passiveOrderLine($workOrder, PurchaseOrderStatus::PartiallyFulfilled, '5.00');
+    $line->forceFill(['quantity' => '10.000', 'received_quantity' => '6.000', 'residual_closed_at' => now()])->save();
+
+    expect(passiveTotals($workOrder)['totals']['committed_order_cost_net'])->toBe('30.00');
+
+    PurchaseInvoiceLine::factory()->create([
+        'purchase_order_line_id' => $line->id, 'work_order_id' => $workOrder->id, 'cost_type_id' => $line->cost_type_id,
+        'quantity' => '8.000', 'unit_price' => '5.00', 'net_amount' => '40.00',
+    ]);
+
+    expect(passiveTotals($workOrder)['totals']['committed_order_cost_net'])->toBe('0.00');
+});
+
+it('AC-010: billing beyond the ceiling never makes the committed negative; cancelled and draft orders commit nothing', function () {
+    $workOrder = WorkOrder::factory()->create();
+    $line = passiveOrderLine($workOrder, PurchaseOrderStatus::Approved, '5.00');
+    PurchaseInvoiceLine::factory()->create([
+        'purchase_order_line_id' => $line->id, 'work_order_id' => $workOrder->id, 'cost_type_id' => $line->cost_type_id,
+        'quantity' => '3.000', 'unit_price' => '5.00', 'net_amount' => '15.00',
+    ]);
+    passiveOrderLine($workOrder, PurchaseOrderStatus::Cancelled, '70.00');
+    passiveOrderLine($workOrder, PurchaseOrderStatus::Draft, '80.00');
+
+    expect(passiveTotals($workOrder)['totals']['committed_order_cost_net'])->toBe('0.00');
 });
 
 it('AC-003: free document lines count, other commesse and cancelled orders do not', function () {

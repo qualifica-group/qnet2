@@ -149,14 +149,18 @@ it('AC-003: validates the order ids and requires purchase-invoices.create', func
     $this->getJson(draftUrl([$order]))->assertForbidden();
 });
 
-it('AC-004: excludes from the draft the order lines already on a payable document', function () {
+it('AC-009: proposes only the quantity left to bill and excludes the order lines billed in full', function () {
     Sanctum::actingAs(draftActor(['create']));
-    $order = draftOrder(Registry::factory()->supplier()->create(), Company::factory()->create(), lineCount: 2);
-    PurchaseInvoiceLine::factory()->create(['purchase_order_line_id' => $order->lines[0]->id]);
+    $order = draftOrder(Registry::factory()->supplier()->create(), Company::factory()->create(), lineCount: 3);
+    $order->lines[1]->update(['quantity' => '4.000', 'taxable_amount' => '400.00']);
+    purchaseOrderReceive($order, [$order->lines[1]->id => '2']);
+    PurchaseInvoiceLine::factory()->create(['purchase_order_line_id' => $order->lines[0]->id, 'quantity' => '1.000']);
+    PurchaseInvoiceLine::factory()->create(['purchase_order_line_id' => $order->lines[1]->id, 'quantity' => '1.000']);
 
     $lines = $this->getJson(draftUrl([$order]))->assertOk()->json('data.lines');
 
-    expect(array_column($lines, 'purchase_order_line_id'))->toBe([$order->lines[1]->id]);
+    expect(array_column($lines, 'purchase_order_line_id'))->toBe([$order->lines[1]->id, $order->lines[2]->id])
+        ->and($lines[0])->toMatchArray(['quantity' => '3.000', 'available_quantity' => '3.000', 'net_amount' => '300.00', 'vat_amount' => '66.00', 'total_amount' => '366.00']);
 });
 
 it('AC-003: lists the invoiceable orders of a supplier and company', function () {

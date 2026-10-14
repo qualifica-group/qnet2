@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { formatEuro } from '@/features/invoices/invoice-format'
 import { idToSelectValue } from '@/features/purchase-invoices/purchase-invoice-editor-lines'
 import { useInvoiceableOrders } from '@/features/purchase-invoices/use-purchase-invoice-editor-queries'
+import type { OrdersNotice } from '@/features/purchase-invoices/use-purchase-invoice-editor-orders'
 import { formatDate } from '@/lib/formatting/date-display'
 
 interface PurchaseInvoiceEditorOrdersSectionProps {
@@ -12,6 +13,7 @@ interface PurchaseInvoiceEditorOrdersSectionProps {
   /** ODAs already linked to the document. */
   linkedOrderIds: readonly number[]
   isAdding: boolean
+  notice: OrdersNotice
   onAdd: (orderId: number) => void
 }
 
@@ -24,10 +26,14 @@ export function PurchaseInvoiceEditorOrdersSection({
   companyId,
   linkedOrderIds,
   isAdding,
+  notice,
   onAdd,
 }: PurchaseInvoiceEditorOrdersSectionProps) {
   const { t } = useTranslation()
-  const { data, isError, isPending } = useInvoiceableOrders(idToSelectValue(supplierId), idToSelectValue(companyId))
+  const { data, isError, isPending } = useInvoiceableOrders(
+    idToSelectValue(supplierId),
+    idToSelectValue(companyId),
+  )
 
   return (
     <section aria-labelledby="purchase-invoice-editor-orders" className="grid gap-2 rounded-lg border bg-card p-3">
@@ -71,6 +77,11 @@ export function PurchaseInvoiceEditorOrdersSection({
           })}
         </ul>
       )}
+      {notice ? (
+        <p role="status" className="text-xs text-muted-foreground">
+          {t(`purchaseInvoices.editor.orders.notice.${notice}`)}
+        </p>
+      ) : null}
     </section>
   )
 }
