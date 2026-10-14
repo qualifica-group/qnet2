@@ -77,9 +77,9 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'On the row of an open installment press **Edit due date** (edit permission required).',
-            'Change the **due date** and/or the payment method **code**, then press **Save**.',
-            'The list refreshes by itself.',
+            'On the row of an uncollected installment double-click the **Due date** or **Method** cell (edit permission required).',
+            'Change the value and confirm: only that cell is saved, right away. Esc cancels.',
+            'Installments with a collection stay read-only: clear the collection first.',
           ],
         },
         {
@@ -166,7 +166,7 @@ const guide: HelpGuide = {
           headers: ['Action', 'Permission'],
           rows: [
             ['See the list and the **Due dates** menu', 'View due dates'],
-            ['**Edit due date**', 'Edit due dates (and the permission on the single field)'],
+            ['Edit the **Due date** and **Method** cells', 'Edit due dates (and the permission on the single field)'],
             ['**Record / Clear collection**, **Bulk collection**', 'Record collections'],
             ['**Open invoice**', 'View active invoices'],
             ['**Export**', 'Export due dates'],

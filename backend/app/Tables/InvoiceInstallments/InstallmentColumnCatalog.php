@@ -3,6 +3,7 @@
 namespace App\Tables\InvoiceInstallments;
 
 use App\Enums\InstallmentStatus;
+use App\Tables\Support\EditableColumns;
 
 /**
  * Declarative column/filter/action catalogue of the `invoice-installments`
@@ -29,7 +30,7 @@ final class InstallmentColumnCatalog
      */
     public static function columns(): array
     {
-        return [
+        return EditableColumns::apply([
             self::column('invoice_number_label', 'text', sortable: true, filter: 'text'),
             self::column('invoice_document_date', 'date', sortable: true, filter: 'date'),
             self::column('sequence', 'number', sortable: true),
@@ -48,7 +49,7 @@ final class InstallmentColumnCatalog
             self::column('collected_amount', 'number', sortable: true, filter: 'number'),
             self::column('residual_amount', 'number', sortable: true, filter: 'number'),
             self::column('collected_at', 'date', sortable: true, filter: 'date'),
-        ];
+        ], ['due_date' => [], 'payment_method_code' => EditableColumns::NULLABLE]);
     }
 
     /**
@@ -83,7 +84,6 @@ final class InstallmentColumnCatalog
     {
         return [
             ['key' => 'view_invoice', 'label' => 'invoiceInstallments.actions.view_invoice', 'icon' => 'eye', 'type' => 'action', 'confirm' => false, 'permission' => 'invoices.view'],
-            ['key' => 'edit', 'label' => 'invoiceInstallments.actions.edit', 'icon' => 'pencil', 'type' => 'action', 'confirm' => false, 'permission' => 'invoice-installments.update'],
             ['key' => 'record_collection', 'label' => 'invoiceInstallments.actions.record_collection', 'icon' => 'hand-coins', 'type' => 'action', 'confirm' => false, 'permission' => 'invoices.collect'],
             ['key' => 'clear_collection', 'label' => 'invoiceInstallments.actions.clear_collection', 'icon' => 'undo-2', 'type' => 'action', 'confirm' => false, 'permission' => 'invoices.collect'],
         ];

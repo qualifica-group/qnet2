@@ -39,6 +39,7 @@ const guide: HelpGuide = {
             'Press **New tag**.',
             'The record opens with its rows closed: for each row press the pencil (or the value), fill in and press **Done**; **Revert** puts the row back as it was. Then press **Save**.',
             'There is no separate edit form: open the sheet with **View**, press the pencil on the row, change the value and press **Save** (only that row is saved); **Cancel** or Esc leave the row as it was.',
+            'From the list you can also edit directly in the **Name**, **Description**, **Color** (pick from the palette) and **Active** cells: double-click the cell, change the value and confirm.',
             'To deactivate, press the pencil on **Active** and turn it off: invoices that use it stay intact.',
           ],
         },

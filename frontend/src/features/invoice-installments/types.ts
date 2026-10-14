@@ -46,12 +46,6 @@ export interface InstallmentDetail {
   }
 }
 
-/** PATCH body: only the fields the actor may edit are sent. */
-export interface InstallmentUpdatePayload {
-  due_date?: string
-  payment_method_code?: string | null
-}
-
 /** One row of POST `/invoice-installments/collections` (spec 0198). */
 export interface BulkCollectionItem {
   installment_id: number

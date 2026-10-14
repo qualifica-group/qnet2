@@ -4,8 +4,11 @@ namespace App\Tables;
 
 use App\Authorization\AuthorizationRegistry;
 use App\Enums\InstallmentStatus;
+use App\Http\Requests\Invoices\UpdateInvoiceInstallmentRequest;
 use App\Models\InvoiceInstallment;
 use App\Models\User;
+use App\Services\Invoices\InvoiceInstallmentUpdater;
+use App\Services\Table\FormRequestCellValidator;
 use App\Services\Table\RowGroupQuery;
 use App\Tables\InvoiceInstallments\InstallmentColumnCatalog;
 use App\Tables\InvoiceInstallments\InstallmentDerivedQuery;
@@ -36,7 +39,27 @@ class InvoiceInstallmentsTableDefinition extends AbstractTableDefinition
     public function __construct(
         private readonly AuthorizationRegistry $authorization,
         private readonly RowGroupQuery $rowGroups,
+        private readonly FormRequestCellValidator $cells,
+        private readonly InvoiceInstallmentUpdater $updater,
     ) {}
+
+    /** Spec 0260, D-2: only an installment without collections takes a cell edit (the updater answers 409 otherwise). */
+    public function authorizeUpdate(User $actor, Model $row): bool
+    {
+        /** @var InvoiceInstallment $row */
+        return $row->status() === InstallmentStatus::Unpaid && Gate::forUser($actor)->allows('update', $row);
+    }
+
+    /** Spec 0260, D-2: the cell edit follows UpdateInvoiceInstallmentRequest and InvoiceInstallmentUpdater. */
+    public function updateCell(Model $row, string $columnId, mixed $value): Model
+    {
+        /** @var InvoiceInstallment $row */
+        /** @var User $actor */
+        $actor = Auth::user();
+        $request = $this->cells->validate(UpdateInvoiceInstallmentRequest::class, 'installment', $row, $actor, [$columnId => $value]);
+
+        return $this->updater->handle($row, $request->toData());
+    }
 
     public function domain(): string
     {
@@ -203,11 +226,6 @@ class InvoiceInstallmentsTableDefinition extends AbstractTableDefinition
 
         if ($actor->can('invoices.view')) {
             $allowed[] = 'view_invoice';
-        }
-
-        // An installment with a collection can no longer be edited (409).
-        if ($status === InstallmentStatus::Unpaid && Gate::forUser($actor)->allows('update', $row)) {
-            $allowed[] = 'edit';
         }
 
         if ($actor->can('invoices.collect')) {

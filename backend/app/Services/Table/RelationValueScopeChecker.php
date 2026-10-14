@@ -9,6 +9,7 @@ use App\Services\BusinessFunctionService;
 use App\Services\CampaignService;
 use App\Services\CompanyService;
 use App\Services\CompanySiteService;
+use App\Services\InvoiceTagService;
 use App\Services\OperationalSiteService;
 use App\Services\OpportunityService;
 use App\Services\PaymentMethodService;
@@ -70,6 +71,7 @@ final class RelationValueScopeChecker
         private readonly QuoteForSelectService $quotes,
         private readonly OpportunityService $opportunities,
         private readonly SectorService $sectors,
+        private readonly InvoiceTagService $invoiceTags,
     ) {}
 
     /**
@@ -111,6 +113,8 @@ final class RelationValueScopeChecker
             'quotes' => $this->quotes->forSelect($query)->items,
             'opportunities' => $this->opportunities->forSelect($query)->items,
             'sectors' => $this->sectors->forSelect($query)->items,
+            // Spec 0260, D-4: the invoices grid's tag picker.
+            'invoice-tags' => $this->invoiceTags->forSelect($query)->items,
             default => null,
         };
 

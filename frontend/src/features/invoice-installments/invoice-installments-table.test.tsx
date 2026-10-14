@@ -32,10 +32,6 @@ vi.mock('@/features/invoices/invoice-detail-sheet', () => ({
   InvoiceDetailSheet: ({ invoiceId }: { invoiceId: number | null }) =>
     invoiceId === null ? null : <div role="dialog" aria-label="invoice sheet">{`invoice ${invoiceId}`}</div>,
 }))
-vi.mock('@/features/invoice-installments/installment-edit-dialog', () => ({
-  InstallmentEditDialog: ({ installmentId }: { installmentId: number | null }) =>
-    installmentId === null ? null : <div role="dialog" aria-label="edit dialog">{`edit ${installmentId}`}</div>,
-}))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 function action(key: string): TableActionDefinition {
@@ -67,7 +63,7 @@ vi.mock('@/features/table/table-view', () => ({
         <button type="button" onClick={() => onRowGroupColumnsChange?.(['customer'])}>
           group-customer
         </button>
-        {['view_invoice', 'edit', 'record_collection', 'clear_collection'].map((key) => (
+        {['view_invoice', 'record_collection', 'clear_collection'].map((key) => (
           <button key={key} type="button" onClick={() => onAction?.(action(key), ROW)}>
             {key}
           </button>
@@ -160,14 +156,6 @@ describe('InvoiceInstallmentsTable (spec 0197 AC-018, AC-020)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'view_invoice' }))
 
     expect(await screen.findByRole('dialog', { name: 'invoice sheet' })).toHaveTextContent('invoice 3')
-  })
-
-  it('opens the edit dialog on the clicked installment', () => {
-    renderTable()
-
-    fireEvent.click(screen.getByRole('button', { name: 'edit' }))
-
-    expect(screen.getByRole('dialog', { name: 'edit dialog' })).toHaveTextContent('edit 21')
   })
 
   it('reuses the existing collection dialog for "record collection"', async () => {

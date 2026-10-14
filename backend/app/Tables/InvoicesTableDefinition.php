@@ -3,16 +3,20 @@
 namespace App\Tables;
 
 use App\Enums\InvoicePaymentStatus;
+use App\Http\Requests\Invoices\InvoiceDetailsRequest;
 use App\Models\Invoice;
 use App\Models\InvoiceInstallment;
 use App\Models\User;
 use App\Services\Invoices\InvoicePaymentStatusResolver;
+use App\Services\Invoices\InvoiceService;
+use App\Services\Table\FormRequestCellValidator;
 use App\Tables\Invoices\InvoiceColumnCatalog;
 use App\Tables\Invoices\InvoiceDerivedQuery;
 use App\Tables\Invoices\InvoiceReminderColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -24,6 +28,26 @@ use Illuminate\Support\Facades\Gate;
  */
 class InvoicesTableDefinition extends AbstractTableDefinition
 {
+    public function __construct(
+        private readonly InvoiceService $service,
+        private readonly FormRequestCellValidator $cells,
+    ) {}
+
+    /**
+     * Spec 0260, D-3: the cell edit follows the details endpoint
+     * (InvoiceDetailsRequest + InvoiceService::updateDetails), so tag and
+     * deviation stay editable on a registered invoice too.
+     */
+    public function updateCell(Model $row, string $columnId, mixed $value): Model
+    {
+        /** @var Invoice $row */
+        /** @var User $actor */
+        $actor = Auth::user();
+        $request = $this->cells->validate(InvoiceDetailsRequest::class, 'invoice', $row, $actor, [$columnId => $value]);
+
+        return $this->service->updateDetails($row, $request->payload(), $actor);
+    }
+
     private const string FIRST_UNPAID_DUE_DATE = 'first_unpaid_due_date';
 
     /** Row actions not offered for a registered invoice. */

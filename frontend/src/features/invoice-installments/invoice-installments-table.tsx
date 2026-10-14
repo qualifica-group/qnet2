@@ -5,7 +5,6 @@ import { INVOICE_INSTALLMENTS_DOMAIN } from '@/features/invoice-installments/api
 import { installmentColumnRenderers } from '@/features/invoice-installments/column-renderers'
 import { InstallmentBulkCollectionDialog } from '@/features/invoice-installments/installment-bulk-collection-dialog'
 import { isBulkCollectable } from '@/features/invoice-installments/installment-bulk-collection'
-import { InstallmentEditDialog } from '@/features/invoice-installments/installment-edit-dialog'
 import { InstallmentQuickFilterToolbar } from '@/features/invoice-installments/installment-quick-filter-toolbar'
 import { InstallmentTotalsFooter } from '@/features/invoice-installments/installment-totals-footer'
 import { useInstallmentBulkCollection } from '@/features/invoice-installments/use-installment-bulk-collection'
@@ -59,7 +58,6 @@ export function InvoiceInstallmentsTable() {
       />
 
       <InvoiceDetailSheet invoiceId={actions.viewInvoiceId} onClose={actions.closeView} onChanged={refreshGrid} />
-      <InstallmentEditDialog installmentId={actions.editId} onClose={actions.closeEdit} onSaved={refreshGrid} />
       <InvoiceCollectionDialog
         installment={collection.collectTarget}
         installments={actions.documentInstallments}

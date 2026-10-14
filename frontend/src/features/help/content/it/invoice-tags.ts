@@ -39,6 +39,7 @@ const guide: HelpGuide = {
             'Premi **Nuovo tag**.',
             'Si apre la scheda con le righe chiuse: per ogni riga premi la matita (o il valore), compila e premi **Fatto**; **Ripristina** riporta la riga com’era. Poi premi **Salva**.',
             'Per modificare non c’è un modulo a parte: apri la scheda con **Visualizza**, premi la matita sulla riga, cambia il valore e premi **Salva** (si salva solo quella riga); **Annulla** o Esc lasciano la riga com’era.',
+            'Dall’elenco puoi anche modificare direttamente nelle celle **Nome**, **Descrizione**, **Colore** (scegli dalla palette) e **Attivo**: fai doppio clic sulla cella, cambia il valore e conferma.',
             'Per disattivare, premi la matita su **Attivo** e spegnilo: le fatture che lo usano restano intatte.',
           ],
         },

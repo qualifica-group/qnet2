@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tables\InvoiceTags;
 
+use App\Tables\Support\EditableColumns;
+
 /**
  * Declarative column/filter/action catalogue for the `invoice-tags` domain (spec
  * 0247, D-5). Extracted out of InvoiceTagsTableDefinition (file-size split,
@@ -22,7 +24,7 @@ final class InvoiceTagColumnCatalog
      */
     public static function columns(): array
     {
-        return [
+        return EditableColumns::apply([
             [
                 'id' => 'name',
                 'label' => 'invoiceTags.columns.name',
@@ -78,7 +80,12 @@ final class InvoiceTagColumnCatalog
                 'filterable' => true,
                 'filterType' => 'date',
             ],
-        ];
+        ], [
+            'name' => [],
+            'description' => EditableColumns::NULLABLE,
+            'color' => EditableColumns::COLOR,
+            'is_active' => [],
+        ]);
     }
 
     /**

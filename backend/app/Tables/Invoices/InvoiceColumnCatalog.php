@@ -4,6 +4,7 @@ namespace App\Tables\Invoices;
 
 use App\Enums\InvoicePaymentStatus;
 use App\Enums\InvoiceType;
+use App\Tables\Support\EditableColumns;
 
 /**
  * Declarative column/filter/action catalogue for the `invoices` domain (spec
@@ -21,7 +22,7 @@ final class InvoiceColumnCatalog
      */
     public static function columns(): array
     {
-        return [
+        return EditableColumns::apply([
             self::column('number_label', 'text', filter: 'text', hasFilterValues: false),
             self::column('number', 'number', visible: false, sortable: true),
             self::column('document_date', 'date', sortable: true, filter: 'date'),
@@ -44,7 +45,11 @@ final class InvoiceColumnCatalog
             self::column('deviation', 'number'),
             self::column('document_year', 'number', visible: false, filter: 'set'),
             self::column('document_month', 'number', visible: false, filter: 'set', options: self::MONTHS),
-        ];
+        ], [
+            // Spec 0260, D-3: written through the details endpoint, registered invoices included.
+            'tag' => ['relation' => ['resource' => 'invoice-tags'], 'editableField' => 'invoice_tag_id', 'nullable' => true],
+            'deviation' => [],
+        ]);
     }
 
     /**

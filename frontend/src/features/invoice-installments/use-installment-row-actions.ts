@@ -20,7 +20,6 @@ export function useInstallmentRowActions(onChanged: () => void) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [viewInvoiceId, setViewInvoiceId] = useState<number | null>(null)
-  const [editId, setEditId] = useState<number | null>(null)
   const [documentInstallments, setDocumentInstallments] = useState<readonly InvoiceInstallment[]>(NO_INSTALLMENTS)
   const collection = useInvoiceCollectionActions(onChanged)
   const { openCollect, requestClear } = collection
@@ -83,9 +82,6 @@ export function useInstallmentRowActions(onChanged: () => void) {
             () => toast.error(t('invoiceInstallments.lookupError')),
           )
           break
-        case 'edit':
-          setEditId(id)
-          break
         case 'record_collection':
           void openViaDocument(id, invoiceId, (installment, all) => {
             setDocumentInstallments(all)
@@ -108,7 +104,5 @@ export function useInstallmentRowActions(onChanged: () => void) {
     documentInstallments,
     viewInvoiceId,
     closeView: useCallback(() => setViewInvoiceId(null), []),
-    editId,
-    closeEdit: useCallback(() => setEditId(null), []),
   }
 }

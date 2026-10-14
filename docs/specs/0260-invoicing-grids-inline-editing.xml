@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0260-invoicing-grids-inline-editing" status="approved" owner="utente" date="2026-10-14">
+
+  <goal>
+    Le liste di Fatture attive, Scadenze attive e Tag fatture si modificano in cella, come RDA, ODA e cataloghi Acquisti.
+    Tappa 1 di 2: la scheda fattura modificabile per campo e per riga e' la tappa 2 (spec separata).
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-14: "Procedi adesso con Fatture attive, Scadenze attive, Tag fatture".
+    Fatti verificati: PATCH /invoices/{invoice}/details (InvoiceDetailsRequest + InvoiceService::updateDetails) e' parziale
+    e vale anche sulle fatture registrate per tag, scostamento, nota interna e layout; il PUT della fattura e' completo
+    (righe comprese) e vietato sulle registrate. PATCH /invoice-installments/{installment} e' parziale (due_date,
+    payment_method_code) e rifiuta con 409 le rate incassate. UpdateInvoiceTagRequest e' parziale. Le tre risorse sono
+    registrate in config/authorization.php.
+  </context>
+
+  <decisions>
+    D-1 Tag fatture: name, description, color (editor palette di 0258), is_active modificabili in cella tramite
+        UpdateInvoiceTagRequest + InvoiceTagService::update.
+    D-2 Scadenze attive: due_date e payment_method_code modificabili in cella tramite UpdateInvoiceInstallmentRequest +
+        InvoiceInstallmentUpdater, solo sulle rate non incassate (riga non modificabile altrimenti). L'azione di riga
+        "Modifica" e la sua finestra spariscono: la cella copre gli stessi due campi.
+    D-3 Fatture attive: tag (invoice_tag_id, relazione invoice-tags) e deviation modificabili in cella tramite
+        InvoiceDetailsRequest + InvoiceService::updateDetails, anche sulle registrate. Numero e data esterni restano nella
+        finestra Dettagli (insieme cambiano il tipo proforma/fattura e richiedono invoices.downgrade sulle registrate).
+    D-4 RelationValueScopeChecker riconosce `invoice-tags`.
+  </decisions>
+
+  <acceptance>
+    <ac id="AC-001">Tag fatture: le quattro colonne si salvano in cella; nome duplicato e colore fuori palette -> 422.</ac>
+    <ac id="AC-002">Scadenze: data e metodo si salvano in cella sulla rata non incassata; data prima della fattura -> 422;
+      rata incassata = riga non modificabile e PATCH cella 403; nessuna azione `edit`.</ac>
+    <ac id="AC-003">Fatture: tag e scostamento si salvano in cella anche su una fattura registrata; 403 senza update.</ac>
+    <ac id="AC-004">Guide in-app IT/EN dei tre moduli aggiornate.</ac>
+  </acceptance>
+</spec>

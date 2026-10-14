@@ -84,7 +84,7 @@ const guide: HelpGuide = {
           rows: [
             ['**View**', 'Opens the document read-only.'],
             ['**Edit**', 'Proformas only (not registered invoices). Reopens the issue dialog, even with collections present (**rebalancing**): document date, customer and payment method become read-only, collected installments stay and the residual (new total minus collected) is split equally across the installments not collected, which keep their due date. The total cannot be lower than the amount collected; if equal, the open installments are removed. With no open installments and a higher total, a new installment is created 30 days after the last due date. The due date preview already shows the rebalanced plan.'],
-            ['**Details**', 'Records the **external number and date** from Fatture in Cloud: the proforma becomes an **Invoice**. The tag (from the **Invoice tags** catalog), deviation, internal notes and print layout are here too and stay editable after registration.'],
+            ['**Details**', 'Records the **external number and date** from Fatture in Cloud: the proforma becomes an **Invoice**. The tag (from the **Invoice tags** catalog), deviation, internal notes and print layout are here too and stay editable after registration. **Tag** and **Deviation** can also be changed directly in the list cells, with a double-click.'],
             ['**Delete**', 'Removes a **proforma** after confirmation. Not possible if it has collections, nor on a registered invoice.'],
             ['**Activity**', 'Shows the change history.'],
           ],

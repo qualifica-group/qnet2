@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tables;
 
+use App\Http\Requests\InvoiceTags\UpdateInvoiceTagRequest;
 use App\Models\InvoiceTag;
 use App\Models\User;
 use App\Services\InvoiceTagService;
+use App\Services\Table\FormRequestCellValidator;
 use App\Tables\InvoiceTags\InvoiceTagColumnCatalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -18,7 +21,21 @@ use Illuminate\Support\Facades\Gate;
  */
 class InvoiceTagsTableDefinition extends AbstractTableDefinition
 {
-    public function __construct(private readonly InvoiceTagService $service) {}
+    public function __construct(
+        private readonly InvoiceTagService $service,
+        private readonly FormRequestCellValidator $cells,
+    ) {}
+
+    /** Spec 0260, D-1: the cell edit follows UpdateInvoiceTagRequest and the service. */
+    public function updateCell(Model $row, string $columnId, mixed $value): Model
+    {
+        /** @var InvoiceTag $row */
+        /** @var User $actor */
+        $actor = Auth::user();
+        $request = $this->cells->validate(UpdateInvoiceTagRequest::class, 'invoiceTag', $row, $actor, [$columnId => $value]);
+
+        return $this->service->update($row, $request->toData());
+    }
 
     public function domain(): string
     {

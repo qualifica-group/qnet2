@@ -3,7 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0259 — ODA: campi di servizio modificabili dopo l'approvazione — VERDE, NON COMMITTATO (2026-10-14)
+## Spec 0260 — Fatture attive, Scadenze attive, Tag fatture modificabili in cella (tappa 1) — VERDE, NON COMMITTATO (2026-10-14)
+
+- Spec `docs/specs/0260-invoicing-grids-inline-editing.xml`. Tappa 2 (scheda fattura inline al posto delle finestre
+  Modifica/Dettagli) da specificare a parte.
+- Tag fatture: name, description, color (editor palette), is_active via UpdateInvoiceTagRequest + InvoiceTagService.
+- Scadenze attive: due_date, payment_method_code via UpdateInvoiceInstallmentRequest + InvoiceInstallmentUpdater;
+  `authorizeUpdate` = rata non incassata + policy. Azione `edit` e finestra di modifica RIMOSSE (installment-edit-dialog,
+  use-installment-edit-form, installment-schema, installment-field-access, use-installment-queries, updateInstallment,
+  chiavi i18n invoiceInstallments.edit / actions.edit).
+- Fatture: tag (editableField invoice_tag_id, relazione invoice-tags) e deviation via InvoiceDetailsRequest +
+  InvoiceService::updateDetails (anche registrate). Numero/data esterni restano nella finestra Dettagli.
+- RelationValueScopeChecker + invoice-tags. Test: tests/Feature/Tables/InvoicingGridsInlineEditTest.php.
+- Guide IT/EN invoices (actions), invoice-installments (edit-due-date, permissions), invoice-tags aggiornate.
+
+## Spec 0259 — ODA: campi di servizio modificabili dopo l'approvazione — VERDE, COMMITTATO 7e71b9e0 (2026-10-14)
 
 - Spec `docs/specs/0259-purchase-order-service-fields-after-approval.xml` (decisione utente: opzione 2).
 - Fonte unica `PurchaseOrderData::SERVICE_FIELDS`; `PurchaseOrderStatus::allowsServiceEdits()` (tutto tranne Cancelled).

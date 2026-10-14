@@ -4,7 +4,6 @@ import type {
   BulkCollectionPayload,
   BulkCollectionResult,
   InstallmentDetail,
-  InstallmentUpdatePayload,
 } from '@/features/invoice-installments/types'
 
 /** Table/module domain key (SSRM domain, permission prefix and query-key root). */
@@ -19,18 +18,6 @@ export const installmentKeys = {
 /** Reads one installment with its invoice summary, field permissions and abilities. */
 export async function getInstallment(id: number): Promise<InstallmentDetail> {
   const { data } = await apiClient.get<ApiResponse<InstallmentDetail>>(`/invoice-installments/${id}`)
-  return data.data
-}
-
-/** Updates due date and/or payment method code. 409 when the installment has a collection. */
-export async function updateInstallment(
-  id: number,
-  payload: InstallmentUpdatePayload,
-): Promise<InstallmentDetail> {
-  const { data } = await apiClient.patch<ApiResponse<InstallmentDetail>>(
-    `/invoice-installments/${id}`,
-    payload,
-  )
   return data.data
 }
 

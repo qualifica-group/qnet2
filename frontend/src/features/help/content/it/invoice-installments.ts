@@ -77,9 +77,9 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Sulla riga di una rata aperta premi **Modifica scadenza** (serve il permesso di modifica).',
-            'Cambia la **data di scadenza** e/o il **codice della modalità** di pagamento, poi premi **Salva**.',
-            'L’elenco si aggiorna da solo.',
+            'Sulla riga di una rata non incassata fai doppio clic sulla cella **Data scadenza** o **Modalità** (serve il permesso di modifica).',
+            'Cambia il valore e conferma: si salva subito solo quella cella. Esc annulla.',
+            'Le rate con un incasso restano in sola lettura: annulla prima l’incasso.',
           ],
         },
         {
@@ -166,7 +166,7 @@ const guide: HelpGuide = {
           headers: ['Azione', 'Permesso'],
           rows: [
             ['Vedere l’elenco e il menu **Scadenze**', 'Visualizzazione scadenze'],
-            ['**Modifica scadenza**', 'Modifica scadenze (e permesso sul singolo campo)'],
+            ['Modificare **Data scadenza** e **Modalità** nelle celle', 'Modifica scadenze (e permesso sul singolo campo)'],
             ['**Registra / Annulla incasso**, **Incasso multiplo**', 'Registra incassi'],
             ['**Apri fattura**', 'Visualizzazione fatture attive'],
             ['**Esporta**', 'Esportazione scadenze'],
