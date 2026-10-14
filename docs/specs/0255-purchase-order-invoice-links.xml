@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0255-purchase-order-invoice-links" status="approved" owner="ciro" date="2026-10-14">
+
+  <goal>
+    Collegamento navigabile in entrambi i versi tra ODA e documenti passivi (proforma/fatture). Il legame esiste gia'
+    (pivot purchase_invoice_purchase_order, spec 0211 D-2): la fattura mostra gli ODA nella pagina di dettaglio, ma
+    l'ODA non elenca i documenti che lo fatturano e il pannello espandibile dell'elenco fatture non mostra gli ODA.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-10-14 (punti 1-4 della proposta):
+    - D-1 PurchaseOrderResource espone `purchase_invoices`: i documenti passivi collegati all'ODA tramite la pivot.
+    - D-2 Proiezione minima del documento (id, tipo, numero, data): niente importi, perche' chi vede l'ODA puo' non
+      avere purchase-invoices.view. Simmetrico a PurchaseInvoiceResource.purchase_orders (solo id + codice).
+    - D-3 Ordinamento: document_date crescente (null in fondo), poi id crescente.
+    - D-4 Frontend ODA: nuova sezione "Fatture collegate" nella scheda ODA (accanto a Evasione e Ricezioni, stessa
+      condizione di visibilita'), chip col numero (o "Proforma"/"Fattura" senza numero) + tipo + data; ogni voce e' un
+      link a /purchase-invoices/{id} solo se l'utente ha purchase-invoices.view, altrimenti testo. Stato vuoto esplicito.
+    - D-5 Il "da fattura N" di una ricezione automatica (spec 0254 D-12) diventa link a /purchase-invoices/{id} con la
+      stessa regola di permesso.
+    - D-6 Pannello master/detail dell'elenco fatture passive: aggiunge la sezione ODA collegati riusando
+      PurchaseInvoiceDetailOrders (dati gia' presenti in PurchaseInvoiceResource.purchase_orders).
+    - D-7 Guide in-app IT/EN aggiornate (purchase-orders, purchase-invoices).
+  </context>
+
+  <data_contract>
+    GET /api/purchase-orders/{id} (e ogni risposta che usa PurchaseOrderResource) aggiunge:
+    "purchase_invoices": [
+      { "id": 12, "document_type": "proforma" | "invoice", "document_number": "FT-45" | null, "document_date": "2026-10-01" | null }
+    ]
+    Eager load in PurchaseOrderService::RESOURCE_RELATIONS (lazy loading vietato). Nessun nuovo endpoint, nessuna
+    modifica di schema.
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">GET di un ODA collegato a una proforma e a una fattura restituisce purchase_invoices con i due documenti nella forma D-2, ordinati per D-3; nessun campo importo.</criterion>
+    <criterion id="AC-002">GET di un ODA senza documenti restituisce purchase_invoices = [].</criterion>
+    <criterion id="AC-003">Utente con purchase-orders.view senza purchase-invoices.view: riceve comunque purchase_invoices (200); nella UI le voci non sono link.</criterion>
+    <criterion id="AC-004">Scheda ODA: sezione Fatture collegate con link a /purchase-invoices/{id} per chi ha purchase-invoices.view; stato vuoto se nessun documento.</criterion>
+    <criterion id="AC-005">Ricezione automatica da fattura: il riferimento alla fattura e' un link (con permesso) o testo (senza).</criterion>
+    <criterion id="AC-006">Pannello espandibile dell'elenco fatture passive mostra gli ODA collegati (link con purchase-orders.view).</criterion>
+    <criterion id="AC-007">Guide in-app IT/EN aggiornate, parity test verde.</criterion>
+  </acceptance_criteria>
+</spec>

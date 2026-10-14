@@ -39,6 +39,7 @@ class PurchaseOrderService
         'opportunity:id,name',
         'sectors:id,name',
         'createdBy:id,name',
+        'purchaseInvoices:purchase_invoices.id,document_type,document_number,document_date',
         'lines.product:id,name',
         'lines.costType:id,name,color',
         'lines.unitOfMeasure:id,name,symbol',

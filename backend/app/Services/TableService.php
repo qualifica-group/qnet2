@@ -11,6 +11,7 @@ use App\Services\Table\FilterApplier;
 use App\Services\Table\RowGroupQuery;
 use App\Services\Table\TableQueryBuilder;
 use App\Tables\TableDefinition;
+use BackedEnum;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -304,13 +305,16 @@ class TableService
             $clone->where($column, 'like', '%'.$this->filterApplier->escapeLike($search).'%');
         }
 
-        $values = $clone->whereNotNull($column)
+        // Select the column alone: a baseQuery that adds subselects would make DISTINCT run over whole rows.
+        $values = $clone->select($column)
+            ->whereNotNull($column)
             ->when($isTextual, static fn (Builder $builder): Builder => $builder->where($column, '<>', ''))
             ->distinct()
             ->orderBy($column)
             ->limit($limit)
             ->pluck($column)
-            ->map(static fn (mixed $value): string => (string) $value)
+            // An enum-cast column plucks enum instances: the filter round-trips the backed value.
+            ->map(static fn (mixed $value): string => $value instanceof BackedEnum ? (string) $value->value : (string) $value)
             ->all();
 
         // `null` is AG Grid's own blank entry: the Set Filter renders it as

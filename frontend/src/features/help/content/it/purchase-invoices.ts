@@ -25,7 +25,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'L’elenco ha **una riga per documento**: tipo, numero del fornitore, data, fornitore, società, ODA collegati, **totale**, **pagato**, **residuo** e **stato del pagamento**. Come in ogni elenco puoi ordinare, cercare, filtrare, salvare viste ed esportare.',
+          text: 'L’elenco ha **una riga per documento**: tipo, numero del fornitore, data, fornitore, società, ODA collegati, **totale**, **pagato**, **residuo** e **stato del pagamento**. Espandi la riga del documento per vedere **Righe**, **Scadenze** e **ODA collegati** (con il permesso sugli ODA, ognuno è un link all’ordine) senza aprire la scheda. Come in ogni elenco puoi ordinare, cercare, filtrare, salvare viste ed esportare.',
         },
         {
           type: 'table',

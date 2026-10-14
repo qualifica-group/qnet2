@@ -84,6 +84,11 @@ export const purchaseOrderActions = {
       actions: 'Actions',
     },
   },
+  invoices: {
+    section: 'Linked invoices',
+    empty: 'No invoice or proforma linked to this order.',
+    type: { proforma: 'Proforma', invoice: 'Invoice' },
+  },
   receipts: {
     section: 'Receipts',
     loadError: 'Unable to load the receipts.',

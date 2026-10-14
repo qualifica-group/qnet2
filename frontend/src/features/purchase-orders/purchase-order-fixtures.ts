@@ -73,6 +73,7 @@ export function makePurchaseOrder(overrides: Partial<PurchaseOrder> = {}): Purch
     copy_group_id: null,
     created_by: { id: 3, name: 'Mario Rossi' },
     lines: [makeOrderLine()],
+    purchase_invoices: [],
     merge_logs_count: 0,
     created_at: '2026-10-12T08:00:00Z',
     updated_at: '2026-10-12T08:00:00Z',

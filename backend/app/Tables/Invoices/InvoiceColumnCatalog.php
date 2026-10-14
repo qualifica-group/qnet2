@@ -22,13 +22,13 @@ final class InvoiceColumnCatalog
     public static function columns(): array
     {
         return [
-            self::column('number_label', 'text', filter: 'text'),
+            self::column('number_label', 'text', filter: 'text', hasFilterValues: false),
             self::column('number', 'number', visible: false, sortable: true),
             self::column('document_date', 'date', sortable: true, filter: 'date'),
             self::column('type', 'badge', filter: 'set', options: InvoiceType::values()),
             self::column('external_number', 'text', filter: 'text'),
             self::column('external_date', 'date'),
-            self::column('customer', 'text', sortable: true, filter: 'text'),
+            self::column('customer', 'text', sortable: true, filter: 'text', hasFilterValues: false),
             self::column('company', 'text', filter: 'set'),
             self::column('payment_method', 'text', filter: 'set'),
             self::column('work_order_code', 'text'),
@@ -39,7 +39,7 @@ final class InvoiceColumnCatalog
             self::column('collected_amount', 'number'),
             self::column('residual_amount', 'number'),
             self::column('payment_status', 'badge', options: InvoicePaymentStatus::values()),
-            self::column(InvoiceReminderColumn::ID, 'date', sortable: true, filter: 'date'),
+            self::column(InvoiceReminderColumn::ID, 'date', sortable: true, filter: 'date', hasFilterValues: false),
             self::column('tag', 'badge', filter: 'set'),
             self::column('deviation', 'number'),
             self::column('document_year', 'number', visible: false, filter: 'set'),
@@ -89,10 +89,13 @@ final class InvoiceColumnCatalog
     }
 
     /**
+     * `hasFilterValues: false` marks a derived column filtered by its typed
+     * condition only: there is no DB column to list distinct values from.
+     *
      * @param  array<int, string>|null  $options
      * @return array<string, mixed>
      */
-    private static function column(string $id, string $type, bool $visible = true, bool $sortable = false, ?string $filter = null, ?array $options = null): array
+    private static function column(string $id, string $type, bool $visible = true, bool $sortable = false, ?string $filter = null, ?array $options = null, bool $hasFilterValues = true): array
     {
         $column = [
             'id' => $id,
@@ -105,6 +108,10 @@ final class InvoiceColumnCatalog
 
         if ($filter !== null) {
             $column['filterType'] = $filter;
+        }
+
+        if (! $hasFilterValues) {
+            $column['hasFilterValues'] = false;
         }
 
         if ($options !== null) {

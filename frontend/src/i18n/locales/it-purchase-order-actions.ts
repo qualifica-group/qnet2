@@ -84,6 +84,11 @@ export const purchaseOrderActions = {
       actions: 'Azioni',
     },
   },
+  invoices: {
+    section: 'Fatture collegate',
+    empty: 'Nessuna fattura o proforma collegata a questo ordine.',
+    type: { proforma: 'Proforma', invoice: 'Fattura' },
+  },
   receipts: {
     section: 'Ricezioni',
     loadError: 'Impossibile caricare le ricezioni.',

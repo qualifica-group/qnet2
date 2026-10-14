@@ -152,7 +152,8 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'The **Receipts** section lists the order receipts, newest first. Receipts created by an invoice appear as “from invoice no. X” and cannot be cancelled while the invoice exists; the others can be **cancelled**.',
+            'The **Receipts** section lists the order receipts, newest first. Receipts created by an invoice appear as “from invoice no. X” (a link to the invoice, if you can view it) and cannot be cancelled while the invoice exists; the others can be **cancelled**.',
+            'The **Linked invoices** section (on orders that are not in Draft) lists the passive invoices and proformas linked to the order as chips showing type, number (once registered) and date; the chip opens the document if you may view passive invoices, otherwise it stays plain text. When there are none, the section says so.',
             '**Close residual** (row action) is used when the missing goods **will not arrive**: the **reason is mandatory**, the line counts as complete and the residual is no longer committed. It is not allowed if a proforma covers more than what was received: reduce the proforma first.',
             '**Reopen residual** puts the line back among the open ones.',
             'Linked RDA lines become **Received** when their order line is complete and go back to **Ordered** if it reopens (unless the RDA is already closed).',

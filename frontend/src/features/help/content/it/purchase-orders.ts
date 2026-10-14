@@ -152,7 +152,8 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'La sezione **Ricezioni** elenca le ricezioni dell’ordine, dalla più recente. Le ricezioni create da una fattura compaiono come “da fattura n. X” e non si possono annullare finché la fattura esiste; le altre si possono **annullare**.',
+            'La sezione **Ricezioni** elenca le ricezioni dell’ordine, dalla più recente. Le ricezioni create da una fattura compaiono come “da fattura n. X” (un link alla fattura, se puoi vederla) e non si possono annullare finché la fattura esiste; le altre si possono **annullare**.',
+            'La sezione **Fatture collegate** (negli ordini non in Bozza) elenca le fatture passive e i proforma collegati all’ordine come etichette con tipo, numero (se registrato) e data; l’etichetta apre il documento se hai il permesso di vedere le fatture passive, altrimenti resta un testo. Se non ce ne sono, la sezione lo dice.',
             '**Chiudi residuo** (azione di riga) si usa quando la merce mancante **non arriverà**: il **motivo è obbligatorio**, la riga conta come completa e il residuo non è più impegnato. Non è consentito se un proforma copre più di quanto ricevuto: riduci prima il proforma.',
             '**Riapri residuo** riporta la riga tra quelle aperte.',
             'Le righe RDA collegate diventano **Ricevute** quando la loro riga d’ordine è completa e tornano **Ordinate** se si riapre (a meno che la RDA sia già chiusa).',

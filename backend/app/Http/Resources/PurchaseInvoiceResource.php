@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseInvoiceInstallment;
 use App\Models\PurchaseOrder;
+use App\Support\OperationalSiteLabel;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -41,7 +42,10 @@ class PurchaseInvoiceResource extends JsonResource
                 'iban' => $this->financialAccount->iban,
             ],
             'company_site' => $this->companySite === null ? null : ['id' => $this->companySite->id, 'name' => $this->companySite->name],
-            'operational_site' => $this->operationalSite === null ? null : ['id' => $this->operationalSite->id, 'name' => $this->operationalSite->name],
+            'operational_site' => $this->operationalSite === null ? null : [
+                'id' => $this->operationalSite->id,
+                'name' => OperationalSiteLabel::displayName($this->operationalSite),
+            ],
             'cost_type' => $this->costType === null ? null : ['id' => $this->costType->id, 'name' => $this->costType->name, 'color' => $this->costType->color],
             'work_order' => $this->workOrder === null ? null : ['id' => $this->workOrder->id, 'code' => $this->workOrder->code, 'title' => $this->workOrder->title],
             'notes' => $this->notes,

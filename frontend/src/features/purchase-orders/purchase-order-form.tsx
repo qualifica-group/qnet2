@@ -8,6 +8,7 @@ import { PurchaseOrderFulfillmentSection } from '@/features/purchase-orders/purc
 import { PurchaseOrderFormActions } from '@/features/purchase-orders/purchase-order-form-actions'
 import { PurchaseOrderHeaderFields } from '@/features/purchase-orders/purchase-order-header-fields'
 import { PurchaseOrderLinesSection } from '@/features/purchase-orders/purchase-order-lines-section'
+import { PurchaseOrderInvoicesSection } from '@/features/purchase-orders/purchase-order-invoices-section'
 import { PurchaseOrderReceiptsSection } from '@/features/purchase-orders/purchase-order-receipts-section'
 import { isOrderReadOnly } from '@/features/purchase-orders/purchase-order-permissions'
 import { orderRefs } from '@/features/purchase-orders/purchase-order-refs'
@@ -114,6 +115,7 @@ export function PurchaseOrderForm({ order, onSaved, onCancel, onDeleted }: Purch
           <>
             <PurchaseOrderFulfillmentSection order={order} />
             <PurchaseOrderReceiptsSection order={order} />
+            <PurchaseOrderInvoicesSection order={order} />
           </>
         ) : null}
 

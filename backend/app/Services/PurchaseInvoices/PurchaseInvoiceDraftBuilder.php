@@ -10,6 +10,7 @@ use App\Models\PurchaseOrderLine;
 use App\Services\PurchaseOrders\PurchaseOrderLineBalance;
 use App\Services\PurchaseOrders\PurchaseOrderLineBillingLedger;
 use App\Support\Amounts\LineAmountCalculator;
+use App\Support\OperationalSiteLabel;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -48,7 +49,7 @@ final class PurchaseInvoiceDraftBuilder
         // Step 1: load the orders in a stable order
         $orders = PurchaseOrder::query()
             ->whereIn('id', $purchaseOrderIds)
-            ->with(['company:id,denomination', 'supplier:id,name', 'paymentMethod:id,name', 'companySite:id,name', 'operationalSite:id,alias'])
+            ->with(['company:id,denomination', 'supplier:id,name', 'paymentMethod:id,name', 'companySite:id,name', 'operationalSite.addresses.city'])
             ->orderBy('id')
             ->get();
 
@@ -144,7 +145,7 @@ final class PurchaseInvoiceDraftBuilder
             'supplier' => ['id' => $first->supplier->id, 'name' => $first->supplier->name],
             'payment_method' => $this->named($orders->first(fn (PurchaseOrder $order): bool => $order->payment_method_id !== null)?->paymentMethod),
             'company_site' => $this->named($orders->first(fn (PurchaseOrder $order): bool => $order->company_site_id !== null)?->companySite),
-            'operational_site' => $site === null ? null : ['id' => $site->id, 'name' => $site->alias ?? (string) $site->id],
+            'operational_site' => $site === null ? null : ['id' => $site->id, 'name' => OperationalSiteLabel::displayName($site)],
             'cost_type' => $costType === null ? null : ['id' => $costType->id, 'name' => $costType->name, 'color' => $costType->color],
             'work_order' => $this->workOrder($workOrder),
         ];

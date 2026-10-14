@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Enums\ContactTypeEnum;
 use App\Enums\PurchaseOrderStatus;
 use App\Models\Contact;
+use App\Models\PurchaseInvoice;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderLine;
 use App\Models\Registry;
@@ -59,9 +60,7 @@ class PurchaseOrderResource extends JsonResource
             'company_site' => ['id' => $this->companySite->id, 'name' => $this->companySite->name],
             'operational_site' => $this->operationalSite === null ? null : [
                 'id' => $this->operationalSite->id,
-                'name' => filled($this->operationalSite->alias)
-                    ? (string) $this->operationalSite->alias
-                    : OperationalSiteLabel::compose($this->operationalSite->primaryAddress),
+                'name' => OperationalSiteLabel::displayName($this->operationalSite),
             ],
             'order_date' => $this->order_date->toDateString(),
             'description' => $this->description,
@@ -80,6 +79,16 @@ class PurchaseOrderResource extends JsonResource
             'copy_group_id' => $this->copy_group_id,
             'created_by' => ['id' => $this->createdBy->id, 'name' => $this->createdBy->name],
             'lines' => $this->lines->map(fn (PurchaseOrderLine $line): array => $this->lineArray($line, $balances[$line->id]))->all(),
+            'purchase_invoices' => $this->purchaseInvoices
+                ->sortBy([['document_date', 'asc'], ['id', 'asc']])
+                ->map(fn (PurchaseInvoice $document): array => [
+                    'id' => $document->id,
+                    'document_type' => $document->document_type,
+                    'document_number' => $document->document_number,
+                    'document_date' => $document->document_date?->toDateString(),
+                ])
+                ->values()
+                ->all(),
             'merge_logs_count' => (int) $this->merge_logs_count,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

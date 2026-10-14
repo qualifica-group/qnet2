@@ -50,6 +50,12 @@ final class OperationalSiteLabel
         return $city === null ? (string) $address->line1 : "{$address->line1} - {$city}";
     }
 
+    /** The site's own alias when set, otherwise its address label (needs `addresses.city` eager-loaded). */
+    public static function displayName(OperationalSite $site): string
+    {
+        return filled($site->alias) ? (string) $site->alias : self::compose($site->primaryAddress);
+    }
+
     /**
      * @return array{id: int, label: string}|null
      */

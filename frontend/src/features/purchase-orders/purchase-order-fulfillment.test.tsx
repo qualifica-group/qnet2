@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
+import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import {
@@ -23,6 +24,11 @@ vi.mock('@/features/purchase-orders/api', async (importOriginal) => ({
   deleteReceipt: vi.fn(),
   closeLineResidual: vi.fn(),
   reopenLineResidual: vi.fn(),
+}))
+
+const canMock = vi.hoisted(() => vi.fn())
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: (permission: string) => canMock(permission), hasRole: () => false, roles: [], isLoading: false }),
 }))
 
 const toastMock = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() }))
@@ -82,7 +88,9 @@ function renderWithProviders(ui: React.ReactElement) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <ConfirmDialogProvider>{ui}</ConfirmDialogProvider>
+      <MemoryRouter>
+        <ConfirmDialogProvider>{ui}</ConfirmDialogProvider>
+      </MemoryRouter>
     </QueryClientProvider>,
   )
 }
@@ -93,6 +101,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  canMock.mockReset()
   vi.mocked(fetchReceipts).mockResolvedValue([])
 })
 
@@ -261,6 +270,14 @@ describe('Receipts list (AC-013)', () => {
     expect(await screen.findByText('from invoice no. FA-9')).toBeInTheDocument()
     expect(screen.getByText('from invoice')).toBeInTheDocument()
     expect(screen.getAllByText(/from invoice/)).toHaveLength(2)
+  })
+
+  it('links the source invoice of a receipt when the actor can view purchase invoices (spec 0255 AC-005)', async () => {
+    canMock.mockImplementation((permission: string) => permission === 'purchase-invoices.view')
+    vi.mocked(fetchReceipts).mockResolvedValue([makeReceipt({ purchase_invoice: { id: 9, document_number: 'FA-9' } })])
+    renderWithProviders(<PurchaseOrderReceiptsSection order={sentOrder()} />)
+
+    expect(await screen.findByRole('link', { name: 'from invoice no. FA-9' })).toHaveAttribute('href', '/purchase-invoices/9')
   })
 
   it('shows the empty state and no cancel action without abilities.receive', async () => {

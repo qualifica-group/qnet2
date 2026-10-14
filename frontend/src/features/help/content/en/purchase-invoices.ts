@@ -25,7 +25,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The list has **one row per document**: type, supplier number, date, supplier, company, linked ODAs, **total**, **paid**, **residual** and **payment status**. As in every list you can sort, search, filter, save views and export.',
+          text: 'The list has **one row per document**: type, supplier number, date, supplier, company, linked ODAs, **total**, **paid**, **residual** and **payment status**. Expand the document row to see its **Lines**, **Installments** and **linked ODAs** (with the ODA permission, each one links to the order) without opening the record. As in every list you can sort, search, filter, save views and export.',
         },
         {
           type: 'table',

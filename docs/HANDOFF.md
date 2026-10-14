@@ -3,6 +3,43 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0255 — Collegamento ODA <-> fatture passive — VERDE, NON COMMITTATO (2026-10-14)
+
+- Spec `docs/specs/0255-purchase-order-invoice-links.xml`. `PurchaseOrderResource.purchase_invoices` = [{id, document_type,
+  document_number, document_date}] (niente importi, D-2), eager load `purchaseInvoices:...` in
+  `PurchaseOrderService::RESOURCE_RELATIONS`; test `PurchaseOrderInvoiceLinksTest`.
+- FE ODA: `purchase-order-invoices-section.tsx` (chip "Tipo numero · data", link con `purchase-invoices.view`, export
+  `PurchaseInvoiceLink` riusato dal "da fattura N" in `purchase-order-receipts-section.tsx`); chiavi
+  `purchaseOrderActions.invoices.*`. FE fatture: sezione ODA collegati in `purchase-invoice-detail-panel.tsx`.
+- Guide in-app IT/EN purchase-orders (`receipts`) e purchase-invoices (`list`) aggiornate. Manuale Claude Docs da aggiornare
+  a mano (ODA > Evasione righe e ricezioni; Fatture passive > L'elenco).
+
+## Fatture attive: schede Tutte/Proforma/Fatture e filtri colonna — VERDE, NON COMMITTATO (2026-10-14)
+
+- Bug: la scheda Proforma tornava su Tutte. Root cause: `POST /tables/invoices/values` per `type` andava in 500
+  (pluck di una colonna con cast enum -> `(string)` su `InvoiceType`), la lista del set filter restava vuota e
+  AG Grid scartava il valore impostato dalla scheda.
+- Fix generico in `TableService::distinctFromColumn`: `select($column)` (la baseQuery con subselect/withSum faceva
+  girare il DISTINCT sull'intera riga -> valori duplicati su MySQL) + mapping `BackedEnum -> value`. Corregge anche
+  `purchase-invoices.document_type`.
+- `InvoiceColumnCatalog`: `number_label`, `customer`, `last_reminder_at` ora `hasFilterValues: false` (colonne
+  derivate senza colonna DB: prima SQL 1054 e checklist vuota; ora solo filtro testo/data).
+- Test: 2 nuovi in `InvoicesTableTest`. Manuale: nessun impatto (comportamento gia' documentato).
+
+## Fatture passive: master/detail Righe + Scadenze nell'elenco — VERDE, NON COMMITTATO (2026-10-14)
+
+- Allineamento alle fatture attive: la riga della griglia `purchase-invoices` si espande e mostra Righe e Scadenze.
+  Nuovo `purchase-invoice-detail-panel.tsx` (lazy `usePurchaseInvoice`, ResizeObserver come `InvoiceDetailPanel`),
+  riusa `PurchaseInvoiceDetailLines`/`PurchaseInvoiceDetailInstallments`; `purchase-invoices-table.tsx` passa
+  `masterDetail` + `detailCellRenderer` + `detailRowAutoHeight`. Solo frontend, nessun cambio di contratto.
+- Test: `purchase-invoice-detail-panel.test.tsx`. Guida in-app IT/EN `purchase-invoices` sezione `list` aggiornata.
+- Manuale Claude Docs: connettore senza accesso al doc -> da aggiornare a mano (Fatture passive > L'elenco).
+- Fix: `PurchaseInvoiceService::RESOURCE_RELATIONS` selezionava `operationalSite:id,name` (colonna inesistente ->
+  SQLSTATE 42S22 su MySQL; SQLite lo nascondeva) e la bozza da ODA mostrava l'id senza alias. Nuovo
+  `OperationalSiteLabel::displayName()` (alias, altrimenti indirizzo) usato da PurchaseInvoiceResource,
+  PurchaseInvoiceDraftBuilder e PurchaseOrderResource; eager load `operationalSite.addresses.city`.
+  Test `PurchaseInvoiceOperationalSiteTest`.
+
 ## Spec 0254 — Ricezioni ODA per riga, stato derivato, fatturazione per quantita', fattura che evade — COMMITTATO (2026-10-14)
 
 - Spec `docs/specs/0254-purchase-order-line-receipts.xml` (D-1..D-12, AC-001..016). Supera 0210 out "evasione per riga",

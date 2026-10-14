@@ -4,6 +4,7 @@ import { useConfirm } from '@/components/confirm-dialog-context'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate } from '@/lib/formatting/date-display'
+import { PurchaseInvoiceLink } from '@/features/purchase-orders/purchase-order-invoices-section'
 import { formatQuantity } from '@/features/purchase-orders/purchase-order-receipt-schema'
 import type { PurchaseOrder, PurchaseOrderReceipt } from '@/features/purchase-orders/types'
 import { useDeleteReceipt, usePurchaseOrderReceipts } from '@/features/purchase-orders/use-purchase-order-fulfillment'
@@ -32,9 +33,11 @@ function ReceiptItem({ receipt, canDelete, isDeleting, onDelete }: ReceiptItemPr
           ) : null}
           {receipt.purchase_invoice ? (
             <span className="text-muted-foreground">
-              {receipt.purchase_invoice.document_number
-                ? t('purchaseOrderActions.receipts.fromInvoiceNumber', { number: receipt.purchase_invoice.document_number })
-                : t('purchaseOrderActions.receipts.fromInvoice')}
+              <PurchaseInvoiceLink invoiceId={receipt.purchase_invoice.id}>
+                {receipt.purchase_invoice.document_number
+                  ? t('purchaseOrderActions.receipts.fromInvoiceNumber', { number: receipt.purchase_invoice.document_number })
+                  : t('purchaseOrderActions.receipts.fromInvoice')}
+              </PurchaseInvoiceLink>
             </span>
           ) : null}
           <span className="text-muted-foreground">{t('purchaseOrderActions.receipts.by', { name: receipt.created_by.name })}</span>

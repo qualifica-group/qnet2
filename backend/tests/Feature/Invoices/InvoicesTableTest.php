@@ -127,6 +127,30 @@ it('AC-007: type, company, customer and number_label filters and the customer so
         ->and($ids([]))->toBe([$invoice->id, $proforma->id]);
 });
 
+it('lists the type set-filter values as enum codes, so the type tabs keep their filter', function () {
+    Sanctum::actingAs(invoicesTableUserWith(['viewAny']));
+    invoiceOn('2026-01-10', ['number' => 7]);
+    invoiceOn('2026-01-11', ['number' => 9]);
+    Invoice::factory()->asInvoice()->create(['document_date' => '2026-02-10', 'year' => 2026, 'number' => 8]);
+
+    $this->postJson('/api/tables/invoices/values', ['columnId' => 'type', 'filterModel' => []])
+        ->assertOk()
+        ->assertJsonPath('data.values', ['invoice', 'proforma']);
+});
+
+it('offers only the typed condition filter on the derived text/date columns, which have no value list', function () {
+    Sanctum::actingAs(invoicesTableUserWith(['viewAny']));
+
+    $columns = collect($this->getJson('/api/tables/invoices/columns')->assertOk()->json('data.columns'))->keyBy('id');
+
+    foreach (['number_label', 'customer', 'last_reminder_at'] as $columnId) {
+        expect($columns[$columnId]['hasFilterValues'] ?? null)->toBeFalse();
+        $this->postJson('/api/tables/invoices/values', ['columnId' => $columnId, 'filterModel' => []])
+            ->assertOk()
+            ->assertJsonPath('data.values', []);
+    }
+});
+
 it('AC-007: the table is forbidden without invoices.viewAny', function () {
     Sanctum::actingAs(invoicesTableUserWith(['view']));
 

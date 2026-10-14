@@ -4,6 +4,8 @@
  * 3-decimal strings ("1.000"); dates as ISO `Y-m-d`.
  */
 
+import type { PurchaseInvoiceType } from '@/features/purchase-invoice-installments/types'
+
 export const PURCHASE_ORDERS_DOMAIN = 'purchase-orders'
 
 /** `attachable_type` alias of `config/attachments.php` (spec 0210 D-14). */
@@ -150,6 +152,13 @@ export interface OrderFieldPermission {
   required: boolean
 }
 
+export interface PurchaseOrderInvoiceRef {
+  id: number
+  document_type: PurchaseInvoiceType
+  document_number: string | null
+  document_date: string | null
+}
+
 export interface PurchaseOrder {
   id: number
   number: number
@@ -178,6 +187,8 @@ export interface PurchaseOrder {
   copy_group_id: string | null
   created_by: NamedRef
   lines: PurchaseOrderLine[]
+  /** Passive invoices/proformas linked to the order (spec 0255 D-4). */
+  purchase_invoices: PurchaseOrderInvoiceRef[]
   merge_logs_count: number
   created_at: string
   updated_at: string

@@ -31,7 +31,7 @@ class PurchaseInvoiceService
         'paymentMethod:id,name',
         'financialAccount:id,name,iban',
         'companySite:id,name',
-        'operationalSite:id,name',
+        'operationalSite.addresses.city',
         'costType:id,name,color',
         'workOrder:id,code,title',
         'purchaseOrders:id,number,year',
