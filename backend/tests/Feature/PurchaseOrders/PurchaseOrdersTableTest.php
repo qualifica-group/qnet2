@@ -43,11 +43,12 @@ it('AC-015: the rows expose the contract columns and the row abilities', functio
         ->and($row['actions'])->toBe(['view', 'pdf', 'delete', 'activity']);
 });
 
-it('AC-015: an approved order is not editable or deletable and the transitions follow the permissions', function () {
+// Spec 0259 (REQUIREMENT CHANGED): an approved order keeps `update` for its service fields.
+it('AC-015: an approved order is not deletable, keeps its service fields and the transitions follow the permissions', function () {
     Sanctum::actingAs(purchaseOrderUserWith(['view', 'update', 'delete', 'changeStatus']));
     purchaseOrderWithLines(Status::Approved);
 
-    expect(orderRows($this)[0]['abilities'])->toBe(['update' => false, 'delete' => false, 'transitions' => ['in_validation', 'sent_to_supplier', 'cancelled']]);
+    expect(orderRows($this)[0]['abilities'])->toBe(['update' => true, 'delete' => false, 'transitions' => ['in_validation', 'sent_to_supplier', 'cancelled']]);
 });
 
 it('AC-015: an unknown column in filters or sort never reaches the query', function () {

@@ -19,8 +19,9 @@ use Illuminate\Validation\ValidationException;
 /**
  * Business logic of the purchase orders (spec 0210): create (with the monthly
  * copies of D-16), edit (partial since spec 0257: lines synced only when sent), delete. Amounts are always
- * computed here (D-12); header and lines are writable, and the order
- * deletable, only while it is a draft or in validation (D-10). Deleting a line
+ * computed here (D-12); what an edit may change by status is
+ * PurchaseOrderWriteGuard's (D-10, spec 0259); the order is deletable only
+ * while it is a draft or in validation. Deleting a line
  * linked to a purchase request line releases it (D-18).
  */
 class PurchaseOrderService
@@ -57,6 +58,7 @@ class PurchaseOrderService
         private readonly PurchaseOrderNumberAllocator $numbers,
         private readonly PurchaseRequestLineLinker $linker,
         private readonly PurchaseOrderDeletionGuard $deletion,
+        private readonly PurchaseOrderWriteGuard $writeGuard,
     ) {}
 
     /**
@@ -128,8 +130,7 @@ class PurchaseOrderService
         return DB::transaction(function () use ($order, $data, $actor): PurchaseOrder {
             // Step 1: serialize on the order and refuse a locked one
             $locked = $this->lock($order);
-            $this->assertEditable($locked);
-            $this->assertCompanyUnchanged($locked, $data);
+            $this->writeGuard->assertWritable($locked, $data);
 
             // Step 2: header and sectors (a partial edit sends only what changed, spec 0257 D-2)
             $locked->fill($data->header)->save();
@@ -199,14 +200,6 @@ class PurchaseOrderService
     {
         if (! $order->status->isEditable()) {
             abort(409, __('purchase_orders.not_editable'));
-        }
-    }
-
-    /** The numbering is per company: moving an order to another one would break it (spec 0244, D-1). */
-    private function assertCompanyUnchanged(PurchaseOrder $locked, PurchaseOrderData $data): void
-    {
-        if (array_key_exists('company_id', $data->header) && (int) $data->header['company_id'] !== (int) $locked->company_id) {
-            throw ValidationException::withMessages(['company_id' => [__('purchase_orders.company_locked')]]);
         }
     }
 

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0259-purchase-order-service-fields-after-approval" status="approved" owner="utente" date="2026-10-14">
+
+  <goal>
+    Dopo l'approvazione un ODA resta modificabile nei soli campi "di servizio" finche' non e' annullato; quello che sta
+    sul documento inviato al fornitore resta bloccato.
+  </goal>
+
+  <context>
+    Decisione utente 2026-10-14 (opzione 2 proposta dopo 0257): "quella che consigli". Prima: testata e righe
+    modificabili solo in Bozza / In validazione (0210 D-10), tutto il resto in sola lettura.
+  </context>
+
+  <decisions>
+    D-1 Campi di servizio: operational_site_id, general_notes, payment_method_id, is_internal_user, customer_id,
+        work_order_id, quote_id, opportunity_id, sector_ids, sector_notes. Fonte unica PurchaseOrderData::SERVICE_FIELDS.
+    D-2 Bozza / In validazione: invariato (tutto modificabile, societa' esclusa). Approvato, Inviato al fornitore,
+        Parzialmente evaso, Evaso: solo i campi di servizio. Annullato: nulla.
+    D-3 Restano bloccati dopo l'approvazione: fornitore, data, descrizione, societa' e sede, righe. Eliminazione e
+        unificazione restano solo in Bozza / In validazione.
+    D-4 Server: matrice campi (PurchaseOrdersAuthorization) per stato; la richiesta e il service rifiutano con 409
+        un PATCH che tocca altro (righe comprese) fuori dagli stati modificabili.
+    D-5 Griglia: estensione generica `editable_columns` sulla riga = colonne modificabili di QUELLA riga (assente =
+        tutte le colonne editabili). Gli ODA dopo l'approvazione la valorizzano con le colonne di servizio.
+    D-6 Scheda: le matite seguono la matrice campi del server; le righe solo in Bozza / In validazione; l'avviso dice
+        che in quello stato si modificano solo i campi di servizio.
+  </decisions>
+
+  <acceptance>
+    <ac id="AC-001">ODA inviato: PATCH di note, settori, commessa -> 200; di descrizione, fornitore o righe -> 409.</ac>
+    <ac id="AC-002">ODA annullato: ogni PATCH -> 409; nessuna cella modificabile.</ac>
+    <ac id="AC-003">Griglia: riga ODA approvata con `editable_columns` = colonne di servizio; la cella descrizione -> 403.</ac>
+    <ac id="AC-004">Scheda ODA inviato: matita su Note, nessuna su Descrizione e sulle righe.</ac>
+    <ac id="AC-005">Guide in-app IT/EN purchase-orders aggiornate.</ac>
+  </acceptance>
+</spec>

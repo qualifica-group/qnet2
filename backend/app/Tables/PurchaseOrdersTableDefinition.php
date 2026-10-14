@@ -32,11 +32,14 @@ class PurchaseOrdersTableDefinition extends AbstractTableDefinition
         private readonly PurchaseOrderCellWriter $cellWriter,
     ) {}
 
-    /** Spec 0257, D-3: only an order still in draft / in validation, and updatable by the actor, takes a cell edit. */
+    /**
+     * Spec 0257 D-3 / 0259 D-2: an order takes a cell edit until it is
+     * cancelled; past approval only on its service columns (`editable_columns`).
+     */
     public function authorizeUpdate(User $actor, Model $row): bool
     {
         /** @var PurchaseOrder $row */
-        return $row->status->isEditable() && Gate::forUser($actor)->allows('update', $row);
+        return $row->status->allowsServiceEdits() && Gate::forUser($actor)->allows('update', $row);
     }
 
     /** Spec 0257, D-3: the cell edit follows the form's rules through PurchaseOrderCellWriter. */
@@ -167,8 +170,10 @@ class PurchaseOrdersTableDefinition extends AbstractTableDefinition
             'lines_count' => (int) $row->lines_count,
             'created_by' => $this->summary($row->createdBy),
             'created_at' => $row->created_at,
+            // Spec 0259, D-5: past approval only the service columns of this row take a cell edit.
+            'editable_columns' => $row->status->isEditable() ? null : Catalog::serviceColumnIds(),
             'abilities' => [
-                'update' => $row->status->isEditable() && $gate->allows('update', $row),
+                'update' => $row->status->allowsServiceEdits() && $gate->allows('update', $row),
                 'delete' => $row->status->isEditable() && $gate->allows('delete', $row),
                 'transitions' => array_map(
                     static fn (PurchaseOrderStatus $status): string => $status->value,

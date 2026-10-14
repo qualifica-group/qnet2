@@ -7,11 +7,9 @@ use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\OperationalSite;
 use App\Models\PaymentMethod;
-use App\Models\PurchaseOrder;
 use App\Models\Registry;
 use App\Models\Sector;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 
 // Spec 0257: the ODA saves one field (or one line) at a time through a
@@ -19,11 +17,6 @@ use Laravel\Sanctum\Sanctum;
 // PurchaseOrderWriteRequest + PurchaseOrderService (PurchaseOrderCellWriter).
 
 uses(RefreshDatabase::class);
-
-function patchPurchaseOrderCell(PurchaseOrder $order, string $column, mixed $value): TestResponse
-{
-    return test()->patchJson("/api/tables/purchase-orders/rows/{$order->id}", ['column' => $column, 'value' => $value]);
-}
 
 beforeEach(fn () => Sanctum::actingAs(purchaseOrderUserWith(['view', 'update'])));
 
@@ -118,14 +111,9 @@ it('AC-003: the form rules hold in the cell', function () {
     patchPurchaseOrderCell($order, 'company', $order->company_id)->assertUnprocessable()->assertJsonValidationErrors('column');
 });
 
-it('AC-003: an order outside the editable statuses is a read-only row', function () {
+// Spec 0259 (REQUIREMENT CHANGED): past approval the row stays editable on its service columns only.
+it('AC-003: an order outside the editable statuses refuses its locked cells', function () {
     $locked = purchaseOrderWithLines(PurchaseOrderStatus::Approved);
-    $draft = purchaseOrderWithLines();
-
-    $rows = collect($this->postJson('/api/tables/purchase-orders/rows', ['startRow' => 0, 'endRow' => 10])->assertOk()->json('items'))->keyBy('id');
-
-    expect($rows[$locked->id]['editable'])->toBeFalse()
-        ->and($rows[$draft->id]['editable'])->toBeTrue();
 
     patchPurchaseOrderCell($locked, 'description', 'Late')->assertForbidden();
 });

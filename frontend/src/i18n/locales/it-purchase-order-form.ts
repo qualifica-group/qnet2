@@ -20,6 +20,8 @@ export const purchaseOrderForm = {
   delete: 'Elimina',
   actionsLabel: 'Azioni ordine',
   readOnlyNotice: 'Questa ODA è {{status}} e non può essere modificata.',
+  serviceOnlyNotice:
+    'Questa ODA è {{status}}: si modificano solo note, tag EA, pagamento, sede operativa e collegamenti. Fornitore, data, descrizione, sede e righe sono bloccati.',
   sections: {
     header: 'Testata',
     lines: 'Righe',

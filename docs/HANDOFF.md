@@ -3,7 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0258 — Cataloghi Acquisti modificabili in cella — VERDE, NON COMMITTATO (2026-10-14)
+## Spec 0259 — ODA: campi di servizio modificabili dopo l'approvazione — VERDE, NON COMMITTATO (2026-10-14)
+
+- Spec `docs/specs/0259-purchase-order-service-fields-after-approval.xml` (decisione utente: opzione 2).
+- Fonte unica `PurchaseOrderData::SERVICE_FIELDS`; `PurchaseOrderStatus::allowsServiceEdits()` (tutto tranne Cancelled).
+  `PurchaseOrdersAuthorization`: update vero fino all'annullamento, campi non di servizio readonly dopo l'approvazione.
+  Nuovo `PurchaseOrderWriteGuard` (allows/assertWritable, assorbe il blocco societa'): usato dalla richiesta (409 anticipato,
+  messaggio `purchase_orders.only_service_fields`) e dal service. Righe, eliminazione e unificazione: solo Bozza/In validazione.
+- Griglia: estensione generica riga `editable_columns` (null = tutte), FE `isRowCellEditable` in column-defaults; ODA la
+  valorizza con `PurchaseOrderColumnCatalog::serviceColumnIds()` dopo l'approvazione.
+- FE scheda: `toOrderResourcePermissions` segue la matrice server (lock solo senza update), `canEditOrderLines` per le righe,
+  avviso `purchaseOrderForm.serviceOnlyNotice`. Test: PurchaseOrderServiceFieldsTest (nuovo), CrudTest/TableTest/InlineEditTest,
+  FE detail/form-logic aggiornati (REQUIREMENT CHANGED). `patchPurchaseOrderCell` spostato in tests/Helpers.
+- Guide IT/EN purchase-orders aggiornate (overview, edit). Manuale Claude Docs da aggiornare a mano.
+
+## Spec 0258 — Cataloghi Acquisti modificabili in cella — VERDE, COMMITTATO 40b937e9 (2026-10-14)
 
 - Spec `docs/specs/0258-purchasing-catalogs-grid-inline-editing.xml`. Tipi di costo (name, description, nature, color,
   is_active), Priorita' RDA (name, description, color, is_active, is_default), Stati ODA e Stati righe RDA (name, color).
@@ -13,9 +27,9 @@
   `nature` dichiara `options` CostTypeNature. Test: tests/Feature/Tables/PurchasingCatalogsInlineEditTest.php.
 - FE: nuovo editor generico di cella `color` (`components/data-table/color-cell-editor.tsx`, chiave `table.colorEditor.list`).
 - Guide in-app IT/EN dei 4 cataloghi: un passo "modifica in cella". Manuale Claude Docs da aggiornare a mano.
-- Aperta: regola modificabilita' ODA dopo l'approvazione (opzioni 1/2/3 proposte all'utente, nessuna scelta ancora).
+- Regola modificabilita' ODA dopo l'approvazione decisa: opzione 2 (spec 0259).
 
-## Spec 0257 — ODA modificabili in lista e scheda senza Salva — VERDE, NON COMMITTATO (2026-10-14)
+## Spec 0257 — ODA modificabili in lista e scheda senza Salva — VERDE, COMMITTATO 40b937e9 (2026-10-14)
 
 - Spec `docs/specs/0257-purchase-order-inline-editing.xml` (D-1..D-8), stesso schema di 0256.
 - BE: `PurchaseOrderWriteRequest` in modifica = PATCH parziale (sede validata sulla societa' salvata), `PurchaseOrderData::lines`

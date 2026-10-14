@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Le **schede per stato** in alto restringono l’elenco a un solo stato (**Tutti** li mostra tutti). La freccia a sinistra di ogni riga ne apre le **righe**. Puoi filtrare, ordinare ed esportare; in fondo trovi i totali di imponibile, IVA e totale del filtro corrente. Sugli ordini in **Bozza** o **In validazione** puoi **modificare direttamente nelle celle** Data ordine, Descrizione, Fornitore (solo anagrafiche fornitore), Società/Sede (solo sedi della società dell’ordine), Sede operativa, Metodo di pagamento, Cliente, Commessa, Contratto/Offerta, Opportunità, Tag EA e Fruitore interno: fai doppio clic sulla cella, scegli il valore e conferma. Valgono le stesse regole della scheda. La **Società** non si cambia: la numerazione è per società. L’ordine si apre con l’icona **Visualizza**.',
+          text: 'Le **schede per stato** in alto restringono l’elenco a un solo stato (**Tutti** li mostra tutti). La freccia a sinistra di ogni riga ne apre le **righe**. Puoi filtrare, ordinare ed esportare; in fondo trovi i totali di imponibile, IVA e totale del filtro corrente. Sugli ordini in **Bozza** o **In validazione** puoi **modificare direttamente nelle celle** Data ordine, Descrizione, Fornitore (solo anagrafiche fornitore), Società/Sede (solo sedi della società dell’ordine), Sede operativa, Metodo di pagamento, Cliente, Commessa, Contratto/Offerta, Opportunità, Tag EA e Fruitore interno: fai doppio clic sulla cella, scegli il valore e conferma. Dopo l’approvazione, finché l’ordine non è annullato, restano modificabili solo Sede operativa, Metodo di pagamento, Cliente, Commessa, Contratto/Offerta, Opportunità, Tag EA e Fruitore interno. Valgono le stesse regole della scheda. La **Società** non si cambia: la numerazione è per società. L’ordine si apre con l’icona **Visualizza**.',
         },
         {
           type: 'table',
@@ -61,7 +61,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Aprendo un’ODA vedi la sua **scheda**: in alto stato, azioni e totali; sotto **Testata**, **Organizzazione e collegamenti**, **Tag EA e note**, **Righe** e **Documenti**. Non c’è un pulsante Salva generale: in **Bozza** e **In validazione** ogni campo si modifica da solo.',
+          text: 'Aprendo un’ODA vedi la sua **scheda**: in alto stato, azioni e totali; sotto **Testata**, **Organizzazione e collegamenti**, **Tag EA e note**, **Righe** e **Documenti**. Non c’è un pulsante Salva generale: ogni campo si modifica da solo. In **Bozza** e **In validazione** si modifica tutto; dopo l’approvazione, finché l’ordine non è **Annullato**, restano modificabili solo i campi di servizio: **Note generali**, **Tag EA** e **Specifica**, **Metodo di pagamento**, **Sede operativa**, **Fruitore interno**, **Cliente**, **Commessa**, **Contratto/Offerta** e **Opportunità**. Fornitore, data, descrizione, sede e righe restano come sul documento inviato.',
         },
         {
           type: 'steps',
@@ -73,7 +73,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'La **Società** è in sola lettura dopo la creazione. Si apre un campo alla volta: aprendone un altro le modifiche non salvate del primo vengono scartate. Fuori da Bozza e In validazione, o senza permesso di modifica, le matite non compaiono.',
+          text: 'La **Società** è in sola lettura dopo la creazione. Si apre un campo alla volta: aprendone un altro le modifiche non salvate del primo vengono scartate. Sulle righe e sui campi bloccati, su un ordine annullato o senza permesso di modifica, le matite non compaiono.',
         },
       ],
     },

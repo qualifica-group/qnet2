@@ -12,6 +12,7 @@ use App\Models\PurchaseOrderReceipt;
 use App\Models\Registry;
 use App\Models\User;
 use App\Models\VatRate;
+use Illuminate\Testing\TestResponse;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -180,5 +181,13 @@ if (! function_exists('purchaseOrderReceivable')) {
         PurchaseOrderLine::query()->where('purchase_order_id', $order->id)->update(['quantity' => $quantity]);
 
         return $order->fresh('lines');
+    }
+}
+
+if (! function_exists('patchPurchaseOrderCell')) {
+    /** PATCH one cell of the `purchase-orders` grid (specs 0257, 0259). */
+    function patchPurchaseOrderCell(PurchaseOrder $order, string $column, mixed $value): TestResponse
+    {
+        return test()->patchJson("/api/tables/purchase-orders/rows/{$order->id}", ['column' => $column, 'value' => $value]);
     }
 }

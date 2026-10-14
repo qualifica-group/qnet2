@@ -10,7 +10,7 @@ import { previewTotals } from '@/features/purchase-requests/purchase-request-amo
 import { PurchaseOrderLineRow } from '@/features/purchase-orders/purchase-order-line-row'
 import { PurchaseOrderLineView } from '@/features/purchase-orders/purchase-order-line-view'
 import { PurchaseOrderLinesHeader } from '@/features/purchase-orders/purchase-order-lines-header'
-import { isOrderReadOnly } from '@/features/purchase-orders/purchase-order-permissions'
+import { canEditOrderLines } from '@/features/purchase-orders/purchase-order-permissions'
 import { PurchaseOrderTotals } from '@/features/purchase-orders/purchase-order-totals'
 import type { PurchaseOrder } from '@/features/purchase-orders/types'
 import type { PurchaseOrderDetailEditor } from '@/features/purchase-orders/use-purchase-order-inline-edit'
@@ -31,7 +31,7 @@ export function PurchaseOrderLinesRecord({ order, editor }: PurchaseOrderLinesRe
   const { t } = useTranslation()
   const confirm = useConfirm()
   const { form, lineArray, lines, inline, startNewLine, removeLine } = editor
-  const canWrite = !isOrderReadOnly(order)
+  const canWrite = canEditOrderLines(order)
 
   const askRemove = async (index: number) => {
     const confirmed = await confirm({

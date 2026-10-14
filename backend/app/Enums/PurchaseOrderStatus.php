@@ -94,4 +94,13 @@ enum PurchaseOrderStatus: string
     {
         return in_array($this, [self::Draft, self::InValidation], true);
     }
+
+    /**
+     * Past approval the order still takes its service fields
+     * (PurchaseOrderData::SERVICE_FIELDS), until it is cancelled (spec 0259, D-2).
+     */
+    public function allowsServiceEdits(): bool
+    {
+        return $this !== self::Cancelled;
+    }
 }

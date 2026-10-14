@@ -328,17 +328,19 @@ it('shows the order with its abilities, and 403 without view', function () {
     $this->getJson("/api/purchase-orders/{$order->id}")->assertForbidden();
 });
 
-it('locks update, delete and merge abilities once the order is approved', function () {
+// Spec 0259 (REQUIREMENT CHANGED): past approval `update` holds for the service fields.
+it('locks delete, merge and the supplier once the order is approved, keeping the service fields', function () {
     $order = purchaseOrderWithLines(PurchaseOrderStatus::Approved);
     Sanctum::actingAs(purchaseOrderUserWith(['view', 'update', 'delete', 'merge', 'send']));
 
     $this->getJson("/api/purchase-orders/{$order->id}")
         ->assertOk()
-        ->assertJsonPath('data.abilities.update', false)
+        ->assertJsonPath('data.abilities.update', true)
         ->assertJsonPath('data.abilities.delete', false)
         ->assertJsonPath('data.abilities.merge', false)
         ->assertJsonPath('data.abilities.send', true)
-        ->assertJsonPath('data.field_permissions.supplier_id.editable', false);
+        ->assertJsonPath('data.field_permissions.supplier_id.editable', false)
+        ->assertJsonPath('data.field_permissions.general_notes.editable', true);
 });
 
 it('exposes the supplier primary email and qualification', function () {

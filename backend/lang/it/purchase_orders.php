@@ -14,4 +14,5 @@ return [
     'line_already_complete' => 'La riga è già completa o ha il residuo chiuso.',
     'residual_below_billed' => 'Il residuo non può essere chiuso: la quantità fatturata supera il ricevuto.',
     'residual_not_closed' => 'Il residuo della riga non è chiuso.',
+    'only_service_fields' => 'Dopo l’approvazione si possono modificare solo note, tag EA, pagamento, sede operativa e collegamenti: fornitore, data, descrizione, sede e righe sono bloccati.',
 ];

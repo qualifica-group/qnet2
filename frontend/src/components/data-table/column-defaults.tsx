@@ -156,6 +156,19 @@ export function resolveCellRenderer(
  * returned callback only re-checks the PER-ROW flag (`row.editable`, D-4):
  * the column-level gate is already resolved here, once, at colDef build time.
  */
+/**
+ * The PER-ROW gate (D-4): the row must be editable and, when it narrows its
+ * own editable columns (`editable_columns`, spec 0259 D-5 — e.g. an approved
+ * ODA keeps only its service columns), list this one. Absent = every column.
+ */
+function isRowCellEditable(row: TableRow | undefined, columnId: string): boolean {
+  if (row?.editable !== true) {
+    return false
+  }
+  const columns = row.editable_columns
+  return !Array.isArray(columns) || columns.includes(columnId)
+}
+
 export function resolveEditableColumnProps(
   column: TableColumn,
 ): Pick<ColDef<TableRow>, 'editable' | 'cellEditor' | 'cellEditorParams' | 'cellEditorPopup'> {
@@ -171,7 +184,7 @@ export function resolveEditableColumnProps(
     return { editable: false }
   }
   return {
-    editable: (params: EditableCallbackParams<TableRow>) => params.data?.editable === true,
+    editable: (params: EditableCallbackParams<TableRow>) => isRowCellEditable(params.data, column.id),
     cellEditor: spec.cellEditor,
     cellEditorParams: spec.cellEditorParams?.(column),
     cellEditorPopup: spec.cellEditorPopup,

@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'The **status tabs** at the top narrow the list to one status (**All** shows them all). The arrow at the left of each row opens its **lines**. You can filter, sort and export; at the bottom you find the taxable, VAT and grand totals of the current filter. On orders in **Draft** or **In validation** you can **edit directly in the cells** Order date, Description, Supplier (suppliers only), Company site (only sites of the order company), Operational site, Payment method, Customer, Work order, Contract/Quote, Opportunity, EA tags and Internal user: double-click the cell, pick the value and confirm. The same rules as the record apply. The **Company** cannot change: numbering is per company. The order opens with the **View** icon.',
+          text: 'The **status tabs** at the top narrow the list to one status (**All** shows them all). The arrow at the left of each row opens its **lines**. You can filter, sort and export; at the bottom you find the taxable, VAT and grand totals of the current filter. On orders in **Draft** or **In validation** you can **edit directly in the cells** Order date, Description, Supplier (suppliers only), Company site (only sites of the order company), Operational site, Payment method, Customer, Work order, Contract/Quote, Opportunity, EA tags and Internal user: double-click the cell, pick the value and confirm. After approval, until the order is cancelled, only Operational site, Payment method, Customer, Work order, Contract/Quote, Opportunity, EA tags and Internal user stay editable. The same rules as the record apply. The **Company** cannot change: numbering is per company. The order opens with the **View** icon.',
         },
         {
           type: 'table',
@@ -61,7 +61,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Opening an ODA shows its **record**: status, actions and totals at the top; below, **Header**, **Organization and links**, **EA tags and notes**, **Lines** and **Documents**. There is no general Save button: in **Draft** and **In validation** every field is edited on its own.',
+          text: 'Opening an ODA shows its **record**: status, actions and totals at the top; below, **Header**, **Organization and links**, **EA tags and notes**, **Lines** and **Documents**. There is no general Save button: every field is edited on its own. In **Draft** and **In validation** everything can change; after approval, until the order is **Cancelled**, only the service fields stay editable: **General notes**, **EA tags** and **Specification**, **Payment method**, **Operational site**, **Internal user**, **Customer**, **Work order**, **Contract/Quote** and **Opportunity**. Supplier, date, description, site and lines stay as on the document sent.',
         },
         {
           type: 'steps',
@@ -73,7 +73,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'The **Company** is read-only after creation. One field opens at a time: opening another one discards the unsaved changes of the first. Outside Draft and In validation, or without the edit permission, no pencil is shown.',
+          text: 'The **Company** is read-only after creation. One field opens at a time: opening another one discards the unsaved changes of the first. On locked lines and fields, on a cancelled order or without the edit permission, no pencil is shown.',
         },
       ],
     },

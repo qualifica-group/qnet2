@@ -6,6 +6,7 @@ use App\DataObjects\PurchaseOrders\PurchaseOrderData;
 use App\Enums\HttpStatusEnum;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Models\PurchaseOrder;
+use App\Services\PurchaseOrders\PurchaseOrderWriteGuard;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -105,10 +106,11 @@ class PurchaseOrderWriteRequest extends FormRequest
     {
         $order = $this->purchaseOrder();
 
-        if ($order !== null && ! $order->status->isEditable() && $this->user()?->can('update', $order)) {
+        // Past approval only the service fields may be sent (spec 0259, D-4).
+        if ($order !== null && $this->user()?->can('update', $order) && ! app(PurchaseOrderWriteGuard::class)->allows($order, array_keys($this->all()))) {
             throw new HttpResponseException(response()->json([
                 'success' => false,
-                'message' => __('This purchase order can no longer be changed.'),
+                'message' => __($order->status->allowsServiceEdits() ? 'purchase_orders.only_service_fields' : 'purchase_orders.not_editable'),
             ], HttpStatusEnum::CONFLICT->value));
         }
     }

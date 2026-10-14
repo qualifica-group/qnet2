@@ -10,7 +10,7 @@ import {
   newOrderLineValues,
   toOrderFormValues,
 } from '@/features/purchase-orders/purchase-order-payload'
-import { isOrderReadOnly, toOrderResourcePermissions } from '@/features/purchase-orders/purchase-order-permissions'
+import { canEditOrderLines, toOrderResourcePermissions } from '@/features/purchase-orders/purchase-order-permissions'
 import { buildPurchaseOrderSchema, type PurchaseOrderFormValues } from '@/features/purchase-orders/purchase-order-schema'
 import { applyOrderServerErrors } from '@/features/purchase-orders/purchase-order-server-errors'
 import { extractVat, MissingVatRateError, previewLineAmounts, previewTotals } from '@/features/purchase-requests/purchase-request-amounts'
@@ -149,25 +149,31 @@ describe('purchase order payload (AC-019)', () => {
   })
 })
 
-describe('purchase order permissions', () => {
-  it('locks the whole order outside draft/in_validation or without update', () => {
-    expect(isOrderReadOnly(makePurchaseOrder())).toBe(false)
-    expect(isOrderReadOnly(makePurchaseOrder({ status: 'in_validation' }))).toBe(false)
-    expect(isOrderReadOnly(makePurchaseOrder({ status: 'approved' }))).toBe(true)
+describe('purchase order permissions (spec 0259, REQUIREMENT CHANGED)', () => {
+  it('edits the lines only in draft/in_validation and with update', () => {
+    expect(canEditOrderLines(makePurchaseOrder())).toBe(true)
+    expect(canEditOrderLines(makePurchaseOrder({ status: 'in_validation' }))).toBe(true)
+    expect(canEditOrderLines(makePurchaseOrder({ status: 'approved' }))).toBe(false)
     const noUpdate = makePurchaseOrder()
     noUpdate.abilities = { ...noUpdate.abilities, update: false }
-    expect(isOrderReadOnly(noUpdate)).toBe(true)
+    expect(canEditOrderLines(noUpdate)).toBe(false)
   })
 
-  it('maps field_permissions and forces every field read-only on a locked order', () => {
-    const open = toOrderResourcePermissions(
-      makePurchaseOrder({ field_permissions: { description: { visible: true, editable: false, required: true } } }),
+  it('follows the server field matrix, and locks every field without update', () => {
+    const approved = toOrderResourcePermissions(
+      makePurchaseOrder({
+        status: 'approved',
+        field_permissions: { description: { visible: true, editable: false, required: true } },
+      }),
     )
-    expect(open.fields.description).toMatchObject({ editable: false, readonly: true, required: true })
-    expect(open.fields.supplier_id).toMatchObject({ editable: true })
+    expect(approved.fields.description).toMatchObject({ editable: false, readonly: true, required: true })
+    expect(approved.fields.general_notes).toMatchObject({ editable: true })
+    expect(approved.resource.update).toBe(true)
 
-    const locked = toOrderResourcePermissions(makePurchaseOrder({ status: 'approved' }))
-    expect(locked.fields.supplier_id).toMatchObject({ editable: false, readonly: true })
+    const noUpdate = makePurchaseOrder({ status: 'cancelled' })
+    noUpdate.abilities = { ...noUpdate.abilities, update: false }
+    const locked = toOrderResourcePermissions(noUpdate)
+    expect(locked.fields.general_notes).toMatchObject({ editable: false, readonly: true })
     expect(locked.resource.update).toBe(false)
   })
 })

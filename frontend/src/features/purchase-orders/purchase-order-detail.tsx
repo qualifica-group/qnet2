@@ -108,7 +108,9 @@ function PurchaseOrderDetailContent({ order, onBack, onDeleted, onChanged }: Pur
 
         {statusLocked ? (
           <p role="status" className="mx-4 mt-3 rounded-md border bg-surface px-3 py-2 text-xs">
-            {t('purchaseOrderForm.readOnlyNotice', { status: nameOf(order.status).toLowerCase() })}
+            {t(order.abilities.update ? 'purchaseOrderForm.serviceOnlyNotice' : 'purchaseOrderForm.readOnlyNotice', {
+              status: nameOf(order.status).toLowerCase(),
+            })}
           </p>
         ) : null}
 

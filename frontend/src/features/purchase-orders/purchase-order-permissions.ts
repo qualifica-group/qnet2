@@ -27,9 +27,13 @@ export const ORDER_FIELD_KEYS = [
 
 const OPEN_FIELD: OrderFieldPermission = { visible: true, editable: true, required: false }
 
-/** An order outside draft/in_validation (D-10), or one the actor cannot update, is read-only as a whole. */
-export function isOrderReadOnly(order: PurchaseOrder): boolean {
-  return !EDITABLE_STATUSES.includes(order.status) || !order.abilities.update
+/**
+ * The lines (and every header field) change only while the order is a draft
+ * or in validation (D-10); past approval the server keeps only the service
+ * fields open (spec 0259), never the lines.
+ */
+export function canEditOrderLines(order: PurchaseOrder): boolean {
+  return EDITABLE_STATUSES.includes(order.status) && order.abilities.update
 }
 
 function toFieldPermission(permission: OrderFieldPermission, locked: boolean): FieldPermission {
@@ -46,11 +50,12 @@ function toFieldPermission(permission: OrderFieldPermission, locked: boolean): F
 
 /**
  * Adapts the `field_permissions` of the detail payload to the shared
- * `ResourcePermissions` shape the metadata-driven fields read; a read-only
- * order locks every known field whatever the role matrix says.
+ * `ResourcePermissions` shape the metadata-driven fields read. The server
+ * matrix already follows the status (spec 0259: service fields only past
+ * approval, nothing once cancelled); without `update` every field is locked.
  */
 export function toOrderResourcePermissions(order: PurchaseOrder): ResourcePermissions {
-  const locked = isOrderReadOnly(order)
+  const locked = !order.abilities.update
   const fields = Object.fromEntries(
     ORDER_FIELD_KEYS.map((key) => [key, toFieldPermission(order.field_permissions[key] ?? OPEN_FIELD, locked)]),
   )

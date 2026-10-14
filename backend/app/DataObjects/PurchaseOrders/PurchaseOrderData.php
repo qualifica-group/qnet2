@@ -13,6 +13,15 @@ use Illuminate\Support\Arr;
  */
 final readonly class PurchaseOrderData
 {
+    /**
+     * Fields still writable past approval (spec 0259, D-1): what the supplier
+     * did not receive. Supplier, date, description, company, site and lines stay locked.
+     */
+    public const array SERVICE_FIELDS = [
+        'operational_site_id', 'general_notes', 'payment_method_id', 'is_internal_user', 'customer_id',
+        'work_order_id', 'quote_id', 'opportunity_id', 'sector_ids', 'sector_notes',
+    ];
+
     /** Header columns a client may write. */
     public const array HEADER_KEYS = [
         'supplier_id', 'company_id', 'company_site_id', 'operational_site_id', 'order_date', 'description',

@@ -246,6 +246,17 @@ describe('resolveEditableColumnProps (spec 0053)', () => {
     expect(editableFn(editableParams({ id: 1, actions: [] }))).toBe(false)
     expect(editableFn(editableParams(undefined))).toBe(false)
   })
+
+  it('honours the row narrowing its own editable columns (spec 0259 D-5)', () => {
+    const column = stubColumn({ id: 'name', type: 'text', editable: true })
+    const editableFn = resolveEditableColumnProps(column).editable as (
+      params: EditableCallbackParams<TableRow>,
+    ) => boolean
+
+    expect(editableFn(editableParams({ id: 1, actions: [], editable: true, editable_columns: ['name'] }))).toBe(true)
+    expect(editableFn(editableParams({ id: 1, actions: [], editable: true, editable_columns: ['notes'] }))).toBe(false)
+    expect(editableFn(editableParams({ id: 1, actions: [], editable: true, editable_columns: null }))).toBe(true)
+  })
 })
 
 describe('resolveEditableColumnProps — relation columns (spec 0054 D-7)', () => {

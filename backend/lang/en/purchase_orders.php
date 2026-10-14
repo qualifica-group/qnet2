@@ -14,4 +14,5 @@ return [
     'line_already_complete' => 'The line is already complete or its residual is closed.',
     'residual_below_billed' => 'The residual cannot be closed: the billed quantity exceeds the received one.',
     'residual_not_closed' => 'The residual of the line is not closed.',
+    'only_service_fields' => 'After approval only notes, EA tags, payment, operational site and links can change: supplier, date, description, site and lines are locked.',
 ];

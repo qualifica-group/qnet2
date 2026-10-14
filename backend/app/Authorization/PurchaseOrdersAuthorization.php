@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Authorization;
 
+use App\DataObjects\PurchaseOrders\PurchaseOrderData;
 use App\Models\PurchaseOrder;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
@@ -11,7 +12,8 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * ResourceAuthorization for the `purchase-orders` resource (spec 0210, D-20).
  * The header fields are writable by whoever may write while the order is a
- * draft or in validation (D-10); totals, number and status are set by the
+ * draft or in validation (D-10), and past approval only the service fields
+ * until the order is cancelled (spec 0259); totals, number and status are set by the
  * services and are not in the catalogue. Only the five fields the form always
  * requires are mandatory (locked in the Role matrix).
  */
@@ -60,7 +62,8 @@ class PurchaseOrdersAuthorization extends AbstractResourceAuthorization
     }
 
     /**
-     * An order past draft/in validation is read-only (D-10).
+     * A cancelled order is read-only; past approval the service fields stay
+     * writable (spec 0259, D-2), so `update` holds until then.
      *
      * @return array<string, bool>
      */
@@ -68,7 +71,7 @@ class PurchaseOrdersAuthorization extends AbstractResourceAuthorization
     {
         $permissions = parent::resourcePermissions($actor, $model);
 
-        if ($this->isLocked($model)) {
+        if ($this->isCancelled($model)) {
             $permissions['update'] = false;
         }
 
@@ -80,12 +83,15 @@ class PurchaseOrdersAuthorization extends AbstractResourceAuthorization
      */
     protected function fieldPermissionCeiling(User $actor, ?Model $model): array
     {
-        $mayWrite = $this->actorMayWrite($actor, $model) && ! $this->isLocked($model);
+        $mayWrite = $this->actorMayWrite($actor, $model) && ! $this->isCancelled($model);
+        $serviceOnly = $this->isLocked($model);
         $permissions = [];
 
         foreach ($this->fields() as $field) {
             // The numbering is per company: it is fixed once the order exists (spec 0244, D-1)
             $fixed = $field->key === 'company_id' && $model?->exists === true;
+            // Past approval only the service fields stay open (spec 0259, D-2)
+            $fixed = $fixed || ($serviceOnly && ! in_array($field->key, PurchaseOrderData::SERVICE_FIELDS, true));
             $permissions[$field->key] = $mayWrite && ! $fixed
                 ? FieldPermission::visibleEditable(required: $field->mandatory)
                 : FieldPermission::visibleReadonly();
@@ -108,6 +114,11 @@ class PurchaseOrdersAuthorization extends AbstractResourceAuthorization
             'export' => $actor->can('purchase-orders.export'),
             'view_activity' => $model !== null && $actor->can('purchase-orders.viewActivity'),
         ];
+    }
+
+    private function isCancelled(?Model $model): bool
+    {
+        return $model instanceof PurchaseOrder && $model->status !== null && ! $model->status->allowsServiceEdits();
     }
 
     private function isLocked(?Model $model): bool

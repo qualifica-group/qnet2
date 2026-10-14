@@ -2,6 +2,7 @@
 
 namespace App\Tables\PurchaseOrders;
 
+use App\DataObjects\PurchaseOrders\PurchaseOrderData;
 use App\Enums\PurchaseOrderStatus;
 use App\Tables\PurchaseRequests\PurchaseRequestColumnCatalog as Columns;
 
@@ -122,6 +123,26 @@ final class PurchaseOrderColumnCatalog
         ];
 
         return array_map(self::withEditing(...), $columns);
+    }
+
+    /**
+     * The editable columns whose field stays writable past approval (spec 0259, D-5).
+     *
+     * @return array<int, string>
+     */
+    public static function serviceColumnIds(): array
+    {
+        $ids = [];
+
+        foreach (self::columns() as $column) {
+            $field = $column['editableField'] ?? $column['id'];
+
+            if (($column['editable'] ?? false) === true && in_array($field, PurchaseOrderData::SERVICE_FIELDS, true)) {
+                $ids[] = $column['id'];
+            }
+        }
+
+        return $ids;
     }
 
     /**

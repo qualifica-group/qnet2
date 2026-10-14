@@ -355,6 +355,12 @@ export interface TableRow {
    */
   editable?: boolean
   /**
+   * The column ids THIS row lets edit, when it narrows them (spec 0259 D-5:
+   * an approved ODA keeps only its service columns). Absent or null = every
+   * column the catalogue declares editable.
+   */
+  editable_columns?: string[] | null
+  /**
    * Row-scoped options convention (spec 0054 follow-up, AC-026/027): a row
    * MAY carry `<columnId>_options` (e.g. `workflow_status_options`) — the
    * subset of that badge/enum column's catalog valid for THIS row, when the

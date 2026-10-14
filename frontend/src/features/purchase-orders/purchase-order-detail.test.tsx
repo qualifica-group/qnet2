@@ -178,14 +178,34 @@ describe('ODA detail lines, one at a time (spec 0257 AC-004)', () => {
 })
 
 describe('ODA detail read-only', () => {
-  it('locks everything on an approved order', async () => {
-    renderDetail(makePurchaseOrder({ status: 'approved', lines: TWO_LINES }))
+  // Spec 0259 (REQUIREMENT CHANGED): past approval the service fields keep their pencil.
+  it('keeps only the service fields editable on an approved order', async () => {
+    const locked = { visible: true, editable: false, required: true }
+    renderDetail(
+      makePurchaseOrder({
+        status: 'approved',
+        lines: TWO_LINES,
+        field_permissions: { description: locked, supplier_id: locked, order_date: locked, company_site_id: locked },
+      }),
+    )
 
-    expect(await screen.findByText('This ODA is approved and cannot be changed.')).toBeInTheDocument()
-    expect(screen.queryAllByRole('button', { name: /^Edit / })).toHaveLength(0)
+    expect(await screen.findByText(/only notes, EA tags, payment/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit General notes' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Description' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Supplier' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit line 1' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Add line' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Remove line 1' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
+  })
+
+  it('locks everything on a cancelled order', async () => {
+    const order = makePurchaseOrder({ status: 'cancelled' })
+    order.abilities = { ...order.abilities, update: false }
+    renderDetail(order)
+
+    expect(await screen.findByText('This ODA is cancelled and cannot be changed.')).toBeInTheDocument()
+    expect(screen.queryAllByRole('button', { name: /^Edit / })).toHaveLength(0)
   })
 
   it('locks a draft the actor cannot update, without the status notice', () => {
