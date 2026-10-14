@@ -3,13 +3,24 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## MIGRAZIONE UTENTI: ACCOUNT GIUSTO + [OLD] SUGLI ATTIVI NON COLLEGATI (2026-10-14) — VERDE, NON COMMITTATO
+## LINEE PRODOTTO: MENU DELLE SELECT PIU' LARGO (2026-10-14) — VERDE, COMMITTATO
+
+- Richiesta utente: in Gestione richieste le select delle linee prodotto (radice, filtro, categoria) aprivano un
+  menu largo quanto la colonna, troppo stretto; ora come il prodotto delle righe offerta (`quote-product-select.tsx`):
+  `w-[min(36rem, spazio disponibile)]`, mai piu' stretto del trigger.
+- `SearchableSelect` riceve `contentClassName` (stessa manopola di `AsyncPaginatedSelect`), unito al popup con `cn()`.
+  Costante `CATEGORY_POPUP_WIDTH_CLASS` in `features/product-lines/category-popup-width.ts`, passata dalle tre select
+  `ProductCategory{Root,Filter,Tree}Select` -> vale ovunque c'e' `ProductLinesField`/`CompetenceLinesField`.
+- Test: +1 in `searchable-select.test.tsx`; Vitest components + request-management + product-lines verdi, tsc -b ok,
+  ESLint ok. Manuale: nessun impatto (solo larghezza del menu).
+
+## MIGRAZIONE UTENTI: ACCOUNT GIUSTO + [OLD] SUGLI ATTIVI NON COLLEGATI (2026-10-14) — VERDE, COMMITTATO
 
 - Decisione utente: ogni utente legacy si collega all'account qnet-2 della stessa persona; un utente legacy ATTIVO
   non collegato viene creato con "[OLD] " davanti al first_name (`UsersSource::UNMATCHED_NAME_MARK`; users.name ne
   deriva). Inattivi e adottati: nessun marchio. Il marchio sta in qnet-2 perche' solo qnet-2 conosce l'esito del
   matcher. `ExistingUserMatcher` invariato. Spec 0013 amendment "quater".
-- Legacy (`../qnet`, NON committato): `UserMigrationController` ordina `active DESC, last_name, name, id` (negli
+- Legacy (`../qnet`, committato 0a8067d2): `UserMigrationController` ordina `active DESC, last_name, name, id` (negli
   omonimi D'Aleo/De Rosa/Giordano il seed si collega al record attivo; tolto il TODO commentato `where('id', 449)`);
   nuovo `app/Support/Migration/LegacyUserAccountAliases` (legacy id => email qnet-2) per 9 nomi scritti diversamente
   (87, 118, 135, 300, 309, 343, 345, 424, 466).
