@@ -43,6 +43,18 @@ it('defaults the offer date to today when a channel does not send it (AC-001)', 
     expect($quote->quote_date->toDateString())->toBe('2026-10-12');
 });
 
+it('defaults the offer date to today even with model events off, as in DemoDataSeeder (AC-001)', function () {
+    $opportunityId = Opportunity::factory()->create()->id;
+    $actor = nameDerivationActor();
+
+    $quote = Quote::withoutEvents(fn (): Quote => nameDerivationQuoteService()->create(
+        nameDerivationCreateQuoteData($opportunityId),
+        $actor,
+    ));
+
+    expect($quote->quote_date->toDateString())->toBe('2026-10-12');
+});
+
 it('stores the submitted offer date on create and exposes it (AC-002)', function () {
     Sanctum::actingAs(quoteTableUserWith(['create', 'view']));
 

@@ -3,6 +3,22 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## FIX: `quote_date` NULL NEL SEED DEMO (2026-10-14) — VERDE, NON COMMITTATO
+
+- Bug: `db:seed --class=DemoDataSeeder` falliva in `DemoQuoteSeeder` con "Column 'quote_date' cannot be null".
+  Causa: il default "oggi" della spec 0228 AC-001 stava solo nell'hook `creating` di `Quote`, e `DemoDataSeeder`
+  usa `WithoutModelEvents`, che lo spegne.
+- Fix: `CreateQuoteData::attributes()` mette `quote_date` = oggi quando non arriva, quindi ogni `QuoteService::create()`
+  e' coperto anche senza eventi. L'hook del model resta per gli insert Eloquent diretti (factory/test).
+- Test: `QuoteDateTest` +1 (creazione dentro `Quote::withoutEvents`). Quotes 364/367 (3 rossi solo QuoteDocumentPdfTest,
+  LibreOffice assente), Migration 401/401, Seeding 150/150, Unit/Models 300/300, Leads/Opportunities/RequestManagement verdi.
+  Pint ok. Manuale: nessun impatto.
+- Secondo errore dello stesso seed: "attribute values.deliverable policies ... not greater than 4". Causa:
+  `Database\Seeders\Support\DemoAttributeValueFaker` generava interi 1..100 e decimali 1..1000 ignorando `config.min/max`
+  (Politiche erogabili, APL/orientamento, ha max 4). Ora rispetta min/max (`bounds()`), range demo dove mancano.
+  `DemoAttributeValueFakerTest` +1, Seeding 151/151. Nessun test esegue l'intera catena `DemoDataSeeder` (su SQLite
+  non gira: `locations:add` e' SQL MySQL), quindi altri errori a valle si vedono solo rilanciando il seed su MySQL.
+
 ## SEED/IMPORT: CATALOGO LEGACY SOTTO "Old category" + FUNZIONI FORMAZIONE/APL DAL SEED (2026-10-14) — VERDE, NON COMMITTATO
 
 - Decisione utente: tutte le categorie legacy (radici [OLD] e "[OLD] Costi") sotto un'unica radice "Old category",
