@@ -62,6 +62,8 @@ export interface RelationCellEditorParams {
    * unfiltered.
    */
   scope?: Record<string, string>
+  /** Fixed `/for-select` params (spec 0257 D-4), merged under the row-scoped ones. */
+  params?: Record<string, number>
 }
 
 /** Debounce before a typed term reaches the server, matching AsyncPaginatedSelect. */
@@ -132,7 +134,9 @@ export function RelationCellEditor(
   props: CustomCellEditorProps<TableRow, RelationCellValue | number | null> & RelationCellEditorParams,
 ) {
   const { t } = useTranslation()
-  const { value, onValueChange, stopEditing, resource, showAvatar = false, scope, data } = props
+  const { value, onValueChange, stopEditing, resource, showAvatar = false, scope, params, data } = props
+  const scopeParams = resolveScopeParams(scope, data)
+  const lookupParams = params || scopeParams ? { ...params, ...scopeParams } : undefined
   const currentId = currentIdOf(value)
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS)
@@ -156,7 +160,7 @@ export function RelationCellEditor(
     resource,
     search: debouncedSearch,
     ids: currentId !== null ? [currentId] : undefined,
-    params: resolveScopeParams(scope, data),
+    params: lookupParams,
   })
 
   const options = pages?.pages.flatMap((page) => page.items) ?? []

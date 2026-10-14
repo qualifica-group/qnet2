@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tables\PurchaseRequestPriorities;
 
+use App\Tables\Support\EditableColumns;
+
 /**
  * Declarative column/filter/action catalogue for the `purchase-request-priorities` domain (spec
  * 0101, D-4). Extracted out of PurchaseRequestPrioritiesTableDefinition (file-size split,
@@ -22,7 +24,7 @@ final class PurchaseRequestPriorityColumnCatalog
      */
     public static function columns(): array
     {
-        return [
+        return EditableColumns::apply([
             [
                 'id' => 'name',
                 'label' => 'purchaseRequestPriorities.columns.name',
@@ -95,7 +97,13 @@ final class PurchaseRequestPriorityColumnCatalog
                 'filterable' => true,
                 'filterType' => 'date',
             ],
-        ];
+        ], [
+            'name' => [],
+            'description' => EditableColumns::NULLABLE,
+            'color' => EditableColumns::COLOR,
+            'is_active' => [],
+            'is_default' => [],
+        ]);
     }
 
     /**

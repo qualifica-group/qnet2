@@ -304,6 +304,23 @@ describe('RelationCellEditor', () => {
       })
     })
 
+    // Spec 0257 D-4: fixed picker params (the ODA supplier: suppliers only) travel with the row scope.
+    it('sends the fixed `params` together with the row scope', async () => {
+      fetchForSelectMock.mockResolvedValue(page([{ id: 1, label: 'Mario Rossi' }]))
+      renderEditor({
+        scope: SCOPE,
+        params: { is_supplier: 1 },
+        data: { id: 7, actions: [], operational_site: 42 },
+      } as Partial<CustomCellEditorProps<TableRow, RelationCellValue | number | null>>)
+
+      await waitFor(() =>
+        expect(fetchForSelectMock).toHaveBeenCalledWith(
+          'users',
+          expect.objectContaining({ params: { is_supplier: 1, operational_site_id: 42 } }),
+        ),
+      )
+    })
+
     it('sends no param when the column declares no scope at all', async () => {
       fetchForSelectMock.mockResolvedValue(page([{ id: 1, label: 'Mario Rossi' }]))
       renderEditor({

@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tables;
 
+use App\Http\Requests\PurchaseRequestLineStatuses\UpdatePurchaseRequestLineStatusRequest;
 use App\Models\PurchaseRequestLineStatusLabel;
 use App\Models\User;
+use App\Services\PurchaseRequestLineStatusLabelService;
+use App\Services\Table\FormRequestCellValidator;
 use App\Tables\PurchaseRequestLineStatuses\PurchaseRequestLineStatusColumnCatalog as Catalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -17,6 +21,25 @@ use Illuminate\Support\Facades\Gate;
  */
 class PurchaseRequestLineStatusesTableDefinition extends AbstractTableDefinition
 {
+    public function __construct(
+        private readonly PurchaseRequestLineStatusLabelService $service,
+        private readonly FormRequestCellValidator $cells,
+    ) {}
+
+    /**
+     * Spec 0258, D-1: the inline cell edit follows the catalogue's own update
+     * FormRequest and service, never the generic `$row->update()`.
+     */
+    public function updateCell(Model $row, string $columnId, mixed $value): Model
+    {
+        /** @var PurchaseRequestLineStatusLabel $row */
+        /** @var User $actor */
+        $actor = Auth::user();
+        $request = $this->cells->validate(UpdatePurchaseRequestLineStatusRequest::class, 'purchaseRequestLineStatus', $row, $actor, [$columnId => $value]);
+
+        return $this->service->update($row, $request->toData());
+    }
+
     public function domain(): string
     {
         return 'purchase-request-line-statuses';

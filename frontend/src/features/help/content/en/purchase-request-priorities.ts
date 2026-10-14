@@ -41,6 +41,7 @@ const guide: HelpGuide = {
             'Press **New priority**.',
             'The sheet opens with closed rows: for each row press the pencil (or the value), fill it in and press **Done**; **Restore** puts the row back as it was. Then press **Save**.',
             'There is no separate edit form: open the sheet with **View**, press the pencil on the row, change the value and press **Save** (only that row is saved); **Cancel** or Esc leave the row as it was.',
+            'From the list you can also edit directly in the cells **Name**, **Description**, **Color** (pick from the palette), **Active** and **Default**: double-click the cell, change the value and confirm. Making a priority the default removes the flag from the previous one. The icon is changed from the sheet.',
             'To deactivate, press the pencil on **Active** and turn it off: the RDA that use it stay untouched.',
           ],
         },

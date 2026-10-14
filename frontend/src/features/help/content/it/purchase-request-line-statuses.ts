@@ -38,6 +38,7 @@ const guide: HelpGuide = {
           items: [
             'Apri la scheda con **Visualizza**.',
             'Premi la matita sulla riga da cambiare (Nome, Colore o Icona), modifica il valore e premi **Salva** (si salva solo quella riga); **Annulla** o Esc lasciano la riga com’era.',
+            'Dall’elenco puoi anche modificare direttamente nelle celle **Nome** e **Colore** (scegli dalla palette): fai doppio clic sulla cella, cambia il valore e conferma. L’icona si cambia dalla scheda.',
             'Il nuovo nome, colore o icona compaiono subito in schede, badge e finestre.',
           ],
         },

@@ -41,6 +41,9 @@ interface PurchaseOrderLineRowProps {
   /** Read-only order: every input is disabled and the actions disappear. */
   readOnly: boolean
   onRemove: () => void
+  /** Full-width band under the fields (the detail's Annulla/Salva, spec 0257 D-7). */
+  footer?: ReactNode
+  className?: string
 }
 
 /**
@@ -50,7 +53,7 @@ interface PurchaseOrderLineRowProps {
  * actions (extract VAT, remove). A line generated from an RDA shows the
  * "RDA #id" badge and stays editable (D-18).
  */
-export function PurchaseOrderLineRow({ index, control, setValue, line, readOnly, onRemove }: PurchaseOrderLineRowProps) {
+export function PurchaseOrderLineRow({ index, control, setValue, line, readOnly, onRemove, footer, className }: PurchaseOrderLineRowProps) {
   const { t } = useTranslation()
   const n = index + 1
   const amounts = previewLineAmounts(line)
@@ -76,7 +79,7 @@ export function PurchaseOrderLineRow({ index, control, setValue, line, readOnly,
   const label = (key: string) => `${t(`purchaseOrderForm.lines.${key}`)} ${n}`
 
   return (
-    <li className={cn(LINE_GRID, 'rounded-md border bg-card p-1.5')} aria-label={label('line')}>
+    <li className={cn(LINE_GRID, 'rounded-md border bg-card p-1.5', className)} aria-label={label('line')}>
       <div className={WIDE_CELL}>
         <LineProductSelect
           control={control}
@@ -173,6 +176,7 @@ export function PurchaseOrderLineRow({ index, control, setValue, line, readOnly,
           </>
         )}
       </div>
+      {footer ? <div className="col-span-full">{footer}</div> : null}
     </li>
   )
 }
@@ -185,7 +189,7 @@ interface IconActionProps {
 }
 
 /** Icon-only action: the label is its accessible name and its tooltip. */
-function IconAction({ label, icon, className, onClick }: IconActionProps) {
+export function IconAction({ label, icon, className, onClick }: IconActionProps) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>

@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tables;
 
+use App\Http\Requests\PurchaseRequestPriorities\UpdatePurchaseRequestPriorityRequest;
 use App\Models\PurchaseRequestPriority;
 use App\Models\User;
 use App\Services\PurchaseRequestPriorityService;
+use App\Services\Table\FormRequestCellValidator;
 use App\Tables\PurchaseRequestPriorities\PurchaseRequestPriorityColumnCatalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -20,7 +23,24 @@ use Illuminate\Support\Facades\Gate;
  */
 class PurchaseRequestPrioritiesTableDefinition extends AbstractTableDefinition
 {
-    public function __construct(private readonly PurchaseRequestPriorityService $service) {}
+    public function __construct(
+        private readonly PurchaseRequestPriorityService $service,
+        private readonly FormRequestCellValidator $cells,
+    ) {}
+
+    /**
+     * Spec 0258, D-1: the inline cell edit follows the catalogue's own update
+     * FormRequest and service, never the generic `$row->update()`.
+     */
+    public function updateCell(Model $row, string $columnId, mixed $value): Model
+    {
+        /** @var PurchaseRequestPriority $row */
+        /** @var User $actor */
+        $actor = Auth::user();
+        $request = $this->cells->validate(UpdatePurchaseRequestPriorityRequest::class, 'purchaseRequestPriority', $row, $actor, [$columnId => $value]);
+
+        return $this->service->update($row, $request->toData());
+    }
 
     public function domain(): string
     {

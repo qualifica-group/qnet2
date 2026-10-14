@@ -61,7 +61,6 @@ export function PurchaseOrdersTable() {
     (action: TableActionDefinition, row: TableRow) => {
       switch (action.key) {
         case 'view':
-        case 'update':
           void navigate(`/${PURCHASE_ORDERS_DOMAIN}/${row.id}`)
           break
         case 'delete':

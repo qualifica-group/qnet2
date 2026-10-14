@@ -41,6 +41,7 @@ const guide: HelpGuide = {
             'Premi **Nuova priorità**.',
             'Si apre la scheda con le righe chiuse: per ogni riga premi la matita (o il valore), compila e premi **Fatto**; **Ripristina** riporta la riga com’era. Poi premi **Salva**.',
             'Per modificare non c’è un modulo a parte: apri la scheda con **Visualizza**, premi la matita sulla riga, cambia il valore e premi **Salva** (si salva solo quella riga); **Annulla** o Esc lasciano la riga com’era.',
+            'Dall’elenco puoi anche modificare direttamente nelle celle **Nome**, **Descrizione**, **Colore** (scegli dalla palette), **Attiva** e **Predefinita**: fai doppio clic sulla cella, cambia il valore e conferma. Rendendo predefinita una priorità, la precedente smette di esserlo. L’icona si cambia dalla scheda.',
             'Per disattivare, premi la matita su **Attiva** e spegnila: le RDA che la usano restano intatte.',
           ],
         },

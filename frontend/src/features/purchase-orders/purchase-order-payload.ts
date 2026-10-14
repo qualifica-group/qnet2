@@ -115,12 +115,14 @@ function toLinePayload(line: PurchaseOrderLineFormValues): PurchaseOrderLinePayl
   }
 }
 
+type OrderHeaderPayload = Omit<PurchaseOrderPayload, 'lines' | 'copies'>
+
 /**
- * Write payload of the ODA. Create sends `copies`, update never does (D-16);
- * totals are never sent, the server owns them (D-12). Required ids are
- * guaranteed non-null by the schema; the guard keeps the type honest.
+ * The header part of the write payload; totals are never sent, the server
+ * owns them (D-12). Required ids are guaranteed non-null by the schema; the
+ * guard keeps the type honest.
  */
-export function buildOrderPayload(values: PurchaseOrderFormValues, mode: 'create' | 'update'): PurchaseOrderPayload {
+function headerPayload(values: PurchaseOrderFormValues): OrderHeaderPayload {
   const { supplier_id, company_id, company_site_id } = values
   if (supplier_id === null || company_id === null || company_site_id === null) {
     throw new Error('Required relation ids must be validated before building the payload')
@@ -141,7 +143,33 @@ export function buildOrderPayload(values: PurchaseOrderFormValues, mode: 'create
     opportunity_id: values.opportunity_id,
     sector_ids: values.sector_ids,
     sector_notes: blankToNull(values.sector_notes),
-    ...(mode === 'create' ? { copies: values.copies } : {}),
-    lines: values.lines.map(toLinePayload),
   }
+}
+
+/** Create payload of the ODA: the whole header, the monthly copies (D-16) and every line. */
+export function buildOrderPayload(values: PurchaseOrderFormValues): PurchaseOrderPayload {
+  return { ...headerPayload(values), copies: values.copies, lines: buildOrderLinesPayload(values.lines) }
+}
+
+/** The `lines` of a partial update: always the whole set, the server deletes what is missing (spec 0257 D-1). */
+export function buildOrderLinesPayload(lines: PurchaseOrderLineFormValues[]): PurchaseOrderLinePayload[] {
+  return lines.map(toLinePayload)
+}
+
+/**
+ * The header keys an in-place edit changed against the saved ODA (spec 0257
+ * D-6): an untouched key is never sent. Sector ids compare as a set.
+ */
+export function buildOrderHeaderPatch(
+  values: PurchaseOrderFormValues,
+  persisted: PurchaseOrderFormValues,
+): Partial<OrderHeaderPayload> {
+  const next = headerPayload(values)
+  const saved = headerPayload(persisted)
+  const same = (key: keyof OrderHeaderPayload) =>
+    key === 'sector_ids'
+      ? [...next.sector_ids].sort().join(',') === [...saved.sector_ids].sort().join(',')
+      : next[key] === saved[key]
+  const keys = Object.keys(next) as (keyof OrderHeaderPayload)[]
+  return Object.fromEntries(keys.filter((key) => !same(key)).map((key) => [key, next[key]]))
 }

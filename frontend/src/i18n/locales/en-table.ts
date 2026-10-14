@@ -148,6 +148,9 @@ export const table = {
     list: 'Pick a value',
     empty: 'No value available for this row.',
   },
+  colorEditor: {
+    list: 'Pick a colour',
+  },
   // The editor is a group of two inputs since the time became optional (user
   // directive 2026-07-31): `label` names the group, the other two the inputs.
   dateTimeEditor: {

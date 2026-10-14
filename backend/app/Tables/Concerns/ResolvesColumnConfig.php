@@ -193,6 +193,13 @@ trait ResolvesColumnConfig
                 $resolved['relation']['lockScope'] = true;
             }
 
+            // Spec 0257, D-4: FIXED picker params (e.g. `is_supplier: 1`), sent
+            // with every lookup alongside the row scope. A UI narrowing like
+            // `scope`: the write path still validates through the form's rules.
+            if (isset($column['relation']['params'])) {
+                $resolved['relation']['params'] = $column['relation']['params'];
+            }
+
             // Row columns whose ids the picker does NOT offer (e.g. a Task's
             // watchers exclude its creator/requester/assignees, spec 0118
             // AC-035) — a UI narrowing like `scope`; the write path still

@@ -8,6 +8,13 @@ export const purchaseOrderForm = {
   createTitle: 'Nuovo ordine di acquisto',
   editTitle: 'ODA {{code}}',
   save: 'Salva',
+  saving: 'Salvataggio...',
+  leaveConfirm: {
+    title: 'Uscire senza salvare?',
+    description: "L'ODA non è ancora stata creata: i dati inseriti andranno persi.",
+    confirm: 'Esci senza salvare',
+    cancel: 'Continua a compilare',
+  },
   update: 'Aggiorna',
   closeForm: 'Chiudi',
   delete: 'Elimina',
@@ -17,6 +24,8 @@ export const purchaseOrderForm = {
     header: 'Testata',
     lines: 'Righe',
     documents: 'Documenti',
+    organization: 'Organizzazione e collegamenti',
+    notes: 'Tag EA e note',
   },
   fields: {
     code: 'Numero',
@@ -37,6 +46,7 @@ export const purchaseOrderForm = {
     sector_notes: 'Specifica',
     general_notes: 'Note generali',
     copies: 'Copie',
+    created_by: 'Creata da',
   },
   copiesHint:
     "Crea un'ODA indipendente per ogni mese: la data ordine avanza di un mese per ogni copia (da 1 a 12).",
@@ -79,6 +89,12 @@ export const purchaseOrderForm = {
     extractVatNeedsRate: "Seleziona un'aliquota IVA maggiore di zero per scorporare l'IVA.",
     rdaBadge: 'RDA #{{id}}',
     rdaBadgeLabel: 'Generata dalla RDA #{{id}}',
+    edit: 'Modifica riga {{n}}',
+    removeConfirm: {
+      title: 'Eliminare la riga?',
+      description: "La riga {{n}} verrà eliminata subito dall'ODA.",
+      confirm: 'Elimina riga',
+    },
   },
   totals: {
     label: 'Totali',

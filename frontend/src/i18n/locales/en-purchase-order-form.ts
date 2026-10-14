@@ -8,6 +8,13 @@ export const purchaseOrderForm = {
   createTitle: 'New purchase order',
   editTitle: 'ODA {{code}}',
   save: 'Save',
+  saving: 'Saving...',
+  leaveConfirm: {
+    title: 'Leave without saving?',
+    description: 'The ODA has not been created yet: the data entered will be lost.',
+    confirm: 'Leave without saving',
+    cancel: 'Keep editing',
+  },
   update: 'Update',
   closeForm: 'Close',
   delete: 'Delete',
@@ -17,6 +24,8 @@ export const purchaseOrderForm = {
     header: 'Header',
     lines: 'Lines',
     documents: 'Documents',
+    organization: 'Organization and links',
+    notes: 'EA tags and notes',
   },
   fields: {
     code: 'Number',
@@ -37,6 +46,7 @@ export const purchaseOrderForm = {
     sector_notes: 'Specification',
     general_notes: 'General notes',
     copies: 'Copies',
+    created_by: 'Created by',
   },
   copiesHint:
     'Creates one independent ODA per month: the order date moves forward by one month for each copy (1 to 12).',
@@ -79,6 +89,12 @@ export const purchaseOrderForm = {
     extractVatNeedsRate: 'Select a VAT rate greater than zero to extract the VAT.',
     rdaBadge: 'RDA #{{id}}',
     rdaBadgeLabel: 'Generated from RDA #{{id}}',
+    edit: 'Edit line {{n}}',
+    removeConfirm: {
+      title: 'Delete the line?',
+      description: 'Line {{n}} will be deleted from the ODA right away.',
+      confirm: 'Delete line',
+    },
   },
   totals: {
     label: 'Totals',

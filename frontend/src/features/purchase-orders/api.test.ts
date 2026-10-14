@@ -9,14 +9,14 @@ import {
 import { makePurchaseOrder } from '@/features/purchase-orders/purchase-order-fixtures'
 import type { PurchaseOrderPayload } from '@/features/purchase-orders/types'
 
-const { getMock, postMock, putMock } = vi.hoisted(() => ({
+const { getMock, postMock, patchMock } = vi.hoisted(() => ({
   getMock: vi.fn(),
   postMock: vi.fn(),
-  putMock: vi.fn(),
+  patchMock: vi.fn(),
 }))
 
 vi.mock('@/api/client', () => ({
-  apiClient: { get: getMock, post: postMock, put: putMock, delete: vi.fn() },
+  apiClient: { get: getMock, post: postMock, patch: patchMock, delete: vi.fn() },
 }))
 
 const PAYLOAD: PurchaseOrderPayload = {
@@ -42,7 +42,7 @@ const PAYLOAD: PurchaseOrderPayload = {
 beforeEach(() => {
   getMock.mockReset()
   postMock.mockReset()
-  putMock.mockReset()
+  patchMock.mockReset()
 })
 
 describe('purchase orders api (spec 0210 contract)', () => {
@@ -62,12 +62,12 @@ describe('purchase orders api (spec 0210 contract)', () => {
     expect((await createPurchaseOrder(PAYLOAD)).createdIds).toEqual([9])
   })
 
-  it('update PUTs the payload to the order', async () => {
-    putMock.mockResolvedValue({ data: { success: true, message: 'ok', data: makePurchaseOrder() } })
+  it('update PATCHes the partial payload to the order (spec 0257 D-1)', async () => {
+    patchMock.mockResolvedValue({ data: { success: true, message: 'ok', data: makePurchaseOrder() } })
 
     await updatePurchaseOrder(5, PAYLOAD)
 
-    expect(putMock).toHaveBeenCalledWith('/purchase-orders/5', PAYLOAD)
+    expect(patchMock).toHaveBeenCalledWith('/purchase-orders/5', PAYLOAD)
   })
 
   it('status change posts only to_status', async () => {

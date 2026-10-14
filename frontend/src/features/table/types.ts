@@ -168,7 +168,7 @@ export interface TableColumn {
    * time component. Declared per column by the backend; a column
    * without it keeps resolving its editor from `type`, unchanged.
    */
-  editor?: 'relation' | 'select' | 'datetime' | 'date' | 'multiselect' | 'product_lines' | 'work_order_stage'
+  editor?: 'relation' | 'select' | 'datetime' | 'date' | 'multiselect' | 'product_lines' | 'work_order_stage' | 'color'
   /**
    * The `/for-select` resource backing a `relation` editor (spec 0054 D-1),
    * plus the OPTIONAL row-scoped narrowing of its option list (user directive
@@ -189,8 +189,17 @@ export interface TableColumn {
    * `exclude` (multiselect only): ids of the row columns whose ids the picker
    * does not offer — e.g. a Task's watchers leave out its creator, requester
    * and assignees (spec 0118 AC-035), as the detail's picker does.
+   *
+   * `params` (spec 0257 D-4): FIXED `/for-select` params sent with every
+   * lookup (e.g. `{ is_supplier: 1 }`), the same filter the form's picker uses.
    */
-  relation?: { resource: string; scope?: Record<string, string>; lockScope?: boolean; exclude?: string[] }
+  relation?: {
+    resource: string
+    scope?: Record<string, string>
+    lockScope?: boolean
+    exclude?: string[]
+    params?: Record<string, number>
+  }
   /**
    * Whether the column supports a Set Filter value list (POST /values). `false`
    * for computed/derived columns without a queryable value list (e.g. a

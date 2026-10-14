@@ -17,6 +17,7 @@ import { MultiSelectCellEditor } from '@/components/data-table/multi-select-cell
 import { OfferLinesCellEditor } from '@/features/request-management/offer-lines-cell-editor'
 import { ProductLinesCellEditor } from '@/features/product-lines/product-lines-cell-editor'
 import { RelationCellEditor } from '@/components/data-table/relation-cell-editor'
+import { ColorCellEditor } from '@/components/data-table/color-cell-editor'
 import { SelectCellEditor } from '@/components/data-table/select-cell-editor'
 import { TaskWorkOrderStageCellEditor } from '@/features/tasks/task-work-order-stage-cell-editor'
 import { scalarColumnOptions, selectColumnOptions } from '@/features/table/column-options'
@@ -33,6 +34,7 @@ export type CellEditorKind =
   | 'product_lines'
   | 'offer_lines'
   | 'work_order_stage'
+  | 'color'
 
 /** cellEditor (a built-in name, or a custom React component) + optional per-column params, resolved once per colDef. */
 export interface CellEditorSpec {
@@ -103,6 +105,11 @@ export const CELL_EDITOR_REGISTRY: Partial<Record<CellEditorKind, CellEditorSpec
     cellEditorPopup: true,
   },
   boolean: { cellEditor: 'agCheckboxCellEditor' },
+  // Spec 0258 D-3: the badge palette of a catalogue's `color` token.
+  color: {
+    cellEditor: ColorCellEditor as ComponentType<CustomCellEditorProps>,
+    cellEditorPopup: true,
+  },
   enum: { cellEditor: 'agRichSelectCellEditor', cellEditorParams: (column) => richSelectParams(column, false) },
   badge: { cellEditor: 'agRichSelectCellEditor', cellEditorParams: (column) => richSelectParams(column, false) },
   tags: { cellEditor: 'agRichSelectCellEditor', cellEditorParams: (column) => richSelectParams(column, true) },
@@ -181,6 +188,7 @@ export const CELL_EDITOR_REGISTRY: Partial<Record<CellEditorKind, CellEditorSpec
         resource,
         showAvatar: resource === USERS_FOR_SELECT_RESOURCE,
         scope: column.relation?.scope,
+        params: column.relation?.params,
       }
     },
     cellEditorPopup: true,

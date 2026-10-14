@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, ListOrdered, Loader2, Plus, X } from 'lucide-react'
+import { ListOrdered, Plus } from 'lucide-react'
 import { RecordSection } from '@/components/detail/record-panel'
+import { EDITING_LINE_CLASS, LineEditBar } from '@/components/record-form/line-edit-bar'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { Button } from '@/components/ui/button'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -13,47 +14,14 @@ import { PurchaseRequestLineView } from '@/features/purchase-requests/purchase-r
 import { PurchaseRequestLinesHeader } from '@/features/purchase-requests/purchase-request-lines-header'
 import { PurchaseRequestTotals } from '@/features/purchase-requests/purchase-request-totals'
 import type { PurchaseRequest } from '@/features/purchase-requests/types'
-import {
-  lineEditingKey,
-  type PurchaseRequestDetailEditor,
-} from '@/features/purchase-requests/use-purchase-request-inline-edit'
+import { lineEditingKey } from '@/components/record-form/use-lines-record-inline-edit'
+import type { PurchaseRequestDetailEditor } from '@/features/purchase-requests/use-purchase-request-inline-edit'
 
 const NO_TARGETS: readonly LineTarget[] = []
-
-/** The open line reads as "being edited", like an open field row. */
-const EDITING_LINE_CLASS = 'border-ring/50 ring-[3px] ring-ring/15'
 
 interface PurchaseRequestLinesRecordProps {
   request: PurchaseRequest
   editor: PurchaseRequestDetailEditor
-}
-
-interface LineEditBarProps {
-  editor: PurchaseRequestDetailEditor
-}
-
-/** Annulla/Salva under the open line, with the refusal no field message can carry. */
-function LineEditBar({ editor }: LineEditBarProps) {
-  const { inline } = editor
-  return (
-    <div className="flex flex-col gap-1.5 pt-1">
-      {inline.error ? (
-        <p role="alert" className="text-xs font-medium text-destructive">
-          {inline.error}
-        </p>
-      ) : null}
-      <div className="flex items-center justify-end gap-2">
-        <Button type="button" variant="ghost" size="xs" onClick={inline.cancel} disabled={inline.isSaving}>
-          <X aria-hidden="true" />
-          {inline.cancelLabel}
-        </Button>
-        <Button type="button" size="xs" onClick={inline.save} disabled={inline.isSaving}>
-          {inline.isSaving ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Check aria-hidden="true" />}
-          {inline.confirmLabel}
-        </Button>
-      </div>
-    </div>
-  )
 }
 
 /**
@@ -119,7 +87,7 @@ export function PurchaseRequestLinesRecord({ request, editor }: PurchaseRequestL
                       className={EDITING_LINE_CLASS}
                       onRemove={() => (saved ? void askRemove(index) : inline.cancel())}
                       onChangeStatus={() => (saved ? setTargets([lineToTarget(saved, request, values.transitions)]) : undefined)}
-                      footer={<LineEditBar editor={editor} />}
+                      footer={<LineEditBar inline={inline} />}
                     />
                   )
                 }

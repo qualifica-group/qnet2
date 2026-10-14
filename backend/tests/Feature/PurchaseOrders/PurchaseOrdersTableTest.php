@@ -40,7 +40,7 @@ it('AC-015: the rows expose the contract columns and the row abilities', functio
         ->and($row['lines_count'])->toBe(2)
         ->and($row['sectors'][0]['name'])->toBe('Energy')
         ->and($row['abilities'])->toBe(['update' => true, 'delete' => true, 'transitions' => ['in_validation', 'approved', 'cancelled']])
-        ->and($row['actions'])->toBe(['view', 'update', 'pdf', 'delete', 'activity']);
+        ->and($row['actions'])->toBe(['view', 'pdf', 'delete', 'activity']);
 });
 
 it('AC-015: an approved order is not editable or deletable and the transitions follow the permissions', function () {

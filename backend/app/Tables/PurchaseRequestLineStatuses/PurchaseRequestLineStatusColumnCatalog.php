@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tables\PurchaseRequestLineStatuses;
 
+use App\Tables\Support\EditableColumns;
+
 /**
  * Declarative column/filter/action catalogue of the
  * `purchase-request-line-statuses` list (spec 0248). Pure data; the order is
@@ -16,7 +18,7 @@ final class PurchaseRequestLineStatusColumnCatalog
      */
     public static function columns(): array
     {
-        return [
+        return EditableColumns::apply([
             [
                 'id' => 'name',
                 'label' => 'purchaseRequestLineStatuses.columns.name',
@@ -51,7 +53,7 @@ final class PurchaseRequestLineStatusColumnCatalog
                 'sortable' => true,
                 'filterable' => false,
             ],
-        ];
+        ], ['name' => [], 'color' => EditableColumns::COLOR]);
     }
 
     /**

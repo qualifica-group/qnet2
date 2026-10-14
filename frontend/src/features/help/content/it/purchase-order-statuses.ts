@@ -39,6 +39,7 @@ const guide: HelpGuide = {
           items: [
             'Apri la scheda dello stato con **Visualizza**.',
             'Premi la matita sulla riga **Nome**, **Colore** o **Icona**, cambia il valore e premi **Salva** (si salva solo quella riga); **Annulla** o Esc lasciano la riga com’era.',
+            'Dall’elenco puoi anche modificare direttamente nelle celle **Nome** e **Colore** (scegli dalla palette): fai doppio clic sulla cella, cambia il valore e conferma. L’icona si cambia dalla scheda.',
             'Schede, badge e finestra **Cambia stato** mostrano subito il nuovo nome, colore e icona.',
           ],
         },

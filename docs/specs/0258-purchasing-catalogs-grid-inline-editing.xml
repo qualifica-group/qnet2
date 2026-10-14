@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0258-purchasing-catalogs-grid-inline-editing" status="approved" owner="utente" date="2026-10-14">
+
+  <goal>
+    Le liste dei cataloghi Acquisti (Tipi di costo, Priorita' RDA, Stati ODA, Stati righe RDA) si modificano in cella
+    come Anagrafiche, RDA e ODA. Le schede sono gia' modificabili per campo senza Salva (spec 0235, 0236, 0249).
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-14: "Prosegui con Tipi di Costo, Priorita' Oda, Stati Oda, Stati righe Rda" (la voce di menu
+    delle priorita' e' `purchase-request-priorities`, le priorita' delle RDA: non esiste un catalogo priorita' ODA).
+    Fatti verificati: le FormRequest di update dei quattro cataloghi sono gia' parziali (`sometimes`); tutti e quattro
+    sono registrati in config/authorization.php con i loro FieldDefinition; nessuna colonna e' oggi editabile in griglia;
+    l'ordine si cambia gia' col trascinamento (`sort_order` prohibited nel PATCH); la palette colori e' BadgeTokens::colors().
+  </context>
+
+  <decisions>
+    D-1 Ogni TableDefinition sovrascrive `updateCell()`: la cella passa da FormRequestCellValidator con la FormRequest di
+        update del catalogo e poi dal suo service `update()` (nomi unici, riga predefinita, audit invariati).
+    D-2 Colonne editabili: Tipi di costo name, description, nature, color, is_active; Priorita' RDA name, description,
+        color, is_active, is_default; Stati ODA name, color; Stati righe RDA name, color. Sola lettura: sort_order
+        (si trascina), icon (selettore con ricerca: resta dalla scheda), conteggi e date.
+    D-3 Nuovo editor generico di cella `color`: palette dei token BadgeTokens (stesse pastiglie e nomi localizzati della
+        scheda), il valore e' il token.
+    D-4 `nature` dichiara le opzioni dell'enum CostTypeNature, cosi' il motore cella la valida e l'editor la mostra con
+        le etichette localizzate.
+  </decisions>
+
+  <acceptance>
+    <ac id="AC-001">Ogni colonna D-2 si salva in cella per chi ha update; 403 senza; 422 con le regole del form (nome
+      duplicato, colore fuori palette, natura non valida).</ac>
+    <ac id="AC-002">Priorita': impostare `is_default` in cella toglie il predefinito alla riga precedente (regola del service).</ac>
+    <ac id="AC-003">La griglia mostra l'editor colore con la palette e salva il token.</ac>
+    <ac id="AC-004">Guide in-app IT/EN dei quattro cataloghi aggiornate.</ac>
+  </acceptance>
+</spec>

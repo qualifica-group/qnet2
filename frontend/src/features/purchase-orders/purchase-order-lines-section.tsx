@@ -20,13 +20,15 @@ interface PurchaseOrderLinesSectionProps {
   lines: PurchaseOrderLineFormValues[]
   onAdd: () => void
   onRemove: (index: number) => void
-  /** Read-only order: no line can be added, edited or removed. */
-  readOnly: boolean
   /** Root-level `lines` error (e.g. "at least one line"). */
   error?: string
 }
 
-/** The ODA lines as a header plus compact rows, with the add action and the live totals preview. */
+/**
+ * The lines of a NEW ODA as a header plus compact editable rows, with the add
+ * action and the live totals preview. A saved ODA edits its lines one at a
+ * time on the detail instead (`PurchaseOrderLinesRecord`, spec 0257 D-7).
+ */
 export function PurchaseOrderLinesSection({
   control,
   setValue,
@@ -34,7 +36,6 @@ export function PurchaseOrderLinesSection({
   lines,
   onAdd,
   onRemove,
-  readOnly,
   error,
 }: PurchaseOrderLinesSectionProps) {
   const { t } = useTranslation()
@@ -42,13 +43,13 @@ export function PurchaseOrderLinesSection({
   return (
     <section className="flex flex-col gap-3" aria-label={t('purchaseOrderForm.sections.lines')}>
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-base font-semibold">{t('purchaseOrderForm.sections.lines')}</h2>
-        {readOnly ? null : (
-          <Button type="button" variant="outline" size="sm" className="bg-card" onClick={onAdd}>
-            <Plus aria-hidden="true" />
-            {t('purchaseOrderForm.lines.add')}
-          </Button>
-        )}
+        <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+          {t('purchaseOrderForm.sections.lines')}
+        </h3>
+        <Button type="button" variant="secondary" size="xs" onClick={onAdd}>
+          <Plus aria-hidden="true" />
+          {t('purchaseOrderForm.lines.add')}
+        </Button>
       </div>
       {error ? (
         <p role="alert" className="text-xs text-destructive">
@@ -69,7 +70,7 @@ export function PurchaseOrderLinesSection({
                     control={control}
                     setValue={setValue}
                     line={line}
-                    readOnly={readOnly}
+                    readOnly={false}
                     onRemove={() => onRemove(index)}
                   />
                 ) : null

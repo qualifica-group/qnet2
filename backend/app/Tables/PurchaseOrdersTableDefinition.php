@@ -9,11 +9,13 @@ use App\Models\PurchaseOrderStatusLabel;
 use App\Models\User;
 use App\Services\PurchaseOrders\PurchaseOrderStatusService;
 use App\Support\OperationalSiteLabel;
+use App\Tables\PurchaseOrders\PurchaseOrderCellWriter;
 use App\Tables\PurchaseOrders\PurchaseOrderColumnCatalog as Catalog;
 use App\Tables\PurchaseOrders\PurchaseOrderDerivedQuery as OrderQuery;
 use App\Tables\PurchaseRequests\PurchaseRequestDerivedQuery as Derived;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -25,7 +27,27 @@ use Illuminate\Support\Facades\Gate;
  */
 class PurchaseOrdersTableDefinition extends AbstractTableDefinition
 {
-    public function __construct(private readonly PurchaseOrderStatusService $statuses) {}
+    public function __construct(
+        private readonly PurchaseOrderStatusService $statuses,
+        private readonly PurchaseOrderCellWriter $cellWriter,
+    ) {}
+
+    /** Spec 0257, D-3: only an order still in draft / in validation, and updatable by the actor, takes a cell edit. */
+    public function authorizeUpdate(User $actor, Model $row): bool
+    {
+        /** @var PurchaseOrder $row */
+        return $row->status->isEditable() && Gate::forUser($actor)->allows('update', $row);
+    }
+
+    /** Spec 0257, D-3: the cell edit follows the form's rules through PurchaseOrderCellWriter. */
+    public function updateCell(Model $row, string $columnId, mixed $value): Model
+    {
+        /** @var PurchaseOrder $row */
+        /** @var User $actor */
+        $actor = Auth::user();
+
+        return $this->cellWriter->write($row, $columnId, $value, $actor);
+    }
 
     public function domain(): string
     {
@@ -165,9 +187,9 @@ class PurchaseOrdersTableDefinition extends AbstractTableDefinition
         $gate = Gate::forUser($actor);
         $allowed = [];
 
-        // Action key => policy ability.
-        $abilities = ['view' => 'view', 'update' => 'update', 'pdf' => 'view', 'delete' => 'delete', 'activity' => 'viewActivity'];
-        $editableOnly = ['update', 'delete'];
+        // Action key => policy ability. No `update`: the record edits in place from `view` (spec 0257 D-5).
+        $abilities = ['view' => 'view', 'pdf' => 'view', 'delete' => 'delete', 'activity' => 'viewActivity'];
+        $editableOnly = ['delete'];
 
         foreach ($abilities as $key => $ability) {
             if (! $row->status->isEditable() && in_array($key, $editableOnly, true)) {

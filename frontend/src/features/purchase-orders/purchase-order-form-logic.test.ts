@@ -3,6 +3,8 @@ import { AxiosError, type AxiosResponse } from 'axios'
 import type { TFunction } from 'i18next'
 import { makeOrderLine, makePurchaseOrder } from '@/features/purchase-orders/purchase-order-fixtures'
 import {
+  buildOrderHeaderPatch,
+  buildOrderLinesPayload,
   buildOrderPayload,
   emptyOrderFormValues,
   newOrderLineValues,
@@ -99,7 +101,7 @@ describe('purchase order schema (AC-019)', () => {
 
 describe('purchase order payload (AC-019)', () => {
   it('create sends copies, no line ids and no UI-only fields', () => {
-    const payload = buildOrderPayload(validValues({ copies: 3, general_notes: '  ' }), 'create')
+    const payload = buildOrderPayload(validValues({ copies: 3, general_notes: '  ' }))
 
     expect(payload.copies).toBe(3)
     expect(payload.general_notes).toBeNull()
@@ -109,18 +111,23 @@ describe('purchase order payload (AC-019)', () => {
     expect(payload.lines[0]).toMatchObject({ cost_type_id: 1, unit_price: 100, quantity: 1 })
   })
 
-  it('update never sends copies and carries lines.*.id of the persisted lines', () => {
+  it('a line edit sends the whole set with the persisted line ids (spec 0257 D-7)', () => {
     const order = makePurchaseOrder({
       lines: [makeOrderLine({ id: 11 }), makeOrderLine({ id: 12, position: 2, description: 'Second' })],
     })
     const values = toOrderFormValues(order)
     values.lines.push(newOrderLineValues({ description: 'New', cost_type_id: 1 }))
 
-    const payload = buildOrderPayload(values, 'update')
+    expect(buildOrderLinesPayload(values.lines).map((line) => line.id)).toEqual([11, 12, undefined])
+  })
 
-    expect(payload).not.toHaveProperty('copies')
-    expect(payload.lines.map((line) => line.id)).toEqual([11, 12, undefined])
-    expect(payload.supplier_id).toBe(8)
+  it('a header edit sends only the changed keys, sectors compared as a set (spec 0257 D-6)', () => {
+    const order = makePurchaseOrder({ sectors: [{ id: 4, name: 'Health' }, { id: 5, name: 'Energy' }] })
+    const persisted = toOrderFormValues(order)
+
+    expect(buildOrderHeaderPatch({ ...persisted, sector_ids: [5, 4] }, persisted)).toEqual({})
+    expect(buildOrderHeaderPatch({ ...persisted, description: 'Toner', general_notes: '  ' }, persisted)).toEqual({ description: 'Toner' })
+    expect(buildOrderHeaderPatch({ ...persisted, sector_ids: [4] }, persisted)).toEqual({ sector_ids: [4] })
   })
 
   it('hydrates the form from the order: the RDA link, the supplier qualification and the VAT percentage', () => {
@@ -138,7 +145,7 @@ describe('purchase order payload (AC-019)', () => {
   })
 
   it('refuses to build a payload without a cost type', () => {
-    expect(() => buildOrderPayload(validValues({ lines: [newOrderLineValues({ description: 'x' })] }), 'create')).toThrow()
+    expect(() => buildOrderPayload(validValues({ lines: [newOrderLineValues({ description: 'x' })] }))).toThrow()
   })
 })
 

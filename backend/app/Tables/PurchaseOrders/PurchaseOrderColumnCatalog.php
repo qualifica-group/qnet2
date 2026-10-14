@@ -10,6 +10,10 @@ use App\Tables\PurchaseRequests\PurchaseRequestColumnCatalog as Columns;
  * (spec 0210). Pure data. The status tabs send a `status` set filter (a real
  * column). `code` is derived ("{number}/{year}": sortable by year, number;
  * searchable); `supplier_vat_number` is a hidden, search-only column.
+ *
+ * Spec 0257, D-3: the header columns the form edits as single fields are
+ * inline-editable through PurchaseOrderCellWriter. The company stays
+ * read-only: it is locked once the order exists (spec 0244 D-1).
  */
 final class PurchaseOrderColumnCatalog
 {
@@ -39,6 +43,25 @@ final class PurchaseOrderColumnCatalog
         'opportunity' => ['opportunities', 'purchase_orders.opportunity_id', 'name'],
         'created_by' => ['users', 'purchase_orders.created_by', 'name'],
     ];
+
+    /**
+     * Editable relation columns: id => [for-select resource, form field, nullable, row scope, fixed picker params].
+     *
+     * @var array<string, array{0: string, 1: string, 2: bool, 3: array<string, string>, 4: array<string, int>}>
+     */
+    private const array EDITABLE_RELATIONS = [
+        'supplier' => ['registries', 'supplier_id', false, [], ['is_supplier' => 1]],
+        'company_site' => ['company-sites', 'company_site_id', false, ['company_id' => 'company'], []],
+        'operational_site' => ['operational-sites', 'operational_site_id', true, [], []],
+        'payment_method' => ['payment-methods', 'payment_method_id', true, [], []],
+        'customer' => ['registries', 'customer_id', true, [], []],
+        'work_order' => ['work-orders', 'work_order_id', true, [], []],
+        'quote' => ['quotes', 'quote_id', true, [], []],
+        'opportunity' => ['opportunities', 'opportunity_id', true, [], []],
+    ];
+
+    /** Editable scalar columns, written under their own id. */
+    private const array EDITABLE_SCALARS = ['order_date', 'description', 'is_internal_user'];
 
     /** Relation columns hidden by default (the others are visible). */
     private const array HIDDEN_RELATIONS = ['company_site', 'payment_method', 'customer', 'quote', 'opportunity', 'sectors', 'created_by'];
@@ -71,7 +94,7 @@ final class PurchaseOrderColumnCatalog
             );
         }
 
-        return [
+        $columns = [
             self::column(self::CODE_COLUMN, 'text', sortable: true, searchable: true),
             self::column('number', 'number', visible: false, sortable: true, filter: 'number'),
             self::column('year', 'number', visible: false, sortable: true, filter: 'number'),
@@ -97,6 +120,44 @@ final class PurchaseOrderColumnCatalog
             $relations['created_by'],
             self::column('created_at', 'date', visible: false, sortable: true, filter: 'date'),
         ];
+
+        return array_map(self::withEditing(...), $columns);
+    }
+
+    /**
+     * The inline-editing keys of an editable column (spec 0257, D-3); any other column is returned as is.
+     *
+     * @param  array<string, mixed>  $column
+     * @return array<string, mixed>
+     */
+    private static function withEditing(array $column): array
+    {
+        $id = $column['id'];
+
+        if (in_array($id, self::EDITABLE_SCALARS, true)) {
+            return [...$column, 'editable' => true, 'nullable' => $id === 'is_internal_user'];
+        }
+
+        if ($id === self::SECTORS_COLUMN) {
+            return [...$column, 'editable' => true, 'editor' => 'multiselect', 'relation' => ['resource' => 'sectors'], 'editableField' => 'sector_ids'];
+        }
+
+        if (! isset(self::EDITABLE_RELATIONS[$id])) {
+            return $column;
+        }
+
+        [$resource, $field, $nullable, $scope, $params] = self::EDITABLE_RELATIONS[$id];
+        $relation = ['resource' => $resource];
+
+        if ($scope !== []) {
+            $relation += ['scope' => $scope, 'lockScope' => true];
+        }
+
+        if ($params !== []) {
+            $relation['params'] = $params;
+        }
+
+        return [...$column, 'editable' => true, 'relation' => $relation, 'editableField' => $field, 'nullable' => $nullable];
     }
 
     /**
@@ -114,7 +175,6 @@ final class PurchaseOrderColumnCatalog
     {
         return [
             ['key' => 'view', 'label' => 'actions.view', 'icon' => 'eye', 'type' => 'link', 'confirm' => false, 'permission' => 'purchase-orders.view'],
-            ['key' => 'update', 'label' => 'actions.edit', 'icon' => 'pencil', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-orders.update'],
             ['key' => 'pdf', 'label' => 'purchaseOrders.actions.pdf', 'icon' => 'file-down', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-orders.view'],
             ['key' => 'delete', 'label' => 'purchaseOrders.actions.delete', 'icon' => 'trash', 'type' => 'danger', 'confirm' => true, 'permission' => 'purchase-orders.delete'],
             ['key' => 'activity', 'label' => 'purchaseOrders.actions.activity', 'icon' => 'history', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-orders.viewActivity'],

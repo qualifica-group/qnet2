@@ -3,7 +3,37 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0256 — RDA modificabili in lista e scheda senza Salva — VERDE, NON COMMITTATO (2026-10-14)
+## Spec 0258 — Cataloghi Acquisti modificabili in cella — VERDE, NON COMMITTATO (2026-10-14)
+
+- Spec `docs/specs/0258-purchasing-catalogs-grid-inline-editing.xml`. Tipi di costo (name, description, nature, color,
+  is_active), Priorita' RDA (name, description, color, is_active, is_default), Stati ODA e Stati righe RDA (name, color).
+  Icona e ordine restano dalla scheda / trascinamento. Le schede erano gia' inline (0235/0236/0249).
+- BE: helper `App\Tables\Support\EditableColumns::apply()` nei 4 ColumnCatalog; ogni TableDefinition ha `updateCell()` =
+  FormRequestCellValidator(Update*Request) + service->update (PurchaseOrderStatusLabelService usa updatableAttributes()).
+  `nature` dichiara `options` CostTypeNature. Test: tests/Feature/Tables/PurchasingCatalogsInlineEditTest.php.
+- FE: nuovo editor generico di cella `color` (`components/data-table/color-cell-editor.tsx`, chiave `table.colorEditor.list`).
+- Guide in-app IT/EN dei 4 cataloghi: un passo "modifica in cella". Manuale Claude Docs da aggiornare a mano.
+- Aperta: regola modificabilita' ODA dopo l'approvazione (opzioni 1/2/3 proposte all'utente, nessuna scelta ancora).
+
+## Spec 0257 — ODA modificabili in lista e scheda senza Salva — VERDE, NON COMMITTATO (2026-10-14)
+
+- Spec `docs/specs/0257-purchase-order-inline-editing.xml` (D-1..D-8), stesso schema di 0256.
+- BE: `PurchaseOrderWriteRequest` in modifica = PATCH parziale (sede validata sulla societa' salvata), `PurchaseOrderData::lines`
+  nullable, `PurchaseOrderService::update` + `syncLines()` solo se inviate, cambio societa' verificato solo se inviato
+  (service 306 righe: sopra la soglia 300 di poco). Griglia: `PurchaseOrderCellWriter`, colonne in
+  `PurchaseOrderColumnCatalog::EDITABLE_RELATIONS/SCALARS` + sectors multiselect; `authorizeUpdate` = stato modificabile +
+  policy; azione riga `update` rimossa. Motore cella: nuovo `relation.params` (filtri fissi del picker, es. is_supplier)
+  emesso da `ResolvesColumnConfig`, letto da `RelationCellEditor`; `RelationValueScopeChecker` + payment-methods, quotes,
+  opportunities, sectors. Test: PurchaseOrderInlineEditTest; PurchaseOrdersTableTest aggiornato (azioni).
+- FE condiviso: `components/record-form/use-lines-record-inline-edit.ts` (editor unico campo/riga, PATCH parziale) e
+  `line-edit-bar.tsx`, usati da RDA e ODA (riuso previsto per Fatture passive). ODA: `purchase-order-detail.tsx`,
+  `purchase-order-record-sections.tsx`, `purchase-order-lines-record.tsx`, `purchase-order-line-view.tsx`,
+  `use-purchase-order-inline-edit.ts`; creazione `PurchaseOrderForm` solo create in RecordCreateLayout con leave guard;
+  Evasione/Ricezioni/Fatture come card sotto la scheda (stati non modificabili). Test: purchase-order-detail.test.tsx (nuovo),
+  form/form-logic/api adattati (REQUIREMENT CHANGED).
+- Guide in-app IT/EN `purchase-orders` (overview, create, nuova `edit`, merge). Manuale Claude Docs da aggiornare a mano.
+
+## Spec 0256 — RDA modificabili in lista e scheda senza Salva — VERDE, COMMITTATO 412eac93 (2026-10-14)
 
 - Spec `docs/specs/0256-purchase-request-inline-editing.xml` (D-1..D-8). ODA e Fatture passive: spec separate (utente).
 - BE: `PurchaseRequestWriteRequest` in modifica = PATCH parziale (`sometimes`), controlli incrociati su valore inviato o

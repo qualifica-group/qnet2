@@ -2,6 +2,9 @@
 
 namespace App\Tables\CostTypes;
 
+use App\Enums\CostTypeNature;
+use App\Tables\Support\EditableColumns;
+
 /**
  * Declarative column/filter/action catalogue for the `cost-types` domain
  * (spec 0210): pure data, split out of CostTypesTableDefinition. `lines_count`
@@ -14,7 +17,7 @@ final class CostTypeColumnCatalog
      */
     public static function columns(): array
     {
-        return [
+        return EditableColumns::apply([
             [
                 'id' => 'name',
                 'label' => 'costTypes.columns.name',
@@ -76,7 +79,13 @@ final class CostTypeColumnCatalog
                 'sortable' => true,
                 'filterable' => false,
             ],
-        ];
+        ], [
+            'name' => [],
+            'description' => EditableColumns::NULLABLE,
+            'nature' => ['options' => CostTypeNature::values()],
+            'color' => EditableColumns::COLOR,
+            'is_active' => [],
+        ]);
     }
 
     /**

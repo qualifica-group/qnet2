@@ -10,10 +10,14 @@ use App\Services\CampaignService;
 use App\Services\CompanyService;
 use App\Services\CompanySiteService;
 use App\Services\OperationalSiteService;
+use App\Services\OpportunityService;
+use App\Services\PaymentMethodService;
 use App\Services\ProductService;
 use App\Services\PurchaseRequestPriorityService;
+use App\Services\Quotes\QuoteForSelectService;
 use App\Services\ReferentService;
 use App\Services\RegistryService;
+use App\Services\SectorService;
 use App\Services\SourceService;
 use App\Services\TaskImportanceService;
 use App\Services\TaskPriorityService;
@@ -62,6 +66,10 @@ final class RelationValueScopeChecker
         private readonly CompanySiteService $companySites,
         private readonly BusinessFunctionService $businessFunctions,
         private readonly PurchaseRequestPriorityService $purchaseRequestPriorities,
+        private readonly PaymentMethodService $paymentMethods,
+        private readonly QuoteForSelectService $quotes,
+        private readonly OpportunityService $opportunities,
+        private readonly SectorService $sectors,
     ) {}
 
     /**
@@ -98,6 +106,11 @@ final class RelationValueScopeChecker
             // Spec 0256, D-5: the RDA grid's organization and priority pickers.
             'business-functions' => $this->businessFunctions->forSelect($query)->items,
             'purchase-request-priorities' => $this->purchaseRequestPriorities->forSelect($query)->items,
+            // Spec 0257, D-4: the ODA grid's payment, link and sector pickers.
+            'payment-methods' => $this->paymentMethods->forSelect($query)->items,
+            'quotes' => $this->quotes->forSelect($query)->items,
+            'opportunities' => $this->opportunities->forSelect($query)->items,
+            'sectors' => $this->sectors->forSelect($query)->items,
             default => null,
         };
 

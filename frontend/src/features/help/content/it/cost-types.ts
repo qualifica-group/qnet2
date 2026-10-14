@@ -42,6 +42,7 @@ const guide: HelpGuide = {
             'Premi **Nuovo tipo di costo**.',
             'Si apre la scheda con le righe chiuse: per ogni riga premi la matita (o il valore), compila e premi **Fatto**; **Ripristina** riporta la riga com’era. Poi premi **Salva**. Il nuovo tipo va in fondo all’elenco.',
             'Per modificare non c’è un modulo a parte: apri la scheda con **Visualizza**, premi la matita sulla riga (Nome, Descrizione, Natura, Colore, Attivo), cambia il valore e premi **Salva** (si salva solo quella riga); **Annulla** o Esc lasciano la riga com’era.',
+            'Dall’elenco puoi anche modificare direttamente nelle celle **Nome**, **Descrizione**, **Natura**, **Colore** (scegli dalla palette) e **Attivo**: fai doppio clic sulla cella, cambia il valore e conferma. Valgono le stesse regole della scheda (per esempio il nome deve essere unico).',
           ],
         },
       ],

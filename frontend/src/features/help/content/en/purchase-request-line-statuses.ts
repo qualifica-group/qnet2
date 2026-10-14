@@ -38,6 +38,7 @@ const guide: HelpGuide = {
           items: [
             'Open the record with **View**.',
             'Press the pencil on the row to change (Name, Color or Icon), edit the value and press **Save** (only that row is saved); **Cancel** or Esc leave the row as it was.',
+            'From the list you can also edit directly in the **Name** and **Color** cells (pick from the palette): double-click the cell, change the value and confirm. The icon is changed from the sheet.',
             'The new name, color or icon show up right away in tabs, badges and dialogs.',
           ],
         },

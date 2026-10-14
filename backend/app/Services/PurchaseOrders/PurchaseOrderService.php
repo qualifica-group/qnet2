@@ -18,7 +18,7 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Business logic of the purchase orders (spec 0210): create (with the monthly
- * copies of D-16), full edit with line sync, delete. Amounts are always
+ * copies of D-16), edit (partial since spec 0257: lines synced only when sent), delete. Amounts are always
  * computed here (D-12); header and lines are writable, and the order
  * deletable, only while it is a draft or in validation (D-10). Deleting a line
  * linked to a purchase request line releases it (D-18).
@@ -76,7 +76,7 @@ class PurchaseOrderService
             // Step 2: copy i is dated i months after the first, month end preserved
             for ($copy = 0; $copy < $data->copies; $copy++) {
                 $header = [...$data->header, 'order_date' => $baseDate->addMonthsNoOverflow($copy)->toDateString()];
-                $created[] = $this->createOne($header, $data->lines, $data->sectorIds, $actor, $groupId);
+                $created[] = $this->createOne($header, $data->lines ?? [], $data->sectorIds, $actor, $groupId);
             }
 
             return $created;
@@ -131,36 +131,47 @@ class PurchaseOrderService
             $this->assertEditable($locked);
             $this->assertCompanyUnchanged($locked, $data);
 
-            // Step 2: check the line payload against the stored lines before writing anything
-            $existing = $locked->lines()->lockForUpdate()->get()->keyBy('id');
-            $this->assertLinesBelong($existing, $data->lines);
-            $removed = $this->removedLines($existing, $data->lines);
-
-            // Step 3: release the request lines of the removed lines (D-18), then delete them
-            $this->linker->unlink($removed, $actor);
-            $removed->each(fn (PurchaseOrderLine $line) => $line->delete());
-
-            // Step 4: header and sectors
+            // Step 2: header and sectors (a partial edit sends only what changed, spec 0257 D-2)
             $locked->fill($data->header)->save();
 
             if ($data->sectorIds !== null) {
                 $locked->sectors()->sync($data->sectorIds);
             }
 
-            // Step 5: update / create the lines, then the totals
-            $rates = $this->amounts->vatRates($data->lines);
-
-            foreach ($data->lines as $index => $line) {
-                $stored = $line['id'] === null ? null : $existing->get($line['id']);
-                $stored === null
-                    ? $this->createLine($locked, $line, $index + 1, $rates)
-                    : $this->updateLine($stored, $line, $index + 1, $rates);
+            // Step 3: the lines when sent, then the totals
+            if ($data->lines !== null) {
+                $this->syncLines($locked, $data->lines, $actor);
+                $this->amounts->refreshTotals($locked);
             }
-
-            $this->amounts->refreshTotals($locked);
 
             return $locked;
         });
+    }
+
+    /**
+     * Align the stored lines of the (already locked) order with the payload:
+     * release the request lines of the removed ones (D-18), delete them, then
+     * update / create the others in submission order.
+     *
+     * @param  array<int, array<string, mixed>>  $lines
+     */
+    private function syncLines(PurchaseOrder $locked, array $lines, User $actor): void
+    {
+        $existing = $locked->lines()->lockForUpdate()->get()->keyBy('id');
+        $this->assertLinesBelong($existing, $lines);
+        $removed = $this->removedLines($existing, $lines);
+
+        $this->linker->unlink($removed, $actor);
+        $removed->each(fn (PurchaseOrderLine $line) => $line->delete());
+
+        $rates = $this->amounts->vatRates($lines);
+
+        foreach ($lines as $index => $line) {
+            $stored = $line['id'] === null ? null : $existing->get($line['id']);
+            $stored === null
+                ? $this->createLine($locked, $line, $index + 1, $rates)
+                : $this->updateLine($stored, $line, $index + 1, $rates);
+        }
     }
 
     /** Delete the order, its lines (releasing the linked request lines, D-18) and attachments. */
@@ -194,7 +205,7 @@ class PurchaseOrderService
     /** The numbering is per company: moving an order to another one would break it (spec 0244, D-1). */
     private function assertCompanyUnchanged(PurchaseOrder $locked, PurchaseOrderData $data): void
     {
-        if ((int) $data->header['company_id'] !== (int) $locked->company_id) {
+        if (array_key_exists('company_id', $data->header) && (int) $data->header['company_id'] !== (int) $locked->company_id) {
             throw ValidationException::withMessages(['company_id' => [__('purchase_orders.company_locked')]]);
         }
     }

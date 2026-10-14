@@ -5,11 +5,9 @@ import { toast } from 'sonner'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
-import { createPurchaseOrder, updatePurchaseOrder } from '@/features/purchase-orders/api'
-import { makeOrderLine, makePurchaseOrder } from '@/features/purchase-orders/purchase-order-fixtures'
+import { createPurchaseOrder } from '@/features/purchase-orders/api'
+import { makePurchaseOrder } from '@/features/purchase-orders/purchase-order-fixtures'
 import { PurchaseOrderForm } from '@/features/purchase-orders/purchase-order-form'
-import { toOrderResourcePermissions } from '@/features/purchase-orders/purchase-order-permissions'
-import type { PurchaseOrder } from '@/features/purchase-orders/types'
 import { PURCHASE_ORDER_STATUS_FOR_SELECT_ITEMS } from '@/features/purchase-order-statuses/purchase-order-status-fixtures'
 import type { ProductDetailWithPermissions } from '@/features/products/types'
 
@@ -45,7 +43,6 @@ vi.mock('@/features/products/api', async (importOriginal) => ({
 vi.mock('@/features/purchase-orders/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/purchase-orders/api')>()),
   createPurchaseOrder: vi.fn(),
-  updatePurchaseOrder: vi.fn(),
 }))
 
 vi.mock('@/features/attachments/api', async (importOriginal) => ({
@@ -61,16 +58,14 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: v
 
 const onSaved = vi.fn()
 
-function renderForm(order?: PurchaseOrder) {
+function renderForm() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  const permissions = order
-    ? toOrderResourcePermissions(order)
-    : { resource: { view: true, create: true, update: true, delete: false, export: false, import: false }, fields: {}, actions: {} }
+  const permissions = { resource: { view: true, create: true, update: true, delete: false, export: false, import: false }, fields: {}, actions: {} }
   return render(
     <QueryClientProvider client={client}>
       <ConfirmDialogProvider>
         <ResourcePermissionsProvider permissions={permissions}>
-          <PurchaseOrderForm order={order} onSaved={onSaved} onCancel={vi.fn()} onDeleted={vi.fn()} />
+          <PurchaseOrderForm onSaved={onSaved} onCancel={vi.fn()} />
         </ResourcePermissionsProvider>
       </ConfirmDialogProvider>
     </QueryClientProvider>,
@@ -114,32 +109,6 @@ describe('PurchaseOrderForm lines (AC-020)', () => {
     expect(screen.getByRole('combobox', { name: /VAT rate 1/ })).toHaveTextContent('IVA 22%')
     const line = screen.getByRole('listitem', { name: 'Line 1' })
     expect(within(line).getByText('97.60', { exact: false })).toBeInTheDocument()
-  })
-
-  it('shows the "RDA #id" badge on a generated line and keeps it editable', () => {
-    renderForm(
-      makePurchaseOrder({
-        lines: [
-          makeOrderLine({ id: 11, purchase_request_line: { id: 70, purchase_request_id: 15 } }),
-          makeOrderLine({ id: 12, position: 2, description: 'Manual line' }),
-        ],
-      }),
-    )
-
-    const first = screen.getByRole('listitem', { name: 'Line 1' })
-    const second = screen.getByRole('listitem', { name: 'Line 2' })
-    expect(within(first).getByText('RDA #15')).toBeInTheDocument()
-    expect(within(second).queryByText(/RDA #/)).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Description 1')).toBeEnabled()
-    expect(screen.getByLabelText('Quantity 1')).toBeEnabled()
-  })
-
-  it('extracts the VAT from the unit price with the calculator (122.00 at 22% -> 100.00)', () => {
-    renderForm(makePurchaseOrder({ lines: [makeOrderLine({ unit_price: '122.00', quantity: '1.000' })] }))
-
-    fireEvent.click(screen.getByRole('button', { name: 'Extract the VAT from the price 1' }))
-
-    expect(screen.getByLabelText('Unit price 1')).toHaveValue(100)
   })
 
   it('gives a new line the work order of the header', async () => {
@@ -188,26 +157,12 @@ describe('PurchaseOrderForm unqualified supplier (AC-020, D-15)', () => {
     expect(screen.queryByText('This supplier is not qualified.')).not.toBeInTheDocument()
   })
 
-  it('opening an existing order with an unqualified supplier shows the notice and no modal', () => {
-    renderForm(
-      makePurchaseOrder({ supplier: { id: 9, name: 'Shady Ltd', email: null, is_qualified_supplier: false } }),
-    )
-
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    expect(screen.getByText('This supplier is not qualified.')).toBeInTheDocument()
-  })
 })
 
 describe('PurchaseOrderForm header and save (AC-020)', () => {
-  it('shows Copies only while creating', () => {
-    const { unmount } = renderForm()
+  it('shows Copies while creating', () => {
+    renderForm()
     expect(screen.getByRole('spinbutton', { name: /Copies/ })).toHaveValue(1)
-    unmount()
-
-    renderForm(makePurchaseOrder())
-    expect(screen.queryByRole('spinbutton', { name: /Copies/ })).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Number')).toHaveValue('3/2026')
-    expect(screen.getByLabelText('Number')).toBeDisabled()
   })
 
   it('creates the monthly copies, tells how many and hands the first order to the caller', async () => {
@@ -222,7 +177,7 @@ describe('PurchaseOrderForm header and save (AC-020)', () => {
     fireEvent.change(screen.getByRole('spinbutton', { name: /Copies/ }), { target: { value: '3' } })
     fireEvent.change(screen.getByLabelText('Description 1'), { target: { value: 'Consulting' } })
     await pick(/Cost type 1/, /Collaboratori/)
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0]!)
 
     await waitFor(() => expect(createPurchaseOrder).toHaveBeenCalledTimes(1))
     expect(createPurchaseOrder).toHaveBeenCalledWith(
@@ -230,85 +185,5 @@ describe('PurchaseOrderForm header and save (AC-020)', () => {
     )
     await waitFor(() => expect(onSaved).toHaveBeenCalledWith(created, [5, 6, 7]))
     expect(toast.success).toHaveBeenCalledWith('3 purchase orders created.')
-  })
-
-  it('updates with the persisted line ids and without copies', async () => {
-    const order = makePurchaseOrder()
-    vi.mocked(updatePurchaseOrder).mockResolvedValue(order)
-    renderForm(order)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Update' }))
-
-    await waitFor(() => expect(updatePurchaseOrder).toHaveBeenCalledTimes(1))
-    const [id, payload] = vi.mocked(updatePurchaseOrder).mock.calls[0]!
-    expect(id).toBe(5)
-    expect(payload).not.toHaveProperty('copies')
-    expect(payload.lines.map((line) => line.id)).toEqual([11])
-  })
-
-  it('maps a server 422 onto the supplier input', async () => {
-    const { AxiosError } = await import('axios')
-    vi.mocked(updatePurchaseOrder).mockRejectedValue(
-      new AxiosError('invalid', '422', undefined, undefined, {
-        status: 422,
-        data: { errors: { supplier_id: ['The supplier is not a supplier.'] } },
-      } as never),
-    )
-    renderForm(makePurchaseOrder())
-
-    fireEvent.click(screen.getByRole('button', { name: 'Update' }))
-
-    expect(await screen.findByText('The supplier is not a supplier.')).toBeInTheDocument()
-  })
-})
-
-describe('PurchaseOrderForm read-only (AC-020)', () => {
-  it('locks everything on an approved order', () => {
-    renderForm(makePurchaseOrder({ status: 'approved' }))
-
-    expect(screen.getByRole('status')).toHaveTextContent('This ODA is approved and cannot be changed.')
-    expect(screen.getByLabelText('Description 1')).toBeDisabled()
-    expect(screen.getByLabelText('Quantity 1')).toBeDisabled()
-    expect(screen.getByRole('combobox', { name: /^Supplier$/ })).toBeDisabled()
-    expect(screen.getByRole('combobox', { name: /Cost type 1/ })).toBeDisabled()
-    expect(screen.queryByRole('button', { name: 'Add line' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Update' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Remove line 1' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
-  })
-
-  it('locks a draft the actor cannot update, without the status notice', () => {
-    const order = makePurchaseOrder()
-    order.abilities = { ...order.abilities, update: false }
-    renderForm(order)
-
-    expect(screen.getByLabelText('Description 1')).toBeDisabled()
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Update' })).not.toBeInTheDocument()
-  })
-
-  it('applies the field permissions: a read-only company is shown disabled', () => {
-    renderForm(makePurchaseOrder({ field_permissions: { company_id: { visible: true, editable: false, required: true } } }))
-
-    expect(screen.getByRole('combobox', { name: /^Company$/ })).toBeDisabled()
-    expect(screen.getByRole('combobox', { name: /Operational site/ })).toBeEnabled()
-  })
-
-  it('offers Delete on an editable order that can be deleted', () => {
-    renderForm(makePurchaseOrder())
-
-    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Remove line 1' })).toBeInTheDocument()
-  })
-
-  it('refuses to open the merge dialog while the form has unsaved changes (AC-021)', async () => {
-    renderForm(makePurchaseOrder())
-
-    fireEvent.change(screen.getByLabelText('Description 1'), { target: { value: 'Edited line' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Merge' }))
-
-    await waitFor(() => expect(toast.warning).toHaveBeenCalled())
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

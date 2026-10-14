@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Le **schede per stato** in alto restringono l’elenco a un solo stato (**Tutti** li mostra tutti). La freccia a sinistra di ogni riga ne apre le **righe**. Puoi filtrare, ordinare ed esportare; in fondo trovi i totali di imponibile, IVA e totale del filtro corrente.',
+          text: 'Le **schede per stato** in alto restringono l’elenco a un solo stato (**Tutti** li mostra tutti). La freccia a sinistra di ogni riga ne apre le **righe**. Puoi filtrare, ordinare ed esportare; in fondo trovi i totali di imponibile, IVA e totale del filtro corrente. Sugli ordini in **Bozza** o **In validazione** puoi **modificare direttamente nelle celle** Data ordine, Descrizione, Fornitore (solo anagrafiche fornitore), Società/Sede (solo sedi della società dell’ordine), Sede operativa, Metodo di pagamento, Cliente, Commessa, Contratto/Offerta, Opportunità, Tag EA e Fruitore interno: fai doppio clic sulla cella, scegli il valore e conferma. Valgono le stesse regole della scheda. La **Società** non si cambia: la numerazione è per società. L’ordine si apre con l’icona **Visualizza**.',
         },
         {
           type: 'table',
@@ -38,7 +38,7 @@ const guide: HelpGuide = {
           items: [
             'Premi **Nuova ODA** e compila la **Testata**: **Fornitore**, **Società**, **Società/Sede**, **Data ordine** e **Descrizione** sono obbligatori; **Sede operativa**, **Metodo di pagamento**, **Fruitore interno**, **Cliente**, **Commessa**, **Contratto/Offerta**, **Opportunità**, **Tag EA** con **Specifica** e **Note generali** sono facoltativi. **Società/Sede** mostra solo le sedi della società scelta.',
             'Aggiungi almeno una riga (vedi **Le righe**) e, se serve, i **Documenti**: restano in coda e si caricano subito dopo il salvataggio.',
-            'Facoltativo: nel campo **Copie** indica da 1 a 12 (vedi sotto), poi premi **Salva**.',
+            'Facoltativo: nel campo **Copie** indica da 1 a 12 (vedi sotto), poi premi **Salva** (in alto o in fondo alla scheda). Se esci senza salvare ti viene chiesta conferma.',
           ],
         },
         {
@@ -52,6 +52,28 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'I campi che il tuo ruolo non può modificare appaiono disabilitati o nascosti.',
+        },
+      ],
+    },
+    {
+      id: 'edit',
+      title: 'Modificare una ODA',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Aprendo un’ODA vedi la sua **scheda**: in alto stato, azioni e totali; sotto **Testata**, **Organizzazione e collegamenti**, **Tag EA e note**, **Righe** e **Documenti**. Non c’è un pulsante Salva generale: in **Bozza** e **In validazione** ogni campo si modifica da solo.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Passa sul campo e premi la **matita** (o fai clic sul valore): si apre il campo da modificare.',
+            'Cambia il valore e premi **Salva**: viene salvato solo quel campo. **Annulla**, il tasto Esc o un clic fuori dal campo lo lasciano com’era.',
+            'Le righe si mostrano in sola lettura: la **matita** della riga la apre, **Salva** salva solo quella riga, **Annulla** la riporta com’era. **Aggiungi riga** apre una riga nuova allo stesso modo; il **cestino** chiede conferma ed elimina subito (l’ultima riga non si elimina).',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'La **Società** è in sola lettura dopo la creazione. Si apre un campo alla volta: aprendone un altro le modifiche non salvate del primo vengono scartate. Fuori da Bozza e In validazione, o senza permesso di modifica, le matite non compaiono.',
         },
       ],
     },
@@ -168,7 +190,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            '**Salva** prima le modifiche dell’ordine: l’unificazione ha effetto immediato e, con modifiche non salvate, il pulsante ti avvisa e non si apre.',
+            'Chiudi prima il campo o la riga che stai modificando (**Salva** o **Annulla**): l’unificazione ha effetto immediato e, con un campo aperto, il pulsante ti avvisa e non si apre.',
             'Apri la pagina dell’ordine di destinazione (in Bozza o In validazione) e premi **Unifica**.',
             'La finestra elenca le altre ODA dello **stesso fornitore e della stessa società** in Bozza o In validazione, con le loro righe: seleziona singole righe o un’intera ODA.',
             'Conferma con **Unifica N righe**: le righe vengono **spostate subito** in coda all’ordine corrente e i totali di entrambi gli ordini sono ricalcolati.',

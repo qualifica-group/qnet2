@@ -14,7 +14,9 @@ use Illuminate\Validation\Rule;
 
 /**
  * PurchaseOrderWritePayload (spec 0210), shared by create (POST, which also
- * accepts `copies`) and the full edit (PUT). Authorization stays in the
+ * accepts `copies`) and the edit (PUT/PATCH), partial since spec 0257 D-1:
+ * every key is `sometimes` and the company/site check reads the stored
+ * company when it is not sent. Authorization stays in the
  * controller (PurchaseOrderPolicy); the rules that need the database state
  * (lines of another order) live in PurchaseOrderService. An order that is no
  * longer editable answers 409 before the payload is validated, so the conflict
@@ -49,7 +51,7 @@ class PurchaseOrderWriteRequest extends FormRequest
             'company_id' => ['required', 'integer', Rule::exists('companies', 'id')],
             'company_site_id' => [
                 'required', 'integer',
-                Rule::exists('company_sites', 'id')->where('company_id', $this->input('company_id')),
+                Rule::exists('company_sites', 'id')->where('company_id', $this->has('company_id') ? $this->input('company_id') : $this->purchaseOrder()?->company_id),
             ],
             'operational_site_id' => ['nullable', 'integer', Rule::exists('operational_sites', 'id')],
             'order_date' => ['required', 'date_format:Y-m-d'],
@@ -78,6 +80,15 @@ class PurchaseOrderWriteRequest extends FormRequest
 
         if ($this->purchaseOrder() === null) {
             $rules['copies'] = ['nullable', 'integer', 'between:'.self::MIN_COPIES.','.self::MAX_COPIES];
+
+            return $rules;
+        }
+
+        // Edit: a partial PATCH (spec 0257, D-1); a line, once sent, keeps its own rules.
+        foreach ($rules as $key => $keyRules) {
+            if (! str_starts_with($key, 'lines.') && ! str_starts_with($key, 'sector_ids.') && $keyRules[0] !== 'sometimes') {
+                $rules[$key] = ['sometimes', ...$keyRules];
+            }
         }
 
         return $rules;

@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'The **status tabs** at the top narrow the list to one status (**All** shows them all). The arrow at the left of each row opens its **lines**. You can filter, sort and export; at the bottom you find the taxable, VAT and grand totals of the current filter.',
+          text: 'The **status tabs** at the top narrow the list to one status (**All** shows them all). The arrow at the left of each row opens its **lines**. You can filter, sort and export; at the bottom you find the taxable, VAT and grand totals of the current filter. On orders in **Draft** or **In validation** you can **edit directly in the cells** Order date, Description, Supplier (suppliers only), Company site (only sites of the order company), Operational site, Payment method, Customer, Work order, Contract/Quote, Opportunity, EA tags and Internal user: double-click the cell, pick the value and confirm. The same rules as the record apply. The **Company** cannot change: numbering is per company. The order opens with the **View** icon.',
         },
         {
           type: 'table',
@@ -38,7 +38,7 @@ const guide: HelpGuide = {
           items: [
             'Press **New ODA** and fill in the **Header**: **Supplier**, **Company**, **Company/Site**, **Order date** and **Description** are required; **Operational site**, **Payment method**, **Internal user**, **Customer**, **Work order**, **Contract/Offer**, **Opportunity**, **EA tags** with **Specification** and **General notes** are optional. **Company/Site** only lists the sites of the chosen company.',
             'Add at least one line (see **Lines**) and, if needed, the **Documents**: they stay queued and are uploaded right after saving.',
-            'Optional: in the **Copies** field enter 1 to 12 (see below), then press **Save**.',
+            'Optional: in the **Copies** field enter 1 to 12 (see below), then press **Save** (at the top or at the bottom of the record). Leaving without saving asks for confirmation.',
           ],
         },
         {
@@ -52,6 +52,28 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'Fields your role cannot edit appear disabled or hidden.',
+        },
+      ],
+    },
+    {
+      id: 'edit',
+      title: 'Editing an ODA',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Opening an ODA shows its **record**: status, actions and totals at the top; below, **Header**, **Organization and links**, **EA tags and notes**, **Lines** and **Documents**. There is no general Save button: in **Draft** and **In validation** every field is edited on its own.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Hover the field and press the **pencil** (or click the value): the field opens for editing.',
+            'Change the value and press **Save**: only that field is saved. **Cancel**, the Esc key or a click outside the field leave it as it was.',
+            'Lines are shown read-only: the line **pencil** opens it, **Save** saves that line alone, **Cancel** puts it back. **Add line** opens a new line the same way; the **trash** asks for confirmation and deletes right away (the last line cannot be deleted).',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'The **Company** is read-only after creation. One field opens at a time: opening another one discards the unsaved changes of the first. Outside Draft and In validation, or without the edit permission, no pencil is shown.',
         },
       ],
     },
@@ -168,7 +190,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            '**Save** the order changes first: merging takes effect immediately and, with unsaved changes, the button warns you and does not open.',
+            'First close the field or line you are editing (**Save** or **Cancel**): merging takes effect immediately and, with a field open, the button warns you and does not open.',
             'Open the destination order page (in Draft or In validation) and press **Merge**.',
             'The dialog lists the other ODA of the **same supplier and the same company** in Draft or In validation, with their lines: select single lines or a whole ODA.',
             'Confirm with **Merge N lines**: the lines are **moved right away** to the end of the current order and the totals of both orders are recalculated.',

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tables\PurchaseOrderStatuses;
 
+use App\Tables\Support\EditableColumns;
+
 /**
  * Declarative column/filter/action catalogue of the `purchase-order-statuses`
  * list (spec 0248). Pure data. No delete action: the rows are system rows.
@@ -15,7 +17,7 @@ final class PurchaseOrderStatusColumnCatalog
      */
     public static function columns(): array
     {
-        return [
+        return EditableColumns::apply([
             [
                 'id' => 'name',
                 'label' => 'purchaseOrderStatuses.columns.name',
@@ -51,7 +53,7 @@ final class PurchaseOrderStatusColumnCatalog
                 'filterable' => true,
                 'filterType' => 'number',
             ],
-        ];
+        ], ['name' => [], 'color' => EditableColumns::COLOR]);
     }
 
     /**

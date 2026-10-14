@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tables;
 
+use App\Http\Requests\PurchaseOrderStatuses\UpdatePurchaseOrderStatusRequest;
 use App\Models\PurchaseOrderStatusLabel;
 use App\Models\User;
+use App\Services\PurchaseOrderStatusLabelService;
+use App\Services\Table\FormRequestCellValidator;
 use App\Tables\PurchaseOrderStatuses\PurchaseOrderStatusColumnCatalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -17,6 +21,25 @@ use Illuminate\Support\Facades\Gate;
  */
 class PurchaseOrderStatusesTableDefinition extends AbstractTableDefinition
 {
+    public function __construct(
+        private readonly PurchaseOrderStatusLabelService $service,
+        private readonly FormRequestCellValidator $cells,
+    ) {}
+
+    /**
+     * Spec 0258, D-1: the inline cell edit follows the catalogue's own update
+     * FormRequest and service, never the generic `$row->update()`.
+     */
+    public function updateCell(Model $row, string $columnId, mixed $value): Model
+    {
+        /** @var PurchaseOrderStatusLabel $row */
+        /** @var User $actor */
+        $actor = Auth::user();
+        $request = $this->cells->validate(UpdatePurchaseOrderStatusRequest::class, 'purchaseOrderStatus', $row, $actor, [$columnId => $value]);
+
+        return $this->service->update($row, $request->updatableAttributes());
+    }
+
     public function domain(): string
     {
         return 'purchase-order-statuses';

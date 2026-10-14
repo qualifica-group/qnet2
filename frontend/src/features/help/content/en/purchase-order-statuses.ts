@@ -39,6 +39,7 @@ const guide: HelpGuide = {
           items: [
             'Open the status card with **View**.',
             'Press the pencil on the **Name**, **Color** or **Icon** row, change the value and press **Save** (only that row is saved); **Cancel** or Esc leave the row as it was.',
+            'From the list you can also edit directly in the **Name** and **Color** cells (pick from the palette): double-click the cell, change the value and confirm. The icon is changed from the sheet.',
             'Tabs, badges and the **Change status** dialog show the new name, color and icon at once.',
           ],
         },

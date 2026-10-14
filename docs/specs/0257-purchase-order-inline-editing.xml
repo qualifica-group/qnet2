@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0257-purchase-order-inline-editing" status="approved" owner="utente" date="2026-10-14">
+
+  <goal>
+    Gli ODA si allineano alle RDA (spec 0256): nella lista ODA i campi di testata si modificano in cella; la scheda ODA
+    non ha piu' il pulsante "Salva": ogni campo e ogni riga si modificano e salvano da soli. La creazione resta un form
+    con un unico Salva dentro la stessa card della scheda.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-14: "procedi adesso con ODA" (dopo 0256; decisioni 0256 riusate: righe una alla volta,
+    righe non modificabili dalla lista, una spec per modulo).
+    Fatti verificati: PurchaseOrderWriteRequest e' un PUT completo; PurchaseOrderService::update sincronizza sempre
+    l'intero insieme di righe e rifiuta il cambio societa' (0244 D-1: numerazione per societa'); testata e righe
+    sono modificabili solo in Bozza / In validazione (`PurchaseOrderStatus::isEditable`, 0210 D-10);
+    `toOrderResourcePermissions` (FE) blocca gia' ogni campo fuori da quegli stati; `copies` solo in creazione.
+  </context>
+
+  <decisions>
+    D-1 (contratto backend) PATCH parziale come 0256 D-1: in modifica ogni regola e `lines` diventano `sometimes`;
+        `company_site_id` deve appartenere alla societa' salvata; `lines` assente = righe intatte.
+    D-2 PurchaseOrderData::lines nullable; il service salta la sincronizzazione righe quando null e verifica la
+        societa' solo se inviata.
+    D-3 Lista ODA, colonne modificabili in cella via PurchaseOrderCellWriter (stessa FormRequest e stesso service):
+        order_date, description, supplier (solo anagrafiche fornitore), company_site (sedi della societa' della
+        riga), operational_site, payment_method, customer, work_order, quote, opportunity, sectors (multipla),
+        is_internal_user. Sola lettura: codice, numero, anno, stato, societa' (bloccata dopo la creazione), totali,
+        righe, creato da/il. Una riga e' modificabile solo in Bozza / In validazione e con `update`.
+    D-4 Estensione generica del motore cella: `relation.params` = filtri fissi del picker (es. `is_supplier: 1`),
+        inviati insieme a `scope`. RelationValueScopeChecker riconosce payment-methods, quotes, opportunities,
+        sectors.
+    D-5 L'azione di riga "Modifica" (matita) sparisce dalla lista: la scheda si apre con "Visualizza".
+    D-6 Scheda ODA: identita' (codice, stato, azioni del record), totali, sezioni Ordine, Collegamenti, Note, Righe,
+        poi Evasione/Ricezioni/Fatture (fuori dagli stati modificabili) e Documenti. Ogni campo con matita (salva solo
+        quel campo); la societa' e' in sola lettura; cambiando commessa di testata le righe NON cambiano (la proposta
+        alle righe nuove resta della creazione).
+    D-7 Righe ODA come 0256 D-7: banda in sola lettura, matita apre la riga di input con Annulla/Salva, Aggiungi riga,
+        cestino con conferma e salvataggio immediato.
+    D-8 Creazione: `PurchaseOrderForm` solo creazione dentro RecordCreateLayout (copie mensili incluse), conferma
+        all'uscita senza salvare.
+  </decisions>
+
+  <acceptance>
+    <ac id="AC-001">PATCH con la sola descrizione aggiorna la testata e lascia righe e settori invariati.</ac>
+    <ac id="AC-002">PATCH con una sede di un'altra societa' -> 422; cambio societa' -> 422 (0244).</ac>
+    <ac id="AC-003">Ogni colonna D-3 si salva in cella; fornitore non fornitore -> 422; 403 senza update; ODA non
+      modificabile = riga `editable: false`; nessuna azione `update` di riga.</ac>
+    <ac id="AC-004">Scheda: nessun Salva generale; un campo salva solo se stesso; una riga invia `lines`.</ac>
+    <ac id="AC-005">Creazione: un solo Salva, copie mensili invariate.</ac>
+    <ac id="AC-006">Guide in-app IT/EN `purchase-orders` aggiornate; manuale Claude Docs segnalato.</ac>
+  </acceptance>
+</spec>

@@ -7,7 +7,8 @@ use Illuminate\Support\Arr;
 /**
  * Validated payload of a purchase order write (POST/PUT /api/purchase-orders,
  * spec 0210): the header columns, the optional sector ids, the monthly copies
- * (creation only) and the lines in submission order. Number, year, status,
+ * (creation only) and the lines in submission order. A partial edit carries
+ * only the submitted header keys, and `lines` is null when not sent (spec 0257 D-2). Number, year, status,
  * totals and `created_by` are never part of it (D-11, D-12, D-9).
  */
 final readonly class PurchaseOrderData
@@ -27,12 +28,12 @@ final readonly class PurchaseOrderData
 
     /**
      * @param  array<string, mixed>  $header
-     * @param  array<int, array<string, mixed>>  $lines  each with an optional `id`
+     * @param  array<int, array<string, mixed>>|null  $lines  each with an optional `id`; null = not submitted
      * @param  array<int, int>|null  $sectorIds  null when the key was not submitted (sectors untouched)
      */
     public function __construct(
         public array $header,
-        public array $lines,
+        public ?array $lines,
         public ?array $sectorIds = null,
         public int $copies = 1,
     ) {}
@@ -42,13 +43,13 @@ final readonly class PurchaseOrderData
      */
     public static function fromValidated(array $data): self
     {
-        $lines = array_map(
+        $lines = isset($data['lines']) ? array_map(
             static fn (array $line): array => ['id' => $line['id'] ?? null] + array_merge(
                 array_fill_keys(self::LINE_KEYS, null),
                 Arr::only($line, self::LINE_KEYS),
             ),
             array_values($data['lines']),
-        );
+        ) : null;
 
         $header = Arr::only($data, self::HEADER_KEYS);
 

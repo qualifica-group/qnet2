@@ -4,12 +4,15 @@ namespace App\Tables;
 
 use App\DataObjects\Enums\EnumMeta;
 use App\Enums\CostTypeNature;
+use App\Http\Requests\CostTypes\UpdateCostTypeRequest;
 use App\Models\CostType;
 use App\Models\User;
 use App\Services\CostTypeService;
+use App\Services\Table\FormRequestCellValidator;
 use App\Tables\CostTypes\CostTypeColumnCatalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -18,7 +21,24 @@ use Illuminate\Support\Facades\Gate;
  */
 class CostTypesTableDefinition extends AbstractTableDefinition
 {
-    public function __construct(private readonly CostTypeService $service) {}
+    public function __construct(
+        private readonly CostTypeService $service,
+        private readonly FormRequestCellValidator $cells,
+    ) {}
+
+    /**
+     * Spec 0258, D-1: the inline cell edit follows the catalogue's own update
+     * FormRequest and service, never the generic `$row->update()`.
+     */
+    public function updateCell(Model $row, string $columnId, mixed $value): Model
+    {
+        /** @var CostType $row */
+        /** @var User $actor */
+        $actor = Auth::user();
+        $request = $this->cells->validate(UpdateCostTypeRequest::class, 'costType', $row, $actor, [$columnId => $value]);
+
+        return $this->service->update($row, $request->toData());
+    }
 
     public function domain(): string
     {

@@ -42,6 +42,7 @@ const guide: HelpGuide = {
             'Press **New cost type**.',
             'The sheet opens with closed rows: for each row press the pencil (or the value), fill it in and press **Done**; **Restore** puts the row back as it was. Then press **Save**. The new type goes to the end of the list.',
             'There is no separate edit form: open the sheet with **View**, press the pencil on the row (Name, Description, Nature, Color, Active), change the value and press **Save** (only that row is saved); **Cancel** or Esc leave the row as it was.',
+            'From the list you can also edit directly in the cells **Name**, **Description**, **Nature**, **Color** (pick from the palette) and **Active**: double-click the cell, change the value and confirm. The same rules as the sheet apply (for example the name must be unique).',
           ],
         },
       ],

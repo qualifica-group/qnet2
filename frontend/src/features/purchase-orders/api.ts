@@ -41,8 +41,9 @@ export async function createPurchaseOrder(payload: PurchaseOrderPayload): Promis
 }
 
 /** 409 when the order is not draft/in_validation (D-10). */
-export async function updatePurchaseOrder(id: number, payload: PurchaseOrderPayload): Promise<PurchaseOrder> {
-  const { data } = await apiClient.put<ApiResponse<PurchaseOrder>>(`${ENDPOINT}/${id}`, payload)
+/** Partial update (spec 0257 D-1): only the sent keys change; `lines`, when sent, is the whole set. */
+export async function updatePurchaseOrder(id: number, payload: Partial<PurchaseOrderPayload>): Promise<PurchaseOrder> {
+  const { data } = await apiClient.patch<ApiResponse<PurchaseOrder>>(`${ENDPOINT}/${id}`, payload)
   return data.data
 }
 
