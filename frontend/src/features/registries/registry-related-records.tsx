@@ -1,10 +1,11 @@
 import { useMemo, useState, type ComponentType, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Briefcase, ClipboardList, FileText, ListChecks, Percent } from 'lucide-react'
+import { BookOpen, Briefcase, ClipboardList, FileText, ListChecks, Percent } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RecordCard } from '@/components/detail/record-panel'
 import { useAbilities } from '@/features/auth/use-abilities'
+import { RegistryLedgerPanel } from '@/features/ledger/registry-ledger-panel'
 import {
   RegistryCommissionConfigurationsPanel,
   RegistryOpportunitiesPanel,
@@ -61,6 +62,13 @@ const RELATED_TABS: readonly RelatedTab[] = [
     labelKey: 'registries.detail.related.commissionConfigurations',
     icon: <Percent className="size-3.5" aria-hidden="true" />,
     Panel: RegistryCommissionConfigurationsPanel,
+  },
+  {
+    key: 'ledger',
+    permission: 'ledger.view',
+    labelKey: 'navigation.ledger',
+    icon: <BookOpen className="size-3.5" aria-hidden="true" />,
+    Panel: RegistryLedgerPanel,
   },
 ]
 

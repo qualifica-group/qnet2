@@ -9,6 +9,7 @@ import { financialAccounts } from './it-financial-accounts'
 import { invoiceEditor } from './it-invoice-editor'
 import { invoiceInstallments } from './it-invoice-installments'
 import { invoices, invoiceTags } from './it-invoices'
+import { ledger } from './it-ledger'
 import { paymentMethods } from './it-payment-methods'
 import { proformaRequests } from './it-proforma-requests'
 import { purchaseInvoiceInstallments } from './it-purchase-invoice-installments'
@@ -31,4 +32,5 @@ export const accounting = {
   commissionSettlements,
   enasarcoParameters,
   invoiceEditor,
+  ledger,
 }

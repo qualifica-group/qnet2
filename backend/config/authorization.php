@@ -24,6 +24,7 @@ use App\Authorization\InvoiceInstallmentsAuthorization;
 use App\Authorization\InvoicesAuthorization;
 use App\Authorization\InvoiceTagsAuthorization;
 use App\Authorization\LeadsAuthorization;
+use App\Authorization\LedgerAuthorization;
 use App\Authorization\OperationalSitesAuthorization;
 use App\Authorization\OpportunitiesAuthorization;
 use App\Authorization\PaymentMethodsAuthorization;
@@ -168,6 +169,8 @@ return [
         'invoices' => InvoicesAuthorization::class,
         // spec 0197: le scadenze (rate) delle fatture attive.
         'invoice-installments' => InvoiceInstallmentsAuthorization::class,
+        // spec 0266: Partitario clienti/fornitori (sola lettura, solo `ledger.view`).
+        'ledger' => LedgerAuthorization::class,
         'product-typologies' => ProductTypologiesAuthorization::class,
         // spec 0101: il modulo Task e i suoi cinque configuratori.
         'tasks' => TasksAuthorization::class,

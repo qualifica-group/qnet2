@@ -30,6 +30,7 @@ export const navigation = {
   proformaRequests: 'Richieste Proforma',
   invoices: 'Fatture Attive',
   invoiceInstallments: 'Scadenze',
+  ledger: 'Partitario',
   accountingPayable: 'Passiva',
   purchaseInvoices: 'Fatture passive',
   purchaseInvoiceInstallments: 'Scadenze passive',

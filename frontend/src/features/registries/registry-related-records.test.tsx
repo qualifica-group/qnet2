@@ -29,6 +29,10 @@ function stubPanel(name: string) {
   }
 }
 
+vi.mock('@/features/ledger/registry-ledger-panel', () => ({
+  RegistryLedgerPanel: stubPanel('ledger'),
+}))
+
 vi.mock('@/features/registries/registry-related-panels', () => ({
   RegistryOpportunitiesPanel: stubPanel('opportunities'),
   RegistryQuotesPanel: stubPanel('quotes'),
@@ -51,7 +55,7 @@ describe('RegistryRelatedRecords (spec 0199)', () => {
     render(<RegistryRelatedRecords registryId={5} />)
 
     const tabs = screen.getAllByRole('tab').map((tab) => tab.textContent)
-    expect(tabs).toEqual(['Opportunities', 'Quotes', 'Work orders', 'Tasks', 'Configured commissions'])
+    expect(tabs).toEqual(['Opportunities', 'Quotes', 'Work orders', 'Tasks', 'Configured commissions', 'Ledger'])
     expect(screen.getByText('opportunities-panel:5')).toBeInTheDocument()
     expect(screen.queryByText('quotes-panel:5')).not.toBeInTheDocument()
   })
@@ -84,6 +88,18 @@ describe('RegistryRelatedRecords (spec 0199)', () => {
 
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Configured commissions' }))
     expect(screen.getByText('commission-configurations-panel:5')).toBeInTheDocument()
+  })
+
+  it('AC-018 shows the Ledger tab only with ledger.view and mounts the panel on this anagrafica', () => {
+    canMock.mockImplementation((permission) => permission !== 'ledger.view')
+    const { unmount } = render(<RegistryRelatedRecords registryId={5} />)
+    expect(screen.queryByRole('tab', { name: 'Ledger' })).not.toBeInTheDocument()
+    unmount()
+
+    canMock.mockReturnValue(true)
+    render(<RegistryRelatedRecords registryId={5} />)
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Ledger' }))
+    expect(screen.getByText('ledger-panel:5')).toBeInTheDocument()
   })
 
   it('leaves out the configured commissions tab without the Configuratore viewAny', () => {

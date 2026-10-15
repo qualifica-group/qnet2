@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0266-registry-ledger" status="approved" owner="utente" date="2026-10-15">
+
+  <goal>
+    Partitario clienti/fornitori, tappa 1: per un'anagrafica mostrare quanto resta da incassare (cliente) o da
+    pagare (fornitore), in totale, per periodo e per anzianita' della scadenza, con il dettaglio documento per
+    documento (Dare/Avere, saldo progressivo, stato) e le sue scadenze.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-15. Decisioni utente nella stessa data (vedi decisions).
+    Fatti verificati nel repo:
+    - Anagrafica unica `registries` (Registry): cliente di base, anche fornitore se `is_supplier`.
+    - Attivo: `invoices` (Invoice) -> `customer_registry_id`; `type` proforma|invoice (InvoiceType; la registrazione
+      cambia il `type` sullo STESSO record, quindi "Tutte" non conta mai due volte); `company_id`, `document_date`,
+      `number`/`year` (etichetta `"{number}/{year}"` come InvoiceResource), `external_number`, `total_amount`.
+      Le sedi NON sono sulla fattura: si leggono dall'offerta `quotes.company_site_id` / `quotes.operational_site_id`
+      via `invoices.quote_id`, come InvoiceInstallmentsTableDefinition.
+    - Scadenze attive: `invoice_installments` (InvoiceInstallment): `sequence`, `due_date`, `amount`,
+      `collected_amount`, `collected_at`, colonna virtuale `residual_amount`.
+    - Passivo: `purchase_invoices` (PurchaseInvoice) -> `supplier_id`; `document_type` proforma|invoice
+      (PurchaseInvoiceType, stessa conversione sul record); `document_number` (nullo sulle proforma), `document_date`,
+      `company_id`, `company_site_id`, `operational_site_id`, `total_amount`.
+    - Scadenze passive: `purchase_invoice_installments`: `sequence`, `due_date`, `amount`, `paid_amount`, `paid_at`,
+      `residual_amount` virtuale.
+    - Nessuna tabella pagamenti: l'incasso/pagamento sta sulla scadenza; un parziale chiude la scadenza all'importo
+      ricevuto e ridistribuisce il resto (InstallmentRebalancer). Il residuo di un documento = somma dei residui
+      delle sue scadenze.
+    - Stato di pagamento calcolato: InvoicePaymentStatus (paid / not_due / overdue / seriously_overdue,
+      SERIOUSLY_OVERDUE_DAYS = 21) e InvoicePaymentStatusResolver::forDueDate.
+    - Envelope: BaseApiController::ok() -> `{ success, message, data }`; errori via handleControllerException.
+    - Permessi: BasePolicy (`<resource>.view` ecc.); policy senza model + `config('authorization.permission_only_resources')`
+      come LegacyIdPolicy. Menu in `backend/config/navigation/accounting.php`.
+    - Scheda anagrafica: tab correlati in `frontend/src/features/registries/registry-related-records.tsx`
+      (RELATED_TABS, ciascuno gated da un permesso).
+    - Elenchi per i filtri esistenti: `registries/for-select`, `companies/for-select`, `company-sites/for-select`,
+      `operational-sites/for-select`.
+    - Note di credito/debito non esistono (InvoiceType/PurchaseInvoiceType solo proforma|invoice).
+  </context>
+
+  <decisions>
+    D-1 Posizione: tab "Partitario" nella scheda anagrafica (RELATED_TABS) + pagina "Partitario" in Contabilita'
+        (`/ledger`, voce di menu a livello Contabilita', accanto ai gruppi Attiva/Passiva) con la scelta
+        dell'anagrafica (`?registry=<id>` nell'URL). Stesso componente `LedgerPanel` in entrambi.
+    D-2 Filtro tipo documento: Tutte | Proforma | Fatture, default Fatture (`invoice`).
+    D-3 Periodo sulla data documento, default anno corrente (1/1 - oggi). I documenti con data precedente
+        all'inizio confluiscono nel "Saldo iniziale"; quelli successivi alla fine sono esclusi. Periodo vuoto
+        (entrambi i limiti nulli) = tutta la storia, saldo iniziale 0.
+    D-4 Importi "a oggi": incassi/pagamenti contano qualunque sia la loro data, anche dopo la fine del periodo.
+        La situazione a una data (taglio contabile) arriva con la vista Movimenti (tappa 2).
+    D-5 Convenzione Dare/Avere. Cliente: documento in Dare (`total_amount`), incassato in Avere. Fornitore:
+        documento in Avere, pagato in Dare. `running_balance` e' sempre il residuo cumulato positivo
+        (credito da incassare per il cliente, debito da pagare per il fornitore); la UI indica il lato
+        (Dare per il cliente, Avere per il fornitore).
+    D-6 Sezioni: Cliente e Fornitore separate. Sezione Cliente presente se l'utente ha `invoices.view`;
+        sezione Fornitore se ha `purchase-invoices.view` E (`registries.is_supplier` oppure esiste almeno un
+        documento passivo dell'anagrafica). Senza permesso la sezione e' `null`, mai vuota.
+    D-7 Permesso dedicato `ledger.view` (LedgerPolicy senza model, permission-only, assegnabile dal form Ruolo):
+        apre endpoint, menu, pagina e tab. I dati di ciascuna sezione restano gated anche dal permesso del modulo
+        (D-6): defense in depth.
+    D-8 Filtri analitici multipli: societa' (`company_id[]`), sede societa' (`company_site_id[]`), sede operativa
+        (`operational_site_id[]`). Attivo: sedi dall'offerta collegata; una fattura senza offerta non ha sede e
+        viene esclusa quando un filtro sede e' attivo. I filtri valgono per documenti, saldo iniziale e riepilogo.
+    D-9 Riepilogo (per sezione, sui documenti che passano i filtri):
+        - `invoiced_total`, `settled_total`: documenti NEL periodo.
+        - `residual_total` = `opening_balance` + residui dei documenti nel periodo (= ultimo `running_balance`).
+        - `overdue_total`, `not_due_total`, `aging`: sulle scadenze aperte (residuo > 0) dei documenti con data
+          documento <= fine periodo (inclusi quelli del saldo iniziale), per data scadenza rispetto a oggi.
+          Fasce scaduto: 1-30, 31-60, 61-90, oltre 90 giorni; a scadere: entro 30 (incluso oggi), 31-60, oltre 60.
+    D-10 Stato documento: `paid` (residuo 0 e almeno una scadenza) | `not_due` | `overdue` | `seriously_overdue`,
+        calcolato come InvoicePaymentStatusResolver (prima scadenza aperta per sequence) per attivo E passivo.
+        Etichette UI: Chiusa / Aperta / Scaduta / Gravemente scaduta.
+    D-11 Ordine documenti: `document_date` ASC, poi id ASC (il saldo progressivo segue quest'ordine). Nessuna
+        paginazione: il volume per anagrafica e' limitato; nessuna AG Grid (tabella shadcn con righe espandibili).
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Endpoint GET /api/registries/{registry}/ledger (contratto sotto) con service di calcolo.</item>
+      <item>LedgerPolicy (`ledger.view`) + `ledger` in permission_only_resources + voce di menu in accounting.php.</item>
+      <item>Feature frontend `features/ledger/`: filtri, riepilogo con anzianita', tabella documenti espandibile
+        con scadenze, una sezione per lato.</item>
+      <item>Pagina `/ledger` con selettore anagrafica (registries/for-select) e tab "Partitario" sulla scheda anagrafica.</item>
+      <item>i18n IT/EN, guida in-app `ledger` IT/EN + chiave in HELP_GUIDE_KEYS, breadcrumb.</item>
+      <item>Test Pest (endpoint, calcoli, authz) e Vitest (componenti/hook).</item>
+    </in>
+    <out>
+      <item>Note di credito/debito (spec separata da progettare).</item>
+      <item>Vista Movimenti cronologica, situazione a una data, posizione netta crediti - debiti (tappa 2).</item>
+      <item>Pagina Saldi di tutte le anagrafiche, export estratto conto PDF/Excel (tappa 3).</item>
+      <item>Qualsiasi scrittura: incassi/pagamenti si registrano dai moduli scadenze esistenti, non dal partitario.</item>
+      <item>Modifiche a schema DB, a InvoicePaymentStatusResolver o ai moduli fatture/scadenze esistenti.</item>
+      <item>Ritenute e split payment (non presenti nello schema).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/registries/{registry}/ledger">
+      <request>
+        document_type: "all" | "proforma" | "invoice"   (opzionale, default "invoice")
+        date_from: "YYYY-MM-DD" | null                  (opzionale; default lato FE = 1/1 anno corrente)
+        date_to: "YYYY-MM-DD" | null                    (opzionale; deve essere >= date_from se entrambi presenti)
+        company_id[]: int[]                             (opzionale, exists:companies,id)
+        company_site_id[]: int[]                        (opzionale, exists:company_sites,id)
+        operational_site_id[]: int[]                    (opzionale, exists:operational_sites,id)
+      </request>
+      <response status="200">
+        { success: true, message: "OK", data: {
+          registry: { id: int, name: string, is_supplier: bool },
+          today: "YYYY-MM-DD",
+          customer: LedgerSection | null,
+          supplier: LedgerSection | null
+        } }
+
+        LedgerSection = {
+          opening_balance: number,
+          summary: {
+            invoiced_total: number, settled_total: number, residual_total: number,
+            overdue_total: number, not_due_total: number,
+            aging: {
+              overdue_1_30: number, overdue_31_60: number, overdue_61_90: number, overdue_over_90: number,
+              due_0_30: number, due_31_60: number, due_over_60: number
+            }
+          },
+          documents: LedgerDocument[]
+        }
+
+        LedgerDocument = {
+          id: int,
+          document_type: "proforma" | "invoice",
+          number_label: string | null,      (attivo "{number}/{year}"; passivo document_number, null sulle proforma)
+          external_number: string | null,   (solo attivo; null sul passivo)
+          document_date: "YYYY-MM-DD",
+          company: { id: int, name: string } | null,
+          company_site: { id: int, name: string } | null,
+          operational_site: { id: int, name: string } | null,
+          debit: number, credit: number,    (D-5)
+          settled_amount: number, residual_amount: number,
+          running_balance: number,
+          status: "paid" | "not_due" | "overdue" | "seriously_overdue",
+          installments: LedgerInstallment[]  (ordinate per sequence)
+        }
+
+        LedgerInstallment = {
+          id: int, sequence: int, due_date: "YYYY-MM-DD", amount: number,
+          settled_amount: number | null, settled_at: "YYYY-MM-DD" | null,
+          residual_amount: number,
+          days_late: int                    (giorni oltre la scadenza se residuo > 0 e scaduta, altrimenti 0)
+        }
+
+        Importi: number con 2 decimali. `settled_*` = collected_* (attivo) / paid_* (passivo).
+        Nomi: company = companies.denomination; company_site = company_sites.name;
+        operational_site = alias, altrimenti l'id come stringa (InstallmentSql::operationalSiteLabel).
+      </response>
+      <errors>
+        401 non autenticato.
+        403 senza `ledger.view`, oppure senza ne' `invoices.view` ne' `purchase-invoices.view`.
+        404 anagrafica inesistente.
+        422 parametri non validi (document_type fuori lista, date malformate, date_to &lt; date_from, id inesistenti).
+      </errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un cliente con 2 fatture nel periodo (1.000 incassata del tutto; 500 con una
+      scadenza da 500 aperta), quando chiamo l'endpoint, allora la sezione customer ha i 2 documenti in ordine di
+      data con debit 1.000/500, credit 1.000/0, running_balance 0/500, status paid e lo stato della scadenza aperta.</criterion>
+    <criterion id="AC-002">Dato un fornitore con una fattura passiva da 800 pagata per 300 (scadenze 300 pagata +
+      500 aperta), allora nella sezione supplier credit=800, debit=300, residual_amount=500, running_balance=500.</criterion>
+    <criterion id="AC-003">Dato un documento con data precedente a date_from con residuo 200, allora non compare in
+      documents, opening_balance=200 e il running_balance del primo documento del periodo parte da 200.</criterion>
+    <criterion id="AC-004">Dato un documento con data successiva a date_to, allora e' escluso da documents, da
+      opening_balance e da summary.</criterion>
+    <criterion id="AC-005">Dato un incasso registrato dopo date_to su un documento del periodo, allora conta
+      nel credit e nel residuo (situazione a oggi, D-4).</criterion>
+    <criterion id="AC-006">document_type: "invoice" esclude le proforma, "proforma" esclude le fatture, "all" le
+      include entrambe; senza parametro vale "invoice".</criterion>
+    <criterion id="AC-007">Filtri company_id[] / company_site_id[] / operational_site_id[]: restituiscono solo i
+      documenti corrispondenti; sull'attivo le sedi vengono dall'offerta collegata e una fattura senza offerta e'
+      esclusa con un filtro sede attivo; i filtri valgono anche per opening_balance e summary.</criterion>
+    <criterion id="AC-008">Anzianita': date scadenze aperte a oggi-10, oggi-45, oggi-75, oggi-120, oggi, oggi+40,
+      oggi+90, allora ognuna cade rispettivamente in overdue_1_30, overdue_31_60, overdue_61_90, overdue_over_90,
+      due_0_30, due_31_60, due_over_60; overdue_total e not_due_total sono le somme corrispondenti; le scadenze
+      chiuse non contano.</criterion>
+    <criterion id="AC-009">Riepilogo: invoiced_total/settled_total sommano solo i documenti nel periodo;
+      residual_total = opening_balance + residui del periodo = ultimo running_balance; l'anzianita' include le
+      scadenze aperte dei documenti del saldo iniziale.</criterion>
+    <criterion id="AC-010">Stato documento: scadenza aperta piu' vecchia scaduta da 5 giorni = overdue, da 30 giorni =
+      seriously_overdue, non scaduta = not_due, tutte chiuse = paid; days_late della scadenza aperta scaduta da 5 = 5.</criterion>
+    <criterion id="AC-011">Anagrafica non fornitore e senza documenti passivi: supplier = null. Anagrafica con
+      is_supplier=true: supplier presente anche senza documenti (liste vuote, totali 0).</criterion>
+    <criterion id="AC-012">Authz: senza `ledger.view` -> 403; con `ledger.view` e solo `invoices.view` ->
+      200 con supplier null; con solo `purchase-invoices.view` -> customer null; senza nessuno dei due -> 403.</criterion>
+    <criterion id="AC-013">Validazione: document_type "x", date malformata, date_to &lt; date_from, company_id
+      inesistente -> 422 senza dati; anagrafica inesistente -> 404.</criterion>
+    <criterion id="AC-014">Permesso: `ledger.view` esiste dopo permissions:sync, e' assegnabile (AssignablePermissionCatalogue)
+      e la voce di menu "Partitario" compare in navigazione solo a chi lo possiede.</criterion>
+    <criterion id="AC-015">FE pagina `/ledger`: senza anagrafica scelta mostra lo stato vuoto con il selettore;
+      scelta un'anagrafica, l'URL riceve `?registry=id` e compaiono filtri (default Fatture + anno corrente),
+      riepilogo e sezioni.</criterion>
+    <criterion id="AC-016">FE tabella documenti: colonne Data, Documento, Dare, Avere, Saldo, Stato; riga
+      "Saldo iniziale" solo con date_from; cliente con importo documento in colonna Dare, fornitore in Avere;
+      il pulsante di espansione (aria-expanded) mostra le scadenze con importo, incassato/pagato il, importo,
+      residuo, giorni ritardo.</criterion>
+    <criterion id="AC-017">FE: un cambio filtro rilancia la query con i parametri del contratto (query key con i
+      filtri); i badge di stato mostrano testo oltre al colore.</criterion>
+    <criterion id="AC-018">FE tab "Partitario" nella scheda anagrafica: presente solo con `ledger.view`, mostra lo
+      stesso pannello filtrato sull'anagrafica corrente senza selettore.</criterion>
+    <criterion id="AC-019">FE sezioni: mostra solo le sezioni non null; con entrambe, Cliente sopra Fornitore,
+      ciascuna con titolo e riepilogo proprio.</criterion>
+    <criterion id="AC-020">Guida in-app `ledger` IT/EN con gli stessi id di sezione; help-content-parity verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza. Nessuna migrazione. Sola lettura: nessun model viene modificato.
+    Layering: LedgerController (thin, try/handleControllerException) -> LedgerRequest (FormRequest) ->
+    LedgerService::handle (orchestrazione) con un calcolatore per lato (attivo/passivo) e una classe pura per
+    anzianita'/saldo progressivo testabile senza DB.
+    Query: Eloquent/Query Builder con eager loading delle scadenze (preventLazyLoading attivo), nessun SQL da input,
+    filtri solo da parametri validati. Niente N+1: numero di query costante rispetto al numero di documenti.
+    Importi calcolati in centesimi interi o con bcmath/round(…, 2) senza errori float cumulati sul saldo progressivo.
+    Data di riferimento "oggi" iniettabile (Carbon::setTestNow nei test).
+    Nessun throttle sull'endpoint. Nessun nome di classe/model negli errori.
+    FE: TanStack Query (query key centralizzata), axios client, filtri come stato UI sincronizzato con l'URL
+    sulla pagina, componenti `components/ui/` (Table, Collapsible/Button, Select, Badge, Card), compatti
+    (preferenza cliente), mobile-first (tabella in overflow-x-auto), i18n su ogni stringa, importi con il
+    formatter di valuta gia' in uso. File &lt; 300 righe.
+    Manuale: guide in-app IT+EN aggiornate (§4-bis); manuale Claude Docs: nuova sezione "Partitario".
+  </constraints>
+
+</spec>

@@ -109,6 +109,9 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // spec 0185 `request-statistics` (RequestStatisticsAuthorization: a view-only module, no
         // field — registered only so its permission is assignable from the Role form).
         'request-statistics',
+        // spec 0266 `ledger` (LedgerAuthorization: a view-only module, no field — registered only so
+        // `ledger.view` is assignable from the Role form under the Accounting area).
+        'ledger',
         // spec 0058 `reward-types` (RewardTypesAuthorization: the "Buoni, Premi e Incentivi" lookup
         // — name/color, both mandatory, D-5).
         'reward-types',

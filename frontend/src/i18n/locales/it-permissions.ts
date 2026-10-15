@@ -155,6 +155,7 @@ export const permissions = {
     'invoice-tags': 'Tag fattura',
     invoices: 'Fatture Attive',
     'invoice-installments': 'Scadenze',
+    ledger: 'Partitario',
     'purchase-invoices': 'Fatture Passive',
     'purchase-invoice-installments': 'Scadenze Passive',
     // Spec 0212: provvigioni agenti.

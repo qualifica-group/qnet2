@@ -3,6 +3,28 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0266 — Partitario clienti/fornitori tappa 1 — VERDE, COMMITTATO (2026-10-15)
+
+- Spec `docs/specs/0266-registry-ledger.xml` (D-1..D-11, AC-001..AC-020 tutti PASS dal verifier).
+- Endpoint `GET /api/registries/{registry}/ledger` (sola lettura): params `document_type` (all|proforma|invoice,
+  default invoice), `date_from`/`date_to` (assenti = tutta la storia), `company_id[]`, `company_site_id[]`,
+  `operational_site_id[]`. Response `{ registry, today, customer: LedgerSection|null, supplier: LedgerSection|null }`.
+- Backend: `app/Services/Ledger/{LedgerService,LedgerCalculator,LedgerSide,ReceivableLedgerSource,PayableLedgerSource,BuildsLedgerEntries}`,
+  DTO `app/DataObjects/Ledger/*`, `RegistryLedgerController` + `RegistryLedgerRequest` (authorize: `ledger.view` + almeno
+  `invoices.view`/`purchase-invoices.view`; il service rimette il gate per sezione). Importi in centesimi interi.
+  Sedi attive lette dall'offerta (`quotes.*_site_id`). Stato via `InvoicePaymentStatusResolver::forDueDate` (invariato).
+- Permesso: `LedgerPolicy` (abilities `['view']`) + `LedgerAuthorization` registrata in `config/authorization.php`
+  `definitions` (NON permission_only: altrimenti la voce comparirebbe due volte nel form Ruolo). Menu `ledger`
+  in `config/navigation/accounting.php` (route `/ledger`, `ledger.view`). `FieldCatalogueEndpointTest` aggiornato (REQUIREMENT CHANGED).
+- Frontend: `features/ledger/*` (LedgerPanel, filtri, riepilogo+anzianita', tabella documenti nativa espandibile —
+  non esiste `components/ui/table.tsx`), `pages/ledger-page.tsx` (`?registry=id`; filtri solo stato locale),
+  tab "Partitario" in `registry-related-records.tsx`, i18n `it/en-ledger.ts`, guida in-app `ledger` IT/EN.
+- Ambiente test backend: serve un php.ini con pdo_sqlite/sqlite3/zip e memory_limit 2048M via `PHPRC`
+  (i worker --parallel lo ereditano). Fallimenti noti non correlati: `QuoteDocumentPdfTest` (manca soffice),
+  timeout Vitest flaky sotto carico (stat-chart, attribute-form-table-editor, request-dashboard-tabs).
+- Prossimi passi: tappa 2 (vista Movimenti con taglio a data + posizione netta), tappa 3 (Saldi di tutte le
+  anagrafiche + export estratto conto), spec separata note di credito/debito.
+
 ## Spec 0265 — Provvigioni agenti tappa 2: Estratti e Lanci allineati alle schede — VERDE, NON COMMITTATO (2026-10-15)
 
 - Spec `docs/specs/0265-commission-settlements-runs-record-alignment.xml` (D-1..D-3). Solo frontend.

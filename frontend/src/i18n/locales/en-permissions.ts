@@ -152,6 +152,7 @@ export const permissions = {
     'invoice-tags': 'Invoice tags',
     invoices: 'Active invoices',
     'invoice-installments': 'Due dates',
+    ledger: 'Ledger',
     'purchase-invoices': 'Passive invoices',
     'purchase-invoice-installments': 'Payable installments',
     // Spec 0212: agent commissions.

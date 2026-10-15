@@ -83,6 +83,14 @@ return [
                 ],
             ],
         ],
+        // "Partitario" (spec 0266): customer/supplier ledger of a registry.
+        [
+            'key' => 'ledger',
+            'label' => 'navigation.ledger',
+            'icon' => 'book-open',
+            'route' => '/ledger',
+            'permission' => 'ledger.view',
+        ],
         // "Provvigioni agenti" (spec 0212): agent commissions; a group with no route of its own.
         [
             'key' => 'accounting-commissions',

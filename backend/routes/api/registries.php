@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Registries\RegistryController;
 use App\Http\Controllers\Registries\RegistryForSelectController;
+use App\Http\Controllers\Registries\RegistryLedgerController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -26,6 +27,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('registries/for-select', RegistryForSelectController::class);
 
 Route::get('registries/{registry}', [RegistryController::class, 'show']);
+// Spec 0266: Partitario of the registry; gated by `ledger.view` in the FormRequest.
+Route::get('registries/{registry}/ledger', RegistryLedgerController::class)->whereNumber('registry');
 Route::post('registries', [RegistryController::class, 'store']);
 Route::match(['put', 'patch'], 'registries/{registry}', [RegistryController::class, 'update']);
 Route::delete('registries/{registry}', [RegistryController::class, 'destroy']);
