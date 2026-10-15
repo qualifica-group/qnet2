@@ -14,6 +14,7 @@ use App\Services\Table\FormRequestCellValidator;
 use App\Tables\PurchaseInvoiceInstallments\PurchaseInstallmentSql;
 use App\Tables\PurchaseInvoices\PurchaseInvoiceColumnCatalog;
 use App\Tables\PurchaseInvoices\PurchaseInvoiceDerivedQuery;
+use App\Tables\PurchaseInvoices\PurchaseInvoicePayableColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -93,6 +94,7 @@ class PurchaseInvoicesTableDefinition extends AbstractTableDefinition
             ->with(['supplier:id,name', 'company:id,denomination'])
             ->withSum('installments', 'paid_amount')
             ->withCount('installments')
+            ->withExists('commissionSettlement')
             ->addSelect([self::FIRST_UNPAID_DUE_DATE => PurchaseInvoiceInstallment::query()
                 ->select('due_date')
                 ->whereColumn('purchase_invoice_installments.purchase_invoice_id', 'purchase_invoices.id')
@@ -184,8 +186,9 @@ class PurchaseInvoicesTableDefinition extends AbstractTableDefinition
             'net_amount' => $row->net_amount,
             'vat_amount' => $row->vat_amount,
             'total_amount' => $row->total_amount,
+            'payable_amount' => $row->payableAmount(),
             'paid_amount' => self::money($paid),
-            'residual_amount' => self::money((float) $row->total_amount - $paid),
+            'residual_amount' => self::money((float) $row->payableAmount() - $paid),
             'payment_status' => $this->paymentStatus($row)->value,
         ];
     }
@@ -209,7 +212,8 @@ class PurchaseInvoicesTableDefinition extends AbstractTableDefinition
                 continue;
             }
 
-            if ($key === 'delete' && $hasPayments) {
+            // A document born from a commission settlement is owned by it (spec 0267, D-5).
+            if ($key === 'delete' && ($hasPayments || $row->getAttribute('commission_settlement_exists'))) {
                 continue;
             }
 
@@ -228,7 +232,8 @@ class PurchaseInvoicesTableDefinition extends AbstractTableDefinition
      */
     public function applyDerivedFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
     {
-        return PurchaseInvoiceDerivedQuery::applyFilter($query, $columnId, $filter);
+        return PurchaseInvoiceDerivedQuery::applyFilter($query, $columnId, $filter)
+            || PurchaseInvoicePayableColumn::applyFilter($query, $columnId, $filter);
     }
 
     /**
@@ -236,7 +241,8 @@ class PurchaseInvoicesTableDefinition extends AbstractTableDefinition
      */
     public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
     {
-        return PurchaseInvoiceDerivedQuery::applySort($query, $columnId, $direction);
+        return PurchaseInvoiceDerivedQuery::applySort($query, $columnId, $direction)
+            || PurchaseInvoicePayableColumn::applySort($query, $columnId, $direction);
     }
 
     /**

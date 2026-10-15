@@ -2,6 +2,7 @@ import { useWatch, type Control } from 'react-hook-form'
 import type { ForSelectItem } from '@/features/for-select/types'
 import { useForSelectLabels } from '@/features/for-select/use-for-select'
 import { REFERENT_TYPES_FOR_SELECT_RESOURCE } from '@/features/referent-types/for-select-api'
+import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import type { ReferentRecordValues } from '@/features/referents/referent-record'
 import type { ReferentFormValues } from '@/features/referents/use-referent-form'
@@ -25,15 +26,21 @@ export function useReferentDraftValues(control: Control<ReferentFormValues>): Re
   const draft = useWatch({ control })
   const referentTypeId = draft.referent_type_id ?? null
   const userId = draft.user_id ?? null
+  const supplierId = draft.supplier_registry_id ?? null
   const referentTypes = useForSelectLabels({
     resource: REFERENT_TYPES_FOR_SELECT_RESOURCE,
     ids: referentTypeId !== null ? [referentTypeId] : NO_IDS,
   })
   const users = useForSelectLabels({ resource: USERS_FOR_SELECT_RESOURCE, ids: userId !== null ? [userId] : NO_IDS })
+  const suppliers = useForSelectLabels({
+    resource: REGISTRIES_FOR_SELECT_RESOURCE,
+    ids: supplierId !== null ? [supplierId] : NO_IDS,
+  })
 
   return {
     referent_type: refOf(referentTypes, referentTypeId),
     user: refOf(users, userId),
+    supplier: refOf(suppliers, supplierId),
     contact_scope: draft.contact_scope ?? 'internal',
     notes: draft.notes ?? null,
     custom_fields: (draft.custom_fields ?? {}) as ReferentRecordValues['custom_fields'],

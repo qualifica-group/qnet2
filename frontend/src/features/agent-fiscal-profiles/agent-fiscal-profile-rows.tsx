@@ -13,6 +13,7 @@ import { MetaFieldRowContext } from '@/features/authorization/meta-field-row-con
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
 import { VAT_RATES_FOR_SELECT_RESOURCE } from '@/features/vat-rates/for-select-api'
 import { formatDate } from '@/lib/formatting/date-display'
+import { CostTypeRow, PaymentMethodRow } from '@/features/agent-fiscal-profiles/agent-fiscal-profile-document-rows'
 import {
   EnasarcoRow,
   SecondaryFieldError,
@@ -198,6 +199,8 @@ export function AgentFiscalProfileSections({ inline, canEdit, refs }: RelationRo
       <RecordSection title={t('agentFiscalProfiles.form.sections.vat.title')} icon={<ReceiptEuro />}>
         <RecordFieldList>
           <VatRateRow {...rowProps} refs={refs} />
+          <PaymentMethodRow {...rowProps} refs={refs} />
+          <CostTypeRow {...rowProps} refs={refs} />
           <NotesRow {...rowProps} />
         </RecordFieldList>
       </RecordSection>

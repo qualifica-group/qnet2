@@ -24,6 +24,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'withholding_amount', 'enasarco_enabled', 'enasarco_mandate_type', 'enasarco_base_amount',
     'enasarco_agent_amount', 'enasarco_principal_amount', 'net_payable', 'notes', 'issued_at', 'issued_by',
     'cancelled_at', 'cancelled_by', 'cancellation_reason', 'created_by',
+    'document_number', 'document_date', 'document_taxable_amount', 'document_vat_amount',
+    'document_withholding_amount', 'document_enasarco_amount', 'document_total_amount',
+    'document_received_at', 'document_received_by', 'approved_at', 'approved_by', 'purchase_invoice_id',
 ])]
 class CommissionSettlement extends BaseModel
 {
@@ -58,6 +61,14 @@ class CommissionSettlement extends BaseModel
             'net_payable' => 'decimal:2',
             'issued_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'document_date' => 'date',
+            'document_taxable_amount' => 'decimal:2',
+            'document_vat_amount' => 'decimal:2',
+            'document_withholding_amount' => 'decimal:2',
+            'document_enasarco_amount' => 'decimal:2',
+            'document_total_amount' => 'decimal:2',
+            'document_received_at' => 'datetime',
+            'approved_at' => 'datetime',
         ];
     }
 
@@ -131,5 +142,29 @@ class CommissionSettlement extends BaseModel
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * @return BelongsTo<PurchaseInvoice, $this>
+     */
+    public function purchaseInvoice(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseInvoice::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function documentReceiver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'document_received_by');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 }

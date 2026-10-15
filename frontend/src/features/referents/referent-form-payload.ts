@@ -31,6 +31,7 @@ export function buildCreatePayload(
   return {
     referent_type_id: values.referent_type_id,
     user_id: values.user_id,
+    supplier_registry_id: values.supplier_registry_id,
     contact_scope: values.contact_scope,
     notes: values.notes || null,
     personal_data: omitNonEditableFields(draftToPayload(profileDraft), fieldPermission),
@@ -62,6 +63,9 @@ export function buildUpdatePayload(
   // never diffs against the form's own unlinked default.
   if (values.user_id !== (original.user_id ?? null)) {
     payload.user_id = values.user_id
+  }
+  if (values.supplier_registry_id !== (original.supplier_registry_id ?? null)) {
+    payload.supplier_registry_id = values.supplier_registry_id
   }
   if (values.contact_scope !== original.contact_scope) {
     payload.contact_scope = values.contact_scope

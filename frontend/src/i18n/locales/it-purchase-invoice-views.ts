@@ -21,6 +21,9 @@ export const purchaseInvoiceViews = {
     vat_amount: 'IVA',
     total_amount: 'Totale',
     paid_amount: 'Pagato',
+    withholding_amount: "Ritenuta d'acconto",
+    enasarco_amount: 'ENASARCO a carico',
+    payable_amount: 'Netto da pagare',
     residual_amount: 'Residuo',
     payment_status: 'Stato pagamento',
   },
@@ -31,6 +34,7 @@ export const purchaseInvoiceViews = {
   },
   detail: {
     title: 'Fattura {{number}}',
+    fromSettlement: 'Da estratto {{code}}',
     titleProforma: 'Proforma passivo',
     loadError: 'Impossibile caricare il documento. Riprova.',
     delete: 'Elimina',

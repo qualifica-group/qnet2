@@ -43,7 +43,7 @@ class EnasarcoParameterService
     private function isUsedByIssuedSettlement(EnasarcoParameter $parameter): bool
     {
         return CommissionSettlement::query()
-            ->where('status', CommissionSettlementStatus::Issued->value)
+            ->whereIn('status', array_column(CommissionSettlementStatus::validStatuses(), 'value'))
             ->where('enasarco_enabled', true)
             ->where('period_to', '>=', "{$parameter->year}-01-01")
             ->where('period_to', '<', ($parameter->year + 1).'-01-01')

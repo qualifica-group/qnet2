@@ -78,15 +78,28 @@ export interface PurchaseInvoice {
   net_amount: string
   vat_amount: string
   total_amount: string
+  /** Withholding tax and ENASARCO charged to the company (spec 0267 D-6); they reduce the net payable. */
+  withholding_amount: string
+  enasarco_amount: string
+  /** total - withholding - enasarco: what the installments sum to. */
+  payable_amount: string
   paid_amount: string
   residual_amount: string
   has_payments: boolean
+  /** Settlement this document was generated from (spec 0267 D-5): the document is locked while set. */
+  commission_settlement: CommissionSettlementRef | null
   purchase_orders: PurchaseOrderRef[]
   lines: PurchaseInvoiceLine[]
   installments: PurchaseInvoiceInstallment[]
   created_by: NamedRef
   created_at: string
   permissions: ResourcePermissions
+}
+
+export interface CommissionSettlementRef {
+  id: number
+  /** "n/year" code of the statement. */
+  code: string
 }
 
 /** Row of the write payload. `id` keeps an existing row on update. */
@@ -116,6 +129,9 @@ export interface PurchaseInvoiceWritePayload {
   cost_type_id?: number | null
   work_order_id?: number | null
   notes?: string | null
+  /** Omitted or null = 0. */
+  withholding_amount?: number | null
+  enasarco_amount?: number | null
   purchase_order_ids?: number[]
   lines: PurchaseInvoiceLineWrite[]
 }
@@ -160,6 +176,8 @@ export interface PurchaseInstallmentPreviewPayload {
   net_amount: number
   vat_amount: number
   total_amount: number
+  withholding_amount?: number
+  enasarco_amount?: number
 }
 
 /** Plan row of the installment preview; `locked`/`paid_amount` only appear on a rebalanced paid row. */

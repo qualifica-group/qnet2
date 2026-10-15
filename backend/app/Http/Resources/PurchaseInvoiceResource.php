@@ -52,8 +52,12 @@ class PurchaseInvoiceResource extends JsonResource
             'net_amount' => $this->net_amount,
             'vat_amount' => $this->vat_amount,
             'total_amount' => $this->total_amount,
+            'withholding_amount' => $this->withholding_amount,
+            'enasarco_amount' => $this->enasarco_amount,
+            'payable_amount' => $this->payableAmount(),
             'paid_amount' => $paid,
-            'residual_amount' => bcsub((string) $this->total_amount, $paid, 2),
+            'residual_amount' => bcsub($this->payableAmount(), $paid, 2),
+            'commission_settlement' => $this->commissionSettlement === null ? null : ['id' => $this->commissionSettlement->id, 'code' => $this->commissionSettlement->code()],
             'has_payments' => bccomp($paid, '0', 2) > 0,
             'purchase_orders' => $this->purchaseOrders
                 ->sortBy([['year', 'asc'], ['number', 'asc']])

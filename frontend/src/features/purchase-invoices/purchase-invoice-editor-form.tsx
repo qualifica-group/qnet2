@@ -8,6 +8,7 @@ import { PurchaseInvoiceEditorInstallments } from '@/features/purchase-invoices/
 import { PurchaseInvoiceEditorLinesSection } from '@/features/purchase-invoices/purchase-invoice-editor-lines-section'
 import { PurchaseInvoiceEditorOrdersSection } from '@/features/purchase-invoices/purchase-invoice-editor-orders-section'
 import type { EditorSource } from '@/features/purchase-invoices/purchase-invoice-editor-source'
+import { PurchaseInvoiceEditorWithholdings } from '@/features/purchase-invoices/purchase-invoice-editor-withholdings'
 import { PurchaseInvoiceEditorTotals } from '@/features/purchase-invoices/purchase-invoice-editor-totals'
 import type { PurchaseInvoice } from '@/features/purchase-invoices/types'
 import { usePurchaseInvoiceEditorForm } from '@/features/purchase-invoices/use-purchase-invoice-editor-form'
@@ -58,10 +59,11 @@ export function PurchaseInvoiceEditorForm({ source, onSaved, onCancel }: Purchas
             onRememberVat={editor.rememberVat}
             onAddLine={editor.addLine}
           />
+          <PurchaseInvoiceEditorWithholdings control={editor.form.control} />
           <PurchaseInvoiceEditorInstallments preview={editor.preview} />
         </div>
         <DialogFooter className="flex-col items-stretch gap-2 border-t px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <PurchaseInvoiceEditorTotals totals={editor.totals} />
+          <PurchaseInvoiceEditorTotals totals={editor.totals} deductionsCents={editor.deductionsCents} />
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" size="sm" onClick={onCancel}>
               {t('purchaseInvoices.editor.actions.cancel')}

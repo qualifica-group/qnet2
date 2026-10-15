@@ -23,7 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * optional classification; `contact_scope` distinguishes internal/external
  * referents.
  */
-#[Fillable(['name', 'referent_type_id', 'contact_scope', 'notes', 'user_id'])]
+#[Fillable(['name', 'referent_type_id', 'contact_scope', 'notes', 'user_id', 'supplier_registry_id'])]
 class Referent extends BaseModel
 {
     /** @use HasFactory<ReferentFactory> */
@@ -50,6 +50,16 @@ class Referent extends BaseModel
     public function referentType(): BelongsTo
     {
         return $this->belongsTo(ReferentType::class);
+    }
+
+    /**
+     * The supplier registry the agent is paid through (spec 0267, D-7).
+     *
+     * @return BelongsTo<Registry, $this>
+     */
+    public function supplierRegistry(): BelongsTo
+    {
+        return $this->belongsTo(Registry::class, 'supplier_registry_id');
     }
 
     /**

@@ -21,6 +21,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'Con **Apri documento** sulla riga apri la scheda della **fattura o proforma passiva** a cui appartiene la rata, dalla pagina **Contabilità › Passiva › Fatture passive**. Serve il permesso di visualizzazione delle fatture passive. Le rate nascono dal documento: vedi la guida **Fatture passive**.',
         },
+        {
+          type: 'paragraph',
+          text: 'Le rate di un documento sommano al suo **Netto da pagare**: se la fattura ha **Ritenuta d’acconto** o **ENASARCO a carico**, le rate sono calcolate al netto delle trattenute e il totale delle scadenze è inferiore al totale del documento. Le rate delle fatture create da un estratto di provvigioni si pagano da qui.',
+        },
       ],
     },
     {

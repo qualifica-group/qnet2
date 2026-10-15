@@ -18,6 +18,14 @@ const UNIT_PRICE_LIMIT = 9_999_999_999
 
 const nullableId = z.number().int().nullable()
 
+/** Optional deduction (withholding tax / ENASARCO): empty = null = 0, never negative. */
+function deductionSchema(t: TFunction) {
+  return z
+    .number(t('purchaseInvoices.editor.errors.amountInvalid'))
+    .min(0, t('purchaseInvoices.editor.errors.amountNegative'))
+    .nullable()
+}
+
 /** One document row; amounts are numbers, the server recomputes net/VAT/total. */
 export function buildPurchaseInvoiceLineSchema(t: TFunction) {
   const e = (key: string) => t(`purchaseInvoices.editor.errors.${key}`)
@@ -72,6 +80,8 @@ export function buildPurchaseInvoiceWriteSchema(t: TFunction) {
       cost_type_id: nullableId,
       work_order_id: nullableId,
       notes: z.string().max(NOTES_MAX, e('notesMax')).nullable(),
+      withholding_amount: deductionSchema(t),
+      enasarco_amount: deductionSchema(t),
       purchase_order_ids: z.array(z.number().int()),
       lines: z
         .array(buildPurchaseInvoiceLineSchema(t))

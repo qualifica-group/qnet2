@@ -34,12 +34,14 @@ it('AC-018: exposes the contract columns, the status enum key, the filters and t
     $columns = collect($data['columns'])->keyBy('id');
 
     expect($columns->keys()->all())->toBe([
-        'id', 'code', 'status', 'referent', 'company', 'period_from', 'period_to', 'period_month', ...SETTLEMENT_AMOUNT_COLUMNS, 'issued_at',
+        'id', 'code', 'status', 'referent', 'company', 'period_from', 'period_to', 'period_month', ...SETTLEMENT_AMOUNT_COLUMNS, 'issued_at', 'document_number', 'payment_status',
     ])
         ->and($data['row_grouping'])->toBe(['enabled' => true, 'max_depth' => 3, 'columns' => ['status', 'referent', 'company', 'period_month']])
         ->and($data['defaultSort'])->toBe([['columnId' => 'period_to', 'direction' => 'desc'], ['columnId' => 'id', 'direction' => 'desc']])
         ->and($columns['code'])->toMatchArray(['type' => 'text', 'sortable' => true, 'filterType' => 'text', 'label' => 'commissionSettlements.columns.code'])
-        ->and($columns['status'])->toMatchArray(['type' => 'badge', 'sortable' => true, 'filterType' => 'set', 'enumKey' => 'commission_settlement_status', 'options' => ['DRAFT', 'ISSUED', 'CANCELLED']])
+        ->and($columns['status'])->toMatchArray(['type' => 'badge', 'sortable' => true, 'filterType' => 'set', 'enumKey' => 'commission_settlement_status', 'options' => ['DRAFT', 'ISSUED', 'DOCUMENT_RECEIVED', 'APPROVED', 'CANCELLED']])
+        ->and($columns['document_number'])->toMatchArray(['type' => 'text', 'sortable' => true, 'filterType' => 'text'])
+        ->and($columns['payment_status'])->toMatchArray(['type' => 'badge', 'sortable' => false, 'filterType' => 'set', 'options' => ['paid', 'not_due', 'overdue', 'seriously_overdue']])
         ->and($columns['period_month'])->toMatchArray(['visible' => false, 'sortable' => false, 'filterType' => 'set'])
         ->and($columns['taxable_amount'])->toMatchArray(['filterType' => 'number', 'aggFunc' => 'sum'])
         ->and($columns['net_payable'])->toMatchArray(['filterType' => 'number', 'aggFunc' => 'sum'])
@@ -74,15 +76,15 @@ it('AC-018: the row abilities are the policy ability AND the state of the statem
 
     $rows = collect(settlementTableRows(SETTLEMENTS_DOMAIN)['items'])->keyBy('id');
 
-    expect($rows[$draft->id]['abilities'])->toBe(['recalculate' => true, 'issue' => true, 'cancel' => false, 'delete' => true])
-        ->and($rows[$issued->id]['abilities'])->toBe(['recalculate' => false, 'issue' => false, 'cancel' => true, 'delete' => false])
-        ->and($rows[$cancelled->id]['abilities'])->toBe(['recalculate' => false, 'issue' => false, 'cancel' => false, 'delete' => false]);
+    expect($rows[$draft->id]['abilities'])->toBe(['recalculate' => true, 'issue' => true, 'cancel' => false, 'delete' => true, 'receive_document' => false, 'remove_document' => false, 'approve' => false])
+        ->and($rows[$issued->id]['abilities'])->toBe(['recalculate' => false, 'issue' => false, 'cancel' => true, 'delete' => false, 'receive_document' => false, 'remove_document' => false, 'approve' => false])
+        ->and($rows[$cancelled->id]['abilities'])->toBe(['recalculate' => false, 'issue' => false, 'cancel' => false, 'delete' => false, 'receive_document' => false, 'remove_document' => false, 'approve' => false]);
 
     Sanctum::actingAs(commissionSettlementUserWith(['viewAny', 'issue']));
     $rows = collect(settlementTableRows(SETTLEMENTS_DOMAIN)['items'])->keyBy('id');
 
-    expect($rows[$draft->id]['abilities'])->toBe(['recalculate' => false, 'issue' => true, 'cancel' => false, 'delete' => false])
-        ->and($rows[$issued->id]['abilities'])->toBe(['recalculate' => false, 'issue' => false, 'cancel' => false, 'delete' => false]);
+    expect($rows[$draft->id]['abilities'])->toBe(['recalculate' => false, 'issue' => true, 'cancel' => false, 'delete' => false, 'receive_document' => false, 'remove_document' => false, 'approve' => false])
+        ->and($rows[$issued->id]['abilities'])->toBe(['recalculate' => false, 'issue' => false, 'cancel' => false, 'delete' => false, 'receive_document' => false, 'remove_document' => false, 'approve' => false]);
 });
 
 it('AC-018: default sort is period_to desc then id desc and every sortable column sorts server side', function () {
@@ -136,7 +138,7 @@ it('AC-018: filters on every filterable column', function () {
 
     $values = fn (string $column): array => $this->postJson('/api/tables/commission-settlements/values', ['columnId' => $column, 'filterModel' => []])->assertOk()->json('data.values');
 
-    expect($values('status'))->toBe(['DRAFT', 'ISSUED', 'CANCELLED'])
+    expect($values('status'))->toBe(['DRAFT', 'ISSUED', 'DOCUMENT_RECEIVED', 'APPROVED', 'CANCELLED'])
         ->and($values('referent'))->toContain('Mario')
         ->and($values('company'))->toContain('Acme')
         ->and($values('period_month'))->toBe(['2026-09', '2026-10', '2026-11']);

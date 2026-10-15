@@ -70,6 +70,7 @@ function original(
 const formValues: ReferentFormValues = {
   referent_type_id: 1,
   user_id: null,
+  supplier_registry_id: null,
   contact_scope: 'internal',
   notes: 'Some notes',
   custom_fields: {},
@@ -141,7 +142,14 @@ describe('buildUpdatePayload', () => {
 
   it('combines multiple changed fields in a single payload', () => {
     const payload = buildUpdatePayload(
-      { referent_type_id: 2, user_id: null, contact_scope: 'external', notes: '', custom_fields: {} },
+      {
+        referent_type_id: 2,
+        user_id: null,
+        supplier_registry_id: null,
+        contact_scope: 'external',
+        notes: '',
+        custom_fields: {},
+      },
       original(),
       individualDraft(),
     )
@@ -151,6 +159,31 @@ describe('buildUpdatePayload', () => {
       contact_scope: 'external',
       notes: null,
     })
+  })
+
+  it('carries the supplier registry through on create (spec 0267 D-7)', () => {
+    const payload = buildCreatePayload({ ...formValues, supplier_registry_id: 12 }, individualDraft())
+    expect(payload.supplier_registry_id).toBe(12)
+  })
+
+  it('PATCHes the supplier registry alone when linked or unlinked (spec 0267 AC-014)', () => {
+    expect(buildUpdatePayload({ ...formValues, supplier_registry_id: 12 }, original(), individualDraft())).toEqual({
+      supplier_registry_id: 12,
+    })
+    expect(
+      buildUpdatePayload(
+        formValues,
+        original({ supplier_registry_id: 12, supplier: { id: 12, name: 'Acme Agenti' } }),
+        individualDraft(),
+      ),
+    ).toEqual({ supplier_registry_id: null })
+  })
+
+  it('does not diff supplier_registry_id when it is omitted from the original (not visible)', () => {
+    const hidden = original()
+    delete hidden.supplier_registry_id
+    delete hidden.supplier
+    expect(buildUpdatePayload(formValues, hidden, individualDraft())).toEqual({})
   })
 
   it('includes user_id when a user is linked (AC-001)', () => {

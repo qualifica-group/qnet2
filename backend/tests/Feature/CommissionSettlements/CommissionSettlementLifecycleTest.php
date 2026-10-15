@@ -221,7 +221,7 @@ it('shows the detail with movements, totals, snapshot and the abilities of the s
         ->assertJsonPath('data.movements.0.type', 'ACCRUAL')
         ->assertJsonPath('data.movements.0.amount', '100.00')
         ->assertJsonPath('data.movements.0.can_edit', false)
-        ->assertJsonPath('data.abilities', ['recalculate' => true, 'issue' => true, 'cancel' => false, 'delete' => true, 'adjust' => true, 'update' => true])
+        ->assertJsonPath('data.abilities', ['recalculate' => true, 'issue' => true, 'cancel' => false, 'delete' => true, 'adjust' => true, 'update' => true, 'receive_document' => false, 'remove_document' => false, 'approve' => false])
         ->assertJsonStructure(['permissions' => ['resource', 'fields', 'actions'], 'data' => ['movements' => [['id', 'type', 'recipient_role', 'accrued_on', 'amount', 'base_amount', 'notes', 'invoice', 'quote', 'product', 'can_edit']]]]);
 
     $this->getJson('/api/commission-settlements/999999')->assertNotFound();

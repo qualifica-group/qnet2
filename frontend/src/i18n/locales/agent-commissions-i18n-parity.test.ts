@@ -68,7 +68,7 @@ describe('agent commissions i18n parity (spec 0212)', () => {
     }
     expect(Object.keys(enEnums.enasarco_mandate_type).sort()).toEqual(['mono', 'pluri'])
     expect(Object.keys(enEnums.commission_accrual_type).sort()).toEqual(['ACCRUAL', 'ADJUSTMENT', 'REVERSAL'])
-    expect(Object.keys(enEnums.commission_settlement_status).sort()).toEqual(['CANCELLED', 'DRAFT', 'ISSUED'])
+    expect(Object.keys(enEnums.commission_settlement_status).sort()).toEqual(['APPROVED', 'CANCELLED', 'DOCUMENT_RECEIVED', 'DRAFT', 'ISSUED'])
     expect(Object.keys(enEnums.commission_accrual_status).sort()).toEqual(['draft', 'issued', 'open', 'settled_externally'])
   })
 

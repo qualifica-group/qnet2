@@ -7,7 +7,7 @@ interface CommissionSettlementQuickFilterToolbarProps {
   onChange: (filter: SettlementQuickFilter) => void
 }
 
-/** Bozze / Emessi / Annullati / Tutti tabs; they write into the grid filter model. */
+/** Bozze / Emessi / Documento ricevuto / Approvati / Annullati / Tutti tabs; they write into the grid filter model. */
 export function CommissionSettlementQuickFilterToolbar({ value, onChange }: CommissionSettlementQuickFilterToolbarProps) {
   const { t } = useTranslation()
 

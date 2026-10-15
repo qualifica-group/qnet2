@@ -49,7 +49,7 @@ class CommissionSettlementsAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['recalculate', 'issue', 'cancel', 'delete', 'adjust', 'export', 'view_activity'];
+        return ['recalculate', 'issue', 'cancel', 'receive_document', 'approve', 'delete', 'adjust', 'export', 'view_activity'];
     }
 
     /**
@@ -77,6 +77,8 @@ class CommissionSettlementsAuthorization extends AbstractResourceAuthorization
             'recalculate' => $onRecord && $actor->can('commission-settlements.update'),
             'issue' => $onRecord && $actor->can('commission-settlements.issue'),
             'cancel' => $onRecord && $actor->can('commission-settlements.cancel'),
+            'receive_document' => $onRecord && $actor->can('commission-settlements.receiveDocument'),
+            'approve' => $onRecord && $actor->can('commission-settlements.approve'),
             'delete' => $onRecord && $actor->can('commission-settlements.delete'),
             'adjust' => $actor->can('commission-settlements.adjust'),
             'export' => $actor->can('commission-settlements.export'),

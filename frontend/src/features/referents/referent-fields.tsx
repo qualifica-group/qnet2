@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { MetaField } from '@/features/authorization/MetaField'
 import { useEnumOptions } from '@/features/config/use-config'
 import { REFERENT_TYPES_FOR_SELECT_RESOURCE } from '@/features/referent-types/for-select-api'
+import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import type { ReferentFormValues } from '@/features/referents/use-referent-form'
 
@@ -96,6 +97,31 @@ export function ReferentUserField({ control, selected }: SelectedFieldProps) {
       placeholder={t('referents.form.linkedUserPlaceholder')}
       emptyLabel={t('referents.form.linkedUserEmpty')}
       errorLabel={t('referents.form.linkedUserError')}
+      clearLabel={t('common.clear')}
+      retryLabel={t('common.retry')}
+    />
+  )
+}
+
+/** Only registries flagged `is_supplier` are offered (spec 0267 D-7). */
+const SUPPLIER_PARAMS = { is_supplier: 1 } as const
+
+/** "Anagrafica fornitore": the registry the agent's commission statements are invoiced through. */
+export function ReferentSupplierField({ control, selected }: SelectedFieldProps) {
+  const { t } = useTranslation()
+  return (
+    <RelationSelectField
+      control={control}
+      name="supplier_registry_id"
+      metaKey="supplier_registry_id"
+      label={t('referents.form.supplierRegistry')}
+      resource={REGISTRIES_FOR_SELECT_RESOURCE}
+      params={SUPPLIER_PARAMS}
+      searchPlaceholder={t('referents.form.supplierRegistrySearch')}
+      selected={selected}
+      placeholder={t('referents.form.supplierRegistryPlaceholder')}
+      emptyLabel={t('referents.form.supplierRegistryEmpty')}
+      errorLabel={t('referents.form.supplierRegistryError')}
       clearLabel={t('common.clear')}
       retryLabel={t('common.retry')}
     />

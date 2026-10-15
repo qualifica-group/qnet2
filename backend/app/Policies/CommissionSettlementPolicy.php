@@ -25,7 +25,18 @@ class CommissionSettlementPolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return ['viewAny', 'view', 'create', 'update', 'delete', 'issue', 'cancel', 'adjust', 'export', 'viewActivity'];
+        return ['viewAny', 'view', 'create', 'update', 'delete', 'issue', 'cancel', 'receiveDocument', 'approve', 'adjust', 'export', 'viewActivity'];
+    }
+
+    /** Registers and removes the document the agent sent (spec 0267, D-2). */
+    public function receiveDocument(User $user, Model $model): bool
+    {
+        return $user->can($this->permission('receiveDocument'));
+    }
+
+    public function approve(User $user, Model $model): bool
+    {
+        return $user->can($this->permission('approve'));
     }
 
     public function issue(User $user, Model $model): bool

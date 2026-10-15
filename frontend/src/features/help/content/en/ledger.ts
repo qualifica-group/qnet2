@@ -45,6 +45,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'The **Balance** column is always the **running outstanding amount**: what is still to be collected (customer) or paid (supplier) after that document.',
         },
+        {
+          type: 'note',
+          text: 'For the supplier the document amount is the **Net payable** of the passive invoice (total minus **Withholding tax** and **ENASARCO**), because it is what is actually paid: the balance returns to zero when all the installments are paid.',
+        },
       ],
     },
     {

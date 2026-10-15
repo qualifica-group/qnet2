@@ -123,6 +123,8 @@ describe('AgentFiscalProfileForm - create draft (spec 0264 D-4)', () => {
       enasarco_enabled: false,
       enasarco_mandate_type: null,
       vat_rate_id: null,
+      payment_method_id: null,
+      cost_type_id: null,
       valid_from: '2026-02-01',
       valid_until: null,
       notes: null,

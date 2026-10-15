@@ -26,6 +26,8 @@ final readonly class UpdateReferentData
         public bool $notesSubmitted = false,
         public ?int $userId = null,
         public bool $userIdSubmitted = false,
+        public ?int $supplierRegistryId = null,
+        public bool $supplierRegistryIdSubmitted = false,
     ) {}
 
     /**
@@ -47,6 +49,8 @@ final readonly class UpdateReferentData
                 ? (int) $data['user_id']
                 : null,
             userIdSubmitted: array_key_exists('user_id', $data),
+            supplierRegistryId: isset($data['supplier_registry_id']) ? (int) $data['supplier_registry_id'] : null,
+            supplierRegistryIdSubmitted: array_key_exists('supplier_registry_id', $data),
         );
     }
 
@@ -63,6 +67,11 @@ final readonly class UpdateReferentData
     public function hasUserId(): bool
     {
         return $this->userIdSubmitted;
+    }
+
+    public function hasSupplierRegistryId(): bool
+    {
+        return $this->supplierRegistryIdSubmitted;
     }
 
     /**
@@ -89,6 +98,10 @@ final readonly class UpdateReferentData
 
         if ($this->userIdSubmitted) {
             $attributes['user_id'] = $this->userId;
+        }
+
+        if ($this->supplierRegistryIdSubmitted) {
+            $attributes['supplier_registry_id'] = $this->supplierRegistryId;
         }
 
         return $attributes;

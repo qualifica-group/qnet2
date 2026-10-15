@@ -17,6 +17,10 @@ import {
   type PurchaseInvoiceWriteFormValues,
 } from '@/features/purchase-invoices/purchase-invoice-schema'
 import type { PurchaseInvoice } from '@/features/purchase-invoices/types'
+import {
+  withholdingsCents,
+  withholdingsWithinTotal,
+} from '@/features/purchase-invoices/purchase-invoice-withholdings'
 import { useAddOrderToInvoice } from '@/features/purchase-invoices/use-purchase-invoice-editor-orders'
 import { usePurchaseInvoiceEditorPreview } from '@/features/purchase-invoices/use-purchase-invoice-editor-preview'
 import { useCreatePurchaseInvoice } from '@/features/purchase-invoices/use-purchase-invoice-editor-queries'
@@ -57,7 +61,16 @@ export function usePurchaseInvoiceEditorForm({ source, onSaved }: UsePurchaseInv
   const hasOrderLines = lines.some((line) => line.purchase_order_line_id != null)
   const amounts = useMemo(() => amountsOf(lines, vatRefs), [lines, vatRefs])
   const totals = amounts.totals
-  const preview = usePurchaseInvoiceEditorPreview({ documentDate, paymentMethodId, totals })
+  const withholdingAmount = useWatch({ control, name: 'withholding_amount' })
+  const enasarcoAmount = useWatch({ control, name: 'enasarco_amount' })
+  const deductionsCents = withholdingsCents(withholdingAmount, enasarcoAmount)
+  const preview = usePurchaseInvoiceEditorPreview({
+    documentDate,
+    paymentMethodId,
+    totals,
+    withholdingAmount,
+    enasarcoAmount,
+  })
 
   /** Appends a catalog or free row; the header cost type and work order are only proposed. */
   const addLine = useCallback(
@@ -78,6 +91,10 @@ export function usePurchaseInvoiceEditorForm({ source, onSaved }: UsePurchaseInv
 
   const submit = handleSubmit((values) => {
     setGeneralErrors([])
+    if (!withholdingsWithinTotal(deductionsCents, totals.total)) {
+      setError('withholding_amount', { message: t('purchaseInvoices.editor.errors.withholdingsAboveTotal') })
+      return
+    }
     mutation.mutate(buildWritePayload(values), {
       onSuccess: (invoice) => {
         toast.success(t('purchaseInvoices.editor.messages.created'))
@@ -104,6 +121,7 @@ export function usePurchaseInvoiceEditorForm({ source, onSaved }: UsePurchaseInv
     showReceiptNotice: documentType === 'invoice' && hasOrderLines,
     orderIds,
     totals,
+    deductionsCents,
     lineAmounts: amounts.lines,
     preview,
     generalErrors,

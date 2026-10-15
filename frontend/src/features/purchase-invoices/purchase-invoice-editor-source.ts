@@ -9,6 +9,7 @@ import {
   vatRefsOf,
   type VatRefs,
 } from '@/features/purchase-invoices/purchase-invoice-editor-lines'
+import { amountOrNull } from '@/features/purchase-invoices/purchase-invoice-withholdings'
 import type { PurchaseInvoiceWriteFormValues } from '@/features/purchase-invoices/purchase-invoice-schema'
 import { usePurchaseInvoiceDraft } from '@/features/purchase-invoices/use-purchase-invoice-editor-queries'
 import type { PurchaseInvoice, PurchaseInvoiceDraft } from '@/features/purchase-invoices/types'
@@ -53,6 +54,8 @@ export function blankSource(): EditorSource {
       cost_type_id: null,
       work_order_id: null,
       notes: null,
+      withholding_amount: null,
+      enasarco_amount: null,
       purchase_order_ids: [],
       lines: NO_LINES,
     },
@@ -111,6 +114,8 @@ export function valuesFromInvoice(invoice: PurchaseInvoice): PurchaseInvoiceWrit
     cost_type_id: idOf(invoice.cost_type),
     work_order_id: idOf(invoice.work_order),
     notes: invoice.notes,
+    withholding_amount: amountOrNull(invoice.withholding_amount),
+    enasarco_amount: amountOrNull(invoice.enasarco_amount),
     purchase_order_ids: invoice.purchase_orders.map((order) => order.id),
     lines: invoice.lines.map(lineFromInvoice),
   }

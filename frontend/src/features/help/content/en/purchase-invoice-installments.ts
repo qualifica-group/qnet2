@@ -21,6 +21,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'With **Open document** on the row you open the sheet of the **passive invoice or proforma** the installment belongs to, from the **Accounting › Payable › Passive invoices** page. It requires the permission to view passive invoices. Installments come from the document: see the **Passive invoices** guide.',
         },
+        {
+          type: 'paragraph',
+          text: 'The installments of a document add up to its **Net payable**: if the invoice has **Withholding tax** or **ENASARCO**, the installments are computed net of the withholdings and the total of the due dates is lower than the document total. The installments of invoices created from a commission statement are paid from here.',
+        },
       ],
     },
     {

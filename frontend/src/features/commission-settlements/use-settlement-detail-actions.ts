@@ -6,6 +6,7 @@ import {
   cancelSettlement,
   commissionSettlementKeys,
   deleteAdjustment,
+  deleteSettlementDocument,
   deleteSettlement,
   issueSettlement,
   recalculateSettlement,
@@ -13,6 +14,13 @@ import {
 } from '@/features/commission-settlements/api'
 import { settlementErrorMessage } from '@/features/commission-settlements/settlement-errors'
 import type { SettlementDetailWithPermissions } from '@/features/commission-settlements/types'
+
+const CONFIRM_TONES = {
+  issue: 'default',
+  delete: 'destructive',
+  deleteAdjustment: 'destructive',
+  removeDocument: 'warning',
+} as const
 
 interface UseSettlementDetailActionsArgs {
   settlementId: number
@@ -24,7 +32,8 @@ interface UseSettlementDetailActionsArgs {
 
 /**
  * Every write of the settlement detail (recalculate, issue, cancel, delete,
- * notes, adjustment removal). Server conflicts (409) and rule violations (422
+ * notes, adjustment removal, document removal; the document and approval dialogs
+ * own their forms). Server conflicts (409) and rule violations (422
  * `reason`) surface as a toast with the server message; the cached detail is
  * replaced with the fresh response so the abilities re-enable the right buttons.
  */
@@ -83,12 +92,18 @@ export function useSettlementDetailActions({ settlementId, onChanged, onDeleted 
     onError,
   })
 
-  const confirmThen = async (key: 'issue' | 'delete' | 'deleteAdjustment', run: () => void) => {
+  const removeDocument = useMutation({
+    mutationFn: () => deleteSettlementDocument(settlementId),
+    onSuccess: apply('commissionSettlements.actions.documentRemoved'),
+    onError,
+  })
+
+  const confirmThen = async (key: 'issue' | 'delete' | 'deleteAdjustment' | 'removeDocument', run: () => void) => {
     const accepted = await confirm({
       title: t(`commissionSettlements.confirm.${key}.title`),
       description: t(`commissionSettlements.confirm.${key}.description`),
       confirmLabel: t(`commissionSettlements.confirm.${key}.confirm`),
-      tone: key === 'issue' ? 'default' : 'destructive',
+      tone: CONFIRM_TONES[key],
     })
     if (accepted) {
       run()
@@ -102,13 +117,15 @@ export function useSettlementDetailActions({ settlementId, onChanged, onDeleted 
       cancel.isPending ||
       saveNotes.isPending ||
       remove.isPending ||
-      removeAdjustment.isPending,
+      removeAdjustment.isPending ||
+      removeDocument.isPending,
     isCancelling: cancel.isPending,
     recalculate: () => recalculate.mutate(),
     issue: () => void confirmThen('issue', () => issue.mutate()),
     remove: () => void confirmThen('delete', () => remove.mutate()),
     removeAdjustment: (adjustmentId: number) =>
       void confirmThen('deleteAdjustment', () => removeAdjustment.mutate(adjustmentId)),
+    removeDocument: () => void confirmThen('removeDocument', () => removeDocument.mutate()),
     cancel: (reason: string, onDone: () => void) => cancel.mutate(reason, { onSuccess: onDone }),
     saveNotes: (notes: string | null) => saveNotes.mutateAsync(notes),
   }

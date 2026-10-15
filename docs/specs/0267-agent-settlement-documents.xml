@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0267-agent-settlement-documents" status="approved" owner="utente" date="2026-10-15">
+
+  <goal>
+    Liquidazioni Agenti — M3 (parte documento) + M4 Passivo. Sull'estratto emesso la Contabilita' registra la fattura o
+    notula ricevuta dall'agente (DOCUMENT_RECEIVED), confrontata con l'estratto entro una tolleranza; l'approvazione
+    (APPROVED) crea la fattura passiva collegata, intestata all'anagrafica fornitore dell'agente, con le rate nello
+    scadenziario passivo dove avviene il pagamento. Le fatture passive guadagnano ritenuta d'acconto ed ENASARCO a carico,
+    che riducono il netto da pagare. Brief: `docs/specs/0212-agent-commission-settlements-brief.md`; M2: spec 0213.
+  </goal>
+
+  <context>
+    <!-- Nomi reali verificati nel repo il 2026-10-15 -->
+    <item>Estratto: `commission_settlements` / `App\Models\CommissionSettlement` (#[Fillable], LogsModelActivity, `code()`),
+      enum `CommissionSettlementStatus` (DRAFT|ISSUED|CANCELLED, HasMeta, `values()`).
+      `App\Services\Commissions\Settlements\CommissionSettlementService` (recalculate, issue, cancel, updateNotes, delete,
+      detail; `transition()` = DB::transaction + lockForUpdate su Referent poi estratto; stati errati -&gt; abort(409)).
+      `CommissionSettlementController` + rotte in `routes/api/agent-commissions.php` (senza nomi), FormRequest in
+      `app/Http/Requests/CommissionSettlements/`, `CommissionSettlementResource` (abilities = permesso AND stato),
+      `CommissionSettlementPolicy` (resource commission-settlements, abilities camelCase), `CommissionSettlementsAuthorization`,
+      `CommissionSettlementsTableDefinition` + `Tables/CommissionSettlements/CommissionSettlementColumnCatalog`.</item>
+    <item>Punti che oggi considerano solo ISSUED come "estratto valido" (da estendere a ISSUED|DOCUMENT_RECEIVED|APPROVED):
+      `SettlementComposer.php:95` (massimale ENASARCO usato), `EnasarcoParameterService.php:46` (delete 409),
+      `CommissionAccrualSql.php:122` (status movimento `issued`).</item>
+    <item>Profilo fiscale: `agent_fiscal_profiles` / `AgentFiscalProfile`, profilo valido risolto in
+      `SettlementComposer::profileAt()`; l'estratto salva `agent_fiscal_profile_id` e `vat_rate` (numero, non id).</item>
+    <item>Fattura passiva: `purchase_invoices` / `PurchaseInvoice` (supplier_id -&gt; registries con is_supplier, document_type
+      proforma|invoice, unique supplier+number+year, HasAttachments), righe `purchase_invoice_lines` (description, quantity,
+      unit_price, vat_rate_id, cost_type_id obbligatorio), rate `purchase_invoice_installments` generate dal server
+      (`PurchaseInvoiceInstallmentPlanner::plan(date, method, net, vat, total)` su `InstallmentScheduleCalculator`, VatAllocation
+      Split|First|Last|VatFirst, somma = total). `PurchaseInvoiceService::create(User, array)` / update / updateDetails / delete /
+      previewInstallments; `PurchaseInvoiceAmountCalculator::compute(lines)`; `PurchaseInvoiceWriteRequest`;
+      guardie `RegisteredPurchaseInvoiceGuard`, `PurchaseInvoiceScheduleRebalancer::assertFrozenFields` (422 payments_frozen),
+      delete con pagamenti 409 `has_payments`. Stato pagamento derivato `InvoicePaymentStatus`
+      (paid|not_due|overdue|seriously_overdue). Partitario 0266: `PayableLedgerSource` legge total_amount e le rate.</item>
+    <item>Referente: `referents` / `Referent` (HasPersonalData), `StoreReferentRequest`/`UpdateReferentRequest`,
+      `ReferentsAuthorization`, `ReferentResource`, FE `features/referents/referent-form*.tsx`. Anagrafica: `Registry`
+      (HasPersonalData, is_supplier), `RegistryService::create(User, CreateRegistryData, ProfileData)` + `RegistryProfileWriter`
+      (scheda, contatti, indirizzi). `personal_data` (type individual|company, tax_code e vat_number indicizzati).</item>
+    <item>Config: `config/commissions.php` (solo `settlement_min_amount`, stringa bcmath). Errori: envelope di
+      `BaseApiController::handleControllerException` (422 {errors}, abort &lt; 500 {message}).</item>
+    <item>Decisioni utente 2026-10-15: proposte 1-6 accettate (D-1..D-9 sotto). Fuori: PDF, email, export paghe.</item>
+  </context>
+
+  <decisions>
+    <decision id="D-1">Ciclo: DRAFT -&gt; ISSUED -&gt; DOCUMENT_RECEIVED -&gt; APPROVED; CANCELLED solo da ISSUED (da
+      DOCUMENT_RECEIVED prima si rimuove il documento). Nuovi casi enum `DocumentReceived='DOCUMENT_RECEIVED'`,
+      `Approved='APPROVED'`. "Rimuovi documento": DOCUMENT_RECEIVED -&gt; ISSUED, dati documento azzerati. APPROVED e'
+      immutabile e non annullabile. Transizioni non ammesse -&gt; 409. Gli stati ISSUED, DOCUMENT_RECEIVED, APPROVED
+      contano tutti come "estratto valido" per massimale ENASARCO, delete parametri ENASARCO e status movimento (`issued`).</decision>
+    <decision id="D-2">Permessi nuovi sulla risorsa commission-settlements: `receiveDocument` (registra e rimuove il
+      documento) e `approve` (approva, collega/crea anagrafica fornitore). Azioni FE `receive_document`, `approve`.</decision>
+    <decision id="D-3">Documento agente: numero (max 30), data (&lt;= oggi), importi dichiarati document_taxable_amount,
+      document_vat_amount, document_withholding_amount, document_enasarco_amount, document_total_amount (&gt;= 0, 2 dec).
+      Coerenza interna: total = taxable + vat esatto, altrimenti 422 su document_total_amount. Tolleranza: per ciascuna coppia
+      (taxable_amount, vat_amount, withholding_amount, enasarco_agent_amount, taxable+vat) |documento - estratto| &lt;=
+      `config('commissions.document_tolerance')` (env COMMISSION_DOCUMENT_TOLERANCE, default "1.00", stringa bcmath), oltre
+      -&gt; 422 sul campo document_* con scarto e tolleranza nel messaggio. Entro tolleranza la differenza si accetta: nessuna
+      rettifica, l'estratto conserva i suoi importi.</decision>
+    <decision id="D-4">Fattura passiva generata all'approvazione tramite `PurchaseInvoiceService::create` (stesse regole e
+      guardie del modulo): document_type invoice, company_id dell'estratto, supplier_id = referents.supplier_registry_id,
+      document_number/date dal documento, payment_method_id e cost_type_id dal body, una riga {description "Provvigioni
+      {period_from}-{period_to}" tradotta, quantity 1, unit_price = document_taxable_amount, vat_rate_id dal body,
+      cost_type_id}, withholding_amount e enasarco_amount dal documento, notes "Estratto provvigioni n/anno". L'IVA
+      calcolata dalla riga deve stare entro tolleranza da document_vat_amount, altrimenti 422 su vat_rate_id. Numero gia'
+      usato per il fornitore -&gt; 422 su document_number (guardia esistente). Estratto e fattura nella stessa transazione.
+      Link `commission_settlements.purchase_invoice_id` (unique).</decision>
+    <decision id="D-5">Fattura passiva collegata a un estratto: update, delete e cambio numero -&gt; 409
+      `purchase_invoices.settlement_locked` (anche con permesso downgrade); restano consentiti note, documenti allegati,
+      pagamenti e modifica di scadenza/metodo delle rate non pagate. Lo stato pagamento dell'estratto e' quello della fattura
+      collegata (`InvoicePaymentStatus`), mai memorizzato sull'estratto.</decision>
+    <decision id="D-6">Ritenuta ed ENASARCO su tutte le fatture passive: colonne `withholding_amount`, `enasarco_amount`
+      decimal(15,2) default 0. payable_amount = total - withholding - enasarco (derivato, &gt; 0 altrimenti 422 su
+      withholding_amount). Le rate si pianificano con plan(date, method, net - withholding - enasarco, vat, payable): la
+      trattenuta riduce la quota imponibile. Dopo il primo pagamento le due colonne sono congelate (422 payments_frozen,
+      come data e metodo). Partitario fornitore: importo documento = payable_amount.</decision>
+    <decision id="D-7">Collegamento agente -&gt; fornitore: `referents.supplier_registry_id` FK registries nullable
+      nullOnDelete, deve puntare a un'anagrafica con is_supplier (422). Modificabile dal form referente (campo di permesso
+      `supplier_registry_id` in ReferentsAuthorization); cambio a un valore diverso con un estratto APPROVED dell'agente -&gt; 422.
+      Dall'estratto (permesso approve): collega un'anagrafica esistente o creane una dal referente. Candidati = anagrafiche
+      la cui scheda ha lo stesso tax_code o vat_number (non vuoti) del referente. Creazione = RegistryService::create con la
+      scheda del referente copiata (tipo, nomi, ragione sociale, codici, contatti, indirizzi) e is_supplier true; richiede
+      anche `registries.create`.</decision>
+    <decision id="D-8">Profilo fiscale: `payment_method_id` e `cost_type_id` nullable (FK restrict), default della finestra di
+      approvazione insieme a `vat_rate_id`; nella finestra sono obbligatori e modificabili.</decision>
+    <decision id="D-9">UI: nel dettaglio estratto sezione "Documento agente" (dati dichiarati, scarti rispetto all'estratto)
+      e "Fattura passiva" (link, stato pagamento, pagato, residuo); azioni Registra documento (dialog), Rimuovi documento
+      (conferma), Approva (dialog con anagrafica fornitore: collegata | candidati | crea dal referente, metodo di pagamento,
+      tipo costo, aliquota IVA, anteprima rate). Griglia estratti: status con i due nuovi valori, colonne document_number e
+      payment_status, quick filter Bozze | Emessi | Documento ricevuto | Approvati | Annullati | Tutti. Fattura passiva:
+      campi Ritenuta ed ENASARCO nell'editor e nel dettaglio, "Netto da pagare" nei totali, badge "Da estratto n/anno" con
+      link. Referente: campo "Anagrafica fornitore". Profilo fiscale: metodo di pagamento e tipo costo.</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazioni: purchase_invoices (+withholding_amount, +enasarco_amount); referents (+supplier_registry_id);
+        agent_fiscal_profiles (+payment_method_id, +cost_type_id); commission_settlements (+document_number,
+        +document_date, +document_taxable_amount, +document_vat_amount, +document_withholding_amount,
+        +document_enasarco_amount, +document_total_amount, +document_received_at, +document_received_by, +approved_at,
+        +approved_by, +purchase_invoice_id unique).</item>
+      <item>Enum, service di transizione (registra/rimuovi documento, approva), servizio fornitore agente (candidati, collega,
+        crea), confronto tolleranza (puro, bcmath), guardia fatture collegate, estensione dei tre punti ISSUED-only.</item>
+      <item>Fatture passive: request, calcolo rate, congelamento, resource, colonne griglia documenti e scadenziario
+        (payable_amount), partitario, anteprima rate.</item>
+      <item>FE: commission-settlements (sezioni, dialog, azioni, griglia), purchase-invoices (editor, dettaglio, badge),
+        referents (campo), agent-fiscal-profiles (campi), i18n IT/EN, guide in-app.</item>
+      <item>Seed demo: DemoCommissionSettlementSeeder porta un estratto a DOCUMENT_RECEIVED e uno ad APPROVED (idempotente).</item>
+    </in>
+    <out>
+      <item>PDF dell'estratto, email massiva, export paghe dei `user` (resto di M3).</item>
+      <item>Upload dell'allegato del documento agente dall'estratto (si usa la sezione Documenti della fattura passiva).</item>
+      <item>Versamento ritenute/ENASARCO (F24, distinta ENASARCO), minimale, FIRR.</item>
+      <item>Annullamento di un estratto APPROVED; note di credito; rettifica automatica della differenza entro tolleranza.</item>
+      <item>Calcolo automatico della ritenuta sulle fatture passive non da agente (importi inseriti a mano).</item>
+      <item>Scheda agente, KPI, accesso agente (M5).</item>
+    </out>
+  </scope>
+
+  <data_model>
+    purchase_invoices: + withholding_amount decimal(15,2) default 0; + enasarco_amount decimal(15,2) default 0 (dopo
+      vat_amount). Fillable + cast decimal:2.
+    referents: + supplier_registry_id FK registries nullable nullOnDelete, index.
+    agent_fiscal_profiles: + payment_method_id FK payment_methods nullable restrictOnDelete; + cost_type_id FK cost_types
+      nullable restrictOnDelete.
+    commission_settlements: + document_number string(30) nullable; document_date date nullable; document_taxable_amount,
+      document_vat_amount, document_withholding_amount, document_enasarco_amount, document_total_amount decimal(15,2)
+      nullable; document_received_at timestamp nullable; document_received_by FK users nullable nullOnDelete; approved_at
+      timestamp nullable; approved_by FK users nullable nullOnDelete; purchase_invoice_id FK purchase_invoices nullable
+      restrictOnDelete unique.
+    Tutte reversibili.
+  </data_model>
+
+  <data_contract>
+    <!-- Envelope { success, message, data } + permissions. auth:sanctum, rotte in routes/api/agent-commissions.php e
+         routes/api/purchase-invoices.php. Nessun throttle. Importi stringhe "0.00". -->
+
+    <endpoint method="GET" path="/api/commission-settlements/{commissionSettlement} (modifica 0213)">
+      <response status="200">data: shape 0213 + status in DRAFT|ISSUED|DOCUMENT_RECEIVED|APPROVED|CANCELLED +
+        document: { number, date, taxable_amount, vat_amount, withholding_amount, enasarco_amount, total_amount,
+          received_at, received_by: {id,name},
+          differences: { taxable_amount, vat_amount, withholding_amount, enasarco_amount, total_amount } } | null
+          (differences = documento - estratto, con segno) +
+        approved_at, approved_by: {id,name} | null +
+        purchase_invoice: { id, document_number, document_date, payable_amount, paid_amount, residual_amount,
+          payment_status: "paid"|"not_due"|"overdue"|"seriously_overdue" } | null +
+        supplier: { id, name } | null (referents.supplier_registry_id) +
+        abilities: + { receive_document, remove_document, approve }.
+        Importi document_* e purchase_invoice.* seguono i permessi di campo degli importi dell'estratto.</response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/commission-settlements/{commissionSettlement}/document">
+      <request>{ document_number: string required max 30, document_date: date required &lt;= today,
+        document_taxable_amount, document_vat_amount, document_withholding_amount, document_enasarco_amount,
+        document_total_amount: decimal required &gt;= 0 (2 dec) }</request>
+      <response status="200">data: shape di GET con status DOCUMENT_RECEIVED.</response>
+      <errors>403 senza receiveDocument; 409 se non ISSUED; 422 validazione, total != taxable+vat, scarto oltre tolleranza
+        (chiave document_* della voce).</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/commission-settlements/{commissionSettlement}/document">
+      <response status="200">data: shape di GET con status ISSUED e document null.</response>
+      <errors>403 senza receiveDocument; 409 se non DOCUMENT_RECEIVED.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/commission-settlements/{commissionSettlement}/approval-draft">
+      <response status="200">data: { supplier: {id,name} | null,
+        supplier_candidates: [{ id, name, tax_code, vat_number }] (solo se supplier null),
+        can_create_supplier: bool (registries.create),
+        payment_method_id: int|null, cost_type_id: int|null, vat_rate_id: int|null (dal profilo dell'estratto),
+        line_description: string }</response>
+      <errors>403 senza approve; 409 se non DOCUMENT_RECEIVED.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/commission-settlements/{commissionSettlement}/supplier">
+      <request>{ registry_id: int|null } (int = collega anagrafica esistente con is_supplier; null = crea dal referente)</request>
+      <response status="200">data: { supplier: { id, name } }</response>
+      <errors>403 senza approve (e senza registries.create se registry_id null); 409 se l'estratto non e'
+        DOCUMENT_RECEIVED; 422 anagrafica non fornitore, referente gia' collegato con estratti APPROVED, scheda del
+        referente incompleta per creare l'anagrafica (messaggio con i campi mancanti).</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/commission-settlements/{commissionSettlement}/approve">
+      <request>{ payment_method_id: int required (attivo), cost_type_id: int required, vat_rate_id: int required,
+        financial_account_id: int|null }</request>
+      <response status="200">data: shape di GET con status APPROVED e purchase_invoice valorizzato.</response>
+      <errors>403 senza approve o senza purchase-invoices.create; 409 se non DOCUMENT_RECEIVED; 422 supplier mancante
+        (chiave supplier), IVA di riga fuori tolleranza (vat_rate_id), numero duplicato (document_number), metodo di
+        pagamento non valido (payment_method_id).</errors>
+    </endpoint>
+
+    <endpoint method="POST|PUT|PATCH" path="/api/purchase-invoices[/{purchaseInvoice}] + POST /api/purchase-invoices/installment-preview (modifica 0211/0262)">
+      <request>+ withholding_amount: decimal &gt;= 0 | null (null = 0), + enasarco_amount: decimal &gt;= 0 | null.</request>
+      <response status="200|201">PurchaseInvoiceResource + withholding_amount, enasarco_amount, payable_amount,
+        commission_settlement: { id, code } | null. Rate sommano a payable_amount.</response>
+      <errors>422 withholding_amount se payable_amount &lt;= 0; 422 payments_frozen se cambiano dopo un pagamento;
+        409 settlement_locked su PUT/PATCH/DELETE e cambio numero di una fattura collegata.</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST|PUT" path="/api/referents[...] e /api/agent-fiscal-profiles[...] (modifiche)">
+      <request>referents: + supplier_registry_id int|null (exists registries is_supplier).
+        agent-fiscal-profiles: + payment_method_id int|null, + cost_type_id int|null.</request>
+      <response>referents: + supplier_registry_id, supplier: {id,name}|null. agent-fiscal-profiles: + payment_method_id,
+        payment_method: {id,name}|null, cost_type_id, cost_type: {id,name}|null.</response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/{commission-settlements|purchase-invoices|purchase-invoice-installments}/{columns|rows|values}">
+      <response status="200">commission-settlements: status set + DOCUMENT_RECEIVED, APPROVED; + document_number text s
+        f[text]; + payment_status badge f[set InvoicePaymentStatus] (null se non APPROVED); row abilities +
+        { receive_document, remove_document, approve }.
+        purchase-invoices: + payable_amount number s f[number]. purchase-invoice-installments: invariato (le rate gia'
+        sommano al netto).</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Backend Pest: tests/Feature/CommissionSettlements/*, tests/Feature/PurchaseInvoices/*, tests/Feature/Referents/*,
+         tests/Feature/Ledger/*, tests/Unit/Commissions/* -->
+    <criterion id="AC-001">Tolleranza pura: con tolleranza 1.00, scarti 1.00 su ogni voce passano, 1.01 su una voce
+      falliscono indicando quella voce; tolleranza letta da config (test con config 0.00 -&gt; solo importi identici).</criterion>
+    <criterion id="AC-002">Registra documento: da ISSUED con importi entro tolleranza -&gt; 200, DOCUMENT_RECEIVED,
+      document_* e received_at/by salvati, differences con segno; total != taxable+vat -&gt; 422; scarto oltre tolleranza
+      -&gt; 422 sulla voce; da DRAFT/DOCUMENT_RECEIVED/APPROVED/CANCELLED -&gt; 409; nessun movimento o importo
+      dell'estratto cambia.</criterion>
+    <criterion id="AC-003">Rimuovi documento: da DOCUMENT_RECEIVED -&gt; ISSUED con document_* null; da altri stati -&gt; 409.
+      Annulla da DOCUMENT_RECEIVED -&gt; 409.</criterion>
+    <criterion id="AC-004">Approval draft: restituisce supplier collegato o candidati per tax_code/vat_number (non vuoti) e i
+      default del profilo; can_create_supplier segue registries.create; da stato diverso da DOCUMENT_RECEIVED -&gt; 409.</criterion>
+    <criterion id="AC-005">Fornitore: collega un'anagrafica fornitore -&gt; referents.supplier_registry_id valorizzato;
+      anagrafica non fornitore -&gt; 422; registry_id null crea un'anagrafica con scheda, contatti e indirizzi copiati
+      dal referente e is_supplier true; senza registries.create -&gt; 403; scheda incompleta -&gt; 422 senza scrivere nulla.</criterion>
+    <criterion id="AC-006">Approva: crea una fattura passiva invoice con supplier, company, numero, data, riga unica,
+      withholding/enasarco dal documento, rate che sommano a payable_amount; estratto APPROVED con approved_at/by e
+      purchase_invoice_id; tutto in una transazione (errore della fattura -&gt; estratto resta DOCUMENT_RECEIVED).</criterion>
+    <criterion id="AC-007">Approva errori: senza supplier 422 supplier; IVA di riga fuori tolleranza 422 vat_rate_id; numero
+      gia' usato per lo stesso fornitore e anno 422 document_number; non DOCUMENT_RECEIVED 409; senza approve o senza
+      purchase-invoices.create 403.</criterion>
+    <criterion id="AC-008">APPROVED immutabile: recalculate, issue, cancel, document POST/DELETE, approve, PATCH notes -&gt;
+      409.</criterion>
+    <criterion id="AC-009">Fattura collegata: PUT/PATCH, DELETE e cambio numero (anche con downgrade) -&gt; 409
+      settlement_locked; note, pagamento di una rata e modifica scadenza di rata non pagata restano consentiti.</criterion>
+    <criterion id="AC-010">Stato pagamento: dopo il pagamento totale delle rate il GET dell'estratto mostra payment_status
+      paid e residual 0.00; con rata scaduta non pagata overdue; la griglia filtra per payment_status.</criterion>
+    <criterion id="AC-011">ENASARCO e stati validi: estratti DOCUMENT_RECEIVED e APPROVED contano nel massimale usato come gli
+      ISSUED; delete di un anno ENASARCO usato da uno di essi -&gt; 409; i movimenti agganciati mostrano status issued.</criterion>
+    <criterion id="AC-012">Fatture passive con trattenute: create con withholding 115.00 ed enasarco 85.00 su totale 1220.00
+      -&gt; payable_amount 1020.00, rate che sommano a 1020.00 per ogni VatAllocation (Split, First, Last, VatFirst);
+      trattenute omesse = 0.00 e comportamento invariato; trattenute &gt;= totale -&gt; 422; modifica trattenute dopo un
+      pagamento -&gt; 422 payments_frozen; installment-preview applica le trattenute.</criterion>
+    <criterion id="AC-013">Partitario: una fattura passiva con trattenute compare nel partitario fornitore con importo
+      documento = payable_amount e saldo 0 dopo il pagamento di tutte le rate.</criterion>
+    <criterion id="AC-014">Referente: supplier_registry_id salvato e restituito; registry non fornitore -&gt; 422; cambio
+      con estratto APPROVED dell'agente -&gt; 422; campo nascosto/readonly secondo ReferentsAuthorization.</criterion>
+    <criterion id="AC-015">Profilo fiscale: payment_method_id e cost_type_id salvati, restituiti, opzionali; exists -&gt; 422.</criterion>
+    <criterion id="AC-016">Permessi: permissions:sync crea commission-settlements.receiveDocument e .approve; ogni nuovo
+      endpoint risponde 403 senza; abilities del resource e delle righe seguono permesso AND stato;
+      FieldCatalogueEndpointTest aggiornato.</criterion>
+    <criterion id="AC-017">Migrazioni reversibili (rollback e re-migrate verdi); fatture passive esistenti con trattenute 0.00.</criterion>
+    <criterion id="AC-018">Demo seed idempotente: un estratto DOCUMENT_RECEIVED e uno APPROVED con fattura passiva collegata;
+      seconda esecuzione con gli stessi conteggi.</criterion>
+    <!-- Frontend Vitest -->
+    <criterion id="AC-019">FE estratto: sezione Documento agente con scarti, sezione Fattura passiva con link e badge stato
+      pagamento; pulsanti Registra documento / Rimuovi documento / Approva secondo abilities; 409/422 mostrati (422 sui campi
+      del dialog).</criterion>
+    <criterion id="AC-020">FE dialog Registra documento: schema Zod (numero obbligatorio max 30, data &lt;= oggi, importi
+      &gt;= 0, totale = imponibile + IVA), precompilato con gli importi dell'estratto, invia il body del contratto.</criterion>
+    <criterion id="AC-021">FE dialog Approva: mostra anagrafica collegata o candidati o "Crea dal referente" (se
+      can_create_supplier), campi metodo di pagamento / tipo costo / aliquota IVA precompilati e obbligatori, anteprima
+      rate; invia supplier poi approve.</criterion>
+    <criterion id="AC-022">FE griglia estratti: quick filter con i sei valori, colonne document_number e payment_status.</criterion>
+    <criterion id="AC-023">FE fattura passiva: campi Ritenuta ed ENASARCO nell'editor (schema Zod &gt;= 0, somma &lt; totale),
+      totali con Netto da pagare, anteprima rate aggiornata, dettaglio con trattenute e badge "Da estratto n/anno"; azioni di
+      modifica ed eliminazione nascoste se collegata. Form referente con "Anagrafica fornitore"; profilo fiscale con metodo
+      di pagamento e tipo costo.</criterion>
+    <criterion id="AC-024">i18n e guide: chiavi IT/EN in parita'; guide aggiornate commission-settlements,
+      purchase-invoices, purchase-invoice-installments, referents, agent-fiscal-profiles, ledger (modulo liquidazioni ancora
+      "in fase di sviluppo"); help-content-parity verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Importi solo bcmath; tolleranza mai nel codice (config/commissions.php + env).</item>
+    <item>La fattura passiva nasce solo da PurchaseInvoiceService::create: nessuna scrittura diretta su purchase_invoices
+      o rate dal modulo provvigioni.</item>
+    <item>Authz server-side su ogni endpoint; `$request->safe()`; `$fillable`; lock come `transition()` (referent poi
+      estratto) per registra/rimuovi/approva.</item>
+    <item>Modifiche al modulo fatture passive minime e retrocompatibili: trattenute default 0, nessun cambio di
+      comportamento per i documenti esistenti.</item>
+    <item>Migrazioni reversibili, mai modificare migrazioni committate. Seeder demo solo in DemoDataSeeder.</item>
+    <item>File &lt; 300 righe (500 hard): CommissionSettlementService e CommissionSettlementResource vicini alla soglia
+      -&gt; nuove classi dedicate (es. SettlementDocumentService, SettlementApprovalService, AgentSupplierService).</item>
+    <item>Test eseguiti davvero: Pest mirati + suite parallela, Vitest, `npx tsc -b --force`, Pint, ESLint.</item>
+  </constraints>
+
+</spec>

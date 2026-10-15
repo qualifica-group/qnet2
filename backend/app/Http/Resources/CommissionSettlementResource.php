@@ -7,6 +7,8 @@ use App\Enums\CommissionSettlementStatus;
 use App\Models\CommissionAccrual;
 use App\Models\CommissionSettlement;
 use App\Models\User;
+use App\Services\Commissions\Settlements\SettlementDocumentView;
+use App\Services\Commissions\Settlements\SettlementInvoiceView;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -40,6 +42,8 @@ class CommissionSettlementResource extends JsonResource
         /** @var User $actor */
         $actor = $request->user();
 
+        $hidden = $this->hiddenFields();
+
         $payload = [
             'id' => $this->id,
             'code' => $this->code(),
@@ -49,6 +53,7 @@ class CommissionSettlementResource extends JsonResource
             'run_id' => $this->commission_settlement_run_id,
             'company' => ['id' => $this->company->id, 'name' => $this->company->denomination],
             'referent' => ['id' => $this->referent->id, 'name' => $this->referent->name],
+            'supplier' => $this->referent->supplierRegistry === null ? null : ['id' => $this->referent->supplierRegistry->id, 'name' => $this->referent->supplierRegistry->name],
             'agent_fiscal_profile_id' => $this->agent_fiscal_profile_id,
             'accruals_amount' => $this->accruals_amount,
             'adjustments_amount' => $this->adjustments_amount,
@@ -71,12 +76,16 @@ class CommissionSettlementResource extends JsonResource
             'cancelled_at' => $this->cancelled_at,
             'cancelled_by' => $this->canceller === null ? null : ['id' => $this->canceller->id, 'name' => $this->canceller->name],
             'cancellation_reason' => $this->cancellation_reason,
+            'document' => app(SettlementDocumentView::class)->present($this->resource, $hidden),
+            'approved_at' => $this->approved_at,
+            'approved_by' => $this->approver === null ? null : ['id' => $this->approver->id, 'name' => $this->approver->name],
+            'purchase_invoice' => app(SettlementInvoiceView::class)->present($this->resource, ! in_array('net_payable', $hidden, true)),
             'created_at' => $this->created_at,
             'movements' => $this->movements->map(fn (CommissionAccrual $movement): array => $this->movement($movement, $actor))->values()->all(),
             'abilities' => $this->abilities($actor),
         ];
 
-        return $this->withoutHidden($payload);
+        return array_diff_key($payload, array_flip($hidden));
     }
 
     /**
@@ -118,7 +127,8 @@ class CommissionSettlementResource extends JsonResource
     /**
      * Each action = the ability AND the state it needs (D-5): a draft is
      * edited, recalculated, adjusted, issued and deleted; an issued one is
-     * only cancelled.
+     * cancelled or takes the agent document; with the document received it is
+     * removed or approved (spec 0267).
      *
      * @return array<string, bool>
      */
@@ -133,14 +143,18 @@ class CommissionSettlementResource extends JsonResource
             'delete' => $draft && $actor->can('commission-settlements.delete'),
             'adjust' => $draft && $actor->can('commission-settlements.adjust'),
             'update' => $draft && $actor->can('commission-settlements.update'),
+            'receive_document' => $this->status === CommissionSettlementStatus::Issued && $actor->can('commission-settlements.receiveDocument'),
+            'remove_document' => $this->status === CommissionSettlementStatus::DocumentReceived && $actor->can('commission-settlements.receiveDocument'),
+            'approve' => $this->status === CommissionSettlementStatus::DocumentReceived && $actor->can('commission-settlements.approve'),
         ];
     }
 
     /**
-     * @param  array<string, mixed>  $payload
-     * @return array<string, mixed>
+     * Fields the actor cannot see plus the ones that would reveal them.
+     *
+     * @return array<int, string>
      */
-    private function withoutHidden(array $payload): array
+    private function hiddenFields(): array
     {
         $hidden = array_keys(array_filter($this->fieldPermissions, fn (array $permission): bool => ($permission['visible'] ?? true) !== true));
 
@@ -153,6 +167,6 @@ class CommissionSettlementResource extends JsonResource
             $hidden[] = 'enasarco_base_amount';
         }
 
-        return array_diff_key($payload, array_flip($hidden));
+        return $hidden;
     }
 }

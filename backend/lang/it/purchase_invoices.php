@@ -16,4 +16,6 @@ return [
     'line_order_unknown' => 'La riga dell\'ordine di acquisto non esiste.',
     'order_party_mismatch' => 'L\'ordine di acquisto deve essere dello stesso fornitore e della stessa società del documento.',
     'order_not_invoiceable' => 'L\'ordine di acquisto non è in uno stato fatturabile.',
+    'settlement_locked' => 'Il documento deriva da un estratto provvigioni agente: non può essere modificato, eliminato né rinumerato.',
+    'payable_not_positive' => 'Ritenuta ed ENASARCO devono essere inferiori al totale del documento.',
 ];

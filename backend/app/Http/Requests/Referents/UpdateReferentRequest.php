@@ -7,6 +7,7 @@ use App\Enums\ReferentContactScopeEnum;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesPhoneUniqueness;
 use App\Http\Requests\Concerns\ValidatesUserProfile;
+use App\Http\Requests\Referents\Concerns\ValidatesReferentSupplierLink;
 use App\Http\Requests\Referents\Concerns\ValidatesReferentUserLink;
 use App\Models\Referent;
 use Illuminate\Contracts\Validation\Validator;
@@ -29,6 +30,7 @@ class UpdateReferentRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
     use ValidatesPhoneUniqueness;
+    use ValidatesReferentSupplierLink;
     use ValidatesReferentUserLink;
     use ValidatesUserProfile;
 
@@ -66,6 +68,7 @@ class UpdateReferentRequest extends FormRequest
             'contact_scope' => ['sometimes', 'required', Rule::enum(ReferentContactScopeEnum::class)],
             'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'user_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
+            'supplier_registry_id' => ['sometimes', ...$this->supplierRegistryRules()],
         ], $this->profileRules());
     }
 
@@ -79,6 +82,7 @@ class UpdateReferentRequest extends FormRequest
             $this->validateProfile($validator);
             $this->validatePhoneUniqueness($validator);
             $this->validateUserLinkUniqueness($validator);
+            $this->validateSupplierLinkNotLocked($validator, $this->routeReferent());
             $this->enforceFieldPermissions($validator);
         });
     }

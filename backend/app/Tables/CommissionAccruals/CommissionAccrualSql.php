@@ -111,6 +111,12 @@ final class CommissionAccrualSql
             ." ELSE {$code} END";
     }
 
+    /** SQL list of the statuses of a valid settlement (issued, document received, approved). */
+    private static function validStatusList(): string
+    {
+        return implode(', ', array_map(static fn (CommissionSettlementStatus $status): string => "'{$status->value}'", CommissionSettlementStatus::validStatuses()));
+    }
+
     /**
      * Derived status: settled outside the system wins, then the state of the
      * attached settlement (draft / issued), else open.
@@ -119,7 +125,7 @@ final class CommissionAccrualSql
     {
         return "CASE WHEN commission_accruals.settled_externally_on IS NOT NULL THEN '".self::STATUS_SETTLED_EXTERNALLY."'"
             ." WHEN commission_settlements.status = '".CommissionSettlementStatus::Draft->value."' THEN '".self::STATUS_DRAFT."'"
-            ." WHEN commission_settlements.status = '".CommissionSettlementStatus::Issued->value."' THEN '".self::STATUS_ISSUED."'"
+            .' WHEN commission_settlements.status IN ('.self::validStatusList().") THEN '".self::STATUS_ISSUED."'"
             ." ELSE '".self::STATUS_OPEN."' END";
     }
 

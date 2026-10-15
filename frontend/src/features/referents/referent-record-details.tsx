@@ -7,6 +7,7 @@ import { enumLabelOf } from '@/features/config/enum-label'
 import {
   ReferentContactScopeField,
   ReferentNotesField,
+  ReferentSupplierField,
   ReferentTypeField,
   ReferentUserField,
 } from '@/features/referents/referent-fields'
@@ -49,6 +50,14 @@ export function ReferentDetailsRecordSection({ values, form, inline }: ReferentR
           editor={<ReferentUserField control={control} selected={values.user} />}
         >
           {values.user?.name ?? <DetailEmpty />}
+        </RecordInlineField>
+        <RecordInlineField
+          field="supplier_registry_id"
+          label={t('referents.form.supplierRegistry')}
+          inline={inline}
+          editor={<ReferentSupplierField control={control} selected={values.supplier} />}
+        >
+          {values.supplier?.name ?? <DetailEmpty />}
         </RecordInlineField>
         <RecordInlineField
           field="notes"

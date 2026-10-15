@@ -5,6 +5,7 @@ namespace App\Tables;
 use App\Authorization\AuthorizationRegistry;
 use App\DataObjects\Enums\EnumMeta;
 use App\Enums\CommissionSettlementStatus;
+use App\Enums\InvoicePaymentStatus;
 use App\Models\CommissionSettlement;
 use App\Models\User;
 use App\Services\Table\RowGroupQuery;
@@ -63,7 +64,8 @@ class CommissionSettlementsTableDefinition extends AbstractTableDefinition
     {
         return CommissionSettlementSql::withJoins(CommissionSettlement::query())
             ->select('commission_settlements.*')
-            ->selectRaw('referents.name as referent_name, companies.denomination as company_name');
+            ->selectRaw('referents.name as referent_name, companies.denomination as company_name')
+            ->selectRaw(CommissionSettlementSql::paymentStatus().' as payment_status');
     }
 
     /**
@@ -131,9 +133,13 @@ class CommissionSettlementsTableDefinition extends AbstractTableDefinition
      */
     protected function badgesFor(string $columnId, User $actor): ?array
     {
-        return $columnId === 'status'
-            ? array_map(static fn (EnumMeta $meta): array => $meta->toArray(), CommissionSettlementStatus::options())
-            : null;
+        $options = match ($columnId) {
+            'status' => CommissionSettlementStatus::options(),
+            'payment_status' => InvoicePaymentStatus::options(),
+            default => null,
+        };
+
+        return $options === null ? null : array_map(static fn (EnumMeta $meta): array => $meta->toArray(), $options);
     }
 
     /**
@@ -160,6 +166,8 @@ class CommissionSettlementsTableDefinition extends AbstractTableDefinition
             'enasarco_principal_amount' => $row->enasarco_principal_amount,
             'net_payable' => $row->net_payable,
             'issued_at' => $row->issued_at,
+            'document_number' => $row->document_number,
+            'payment_status' => $row->getAttribute('payment_status'),
             'abilities' => $this->abilities($actor, $row),
         ];
 
@@ -279,7 +287,7 @@ class CommissionSettlementsTableDefinition extends AbstractTableDefinition
     /**
      * Policy ability AND state: the grid only offers what the endpoint would accept.
      *
-     * @return array{recalculate: bool, issue: bool, cancel: bool, delete: bool}
+     * @return array{recalculate: bool, issue: bool, cancel: bool, delete: bool, receive_document: bool, remove_document: bool, approve: bool}
      */
     private function abilities(User $actor, CommissionSettlement $row): array
     {
@@ -291,6 +299,9 @@ class CommissionSettlementsTableDefinition extends AbstractTableDefinition
             'issue' => $draft && $gate->allows('issue', $row),
             'cancel' => $row->status === CommissionSettlementStatus::Issued && $gate->allows('cancel', $row),
             'delete' => $draft && $gate->allows('delete', $row),
+            'receive_document' => $row->status === CommissionSettlementStatus::Issued && $gate->allows('receiveDocument', $row),
+            'remove_document' => $row->status === CommissionSettlementStatus::DocumentReceived && $gate->allows('receiveDocument', $row),
+            'approve' => $row->status === CommissionSettlementStatus::DocumentReceived && $gate->allows('approve', $row),
         ];
     }
 

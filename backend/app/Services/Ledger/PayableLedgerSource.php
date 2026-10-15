@@ -62,7 +62,7 @@ final class PayableLedgerSource
             company: $this->companyLabel($document->company),
             companySite: $this->companySiteLabel($document->companySite),
             operationalSite: $this->operationalSiteLabel($document->operationalSite),
-            totalCents: $this->cents($document->total_amount),
+            totalCents: $this->cents($document->payableAmount()),
             installments: $document->installments->map(fn (PurchaseInvoiceInstallment $row): LedgerInstallmentEntry => new LedgerInstallmentEntry(
                 id: $row->id,
                 sequence: $row->sequence,

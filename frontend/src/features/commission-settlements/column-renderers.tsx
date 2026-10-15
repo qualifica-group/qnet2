@@ -1,4 +1,4 @@
-import { MoneyCell } from '@/features/invoices/invoice-cells'
+import { MoneyCell, PaymentStatusCell } from '@/features/invoices/invoice-cells'
 import { DateCell } from '@/features/table/rich-cells'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 
@@ -13,4 +13,5 @@ export const commissionSettlementColumnRenderers: TableRendererMap = {
   enasarco_agent_amount: (params) => <MoneyCell {...params} />,
   enasarco_principal_amount: (params) => <MoneyCell {...params} />,
   net_payable: (params) => <MoneyCell {...params} />,
+  payment_status: (params) => <PaymentStatusCell {...params} />,
 }

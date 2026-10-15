@@ -118,11 +118,13 @@ export function toLineWrite(line: PurchaseInvoiceLineFormValues): PurchaseInvoic
   return line.id === null ? write : { id: line.id, ...write }
 }
 
-/** Create payload: empty notes travel as null, totals are never sent, the number only for an invoice. */
+/** Create payload: empty notes travel as null, empty deductions are omitted (= 0), totals are never sent, the number only for an invoice. */
 export function buildWritePayload(values: PurchaseInvoiceWriteFormValues): PurchaseInvoiceWritePayload {
-  const { document_type, document_number, lines, notes, ...header } = values
+  const { document_type, document_number, lines, notes, withholding_amount, enasarco_amount, ...header } = values
   return {
     ...header,
+    ...(withholding_amount === null ? {} : { withholding_amount }),
+    ...(enasarco_amount === null ? {} : { enasarco_amount }),
     notes: notes?.trim() ? notes : null,
     lines: lines.map(toLineWrite),
     document_type,
@@ -147,6 +149,8 @@ const HEADER_FIELDS = [
   'cost_type_id',
   'work_order_id',
   'notes',
+  'withholding_amount',
+  'enasarco_amount',
   'lines',
 ] as const
 const LINE_ERROR_PATTERN = /^lines\.(\d+)\.(purchase_order_line_id|product_id|description|quantity|unit_price|vat_rate_id|cost_type_id|work_order_id)$/

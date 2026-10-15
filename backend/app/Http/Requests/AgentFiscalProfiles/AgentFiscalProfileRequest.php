@@ -55,6 +55,8 @@ class AgentFiscalProfileRequest extends FormRequest
             'valid_from' => $profile->valid_from?->format('Y-m-d'),
             'valid_until' => $profile->valid_until?->format('Y-m-d'),
             'notes' => $profile->notes,
+            'payment_method_id' => $profile->payment_method_id,
+            'cost_type_id' => $profile->cost_type_id,
         ];
 
         $this->merge(array_diff_key($stored, $this->all()));
@@ -85,6 +87,8 @@ class AgentFiscalProfileRequest extends FormRequest
             ],
             'valid_until' => ['nullable', 'date', 'after_or_equal:valid_from'],
             'notes' => ['nullable', 'string', 'max:'.self::NOTES_MAX],
+            'payment_method_id' => ['nullable', 'integer', Rule::exists('payment_methods', 'id')],
+            'cost_type_id' => ['nullable', 'integer', Rule::exists('cost_types', 'id')],
         ];
     }
 

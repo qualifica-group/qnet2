@@ -16,4 +16,6 @@ return [
     'line_order_unknown' => 'The purchase order line does not exist.',
     'order_party_mismatch' => 'The purchase order must have the same supplier and company as the document.',
     'order_not_invoiceable' => 'The purchase order is not in an invoiceable status.',
+    'settlement_locked' => 'The document comes from an agent commission settlement: it cannot be edited, deleted or renumbered.',
+    'payable_not_positive' => 'Withholding and ENASARCO must be lower than the document total.',
 ];

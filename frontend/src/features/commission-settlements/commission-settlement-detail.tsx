@@ -24,6 +24,8 @@ import { CommissionSettlementActions } from '@/features/commission-settlements/c
 import { CommissionSettlementMovements } from '@/features/commission-settlements/commission-settlement-movements'
 import { CommissionSettlementNotesRow } from '@/features/commission-settlements/commission-settlement-notes'
 import { CommissionSettlementTotals } from '@/features/commission-settlements/commission-settlement-totals'
+import { SettlementDocumentSection } from '@/features/commission-settlements/settlement-document-section'
+import { SettlementPurchaseInvoiceSection } from '@/features/commission-settlements/settlement-purchase-invoice-section'
 import { SettlementStatusBadge } from '@/features/commission-settlements/settlement-status-badge'
 import { useSettlementDetailActions } from '@/features/commission-settlements/use-settlement-detail-actions'
 import {
@@ -89,7 +91,7 @@ function DetailBody({ settlement, onChanged, onDeleted }: DetailBodyProps) {
             }
             subtitle={`${settlement.referent.name} - ${settlement.company.name}`}
             badges={<SettlementStatusBadge status={settlement.status} />}
-            actions={<CommissionSettlementActions abilities={settlement.abilities} actions={actions} />}
+            actions={<CommissionSettlementActions settlement={settlement} actions={actions} onChanged={onChanged} />}
           />
         }
       >
@@ -109,6 +111,15 @@ function DetailBody({ settlement, onChanged, onDeleted }: DetailBodyProps) {
                 </RecordField>
                 {settlement.issued_by ? (
                   <RecordField label={t('commissionSettlements.detail.issuedBy')}>{settlement.issued_by.name}</RecordField>
+                ) : null}
+                {settlement.approved_at ? (
+                  <RecordField label={t('commissionSettlements.detail.approvedAt')}>
+                    {formatDateTime(settlement.approved_at)}
+                    {settlement.approved_by ? ` - ${settlement.approved_by.name}` : ''}
+                  </RecordField>
+                ) : null}
+                {settlement.supplier ? (
+                  <RecordField label={t('commissionSettlements.detail.supplier')}>{settlement.supplier.name}</RecordField>
                 ) : null}
                 {settlement.status === 'CANCELLED' ? (
                   <>
@@ -130,6 +141,10 @@ function DetailBody({ settlement, onChanged, onDeleted }: DetailBodyProps) {
             <RecordSection title={t('commissionSettlements.totals.label')} icon={<Wallet />}>
               <CommissionSettlementTotals settlement={settlement} />
             </RecordSection>
+            {settlement.document ? <SettlementDocumentSection document={settlement.document} /> : null}
+            {settlement.purchase_invoice ? (
+              <SettlementPurchaseInvoiceSection invoice={settlement.purchase_invoice} onChanged={onChanged} />
+            ) : null}
             <RecordSection
               title={t('commissionSettlements.movements.title')}
               icon={<ListOrdered />}

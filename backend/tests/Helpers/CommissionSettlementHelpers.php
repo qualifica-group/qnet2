@@ -6,8 +6,12 @@ use App\Models\AgentFiscalProfile;
 use App\Models\CommissionAccrual;
 use App\Models\CommissionSettlement;
 use App\Models\Company;
+use App\Models\CostType;
+use App\Models\PaymentMethod;
 use App\Models\Referent;
+use App\Models\Registry;
 use App\Models\User;
+use App\Models\VatRate;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
@@ -44,7 +48,7 @@ if (! function_exists('settlementResourceUserWith')) {
     function settlementResourceUserWith(string $resource, array $abilities): User
     {
         $all = $resource === 'commission-settlements'
-            ? ['viewAny', 'view', 'create', 'update', 'delete', 'issue', 'cancel', 'adjust', 'export', 'viewActivity']
+            ? ['viewAny', 'view', 'create', 'update', 'delete', 'issue', 'cancel', 'receiveDocument', 'approve', 'adjust', 'export', 'viewActivity']
             : ['viewAny', 'view', 'create', 'update', 'delete', 'export', 'viewActivity'];
 
         foreach ($all as $ability) {
@@ -129,7 +133,7 @@ if (! function_exists('settlementAdmin')) {
     /** A user holding every commission-settlements ability. */
     function settlementAdmin(): User
     {
-        return commissionSettlementUserWith(['viewAny', 'view', 'create', 'update', 'delete', 'issue', 'cancel', 'adjust', 'export', 'viewActivity']);
+        return commissionSettlementUserWith(['viewAny', 'view', 'create', 'update', 'delete', 'issue', 'cancel', 'receiveDocument', 'approve', 'adjust', 'export', 'viewActivity']);
     }
 }
 
@@ -158,7 +162,7 @@ if (! function_exists('settlementRow')) {
      * A settlement row of the agent, linked to the agent's own profile (the
      * factory default would create a second one).
      *
-     * @param  'draft'|'issued'|'cancelled'  $state
+     * @param  'draft'|'issued'|'document_received'|'approved'|'cancelled'  $state
      * @param  array<string, mixed>  $attributes
      */
     function settlementRow(Referent $referent, Company $company, string $state = 'draft', array $attributes = []): CommissionSettlement
@@ -166,6 +170,8 @@ if (! function_exists('settlementRow')) {
         $factory = CommissionSettlement::factory();
         $factory = match ($state) {
             'issued' => $factory->issued(),
+            'document_received' => $factory->documentReceived(),
+            'approved' => $factory->approved(),
             'cancelled' => $factory->cancelled(),
             default => $factory,
         };
@@ -176,5 +182,103 @@ if (! function_exists('settlementRow')) {
             'agent_fiscal_profile_id' => AgentFiscalProfile::query()->where('referent_id', $referent->id)->value('id'),
             ...$attributes,
         ]);
+    }
+}
+
+if (! function_exists('settlementDocumentBody')) {
+    /**
+     * A valid agent document for a settlement of taxable 1000.00, VAT 220.00, withholding 115.00, ENASARCO 85.00.
+     *
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    function settlementDocumentBody(array $overrides = []): array
+    {
+        return [
+            'document_number' => 'FA-77',
+            'document_date' => '2026-10-05',
+            'document_taxable_amount' => '1000.00',
+            'document_vat_amount' => '220.00',
+            'document_withholding_amount' => '115.00',
+            'document_enasarco_amount' => '85.00',
+            'document_total_amount' => '1220.00',
+            ...$overrides,
+        ];
+    }
+}
+
+if (! function_exists('amountedSettlement')) {
+    /**
+     * A settlement in the state with the amounts settlementDocumentBody() matches.
+     *
+     * @param  'draft'|'issued'|'document_received'|'approved'|'cancelled'  $state
+     * @param  array<string, mixed>  $attributes
+     */
+    function amountedSettlement(string $state = 'issued', array $attributes = []): CommissionSettlement
+    {
+        $company = Company::factory()->create();
+        $agent = settlementAgent();
+        $amounts = ['taxable_amount' => '1000.00', 'vat_amount' => '220.00', 'withholding_amount' => '115.00', 'enasarco_agent_amount' => '85.00', 'net_payable' => '1020.00'];
+        $document = in_array($state, ['document_received', 'approved'], true)
+            ? ['document_taxable_amount' => '1000.00', 'document_vat_amount' => '220.00', 'document_withholding_amount' => '115.00', 'document_enasarco_amount' => '85.00', 'document_total_amount' => '1220.00']
+            : [];
+
+        return settlementRow($agent, $company, $state, [...$amounts, ...$document, ...$attributes]);
+    }
+}
+
+if (! function_exists('approvalUser')) {
+    /**
+     * A user who may approve (settlement approve + view, purchase-invoices.create and, unless
+     * told otherwise, registries.create).
+     *
+     * @param  array<int, string>  $without  permissions to leave out
+     */
+    function approvalUser(array $without = []): User
+    {
+        $user = commissionSettlementUserWith(in_array('commission-settlements.approve', $without, true) ? ['view'] : ['view', 'approve']);
+
+        foreach (['purchase-invoices.create', 'registries.create'] as $permission) {
+            Permission::findOrCreate($permission, 'web');
+
+            if (! in_array($permission, $without, true)) {
+                $user->givePermissionTo($permission);
+            }
+        }
+
+        return $user;
+    }
+}
+
+if (! function_exists('approvalChoices')) {
+    /**
+     * The body of the approval window: an active payment method and cost type and a 22% VAT rate.
+     *
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    function approvalChoices(array $overrides = []): array
+    {
+        return [
+            'payment_method_id' => PaymentMethod::factory()->create(['payment_days' => 30])->id,
+            'cost_type_id' => CostType::factory()->create()->id,
+            'vat_rate_id' => VatRate::factory()->create(['rate' => '22.00'])->id,
+            ...$overrides,
+        ];
+    }
+}
+
+if (! function_exists('approvableSettlement')) {
+    /**
+     * A DOCUMENT_RECEIVED settlement (taxable 1000, VAT 220, withholding 115, ENASARCO 85) whose agent has a supplier registry.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    function approvableSettlement(array $attributes = []): CommissionSettlement
+    {
+        $settlement = amountedSettlement('document_received', $attributes);
+        $settlement->referent->update(['supplier_registry_id' => Registry::factory()->supplier()->create()->id]);
+
+        return $settlement;
     }
 }

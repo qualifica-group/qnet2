@@ -83,6 +83,8 @@ final class PurchaseInvoiceScheduleRebalancer
         $changed = [
             'document_date' => CarbonImmutable::parse($data['document_date'])->toDateString() !== $document->document_date->toDateString(),
             'payment_method_id' => (int) $data['payment_method_id'] !== $document->payment_method_id,
+            'withholding_amount' => bccomp(self::money($data['withholding_amount'] ?? 0), (string) $document->withholding_amount, 2) !== 0,
+            'enasarco_amount' => bccomp(self::money($data['enasarco_amount'] ?? 0), (string) $document->enasarco_amount, 2) !== 0,
         ];
 
         $errors = array_map(fn (): array => [__('purchase_invoices.payments_frozen')], array_filter($changed));
@@ -90,6 +92,11 @@ final class PurchaseInvoiceScheduleRebalancer
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
+    }
+
+    private static function money(mixed $value): string
+    {
+        return number_format((float) $value, 2, '.', '');
     }
 
     /**

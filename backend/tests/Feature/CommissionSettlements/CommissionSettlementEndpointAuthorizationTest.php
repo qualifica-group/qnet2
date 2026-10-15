@@ -18,6 +18,10 @@ dataset('settlement endpoints', [
     'issue' => ['issue', 'POST', '/api/commission-settlements/{settlement}/issue', []],
     'cancel' => ['cancel', 'POST', '/api/commission-settlements/{settlement}/cancel', ['reason' => 'x']],
     'delete' => ['delete', 'DELETE', '/api/commission-settlements/{settlement}', []],
+    'register document' => ['receiveDocument', 'POST', '/api/commission-settlements/{settlement}/document', settlementDocumentBody()],
+    'approval draft' => ['approve', 'GET', '/api/commission-settlements/{settlement}/approval-draft', []],
+    'link supplier' => ['approve', 'POST', '/api/commission-settlements/{settlement}/supplier', ['registry_id' => 1]],
+    'remove document' => ['receiveDocument', 'DELETE', '/api/commission-settlements/{settlement}/document', []],
     'create adjustment' => ['adjust', 'POST', '/api/commission-adjustments', ['referent_id' => 1, 'company_id' => 1, 'amount' => '1.00', 'accrued_on' => '2026-09-01', 'notes' => 'x']],
     'update adjustment' => ['adjust', 'PUT', '/api/commission-adjustments/{adjustment}', ['amount' => '1.00', 'accrued_on' => '2026-09-01', 'notes' => 'x']],
     'delete adjustment' => ['adjust', 'DELETE', '/api/commission-adjustments/{adjustment}', []],
@@ -32,7 +36,7 @@ it('AC-016: every endpoint answers 403 without its ability and passes the gate w
     $url = str_replace(['{settlement}', '{run}', '{adjustment}'], [$settlement->id, $run->id, $adjustment->id], $url);
     $body = array_merge($body, str_contains($url, 'commission-adjustments') && $method === 'POST' ? ['referent_id' => $agent->id, 'company_id' => $company->id] : []);
 
-    $all = ['viewAny', 'view', 'create', 'update', 'delete', 'issue', 'cancel', 'adjust', 'export', 'viewActivity'];
+    $all = ['viewAny', 'view', 'create', 'update', 'delete', 'issue', 'cancel', 'receiveDocument', 'approve', 'adjust', 'export', 'viewActivity'];
     Sanctum::actingAs(commissionSettlementUserWith(array_values(array_diff($all, [$ability]))));
     $this->json($method, $url, $body)->assertForbidden();
 

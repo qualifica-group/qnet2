@@ -2,6 +2,8 @@ import { useMemo } from 'react'
 import { useWatch, type UseFormReturn } from 'react-hook-form'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import { useForSelectLabels } from '@/features/for-select/use-for-select'
+import { COST_TYPES_FOR_SELECT_RESOURCE } from '@/features/cost-types/for-select-api'
+import { PAYMENT_METHODS_FOR_SELECT_RESOURCE } from '@/features/payment-methods/for-select-api'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
 import { VAT_RATES_FOR_SELECT_RESOURCE } from '@/features/vat-rates/for-select-api'
 import type {
@@ -24,10 +26,15 @@ function useRelationRef(resource: string, id: number | null): RelationFieldRef |
 export function useAgentFiscalProfileDraftRefs(
   form: UseFormReturn<AgentFiscalProfileFormValues, unknown, AgentFiscalProfileSchemaOutput>,
 ): AgentFiscalProfileRefs {
-  const [referentId, vatRateId] = useWatch({ control: form.control, name: ['referent_id', 'vat_rate_id'] })
+  const [referentId, vatRateId, paymentMethodId, costTypeId] = useWatch({
+    control: form.control,
+    name: ['referent_id', 'vat_rate_id', 'payment_method_id', 'cost_type_id'],
+  })
 
   return {
     referent: useRelationRef(REFERENTS_FOR_SELECT_RESOURCE, referentId),
     vatRate: useRelationRef(VAT_RATES_FOR_SELECT_RESOURCE, vatRateId),
+    paymentMethod: useRelationRef(PAYMENT_METHODS_FOR_SELECT_RESOURCE, paymentMethodId),
+    costType: useRelationRef(COST_TYPES_FOR_SELECT_RESOURCE, costTypeId),
   }
 }

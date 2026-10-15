@@ -69,6 +69,8 @@ function AgentFiscalProfileDetailContent({ profile, onChanged }: AgentFiscalProf
       vatRate: profile.vat_rate
         ? { id: profile.vat_rate.id, name: `${profile.vat_rate.name} (${Number(profile.vat_rate.rate)}%)` }
         : null,
+      paymentMethod: profile.payment_method,
+      costType: profile.cost_type,
     }),
     [profile],
   )

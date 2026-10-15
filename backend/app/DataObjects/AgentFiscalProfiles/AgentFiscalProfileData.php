@@ -20,6 +20,8 @@ final readonly class AgentFiscalProfileData
         public string $validFrom,
         public ?string $validUntil,
         public ?string $notes,
+        public ?int $paymentMethodId = null,
+        public ?int $costTypeId = null,
     ) {}
 
     /**
@@ -41,6 +43,8 @@ final readonly class AgentFiscalProfileData
             validFrom: (string) $data['valid_from'],
             validUntil: self::nullableString($data['valid_until'] ?? null),
             notes: self::nullableString($data['notes'] ?? null),
+            paymentMethodId: isset($data['payment_method_id']) ? (int) $data['payment_method_id'] : null,
+            costTypeId: isset($data['cost_type_id']) ? (int) $data['cost_type_id'] : null,
         );
     }
 
@@ -60,6 +64,8 @@ final readonly class AgentFiscalProfileData
             'valid_from' => $this->validFrom,
             'valid_until' => $this->validUntil,
             'notes' => $this->notes,
+            'payment_method_id' => $this->paymentMethodId,
+            'cost_type_id' => $this->costTypeId,
         ];
     }
 

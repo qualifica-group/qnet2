@@ -87,6 +87,22 @@ describe('ReferentDetailView — record card (user directive 2026-09-11)', () =>
     expect(screen.getAllByText('Ada (account)')).toHaveLength(1)
   })
 
+  it('shows the linked supplier registry on its labelled row (spec 0267 D-7)', () => {
+    renderDetail(referentFixture({ supplier_registry_id: 12, supplier: { id: 12, name: 'Acme Agenti' } }))
+
+    expect(screen.getByText('Supplier registry')).toBeInTheDocument()
+    expect(screen.getByText('Acme Agenti')).toBeInTheDocument()
+  })
+
+  it('omits the supplier row when its field permission hides it', () => {
+    const hidden = referentFixture({ permissions: permissionsFor({ supplier_registry_id: HIDDEN }) })
+    delete hidden.supplier_registry_id
+    delete hidden.supplier
+    renderDetail(hidden)
+
+    expect(screen.queryByText('Supplier registry')).not.toBeInTheDocument()
+  })
+
   it('omits the linked-user row when its field permission hides it (spec 0090 AC-005)', () => {
     // The API omits both keys (not `null`) when the field is hidden.
     const hidden = referentFixture({ permissions: permissionsFor({ user_id: HIDDEN }) })

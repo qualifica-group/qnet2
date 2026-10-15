@@ -2,14 +2,10 @@
 
 namespace App\Http\Controllers\CommissionSettlements;
 
-use App\Authorization\AuthorizationRegistry;
-use App\Authorization\ResourcePermissionsBuilder;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\CommissionSettlements\CommissionSettlementCancelRequest;
 use App\Http\Requests\CommissionSettlements\CommissionSettlementNotesRequest;
-use App\Http\Resources\CommissionSettlementResource;
 use App\Models\CommissionSettlement;
-use App\Models\User;
 use App\Services\Commissions\Settlements\CommissionSettlementService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -26,13 +22,9 @@ use Throwable;
  */
 class CommissionSettlementController extends BaseApiController
 {
-    use AuthorizesRequests;
+    use AuthorizesRequests, RespondsWithSettlement;
 
-    public function __construct(
-        private readonly CommissionSettlementService $service,
-        private readonly AuthorizationRegistry $authorization,
-        private readonly ResourcePermissionsBuilder $permissionsBuilder,
-    ) {}
+    public function __construct(private readonly CommissionSettlementService $service) {}
 
     /**
      * GET /api/commission-settlements/{commissionSettlement}
@@ -118,16 +110,5 @@ class CommissionSettlementController extends BaseApiController
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['commissionSettlement' => $commissionSettlement->id]);
         }
-    }
-
-    private function respond(User $actor, CommissionSettlement $settlement): JsonResponse
-    {
-        $permissions = $this->permissionsBuilder->build($this->authorization->resolve('commission-settlements'), $actor, $settlement);
-        $movementFields = $this->permissionsBuilder->build($this->authorization->resolve('commission-accruals'), $actor, null)['fields'];
-
-        return $this->okWithPermissions(
-            new CommissionSettlementResource($settlement, $permissions['fields'], $movementFields),
-            $permissions,
-        );
     }
 }

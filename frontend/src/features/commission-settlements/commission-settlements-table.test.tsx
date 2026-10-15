@@ -60,7 +60,7 @@ describe('CommissionSettlementsTable (spec 0213 AC-021)', () => {
       status: { filterType: 'set', values: ['DRAFT'] },
     })
     expect(screen.getByRole('tab', { name: 'Drafts', selected: true })).toBeInTheDocument()
-    for (const name of ['Issued', 'Cancelled', 'All']) {
+    for (const name of ['Issued', 'Document received', 'Approved', 'Cancelled', 'All']) {
       expect(screen.getByRole('tab', { name, selected: false })).toBeInTheDocument()
     }
   })

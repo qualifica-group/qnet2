@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * Payable document, proforma or invoice from a supplier (spec 0211, D-1; lines
@@ -21,7 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'document_type', 'company_id', 'supplier_id', 'document_number', 'document_date', 'document_year',
     'payment_method_id', 'financial_account_id', 'cost_type_id', 'company_site_id',
-    'operational_site_id', 'work_order_id', 'net_amount', 'vat_amount', 'total_amount',
+    'operational_site_id', 'work_order_id', 'net_amount', 'vat_amount', 'withholding_amount', 'enasarco_amount', 'total_amount',
     'notes', 'created_by',
 ])]
 class PurchaseInvoice extends BaseModel
@@ -52,6 +53,20 @@ class PurchaseInvoice extends BaseModel
         return $this->installments()->where('paid_amount', '>', 0)->exists();
     }
 
+    /** Amount actually paid out: total minus withholding and ENASARCO (spec 0267, D-6). */
+    public function payableAmount(): string
+    {
+        return bcsub(bcsub((string) $this->total_amount, (string) $this->withholding_amount, 2), (string) $this->enasarco_amount, 2);
+    }
+
+    /**
+     * @return HasOne<CommissionSettlement, $this>
+     */
+    public function commissionSettlement(): HasOne
+    {
+        return $this->hasOne(CommissionSettlement::class);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -62,6 +77,8 @@ class PurchaseInvoice extends BaseModel
             'document_date' => 'date',
             'net_amount' => 'decimal:2',
             'vat_amount' => 'decimal:2',
+            'withholding_amount' => 'decimal:2',
+            'enasarco_amount' => 'decimal:2',
             'total_amount' => 'decimal:2',
         ];
     }

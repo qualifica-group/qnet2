@@ -34,8 +34,9 @@ vi.mock('@/features/for-select/api', () => ({
 }))
 vi.mock('sonner', () => ({ toast: toastMocks }))
 
-const ALL_ABILITIES = { recalculate: true, issue: true, cancel: false, delete: true, adjust: true, update: true }
-const NO_ABILITIES = { recalculate: false, issue: false, cancel: false, delete: false, adjust: false, update: false }
+const DOCUMENT_NO_ABILITIES = { receive_document: false, remove_document: false, approve: false }
+const ALL_ABILITIES = { recalculate: true, issue: true, cancel: false, delete: true, adjust: true, update: true, ...DOCUMENT_NO_ABILITIES }
+const NO_ABILITIES = { recalculate: false, issue: false, cancel: false, delete: false, adjust: false, update: false, ...DOCUMENT_NO_ABILITIES }
 
 function settlement(overrides: Partial<SettlementDetailWithPermissions> = {}): SettlementDetailWithPermissions {
   return {
@@ -69,6 +70,11 @@ function settlement(overrides: Partial<SettlementDetailWithPermissions> = {}): S
     cancelled_at: null,
     cancelled_by: null,
     cancellation_reason: null,
+    document: null,
+    approved_at: null,
+    approved_by: null,
+    purchase_invoice: null,
+    supplier: null,
     created_at: '2026-10-13T08:00:00Z',
     movements: [
       {

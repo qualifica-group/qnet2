@@ -74,4 +74,29 @@ class CommissionSettlementFactory extends Factory
             'cancellation_reason' => 'Cancelled in test',
         ]);
     }
+
+    public function documentReceived(string $number = 'FA-1'): static
+    {
+        return $this->issued()->state(fn (array $attributes): array => [
+            'status' => 'DOCUMENT_RECEIVED',
+            'document_number' => $number,
+            'document_date' => '2026-10-01',
+            'document_taxable_amount' => $attributes['taxable_amount'],
+            'document_vat_amount' => $attributes['vat_amount'],
+            'document_withholding_amount' => $attributes['withholding_amount'],
+            'document_enasarco_amount' => $attributes['enasarco_agent_amount'],
+            'document_total_amount' => bcadd((string) $attributes['taxable_amount'], (string) $attributes['vat_amount'], 2),
+            'document_received_at' => now(),
+            'document_received_by' => User::factory(),
+        ]);
+    }
+
+    public function approved(): static
+    {
+        return $this->documentReceived()->state(fn (): array => [
+            'status' => 'APPROVED',
+            'approved_at' => now(),
+            'approved_by' => User::factory(),
+        ]);
+    }
 }

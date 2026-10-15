@@ -27,9 +27,13 @@ class CommissionSettlementService
     /** Relations the CommissionSettlementResource reads. */
     private const array DETAIL_RELATIONS = [
         'company:id,denomination',
-        'referent:id,name',
+        'referent:id,name,supplier_registry_id',
+        'referent.supplierRegistry:id,name',
         'issuer:id,name',
         'canceller:id,name',
+        'documentReceiver:id,name',
+        'approver:id,name',
+        'purchaseInvoice.installments',
         'movements.invoice:id,number,year',
         'movements.quoteLine:id,quote_id,product_id',
         'movements.quoteLine.quote:id,code',
@@ -121,10 +125,11 @@ class CommissionSettlementService
 
     /**
      * Locks agent and settlement, runs `$step` on the fresh row, returns the detail.
+     * Shared with the document and approval services (spec 0267): one lock order everywhere.
      *
      * @param  Closure(CommissionSettlement): void  $step
      */
-    private function transition(CommissionSettlement $settlement, Closure $step): CommissionSettlement
+    public function transition(CommissionSettlement $settlement, Closure $step): CommissionSettlement
     {
         DB::transaction(function () use ($settlement, $step): void {
             Referent::query()->whereKey($settlement->referent_id)->lockForUpdate()->first();
@@ -177,6 +182,17 @@ class CommissionSettlementService
     private function release(CommissionSettlement $settlement): void
     {
         CommissionAccrual::query()->where('commission_settlement_id', $settlement->id)->update(['commission_settlement_id' => null]);
+    }
+
+    /**
+     * The agent document is in and the settlement is not approved yet (spec 0267):
+     * the state the supplier link and the approval need.
+     */
+    public function assertDocumentReceived(CommissionSettlement $settlement): void
+    {
+        if ($settlement->status !== CommissionSettlementStatus::DocumentReceived) {
+            abort(HttpStatusEnum::CONFLICT->value, __('The settlement must have the agent document received.'));
+        }
     }
 
     private function assertDraft(CommissionSettlement $settlement): void

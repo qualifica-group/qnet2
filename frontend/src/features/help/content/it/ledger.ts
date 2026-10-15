@@ -45,6 +45,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'La colonna **Saldo** è sempre il **residuo cumulato**: quanto resta da incassare (cliente) o da pagare (fornitore) dopo quel documento.',
         },
+        {
+          type: 'note',
+          text: 'Per il fornitore l’importo del documento è il **Netto da pagare** della fattura passiva (totale meno **Ritenuta d’acconto** ed **ENASARCO a carico**), perché è quello che si paga davvero: il saldo torna a zero quando tutte le rate sono pagate.',
+        },
       ],
     },
     {

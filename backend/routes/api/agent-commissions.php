@@ -4,6 +4,8 @@ use App\Http\Controllers\AgentFiscalProfiles\AgentFiscalProfileController;
 use App\Http\Controllers\CommissionSettlements\CommissionAdjustmentController;
 use App\Http\Controllers\CommissionSettlements\CommissionSettlementController;
 use App\Http\Controllers\CommissionSettlements\CommissionSettlementRunController;
+use App\Http\Controllers\CommissionSettlements\SettlementApprovalController;
+use App\Http\Controllers\CommissionSettlements\SettlementDocumentController;
 use App\Http\Controllers\EnasarcoParameters\EnasarcoParameterController;
 use Illuminate\Support\Facades\Route;
 
@@ -39,6 +41,12 @@ Route::delete('commission-settlements/{commissionSettlement}', [CommissionSettle
 Route::post('commission-settlements/{commissionSettlement}/recalculate', [CommissionSettlementController::class, 'recalculate']);
 Route::post('commission-settlements/{commissionSettlement}/issue', [CommissionSettlementController::class, 'issue']);
 Route::post('commission-settlements/{commissionSettlement}/cancel', [CommissionSettlementController::class, 'cancel']);
+Route::post('commission-settlements/{commissionSettlement}/document', [SettlementDocumentController::class, 'store']);
+Route::delete('commission-settlements/{commissionSettlement}/document', [SettlementDocumentController::class, 'destroy']);
+
+Route::get('commission-settlements/{commissionSettlement}/approval-draft', [SettlementApprovalController::class, 'draft']);
+Route::post('commission-settlements/{commissionSettlement}/supplier', [SettlementApprovalController::class, 'supplier']);
+Route::post('commission-settlements/{commissionSettlement}/approve', [SettlementApprovalController::class, 'approve']);
 
 Route::post('commission-adjustments', [CommissionAdjustmentController::class, 'store']);
 Route::put('commission-adjustments/{commissionAccrual}', [CommissionAdjustmentController::class, 'update']);

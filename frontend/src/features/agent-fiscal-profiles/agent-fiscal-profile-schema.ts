@@ -44,6 +44,8 @@ export function buildAgentFiscalProfileSchema(t: TFunction) {
       enasarco_enabled: z.boolean(),
       enasarco_mandate_type: z.union([z.enum(ENASARCO_MANDATE_TYPES), z.literal('')]),
       vat_rate_id: z.number().nullable(),
+      payment_method_id: z.number().nullable(),
+      cost_type_id: z.number().nullable(),
       valid_from: z.string().min(1, t('agentFiscalProfiles.form.validFromRequired')),
       valid_until: z.string(),
       notes: z.string().max(NOTES_MAX_LENGTH, t('agentFiscalProfiles.form.notesMax')),

@@ -28,7 +28,7 @@ const guide: HelpGuide = {
           headers: ['Section', 'What it contains'],
           rows: [
             ['Personal details', 'The same fields as a registry, with Individual or Company.'],
-            ['Referent details', 'Referent type, Contact scope (Internal or External), Linked user (if the person uses QNet) and Notes.'],
+            ['Referent details', 'Referent type, Contact scope (Internal or External), Linked user (if the person uses QNet), **Supplier registry** and Notes.'],
             ['Other fields', 'The custom fields of referents, grouped as in the form.'],
             ['Contacts', 'Contact details. The Phone is required at creation.'],
             ['Addresses', 'Sites and billing addresses.'],
@@ -60,6 +60,20 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: "A field without a pencil is not editable by you: your role's permissions make it read-only.",
+        },
+      ],
+    },
+    {
+      id: 'supplier-registry',
+      title: 'Supplier registry (agents)',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'The **Supplier registry** field links the referent to the registry, with the supplier role, to which the passive invoice for the agent’s commissions is addressed. It is set here or directly when approving a statement (see the **Statements** guide), where you can also create it from the referent.',
+        },
+        {
+          type: 'note',
+          text: 'After a statement of the agent has been approved the field is **locked on that supplier**: it cannot be changed to another. Only a registry that is a supplier can be chosen.',
         },
       ],
     },

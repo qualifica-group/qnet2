@@ -46,6 +46,8 @@ it('200: field catalogue matches the frozen contract, in order', function () {
     expect($keys)->toBe([
         // Spec 0090, D-2: `user_id` joins as the 4th native key.
         'referent_type_id', 'contact_scope', 'notes', 'user_id',
+        // Spec 0267, D-7: the supplier registry link (REQUIREMENT CHANGED).
+        'supplier_registry_id',
         'personal_data.type', 'personal_data.first_name',
         'personal_data.last_name', 'personal_data.company_name', 'personal_data.tax_code',
         'personal_data.vat_number', 'personal_data.sdi_code', 'personal_data.birth_date',

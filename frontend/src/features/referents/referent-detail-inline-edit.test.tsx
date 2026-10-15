@@ -114,6 +114,17 @@ describe('ReferentDetailView — in-place editing (spec 0216)', () => {
     await waitFor(() => expect(updateReferentMock).toHaveBeenCalledWith(7, { user_id: null }))
   })
 
+  it('unlinks the supplier registry without touching any other field (spec 0267 D-7)', async () => {
+    updateReferentMock.mockResolvedValue(referentFixture())
+    renderDetail(referentFixture({ supplier_registry_id: 12, supplier: { id: 12, name: 'Acme Agenti' } }))
+
+    fireEvent.click(pencilOf('Supplier registry'))
+    fireEvent.click(screen.getByText('clear-registries'))
+    confirmOpenRow('Save')
+
+    await waitFor(() => expect(updateReferentMock).toHaveBeenCalledWith(7, { supplier_registry_id: null }))
+  })
+
   it('closes on Cancel without calling the server', () => {
     renderDetail(referentFixture())
 

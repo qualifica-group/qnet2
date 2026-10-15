@@ -37,7 +37,7 @@ final class PurchaseInvoiceInstallmentPlanner
 
     /**
      * Replace the schedule of the document with the one its payment method
-     * and amounts produce; the installments sum to the document total.
+     * and amounts produce; the installments sum to the payable amount.
      *
      * @return Collection<int, PurchaseInvoiceInstallment>
      */
@@ -46,9 +46,9 @@ final class PurchaseInvoiceInstallmentPlanner
         $schedule = $this->plan(
             CarbonImmutable::parse($invoice->document_date),
             $invoice->paymentMethod()->firstOrFail(),
-            (string) $invoice->net_amount,
+            bcsub((string) $invoice->net_amount, bcadd((string) $invoice->withholding_amount, (string) $invoice->enasarco_amount, 2), 2),
             (string) $invoice->vat_amount,
-            (string) $invoice->total_amount,
+            $invoice->payableAmount(),
         );
 
         $invoice->installments()->delete();

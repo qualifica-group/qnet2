@@ -26,6 +26,11 @@ export interface AgentFiscalProfileDetail {
   /** VAT rate applied to the agent statements, null = transaction without VAT (spec 0213 D-2). */
   vat_rate_id: number | null
   vat_rate: { id: number; name: string; rate: string } | null
+  /** Defaults of the agent statement approval window (spec 0267 D-8). */
+  payment_method_id: number | null
+  payment_method: { id: number; name: string } | null
+  cost_type_id: number | null
+  cost_type: { id: number; name: string } | null
   valid_from: string
   valid_until: string | null
   notes: string | null
@@ -47,6 +52,8 @@ export interface AgentFiscalProfilePayload {
   enasarco_enabled: boolean
   enasarco_mandate_type: EnasarcoMandateType | null
   vat_rate_id: number | null
+  payment_method_id: number | null
+  cost_type_id: number | null
   valid_from: string
   valid_until: string | null
   notes: string | null
@@ -61,4 +68,6 @@ export type AgentFiscalProfileFormMode =
 export interface AgentFiscalProfileRefs {
   referent: RelationFieldRef | null
   vatRate: RelationFieldRef | null
+  paymentMethod: RelationFieldRef | null
+  costType: RelationFieldRef | null
 }

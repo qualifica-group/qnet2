@@ -34,6 +34,7 @@ function HeaderSection({ invoice, editor }: SectionProps) {
   const { form, inline } = editor
   const { control } = form
   const unfrozen = !invoice.has_payments
+  const unlocked = invoice.commission_settlement == null
   const field = (key: string) => t(`purchaseInvoiceViews.detail.fields.${key}`)
   const pick = (key: string) => t(`purchaseInvoices.editor.fields.${key}`)
 
@@ -44,7 +45,7 @@ function HeaderSection({ invoice, editor }: SectionProps) {
           field="document_date"
           label={field('document_date')}
           inline={inline}
-          canEdit={unfrozen}
+          canEdit={unfrozen && unlocked}
           editor={<RecordTextEditor control={control} name="document_date" type="date" label={field('document_date')} required />}
         >
           <span>{formatDate(invoice.document_date)}</span>
@@ -59,13 +60,14 @@ function HeaderSection({ invoice, editor }: SectionProps) {
           field="payment_method_id"
           label={field('payment_method')}
           inline={inline}
-          canEdit={unfrozen}
+          canEdit={unfrozen && unlocked}
           editor={<RecordRelationEditor control={control} name="payment_method_id" label={field('payment_method')} resource={PAYMENT_METHODS_FOR_SELECT_RESOURCE} selected={invoice.payment_method} placeholder={pick('selectPaymentMethod')} required />}
         >
           <span>{invoice.payment_method.name}</span>
         </RecordInlineField>
         <RecordInlineField
           field="financial_account_id"
+          canEdit={unlocked}
           label={field('financial_account')}
           inline={inline}
           editor={
@@ -84,6 +86,7 @@ function HeaderSection({ invoice, editor }: SectionProps) {
         </RecordInlineField>
         <RecordInlineField
           field="company_site_id"
+          canEdit={unlocked}
           label={field('company_site')}
           inline={inline}
           editor={<RecordRelationEditor control={control} name="company_site_id" label={field('company_site')} resource={COMPANY_SITES_FOR_SELECT_RESOURCE} selected={invoice.company_site} params={{ company_id: invoice.company.id }} placeholder={pick('selectCompanySite')} />}
@@ -92,6 +95,7 @@ function HeaderSection({ invoice, editor }: SectionProps) {
         </RecordInlineField>
         <RecordInlineField
           field="operational_site_id"
+          canEdit={unlocked}
           label={field('operational_site')}
           inline={inline}
           editor={<RecordRelationEditor control={control} name="operational_site_id" label={field('operational_site')} resource={OPERATIONAL_SITES_FOR_SELECT_RESOURCE} selected={invoice.operational_site} placeholder={pick('selectOperationalSite')} />}
@@ -100,6 +104,7 @@ function HeaderSection({ invoice, editor }: SectionProps) {
         </RecordInlineField>
         <RecordInlineField
           field="cost_type_id"
+          canEdit={unlocked}
           label={field('cost_type')}
           inline={inline}
           editor={<RecordRelationEditor control={control} name="cost_type_id" label={field('cost_type')} resource={COST_TYPES_FOR_SELECT_RESOURCE} selected={invoice.cost_type} placeholder={pick('selectCostType')} />}
@@ -108,6 +113,7 @@ function HeaderSection({ invoice, editor }: SectionProps) {
         </RecordInlineField>
         <RecordInlineField
           field="work_order_id"
+          canEdit={unlocked}
           label={field('work_order')}
           inline={inline}
           editor={
@@ -143,6 +149,7 @@ function RegistrationSection({ invoice, editor }: SectionProps) {
       <RecordFieldList>
         <RecordInlineField
           field="document_number"
+          canEdit={invoice.commission_settlement == null}
           label={numberLabel}
           inline={inline}
           editor={

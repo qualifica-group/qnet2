@@ -29,6 +29,10 @@ function profile(overrides: Partial<AgentFiscalProfileDetailWithPermissions> = {
     enasarco_mandate_type: null,
     vat_rate_id: null,
     vat_rate: null,
+    payment_method_id: null,
+    payment_method: null,
+    cost_type_id: null,
+    cost_type: null,
     valid_from: '2026-01-01',
     valid_until: null,
     notes: null,
@@ -72,6 +76,24 @@ describe('AgentFiscalProfileDetailView - in-place editing (spec 0264)', () => {
     expect(screen.getByText('No VAT')).toBeInTheDocument()
     expect(pencilOf('Validity')).toBeInTheDocument()
     expect(pencilOf('Notes')).toBeInTheDocument()
+  })
+
+  it('shows the payment method and cost type defaults on their rows (spec 0267 D-8)', () => {
+    render(
+      <AgentFiscalProfileDetailView
+        profile={profile({
+          payment_method_id: 3,
+          payment_method: { id: 3, name: 'Bank transfer' },
+          cost_type_id: 8,
+          cost_type: { id: 8, name: 'Agent commissions' },
+        })}
+      />,
+    )
+
+    expect(screen.getByText('Payment method')).toBeInTheDocument()
+    expect(screen.getByText('Bank transfer')).toBeInTheDocument()
+    expect(screen.getByText('Cost type')).toBeInTheDocument()
+    expect(screen.getByText('Agent commissions')).toBeInTheDocument()
   })
 
   it('a row sends only its own field', async () => {

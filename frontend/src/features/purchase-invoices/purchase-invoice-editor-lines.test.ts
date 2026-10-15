@@ -25,6 +25,8 @@ function formValues(overrides: Partial<PurchaseInvoiceWriteFormValues> = {}): Pu
     cost_type_id: null,
     work_order_id: null,
     notes: '  ',
+    withholding_amount: null,
+    enasarco_amount: null,
     purchase_order_ids: [],
     lines: [{ ...newLine({ description: 'A', quantity: 1, unit_price: 10, cost_type_id: 4 }, NO_DEFAULTS), id: 9 }],
     ...overrides,

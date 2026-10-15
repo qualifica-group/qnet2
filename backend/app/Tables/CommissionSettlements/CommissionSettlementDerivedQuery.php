@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Builder;
 final class CommissionSettlementDerivedQuery
 {
     /** Columns whose set filter / distinct values are a column or an SQL expression. */
-    private const array SET_COLUMNS = ['status', 'referent', 'company', 'period_month'];
+    private const array SET_COLUMNS = ['status', 'referent', 'company', 'period_month', 'payment_status'];
 
     /**
      * Handles every filterable column of the domain; false for an unknown one.

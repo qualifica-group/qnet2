@@ -5,6 +5,7 @@ import axios, { type AxiosError } from 'axios'
 import { toast } from 'sonner'
 import { PURCHASE_INSTALLMENTS_DOMAIN } from '@/features/purchase-invoice-installments/api'
 import { deletePurchaseInvoice, purchaseInvoiceKeys } from '@/features/purchase-invoices/api'
+import { serverMessage } from '@/features/purchase-requests/purchase-request-server-errors'
 
 const HTTP_CONFLICT = 409
 
@@ -29,7 +30,9 @@ export function useDeletePurchaseInvoiceFlow(onDeleted: () => void, onSettled: (
         },
         onError: (error) => {
           const conflict = axios.isAxiosError(error) && error.response?.status === HTTP_CONFLICT
-          toast.error(t(conflict ? 'purchaseInvoiceViews.delete.locked' : 'purchaseInvoiceViews.delete.genericError'))
+          // The 409 message names the cause (payments, registered invoice, settlement_locked); the generic text is the fallback.
+          const message = conflict ? serverMessage(error) : null
+          toast.error(message ?? t(conflict ? 'purchaseInvoiceViews.delete.locked' : 'purchaseInvoiceViews.delete.genericError'))
         },
         onSettled,
       }),

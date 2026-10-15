@@ -42,6 +42,8 @@ class ReferentsAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('notes', 'text'),
             // Spec 0090, D-2: the referent-user link, 4th native key.
             new FieldDefinition('user_id', 'select'),
+            // Spec 0267, D-7: the supplier registry the agent is paid through.
+            new FieldDefinition('supplier_registry_id', 'select'),
             new FieldDefinition('personal_data.type', 'select', 'personal_data', mandatory: true),
             new FieldDefinition('personal_data.first_name', 'text', 'personal_data', mandatory: true),
             new FieldDefinition('personal_data.last_name', 'text', 'personal_data', mandatory: true),
@@ -78,6 +80,7 @@ class ReferentsAuthorization extends AbstractResourceAuthorization
             'contact_scope' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'notes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'user_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'supplier_registry_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ], $this->personalDataFieldPermissions($mayWrite));
     }
 

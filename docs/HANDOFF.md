@@ -3,6 +3,38 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0267 — Liquidazioni agenti M3 (documento) + M4 (passivo) — VERDE, COMMITTATO (2026-10-15)
+
+- Spec `docs/specs/0267-agent-settlement-documents.xml` (D-1..D-9, AC-001..AC-024 PASS dal verifier dopo i fix).
+- Ciclo estratto: DRAFT -> ISSUED -> DOCUMENT_RECEIVED -> APPROVED (immutabile); CANCELLED solo da ISSUED.
+  `CommissionSettlementStatus::validStatuses()` = ISSUED|DOCUMENT_RECEIVED|APPROVED, usato per massimale ENASARCO,
+  delete parametri ENASARCO, status movimento `issued`.
+- Endpoint (routes/api/agent-commissions.php): POST/DELETE `commission-settlements/{id}/document`
+  (`SettlementDocumentController`, `SettlementDocumentService`, `DocumentToleranceChecker`), GET `approval-draft`,
+  POST `supplier`, POST `approve` (`SettlementApprovalController`, `SettlementApprovalService`, `AgentSupplierService`,
+  `AgentSupplierCard`). Trait `RespondsWithSettlement`. Permessi `commission-settlements.receiveDocument` / `.approve`;
+  approve richiede anche `purchase-invoices.create`, creazione fornitore anche `registries.create`.
+- Tolleranza `config('commissions.document_tolerance')` (env COMMISSION_DOCUMENT_TOLERANCE, default "1.00"); differenza
+  entro tolleranza accettata senza rettifica. Fattura passiva creata solo via `PurchaseInvoiceService::create`, link
+  `commission_settlements.purchase_invoice_id` (unique); stato pagamento estratto letto dalle rate.
+- Fatture passive: `withholding_amount`, `enasarco_amount` (default 0) su tutte; payable = total - trattenute; rate sul
+  payable; congelate dopo il primo pagamento (422 payments_frozen); `LinkedSettlementGuard` -> 409 `settlement_locked`;
+  colonna `payable_amount`; partitario fornitore sul payable.
+- `referents.supplier_registry_id` (is_supplier, bloccato con estratti APPROVED); profilo fiscale `payment_method_id`,
+  `cost_type_id` = default dell'approvazione.
+- REQUIREMENT CHANGED: step dei rollback in PurchaseOrderMigrationTest (40), SupplierCommissionDirectionTest (55),
+  QuoteWorkflowMigrationTest (191); test tabelle/permessi estratti, PurchaseInvoicesTableTest, ReferentMetaTest,
+  DemoCommissionSettlementSeederTest, agent-commissions-i18n-parity (5 stati).
+- Verifica: Pest parallelo 11196/11200 (3 fail = LibreOffice `soffice` assente, ambiente; serve `extension=zip` nel
+  php.ini, il php.ini di Laragon lo ha commentato), Vitest 8248/8252 (timeout flaky fuori scope, verdi in isolamento),
+  `tsc -b --force` pulito, Pint/ESLint puliti.
+- Attenzione: gli agenti su Windows possono salvare in CRLF file che nell'indice sono LF: controllare
+  `git ls-files --eol | grep "i/lf.*w/crlf"` prima del commit.
+- Avvisi 300 righe: CommissionSettlementsTableDefinition (325), PurchaseInvoiceService (321), locale
+  {it,en}-commission-settlements.ts (330).
+- Manuale Claude Docs: da aggiornare (Estratti, Fatture passive, Scadenziario passivo, Referenti, Profili fiscali, Partitario).
+- Prossimo: resto di M3 (PDF estratto, email massiva, export paghe) e M5.
+
 ## Spec 0266 — Partitario clienti/fornitori tappa 1 — VERDE, COMMITTATO (2026-10-15)
 
 - Spec `docs/specs/0266-registry-ledger.xml` (D-1..D-11, AC-001..AC-020 tutti PASS dal verifier).

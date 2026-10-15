@@ -31,3 +31,11 @@ export function settlementErrorMessage(error: unknown, t: TFunction): string | n
   }
   return reason ?? data?.message ?? null
 }
+
+/** First server validation message of a 422 under `key`, for errors that have no field in the form. */
+export function validationMessageFor(error: unknown, key: string): string | null {
+  if (!axios.isAxiosError<ApiErrorResponse>(error) || error.response?.status !== UNPROCESSABLE_STATUS) {
+    return null
+  }
+  return error.response.data?.errors?.[key]?.[0] ?? null
+}

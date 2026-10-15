@@ -30,6 +30,8 @@ function baseFields(t: TFunction) {
     referent_type_id: z.number().nullable(),
     // Single-select linked user (spec 0090 D-2): `null` = unlinked.
     user_id: z.number().nullable(),
+    // Single-select supplier registry (spec 0267 D-7): `null` = none.
+    supplier_registry_id: z.number().nullable(),
     contact_scope: contactScopeSchema,
     // Empty string = "no notes", mapped to `null` at the payload boundary.
     notes: z.string().max(NOTES_MAX_LENGTH, t('referents.form.notesMax')),

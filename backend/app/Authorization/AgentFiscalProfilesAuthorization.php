@@ -42,6 +42,8 @@ class AgentFiscalProfilesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('vat_rate_id', 'select'),
             new FieldDefinition('valid_from', 'date', mandatory: true),
             new FieldDefinition('valid_until', 'date'),
+            new FieldDefinition('payment_method_id', 'select'),
+            new FieldDefinition('cost_type_id', 'select'),
             new FieldDefinition('notes', 'textarea'),
         ];
     }

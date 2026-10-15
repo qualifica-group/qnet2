@@ -9,6 +9,8 @@ type FilterModel = Record<string, unknown>
 const STATUS_BY_FILTER: Record<Exclude<SettlementQuickFilter, 'all'>, SettlementStatus> = {
   draft: 'DRAFT',
   issued: 'ISSUED',
+  document_received: 'DOCUMENT_RECEIVED',
+  approved: 'APPROVED',
   cancelled: 'CANCELLED',
 }
 
@@ -45,7 +47,7 @@ export interface SettlementQuickFilterState {
   setQuickFilter: (filter: SettlementQuickFilter) => void
 }
 
-/** Bozze / Emessi / Annullati / Tutti state: the grid filter model is the single source of truth. */
+/** Bozze / Emessi / Documento ricevuto / Approvati / Annullati / Tutti state: the grid filter model is the single source of truth. */
 export function useSettlementQuickFilter(tableRef: RefObject<TableViewHandle | null>): SettlementQuickFilterState {
   const forcedFilterModel = useMemo<FilterModel>(() => buildSettlementQuickFilterPatch('draft'), [])
   const [model, setModel] = useState<FilterModel>(forcedFilterModel)

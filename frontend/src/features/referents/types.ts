@@ -27,6 +27,12 @@ export interface ReferentUserRef {
   name: string
 }
 
+/** The supplier registry reference as hydrated in the referent resource ({id, name}, spec 0267). */
+export interface ReferentSupplierRef {
+  id: number
+  name: string
+}
+
 /**
  * Single referent detail returned by GET/POST/PATCH /referents (envelope
  * `data`). Matches `ReferentResource`.
@@ -47,6 +53,14 @@ export interface ReferentDetail {
   user_id?: number | null
   /** Hydrates the "Linked user" single-select control. */
   user?: ReferentUserRef | null
+  /**
+   * The supplier registry this referent (agent) is paid through (spec 0267
+   * D-7), or `null`. Both keys are OMITTED when `supplier_registry_id` is not
+   * visible for field permission.
+   */
+  supplier_registry_id?: number | null
+  /** Hydrates the "Supplier registry" single-select control. */
+  supplier?: ReferentSupplierRef | null
   contact_scope: ReferentContactScope
   notes: string | null
   /**
@@ -78,6 +92,8 @@ export interface CreateReferentPayload {
   referent_type_id?: number | null
   /** The linked user's id, or `null` for none (spec 0090 D-2). */
   user_id?: number | null
+  /** The supplier registry's id, or `null` for none (spec 0267 D-7). */
+  supplier_registry_id?: number | null
   contact_scope: ReferentContactScope
   notes?: string | null
   personal_data: PersonalDataPayload
@@ -94,6 +110,8 @@ export interface UpdateReferentPayload {
   referent_type_id?: number | null
   /** The linked user's id, `null` to unlink (spec 0090 D-2/AC-003). */
   user_id?: number | null
+  /** The supplier registry's id, `null` to unlink (spec 0267 D-7). */
+  supplier_registry_id?: number | null
   contact_scope?: ReferentContactScope
   notes?: string | null
   personal_data?: PersonalDataPayload

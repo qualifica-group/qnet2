@@ -13,6 +13,7 @@ export const purchaseInvoices = {
     supplier: 'Supplier',
     company: 'Company',
     purchase_orders: 'Purchase orders',
+    payable_amount: 'Net payable',
     total_amount: 'Total',
     paid_amount: 'Paid',
     residual_amount: 'Residual',
@@ -37,7 +38,9 @@ export const purchaseInvoices = {
     loadError: 'Unable to load the document.',
     receiptNotice: 'Saving as an Invoice will register the receipt of the quantities not yet received on the purchase orders.',
     defaultsHint: 'The header cost type and work order are proposed to new rows; each row keeps its own.',
+    withholdingsHint: 'Optional: they reduce the net payable; the installments add up to the net.',
     sections: {
+      withholdings: 'Withholdings',
       header: 'Header',
       orders: 'Invoiceable purchase orders',
       lines: 'Document rows',
@@ -64,6 +67,8 @@ export const purchaseInvoices = {
       selectCostType: 'Select the cost type',
       defaultWorkOrder: 'Default work order',
       selectWorkOrder: 'Select the work order',
+      withholdingAmount: "Withholding tax",
+      enasarcoAmount: 'ENASARCO charged to the company',
       notes: 'Notes',
     },
     select: {
@@ -114,11 +119,15 @@ export const purchaseInvoices = {
       error: 'Unable to compute the due dates.',
     },
     totals: {
+      payable: 'Net payable',
       net: 'Taxable',
       vat: 'VAT',
       total: 'Total',
     },
     errors: {
+      amountInvalid: 'Enter a valid amount.',
+      amountNegative: "The amount cannot be negative.",
+      withholdingsAboveTotal: 'Withholding tax and ENASARCO must be less than the document total.',
       documentNumberRequired: 'The supplier document number is required for an invoice.',
       documentNumberMax: 'The number can have at most 30 characters.',
       documentDateRequired: 'The document date is required.',

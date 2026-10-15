@@ -28,7 +28,7 @@ const guide: HelpGuide = {
           headers: ['Sezione', 'Cosa contiene'],
           rows: [
             ['Dati anagrafici', "Gli stessi campi dell'anagrafica, con Persona fisica o Azienda."],
-            ['Dettagli referente', 'Tipo referente, Ambito contatto (Interno o Esterno), Utente collegato (se la persona usa QNet) e Note.'],
+            ['Dettagli referente', 'Tipo referente, Ambito contatto (Interno o Esterno), Utente collegato (se la persona usa QNet), **Anagrafica fornitore** e Note.'],
             ['Altri campi', 'I campi personalizzati dei referenti, raggruppati come nel modulo.'],
             ['Contatti', 'I recapiti. Il Telefono è obbligatorio in creazione.'],
             ['Indirizzi', 'Sedi e indirizzi di fatturazione.'],
@@ -60,6 +60,20 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura.',
+        },
+      ],
+    },
+    {
+      id: 'supplier-registry',
+      title: 'Anagrafica fornitore (agenti)',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Il campo **Anagrafica fornitore** collega il referente all’anagrafica, con ruolo fornitore, a cui intestare la fattura passiva delle sue provvigioni. Si imposta qui oppure direttamente dall’approvazione di un estratto (vedi la guida **Estratti**), dove puoi anche crearla dal referente.',
+        },
+        {
+          type: 'note',
+          text: 'Dopo l’approvazione di un estratto dell’agente il campo è **bloccato su quel fornitore**: non si può cambiare con un altro. Si può scegliere solo un’anagrafica che sia un fornitore.',
         },
       ],
     },

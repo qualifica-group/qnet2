@@ -19,9 +19,13 @@ export function makePurchaseInvoiceView(overrides: Partial<PurchaseInvoice> = {}
     net_amount: '300.00',
     vat_amount: '66.00',
     total_amount: '366.00',
+    withholding_amount: '0.00',
+    enasarco_amount: '0.00',
+    payable_amount: '366.00',
     paid_amount: '0.00',
     residual_amount: '366.00',
     has_payments: false,
+    commission_settlement: null,
     purchase_orders: [
       { id: 5, code: '3/2026' },
       { id: 6, code: '4/2026' },

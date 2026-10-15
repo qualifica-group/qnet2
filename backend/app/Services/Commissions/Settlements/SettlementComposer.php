@@ -85,14 +85,14 @@ final class SettlementComposer
         );
     }
 
-    /** ENASARCO base consumed in the year by the ISSUED settlements of the pair, the current one excluded. */
+    /** ENASARCO base consumed in the year by the valid (issued, document received, approved) settlements of the pair, the current one excluded. */
     private function usedCeiling(int $referentId, int $companyId, int $year, ?int $excludeSettlementId): string
     {
         return CommissionSettlement::query()
             ->where('referent_id', $referentId)
             ->where('company_id', $companyId)
             ->where('year', $year)
-            ->where('status', CommissionSettlementStatus::Issued->value)
+            ->whereIn('status', array_column(CommissionSettlementStatus::validStatuses(), 'value'))
             ->when($excludeSettlementId !== null, fn ($query) => $query->whereKeyNot($excludeSettlementId))
             ->get(['enasarco_base_amount'])
             ->reduce(fn (string $sum, CommissionSettlement $row): string => bcadd($sum, (string) $row->enasarco_base_amount, 2), '0.00');

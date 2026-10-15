@@ -46,6 +46,12 @@ class ReferentResource extends JsonResource
             'user' => $this->user !== null
                 ? ['id' => $this->user->id, 'name' => $this->user->name]
                 : null,
+            // Spec 0267, D-7: the supplier registry linked for settlement
+            // invoices; `supplier` is {id, name} or null.
+            'supplier_registry_id' => $this->supplier_registry_id,
+            'supplier' => $this->supplierRegistry !== null
+                ? ['id' => $this->supplierRegistry->id, 'name' => $this->supplierRegistry->name]
+                : null,
             'contact_scope' => $this->contact_scope,
             'notes' => $this->notes,
             // The nested personal-data tree, or null — always present as a
@@ -59,6 +65,10 @@ class ReferentResource extends JsonResource
 
         if (($this->fieldPermissions['user_id']['visible'] ?? true) === false) {
             unset($payload['user_id'], $payload['user']);
+        }
+
+        if (($this->fieldPermissions['supplier_registry_id']['visible'] ?? true) === false) {
+            unset($payload['supplier_registry_id'], $payload['supplier']);
         }
 
         return $payload;

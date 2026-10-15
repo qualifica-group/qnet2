@@ -5,4 +5,6 @@ return [
     // sicurezza, questo è il messaggio che vede l'operatore, che nomina il
     // referente che occupa già il legame.
     'user_already_linked' => 'Questo utente è già collegato al referente ":name".',
+    // Spec 0267, D-7: il collegamento al fornitore è bloccato con un estratto approvato.
+    'supplier_link_locked' => "L'anagrafica fornitore non è modificabile: l'agente ha un estratto approvato.",
 ];

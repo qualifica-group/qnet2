@@ -27,6 +27,7 @@ final class PurchaseInvoiceColumnCatalog
             self::column('company', 'text', sortable: true, filter: 'set'),
             self::column('purchase_orders', 'text'),
             self::column('total_amount', 'number', sortable: true),
+            self::column('payable_amount', 'number', sortable: true, filter: 'number'),
             self::column('paid_amount', 'number'),
             self::column('residual_amount', 'number'),
             self::column('payment_status', 'badge', options: InvoicePaymentStatus::values()),

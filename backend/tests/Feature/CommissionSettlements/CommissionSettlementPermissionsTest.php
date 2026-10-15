@@ -19,9 +19,9 @@ it('AC-016: permissions:sync creates the abilities of both settlement resources'
         ->filter(fn (string $name): bool => str_starts_with($name, "{$resource}."))->sort()->values()->all();
 
     expect($pick('commission-settlements'))->toBe([
-        'commission-settlements.adjust', 'commission-settlements.cancel', 'commission-settlements.create',
+        'commission-settlements.adjust', 'commission-settlements.approve', 'commission-settlements.cancel', 'commission-settlements.create',
         'commission-settlements.delete', 'commission-settlements.export', 'commission-settlements.issue',
-        'commission-settlements.update', 'commission-settlements.view', 'commission-settlements.viewActivity',
+        'commission-settlements.receiveDocument', 'commission-settlements.update', 'commission-settlements.view', 'commission-settlements.viewActivity',
         'commission-settlements.viewAny',
     ])->and($pick('enasarco-parameters'))->toBe([
         'enasarco-parameters.create', 'enasarco-parameters.delete', 'enasarco-parameters.export',
@@ -102,7 +102,7 @@ it('AC-016: the action permissions follow the matching ability', function () {
     $actions = $authorization->actionPermissions(commissionSettlementUserWith(['update', 'issue', 'adjust']), $draft);
 
     expect($actions)->toBe([
-        'recalculate' => true, 'issue' => true, 'cancel' => false, 'delete' => false,
+        'recalculate' => true, 'issue' => true, 'cancel' => false, 'receive_document' => false, 'approve' => false, 'delete' => false,
         'adjust' => true, 'export' => false, 'view_activity' => false,
     ]);
 });

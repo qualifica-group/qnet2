@@ -21,6 +21,9 @@ export const purchaseInvoiceViews = {
     vat_amount: 'VAT',
     total_amount: 'Total',
     paid_amount: 'Paid',
+    withholding_amount: "Withholding tax",
+    enasarco_amount: 'ENASARCO',
+    payable_amount: 'Net payable',
     residual_amount: 'Residual',
     payment_status: 'Payment status',
   },
@@ -31,6 +34,7 @@ export const purchaseInvoiceViews = {
   },
   detail: {
     title: 'Invoice {{number}}',
+    fromSettlement: 'From statement {{code}}',
     titleProforma: 'Passive proforma',
     loadError: 'Unable to load the document. Try again.',
     delete: 'Delete',

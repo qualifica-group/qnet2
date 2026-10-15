@@ -27,6 +27,7 @@ export function editDefaults(
     // Omitted entirely when not visible for field permission (spec 0090
     // AC-005): falls back to unlinked, same as a fresh create.
     user_id: referent.user_id ?? null,
+    supplier_registry_id: referent.supplier_registry_id ?? null,
     contact_scope: referent.contact_scope,
     notes: referent.notes ?? '',
     custom_fields: customFields,
@@ -37,6 +38,7 @@ function createDefaults(customFields: Record<string, CustomFieldValue>): Referen
   return {
     referent_type_id: null,
     user_id: null,
+    supplier_registry_id: null,
     contact_scope: DEFAULT_CONTACT_SCOPE,
     notes: '',
     custom_fields: customFields,

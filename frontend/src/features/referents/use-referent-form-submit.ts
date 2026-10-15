@@ -30,7 +30,7 @@ import type {
  * `personal_data.*` paths are NOT here — that buffer lives outside RHF (see
  * `personalDataServerErrorMessage`) — mirroring `registries`.
  */
-const SERVER_ERROR_FIELDS = ['referent_type_id', 'user_id', 'contact_scope', 'notes'] as const
+const SERVER_ERROR_FIELDS = ['referent_type_id', 'user_id', 'supplier_registry_id', 'contact_scope', 'notes'] as const
 
 /** Domain key of the module statistics (mirrors `REFERENTS_DOMAIN` in `referents-table.tsx`). */
 const REFERENTS_DOMAIN = 'referents'

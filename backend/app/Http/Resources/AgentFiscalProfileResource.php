@@ -14,6 +14,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class AgentFiscalProfileResource extends JsonResource
 {
+    /** Hydrated {id, name} companions that follow the visibility of their id field. */
+    private const array HYDRATED_RELATIONS = [
+        'payment_method_id' => 'payment_method',
+        'cost_type_id' => 'cost_type',
+    ];
+
     /**
      * @param  array<string, array{visible?: bool}>  $fieldPermissions
      */
@@ -42,6 +48,10 @@ class AgentFiscalProfileResource extends JsonResource
                 'name' => $this->vatRate->name,
                 'rate' => $this->vatRate->rate,
             ],
+            'payment_method_id' => $this->payment_method_id,
+            'payment_method' => $this->paymentMethod === null ? null : ['id' => $this->paymentMethod->id, 'name' => $this->paymentMethod->name],
+            'cost_type_id' => $this->cost_type_id,
+            'cost_type' => $this->costType === null ? null : ['id' => $this->costType->id, 'name' => $this->costType->name],
             'valid_from' => $this->valid_from?->format('Y-m-d'),
             'valid_until' => $this->valid_until?->format('Y-m-d'),
             'notes' => $this->notes,
@@ -54,7 +64,7 @@ class AgentFiscalProfileResource extends JsonResource
                 continue;
             }
 
-            unset($payload[$field]);
+            unset($payload[$field], $payload[self::HYDRATED_RELATIONS[$field] ?? '']);
         }
 
         return $payload;

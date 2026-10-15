@@ -18,6 +18,8 @@ const PAYLOAD: AgentFiscalProfilePayload = {
   enasarco_enabled: false,
   enasarco_mandate_type: null,
   vat_rate_id: null,
+  payment_method_id: null,
+  cost_type_id: null,
   valid_from: '2026-01-01',
   valid_until: null,
   notes: null,

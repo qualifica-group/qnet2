@@ -4,6 +4,7 @@ import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type {
   ReferentContactScope,
   ReferentDetail,
+  ReferentSupplierRef,
   ReferentTypeRef,
   ReferentUserRef,
 } from '@/features/referents/types'
@@ -13,6 +14,7 @@ import type { ReferentFormValues } from '@/features/referents/use-referent-form'
 export interface ReferentRecordValues {
   referent_type: ReferentTypeRef | null
   user: ReferentUserRef | null
+  supplier: ReferentSupplierRef | null
   contact_scope: ReferentContactScope
   notes: string | null
   custom_fields: Record<string, CustomFieldValue>
@@ -30,6 +32,7 @@ export function persistedReferentValues(referent: ReferentDetail): ReferentRecor
   return {
     referent_type: referent.referent_type,
     user: referent.user ?? null,
+    supplier: referent.supplier ?? null,
     contact_scope: referent.contact_scope,
     notes: referent.notes,
     custom_fields: referent.custom_fields ?? {},

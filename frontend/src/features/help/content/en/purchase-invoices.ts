@@ -52,7 +52,8 @@ const guide: HelpGuide = {
           items: [
             'Press **New passive invoice** and choose **Supplier**, **Company**, **Document date** and **Payment method** (and, if needed, account, sites, notes).',
             'Add the **lines**: from the product catalog or free ones. For each line set description, quantity, price, VAT, **cost type** (required) and **work order**. The header cost type and work order are only the value proposed to new lines; for a catalog line, if the header has none, the cost type is proposed from the product (when it has a default one).',
-            'Check the **totals** and the **installment preview**, generated from the payment method.',
+            'If needed, enter **Withholding tax** and **ENASARCO charged to the company** (optional, in the **Withholdings** section).',
+            'Check the **totals**, including the **Net payable**, and the **installment preview**, generated from the payment method.',
             'Press **Save**.',
           ],
         },
@@ -115,7 +116,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Installments are generated from the **payment method** and, when editing a proforma without payments, they are **recalculated**. If payments exist, date, method and supplier are frozen and the installments are **rebalanced** leaving the paid ones intact. Payments are recorded from **Accounting › Payable › Installments**, where the **Open document** action leads to the document sheet.',
+          text: 'Installments are generated from the **payment method** and, when editing a proforma without payments, they are **recalculated**. The installments add up to the **Net payable**, not to the document total. If payments exist, date, method, supplier, **Withholding tax** and **ENASARCO** are frozen and the installments are **rebalanced** leaving the paid ones intact. Payments are recorded from **Accounting › Payable › Installments**, where the **Open document** action leads to the document sheet.',
         },
         {
           type: 'note',
@@ -130,6 +131,38 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: 'In the document sheet the **Documents** section keeps the supplier PDF or other files. Uploading and deleting files requires the attachment permissions. Deleting the document also removes its attachments.',
+        },
+      ],
+    },
+    {
+      id: 'withholdings',
+      title: 'Withholding tax, ENASARCO and net payable',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'A passive invoice can carry two withholdings, entered by hand: **Withholding tax** and **ENASARCO charged to the company**. If left empty they count as zero and nothing changes.',
+        },
+        {
+          type: 'list',
+          items: [
+            '**Net payable** = document total − withholding tax − ENASARCO. It appears in the editor totals and in the record and must stay greater than zero: the withholdings must be less than the document total.',
+            'The **installments** are computed on the net payable: the withholding reduces the taxable share of the installments and the installments add up to the net payable. The supplier **Ledger** and the list show the document at its net payable.',
+            'After the **first payment** the two amounts are locked, like the payment date and method.',
+          ],
+        },
+      ],
+    },
+    {
+      id: 'from-settlement',
+      title: 'Invoices generated from a statement',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Approving a commission statement (see the **Statements** guide) creates a passive invoice with the agent’s withholding tax and ENASARCO. The list and the record show the **From statement n/year** badge, with the link to the statement.',
+        },
+        {
+          type: 'paragraph',
+          text: 'An invoice linked to a statement is **locked**: it cannot be edited or deleted and its number does not change, even with the permission to correct the registration. Notes, attached documents, payments and the change of due date and method of unpaid installments remain allowed.',
         },
       ],
     },

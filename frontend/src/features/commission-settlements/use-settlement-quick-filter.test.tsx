@@ -20,6 +20,8 @@ describe('settlement quick filter (spec 0213 AC-021)', () => {
   it.each([
     ['draft', { status: set('DRAFT') }],
     ['issued', { status: set('ISSUED') }],
+    ['document_received', { status: set('DOCUMENT_RECEIVED') }],
+    ['approved', { status: set('APPROVED') }],
     ['cancelled', { status: set('CANCELLED') }],
     ['all', { status: null }],
   ] as const)('writes the %s patch through the table handle', (filter, patch) => {
@@ -35,6 +37,7 @@ describe('settlement quick filter (spec 0213 AC-021)', () => {
 
   it('reads the active quick filter back from the grid model', () => {
     expect(readSettlementQuickFilter({ status: set('ISSUED') })).toBe('issued')
+    expect(readSettlementQuickFilter({ status: set('DOCUMENT_RECEIVED') })).toBe('document_received')
     expect(readSettlementQuickFilter({})).toBe('all')
     expect(readSettlementQuickFilter({ status: { filterType: 'set', values: ['DRAFT', 'ISSUED'] } })).toBeNull()
   })

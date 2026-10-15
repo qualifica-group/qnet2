@@ -42,6 +42,7 @@ class PurchaseInvoiceService
         'lines.workOrder:id,code,title',
         'installments.financialAccount:id,name',
         'createdBy:id,name',
+        'commissionSettlement:id,purchase_invoice_id,number,year',
     ];
 
     /** Header keys written only when the payload carries them. */
@@ -55,6 +56,7 @@ class PurchaseInvoiceService
         private readonly PurchaseOrderInvoiceReceiptService $invoiceReceipts,
         private readonly RegisteredPurchaseInvoiceGuard $registeredGuard,
         private readonly PurchaseInvoiceHeaderGuard $headerGuard,
+        private readonly LinkedSettlementGuard $settlementGuard,
     ) {}
 
     /**
@@ -103,6 +105,7 @@ class PurchaseInvoiceService
         return $this->guardingDuplicates(fn (): PurchaseInvoice => DB::transaction(function () use ($document, $data): PurchaseInvoice {
             // Step 1: lock the row, refuse a registered invoice and a change of the parties
             $locked = PurchaseInvoice::query()->whereKey($document->getKey())->lockForUpdate()->firstOrFail();
+            $this->settlementGuard->assertNotLinked($locked);
             $this->registeredGuard->assertEditable($locked);
             $this->headerGuard->assertPartiesUnchanged($locked, $data);
 
@@ -110,7 +113,7 @@ class PurchaseInvoiceService
             $paid = $this->schedule->hasPayments($locked);
             $paid && $this->schedule->assertFrozenFields($locked, $data);
             $prepared = $this->prepare($data, $locked->id, ! $paid);
-            $plan = $paid ? $this->schedule->plan($locked, $prepared['header']['total_amount']) : null;
+            $plan = $paid ? $this->schedule->plan($locked, $prepared['payable']) : null;
 
             // Step 3: replace header, lines and schedule
             $locked->update($prepared['header']);
@@ -148,6 +151,10 @@ class PurchaseInvoiceService
             $converting = false;
 
             if (array_key_exists('document_number', $attributes)) {
+                if ($attributes['document_number'] !== $locked->document_number) {
+                    $this->settlementGuard->assertNotLinked($locked);
+                }
+
                 $this->registeredGuard->assertNumberChangeAllowed($locked, $attributes['document_number'], $actor);
 
                 if ($attributes['document_type'] === PurchaseInvoiceType::Invoice) {
@@ -173,6 +180,7 @@ class PurchaseInvoiceService
     {
         DB::transaction(function () use ($document): void {
             $locked = PurchaseInvoice::query()->whereKey($document->getKey())->lockForUpdate()->firstOrFail();
+            $this->settlementGuard->assertNotLinked($locked);
             $this->registeredGuard->assertEditable($locked);
 
             if ($this->schedule->hasPayments($locked)) {
@@ -195,15 +203,15 @@ class PurchaseInvoiceService
         $document = isset($data['purchase_invoice_id']) ? PurchaseInvoice::query()->find($data['purchase_invoice_id']) : null;
 
         if ($document !== null && $this->schedule->hasPayments($document)) {
-            return $this->schedule->preview($document, $this->money($data['total_amount']));
+            return $this->schedule->preview($document, $this->payableOf($this->money($data['total_amount']), $data));
         }
 
         return $this->schedule->previewRows($this->planner->plan(
             CarbonImmutable::parse($data['document_date']),
             PaymentMethod::query()->findOrFail($data['payment_method_id']),
-            $this->money($data['net_amount']),
+            bcsub($this->money($data['net_amount']), $this->withheld($data), 2),
             $this->money($data['vat_amount']),
-            $this->money($data['total_amount']),
+            $this->payableOf($this->money($data['total_amount']), $data),
         ));
     }
 
@@ -216,7 +224,7 @@ class PurchaseInvoiceService
      * Validate the business rules and compute header, lines and schedule.
      *
      * @param  array<string, mixed>  $data
-     * @return array{header: array<string, mixed>, lines: array<int, array<string, mixed>>, installments: array<int, array<string, mixed>>, order_ids: array<int, int>}
+     * @return array{header: array<string, mixed>, lines: array<int, array<string, mixed>>, installments: array<int, array<string, mixed>>, order_ids: array<int, int>, payable: string}
      */
     private function prepare(array $data, ?int $ignoreDocumentId, bool $withSchedule = true): array
     {
@@ -228,18 +236,45 @@ class PurchaseInvoiceService
             throw ValidationException::withMessages(['lines' => [__('purchase_invoices.total_not_positive')]]);
         }
 
+        // The withholding and ENASARCO reduce what is paid: the schedule sums to the payable amount (spec 0267, D-6)
+        $payable = $this->payableOf($computed['total'], $data);
+
+        if (bccomp($payable, '0', 2) <= 0) {
+            throw ValidationException::withMessages(['withholding_amount' => [__('purchase_invoices.payable_not_positive')]]);
+        }
+
         $installments = $withSchedule ? $this->planner->plan(
             CarbonImmutable::parse($data['document_date']),
             PaymentMethod::query()->findOrFail($data['payment_method_id']),
-            $computed['net'],
+            bcsub($computed['net'], $this->withheld($data), 2),
             $computed['vat'],
-            $computed['total'],
+            $payable,
         ) : [];
 
         $header = Arr::only($data, ['document_date', 'payment_method_id', ...self::OPTIONAL_HEADER_KEYS])
-            + ['net_amount' => $computed['net'], 'vat_amount' => $computed['vat'], 'total_amount' => $computed['total']];
+            + [
+                'net_amount' => $computed['net'], 'vat_amount' => $computed['vat'], 'total_amount' => $computed['total'],
+                'withholding_amount' => $this->money($data['withholding_amount'] ?? 0),
+                'enasarco_amount' => $this->money($data['enasarco_amount'] ?? 0),
+            ];
 
-        return ['header' => $header, 'lines' => $computed['lines'], 'installments' => $installments, 'order_ids' => $orderIds];
+        return ['header' => $header, 'lines' => $computed['lines'], 'installments' => $installments, 'order_ids' => $orderIds, 'payable' => $payable];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data  carries the optional withholding and ENASARCO amounts
+     */
+    private function withheld(array $data): string
+    {
+        return bcadd($this->money($data['withholding_amount'] ?? 0), $this->money($data['enasarco_amount'] ?? 0), 2);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function payableOf(string $total, array $data): string
+    {
+        return bcsub($total, $this->withheld($data), 2);
     }
 
     /**

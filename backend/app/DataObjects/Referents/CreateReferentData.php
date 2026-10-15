@@ -22,6 +22,8 @@ final readonly class CreateReferentData
         // and the ReferentsSource migration importer constructs this DTO
         // without it — a required param would break that named-args call.
         public ?int $userId = null,
+        // Spec 0267, D-7: defaulted for the same importer reason as `userId`.
+        public ?int $supplierRegistryId = null,
     ) {}
 
     /**
@@ -36,6 +38,7 @@ final readonly class CreateReferentData
             contactScope: (string) $data['contact_scope'],
             notes: $data['notes'] ?? null,
             userId: isset($data['user_id']) ? (int) $data['user_id'] : null,
+            supplierRegistryId: isset($data['supplier_registry_id']) ? (int) $data['supplier_registry_id'] : null,
         );
     }
 
@@ -53,6 +56,7 @@ final readonly class CreateReferentData
             'contact_scope' => $this->contactScope,
             'notes' => $this->notes,
             'user_id' => $this->userId,
+            'supplier_registry_id' => $this->supplierRegistryId,
         ];
     }
 }

@@ -21,7 +21,7 @@ use Illuminate\Validation\ValidationException;
 class AgentFiscalProfileService
 {
     /** Relations the AgentFiscalProfileResource reads. */
-    private const array RESOURCE_RELATIONS = ['referent:id,name', 'vatRate:id,name,rate'];
+    private const array RESOURCE_RELATIONS = ['referent:id,name', 'vatRate:id,name,rate', 'paymentMethod:id,name', 'costType:id,name'];
 
     public function create(AgentFiscalProfileData $data, User $actor): AgentFiscalProfile
     {

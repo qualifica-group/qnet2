@@ -34,6 +34,7 @@ class ReferentService
         // The linked user (spec 0090, D-2), so ReferentResource emits it
         // without a second lazy load.
         'user',
+        'supplierRegistry:id,name',
         'personalData.contacts',
         'personalData.addresses',
         // The comuni of birth and residence, so PersonalDataResource can emit

@@ -98,6 +98,8 @@ export function referentFixture(overrides: Partial<ReferentDetailWithPermissions
     referent_type: { id: 3, name: 'Sponsor' },
     user_id: null,
     user: null,
+    supplier_registry_id: null,
+    supplier: null,
     contact_scope: 'internal',
     notes: 'VIP sponsor',
     personal_data: referentCard(),

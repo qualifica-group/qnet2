@@ -50,7 +50,7 @@ it('AC-009: exposes the contract columns, filters and actions', function () {
 
     expect($columns->keys()->all())->toBe([
         'id', 'document_type', 'document_number', 'document_date', 'supplier', 'company', 'purchase_orders',
-        'total_amount', 'paid_amount', 'residual_amount', 'payment_status',
+        'total_amount', 'payable_amount', 'paid_amount', 'residual_amount', 'payment_status',
     ])
         ->and($columns['document_type']['filterType'])->toBe('set')
         ->and($columns['document_type']['options'])->toBe(['proforma', 'invoice'])

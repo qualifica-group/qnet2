@@ -39,6 +39,8 @@ const HEADER_KEYS = [
   'operational_site_id',
   'cost_type_id',
   'work_order_id',
+  'withholding_amount',
+  'enasarco_amount',
 ] as const
 
 /**

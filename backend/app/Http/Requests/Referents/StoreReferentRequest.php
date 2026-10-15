@@ -8,6 +8,7 @@ use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesPhoneUniqueness;
 use App\Http\Requests\Concerns\ValidatesRequiredPhoneContact;
 use App\Http\Requests\Concerns\ValidatesUserProfile;
+use App\Http\Requests\Referents\Concerns\ValidatesReferentSupplierLink;
 use App\Http\Requests\Referents\Concerns\ValidatesReferentUserLink;
 use App\Models\Referent;
 use Illuminate\Contracts\Validation\Validator;
@@ -35,6 +36,7 @@ class StoreReferentRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
     use ValidatesPhoneUniqueness;
+    use ValidatesReferentSupplierLink;
     use ValidatesReferentUserLink;
     use ValidatesRequiredPhoneContact;
     use ValidatesUserProfile;
@@ -87,6 +89,7 @@ class StoreReferentRequest extends FormRequest
             'contact_scope' => ['required', Rule::enum(ReferentContactScopeEnum::class)],
             'notes' => ['nullable', 'string', 'max:5000'],
             'user_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
+            'supplier_registry_id' => $this->supplierRegistryRules(),
         ], $this->profileRules());
     }
 

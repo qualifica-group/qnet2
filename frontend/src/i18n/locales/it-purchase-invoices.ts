@@ -13,6 +13,7 @@ export const purchaseInvoices = {
     supplier: 'Fornitore',
     company: 'Società',
     purchase_orders: 'ODA',
+    payable_amount: 'Netto da pagare',
     total_amount: 'Totale',
     paid_amount: 'Pagato',
     residual_amount: 'Residuo',
@@ -37,7 +38,9 @@ export const purchaseInvoices = {
     loadError: 'Impossibile caricare il documento.',
     receiptNotice: 'Salvando come Fattura verrà registrata la ricezione delle quantità non ancora ricevute sugli ODA.',
     defaultsHint: 'Tipo di costo e commessa di testata sono proposti alle nuove righe; ogni riga ha i propri.',
+    withholdingsHint: 'Opzionali: riducono il netto da pagare; le scadenze sommano al netto.',
     sections: {
+      withholdings: 'Trattenute',
       header: 'Testata',
       orders: 'ODA fatturabili',
       lines: 'Righe del documento',
@@ -64,6 +67,8 @@ export const purchaseInvoices = {
       selectCostType: 'Seleziona il tipo di costo',
       defaultWorkOrder: 'Commessa predefinita',
       selectWorkOrder: 'Seleziona la commessa',
+      withholdingAmount: "Ritenuta d'acconto",
+      enasarcoAmount: 'ENASARCO a carico',
       notes: 'Note',
     },
     select: {
@@ -114,11 +119,15 @@ export const purchaseInvoices = {
       error: 'Impossibile calcolare le scadenze.',
     },
     totals: {
+      payable: 'Netto da pagare',
       net: 'Imponibile',
       vat: 'IVA',
       total: 'Totale',
     },
     errors: {
+      amountInvalid: 'Inserisci un importo valido.',
+      amountNegative: "L'importo non può essere negativo.",
+      withholdingsAboveTotal: 'Ritenuta ed ENASARCO devono essere inferiori al totale del documento.',
       documentNumberRequired: 'Il numero del documento fornitore è obbligatorio per una fattura.',
       documentNumberMax: 'Il numero può avere al massimo 30 caratteri.',
       documentDateRequired: 'La data documento è obbligatoria.',

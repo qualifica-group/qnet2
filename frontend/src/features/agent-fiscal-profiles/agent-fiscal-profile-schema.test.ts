@@ -89,10 +89,18 @@ describe('buildAgentFiscalProfilePayload', () => {
       enasarco_enabled: false,
       enasarco_mandate_type: null,
       vat_rate_id: null,
+      payment_method_id: null,
+      cost_type_id: null,
       valid_from: '2026-01-01',
       valid_until: null,
       notes: null,
     })
+  })
+
+  it('carries the optional payment method and cost type defaults (spec 0267 D-8)', () => {
+    const parsed = schema.parse(values({ payment_method_id: 3, cost_type_id: 8 }))
+
+    expect(buildAgentFiscalProfilePayload(parsed)).toMatchObject({ payment_method_id: 3, cost_type_id: 8 })
   })
 
   it('sends numeric rates, the mandate type and trimmed notes when enabled', () => {

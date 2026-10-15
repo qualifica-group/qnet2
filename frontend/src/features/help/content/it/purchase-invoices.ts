@@ -52,7 +52,8 @@ const guide: HelpGuide = {
           items: [
             'Premi **Nuova fattura passiva** e scegli **Fornitore**, **Società**, **Data documento** e **Modalità di pagamento** (e, se serve, conto, sedi, note).',
             'Aggiungi le **righe**: dal catalogo prodotti oppure libere. Per ogni riga indica descrizione, quantità, prezzo, IVA, **tipo di costo** (obbligatorio) e **commessa**. Il tipo di costo e la commessa di testata sono solo il valore proposto alle nuove righe; per una riga dal catalogo, se la testata non ne ha uno, il tipo di costo si propone dal prodotto (se ne ha uno predefinito).',
-            'Controlla i **totali** e l’**anteprima delle scadenze**, generate dalla modalità di pagamento.',
+            'Se serve, indica **Ritenuta d’acconto** ed **ENASARCO a carico** (opzionali, nella sezione **Trattenute**).',
+            'Controlla i **totali**, compreso il **Netto da pagare**, e l’**anteprima delle scadenze**, generate dalla modalità di pagamento.',
             'Premi **Salva**.',
           ],
         },
@@ -115,7 +116,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Le scadenze sono generate dalla **modalità di pagamento** e, in modifica di un proforma senza pagamenti, vengono **ricalcolate**. Se esistono già pagamenti, data, modalità e fornitore sono congelati e le scadenze si **ribilanciano** lasciando intatte le rate pagate. I pagamenti si registrano da **Contabilità › Passiva › Scadenze**, dove l’azione **Apri documento** porta alla scheda del documento.',
+          text: 'Le scadenze sono generate dalla **modalità di pagamento** e, in modifica di un proforma senza pagamenti, vengono **ricalcolate**. Le scadenze sommano al **Netto da pagare**, non al totale del documento. Se esistono già pagamenti, data, modalità, fornitore, **Ritenuta d’acconto** ed **ENASARCO a carico** sono congelati e le scadenze si **ribilanciano** lasciando intatte le rate pagate. I pagamenti si registrano da **Contabilità › Passiva › Scadenze**, dove l’azione **Apri documento** porta alla scheda del documento.',
         },
         {
           type: 'note',
@@ -130,6 +131,38 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: 'Nella scheda del documento la sezione **Documenti** conserva il PDF o gli altri file del fornitore. Caricare ed eliminare file richiede i permessi sugli allegati. Eliminando il documento, anche i suoi allegati vengono rimossi.',
+        },
+      ],
+    },
+    {
+      id: 'withholdings',
+      title: 'Ritenuta d’acconto, ENASARCO e netto da pagare',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Una fattura passiva può avere due trattenute, inserite a mano: **Ritenuta d’acconto** ed **ENASARCO a carico**. Se le lasci vuote valgono zero e nulla cambia.',
+        },
+        {
+          type: 'list',
+          items: [
+            '**Netto da pagare** = totale del documento − ritenuta d’acconto − ENASARCO a carico. Compare nei totali dell’editor e nel dettaglio e deve restare maggiore di zero: le trattenute devono essere inferiori al totale del documento.',
+            'Le **scadenze** si calcolano sul netto da pagare: la trattenuta riduce la quota di imponibile delle rate e la somma delle rate è il netto da pagare. Il **Partitario** del fornitore e l’elenco mostrano il documento al netto da pagare.',
+            'Dopo il **primo pagamento** i due importi sono bloccati, come data e modalità di pagamento.',
+          ],
+        },
+      ],
+    },
+    {
+      id: 'from-settlement',
+      title: 'Fatture generate da un estratto',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Approvando un estratto di provvigioni (vedi la guida **Estratti**) nasce una fattura passiva con ritenuta ed ENASARCO dell’agente. Nell’elenco e nella scheda compare il badge **Da estratto n/anno**, con il link all’estratto.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Una fattura collegata a un estratto è **bloccata**: non si modifica, non si elimina e il numero non cambia, anche con il permesso di correggere la registrazione. Restano consentiti note, documenti allegati, pagamenti e la modifica di scadenza e modalità delle rate non pagate.',
         },
       ],
     },

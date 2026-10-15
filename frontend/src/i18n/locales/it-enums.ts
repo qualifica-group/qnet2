@@ -90,6 +90,8 @@ export const enums = {
   commission_settlement_status: {
     DRAFT: 'Bozza',
     ISSUED: 'Emesso',
+    DOCUMENT_RECEIVED: 'Documento ricevuto',
+    APPROVED: 'Approvato',
     CANCELLED: 'Annullato',
   },
   commission_recipient_kind: {

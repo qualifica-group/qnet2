@@ -28,6 +28,8 @@ class PurchaseInvoiceInstallmentPreviewRequest extends FormRequest
             'net_amount' => ['required', 'numeric', 'between:-9999999999999,9999999999999'],
             'vat_amount' => ['required', 'numeric', 'between:-9999999999999,9999999999999'],
             'total_amount' => ['required', 'numeric', 'between:-9999999999999,9999999999999'],
+            'withholding_amount' => ['nullable', 'numeric', 'min:0', 'max:9999999999999', 'decimal:0,2'],
+            'enasarco_amount' => ['nullable', 'numeric', 'min:0', 'max:9999999999999', 'decimal:0,2'],
         ];
     }
 

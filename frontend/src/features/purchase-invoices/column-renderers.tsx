@@ -10,6 +10,7 @@ export const purchaseInvoiceColumnRenderers: TableRendererMap = {
   document_date: (params) => <DateCell {...params} />,
   payment_status: (params) => <PaymentStatusCell {...params} />,
   total_amount: (params) => <MoneyCell {...params} />,
+  payable_amount: (params) => <MoneyCell {...params} />,
   paid_amount: (params) => <MoneyCell {...params} />,
   residual_amount: (params) => <MoneyCell {...params} />,
 }

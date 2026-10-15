@@ -3,6 +3,7 @@
 namespace App\Tables\CommissionSettlements;
 
 use App\Enums\CommissionSettlementStatus;
+use App\Enums\InvoicePaymentStatus;
 
 /**
  * Declarative column/filter/action catalogue of the `commission-settlements`
@@ -43,6 +44,8 @@ final class CommissionSettlementColumnCatalog
             self::column('enasarco_principal_amount', 'number', sortable: true),
             self::column('net_payable', 'number', sortable: true, filter: 'number'),
             self::column('issued_at', 'date', sortable: true, filter: 'date'),
+            self::column('document_number', 'text', sortable: true, filter: 'text'),
+            self::column('payment_status', 'badge', filter: 'set', options: InvoicePaymentStatus::values()),
         ];
     }
 

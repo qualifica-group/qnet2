@@ -51,6 +51,8 @@ class PurchaseInvoiceWriteRequest extends FormRequest
             'cost_type_id' => ['nullable', 'integer', $this->costTypeRule()],
             'work_order_id' => ['nullable', 'integer', Rule::exists('work_orders', 'id')],
             'notes' => ['nullable', 'string', 'max:'.self::NOTES_MAX_LENGTH],
+            'withholding_amount' => ['nullable', 'numeric', 'min:0', 'max:9999999999999', 'decimal:0,2'],
+            'enasarco_amount' => ['nullable', 'numeric', 'min:0', 'max:9999999999999', 'decimal:0,2'],
             'purchase_order_ids' => ['nullable', 'array', 'max:'.self::MAX_ORDERS],
             'purchase_order_ids.*' => ['integer', 'distinct', Rule::exists('purchase_orders', 'id')],
             'lines' => ['required', 'array', 'min:1', 'max:'.self::MAX_LINES],
@@ -90,6 +92,8 @@ class PurchaseInvoiceWriteRequest extends FormRequest
             'cost_type_id' => $document->cost_type_id,
             'work_order_id' => $document->work_order_id,
             'notes' => $document->notes,
+            'withholding_amount' => $document->withholding_amount,
+            'enasarco_amount' => $document->enasarco_amount,
             'purchase_order_ids' => $document->purchaseOrders()->pluck('purchase_orders.id')->all(),
         ];
 
