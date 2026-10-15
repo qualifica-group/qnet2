@@ -389,7 +389,7 @@ it('skips the import when no super-admin exists to run it as', function () {
 
 it('never runs the operational records, which stay available only from the Migrations page', function () {
     // User decision 2026-10-12: too large for the template seed; imported by hand.
-    $operational = ['referents', 'registries', 'opportunities', 'quotes', 'work-orders', 'work-order-line-payments', 'product-suppliers', 'commission-configurations'];
+    $operational = ['referents', 'registries', 'opportunities', 'quotes', 'work-orders', 'product-suppliers', 'commission-configurations'];
 
     foreach ($operational as $source) {
         expect(QualificaLegacyImportSeeder::SOURCES)->not->toContain($source)

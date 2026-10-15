@@ -18,13 +18,15 @@ use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\User;
 use App\Models\VatRate;
+use RuntimeException;
 
 /**
  * Legacy offer lines (`quotationservices`) to REVENUE QuoteLineData (spec
  * 0189, G-8/G-9). The product is resolved on (old_source = services, old_id),
  * never on `old_id` alone: the cost products share the same id space. A line
- * whose product is not migrated, or not sellable, is dropped with a warning
- * instead of failing the whole offer on QuoteLineWriter's usage guard.
+ * that cannot be imported (no product, product not migrated or not sellable,
+ * a commission with an unknown role, type or recipient) fails the whole offer
+ * with the reason (user decision 2026-10-14: nothing is dropped silently).
  *
  * @phpstan-require-extends QuotesSource
  */
@@ -61,10 +63,6 @@ trait MapsLegacyQuoteLines
         foreach ((array) ($externalLines ?? []) as $externalLine) {
             $externalLine = (array) $externalLine;
             $line = $this->legacyOfferLine($externalLine, count($lines), $warnings);
-
-            if ($line === null) {
-                continue;
-            }
 
             if (isset($externalLine['id'])) {
                 $legacyLineIds[$line->sortOrder] = (int) $externalLine['id'];
@@ -104,14 +102,10 @@ trait MapsLegacyQuoteLines
      * @param  array<string, mixed>  $externalLine
      * @param  array<int, string>  $warnings
      */
-    private function legacyOfferLine(array $externalLine, int $sortOrder, array &$warnings): ?QuoteLineData
+    private function legacyOfferLine(array $externalLine, int $sortOrder, array &$warnings): QuoteLineData
     {
         $lineRef = $externalLine['id'] ?? '?';
-        $productId = $this->sellableServiceProductId($externalLine['product_id'] ?? null, $lineRef, $warnings);
-
-        if ($productId === null) {
-            return null;
-        }
+        $productId = $this->sellableServiceProductId($externalLine['product_id'] ?? null, $lineRef);
 
         $description = trim((string) ($externalLine['description'] ?? ''));
 
@@ -127,15 +121,10 @@ trait MapsLegacyQuoteLines
         );
     }
 
-    /**
-     * @param  array<int, string>  $warnings
-     */
-    private function sellableServiceProductId(mixed $externalRef, int|string $lineRef, array &$warnings): ?int
+    private function sellableServiceProductId(mixed $externalRef, int|string $lineRef): int
     {
         if ($externalRef === null || $externalRef === '' || (int) $externalRef === 0) {
-            $warnings[] = "Line {$lineRef} skipped: it has no product.";
-
-            return null;
+            throw new RuntimeException("Line {$lineRef} has no product; the quote is not imported.");
         }
 
         $product = Product::query()
@@ -144,15 +133,11 @@ trait MapsLegacyQuoteLines
             ->first(['id', 'usages']);
 
         if ($product === null) {
-            $warnings[] = "Line {$lineRef} skipped: product (legacy service id {$externalRef}) not migrated.";
-
-            return null;
+            throw new RuntimeException("Line {$lineRef}: product (legacy service id {$externalRef}) not migrated; the quote is not imported.");
         }
 
         if (! $product->isUsableAs(ProductUsage::forLineType(QuoteLineType::Revenue))) {
-            $warnings[] = "Line {$lineRef} skipped: product (legacy service id {$externalRef}) is not sellable.";
-
-            return null;
+            throw new RuntimeException("Line {$lineRef}: product (legacy service id {$externalRef}) is not sellable; the quote is not imported.");
         }
 
         return $product->id;
@@ -160,8 +145,7 @@ trait MapsLegacyQuoteLines
 
     /**
      * A legacy commission (type and value already decided by the legacy)
-     * becomes a manual override (G-9); one whose recipient is not migrated is
-     * dropped with a warning.
+     * becomes a manual override (G-9); one that cannot be imported fails the offer.
      *
      * @param  array<int, string>  $warnings
      * @return array<int, QuoteLineCommissionData>
@@ -171,11 +155,7 @@ trait MapsLegacyQuoteLines
         $commissions = [];
 
         foreach ((array) ($externalCommissions ?? []) as $externalCommission) {
-            $commission = $this->legacyCommission((array) $externalCommission, $lineRef, $warnings);
-
-            if ($commission !== null) {
-                $commissions[] = $commission;
-            }
+            $commissions[] = $this->legacyCommission((array) $externalCommission, $lineRef, $warnings);
         }
 
         return $commissions;
@@ -185,29 +165,25 @@ trait MapsLegacyQuoteLines
      * @param  array<string, mixed>  $externalCommission
      * @param  array<int, string>  $warnings
      */
-    private function legacyCommission(array $externalCommission, int|string $lineRef, array &$warnings): ?QuoteLineCommissionData
+    private function legacyCommission(array $externalCommission, int|string $lineRef, array &$warnings): QuoteLineCommissionData
     {
         $legacyRole = (string) ($externalCommission['role'] ?? '');
 
         if (! isset(self::LEGACY_COMMISSION_ROLES[$legacyRole])) {
-            $warnings[] = "Line {$lineRef}: unknown commission role '{$legacyRole}', commission skipped.";
-
-            return null;
+            throw new RuntimeException("Line {$lineRef}: unknown commission role '{$legacyRole}'; the quote is not imported.");
         }
 
         $type = CommissionType::tryFrom((string) ($externalCommission['commission_type'] ?? ''));
 
         if ($type === null) {
-            $warnings[] = "Line {$lineRef}: {$legacyRole} commission without a valid commission type, skipped.";
-
-            return null;
+            throw new RuntimeException("Line {$lineRef}: {$legacyRole} commission without a valid commission type; the quote is not imported.");
         }
 
         [$role, $recipientClass] = self::LEGACY_COMMISSION_ROLES[$legacyRole];
         $recipientId = $this->remapLegacyId($recipientClass, $externalCommission['recipient_id'] ?? null, "line {$lineRef} {$legacyRole} commission recipient", $warnings);
 
         if ($recipientId === null) {
-            return null;
+            throw new RuntimeException("Line {$lineRef}: {$legacyRole} commission recipient (legacy id ".($externalCommission['recipient_id'] ?? '?').') not migrated; the quote is not imported.');
         }
 
         return new QuoteLineCommissionData(

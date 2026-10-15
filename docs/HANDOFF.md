@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MERGE main -> feature/amministrazione — RISOLTO (2026-10-15)
+
+- Conflitti: HANDOFF (voci di entrambi i lati mantenute) e i contatori `migrate:rollback --step` di
+  `PurchaseOrderMigrationTest` (38), `QuoteWorkflowMigrationTest` (189), `SupplierCommissionDirectionTest` (53):
+  sommano le 3 migrazioni ricezioni ODA (spec 0254, branch) e le 2 migrazioni geo (spec 0189 G-28, main).
+- Due migrazioni condividono il prefisso `2026_10_18_100000` (receipts / tuscan provinces): ordinate per nome file, nessun clash.
+
 ## Spec 0266 — Partitario clienti/fornitori tappa 1 — VERDE, COMMITTATO (2026-10-15)
 
 - Spec `docs/specs/0266-registry-ledger.xml` (D-1..D-11, AC-001..AC-020 tutti PASS dal verifier).
@@ -268,6 +275,157 @@
 - Ambiente: PHPRC verso un php.ini con pdo_sqlite/sqlite3/zip e memory_limit=2G (i -d non arrivano ai worker).
 - Aperti: manuale Claude Docs (sezioni Fatture attive/passive: IVA per aliquota, prezzo a 2 decimali) da aggiornare.
 - Prossimo: spec 0254 ricezioni ODA per riga (approvata 2026-10-14).
+
+## CATALOGO: MACROCATEGORIA SICUREZZA — VERDE, NON COMMITTATO (2026-10-15)
+
+- Fonte: "Sicurezza 81_08.docx" + "SICUREZZA 81_09.xlsx" (127 prodotti + note in fondo). Decisioni utente: radice
+  "Sicurezza" (funzione "Sicurezza", adotta il legacy "SICUREZZA") con le sottocategorie della colonna C (Corsi di
+  formazione, Documenti, Visite mediche, Sopralluogo, Trasferta), tutte selezionabili; regole Consulenza; tipologia
+  `consultancy` su tutto; stati di default; campi SOLO Offerta (nessun set Commessa); visura camerale = boolean;
+  titolo doppio "Formazione dei datori di lavoro ... 16 ore" distinto col codice "(RSPP/DAT.)" / "(DL)".
+- Dati: `QualificaCatalog/SafetyCatalogue` (albero, 12 campi `safety_*`, form "Sicurezza 81/08" + "Patentino
+  saldatori" via `QualificaQuoteLayoutSeeder::OWN_FORMS`, tipologie, fornitori) e `SafetyProductCatalogue`
+  (generato dall'xlsx: prezzo, fornitore, mesi; mesi null per le 4 "Aula di formazione ...", 20 per l'integrazione esami).
+- Fornitori: GONDOLA SRLS (i 2 prodotti F-gas, esiste nel legacy come fornitore), ND CONTROL (4 prodotti di
+  saldatura: NON esiste nel legacy con nessuna grafia -> si collega solo quando arriva un fornitore con quel nome).
+- `SoaProducts` reso generico -> `BranchProducts::seed($products, $typologies, $vatRateId)` (prezzo opzionale, mesi
+  null = non scritti); `EXPIRATION_MONTHS_FIELD` spostato lì. CatalogProducts step 7 lo chiama per SOA e Sicurezza.
+- Test: `QualificaSafetyCatalogueTest` (5) + REQUIREMENT CHANGED (prodotti 413->540, +5 selezionabili, +1 layout
+  offerta, funzione "Sicurezza" nelle liste BF). Suite completa verde salvo i 3 PDF (LibreOffice assente).
+
+## CATALOGO: MACROCATEGORIA SOA — VERDE, TIPOLOGIA E MESI SCADENZA NON COMMITTATI (2026-10-15)
+
+- Fonte: "15.10.2026 Q-crm SOA.docx" + "PRODOTTI SOA.xlsx". Decisioni utente: sottocategorie "Ente SOA" e
+  "Consulenza SOA" (non "Ente"/"Consulenza": il nome e' la chiave e "Consulenza" e' gia' una radice), codici inglesi
+  nuovi (i `servizio_soa`/`soa_*` del legacy restano sulle [OLD]), regole come Consulenza (`CONSULTING_RULES` in
+  CatalogRootRules), "Stato Lavorazione" commessa NON e' un campo: stati di default (nessun workflow SOA).
+- Dati in `QualificaCatalog/SoaCatalogue` (+ `SoaCategoryOptions`, 52 OG/OS): radice "SOA" -> funzione "SOA"
+  (adottata per nome dal legacy), campi Offerta sulla radice + form in `QualificaQuoteLayoutSeeder::OWN_FORMS`,
+  campi/form Commessa da `QualificaSoaWorkOrderSeeder` (solo radice: le figlie ereditano, spec 0115).
+- 18 prodotti (prezzo 0, IVA 22%) via `QualificaCatalog/BranchProducts` (ex SoaProducts, da `CatalogProducts` step 7):
+  fornitore = registry `is_supplier` con lo stesso nome (senza maiuscole), tipologia dal nome categoria
+  (`SoaCatalogue::TYPOLOGIES`: Ente SOA -> `institution`, Consulenza SOA -> `consultancy`, per codice),
+  "Mesi scadenza" nel CAMPO PERSONALIZZATO prodotti `expiration_months` (QualificaTemplateSeeder) via
+  `CustomFieldWriter` (attestazioni 0, consulenza I/II/III anno 0/12/24). Re-run: riempie fornitore e mesi se vuoti,
+  riallinea la tipologia solo se ancora sul default `institution`; un valore a mano vince.
+- REQUIREMENT CHANGED (2026-10-15, dopo il commit 599df582): l'attributo prodotto `soa_expiry_months` sulla radice
+  SOA e' tolto (l'utente vuole il campo personalizzato); QualificaCatalogSeederTest torna a "nessun attribute_values,
+  nessuna assegnazione di contesto prodotto". `ProductTypologySeeder` ora gira da QualificaCatalogSeeder (step 3,
+  prima dei prodotti), non piu' dallo step 4 di QualificaProductionDataSeeder.
+- Split: `CatalogPickLists` (fonti, tipi premio) fuori da QualificaCatalogSeeder (era 497 righe).
+- Test: `QualificaSoaCatalogueTest` (8) + conteggi REQUIREMENT CHANGED (prodotti 395->413, selezionabili, layout, funzioni).
+- Aperti: codice `SOA_Qualifica` dei prodotti consulenza non ha campo in qnet-2.
+  HANDOFF.md e' ~590 KB: va archiviato in `docs/handoff-archive/`.
+
+## MIGRAZIONE: STATI [OLD] DELLE OFFERTE (spec 0189 G-29) — VERDE, NON COMMITTATO (2026-10-15)
+
+- Decisione utente: offerta legacy con esito negotiation / call_back / stand_by finita in un set di stati (workflow
+  scelto dalle categorie, o set globale) senza lo stato con quel nome -> `LegacyQuoteStatusResolver` crea UNA volta per
+  set "[OLD] In trattativa" (pending) / "[OLD] Da Richiamare" (open) / "[OLD] Stand-by" (open) e ci mette l'offerta,
+  senza avviso. Nuovo `WorkflowStatusWriter::appendCustom()` (accoda prima di closed_won/closed_lost, resequence).
+  `quotes:realign-legacy-status` sposta le offerte gia' importate rimaste aperte; --dry-run fa rollback (niente stati).
+- Test: QuotesSourceStatusImportTest (REQUIREMENT CHANGED: prima "lasciata aperta con avviso"), Realign dry-run.
+  Contatori `--step` aggiornati (+2 migrazioni geo) in QuoteWorkflowMigrationTest (186), SupplierCommissionDirectionTest
+  (50), PurchaseOrderMigrationTest (35): il commit ba5285ce li aveva rotti.
+- Guida IT/EN + manuale Claude Docs aggiornati. Prossimo: reimport offerte o `php artisan quotes:realign-legacy-status`.
+
+## MIGRAZIONE: BLOCCO GEOGRAFICO DAL LEGACY (spec 0189 G-28) — VERDE, NON COMMITTATO (2026-10-15)
+
+- Contratto: `country` = codice ISO alpha-2 in TUTTI gli endpoint con indirizzo. qnet-2 `MigrationGeoResolver`
+  cerca per `countries.iso2` (un nome non e' piu' accettato). Fixture dei test di migrazione `'country' => 'IT'`
+  (REQUIREMENT CHANGED) + test nuovo ISO/nome in OperationalSitesSourceImportTest.
+- Legacy (`../qnet`, non committato): `LegacyNation` (249 `nations` per id -> ISO, mappa approvata dall'utente;
+  nomi troncati "Per"/"Citt" mappati a mano), `LegacyGeo::place()` (comune riconosciuto su `listacomuni`,
+  completa provincia/regione/stato, sigle sarde soppresse, regioni nel nome del dataset qnet-2),
+  `LegacyComuneSpelling` (204 comuni ISTAT -> grafia del dataset qnet-2). Usati da Referent, Registry (+addresses),
+  User, CompanySite, OperationalSite, Company MigrationController. Verificati con tinker sui dati reali.
+- qnet-2 `ItalianGeoLocalizer`: tolti `padova`->Padua e `mantova`->Mantua (nel dataset i comuni sono Padova/Mantova).
+- Dataset qnet-2: `ItalianProvinceRegionSeeder` (dati di riferimento, chiamato da DatabaseSeeder dopo
+  ItalianMunicipalitySeeder) sposta in Toscana le 8 province toscane che world.sql mette in Friuli–Venezia Giulia
+  (Grosseto, Livorno, Lucca, Massa and Carrara, Pisa, Pistoia, Prato, Siena) con comuni e indirizzi gia' salvati;
+  la migrazione 2026_10_18_100000 lo applica ai DB gia' popolati (applicata in locale: 8 indirizzi riallineati).
+- Toppe al dataset (opzione A scelta dall'utente, NON COMMITTATE): `ItalianProvinceSeeder` crea la provincia Aosta
+  (AO) e ci mette i 91 comuni della Valle d'Aosta senza provincia + i loro indirizzi; `ItalianMunicipalitySeeder`
+  aggiunge 38 comuni usati dal legacy e assenti (o solo sotto un'altra provincia: Carpi, Marcon, Fontanafredda...),
+  Montoro (fusione 2013); `ItalianGeoLocalizer` AO -> Aosta. Migrazione 2026_10_18_110000 per i DB popolati
+  (applicata in locale). Legacy: LegacyComuneSpelling recupera 7 grafie perse + Montoro Inferiore/Superiore ->
+  Montoro; LegacyGeo manda SU per i comuni ex-CA fuori dalla Citta' metropolitana di Cagliari (riforma 2016).
+- Misura su tutti gli indirizzi legacy: record con avvisi geo 14.524 -> 1.040 (referenti 10.171 -> 216).
+- APERTO: ~336 comuni ISTAT ancora assenti dal dataset ma non usati dal legacy; restano ~1.040 indirizzi con dati
+  sbagliati all'origine (CAP condivisi al posto del comune, omonimi senza provincia, "ROMA" con provincia BN...).
+  Alternativa strutturale proposta e non scelta: elenco ufficiale ISTAT con codice in qnet-2 (opzione B).
+- Verifiche: Pest Migration+Geo+Imports 824/824 e Seeding+Geo 174/174 (dopo le toppe), Vitest help 130/130,
+  tsc -b pulito, Pint pulito, php -l legacy, endpoint legacy chiamati con tinker.
+- Reimportare referents, registries, users, company-sites, operational-sites, companies per vedere l'effetto.
+
+## MIGRAZIONE: NESSUNO SCARTO SILENZIOSO (spec 0189 G-26) — VERDE, NON COMMITTATO (2026-10-14)
+
+- Decisione utente: opportunita'/offerte/commesse non importate = FALLITE col motivo; una riga scartata fa fallire
+  l'intero record. Legacy: tolti i filtri (Opportunity: join companies; Quote: join companies -> leftJoin
+  opportunities; WorkOrder: joins + `whereHasLines`, rimosso); `registry_id` null se manca il cliente. qnet-2:
+  MapsLegacyQuoteLines/CostLines, WorkOrdersSource, LegacyWorkOrderCostWriter, OpportunitiesSource (categorie,
+  cliente mancante) lanciano RuntimeException (transazione per riga). Test aggiornati (REQUIREMENT CHANGED) +
+  nuovi casi: Migration 429/429. Guida/requisiti IT/EN aggiornati.
+- Stima: ~10.7k opportunita' senza cliente, ~30k offerte (19.5k con opportunita' cancellata), 677 offerte con righe
+  non importabili (681 senza prodotto, 279 prodotto non migrato) e le loro commesse risultano fallite.
+- G-27: responsabili/partecipanti cancellati -> primo gestore account dell'offerta (legacy `LegacyWorkOrderPeople`);
+  senza gestori la commessa fallisce (43). qnet-2 `assertUsersMigrated`. Migration 431/431.
+- APERTO (domanda all'utente): stessa regola per 79 regole del configuratore escluse (74 destinatario cancellato),
+  532 provvigioni di righe offerta con destinatario cancellato (oggi tolte in silenzio dal legacy), riferimenti
+  orfani delle anagrafiche (24 referenti, 3 tag, 1 responsabile).
+- DB locale: CANCELLATE tutte le opportunita'/offerte/commesse migrate e i loro migration_runs (stato pagina
+  /dev/migrations azzerato). L'utente reimporta opportunities -> quotes -> work-orders.
+
+## MIGRAZIONE COMMESSE: COSTI, PAGAMENTI PER RIGA, NIENTE COMMESSE SENZA RIGHE (spec 0189 G-23/G-24/G-25) — VERDE, NON COMMITTATO (2026-10-14)
+
+- Decisioni utente 2026-10-14: commesse senza righe NON si creano; costi del riquadro "Offerta" dell'Analisi
+  preventiva legacy = preventivo (righe COSTO offerta, gia' G-13) + consuntivo (`work_order_costs`), record
+  indipendenti dopo l'import; pagamenti per riga dentro `work-orders` (sorgente `work-order-line-payments`
+  ELIMINATA, emendata spec 0201 D-14); costi dipendenti come prodotti di costo ("[OLD] Dipendenti", `user_levels`).
+  Rinviati: task e assegnazioni, note, allegati, ODA/RDA, proforma, email, provvigioni, storico avanzamento.
+- Legacy (`../qnet`, NON committato): nuovi `app/Support/Migration/LegacyQuoteCosts.php` (note spese + dipendenti,
+  id "<tabella>:<id>", `product_source`), `LegacyWorkOrderLines.php` (risoluzione righe + `whereHasLines` SQL),
+  `LegacyWorkOrderCosts.php` (ogni costo a UNA commessa: prima con riga del servizio, altrimenti prima dell'offerta
+  senza riga). `WorkOrderMigrationController` (+filtro righe, +`costs`, -logica righe interna),
+  `QuoteMigrationController` (cost_lines da LegacyQuoteCosts), `CostProductMigrationController` (+`user_levels`).
+  Scansione reale: 15.835 commesse (329 senza righe escluse), 7.579 costi (53 dipendenti), 146 non attribuiti, 0 doppi.
+- qnet-2: `LegacyWorkOrderLinePaymentWriter`, `LegacyWorkOrderCostWriter` (via WorkOrderCostWriter) in
+  `app/Migrations/Support`; `WorkOrdersSource` (skip senza righe, mappa old_id->riga anche per copie G-10);
+  `CostProductCatalogue::EMPLOYEE_LEVELS`; `MapsLegacyQuoteCostLines` usa `product_source` (testo warning cambiato:
+  "cost product (expense_reports legacy id N)"). Fixture commesse: default `quote_line_ids` [900] + pagamenti +
+  `costs` (REQUIREMENT CHANGED: il legacy non manda piu' commesse senza righe). Nuovo
+  `WorkOrdersSourceCostsAndPaymentsImportTest` (7). Rimossi source + test + i18n `work-order-line-payments`.
+- NON risolvibili (segnalati all'utente): 117 commesse con `stato_consulenza` di un flusso diverso da quello delle
+  loro categorie (nessun equivalente); 17 con righe in categorie senza card ("No categoria", "[OLD] PROGETTI-...")
+  perdono `status_contabile`.
+- Test: Migration 402/402, Unit/Migrations 20/20, WorkOrders+PaymentStatuses+Seeding+Quotes 802/805 (3 rossi
+  QuoteDocumentPdfTest, LibreOffice assente). Pint ok. FE: Vitest help/i18n/migrations 388/388, tsc -b ok, ESLint ok.
+- Manuale: guida in-app migrations IT/EN + requisiti aggiornati. Claude Docs: aggiornare "Migrazioni" (Commesse:
+  costi, pagamenti, commesse senza righe; Prodotti di costo: Dipendenti; sorgente pagamenti rimossa).
+- FIX legacy (stesso giro): `LegacyWorkOrderAttributeValues::childRows` legava le tabelle `orderiso_*` via
+  `orderisos.id`, ma `orderiso_id` = id COMMESSA (schermate legacy): verifiche/standard/PAL/Gare/Avvalimenti finivano
+  su commesse sbagliate. Ora `orderiso_id` = `orders.id` (G-20 bis). Le commesse importate prima vanno reimportate.
+- FIX legacy: numeri all'italiana ("19947,00") nei campi flessibili commessa (`format()` + `number()`): prima 780
+  importi GOL da decreto scartati.
+- Audit completo 2026-10-14 (script in scratchpad, non nel repo): export -> qnet-2 run 31: 15 campi base 100% uguali
+  su 15.748 commesse; differenze solo nei campi flessibili delle tabelle `orderiso_*` (bug sopra). Legacy -> export:
+  non portati GOL data accredito anticipo/saldo (30/53) e "Nome corso / Ed." (`edition_id`, 1.090): fuori catalogo,
+  "Data di assegnazione" su card non ISO (3.526) non visibile nel legacy. DECISO: 12 campi edizione corso GOL
+  (G-20 ter) accodati al catalogo (id posizionali 356-367, i 355 esistenti invariati, verificato). DB locale: gia'
+  eseguiti attributes (+12), product-category-attributes (+5 categorie [OLD] GOL), cancellati e ricreati i 5 layout
+  GOL (nessuno modificato a mano). `odl`/`progressive`: utente "non prevedere ancora nulla".
+  Commesse cancellate (terza volta): DB pronto per `work-orders`; poi ripetere l'audit (script in scratchpad/audit).
+- "0 errori" (G-20 quater): inventario di 230 campi della scheda commessa legacy (3 agenti) -> nuovo
+  `LegacyWorkOrderDisplayRules` (default delle scelte, Standard ISO multiselect `isos`, PAL tipo_elenco/somministrata,
+  verifiche Stage/Off Site, GOL "0"), stato su flusso della categoria (`WorkflowStates::targetCode/foreignStates`,
+  cache 10 min), campi comuni a categorie senza card (`linksForCards(..., hasOwnProducts)`), date gg/mm/aaaa
+  (`MigrationFieldFormatter`). ATTENZIONE: `LegacyWorkOrderAttributeValues.php` e' stato svuotato per errore da uno
+  script e ricostruito (base HEAD + modifiche di oggi, metodi verificati). DB locale: 17 definizioni attributi
+  riallineate al catalogo legacy (script sync in scratchpad, anche 5 attributi offerta gia' divergenti), link
+  categorie +20, commesse reimportate.
+- Reimport: prima `cost-products` (crea i livelli dipendenti), poi `work-orders`. Le 42 offerte con costi dipendenti
+  gia' importate NON hanno le righe COSTO dipendenti finche' non si reimportano le offerte.
+
 ## FIX: `quote_date` NULL NEL SEED DEMO (2026-10-14) — VERDE, NON COMMITTATO
 
 - Bug: `db:seed --class=DemoDataSeeder` falliva in `DemoQuoteSeeder` con "Column 'quote_date' cannot be null".

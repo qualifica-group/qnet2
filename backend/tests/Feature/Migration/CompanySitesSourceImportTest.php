@@ -39,7 +39,7 @@ it('creates a company site with its company, profile, contacts and address', fun
     seedMigrationsConfig();
 
     $company = Company::factory()->create(['old_id' => 10]);
-    $country = Country::factory()->create(['name' => 'Italy']);
+    $country = Country::factory()->create(['name' => 'Italy', 'iso2' => 'IT']);
     $state = State::factory()->for($country)->create(['name' => 'Lazio']);
     $city = City::factory()->forState($state)->create(['name' => 'Rome']);
 
@@ -55,7 +55,7 @@ it('creates a company site with its company, profile, contacts and address', fun
                 'sdi_code' => 'ABC1234',
                 'email' => 'rome@example.test',
                 'phone' => '+39 06 1234567',
-                'country' => 'Italy',
+                'country' => 'IT',
                 'region' => 'Lazio',
                 'city' => 'Rome',
                 'street' => 'Via Roma 1',

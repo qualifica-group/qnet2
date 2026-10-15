@@ -43,6 +43,10 @@ const QUOTE_LAYOUT_OWN_CATEGORIES = [
     'Apprendistato',
     // Behind its own barrier, with the orientation form (user directive 2026-10-05).
     'Orientamento specialistico',
+    // REQUIREMENT CHANGED: the SOA root, its own form (user directive 2026-10-15).
+    'SOA',
+    // REQUIREMENT CHANGED: the Sicurezza root, its own form (user directive 2026-10-15).
+    'Sicurezza',
 ];
 
 /**
@@ -53,6 +57,8 @@ const QUOTE_LAYOUT_OWN_CATEGORIES = [
  */
 const QUOTE_LAYOUT_INHERITING_CATEGORIES = [
     'Yisu',
+    'Ente SOA', 'Consulenza SOA',
+    'Corsi di formazione', 'Documenti', 'Visite mediche', 'Sopralluogo', 'Trasferta',
     'GOL - Molise', 'GOL - Abruzzo', 'GOL - Calabria', 'GOL - Campania',
     'GOL - Umbria', 'GOL - Puglia', 'GOL - Basilicata',
 ];

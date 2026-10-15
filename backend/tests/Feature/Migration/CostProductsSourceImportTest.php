@@ -120,10 +120,12 @@ it('files each legacy cost table under the Costi branch as a cost-only product',
         legacyCostRow('vehicles', 3, 'Tagliando Smart', ['cost' => 140, 'price' => 140, 'license_plate' => 'FE700FV', 'attribute_values' => ['cost_license_plate' => 'FE700FV']]),
         legacyCostRow('equipment', 1, 'Motosega', ['cost' => 100, 'price' => 100, 'brand' => 'Stihl', 'model' => 'GHT', 'serial_number' => '123', 'attribute_values' => ['cost_brand' => 'Stihl', 'cost_model' => 'GHT', 'cost_serial_number' => '123']]),
         legacyCostRow('expense_reports', 6, 'FOR_Commissione', ['description' => "Commissione d'esame", 'cost' => 400, 'price' => 400]),
+        // REQUIREMENT CHANGED (2026-10-14): the employee levels of the offers' employee costs.
+        legacyCostRow('user_levels', 6, '[OLD] Docenti_Co.Co.Co.', ['cost' => 20, 'price' => 20]),
     ]);
 
     expect($run->status)->toBe(MigrationStatus::Completed)
-        ->and($run->created_rows)->toBe(4)
+        ->and($run->created_rows)->toBe(5)
         ->and($run->report)->toBeNull();
 
     $root = costCategory(CostProductCatalogue::ROOT, legacyContainerId());
@@ -156,6 +158,10 @@ it('files each legacy cost table under the Costi branch as a cost-only product',
             'cost_ministerial_code' => 'MIN-1',
             'cost_storage_position' => 'scaffale 5',
         ]);
+
+    $employeeLevel = Product::query()->where('old_source', 'user_levels')->where('old_id', 6)->firstOrFail();
+    expect($employeeLevel->category_id)->toBe(costCategory(CostProductCatalogue::BRANCHES['user_levels'], $root->id)->id)
+        ->and($employeeLevel->usages->all())->toBe([ProductUsage::Cost]);
 
     $vehicle = Product::query()->where('old_source', 'vehicles')->where('old_id', 3)->firstOrFail();
     expect($vehicle->category_id)->toBe(costCategory(CostProductCatalogue::BRANCHES['vehicles'], $root->id)->id)

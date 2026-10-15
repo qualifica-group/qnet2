@@ -55,7 +55,7 @@ if (! function_exists('fakeBcryptHash')) {
 
 it('creates a user with card, primary address, contacts, verbatim password hash and employment', function () {
     seedMigrationsConfig();
-    $country = Country::factory()->create(['name' => 'Italy']);
+    $country = Country::factory()->create(['name' => 'Italy', 'iso2' => 'IT']);
     $state = State::factory()->for($country)->create(['name' => 'Lazio']);
     $manager = User::factory()->create(['old_id' => 900]);
     $company = Company::factory()->create(['old_id' => 920]);
@@ -74,7 +74,7 @@ it('creates a user with card, primary address, contacts, verbatim password hash 
                 'tax_code' => 'LVLADA00A00H501Z',
                 'vat_number' => 'IT12345678901',
                 'birth_date' => '1990-01-01',
-                'country' => 'Italy',
+                'country' => 'IT',
                 'region' => 'Lazio',
                 'city' => 'Rome',
                 'street' => 'Via Roma 1',

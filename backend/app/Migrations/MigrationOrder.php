@@ -83,7 +83,8 @@ final class MigrationOrder
         // sources and sectors (phases 1-2); opportunities need their registry
         // plus categories and operational sites; quotes need their opportunity
         // plus products, VAT rates, payment methods and company sites; work
-        // orders need their quote and its lines.
+        // orders need their quote and its lines (and write the payment data of
+        // those lines, spec 0201, against the seeded payment statuses).
         ['registries'],
 
         // Phase 8 — spec 0203: the product supplier link and the legacy
@@ -94,11 +95,6 @@ final class MigrationOrder
         ['opportunities'],
         ['quotes'],
         ['work-orders'],
-
-        // Phase 12 — the legacy payment data of a commessa (spec 0201): needs
-        // the migrated work orders and their lines, and the reference payment
-        // statuses seeded with their legacy `old_id`.
-        ['work-order-line-payments'],
     ];
 
     /**

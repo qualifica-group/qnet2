@@ -23,7 +23,10 @@ use Illuminate\Database\Seeder;
  *                                    field definitions per module, and the
  *                                    document layout quotes are printed on.
  *   2. QualificaCatalogSeeder      — the hard-coded reference data: sources,
- *                                    reward types, the product category tree
+ *                                    reward types, the two product typologies
+ *                                    ("Ente", "Consulenza", ProductTypologySeeder:
+ *                                    the SOA products and the imported ones
+ *                                    are filed under them), the product category tree
  *                                    with its OFFER attributes and their form
  *                                    sections, the 252 GOL training courses,
  *                                    the 29 DIL ones and the 10 self-funded
@@ -43,9 +46,6 @@ use Illuminate\Database\Seeder;
  *                                    reasoning; step 5 deactivates only the
  *                                    legacy sectors (`old_id`), never these.
  *   4. TestUsersSeeder             — the named super-admin account.
- *      ProductTypologySeeder       — the two product typologies ("Ente",
- *                                    "Consulenza") the imported products
- *                                    are filed under by their legacy `folder`.
  *      WorkOrderPaymentStatusSeeder — the legacy payment statuses of a
  *                                    commessa line.
  *   5. QualificaLegacyImportSeeder — the support tables pulled from the legacy
@@ -106,7 +106,6 @@ class QualificaProductionDataSeeder extends Seeder
         $this->call(QualificaTaskTaxonomySeeder::class);
         $this->call(QualificaSectorSeeder::class);
         $this->call(TestUsersSeeder::class);
-        $this->call(ProductTypologySeeder::class);
         $this->call(WorkOrderPaymentStatusSeeder::class);
         $this->call(QualificaLegacyImportSeeder::class);
         $this->call(QualificaOperatorSeeder::class);

@@ -108,22 +108,38 @@ it('resolves the line product on old_source services, never a cost product shari
         ->and($productId)->not->toBe($costProduct->id);
 });
 
-it('skips a line whose product is not migrated with a warning, keeping the quote', function () {
+// REQUIREMENT CHANGED (user decision 2026-10-14): a line, cost or commission
+// that cannot be imported fails the whole quote instead of being dropped.
+it('fails the quote when one of its lines cannot be imported', function (array $overrides, string $reason) {
     legacyQuoteServiceProduct(10);
 
     $run = runLegacyQuotesImport([legacyQuoteRecord([
-        'lines' => [
-            ['id' => 900, 'product_id' => 10, 'quantity' => 1, 'unit_price' => 10, 'commissions' => []],
-            ['id' => 901, 'product_id' => 99, 'quantity' => 1, 'unit_price' => 10, 'commissions' => []],
-        ],
+        'lines' => [['id' => 900, 'product_id' => 10, 'quantity' => 1, 'unit_price' => 10, 'commissions' => []]],
+        ...$overrides,
     ])]);
 
-    $quote = Quote::query()->where('old_id', 42)->sole();
-
-    expect($run->created_rows)->toBe(1)
-        ->and(QuoteLine::query()->where('quote_id', $quote->id)->pluck('old_id')->all())->toBe([900])
-        ->and(legacyQuoteWarnings($run))->toContain('Line 901 skipped: product (legacy service id 99) not migrated.');
-});
+    expect($run->failed_rows)->toBe(1)
+        ->and($run->created_rows)->toBe(0)
+        ->and(Quote::query()->where('old_id', 42)->exists())->toBeFalse()
+        ->and(collect($run->report)->firstWhere('level', 'error')['message'])->toBe("Failed to import the record: {$reason}");
+})->with([
+    'line without product' => [
+        ['lines' => [['id' => 900, 'product_id' => 10, 'quantity' => 1, 'unit_price' => 10, 'commissions' => []], ['id' => 901, 'product_id' => 0, 'quantity' => 1, 'unit_price' => 10, 'commissions' => []]]],
+        'Line 901 has no product; the quote is not imported.',
+    ],
+    'line product not migrated' => [
+        ['lines' => [['id' => 900, 'product_id' => 10, 'quantity' => 1, 'unit_price' => 10, 'commissions' => []], ['id' => 901, 'product_id' => 99, 'quantity' => 1, 'unit_price' => 10, 'commissions' => []]]],
+        'Line 901: product (legacy service id 99) not migrated; the quote is not imported.',
+    ],
+    'commission recipient not migrated' => [
+        ['lines' => [['id' => 900, 'product_id' => 10, 'quantity' => 1, 'unit_price' => 10, 'commissions' => [['role' => 'supervisor', 'recipient_id' => 555, 'commission_type' => 'PERCENTAGE', 'value' => 5]]]]],
+        'Line 900: supervisor commission recipient (legacy id 555) not migrated; the quote is not imported.',
+    ],
+    'cost product not migrated' => [
+        ['cost_lines' => [['id' => 'quotationemployees:20', 'product_source' => 'user_levels', 'product_id' => 2, 'quantity' => 1, 'unit_price' => 20, 'offer_line_id' => 900]]],
+        'Cost line quotationemployees:20: cost product (user_levels legacy id 2) not migrated; the quote is not imported.',
+    ],
+]);
 
 it('maps the legacy outcome onto the quote set', function (string $outcome, string $systemKey) {
     legacyQuoteServiceProduct(10);
@@ -313,6 +329,28 @@ it('imports the legacy costs as cost lines imputed to the offer line of the same
         ->and((float) $quote->margin_net)->toBe(225.0);
 });
 
+it('imports the legacy employee costs as cost lines on the employee level product (G-13)', function () {
+    legacyQuoteServiceProduct(10);
+    $expenseReport = Product::factory()->costOnly()->create(['old_source' => 'expense_reports', 'old_id' => 6]);
+    $employeeLevel = Product::factory()->costOnly()->create(['old_source' => 'user_levels', 'old_id' => 6]);
+
+    $run = runLegacyQuotesImport([legacyQuoteRecord([
+        'lines' => [['id' => 900, 'product_id' => 10, 'quantity' => 1, 'unit_price' => 300, 'commissions' => []]],
+        'cost_lines' => [
+            ['id' => 'quotationemployees:19', 'product_source' => 'user_levels', 'product_id' => 6, 'description' => null, 'quantity' => 8, 'unit_price' => 20, 'vat_rate_id' => null, 'supplier_id' => null, 'offer_line_id' => 900],
+        ],
+    ])]);
+
+    $costLine = Quote::query()->where('old_id', 42)->sole()->costLines()->sole();
+
+    expect($costLine->product_id)->toBe($employeeLevel->id)
+        ->and($costLine->product_id)->not->toBe($expenseReport->id)
+        ->and((float) $costLine->quantity)->toBe(8.0)
+        ->and((float) $costLine->net_amount)->toBe(160.0)
+        ->and($costLine->offer_line_id)->toBe(QuoteLine::query()->where('old_id', 900)->value('id'))
+        ->and($run->report)->toBeNull();
+});
+
 it('imports revenue and cost lines whose products sit on categories that are not active, history only (user directive 2026-10-13)', function () {
     $service = legacyQuoteServiceProduct(10);
     $service->category->update(['is_active' => false]);
@@ -331,29 +369,20 @@ it('imports revenue and cost lines whose products sit on categories that are not
         ->and($quote->costLines()->sole()->product_id)->toBe($costProduct->id);
 });
 
-it('keeps a cost whose offer line was dropped as a generic cost and skips an unmigrated cost product', function () {
+it('keeps a cost whose offer line is not on the quote as a generic cost, with a warning', function () {
     legacyQuoteServiceProduct(10);
     Product::factory()->costOnly()->create(['old_source' => 'expense_reports', 'old_id' => 3]);
 
     $run = runLegacyQuotesImport([legacyQuoteRecord([
-        'lines' => [
-            ['id' => 900, 'product_id' => 10, 'quantity' => 1, 'unit_price' => 100, 'commissions' => []],
-            ['id' => 901, 'product_id' => 99, 'quantity' => 1, 'unit_price' => 100, 'commissions' => []],
-        ],
-        'cost_lines' => [
-            ['id' => 1, 'product_id' => 3, 'quantity' => 1, 'unit_price' => 10, 'offer_line_id' => 901],
-            ['id' => 2, 'product_id' => 77, 'quantity' => 1, 'unit_price' => 10, 'offer_line_id' => null],
-        ],
+        'lines' => [['id' => 900, 'product_id' => 10, 'quantity' => 1, 'unit_price' => 100, 'commissions' => []]],
+        'cost_lines' => [['id' => 1, 'product_id' => 3, 'quantity' => 1, 'unit_price' => 10, 'offer_line_id' => 901]],
     ])]);
 
     $quote = Quote::query()->where('old_id', 42)->sole();
 
     expect($quote->costLines()->count())->toBe(1)
         ->and($quote->costLines()->value('offer_line_id'))->toBeNull()
-        ->and(legacyQuoteWarnings($run))->toContain(
-            'Cost line 1: its offer line (legacy id 901) was not imported, kept as a generic cost.',
-            'Cost line 2 skipped: cost product (legacy expense report id 77) not migrated.',
-        );
+        ->and(legacyQuoteWarnings($run))->toBe(['Cost line 1: its offer line (legacy id 901) was not imported, kept as a generic cost.']);
 });
 
 it('reports a legacy cost supplier other than the product one, never writing it', function () {

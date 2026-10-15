@@ -10,7 +10,9 @@ use App\Models\QuoteWorkflow;
 use App\Models\VatRate;
 use App\Services\ProductCategoryService;
 use App\Services\QuoteWorkflowService;
+use Database\Seeders\QualificaCatalog\SafetyCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
+use Database\Seeders\QualificaCatalog\SoaCatalogue;
 use Database\Seeders\QualificaCatalog\WorkflowStatusCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -114,7 +116,8 @@ it('seeds the "Autofinanziato" branch, its list prices and its attributes correc
             'PEKIT Expert' => 150.0,
             'Tecnico del comportamento Aba - Analisi comportamentale applicata' => 650.0,
         ])
-        ->and(Product::query()->whereNotNull('vat_rate_id')->count())->toBe(3);
+        // REQUIREMENT CHANGED: the SOA products carry the 22% rate too (2026-10-15).
+        ->and(Product::query()->whereNotNull('vat_rate_id')->whereHas('category', fn ($query) => $query->whereNotIn('name', [...SoaCatalogue::TARGET_CATEGORIES, ...SafetyCatalogue::TARGET_CATEGORIES]))->count())->toBe(3);
 
     // "Modalità di svolgimento" scoped to the branch (was: 'assigns the "Modalità di svolgimento" enum to the Autofinanziato subtree only')
     $deliveryMode = Attribute::query()->where('code', 'delivery_mode')->get();

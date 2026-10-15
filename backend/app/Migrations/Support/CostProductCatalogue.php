@@ -25,6 +25,9 @@ final class CostProductCatalogue
     /** The legacy table the offers' cost lines (`quotationexpensereports`) point at. */
     public const string EXPENSE_REPORTS = 'expense_reports';
 
+    /** The legacy table the offers' employee costs (`quotationemployees`) point at. */
+    public const string EMPLOYEE_LEVELS = 'user_levels';
+
     /**
      * Legacy table => its branch category under ROOT.
      *
@@ -35,6 +38,7 @@ final class CostProductCatalogue
         'vehicles' => '[OLD] Veicoli',
         'equipment' => '[OLD] Attrezzature',
         self::EXPENSE_REPORTS => '[OLD] Note spese',
+        self::EMPLOYEE_LEVELS => '[OLD] Dipendenti',
     ];
 
     /**
@@ -59,5 +63,6 @@ final class CostProductCatalogue
             'serial_number' => ['code' => 'cost_serial_number', 'name' => 'Matricola'],
         ],
         self::EXPENSE_REPORTS => [],
+        self::EMPLOYEE_LEVELS => [],
     ];
 }

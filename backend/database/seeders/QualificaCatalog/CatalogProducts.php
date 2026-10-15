@@ -28,7 +28,9 @@ use App\Services\ProductService;
  *   - the e-Campus degrees (ECampusCourseCatalogue): one product per fee of
  *     the degree level, "<course> <fee>", on "Corsi E-Campus", at the fee,
  *     described by the course's subject area, plus the services sold once
- *     for the whole branch (ECampusCourseCatalogue::SINGLE_PRODUCTS).
+ *     for the whole branch (ECampusCourseCatalogue::SINGLE_PRODUCTS);
+ *   - the SOA and "Sicurezza" lists (SoaCatalogue, SafetyProductCatalogue),
+ *     delegated to BranchProducts with the 22% VAT rate resolved here.
  *
  * NO ATTRIBUTE VALUE IS WRITTEN (user directive 2026-09-08). The duration and
  * the delivery mode used to be seeded here, onto the product; they moved to
@@ -74,6 +76,7 @@ final class CatalogProducts
     public function __construct(
         private readonly ProductService $products,
         private readonly ECampusProducts $eCampusProducts,
+        private readonly BranchProducts $branchProducts,
     ) {}
 
     public function seed(): void
@@ -90,6 +93,11 @@ final class CatalogProducts
         $this->seedECampusCourses();
         // Step 6: the e-Campus services sold once for the whole branch.
         $this->seedECampusSingleProducts();
+        // Step 7: the branches with their own list, each product with its
+        // supplier, typology and expiry.
+        $vatRateId = $this->plusVatRate()->id;
+        $this->branchProducts->seed(SoaCatalogue::PRODUCTS, SoaCatalogue::TYPOLOGIES, $vatRateId);
+        $this->branchProducts->seed(SafetyProductCatalogue::PRODUCTS, SafetyCatalogue::TYPOLOGIES, $vatRateId);
     }
 
     private function seedECampusCourses(): void
@@ -142,8 +150,9 @@ final class CatalogProducts
 
     /**
      * The production seed creates no VAT catalogue of its own (the full one is
-     * DemoVatRateSeeder's), so the rate a "+ iva" price needs is adopted by
-     * percentage when an operator already has it, created otherwise.
+     * DemoVatRateSeeder's), so the 22% rate a "+ iva" price (or a branch list)
+     * needs is adopted by percentage when an operator already has it, created
+     * otherwise.
      */
     private function plusVatRate(): VatRate
     {

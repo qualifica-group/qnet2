@@ -23,11 +23,12 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     seedMigrationsConfig();
     $this->quote = Quote::factory()->create(['old_id' => 42]);
+    $this->line = QuoteLine::factory()->create(['quote_id' => $this->quote->id, 'old_id' => 900, 'sort_order' => 0]);
 });
 
 it('creates the work order with its lines, supervisors, participants and legacy anchors', function () {
     Notification::fake();
-    $line = QuoteLine::factory()->create(['quote_id' => $this->quote->id, 'old_id' => 900]);
+    $line = $this->line;
     $supervisor = User::factory()->create(['old_id' => 61]);
     $firstParticipant = User::factory()->create(['old_id' => 62]);
     $secondParticipant = User::factory()->create(['old_id' => 63]);
@@ -87,8 +88,7 @@ it('force-closes a work order the legacy sends with a force-close reason', funct
 });
 
 it('links a copy of a line already programmed into another work order, with its commissions and the offer totals', function () {
-    $taken = QuoteLine::factory()->create([
-        'quote_id' => $this->quote->id, 'old_id' => 900, 'sort_order' => 0,
+    $taken = tap($this->line)->update([
         'quantity' => 1, 'unit_price' => 900, 'net_amount' => 900, 'vat_amount' => 198, 'total_amount' => 1098,
     ]);
     QuoteLineCommission::factory()->create([
