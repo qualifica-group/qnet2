@@ -8,8 +8,9 @@ use App\Enums\LayoutSectionVariant;
  * The "Sicurezza" branch of the catalogue (user directive 2026-10-15,
  * "Sicurezza 81_08" sheet and "SICUREZZA 81_09" list): a root of its own,
  * linked to the "Sicurezza" business function, whose subcategories are the
- * list's "Categoria" column — every one a classification target hosting its
- * products (SafetyProductCatalogue). Pure data, read by QualificaCatalogSeeder
+ * list's "Categoria" column prefixed with the branch ("Sicurezza - ...", user
+ * directive 2026-10-15, see CatalogCategoryRenames) — every one a
+ * classification target hosting its products (SafetyProductCatalogue). Pure data, read by QualificaCatalogSeeder
  * (tree and offer fields), QualificaQuoteLayoutSeeder (offer form),
  * CatalogProducts (products), CatalogRootRules and
  * QualificaBusinessFunctionLinkSeeder.
@@ -28,15 +29,15 @@ final class SafetyCatalogue
 
     public const string BUSINESS_FUNCTION = 'Sicurezza';
 
-    public const string TRAINING_COURSES = 'Corsi di formazione';
+    public const string TRAINING_COURSES = 'Sicurezza - Corsi di formazione';
 
-    public const string DOCUMENTS = 'Documenti';
+    public const string DOCUMENTS = 'Sicurezza - Documenti';
 
-    public const string MEDICAL_VISITS = 'Visite mediche';
+    public const string MEDICAL_VISITS = 'Sicurezza - Visite mediche';
 
-    public const string SITE_INSPECTIONS = 'Sopralluogo';
+    public const string SITE_INSPECTIONS = 'Sicurezza - Sopralluogo';
 
-    public const string TRAVEL = 'Trasferta';
+    public const string TRAVEL = 'Sicurezza - Trasferta';
 
     /**
      * Every subcategory is a classification target, never a container (spec

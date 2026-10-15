@@ -57,8 +57,9 @@ const QUOTE_LAYOUT_OWN_CATEGORIES = [
  */
 const QUOTE_LAYOUT_INHERITING_CATEGORIES = [
     'Yisu',
-    'Ente SOA', 'Consulenza SOA',
-    'Corsi di formazione', 'Documenti', 'Visite mediche', 'Sopralluogo', 'Trasferta',
+    // REQUIREMENT CHANGED: SOA and Sicurezza subcategories prefixed with their branch (user directive 2026-10-15).
+    'SOA - Ente', 'SOA - Consulenza',
+    'Sicurezza - Corsi di formazione', 'Sicurezza - Documenti', 'Sicurezza - Visite mediche', 'Sicurezza - Sopralluogo', 'Sicurezza - Trasferta',
     'GOL - Molise', 'GOL - Abruzzo', 'GOL - Calabria', 'GOL - Campania',
     'GOL - Umbria', 'GOL - Puglia', 'GOL - Basilicata',
 ];

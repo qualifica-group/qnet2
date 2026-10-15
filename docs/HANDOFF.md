@@ -3,6 +3,18 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CATALOGO: SOTTOCATEGORIE SOA E SICUREZZA CON PREFISSO DEL RAMO — VERDE, NON COMMITTATO (2026-10-15)
+
+- Rinomina (decisione utente): `Ente SOA` -> `SOA - Ente`, `Consulenza SOA` -> `SOA - Consulenza`
+  (`SoaCatalogue`); `Corsi di formazione`/`Documenti`/`Visite mediche`/`Sopralluogo`/`Trasferta` ->
+  `Sicurezza - <nome>` (`SafetyCatalogue`). Il nome resta la chiave naturale del catalogo.
+- Installazioni gia' seminate: `QualificaCatalog/CatalogCategoryRenames` (chiamata in testa a
+  `QualificaCatalogSeeder::seedCatalog()`) rinomina in place i SOLI figli diretti della radice del ramo (stesso id,
+  prodotti/opportunita' agganciati); no-op se il nuovo nome esiste gia'. Una "Documenti" fuori ramo non si tocca.
+- Test: nuovo `QualificaCatalogCategoryRenamesTest`; liste letterali aggiornate in `QualificaCatalogSeederTest` e
+  `QualificaQuoteLayoutSeederTest` (REQUIREMENT CHANGED). Suite verde salvo i 3 `QuoteDocumentPdfTest` (LibreOffice).
+- Manuale Claude Docs aggiornato (paragrafo macrocategorie SOA/Sicurezza); guide in-app: nessun impatto.
+
 ## SEED SAMPLE: SOLO CATEGORIE VISIBILI E SELEZIONABILI — VERDE, NON COMMITTATO (2026-10-15)
 
 - `qualifica:seed-sample` (catena e `--bulk`) ora pesca solo categorie `is_selectable` E effettivamente attive
