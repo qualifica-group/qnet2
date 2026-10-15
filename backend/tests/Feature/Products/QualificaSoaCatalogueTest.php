@@ -1,5 +1,6 @@
 <?php
 
+use App\CustomFields\CustomFieldWriter;
 use App\Enums\AttributeContext;
 use App\Enums\CategoryManagementMode;
 use App\Enums\FormMode;
@@ -7,19 +8,24 @@ use App\Enums\LayoutFormScope;
 use App\Models\Attribute;
 use App\Models\AttributeLayout;
 use App\Models\BusinessFunction;
+use App\Models\CustomFieldValue;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductTypology;
 use App\Models\Registry;
 use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Database\Seeders\QualificaCatalog\SoaCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
+use Database\Seeders\QualificaTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 
 // The "SOA" branch (user directive 2026-10-15, "Q-crm SOA" sheet and
 // "PRODOTTI SOA" list): a root linked to the "SOA" business function, worked
 // like "Consulenza", with its offer and Commessa fields and its 18 products,
-// the attestations linked to their certifying body when it exists.
+// the attestations linked to their certifying body when it exists, each
+// product filed under its category's typology with its "Mesi scadenza".
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
@@ -127,46 +133,79 @@ it('gives both subcategories the root Commessa fields and form, and leaves a con
 
     expect($layouts->resolveExact($root, AttributeContext::WorkOrder, LayoutFormScope::All))->toBe($before)
         ->and(Attribute::query()->where('code', 'like', 'soa_%')->count())
-        ->toBe(count(SoaCatalogue::QUOTE_ATTRIBUTES) + count(SoaCatalogue::WORK_ORDER_ATTRIBUTES) + count(SoaCatalogue::PRODUCT_ATTRIBUTES));
+        ->toBe(count(SoaCatalogue::QUOTE_ATTRIBUTES) + count(SoaCatalogue::WORK_ORDER_ATTRIBUTES));
 });
 
-it('gives both subcategories the root product field "Mesi scadenza", valued on every SOA product', function (): void {
-    test()->seed(QualificaCatalogSeeder::class);
-
-    $attribute = Attribute::query()->where('code', 'soa_expiry_months')->sole();
-    $months = Product::query()
+/**
+ * @return Collection<string, mixed> product name => its "Mesi scadenza" custom field
+ */
+function soaExpirationMonths(): Collection
+{
+    return Product::query()
         ->whereIn('category_id', ProductCategory::query()->whereIn('name', SoaCatalogue::TARGET_CATEGORIES)->select('id'))
         ->get()
-        ->mapWithKeys(fn (Product $product): array => [$product->name => $product->attribute_values['soa_expiry_months'] ?? null]);
+        ->mapWithKeys(fn (Product $product): array => [$product->name => $product->custom_fields[SoaCatalogue::EXPIRATION_MONTHS_FIELD] ?? null]);
+}
 
-    expect($attribute->name)->toBe('Mesi scadenza')
-        ->and($attribute->type)->toBe('integer')
-        ->and(soaCategory(SoaCatalogue::ROOT)->attributes()->wherePivot('context', AttributeContext::Product->value)->pluck('code')->all())
-        ->toBe(['soa_expiry_months']);
+it('REQUIREMENT CHANGED (user directive 2026-10-15): writes "Mesi scadenza" in the products custom field, not in a category attribute', function (): void {
+    // Step 1 of the production seed: the products module's custom fields.
+    test()->seed(QualificaTemplateSeeder::class);
+    test()->seed(QualificaCatalogSeeder::class);
 
-    foreach (SoaCatalogue::TARGET_CATEGORIES as $name) {
-        expect(app(CategoryHierarchy::class)->effectiveAttributes(soaCategory($name), AttributeContext::Product)->pluck('code')->all())
-            ->toBe(['soa_expiry_months']);
-    }
+    $months = soaExpirationMonths();
 
     expect($months)->toHaveCount(18)
         ->and($months->only(['Consulenza Soa_I anno', 'Consulenza Soa_II anno', 'Consulenza Soa_III anno'])->all())
         ->toBe(['Consulenza Soa_I anno' => 0, 'Consulenza Soa_II anno' => 12, 'Consulenza Soa_III anno' => 24])
         ->and($months->except(['Consulenza Soa_I anno', 'Consulenza Soa_II anno', 'Consulenza Soa_III anno'])->unique()->values()->all())
-        ->toBe([0]);
+        ->toBe([0])
+        ->and(Attribute::query()->where('code', 'soa_expiry_months')->exists())->toBeFalse();
 });
 
 it('fills a missing "Mesi scadenza" on the re-run, without overriding one set by hand', function (): void {
+    test()->seed(QualificaTemplateSeeder::class);
     test()->seed(QualificaCatalogSeeder::class);
 
     $consulting = Product::query()->where('category_id', soaCategory(SoaCatalogue::CONSULTING_CATEGORY)->id)->get()->keyBy('name');
-    $consulting->get('Consulenza Soa_II anno')->forceFill(['attribute_values' => []])->save();
-    $consulting->get('Consulenza Soa_III anno')->forceFill(['attribute_values' => ['soa_expiry_months' => 36]])->save();
+    CustomFieldValue::query()->where('entity_type', 'products')->where('entity_id', $consulting->get('Consulenza Soa_II anno')->id)->delete();
+    app(CustomFieldWriter::class)->write($consulting->get('Consulenza Soa_III anno'), 'products', [SoaCatalogue::EXPIRATION_MONTHS_FIELD => 36]);
 
     test()->seed(QualificaCatalogSeeder::class);
 
-    expect($consulting->get('Consulenza Soa_II anno')->fresh()->attribute_values['soa_expiry_months'] ?? null)->toBe(12)
-        ->and($consulting->get('Consulenza Soa_III anno')->fresh()->attribute_values['soa_expiry_months'] ?? null)->toBe(36);
+    expect(soaExpirationMonths()->only(['Consulenza Soa_II anno', 'Consulenza Soa_III anno'])->all())
+        ->toBe(['Consulenza Soa_II anno' => 12, 'Consulenza Soa_III anno' => 36]);
+});
+
+it('files each SOA product under the typology of its category, realigning only a product left on the default', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $typologies = fn (): Collection => Product::query()
+        ->with('category', 'productTypology')
+        ->whereIn('category_id', ProductCategory::query()->whereIn('name', SoaCatalogue::TARGET_CATEGORIES)->select('id'))
+        ->get()
+        ->groupBy('category.name')
+        ->map(fn (Collection $products): array => $products->pluck('productTypology.code')->unique()->values()->all());
+
+    expect($typologies()->all())->toEqual([
+        SoaCatalogue::CERTIFYING_BODY_CATEGORY => ['institution'],
+        SoaCatalogue::CONSULTING_CATEGORY => ['consultancy'],
+    ]);
+
+    // An earlier revision left every product on the default "Ente": realigned.
+    // A typology chosen by hand is not.
+    $category = soaCategory(SoaCatalogue::CONSULTING_CATEGORY);
+    $institution = ProductTypology::query()->where('code', 'institution')->sole();
+    $byHand = ProductTypology::factory()->create();
+    Product::query()->where('category_id', $category->id)->update(['product_typology_id' => $institution->id]);
+    Product::query()->where('category_id', $category->id)->where('name', 'Consulenza Soa_I anno')->update(['product_typology_id' => $byHand->id]);
+
+    test()->seed(QualificaCatalogSeeder::class);
+
+    expect(Product::query()->where('category_id', $category->id)->orderBy('name')->pluck('product_typology_id', 'name')->all())->toBe([
+        'Consulenza Soa_I anno' => $byHand->id,
+        'Consulenza Soa_II anno' => ProductTypology::query()->where('code', 'consultancy')->value('id'),
+        'Consulenza Soa_III anno' => ProductTypology::query()->where('code', 'consultancy')->value('id'),
+    ]);
 });
 
 it('seeds the 18 SOA products at 0 with 22% VAT, linking each attestation to its existing supplier', function (): void {

@@ -261,8 +261,9 @@ class QualificaCatalogSeeder extends Seeder
         $this->seedCatalog();
 
         // Step 3: the products, which resolve their category from step 2.
-        // Only the SOA ones carry an attribute value, their "Mesi scadenza":
-        // every other branch's fields are the offer's.
+        // They carry no attribute value: the branch's fields are the offer's.
+        // The typologies first: the SOA products are filed under one by code.
+        $this->call(ProductTypologySeeder::class);
         app(CatalogProducts::class)->seed();
 
         // Step 4: the "stati di lavorazione", which key their matching
@@ -358,11 +359,6 @@ class QualificaCatalogSeeder extends Seeder
         // invisible on an installation already seeded: the assignments are
         // additive, so the fields would show up in BOTH forms.
         $this->retireProductAttributes();
-
-        // The one PRODUCT-side field, the SOA "Mesi scadenza": CatalogProducts
-        // values it on each SOA product, so it is assigned before step 3.
-        $soaRoot = ProductCategory::query()->where('name', SoaCatalogue::ROOT)->whereNull('parent_id')->firstOrFail();
-        $this->seedCategoryAttributes($soaRoot, SoaCatalogue::PRODUCT_ATTRIBUTES, AttributeContext::Product);
 
         // The root-owned rules come last: they re-sync the whole subtree, so
         // every node must already exist.

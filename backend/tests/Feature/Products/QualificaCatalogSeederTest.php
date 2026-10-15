@@ -90,13 +90,10 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
         ->and((float) $digitalLiteracy->cost)->toBe(0.0)
         ->and((float) $digitalLiteracy->price)->toBe(0.0);
 
-    // REQUIREMENT CHANGED (user directive 2026-10-15): the SOA products, and
-    // only them, carry one value of their own, the "Mesi scadenza".
-    $valued = Product::query()->get()->filter(fn (Product $product): bool => filled($product->attribute_values));
-
-    expect($valued)->toHaveCount(array_sum(array_map(count(...), SoaCatalogue::PRODUCTS)))
-        ->and($valued->map(fn (Product $product): array => array_keys($product->attribute_values))->unique()->values()->all())
-        ->toBe([[SoaCatalogue::EXPIRY_MONTHS_CODE]]);
+    // The SOA "Mesi scadenza" is a products custom field, not an attribute
+    // (user directive 2026-10-15): no seeded product carries an attribute value.
+    expect(Product::query()->get()->filter(fn (Product $product): bool => filled($product->attribute_values)))
+        ->toBeEmpty();
 
     // Duplicate course names within a region (was: 'keeps a course name repeated inside one region as two distinct products')
     $abruzzo = ProductCategory::query()->where('name', 'GOL - Abruzzo')->firstOrFail();
@@ -410,10 +407,7 @@ it('withdraws the moved codes from the product side of an installation seeded ea
 
     // Gone from the product context — assignments AND the section built on
     // them, which is an emptied layout, hence a deleted row.
-    // REQUIREMENT CHANGED (user directive 2026-10-15): the one product-side
-    // assignment left is the SOA root's "Mesi scadenza", never a moved code.
-    expect(DB::table('attribute_category')->where('context', AttributeContext::Product->value)->join('attributes', 'attributes.id', '=', 'attribute_category.attribute_id')->pluck('attributes.code')->all())
-        ->toBe([SoaCatalogue::EXPIRY_MONTHS_CODE])
+    expect(DB::table('attribute_category')->where('context', AttributeContext::Product->value)->count())->toBe(0)
         ->and($layouts->resolveExact($molise, AttributeContext::Product, LayoutFormScope::All))->toBeNull();
 
     // The Offerta side is untouched by the retirement: same codes, still there.

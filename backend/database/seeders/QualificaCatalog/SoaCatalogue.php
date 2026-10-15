@@ -12,7 +12,7 @@ use App\Enums\LayoutSectionVariant;
  * service) and "Consulenza SOA" (the yearly consultancy). Pure data, read by
  * QualificaCatalogSeeder (tree and offer fields), QualificaQuoteLayoutSeeder
  * (offer form), QualificaSoaWorkOrderSeeder (Commessa fields and form),
- * CatalogProducts (products and their "Mesi scadenza"),
+ * SoaProducts (products, suppliers, typologies and "Mesi scadenza"),
  * CatalogRootRules and QualificaBusinessFunctionLinkSeeder.
  *
  * The subcategories are not called "Ente" / "Consulenza": the name is the
@@ -70,48 +70,53 @@ final class SoaCatalogue
     public const string DAP = 'DAP SOA SPA';
 
     /**
-     * Category name => product name => the supplier's registry name (null: no
-     * supplier) and the "Mesi scadenza", as the PRODOTTI SOA list gives them.
-     * Sold at 0 with the 22% VAT rate, like the legacy rows.
+     * Category name => the product typology its products are filed under, by
+     * CODE (ProductTypologySeeder): the attestations are bought from a body,
+     * the consultancy is Qualifica's own (user directive 2026-10-15).
      *
-     * @var array<string, array<string, array{supplier: string|null, expiry_months: int}>>
+     * @var array<string, string>
+     */
+    public const array TYPOLOGIES = [
+        self::CERTIFYING_BODY_CATEGORY => 'institution',
+        self::CONSULTING_CATEGORY => 'consultancy',
+    ];
+
+    /**
+     * The product custom field (QualificaTemplateSeeder) the file's "Mesi
+     * scadenza" column lands on.
+     */
+    public const string EXPIRATION_MONTHS_FIELD = 'expiration_months';
+
+    /**
+     * Category name => product name => its supplier's registry name (null: no
+     * supplier) and its "Mesi scadenza". Sold at 0 with the 22% VAT rate, like
+     * the legacy rows.
+     *
+     * @var array<string, array<string, array{supplier: string|null, expiration_months: int}>>
      */
     public const array PRODUCTS = [
         self::CERTIFYING_BODY_CATEGORY => [
-            'Attestazione Soa_Soatech' => ['supplier' => self::SOATECH, 'expiry_months' => 0],
-            'Soa_Revisione_Soatech' => ['supplier' => self::SOATECH, 'expiry_months' => 0],
-            'Soa_Rinnovo_Soatech' => ['supplier' => self::SOATECH, 'expiry_months' => 0],
-            'Soa_Integrazione_Soatech' => ['supplier' => self::SOATECH, 'expiry_months' => 0],
-            'Soa_Variazione_Soatech' => ['supplier' => self::SOATECH, 'expiry_months' => 0],
-            'Attestazione Soa_Argenta' => ['supplier' => self::ARGENTA, 'expiry_months' => 0],
-            'Soa_Integrazione_Argenta' => ['supplier' => self::ARGENTA, 'expiry_months' => 0],
-            'Soa_Revisione_Argenta' => ['supplier' => self::ARGENTA, 'expiry_months' => 0],
-            'Soa_Rinnovo_Argenta' => ['supplier' => self::ARGENTA, 'expiry_months' => 0],
-            'Soa_Variazione_Argenta' => ['supplier' => self::ARGENTA, 'expiry_months' => 0],
-            'Attestazione Soa_Dap' => ['supplier' => self::DAP, 'expiry_months' => 0],
-            'Soa_Integrazione_Dap' => ['supplier' => self::DAP, 'expiry_months' => 0],
-            'Soa_Revisione_Dap' => ['supplier' => self::DAP, 'expiry_months' => 0],
-            'Soa_Rinnovo_Dap' => ['supplier' => self::DAP, 'expiry_months' => 0],
-            'Soa_Variazione_Dap' => ['supplier' => self::DAP, 'expiry_months' => 0],
+            'Attestazione Soa_Soatech' => ['supplier' => self::SOATECH, 'expiration_months' => 0],
+            'Soa_Revisione_Soatech' => ['supplier' => self::SOATECH, 'expiration_months' => 0],
+            'Soa_Rinnovo_Soatech' => ['supplier' => self::SOATECH, 'expiration_months' => 0],
+            'Soa_Integrazione_Soatech' => ['supplier' => self::SOATECH, 'expiration_months' => 0],
+            'Soa_Variazione_Soatech' => ['supplier' => self::SOATECH, 'expiration_months' => 0],
+            'Attestazione Soa_Argenta' => ['supplier' => self::ARGENTA, 'expiration_months' => 0],
+            'Soa_Integrazione_Argenta' => ['supplier' => self::ARGENTA, 'expiration_months' => 0],
+            'Soa_Revisione_Argenta' => ['supplier' => self::ARGENTA, 'expiration_months' => 0],
+            'Soa_Rinnovo_Argenta' => ['supplier' => self::ARGENTA, 'expiration_months' => 0],
+            'Soa_Variazione_Argenta' => ['supplier' => self::ARGENTA, 'expiration_months' => 0],
+            'Attestazione Soa_Dap' => ['supplier' => self::DAP, 'expiration_months' => 0],
+            'Soa_Integrazione_Dap' => ['supplier' => self::DAP, 'expiration_months' => 0],
+            'Soa_Revisione_Dap' => ['supplier' => self::DAP, 'expiration_months' => 0],
+            'Soa_Rinnovo_Dap' => ['supplier' => self::DAP, 'expiration_months' => 0],
+            'Soa_Variazione_Dap' => ['supplier' => self::DAP, 'expiration_months' => 0],
         ],
         self::CONSULTING_CATEGORY => [
-            'Consulenza Soa_I anno' => ['supplier' => null, 'expiry_months' => 0],
-            'Consulenza Soa_II anno' => ['supplier' => null, 'expiry_months' => 12],
-            'Consulenza Soa_III anno' => ['supplier' => null, 'expiry_months' => 24],
+            'Consulenza Soa_I anno' => ['supplier' => null, 'expiration_months' => 0],
+            'Consulenza Soa_II anno' => ['supplier' => null, 'expiration_months' => 12],
+            'Consulenza Soa_III anno' => ['supplier' => null, 'expiration_months' => 24],
         ],
-    ];
-
-    public const string EXPIRY_MONTHS_CODE = 'soa_expiry_months';
-
-    /**
-     * The PRODUCT-context field, assigned on the root and inherited by both
-     * subcategories: the legacy "Mesi scadenza" of each product, valued by
-     * CatalogProducts from PRODUCTS.
-     *
-     * @var list<array{code: string, name: string, type: string}>
-     */
-    public const array PRODUCT_ATTRIBUTES = [
-        ['code' => self::EXPIRY_MONTHS_CODE, 'name' => 'Mesi scadenza', 'type' => 'integer'],
     ];
 
     /**
