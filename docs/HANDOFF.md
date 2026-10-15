@@ -3,6 +3,18 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MIGRAZIONE: STATI [OLD] DELLE OFFERTE (spec 0189 G-29) — VERDE, NON COMMITTATO (2026-10-15)
+
+- Decisione utente: offerta legacy con esito negotiation / call_back / stand_by finita in un set di stati (workflow
+  scelto dalle categorie, o set globale) senza lo stato con quel nome -> `LegacyQuoteStatusResolver` crea UNA volta per
+  set "[OLD] In trattativa" (pending) / "[OLD] Da Richiamare" (open) / "[OLD] Stand-by" (open) e ci mette l'offerta,
+  senza avviso. Nuovo `WorkflowStatusWriter::appendCustom()` (accoda prima di closed_won/closed_lost, resequence).
+  `quotes:realign-legacy-status` sposta le offerte gia' importate rimaste aperte; --dry-run fa rollback (niente stati).
+- Test: QuotesSourceStatusImportTest (REQUIREMENT CHANGED: prima "lasciata aperta con avviso"), Realign dry-run.
+  Contatori `--step` aggiornati (+2 migrazioni geo) in QuoteWorkflowMigrationTest (186), SupplierCommissionDirectionTest
+  (50), PurchaseOrderMigrationTest (35): il commit ba5285ce li aveva rotti.
+- Guida IT/EN + manuale Claude Docs aggiornati. Prossimo: reimport offerte o `php artisan quotes:realign-legacy-status`.
+
 ## MIGRAZIONE: BLOCCO GEOGRAFICO DAL LEGACY (spec 0189 G-28) — VERDE, NON COMMITTATO (2026-10-15)
 
 - Contratto: `country` = codice ISO alpha-2 in TUTTI gli endpoint con indirizzo. qnet-2 `MigrationGeoResolver`
@@ -18,11 +30,18 @@
   ItalianMunicipalitySeeder) sposta in Toscana le 8 province toscane che world.sql mette in Friuli–Venezia Giulia
   (Grosseto, Livorno, Lucca, Massa and Carrara, Pisa, Pistoia, Prato, Siena) con comuni e indirizzi gia' salvati;
   la migrazione 2026_10_18_100000 lo applica ai DB gia' popolati (applicata in locale: 8 indirizzi riallineati).
-- Misura su tutti gli indirizzi legacy: record con avvisi geo 14.590 -> 1.182 (referenti 10.171 -> 254).
-- APERTO: Valle d'Aosta senza province nel dataset (11); ~374 comuni ISTAT assenti dal dataset; CAP condivisi
-  scritti al posto del comune e comuni omonimi senza provincia (~590).
-- Verifiche: Pest Migration+Geo+Imports+Seeding+seeder 1049/1049, Vitest help 130/130, tsc -b pulito, Pint pulito,
-  php -l legacy, endpoint legacy chiamati con tinker.
+- Toppe al dataset (opzione A scelta dall'utente, NON COMMITTATE): `ItalianProvinceSeeder` crea la provincia Aosta
+  (AO) e ci mette i 91 comuni della Valle d'Aosta senza provincia + i loro indirizzi; `ItalianMunicipalitySeeder`
+  aggiunge 38 comuni usati dal legacy e assenti (o solo sotto un'altra provincia: Carpi, Marcon, Fontanafredda...),
+  Montoro (fusione 2013); `ItalianGeoLocalizer` AO -> Aosta. Migrazione 2026_10_18_110000 per i DB popolati
+  (applicata in locale). Legacy: LegacyComuneSpelling recupera 7 grafie perse + Montoro Inferiore/Superiore ->
+  Montoro; LegacyGeo manda SU per i comuni ex-CA fuori dalla Citta' metropolitana di Cagliari (riforma 2016).
+- Misura su tutti gli indirizzi legacy: record con avvisi geo 14.524 -> 1.040 (referenti 10.171 -> 216).
+- APERTO: ~336 comuni ISTAT ancora assenti dal dataset ma non usati dal legacy; restano ~1.040 indirizzi con dati
+  sbagliati all'origine (CAP condivisi al posto del comune, omonimi senza provincia, "ROMA" con provincia BN...).
+  Alternativa strutturale proposta e non scelta: elenco ufficiale ISTAT con codice in qnet-2 (opzione B).
+- Verifiche: Pest Migration+Geo+Imports 824/824 e Seeding+Geo 174/174 (dopo le toppe), Vitest help 130/130,
+  tsc -b pulito, Pint pulito, php -l legacy, endpoint legacy chiamati con tinker.
 - Reimportare referents, registries, users, company-sites, operational-sites, companies per vedere l'effetto.
 
 ## MIGRAZIONE: NESSUNO SCARTO SILENZIOSO (spec 0189 G-26) — VERDE, NON COMMITTATO (2026-10-14)

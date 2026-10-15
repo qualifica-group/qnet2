@@ -63,10 +63,13 @@ class RealignLegacyQuoteStatuses extends Command
             return false;
         }
 
-        // Step 2: the target under the current mapping.
+        // Step 2: the target under the current mapping (a dry run rolls back
+        // the [OLD] status the resolver may create).
         $state = LegacyQuoteState::fromRecord($record);
         $warnings = [];
-        $target = $resolver->target($quote, $state, $warnings);
+        $target = $dryRun
+            ? $this->withRollback(fn () => $resolver->target($quote, $state, $warnings))
+            : $resolver->target($quote, $state, $warnings);
 
         if ($target === null || $target->id === $quote->quote_workflow_status_id) {
             return false;
@@ -80,6 +83,17 @@ class RealignLegacyQuoteStatuses extends Command
         }
 
         return true;
+    }
+
+    private function withRollback(callable $callback): mixed
+    {
+        DB::beginTransaction();
+
+        try {
+            return $callback();
+        } finally {
+            DB::rollBack();
+        }
     }
 
     private function isUntouchedOpen(Quote $quote): bool

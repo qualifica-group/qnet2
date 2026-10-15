@@ -22,8 +22,10 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         Artisan::call('locations:add');
-        // Clean reference data: the Italian comuni the world.sql extract is
-        // missing, so an import's `comune` string can resolve to a city row.
+        // Clean reference data: the Italian provinces and comuni the world.sql
+        // extract is missing, so an import's plate code and `comune` string
+        // can resolve to a row.
+        $this->call(ItalianProvinceSeeder::class);
         $this->call(ItalianMunicipalitySeeder::class);
         // Clean reference data: the provinces the extract files under the wrong region.
         $this->call(ItalianProvinceRegionSeeder::class);

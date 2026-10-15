@@ -57,6 +57,17 @@ it('writes nothing in dry-run', function () {
     expect($this->quote->fresh()->quote_workflow_status_id)->toBe($before);
 });
 
+it('creates no [OLD] status in dry-run', function () {
+    $this->callBack->delete();
+    fakeLegacyQuotesEndpoint([legacyQuoteRecord(['outcome' => 'call_back'])]);
+
+    $this->artisan('quotes:realign-legacy-status', ['--dry-run' => true])
+        ->expectsOutputToContain('1 offer(s) would be realigned.')
+        ->assertSuccessful();
+
+    expect(QuoteWorkflowStatus::query()->where('name', '[OLD] Da Richiamare')->exists())->toBeFalse();
+});
+
 it('leaves an offer a user has touched since the import', function () {
     activity()->performedOn($this->quote)->log('updated');
     fakeLegacyQuotesEndpoint([legacyQuoteRecord(['outcome' => 'call_back'])]);

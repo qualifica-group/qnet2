@@ -8,13 +8,16 @@ use App\Enums\WorkflowStatusGroup;
 use App\Enums\WorkflowStatusSystemKey;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
+use App\Services\QuoteWorkflows\WorkflowStatusWriter;
 use Illuminate\Support\Collection;
 
 /**
  * The qnet status a legacy offer lands on (spec 0189 G-6/G-18): the legacy
  * decides the `outcome`, this resolves it inside the status set the Quote
  * already belongs to (never a fixed id). A named target is looked up by
- * name, then by group. Null = the offer stays on the status it was created
+ * name, then by group. A set without the status of a negotiation, call-back
+ * or stand-by gets an [OLD] one, created once (G-29): the user then moves the
+ * offers or renames it. Null = the offer stays on the status it was created
  * with.
  */
 final class LegacyQuoteStatusResolver
@@ -25,6 +28,15 @@ final class LegacyQuoteStatusResolver
     private const array CALL_BACK_NAMES = ['Da Richiamare'];
 
     private const array STAND_BY_NAMES = ['Rimandata', 'In Standby'];
+
+    /** [OLD] status created in a set that lacks the outcome's own: [name, group]. */
+    private const array OLD_STATUSES = [
+        LegacyQuoteOutcome::Negotiation->value => ['[OLD] In trattativa', WorkflowStatusGroup::Pending],
+        LegacyQuoteOutcome::CallBack->value => ['[OLD] Da Richiamare', WorkflowStatusGroup::Open],
+        LegacyQuoteOutcome::StandBy->value => ['[OLD] Stand-by', WorkflowStatusGroup::Open],
+    ];
+
+    public function __construct(private readonly WorkflowStatusWriter $statusWriter) {}
 
     /**
      * @param  array<int, string>  $warnings
@@ -43,7 +55,8 @@ final class LegacyQuoteStatusResolver
             return null;
         }
 
-        $statuses = $this->currentStatusSet($quote);
+        $workflowId = $this->statusSetId($quote);
+        $statuses = $this->statusSet($workflowId);
 
         $target = match ($outcome) {
             LegacyQuoteOutcome::Lost => $this->bySystemKey($statuses, WorkflowStatusSystemKey::ClosedLost),
@@ -55,6 +68,8 @@ final class LegacyQuoteStatusResolver
             LegacyQuoteOutcome::AcceptedByClient => $statuses->firstWhere('group', WorkflowStatusGroup::Pending)
                 ?? $statuses->firstWhere('group', WorkflowStatusGroup::Validated),
         };
+
+        $target ??= $this->oldStatus($statuses, $workflowId, $outcome);
 
         if ($target === null) {
             $warnings[] = "The offer's status set has no status for legacy outcome '{$outcome->value}'; the offer was left open.";
@@ -91,15 +106,39 @@ final class LegacyQuoteStatusResolver
     }
 
     /**
-     * The ordered status set the Quote's current status belongs to: a
-     * workflow's own, or the global default one (`quote_workflow_id` null).
+     * The set's [OLD] status of $outcome, created on first need; null for an
+     * outcome without one.
      *
-     * @return Collection<int, QuoteWorkflowStatus>
+     * @param  Collection<int, QuoteWorkflowStatus>  $statuses
      */
-    private function currentStatusSet(Quote $quote): Collection
+    private function oldStatus(Collection $statuses, ?int $workflowId, LegacyQuoteOutcome $outcome): ?QuoteWorkflowStatus
+    {
+        if (! isset(self::OLD_STATUSES[$outcome->value])) {
+            return null;
+        }
+
+        [$name, $group] = self::OLD_STATUSES[$outcome->value];
+
+        return $this->byName($statuses, [$name])
+            ?? $this->statusWriter->appendCustom($workflowId, $name, $group);
+    }
+
+    /**
+     * The status set the Quote's current status belongs to: a workflow's
+     * own, or the global default one (null).
+     */
+    private function statusSetId(Quote $quote): ?int
     {
         $workflowId = QuoteWorkflowStatus::query()->whereKey($quote->quote_workflow_status_id)->value('quote_workflow_id');
 
+        return $workflowId === null ? null : (int) $workflowId;
+    }
+
+    /**
+     * @return Collection<int, QuoteWorkflowStatus>
+     */
+    private function statusSet(?int $workflowId): Collection
+    {
         return QuoteWorkflowStatus::query()
             ->when(
                 $workflowId === null,

@@ -125,7 +125,16 @@
       del dataset qnet-2 (Piedmont, Friuli–Venezia Giulia...); `city` nella grafia del dataset qnet-2
       (LegacyComuneSpelling, 204 comuni). qnet-2 corregge il proprio dataset: ItalianProvinceRegionSeeder (+ migrazione
       2026_10_18_100000 per i DB popolati) sposta in Toscana le 8 province toscane che world.sql mette in Friuli–Venezia
-      Giulia. Al 2026-10-15 i record con avvisi geografici scendono da 14.590 a 1.182.
+      Giulia; ItalianProvinceSeeder aggiunge la provincia Aosta, ItalianMunicipalitySeeder i comuni usati dal legacy
+      e assenti dal dataset (migrazione 2026_10_18_110000). Il legacy manda i comuni fusi col nome nuovo (Montoro) e
+      SU per i comuni ex-CA fuori dalla Citta' metropolitana di Cagliari. Al 2026-10-15 i record con avvisi
+      geografici scendono da 14.524 a 1.040.
+      G-29 stati [OLD] (decisione utente 2026-10-15): se il set di stati in cui l'offerta finisce (workflow scelto dalle
+      categorie dei prodotti, o set globale) non ha lo stato dell'esito negotiation / call_back / stand_by (per nome;
+      negotiation ripiega prima sul primo stato `pending`), LegacyQuoteStatusResolver crea UNA volta per set lo stato
+      "[OLD] In trattativa" (pending) / "[OLD] Da Richiamare" (open) / "[OLD] Stand-by" (open), accodato prima delle
+      chiusure (WorkflowStatusWriter::appendCustom), e ci mette l'offerta, senza avviso. `quotes:realign-legacy-status`
+      fa lo stesso sulle offerte gia' importate rimaste aperte; in --dry-run lo stato non viene creato (rollback).
       G-23 costi effettivi (decisione utente 2026-10-14, "preventivo + consuntivo"): i costi del riquadro "Offerta"
       dell'Analisi preventiva legacy (`quotationexpensereports` + `quotationemployees`, helper legacy
       LegacyQuoteCosts) restano righe COSTO dell'offerta (G-13, preventivo) e diventano ANCHE `work_order_costs`

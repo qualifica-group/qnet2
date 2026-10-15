@@ -84,14 +84,14 @@ class ItalianGeoLocalizer
 
     /**
      * Italian province plate code (targa) -> reference province name. The full
-     * standard set; each value is a name actually present in the dataset (AO /
-     * Aosta is omitted — the dataset has no such province row).
+     * standard set; each value is a name actually present in the dataset (Aosta
+     * is added by Database\Seeders\ItalianProvinceSeeder).
      *
      * @var array<string, string>
      */
     private const array PROVINCE_CODES = [
         'AG' => 'Agrigento', 'AL' => 'Alessandria', 'AN' => 'Ancona', 'AP' => 'Ascoli Piceno',
-        'AQ' => "L'Aquila", 'AR' => 'Arezzo', 'AT' => 'Asti', 'AV' => 'Avellino',
+        'AO' => 'Aosta', 'AQ' => "L'Aquila", 'AR' => 'Arezzo', 'AT' => 'Asti', 'AV' => 'Avellino',
         'BA' => 'Bari', 'BG' => 'Bergamo', 'BI' => 'Biella', 'BL' => 'Belluno',
         'BN' => 'Benevento', 'BO' => 'Bologna', 'BR' => 'Brindisi', 'BS' => 'Brescia',
         'BT' => 'Barletta-Andria-Trani', 'BZ' => 'South Tyrol', 'CA' => 'Cagliari',

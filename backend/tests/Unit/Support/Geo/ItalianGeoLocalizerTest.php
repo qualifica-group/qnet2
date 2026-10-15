@@ -26,7 +26,8 @@ it('maps a province plate code to the reference name, null when unknown', functi
         ->and($this->localizer->province('rg'))->toBe('Ragusa')
         ->and($this->localizer->province(' MI '))->toBe('Milan')
         ->and($this->localizer->province('MA'))->toBeNull()
-        ->and($this->localizer->province('Po'))->toBe('Prato');
+        ->and($this->localizer->province('Po'))->toBe('Prato')
+        ->and($this->localizer->province('AO'))->toBe('Aosta');
 });
 
 it('cleans the legacy comune label down to the bare city name', function () {
