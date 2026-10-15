@@ -3,6 +3,19 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SEED SAMPLE: SOLO CATEGORIE VISIBILI E SELEZIONABILI — VERDE, NON COMMITTATO (2026-10-15)
+
+- `qualifica:seed-sample` (catena e `--bulk`) ora pesca solo categorie `is_selectable` E effettivamente attive
+  (`CategoryActivity::inactiveCategoryIds()`, spec 0208: flag proprio o di un antenato). Prima filtrava solo
+  `is_selectable` e finiva sui rami `[OLD]`/"Old category" inattivi (in dev 190 categorie su 221).
+- Punti toccati: `Concerns/PicksDemoOffers::selectableCategoryIds()` (righe richieste/opportunita'),
+  `Concerns/ResolvesCategoryBusinessFunction` (lead, anche Demo project/campaign), `Support/SampleCategoryCoverage::sellableCategoryIds()`
+  (copertura "una riga per categoria"), `QualificaSampleQuoteSeeder::activeCostProducts()` (righe COSTO; prodotti senza categoria ammessi).
+- Test nuovi: `QualificaSampleRequestSeederTest` (inattiva + figlia di padre inattivo mai pescate),
+  `QualificaSampleCategoryCoverageTest` (intera catena, righe costo incluse). Suite verde salvo i 3 `QuoteDocumentPdfTest` (LibreOffice assente in locale).
+- `QualificaSampleQuoteSeeder.php` ~365 righe (era gia' 347, sopra il soft limit 300): candidato a split.
+- Manuale: nessun impatto (strumento di sviluppo).
+
 ## MERGE main -> feature/amministrazione — RISOLTO (2026-10-15)
 
 - Conflitti: HANDOFF (voci di entrambi i lati mantenute) e i contatori `migrate:rollback --step` di

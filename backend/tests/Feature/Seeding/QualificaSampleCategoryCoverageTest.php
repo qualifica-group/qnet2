@@ -7,6 +7,7 @@ use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\QuoteLine;
 use App\Models\Registry;
 use App\Models\Task;
 use App\Models\TaskTemplate;
@@ -161,4 +162,22 @@ it('opens coverage deals only when the chain asks for them', function (): void {
     // one) the running batch does not carry yet, then the batch of one.
     app(QualificaSampleOpportunitySeeder::class)->run(opportunities: 1, sinceOpportunityId: (int) Opportunity::query()->max('id'));
     expect(Opportunity::query()->count())->toBe(1 + COVERAGE_CONTRACT_CATEGORIES + 1 + 1);
+});
+
+it('leaves the categories the pickers hide out of the whole chain, cost rows included', function (): void {
+    // Spec 0208: an effectively inactive category (its own flag or an
+    // ancestor's) is not sellable, so neither covered nor drawn.
+    seedCoverageCatalogue();
+    $inactive = ProductCategory::factory()->create(['business_function_id' => BusinessFunction::factory(), 'is_active' => false]);
+    $inactiveParent = ProductCategory::factory()->create(['is_active' => false, 'is_selectable' => false]);
+    $underInactive = ProductCategory::factory()->childOf($inactiveParent)->create(['business_function_id' => BusinessFunction::factory()]);
+    $hiddenIds = [$inactive->getKey(), $underInactive->getKey()];
+    Product::factory()->create(['category_id' => $inactive->getKey()]);
+    Product::factory()->costOnly()->create(['category_id' => $underInactive->getKey()]);
+
+    runSmallSampleChain();
+
+    expect(OpportunityProductLine::query()->whereIn('product_category_id', $hiddenIds)->exists())->toBeFalse()
+        ->and(QuoteLine::query()->whereHas('product', fn ($query) => $query->whereIn('category_id', $hiddenIds))->exists())->toBeFalse()
+        ->and(app(SampleCategoryCoverage::class)->incompleteCategoryIds())->toBe([]);
 });

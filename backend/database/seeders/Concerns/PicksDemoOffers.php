@@ -6,6 +6,7 @@ use App\Enums\CategoryManagementMode;
 use App\Enums\ProductUsage;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Services\ProductCategories\CategoryActivity;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Faker\Generator;
 
@@ -26,7 +27,9 @@ use Faker\Generator;
  * 2026-08-03): a category flagged `is_selectable = false` is a container, and
  * the App\Rules\SelectableProductCategory rule rejects it on every write path
  * the form uses. Seeding a line on one would produce a deal the edit form
- * itself refuses to resubmit.
+ * itself refuses to resubmit. For the same reason it is always EFFECTIVELY
+ * ACTIVE (spec 0208): an inactive category, or one under an inactive
+ * ancestor, is hidden from every picker and refused by the same rule.
  *
  * Each offer also carries its branch ROOT and that root's management mode
  * (spec 0077), because a card's lines are not free to combine: they must all
@@ -183,15 +186,20 @@ trait PicksDemoOffers
 
     /**
      * The classification TARGETS, in id order: an unselectable category is a
-     * container the form refuses, so it is neither offered as a line nor used
-     * to draw a product.
+     * container the form refuses, an effectively inactive one is hidden from
+     * the pickers, so neither is offered as a line nor used to draw a product.
      *
      * @return array<int, true>
      */
     private function selectableCategoryIds(): array
     {
         return array_fill_keys(
-            ProductCategory::query()->where('is_selectable', true)->orderBy('id')->pluck('id')->all(),
+            ProductCategory::query()
+                ->where('is_selectable', true)
+                ->whereNotIn('id', app(CategoryActivity::class)->inactiveCategoryIds())
+                ->orderBy('id')
+                ->pluck('id')
+                ->all(),
             true,
         );
     }

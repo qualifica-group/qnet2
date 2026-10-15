@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders\Concerns;
 
 use App\Models\ProductCategory;
+use App\Services\ProductCategories\CategoryActivity;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Illuminate\Support\Collection;
 
@@ -21,7 +22,8 @@ use Illuminate\Support\Collection;
  * SelectableProductCategory rejects it on Project/Campaign, and the pair is
  * what LeadOpportunityDefaultsResolver turns into the converted opportunity's
  * product line — so a container here would surface as an unselectable line on
- * a seeded deal.
+ * a seeded deal. Effectively inactive categories (spec 0208) are dropped for
+ * the same reason: the same rule refuses them.
  */
 trait ResolvesCategoryBusinessFunction
 {
@@ -32,9 +34,10 @@ trait ResolvesCategoryBusinessFunction
     protected function coherentClassificationPairs(Collection $categories): Collection
     {
         $summaries = app(CategoryHierarchy::class)->effectiveBusinessFunctionSummaries();
+        $inactiveIds = array_flip(app(CategoryActivity::class)->inactiveCategoryIds());
 
         return $categories
-            ->filter(static fn (ProductCategory $category): bool => (bool) $category->is_selectable)
+            ->filter(static fn (ProductCategory $category): bool => $category->is_selectable && ! isset($inactiveIds[$category->id]))
             ->map(static fn (ProductCategory $category): array => [
                 'product_category_id' => $category->id,
                 'business_function_id' => $summaries[$category->id]['id'] ?? null,

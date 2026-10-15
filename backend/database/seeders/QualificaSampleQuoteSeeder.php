@@ -14,6 +14,7 @@ use App\Models\Product;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
+use App\Services\ProductCategories\CategoryActivity;
 use App\Services\ProductCategories\CategoryHierarchy;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Services\QuoteService;
@@ -98,6 +99,7 @@ class QualificaSampleQuoteSeeder extends Seeder
         private readonly QuoteWorkflowResolver $workflowResolver,
         private readonly CategoryHierarchy $hierarchy,
         private readonly SampleCategoryCoverage $coverage,
+        private readonly CategoryActivity $activity,
     ) {}
 
     public function run(int $quotes = self::DEFAULT_QUOTES, int $sinceOpportunityId = 0): void
@@ -115,7 +117,7 @@ class QualificaSampleQuoteSeeder extends Seeder
 
         // Step 2: the catalogue, loaded once for the whole batch.
         $saleProducts = $this->productsByCategory(ProductUsage::Sale);
-        $costProducts = Product::query()->whereJsonContains('usages', ProductUsage::Cost->value)->orderBy('id')->get();
+        $costProducts = $this->activeCostProducts();
         $modes = $this->hierarchy->rootManagementModesFor($saleProducts->keys()->all());
         $users = User::query()->orderBy('id')->get();
         $faker = FakerFactory::create('it_IT');
@@ -326,6 +328,24 @@ class QualificaSampleQuoteSeeder extends Seeder
             ->values();
 
         return $working->isEmpty() ? null : $faker->randomElement($working->all());
+    }
+
+    /**
+     * The COST rows' pool: a product of an effectively inactive category is
+     * hidden from the line picker and refused by QuoteLineRules (spec 0208),
+     * so it never prices a sample row either.
+     *
+     * @return Collection<int, Product>
+     */
+    private function activeCostProducts(): Collection
+    {
+        $inactiveIds = $this->activity->inactiveCategoryIds();
+
+        return Product::query()
+            ->whereJsonContains('usages', ProductUsage::Cost->value)
+            ->where(static fn ($query) => $query->whereNull('category_id')->orWhereNotIn('category_id', $inactiveIds))
+            ->orderBy('id')
+            ->get();
     }
 
     /**
