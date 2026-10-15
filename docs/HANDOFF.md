@@ -3,6 +3,28 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MIGRAZIONE: BLOCCO GEOGRAFICO DAL LEGACY (spec 0189 G-28) — VERDE, NON COMMITTATO (2026-10-15)
+
+- Contratto: `country` = codice ISO alpha-2 in TUTTI gli endpoint con indirizzo. qnet-2 `MigrationGeoResolver`
+  cerca per `countries.iso2` (un nome non e' piu' accettato). Fixture dei test di migrazione `'country' => 'IT'`
+  (REQUIREMENT CHANGED) + test nuovo ISO/nome in OperationalSitesSourceImportTest.
+- Legacy (`../qnet`, non committato): `LegacyNation` (249 `nations` per id -> ISO, mappa approvata dall'utente;
+  nomi troncati "Per"/"Citt" mappati a mano), `LegacyGeo::place()` (comune riconosciuto su `listacomuni`,
+  completa provincia/regione/stato, sigle sarde soppresse, regioni nel nome del dataset qnet-2),
+  `LegacyComuneSpelling` (204 comuni ISTAT -> grafia del dataset qnet-2). Usati da Referent, Registry (+addresses),
+  User, CompanySite, OperationalSite, Company MigrationController. Verificati con tinker sui dati reali.
+- qnet-2 `ItalianGeoLocalizer`: tolti `padova`->Padua e `mantova`->Mantua (nel dataset i comuni sono Padova/Mantova).
+- Dataset qnet-2: `ItalianProvinceRegionSeeder` (dati di riferimento, chiamato da DatabaseSeeder dopo
+  ItalianMunicipalitySeeder) sposta in Toscana le 8 province toscane che world.sql mette in Friuli–Venezia Giulia
+  (Grosseto, Livorno, Lucca, Massa and Carrara, Pisa, Pistoia, Prato, Siena) con comuni e indirizzi gia' salvati;
+  la migrazione 2026_10_18_100000 lo applica ai DB gia' popolati (applicata in locale: 8 indirizzi riallineati).
+- Misura su tutti gli indirizzi legacy: record con avvisi geo 14.590 -> 1.182 (referenti 10.171 -> 254).
+- APERTO: Valle d'Aosta senza province nel dataset (11); ~374 comuni ISTAT assenti dal dataset; CAP condivisi
+  scritti al posto del comune e comuni omonimi senza provincia (~590).
+- Verifiche: Pest Migration+Geo+Imports+Seeding+seeder 1049/1049, Vitest help 130/130, tsc -b pulito, Pint pulito,
+  php -l legacy, endpoint legacy chiamati con tinker.
+- Reimportare referents, registries, users, company-sites, operational-sites, companies per vedere l'effetto.
+
 ## MIGRAZIONE: NESSUNO SCARTO SILENZIOSO (spec 0189 G-26) — VERDE, NON COMMITTATO (2026-10-14)
 
 - Decisione utente: opportunita'/offerte/commesse non importate = FALLITE col motivo; una riga scartata fa fallire

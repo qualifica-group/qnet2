@@ -115,6 +115,17 @@
       (soprattutto il 69) e' sostituito, nello stesso ruolo, dal primo gestore account dell'offerta non gia' presente
       (LegacyWorkOrderPeople; gia' presenti tutti = ruolo coperto). Senza gestori account resta l'id e qnet-2 fallisce
       la commessa col motivo (43 commesse al 2026-10-14).
+      G-28 blocco geografico (decisione utente 2026-10-15): in TUTTI gli endpoint con indirizzo (registries e i loro
+      addresses, referents, users, companies, company-sites, operational-sites) `country` e' il codice ISO 3166-1
+      alpha-2 (legacy LegacyNation, mappa per id dei 249 `nations` concordata con l'utente; qnet-2 cerca per `iso2`,
+      un nome non e' piu' accettato). Il legacy (LegacyGeo) identifica il comune sulla lista ISTAT `listacomuni`
+      (nome senza distinzione di maiuscole/accenti/apostrofi/spazi, sigla in coda "Sant'Antimo Na", CAP scritto al
+      posto del comune anche a 4 cifre, forma breve unica nella provincia "Casalnuovo") e completa provincia, regione e
+      stato mancanti; sigle sarde soppresse OT/OG/CI/VS -> SS/NU/SU/SU, sigle non valide -> null; `region` nel nome
+      del dataset qnet-2 (Piedmont, Friuli–Venezia Giulia...); `city` nella grafia del dataset qnet-2
+      (LegacyComuneSpelling, 204 comuni). qnet-2 corregge il proprio dataset: ItalianProvinceRegionSeeder (+ migrazione
+      2026_10_18_100000 per i DB popolati) sposta in Toscana le 8 province toscane che world.sql mette in Friuli–Venezia
+      Giulia. Al 2026-10-15 i record con avvisi geografici scendono da 14.590 a 1.182.
       G-23 costi effettivi (decisione utente 2026-10-14, "preventivo + consuntivo"): i costi del riquadro "Offerta"
       dell'Analisi preventiva legacy (`quotationexpensereports` + `quotationemployees`, helper legacy
       LegacyQuoteCosts) restano righe COSTO dell'offerta (G-13, preventivo) e diventano ANCHE `work_order_costs`
@@ -272,7 +283,7 @@
         referent_ids:int[] (company_contacts.contact_id distinti, solo contatti esistenti),
         tag_ids:int[] (company_tags.tag_id distinti, solo tag esistenti; ordine = company_tags.id),
         email, pec, phone, phone2, fax: ?string, website:?string (`https://` anteposto se manca lo schema),
-        country, region, province, city, street, postal_code: ?string (sede legale),
+        country:?string (ISO alpha-2, G-28), region, province, city, street, postal_code: ?string (sede legale),
         addresses: [{ site_type:("delivery"|"billing"|"operational_site"), country, region, province, city, street,
           postal_code }] (company_addresses; type 1/2/3, altro -> operational_site),
         created_at, updated_at }

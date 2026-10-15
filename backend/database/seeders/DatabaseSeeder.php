@@ -25,6 +25,8 @@ class DatabaseSeeder extends Seeder
         // Clean reference data: the Italian comuni the world.sql extract is
         // missing, so an import's `comune` string can resolve to a city row.
         $this->call(ItalianMunicipalitySeeder::class);
+        // Clean reference data: the provinces the extract files under the wrong region.
+        $this->call(ItalianProvinceRegionSeeder::class);
 
         $this->call(RolePermissionSeeder::class);
         // Clean reference data (spec 0088, D-3): unlike every other lookup

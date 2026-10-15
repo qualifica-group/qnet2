@@ -44,6 +44,13 @@ it('translates anglicized cities after cleaning, null for a pure placeholder', f
         ->and($this->localizer->city('(HQ)'))->toBeNull();
 });
 
+it('keeps the comuni the reference dataset stores in Italian, unlike their province', function () {
+    expect($this->localizer->city('Padova'))->toBe('Padova')
+        ->and($this->localizer->city('Mantova'))->toBe('Mantova')
+        ->and($this->localizer->province('PD'))->toBe('Padua')
+        ->and($this->localizer->province('MN'))->toBe('Mantua');
+});
+
 it('maps a comune the reference dataset spells differently', function () {
     expect($this->localizer->city('San Nicandro Garganico'))->toBe('Sannicandro Garganico')
         ->and($this->localizer->city("Godega di Sant'Urbano"))->toBe('Godega')

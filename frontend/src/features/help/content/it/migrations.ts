@@ -43,6 +43,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'steps', items: ['Dopo aver controllato l’anteprima, fai clic su **Importa questa sorgente**.', 'Leggi la finestra di conferma e fai clic su **Avvia import**.', 'Segui l’avanzamento. Alla fine vedi il riepilogo: **Righe totali**, **Creati**, **Saltati** e **Falliti**.', 'Controlla **Avvisi ed errori** per le righe con problemi.'] },
         { type: 'tip', text: 'L’import continua anche se chiudi la finestra. Le schede già importate vengono saltate, quindi puoi ripetere l’import senza creare doppioni.' },
+        { type: 'paragraph', text: 'Negli indirizzi il comune viene riconosciuto anche se nel QNet legacy è scritto in modo diverso (maiuscole, accenti, apostrofi, sigla della provincia in coda, CAP al posto del comune) e la provincia, la regione e lo stato mancanti vengono completati. Lo stato arriva per tutte le nazioni del legacy. Se il comune non si riconosce, l’indirizzo si importa senza comune, con un avviso.' },
       ],
     },
     {

@@ -11,16 +11,16 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Resolves an external system's geo strings (country/region/province/city) to
- * qnet's geo ids. Shared by every migration source whose records carry the
+ * Resolves an external system's geo values (country ISO code, region,
+ * province, city) to qnet's geo ids. Shared by every migration source whose records carry the
  * same address shape (CompaniesSource, OperationalSitesSource and any future
  * import) — the matching lives here ONCE, so a new source gets it for free.
  *
  * Two layers make the legacy strings resolvable against the ENGLISH reference
  * dataset (world.sql):
- *  1. ItalianGeoLocalizer translates the Italian value / province plate code to
- *     the reference spelling (`Italia`->`Italy`, `Sicilia`->`Sicily`, `NA`->
- *     `Naples`), and strips site-label noise off the `comune`.
+ *  1. ItalianGeoLocalizer translates the Italian region / province plate code
+ *     to the reference spelling (`Sicilia`->`Sicily`, `NA`->`Naples`), and
+ *     strips site-label noise off the `comune`. The country is an ISO code.
  *  2. The lookup itself is case-insensitive (LIKE, wildcards escaped), so a
  *     legacy `FRATTAMAGGIORE` still matches the dataset's `Frattamaggiore`.
  *
@@ -36,12 +36,12 @@ class MigrationGeoResolver
 {
     public function __construct(private readonly ItalianGeoLocalizer $localizer) {}
 
-    public function resolve(?string $countryName, ?string $stateName, ?string $provinceName, ?string $cityName): MigrationGeoResolution
+    public function resolve(?string $countryCode, ?string $stateName, ?string $provinceName, ?string $cityName): MigrationGeoResolution
     {
         $warnings = [];
 
         // Step 1: top-down where present (country -> region).
-        $countryId = $this->resolveCountry($countryName, $warnings);
+        $countryId = $this->resolveCountry($countryCode, $warnings);
         $stateId = $this->resolveState($countryId, $stateName, $warnings);
 
         // Step 2: province from its plate code, backfilling a blank region/country.
@@ -55,20 +55,23 @@ class MigrationGeoResolver
     }
 
     /**
+     * The contract carries the ISO 3166-1 alpha-2 code (spec 0189 G-28): the
+     * legacy maps its own nation labels, qnet-2 only looks the code up.
+     *
      * @param  array<int, string>  $warnings
      */
-    private function resolveCountry(?string $name, array &$warnings): ?int
+    private function resolveCountry(?string $code, array &$warnings): ?int
     {
-        $name = $this->blankToNull($name);
+        $code = $this->blankToNull($code);
 
-        if ($name === null) {
+        if ($code === null) {
             return null;
         }
 
-        $country = $this->firstByName(Country::query(), $this->localizer->country($name));
+        $country = Country::query()->where('iso2', strtoupper($code))->first();
 
         if ($country === null) {
-            $warnings[] = "Unresolved country '{$name}'.";
+            $warnings[] = "Unresolved country '{$code}'.";
 
             return null;
         }

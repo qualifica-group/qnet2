@@ -74,8 +74,6 @@ class ItalianGeoLocalizer
         'firenze' => 'Florence',
         'genova' => 'Genoa',
         'venezia' => 'Venice',
-        'padova' => 'Padua',
-        'mantova' => 'Mantua',
         'san nicandro garganico' => 'Sannicandro Garganico',
         "godega di sant'urbano" => 'Godega',
         'cancello ed arnone' => 'Cancello-Arnone',

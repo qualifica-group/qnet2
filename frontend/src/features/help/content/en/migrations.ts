@@ -43,6 +43,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'steps', items: ['After checking the preview, click **Import this source**.', 'Read the confirmation window and click **Start import**.', 'Follow the progress. At the end you see the summary: **Total rows**, **Created**, **Skipped** and **Failed**.', 'Check **Warnings and errors** for rows with problems.'] },
         { type: 'tip', text: 'The import keeps running even if you close the window. Records already imported are skipped, so you can repeat the import without creating duplicates.' },
+        { type: 'paragraph', text: 'In addresses the municipality is recognized even when the legacy QNet spells it differently (capital letters, accents, apostrophes, a trailing province code, a postal code instead of the municipality), and a missing province, region and country are filled in. The country arrives for every legacy nation. If the municipality is not recognized, the address is imported without it, with a warning.' },
       ],
     },
     {
