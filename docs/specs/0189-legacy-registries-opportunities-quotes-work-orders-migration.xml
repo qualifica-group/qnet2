@@ -79,8 +79,61 @@
       &lt;titolo&gt;" della commessa (utente esistente) o null. qnet-2 crea le fasi in ordine (`sort_order` = indice),
       senza task ne' log; titolo oltre 191 caratteri troncato con warning; utente non migrato -> fase chiusa senza
       autore, con warning. I task delle fasi restano fuori scope.
-      G-20/G-21/G-22 valgono solo per i nuovi import: le commesse gia' importate si saltano per `old_id` e ricevono
-      valori e fasi solo con un import da zero (decisione utente 2026-10-14).
+      G-20 bis (correzione 2026-10-14): nelle tabelle `orderiso_details`, `orderiso_verificas`, `orderiso_pals`,
+      `orderiso_gares`, `orderiso_avvalimentis` la colonna `orderiso_id` contiene l'id della COMMESSA (cosi' le
+      scrivono e leggono le schermate legacy, es. CreaDatiIso, AddMultipleVerifiche, DettagliLavorazioni), non l'id
+      `orderisos`: il legacy le lega per `orderiso_id` = `orders.id`. Prima le legava via `orderisos.id`, finendo su
+      commesse sbagliate (es. le verifiche della 206 sulla 697). Scansione corretta: 3.034 commesse con verifiche,
+      2.539 con standard e certificati, 10 PAL, 151 Avvalimenti, 39 Gare.
+      G-20 ter (decisione utente 2026-10-14): card GOL (16) + 12 campi dell'edizione del corso (`classi` per
+      `orderformaziones.edition_id`), come li mostra la scheda legacy: gol_corso ("codice - titolo"),
+      gol_stato_corso, gol_stato_classe, gol_data_inizio_corso, gol_data_fine_corso, gol_ore_totali_corso,
+      gol_data_esame, gol_data_ip_incasso, gol_anticipo/saldo_decreto_numero_data, gol_anticipo/saldo_data_accredito
+      (il valore dell'edizione vince su quello della commessa). Accodati in fondo al catalogo attributi
+      (CardAttributes::course()) perche' gli id legacy degli attributi sono posizionali; layout GOL: sezione "Corso",
+      decreto e accredito in Anticipo/Saldo. Numeri all'italiana ("19947,00") ora letti.
+      G-20 quater (richiesta utente 2026-10-14 "0 errori"): i campi flessibili valgono come li MOSTRA la scheda
+      commessa legacy (inventario di 230 campi su tutte le card, LegacyWorkOrderDisplayRules): scelte vuote o senza
+      riga con il loro default (GDPR Intervista/Formazione "Off Site", SOA invio contratto/aggiornamento/consorzio
+      "No"); importi GOL "0" vuoti; nome consorzio solo con appartenenza "Si"; "Standard ISO" scelta multipla sugli
+      standard `isos` (array JSON di id; il testo libero storico, non mostrato, non si porta); PAL solo righe
+      `tipo_elenco` 1, "Somministrata" da `misura_somministrata` (1 Tirocinio GOL, 2 Accompagnamento); verifiche
+      ispettive: valore diverso da 1 = "Stage 2"/"Off Site"; con l'edizione del corso la card GOL mostra solo i dati
+      dell'edizione. Righe tabella non piu' scartate per standard/data verifica vuoti. "Stato Lavorazione": lo stato
+      salvato va nel campo stato della categoria della commessa anche se di un altro flusso (opzioni del flusso
+      estese con gli stati di altri flussi usati, WorkflowStates::foreignStates). Categorie con prodotti ma senza card:
+      ricevono i campi comuni. Restano vuoti per scelta: segnaposto "***" (progress 1000), date zero
+      ("30-11--0001" nel legacy), importi NULL (il legacy li formatta "€ 0,00"). Date "gg/mm/aaaa" lette all'italiana.
+      G-26 nessuno scarto silenzioso (decisione utente 2026-10-14, supera G-1 e G-25): il legacy esporta TUTTE le
+      opportunita' (30.473: senza cliente -> `registry_id` null), offerte (47.728: anche con opportunita' mancante) e
+      commesse (16.302); qnet-2 fallisce il record col motivo (righe fallite del run) invece di non vederlo. Una sola
+      riga scartata fa fallire l'intero record: opportunita' con categoria non migrata; offerta con riga senza
+      prodotto / prodotto non migrato o non vendibile, provvigione con ruolo/tipo/destinatario non validi, costo senza
+      prodotto di costo; commessa senza righe, con una riga legacy non importata o con un costo senza prodotto di costo.
+      Restano avvisi (record importato) i riferimenti facoltativi lasciati vuoti (IVA, fornitore, referenti, utenti...).
+      G-27 responsabili/partecipanti cancellati (decisione utente 2026-10-14): nel legacy un utente cancellato
+      (soprattutto il 69) e' sostituito, nello stesso ruolo, dal primo gestore account dell'offerta non gia' presente
+      (LegacyWorkOrderPeople; gia' presenti tutti = ruolo coperto). Senza gestori account resta l'id e qnet-2 fallisce
+      la commessa col motivo (43 commesse al 2026-10-14).
+      G-23 costi effettivi (decisione utente 2026-10-14, "preventivo + consuntivo"): i costi del riquadro "Offerta"
+      dell'Analisi preventiva legacy (`quotationexpensereports` + `quotationemployees`, helper legacy
+      LegacyQuoteCosts) restano righe COSTO dell'offerta (G-13, preventivo) e diventano ANCHE `work_order_costs`
+      (consuntivo). Il legacy assegna ogni costo a UNA commessa (LegacyWorkOrderCosts): la prima per id dell'offerta
+      che ha una riga del suo servizio, con `quote_line_id` = quella riga legacy; senza servizio o senza commessa con
+      quel servizio -> prima commessa dell'offerta, `quote_line_id` null (costo non attribuito). qnet-2 li scrive con
+      WorkOrderCostWriter: prodotto per (`old_source`=`product_source`, `old_id`), tipo di costo = quello del
+      prodotto, `quote_line_id` = la riga della commessa (anche la copia G-10), IVA e fornitore (solo anagrafiche
+      fornitore) via `old_id`; prodotto non migrato o non di costo -> costo saltato con warning; riferimenti non
+      migrati -> vuoti con warning. Dopo l'import preventivo e consuntivo sono record indipendenti.
+      G-24 pagamenti per riga (decisione utente 2026-10-14): `stato_pagamento`/`accordo_pagamento`/`insoluti`
+      scritti su ogni riga della commessa dentro la stessa sorgente `work-orders`; la sorgente
+      `work-order-line-payments` (spec 0201 D-14) e' eliminata.
+      G-25 commessa senza righe (decisione utente 2026-10-14): non si crea. Il legacy non esporta le commesse senza
+      nessuna riga risolvibile (LegacyWorkOrderLines::whereHasLines, 329 al 2026-10-14: `orderservices` che puntano
+      a righe cancellate dell'offerta e servizi non piu' sull'offerta); qnet-2 salta (skipped + warning) la commessa
+      le cui righe legacy non sono state importate.
+      G-20..G-25 valgono solo per i nuovi import: le commesse gia' importate si saltano per `old_id` e ricevono
+      valori, fasi, pagamenti e costi solo con un import da zero (decisione utente 2026-10-14).
       G-7 contratto: per i closed_won si crea con `ContractLifecycleManager` (rispetta ContractEligibility), poi si
       allinea al legacy: `accepted_at`=accepted_data, `validated_at`=validated_data, `renewal_date`; stato per nome
       1 "Da validare", 3 "Da programmare", 2 "Programmato", 4 "In scadenza", 8 stato di sistema `terminated`.
@@ -146,7 +199,9 @@
       (`quotationequipments` e' vuota; le 85 righe erano `quotationemployees`). I costi veri sono
       `quotationexpensereports`: 8.027 righe su 1.604 offerte esportate (~9,64 M EUR).
       G-13 costi offerta: ogni `quotationexpensereports` diventa una riga COSTO (prodotto `old_source=expense_reports`,
-      `old_id=expensereport_id`; quantita', prezzo, IVA `rate`, `note` -> descrizione aggiuntiva). Imputata alla riga
+      `old_id=expensereport_id`; quantita', prezzo, IVA `rate`, `note` -> descrizione aggiuntiva). Dal 2026-10-14
+      anche ogni `quotationemployees` (prodotto `old_source=user_levels`, `old_id=level_id`: i livelli `user_levels`
+      arrivano dalla sorgente `cost-products` nel ramo "[OLD] Dipendenti"; quantita' = `hour`, prezzo = `cost`). Imputata alla riga
       ricavo dell'offerta con lo stesso `service_id` (la prima per id legacy; `offer_line_id`); riga ricavo assente o
       scartata -> costo generico con warning. Prodotto non migrato o non utilizzabile come costo -> riga scartata con
       warning. Il fornitore NON si scrive (sta gia' sul prodotto): se il `supplier_id` legacy differisce dal fornitore
@@ -187,7 +242,9 @@
     <out>
       <item>Note (activity_log legacy), documenti/allegati, valori campi flessibili delle commesse prima di G-20,
         task delle fasi delle commesse (le fasi entrano con G-22), storico fasi opportunita', ATECO delle anagrafiche, referenti "responsabile"
-        testuali delle anagrafiche, richieste GOL senza cliente (G-1), costi orari delle offerte (`quotationemployees`, G-13).</item>
+        testuali delle anagrafiche, richieste GOL senza cliente (G-1). Rinviati (decisione utente 2026-10-14):
+        task delle commesse e loro assegnazioni (`task_assigneds`), note, allegati, ODA/RDA, richieste proforma e
+        proforma, email, provvigioni maturate, storico avanzamento (`avanzamento_commesse`).</item>
     </out>
   </scope>
 
@@ -258,8 +315,10 @@
         dell'opportunita' come in migration/opportunities, poi assigned_to, assigned2_to; distinti, max 12, G-16),
         company_site_id:?int (business_unit -> company_profiles), operational_site_id:?int (sede_id),
         payment_method_id:?int (payment_id), callback_date:?date (opportunities.recall_date, G-14),
-        cost_lines: [{ id:int (quotationexpensereports.id), product_id:?int (expensereport_id; 0 -> null),
-          description:?string (note), quantity:number (null -> 1), unit_price:?number (price), vat_rate_id:?int (rate),
+        cost_lines: [{ id:string ("quotationexpensereports:{id}" | "quotationemployees:{id}"),
+          product_source:("expense_reports"|"user_levels"), product_id:?int (expensereport_id | level_id),
+          description:?string (note; dipendenti null), quantity:number (quantity | hour; null -> 1),
+          unit_price:?number (price | cost), vat_rate_id:?int (rate),
           supplier_id:?int (companies.id), offer_line_id:?int (min quotationservices.id della stessa offerta con lo
           stesso service_id) }] (G-13),
         lines: [{ id:int (quotationservices.id), product_id:?int (service_id; 0 -> null), description:?string,
@@ -287,7 +346,7 @@
       `amount`.
     </shape>
     <shape name="GET migration/work-orders">
-      Solo commesse la cui offerta e' esportata (G-1).
+      Solo commesse la cui offerta e' esportata (G-1) e con almeno una riga risolvibile (G-25).
       { id:int, quote_id:int (quotation_id), title:string (title; vuoto -> "Commessa {id}"),
         type:("processing"|"project") (tipo_commessa),
         start_date:date (datestart; assente o anno &lt; 2000 -> data di creazione; null solo se manca anche quella),
@@ -303,6 +362,10 @@
         participant_user_ids:int[] (partecipant_services.id_utente distinti, ordine di inserimento, max 12),
         attribute_values:{codice:valore} (G-20, G-21; {} se nessuno),
         stages:[{ name:string, closed_at:?datetime, closed_by_user_id:?int }] (G-22, in ordine),
+        costs:[{ id:string (come cost_lines), product_source, product_id:?int, quote_line_id:?int (riga legacy della
+          commessa col servizio del costo; null = non attribuito), description:?string, quantity:number,
+          unit_price:number, vat_rate_id:?int, supplier_id:?int (companies.id), incurred_on:?date (proforma_data,
+          poi data_pagamento, poi created_at), document_reference:?string (proforma_num) }] (G-23),
         created_at, updated_at }
       Rimossi dal 2026-10-13: `status`, `end_date`, `notes`.
     </shape>
@@ -350,5 +413,12 @@
     <ac id="AC-016">Commessa: "Proforma emessa" e "Totale commessa manuale" legacy tra i campi flessibili (G-21).</ac>
     <ac id="AC-017">Commessa: fasi legacy create in ordine con stato chiuso/aperto, data e autore di chiusura (G-22);
       nessun task generato, nessuna voce activity_log.</ac>
+    <ac id="AC-018">Commessa: i costi legacy assegnati diventano `work_order_costs` con prodotto, tipo di costo,
+      riga (anche la copia G-10), importi calcolati, IVA, fornitore, data e riferimento documento (G-23); prodotto
+      mancante o non di costo -> costo saltato con warning. Offerta: i costi dipendenti diventano righe COSTO sul
+      prodotto del livello (G-13).</ac>
+    <ac id="AC-019">Commessa: stato, accordo e insoluti legacy su ogni riga, senza activity log; stato legacy
+      sconosciuto -> vuoto con warning (G-24).</ac>
+    <ac id="AC-020">Commessa senza nessuna riga collegabile -> non creata (skipped con warning) (G-25).</ac>
   </acceptance_criteria>
 </spec>

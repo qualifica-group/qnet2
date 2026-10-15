@@ -10,13 +10,16 @@ use App\Migrations\Support\CostProductCatalogue;
 use App\Models\Product;
 use App\Models\Registry;
 use App\Models\VatRate;
+use RuntimeException;
 
 /**
- * Legacy offer costs (`quotationexpensereports`) to COST QuoteLineData (spec
- * 0189, G-13). The product is the migrated expense report (old_source =
- * expense_reports). A cost is imputed to the revenue line the legacy pairs it
- * with (same service), by its position in the same create; that line dropped
- * or absent -> a generic cost. The legacy supplier is never written (the
+ * Legacy offer costs to COST QuoteLineData (spec 0189, G-13): expense reports
+ * and employee costs. The product is the migrated cost product of the legacy
+ * table named by `product_source` (`expense_reports` when absent,
+ * `user_levels` for an employee cost). A cost is imputed to the revenue line the legacy pairs it
+ * with (same service), by its position in the same create; that line absent
+ * -> a generic cost. A cost without a usable migrated cost product fails the
+ * whole offer (user decision 2026-10-14). The legacy supplier is never written (the
  * product carries it): a mismatch is only reported.
  *
  * @phpstan-require-extends QuotesSource
@@ -33,11 +36,7 @@ trait MapsLegacyQuoteCostLines
         $lines = [];
 
         foreach ((array) ($externalCostLines ?? []) as $externalCostLine) {
-            $line = $this->legacyCostLine((array) $externalCostLine, count($lines), $legacyLineIds, $warnings);
-
-            if ($line !== null) {
-                $lines[] = $line;
-            }
+            $lines[] = $this->legacyCostLine((array) $externalCostLine, count($lines), $legacyLineIds, $warnings);
         }
 
         return $lines;
@@ -48,14 +47,10 @@ trait MapsLegacyQuoteCostLines
      * @param  array<int, int>  $legacyLineIds
      * @param  array<int, string>  $warnings
      */
-    private function legacyCostLine(array $externalLine, int $sortOrder, array $legacyLineIds, array &$warnings): ?QuoteLineData
+    private function legacyCostLine(array $externalLine, int $sortOrder, array $legacyLineIds, array &$warnings): QuoteLineData
     {
         $lineRef = $externalLine['id'] ?? '?';
-        $product = $this->costProduct($externalLine['product_id'] ?? null, $lineRef, $warnings);
-
-        if ($product === null) {
-            return null;
-        }
+        $product = $this->costProduct($externalLine['product_source'] ?? CostProductCatalogue::EXPENSE_REPORTS, $externalLine['product_id'] ?? null, $lineRef);
 
         $this->reportSupplierMismatch($product, $externalLine['supplier_id'] ?? null, $lineRef, $warnings);
 
@@ -73,32 +68,24 @@ trait MapsLegacyQuoteCostLines
         );
     }
 
-    /**
-     * @param  array<int, string>  $warnings
-     */
-    private function costProduct(mixed $externalRef, int|string $lineRef, array &$warnings): ?Product
+    private function costProduct(mixed $source, mixed $externalRef, int|string $lineRef): Product
     {
-        if ($externalRef === null || $externalRef === '' || (int) $externalRef === 0) {
-            $warnings[] = "Cost line {$lineRef} skipped: it has no product.";
-
-            return null;
+        if (! array_key_exists((string) $source, CostProductCatalogue::BRANCHES)
+            || $externalRef === null || $externalRef === '' || (int) $externalRef === 0) {
+            throw new RuntimeException("Cost line {$lineRef} has no product; the quote is not imported.");
         }
 
         $product = Product::query()
-            ->where('old_source', CostProductCatalogue::EXPENSE_REPORTS)
+            ->where('old_source', $source)
             ->where('old_id', $externalRef)
             ->first(['id', 'usages', 'supplier_id']);
 
         if ($product === null) {
-            $warnings[] = "Cost line {$lineRef} skipped: cost product (legacy expense report id {$externalRef}) not migrated.";
-
-            return null;
+            throw new RuntimeException("Cost line {$lineRef}: cost product ({$source} legacy id {$externalRef}) not migrated; the quote is not imported.");
         }
 
         if (! $product->isUsableAs(ProductUsage::forLineType(QuoteLineType::Cost))) {
-            $warnings[] = "Cost line {$lineRef} skipped: product (legacy expense report id {$externalRef}) is not usable as a cost.";
-
-            return null;
+            throw new RuntimeException("Cost line {$lineRef}: product ({$source} legacy id {$externalRef}) is not usable as a cost; the quote is not imported.");
         }
 
         return $product;

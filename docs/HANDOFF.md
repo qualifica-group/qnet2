@@ -3,6 +3,74 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## MIGRAZIONE: NESSUNO SCARTO SILENZIOSO (spec 0189 G-26) — VERDE, NON COMMITTATO (2026-10-14)
+
+- Decisione utente: opportunita'/offerte/commesse non importate = FALLITE col motivo; una riga scartata fa fallire
+  l'intero record. Legacy: tolti i filtri (Opportunity: join companies; Quote: join companies -> leftJoin
+  opportunities; WorkOrder: joins + `whereHasLines`, rimosso); `registry_id` null se manca il cliente. qnet-2:
+  MapsLegacyQuoteLines/CostLines, WorkOrdersSource, LegacyWorkOrderCostWriter, OpportunitiesSource (categorie,
+  cliente mancante) lanciano RuntimeException (transazione per riga). Test aggiornati (REQUIREMENT CHANGED) +
+  nuovi casi: Migration 429/429. Guida/requisiti IT/EN aggiornati.
+- Stima: ~10.7k opportunita' senza cliente, ~30k offerte (19.5k con opportunita' cancellata), 677 offerte con righe
+  non importabili (681 senza prodotto, 279 prodotto non migrato) e le loro commesse risultano fallite.
+- G-27: responsabili/partecipanti cancellati -> primo gestore account dell'offerta (legacy `LegacyWorkOrderPeople`);
+  senza gestori la commessa fallisce (43). qnet-2 `assertUsersMigrated`. Migration 431/431.
+- APERTO (domanda all'utente): stessa regola per 79 regole del configuratore escluse (74 destinatario cancellato),
+  532 provvigioni di righe offerta con destinatario cancellato (oggi tolte in silenzio dal legacy), riferimenti
+  orfani delle anagrafiche (24 referenti, 3 tag, 1 responsabile).
+- DB locale: CANCELLATE tutte le opportunita'/offerte/commesse migrate e i loro migration_runs (stato pagina
+  /dev/migrations azzerato). L'utente reimporta opportunities -> quotes -> work-orders.
+
+## MIGRAZIONE COMMESSE: COSTI, PAGAMENTI PER RIGA, NIENTE COMMESSE SENZA RIGHE (spec 0189 G-23/G-24/G-25) — VERDE, NON COMMITTATO (2026-10-14)
+
+- Decisioni utente 2026-10-14: commesse senza righe NON si creano; costi del riquadro "Offerta" dell'Analisi
+  preventiva legacy = preventivo (righe COSTO offerta, gia' G-13) + consuntivo (`work_order_costs`), record
+  indipendenti dopo l'import; pagamenti per riga dentro `work-orders` (sorgente `work-order-line-payments`
+  ELIMINATA, emendata spec 0201 D-14); costi dipendenti come prodotti di costo ("[OLD] Dipendenti", `user_levels`).
+  Rinviati: task e assegnazioni, note, allegati, ODA/RDA, proforma, email, provvigioni, storico avanzamento.
+- Legacy (`../qnet`, NON committato): nuovi `app/Support/Migration/LegacyQuoteCosts.php` (note spese + dipendenti,
+  id "<tabella>:<id>", `product_source`), `LegacyWorkOrderLines.php` (risoluzione righe + `whereHasLines` SQL),
+  `LegacyWorkOrderCosts.php` (ogni costo a UNA commessa: prima con riga del servizio, altrimenti prima dell'offerta
+  senza riga). `WorkOrderMigrationController` (+filtro righe, +`costs`, -logica righe interna),
+  `QuoteMigrationController` (cost_lines da LegacyQuoteCosts), `CostProductMigrationController` (+`user_levels`).
+  Scansione reale: 15.835 commesse (329 senza righe escluse), 7.579 costi (53 dipendenti), 146 non attribuiti, 0 doppi.
+- qnet-2: `LegacyWorkOrderLinePaymentWriter`, `LegacyWorkOrderCostWriter` (via WorkOrderCostWriter) in
+  `app/Migrations/Support`; `WorkOrdersSource` (skip senza righe, mappa old_id->riga anche per copie G-10);
+  `CostProductCatalogue::EMPLOYEE_LEVELS`; `MapsLegacyQuoteCostLines` usa `product_source` (testo warning cambiato:
+  "cost product (expense_reports legacy id N)"). Fixture commesse: default `quote_line_ids` [900] + pagamenti +
+  `costs` (REQUIREMENT CHANGED: il legacy non manda piu' commesse senza righe). Nuovo
+  `WorkOrdersSourceCostsAndPaymentsImportTest` (7). Rimossi source + test + i18n `work-order-line-payments`.
+- NON risolvibili (segnalati all'utente): 117 commesse con `stato_consulenza` di un flusso diverso da quello delle
+  loro categorie (nessun equivalente); 17 con righe in categorie senza card ("No categoria", "[OLD] PROGETTI-...")
+  perdono `status_contabile`.
+- Test: Migration 402/402, Unit/Migrations 20/20, WorkOrders+PaymentStatuses+Seeding+Quotes 802/805 (3 rossi
+  QuoteDocumentPdfTest, LibreOffice assente). Pint ok. FE: Vitest help/i18n/migrations 388/388, tsc -b ok, ESLint ok.
+- Manuale: guida in-app migrations IT/EN + requisiti aggiornati. Claude Docs: aggiornare "Migrazioni" (Commesse:
+  costi, pagamenti, commesse senza righe; Prodotti di costo: Dipendenti; sorgente pagamenti rimossa).
+- FIX legacy (stesso giro): `LegacyWorkOrderAttributeValues::childRows` legava le tabelle `orderiso_*` via
+  `orderisos.id`, ma `orderiso_id` = id COMMESSA (schermate legacy): verifiche/standard/PAL/Gare/Avvalimenti finivano
+  su commesse sbagliate. Ora `orderiso_id` = `orders.id` (G-20 bis). Le commesse importate prima vanno reimportate.
+- FIX legacy: numeri all'italiana ("19947,00") nei campi flessibili commessa (`format()` + `number()`): prima 780
+  importi GOL da decreto scartati.
+- Audit completo 2026-10-14 (script in scratchpad, non nel repo): export -> qnet-2 run 31: 15 campi base 100% uguali
+  su 15.748 commesse; differenze solo nei campi flessibili delle tabelle `orderiso_*` (bug sopra). Legacy -> export:
+  non portati GOL data accredito anticipo/saldo (30/53) e "Nome corso / Ed." (`edition_id`, 1.090): fuori catalogo,
+  "Data di assegnazione" su card non ISO (3.526) non visibile nel legacy. DECISO: 12 campi edizione corso GOL
+  (G-20 ter) accodati al catalogo (id posizionali 356-367, i 355 esistenti invariati, verificato). DB locale: gia'
+  eseguiti attributes (+12), product-category-attributes (+5 categorie [OLD] GOL), cancellati e ricreati i 5 layout
+  GOL (nessuno modificato a mano). `odl`/`progressive`: utente "non prevedere ancora nulla".
+  Commesse cancellate (terza volta): DB pronto per `work-orders`; poi ripetere l'audit (script in scratchpad/audit).
+- "0 errori" (G-20 quater): inventario di 230 campi della scheda commessa legacy (3 agenti) -> nuovo
+  `LegacyWorkOrderDisplayRules` (default delle scelte, Standard ISO multiselect `isos`, PAL tipo_elenco/somministrata,
+  verifiche Stage/Off Site, GOL "0"), stato su flusso della categoria (`WorkflowStates::targetCode/foreignStates`,
+  cache 10 min), campi comuni a categorie senza card (`linksForCards(..., hasOwnProducts)`), date gg/mm/aaaa
+  (`MigrationFieldFormatter`). ATTENZIONE: `LegacyWorkOrderAttributeValues.php` e' stato svuotato per errore da uno
+  script e ricostruito (base HEAD + modifiche di oggi, metodi verificati). DB locale: 17 definizioni attributi
+  riallineate al catalogo legacy (script sync in scratchpad, anche 5 attributi offerta gia' divergenti), link
+  categorie +20, commesse reimportate.
+- Reimport: prima `cost-products` (crea i livelli dipendenti), poi `work-orders`. Le 42 offerte con costi dipendenti
+  gia' importate NON hanno le righe COSTO dipendenti finche' non si reimportano le offerte.
+
 ## FIX: `quote_date` NULL NEL SEED DEMO (2026-10-14) — VERDE, NON COMMITTATO
 
 - Bug: `db:seed --class=DemoDataSeeder` falliva in `DemoQuoteSeeder` con "Column 'quote_date' cannot be null".

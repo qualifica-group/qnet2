@@ -225,13 +225,23 @@ class OpportunitiesSource extends AbstractMigrationSource
     }
 
     /**
+     * A product category not migrated fails the opportunity (user decision
+     * 2026-10-14: no line is dropped silently).
+     *
      * @param  array<string, mixed>  $record
      * @param  array<int, string>  $warnings
      * @return array<int, array{product_category_id: int}>
      */
     private function productLines(array $record, array &$warnings): array
     {
-        $categoryIds = $this->remapLegacyIds(ProductCategory::class, $record['product_category_ids'] ?? [], 'product_category_ids', $warnings);
+        $externalIds = array_values(array_unique(array_filter(array_map(intval(...), (array) ($record['product_category_ids'] ?? [])))));
+        $categoryIds = $this->remapLegacyIds(ProductCategory::class, $externalIds, 'product_category_ids', $warnings);
+
+        if (count($categoryIds) !== count($externalIds)) {
+            $missing = implode(', ', array_diff($externalIds, ProductCategory::query()->whereIn('old_id', $externalIds)->pluck('old_id')->map(intval(...))->all()));
+
+            throw new RuntimeException("Product category (legacy id {$missing}) not migrated; the opportunity is not imported.");
+        }
 
         return array_map(static fn (int $id): array => ['product_category_id' => $id], $categoryIds);
     }
@@ -244,6 +254,10 @@ class OpportunitiesSource extends AbstractMigrationSource
         $registryId = ($externalRegistryId === null || $externalRegistryId === '')
             ? null
             : $this->resolveOldId(Registry::class, $externalRegistryId);
+
+        if ($externalRegistryId === null || $externalRegistryId === '') {
+            throw new RuntimeException('The opportunity has no customer in the legacy; it is not imported.');
+        }
 
         if ($registryId === null) {
             throw new RuntimeException("Registry (legacy id {$externalRegistryId}) not migrated.");
