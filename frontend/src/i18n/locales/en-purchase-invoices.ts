@@ -33,12 +33,8 @@ export const purchaseInvoices = {
   editor: {
     createTitle: 'Register supplier invoice',
     createDescription: 'Enter the header and rows (also from purchase orders), check the due dates and save.',
-    editTitle: 'Edit document {{number}}',
-    editDescription: 'Rows are replaced and due dates recomputed.',
     loading: 'Loading the document',
     loadError: 'Unable to load the document.',
-    paymentsLockedHint:
-      'Payments exist: date, payment method and supplier cannot change and the due dates are rebalanced.',
     receiptNotice: 'Saving as an Invoice will register the receipt of the quantities not yet received on the purchase orders.',
     defaultsHint: 'The header cost type and work order are proposed to new rows; each row keeps its own.',
     sections: {
@@ -113,8 +109,6 @@ export const purchaseInvoices = {
       sequence: 'No.',
       dueDate: 'Due date',
       amount: 'Amount',
-      status: 'Status',
-      paidBadge: 'Paid {{amount}}',
       loading: 'Computing the due dates...',
       empty: 'Due dates appear once date, payment method and rows are filled in.',
       error: 'Unable to compute the due dates.',
@@ -146,7 +140,6 @@ export const purchaseInvoices = {
     },
     messages: {
       created: 'Document registered.',
-      saved: 'Document updated.',
       genericError: 'Unable to save the document.',
     },
     actions: {

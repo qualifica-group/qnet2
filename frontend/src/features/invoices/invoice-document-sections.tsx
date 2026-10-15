@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InvoiceClearCollectionDialog } from '@/features/invoices/invoice-clear-collection-dialog'
 import { InvoiceCollectionDialog } from '@/features/invoices/invoice-collection-dialog'
@@ -10,19 +11,23 @@ interface InvoiceDocumentSectionsProps {
   invoice: InvoiceWithPermissions
   /** Called after a collection is recorded/cleared (the caller refreshes its grid). */
   onChanged?: () => void
+  /** Replaces the read-only lines (the record's in-place lines, spec 0263). */
+  lines?: ReactNode
 }
 
 /** "Righe" + "Scadenze" sub-tables of a document, with the collection actions gated by the show permissions. */
-export function InvoiceDocumentSections({ invoice, onChanged }: InvoiceDocumentSectionsProps) {
+export function InvoiceDocumentSections({ invoice, onChanged, lines }: InvoiceDocumentSectionsProps) {
   const { t } = useTranslation()
   const actions = useInvoiceCollectionActions(onChanged)
 
   return (
     <div className="flex flex-col gap-3">
-      <section className="flex flex-col gap-1.5">
-        <h3 className="text-xs font-semibold text-foreground">{t('invoices.detail.lines')}</h3>
-        <InvoiceLinesTable lines={invoice.lines} />
-      </section>
+      {lines ?? (
+        <section className="flex flex-col gap-1.5">
+          <h3 className="text-xs font-semibold text-foreground">{t('invoices.detail.lines')}</h3>
+          <InvoiceLinesTable lines={invoice.lines} />
+        </section>
+      )}
       <section className="flex flex-col gap-1.5">
         <h3 className="text-xs font-semibold text-foreground">{t('invoices.detail.installments')}</h3>
         <InvoiceInstallmentsTable

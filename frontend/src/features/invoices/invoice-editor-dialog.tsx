@@ -4,37 +4,27 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { InvoiceEditorForm } from '@/features/invoices/invoice-editor-form'
 import { useInvoiceEditorSource } from '@/features/invoices/invoice-editor-source'
 import type { Invoice } from '@/features/invoices/types'
-import type { InvoiceEditorTarget } from '@/features/invoices/use-invoice-editor-form'
 
-export type InvoiceEditorDialogProps = {
+export interface InvoiceEditorDialogProps {
+  /** The proforma request being invoiced. */
+  proformaRequestId: number
   open: boolean
   onClose: () => void
   onSaved: (invoice: Invoice) => void
-} & InvoiceEditorTarget
+}
 
 /**
- * Issue (create from a proforma request) / edit modal of an active invoice
- * (spec 0194). Loads the draft or the document, then mounts the form so its
- * defaults are the loaded data. The form is unmounted on close: reopening
- * always starts from a fresh read.
+ * Issue modal of an active invoice from a proforma request (spec 0194). Loads
+ * the draft, then mounts the form so its defaults are the loaded data. The
+ * form is unmounted on close: reopening always starts from a fresh read. An
+ * issued document is edited on its record (spec 0263).
  */
-export function InvoiceEditorDialog(props: InvoiceEditorDialogProps) {
-  const { open, onClose, onSaved } = props
+export function InvoiceEditorDialog({ proformaRequestId, open, onClose, onSaved }: InvoiceEditorDialogProps) {
   const { t } = useTranslation()
-  const target: InvoiceEditorTarget =
-    props.mode === 'create'
-      ? { mode: 'create', proformaRequestId: props.proformaRequestId }
-      : { mode: 'edit', invoiceId: props.invoiceId }
-  const { source, isLoading, error } = useInvoiceEditorSource({
-    proformaRequestId: target.mode === 'create' && open ? target.proformaRequestId : null,
-    invoiceId: target.mode === 'edit' && open ? target.invoiceId : null,
-  })
+  const { source, isLoading, error } = useInvoiceEditorSource(open ? proformaRequestId : null)
 
-  const title =
-    target.mode === 'create'
-      ? t('invoiceEditor.createTitle', { code: source?.context.workOrderCode ?? '' })
-      : t('invoiceEditor.editTitle', { number: source?.numberLabel ?? '' })
-  const description = target.mode === 'create' ? t('invoiceEditor.createDescription') : t('invoiceEditor.editDescription')
+  const title = t('invoiceEditor.createTitle', { code: source?.context.workOrderCode ?? '' })
+  const description = t('invoiceEditor.createDescription')
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
@@ -44,7 +34,7 @@ export function InvoiceEditorDialog(props: InvoiceEditorDialogProps) {
           <DialogDescription className="text-xs">{description}</DialogDescription>
         </DialogHeader>
         {source ? (
-          <InvoiceEditorForm source={source} target={target} onSaved={onSaved} onCancel={onClose} />
+          <InvoiceEditorForm source={source} proformaRequestId={proformaRequestId} onSaved={onSaved} onCancel={onClose} />
         ) : (
           <div className="grid gap-2 px-4 py-4" aria-busy={isLoading}>
             {error ? (

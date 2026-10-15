@@ -10,23 +10,18 @@ import { PurchaseInvoiceEditorOrdersSection } from '@/features/purchase-invoices
 import type { EditorSource } from '@/features/purchase-invoices/purchase-invoice-editor-source'
 import { PurchaseInvoiceEditorTotals } from '@/features/purchase-invoices/purchase-invoice-editor-totals'
 import type { PurchaseInvoice } from '@/features/purchase-invoices/types'
-import {
-  usePurchaseInvoiceEditorForm,
-  type PurchaseInvoiceEditorTarget,
-} from '@/features/purchase-invoices/use-purchase-invoice-editor-form'
+import { usePurchaseInvoiceEditorForm } from '@/features/purchase-invoices/use-purchase-invoice-editor-form'
 
 interface PurchaseInvoiceEditorFormProps {
   source: EditorSource
-  target: PurchaseInvoiceEditorTarget
   onSaved: (invoice: PurchaseInvoice) => void
   onCancel: () => void
 }
 
 /** The whole dialog body: sections, totals and the footer actions. Mounted once the source is loaded. */
-export function PurchaseInvoiceEditorForm({ source, target, onSaved, onCancel }: PurchaseInvoiceEditorFormProps) {
+export function PurchaseInvoiceEditorForm({ source, onSaved, onCancel }: PurchaseInvoiceEditorFormProps) {
   const { t } = useTranslation()
-  const editor = usePurchaseInvoiceEditorForm({ source, target, onSaved })
-  const isEdit = target.mode === 'edit'
+  const editor = usePurchaseInvoiceEditorForm({ source, onSaved })
   const partiesChosen = !Number.isNaN(editor.supplierId) && !Number.isNaN(editor.companyId)
 
   return (
@@ -38,10 +33,9 @@ export function PurchaseInvoiceEditorForm({ source, target, onSaved, onCancel }:
             source={source}
             companyId={editor.companyId}
             documentType={editor.documentType}
-            isEdit={isEdit}
-            partiesLocked={isEdit || editor.orderIds.length > 0}
+            partiesLocked={editor.orderIds.length > 0}
           />
-          {!isEdit && partiesChosen ? (
+          {partiesChosen ? (
             <PurchaseInvoiceEditorOrdersSection
               supplierId={editor.supplierId}
               companyId={editor.companyId}

@@ -4,6 +4,7 @@ import {
   mapServerErrors,
   newLine,
   NO_ID,
+  toLineWrite,
   amountsOf,
 } from '@/features/purchase-invoices/purchase-invoice-editor-lines'
 import type { PurchaseInvoiceWriteFormValues } from '@/features/purchase-invoices/purchase-invoice-schema'
@@ -64,16 +65,19 @@ describe('purchase invoice editor lines', () => {
     expect(lines.map((line) => line.vat)).toEqual([221, 220, 220])
   })
 
-  it('sends type and number only at creation, nulls empty notes and keeps persisted row ids', () => {
-    const edit = buildWritePayload(formValues(), 'edit')
-    expect(edit).not.toHaveProperty('document_type')
-    expect(edit).not.toHaveProperty('document_number')
-    expect(edit.notes).toBeNull()
-    expect(edit.lines[0]?.id).toBe(9)
+  // Spec 0263 (REQUIREMENT CHANGED): the editor only creates; saved lines travel from the record via toLineWrite.
+  it('sends type and number at creation and nulls empty notes', () => {
+    expect(buildWritePayload(formValues()).notes).toBeNull()
 
-    const create = buildWritePayload(formValues({ document_type: 'invoice', document_number: ' FA-1 ' }), 'create')
+    const create = buildWritePayload(formValues({ document_type: 'invoice', document_number: ' FA-1 ' }))
     expect(create).toMatchObject({ document_type: 'invoice', document_number: 'FA-1' })
-    expect(buildWritePayload(formValues(), 'create').document_number).toBeNull()
+    expect(buildWritePayload(formValues()).document_number).toBeNull()
+  })
+
+  it('keeps the persisted row id and never sends the client-only billable limit', () => {
+    const line = toLineWrite({ ...formValues().lines[0]!, available_quantity: 2 })
+    expect(line.id).toBe(9)
+    expect(line).not.toHaveProperty('available_quantity')
   })
 
   it('maps server keys to row inputs, an invoiced ODA row to its description, and the rest to general messages', () => {

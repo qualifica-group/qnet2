@@ -74,7 +74,7 @@ function renderDialog(onSaved = vi.fn()) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <InvoiceEditorDialog mode="create" proformaRequestId={7} open onClose={vi.fn()} onSaved={onSaved} />
+      <InvoiceEditorDialog proformaRequestId={7} open onClose={vi.fn()} onSaved={onSaved} />
     </QueryClientProvider>,
   )
   return onSaved

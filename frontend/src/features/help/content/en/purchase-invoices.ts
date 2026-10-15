@@ -31,7 +31,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Action', 'What it does'],
           rows: [
-            ['**View**', 'Opens the document sheet, where everything is edited: every field has the **pencil** (press it, change, **Save**; only that field is saved). In **Header** you change date, payment, bank, sites, default cost type and work order (proformas only; with payments date and payment are locked; supplier and company do not change). In **Registration and notes** you enter the supplier **number** and the notes, editable after registration too. **Edit lines** opens the lines editor (proformas only).'],
+            ['**View**', 'Opens the document sheet, where everything is edited: every field has the **pencil** (press it, change, **Save**; only that field is saved). In **Header** you change date, payment, bank, sites, default cost type and work order (proformas only; with payments date and payment are locked; supplier and company do not change). In **Registration and notes** you enter the supplier **number** and the notes, editable after registration too. In the **Lines** section (proformas only) each line has the **pencil** (it opens in place, change it and press **Save**) and the **trash** (asks for confirmation; not on the last line); **Add line** offers a catalog or free-text line that opens in edit mode. The installments are recalculated on save.'],
             ['**Document date** (cell)', 'On proformas without payments the date can also be changed directly in the list, with a double-click.'],
             ['**Delete**', 'Deletes the document after confirmation (proformas without payments only).'],
             ['**Activity**', 'Change history of the document.'],
@@ -143,7 +143,7 @@ const guide: HelpGuide = {
           rows: [
             ['See the list and the sheet', 'View passive invoices'],
             ['**New passive invoice**, **Register invoice** from the ODA', 'Create passive invoices'],
-            ['Editing the sheet, **Edit lines**', 'Edit passive invoices'],
+            ['Editing the sheet and its lines', 'Edit passive invoices'],
             ['**Delete**', 'Delete passive invoices'],
             ['Change or clear the number and date of an invoice', 'Correct/undo registration'],
             ['**Export**, **Activity**', 'Export and view activity'],

@@ -140,7 +140,6 @@ export function PurchaseOrderFormActions({ order, isDirty = false, children }: P
       {dialog === 'history' ? <PurchaseOrderMergeLogsDialog order={order} onOpenChange={closeDialog} /> : null}
       {dialog === 'invoice' ? (
         <PurchaseInvoiceEditorDialog
-          mode="create"
           purchaseOrderIds={[order.id]}
           open
           onOpenChange={closeDialog}

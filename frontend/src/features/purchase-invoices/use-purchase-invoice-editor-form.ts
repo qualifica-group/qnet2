@@ -1,16 +1,14 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import axios from 'axios'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import type { VatRateRef } from '@/features/invoices/types'
+import { useVatRefs } from '@/features/invoices/use-vat-refs'
 import {
-  buildWritePayload,
-  mapServerErrors,
-  newLine,
   amountsOf,
-  type VatRefs,
+  applyPurchaseInvoiceServerErrors,
+  buildWritePayload,
+  newLine,
 } from '@/features/purchase-invoices/purchase-invoice-editor-lines'
 import type { EditorSource } from '@/features/purchase-invoices/purchase-invoice-editor-source'
 import {
@@ -21,35 +19,21 @@ import {
 import type { PurchaseInvoice } from '@/features/purchase-invoices/types'
 import { useAddOrderToInvoice } from '@/features/purchase-invoices/use-purchase-invoice-editor-orders'
 import { usePurchaseInvoiceEditorPreview } from '@/features/purchase-invoices/use-purchase-invoice-editor-preview'
-import {
-  useCreatePurchaseInvoice,
-  useUpdatePurchaseInvoice,
-} from '@/features/purchase-invoices/use-purchase-invoice-editor-queries'
-
-export type PurchaseInvoiceEditorTarget = { mode: 'create' } | { mode: 'edit'; invoiceId: number }
+import { useCreatePurchaseInvoice } from '@/features/purchase-invoices/use-purchase-invoice-editor-queries'
+import { serverMessage } from '@/features/purchase-requests/purchase-request-server-errors'
 
 interface UsePurchaseInvoiceEditorFormArgs {
   source: EditorSource
-  target: PurchaseInvoiceEditorTarget
   onSaved: (invoice: PurchaseInvoice) => void
 }
 
-const UNPROCESSABLE_STATUS = 422
-
-/** The envelope's own message of a rejected save, when it carries one. */
-function serverMessage(error: unknown): string | null {
-  const message = axios.isAxiosError(error)
-    ? (error.response?.data as { message?: unknown } | undefined)?.message
-    : undefined
-  return typeof message === 'string' && message !== '' ? message : null
-}
-
 /**
- * State and actions of the create/edit editor: RHF + Zod form, the document
- * rows (field array), the live totals/installment preview, ODA linking and
- * the save with 422 errors put on their inputs.
+ * State and actions of the create editor: RHF + Zod form, the document rows
+ * (field array), the live totals/installment preview, ODA linking and the
+ * save with 422 errors put on their inputs. A saved document is edited in
+ * place on its record (spec 0263).
  */
-export function usePurchaseInvoiceEditorForm({ source, target, onSaved }: UsePurchaseInvoiceEditorFormArgs) {
+export function usePurchaseInvoiceEditorForm({ source, onSaved }: UsePurchaseInvoiceEditorFormArgs) {
   const { t } = useTranslation()
   const schema = useMemo(() => buildPurchaseInvoiceWriteSchema(t), [t])
   const form = useForm<PurchaseInvoiceWriteFormValues>({
@@ -60,13 +44,8 @@ export function usePurchaseInvoiceEditorForm({ source, target, onSaved }: UsePur
   const lineArray = useFieldArray({ control, name: 'lines' })
   const { append } = lineArray
 
-  // UI cache of the percentage per VAT id: the pickers expose ids, the preview needs rates.
-  const [vatRefs, setVatRefs] = useState<VatRefs>(source.vatRefs)
+  const { vatRefs, rememberVat } = useVatRefs(source.vatRefs)
   const [generalErrors, setGeneralErrors] = useState<string[]>([])
-  const rememberVat = useCallback((ref: VatRateRef | null) => {
-    if (ref === null) return
-    setVatRefs((current) => (current[ref.id] ? current : { ...current, [ref.id]: ref }))
-  }, [])
 
   const lines = useWatch({ control, name: 'lines' })
   const documentDate = useWatch({ control, name: 'document_date' })
@@ -78,13 +57,7 @@ export function usePurchaseInvoiceEditorForm({ source, target, onSaved }: UsePur
   const hasOrderLines = lines.some((line) => line.purchase_order_line_id != null)
   const amounts = useMemo(() => amountsOf(lines, vatRefs), [lines, vatRefs])
   const totals = amounts.totals
-  const isEdit = target.mode === 'edit'
-  const preview = usePurchaseInvoiceEditorPreview({
-    documentDate,
-    paymentMethodId,
-    totals,
-    invoiceId: target.mode === 'edit' ? target.invoiceId : null,
-  })
+  const preview = usePurchaseInvoiceEditorPreview({ documentDate, paymentMethodId, totals })
 
   /** Appends a catalog or free row; the header cost type and work order are only proposed. */
   const addLine = useCallback(
@@ -101,29 +74,22 @@ export function usePurchaseInvoiceEditorForm({ source, target, onSaved }: UsePur
 
   const orders = useAddOrderToInvoice({ form, lineArray, rememberVat })
 
-  const create = useCreatePurchaseInvoice()
-  const update = useUpdatePurchaseInvoice(target.mode === 'edit' ? target.invoiceId : 0)
-  const mutation = isEdit ? update : create
+  const mutation = useCreatePurchaseInvoice()
 
   const submit = handleSubmit((values) => {
     setGeneralErrors([])
-    mutation.mutate(buildWritePayload(values, target.mode), {
+    mutation.mutate(buildWritePayload(values), {
       onSuccess: (invoice) => {
-        toast.success(t(isEdit ? 'purchaseInvoices.editor.messages.saved' : 'purchaseInvoices.editor.messages.created'))
+        toast.success(t('purchaseInvoices.editor.messages.created'))
         onSaved(invoice)
       },
       onError: (error) => {
-        if (axios.isAxiosError(error) && error.response?.status === UNPROCESSABLE_STATUS) {
-          const { fields, general } = mapServerErrors(
-            (error.response.data as { errors?: Record<string, string[]> } | undefined)?.errors ?? {},
-          )
-          fields.forEach(({ path, message }) => setError(path, { message }))
-          setGeneralErrors(general)
-          if (fields.length > 0 || general.length > 0) {
-            return
-          }
+        const general = applyPurchaseInvoiceServerErrors(error, setError)
+        if (general === null) {
+          toast.error(serverMessage(error) ?? t('purchaseInvoices.editor.messages.genericError'))
+          return
         }
-        toast.error(serverMessage(error) ?? t('purchaseInvoices.editor.messages.genericError'))
+        setGeneralErrors(general)
       },
     })
   })

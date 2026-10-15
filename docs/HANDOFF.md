@@ -3,7 +3,23 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0262 — Ciclo passivo: celle e scheda fattura passiva modificabili — VERDE, NON COMMITTATO (2026-10-14)
+## Spec 0263 — Righe fattura attiva e passiva modificabili nella scheda — VERDE, NON COMMITTATO (2026-10-15)
+
+- Spec `docs/specs/0263-invoice-lines-inline-editing.xml` (D-1..D-4). Richiesta utente: la finestra "Modifica
+  documento" non aveva il nuovo stile; scelte: righe nella scheda, fatture attive e passive. Nessuna modifica backend.
+- Kit: `useRoutedRecordInlineEdit` gestisce anche le righe (`lines` route, `startNewLine(append)`, `removeLine`);
+  `applyServerErrors` ora ritorna `string[] | null` (messaggi non mappati). `record-lines.tsx` (`LineEditorTableRow`,
+  `LineRowActions`, `RecordLinesSection`), `use-confirm-line-removal.ts`, `editingLineIndex` in
+  use-lines-record-inline-edit. i18n `common.inlineEdit.lines.*`. `features/invoices/use-vat-refs.ts` condiviso.
+- Schede: `InvoiceLinesRecord` / `PurchaseInvoiceLinesRecord` sulle tabelle righe esistenti (prop `editing`), riga
+  dell'editor riusata in place (`footer`/`className`, `onRemove` opzionale; riga attiva generica sul form). Salva =
+  PATCH con l'intero `lines`. Pulsante "Modifica righe" rimosso.
+- Editor solo creazione: via modalita' edit, PUT client (`updateInvoice`, `updatePurchaseInvoice` + hook), anteprima
+  con `invoice_id`/`purchase_invoice_id` (rimodulazione) e relative chiavi i18n; `sourceFromInvoice` -> `valuesFromInvoice`;
+  `PurchaseInvoiceActionDialogs` rimosso (resta il delete dialog). Test `invoice-editor-rebalance` eliminato.
+- Guide IT/EN invoices e purchase-invoices aggiornate. Manuale Claude Docs da aggiornare a mano.
+
+## Spec 0262 — Ciclo passivo: celle e scheda fattura passiva modificabili — VERDE, COMMITTATO 825fd7c4 (2026-10-14)
 
 - Spec `docs/specs/0262-payables-inline-editing.xml` (D-1..D-5). Menu Passiva = solo fatture e scadenze passive.
 - BE: `PATCH /purchase-invoices/{purchaseInvoice}` (match put/patch): `PurchaseInvoiceWriteRequest::prepareForValidation`

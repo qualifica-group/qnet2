@@ -29,8 +29,7 @@ interface PurchaseInvoiceEditorHeaderSectionProps {
   source: EditorSource
   companyId: number
   documentType: PurchaseInvoiceWriteFormValues['document_type']
-  isEdit: boolean
-  /** Supplier and company are fixed once the document exists or ODAs are linked. */
+  /** Supplier and company are fixed once ODAs are linked. */
   partiesLocked: boolean
 }
 
@@ -40,13 +39,11 @@ export function PurchaseInvoiceEditorHeaderSection({
   source,
   companyId,
   documentType,
-  isEdit,
   partiesLocked,
 }: PurchaseInvoiceEditorHeaderSectionProps) {
   const { t } = useTranslation()
   const { control, setValue } = form
   const label = (key: string) => t(`purchaseInvoices.editor.fields.${key}`)
-  const paymentsLocked = source.hasPayments
   const companyParams = Number.isNaN(companyId) ? undefined : { company_id: companyId }
 
   return (
@@ -54,11 +51,6 @@ export function PurchaseInvoiceEditorHeaderSection({
       <h3 id="purchase-invoice-editor-header" className="text-sm font-semibold">
         {t('purchaseInvoices.editor.sections.header')}
       </h3>
-      {paymentsLocked ? (
-        <p className="rounded-md border bg-surface px-3 py-2 text-xs text-muted-foreground">
-          {t('purchaseInvoices.editor.paymentsLockedHint')}
-        </p>
-      ) : null}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <FormField
           control={control}
@@ -68,7 +60,7 @@ export function PurchaseInvoiceEditorHeaderSection({
               <FormLabel required className="text-xs">
                 {label('documentType')}
               </FormLabel>
-              <Select value={field.value} onValueChange={field.onChange} disabled={isEdit}>
+              <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl>
                   <SelectTrigger className="w-full">
                     <SelectValue />
@@ -86,7 +78,7 @@ export function PurchaseInvoiceEditorHeaderSection({
             </FormItem>
           )}
         />
-        {!isEdit && documentType === 'invoice' ? (
+        {documentType === 'invoice' ? (
           <FormField
             control={control}
             name="document_number"
@@ -112,7 +104,7 @@ export function PurchaseInvoiceEditorHeaderSection({
                 {label('documentDate')}
               </FormLabel>
               <FormControl>
-                <Input type="date" {...field} disabled={paymentsLocked} />
+                <Input type="date" {...field} />
               </FormControl>
               <FormMessage className="text-xs" />
             </FormItem>
@@ -127,7 +119,7 @@ export function PurchaseInvoiceEditorHeaderSection({
           selected={source.supplier}
           params={SUPPLIER_PARAMS}
           required
-          disabled={partiesLocked || paymentsLocked}
+          disabled={partiesLocked}
         />
         <PurchaseInvoiceEditorRelationField
           control={control}
@@ -151,7 +143,6 @@ export function PurchaseInvoiceEditorHeaderSection({
           placeholder={label('selectPaymentMethod')}
           selected={source.paymentMethod}
           required
-          disabled={paymentsLocked}
         />
         <PurchaseInvoiceEditorRelationField
           control={control}

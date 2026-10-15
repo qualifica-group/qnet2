@@ -8,7 +8,7 @@ import type {
   ModuleRegistryEntry,
 } from '@/features/modules/types'
 import { PURCHASE_INVOICES_DOMAIN } from '@/features/purchase-invoices/api'
-import { PurchaseInvoiceActionDialogs } from '@/features/purchase-invoices/purchase-invoice-action-dialogs'
+import { PurchaseInvoiceDeleteDialog } from '@/features/purchase-invoices/purchase-invoice-delete-dialog'
 import { PurchaseInvoiceDetailView } from '@/features/purchase-invoices/purchase-invoice-detail'
 import { PurchaseInvoiceEditorDialog } from '@/features/purchase-invoices/purchase-invoice-editor-dialog'
 import { usePurchaseInvoiceRowActions } from '@/features/purchase-invoices/use-purchase-invoice-row-actions'
@@ -17,13 +17,12 @@ const BASE_PATH = `/${PURCHASE_INVOICES_DOMAIN}`
 
 /**
  * Content-only detail of a passive document for the module registry (spec 0042):
- * it is its own edit surface (fields in place, lines editor and delete dialogs
- * here), so the generic hosts neither add an Edit button nor an edit route.
+ * it is its own edit surface (fields and lines in place, delete dialog here), so the generic hosts neither add an Edit button nor an edit route.
  */
 export function PurchaseInvoiceDetailScreen({ id, onChanged, onSaved }: ModuleDetailScreenProps) {
   const navigate = useNavigate()
   const actions = usePurchaseInvoiceRowActions()
-  const { openEdit, openDelete } = actions
+  const { openDelete } = actions
 
   const handleDeleted = () => {
     onChanged?.()
@@ -39,32 +38,23 @@ export function PurchaseInvoiceDetailScreen({ id, onChanged, onSaved }: ModuleDe
     <>
       <PurchaseInvoiceDetailView
         invoiceId={id}
-        onEdit={() => openEdit(id)}
         onDelete={(numberLabel) => openDelete({ id, numberLabel })}
         onChanged={onChanged}
       />
-      <PurchaseInvoiceActionDialogs
-        editId={actions.editId}
-        deleteTarget={actions.deleteTarget}
-        onCloseEdit={actions.closeEdit}
-        onCloseDelete={actions.closeDelete}
-        onSaved={() => {
-          actions.closeEdit()
-          onChanged?.()
-        }}
-        onDeleted={handleDeleted}
-      />
+      <PurchaseInvoiceDeleteDialog target={actions.deleteTarget} onClose={actions.closeDelete} onDeleted={handleDeleted} />
     </>
   )
 }
 
-/** Deep-link form host: the editor is a dialog, so the screen only mounts it open and reports save/cancel. */
-export function PurchaseInvoiceFormScreen({ mode, onSuccess, onCancel }: ModuleFormScreenProps) {
+/**
+ * Deep-link create host: the editor is a dialog, so the screen only mounts it open and reports save/cancel.
+ * No edit route is generated: a saved document is edited on its record (spec 0263).
+ */
+export function PurchaseInvoiceFormScreen({ onSuccess, onCancel }: ModuleFormScreenProps) {
   const saved = useRef(false)
 
   return (
     <PurchaseInvoiceEditorDialog
-      {...(mode.type === 'edit' ? { mode: 'edit' as const, invoiceId: mode.id } : { mode: 'create' as const })}
       open
       onOpenChange={(open) => {
         if (!open && !saved.current) {

@@ -2,6 +2,7 @@ import { forwardRef, useImperativeHandle } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import { PurchaseInvoicesTable } from '@/features/purchase-invoices/purchase-invoices-table'
@@ -31,8 +32,11 @@ vi.mock('@/features/activity-log/resource-activity-dialog', () => ({
     row ? <div role="dialog" aria-label="Activity">{`activity ${row.id}`}</div> : null,
 }))
 vi.mock('@/features/purchase-invoices/purchase-invoice-editor-dialog', () => ({
-  PurchaseInvoiceEditorDialog: ({ mode, invoiceId }: { mode: string; invoiceId?: number }) => (
-    <div role="dialog" aria-label="Invoice editor">{`${mode}/${invoiceId ?? 'new'}`}</div>
+  // Spec 0263 (REQUIREMENT CHANGED): the editor only creates, it has no mode any more.
+  PurchaseInvoiceEditorDialog: () => (
+    <div role="dialog" aria-label="Invoice editor">
+      new
+    </div>
   ),
 }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
@@ -66,7 +70,9 @@ function renderTable() {
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <PurchaseInvoicesTable />
+        <ConfirmDialogProvider>
+          <PurchaseInvoicesTable />
+        </ConfirmDialogProvider>
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -135,6 +141,6 @@ describe('PurchaseInvoicesTable (spec 0250 AC-013)', () => {
     renderTable()
     fireEvent.click(screen.getByRole('button', { name: 'New passive invoice' }))
 
-    expect(screen.getByRole('dialog', { name: 'Invoice editor' })).toHaveTextContent('create/new')
+    expect(screen.getByRole('dialog', { name: 'Invoice editor' })).toHaveTextContent('new')
   })
 })

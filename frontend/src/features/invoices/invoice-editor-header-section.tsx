@@ -17,14 +17,10 @@ interface InvoiceEditorHeaderSectionProps {
   form: UseFormReturn<InvoiceWriteFormValues>
   source: EditorSource
   companyId: number
-  /** The issuing company is fixed once the document exists (it owns the numbering). */
-  companyLocked: boolean
-  /** Collected installments exist: date, customer and payment method cannot change (spec 0196, D-1). */
-  collectionsLocked: boolean
 }
 
 /** Testata: date, issuer, customer, payment, bank, tag and notes. */
-export function InvoiceEditorHeaderSection({ form, source, companyId, companyLocked, collectionsLocked }: InvoiceEditorHeaderSectionProps) {
+export function InvoiceEditorHeaderSection({ form, source, companyId }: InvoiceEditorHeaderSectionProps) {
   const { t } = useTranslation()
   const { control, setValue } = form
 
@@ -33,11 +29,6 @@ export function InvoiceEditorHeaderSection({ form, source, companyId, companyLoc
       <h3 id="invoice-editor-header" className="text-sm font-semibold">
         {t('invoiceEditor.sections.header')}
       </h3>
-      {collectionsLocked ? (
-        <p className="rounded-md border bg-surface px-3 py-2 text-xs text-muted-foreground">
-          {t('invoices.rebalance.lockedHint')}
-        </p>
-      ) : null}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <FormField
           control={control}
@@ -48,7 +39,7 @@ export function InvoiceEditorHeaderSection({ form, source, companyId, companyLoc
                 {t('invoiceEditor.fields.documentDate')}
               </FormLabel>
               <FormControl>
-                <Input type="date" {...field} disabled={collectionsLocked} />
+                <Input type="date" {...field} />
               </FormControl>
               <FormMessage className="text-xs" />
             </FormItem>
@@ -62,7 +53,6 @@ export function InvoiceEditorHeaderSection({ form, source, companyId, companyLoc
           placeholder={t('invoiceEditor.fields.selectCompany')}
           selected={source.company}
           required
-          disabled={companyLocked}
           onPicked={() => setValue('financial_account_id', null)}
         />
         <InvoiceEditorRelationField
@@ -73,7 +63,6 @@ export function InvoiceEditorHeaderSection({ form, source, companyId, companyLoc
           placeholder={t('invoiceEditor.fields.selectCustomer')}
           selected={source.customer}
           required
-          disabled={collectionsLocked}
         />
         <InvoiceEditorRelationField
           control={control}
@@ -83,7 +72,6 @@ export function InvoiceEditorHeaderSection({ form, source, companyId, companyLoc
           placeholder={t('invoiceEditor.fields.selectPaymentMethod')}
           selected={source.paymentMethod}
           required
-          disabled={collectionsLocked}
         />
         <InvoiceEditorBankField
           control={control}
@@ -92,7 +80,7 @@ export function InvoiceEditorHeaderSection({ form, source, companyId, companyLoc
           selected={source.financialAccount}
         />
         <InvoiceLayoutField control={control} selected={source.layout} />
-        <InvoiceTagField control={control} selected={source.tag} labelClassName="text-xs" />
+        <InvoiceTagField control={control} selected={null} labelClassName="text-xs" />
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         {(['notes', 'internal_note'] as const).map((name) => (

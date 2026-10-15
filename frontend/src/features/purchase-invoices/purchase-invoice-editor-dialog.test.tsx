@@ -101,7 +101,7 @@ function renderDialog(props: Partial<React.ComponentProps<typeof PurchaseInvoice
   const onSaved = vi.fn()
   render(
     <QueryClientProvider client={client}>
-      <PurchaseInvoiceEditorDialog mode="create" open onOpenChange={vi.fn()} onSaved={onSaved} {...props} />
+      <PurchaseInvoiceEditorDialog open onOpenChange={vi.fn()} onSaved={onSaved} {...props} />
     </QueryClientProvider>,
   )
   return onSaved

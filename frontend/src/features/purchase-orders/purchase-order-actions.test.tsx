@@ -47,8 +47,9 @@ vi.mock('@/features/auth/use-abilities', () => ({
 }))
 
 vi.mock('@/features/purchase-invoices/purchase-invoice-editor-dialog', () => ({
-  PurchaseInvoiceEditorDialog: ({ mode, purchaseOrderIds }: { mode: string; purchaseOrderIds?: number[] }) => (
-    <div role="dialog" aria-label="Invoice editor">{`${mode}/${(purchaseOrderIds ?? []).join(',')}`}</div>
+  // Spec 0263 (REQUIREMENT CHANGED): the editor only creates, it has no mode any more.
+  PurchaseInvoiceEditorDialog: ({ purchaseOrderIds }: { purchaseOrderIds?: number[] }) => (
+    <div role="dialog" aria-label="Invoice editor">{`orders/${(purchaseOrderIds ?? []).join(',')}`}</div>
   ),
 }))
 
@@ -174,7 +175,7 @@ describe('PurchaseOrderFormActions - Register invoice (spec 0250 AC-013)', () =>
 
       fireEvent.click(screen.getByRole('button', { name: 'Register invoice' }))
 
-      expect(screen.getByRole('dialog', { name: 'Invoice editor' })).toHaveTextContent('create/5')
+      expect(screen.getByRole('dialog', { name: 'Invoice editor' })).toHaveTextContent('orders/5')
     },
   )
 

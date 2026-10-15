@@ -33,7 +33,6 @@ export const purchaseInvoiceViews = {
     title: 'Invoice {{number}}',
     titleProforma: 'Passive proforma',
     loadError: 'Unable to load the document. Try again.',
-    editLines: 'Edit lines',
     delete: 'Delete',
     header: 'Header',
     totals: 'Totals',
@@ -64,6 +63,7 @@ export const purchaseInvoiceViews = {
         net_amount: 'Net amount',
         vat_amount: 'VAT',
         total_amount: 'Total',
+        actions: 'Actions',
       },
     },
     installments: {

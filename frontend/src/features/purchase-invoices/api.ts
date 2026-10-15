@@ -40,16 +40,7 @@ export async function createPurchaseInvoice(payload: PurchaseInvoiceWritePayload
   return { ...data.data, permissions: data.permissions }
 }
 
-/** Full update (PUT): 409 on a registered invoice; rows replaced, installments recomputed or rebalanced. */
-export async function updatePurchaseInvoice(
-  id: number,
-  payload: PurchaseInvoiceWritePayload,
-): Promise<PurchaseInvoice> {
-  const { data } = await apiClient.put<DocumentEnvelope>(`${BASE_PATH}/${id}`, payload)
-  return { ...data.data, permissions: data.permissions }
-}
-
-/** Partial edit (PATCH, spec 0262): the keys not sent keep their stored value; 409 on a registered invoice. */
+/** Partial edit (PATCH, specs 0262/0263): the keys not sent keep their stored value; 409 on a registered invoice. */
 export async function patchPurchaseInvoice(
   id: number,
   payload: Partial<PurchaseInvoiceWritePayload>,

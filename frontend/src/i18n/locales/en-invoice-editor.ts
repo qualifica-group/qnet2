@@ -6,8 +6,6 @@
 export const invoiceEditor = {
   createTitle: 'Proforma issue — Work order #{{code}}',
   createDescription: 'Check lines, payment and due dates, then issue the document.',
-  editTitle: 'Edit document {{number}}',
-  editDescription: 'Lines are replaced and due dates recomputed.',
   rowAction: {
     alreadyIssued: 'Document already issued',
   },
@@ -95,13 +93,10 @@ export const invoiceEditor = {
   actions: {
     issue: 'Issue',
     issuing: 'Issuing…',
-    save: 'Save',
-    saving: 'Saving…',
     cancel: 'Cancel',
   },
   messages: {
     issued: 'Document {{number}} issued.',
-    saved: 'Document updated.',
     genericError: 'Something went wrong. Try again.',
     conflictInvoiced: 'This proforma request has already been invoiced.',
     totalNotPositive: 'The document total must be greater than zero.',

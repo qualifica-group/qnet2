@@ -16,7 +16,6 @@ import {
   invoiceKeys,
   previewInstallments,
   recordCollection,
-  updateInvoice,
 } from '@/features/invoices/api'
 import type {
   Invoice,
@@ -85,16 +84,6 @@ export function useCreateInvoice(
       void queryClient.invalidateQueries({ queryKey: invoiceKeys.all })
       void queryClient.invalidateQueries({ queryKey: [PROFORMA_REQUESTS_DOMAIN] })
     },
-  })
-}
-
-export function useUpdateInvoice(
-  id: number,
-): UseMutationResult<InvoiceWithPermissions, AxiosError, InvoiceWritePayload> {
-  const queryClient = useQueryClient()
-  return useMutation<InvoiceWithPermissions, AxiosError, InvoiceWritePayload>({
-    mutationFn: (payload) => updateInvoice(id, payload),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: invoiceKeys.all }),
   })
 }
 

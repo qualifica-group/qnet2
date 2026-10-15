@@ -10,13 +10,10 @@ import {
   type VatRefs,
 } from '@/features/purchase-invoices/purchase-invoice-editor-lines'
 import type { PurchaseInvoiceWriteFormValues } from '@/features/purchase-invoices/purchase-invoice-schema'
-import {
-  usePurchaseInvoice,
-  usePurchaseInvoiceDraft,
-} from '@/features/purchase-invoices/use-purchase-invoice-editor-queries'
+import { usePurchaseInvoiceDraft } from '@/features/purchase-invoices/use-purchase-invoice-editor-queries'
 import type { PurchaseInvoice, PurchaseInvoiceDraft } from '@/features/purchase-invoices/types'
 
-/** Everything the form needs, normalized from a blank form, an ODA draft or the edited document. */
+/** Everything the create form needs, normalized from a blank form or an ODA draft. */
 export interface EditorSource {
   initialValues: PurchaseInvoiceWriteFormValues
   vatRefs: VatRefs
@@ -28,10 +25,6 @@ export interface EditorSource {
   operationalSite: NamedRef | null
   costType: NamedRef | null
   workOrder: NamedRef | null
-  /** Payments exist: date, payment method and supplier are frozen by the server (spec 0250 D-2). */
-  hasPayments: boolean
-  /** Supplier document number (edit title). */
-  numberLabel: string | null
 }
 
 const NO_LINES: PurchaseInvoiceWriteFormValues['lines'] = []
@@ -72,8 +65,6 @@ export function blankSource(): EditorSource {
     operationalSite: null,
     costType: null,
     workOrder: null,
-    hasPayments: false,
-    numberLabel: null,
   }
 }
 
@@ -105,35 +96,23 @@ export function sourceFromDraft(draft: PurchaseInvoiceDraft): EditorSource {
   }
 }
 
-export function sourceFromInvoice(invoice: PurchaseInvoice): EditorSource {
+/** The saved document as form values: what its record edits in place (spec 0263). */
+export function valuesFromInvoice(invoice: PurchaseInvoice): PurchaseInvoiceWriteFormValues {
   return {
-    initialValues: {
-      document_type: invoice.document_type,
-      document_number: invoice.document_number,
-      document_date: invoice.document_date,
-      company_id: invoice.company.id,
-      supplier_id: invoice.supplier.id,
-      payment_method_id: invoice.payment_method.id,
-      financial_account_id: idOf(invoice.financial_account),
-      company_site_id: idOf(invoice.company_site),
-      operational_site_id: idOf(invoice.operational_site),
-      cost_type_id: idOf(invoice.cost_type),
-      work_order_id: idOf(invoice.work_order),
-      notes: invoice.notes,
-      purchase_order_ids: invoice.purchase_orders.map((order) => order.id),
-      lines: invoice.lines.map(lineFromInvoice),
-    },
-    vatRefs: vatRefsOf(invoice.lines),
-    company: invoice.company,
-    supplier: invoice.supplier,
-    paymentMethod: invoice.payment_method,
-    financialAccount: invoice.financial_account,
-    companySite: invoice.company_site,
-    operationalSite: invoice.operational_site,
-    costType: invoice.cost_type,
-    workOrder: workOrderRef(invoice.work_order),
-    hasPayments: invoice.has_payments,
-    numberLabel: invoice.document_number,
+    document_type: invoice.document_type,
+    document_number: invoice.document_number,
+    document_date: invoice.document_date,
+    company_id: invoice.company.id,
+    supplier_id: invoice.supplier.id,
+    payment_method_id: invoice.payment_method.id,
+    financial_account_id: idOf(invoice.financial_account),
+    company_site_id: idOf(invoice.company_site),
+    operational_site_id: idOf(invoice.operational_site),
+    cost_type_id: idOf(invoice.cost_type),
+    work_order_id: idOf(invoice.work_order),
+    notes: invoice.notes,
+    purchase_order_ids: invoice.purchase_orders.map((order) => order.id),
+    lines: invoice.lines.map(lineFromInvoice),
   }
 }
 
@@ -143,23 +122,13 @@ export interface EditorSourceState {
   error: AxiosError | null
 }
 
-interface EditorSourceTarget {
-  invoiceId: number | null
-  orderIds: readonly number[] | null
-}
+/** Loads the ODA draft of the orders to register; a plain create resolves immediately to the blank form. */
+export function usePurchaseInvoiceEditorSource(orderIds: readonly number[] | null): EditorSourceState {
+  const draft = usePurchaseInvoiceDraft(orderIds)
 
-/** Loads the document (edit) or the ODA draft; a plain create resolves immediately to the blank form. */
-export function usePurchaseInvoiceEditorSource({ invoiceId, orderIds }: EditorSourceTarget): EditorSourceState {
-  const invoice = usePurchaseInvoice(invoiceId)
-  const draft = usePurchaseInvoiceDraft(invoiceId === null ? orderIds : null)
-
-  const fromInvoice = useMemo(() => (invoice.data ? sourceFromInvoice(invoice.data) : null), [invoice.data])
   const fromDraft = useMemo(() => (draft.data ? sourceFromDraft(draft.data) : null), [draft.data])
   const blank = useMemo(() => blankSource(), [])
 
-  if (invoiceId !== null) {
-    return { source: fromInvoice, isLoading: invoice.isPending, error: invoice.error }
-  }
   if (orderIds !== null && orderIds.length > 0) {
     return { source: fromDraft, isLoading: draft.isPending, error: draft.error }
   }

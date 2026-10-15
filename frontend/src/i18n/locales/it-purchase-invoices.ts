@@ -33,12 +33,8 @@ export const purchaseInvoices = {
   editor: {
     createTitle: 'Registra fattura passiva',
     createDescription: 'Inserisci testata e righe (anche da ODA), controlla le scadenze e salva.',
-    editTitle: 'Modifica documento {{number}}',
-    editDescription: 'Le righe vengono sostituite e le scadenze ricalcolate.',
     loading: 'Caricamento del documento in corso',
     loadError: 'Impossibile caricare il documento.',
-    paymentsLockedHint:
-      'Sono presenti pagamenti: data, modalità di pagamento e fornitore non sono modificabili e le scadenze vengono ribilanciate.',
     receiptNotice: 'Salvando come Fattura verrà registrata la ricezione delle quantità non ancora ricevute sugli ODA.',
     defaultsHint: 'Tipo di costo e commessa di testata sono proposti alle nuove righe; ogni riga ha i propri.',
     sections: {
@@ -113,8 +109,6 @@ export const purchaseInvoices = {
       sequence: 'N.',
       dueDate: 'Scadenza',
       amount: 'Importo',
-      status: 'Stato',
-      paidBadge: 'Pagata {{amount}}',
       loading: 'Calcolo delle scadenze...',
       empty: 'Le scadenze compaiono quando data, modalità di pagamento e righe sono compilate.',
       error: 'Impossibile calcolare le scadenze.',
@@ -146,7 +140,6 @@ export const purchaseInvoices = {
     },
     messages: {
       created: 'Documento registrato.',
-      saved: 'Documento aggiornato.',
       genericError: 'Impossibile salvare il documento.',
     },
     actions: {

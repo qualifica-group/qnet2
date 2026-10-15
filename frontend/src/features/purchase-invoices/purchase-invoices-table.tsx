@@ -8,7 +8,7 @@ import { ResourceActivityDialog } from '@/features/activity-log/resource-activit
 import { Can } from '@/features/auth/can'
 import { PURCHASE_INVOICES_DOMAIN } from '@/features/purchase-invoices/api'
 import { purchaseInvoiceColumnRenderers } from '@/features/purchase-invoices/column-renderers'
-import { PurchaseInvoiceActionDialogs } from '@/features/purchase-invoices/purchase-invoice-action-dialogs'
+import { PurchaseInvoiceDeleteDialog } from '@/features/purchase-invoices/purchase-invoice-delete-dialog'
 import { PurchaseInvoiceDetailPanel } from '@/features/purchase-invoices/purchase-invoice-detail-panel'
 import { PurchaseInvoiceDetailSheet } from '@/features/purchase-invoices/purchase-invoice-detail-sheet'
 import { PurchaseInvoiceEditorDialog } from '@/features/purchase-invoices/purchase-invoice-editor-dialog'
@@ -39,12 +39,6 @@ export function PurchaseInvoicesTable() {
   // The editor and delete mutations already invalidate every document query: only the SSRM cache needs a purge.
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
 
-  const { closeEdit } = actions
-  const handleEdited = useCallback(() => {
-    closeEdit()
-    refreshGrid()
-  }, [closeEdit, refreshGrid])
-
   return (
     <div className="flex flex-1 flex-col gap-4">
       <PageHeader
@@ -70,17 +64,9 @@ export function PurchaseInvoicesTable() {
       />
 
       <PurchaseInvoiceDetailSheet invoiceId={actions.viewId} onClose={actions.closeView} onChanged={refreshGrid} />
-      <PurchaseInvoiceActionDialogs
-        editId={actions.editId}
-        deleteTarget={actions.deleteTarget}
-        onCloseEdit={actions.closeEdit}
-        onCloseDelete={actions.closeDelete}
-        onSaved={handleEdited}
-        onDeleted={refreshGrid}
-      />
+      <PurchaseInvoiceDeleteDialog target={actions.deleteTarget} onClose={actions.closeDelete} onDeleted={refreshGrid} />
       {isCreating ? (
         <PurchaseInvoiceEditorDialog
-          mode="create"
           open
           onOpenChange={(open) => (open ? undefined : setIsCreating(false))}
           onSaved={refreshGrid}

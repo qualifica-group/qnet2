@@ -9,17 +9,17 @@ import { InvoiceEditorInstallments } from '@/features/invoices/invoice-editor-in
 import { InvoiceEditorLinesSection } from '@/features/invoices/invoice-editor-lines-section'
 import type { EditorSource } from '@/features/invoices/invoice-editor-source'
 import { InvoiceEditorTotals } from '@/features/invoices/invoice-editor-totals'
-import { useInvoiceEditorForm, type InvoiceEditorTarget } from '@/features/invoices/use-invoice-editor-form'
+import { useInvoiceEditorForm } from '@/features/invoices/use-invoice-editor-form'
 import type { Invoice } from '@/features/invoices/types'
 
 interface InvoiceEditorFormProps {
   source: EditorSource
-  target: InvoiceEditorTarget
+  proformaRequestId: number
   onSaved: (invoice: Invoice) => void
   onCancel: () => void
 }
 
-/** Read-only context of the request being invoiced (create mode only). */
+/** Read-only context of the request being invoiced. */
 function RequestContext({ source }: { source: EditorSource }) {
   const { t } = useTranslation()
   const { kind, quoteCode, note } = source.context
@@ -37,31 +37,22 @@ function RequestContext({ source }: { source: EditorSource }) {
 }
 
 /** The whole modal body: sections, totals and the footer actions. Mounted once the source is loaded. */
-export function InvoiceEditorForm({ source, target, onSaved, onCancel }: InvoiceEditorFormProps) {
+export function InvoiceEditorForm({ source, proformaRequestId, onSaved, onCancel }: InvoiceEditorFormProps) {
   const { t } = useTranslation()
-  const editor = useInvoiceEditorForm({ source, target, onSaved })
-  const isCreate = target.mode === 'create'
+  const editor = useInvoiceEditorForm({ source, proformaRequestId, onSaved })
 
   return (
     <Form {...editor.form}>
       <form onSubmit={editor.submit} noValidate className="flex min-h-0 flex-1 flex-col">
         <div className="grid max-h-[65vh] gap-3 overflow-y-auto px-4 py-3">
-          {isCreate ? <RequestContext source={source} /> : null}
-          <InvoiceEditorHeaderSection
-            form={editor.form}
-            source={source}
-            companyId={editor.companyId}
-            companyLocked={!isCreate}
-            collectionsLocked={editor.collectionsLocked}
+          <RequestContext source={source} />
+          <InvoiceEditorHeaderSection form={editor.form} source={source} companyId={editor.companyId} />
+          <InvoiceEditorAvailableLines
+            lines={source.availableLines}
+            addedQuoteLineIds={editor.addedQuoteLineIds}
+            onAdd={editor.addAvailableLine}
+            onAddAll={editor.addAllAvailableLines}
           />
-          {isCreate ? (
-            <InvoiceEditorAvailableLines
-              lines={source.availableLines}
-              addedQuoteLineIds={editor.addedQuoteLineIds}
-              onAdd={editor.addAvailableLine}
-              onAddAll={editor.addAllAvailableLines}
-            />
-          ) : null}
           <InvoiceEditorLinesSection
             form={editor.form}
             lineArray={editor.lineArray}
@@ -81,9 +72,7 @@ export function InvoiceEditorForm({ source, target, onSaved, onCancel }: Invoice
             </Button>
             <Button type="submit" size="sm" disabled={editor.isSaving}>
               {editor.isSaving ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
-              {isCreate
-                ? t(editor.isSaving ? 'invoiceEditor.actions.issuing' : 'invoiceEditor.actions.issue')
-                : t(editor.isSaving ? 'invoiceEditor.actions.saving' : 'invoiceEditor.actions.save')}
+              {t(editor.isSaving ? 'invoiceEditor.actions.issuing' : 'invoiceEditor.actions.issue')}
             </Button>
           </div>
         </DialogFooter>

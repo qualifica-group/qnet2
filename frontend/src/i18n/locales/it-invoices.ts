@@ -120,6 +120,7 @@ export const invoices = {
       net_amount: 'Imponibile',
       vat_amount: 'IVA',
       total_amount: 'Totale',
+      actions: 'Azioni',
     },
     installmentsColumns: {
       sequence: 'N. rata',
@@ -156,7 +157,6 @@ export const invoices = {
   },
   record: {
     registration: 'Registrazione e classificazione',
-    editLines: 'Modifica righe',
     saved: 'Fattura aggiornata.',
     saveError: 'Impossibile salvare la fattura. Riprova.',
     invalid: 'Controlla i campi evidenziati.',
@@ -199,11 +199,6 @@ export const invoices = {
     deleted: 'Documento eliminato.',
     hasCollections: 'Il documento ha rate incassate: annulla gli incassi prima di eliminarlo.',
     genericError: 'Impossibile eliminare il documento. Riprova.',
-  },
-  rebalance: {
-    lockedHint: 'Il documento ha rate incassate: data documento, cliente e modalità di pagamento non sono modificabili. Le rate incassate restano, le altre vengono ricalcolate sul residuo.',
-    statusColumn: 'Incasso',
-    collectedBadge: 'Incassata {{amount}}',
   },
 }
 

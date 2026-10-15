@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useFieldArray, useForm, useWatch, type UseFormSetError } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import axios from 'axios'
@@ -11,21 +11,17 @@ import {
   newLine,
   type NewLineFields,
   amountsOf,
-  type VatRefs,
 } from '@/features/invoices/invoice-editor-lines'
 import type { EditorSource } from '@/features/invoices/invoice-editor-source'
 import { buildInvoiceWriteSchema, type InvoiceWriteFormValues } from '@/features/invoices/invoice-schema'
 import { useInvoiceEditorPreview } from '@/features/invoices/use-invoice-editor-preview'
-import { useCreateInvoice, useUpdateInvoice } from '@/features/invoices/use-invoice-queries'
-import type { Invoice, VatRateRef } from '@/features/invoices/types'
-
-export type InvoiceEditorTarget =
-  | { mode: 'create'; proformaRequestId: number }
-  | { mode: 'edit'; invoiceId: number }
+import { useCreateInvoice } from '@/features/invoices/use-invoice-queries'
+import { useVatRefs } from '@/features/invoices/use-vat-refs'
+import type { Invoice } from '@/features/invoices/types'
 
 interface UseInvoiceEditorFormArgs {
   source: EditorSource
-  target: InvoiceEditorTarget
+  proformaRequestId: number
   onSaved: (invoice: Invoice) => void
 }
 
@@ -56,10 +52,11 @@ function applyFieldErrors(error: unknown, setError: UseFormSetError<InvoiceWrite
 }
 
 /**
- * State and actions of the issue/edit modal: RHF + Zod form, the document
- * lines (field array), the live totals/installment preview and the save.
+ * State and actions of the issue modal: RHF + Zod form, the document lines
+ * (field array), the live totals/installment preview and the save. An issued
+ * document is edited in place on its record (spec 0263).
  */
-export function useInvoiceEditorForm({ source, target, onSaved }: UseInvoiceEditorFormArgs) {
+export function useInvoiceEditorForm({ source, proformaRequestId, onSaved }: UseInvoiceEditorFormArgs) {
   const { t } = useTranslation()
   const schema = useMemo(() => buildInvoiceWriteSchema(t), [t])
   const form = useForm<InvoiceWriteFormValues>({
@@ -70,12 +67,7 @@ export function useInvoiceEditorForm({ source, target, onSaved }: UseInvoiceEdit
   const lineArray = useFieldArray({ control, name: 'lines' })
   const { append } = lineArray
 
-  // UI cache of the percentage per VAT id: the pickers expose ids, the preview needs rates.
-  const [vatRefs, setVatRefs] = useState<VatRefs>(source.vatRefs)
-  const rememberVat = useCallback((ref: VatRateRef | null) => {
-    if (ref === null) return
-    setVatRefs((current) => (current[ref.id] ? current : { ...current, [ref.id]: ref }))
-  }, [])
+  const { vatRefs, rememberVat } = useVatRefs(source.vatRefs)
 
   const lines = useWatch({ control, name: 'lines' })
   const documentDate = useWatch({ control, name: 'document_date' })
@@ -83,13 +75,7 @@ export function useInvoiceEditorForm({ source, target, onSaved }: UseInvoiceEdit
   const companyId = useWatch({ control, name: 'company_id' })
   const amounts = useMemo(() => amountsOf(lines, vatRefs), [lines, vatRefs])
   const totals = amounts.totals
-  const collectionsLocked = target.mode === 'edit' && source.hasCollections
-  const preview = useInvoiceEditorPreview({
-    documentDate,
-    paymentMethodId,
-    totals,
-    invoiceId: collectionsLocked && target.mode === 'edit' ? target.invoiceId : null,
-  })
+  const preview = useInvoiceEditorPreview({ documentDate, paymentMethodId, totals })
 
   const addedQuoteLineIds = useMemo(
     () => new Set(lines.flatMap((line) => (line.quote_line_id === null ? [] : [line.quote_line_id]))),
@@ -123,18 +109,12 @@ export function useInvoiceEditorForm({ source, target, onSaved }: UseInvoiceEdit
     [append, getValues],
   )
 
-  const create = useCreateInvoice(target.mode === 'create' ? target.proformaRequestId : 0)
-  const update = useUpdateInvoice(target.mode === 'edit' ? target.invoiceId : 0)
-  const mutation = target.mode === 'create' ? create : update
+  const mutation = useCreateInvoice(proformaRequestId)
 
   const submit = handleSubmit((values) => {
     mutation.mutate(buildWritePayload(values), {
       onSuccess: (invoice) => {
-        toast.success(
-          target.mode === 'create'
-            ? t('invoiceEditor.messages.issued', { number: invoice.number_label })
-            : t('invoiceEditor.messages.saved'),
-        )
+        toast.success(t('invoiceEditor.messages.issued', { number: invoice.number_label }))
         onSaved(invoice)
       },
       onError: (error) => {
@@ -143,7 +123,7 @@ export function useInvoiceEditorForm({ source, target, onSaved }: UseInvoiceEdit
         }
         const status = axios.isAxiosError(error) ? error.response?.status : undefined
         const fallback =
-          status === CONFLICT_STATUS && target.mode === 'create'
+          status === CONFLICT_STATUS
             ? t('invoiceEditor.messages.conflictInvoiced')
             : t('invoiceEditor.messages.genericError')
         toast.error(serverMessage(error) ?? fallback)
@@ -158,7 +138,6 @@ export function useInvoiceEditorForm({ source, target, onSaved }: UseInvoiceEdit
     rememberVat,
     lines,
     companyId,
-    collectionsLocked,
     totals,
     lineAmounts: amounts.lines,
     preview,

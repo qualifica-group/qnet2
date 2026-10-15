@@ -51,5 +51,15 @@ export const common = {
     apply: 'Done',
     revert: 'Revert',
     cancel: 'Cancel',
+    lines: {
+      add: 'Add line',
+      edit: 'Edit line {{n}}',
+      remove: 'Delete line {{n}}',
+      removeConfirm: {
+        title: 'Delete the line?',
+        description: 'Line {{n}} is deleted right away.',
+        confirm: 'Delete',
+      },
+    },
   },
 }

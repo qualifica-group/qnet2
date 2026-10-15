@@ -66,19 +66,7 @@ export async function getInvoice(id: number): Promise<InvoiceWithPermissions> {
   return { ...data.data, permissions: data.permissions }
 }
 
-/** Full update (PUT): lines replaced, installments recomputed. 409 with collections. */
-export async function updateInvoice(
-  id: number,
-  payload: InvoiceWritePayload,
-): Promise<InvoiceWithPermissions> {
-  const { data } = await apiClient.put<ApiResponseWithPermissions<Invoice, ResourcePermissions>>(
-    `/invoices/${id}`,
-    payload,
-  )
-  return { ...data.data, permissions: data.permissions }
-}
-
-/** Partial edit (PATCH, spec 0261): the keys not sent keep their stored value; 409 on a registered invoice. */
+/** Partial edit (PATCH, specs 0261/0263): the keys not sent keep their stored value; 409 on a registered invoice. */
 export async function patchInvoice(
   id: number,
   payload: Partial<InvoiceWritePayload>,

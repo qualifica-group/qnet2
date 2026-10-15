@@ -1,5 +1,7 @@
-import type { FieldPath } from 'react-hook-form'
+import axios from 'axios'
+import type { FieldPath, UseFormSetError } from 'react-hook-form'
 import type { VatRateRef } from '@/features/invoices/types'
+import type { VatRefs } from '@/features/invoices/use-vat-refs'
 import type {
   PurchaseInvoiceLineFormValues,
   PurchaseInvoiceWriteFormValues,
@@ -11,7 +13,7 @@ import type {
 } from '@/features/purchase-invoices/types'
 import { documentAmountsPerRate, type DocumentAmounts } from '@/lib/amounts/line-amounts'
 
-export type VatRefs = Record<number, VatRateRef>
+export type { VatRefs }
 
 /** Form sentinel of an unselected required id (zod `z.number()` rejects NaN with the field message). */
 export const NO_ID = Number.NaN
@@ -100,7 +102,8 @@ export function amountsOf(lines: readonly PurchaseInvoiceLineFormValues[], vatRe
   )
 }
 
-function toLineWrite(line: PurchaseInvoiceLineFormValues): PurchaseInvoiceLineWrite {
+/** One row as the write endpoints take it. */
+export function toLineWrite(line: PurchaseInvoiceLineFormValues): PurchaseInvoiceLineWrite {
   // available_quantity is a client-side limit only: the server recomputes it, so it is not sent.
   const write: PurchaseInvoiceLineWrite = {
     purchase_order_line_id: line.purchase_order_line_id,
@@ -115,28 +118,21 @@ function toLineWrite(line: PurchaseInvoiceLineFormValues): PurchaseInvoiceLineWr
   return line.id === null ? write : { id: line.id, ...write }
 }
 
-/** Empty notes travel as null; totals are never sent. Number/type only exist at creation. */
-export function buildWritePayload(
-  values: PurchaseInvoiceWriteFormValues,
-  mode: 'create' | 'edit',
-): PurchaseInvoiceWritePayload {
+/** Create payload: empty notes travel as null, totals are never sent, the number only for an invoice. */
+export function buildWritePayload(values: PurchaseInvoiceWriteFormValues): PurchaseInvoiceWritePayload {
   const { document_type, document_number, lines, notes, ...header } = values
-  const base: PurchaseInvoiceWritePayload = {
+  return {
     ...header,
     notes: notes?.trim() ? notes : null,
     lines: lines.map(toLineWrite),
-  }
-  if (mode === 'edit') {
-    return base
-  }
-  return {
-    ...base,
     document_type,
     document_number: document_type === 'invoice' ? (document_number?.trim() ?? null) : null,
   }
 }
 
 type FormPath = FieldPath<PurchaseInvoiceWriteFormValues>
+
+const UNPROCESSABLE_STATUS = 422
 
 const HEADER_FIELDS = [
   'document_type',
@@ -182,4 +178,22 @@ export function mapServerErrors(errors: Record<string, string[]>): MappedServerE
     }
   }
   return mapped
+}
+
+/**
+ * Puts a 422's messages on their inputs (editor and record); the ones no
+ * input carries come back, null when the failure is not a 422.
+ */
+export function applyPurchaseInvoiceServerErrors(
+  error: unknown,
+  setError: UseFormSetError<PurchaseInvoiceWriteFormValues>,
+): string[] | null {
+  if (!axios.isAxiosError(error) || error.response?.status !== UNPROCESSABLE_STATUS) {
+    return null
+  }
+  const { fields, general } = mapServerErrors(
+    (error.response.data as { errors?: Record<string, string[]> } | undefined)?.errors ?? {},
+  )
+  fields.forEach(({ path, message }) => setError(path, { message }))
+  return general
 }

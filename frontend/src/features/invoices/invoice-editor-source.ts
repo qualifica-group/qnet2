@@ -1,13 +1,12 @@
 import { useMemo } from 'react'
 import type { AxiosError } from 'axios'
-import { useInvoiceDraft, useInvoice } from '@/features/invoices/use-invoice-queries'
+import { useInvoiceDraft } from '@/features/invoices/use-invoice-queries'
 import type { InvoiceWriteFormValues } from '@/features/invoices/invoice-schema'
 import type {
   AvailableInvoiceLine,
   BankAccountRef,
   Invoice,
   InvoiceDraft,
-  InvoiceTagRef,
   NamedRef,
   VatRateRef,
 } from '@/features/invoices/types'
@@ -34,31 +33,23 @@ export interface EditorContext {
   note: string | null
 }
 
-/** Everything the form needs, normalized from the create draft or the edited document. */
+/** Everything the issue form needs, normalized from the create draft. */
 export interface EditorSource {
   initialValues: InvoiceWriteFormValues
   vatRefs: Record<number, VatRateRef>
   availableLines: AvailableInvoiceLine[]
-  /** Candidate banks per company; null in edit mode (the draft is not loaded there). */
+  /** Candidate banks per company. */
   bankAccounts: EditorBankAccount[] | null
   company: NamedRef | null
   customer: NamedRef | null
   paymentMethod: NamedRef | null
   financialAccount: BankAccountRef | null
-  /** Saved print layout (edit); null in create and for "Predefinito". */
+  /** The draft's print layout; null for "Predefinito". */
   layout: NamedRef | null
-  /** Saved tag (edit); null in create and for "no tag". */
-  tag: InvoiceTagRef | null
   context: EditorContext
-  /** "12/2026" when editing. */
-  numberLabel: string | null
-  /** The edited document has collected installments: date, payment method and customer are read-only (spec 0196, D-1). */
-  hasCollections: boolean
 }
 
-const NO_AVAILABLE_LINES: AvailableInvoiceLine[] = []
-
-function vatRefsOf(lines: Array<{ vat_rate: VatRateRef | null }>): Record<number, VatRateRef> {
+export function vatRefsOf(lines: Array<{ vat_rate: VatRateRef | null }>): Record<number, VatRateRef> {
   return Object.fromEntries(lines.flatMap((line) => (line.vat_rate === null ? [] : [[line.vat_rate.id, line.vat_rate]])))
 }
 
@@ -85,56 +76,35 @@ export function sourceFromDraft(draft: InvoiceDraft): EditorSource {
     paymentMethod: defaults.payment_method,
     financialAccount: defaults.financial_account,
     layout: defaults.layout,
-    tag: null,
     context: {
       workOrderCode: draft.work_order.code,
       quoteCode: draft.quote.code,
       kind: draft.proforma_request.kind,
       note: draft.proforma_request.note,
     },
-    numberLabel: null,
-    hasCollections: false,
   }
 }
 
-export function sourceFromInvoice(invoice: Invoice): EditorSource {
+/** The saved document as form values: what its record edits in place (spec 0263). */
+export function valuesFromInvoice(invoice: Invoice): InvoiceWriteFormValues {
   return {
-    initialValues: {
-      document_date: invoice.document_date,
-      company_id: invoice.company.id,
-      customer_registry_id: invoice.customer.id,
-      payment_method_id: invoice.payment_method.id,
-      financial_account_id: invoice.financial_account?.id ?? null,
-      layout_id: invoice.layout?.id ?? null,
-      notes: invoice.notes,
-      internal_note: invoice.internal_note,
-      invoice_tag_id: invoice.tag?.id ?? null,
-      lines: invoice.lines.map((line) => ({
-        quote_line_id: line.quote_line_id,
-        product_id: line.product?.id ?? null,
-        description: line.description,
-        quantity: Number(line.quantity),
-        unit_price: Number(line.unit_price),
-        vat_rate_id: line.vat_rate.id,
-      })),
-    },
-    vatRefs: vatRefsOf(invoice.lines),
-    availableLines: NO_AVAILABLE_LINES,
-    bankAccounts: null,
-    company: invoice.company,
-    customer: { id: invoice.customer.id, name: invoice.customer.name },
-    paymentMethod: invoice.payment_method,
-    financialAccount: invoice.financial_account,
-    layout: invoice.layout,
-    tag: invoice.tag,
-    context: {
-      workOrderCode: invoice.work_order?.code ?? null,
-      quoteCode: invoice.quote?.code ?? null,
-      kind: invoice.proforma_request?.kind ?? null,
-      note: null,
-    },
-    numberLabel: invoice.number_label,
-    hasCollections: invoice.has_collections,
+    document_date: invoice.document_date,
+    company_id: invoice.company.id,
+    customer_registry_id: invoice.customer.id,
+    payment_method_id: invoice.payment_method.id,
+    financial_account_id: invoice.financial_account?.id ?? null,
+    layout_id: invoice.layout?.id ?? null,
+    notes: invoice.notes,
+    internal_note: invoice.internal_note,
+    invoice_tag_id: invoice.tag?.id ?? null,
+    lines: invoice.lines.map((line) => ({
+      quote_line_id: line.quote_line_id,
+      product_id: line.product?.id ?? null,
+      description: line.description,
+      quantity: Number(line.quantity),
+      unit_price: Number(line.unit_price),
+      vat_rate_id: line.vat_rate.id,
+    })),
   }
 }
 
@@ -144,19 +114,10 @@ export interface EditorSourceState {
   error: AxiosError | null
 }
 
-/** Loads the draft (create) or the document (edit); the other query stays idle. */
-export function useInvoiceEditorSource(target: {
-  proformaRequestId: number | null
-  invoiceId: number | null
-}): EditorSourceState {
-  const draft = useInvoiceDraft(target.proformaRequestId)
-  const invoice = useInvoice(target.invoiceId)
+/** Loads the draft of the proforma request being invoiced; idle while null. */
+export function useInvoiceEditorSource(proformaRequestId: number | null): EditorSourceState {
+  const draft = useInvoiceDraft(proformaRequestId)
+  const source = useMemo(() => (draft.data ? sourceFromDraft(draft.data) : null), [draft.data])
 
-  const fromDraft = useMemo(() => (draft.data ? sourceFromDraft(draft.data) : null), [draft.data])
-  const fromInvoice = useMemo(() => (invoice.data ? sourceFromInvoice(invoice.data) : null), [invoice.data])
-
-  if (target.proformaRequestId !== null) {
-    return { source: fromDraft, isLoading: draft.isPending, error: draft.error }
-  }
-  return { source: fromInvoice, isLoading: invoice.isPending, error: invoice.error }
+  return { source, isLoading: draft.isPending, error: draft.error }
 }

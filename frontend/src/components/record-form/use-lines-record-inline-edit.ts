@@ -13,6 +13,16 @@ export function lineEditingKey(index: number): string {
   return `${LINE_FIELD_PREFIX}${index}`
 }
 
+/** True when the open editor is a line, not a header field. */
+export function isLineEditingKey(field: string): boolean {
+  return field.startsWith(LINE_FIELD_PREFIX)
+}
+
+/** Index of the open line, or null when no line is open. */
+export function editingLineIndex(field: string | null): number | null {
+  return field !== null && isLineEditingKey(field) ? Number(field.slice(LINE_FIELD_PREFIX.length)) : null
+}
+
 interface UseLinesRecordInlineEditArgs<TValues extends FieldValues, TPayload extends object, TRecord> {
   form: UseFormReturn<TValues>
   /** The saved record as form values: what Cancel restores and what the header diff compares against. */
@@ -106,7 +116,7 @@ export function useLinesRecordInlineEdit<TValues extends FieldValues, TPayload e
   const save = () => {
     void form.handleSubmit((values) => {
       setServerError(null)
-      const payload = editingField?.startsWith(LINE_FIELD_PREFIX)
+      const payload = editingField !== null && isLineEditingKey(editingField)
         ? linesPatch(values.lines)
         : headerPatch(values, persisted)
       if (Object.keys(payload).length === 0) {

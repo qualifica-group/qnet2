@@ -13,8 +13,6 @@ import {
   fetchPurchaseInvoiceDraft,
   previewPurchaseInvoiceInstallments,
   purchaseInvoiceKeys,
-  updatePurchaseInvoice,
-  updatePurchaseInvoiceDetails,
 } from '@/features/purchase-invoices/api'
 import { PURCHASE_INSTALLMENTS_DOMAIN } from '@/features/purchase-invoice-installments/api'
 import type {
@@ -22,7 +20,6 @@ import type {
   PurchaseInstallmentPreviewPayload,
   PurchaseInstallmentPreviewRow,
   PurchaseInvoice,
-  PurchaseInvoiceDetailsPayload,
   PurchaseInvoiceDraft,
   PurchaseInvoiceWritePayload,
 } from '@/features/purchase-invoices/types'
@@ -92,26 +89,6 @@ export function useCreatePurchaseInvoice(): UseMutationResult<PurchaseInvoice, A
   const invalidate = useInvalidateDocuments()
   return useMutation<PurchaseInvoice, AxiosError, PurchaseInvoiceWritePayload>({
     mutationFn: createPurchaseInvoice,
-    onSuccess: invalidate,
-  })
-}
-
-export function useUpdatePurchaseInvoice(
-  id: number,
-): UseMutationResult<PurchaseInvoice, AxiosError, PurchaseInvoiceWritePayload> {
-  const invalidate = useInvalidateDocuments()
-  return useMutation<PurchaseInvoice, AxiosError, PurchaseInvoiceWritePayload>({
-    mutationFn: (payload) => updatePurchaseInvoice(id, payload),
-    onSuccess: invalidate,
-  })
-}
-
-export function useUpdatePurchaseInvoiceDetails(
-  id: number,
-): UseMutationResult<PurchaseInvoice, AxiosError, PurchaseInvoiceDetailsPayload> {
-  const invalidate = useInvalidateDocuments()
-  return useMutation<PurchaseInvoice, AxiosError, PurchaseInvoiceDetailsPayload>({
-    mutationFn: (payload) => updatePurchaseInvoiceDetails(id, payload),
     onSuccess: invalidate,
   })
 }

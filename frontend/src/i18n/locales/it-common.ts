@@ -51,5 +51,15 @@ export const common = {
     apply: 'Fatto',
     revert: 'Ripristina',
     cancel: 'Annulla',
+    lines: {
+      add: 'Aggiungi riga',
+      edit: 'Modifica riga {{n}}',
+      remove: 'Elimina riga {{n}}',
+      removeConfirm: {
+        title: 'Eliminare la riga?',
+        description: 'La riga {{n}} viene eliminata subito.',
+        confirm: 'Elimina',
+      },
+    },
   },
 }

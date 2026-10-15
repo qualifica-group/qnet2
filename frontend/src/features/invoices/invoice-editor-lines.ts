@@ -1,11 +1,12 @@
 import type { FieldPath } from 'react-hook-form'
 import type { InvoiceWriteFormValues } from '@/features/invoices/invoice-schema'
 import { NO_ID } from '@/features/invoices/invoice-editor-source'
-import type { AvailableInvoiceLine, InvoiceWritePayload, VatRateRef } from '@/features/invoices/types'
+import type { AvailableInvoiceLine, InvoiceWritePayload } from '@/features/invoices/types'
+import type { VatRefs } from '@/features/invoices/use-vat-refs'
 import { documentAmountsPerRate, type DocumentAmounts } from '@/lib/amounts/line-amounts'
 
 export type InvoiceLineValues = InvoiceWriteFormValues['lines'][number]
-export type VatRefs = Record<number, VatRateRef>
+export type { VatRefs }
 
 export const DEFAULT_LINE_QUANTITY = 1
 

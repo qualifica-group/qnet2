@@ -1,6 +1,8 @@
+import type { ReactNode } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import i18n from '@/i18n'
 import { InvoiceDetailView } from '@/features/invoices/invoice-detail'
 import type { InvoiceWithPermissions } from '@/features/invoices/types'
@@ -17,7 +19,7 @@ vi.mock('@/features/invoices/api', async (importOriginal) => ({
 }))
 
 vi.mock('@/features/invoices/invoice-document-sections', () => ({
-  InvoiceDocumentSections: () => <p>document sections</p>,
+  InvoiceDocumentSections: ({ lines }: { lines?: ReactNode }) => <div>{lines}</div>,
 }))
 
 vi.mock('@/features/outbound-emails/use-outbound-emails-tab', () => ({ useOutboundEmailsTab: () => null }))
@@ -93,7 +95,9 @@ function renderDetail(invoice: InvoiceWithPermissions) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <InvoiceDetailView invoiceId={invoice.id} onChanged={vi.fn()} />
+      <ConfirmDialogProvider>
+        <InvoiceDetailView invoiceId={invoice.id} onChanged={vi.fn()} />
+      </ConfirmDialogProvider>
     </QueryClientProvider>,
   )
 }
@@ -152,7 +156,8 @@ describe('invoice record edited in place (spec 0261)', () => {
     expect(screen.queryByRole('button', { name: 'Edit Payment' })).not.toBeInTheDocument()
   })
 
-  it('on a registered invoice follows the server matrix and hides the lines editor', async () => {
+  // Spec 0263 (REQUIREMENT CHANGED): no "Edit lines" dialog; the lines are edited in place.
+  it('on a registered invoice follows the server matrix and keeps the lines read-only', async () => {
     renderDetail(
       makeInvoice({
         type: 'invoice',
@@ -169,12 +174,55 @@ describe('invoice record edited in place (spec 0261)', () => {
     expect(await screen.findByRole('button', { name: 'Edit Internal notes' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit Notes' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit External invoice' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Edit lines' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit line 1' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add line' })).not.toBeInTheDocument()
   })
+})
 
-  it('offers the lines editor on a proforma', async () => {
+const SAVED_LINE = { quote_line_id: null, product_id: null, description: 'Consulting', quantity: 1, unit_price: 1000, vat_rate_id: 1 }
+
+describe('invoice lines edited in place (spec 0263)', () => {
+  it('opens a line in place and saves the whole lines set through the partial PATCH', async () => {
     renderDetail(makeInvoice())
 
-    expect(await screen.findByRole('button', { name: 'Edit lines' })).toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit line 1' }))
+    fireEvent.change(screen.getByLabelText('Quantity 1'), { target: { value: '3' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(patchInvoiceMock).toHaveBeenCalledWith(5, { lines: [{ ...SAVED_LINE, quantity: 3 }] }))
+  })
+
+  it('adds a free line, opened in place with the VAT of the last line, and saves it', async () => {
+    renderDetail(makeInvoice())
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add line' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Free' }))
+    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Travel' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Free line' }))
+    fireEvent.change(screen.getByLabelText('Unit price 2'), { target: { value: '50' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() =>
+      expect(patchInvoiceMock).toHaveBeenCalledWith(5, {
+        lines: [SAVED_LINE, { ...SAVED_LINE, description: 'Travel', unit_price: 50 }],
+      }),
+    )
+  })
+
+  it('deletes a line after confirmation, keeping the others', async () => {
+    const [line] = makeInvoice().lines
+    renderDetail(makeInvoice({ lines: [line!, { ...line!, id: 2, description: 'Travel' }] }))
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete line 2' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
+
+    await waitFor(() => expect(patchInvoiceMock).toHaveBeenCalledWith(5, { lines: [SAVED_LINE] }))
+  })
+
+  it('does not offer to delete the only line', async () => {
+    renderDetail(makeInvoice())
+
+    expect(await screen.findByRole('button', { name: 'Edit line 1' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Delete line 1' })).not.toBeInTheDocument()
   })
 })

@@ -7,13 +7,9 @@ export interface PurchaseInvoiceDeleteTarget {
   numberLabel: string
 }
 
-/**
- * Which dialog/sheet each row action opens; the table adapter and the detail screen render them from this state.
- * The lines editor opens from the record (`openEdit`), no longer from a row action (spec 0262).
- */
+/** Which dialog/sheet each row action opens; the table adapter and the detail screen render them from this state. */
 export function usePurchaseInvoiceRowActions() {
   const [viewId, setViewId] = useState<number | null>(null)
-  const [editId, setEditId] = useState<number | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<PurchaseInvoiceDeleteTarget | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
 
@@ -36,12 +32,9 @@ export function usePurchaseInvoiceRowActions() {
 
   return {
     handleAction,
-    openEdit: setEditId,
     openDelete: setDeleteTarget,
     viewId,
     closeView: useCallback(() => setViewId(null), []),
-    editId,
-    closeEdit: useCallback(() => setEditId(null), []),
     deleteTarget,
     closeDelete: useCallback(() => setDeleteTarget(null), []),
     activityRow,

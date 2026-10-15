@@ -33,7 +33,6 @@ export const purchaseInvoiceViews = {
     title: 'Fattura {{number}}',
     titleProforma: 'Proforma passivo',
     loadError: 'Impossibile caricare il documento. Riprova.',
-    editLines: 'Modifica righe',
     delete: 'Elimina',
     header: 'Testata',
     totals: 'Totali',
@@ -64,6 +63,7 @@ export const purchaseInvoiceViews = {
         net_amount: 'Imponibile',
         vat_amount: 'IVA',
         total_amount: 'Totale',
+        actions: 'Azioni',
       },
     },
     installments: {

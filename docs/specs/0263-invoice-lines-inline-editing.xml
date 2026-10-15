@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0263-invoice-lines-inline-editing" status="approved" owner="utente" date="2026-10-15">
+
+  <goal>
+    Le righe della fattura attiva e passiva si modificano nella scheda, una alla volta, come le righe di RDA e ODA
+    (specs 0256/0257): niente piu' finestra "Modifica documento" per modificare; la finestra resta solo per creare.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-15 (screenshot della finestra "Modifica documento" della fattura passiva: "Questa modale
+    non ha subito il cambiamento grafico"). Scelte utente: righe nella scheda (consigliato), ambito fatture attive e
+    passive. Fatti verificati: PATCH /invoices/{invoice} e PATCH /purchase-invoices/{purchaseInvoice} completano col
+    salvato i campi non inviati e accettano l'intero insieme `lines` (specs 0261/0262): nessuna modifica backend.
+    La modifica righe era possibile solo sui proforma (attiva: type proforma + update; passiva: actions.update).
+  </context>
+
+  <decisions>
+    D-1 Scheda: sezione Righe con matita per riga (apre la riga modificabile al suo posto, Annulla/Salva sotto),
+        cestino per riga (conferma, poi salvataggio immediato; non sull'ultima riga) e "Aggiungi riga" (pannello
+        catalogo/testo libero; la riga scelta si apre in modifica e si salva con Salva). Salva invia l'intero insieme
+        `lines` con PATCH parziale; le scadenze si ricalcolano sul server, senza anteprima prima del salvataggio.
+    D-2 Chi modifica: attiva = proforma con permesso update; passiva = actions.update (proforma). Altrimenti la
+        sezione resta in sola lettura (stessa tabella di oggi).
+    D-3 Frontend condiviso: `useRoutedRecordInlineEdit` gestisce anche le righe (`lines.N`, `startNewLine`,
+        `removeLine`); le righe modificabili riusano le righe dell'editor di creazione.
+    D-4 Le finestre editor perdono la modalita' modifica (solo creazione): pulsante "Modifica righe", modalita'
+        edit, update PUT lato client, anteprima con ribilanciamento (invoice_id / purchase_invoice_id) rimossi.
+        Backend invariato (PUT e parametro di anteprima restano nel contratto API).
+  </decisions>
+
+  <acceptance>
+    <ac id="AC-001">Attiva proforma: matita riga -> modifica quantita' -> Salva -> PATCH con `lines` completo.</ac>
+    <ac id="AC-002">Passiva proforma: idem; cestino con conferma -> PATCH senza quella riga.</ac>
+    <ac id="AC-003">Aggiungi riga (testo libero) -> riga aperta in modifica -> Salva -> PATCH con la riga nuova.</ac>
+    <ac id="AC-004">Fattura registrata / senza permesso: nessuna matita, cestino o "Aggiungi riga".</ac>
+    <ac id="AC-005">Nessun pulsante "Modifica righe"; le finestre editor solo in creazione.</ac>
+    <ac id="AC-006">Guide in-app IT/EN invoices e purchase-invoices aggiornate.</ac>
+  </acceptance>
+</spec>

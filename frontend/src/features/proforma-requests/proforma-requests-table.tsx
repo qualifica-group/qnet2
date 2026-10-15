@@ -144,7 +144,6 @@ export function ProformaRequestsTable() {
 
       {invoiceRequestId !== null ? (
         <InvoiceEditorDialog
-          mode="create"
           proformaRequestId={invoiceRequestId}
           open
           onClose={closeInvoice}

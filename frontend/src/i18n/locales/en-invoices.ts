@@ -120,6 +120,7 @@ export const invoices = {
       net_amount: 'Net amount',
       vat_amount: 'VAT',
       total_amount: 'Total',
+      actions: 'Actions',
     },
     installmentsColumns: {
       sequence: 'No.',
@@ -156,7 +157,6 @@ export const invoices = {
   },
   record: {
     registration: 'Registration and classification',
-    editLines: 'Edit lines',
     saved: 'Invoice updated.',
     saveError: 'Unable to save the invoice. Try again.',
     invalid: 'Check the highlighted fields.',
@@ -199,11 +199,6 @@ export const invoices = {
     deleted: 'Document deleted.',
     hasCollections: 'The document has collected installments: clear the collections before deleting it.',
     genericError: 'Unable to delete the document. Try again.',
-  },
-  rebalance: {
-    lockedHint: 'The document has collected installments: document date, customer and payment method cannot be changed. Collected installments stay, the others are recalculated on the residual.',
-    statusColumn: 'Collection',
-    collectedBadge: 'Collected {{amount}}',
   },
 }
 

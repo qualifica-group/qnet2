@@ -11,6 +11,7 @@ import { COST_TYPES_FOR_SELECT_RESOURCE } from '@/features/cost-types/for-select
 import type { ForSelectItem } from '@/features/for-select/types'
 import { fromCents, type AmountsCents } from '@/lib/amounts/line-amounts'
 import { formatEuro } from '@/features/invoices/invoice-format'
+import { cn } from '@/lib/utils'
 import type { VatRateRef } from '@/features/invoices/types'
 import { idToSelectValue, NO_ID } from '@/features/purchase-invoices/purchase-invoice-editor-lines'
 import type { PurchaseInvoiceWriteFormValues } from '@/features/purchase-invoices/purchase-invoice-schema'
@@ -30,7 +31,11 @@ interface PurchaseInvoiceEditorLineRowProps {
   control: Control<PurchaseInvoiceWriteFormValues>
   amounts: AmountsCents
   onRememberVat: (ref: VatRateRef) => void
-  onRemove: () => void
+  /** Absent on a record (spec 0263): the line is deleted from its saved row, Annulla drops a new one. */
+  onRemove?: () => void
+  /** Full-width band under the fields (the record's Annulla/Salva). */
+  footer?: ReactNode
+  className?: string
 }
 
 function toNumber(raw: string): number {
@@ -131,6 +136,8 @@ export function PurchaseInvoiceEditorLineRow({
   amounts,
   onRememberVat,
   onRemove,
+  footer,
+  className,
 }: PurchaseInvoiceEditorLineRowProps) {
   const { t } = useTranslation()
   const n = index + 1
@@ -138,7 +145,7 @@ export function PurchaseInvoiceEditorLineRow({
   const availableQuantity = useWatch({ control, name: `lines.${index}.available_quantity` })
 
   return (
-    <li className="grid gap-2 rounded-md border bg-background p-2">
+    <li className={cn('grid gap-2 rounded-md border bg-background p-2', className)}>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_6rem_7rem_11rem]">
         <FormField
           control={control}
@@ -212,17 +219,20 @@ export function PurchaseInvoiceEditorLineRow({
             <dd className="font-medium tabular-nums">{formatEuro(fromCents(amounts.total))}</dd>
           </div>
         </dl>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-xs"
-          className="justify-self-end"
-          aria-label={label('remove')}
-          onClick={onRemove}
-        >
-          <Trash2 />
-        </Button>
+        {onRemove ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            className="justify-self-end"
+            aria-label={label('remove')}
+            onClick={onRemove}
+          >
+            <Trash2 />
+          </Button>
+        ) : null}
       </div>
+      {footer}
     </li>
   )
 }

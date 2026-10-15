@@ -1,6 +1,5 @@
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FileDown, FileText, ListOrdered, Wallet } from 'lucide-react'
+import { FileDown, FileText, Wallet } from 'lucide-react'
 import { DetailError, DetailLoading, DetailMonogram } from '@/components/detail/detail-panel'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
@@ -17,7 +16,7 @@ import {
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { formatEuro } from '@/features/invoices/invoice-format'
 import { InvoiceDocumentSections } from '@/features/invoices/invoice-document-sections'
-import { InvoiceEditorDialog } from '@/features/invoices/invoice-editor-dialog'
+import { InvoiceLinesRecord } from '@/features/invoices/invoice-lines-record'
 import { InvoiceRecordSections } from '@/features/invoices/invoice-record-sections'
 import {
   InvoiceTagBadge,
@@ -39,7 +38,6 @@ function InvoiceDetailBody({ invoice, onChanged }: { invoice: InvoiceWithPermiss
   const { t } = useTranslation()
   const { download, isDownloading } = useInvoicePdfDownload()
   const editor = useInvoiceInlineEdit(invoice, onChanged)
-  const [editingLines, setEditingLines] = useState(false)
   const emailsTab = useOutboundEmailsTab(
     { type: 'invoices', id: invoice.id },
     invoice.permissions.actions.view_emails,
@@ -47,8 +45,6 @@ function InvoiceDetailBody({ invoice, onChanged }: { invoice: InvoiceWithPermiss
     INVOICE_DRAFT_PAYLOAD,
   )
   const tabs: RecordCollaborationTab[] = emailsTab ? [emailsTab] : []
-  // Lines and schedule change only on a proforma, in the editor that previews the installments (spec 0261 D-4).
-  const canEditLines = invoice.type === 'proforma' && invoice.permissions.resource.update
 
   return (
     <RecordCanvas>
@@ -75,8 +71,8 @@ function InvoiceDetailBody({ invoice, onChanged }: { invoice: InvoiceWithPermiss
           />
         }
       >
+        {/* Providers only (no DOM): the inline editors, fields and lines, share the record form. */}
         <ResourcePermissionsProvider permissions={invoice.permissions}>
-          {/* Provider only (no DOM): the inline editors share the record form. */}
           <Form {...editor.form}>
             <RecordSectionsGrid>
               <InvoiceRecordSections invoice={invoice} editor={editor} />
@@ -90,32 +86,16 @@ function InvoiceDetailBody({ invoice, onChanged }: { invoice: InvoiceWithPermiss
                 </RecordFieldList>
               </RecordSection>
             </RecordSectionsGrid>
+            <div className="border-t p-4">
+              <InvoiceDocumentSections
+                invoice={invoice}
+                onChanged={onChanged}
+                lines={<InvoiceLinesRecord invoice={invoice} editor={editor} />}
+              />
+            </div>
           </Form>
         </ResourcePermissionsProvider>
-        <div className="flex flex-col gap-3 border-t p-4">
-          {canEditLines ? (
-            <div className="flex justify-end">
-              <Button type="button" variant="secondary" size="xs" onClick={() => setEditingLines(true)}>
-                <ListOrdered aria-hidden="true" />
-                {t('invoices.record.editLines')}
-              </Button>
-            </div>
-          ) : null}
-          <InvoiceDocumentSections invoice={invoice} onChanged={onChanged} />
-        </div>
       </RecordBody>
-      {editingLines ? (
-        <InvoiceEditorDialog
-          mode="edit"
-          invoiceId={invoice.id}
-          open
-          onClose={() => setEditingLines(false)}
-          onSaved={() => {
-            setEditingLines(false)
-            onChanged()
-          }}
-        />
-      ) : null}
     </RecordCanvas>
   )
 }
@@ -128,8 +108,8 @@ interface InvoiceDetailViewProps {
 
 /**
  * The invoice record (spec 0261): header and registration fields edited in
- * place one at a time, totals, then lines and installments with their
- * collections; lines change in the editor dialog ("Modifica righe").
+ * place one at a time, totals, then the lines (edited in place too, spec 0263)
+ * and the installments with their collections.
  */
 export function InvoiceDetailView({ invoiceId, onChanged }: InvoiceDetailViewProps) {
   const { t } = useTranslation()

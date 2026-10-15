@@ -31,7 +31,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Azione', 'Cosa fa'],
           rows: [
-            ['**Visualizza**', 'Apre la scheda del documento, dove si modifica tutto: ogni campo ha la **matita** (premi, cambia, **Salva**; si salva solo quel campo). In **Testata** cambi data, pagamento, banca, sedi, tipo di costo e commessa predefiniti (solo proforma; con pagamenti data e pagamento sono bloccati; fornitore e società non cambiano). In **Registrazione e note** inserisci il **numero** del fornitore e le note, modificabili anche dopo la registrazione. **Modifica righe** apre l’editor delle righe (solo proforma).'],
+            ['**Visualizza**', 'Apre la scheda del documento, dove si modifica tutto: ogni campo ha la **matita** (premi, cambia, **Salva**; si salva solo quel campo). In **Testata** cambi data, pagamento, banca, sedi, tipo di costo e commessa predefiniti (solo proforma; con pagamenti data e pagamento sono bloccati; fornitore e società non cambiano). In **Registrazione e note** inserisci il **numero** del fornitore e le note, modificabili anche dopo la registrazione. Nella sezione **Righe** (solo proforma) ogni riga ha la **matita** (si apre al suo posto, cambi e premi **Salva**) e il **cestino** (chiede conferma; non sull’ultima riga); **Aggiungi riga** propone una riga da catalogo o a testo libero che si apre in modifica. Le scadenze si ricalcolano al salvataggio.'],
             ['**Data documento** (cella)', 'Sui proforma senza pagamenti la data si cambia anche direttamente nell’elenco, con doppio clic.'],
             ['**Elimina**', 'Elimina il documento dopo conferma (solo proforma senza pagamenti).'],
             ['**Attività**', 'Storico delle modifiche del documento.'],
@@ -143,7 +143,7 @@ const guide: HelpGuide = {
           rows: [
             ['Vedere l’elenco e la scheda', 'Visualizzazione fatture passive'],
             ['**Nuova fattura passiva**, **Registra fattura** dall’ODA', 'Creazione fatture passive'],
-            ['Modificare la scheda, **Modifica righe**', 'Modifica fatture passive'],
+            ['Modificare la scheda e le righe', 'Modifica fatture passive'],
             ['**Elimina**', 'Eliminazione fatture passive'],
             ['Cambiare o svuotare numero e data di una fattura', 'Correggi/annulla registrazione'],
             ['**Esporta**, **Attività**', 'Esportazione e visualizzazione attività'],

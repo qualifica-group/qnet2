@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Control } from 'react-hook-form'
 import { Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -10,9 +11,9 @@ import { VAT_RATES_FOR_SELECT_RESOURCE } from '@/features/vat-rates/for-select-a
 import { type VatRefs, type InvoiceLineValues } from '@/features/invoices/invoice-editor-lines'
 import { fromCents, type AmountsCents } from '@/lib/amounts/line-amounts'
 import { idToSelectValue, NO_ID } from '@/features/invoices/invoice-editor-source'
-import type { InvoiceWriteFormValues } from '@/features/invoices/invoice-schema'
 import type { VatRateRef } from '@/features/invoices/types'
 import { formatQuoteAmount } from '@/features/quotes/quote-summary'
+import { cn } from '@/lib/utils'
 
 /** `meta.rate` of `GET /vat-rates/for-select`: the percentage as decimal string. */
 interface VatRateForSelectItem extends ForSelectItem {
@@ -22,14 +23,23 @@ interface VatRateForSelectItem extends ForSelectItem {
 /** Column template shared by the row and the lines header (lg and up; stacked below). */
 export const LINE_GRID_CLASS = 'lg:grid-cols-[minmax(0,1fr)_5rem_7rem_9rem_6rem_6rem_1.5rem] lg:items-start'
 
-interface InvoiceEditorLineRowProps {
+/** Any form holding the document lines: the issue editor's and the record's (spec 0263). */
+interface InvoiceLinesFormValues {
+  lines: InvoiceLineValues[]
+}
+
+interface InvoiceEditorLineRowProps<T extends InvoiceLinesFormValues> {
   index: number
-  control: Control<InvoiceWriteFormValues>
+  control: Control<T>
   amounts: AmountsCents
   line: InvoiceLineValues
   vatRefs: VatRefs
   onRememberVat: (ref: VatRateRef) => void
-  onRemove: () => void
+  /** Absent on a record (spec 0263): the line is deleted from its saved row, Annulla drops a new one. */
+  onRemove?: () => void
+  /** Full-width band under the fields (the record's Annulla/Salva). */
+  footer?: ReactNode
+  className?: string
 }
 
 function toNumber(raw: string): number {
@@ -37,20 +47,34 @@ function toNumber(raw: string): number {
 }
 
 /** One editable document row: description, qty, unit price, VAT and the read-only computed amounts. */
-export function InvoiceEditorLineRow({ index, control, line, amounts, vatRefs, onRememberVat, onRemove }: InvoiceEditorLineRowProps) {
+export function InvoiceEditorLineRow<T extends InvoiceLinesFormValues>({
+  index,
+  control,
+  line,
+  amounts,
+  vatRefs,
+  onRememberVat,
+  onRemove,
+  footer,
+  className,
+}: InvoiceEditorLineRowProps<T>) {
   const { t } = useTranslation()
+  // The row only reads `lines.<index>.*`, common to every host form.
+  const linesControl = control as unknown as Control<InvoiceLinesFormValues>
   const n = index + 1
   const vatRef = vatRefs[line.vat_rate_id]
   const vatItem: ForSelectItem | null = vatRef ? { id: vatRef.id, label: vatRef.name } : null
 
   return (
-    <li className={`grid gap-2 rounded-md border bg-background p-2 ${LINE_GRID_CLASS}`}>
+    <li className={cn('grid gap-2 rounded-md border bg-background p-2', LINE_GRID_CLASS, className)}>
       <FormField
-        control={control}
+        control={linesControl}
         name={`lines.${index}.description`}
         render={({ field }) => (
           <FormItem className="gap-1">
-            <FormLabel className="text-xs lg:sr-only">{t('invoiceEditor.lines.description')} {n}</FormLabel>
+            <FormLabel className="text-xs lg:sr-only">
+              {t('invoiceEditor.lines.description')} {n}
+            </FormLabel>
             <FormControl>
               <Input className="h-8 text-xs" {...field} />
             </FormControl>
@@ -59,11 +83,13 @@ export function InvoiceEditorLineRow({ index, control, line, amounts, vatRefs, o
         )}
       />
       <FormField
-        control={control}
+        control={linesControl}
         name={`lines.${index}.quantity`}
         render={({ field }) => (
           <FormItem className="gap-1">
-            <FormLabel className="text-xs lg:sr-only">{t('invoiceEditor.lines.quantity')} {n}</FormLabel>
+            <FormLabel className="text-xs lg:sr-only">
+              {t('invoiceEditor.lines.quantity')} {n}
+            </FormLabel>
             <FormControl>
               <Input
                 type="number"
@@ -79,11 +105,13 @@ export function InvoiceEditorLineRow({ index, control, line, amounts, vatRefs, o
         )}
       />
       <FormField
-        control={control}
+        control={linesControl}
         name={`lines.${index}.unit_price`}
         render={({ field }) => (
           <FormItem className="gap-1">
-            <FormLabel className="text-xs lg:sr-only">{t('invoiceEditor.lines.unitPrice')} {n}</FormLabel>
+            <FormLabel className="text-xs lg:sr-only">
+              {t('invoiceEditor.lines.unitPrice')} {n}
+            </FormLabel>
             <FormControl>
               <Input
                 type="number"
@@ -99,11 +127,13 @@ export function InvoiceEditorLineRow({ index, control, line, amounts, vatRefs, o
         )}
       />
       <FormField
-        control={control}
+        control={linesControl}
         name={`lines.${index}.vat_rate_id`}
         render={({ field }) => (
           <FormItem className="gap-1">
-            <FormLabel className="text-xs lg:sr-only">{t('invoiceEditor.lines.vatRate')} {n}</FormLabel>
+            <FormLabel className="text-xs lg:sr-only">
+              {t('invoiceEditor.lines.vatRate')} {n}
+            </FormLabel>
             <FormControl>
               <AsyncPaginatedSelect
                 resource={VAT_RATES_FOR_SELECT_RESOURCE}
@@ -141,16 +171,19 @@ export function InvoiceEditorLineRow({ index, control, line, amounts, vatRefs, o
           <dd className="font-medium tabular-nums">{formatQuoteAmount(fromCents(amounts.total))}</dd>
         </div>
       </dl>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-xs"
-        className="justify-self-end lg:mt-1"
-        aria-label={`${t('invoiceEditor.lines.remove')} ${n}`}
-        onClick={onRemove}
-      >
-        <Trash2 />
-      </Button>
+      {onRemove ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          className="justify-self-end lg:mt-1"
+          aria-label={`${t('invoiceEditor.lines.remove')} ${n}`}
+          onClick={onRemove}
+        >
+          <Trash2 />
+        </Button>
+      ) : null}
+      {footer ? <div className="lg:col-span-full">{footer}</div> : null}
     </li>
   )
 }

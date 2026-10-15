@@ -6,8 +6,6 @@
 export const invoiceEditor = {
   createTitle: 'Emissione Proforma — Commessa #{{code}}',
   createDescription: 'Verifica righe, pagamento e scadenze, poi emetti il documento.',
-  editTitle: 'Modifica documento {{number}}',
-  editDescription: 'Le righe vengono sostituite e le scadenze ricalcolate.',
   rowAction: {
     alreadyIssued: 'Documento già emesso',
   },
@@ -95,13 +93,10 @@ export const invoiceEditor = {
   actions: {
     issue: 'Emetti',
     issuing: 'Emissione…',
-    save: 'Salva',
-    saving: 'Salvataggio…',
     cancel: 'Annulla',
   },
   messages: {
     issued: 'Documento {{number}} emesso.',
-    saved: 'Documento aggiornato.',
     genericError: 'Si è verificato un errore. Riprova.',
     conflictInvoiced: 'Questa richiesta proforma è già stata fatturata.',
     totalNotPositive: 'Il totale del documento deve essere maggiore di zero.',
