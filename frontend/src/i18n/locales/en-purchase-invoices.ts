@@ -18,9 +18,6 @@ export const purchaseInvoices = {
     residual_amount: 'Residual',
     payment_status: 'Payment status',
   },
-  actions: {
-    details: 'Details',
-  },
   detail: {
     title: 'Supplier invoice detail',
     subtitle: 'Rows, due dates, linked purchase orders and supplier documents.',
@@ -159,17 +156,8 @@ export const purchaseInvoices = {
     },
   },
   details: {
-    title: 'Supplier document details',
-    description: 'The supplier number turns the proforma into a registered invoice.',
     documentNumber: 'Supplier document number',
     numberHint: 'Filling in the number turns the proforma into an invoice, which can no longer be edited.',
     receiptNotice: 'Entering the number turns the proforma into an Invoice: the receipt of the quantities not yet received on the purchase orders will be registered.',
-    numberLockedHint: 'Registered invoice: the downgrade permission is required to change or clear the number.',
-    notes: 'Notes',
-    cancel: 'Cancel',
-    save: 'Save',
-    saving: 'Saving...',
-    saved: 'Details updated.',
-    genericError: 'Unable to update the details.',
   },
 }

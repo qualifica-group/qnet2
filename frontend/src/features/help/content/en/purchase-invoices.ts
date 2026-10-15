@@ -31,9 +31,8 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Action', 'What it does'],
           rows: [
-            ['**View**', 'Opens the document sheet: lines, installments, linked ODAs and documents.'],
-            ['**Edit**', 'Opens the editor (proformas only, see “Proforma and invoice”).'],
-            ['**Supplier details**', 'Number and date of the supplier document, and notes.'],
+            ['**View**', 'Opens the document sheet, where everything is edited: every field has the **pencil** (press it, change, **Save**; only that field is saved). In **Header** you change date, payment, bank, sites, default cost type and work order (proformas only; with payments date and payment are locked; supplier and company do not change). In **Registration and notes** you enter the supplier **number** and the notes, editable after registration too. **Edit lines** opens the lines editor (proformas only).'],
+            ['**Document date** (cell)', 'On proformas without payments the date can also be changed directly in the list, with a double-click.'],
             ['**Delete**', 'Deletes the document after confirmation (proformas without payments only).'],
             ['**Activity**', 'Change history of the document.'],
           ],
@@ -84,7 +83,7 @@ const guide: HelpGuide = {
           items: [
             'Changing the **document type** does not modify the lines from ODA: they stay as you filled them in.',
             'If the draft comes out empty, the order has nothing left to bill.',
-            'The editor and **Supplier details** warn that saving as **Invoice** registers the receipt of the quantities not yet received (see “Proforma and invoice”).',
+            'The editor and the sheet **number** field warn that saving as **Invoice** registers the receipt of the quantities not yet received (see “Proforma and invoice”).',
           ],
         },
       ],
@@ -95,7 +94,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'As with active invoices, the document starts as a **proforma**. It becomes an **invoice** when, from **Supplier details**, you enter the supplier document **number** and **date**.',
+          text: 'As with active invoices, the document starts as a **proforma**. It becomes an **invoice** when, on the sheet (**Registration and notes** section), you enter the supplier document **number**.',
         },
         {
           type: 'list',
@@ -144,7 +143,7 @@ const guide: HelpGuide = {
           rows: [
             ['See the list and the sheet', 'View passive invoices'],
             ['**New passive invoice**, **Register invoice** from the ODA', 'Create passive invoices'],
-            ['**Edit**, **Supplier details**', 'Edit passive invoices'],
+            ['Editing the sheet, **Edit lines**', 'Edit passive invoices'],
             ['**Delete**', 'Delete passive invoices'],
             ['Change or clear the number and date of an invoice', 'Correct/undo registration'],
             ['**Export**, **Activity**', 'Export and view activity'],

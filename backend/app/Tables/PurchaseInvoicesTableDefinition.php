@@ -4,16 +4,20 @@ namespace App\Tables;
 
 use App\Enums\InvoicePaymentStatus;
 use App\Enums\PurchaseInvoiceType;
+use App\Http\Requests\PurchaseInvoices\PurchaseInvoiceWriteRequest;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseInvoiceInstallment;
 use App\Models\User;
 use App\Services\Invoices\InvoicePaymentStatusResolver;
+use App\Services\PurchaseInvoices\PurchaseInvoiceService;
+use App\Services\Table\FormRequestCellValidator;
 use App\Tables\PurchaseInvoiceInstallments\PurchaseInstallmentSql;
 use App\Tables\PurchaseInvoices\PurchaseInvoiceColumnCatalog;
 use App\Tables\PurchaseInvoices\PurchaseInvoiceDerivedQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -25,6 +29,34 @@ use Illuminate\Support\Facades\Gate;
  */
 class PurchaseInvoicesTableDefinition extends AbstractTableDefinition
 {
+    public function __construct(
+        private readonly PurchaseInvoiceService $service,
+        private readonly FormRequestCellValidator $cells,
+    ) {}
+
+    /**
+     * Spec 0262, D-3: only a proforma without payments takes a cell edit (a
+     * registered invoice is frozen, payments freeze the document date).
+     */
+    public function authorizeUpdate(User $actor, Model $row): bool
+    {
+        /** @var PurchaseInvoice $row */
+        return $row->document_type === PurchaseInvoiceType::Proforma
+            && (float) ($row->getAttribute(self::PAID_SUM) ?? 0) <= 0
+            && Gate::forUser($actor)->allows('update', $row);
+    }
+
+    /** Spec 0262, D-3: the cell edit is the partial PATCH (stored values merged) through the form and the service. */
+    public function updateCell(Model $row, string $columnId, mixed $value): Model
+    {
+        /** @var PurchaseInvoice $row */
+        /** @var User $actor */
+        $actor = Auth::user();
+        $request = $this->cells->validate(PurchaseInvoiceWriteRequest::class, 'purchaseInvoice', $row, $actor, [$columnId => $value]);
+
+        return $this->service->update($row, $request->payload());
+    }
+
     private const string FIRST_UNPAID_DUE_DATE = 'first_unpaid_due_date';
 
     private const string PAID_SUM = 'installments_sum_paid_amount';
@@ -32,7 +64,7 @@ class PurchaseInvoicesTableDefinition extends AbstractTableDefinition
     private const string ORDERS_LABEL = 'purchase_orders_label';
 
     /** Row actions not offered for a registered invoice (409 on the server). */
-    private const array INVOICE_HIDDEN_ACTIONS = ['update', 'delete'];
+    private const array INVOICE_HIDDEN_ACTIONS = ['delete'];
 
     public function domain(): string
     {
@@ -168,11 +200,11 @@ class PurchaseInvoicesTableDefinition extends AbstractTableDefinition
         $hasPayments = (float) ($row->getAttribute(self::PAID_SUM) ?? 0) > 0;
         $allowed = [];
 
-        // Action key => policy ability; "details" is the PATCH, gated like update.
-        $abilities = ['view' => 'view', 'update' => 'update', 'details' => 'update', 'delete' => 'delete', 'activity' => 'viewActivity'];
+        // Action key => policy ability. No edit/details: the record edits in place from `view` (spec 0262).
+        $abilities = ['view' => 'view', 'delete' => 'delete', 'activity' => 'viewActivity'];
 
         foreach ($abilities as $key => $ability) {
-            // A registered invoice cannot be edited or deleted; a document with payments cannot be deleted.
+            // A registered invoice cannot be deleted, nor a document with payments.
             if ($row->document_type === PurchaseInvoiceType::Invoice && in_array($key, self::INVOICE_HIDDEN_ACTIONS, true)) {
                 continue;
             }

@@ -17,13 +17,13 @@ const BASE_PATH = `/${PURCHASE_INVOICES_DOMAIN}`
 
 /**
  * Content-only detail of a passive document for the module registry (spec 0042):
- * it is its own edit surface (edit / supplier details / delete open dialogs
+ * it is its own edit surface (fields in place, lines editor and delete dialogs
  * here), so the generic hosts neither add an Edit button nor an edit route.
  */
 export function PurchaseInvoiceDetailScreen({ id, onChanged, onSaved }: ModuleDetailScreenProps) {
   const navigate = useNavigate()
   const actions = usePurchaseInvoiceRowActions()
-  const { openEdit, openDetails, openDelete } = actions
+  const { openEdit, openDelete } = actions
 
   const handleDeleted = () => {
     onChanged?.()
@@ -40,15 +40,13 @@ export function PurchaseInvoiceDetailScreen({ id, onChanged, onSaved }: ModuleDe
       <PurchaseInvoiceDetailView
         invoiceId={id}
         onEdit={() => openEdit(id)}
-        onDetails={() => openDetails(id)}
         onDelete={(numberLabel) => openDelete({ id, numberLabel })}
+        onChanged={onChanged}
       />
       <PurchaseInvoiceActionDialogs
         editId={actions.editId}
-        detailsId={actions.detailsId}
         deleteTarget={actions.deleteTarget}
         onCloseEdit={actions.closeEdit}
-        onCloseDetails={actions.closeDetails}
         onCloseDelete={actions.closeDelete}
         onSaved={() => {
           actions.closeEdit()

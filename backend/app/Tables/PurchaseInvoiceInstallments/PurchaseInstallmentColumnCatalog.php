@@ -4,6 +4,7 @@ namespace App\Tables\PurchaseInvoiceInstallments;
 
 use App\Enums\PurchaseInstallmentStatus;
 use App\Enums\PurchaseInvoiceType;
+use App\Tables\Support\EditableColumns;
 
 /**
  * Declarative column/filter/action catalogue of the `purchase-invoice-installments`
@@ -31,7 +32,7 @@ final class PurchaseInstallmentColumnCatalog
      */
     public static function columns(): array
     {
-        return [
+        return EditableColumns::apply([
             self::column('document_type', 'badge', sortable: true, filter: 'set', options: PurchaseInvoiceType::values()),
             self::column('document_number', 'text', sortable: true, filter: 'text'),
             self::column('document_date', 'date', sortable: true, filter: 'date'),
@@ -54,7 +55,7 @@ final class PurchaseInstallmentColumnCatalog
             self::column('residual_amount', 'number', sortable: true, filter: 'number'),
             self::column('paid_at', 'date', sortable: true, filter: 'date'),
             self::column('financial_account', 'text', sortable: true, filter: 'set'),
-        ];
+        ], ['due_date' => [], 'payment_method_code' => EditableColumns::NULLABLE]);
     }
 
     /**
@@ -88,7 +89,6 @@ final class PurchaseInstallmentColumnCatalog
     public static function actions(): array
     {
         return [
-            ['key' => 'edit', 'label' => 'purchaseInvoiceInstallments.actions.edit', 'icon' => 'pencil', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-invoice-installments.update'],
             ['key' => 'record_payment', 'label' => 'purchaseInvoiceInstallments.actions.record_payment', 'icon' => 'hand-coins', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-invoices.pay'],
             ['key' => 'clear_payment', 'label' => 'purchaseInvoiceInstallments.actions.clear_payment', 'icon' => 'undo-2', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-invoices.pay'],
             ['key' => 'open_document', 'label' => 'purchaseInvoiceInstallments.actions.open_document', 'icon' => 'file-text', 'type' => 'link', 'confirm' => false, 'permission' => 'purchase-invoices.view'],

@@ -4,7 +4,6 @@ import type {
   BulkPaymentPayload,
   BulkPaymentResult,
   PurchaseInstallmentDetail,
-  PurchaseInstallmentUpdatePayload,
   PurchasePaymentPayload,
 } from '@/features/purchase-invoice-installments/types'
 
@@ -22,15 +21,6 @@ export const purchaseInstallmentKeys = {
 /** Reads one installment with its document summary, field permissions and abilities. */
 export async function getPurchaseInstallment(id: number): Promise<PurchaseInstallmentDetail> {
   const { data } = await apiClient.get<ApiResponse<PurchaseInstallmentDetail>>(`${BASE_PATH}/${id}`)
-  return data.data
-}
-
-/** Updates due date and/or payment method code. 409 when the installment is paid. */
-export async function updatePurchaseInstallment(
-  id: number,
-  payload: PurchaseInstallmentUpdatePayload,
-): Promise<PurchaseInstallmentDetail> {
-  const { data } = await apiClient.patch<ApiResponse<PurchaseInstallmentDetail>>(`${BASE_PATH}/${id}`, payload)
   return data.data
 }
 

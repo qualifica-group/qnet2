@@ -6,7 +6,6 @@ import { purchaseInstallmentColumnRenderers } from '@/features/purchase-invoice-
 import { PurchaseClearPaymentDialog } from '@/features/purchase-invoice-installments/purchase-clear-payment-dialog'
 import { PurchaseInstallmentBulkPaymentDialog } from '@/features/purchase-invoice-installments/purchase-installment-bulk-payment-dialog'
 import { isBulkPayable } from '@/features/purchase-invoice-installments/purchase-installment-bulk-payment'
-import { PurchaseInstallmentEditDialog } from '@/features/purchase-invoice-installments/purchase-installment-edit-dialog'
 import { PurchaseInstallmentQuickFilterToolbar } from '@/features/purchase-invoice-installments/purchase-installment-quick-filter-toolbar'
 import { PurchaseInstallmentTotalsFooter } from '@/features/purchase-invoice-installments/purchase-installment-totals-footer'
 import { PurchasePaymentDialog } from '@/features/purchase-invoice-installments/purchase-payment-dialog'
@@ -55,7 +54,6 @@ export function PurchaseInvoiceInstallmentsTable() {
         renderFooter={(aggregates) => <PurchaseInstallmentTotalsFooter aggregates={aggregates} />}
       />
 
-      <PurchaseInstallmentEditDialog installmentId={actions.editId} onClose={actions.closeEdit} onSaved={refreshGrid} />
       <PurchasePaymentDialog detail={actions.payTarget} onClose={actions.closePay} onSaved={refreshGrid} />
       <PurchaseInstallmentBulkPaymentDialog
         targets={bulkPayment.targets}

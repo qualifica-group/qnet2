@@ -24,7 +24,8 @@ Route::get('purchase-invoices/invoiceable-orders', PurchaseInvoiceInvoiceableOrd
 Route::post('purchase-invoices/installment-preview', [PurchaseInvoiceController::class, 'installmentPreview']);
 Route::post('purchase-invoices', [PurchaseInvoiceController::class, 'store']);
 Route::get('purchase-invoices/{purchaseInvoice}', [PurchaseInvoiceController::class, 'show'])->whereNumber('purchaseInvoice');
-Route::put('purchase-invoices/{purchaseInvoice}', [PurchaseInvoiceController::class, 'update'])->whereNumber('purchaseInvoice');
+// PATCH = partial edit (spec 0262): the keys not sent keep their stored value.
+Route::match(['put', 'patch'], 'purchase-invoices/{purchaseInvoice}', [PurchaseInvoiceController::class, 'update'])->whereNumber('purchaseInvoice');
 Route::patch('purchase-invoices/{purchaseInvoice}/details', [PurchaseInvoiceController::class, 'updateDetails'])->whereNumber('purchaseInvoice');
 Route::delete('purchase-invoices/{purchaseInvoice}', [PurchaseInvoiceController::class, 'destroy'])->whereNumber('purchaseInvoice');
 

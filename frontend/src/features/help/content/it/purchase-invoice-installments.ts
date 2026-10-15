@@ -82,9 +82,9 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Sulla riga di una rata da pagare premi **Modifica scadenza** (serve il permesso di modifica).',
-            'Cambia la **data di scadenza** e/o scegli la **modalità** di pagamento dall’elenco, poi premi **Salva**.',
-            'L’elenco si aggiorna da solo.',
+            'Sulla riga di una rata da pagare fai doppio clic sulla cella **Data scadenza** o **Modalità** (serve il permesso di modifica).',
+            'Cambia il valore e conferma: si salva subito solo quella cella. Esc annulla.',
+            'Le rate già pagate restano in sola lettura: annulla prima il pagamento.',
           ],
         },
         {
@@ -171,7 +171,7 @@ const guide: HelpGuide = {
           headers: ['Azione', 'Permesso'],
           rows: [
             ['Vedere l’elenco e il menu **Scadenze** (Passiva)', 'Visualizzazione scadenze passive'],
-            ['**Modifica scadenza**', 'Modifica scadenze passive (e permesso sul singolo campo)'],
+            ['Modificare **Data scadenza** e **Modalità** nelle celle', 'Modifica scadenze passive (e permesso sul singolo campo)'],
             ['**Registra / Annulla pagamento**, **Pagamento multiplo**', 'Registra pagamenti (fatture passive)'],
             ['**Apri documento**', 'Visualizzazione fatture passive'],
             ['**Esporta**', 'Esportazione scadenze passive'],

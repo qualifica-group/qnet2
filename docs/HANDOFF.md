@@ -3,7 +3,24 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0261 — Scheda fattura attiva modificabile per campo (tappa 2) — VERDE, NON COMMITTATO (2026-10-14)
+## Spec 0262 — Ciclo passivo: celle e scheda fattura passiva modificabili — VERDE, NON COMMITTATO (2026-10-14)
+
+- Spec `docs/specs/0262-payables-inline-editing.xml` (D-1..D-5). Menu Passiva = solo fatture e scadenze passive.
+- BE: `PATCH /purchase-invoices/{purchaseInvoice}` (match put/patch): `PurchaseInvoiceWriteRequest::prepareForValidation`
+  completa col salvato (righe con id, purchase_order_ids); metodo salvato valido se disattivato. Lista: `document_date`
+  editabile (proforma senza pagamenti, `authorizeUpdate`), azioni update/details rimosse. Scadenze passive: due_date,
+  payment_method_code in cella (non pagate), azione `edit` rimossa. Test: PurchaseInvoiceInlineEditTest (nuovo),
+  PurchaseInvoicesTableTest + PurchaseInvoiceInstallmentsTableTest aggiornati (REQUIREMENT CHANGED).
+- FE condiviso: `components/record-form/use-routed-record-inline-edit.ts` (gruppi di campi -> endpoint) e
+  `record-field-editors.tsx` (RecordTextEditor/RecordRelationEditor); la scheda fattura attiva (0261) ora li usa.
+- FE passivo: `use-purchase-invoice-inline-edit.ts` (useForm `values` = re-sync su cambi esterni),
+  `purchase-invoice-record-sections.tsx`, `purchase-invoice-detail.tsx` (pulsante "Modifica righe" = onEdit, onDetails
+  rimosso), `patchPurchaseInvoice`. Rimossi: details dialog(+test), use-purchase-invoice-editor-details-form,
+  buildPurchaseInvoiceDetailsSchema; scadenze: edit dialog(+test), edit form, field-access, payment-method-field,
+  use-payment-method-code-options, installment-schema, updatePurchaseInstallment; chiavi i18n orfane.
+- Guide IT/EN purchase-invoices e purchase-invoice-installments aggiornate. Manuale Claude Docs da aggiornare a mano.
+
+## Spec 0261 — Scheda fattura attiva modificabile per campo (tappa 2) — VERDE, COMMITTATO 700a3047 (2026-10-14)
 
 - Spec `docs/specs/0261-invoice-record-inline-editing.xml` (D-1..D-4).
 - BE: `PATCH /invoices/{invoice}` (route match put/patch): `InvoiceWriteRequest::prepareForValidation` completa i campi non

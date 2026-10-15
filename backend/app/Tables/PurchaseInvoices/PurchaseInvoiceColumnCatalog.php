@@ -4,6 +4,7 @@ namespace App\Tables\PurchaseInvoices;
 
 use App\Enums\InvoicePaymentStatus;
 use App\Enums\PurchaseInvoiceType;
+use App\Tables\Support\EditableColumns;
 
 /**
  * Declarative column/filter/action catalogue of the `purchase-invoices` domain
@@ -18,7 +19,7 @@ final class PurchaseInvoiceColumnCatalog
      */
     public static function columns(): array
     {
-        return [
+        return EditableColumns::apply([
             self::column('document_type', 'badge', sortable: true, filter: 'set', options: PurchaseInvoiceType::values()),
             self::column('document_number', 'text', sortable: true, filter: 'text'),
             self::column('document_date', 'date', sortable: true, filter: 'date'),
@@ -29,7 +30,7 @@ final class PurchaseInvoiceColumnCatalog
             self::column('paid_amount', 'number'),
             self::column('residual_amount', 'number'),
             self::column('payment_status', 'badge', options: InvoicePaymentStatus::values()),
-        ];
+        ], ['document_date' => []]);
     }
 
     /**
@@ -63,8 +64,6 @@ final class PurchaseInvoiceColumnCatalog
     {
         return [
             ['key' => 'view', 'label' => 'actions.view', 'icon' => 'eye', 'type' => 'link', 'confirm' => false, 'permission' => 'purchase-invoices.view'],
-            ['key' => 'update', 'label' => 'actions.edit', 'icon' => 'pencil', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-invoices.update'],
-            ['key' => 'details', 'label' => 'purchaseInvoices.actions.details', 'icon' => 'file-pen-line', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-invoices.update'],
             ['key' => 'delete', 'label' => 'actions.delete', 'icon' => 'trash', 'type' => 'danger', 'confirm' => true, 'permission' => 'purchase-invoices.delete'],
             ['key' => 'activity', 'label' => 'actions.activity', 'icon' => 'history', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-invoices.viewActivity'],
         ];

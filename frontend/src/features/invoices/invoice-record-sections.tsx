@@ -1,14 +1,12 @@
 import type { ReactNode } from 'react'
-import type { Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { FileText, NotebookText, Tags } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordField, RecordFieldList, RecordSection } from '@/components/detail/record-panel'
-import { RelationSelectField, type RelationFieldRef } from '@/components/form/relation-select-field'
+import { RecordRelationEditor, RecordTextEditor } from '@/components/record-form/record-field-editors'
 import { RecordInlineField } from '@/components/record-form/record-inline-field'
 import { FormControl } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { MetaField } from '@/features/authorization/MetaField'
 import { DOCUMENT_LAYOUTS_FOR_SELECT_RESOURCE } from '@/features/document-layouts/for-select-api'
 import { BANK_ACCOUNT_FOR_SELECT_PARAMS, FINANCIAL_ACCOUNTS_FOR_SELECT_RESOURCE } from '@/features/financial-accounts/for-select-api'
@@ -17,16 +15,11 @@ import { PAYMENT_METHODS_FOR_SELECT_RESOURCE } from '@/features/payment-methods/
 import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
 import { formatDate } from '@/lib/formatting/date-display'
 import { formatEuro, parseNumberInput } from '@/features/invoices/invoice-format'
-import type { InvoiceRecordFormValues } from '@/features/invoices/invoice-schema'
 import { InvoiceTagBadge } from '@/features/invoices/invoice-status-badges'
 import type { InvoiceWithPermissions } from '@/features/invoices/types'
 import type { InvoiceRecordEditor } from '@/features/invoices/use-invoice-inline-edit'
 
 const LAYOUT_PARAMS = { module: 'invoices' } as const
-
-type RecordControl = Control<InvoiceRecordFormValues>
-type RelationName = 'customer_registry_id' | 'payment_method_id' | 'financial_account_id' | 'invoice_tag_id' | 'layout_id'
-type TextName = 'document_date' | 'external_number' | 'external_date' | 'notes' | 'internal_note'
 
 interface SectionProps {
   invoice: InvoiceWithPermissions
@@ -35,59 +28,6 @@ interface SectionProps {
 
 function TextValue({ value }: { value: string | null | undefined }) {
   return value && value.trim() !== '' ? <span className="break-words whitespace-pre-wrap">{value}</span> : <DetailEmpty />
-}
-
-interface TextEditorProps {
-  control: RecordControl
-  name: TextName
-  label: string
-  type?: 'text' | 'date'
-  multiline?: boolean
-  required?: boolean
-}
-
-/** A text/date/long-text control of the record, authorization-aware (`MetaField`). */
-function TextEditor({ control, name, label, type = 'text', multiline = false, required }: TextEditorProps) {
-  return (
-    <MetaField control={control} name={name} metaKey={name} label={label} required={required}>
-      {({ field, disabled, readOnly }) => (
-        <FormControl>
-          {multiline ? (
-            <Textarea className="min-h-16 text-sm" disabled={disabled} readOnly={readOnly} {...field} value={field.value ?? ''} />
-          ) : (
-            <Input type={type} className="h-8 text-sm" disabled={disabled} readOnly={readOnly} {...field} value={field.value ?? ''} />
-          )}
-        </FormControl>
-      )}
-    </MetaField>
-  )
-}
-
-interface RelationEditorProps {
-  control: RecordControl
-  name: RelationName
-  label: string
-  resource: string
-  selected: RelationFieldRef | null
-  params?: Record<string, string | number>
-  required?: boolean
-  placeholder: string
-}
-
-/** A server-backed picker of the record (`RelationSelectField`, authorization-aware). */
-function RelationEditor(props: RelationEditorProps) {
-  const { t } = useTranslation()
-  return (
-    <RelationSelectField
-      {...props}
-      metaKey={props.name}
-      searchPlaceholder={t('invoiceEditor.fields.searchPlaceholder')}
-      emptyLabel={t('invoiceEditor.fields.selectEmpty')}
-      errorLabel={t('invoiceEditor.fields.selectError')}
-      clearLabel={t('common.clear')}
-      retryLabel={t('common.retry')}
-    />
-  )
 }
 
 function Editors({ children }: { children: ReactNode }) {
@@ -113,7 +53,7 @@ function HeaderSection({ invoice, editor }: SectionProps) {
           label={t('invoices.columns.document_date')}
           inline={inline}
           canEdit={unfrozen}
-          editor={<TextEditor control={control} name="document_date" type="date" label={t('invoices.columns.document_date')} required />}
+          editor={<RecordTextEditor control={control} name="document_date" type="date" label={t('invoices.columns.document_date')} required />}
         >
           <span>{formatDate(invoice.document_date)}</span>
         </RecordInlineField>
@@ -125,7 +65,7 @@ function HeaderSection({ invoice, editor }: SectionProps) {
           label={t('invoiceEditor.fields.customer')}
           inline={inline}
           canEdit={unfrozen}
-          editor={<RelationEditor control={control} name="customer_registry_id" label={t('invoiceEditor.fields.customer')} resource={REGISTRIES_FOR_SELECT_RESOURCE} selected={invoice.customer} placeholder={t('invoiceEditor.fields.selectCustomer')} required />}
+          editor={<RecordRelationEditor control={control} name="customer_registry_id" label={t('invoiceEditor.fields.customer')} resource={REGISTRIES_FOR_SELECT_RESOURCE} selected={invoice.customer} placeholder={t('invoiceEditor.fields.selectCustomer')} required />}
         >
           <span>{invoice.customer.name}</span>
         </RecordInlineField>
@@ -134,7 +74,7 @@ function HeaderSection({ invoice, editor }: SectionProps) {
           label={t('invoices.columns.payment_method')}
           inline={inline}
           canEdit={unfrozen}
-          editor={<RelationEditor control={control} name="payment_method_id" label={t('invoices.columns.payment_method')} resource={PAYMENT_METHODS_FOR_SELECT_RESOURCE} selected={invoice.payment_method} placeholder={t('invoiceEditor.fields.selectPaymentMethod')} required />}
+          editor={<RecordRelationEditor control={control} name="payment_method_id" label={t('invoices.columns.payment_method')} resource={PAYMENT_METHODS_FOR_SELECT_RESOURCE} selected={invoice.payment_method} placeholder={t('invoiceEditor.fields.selectPaymentMethod')} required />}
         >
           <span>{invoice.payment_method.name}</span>
         </RecordInlineField>
@@ -143,7 +83,7 @@ function HeaderSection({ invoice, editor }: SectionProps) {
           label={t('invoiceEditor.fields.financialAccount')}
           inline={inline}
           editor={
-            <RelationEditor
+            <RecordRelationEditor
               control={control}
               name="financial_account_id"
               label={t('invoiceEditor.fields.financialAccount')}
@@ -186,8 +126,8 @@ function RegistrationSection({ invoice, editor }: SectionProps) {
           inline={inline}
           editor={
             <Editors>
-              <TextEditor control={control} name="external_number" label={t('invoices.details.externalNumber')} />
-              <TextEditor control={control} name="external_date" type="date" label={t('invoices.details.externalDate')} />
+              <RecordTextEditor control={control} name="external_number" label={t('invoices.details.externalNumber')} />
+              <RecordTextEditor control={control} name="external_date" type="date" label={t('invoices.details.externalDate')} />
               <p className="text-xs text-muted-foreground">{t('invoices.details.externalNumberHint')}</p>
             </Editors>
           }
@@ -198,7 +138,7 @@ function RegistrationSection({ invoice, editor }: SectionProps) {
           field="invoice_tag_id"
           label={t('invoiceEditor.fields.tag')}
           inline={inline}
-          editor={<RelationEditor control={control} name="invoice_tag_id" label={t('invoiceEditor.fields.tag')} resource={INVOICE_TAGS_FOR_SELECT_RESOURCE} selected={invoice.tag} placeholder={t('invoiceEditor.fields.noTag')} />}
+          editor={<RecordRelationEditor control={control} name="invoice_tag_id" label={t('invoiceEditor.fields.tag')} resource={INVOICE_TAGS_FOR_SELECT_RESOURCE} selected={invoice.tag} placeholder={t('invoiceEditor.fields.noTag')} />}
         >
           {invoice.tag ? <InvoiceTagBadge tag={invoice.tag} /> : <DetailEmpty />}
         </RecordInlineField>
@@ -233,7 +173,7 @@ function RegistrationSection({ invoice, editor }: SectionProps) {
           field="layout_id"
           label={t('invoices.detail.layout')}
           inline={inline}
-          editor={<RelationEditor control={control} name="layout_id" label={t('invoices.detail.layout')} resource={DOCUMENT_LAYOUTS_FOR_SELECT_RESOURCE} selected={invoice.layout} params={LAYOUT_PARAMS} placeholder={t('invoices.detail.layoutDefault')} />}
+          editor={<RecordRelationEditor control={control} name="layout_id" label={t('invoices.detail.layout')} resource={DOCUMENT_LAYOUTS_FOR_SELECT_RESOURCE} selected={invoice.layout} params={LAYOUT_PARAMS} placeholder={t('invoices.detail.layoutDefault')} />}
         >
           <span>{invoice.layout?.name ?? t('invoices.detail.layoutDefault')}</span>
         </RecordInlineField>
@@ -254,7 +194,7 @@ function NotesSection({ invoice, editor }: SectionProps) {
           field="notes"
           label={t('invoices.detail.notes')}
           inline={inline}
-          editor={<TextEditor control={form.control} name="notes" label={t('invoices.detail.notes')} multiline />}
+          editor={<RecordTextEditor control={form.control} name="notes" label={t('invoices.detail.notes')} multiline />}
         >
           <TextValue value={invoice.notes} />
         </RecordInlineField>
@@ -262,7 +202,7 @@ function NotesSection({ invoice, editor }: SectionProps) {
           field="internal_note"
           label={t('invoices.detail.internalNote')}
           inline={inline}
-          editor={<TextEditor control={form.control} name="internal_note" label={t('invoices.detail.internalNote')} multiline />}
+          editor={<RecordTextEditor control={form.control} name="internal_note" label={t('invoices.detail.internalNote')} multiline />}
         >
           <TextValue value={invoice.internal_note} />
         </RecordInlineField>

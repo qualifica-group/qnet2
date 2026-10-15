@@ -24,10 +24,6 @@ vi.mock('@/features/purchase-invoice-installments/api', async (importOriginal) =
   getPurchaseInstallment: (id: number) => getMock(id),
   clearPurchasePayment: (id: number) => clearMock(id),
 }))
-vi.mock('@/features/purchase-invoice-installments/purchase-installment-edit-dialog', () => ({
-  PurchaseInstallmentEditDialog: ({ installmentId }: { installmentId: number | null }) =>
-    installmentId === null ? null : <div role="dialog" aria-label="edit dialog">{`edit ${installmentId}`}</div>,
-}))
 vi.mock('@/features/purchase-invoice-installments/purchase-financial-account-select', () => ({
   PurchaseFinancialAccountSelect: () => <div />,
 }))
@@ -62,7 +58,7 @@ vi.mock('@/features/table/table-view', () => ({
         <button type="button" onClick={() => onRowGroupColumnsChange?.(['supplier'])}>
           group-supplier
         </button>
-        {['edit', 'record_payment', 'clear_payment', 'open_document'].map((key) => (
+        {['record_payment', 'clear_payment', 'open_document'].map((key) => (
           <button key={key} type="button" onClick={() => onAction?.(action(key), ROW)}>
             {key}
           </button>
@@ -109,14 +105,6 @@ describe('PurchaseInvoiceInstallmentsTable (spec 0211 AC-014, AC-016)', () => {
     })
     expect(screen.getByRole('tab', { name: 'To pay', selected: true })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Totals of the current filter' })).toHaveTextContent('Paid')
-  })
-
-  it('opens the edit dialog on the clicked installment', () => {
-    renderTable()
-
-    fireEvent.click(screen.getByRole('button', { name: 'edit' }))
-
-    expect(screen.getByRole('dialog', { name: 'edit dialog' })).toHaveTextContent('edit 7')
   })
 
   it('"open document" goes to the passive invoice the installment belongs to (spec 0250 AC-013)', () => {

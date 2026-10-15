@@ -26,8 +26,6 @@ export const purchaseInvoiceViews = {
   },
   actions: {
     view: 'View',
-    update: 'Edit',
-    details: 'Supplier details',
     delete: 'Delete',
     activity: 'Activity',
   },
@@ -35,8 +33,7 @@ export const purchaseInvoiceViews = {
     title: 'Invoice {{number}}',
     titleProforma: 'Passive proforma',
     loadError: 'Unable to load the document. Try again.',
-    edit: 'Edit',
-    details: 'Supplier details',
+    editLines: 'Edit lines',
     delete: 'Delete',
     header: 'Header',
     totals: 'Totals',
@@ -102,5 +99,11 @@ export const purchaseInvoiceViews = {
   registerInvoice: {
     button: 'Register invoice',
     tooltip: 'Register the passive invoice of this order',
+  },
+  record: {
+    registration: 'Registration and notes',
+    saved: 'Document updated.',
+    saveError: 'Unable to save the document. Try again.',
+    invalid: 'Check the highlighted fields.',
   },
 }

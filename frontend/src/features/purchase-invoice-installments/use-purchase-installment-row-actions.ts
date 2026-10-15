@@ -27,7 +27,6 @@ export function usePurchaseInstallmentRowActions(onChanged: () => void) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const [editId, setEditId] = useState<number | null>(null)
   const [payTarget, setPayTarget] = useState<PurchaseInstallmentDetail | null>(null)
   const [clearTarget, setClearTarget] = useState<ClearTarget | null>(null)
   const { mutate: clearPayment, isPending: isClearing } = useClearPurchasePayment()
@@ -56,9 +55,6 @@ export function usePurchaseInstallmentRowActions(onChanged: () => void) {
     (action, row) => {
       const id = Number(row.id)
       switch (action.key) {
-        case 'edit':
-          setEditId(id)
-          break
         case 'record_payment':
           void openPayment(id)
           break
@@ -98,8 +94,6 @@ export function usePurchaseInstallmentRowActions(onChanged: () => void) {
 
   return {
     handleAction,
-    editId,
-    closeEdit: useCallback(() => setEditId(null), []),
     payTarget,
     closePay: useCallback(() => setPayTarget(null), []),
     clearSequence: clearTarget?.sequence ?? null,

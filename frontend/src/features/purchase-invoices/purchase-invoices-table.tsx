@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ICellRendererParams } from 'ag-grid-community'
-import { FilePen, FileText, Plus } from 'lucide-react'
+import { FileText, Plus } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
@@ -17,10 +17,9 @@ import type { ActionIconMap } from '@/features/table/action-icon-map'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { TableRow } from '@/features/table/types'
 
-/** Icon keys the backend catalog uses for the document-specific `details`/`update` actions. */
+/** Icon keys the backend catalog uses for the document-specific actions. */
 const PURCHASE_INVOICE_ACTION_ICONS: ActionIconMap = {
   'file-text': FileText,
-  'file-pen-line': FilePen,
 }
 
 function renderDetail(params: ICellRendererParams<TableRow>) {
@@ -29,7 +28,7 @@ function renderDetail(params: ICellRendererParams<TableRow>) {
 
 /**
  * Thin passive-invoices adapter over the generic table: one row per document,
- * actions come from the server row (view, update, details, delete, activity),
+ * actions come from the server row (view, delete, activity; the record edits in place),
  * the expanded row lazily loads lines and installments. Every write re-authorizes server-side.
  */
 export function PurchaseInvoicesTable() {
@@ -73,10 +72,8 @@ export function PurchaseInvoicesTable() {
       <PurchaseInvoiceDetailSheet invoiceId={actions.viewId} onClose={actions.closeView} onChanged={refreshGrid} />
       <PurchaseInvoiceActionDialogs
         editId={actions.editId}
-        detailsId={actions.detailsId}
         deleteTarget={actions.deleteTarget}
         onCloseEdit={actions.closeEdit}
-        onCloseDetails={actions.closeDetails}
         onCloseDelete={actions.closeDelete}
         onSaved={handleEdited}
         onDeleted={refreshGrid}

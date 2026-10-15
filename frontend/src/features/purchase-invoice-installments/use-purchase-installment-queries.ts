@@ -11,11 +11,9 @@ import {
   getPurchaseInstallment,
   purchaseInstallmentKeys,
   recordPurchasePayment,
-  updatePurchaseInstallment,
 } from '@/features/purchase-invoice-installments/api'
 import type {
   PurchaseInstallmentDetail,
-  PurchaseInstallmentUpdatePayload,
   PurchasePaymentPayload,
 } from '@/features/purchase-invoice-installments/types'
 
@@ -26,16 +24,6 @@ export function usePurchaseInstallment(id: number | null): UseQueryResult<Purcha
     queryFn: () => getPurchaseInstallment(id as number),
     enabled: id !== null,
     gcTime: 0,
-  })
-}
-
-export function useUpdatePurchaseInstallment(
-  id: number,
-): UseMutationResult<PurchaseInstallmentDetail, AxiosError, PurchaseInstallmentUpdatePayload> {
-  const queryClient = useQueryClient()
-  return useMutation<PurchaseInstallmentDetail, AxiosError, PurchaseInstallmentUpdatePayload>({
-    mutationFn: (payload) => updatePurchaseInstallment(id, payload),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: purchaseInstallmentKeys.all }),
   })
 }
 

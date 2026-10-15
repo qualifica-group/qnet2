@@ -35,11 +35,6 @@ vi.mock('@/features/purchase-invoices/purchase-invoice-editor-dialog', () => ({
     <div role="dialog" aria-label="Invoice editor">{`${mode}/${invoiceId ?? 'new'}`}</div>
   ),
 }))
-vi.mock('@/features/purchase-invoices/purchase-invoice-details-dialog', () => ({
-  PurchaseInvoiceDetailsDialog: ({ invoice }: { invoice: PurchaseInvoice }) => (
-    <div role="dialog" aria-label="Supplier details">{`details ${invoice.id}`}</div>
-  ),
-}))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 function action(key: string): TableActionDefinition {
@@ -56,7 +51,7 @@ vi.mock('@/features/table/table-view', () => ({
     useImperativeHandle(ref, () => ({ refresh: refreshMock, setFilterModel: () => {}, clearSelection: () => {} }))
     return (
       <div role="region" aria-label={`table-${domain}`}>
-        {['view', 'update', 'details', 'delete', 'activity'].map((key) => (
+        {['view', 'delete', 'activity'].map((key) => (
           <button key={key} type="button" onClick={() => onAction?.(action(key), ROW)}>
             {key}
           </button>
@@ -102,16 +97,6 @@ describe('PurchaseInvoicesTable (spec 0250 AC-013)', () => {
 
     expect(await screen.findByRole('heading', { name: 'Invoice FT-9' })).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith(31)
-  })
-
-  it('"update" opens the editor on the row and "details" the supplier dialog', async () => {
-    renderTable()
-
-    fireEvent.click(screen.getByRole('button', { name: 'update' }))
-    expect(screen.getByRole('dialog', { name: 'Invoice editor' })).toHaveTextContent('edit/31')
-
-    fireEvent.click(screen.getByRole('button', { name: 'details' }))
-    expect(await screen.findByRole('dialog', { name: 'Supplier details' })).toHaveTextContent('details 31')
   })
 
   it('"delete" asks for confirmation, deletes and refreshes the grid', async () => {

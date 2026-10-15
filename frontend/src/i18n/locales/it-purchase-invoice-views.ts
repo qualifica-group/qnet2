@@ -26,8 +26,6 @@ export const purchaseInvoiceViews = {
   },
   actions: {
     view: 'Visualizza',
-    update: 'Modifica',
-    details: 'Dettagli fornitore',
     delete: 'Elimina',
     activity: 'Attività',
   },
@@ -35,8 +33,7 @@ export const purchaseInvoiceViews = {
     title: 'Fattura {{number}}',
     titleProforma: 'Proforma passivo',
     loadError: 'Impossibile caricare il documento. Riprova.',
-    edit: 'Modifica',
-    details: 'Dettagli fornitore',
+    editLines: 'Modifica righe',
     delete: 'Elimina',
     header: 'Testata',
     totals: 'Totali',
@@ -102,5 +99,11 @@ export const purchaseInvoiceViews = {
   registerInvoice: {
     button: 'Registra fattura',
     tooltip: 'Registra la fattura passiva di questo ordine',
+  },
+  record: {
+    registration: 'Registrazione e note',
+    saved: 'Documento aggiornato.',
+    saveError: 'Impossibile salvare il documento. Riprova.',
+    invalid: 'Controlla i campi evidenziati.',
   },
 }

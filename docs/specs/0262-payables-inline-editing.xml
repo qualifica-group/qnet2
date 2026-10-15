@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0262-payables-inline-editing" status="approved" owner="utente" date="2026-10-14">
+
+  <goal>
+    Il ciclo passivo (Fatture passive, Scadenze passive) si allinea a quello attivo (specs 0260/0261): modifica in cella
+    nelle liste e scheda della fattura passiva modificabile campo per campo, senza le finestre "Modifica" e "Dettagli".
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-14: "committa e procedi con tutta la parte passiva". Il menu Passiva contiene solo Fatture
+    passive e Scadenze passive (nessun catalogo tag passivo). Fatti verificati: il PUT della fattura passiva e' completo
+    (righe e collegamenti ODA compresi, rate ripianificate o ribilanciate) e vietato sulle registrate; PATCH details
+    (numero fornitore, note) e' parziale e vale anche sulle registrate; fornitore e societa' sono fissi; i pagamenti
+    congelano data documento e metodo; PATCH della scadenza passiva e' parziale e rifiuta le rate pagate (409).
+  </context>
+
+  <decisions>
+    D-1 (contratto) PATCH /purchase-invoices/{purchaseInvoice}: i campi non inviati (righe e purchase_order_ids
+        compresi) prendono il valore salvato, poi lo stesso update completo. PUT invariato (editor righe). Il metodo
+        di pagamento salvato resta valido anche se disattivato.
+    D-2 Scadenze passive: due_date e payment_method_code modificabili in cella sulle rate non pagate, tramite
+        UpdatePurchaseInvoiceInstallmentRequest + PurchaseInvoiceInstallmentUpdater. Azione `edit` e finestra di
+        modifica rimosse.
+    D-3 Fatture passive, lista: document_date modificabile in cella sui proforma senza pagamenti (PATCH parziale).
+        Azioni `update` e `details` rimosse: la scheda si apre con "Visualizza".
+    D-4 Scheda: Testata (data, pagamento, banca, sede societa', sede operativa, tipo costo e commessa predefiniti;
+        societa', fornitore, autore in sola lettura) -> PATCH parziale; Registrazione e note (numero fornitore, note)
+        -> PATCH details, anche sulle registrate. Matite secondo la matrice campi del server; con pagamenti niente
+        matita su data e pagamento. "Modifica righe" (solo proforma con update) apre l'editor esistente. Finestra
+        Dettagli e il suo form rimossi.
+    D-5 Frontend condiviso: `useRoutedRecordInlineEdit` (gruppi di campi salvati su endpoint diversi) e gli editor
+        `RecordTextEditor` / `RecordRelationEditor`, riusati anche dalla scheda della fattura attiva (0261).
+  </decisions>
+
+  <acceptance>
+    <ac id="AC-001">PATCH con le sole note lascia righe e rate; un nuovo metodo ripianifica; metodo salvato disattivato
+      non blocca.</ac>
+    <ac id="AC-002">Fattura registrata: PATCH testata -> 409.</ac>
+    <ac id="AC-003">Lista fatture: solo document_date editabile, riga registrata non modificabile, niente update/details.</ac>
+    <ac id="AC-004">Scadenze: data e metodo in cella sulla rata non pagata; pagata -> 403; nessuna azione `edit`.</ac>
+    <ac id="AC-005">Scheda: data -> PATCH parziale, note -> PATCH details; con pagamenti niente matita su data e pagamento.</ac>
+    <ac id="AC-006">Guide in-app IT/EN purchase-invoices e purchase-invoice-installments aggiornate.</ac>
+  </acceptance>
+</spec>

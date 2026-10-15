@@ -18,9 +18,6 @@ export const purchaseInvoices = {
     residual_amount: 'Residuo',
     payment_status: 'Stato pagamento',
   },
-  actions: {
-    details: 'Dettagli',
-  },
   detail: {
     title: 'Dettaglio fattura passiva',
     subtitle: 'Righe, scadenze, ODA collegati e documenti del fornitore.',
@@ -159,17 +156,8 @@ export const purchaseInvoices = {
     },
   },
   details: {
-    title: 'Dettagli documento fornitore',
-    description: 'Il numero del fornitore trasforma la proforma in fattura registrata.',
     documentNumber: 'Numero documento fornitore',
     numberHint: 'Compilando il numero la proforma diventa fattura e non è più modificabile.',
     receiptNotice: 'Registrando il numero la proforma diventa Fattura: verrà registrata la ricezione delle quantità non ancora ricevute sugli ODA.',
-    numberLockedHint: 'Fattura registrata: serve il permesso di declassamento per cambiare o svuotare il numero.',
-    notes: 'Note',
-    cancel: 'Annulla',
-    save: 'Salva',
-    saving: 'Salvataggio...',
-    saved: 'Dettagli aggiornati.',
-    genericError: 'Impossibile aggiornare i dettagli.',
   },
 }

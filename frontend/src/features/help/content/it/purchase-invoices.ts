@@ -31,9 +31,8 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Azione', 'Cosa fa'],
           rows: [
-            ['**Visualizza**', 'Apre la scheda del documento: righe, scadenze, ODA collegati e documenti.'],
-            ['**Modifica**', 'Apre l’editor (solo proforma, vedi “Proforma e fattura”).'],
-            ['**Dettagli fornitore**', 'Numero e data del documento del fornitore e note.'],
+            ['**Visualizza**', 'Apre la scheda del documento, dove si modifica tutto: ogni campo ha la **matita** (premi, cambia, **Salva**; si salva solo quel campo). In **Testata** cambi data, pagamento, banca, sedi, tipo di costo e commessa predefiniti (solo proforma; con pagamenti data e pagamento sono bloccati; fornitore e società non cambiano). In **Registrazione e note** inserisci il **numero** del fornitore e le note, modificabili anche dopo la registrazione. **Modifica righe** apre l’editor delle righe (solo proforma).'],
+            ['**Data documento** (cella)', 'Sui proforma senza pagamenti la data si cambia anche direttamente nell’elenco, con doppio clic.'],
             ['**Elimina**', 'Elimina il documento dopo conferma (solo proforma senza pagamenti).'],
             ['**Attività**', 'Storico delle modifiche del documento.'],
           ],
@@ -84,7 +83,7 @@ const guide: HelpGuide = {
           items: [
             'Cambiare il **tipo di documento** non modifica le righe da ODA: restano come le hai compilate.',
             'Se la bozza risulta vuota, l’ordine non ha più nulla da fatturare.',
-            'L’editor e **Dettagli fornitore** avvisano che salvare come **Fattura** registra la ricezione delle quantità non ancora ricevute (vedi “Proforma e fattura”).',
+            'L’editor e il campo **numero** della scheda avvisano che salvare come **Fattura** registra la ricezione delle quantità non ancora ricevute (vedi “Proforma e fattura”).',
           ],
         },
       ],
@@ -95,7 +94,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Come per le fatture attive, il documento nasce come **proforma**. Diventa **fattura** quando, da **Dettagli fornitore**, inserisci il **numero** e la **data** del documento del fornitore.',
+          text: 'Come per le fatture attive, il documento nasce come **proforma**. Diventa **fattura** quando, nella scheda (sezione **Registrazione e note**), inserisci il **numero** del documento del fornitore.',
         },
         {
           type: 'list',
@@ -144,7 +143,7 @@ const guide: HelpGuide = {
           rows: [
             ['Vedere l’elenco e la scheda', 'Visualizzazione fatture passive'],
             ['**Nuova fattura passiva**, **Registra fattura** dall’ODA', 'Creazione fatture passive'],
-            ['**Modifica**, **Dettagli fornitore**', 'Modifica fatture passive'],
+            ['Modificare la scheda, **Modifica righe**', 'Modifica fatture passive'],
             ['**Elimina**', 'Eliminazione fatture passive'],
             ['Cambiare o svuotare numero e data di una fattura', 'Correggi/annulla registrazione'],
             ['**Esporta**, **Attività**', 'Esportazione e visualizzazione attività'],

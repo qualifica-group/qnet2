@@ -49,10 +49,19 @@ export async function updatePurchaseInvoice(
   return { ...data.data, permissions: data.permissions }
 }
 
+/** Partial edit (PATCH, spec 0262): the keys not sent keep their stored value; 409 on a registered invoice. */
+export async function patchPurchaseInvoice(
+  id: number,
+  payload: Partial<PurchaseInvoiceWritePayload>,
+): Promise<PurchaseInvoice> {
+  const { data } = await apiClient.patch<DocumentEnvelope>(`${BASE_PATH}/${id}`, payload)
+  return { ...data.data, permissions: data.permissions }
+}
+
 /** Supplier number/notes (PATCH): a filled number turns a proforma into an invoice. */
 export async function updatePurchaseInvoiceDetails(
   id: number,
-  payload: PurchaseInvoiceDetailsPayload,
+  payload: Partial<PurchaseInvoiceDetailsPayload>,
 ): Promise<PurchaseInvoice> {
   const { data } = await apiClient.patch<DocumentEnvelope>(`${BASE_PATH}/${id}/details`, payload)
   return { ...data.data, permissions: data.permissions }

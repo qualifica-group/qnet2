@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
@@ -10,10 +10,16 @@ import type { PurchaseInvoice } from '@/features/purchase-invoices/types'
 const fetchMock = vi.hoisted(() => vi.fn<(id: number) => Promise<PurchaseInvoice>>())
 const canMock = vi.hoisted(() => vi.fn<(permission: string) => boolean>())
 
+const patchMock = vi.hoisted(() => vi.fn<(id: number, payload: Record<string, unknown>) => Promise<PurchaseInvoice>>())
+const detailsMock = vi.hoisted(() => vi.fn<(id: number, payload: Record<string, unknown>) => Promise<PurchaseInvoice>>())
+
 vi.mock('@/features/purchase-invoices/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/purchase-invoices/api')>()),
   fetchPurchaseInvoice: (id: number) => fetchMock(id),
+  patchPurchaseInvoice: (id: number, payload: Record<string, unknown>) => patchMock(id, payload),
+  updatePurchaseInvoiceDetails: (id: number, payload: Record<string, unknown>) => detailsMock(id, payload),
 }))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: (permission: string) => canMock(permission), hasRole: () => false, roles: [], isLoading: false }),
 }))
@@ -23,7 +29,7 @@ vi.mock('@/features/attachments/documents-section', () => ({
   ),
 }))
 
-const callbacks = { onEdit: vi.fn(), onDetails: vi.fn(), onDelete: vi.fn() }
+const callbacks = { onEdit: vi.fn(), onDelete: vi.fn() }
 
 function renderDetail(invoice: PurchaseInvoice) {
   fetchMock.mockResolvedValue(invoice)
@@ -44,6 +50,8 @@ beforeAll(async () => {
 beforeEach(() => {
   vi.clearAllMocks()
   canMock.mockReturnValue(true)
+  patchMock.mockResolvedValue(makePurchaseInvoiceView())
+  detailsMock.mockResolvedValue(makePurchaseInvoiceView())
 })
 
 describe('PurchaseInvoiceDetailView (spec 0250 AC-013)', () => {
@@ -76,16 +84,37 @@ describe('PurchaseInvoiceDetailView (spec 0250 AC-013)', () => {
     expect(await screen.findByRole('heading', { name: 'Invoice FT-77' })).toBeInTheDocument()
   })
 
+  // Spec 0262 (REQUIREMENT CHANGED): "Edit" became "Edit lines"; supplier details are edited in place.
   it('renders the header buttons from permissions.actions and wires their callbacks', async () => {
     renderDetail(makePurchaseInvoiceView({ document_number: 'FT-1' }))
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Edit' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Supplier details' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit lines' }))
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     expect(callbacks.onEdit).toHaveBeenCalledTimes(1)
-    expect(callbacks.onDetails).toHaveBeenCalledTimes(1)
     expect(callbacks.onDelete).toHaveBeenCalledWith('FT-1')
+  })
+
+  it('saves a header field through the partial PATCH and the notes through the details endpoint (spec 0262)', async () => {
+    renderDetail(makePurchaseInvoiceView())
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Document date' }))
+    fireEvent.change(screen.getByLabelText(/^Document date/), { target: { value: '2026-10-05' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(patchMock).toHaveBeenCalledWith(31, { document_date: '2026-10-05' }))
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Notes' }))
+    fireEvent.change(screen.getByLabelText(/^Notes/), { target: { value: 'Checked' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(detailsMock).toHaveBeenCalledWith(31, { notes: 'Checked' }))
+  })
+
+  it('freezes date and payment method once payments exist', async () => {
+    renderDetail(makePurchaseInvoiceView({ has_payments: true }))
+
+    expect(await screen.findByRole('button', { name: 'Edit Notes' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Document date' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Payment method' })).not.toBeInTheDocument()
   })
 
   it('hides the buttons the server does not allow (locked invoice)', async () => {
@@ -95,8 +124,8 @@ describe('PurchaseInvoiceDetailView (spec 0250 AC-013)', () => {
       permissions: { ...base.permissions, actions: { update: false, delete: false, details: true } },
     })
 
-    await screen.findByRole('button', { name: 'Supplier details' })
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    await screen.findByRole('heading', { name: 'Invoice FT-2' })
+    expect(screen.queryByRole('button', { name: 'Edit lines' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
   })
 

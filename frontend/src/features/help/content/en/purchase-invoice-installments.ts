@@ -82,9 +82,9 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'On the row of an unpaid installment press **Edit due date** (requires the edit permission).',
-            'Change the **due date** and/or pick the payment **method** from the list, then press **Save**.',
-            'The list refreshes by itself.',
+            'On the row of an unpaid installment double-click the **Due date** or **Method** cell (requires the edit permission).',
+            'Change the value and confirm: only that cell is saved, right away. Esc cancels.',
+            'Paid installments stay read-only: clear the payment first.',
           ],
         },
         {
@@ -171,7 +171,7 @@ const guide: HelpGuide = {
           headers: ['Action', 'Permission'],
           rows: [
             ['See the list and the **Installments** menu (Payable)', 'View payable installments'],
-            ['**Edit due date**', 'Edit payable installments (and the single field permission)'],
+            ['Edit the **Due date** and **Method** cells', 'Edit payable installments (and the single field permission)'],
             ['**Record / Clear payment**, **Bulk payment**', 'Record payments (passive invoices)'],
             ['**Open document**', 'View passive invoices'],
             ['**Export**', 'Export payable installments'],

@@ -5,8 +5,11 @@ namespace App\Tables;
 use App\Authorization\AuthorizationRegistry;
 use App\Enums\PurchaseInstallmentStatus;
 use App\Enums\PurchaseInvoiceType;
+use App\Http\Requests\PurchaseInvoices\UpdatePurchaseInvoiceInstallmentRequest;
 use App\Models\PurchaseInvoiceInstallment;
 use App\Models\User;
+use App\Services\PurchaseInvoices\PurchaseInvoiceInstallmentUpdater;
+use App\Services\Table\FormRequestCellValidator;
 use App\Services\Table\RowGroupQuery;
 use App\Tables\PurchaseInvoiceInstallments\PurchaseInstallmentColumnCatalog;
 use App\Tables\PurchaseInvoiceInstallments\PurchaseInstallmentDerivedQuery;
@@ -38,7 +41,27 @@ class PurchaseInvoiceInstallmentsTableDefinition extends AbstractTableDefinition
     public function __construct(
         private readonly AuthorizationRegistry $authorization,
         private readonly RowGroupQuery $rowGroups,
+        private readonly FormRequestCellValidator $cells,
+        private readonly PurchaseInvoiceInstallmentUpdater $updater,
     ) {}
+
+    /** Spec 0262, D-2: only an unpaid installment takes a cell edit (the updater answers 409 otherwise). */
+    public function authorizeUpdate(User $actor, Model $row): bool
+    {
+        /** @var PurchaseInvoiceInstallment $row */
+        return ! $row->isPaid() && Gate::forUser($actor)->allows('update', $row);
+    }
+
+    /** Spec 0262, D-2: the cell edit follows UpdatePurchaseInvoiceInstallmentRequest and the updater. */
+    public function updateCell(Model $row, string $columnId, mixed $value): Model
+    {
+        /** @var PurchaseInvoiceInstallment $row */
+        /** @var User $actor */
+        $actor = Auth::user();
+        $request = $this->cells->validate(UpdatePurchaseInvoiceInstallmentRequest::class, 'installment', $row, $actor, [$columnId => $value]);
+
+        return $this->updater->handle($row, $request->toData());
+    }
 
     public function domain(): string
     {
@@ -212,11 +235,6 @@ class PurchaseInvoiceInstallmentsTableDefinition extends AbstractTableDefinition
         /** @var PurchaseInvoiceInstallment $row */
         $paid = $row->isPaid();
         $allowed = [];
-
-        // A paid installment can no longer be edited (409).
-        if (! $paid && Gate::forUser($actor)->allows('update', $row)) {
-            $allowed[] = 'edit';
-        }
 
         if ($actor->can('purchase-invoices.pay')) {
             $allowed[] = $paid ? 'clear_payment' : 'record_payment';

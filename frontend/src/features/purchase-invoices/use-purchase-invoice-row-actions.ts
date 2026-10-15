@@ -7,11 +7,13 @@ export interface PurchaseInvoiceDeleteTarget {
   numberLabel: string
 }
 
-/** Which dialog/sheet each row action opens; the table adapter and the detail screen render them from this state. */
+/**
+ * Which dialog/sheet each row action opens; the table adapter and the detail screen render them from this state.
+ * The lines editor opens from the record (`openEdit`), no longer from a row action (spec 0262).
+ */
 export function usePurchaseInvoiceRowActions() {
   const [viewId, setViewId] = useState<number | null>(null)
   const [editId, setEditId] = useState<number | null>(null)
-  const [detailsId, setDetailsId] = useState<number | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<PurchaseInvoiceDeleteTarget | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
 
@@ -20,12 +22,6 @@ export function usePurchaseInvoiceRowActions() {
     switch (action.key) {
       case 'view':
         setViewId(id)
-        break
-      case 'update':
-        setEditId(id)
-        break
-      case 'details':
-        setDetailsId(id)
         break
       case 'delete':
         setDeleteTarget({ id, numberLabel: String(row.document_number ?? id) })
@@ -41,14 +37,11 @@ export function usePurchaseInvoiceRowActions() {
   return {
     handleAction,
     openEdit: setEditId,
-    openDetails: setDetailsId,
     openDelete: setDeleteTarget,
     viewId,
     closeView: useCallback(() => setViewId(null), []),
     editId,
     closeEdit: useCallback(() => setEditId(null), []),
-    detailsId,
-    closeDetails: useCallback(() => setDetailsId(null), []),
     deleteTarget,
     closeDelete: useCallback(() => setDeleteTarget(null), []),
     activityRow,

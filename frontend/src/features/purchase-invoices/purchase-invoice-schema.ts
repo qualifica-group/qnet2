@@ -87,16 +87,3 @@ export function buildPurchaseInvoiceWriteSchema(t: TFunction) {
 
 export type PurchaseInvoiceWriteFormValues = z.infer<ReturnType<typeof buildPurchaseInvoiceWriteSchema>>
 export type PurchaseInvoiceLineFormValues = PurchaseInvoiceWriteFormValues['lines'][number]
-
-/** Details dialog: the supplier document number (empty means proforma) and the notes. */
-export function buildPurchaseInvoiceDetailsSchema(t: TFunction) {
-  return z.object({
-    document_number: z
-      .string()
-      .max(DOCUMENT_NUMBER_MAX, t('purchaseInvoices.editor.errors.documentNumberMax'))
-      .nullable(),
-    notes: z.string().max(NOTES_MAX, t('purchaseInvoices.editor.errors.notesMax')).nullable(),
-  })
-}
-
-export type PurchaseInvoiceDetailsFormValues = z.infer<ReturnType<typeof buildPurchaseInvoiceDetailsSchema>>

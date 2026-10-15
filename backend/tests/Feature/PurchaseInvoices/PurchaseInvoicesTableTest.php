@@ -57,7 +57,8 @@ it('AC-009: exposes the contract columns, filters and actions', function () {
         ->and($columns['supplier']['filterType'])->toBe('set')
         ->and($columns['company']['filterType'])->toBe('set')
         ->and($columns['purchase_orders']['sortable'])->toBeFalse()
-        ->and(collect($data['actions'])->pluck('key')->all())->toBe(['view', 'update', 'details', 'delete', 'activity']);
+        // Spec 0262 (REQUIREMENT CHANGED): edit and details live on the record, opened by `view`.
+        ->and(collect($data['actions'])->pluck('key')->all())->toBe(['view', 'delete', 'activity']);
 });
 
 it('AC-009: lists one row per document with total, paid, residual, linked orders and derived payment status', function () {
@@ -90,7 +91,8 @@ it('AC-009: lists one row per document with total, paid, residual, linked orders
         ->and($rows[$unscheduled->id]['payment_status'])->toBe('not_due');
 });
 
-it('AC-009: offers update and delete only on a proforma, and delete only without payments', function () {
+// Spec 0262 (REQUIREMENT CHANGED): edit and details moved to the record; delete keeps its rules.
+it('AC-009: offers delete only on a proforma without payments', function () {
     Sanctum::actingAs(listActor(LIST_FULL_ABILITIES));
     $proforma = purchaseDocument(null, ['document_type' => 'proforma', 'document_number' => null]);
     $paidProforma = purchaseDocument(null, ['document_type' => 'proforma', 'document_number' => null]);
@@ -99,9 +101,9 @@ it('AC-009: offers update and delete only on a proforma, and delete only without
 
     $rows = collect(listRows())->keyBy('id');
 
-    expect($rows[$proforma->id]['actions'])->toBe(['view', 'update', 'details', 'delete', 'activity'])
-        ->and($rows[$paidProforma->id]['actions'])->toBe(['view', 'update', 'details', 'activity'])
-        ->and($rows[$invoice->id]['actions'])->toBe(['view', 'details', 'activity']);
+    expect($rows[$proforma->id]['actions'])->toBe(['view', 'delete', 'activity'])
+        ->and($rows[$paidProforma->id]['actions'])->toBe(['view', 'activity'])
+        ->and($rows[$invoice->id]['actions'])->toBe(['view', 'activity']);
 
     Sanctum::actingAs(listActor(['viewAny', 'view']));
 

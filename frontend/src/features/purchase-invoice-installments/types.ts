@@ -65,12 +65,6 @@ export interface PurchaseInstallmentDetail {
   }
 }
 
-/** PATCH body: only the fields the actor may edit are sent. */
-export interface PurchaseInstallmentUpdatePayload {
-  due_date?: string
-  payment_method_code?: string | null
-}
-
 /** PUT `/purchase-invoice-installments/{id}/payment` body; `residual_*` only on a partial payment. */
 export interface PurchasePaymentPayload {
   paid_amount: number
