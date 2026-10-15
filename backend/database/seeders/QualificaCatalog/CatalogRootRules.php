@@ -10,7 +10,7 @@ use App\Services\ProductCategories\SimplifiedOfferLineInheritance;
 use App\Services\ProductCategories\SingleQuotePerOpportunityInheritance;
 
 /**
- * The ROOT-OWNED rules the Qualifica catalogue declares for its three roots.
+ * The ROOT-OWNED rules the Qualifica catalogue declares for its roots.
  * Split out of QualificaCatalogSeeder (which stayed at its size limit,
  * engineering.md §6) — it holds the map AND the write, since the two are
  * meaningless apart.
@@ -35,6 +35,8 @@ use App\Services\ProductCategories\SingleQuotePerOpportunityInheritance;
  * setting di formazione"): the same four rules and the same G.A. labels, so an
  * APL deal closing positively no longer surfaces in the Contratti module. It
  * kept the column defaults (Consulenza's values) from 2026-09-07 until then.
+ *
+ * "SOA" is worked like "Consulenza" (user decision 2026-10-15).
  *
  * `manager_labels` (spec 0080) rides along on the same root write but is NOT
  * mirrored on the subtree: descendants resolve it by climbing the tree
@@ -72,6 +74,20 @@ final class CatalogRootRules
     ];
 
     /**
+     * The rules of a consultancy deal, shared by "Consulenza" and "SOA" (user
+     * decision 2026-10-15): several lines and offers, a contract on a positive
+     * close, the full offer line.
+     *
+     * @var array{management_mode: CategoryManagementMode, single_quote_per_opportunity: bool, generates_contract: bool, simplified_offer_line: bool}
+     */
+    private const array CONSULTING_RULES = [
+        'management_mode' => CategoryManagementMode::Multiple,
+        'single_quote_per_opportunity' => false,
+        'generates_contract' => true,
+        'simplified_offer_line' => false,
+    ];
+
+    /**
      * Root name => the rules it owns, as `product_categories` columns.
      *
      * @var array<string, array{management_mode: CategoryManagementMode, single_quote_per_opportunity: bool, generates_contract: bool, simplified_offer_line?: bool, manager_labels?: array<string, string>}>
@@ -79,12 +95,8 @@ final class CatalogRootRules
     private const array RULES = [
         'Formazione' => self::TRAINING_RULES,
         'APL' => self::TRAINING_RULES,
-        'Consulenza' => [
-            'management_mode' => CategoryManagementMode::Multiple,
-            'single_quote_per_opportunity' => false,
-            'generates_contract' => true,
-            'simplified_offer_line' => false,
-        ],
+        'Consulenza' => self::CONSULTING_RULES,
+        SoaCatalogue::ROOT => self::CONSULTING_RULES,
     ];
 
     /**

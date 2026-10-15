@@ -5,13 +5,12 @@ namespace Database\Seeders;
 use App\Enums\AttributeContext;
 use App\Migrations\Sources\ProductsSource;
 use App\Models\ProductCategory;
-use App\Models\RewardType;
-use App\Models\Source;
 use Database\Seeders\Concerns\RetiresAttributes;
 use Database\Seeders\Concerns\SeedsCategoryAttributes;
 use Database\Seeders\QualificaCatalog\AplInternshipAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\AplPracticeCatalogue;
 use Database\Seeders\QualificaCatalog\ApprenticeshipAttributeCatalogue;
+use Database\Seeders\QualificaCatalog\CatalogPickLists;
 use Database\Seeders\QualificaCatalog\CatalogProducts;
 use Database\Seeders\QualificaCatalog\CatalogRootRules;
 use Database\Seeders\QualificaCatalog\CategoryInheritanceRules;
@@ -23,15 +22,15 @@ use Database\Seeders\QualificaCatalog\ECampusCourseCatalogue;
 use Database\Seeders\QualificaCatalog\ECampusTreeFlattening;
 use Database\Seeders\QualificaCatalog\ReportColumnsCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
+use Database\Seeders\QualificaCatalog\SoaCatalogue;
 use Illuminate\Database\Seeder;
 
 /**
  * The client's hard-coded reference data — the rows that are known up front and
  * are NOT imported from the legacy system:
  *
- *   - the source catalogue (spec 0018): the fixed provenance list used to
- *     classify registry/lead/opportunity records;
- *   - the reward type catalogue (spec 0058): the voucher/reward types in use;
+ *   - the source and reward type catalogues (specs 0018, 0058), delegated to
+ *     QualificaCatalog\CatalogPickLists;
  *   - the reference category catalogue (spec 0017): a three-root category tree
  *     (Formazione / Consulenza / APL) with its subcategories and the regional
  *     declinations under GOL. The first TWO levels — the three roots and every
@@ -69,10 +68,13 @@ use Illuminate\Database\Seeder;
  *     QualificaWorkflowSeeder as the last step: one QuoteWorkflow per
  *     category of QualificaCatalog\WorkflowStatusCatalogue, matched on that
  *     category and carrying its own working-state pick list;
- *   - the business functions of "Formazione", "APL", "Presa Appuntamenti"
- *     and "No categoria", created and linked by
+ *   - the business functions of "Formazione", "APL", "Presa Appuntamenti",
+ *     "SOA" and "No categoria", created and linked by
  *     QualificaBusinessFunctionLinkSeeder (spec 0023, user directive
- *     2026-10-14).
+ *     2026-10-14);
+ *   - the "SOA" root (user directive 2026-10-15, QualificaCatalog\SoaCatalogue):
+ *     its two subcategories, offer fields, products and suppliers here, its
+ *     Commessa set in QualificaSoaWorkOrderSeeder.
  *
  * Deliberately separate from QualificaTemplateSeeder, which provisions
  * STRUCTURE ONLY (the custom field definitions) and creates no domain row.
@@ -90,37 +92,6 @@ class QualificaCatalogSeeder extends Seeder
 {
     use RetiresAttributes;
     use SeedsCategoryAttributes;
-
-    /**
-     * The client's fixed source catalogue (spec 0018): user-facing domain
-     * values, kept in their original language. Seeded in order.
-     *
-     * @var list<string>
-     */
-    private const array SOURCES = [
-        'Diretto',
-        'Passaparola',
-        'Diretto / Passaparola',
-        'Social',
-        'Sito',
-        'Spoki',
-        'Centralino',
-        'In Sede',
-        'Segnalatore',
-        'Spontaneo',
-    ];
-
-    /**
-     * The client's reward type catalogue (spec 0058): name => palette token
-     * from `BADGE_COLOR_TOKENS` (the grid badge resolves the value by TOKEN
-     * NAME, never an arbitrary hex). Names are user-facing domain values,
-     * kept in their original language.
-     *
-     * @var array<string, string>
-     */
-    private const array REWARD_TYPES = [
-        'Buono Amazon' => 'orange',
-    ];
 
     /**
      * The client's reference category catalogue (spec 0017): root category =>
@@ -185,6 +156,8 @@ class QualificaCatalogSeeder extends Seeder
         // The holding place of the legacy products imported without a category
         // (user decision 2026-10-12): a container, to reclassify them from.
         ProductsSource::UNCATEGORIZED_CATEGORY => [],
+        // A branch of its own (user directive 2026-10-15).
+        SoaCatalogue::ROOT => SoaCatalogue::SUBCATEGORIES,
     ];
 
     /**
@@ -222,6 +195,7 @@ class QualificaCatalogSeeder extends Seeder
         AplInternshipAttributeCatalogue::CATEGORY,
         ApprenticeshipAttributeCatalogue::CATEGORY,
         ECampusCourseCatalogue::CATEGORY,
+        ...SoaCatalogue::TARGET_CATEGORIES,
     ];
 
     /**
@@ -268,6 +242,7 @@ class QualificaCatalogSeeder extends Seeder
         // fields, behind a barrier (CategoryInheritanceRules).
         ECampusCourseCatalogue::CATEGORY => ECampusAttributeCatalogue::ATTRIBUTES,
         ...AplPracticeCatalogue::QUOTE_ATTRIBUTES,
+        SoaCatalogue::ROOT => SoaCatalogue::QUOTE_ATTRIBUTES,
     ];
 
     /**
@@ -280,14 +255,14 @@ class QualificaCatalogSeeder extends Seeder
     public function run(bool $askForLegacyImport = true): void
     {
         // Step 1: the standalone pick-lists, in no particular order.
-        $this->seedSources();
-        $this->seedRewardTypes();
+        app(CatalogPickLists::class)->seed();
 
         // Step 2: the category tree and the attribute the courses below need.
         $this->seedCatalog();
 
         // Step 3: the products, which resolve their category from step 2.
-        // They carry no attribute value: the branch's fields are the offer's.
+        // Only the SOA ones carry an attribute value, their "Mesi scadenza":
+        // every other branch's fields are the offer's.
         app(CatalogProducts::class)->seed();
 
         // Step 4: the "stati di lavorazione", which key their matching
@@ -298,6 +273,8 @@ class QualificaCatalogSeeder extends Seeder
         // one), which resolves the same categories of step 2 and adopts the
         // q-crm rows when they are there.
         $this->call(QualificaContactProcessingSeeder::class);
+        // ...and the SOA branch's own Commessa set and form.
+        $this->call(QualificaSoaWorkOrderSeeder::class);
 
         // Step 4-ter: the offer FORM, after every `quote` assignment above —
         // it composes one section per catalogue and AttributeLayoutService
@@ -342,20 +319,6 @@ class QualificaCatalogSeeder extends Seeder
         $this->call(QualificaLegacyImportSeeder::class);
     }
 
-    private function seedSources(): void
-    {
-        foreach (self::SOURCES as $name) {
-            Source::firstOrCreate(['name' => $name]);
-        }
-    }
-
-    private function seedRewardTypes(): void
-    {
-        foreach (self::REWARD_TYPES as $name => $color) {
-            RewardType::firstOrCreate(['name' => $name], ['color' => $color]);
-        }
-    }
-
     private function seedCatalog(): void
     {
         foreach (self::CATALOG as $rootName => $subcategories) {
@@ -395,6 +358,11 @@ class QualificaCatalogSeeder extends Seeder
         // invisible on an installation already seeded: the assignments are
         // additive, so the fields would show up in BOTH forms.
         $this->retireProductAttributes();
+
+        // The one PRODUCT-side field, the SOA "Mesi scadenza": CatalogProducts
+        // values it on each SOA product, so it is assigned before step 3.
+        $soaRoot = ProductCategory::query()->where('name', SoaCatalogue::ROOT)->whereNull('parent_id')->firstOrFail();
+        $this->seedCategoryAttributes($soaRoot, SoaCatalogue::PRODUCT_ATTRIBUTES, AttributeContext::Product);
 
         // The root-owned rules come last: they re-sync the whole subtree, so
         // every node must already exist.

@@ -3,6 +3,30 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CATALOGO: MACROCATEGORIA SOA — VERDE, NON COMMITTATO (2026-10-15)
+
+- Fonte: "15.10.2026 Q-crm SOA.docx" + "PRODOTTI SOA.xlsx". Decisioni utente: sottocategorie "Ente SOA" e
+  "Consulenza SOA" (non "Ente"/"Consulenza": il nome e' la chiave e "Consulenza" e' gia' una radice), codici inglesi
+  nuovi (i `servizio_soa`/`soa_*` del legacy restano sulle [OLD]), regole come Consulenza (`CONSULTING_RULES` in
+  CatalogRootRules), "Stato Lavorazione" commessa NON e' un campo: stati di default (nessun workflow SOA).
+- Dati in `QualificaCatalog/SoaCatalogue` (+ `SoaCategoryOptions`, 52 OG/OS): radice "SOA" -> funzione "SOA"
+  (adottata per nome dal legacy), campi Offerta sulla radice + form in `QualificaQuoteLayoutSeeder::OWN_FORMS`,
+  campi/form Commessa da `QualificaSoaWorkOrderSeeder` (solo radice: le figlie ereditano, spec 0115).
+- 18 prodotti (prezzo 0, IVA 22%) in `CatalogProducts::seedSoaProducts()`: fornitore = registry `is_supplier` con
+  lo stesso nome (senza maiuscole); un fornitore/descrizione vuoti si riempiono al re-run (`fillBlanks`), uno a mano vince.
+  Provato sul DB locale in transazione annullata: 15/15 agganciati.
+- Split: `CatalogPickLists` (fonti, tipi premio) fuori da QualificaCatalogSeeder (era 497 righe).
+- Test: `QualificaSoaCatalogueTest` + conteggi REQUIREMENT CHANGED (prodotti 395->413, selezionabili, layout, funzioni).
+- "Mesi scadenza" = attributo PRODOTTO `soa_expiry_months` (integer) sulla radice SOA (le figlie ereditano),
+  assegnato in `QualificaCatalogSeeder::seedCatalog` prima dei prodotti; valore per prodotto in
+  `SoaCatalogue::PRODUCTS` (`['supplier', 'expiry_months']`: attestazioni 0, consulenza I/II/III anno 0/12/24),
+  scritto da `CatalogProducts` alla creazione e, al re-run, solo se manca (`fillMissingValues`, via ProductService).
+  REQUIREMENT CHANGED in QualificaCatalogSeederTest: i soli prodotti SOA hanno attribute_values, e l'unica
+  assegnazione di contesto prodotto rimasta e' `soa_expiry_months`. Tipologia derivata dal nome categoria:
+  richiesta e poi ritirata dall'utente, NON implementata.
+- Aperti: codice `SOA_Qualifica` dei prodotti consulenza non ha campo in qnet-2.
+  HANDOFF.md e' ~590 KB: va archiviato in `docs/handoff-archive/`.
+
 ## MIGRAZIONE: STATI [OLD] DELLE OFFERTE (spec 0189 G-29) — VERDE, NON COMMITTATO (2026-10-15)
 
 - Decisione utente: offerta legacy con esito negotiation / call_back / stand_by finita in un set di stati (workflow

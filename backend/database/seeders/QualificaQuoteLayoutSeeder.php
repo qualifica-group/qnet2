@@ -15,6 +15,7 @@ use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ContactProcessingAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\CourseDataAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ECampusAttributeCatalogue;
+use Database\Seeders\QualificaCatalog\SoaCatalogue;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Seeder;
 
@@ -76,11 +77,15 @@ class QualificaQuoteLayoutSeeder extends Seeder
     /**
      * Category name => the form composed for it INSTEAD of SECTIONS: the APL
      * practices, each cut off the APL root (AplPracticeCatalogue::FORMS says
-     * why each keeps a form of its own).
+     * why each keeps a form of its own), and the "SOA" root, whose
+     * subcategories inherit its form (spec 0115).
      *
      * @var array<string, list<array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string}}>>
      */
-    private const array OWN_FORMS = AplPracticeCatalogue::FORMS;
+    private const array OWN_FORMS = [
+        ...AplPracticeCatalogue::FORMS,
+        SoaCatalogue::ROOT => SoaCatalogue::QUOTE_SECTIONS,
+    ];
 
     /**
      * The compositions PREVIOUS revisions of this seeder wrote, recognised

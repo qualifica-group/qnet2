@@ -19,6 +19,7 @@ use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\DilCourseCatalogue;
 use Database\Seeders\QualificaCatalog\ECampusCourseCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
+use Database\Seeders\QualificaCatalog\SoaCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -34,7 +35,7 @@ uses(RefreshDatabase::class);
  * directive 2026-10-01, the 90 e-Campus degree fees plus the 2 services
  * sold once for the whole branch (user directive 2026-10-08).
  */
-const TOTAL_SEEDED_PRODUCTS = 395;
+const TOTAL_SEEDED_PRODUCTS = 413; // REQUIREMENT CHANGED: +18 SOA products (2026-10-15).
 
 /**
  * One scenario instead of one test per property: the catalogue seeder costs
@@ -63,9 +64,12 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
         'Autofinanziato - Campania', 'Autofinanziato - Lazio',
         'Autofinanziato - Lombardia', 'Autofinanziato - Sicilia',
         'Autoimpiego',
+        // REQUIREMENT CHANGED: the SOA targets (user directive 2026-10-15).
+        'Consulenza SOA',
         // The e-Campus leaf, every degree fee on it (user directive 2026-10-02).
         'Corsi E-Campus',
         'DIL - Lombardia',
+        'Ente SOA',
         'GOL - Abruzzo', 'GOL - Basilicata', 'GOL - Calabria', 'GOL - Campania',
         'GOL - Lazio', 'GOL - Lombardia', 'GOL - Molise', 'GOL - Puglia',
         'GOL - Sicilia', 'GOL - Umbria',
@@ -86,8 +90,13 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
         ->and((float) $digitalLiteracy->cost)->toBe(0.0)
         ->and((float) $digitalLiteracy->price)->toBe(0.0);
 
-    expect(Product::query()->get()->filter(fn (Product $product): bool => filled($product->attribute_values)))
-        ->toBeEmpty();
+    // REQUIREMENT CHANGED (user directive 2026-10-15): the SOA products, and
+    // only them, carry one value of their own, the "Mesi scadenza".
+    $valued = Product::query()->get()->filter(fn (Product $product): bool => filled($product->attribute_values));
+
+    expect($valued)->toHaveCount(array_sum(array_map(count(...), SoaCatalogue::PRODUCTS)))
+        ->and($valued->map(fn (Product $product): array => array_keys($product->attribute_values))->unique()->values()->all())
+        ->toBe([[SoaCatalogue::EXPIRY_MONTHS_CODE]]);
 
     // Duplicate course names within a region (was: 'keeps a course name repeated inside one region as two distinct products')
     $abruzzo = ProductCategory::query()->where('name', 'GOL - Abruzzo')->firstOrFail();
@@ -300,7 +309,8 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
     // Outside the GOL regions: the DIL courses, the self-funded ones, the
     // one product of each single-offer category, plus one product per fee of
     // each e-Campus course (user directive 2026-10-01) and the e-Campus
-    // services sold once (user directive 2026-10-08).
+    // services sold once (user directive 2026-10-08), and the SOA products
+    // (REQUIREMENT CHANGED, user directive 2026-10-15).
     $eCampusProducts = array_sum(array_map(
         static fn (array $degree): int => count($degree['fees']) * count($degree['courses']),
         ECampusCourseCatalogue::DEGREES,
@@ -311,7 +321,8 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
             + array_sum(array_map(count(...), SelfFundedCourseCatalogue::COURSES))
             + count(CatalogProducts::SINGLE_OFFER_CATEGORIES)
             + $eCampusProducts
-            + count(ECampusCourseCatalogue::SINGLE_PRODUCTS));
+            + count(ECampusCourseCatalogue::SINGLE_PRODUCTS)
+            + array_sum(array_map(count(...), SoaCatalogue::PRODUCTS)));
 });
 
 it('promotes "APL" out of "Consulenza" on an installation seeded while it hung there', function (): void {
@@ -399,7 +410,10 @@ it('withdraws the moved codes from the product side of an installation seeded ea
 
     // Gone from the product context — assignments AND the section built on
     // them, which is an emptied layout, hence a deleted row.
-    expect(DB::table('attribute_category')->where('context', AttributeContext::Product->value)->count())->toBe(0)
+    // REQUIREMENT CHANGED (user directive 2026-10-15): the one product-side
+    // assignment left is the SOA root's "Mesi scadenza", never a moved code.
+    expect(DB::table('attribute_category')->where('context', AttributeContext::Product->value)->join('attributes', 'attributes.id', '=', 'attribute_category.attribute_id')->pluck('attributes.code')->all())
+        ->toBe([SoaCatalogue::EXPIRY_MONTHS_CODE])
         ->and($layouts->resolveExact($molise, AttributeContext::Product, LayoutFormScope::All))->toBeNull();
 
     // The Offerta side is untouched by the retirement: same codes, still there.

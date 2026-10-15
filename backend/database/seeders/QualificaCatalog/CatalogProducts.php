@@ -3,11 +3,14 @@
 namespace Database\Seeders\QualificaCatalog;
 
 use App\DataObjects\Products\CreateProductData;
+use App\DataObjects\Products\UpdateProductData;
 use App\Enums\ProductType;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\Registry;
 use App\Models\VatRate;
 use App\Services\ProductService;
+use Illuminate\Support\Str;
 
 /**
  * Every product the Qualifica catalogue seeds. Split out of
@@ -28,9 +31,13 @@ use App\Services\ProductService;
  *   - the e-Campus degrees (ECampusCourseCatalogue): one product per fee of
  *     the degree level, "<course> <fee>", on "Corsi E-Campus", at the fee,
  *     described by the course's subject area, plus the services sold once
- *     for the whole branch (ECampusCourseCatalogue::SINGLE_PRODUCTS).
+ *     for the whole branch (ECampusCourseCatalogue::SINGLE_PRODUCTS);
+ *   - the SOA attestations and consultancy (SoaCatalogue::PRODUCTS), at 0
+ *     with the 22% VAT rate, each attestation linked to its certifying body
+ *     when a supplier registry of that name exists, valued with its "Mesi
+ *     scadenza".
  *
- * NO ATTRIBUTE VALUE IS WRITTEN (user directive 2026-09-08). The duration and
+ * NO OTHER ATTRIBUTE VALUE IS WRITTEN (user directive 2026-09-08). The duration and
  * the delivery mode used to be seeded here, onto the product; they moved to
  * the OFFERTA together with the "Dati Aula" set
  * (QualificaCatalog\CourseDataAttributeCatalogue), so the codes are no longer
@@ -39,7 +46,10 @@ use App\Services\ProductService;
  * discriminator of a repeated name — see disambiguate().
  *
  * Idempotent and non-destructive: the natural key is (name, category), and an
- * already-seeded product is left untouched so a manual edit survives a re-run.
+ * already-seeded product is left untouched so a manual edit survives a re-run,
+ * save its blanks: an empty description or supplier takes the catalogue's (the
+ * suppliers usually arrive with the legacy import, AFTER the first seed), and
+ * so does a missing attribute value.
  * The one exception is a self-funded course an earlier revision filed on the
  * "Autofinanziato" node itself, before the per-region split: it is MOVED onto
  * its region, never duplicated there — see moveOffContainer(). The others
@@ -90,6 +100,42 @@ final class CatalogProducts
         $this->seedECampusCourses();
         // Step 6: the e-Campus services sold once for the whole branch.
         $this->seedECampusSingleProducts();
+        // Step 7: the SOA products, linked to their certifying body.
+        $this->seedSoaProducts();
+    }
+
+    private function seedSoaProducts(): void
+    {
+        $vatRateId = $this->plusVatRate()->id;
+
+        foreach (SoaCatalogue::PRODUCTS as $categoryName => $products) {
+            $category = $this->category($categoryName);
+
+            foreach ($products as $name => ['supplier' => $supplierName, 'expiry_months' => $expiryMonths]) {
+                $this->seedProduct(
+                    $category,
+                    $name,
+                    0.0,
+                    $vatRateId,
+                    supplierId: $supplierName === null ? null : $this->supplierId($supplierName),
+                    attributeValues: [SoaCatalogue::EXPIRY_MONTHS_CODE => $expiryMonths],
+                );
+            }
+        }
+    }
+
+    /**
+     * The supplier registry of that name, compared without case; null when the
+     * legacy import has not brought it yet. `name` is not unique on registries,
+     * so the lowest id wins rather than an arbitrary row.
+     */
+    private function supplierId(string $name): ?int
+    {
+        return Registry::query()
+            ->where('is_supplier', true)
+            ->whereRaw('LOWER(name) = ?', [Str::lower($name)])
+            ->orderBy('id')
+            ->value('id');
     }
 
     private function seedECampusCourses(): void
@@ -142,8 +188,9 @@ final class CatalogProducts
 
     /**
      * The production seed creates no VAT catalogue of its own (the full one is
-     * DemoVatRateSeeder's), so the rate a "+ iva" price needs is adopted by
-     * percentage when an operator already has it, created otherwise.
+     * DemoVatRateSeeder's), so the 22% rate a "+ iva" price (or a SOA product)
+     * needs is adopted by percentage when an operator already has it, created
+     * otherwise.
      */
     private function plusVatRate(): VatRate
     {
@@ -222,21 +269,21 @@ final class CatalogProducts
         float $price,
         ?int $vatRateId = null,
         ?string $description = null,
+        ?int $supplierId = null,
+        array $attributeValues = [],
     ): void {
         // Natural key (name, category) — scoped to the category because the
         // SAME course runs in several regions. An already-seeded product is
-        // left untouched, so a manual edit survives the re-run — save an
-        // EMPTY description, which takes the catalogue's (an earlier revision
-        // seeded none).
+        // left untouched, so a manual edit survives the re-run — save its
+        // blanks, see fillBlanks().
         $existing = Product::query()
             ->where('name', $name)
             ->where('category_id', $category->id)
             ->first();
 
         if ($existing !== null) {
-            if ($description !== null && blank($existing->description)) {
-                $existing->update(['description' => $description]);
-            }
+            $this->fillBlanks($existing, $description, $supplierId);
+            $this->fillMissingValues($existing, $attributeValues);
 
             return;
         }
@@ -250,6 +297,41 @@ final class CatalogProducts
             categoryId: $category->id,
             productType: ProductType::Service,
             vatRateId: $vatRateId,
+            supplierId: $supplierId,
+            attributeValues: $attributeValues === [] ? null : $attributeValues,
         ));
+    }
+
+    /**
+     * An EMPTY description takes the catalogue's (an earlier revision seeded
+     * none), an empty supplier the one found now (it may have been imported
+     * since the product was seeded). A value set by hand wins.
+     */
+    private function fillBlanks(Product $product, ?string $description, ?int $supplierId): void
+    {
+        $changes = array_filter([
+            'description' => blank($product->description) ? $description : null,
+            'supplier_id' => $product->supplier_id === null ? $supplierId : null,
+        ], static fn (string|int|null $value): bool => $value !== null);
+
+        if ($changes !== []) {
+            $product->update($changes);
+        }
+    }
+
+    /**
+     * The catalogue's attribute values the product does not hold yet (an
+     * earlier revision seeded none), through ProductService so they are
+     * validated against the category's set. A value set by hand wins.
+     *
+     * @param  array<string, mixed>  $attributeValues
+     */
+    private function fillMissingValues(Product $product, array $attributeValues): void
+    {
+        $missing = array_diff_key($attributeValues, $product->attribute_values ?? []);
+
+        if ($missing !== []) {
+            $this->products->update($product, new UpdateProductData(attributeValues: $missing));
+        }
     }
 }
