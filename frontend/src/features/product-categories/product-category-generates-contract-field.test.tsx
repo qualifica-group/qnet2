@@ -103,6 +103,7 @@ describe('resolveInheritedContractGenerationFlag', () => {
       id: 1,
       name: 'Electronics',
       generates_contract: false,
+      multi_quote_work_order: false,
       children: [
         treeNode({
           id: 2,

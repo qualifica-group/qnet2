@@ -43,11 +43,13 @@ function original(overrides: Partial<ProductCategoryDetail> = {}): ProductCatego
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
     generates_contract: true,
+    multi_quote_work_order: false,
     simplified_offer_line: true,
     simplified_offer_line_override: null,
     management_mode_source_category: null,
     single_quote_per_opportunity_source_category: null,
     generates_contract_source_category: null,
+    multi_quote_work_order_source_category: null,
     simplified_offer_line_source_category: null,
     manager_labels: {},
     inherits_manager_labels: true,
@@ -75,6 +77,7 @@ describe('buildUpdatePayload — root-only rules', () => {
       management_mode: 'multiple',
       single_quote_per_opportunity: true,
       generates_contract: true,
+      multi_quote_work_order: false,
       simplified_offer_line: true,
       simplified_offer_line_override: null,
       report_columns: null,
@@ -110,6 +113,7 @@ describe('buildUpdatePayload — root-only rules', () => {
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
       generates_contract: false,
+      multi_quote_work_order: false,
       simplified_offer_line: true,
       simplified_offer_line_override: null,
       report_columns: null,
@@ -121,6 +125,39 @@ describe('buildUpdatePayload — root-only rules', () => {
     expect(buildUpdatePayload(values, original())).toEqual({})
     expect(buildUpdatePayload({ ...values, parent_id: null }, original({ parent_id: null, parent: null }))).toEqual({
       generates_contract: false,
+    })
+  })
+
+  // Spec 0267 (AC-017): identical root-only diffing for the multi-offer work order rule.
+  it('never sends multi_quote_work_order under a parent, sends it when a root changes it', () => {
+    const values: ProductCategoryFormValues = {
+      name: 'Laptops',
+      parent_id: 1,
+      inherits_product_attributes: true,
+      inherits_quote_attributes: true,
+      inherits_work_order_attributes: true,
+      description: null,
+      attributes: [{ attribute_id: 9, context: 'quote', is_required: true, sort_order: 0 }],
+      business_function_id: null,
+      requires_quote: false,
+      is_selectable: true,
+      is_active: true,
+      is_reportable: true,
+      management_mode: 'multiple',
+      single_quote_per_opportunity: false,
+      generates_contract: true,
+      multi_quote_work_order: true,
+      simplified_offer_line: true,
+      simplified_offer_line_override: null,
+      report_columns: null,
+      manager_labels: {},
+      inherits_manager_labels: true,
+      custom_fields: {},
+    }
+
+    expect(buildUpdatePayload(values, original())).toEqual({})
+    expect(buildUpdatePayload({ ...values, parent_id: null }, original({ parent_id: null, parent: null }))).toEqual({
+      multi_quote_work_order: true,
     })
   })
 
@@ -143,6 +180,7 @@ describe('buildUpdatePayload — root-only rules', () => {
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
       generates_contract: true,
+      multi_quote_work_order: false,
       simplified_offer_line: false,
       simplified_offer_line_override: null,
       report_columns: null,
@@ -185,6 +223,7 @@ describe('buildUpdatePayload — report_columns (spec 0141)', () => {
       management_mode: 'multiple',
       single_quote_per_opportunity: false,
       generates_contract: true,
+      multi_quote_work_order: false,
       simplified_offer_line: true,
       simplified_offer_line_override: null,
       report_columns: ['richiami', 'telefonate'],

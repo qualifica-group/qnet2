@@ -2,6 +2,7 @@ import type { ProductCategoryDetail, ProductCategoryTreeNode } from '@/features/
 import { indexCategoryTree, resolveInheritedBusinessFunction } from '@/features/product-categories/business-function-inheritance'
 import { resolveInheritedContractGenerationFlag } from '@/features/product-categories/contract-generation-inheritance'
 import { resolveInheritedManagementMode } from '@/features/product-categories/management-mode-inheritance'
+import { resolveInheritedMultiQuoteWorkOrderFlag } from '@/features/product-categories/multi-quote-work-order-inheritance'
 import { resolveInheritedQuoteFlag } from '@/features/product-categories/requires-quote-inheritance'
 import { resolveInheritedReportable } from '@/features/product-categories/reportable-inheritance'
 import { resolveInheritedSimplifiedOfferLine } from '@/features/product-categories/simplified-offer-line-inheritance'
@@ -29,6 +30,8 @@ export type ProductCategoryRecordValues = Pick<
   | 'single_quote_per_opportunity_source_category'
   | 'generates_contract'
   | 'generates_contract_source_category'
+  | 'multi_quote_work_order'
+  | 'multi_quote_work_order_source_category'
   | 'simplified_offer_line'
   | 'simplified_offer_line_source_category'
   | 'is_reportable'
@@ -51,6 +54,7 @@ export type ProductCategoryDraft = Partial<
     | 'management_mode'
     | 'single_quote_per_opportunity'
     | 'generates_contract'
+    | 'multi_quote_work_order'
     | 'simplified_offer_line'
     | 'simplified_offer_line_override'
     | 'is_selectable'
@@ -85,6 +89,7 @@ export function buildDraftRecordValues(
   const mode = resolveInheritedManagementMode(nodesById, parentId)
   const single = resolveInheritedSingleQuoteFlag(nodesById, parentId)
   const contract = resolveInheritedContractGenerationFlag(nodesById, parentId)
+  const multiQuote = resolveInheritedMultiQuoteWorkOrderFlag(nodesById, parentId)
   const offerLine = resolveInheritedSimplifiedOfferLine(nodesById, parentId)
   const reportable = resolveInheritedReportable(nodesById, parentId)
   // A child shows its own override, else what it inherits; a root declares the value itself (spec 0188).
@@ -128,10 +133,12 @@ export function buildDraftRecordValues(
     management_mode_source_category: mode?.sourceCategory ?? null,
     single_quote_per_opportunity: single
       ? single.singleQuotePerOpportunity
-      : (draft.single_quote_per_opportunity ?? false),
+      : (draft.single_quote_per_opportunity ?? true),
     single_quote_per_opportunity_source_category: single?.sourceCategory ?? null,
     generates_contract: contract ? contract.generatesContract : (draft.generates_contract ?? true),
     generates_contract_source_category: contract?.sourceCategory ?? null,
+    multi_quote_work_order: multiQuote ? multiQuote.multiQuoteWorkOrder : (draft.multi_quote_work_order ?? false),
+    multi_quote_work_order_source_category: multiQuote?.sourceCategory ?? null,
     simplified_offer_line: simplifiedOfferLine,
     simplified_offer_line_source_category: simplifiedOfferLineSource,
     is_reportable: isReportable,

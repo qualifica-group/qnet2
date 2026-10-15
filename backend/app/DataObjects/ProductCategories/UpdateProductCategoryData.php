@@ -59,6 +59,8 @@ final readonly class UpdateProductCategoryData
         public bool $singleQuotePerOpportunitySubmitted = false,
         public ?bool $generatesContract = null,
         public bool $generatesContractSubmitted = false,
+        public ?bool $multiQuoteWorkOrder = null,
+        public bool $multiQuoteWorkOrderSubmitted = false,
         public ?bool $simplifiedOfferLine = null,
         public bool $simplifiedOfferLineSubmitted = false,
         /** Spec 0188: a child's OWN declaration of the rule; submitted null = back to inherit. */
@@ -109,6 +111,8 @@ final readonly class UpdateProductCategoryData
             singleQuotePerOpportunitySubmitted: array_key_exists('single_quote_per_opportunity', $data),
             generatesContract: array_key_exists('generates_contract', $data) ? (bool) $data['generates_contract'] : null,
             generatesContractSubmitted: array_key_exists('generates_contract', $data),
+            multiQuoteWorkOrder: array_key_exists('multi_quote_work_order', $data) ? (bool) $data['multi_quote_work_order'] : null,
+            multiQuoteWorkOrderSubmitted: array_key_exists('multi_quote_work_order', $data),
             simplifiedOfferLine: array_key_exists('simplified_offer_line', $data) ? (bool) $data['simplified_offer_line'] : null,
             simplifiedOfferLineSubmitted: array_key_exists('simplified_offer_line', $data),
             simplifiedOfferLineOverride: isset($data['simplified_offer_line_override']) ? (bool) $data['simplified_offer_line_override'] : null,
@@ -223,6 +227,12 @@ final readonly class UpdateProductCategoryData
         // ContractGenerationInheritance::syncSubtree.
         if ($this->generatesContractSubmitted) {
             $attributes['generates_contract'] = $this->generatesContract;
+        }
+
+        // Spec 0267: identical root-only handling, realigned by
+        // MultiQuoteWorkOrderInheritance::syncSubtree.
+        if ($this->multiQuoteWorkOrderSubmitted) {
+            $attributes['multi_quote_work_order'] = $this->multiQuoteWorkOrder;
         }
 
         // Spec 0114: on a root this is the declared value; on a child it must

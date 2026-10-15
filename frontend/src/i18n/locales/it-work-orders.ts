@@ -32,6 +32,7 @@ export const workOrders = {
     updated_at: 'Aggiornata il',
   },
   detail: {
+    multiQuoteBadge: 'Multi-offerta',
     title: 'Dettaglio commessa',
     subtitle: 'Visualizzazione in sola lettura della commessa selezionata.',
     loadError: 'Impossibile caricare la commessa. Riprova.',

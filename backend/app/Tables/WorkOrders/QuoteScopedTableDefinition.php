@@ -10,7 +10,6 @@ use App\Tables\RegistryScopable;
 use App\Tables\TableDefinition;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Decorator that scopes the `work-orders` domain to a single Quote (spec
@@ -65,18 +64,14 @@ class QuoteScopedTableDefinition implements RegistryScopable, TableDefinition
     {
         $query = $this->inner->baseQuery();
 
+        // Spec 0267, D-9: a multi-offer commessa belongs to every offer / client
+        // it holds at least one line of.
         if ($this->quoteScope !== null) {
-            $query->where('work_orders.quote_id', $this->quoteScope);
+            $query->withQuoteLineOfQuote($this->quoteScope);
         }
 
         if ($this->registryScope !== null) {
-            $query->whereIn(
-                'work_orders.quote_id',
-                DB::table('quotes')
-                    ->select('quotes.id')
-                    ->join('opportunities', 'opportunities.id', '=', 'quotes.opportunity_id')
-                    ->where('opportunities.registry_id', $this->registryScope),
-            );
+            $query->withQuoteLineOfRegistry($this->registryScope);
         }
 
         return $query;

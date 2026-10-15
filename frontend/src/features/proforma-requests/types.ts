@@ -28,6 +28,8 @@ export interface ProformaRequest {
   issued_at: string | null
   note: string
   work_order: { id: number; code: string; title: string | null }
+  /** Spec 0267 D-6: the offer this request invoices (a multi-offer work order has one request per offer). */
+  quote: { id: number; code: string }
   company: NamedRef | null
   customer: NamedRef | null
   supplier: NamedRef | null

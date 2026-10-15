@@ -10,6 +10,8 @@
 export const quotes = {
   forbidden: "You don't have permission to view quotes.",
   columns: {
+    offerLines: 'Product lines',
+    rootCategories: 'Parent category',
     code: 'Code',
     title: 'Title',
     opportunity: 'Opportunity',

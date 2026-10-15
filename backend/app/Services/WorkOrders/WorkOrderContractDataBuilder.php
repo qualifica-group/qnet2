@@ -9,6 +9,7 @@ use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
 use App\Enums\SupplierCommissionDirection;
 use App\Models\ProductTypology;
+use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\QuoteLineCommission;
 use App\Models\User;
@@ -39,7 +40,7 @@ final class WorkOrderContractDataBuilder
     public const string WARNING_STALE_COMMISSION_BASE = 'stale_commission_base';
 
     /** Relations read per line, eager loaded to avoid N+1. */
-    private const array LINE_RELATIONS = ['product.productTypology', 'commissions', 'payment.status'];
+    private const array LINE_RELATIONS = ['product.productTypology', 'commissions', 'payment.status', 'quote.opportunity.registry'];
 
     public function __construct(
         private readonly QuoteCommissionPayloadRedactor $redactor,
@@ -53,12 +54,13 @@ final class WorkOrderContractDataBuilder
      */
     public function build(WorkOrder $workOrder, User $actor): array
     {
-        // Step 1: load the commessa's lines and decide the commission visibility
-        $visible = $this->commissionsVisible($workOrder, $actor);
+        // Step 1: load the commessa's lines and decide the commission visibility per source offer
+        $visibleByQuote = $this->visibilityByQuote($workOrder, $actor);
+        $visible = ! in_array(false, $visibleByQuote, true);
         $lines = $workOrder->quoteLines()->with(self::LINE_RELATIONS)->orderBy('quote_lines.id')->get();
 
         // Step 2: figures per line
-        $rows = $this->rows($lines, $visible);
+        $rows = $this->rows($lines, $visibleByQuote);
 
         return [
             'lines' => array_column($rows, 'payload'),
@@ -76,25 +78,41 @@ final class WorkOrderContractDataBuilder
     {
         $line = QuoteLine::query()->with(self::LINE_RELATIONS)->findOrFail($line->id);
 
-        return $this->rows(collect([$line]), $this->commissionsVisible($workOrder, $actor))[0]['payload'];
+        return $this->rows(collect([$line]), $this->visibilityByQuote($workOrder, $actor))[0]['payload'];
     }
 
-    private function commissionsVisible(WorkOrder $workOrder, User $actor): bool
+    /**
+     * Commission visibility per source offer (spec 0267, D-10): each line is
+     * judged by the field permissions of its OWN offer.
+     *
+     * @return array<int, bool>
+     */
+    private function visibilityByQuote(WorkOrder $workOrder, User $actor): array
     {
-        $permissions = $this->redactor->permissions($actor, $workOrder->loadMissing('quote')->quote);
+        $quotes = $workOrder->isMultiQuote()
+            ? Quote::query()->whereIn('id', $workOrder->sourceQuoteIds())->get()
+            : collect([$workOrder->loadMissing('quote')->quote]);
 
-        return $permissions['commissions']->visible && $permissions['commission_value']->visible;
+        $visibility = [];
+
+        foreach ($quotes as $quote) {
+            $permissions = $this->redactor->permissions($actor, $quote);
+            $visibility[$quote->id] = $permissions['commissions']->visible && $permissions['commission_value']->visible;
+        }
+
+        return $visibility;
     }
 
     /**
      * @param  Collection<int, QuoteLine>  $lines
+     * @param  array<int, bool>  $visibleByQuote
      * @return array<int, array{payload: array<string, mixed>, net: int, revenue: int, typology_id: int|null, commissions: int}>
      */
-    private function rows(Collection $lines, bool $visible): array
+    private function rows(Collection $lines, array $visibleByQuote): array
     {
         $bases = $this->baseResolver->resolveForLines($lines);
 
-        return $lines->map(fn (QuoteLine $line): array => $this->row($line, $bases[$line->id], $visible))->values()->all();
+        return $lines->map(fn (QuoteLine $line): array => $this->row($line, $bases[$line->id], $visibleByQuote[$line->quote_id] ?? false))->values()->all();
     }
 
     /**
@@ -112,12 +130,15 @@ final class WorkOrderContractDataBuilder
         $commissions = $line->commissions->sum(fn (QuoteLineCommission $c): int => $this->cents($c->calculated_amount));
         $revenue = $this->effectiveRevenue->cents($line);
         $stale = $supplier->contains(fn (QuoteLineCommission $c): bool => $this->isStale($c, $base));
+        $registry = $line->quote?->opportunity?->registry;
 
         return [
             'payload' => [
                 'quote_line_id' => $line->id,
                 'product' => ['id' => $line->product?->id, 'code' => $line->product?->code, 'name' => $line->product?->name],
                 'typology' => $typology ? ['id' => $typology->id, 'code' => $typology->code, 'name' => $typology->name, 'color' => $typology->color] : null,
+                // Spec 0267: the client of the line's own offer, telling the lines of a multi-offer commessa apart.
+                'registry' => $registry ? ['id' => $registry->id, 'name' => $registry->name] : null,
                 'supplier_commission_direction' => $direction?->value,
                 'quantity' => $this->money($line->quantity),
                 'unit_price' => $this->money($line->unit_price),

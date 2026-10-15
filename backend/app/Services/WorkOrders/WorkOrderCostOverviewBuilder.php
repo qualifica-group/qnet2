@@ -90,7 +90,8 @@ final class WorkOrderCostOverviewBuilder
     }
 
     /**
-     * The offer's COST lines that are either allocated to some REVENUE line
+     * The COST lines of the source offer(s) (all of them on a multi-offer
+     * commessa, spec 0267 D-10) that are either allocated to some REVENUE line
      * (filtered to this commessa's own by build()) or generic.
      *
      * @return Collection<int, QuoteLine>
@@ -98,7 +99,7 @@ final class WorkOrderCostOverviewBuilder
     private function budgetLines(WorkOrder $workOrder): Collection
     {
         return QuoteLine::query()
-            ->where('quote_id', $workOrder->quote_id)
+            ->whereIn('quote_id', $workOrder->isMultiQuote() ? $workOrder->sourceQuoteIds() : [$workOrder->quote_id])
             ->where('line_type', QuoteLineType::Cost)
             ->with(self::BUDGET_LINE_RELATIONS)
             ->orderBy('sort_order')

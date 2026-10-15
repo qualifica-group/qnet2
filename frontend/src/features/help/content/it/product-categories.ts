@@ -1,4 +1,5 @@
 import type { HelpGuide } from '../../types'
+import { attributeSections } from './parts/product-categories-attributes'
 
 const guide: HelpGuide = {
   key: 'product-categories',
@@ -130,7 +131,7 @@ const guide: HelpGuide = {
           rows: [
             ['Prevede preventivo', 'Se il ramo lavora con le offerte.', 'No'],
             ['Modalità di gestione', 'Singola (una riga per scheda) o Multipla (più righe per scheda).', 'Multipla'],
-            ['Offerta unica per opportunità', 'Se ogni opportunità può avere una sola offerta.', 'No'],
+            ['Offerta unica per opportunità', 'Se ogni opportunità può avere una sola offerta.', 'Sì'],
             ['Prevede un contratto', 'Se una chiusura positiva apre un contratto.', 'Sì'],
             ['Semplificazione riga offerta', 'Se in Gestione Richieste la riga offerta si compila da sola.', 'No'],
             ['Selezionabile', 'Se la categoria si può scegliere negli elenchi. Spenta, resta visibile come contenitore.', 'Sì'],
@@ -284,91 +285,28 @@ const guide: HelpGuide = {
       ],
     },
     {
-      id: 'attributes',
-      title: 'Attributi',
+      id: 'multi-quote-work-order',
+      title: 'Commessa multi-offerta',
       blocks: [
         {
           type: 'paragraph',
-          text: 'Gli attributi si creano nel modulo Attributi; nella categoria decidi dove usarli. Lo stesso attributo può stare in uno, due o tutti e tre i blocchi.',
-        },
-        {
-          type: 'table',
-          headers: ['Blocco', 'Dove compaiono i campi'],
-          rows: [
-            ['Attributi Prodotto', 'Nella scheda Prodotto, per i prodotti della categoria.'],
-            ['Attributi Offerta', "Nelle Informazioni aggiuntive dell'Offerta, quando una riga usa un prodotto della categoria; anche come colonne della scheda categoria in Gestione Richieste."],
-            ['Attributi Commessa', 'Nelle Informazioni aggiuntive della Commessa, quando una riga usa un prodotto della categoria.'],
-          ],
-        },
-        {
-          type: 'steps',
-          items: [
-            'Nel blocco scelto apri Assegna un attributo….',
-            "Cerca per nome e selezionalo: compare nell'elenco con il suo tipo.",
-            'Attiva Obbligatorio se il campo va sempre compilato.',
-            'In Ordine scrivi un numero: i più bassi vengono prima.',
-            'Per togliere un attributo usa Rimuovi attributo.',
-            'Premi Salva (sulla scheda di una categoria esistente) per salvare tutti gli attributi e i tre Eredita dal padre insieme; Annulla scarta le modifiche.',
-          ],
+          text: 'L\'impostazione **Commessa multi-offerta** si trova nel form della categoria radice ed è **spenta** per default. Se la accendi, per tutto il ramo si può programmare **una sola commessa** che raccoglie le righe di più offerte (anche di clienti diversi): l\'azione si usa dalla tabella **Contratti**.',
         },
         {
           type: 'paragraph',
-          text: 'Sotto il tuo elenco vedi, in sola lettura, gli attributi Ereditati dalle categorie antenate.',
-        },
-        {
-          type: 'tip',
-          text: "Assegna un attributo alla categoria più alta che ne ha bisogno: tutte le sottocategorie lo riceveranno. Puoi riassegnarlo su una sottocategoria per renderlo obbligatorio solo lì; vale l'impostazione della categoria più vicina.",
+          text: 'Come le altre regole decise dalla radice, sulle sottocategorie il valore è **ereditato** e in sola lettura (badge **Ereditata da …**): per cambiarlo apri la radice. Cambiandolo sulla radice, cambia subito per tutto il ramo.',
         },
         {
           type: 'paragraph',
-          text: 'Se togli un attributo che ha già valori, i valori nei prodotti non vengono cancellati, ma il campo non compare più e non è più obbligatorio. Lo stesso accade spegnendo Eredita dal padre.',
-        },
-      ],
-    },
-    {
-      id: 'attribute-layout',
-      title: 'Layout attributi',
-      blocks: [
-        {
-          type: 'paragraph',
-          text: 'Il layout decide come sono disposti i campi; senza layout compaiono in un semplice elenco.',
-        },
-        {
-          type: 'steps',
-          items: [
-            'Nella riga della categoria scegli Layout attributi.',
-            'Scegli il Contesto: Prodotto, Offerta o Commessa.',
-            'Scegli la Modalità form: Tutte le modalità, Creazione, Modifica o Visualizzazione.',
-            'Clicca Aggiungi sezione e compila Titolo (obbligatorio), Descrizione, Aspetto (Standard, In evidenza, Informativo, Secondario), Colonne (da 1 a 4), Collassabile e Chiusa di default.',
-            'Clicca Aggiungi riga dentro la sezione.',
-            'Trascina un campo da Attributi non posizionati nella riga.',
-            'Per ogni campo scegli la Larghezza: Intera, Due terzi, Metà, Un terzo o Un quarto.',
-            "Sposta sezioni e righe con le frecce e controlla l'Anteprima live.",
-            'Clicca Salva layout. Compare "Layout salvato." e puoi passare a un altro contesto; Annulla chiude senza salvare.',
-          ],
-        },
-        {
-          type: 'table',
-          headers: ['Situazione', 'Cosa vedi', 'Cosa puoi fare'],
-          rows: [
-            ['Modalità senza layout dedicato', 'Compare "Questa modalità usa il layout di Tutte le modalità."', 'Personalizza questa modalità; per tornare indietro Torna a tutte le modalità (conferma con Rimuovi).'],
-            ['Categoria senza layout proprio', 'Compare "Questa categoria usa il layout di …" e l\'editor bloccato', 'Personalizza questa categoria; per tornare indietro Torna al layout ereditato.'],
-          ],
+          text: 'La **Commessa multi-offerta** richiede **Prevede un contratto** acceso: finché quest\'ultimo è spento non puoi accenderla, e finché è accesa non puoi spegnere **Prevede un contratto** (spegni prima la Commessa multi-offerta). Il salvataggio di una combinazione incoerente viene rifiutato con un messaggio sul campo.',
         },
         {
           type: 'note',
-          text: 'Se Eredita dal padre è spento in un contesto, la categoria non eredita neanche il layout di quel contesto.',
-        },
-        {
-          type: 'tip',
-          text: 'Un campo non posizionato non si perde: compare in fondo, nella sezione Altre informazioni.',
-        },
-        {
-          type: 'note',
-          text: 'Se un\'offerta o una commessa contiene prodotti di più categorie, le sezioni vengono unite e ordinate per posizione: ad esempio, con righe ISO 9001 e 50001 i gruppi delle due norme compaiono prima di Tipologia di consulenza.',
+          text: 'L\'impostazione vale per le righe di ricavo dei prodotti del ramo. Le commesse già create non cambiano se la spegni; le righe di rami diversi non si possono mai unire nella stessa commessa.',
         },
       ],
     },
+    ...attributeSections,
     {
       id: 'report-columns',
       title: 'Colonne report',

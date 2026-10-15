@@ -1,4 +1,5 @@
 import type { HelpGuide } from '../../types'
+import { attributeSections } from './parts/product-categories-attributes'
 
 const guide: HelpGuide = {
   key: 'product-categories',
@@ -130,7 +131,7 @@ const guide: HelpGuide = {
           rows: [
             ['Generates quote', 'Whether the branch works with offers.', 'No'],
             ['Management mode', 'Single (one row per card) or Multiple (several rows per card).', 'Multiple'],
-            ['Single offer per opportunity', 'Whether each opportunity can have only one offer.', 'No'],
+            ['Single offer per opportunity', 'Whether each opportunity can have only one offer.', 'Yes'],
             ['Generates a contract', 'Whether a positive close opens a contract.', 'Yes'],
             ['Simplified offer line', 'Whether the offer line fills itself in Request Management.', 'No'],
             ['Selectable', 'Whether the category can be chosen in lists. Turned off, it stays visible as a container.', 'Yes'],
@@ -284,91 +285,28 @@ const guide: HelpGuide = {
       ],
     },
     {
-      id: 'attributes',
-      title: 'Attributes',
+      id: 'multi-quote-work-order',
+      title: 'Multi-offer work order',
       blocks: [
         {
           type: 'paragraph',
-          text: 'Attributes are created in the Attributes module; on the category you decide where to use them. The same attribute can live in one, two or all three blocks.',
-        },
-        {
-          type: 'table',
-          headers: ['Block', 'Where the fields appear'],
-          rows: [
-            ['Product Attributes', 'On the Product card, for products of the category.'],
-            ['Offer Attributes', "In the Offer's Additional information, when a line uses a product of the category; also as columns of the category card in Request Management."],
-            ['Work Order Attributes', "In the Work Order's Additional information, when one of its lines uses a product of the category."],
-          ],
-        },
-        {
-          type: 'steps',
-          items: [
-            'In the chosen block open Assign an attribute….',
-            'Search by name and select it: it appears in the list with its type.',
-            'Turn on Required if the field must always be filled in.',
-            'In Order write a number: lower numbers come first.',
-            'To remove an attribute use Remove attribute.',
-            'Press Save (on the card of an existing category) to save all the attributes and the three Inherit from parent switches together; Cancel discards the changes.',
-          ],
+          text: 'The **Multi-offer work order** setting is in the root category form and is **off** by default. When you turn it on, a single work order can be scheduled for the whole branch, gathering lines from several offers (even from different customers): you use it from the **Contracts** table.',
         },
         {
           type: 'paragraph',
-          text: 'Below your list you see, read-only, the attributes Inherited from ancestor categories.',
-        },
-        {
-          type: 'tip',
-          text: 'Assign an attribute to the highest category that needs it: every subcategory will receive it. You can reassign it on a subcategory to make it required only there; the setting of the nearest category applies.',
+          text: 'Like the other rules decided by the root, on sub-categories the value is **inherited** and read-only (**Inherited from …** badge): to change it, open the root. Changing it on the root updates the whole branch immediately.',
         },
         {
           type: 'paragraph',
-          text: 'If you remove an attribute that already has values, the values on products are not deleted, but the field no longer appears and is no longer required. The same happens by turning off Inherit from parent.',
-        },
-      ],
-    },
-    {
-      id: 'attribute-layout',
-      title: 'Attribute layout',
-      blocks: [
-        {
-          type: 'paragraph',
-          text: 'The layout decides how the fields are arranged; without a layout they appear as a simple list.',
-        },
-        {
-          type: 'steps',
-          items: [
-            "On the category's row choose Attribute layout.",
-            'Choose the Context: Product, Offer or Work Order.',
-            'Choose the Form mode: All modes, Create, Edit or View.',
-            'Click Add section and fill in Title (required), Description, Appearance (Standard, Highlighted, Informative, Secondary), Columns (1 to 4), Collapsible and Closed by default.',
-            'Click Add row inside the section.',
-            'Drag a field from Unplaced attributes into the row.',
-            'For each field choose the Width: Full, Two thirds, Half, One third or One quarter.',
-            'Move sections and rows with the arrows and check the live Preview.',
-            'Click Save layout. "Layout saved." appears and you can switch to another context; Cancel closes without saving.',
-          ],
-        },
-        {
-          type: 'table',
-          headers: ['Situation', 'What you see', 'What you can do'],
-          rows: [
-            ['Mode without a dedicated layout', '"This mode uses the layout of \'All modes\'." appears', 'Customize this mode; to go back, Return to all modes (confirm with Remove).'],
-            ['Category without its own layout', '"This category uses the layout of \'…\'." appears and the editor is locked', 'Customize this category; to go back, Return to the inherited layout.'],
-          ],
+          text: 'The **Multi-offer work order** requires **Includes a contract** to be on: while that is off you cannot turn it on, and while it is on you cannot turn **Includes a contract** off (turn off the Multi-offer work order first). Saving an inconsistent combination is refused with a message on the field.',
         },
         {
           type: 'note',
-          text: "If Inherit from parent is off for a context, the category does not inherit that context's layout either.",
-        },
-        {
-          type: 'tip',
-          text: 'An unplaced field is not lost: it appears at the bottom, in the Other information section.',
-        },
-        {
-          type: 'note',
-          text: 'When a quote or work order contains products from several categories, their sections are merged and sorted by position: for example, with ISO 9001 and 50001 lines the groups of both standards appear before the consultancy type section.',
+          text: 'The setting applies to the revenue lines of the branch products. Work orders already created do not change if you turn it off; lines from different branches can never be merged into the same work order.',
         },
       ],
     },
+    ...attributeSections,
     {
       id: 'report-columns',
       title: 'Report columns',

@@ -66,6 +66,7 @@ function mapCategoryToFormValues(
     management_mode: category.management_mode,
     single_quote_per_opportunity: category.single_quote_per_opportunity,
     generates_contract: category.generates_contract,
+    multi_quote_work_order: category.multi_quote_work_order,
     simplified_offer_line: category.simplified_offer_line,
     simplified_offer_line_override: category.simplified_offer_line_override,
     manager_labels: toManagerLabelsFormValue(category.manager_labels),
@@ -156,12 +157,13 @@ export function useProductCategoryForm({ mode }: UseProductCategoryFormArgs) {
       // Spec 0077 D-8: `multiple` is the behavior every existing root already
       // has; a new root starts from the same default.
       management_mode: 'multiple',
-      // A new root starts unconstrained: several offers per opportunity, the
-      // behaviour every existing category already has.
-      single_quote_per_opportunity: false,
+      // User decision 2026-10-15: a new root allows one offer per opportunity.
+      single_quote_per_opportunity: true,
       // Spec 0091: a new root is sold under a contract — the behaviour every
       // existing category had before the rule existed.
       generates_contract: true,
+      // Spec 0267: a new root keeps one work order per offer until the operator opts in.
+      multi_quote_work_order: false,
       // Spec 0114: a new root opens with the manual row editor — the
       // behaviour every existing category had before the rule existed.
       simplified_offer_line: false,

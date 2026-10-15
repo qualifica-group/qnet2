@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0267-multi-quote-work-order" status="approved" owner="utente" date="2026-10-15">
+
+  <goal>
+    Commessa multi-offerta: per le categorie prodotto il cui ramo lo consente, l'utente seleziona piu' contratti
+    vinti nella tabella Contratti e programma UNA sola commessa che raccoglie righe di offerte diverse, di
+    opportunita' diverse e di clienti diversi. Proforma e fatture della commessa restano per singolo cliente/offerta.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-15. Decisioni utente nella stessa data: flag sul ramo, creazione dalla tabella Contratti
+    con selezione multipla, fatturazione per cliente, solo contratti vinti (vedi decisions).
+    Fatti verificati nel repo:
+    - Commessa = `work_orders` (WorkOrder, codice `COM-`). Oggi `quote_id` NOT NULL restrictOnDelete
+      (migrazione 2026_09_02_100000), immutabile dopo la creazione (UpdateWorkOrderRequest `prohibited`).
+      Righe coperte nel pivot `quote_line_work_order` con UNIQUE(quote_line_id): una riga, una sola commessa.
+    - Contratto = `contracts` (Contract), 1:1 con l'offerta (`contracts.quote_id`). "Programma" esiste solo da
+      contratto singolo: `GET contracts/{contract}/programmable-lines` (ContractProgrammableLinesController),
+      `POST contracts/{contract}/work-orders` (ContractWorkOrderController, GenerateContractWorkOrderRequest) e
+      `.../batch` (ContractProgramBatch, spec 0215). Gate doppio: policy `program` (`contracts.program`) AND
+      ContractActionAvailability::mayProgram (gruppo stato ClosedWon).
+    - Il vincolo "stessa offerta + riga di ricavo" sta in WorkOrderLineWriter::assertBelongToRevenueLines;
+      "una riga, una commessa" in WorkOrderLineWriter::assertNotAlreadyProgrammed. Entrambi chiamati da
+      WorkOrderService::create/update dentro la transazione.
+    - Riga offerta -> categoria: `quote_lines.product_id` -> `products.category_id` -> `product_categories`.
+      Impostazioni di ramo (root-owned) gestite da ProductCategories/RootOwnedSettingsWriter con una sottoclasse
+      RootOwnedCategorySetting per impostazione (es. ContractGenerationInheritance per `generates_contract`).
+    - Ricavati dalla SOLA `work_orders.quote_id` (da adeguare): WorkOrderResource (`contract_number`, `quote`,
+      `contract`, `registry`, `company`, `company_site`, `operational_site`), WorkOrderService (eager load del
+      dettaglio, filtro `registry_id` del for-select), griglia commesse (WorkOrderColumnCatalog,
+      WorkOrderDerivedColumns, WorkOrderRegistryColumn, WorkOrderContractExpiryColumn), QuoteScopedTableDefinition
+      (tab Commesse del contratto e dell'anagrafica), WorkOrderCostOverviewBuilder (budget = righe COSTO
+      dell'offerta), WorkOrderContractDataBuilder (permessi di campo dall'offerta), WorkOrderTaskGenerator
+      (registry/opportunity dei task generati), TaskWorkOrderOpportunityGuard, TimeEntryLinkResolver,
+      WorkOrderEmailVariableResolver / WorkOrderEmailOwner / WorkOrderEmailAttachmentImporter,
+      ProformaRequestService (metodo di pagamento), InvoiceDraftBuilder (azienda, pagamento, cliente di default),
+      InvoiceService (`invoices.quote_id = work_orders.quote_id`, letto poi da Partitario spec 0266, rendering
+      fattura, griglie fatture/scadenze), ProformaRequestsTableDefinition / ProformaRequestResource,
+      QuoteService (blocco eliminazione offerta).
+    - Gia' per riga e invariati: titolo (RevenueProductTitleBuilder::forWorkOrder), stato (WorkOrderStatusResolver),
+      visibilita' (WorkOrderVisibilityScope: responsabili/partecipanti/viewAll), costi effettivi, pagamenti per
+      riga (WorkOrderLinePayment), provvigioni (CommissionAccrual per quote_line_id), attributi
+      (WorkOrderAttributeResolver dalle categorie delle righe).
+    - Proforma: ProformaRequestService::createForWorkOrder genera le richieste raggruppando le righe per tipo
+      (Consultancy) e per fornitore (Institution); una sola generazione per commessa.
+    - Frontend: griglia contratti `features/contracts/contracts-table.tsx` (oggi senza selezione multipla), slot
+      azioni massive `features/table/use-bulk-actions-slot.tsx` (usato da products-table), dialog Programma
+      `contract-program-*`. Dettaglio commessa `features/work-orders/work-order-detail-sections.tsx` /
+      `work-order-detail-header.tsx`, griglia `work-orders-table.tsx` + `column-renderers.tsx`. Form categoria
+      `features/product-categories/product-category-*` (es. `product-category-generates-contract-field.tsx`).
+    - Guide in-app esistenti: contracts, work-orders, product-categories, proforma-requests.
+  </context>
+
+  <decisions>
+    D-1 Flag di ramo `multi_quote_work_order` (boolean, default false) su `product_categories`, ROOT-OWNED come
+        `generates_contract`: lo scrive solo la radice, i figli lo ereditano (resync del sottoalbero, figlio che
+        invia un valore diverso = 422). Etichetta UI "Commessa multi-offerta".
+    D-2 Righe ammesse in una commessa multi-offerta: ricavo (Revenue), con prodotto, la cui categoria appartiene a
+        un ramo con il flag attivo (lo stato attivo/inattivo della categoria non conta: la riga e' gia' venduta);
+        TUTTE le righe dello STESSO ramo (stessa radice). Righe di almeno DUE offerte diverse, altrimenti si usa il Programma classico (422).
+    D-3 Creazione solo dalla tabella Contratti: selezione multipla di 2..50 contratti, azione massiva
+        "Programma commessa unica". Ogni contratto deve superare policy `program` (403) + mayProgram (ClosedWon), cioe'
+        solo contratti vinti: (decisione utente 2026-10-15) un contratto non ClosedWon e' un 422 su `contract_ids`
+        con il messaggio tradotto `work_orders.multi_quote.contracts_not_won` che elenca "codice offerta (cliente)",
+        verificato prima della cumulabilita' D-14; prima era un 403 senza messaggio, mostrato come "errore imprevisto". Una sola commessa per invio, campi comuni come il Programma singolo
+        (titolo opzionale, tipo, data inizio, responsabili, modello di task, informazioni aggiuntive).
+    D-4 Modello dati: `work_orders.quote_id` diventa NULLABLE. `quote_id` nullo = commessa multi-offerta
+        (`is_multi_quote` calcolato, nessuna colonna nuova). Le offerte di origine si derivano dalle righe del pivot
+        (`quote_lines.quote_id`), nessun nuovo pivot. Il Programma singolo e la creazione manuale continuano a
+        scrivere `quote_id` come oggi.
+    D-5 Righe dopo la creazione: sulla commessa multi-offerta l'update di `quote_line_ids` puo' solo RIMUOVERE
+        righe (sottoinsieme delle attuali, minimo 1); aggiungere righe di altre offerte e' fuori scope. Una
+        commessa multi-offerta rimasta con righe di una sola offerta resta multi-offerta (quote_id nullo).
+    D-6 Fatturazione per cliente/offerta: nuova colonna `proforma_requests.quote_id` (NOT NULL, FK restrict,
+        backfill da `work_orders.quote_id` delle richieste esistenti). La generazione raggruppa per
+        (offerta, tipo, fornitore); il metodo di pagamento si prende dall'offerta della richiesta. La bozza
+        fattura (azienda, pagamento, cliente di default, righe disponibili) e `invoices.quote_id` derivano dalla
+        richiesta proforma, non piu' dalla commessa. Per una commessa mono-offerta il risultato e' identico a oggi.
+    D-7 Lettura della commessa multi-offerta: i campi a offerta singola della risorsa (`quote`, `contract`,
+        `contract_number`, `registry`, `company`, `company_site`, `operational_site`) sono `null`; nuovo array
+        `source_quotes` (sempre presente, 1 elemento sulle mono-offerta). Nel dettaglio cliente/contratto/azienda/sede
+        non compaiono; ogni riga prodotto (`quote_lines[].registry` della risorsa e `lines[].registry` dei dati
+        contrattuali, cliente dell'offerta della riga) mostra la propria anagrafica (decisione utente 2026-10-15,
+        sostituisce la sezione "Offerte di origine").
+    D-8 Griglia commesse: colonna Cliente = nomi distinti uniti da " · "; colonna Offerta/Numero contratto = codici
+        uniti da " · "; Scadenza contratto vuota. Filtro Cliente e filtro offerta trovano la multi-offerta tramite le
+        righe. L'ordinamento su queste colonne mette le multi-offerta in fondo (valore nullo).
+    D-9 Tab Commesse del contratto e dell'anagrafica (QuoteScopedTableDefinition) e for-select con `registry_id`:
+        includono le multi-offerta che hanno almeno una riga di quell'offerta / anagrafica.
+    D-10 Budget costi della multi-offerta = righe COSTO di tutte le offerte di origine. Permessi di campo dei dati
+        contrattuali: ciascuna riga dalla propria offerta.
+    D-11 Task e ore: i task generati da modello su una multi-offerta hanno `registry_id`/`opportunity_id` nulli;
+        TaskWorkOrderOpportunityGuard accetta un'anagrafica del task se e' una delle anagrafiche di origine;
+        TimeEntryLinkResolver non deriva l'anagrafica da una multi-offerta.
+    D-12 Email della multi-offerta: variabili di offerta/opportunita'/anagrafica vuote, nessun destinatario
+        precompilato dai referenti cliente, nessun import del PDF offerta. Il resto del modulo Email invariato.
+    D-13 Eliminazione offerta: bloccata anche quando una sua riga e' in una commessa multi-offerta.
+    D-14 (decisioni utente 2026-10-15) Un contratto "si puo' cumulare" se la sua offerta ha almeno una riga di ricavo il
+        cui prodotto e' in una categoria con `multi_quote_work_order` attivo (Contract::allowsMultiQuoteWorkOrder /
+        scopeWithMultiQuoteWorkOrderFlag, un EXISTS per riga). L'azione "Programma commessa unica" resta SEMPRE
+        cliccabile (solo il limite di 50 la disattiva): se almeno un contratto selezionato non si puo' cumulare, il server
+        (MultiQuoteContractGate, dopo il 403) risponde 422 su `contract_ids` con un messaggio tradotto che elenca
+        "codice offerta (cliente)" dei contratti da togliere, e il popup lo mostra al posto delle righe (role=alert,
+        senza Riprova; la query non ritenta un 422). Tutti i messaggi di errore della multi-offerta sono tradotti
+        (`lang/{it,en}/work_orders.php`, lingua da Accept-Language).
+    D-15 (decisioni utente 2026-10-15) Seed di produzione: la radice "Formazione" ha `generates_contract` = true e
+        `multi_quote_work_order` = true (CatalogRootRules, solo Formazione: APL resta senza contratto; le altre radici
+        mantengono il valore di multi-offerta impostato da UI). Supera, per la sola Formazione, la direttiva 2026-09-01
+        (spec 0091) "la formazione non va in Contratti".
+    D-16 (decisione utente 2026-10-15) Coerenza delle impostazioni di categoria: `multi_quote_work_order` = true
+        richiede `generates_contract` = true (unica dipendenza tecnica reale: requires_quote non governa nulla dalla
+        spec 0083, le altre impostazioni sono indipendenti). "Blocca con spiegazione": il form disattiva lo switch
+        multi-offerta finche' il contratto e' No e impedisce di spegnere il contratto con la multi-offerta attiva;
+        il server (RootSettingsCoherence, prima della transazione) risponde 422 sul campo cambiato con messaggio
+        tradotto (`lang/{it,en}/product_categories.php`).
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Flag di ramo `multi_quote_work_order`: migrazione, eredita' root-owned, request/DTO/resource, campo nel form categoria.</item>
+      <item>Migrazioni: `work_orders.quote_id` nullable; `proforma_requests.quote_id` con backfill.</item>
+      <item>Endpoint righe programmabili multi-contratto e endpoint di creazione della commessa multi-offerta.</item>
+      <item>WorkOrderLineWriter generalizzato (insieme di offerte ammesse, regola di ramo, solo-rimozione su update multi).</item>
+      <item>Lettura: WorkOrderResource `is_multi_quote` + `source_quotes`, griglia, tab Commesse, for-select, budget costi, dati contrattuali, task/ore, email, blocco eliminazione offerta (D-7..D-13).</item>
+      <item>Proforma e fatture per offerta (D-6), griglia/risorsa richieste proforma con `quote`.</item>
+      <item>Frontend: selezione multipla + azione massiva nella griglia contratti, dialog "Programma commessa unica", dettaglio e griglia commesse multi-offerta, campo flag categoria, offerta sulla richiesta proforma.</item>
+      <item>Guide in-app IT+EN: contracts, work-orders, product-categories, proforma-requests. Manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Aggiungere righe di altre offerte a una commessa gia' esistente (D-5).</item>
+      <item>Creazione multi-offerta dal form manuale "Nuova commessa" o dal Programma del singolo contratto.</item>
+      <item>Unire o dividere commesse esistenti; convertire una commessa mono-offerta in multi-offerta.</item>
+      <item>Righe di rami diversi nella stessa commessa; righe senza prodotto.</item>
+      <item>Migrazione dal QNet legacy (WorkOrdersSource resta mono-offerta) e nuovi seeder demo.</item>
+      <item>Fattura che raccoglie piu' offerte o piu' clienti.</item>
+      <item>Ordinamento per cliente/offerta "per elenco" sulle multi-offerta (restano in fondo, D-8).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <resource name="product-categories">
+      Store/Update/Resource: nuovo campo `multi_quote_work_order: boolean`. Su una categoria figlia un valore
+      diverso da quello della radice = 422 `multi_quote_work_order` (stesso messaggio degli altri root-owned).
+      Default alla creazione di una radice: false.
+    </resource>
+
+    <endpoint method="GET" path="/api/contracts/multi-programmable-lines">
+      <request>
+        Query: `contract_ids[]: int[]` (required, distinct, min 2, max 50, exists contracts).
+      </request>
+      <response status="200">
+        data: {
+          contracts: [{ id: int, quote: { id: int, code: string, title: string|null },
+                        registry: { id: int, name: string }|null }],
+          lines: [ ProgrammableQuoteLineResource (id, sort_order, product, quantity, unit_of_measure, work_order)
+                   + { contract_id: int, quote_id: int, branch_root: { id: int, name: string }|null,
+                       multi_quote_eligible: boolean } ]
+        }
+        `multi_quote_eligible` = riga di ricavo con prodotto, ramo con flag attivo, non gia' in una commessa.
+        Ordine: contratti nell'ordine ricevuto, righe per `sort_order`.
+      </response>
+      <errors>
+        403 se l'utente non ha `program` su anche uno solo dei contratti.
+        422 su `contract_ids` (meno di 2, oltre 50, duplicati, inesistenti; contratti non ClosedWon, D-3;
+            contratti non cumulabili, D-14).
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/contracts/multi-quote-work-orders">
+      <request>
+        Body: {
+          contract_ids: int[] (required, distinct, min 2, max 50),
+          quote_line_ids: int[] (required, distinct, min 2),
+          title: string|null (max come GenerateContractWorkOrderRequest::TITLE_MAX),
+          type: WorkOrderType value (required),
+          start_date: date (required),
+          supervisor_ids: int[] (required, min 1, exists users),
+          task_template_id: int|null (exists task_templates attivo),
+          attribute_values: object (sometimes)
+        }
+      </request>
+      <response status="201">
+        { success, message: "Created", data: WorkOrderResource, permissions } — stessa shape di
+        POST /api/contracts/{contract}/work-orders, con `quote_id: null`, `is_multi_quote: true`.
+      </response>
+      <errors>
+        403 come l'endpoint GET (gate doppio su ogni contratto).
+        422 `quote_line_ids`: riga non appartenente alle offerte dei contratti selezionati o non di ricavo;
+            riga senza prodotto o fuori da un ramo con flag; righe di rami diversi; righe di una sola offerta;
+            riga gia' programmata in un'altra commessa (messaggio con il codice COM-).
+        Tutto o niente: con un 422 nessuna commessa viene creata.
+      </errors>
+    </endpoint>
+
+    <resource name="WorkOrderResource">
+      Nuovi campi su ogni commessa:
+        is_multi_quote: boolean,
+        source_quotes: [{ id: int, code: string, title: string|null,
+                          contract: { id: int }|null,
+                          registry: { id: int, name: string }|null,
+                          company: { id: int, name: string }|null }]  (ordinati per code)
+      Su multi-offerta: `quote_id`, `quote`, `contract`, `contract_number`, `registry`, `company`,
+      `company_site`, `operational_site` = null. Mono-offerta: invariati.
+    </resource>
+
+    <endpoint method="PATCH" path="/api/work-orders/{work_order}">
+      <request>
+        Invariato. Su multi-offerta `quote_line_ids` deve essere sottoinsieme non vuoto delle righe attuali,
+        altrimenti 422 `quote_line_ids`.
+      </request>
+    </endpoint>
+
+    <resource name="ProformaRequestResource">
+      Nuovo campo `quote: { id: int, code: string }`. Azienda e cliente mostrati in griglia/risorsa derivano da
+      `proforma_requests.quote_id`. Nessun nuovo endpoint; la generazione resta
+      ProformaRequestService::createForWorkOrder.
+    </resource>
+
+    <resource name="invoice-draft">
+      Shape invariata. `quote`, `defaults.company`, `defaults.payment_method`, `defaults.customer` e
+      `available_lines` (filtrate anche su `quote_id` della richiesta) derivano dalla richiesta proforma.
+    </resource>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un ramo radice, quando si imposta `multi_quote_work_order` = true, allora tutte le sottocategorie lo riportano true; un figlio che invia false riceve 422.</criterion>
+    <criterion id="AC-002">Dati due contratti ClosedWon di clienti diversi con righe di ricavo di un ramo con flag, quando si chiama GET multi-programmable-lines, allora le righe arrivano con `contract_id`, `quote_id`, `branch_root` e `multi_quote_eligible` = true; una riga gia' in commessa o di un ramo senza flag ha `multi_quote_eligible` = false.</criterion>
+    <criterion id="AC-003">Dato un utente senza `contracts.program`, quando si chiama GET o POST, allora 403 con messaggio tradotto e nessuna commessa creata. Dato un contratto non ClosedWon fra quelli selezionati, allora 422 su `contract_ids` con il messaggio tradotto che elenca codice offerta e cliente dei contratti non vinti (prima del controllo di cumulabilita') e nessuna commessa creata.</criterion>
+    <criterion id="AC-004">Dati due contratti vinti di clienti diversi, quando si fa POST multi-quote-work-orders con righe di entrambi, allora 201, una sola commessa con `quote_id` null, `is_multi_quote` true, pivot con tutte le righe e `source_quotes` con le due offerte e i due clienti.</criterion>
+    <criterion id="AC-005">Quando il POST contiene una riga di un ramo senza flag, righe di due rami diversi, righe di una sola offerta, una riga di costo o una riga di un'offerta non selezionata, allora 422 su `quote_line_ids` e nessuna commessa creata.</criterion>
+    <criterion id="AC-006">Quando il POST contiene una riga gia' programmata in un'altra commessa, allora 422 col codice COM- della commessa occupante.</criterion>
+    <criterion id="AC-007">Data una commessa multi-offerta, quando si fa PATCH con un sottoinsieme delle righe, allora le righe tolte escono (con i loro dati di pagamento); con una riga nuova o lista vuota, allora 422.</criterion>
+    <criterion id="AC-008">Data una commessa multi-offerta, la griglia commesse mostra i clienti e i codici offerta uniti da " · "; il filtro per un cliente di origine la trova; il tab Commesse del contratto di ciascuna offerta di origine la elenca.</criterion>
+    <criterion id="AC-009">Data una commessa multi-offerta con righe COSTO nelle offerte di origine, il riepilogo costi mostra come budget le righe COSTO di tutte le offerte di origine.</criterion>
+    <criterion id="AC-010">Data una commessa multi-offerta con righe di due offerte, quando si generano le richieste proforma, allora ogni richiesta ha un solo `quote_id` e il metodo di pagamento della propria offerta; nessuna richiesta mescola righe di offerte diverse.</criterion>
+    <criterion id="AC-011">Da una richiesta proforma di una multi-offerta, la bozza fattura propone azienda, pagamento, cliente e righe della SOLA offerta della richiesta, e la fattura emessa ha `quote_id` = offerta della richiesta (visibile nel Partitario del cliente giusto).</criterion>
+    <criterion id="AC-012">Dopo la migrazione, ogni richiesta proforma esistente ha `quote_id` = `quote_id` della sua commessa; le commesse mono-offerta producono richieste e bozze identiche a prima.</criterion>
+    <criterion id="AC-013">Data una commessa multi-offerta, i task generati dal modello hanno anagrafica e opportunita' nulle; un task collegato alla commessa e a una delle anagrafiche di origine e' accettato, con un'anagrafica estranea e' rifiutato.</criterion>
+    <criterion id="AC-014">Dato un'offerta con una riga in una commessa multi-offerta, quando si tenta di eliminarla, allora l'eliminazione e' rifiutata.</criterion>
+    <criterion id="AC-015">Frontend: nella griglia contratti, con almeno 2 righe selezionate e permesso `contracts.program`, appare l'azione "Programma commessa unica"; il dialog mostra le righe raggruppate per contratto, rende selezionabili solo quelle `multi_quote_eligible` dello stesso ramo, e all'invio apre la commessa creata; un 422 viene mostrato sul campo righe.</criterion>
+    <criterion id="AC-016">Frontend: il dettaglio di una commessa multi-offerta mostra la sezione "Offerte di origine" (codice offerta, cliente, link al contratto) al posto di cliente/contratto/azienda/sede, senza errori su campi null.</criterion>
+    <criterion id="AC-017">Frontend: il form categoria mostra lo switch "Commessa multi-offerta" modificabile sulla radice e in sola lettura (ereditato) sui figli.</criterion>
+    <criterion id="AC-019">Data una selezione con almeno un contratto non cumulabile, l'azione "Programma commessa unica" resta cliccabile; GET e POST rispondono 422 su `contract_ids` con il messaggio tradotto che elenca codice offerta e cliente dei contratti non cumulabili, il popup lo mostra e nessuna commessa viene creata (403 resta prioritario). Il seed di produzione rende cumulabile il ramo Formazione.</criterion>
+    <criterion id="AC-020">Su una categoria radice con Prevede un contratto = No lo switch Commessa multi-offerta e' disattivato con la spiegazione, e con la multi-offerta attiva Prevede un contratto non si puo' spegnere; una richiesta che renderebbe la radice incoerente riceve 422 sul campo cambiato con messaggio tradotto e non salva nulla. Il seed porta Formazione a contratto Si' e multi-offerta Si'.</criterion>
+    <criterion id="AC-018">Guide in-app IT ed EN aggiornate con gli stessi id di sezione; `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Envelope `{ success, message, data }` e handleControllerException.
+    - Authz server-side su ogni contratto (policy `program` AND mayProgram); il frontend nasconde, il backend decide.
+    - Riuso obbligatorio: la creazione passa da WorkOrderService::create (numerazione, responsabili, modello di
+      task, attributi) come ContractProgramBatch; nessuna logica di numerazione duplicata.
+    - Migrazioni nuove e reversibili; mai modificare quelle esistenti. Il `down` di `quote_id` nullable fallisce
+      esplicitamente se esistono commesse multi-offerta.
+    - Validazioni di appartenenza righe solo server-side contro le righe reali (mai fidarsi del client).
+    - Pest: happy/error/authz per ogni endpoint; Vitest per dialog, dettaglio e form categoria; `tsc -b --force`.
+    - File entro 300/500 righe: la nuova logica di creazione in una classe dedicata
+      (`App\Services\Contracts\MultiQuoteWorkOrderProgrammer`), non dentro ContractProgramBatch.
+    - Legacy: nessuna modifica a WorkOrdersSource; resta mono-offerta.
+  </constraints>
+
+</spec>

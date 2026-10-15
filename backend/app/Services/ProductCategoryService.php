@@ -11,6 +11,7 @@ use App\Services\ProductCategories\CategoryHierarchy;
 use App\Services\ProductCategories\CategoryManagerLabelResolver;
 use App\Services\ProductCategories\CategoryTreeBuilder;
 use App\Services\ProductCategories\RootOwnedSettingsWriter;
+use App\Services\ProductCategories\RootSettingsCoherence;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -28,6 +29,7 @@ class ProductCategoryService
         private readonly CategoryHierarchy $hierarchy,
         private readonly CategoryTreeBuilder $treeBuilder,
         private readonly RootOwnedSettingsWriter $rootOwnedSettings,
+        private readonly RootSettingsCoherence $coherence,
         private readonly CategoryManagerLabelResolver $managerLabels,
         private readonly AttributeLayoutCopier $layoutCopier,
     ) {}
@@ -43,6 +45,7 @@ class ProductCategoryService
         }
 
         $this->rootOwnedSettings->assertCreateNotOverridden($data);
+        $this->coherence->assertCreate($data);
 
         return DB::transaction(function () use ($data, $layoutSource): ProductCategory {
             /** @var ProductCategory $category */
@@ -95,6 +98,7 @@ class ProductCategoryService
         }
 
         $this->rootOwnedSettings->assertUpdateNotOverridden($category, $data);
+        $this->coherence->assertUpdate($category, $data);
 
         return DB::transaction(function () use ($category, $data): ProductCategory {
             $attributes = $data->submittedAttributes();
@@ -205,9 +209,9 @@ class ProductCategoryService
     }
 
     /**
-     * The ROOT each of $category's five root-owned settings is inherited FROM
+     * The ROOT each of $category's six root-owned settings is inherited FROM
      * (`requires_quote`, `management_mode`, `single_quote_per_opportunity`,
-     * `generates_contract`, `simplified_offer_line`) — null on a root, which
+     * `generates_contract`, `multi_quote_work_order`, `simplified_offer_line`) — null on a root, which
      * owns its own values. The show endpoint spreads this straight into its
      * `meta` block as the read-only "inherited from X" hints; the values
      * themselves are real columns on $category, already carried by the

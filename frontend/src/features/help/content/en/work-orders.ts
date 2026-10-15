@@ -185,6 +185,32 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'multi-quote-work-order',
+      title: 'Multi-offer work order',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'A **multi-offer** work order gathers lines from several offers (and therefore several customers). It is created from the **Contracts** table with **Schedule single work order** (see the Contracts guide) and is recognised by the **Multi-offer** badge.',
+        },
+        {
+          type: 'list',
+          items: [
+            'In the detail there are no customer, contract, company and site sections: each product line shows, under its name, the **registry** it refers to, linked to its record.',
+            'After creation, lines can only be **removed** (at least one must remain): lines from other offers cannot be added.',
+            'In the list the Customer and Offer columns show several values separated by " · "; filtering by one of the customers finds the work order. The contract expiry stays empty.',
+            'The work order appears in the **Work orders** tab of the contract of each source offer.',
+            'The cost budget is made of the cost lines of **all** the source offers.',
+            'Tasks generated from the template have no customer.',
+            'The Email tab has no customer or offer variables and the recipients are not pre-filled.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Proforma requests of a multi-offer work order are one per offer: see the Proforma Requests guide. An offer with lines in a multi-offer work order cannot be deleted.',
+        },
+      ],
+    },
+    {
       id: 'proforma-request',
       title: 'Proforma request (the € button)',
       blocks: [

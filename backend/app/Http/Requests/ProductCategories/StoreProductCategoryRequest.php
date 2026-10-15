@@ -71,11 +71,14 @@ class StoreProductCategoryRequest extends FormRequest
             // = server-resolved (inherited, or "multiple" at a fresh root).
             'management_mode' => ['sometimes', Rule::enum(CategoryManagementMode::class)],
             // User directive 2026-08-07: same root-only semantics again —
-            // omitted = server-resolved (inherited, or false at a fresh root).
+            // omitted = server-resolved (inherited, or true at a fresh root).
             'single_quote_per_opportunity' => ['sometimes', 'boolean'],
             // Spec 0091: same root-only semantics once more — omitted =
             // server-resolved (inherited, or true at a fresh root).
             'generates_contract' => ['sometimes', 'boolean'],
+            // Spec 0267: same root-only semantics again — omitted = server-resolved
+            // (inherited, or false at a fresh root); true requires generates_contract.
+            'multi_quote_work_order' => ['sometimes', 'boolean'],
             // Spec 0114: same root-only semantics again — omitted =
             // server-resolved (inherited, or false at a fresh root).
             'simplified_offer_line' => ['sometimes', 'boolean'],

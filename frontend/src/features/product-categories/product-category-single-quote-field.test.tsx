@@ -105,6 +105,7 @@ describe('resolveInheritedSingleQuoteFlag', () => {
       name: 'Electronics',
       single_quote_per_opportunity: true,
       generates_contract: true,
+      multi_quote_work_order: false,
       children: [
         treeNode({
           id: 2,
@@ -112,6 +113,7 @@ describe('resolveInheritedSingleQuoteFlag', () => {
           parent_id: 1,
           single_quote_per_opportunity: true,
           generates_contract: true,
+          multi_quote_work_order: false,
           children: [
             treeNode({ id: 3, name: 'Sockets', parent_id: 2, single_quote_per_opportunity: true }),
           ],

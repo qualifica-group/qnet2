@@ -106,6 +106,7 @@ describe('resolveInheritedManagementMode', () => {
       management_mode: 'single',
       single_quote_per_opportunity: false,
       generates_contract: true,
+      multi_quote_work_order: false,
       children: [
         treeNode({
           id: 2,
@@ -114,6 +115,7 @@ describe('resolveInheritedManagementMode', () => {
           management_mode: 'single',
           single_quote_per_opportunity: false,
           generates_contract: true,
+          multi_quote_work_order: false,
           children: [treeNode({ id: 3, name: 'Sockets', parent_id: 2, management_mode: 'single' })],
         }),
       ],

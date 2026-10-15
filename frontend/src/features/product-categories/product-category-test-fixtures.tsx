@@ -46,6 +46,7 @@ export function treeNode(overrides: Partial<ProductCategoryTreeNode> = {}): Prod
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
     generates_contract: true,
+    multi_quote_work_order: false,
     simplified_offer_line: false,
     simplified_offer_line_override: null,
     ...overrides,
@@ -86,7 +87,9 @@ export function category(overrides: Partial<ProductCategoryDetailWithPermissions
     single_quote_per_opportunity: false,
     single_quote_per_opportunity_source_category: null,
     generates_contract: true,
+    multi_quote_work_order: false,
     generates_contract_source_category: null,
+    multi_quote_work_order_source_category: null,
     simplified_offer_line: false,
     simplified_offer_line_override: null,
     simplified_offer_line_source_category: null,
@@ -107,6 +110,7 @@ export function childCategory(overrides: Partial<ProductCategoryDetailWithPermis
     management_mode_source_category: { id: 1, name: 'Electronics' },
     single_quote_per_opportunity_source_category: { id: 1, name: 'Electronics' },
     generates_contract_source_category: { id: 1, name: 'Electronics' },
+    multi_quote_work_order_source_category: { id: 1, name: 'Electronics' },
     ...overrides,
   })
 }

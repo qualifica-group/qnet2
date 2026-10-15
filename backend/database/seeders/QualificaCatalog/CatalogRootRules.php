@@ -6,6 +6,7 @@ use App\Enums\CategoryManagementMode;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\CategoryManagementModeInheritance;
 use App\Services\ProductCategories\ContractGenerationInheritance;
+use App\Services\ProductCategories\MultiQuoteWorkOrderInheritance;
 use App\Services\ProductCategories\SimplifiedOfferLineInheritance;
 use App\Services\ProductCategories\SingleQuotePerOpportunityInheritance;
 
@@ -23,20 +24,26 @@ use App\Services\ProductCategories\SingleQuotePerOpportunityInheritance;
  * "Formazione" is worked one product line and ONE offer at a time (user
  * directive 2026-08-03 for the line, 2026-08-07 for the offer): a training
  * opportunity is a single course sold once, never a basket of alternatives.
- * It is also NOT sold under a contract (spec 0091, user directive
- * 2026-09-01): a training deal closing positively must not surface in the
- * Contratti module. It also seeds its offer lines from the product alone
+ * It IS sold under a contract since user decision 2026-10-15, so it can be
+ * grouped into a multi-offer work order (this supersedes the spec 0091 /
+ * 2026-09-01 directive for Formazione only; the multi-offer rule requires the
+ * contract). It also seeds its offer lines from the product alone
  * (spec 0114): an operator picks the course, the server freezes quantity,
  * price and VAT. "Consulenza" stays unconstrained on all four — listed
  * explicitly rather than left to the column defaults so a re-run realigns it
  * too.
  *
  * "APL" is worked exactly like "Formazione" (user directive 2026-10-05, "stessi
- * setting di formazione"): the same four rules and the same G.A. labels, so an
- * APL deal closing positively no longer surfaces in the Contratti module. It
+ * setting di formazione"): the same four rules and the same G.A. labels, except that APL
+ * stays without a contract, so an APL deal closing positively does not surface
+ * in the Contratti module. It
  * kept the column defaults (Consulenza's values) from 2026-09-07 until then.
  *
  * "SOA" and "Sicurezza" are worked like "Consulenza" (user decisions 2026-10-15).
+ *
+ * "Formazione" alone also allows the multi-offer work order (spec 0267, user
+ * decision 2026-10-15). The key is declared on that root only, so the other
+ * roots keep whatever the UI set instead of being realigned to false.
  *
  * `manager_labels` (spec 0080) rides along on the same root write but is NOT
  * mirrored on the subtree: descendants resolve it by climbing the tree
@@ -90,10 +97,10 @@ final class CatalogRootRules
     /**
      * Root name => the rules it owns, as `product_categories` columns.
      *
-     * @var array<string, array{management_mode: CategoryManagementMode, single_quote_per_opportunity: bool, generates_contract: bool, simplified_offer_line?: bool, manager_labels?: array<string, string>}>
+     * @var array<string, array{management_mode: CategoryManagementMode, single_quote_per_opportunity: bool, generates_contract: bool, simplified_offer_line?: bool, multi_quote_work_order?: bool, manager_labels?: array<string, string>}>
      */
     private const array RULES = [
-        'Formazione' => self::TRAINING_RULES,
+        'Formazione' => [...self::TRAINING_RULES, 'generates_contract' => true, 'multi_quote_work_order' => true],
         'APL' => self::TRAINING_RULES,
         'Consulenza' => self::CONSULTING_RULES,
         SoaCatalogue::ROOT => self::CONSULTING_RULES,
@@ -117,6 +124,7 @@ final class CatalogRootRules
         private readonly SingleQuotePerOpportunityInheritance $singleQuote,
         private readonly ContractGenerationInheritance $contractGeneration,
         private readonly SimplifiedOfferLineInheritance $simplifiedOfferLine,
+        private readonly MultiQuoteWorkOrderInheritance $multiQuoteWorkOrder,
     ) {}
 
     public function apply(): void
@@ -133,6 +141,7 @@ final class CatalogRootRules
             $this->singleQuote->syncSubtree($root);
             $this->contractGeneration->syncSubtree($root);
             $this->simplifiedOfferLine->syncSubtree($root);
+            $this->multiQuoteWorkOrder->syncSubtree($root);
         }
 
         foreach (self::NODE_OVERRIDES as $categoryName => $override) {

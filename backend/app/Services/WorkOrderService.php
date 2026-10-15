@@ -63,6 +63,8 @@ class WorkOrderService
         // attribute trio (`applicable_attributes`/`attribute_layout`) never
         // N+1s on top of the pre-existing `quote_lines` projection.
         'quoteLines.product.category',
+        // Spec 0267: the client each line comes from, shown on the line of a multi-offer commessa.
+        'quoteLines.quote.opportunity.registry',
         'supervisors',
         'participants',
         // Spec 0124: the `task_template` summary WorkOrderResource exposes —
@@ -126,14 +128,12 @@ class WorkOrderService
         }
 
         // Cascading client filter (spec 0122, D-5): a work order has no
-        // `registry_id` of its own — the client is only reachable via
-        // `quote.opportunity.registry_id` (context/existing_names). Additive,
+        // `registry_id` of its own — the client is reachable via its offer or,
+        // on a multi-offer one, via its lines' offers (spec 0267, D-9). Additive,
         // bypassed for the explicit ids[] hydration below exactly like
         // `search` is.
         if ($query->registryId !== null) {
-            $base->whereHas('quote.opportunity', function (Builder $scoped) use ($query): void {
-                $scoped->where('registry_id', $query->registryId);
-            });
+            $base->withQuoteLineOfRegistry($query->registryId);
         }
 
         $window = $query->page($base, static fn ($ordered) => $ordered->orderBy('code')->orderBy('id'));
@@ -213,7 +213,7 @@ class WorkOrderService
             $workOrder->save();
 
             // Step 2: validate + sync the REVENUE line membership (D-7).
-            $this->lineWriter->writeSubmitted($workOrder, $data->quoteId, $data->quoteLineIds);
+            $this->lineWriter->writeSubmitted($workOrder, $data->allowedQuoteIds(), $data->quoteLineIds);
 
             // Step 2a (spec 0215, D-2): the title, AFTER the lines it derives from.
             $this->titleWriter->write($workOrder, $data->title);
@@ -285,7 +285,7 @@ class WorkOrderService
                 $this->taskForceCloser->closeOpenTasks($workOrder, $workOrder->force_close_reason);
             }
 
-            $this->lineWriter->writeSubmitted($workOrder, $workOrder->quote_id, $data->quoteLineIds);
+            $this->lineWriter->writeSubmitted($workOrder, $this->allowedQuoteIds($workOrder), $data->quoteLineIds);
 
             // Spec 0215, D-2: a submitted title (even null) is applied against
             // the lines as they are NOW; otherwise new lines re-derive an
@@ -344,6 +344,17 @@ class WorkOrderService
             // Step 3: delete
             $locked->delete();
         });
+    }
+
+    /**
+     * Offers the lines of an existing commessa may belong to: its own, or the
+     * ones its current lines already come from (multi-offer, spec 0267, D-5).
+     *
+     * @return array<int, int>
+     */
+    private function allowedQuoteIds(WorkOrder $workOrder): array
+    {
+        return $workOrder->isMultiQuote() ? $workOrder->sourceQuoteIds() : [(int) $workOrder->quote_id];
     }
 
     /**

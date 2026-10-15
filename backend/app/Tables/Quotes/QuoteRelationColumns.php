@@ -2,7 +2,10 @@
 
 namespace App\Tables\Quotes;
 
+use App\Models\Quote;
 use App\Tables\Concerns\HandlesBlankSetFilter;
+use App\Tables\Shared\OfferLinesColumn;
+use App\Tables\Shared\RootCategoriesColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -22,6 +25,16 @@ use Illuminate\Support\Facades\DB;
 final class QuoteRelationColumns
 {
     use HandlesBlankSetFilter;
+
+    public function __construct(private readonly RootCategoriesColumn $rootCategoriesColumn) {}
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function projectRootCategories(Quote $quote): array
+    {
+        return $this->rootCategoriesColumn->project($quote);
+    }
 
     /**
      * Maximum number of names honoured in a derived-column set filter. Caps
@@ -70,6 +83,18 @@ final class QuoteRelationColumns
      */
     public function applyFilter(Builder $query, string $columnId, array $filter): bool
     {
+        if ($columnId === OfferLinesColumn::COLUMN_ID) {
+            OfferLinesColumn::applyFilter($query, $this->filterValues($filter), $this->matchesBlankEntry($filter));
+
+            return true;
+        }
+
+        if ($columnId === RootCategoriesColumn::COLUMN_ID) {
+            $this->rootCategoriesColumn->applyFilter($query, $this->filterValues($filter), $this->matchesBlankEntry($filter));
+
+            return true;
+        }
+
         if ($columnId === 'managers') {
             $this->applyLabelFilter($query, 'managers', 'name', $filter);
 
@@ -153,6 +178,14 @@ final class QuoteRelationColumns
      */
     public function distinctValues(string $columnId, ?string $search, Builder $query, int $limit): ?array
     {
+        if ($columnId === OfferLinesColumn::COLUMN_ID) {
+            return OfferLinesColumn::distinctValues($query, $search, $limit);
+        }
+
+        if ($columnId === RootCategoriesColumn::COLUMN_ID) {
+            return $this->rootCategoriesColumn->distinctValues($query, $search, $limit);
+        }
+
         if ($columnId === 'managers') {
             // "No manager" is answered by the pivot alone: `user_id` cascades on
             // delete, so the join to `users` that whereDoesntHave() adds is pure cost

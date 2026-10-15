@@ -1,11 +1,12 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { forwardRef, useImperativeHandle } from 'react'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ContractsTable } from '@/features/contracts/contracts-table'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
+import type { BulkAction } from '@/features/table/use-bulk-actions-slot'
 
 /**
  * Spec 0072 D-6: a contract is never created nor deleted by hand — the
@@ -29,6 +30,18 @@ vi.mock('@/features/modules/use-module-opener', () => ({
     sheet: null,
   }),
 }))
+
+const canMock = vi.fn((permission: string) => permission === 'contracts.program')
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: canMock }),
+}))
+
+vi.mock('@/features/contracts/contract-multi-program-dialog', () => ({
+  ContractMultiProgramDialog: ({ open, contractIds }: { open: boolean; contractIds: number[] }) =>
+    open ? <div role="dialog">multi dialog {contractIds.join(',')}</div> : null,
+}))
+
+let selectionSize = 0
 
 const VIEW_ACTION: TableActionDefinition = {
   key: 'view',
@@ -56,8 +69,14 @@ const ROW: TableRow = {
 vi.mock('@/features/table/table-view', () => ({
   TableView: forwardRef<
     { refresh: () => void },
-    { domain: string; onAction?: (action: TableActionDefinition, row: TableRow) => void }
-  >(function TableViewStub({ domain, onAction }, ref) {
+    {
+      domain: string
+      onAction?: (action: TableActionDefinition, row: TableRow) => void
+      getBulkActions?: (selection: { rows: TableRow[] }) => BulkAction[]
+    }
+  >(function TableViewStub({ domain, onAction, getBulkActions }, ref) {
+    const bulk =
+      getBulkActions?.({ rows: Array.from({ length: selectionSize }, (_, i) => ({ ...ROW, id: i + 1 })) }) ?? []
     useImperativeHandle(ref, () => ({ refresh: vi.fn() }))
     return (
       <div role="region" aria-label={`table-${domain}`}>
@@ -67,6 +86,17 @@ vi.mock('@/features/table/table-view', () => ({
         <button type="button" onClick={() => onAction?.(VALIDATE_ACTION, ROW)}>
           validate row
         </button>
+        {bulk.map((action) => (
+          <button
+            key={action.key}
+            type="button"
+            disabled={action.disabled}
+            title={action.disabledReason}
+            onClick={action.onSelect}
+          >
+            {action.label}
+          </button>
+        ))}
       </div>
     )
   }),
@@ -89,6 +119,8 @@ beforeAll(async () => {
 
 beforeEach(() => {
   openViewMock.mockReset()
+  selectionSize = 0
+  canMock.mockImplementation((permission: string) => permission === 'contracts.program')
 })
 
 describe('ContractsTable — domain wiring', () => {
@@ -112,5 +144,41 @@ describe('ContractsTable — domain wiring', () => {
     renderTable()
     screen.getByRole('button', { name: 'validate row' }).click()
     expect(openViewMock).toHaveBeenCalledWith(ROW)
+  })
+})
+
+describe('ContractsTable — bulk "Programma commessa unica" (spec 0267 AC-015)', () => {
+  const ACTION = 'Program single work order'
+
+  it('hides the action with fewer than 2 rows selected', () => {
+    selectionSize = 1
+    renderTable()
+    expect(screen.queryByRole('button', { name: ACTION })).not.toBeInTheDocument()
+  })
+
+  it('hides the action without the contracts.program ability', () => {
+    selectionSize = 3
+    canMock.mockReturnValue(false)
+    renderTable()
+    expect(screen.queryByRole('button', { name: ACTION })).not.toBeInTheDocument()
+  })
+
+  it('opens the dialog with the selected contract ids', async () => {
+    selectionSize = 3
+    renderTable()
+    fireEvent.click(screen.getByRole('button', { name: ACTION }))
+    expect(await screen.findByRole('dialog')).toHaveTextContent('multi dialog 1,2,3')
+  })
+
+  it('disables the action beyond the 50-contract cap', () => {
+    selectionSize = 51
+    renderTable()
+    expect(screen.getByRole('button', { name: ACTION })).toBeDisabled()
+  })
+
+  it('AC-019: keeps the action enabled whatever the contracts allow (the dialog explains a refusal)', () => {
+    selectionSize = 3
+    renderTable()
+    expect(screen.getByRole('button', { name: ACTION })).toBeEnabled()
   })
 })

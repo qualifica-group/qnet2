@@ -99,8 +99,8 @@ final class SafetyCatalogue
     public const array QUOTE_ATTRIBUTES = [
         ['code' => 'safety_company_report', 'name' => 'Visura camerale ordinaria', 'type' => 'boolean'],
         ['code' => 'safety_employee_count', 'name' => 'N° dipendenti', 'type' => 'integer'],
-        ['code' => 'safety_requested_course_types', 'name' => 'Tipologia di corsi richiesti', 'type' => 'textarea'],
-        ['code' => 'safety_course_count_per_type', 'name' => 'Numero di corsi richiesti per ogni tipologia', 'type' => 'textarea'],
+        ['code' => 'safety_requested_courses', 'name' => 'Numero e tipo di corsi richiesti', 'type' => 'text'],
+        ['code' => 'safety_required_documents', 'name' => 'Documenti richiesti', 'type' => 'text'],
         ['code' => 'safety_shifts_roles_workplaces', 'name' => 'Turni lavorativi, mansioni e luoghi di lavoro dei dipendenti', 'type' => 'textarea'],
         ['code' => 'safety_active_sites_count', 'name' => 'N° cantieri attivi', 'type' => 'integer'],
         ['code' => 'safety_company_sites_count', 'name' => 'N° sedi azienda', 'type' => 'integer'],
@@ -120,6 +120,22 @@ final class SafetyCatalogue
     ];
 
     /**
+     * The codes the first revision assigned to the root and the user replaced
+     * with "Numero e tipo di corsi richiesti" and "Documenti richiesti" (user
+     * directive 2026-10-15): withdrawn by QualificaQuoteLayoutSeeder, as the
+     * assignments are additive.
+     *
+     * @var list<string>
+     */
+    public const array RETIRED_ATTRIBUTES = ['safety_requested_course_types', 'safety_course_count_per_type'];
+
+    private const array WELDER_LICENCES_SECTION = ['safety-welder-licences', 'Patentino saldatori', [
+        ['safety_welder_licences_count'],
+        ['safety_welding_method', 'safety_weld_joint'],
+        ['safety_weld_thickness', 'safety_weld_material'],
+    ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => 'Descrizione patentini: tipo di saldatura, spessori e materiale.']];
+
+    /**
      * The offer form: the sheet's two blocks.
      *
      * @var list<array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string}}>
@@ -127,15 +143,28 @@ final class SafetyCatalogue
     public const array QUOTE_SECTIONS = [
         ['safety-request', 'Sicurezza 81/08', [
             ['safety_company_report', 'safety_employee_count'],
+            ['safety_requested_courses'],
+            ['safety_required_documents'],
+            ['safety_shifts_roles_workplaces'],
+            ['safety_active_sites_count', 'safety_company_sites_count'],
+        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => 'Dati dell\'azienda e corsi richiesti.']],
+        self::WELDER_LICENCES_SECTION,
+    ];
+
+    /**
+     * The form the first revision seeded, with the RETIRED_ATTRIBUTES rows:
+     * recognised and recomposed by QualificaQuoteLayoutSeeder.
+     *
+     * @var list<array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string}}>
+     */
+    public const array PREVIOUS_QUOTE_SECTIONS = [
+        ['safety-request', 'Sicurezza 81/08', [
+            ['safety_company_report', 'safety_employee_count'],
             ['safety_requested_course_types'],
             ['safety_course_count_per_type'],
             ['safety_shifts_roles_workplaces'],
             ['safety_active_sites_count', 'safety_company_sites_count'],
         ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => 'Dati dell\'azienda e corsi richiesti.']],
-        ['safety-welder-licences', 'Patentino saldatori', [
-            ['safety_welder_licences_count'],
-            ['safety_welding_method', 'safety_weld_joint'],
-            ['safety_weld_thickness', 'safety_weld_material'],
-        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => 'Descrizione patentini: tipo di saldatura, spessori e materiale.']],
+        self::WELDER_LICENCES_SECTION,
     ];
 }

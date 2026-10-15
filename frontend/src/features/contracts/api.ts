@@ -7,6 +7,8 @@ import type {
   ContractDetailWithPermissions,
   ContractProgrammableLine,
   ContractProgramGroupPayload,
+  MultiProgrammableLinesData,
+  MultiQuoteWorkOrderPayload,
   ReactivateContractPayload,
   TerminateContractPayload,
   UpdateContractPayload,
@@ -142,5 +144,25 @@ export async function createContractWorkOrdersBatch(
     `/contracts/${contractId}/work-orders/batch`,
     payload,
   )
+  return data.data
+}
+
+/** Query key of the multi-offer dialog's lines for a set of contracts (spec 0267). */
+export function multiProgrammableLinesQueryKey(contractIds: number[]) {
+  return ['contracts', 'multi-programmable-lines', contractIds] as const
+}
+
+/** "Programma commessa unica" (spec 0267 D-2): the selected contracts' lines with eligibility. Gate: `contracts.program` on every contract. */
+export async function fetchMultiProgrammableLines(contractIds: number[]): Promise<MultiProgrammableLinesData> {
+  const { data } = await apiClient.get<ApiResponse<MultiProgrammableLinesData>>(
+    '/contracts/multi-programmable-lines',
+    { params: { contract_ids: contractIds } },
+  )
+  return data.data
+}
+
+/** Creates ONE work order from lines of several offers (spec 0267 D-3), all-or-nothing; 422 carries `quote_line_ids`. */
+export async function createMultiQuoteWorkOrder(payload: MultiQuoteWorkOrderPayload): Promise<WorkOrderDetail> {
+  const { data } = await apiClient.post<ApiResponse<WorkOrderDetail>>('/contracts/multi-quote-work-orders', payload)
   return data.data
 }

@@ -49,7 +49,7 @@ it('AC-069c: GET /api/tables/quotes/columns declares code as sortable, filterabl
     // AC-035) is appended after THAT, for the same reason again.
     $ids = $columns->pluck('id')->all();
     expect($ids)->toBe([
-        'id', 'code', 'title', 'opportunity', 'quote_workflow_status', 'commercial',
+        'id', 'code', 'title', 'opportunity', 'offer_lines', 'root_categories', 'quote_workflow_status', 'commercial',
         'reporter', 'supervisor', 'managers', 'revenue_net', 'cost_net', 'margin_net',
         'created_at', 'company', 'company_site', 'operational_site', 'next_callback_at',
         'alert',

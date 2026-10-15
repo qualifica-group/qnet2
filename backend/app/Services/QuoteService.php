@@ -366,11 +366,12 @@ class QuoteService
      * explicit check the FK constraint would surface as an unhandled 500
      * instead of a clean 409. Checked via a plain query, not a Quote::
      * workOrders() relation (spec 0093 deliberately adds no such relation to
-     * this file — the sole cross-module edit is this guard).
+     * this file — the sole cross-module edit is this guard). Spec 0267, D-13:
+     * also refused when a line of the quote sits in a multi-offer commessa.
      */
     public function delete(Quote $quote): void
     {
-        if (WorkOrder::where('quote_id', $quote->id)->exists()) {
+        if (WorkOrder::withQuoteLineOfQuote($quote->id)->exists()) {
             abort(409, 'This quote has work orders and cannot be deleted.');
         }
 

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tables\Contracts;
 
+use App\Tables\Shared\OfferLinesColumn;
+use App\Tables\Shared\RootCategoriesColumn;
+
 /**
  * Declarative column/filter/action catalogue for the `contracts` domain
  * (spec 0072, MT-04). Extracted out of ContractsTableDefinition (file-size
@@ -73,6 +76,10 @@ final class ContractColumnCatalog
             ],
             self::relationColumn('registry', 'contracts.columns.registry'),
             self::relationColumn('opportunity', 'contracts.columns.opportunity'),
+            // "Linee di prodotto" (user directive 2026-10-15): the REVENUE-line
+            // products of the contract's offer, read-only.
+            OfferLinesColumn::readOnlyDeclaration('contracts.columns.offerLines'),
+            RootCategoriesColumn::declaration('contracts.columns.rootCategories'),
             self::relationColumn('commercial', 'contracts.columns.commercial', visible: false),
             self::relationColumn('reporter', 'contracts.columns.reporter'),
             self::relationColumn('supervisor', 'contracts.columns.supervisor', visible: false),
@@ -227,6 +234,7 @@ final class ContractColumnCatalog
             ['columnId' => 'title', 'type' => 'text'],
             ['columnId' => 'registry', 'type' => 'set'],
             ['columnId' => 'opportunity', 'type' => 'set'],
+            ['columnId' => 'offer_lines', 'type' => 'set'],
             ['columnId' => 'commercial', 'type' => 'set'],
             ['columnId' => 'reporter', 'type' => 'set'],
             ['columnId' => 'supervisor', 'type' => 'set'],

@@ -13,6 +13,7 @@ use App\Services\Contracts\ContractAlertResolver;
 use App\Tables\Contracts\ContractAdvancedFilterCatalog;
 use App\Tables\Contracts\ContractColumnCatalog;
 use App\Tables\Contracts\ContractRelationColumns;
+use App\Tables\Shared\OfferLinesColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -95,6 +96,7 @@ class ContractsTableDefinition extends AbstractTableDefinition
             // reason `supervisor` pulls it, so the inline data URI costs no
             // per-row query.
             'quote.managers.avatar',
+            'quote.offerLines.product.category',
             'contractStatus',
         ]);
     }
@@ -172,6 +174,8 @@ class ContractsTableDefinition extends AbstractTableDefinition
             'title' => $quote?->title,
             'registry' => $this->summarize($quote?->opportunity?->registry),
             'opportunity' => $this->summarize($quote?->opportunity),
+            ...($quote === null ? [OfferLinesColumn::COLUMN_ID => []] : OfferLinesColumn::project($quote)),
+            ...$this->relationColumns->projectRootCategories($quote),
             'commercial' => $this->summarize($quote?->commercial),
             'reporter' => $this->summarize($quote?->reporter),
             'supervisor' => $this->userSummary($quote?->supervisor),

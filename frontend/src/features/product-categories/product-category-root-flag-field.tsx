@@ -18,6 +18,7 @@ export type RootFlagName =
   | 'requires_quote'
   | 'single_quote_per_opportunity'
   | 'generates_contract'
+  | 'multi_quote_work_order'
   | 'simplified_offer_line'
 
 interface ProductCategoryRootFlagFieldProps {
@@ -36,6 +37,8 @@ interface ProductCategoryRootFlagFieldProps {
   inheritedDescription: string
   /** Text of the "inherited from X" chip. */
   inheritedBadge: string
+  /** While set (and the flag is owned), the switch is locked and this explains why, next to the description. */
+  lockedReason?: string | null
 }
 
 /**
@@ -59,10 +62,12 @@ export function ProductCategoryRootFlagField({
   description,
   inheritedDescription,
   inheritedBadge,
+  lockedReason = null,
 }: ProductCategoryRootFlagFieldProps) {
   const { field } = useController({ control, name })
   const inherited = inheritance !== null
   const value = inheritance ? inheritance.value : field.value
+  const reason = inherited ? null : lockedReason
 
   // Keep the RHF value on what will actually be persisted once a parent makes
   // the flag inherited: the payload builders drop it for a non-root category,
@@ -89,7 +94,10 @@ export function ProductCategoryRootFlagField({
         hint={hint}
         hintLabel={hintLabel}
         description={
-          <FormDescription>{inherited ? inheritedDescription : description}</FormDescription>
+          <FormDescription>
+            {inherited ? inheritedDescription : description}
+            {reason ? <span className="mt-0.5 block font-medium">{reason}</span> : null}
+          </FormDescription>
         }
       >
         {({ disabled }) => (
@@ -97,7 +105,7 @@ export function ProductCategoryRootFlagField({
             <Switch
               checked={value}
               onCheckedChange={field.onChange}
-              disabled={disabled || inherited}
+              disabled={disabled || inherited || reason !== null}
             />
           </FormControl>
         )}

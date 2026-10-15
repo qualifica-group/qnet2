@@ -12,20 +12,37 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use LogicException;
 
 /**
  * A request to Accounting to issue a proforma for a work order (spec 0193).
  * Only `note` is editable after creation; `status` is driven by the future
- * invoicing flow (D-7).
+ * invoicing flow (D-7). Spec 0267 (D-6): `quote_id` is the offer the request is
+ * raised for.
  */
 #[Fillable([
-    'work_order_id', 'kind', 'supplier_id', 'payment_method_id', 'status',
+    'work_order_id', 'quote_id', 'kind', 'supplier_id', 'payment_method_id', 'status',
     'issued_at', 'note', 'assigned_to', 'assigned_by',
 ])]
 class ProformaRequest extends BaseModel
 {
     /** @use HasFactory<ProformaRequestFactory> */
     use HasFactory, HasNotes, LogsModelActivity;
+
+    /**
+     * A mono-offer work order implies the offer, so existing creators need not
+     * pass `quote_id`; a multi-offer one has none and the caller must choose.
+     */
+    protected static function booted(): void
+    {
+        static::creating(static function (self $request): void {
+            $request->quote_id ??= WorkOrder::query()->whereKey($request->work_order_id)->value('quote_id');
+
+            if ($request->quote_id === null) {
+                throw new LogicException('quote_id is required for a proforma request of a multi-quote work order');
+            }
+        });
+    }
 
     /**
      * @return array<string, mixed>
@@ -45,6 +62,14 @@ class ProformaRequest extends BaseModel
     public function workOrder(): BelongsTo
     {
         return $this->belongsTo(WorkOrder::class);
+    }
+
+    /**
+     * @return BelongsTo<Quote, $this>
+     */
+    public function quote(): BelongsTo
+    {
+        return $this->belongsTo(Quote::class);
     }
 
     /**

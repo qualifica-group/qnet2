@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Control } from 'react-hook-form'
+import { useWatch, type Control } from 'react-hook-form'
 import { FileSignature } from 'lucide-react'
 import { indexCategoryTree } from '@/features/product-categories/business-function-inheritance'
 import { resolveInheritedContractGenerationFlag } from '@/features/product-categories/contract-generation-inheritance'
@@ -34,6 +34,7 @@ export function ProductCategoryGeneratesContractField({
 }: ProductCategoryGeneratesContractFieldProps) {
   const { t } = useTranslation()
   const treeQuery = useProductCategoryTree()
+  const [contract, multi] = useWatch({ control, name: ['generates_contract', 'multi_quote_work_order'] })
 
   const nodesById = useMemo(() => indexCategoryTree(treeQuery.data ?? []), [treeQuery.data])
   const fromTree = useMemo(
@@ -60,6 +61,9 @@ export function ProductCategoryGeneratesContractField({
       control={control}
       name="generates_contract"
       inheritance={inheritance}
+      lockedReason={
+        contract && multi ? t('productCategories.form.generatesContractLockedByMulti') : null
+      }
       icon={FileSignature}
       label={t('productCategories.form.generatesContract')}
       hint={t('productCategories.form.generatesContractInfo')}

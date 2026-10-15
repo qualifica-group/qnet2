@@ -16,7 +16,9 @@ use Illuminate\Support\Facades\DB;
  * `opportunities.registry_id` — the same chain WorkOrderResource and the
  * Contracts grid (ContractRelationColumns) already project. Read-only: the
  * form never edits it, it follows the linked quote. Every hop is NOT NULL, so
- * a work order always has a registry and the set filter has no blank entry.
+ * a mono-offer work order always has a registry and the set filter has no
+ * blank entry. A multi-offer commessa (spec 0267, `quote_id` null) is matched
+ * and listed through the offers of its lines.
  *
  * A `set` filter on `registries.name` via `whereHas` with BOUND values, a
  * correlated-subquery sort (never a row-multiplying JOIN) and Excel-like
@@ -28,6 +30,8 @@ final class WorkOrderRegistryColumn
     public const string COLUMN = 'registry';
 
     private const string RELATION_PATH = 'quote.opportunity.registry';
+
+    private const string LINES_RELATION_PATH = 'quoteLines.quote.opportunity.registry';
 
     private const string LABEL_COLUMN = 'name';
 
@@ -43,8 +47,14 @@ final class WorkOrderRegistryColumn
             return;
         }
 
-        $query->whereHas(self::RELATION_PATH, static function (Builder $registryQuery) use ($values): void {
+        $constrain = static function (Builder $registryQuery) use ($values): void {
             $registryQuery->whereIn(self::LABEL_COLUMN, $values);
+        };
+
+        // Spec 0267, D-8: a multi-offer commessa is found through its lines' offers.
+        $query->where(static function (Builder $scope) use ($constrain): void {
+            $scope->whereHas(self::RELATION_PATH, $constrain)
+                ->orWhereHas(self::LINES_RELATION_PATH, $constrain);
         });
     }
 
@@ -91,7 +101,15 @@ final class WorkOrderRegistryColumn
     private function registryIds(Builder $query): QueryBuilder
     {
         $quoteIds = (clone $query)->select('quote_id')->toBase();
-        $opportunityIds = DB::table('quotes')->whereIn('id', $quoteIds)->select('opportunity_id');
+        $lineQuoteIds = DB::table('quote_line_work_order')
+            ->join('quote_lines', 'quote_lines.id', '=', 'quote_line_work_order.quote_line_id')
+            ->whereIn('quote_line_work_order.work_order_id', (clone $query)->select('work_orders.id')->toBase())
+            ->select('quote_lines.quote_id');
+        $opportunityIds = DB::table('quotes')
+            ->where(static function (QueryBuilder $scope) use ($quoteIds, $lineQuoteIds): void {
+                $scope->whereIn('id', $quoteIds)->orWhereIn('id', $lineQuoteIds);
+            })
+            ->select('opportunity_id');
 
         return DB::table('opportunities')->whereIn('id', $opportunityIds)->select('registry_id');
     }

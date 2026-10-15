@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { FileText } from 'lucide-react'
+import { BookUser, FileText } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordLink } from '@/components/detail/record-link'
 import { RecordSection } from '@/components/detail/record-panel'
@@ -10,8 +10,9 @@ import type { WorkOrderDetailWithPermissions, WorkOrderQuoteLine } from '@/featu
  * Plain list of the linked offer's REVENUE lines (D-6/D-7), ordered like the
  * picker: what an actor without `view_contract_data` sees in place of the
  * contract data table (the work order payload carries no typology on its lines).
+ * On a multi-offer work order (spec 0267) each line names its own client.
  */
-function WorkOrderLinesList({ lines }: { lines: WorkOrderQuoteLine[] }) {
+function WorkOrderLinesList({ lines, showRegistry }: { lines: WorkOrderQuoteLine[]; showRegistry: boolean }) {
   if (lines.length === 0) {
     return <DetailEmpty />
   }
@@ -21,7 +22,7 @@ function WorkOrderLinesList({ lines }: { lines: WorkOrderQuoteLine[] }) {
   return (
     <ul className="flex flex-col gap-1 text-sm">
       {sorted.map((line) => (
-        <li key={line.id} className="flex min-w-0 items-baseline gap-2">
+        <li key={line.id} className="flex min-w-0 flex-wrap items-baseline gap-x-2">
           {line.product ? (
             <>
               <span className="shrink-0 font-mono text-xs text-muted-foreground">{line.product.code}</span>
@@ -32,6 +33,14 @@ function WorkOrderLinesList({ lines }: { lines: WorkOrderQuoteLine[] }) {
           ) : (
             <DetailEmpty />
           )}
+          {showRegistry && line.registry ? (
+            <span className="inline-flex min-w-0 items-center gap-1 text-xs">
+              <BookUser className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <RecordLink domain="registries" id={line.registry.id} className="min-w-0 text-primary">
+                {line.registry.name}
+              </RecordLink>
+            </span>
+          ) : null}
         </li>
       ))}
     </ul>
@@ -52,9 +61,13 @@ export function WorkOrderContractDataPanel({ workOrder, className }: { workOrder
   return (
     <RecordSection title={t('workOrders.contractData.title')} icon={<FileText />} full className={className}>
       {actions.view_contract_data ? (
-        <WorkOrderContractDataSection workOrderId={workOrder.id} canManage={actions.manage_payments === true} />
+        <WorkOrderContractDataSection
+          workOrderId={workOrder.id}
+          canManage={actions.manage_payments === true}
+          showRegistry={workOrder.is_multi_quote}
+        />
       ) : (
-        <WorkOrderLinesList lines={workOrder.quote_lines} />
+        <WorkOrderLinesList lines={workOrder.quote_lines} showRegistry={workOrder.is_multi_quote} />
       )}
     </RecordSection>
   )

@@ -81,12 +81,37 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'program-multi-quote-work-order',
+      title: 'Scheduling a single work order from several contracts',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'If the product categories of the branch have the **Multi-offer work order** setting on, you can gather the lines of several won contracts, even from different customers, into **one single work order**.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'In the **Contracts** table select from 2 to 50 contracts that are **Closed won**.',
+            'Press the **Schedule single work order** action (you need the schedule permission).',
+            'In the window the lines are grouped by contract. Only the **revenue lines** of a branch with the setting on and **not yet in a work order** can be selected; the others stay visible but disabled.',
+            'Pick the lines: they must all belong to the **same branch** and come from **at least two** different offers.',
+            'Fill in the common fields: **Title** (optional), **Type**, **Start date**, **Supervisors** (at least one) and, if needed, the **Task template**.',
+            'Press the confirm button: **one work order** is created and opens right away.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Saving is **all or nothing**: if something is wrong no work order is created and the error appears on the lines field. A line already in another work order cannot be reused. If at least one selected contract is not yet in a **Closed (positive)** status (for example **Da validare**) or cannot be grouped (its offer has no line of a branch with **Multi-offer work order** on), the window still opens and shows which contracts, with their customer, must be removed from the selection.',
+        },
+      ],
+    },
+    {
       id: 'expiry-and-renewal',
       title: 'Expiry and renewal',
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **Alert** column shows **Expiring soon** (expiry within 30 days) or **Renewal due** (renewal within 30 days); if both apply, **Expiring soon** takes priority. Contracts in **Closed (negative)** show no alerts.',
+          text: 'The **Alert** column shows **Expiring soon** (expiry within 30 days) or **Renewal due** (renewal within 30 days); if both apply, **Expiring soon** takes priority. Contracts in **Closed (negative)** show no alerts. The **Product lines** column lists the products of the offer\'s revenue lines, each with its category in brackets (read-only). The **Parent category** column shows the macro-category of the offer\'s products, for example Formazione (read-only, filterable).',
         },
         {
           type: 'tip',

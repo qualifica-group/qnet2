@@ -145,9 +145,14 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
         inline={inline}
       />
 
-      <WorkOrderContractSection workOrder={workOrder} />
+      {/* Spec 0267: a multi-offer work order has no single client/contract/company; each product line names its own client. */}
+      {workOrder.is_multi_quote ? null : (
+        <>
+          <WorkOrderContractSection workOrder={workOrder} />
 
-      <WorkOrderCompanySection workOrder={workOrder} />
+          <WorkOrderCompanySection workOrder={workOrder} />
+        </>
+      )}
 
       <WorkOrderContractDataPanel workOrder={workOrder} />
 

@@ -42,6 +42,23 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'multi-quote-work-order',
+      title: 'Multi-offer work orders',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'On a **multi-offer** work order requests are generated **for each offer** (and, as usual, by type and supplier): no request mixes lines from different offers.',
+        },
+        {
+          type: 'list',
+          items: [
+            'Each request shows its own **offer**.',
+            'Customer, issuing company and payment method of the invoice are taken from the **offer of the request**, so each customer gets their own proforma.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'issue',
       title: 'Issue the proforma',
       blocks: [

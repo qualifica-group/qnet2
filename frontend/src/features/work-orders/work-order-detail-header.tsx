@@ -46,6 +46,16 @@ function WorkOrderTypeBadge({ type }: { type: WorkOrderType }) {
   )
 }
 
+/** Spec 0267: marks a work order whose lines come from several offers. */
+function WorkOrderMultiQuoteBadge() {
+  const { t } = useTranslation()
+  return (
+    <Badge variant="secondary" className={cn(BADGE_BASE, BADGE_COLOR_CLASSES.amber)}>
+      {t('workOrders.detail.multiQuoteBadge')}
+    </Badge>
+  )
+}
+
 interface WorkOrderDetailHeaderProps {
   workOrder: WorkOrderDetailWithPermissions
   /** After the closure action changed the record (spec 0195 D-7: the host refreshes its lists). */
@@ -69,6 +79,7 @@ export function WorkOrderDetailHeader({ workOrder, onChanged }: WorkOrderDetailH
         <>
           <WorkOrderStatusBadge status={workOrder.status.value} />
           <WorkOrderTypeBadge type={workOrder.type} />
+          {workOrder.is_multi_quote ? <WorkOrderMultiQuoteBadge /> : null}
         </>
       }
       actions={<WorkOrderClosureActions workOrder={workOrder} onChanged={onChanged} />}

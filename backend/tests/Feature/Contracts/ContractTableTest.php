@@ -84,7 +84,7 @@ if (! function_exists('makeLabelledContract')) {
 // AC-029 — declared columns, in the frozen order
 // ---------------------------------------------------------------------------
 
-it('AC-029: GET /api/tables/contracts/columns declares the 19 columns in the exact frozen order', function () {
+it('AC-029: GET /api/tables/contracts/columns declares the 20 columns in the exact frozen order', function () {
     $actor = contractTableUserWith(['viewAny']);
     Sanctum::actingAs($actor);
 
@@ -98,7 +98,7 @@ it('AC-029: GET /api/tables/contracts/columns declares the 19 columns in the exa
     $ids = collect($data['columns'])->pluck('id')->all();
 
     expect($ids)->toBe([
-        'id', 'code', 'title', 'registry', 'opportunity', 'commercial', 'reporter',
+        'id', 'code', 'title', 'registry', 'opportunity', 'offer_lines', 'root_categories', 'commercial', 'reporter',
         'supervisor', 'managers', 'contract_status', 'quote_date', 'accepted_at', 'validated_at',
         'renewal_date', 'expiry_date', 'terminated_at', 'revenue_net', 'revenue_vat',
         'revenue_gross', 'alert',

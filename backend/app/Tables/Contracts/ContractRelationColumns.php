@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tables\Contracts;
 
+use App\Models\Quote;
 use App\Services\Table\FilterApplier;
 use App\Tables\Concerns\HandlesBlankSetFilter;
+use App\Tables\Shared\OfferLinesColumn;
+use App\Tables\Shared\RootCategoriesColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -124,7 +127,18 @@ final class ContractRelationColumns
     /** The QUOTE_SCALAR_COLUMNS honoured by the global quick-search (spec 0009). */
     private const array SEARCHABLE_QUOTE_COLUMNS = ['code', 'title'];
 
-    public function __construct(private readonly FilterApplier $filterApplier) {}
+    public function __construct(
+        private readonly FilterApplier $filterApplier,
+        private readonly RootCategoriesColumn $rootCategoriesColumn,
+    ) {}
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function projectRootCategories(?Quote $quote): array
+    {
+        return $quote === null ? [RootCategoriesColumn::COLUMN_ID => []] : $this->rootCategoriesColumn->project($quote);
+    }
 
     /**
      * @param  Builder<Model>  $query
@@ -133,6 +147,28 @@ final class ContractRelationColumns
      */
     public function applyFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
     {
+        if ($columnId === OfferLinesColumn::COLUMN_ID) {
+            OfferLinesColumn::applyFilter(
+                $query,
+                $this->setFilterValues($filter),
+                $this->matchesBlankEntry($filter),
+                OfferLinesColumn::CONTRACT_QUOTE_RELATION,
+            );
+
+            return true;
+        }
+
+        if ($columnId === RootCategoriesColumn::COLUMN_ID) {
+            $this->rootCategoriesColumn->applyFilter(
+                $query,
+                $this->setFilterValues($filter),
+                $this->matchesBlankEntry($filter),
+                OfferLinesColumn::CONTRACT_QUOTE_RELATION,
+            );
+
+            return true;
+        }
+
         $quoteColumn = self::QUOTE_SCALAR_COLUMNS[$columnId] ?? null;
 
         if ($quoteColumn !== null) {
@@ -258,6 +294,26 @@ final class ContractRelationColumns
      */
     public function distinctValues(string $columnId, ?string $search, Builder $query, int $limit): ?array
     {
+        if ($columnId === OfferLinesColumn::COLUMN_ID) {
+            return OfferLinesColumn::distinctValues(
+                $query,
+                $search,
+                $limit,
+                OfferLinesColumn::CONTRACT_QUOTE_ID_COLUMN,
+                OfferLinesColumn::CONTRACT_QUOTE_RELATION,
+            );
+        }
+
+        if ($columnId === RootCategoriesColumn::COLUMN_ID) {
+            return $this->rootCategoriesColumn->distinctValues(
+                $query,
+                $search,
+                $limit,
+                OfferLinesColumn::CONTRACT_QUOTE_ID_COLUMN,
+                OfferLinesColumn::CONTRACT_QUOTE_RELATION,
+            );
+        }
+
         if ($columnId === 'managers') {
             return $this->withBlanks($this->distinctManagerNames($search, $query, $limit), 'managers', $search, $query);
         }

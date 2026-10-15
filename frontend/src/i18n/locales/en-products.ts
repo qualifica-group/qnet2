@@ -88,6 +88,7 @@ export const productCategories = {
     management_mode: 'Management mode',
     single_quote_per_opportunity: 'One offer per opportunity',
     generates_contract: 'Includes a contract',
+    multi_quote_work_order: "Multi-offer work order",
     simplified_offer_line: 'Simplified offer line',
     created_at: 'Created at',
     tooltipEmpty: 'Nothing to show.',
@@ -104,6 +105,7 @@ export const productCategories = {
     managementModeInherited: 'Inherited from {{category}}',
     singleQuotePerOpportunityInherited: 'Inherited from {{category}}',
     generatesContractInherited: 'Inherited from {{category}}',
+    multiQuoteWorkOrderInherited: "Inherited from {{category}}",
     simplifiedOfferLineInherited: 'Inherited from {{category}}',
     managerLabelInherited: 'Inherited',
     inheritedCount: '+{{count}} inherited',
@@ -225,7 +227,17 @@ export const productCategories = {
       'The contract rule is inherited from the root category "{{category}}". To change it, edit that category instead.',
     generatesContractInfo:
       'Decides whether the branch is sold under a contract. When off, an offer reaching a positively closed working status opens NO contract and the deal never appears in the Contratti module; closing positively stays possible all the same. Contracts already opened before it was turned off stay where they are and go on living normally. When a card covers several categories, a single one without the rule is enough to withhold the contract. The ROOT category sets the rule and the whole subtree follows it, unless a subcategory forces its own value (that choice then applies to its own subtree).',
+    generatesContractLockedByMulti: 'Turn off Multi-offer work order first.',
     generatesContractInfoLabel: 'More info about Includes a contract',
+    multiQuoteWorkOrder: "Multi-offer work order",
+    multiQuoteWorkOrderHint:
+      "Lets you schedule from the Contracts table a single work order with lines of several won contracts of this branch.",
+    multiQuoteWorkOrderInheritedHint:
+      "The multi-offer work order rule is inherited from the root category \"{{category}}\". To change it, edit that category instead.",
+    multiQuoteWorkOrderInfo:
+      "Decides whether, from the Contracts table, a single work order can be scheduled gathering revenue lines of several won contracts (even of different customers) of this branch. When off, every work order stays tied to a single offer. Work orders already created do not change. The ROOT category sets the rule and the whole subtree follows it.",
+    multiQuoteWorkOrderNeedsContract: 'Requires Includes a contract.',
+    multiQuoteWorkOrderInfoLabel: "More info about Multi-offer work order",
     simplifiedOfferLine: 'Simplified offer line',
     simplifiedOfferLineHint:
       'When on, in Gestione Richieste the operator picks only the product: quantity, unit price and VAT rate of the row are filled in automatically by the system.',

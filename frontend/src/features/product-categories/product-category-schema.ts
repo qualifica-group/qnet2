@@ -86,6 +86,7 @@ function baseFields(t: TFunction) {
     management_mode: z.enum(['single', 'multiple']),
     single_quote_per_opportunity: z.boolean(),
     generates_contract: z.boolean(),
+    multi_quote_work_order: z.boolean(),
     simplified_offer_line: z.boolean(),
     // null = inherit the nearest declaring ancestor's value (spec 0188); roots never use it.
     simplified_offer_line_override: z.boolean().nullable(),

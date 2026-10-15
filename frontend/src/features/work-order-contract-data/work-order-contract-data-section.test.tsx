@@ -80,6 +80,21 @@ describe('WorkOrderContractDataSection - states', () => {
 })
 
 describe('WorkOrderContractDataSection - layout', () => {
+  it('names the client of each line on a multi-offer work order (spec 0267)', async () => {
+    renderSection(false, true)
+    await screen.findByRole('table')
+
+    expect(within(lineRow('CON-001')).getByRole('link', { name: 'Rossi S.r.l.' })).toHaveAttribute('href', '/registries/21')
+    expect(within(lineRow('ENT-001')).getByRole('link', { name: 'Bianchi S.p.A.' })).toHaveAttribute('href', '/registries/22')
+  })
+
+  it('omits the line client on a single-offer work order', async () => {
+    renderSection(false)
+    await screen.findByRole('table')
+
+    expect(screen.queryByText('Rossi S.r.l.')).not.toBeInTheDocument()
+  })
+
   it('has the full column names and no formula text under the rows', async () => {
     renderSection(false)
     await screen.findByRole('table')

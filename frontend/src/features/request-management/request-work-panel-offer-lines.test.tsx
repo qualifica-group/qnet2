@@ -178,6 +178,7 @@ describe('work panel — Linee dell\'offerta (categoria semplificata)', () => {
         management_mode: 'multiple',
         single_quote_per_opportunity: false,
         generates_contract: true,
+        multi_quote_work_order: false,
         simplified_offer_line: true,
         simplified_offer_line_override: null,
       },
@@ -212,6 +213,7 @@ describe('work panel — Linee dell\'offerta (categoria semplificata)', () => {
         management_mode: 'multiple',
         single_quote_per_opportunity: false,
         generates_contract: true,
+        multi_quote_work_order: false,
         simplified_offer_line: false,
         simplified_offer_line_override: null,
       },
@@ -238,6 +240,7 @@ describe('work panel — Linee dell\'offerta (categoria semplificata)', () => {
       management_mode: 'multiple' as const,
       single_quote_per_opportunity: false,
       generates_contract: true,
+      multi_quote_work_order: false,
     }
     categoryTreeMock.mockReturnValue([
       {

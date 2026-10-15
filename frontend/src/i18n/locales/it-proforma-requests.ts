@@ -13,6 +13,7 @@ export const proformaRequests = {
     id: 'ID',
     work_order_code: 'Commessa n.',
     work_order_title: 'Titolo commessa',
+    quote: 'Offerta',
     company: 'Società',
     customer: 'Cliente',
     kind: 'Tipo',

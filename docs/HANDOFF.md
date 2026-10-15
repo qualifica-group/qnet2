@@ -3,6 +3,64 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## COMMESSA MULTI-OFFERTA (spec 0267) — VERDE, NON COMMITTATO (2026-10-15)
+
+- Flag di ramo root-owned `product_categories.multi_quote_work_order` (default false, `MultiQuoteWorkOrderInheritance`
+  in RootOwnedSettingsWriter, show espone `multi_quote_work_order_source_category`). Radice del ramo:
+  `CategoryRootResolver::rootSummariesFor()`.
+- `work_orders.quote_id` NULLABLE: null = commessa multi-offerta. `WorkOrder::isMultiQuote()`, `sourceQuoteIds()`,
+  scope `withQuoteLineOfQuote()` / `withQuoteLineOfRegistry()`; factory state `multiQuote()`. Il `down()` della
+  migrazione lancia se esistono multi-offerta.
+- Creazione SOLO dalla griglia Contratti (selezione 2..50, azione massiva "Programma commessa unica"):
+  `GET /api/contracts/multi-programmable-lines?contract_ids[]=` e `POST /api/contracts/multi-quote-work-orders`
+  (MultiQuoteContractGate: policy `program` -> 403 "This action is unauthorized."; contratto non ClosedWon -> 422
+  `contract_ids` `work_orders.multi_quote.contracts_not_won` con "codice (cliente)", prima della cumulabilita' D-14 —
+  decisione utente 2026-10-15, prima era un 403 vuoto mostrato come "errore imprevisto"; MultiQuoteWorkOrderProgrammer ->
+  WorkOrderService::create). Regole righe in `MultiQuoteLineRules`: ricavo, ramo con flag, stessa radice, >=2 offerte;
+  su PATCH della multi solo rimozione. `attribute_values` non inviato dal dialog FE (il Programma singolo non li ha).
+- Fatturazione per offerta: `proforma_requests.quote_id` NOT NULL (backfill), default dal creating hook di
+  ProformaRequest sulle mono-offerta (LogicException sulle multi senza quote_id). Generazione per (offerta, tipo,
+  fornitore); bozza fattura, `invoices.quote_id` e InvoiceLineGuard sull'offerta della richiesta.
+- Lettura: WorkOrderResource `is_multi_quote` + `source_quotes` (WorkOrderSourceQuotes), campi a offerta singola null
+  sulle multi; griglia con clienti/codici uniti da " · " (ordinamento: multi in fondo); tab Commesse contratto/
+  anagrafica e for-select via scope; budget costi da tutte le offerte; task da modello senza anagrafica; email senza
+  variabili cliente. Eliminazione offerta bloccata anche da righe in commesse multi.
+- Dettaglio multi-offerta (decisione utente 2026-10-15): rimossa la sezione "Offerte di origine"
+  (`work-order-source-quotes-section.tsx`, chiavi i18n `sourceQuotes`/`openContract` cancellati). Ogni riga prodotto
+  porta `registry` {id,name} del cliente della propria offerta: `WorkOrderResource.quote_lines[].registry`
+  (eager `quoteLines.quote.opportunity.registry` in DETAIL_RELATIONS) e `contract-data lines[].registry`
+  (LINE_RELATIONS). FE la mostra solo con `is_multi_quote` (prop `showRegistry` Section -> Table -> Row ->
+  ProductCell; lista semplice senza view_contract_data). `source_quotes` resta nella risorsa ma il FE non lo legge
+  piu': valutare se rimuoverlo. Spec 0267 D-7 aggiornata; guida IT/EN e manuale Claude Docs aggiornati.
+- Test: `tests/Feature/{Contracts,WorkOrders}/MultiQuote/`, `ProductCategoryMultiQuoteWorkOrderTest`,
+  `MultiQuoteProformaRequestsTest`, `MultiQuoteInvoiceTest`, `MultiQuoteWorkOrderSchemaTest`. Step di rollback
+  alzati di 3 in 3 test di migrazione (REQUIREMENT CHANGED). Suite: 11201/11205 (rossi solo QuoteDocumentPdfTest,
+  LibreOffice). Vitest 8238 verdi, tsc -b pulito.
+- Guide in-app aggiornate (contracts, work-orders, product-categories, proforma-requests; section id
+  `multi-quote-work-order` / `program-multi-quote-work-order`); guida categorie divisa in `content/*/parts/`.
+- Aperti: `WorkOrdersTableDefinition.php` 402 righe (soft limit, valutare split); FormRequest dei nuovi endpoint
+  validano prima del 403 (come il Programma singolo); errore ESLint preesistente in `quotes/column-renderers.tsx:11`.
+  Fuori scope: aggiungere righe a una multi esistente, migrazione legacy.
+- Spec 0267 D-14/D-15 (decisioni utente 2026-10-15): azione "Programma commessa unica" sempre cliccabile; un contratto
+  non cumulabile (offerta senza righe di un ramo con flag) -> 422 `contract_ids` tradotto ("codice (cliente)") mostrato
+  nel popup (`multiProgramRefusal`, nessun retry). Messaggi multi-offerta in `lang/{it,en}/work_orders.php`. Seed:
+  "Formazione" cumulabile E con contratto (D-15, CatalogRootRules; APL resta senza contratto).
+- Spec 0267 D-16: coerenza categorie, multi-offerta richiede "Prevede un contratto" (RootSettingsCoherence, 422 sul campo
+  cambiato, `lang/{it,en}/product_categories.php`; form: `lockedReason` su product-category-root-flag-field).
+- Colonna "Categoria madre" (`root_categories`, radici distinte dei prodotti delle righe di ricavo, filtro set per nome
+  radice) dopo "Linee di prodotto" in Contratti e Offerte (`App\Tables\Shared\RootCategoriesColumn`, istanza iniettata
+  per memoizzare CategoryRootResolver).
+- ATTENZIONE: un'altra sessione Claude sta aggiungendo `registry` per riga in work-orders/work-order-contract-data
+  (frontend): tsc -b rosso sulle sue fixture finche' non chiude; non e' parte di 0267. Al commit separare i file.
+- Colonna "Linee di prodotto" (`offer_lines`, sola lettura, filtro set per prodotto) nelle griglie Contratti e Offerte
+  via `OfferLinesColumn::readOnlyDeclaration()`; la proiezione condivisa porta anche `category_name`, mostrato come
+  "Prodotto (Categoria)" da `features/quotes/offer-lines-cell.tsx` (Gestione Richieste resta coi soli nomi). Liste
+  colonne di ContractTableTest/QuoteTableTest aggiornate (REQUIREMENT CHANGED).
+- Decisione utente 2026-10-15: "Offerta unica per opportunita'" (`single_quote_per_opportunity`) vale Si' di default
+  sulle NUOVE radici (RootOwnedSettingsWriter `?? true`, form `use-product-category-form.ts`). Categorie esistenti e
+  default della colonna DB invariati. Test `ProductCategorySingleQuoteTest` aggiornato (REQUIREMENT CHANGED);
+  guida in-app IT/EN e manuale Claude Docs (tabella regole categoria) aggiornati.
+
 ## CATALOGO: SOTTOCATEGORIE SOA E SICUREZZA CON PREFISSO DEL RAMO — VERDE, NON COMMITTATO (2026-10-15)
 
 - Rinomina (decisione utente): `Ente SOA` -> `SOA - Ente`, `Consulenza SOA` -> `SOA - Consulenza`
@@ -317,6 +375,13 @@
   null = non scritti); `EXPIRATION_MONTHS_FIELD` spostato lì. CatalogProducts step 7 lo chiama per SOA e Sicurezza.
 - Test: `QualificaSafetyCatalogueTest` (5) + REQUIREMENT CHANGED (prodotti 413->540, +5 selezionabili, +1 layout
   offerta, funzione "Sicurezza" nelle liste BF). Suite completa verde salvo i 3 PDF (LibreOffice assente).
+- 2026-10-15, NON COMMITTATO: `safety_requested_course_types` + `safety_course_count_per_type` (textarea) sostituiti da
+  `safety_requested_courses` "Numero e tipo di corsi richiesti" e `safety_required_documents` "Documenti richiesti"
+  (entrambi `text`). Ritiro sulle installazioni gia' seedate: `SafetyCatalogue::RETIRED_ATTRIBUTES` +
+  `PREVIOUS_QUOTE_SECTIONS`, letti da `QualificaQuoteLayoutSeeder::RETIRED_ATTRIBUTES` / `PREVIOUS_OWN_FORMS` (ex
+  `retireAplAttributes` -> `retireCatalogueAttributes`). Valori gia' salvati nelle offerte non toccati. Test +1
+  (controprova: rosso senza ritiro e senza form precedente). Products 225/225, Seeding 159/159, Pint ok. Manuale
+  Claude Docs aggiornato (paragrafo catalogo); guide in-app: nessun impatto.
 
 ## CATALOGO: MACROCATEGORIA SOA — VERDE, TIPOLOGIA E MESI SCADENZA NON COMMITTATI (2026-10-15)
 

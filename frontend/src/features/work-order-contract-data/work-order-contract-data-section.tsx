@@ -9,6 +9,8 @@ interface WorkOrderContractDataSectionProps {
   workOrderId: number
   /** `permissions.actions.manage_payments` of the work order. */
   canManage: boolean
+  /** `is_multi_quote` of the work order (spec 0267): each line names its own client. */
+  showRegistry: boolean
 }
 
 /**
@@ -16,7 +18,7 @@ interface WorkOrderContractDataSectionProps {
  * section of the work order record card. The caller mounts it only with
  * `view_contract_data`, so the query never fires for an actor who may not see it.
  */
-export function WorkOrderContractDataSection({ workOrderId, canManage }: WorkOrderContractDataSectionProps) {
+export function WorkOrderContractDataSection({ workOrderId, canManage, showRegistry }: WorkOrderContractDataSectionProps) {
   const { t } = useTranslation()
   const contractData = useWorkOrderContractData(workOrderId)
 
@@ -49,7 +51,7 @@ export function WorkOrderContractDataSection({ workOrderId, canManage }: WorkOrd
       ) : (
         <>
           <ContractDataTotals totals={data.totals} />
-          <ContractDataTable workOrderId={workOrderId} data={data} canManage={canManage} />
+          <ContractDataTable workOrderId={workOrderId} data={data} canManage={canManage} showRegistry={showRegistry} />
         </>
       )}
     </div>

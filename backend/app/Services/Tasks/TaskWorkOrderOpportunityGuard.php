@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Tasks;
 
 use App\Models\WorkOrder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -14,7 +15,9 @@ use Illuminate\Validation\ValidationException;
  * choosing a commessa IMPOSES its own client onto `registry_id` — a
  * Commessa has no `registry_id` of its own, only the chain
  * `WorkOrder -> Quote -> Opportunity.registry_id` (the same chain
- * `WorkOrderService::forSelect`'s own `meta.registry` reads).
+ * `WorkOrderService::forSelect`'s own `meta.registry` reads). A multi-offer
+ * commessa (spec 0267) has several clients: none is imposed, the submitted one
+ * must be among them.
  *
  * `resolveRegistryId()` does double duty, the same way
  * TaskReferentRegistryGuard's `assertBelongs()` reads a resulting pair
@@ -55,7 +58,13 @@ final class TaskWorkOrderOpportunityGuard
             return $registryId;
         }
 
-        $workOrderRegistryId = $this->workOrderRegistryId($workOrderId);
+        $workOrder = WorkOrder::query()->with('quote.opportunity:id,registry_id')->find($workOrderId);
+
+        if ($workOrder?->isMultiQuote()) {
+            return $this->assertSourceRegistry($registryId, $workOrder);
+        }
+
+        $workOrderRegistryId = $workOrder?->quote?->opportunity?->registry_id;
 
         if ($registryId === null) {
             return $workOrderRegistryId;
@@ -70,12 +79,30 @@ final class TaskWorkOrderOpportunityGuard
         return $registryId;
     }
 
-    private function workOrderRegistryId(int $workOrderId): ?int
+    /**
+     * Spec 0267, D-11: a multi-offer commessa has no single client, so nothing
+     * is imposed; a submitted client must be one of the source offers' clients.
+     *
+     * @throws ValidationException 422 on `registry_id`
+     */
+    private function assertSourceRegistry(?int $registryId, WorkOrder $workOrder): ?int
     {
-        return WorkOrder::query()
-            ->whereKey($workOrderId)
-            ->with('quote.opportunity:id,registry_id')
-            ->first()
-            ?->quote?->opportunity?->registry_id;
+        if ($registryId === null) {
+            return null;
+        }
+
+        $belongs = DB::table('quotes')
+            ->join('opportunities', 'opportunities.id', '=', 'quotes.opportunity_id')
+            ->whereIn('quotes.id', $workOrder->sourceQuoteIds())
+            ->where('opportunities.registry_id', $registryId)
+            ->exists();
+
+        if (! $belongs) {
+            throw ValidationException::withMessages([
+                'registry_id' => ["The selected registry is not a client of the commessa's offers."],
+            ]);
+        }
+
+        return $registryId;
     }
 }

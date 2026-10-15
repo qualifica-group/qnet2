@@ -43,6 +43,8 @@ final readonly class CreateProductCategoryData
         public ?bool $singleQuotePerOpportunity = null,
         /** Spec 0091: same root-only semantics, null = not submitted (root's value, or TRUE at a fresh root — the pre-existing behaviour). */
         public ?bool $generatesContract = null,
+        /** Spec 0267: same root-only semantics, null = not submitted (root's value, or false at a fresh root). */
+        public ?bool $multiQuoteWorkOrder = null,
         /** Spec 0114: same root-only semantics, null = not submitted (root's value, or FALSE at a fresh root — the pre-existing fully-manual offer line). */
         public ?bool $simplifiedOfferLine = null,
         /** Spec 0188: a child's OWN declaration of the rule; null = inherit. Always null on a root. */
@@ -77,6 +79,7 @@ final readonly class CreateProductCategoryData
             managementMode: array_key_exists('management_mode', $data) ? CategoryManagementMode::from((string) $data['management_mode']) : null,
             singleQuotePerOpportunity: array_key_exists('single_quote_per_opportunity', $data) ? (bool) $data['single_quote_per_opportunity'] : null,
             generatesContract: array_key_exists('generates_contract', $data) ? (bool) $data['generates_contract'] : null,
+            multiQuoteWorkOrder: array_key_exists('multi_quote_work_order', $data) ? (bool) $data['multi_quote_work_order'] : null,
             simplifiedOfferLine: array_key_exists('simplified_offer_line', $data) ? (bool) $data['simplified_offer_line'] : null,
             simplifiedOfferLineOverride: isset($data['simplified_offer_line_override']) ? (bool) $data['simplified_offer_line_override'] : null,
             managerLabels: array_key_exists('manager_labels', $data) ? (array) $data['manager_labels'] : null,

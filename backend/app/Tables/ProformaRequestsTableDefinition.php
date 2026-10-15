@@ -47,10 +47,10 @@ class ProformaRequestsTableDefinition extends AbstractTableDefinition
     {
         return ProformaRequest::query()->with([
             'workOrder:id,code,title,quote_id',
-            'workOrder.quote:id,company_id,opportunity_id',
-            'workOrder.quote.company:id,denomination',
-            'workOrder.quote.opportunity:id,registry_id',
-            'workOrder.quote.opportunity.registry:id,name',
+            'quote:id,code,company_id,opportunity_id',
+            'quote.company:id,denomination',
+            'quote.opportunity:id,registry_id',
+            'quote.opportunity.registry:id,name',
             'supplier:id,name',
             'paymentMethod:id,name',
             'assignee:id,name',
@@ -107,13 +107,14 @@ class ProformaRequestsTableDefinition extends AbstractTableDefinition
     public function mapRow(User $actor, Model $row): array
     {
         /** @var ProformaRequest $row */
-        $company = $row->workOrder->quote?->company;
-        $customer = $row->workOrder->quote?->opportunity?->registry;
+        $company = $row->quote->company;
+        $customer = $row->quote->opportunity?->registry;
 
         return [
             'id' => $row->id,
             'work_order_code' => $row->workOrder->code,
             'work_order_title' => $row->workOrder->title,
+            'quote' => ['id' => $row->quote->id, 'code' => $row->quote->code],
             'company' => $company === null ? null : ['id' => $company->id, 'name' => $company->denomination],
             'customer' => $customer === null ? null : ['id' => $customer->id, 'name' => $customer->name],
             'kind' => $row->kind->value,

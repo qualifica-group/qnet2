@@ -75,9 +75,11 @@ function category(
     management_mode: 'multiple',
     single_quote_per_opportunity: false,
     generates_contract: true,
+    multi_quote_work_order: false,
     management_mode_source_category: null,
     single_quote_per_opportunity_source_category: null,
     generates_contract_source_category: null,
+    multi_quote_work_order_source_category: null,
     simplified_offer_line: false,
     simplified_offer_line_override: null,
     simplified_offer_line_source_category: null,
@@ -220,8 +222,10 @@ describe('ProductCategoryDetailView — management rules', () => {
     renderView(category({
           single_quote_per_opportunity: true,
           generates_contract: true,
+          multi_quote_work_order: false,
           single_quote_per_opportunity_source_category: { id: 1, name: 'Electronics' },
           generates_contract_source_category: { id: 1, name: 'Electronics' },
+          multi_quote_work_order_source_category: { id: 1, name: 'Electronics' },
         }))
 
     const field = ruleValue('One offer per opportunity')
