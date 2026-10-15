@@ -168,7 +168,8 @@ it('assigns, scopes and lays out the contact-processing set across Formazione, D
     // (2026-10-02 and 2026-10-05 directives), and the SOA root (REQUIREMENT
     // CHANGED, 2026-10-15). The Consulenza leaf carries no attribute at all
     // since the 2026-09-10 directive, so they compose to nothing.
-    expect(AttributeLayout::query()->where('context', AttributeContext::Quote->value)->count())->toBe(13);
+    // Plus the Sicurezza root (REQUIREMENT CHANGED, 2026-10-15).
+    expect(AttributeLayout::query()->where('context', AttributeContext::Quote->value)->count())->toBe(14);
 
     $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
     $moliseQuoteLayout = $service->resolveWithFallback($molise, AttributeContext::Quote, FormMode::Create);

@@ -3,7 +3,24 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## CATALOGO: MACROCATEGORIA SOA — VERDE, NON COMMITTATO (2026-10-15)
+## CATALOGO: MACROCATEGORIA SICUREZZA — VERDE, NON COMMITTATO (2026-10-15)
+
+- Fonte: "Sicurezza 81_08.docx" + "SICUREZZA 81_09.xlsx" (127 prodotti + note in fondo). Decisioni utente: radice
+  "Sicurezza" (funzione "Sicurezza", adotta il legacy "SICUREZZA") con le sottocategorie della colonna C (Corsi di
+  formazione, Documenti, Visite mediche, Sopralluogo, Trasferta), tutte selezionabili; regole Consulenza; tipologia
+  `consultancy` su tutto; stati di default; campi SOLO Offerta (nessun set Commessa); visura camerale = boolean;
+  titolo doppio "Formazione dei datori di lavoro ... 16 ore" distinto col codice "(RSPP/DAT.)" / "(DL)".
+- Dati: `QualificaCatalog/SafetyCatalogue` (albero, 12 campi `safety_*`, form "Sicurezza 81/08" + "Patentino
+  saldatori" via `QualificaQuoteLayoutSeeder::OWN_FORMS`, tipologie, fornitori) e `SafetyProductCatalogue`
+  (generato dall'xlsx: prezzo, fornitore, mesi; mesi null per le 4 "Aula di formazione ...", 20 per l'integrazione esami).
+- Fornitori: GONDOLA SRLS (i 2 prodotti F-gas, esiste nel legacy come fornitore), ND CONTROL (4 prodotti di
+  saldatura: NON esiste nel legacy con nessuna grafia -> si collega solo quando arriva un fornitore con quel nome).
+- `SoaProducts` reso generico -> `BranchProducts::seed($products, $typologies, $vatRateId)` (prezzo opzionale, mesi
+  null = non scritti); `EXPIRATION_MONTHS_FIELD` spostato lì. CatalogProducts step 7 lo chiama per SOA e Sicurezza.
+- Test: `QualificaSafetyCatalogueTest` (5) + REQUIREMENT CHANGED (prodotti 413->540, +5 selezionabili, +1 layout
+  offerta, funzione "Sicurezza" nelle liste BF). Suite completa verde salvo i 3 PDF (LibreOffice assente).
+
+## CATALOGO: MACROCATEGORIA SOA — VERDE, TIPOLOGIA E MESI SCADENZA NON COMMITTATI (2026-10-15)
 
 - Fonte: "15.10.2026 Q-crm SOA.docx" + "PRODOTTI SOA.xlsx". Decisioni utente: sottocategorie "Ente SOA" e
   "Consulenza SOA" (non "Ente"/"Consulenza": il nome e' la chiave e "Consulenza" e' gia' una radice), codici inglesi
@@ -12,18 +29,18 @@
 - Dati in `QualificaCatalog/SoaCatalogue` (+ `SoaCategoryOptions`, 52 OG/OS): radice "SOA" -> funzione "SOA"
   (adottata per nome dal legacy), campi Offerta sulla radice + form in `QualificaQuoteLayoutSeeder::OWN_FORMS`,
   campi/form Commessa da `QualificaSoaWorkOrderSeeder` (solo radice: le figlie ereditano, spec 0115).
-- 18 prodotti (prezzo 0, IVA 22%) in `CatalogProducts::seedSoaProducts()`: fornitore = registry `is_supplier` con
-  lo stesso nome (senza maiuscole); un fornitore/descrizione vuoti si riempiono al re-run (`fillBlanks`), uno a mano vince.
-  Provato sul DB locale in transazione annullata: 15/15 agganciati.
+- 18 prodotti (prezzo 0, IVA 22%) via `QualificaCatalog/BranchProducts` (ex SoaProducts, da `CatalogProducts` step 7):
+  fornitore = registry `is_supplier` con lo stesso nome (senza maiuscole), tipologia dal nome categoria
+  (`SoaCatalogue::TYPOLOGIES`: Ente SOA -> `institution`, Consulenza SOA -> `consultancy`, per codice),
+  "Mesi scadenza" nel CAMPO PERSONALIZZATO prodotti `expiration_months` (QualificaTemplateSeeder) via
+  `CustomFieldWriter` (attestazioni 0, consulenza I/II/III anno 0/12/24). Re-run: riempie fornitore e mesi se vuoti,
+  riallinea la tipologia solo se ancora sul default `institution`; un valore a mano vince.
+- REQUIREMENT CHANGED (2026-10-15, dopo il commit 599df582): l'attributo prodotto `soa_expiry_months` sulla radice
+  SOA e' tolto (l'utente vuole il campo personalizzato); QualificaCatalogSeederTest torna a "nessun attribute_values,
+  nessuna assegnazione di contesto prodotto". `ProductTypologySeeder` ora gira da QualificaCatalogSeeder (step 3,
+  prima dei prodotti), non piu' dallo step 4 di QualificaProductionDataSeeder.
 - Split: `CatalogPickLists` (fonti, tipi premio) fuori da QualificaCatalogSeeder (era 497 righe).
-- Test: `QualificaSoaCatalogueTest` + conteggi REQUIREMENT CHANGED (prodotti 395->413, selezionabili, layout, funzioni).
-- "Mesi scadenza" = attributo PRODOTTO `soa_expiry_months` (integer) sulla radice SOA (le figlie ereditano),
-  assegnato in `QualificaCatalogSeeder::seedCatalog` prima dei prodotti; valore per prodotto in
-  `SoaCatalogue::PRODUCTS` (`['supplier', 'expiry_months']`: attestazioni 0, consulenza I/II/III anno 0/12/24),
-  scritto da `CatalogProducts` alla creazione e, al re-run, solo se manca (`fillMissingValues`, via ProductService).
-  REQUIREMENT CHANGED in QualificaCatalogSeederTest: i soli prodotti SOA hanno attribute_values, e l'unica
-  assegnazione di contesto prodotto rimasta e' `soa_expiry_months`. Tipologia derivata dal nome categoria:
-  richiesta e poi ritirata dall'utente, NON implementata.
+- Test: `QualificaSoaCatalogueTest` (8) + conteggi REQUIREMENT CHANGED (prodotti 395->413, selezionabili, layout, funzioni).
 - Aperti: codice `SOA_Qualifica` dei prodotti consulenza non ha campo in qnet-2.
   HANDOFF.md e' ~590 KB: va archiviato in `docs/handoff-archive/`.
 

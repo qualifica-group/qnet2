@@ -36,7 +36,7 @@ use App\Services\ProductCategories\SingleQuotePerOpportunityInheritance;
  * APL deal closing positively no longer surfaces in the Contratti module. It
  * kept the column defaults (Consulenza's values) from 2026-09-07 until then.
  *
- * "SOA" is worked like "Consulenza" (user decision 2026-10-15).
+ * "SOA" and "Sicurezza" are worked like "Consulenza" (user decisions 2026-10-15).
  *
  * `manager_labels` (spec 0080) rides along on the same root write but is NOT
  * mirrored on the subtree: descendants resolve it by climbing the tree
@@ -97,6 +97,7 @@ final class CatalogRootRules
         'APL' => self::TRAINING_RULES,
         'Consulenza' => self::CONSULTING_RULES,
         SoaCatalogue::ROOT => self::CONSULTING_RULES,
+        SafetyCatalogue::ROOT => self::CONSULTING_RULES,
     ];
 
     /**

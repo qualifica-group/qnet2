@@ -13,23 +13,27 @@ use App\Services\ProductService;
 use Illuminate\Support\Str;
 
 /**
- * The 18 products of the "SOA" branch (SoaCatalogue::PRODUCTS), seeded by
- * CatalogProducts as its last step. Each one gets, besides the 0 price and the
- * 22% VAT rate:
+ * The products of a catalogue branch that comes with its own list — "SOA"
+ * (SoaCatalogue::PRODUCTS) and "Sicurezza" (SafetyProductCatalogue::PRODUCTS)
+ * — seeded by CatalogProducts. Each one gets, besides its price (0 when the
+ * list gives none) and the 22% VAT rate:
  *
- *   - the TYPOLOGY of its category (SoaCatalogue::TYPOLOGIES, by code);
- *   - its certifying body as SUPPLIER, when a supplier registry of that name
- *     exists — usually brought by the legacy import, AFTER the first seed;
+ *   - the TYPOLOGY of its category (the branch's TYPOLOGIES, by code);
+ *   - its SUPPLIER, when a supplier registry of that name exists — usually
+ *     brought by the legacy import, AFTER the first seed;
  *   - its "Mesi scadenza", the products module's custom field
- *     (SoaCatalogue::EXPIRATION_MONTHS_FIELD, QualificaTemplateSeeder).
+ *     (EXPIRATION_MONTHS_FIELD, QualificaTemplateSeeder), unless the list
+ *     leaves it blank.
  *
  * Idempotent and non-destructive: the natural key is (name, category), and an
  * already-seeded product keeps every value set by hand. What a re-run fills is
  * only what is still blank: the supplier, the expiry, and a typology still on
  * the default "Ente" (an earlier revision seeded every product there).
  */
-final class SoaProducts
+final class BranchProducts
 {
+    public const string EXPIRATION_MONTHS_FIELD = 'expiration_months';
+
     private const string DEFAULT_TYPOLOGY_CODE = 'institution';
 
     public function __construct(
@@ -37,32 +41,40 @@ final class SoaProducts
         private readonly CustomFieldWriter $customFields,
     ) {}
 
-    public function seed(int $vatRateId): void
+    /**
+     * @param  array<string, array<string, array{price?: float, supplier: string|null, expiration_months: int|null}>>  $products  category name => product name => its spec
+     * @param  array<string, string>  $typologies  category name => typology code
+     */
+    public function seed(array $products, array $typologies, int $vatRateId): void
     {
         $defaultTypologyId = $this->typologyId(self::DEFAULT_TYPOLOGY_CODE);
 
-        foreach (SoaCatalogue::PRODUCTS as $categoryName => $products) {
+        foreach ($products as $categoryName => $categoryProducts) {
             // Step 1: the category and the typology its products are filed under.
             $category = ProductCategory::query()->where('name', $categoryName)->firstOrFail();
-            $typologyId = $this->typologyId(SoaCatalogue::TYPOLOGIES[$categoryName]);
+            $typologyId = $this->typologyId($typologies[$categoryName]);
 
-            foreach ($products as $name => ['supplier' => $supplierName, 'expiration_months' => $months]) {
-                $supplierId = $supplierName === null ? null : $this->supplierId($supplierName);
+            foreach ($categoryProducts as $name => $spec) {
+                $supplierId = $spec['supplier'] === null ? null : $this->supplierId($spec['supplier']);
 
                 // Step 2: the product, created or with its blanks filled.
-                $product = $this->upsert($category, $name, $vatRateId, [$typologyId, $defaultTypologyId], $supplierId);
+                $product = $this->upsert($category, $name, [$vatRateId, $spec['price'] ?? 0.0], [$typologyId, $defaultTypologyId], $supplierId);
 
-                // Step 3: its "Mesi scadenza".
-                $this->fillExpirationMonths($product, $months);
+                // Step 3: its "Mesi scadenza", when the list gives one.
+                if ($spec['expiration_months'] !== null) {
+                    $this->fillExpirationMonths($product, $spec['expiration_months']);
+                }
             }
         }
     }
 
     /**
+     * @param  array{0: int, 1: float}  $pricing  the VAT rate id, then the list price
      * @param  array{0: int, 1: int}  $typologyIds  the category's typology, then the default one
      */
-    private function upsert(ProductCategory $category, string $name, int $vatRateId, array $typologyIds, ?int $supplierId): Product
+    private function upsert(ProductCategory $category, string $name, array $pricing, array $typologyIds, ?int $supplierId): Product
     {
+        [$vatRateId, $price] = $pricing;
         [$typologyId, $defaultTypologyId] = $typologyIds;
         $existing = Product::query()->where('name', $name)->where('category_id', $category->id)->first();
 
@@ -70,9 +82,9 @@ final class SoaProducts
             return $this->products->create(new CreateProductData(
                 name: $name,
                 description: null,
-                // Cost and price are filled in later through the CRUD modules.
+                // Cost is filled in later through the CRUD modules.
                 cost: 0.0,
-                price: 0.0,
+                price: $price,
                 categoryId: $category->id,
                 productType: ProductType::Service,
                 vatRateId: $vatRateId,
@@ -96,12 +108,12 @@ final class SoaProducts
      */
     private function fillExpirationMonths(Product $product, int $months): void
     {
-        if (($product->custom_fields[SoaCatalogue::EXPIRATION_MONTHS_FIELD] ?? null) !== null) {
+        if (($product->custom_fields[self::EXPIRATION_MONTHS_FIELD] ?? null) !== null) {
             return;
         }
 
         $this->customFields->write($product, (string) $product->customFieldEntityType(), [
-            SoaCatalogue::EXPIRATION_MONTHS_FIELD => $months,
+            self::EXPIRATION_MONTHS_FIELD => $months,
         ]);
     }
 

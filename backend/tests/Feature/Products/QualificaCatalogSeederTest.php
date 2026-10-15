@@ -18,6 +18,7 @@ use Database\Seeders\QualificaCatalog\CatalogProducts;
 use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\DilCourseCatalogue;
 use Database\Seeders\QualificaCatalog\ECampusCourseCatalogue;
+use Database\Seeders\QualificaCatalog\SafetyProductCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
 use Database\Seeders\QualificaCatalog\SoaCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
@@ -35,7 +36,7 @@ uses(RefreshDatabase::class);
  * directive 2026-10-01, the 90 e-Campus degree fees plus the 2 services
  * sold once for the whole branch (user directive 2026-10-08).
  */
-const TOTAL_SEEDED_PRODUCTS = 413; // REQUIREMENT CHANGED: +18 SOA products (2026-10-15).
+const TOTAL_SEEDED_PRODUCTS = 540; // REQUIREMENT CHANGED: +18 SOA and +127 Sicurezza products (2026-10-15).
 
 /**
  * One scenario instead of one test per property: the catalogue seeder costs
@@ -64,11 +65,13 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
         'Autofinanziato - Campania', 'Autofinanziato - Lazio',
         'Autofinanziato - Lombardia', 'Autofinanziato - Sicilia',
         'Autoimpiego',
-        // REQUIREMENT CHANGED: the SOA targets (user directive 2026-10-15).
+        // REQUIREMENT CHANGED: the SOA and Sicurezza targets (user directives 2026-10-15).
         'Consulenza SOA',
         // The e-Campus leaf, every degree fee on it (user directive 2026-10-02).
         'Corsi E-Campus',
+        'Corsi di formazione',
         'DIL - Lombardia',
+        'Documenti',
         'Ente SOA',
         'GOL - Abruzzo', 'GOL - Basilicata', 'GOL - Calabria', 'GOL - Campania',
         'GOL - Lazio', 'GOL - Lombardia', 'GOL - Molise', 'GOL - Puglia',
@@ -76,8 +79,11 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
         'Orientamento specialistico',
         // The Consulenza leaf (user directive 2026-09-28).
         'Presa Appuntamenti',
+        'Sopralluogo',
         // The APL internships (user directives 2026-10-02, 2026-10-05).
         'Tirocinio',
+        'Trasferta',
+        'Visite mediche',
         'Yisu',
     ]);
 
@@ -319,7 +325,8 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
             + count(CatalogProducts::SINGLE_OFFER_CATEGORIES)
             + $eCampusProducts
             + count(ECampusCourseCatalogue::SINGLE_PRODUCTS)
-            + array_sum(array_map(count(...), SoaCatalogue::PRODUCTS)));
+            + array_sum(array_map(count(...), SoaCatalogue::PRODUCTS))
+            + array_sum(array_map(count(...), SafetyProductCatalogue::PRODUCTS)));
 });
 
 it('promotes "APL" out of "Consulenza" on an installation seeded while it hung there', function (): void {

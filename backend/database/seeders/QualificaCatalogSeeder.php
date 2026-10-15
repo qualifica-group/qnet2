@@ -21,6 +21,7 @@ use Database\Seeders\QualificaCatalog\ECampusAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ECampusCourseCatalogue;
 use Database\Seeders\QualificaCatalog\ECampusTreeFlattening;
 use Database\Seeders\QualificaCatalog\ReportColumnsCatalogue;
+use Database\Seeders\QualificaCatalog\SafetyCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
 use Database\Seeders\QualificaCatalog\SoaCatalogue;
 use Illuminate\Database\Seeder;
@@ -74,7 +75,9 @@ use Illuminate\Database\Seeder;
  *     2026-10-14);
  *   - the "SOA" root (user directive 2026-10-15, QualificaCatalog\SoaCatalogue):
  *     its two subcategories, offer fields, products and suppliers here, its
- *     Commessa set in QualificaSoaWorkOrderSeeder.
+ *     Commessa set in QualificaSoaWorkOrderSeeder;
+ *   - the "Sicurezza" root (user directive 2026-10-15, QualificaCatalog\SafetyCatalogue):
+ *     its five subcategories, offer fields, products and suppliers, no Commessa set.
  *
  * Deliberately separate from QualificaTemplateSeeder, which provisions
  * STRUCTURE ONLY (the custom field definitions) and creates no domain row.
@@ -158,6 +161,7 @@ class QualificaCatalogSeeder extends Seeder
         ProductsSource::UNCATEGORIZED_CATEGORY => [],
         // A branch of its own (user directive 2026-10-15).
         SoaCatalogue::ROOT => SoaCatalogue::SUBCATEGORIES,
+        SafetyCatalogue::ROOT => SafetyCatalogue::SUBCATEGORIES,
     ];
 
     /**
@@ -196,6 +200,7 @@ class QualificaCatalogSeeder extends Seeder
         ApprenticeshipAttributeCatalogue::CATEGORY,
         ECampusCourseCatalogue::CATEGORY,
         ...SoaCatalogue::TARGET_CATEGORIES,
+        ...SafetyCatalogue::TARGET_CATEGORIES,
     ];
 
     /**
@@ -243,6 +248,7 @@ class QualificaCatalogSeeder extends Seeder
         ECampusCourseCatalogue::CATEGORY => ECampusAttributeCatalogue::ATTRIBUTES,
         ...AplPracticeCatalogue::QUOTE_ATTRIBUTES,
         SoaCatalogue::ROOT => SoaCatalogue::QUOTE_ATTRIBUTES,
+        SafetyCatalogue::ROOT => SafetyCatalogue::QUOTE_ATTRIBUTES,
     ];
 
     /**

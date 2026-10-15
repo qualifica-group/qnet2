@@ -15,6 +15,7 @@ use App\Models\ProductTypology;
 use App\Models\Registry;
 use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategories\CategoryHierarchy;
+use Database\Seeders\QualificaCatalog\BranchProducts;
 use Database\Seeders\QualificaCatalog\SoaCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Database\Seeders\QualificaTemplateSeeder;
@@ -144,7 +145,7 @@ function soaExpirationMonths(): Collection
     return Product::query()
         ->whereIn('category_id', ProductCategory::query()->whereIn('name', SoaCatalogue::TARGET_CATEGORIES)->select('id'))
         ->get()
-        ->mapWithKeys(fn (Product $product): array => [$product->name => $product->custom_fields[SoaCatalogue::EXPIRATION_MONTHS_FIELD] ?? null]);
+        ->mapWithKeys(fn (Product $product): array => [$product->name => $product->custom_fields[BranchProducts::EXPIRATION_MONTHS_FIELD] ?? null]);
 }
 
 it('REQUIREMENT CHANGED (user directive 2026-10-15): writes "Mesi scadenza" in the products custom field, not in a category attribute', function (): void {
@@ -168,7 +169,7 @@ it('fills a missing "Mesi scadenza" on the re-run, without overriding one set by
 
     $consulting = Product::query()->where('category_id', soaCategory(SoaCatalogue::CONSULTING_CATEGORY)->id)->get()->keyBy('name');
     CustomFieldValue::query()->where('entity_type', 'products')->where('entity_id', $consulting->get('Consulenza Soa_II anno')->id)->delete();
-    app(CustomFieldWriter::class)->write($consulting->get('Consulenza Soa_III anno'), 'products', [SoaCatalogue::EXPIRATION_MONTHS_FIELD => 36]);
+    app(CustomFieldWriter::class)->write($consulting->get('Consulenza Soa_III anno'), 'products', [BranchProducts::EXPIRATION_MONTHS_FIELD => 36]);
 
     test()->seed(QualificaCatalogSeeder::class);
 

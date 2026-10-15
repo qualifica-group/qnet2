@@ -32,7 +32,7 @@ it('REQUIREMENT CHANGED (user directive 2026-10-14): creates the "Formazione" an
     test()->seed(QualificaCatalogSeeder::class);
     test()->seed(QualificaBusinessFunctionLinkSeeder::class); // re-run: neither duplicated nor relinked.
 
-    expect(BusinessFunction::query()->orderBy('id')->pluck('name')->all())->toBe(['Formazione', 'APL', 'Consulenza', 'SOA', 'No funzione aziendale'])
+    expect(BusinessFunction::query()->orderBy('id')->pluck('name')->all())->toBe(['Formazione', 'APL', 'Consulenza', 'SOA', 'Sicurezza', 'No funzione aziendale'])
         ->and($formazione()->businessFunction->name)->toBe('Formazione')
         ->and($apl()->businessFunction->name)->toBe('APL')
         // The sibling subcategories and the Consulenza root resolve nothing of their own.
@@ -57,7 +57,7 @@ it('assigns the root, so the whole Formazione branch inherits the function', fun
     // "APL", "Presa Appuntamenti", "No categoria" and "SOA" (REQUIREMENT
     // CHANGED, 2026-10-15) carry their own: they are outside the Formazione branch.
     expect(ProductCategory::query()->whereNotNull('business_function_id')->orderBy('id')->pluck('name')->all())
-        ->toBe(['Formazione', 'Presa Appuntamenti', 'APL', 'No categoria', 'SOA'])
+        ->toBe(['Formazione', 'Presa Appuntamenti', 'APL', 'No categoria', 'SOA', 'Sicurezza'])
         ->and($formazione()->businessFunction->name)->toBe('Formazione');
 });
 

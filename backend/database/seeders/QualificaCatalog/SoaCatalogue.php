@@ -12,7 +12,7 @@ use App\Enums\LayoutSectionVariant;
  * service) and "Consulenza SOA" (the yearly consultancy). Pure data, read by
  * QualificaCatalogSeeder (tree and offer fields), QualificaQuoteLayoutSeeder
  * (offer form), QualificaSoaWorkOrderSeeder (Commessa fields and form),
- * SoaProducts (products, suppliers, typologies and "Mesi scadenza"),
+ * CatalogProducts and BranchProducts (products, suppliers, typologies and "Mesi scadenza"),
  * CatalogRootRules and QualificaBusinessFunctionLinkSeeder.
  *
  * The subcategories are not called "Ente" / "Consulenza": the name is the
@@ -80,12 +80,6 @@ final class SoaCatalogue
         self::CERTIFYING_BODY_CATEGORY => 'institution',
         self::CONSULTING_CATEGORY => 'consultancy',
     ];
-
-    /**
-     * The product custom field (QualificaTemplateSeeder) the file's "Mesi
-     * scadenza" column lands on.
-     */
-    public const string EXPIRATION_MONTHS_FIELD = 'expiration_months';
 
     /**
      * Category name => product name => its supplier's registry name (null: no
