@@ -41,6 +41,24 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'edit',
+      title: 'Editing the parameters',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'There is no edit page: on the year record click the **pencil** next to a value, change it and confirm with **Save**; **Cancel** restores it. Each row saves on its own.',
+        },
+        {
+          type: 'paragraph',
+          text: 'In the list you can edit **Year**, **Total rate**, **Agent share** and the two **ceilings** directly in the cell. The same rules apply everywhere: a year already present or a percentage above 100 is refused.',
+        },
+        {
+          type: 'paragraph',
+          text: 'A new year is created on the same record layout: open the rows, confirm them with **Done** and press **Save**. Leaving without saving asks for confirmation.',
+        },
+      ],
+    },
+    {
       id: 'in-development',
       title: 'Module under development',
       blocks: [

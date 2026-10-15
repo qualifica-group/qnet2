@@ -104,14 +104,13 @@ export function useSettlementDetailActions({ settlementId, onChanged, onDeleted 
       remove.isPending ||
       removeAdjustment.isPending,
     isCancelling: cancel.isPending,
-    isSavingNotes: saveNotes.isPending,
     recalculate: () => recalculate.mutate(),
     issue: () => void confirmThen('issue', () => issue.mutate()),
     remove: () => void confirmThen('delete', () => remove.mutate()),
     removeAdjustment: (adjustmentId: number) =>
       void confirmThen('deleteAdjustment', () => removeAdjustment.mutate(adjustmentId)),
     cancel: (reason: string, onDone: () => void) => cancel.mutate(reason, { onSuccess: onDone }),
-    saveNotes: (notes: string | null) => saveNotes.mutate(notes),
+    saveNotes: (notes: string | null) => saveNotes.mutateAsync(notes),
   }
 }
 

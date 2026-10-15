@@ -246,14 +246,24 @@ describe('CommissionSettlementDetailView - actions', () => {
     expect(within(dialog).queryByRole('combobox')).not.toBeInTheDocument()
   })
 
-  it('saves the notes with a PATCH while the statement is a draft', async () => {
+  // REQUIREMENT CHANGED (spec 0265 D-1): the notes are a row edited in place, no "Save notes" button.
+  it('saves the notes in place with a PATCH while the statement is a draft', async () => {
     apiMocks.fetch.mockResolvedValue(settlement())
     apiMocks.patch.mockResolvedValue(settlement({ notes: 'ok' }))
     renderDetail()
 
-    fireEvent.change(await screen.findByLabelText('Notes'), { target: { value: 'ok' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save notes' }))
+    fireEvent.click(await screen.findByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Notes' }) }))
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'ok' } })
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.save') }))
 
     await waitFor(() => expect(apiMocks.patch).toHaveBeenCalledWith(12, { notes: 'ok' }))
+  })
+
+  it('offers no pencil on the notes once the statement is issued', async () => {
+    apiMocks.fetch.mockResolvedValue(settlement({ status: 'ISSUED' }))
+    renderDetail()
+
+    expect((await screen.findAllByText('Notes')).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Notes' }) })).not.toBeInTheDocument()
   })
 })

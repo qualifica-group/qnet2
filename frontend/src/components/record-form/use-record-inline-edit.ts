@@ -21,12 +21,12 @@ export function useInlineEditingField(): InlineEditingField {
   return { editingField, open: setEditingField, close: () => setEditingField(null) }
 }
 
-interface UseRecordInlineEditArgs<TFieldValues extends FieldValues> {
+interface UseRecordInlineEditArgs<TFieldValues extends FieldValues, TTransformedValues> {
   editing: InlineEditingField
   /** The module's edit-mode form: `values` re-synced on the saved record, `keepDirtyValues` in `resetOptions`. */
-  form: UseFormReturn<TFieldValues>
-  /** The module's own edit submit (a diff PATCH); on success it calls `editing.close()`. */
-  onSubmit: (values: TFieldValues) => Promise<void>
+  form: UseFormReturn<TFieldValues, unknown, TTransformedValues>
+  /** The module's own edit submit (a diff PATCH) on the validated values; on success it calls `editing.close()`. */
+  onSubmit: (values: TTransformedValues) => Promise<void>
   /** A refused save its field message cannot carry (generic server error). */
   serverError: string | null
   clearServerError: () => void
@@ -41,14 +41,14 @@ interface UseRecordInlineEditArgs<TFieldValues extends FieldValues> {
  * first discards the unconfirmed one: an edit is never carried silently into
  * a different field's save.
  */
-export function useRecordInlineEdit<TFieldValues extends FieldValues>({
+export function useRecordInlineEdit<TFieldValues extends FieldValues, TTransformedValues = TFieldValues>({
   editing,
   form,
   onSubmit,
   serverError,
   clearServerError,
   genericErrorMessage,
-}: UseRecordInlineEditArgs<TFieldValues>): InlineEdit {
+}: UseRecordInlineEditArgs<TFieldValues, TTransformedValues>): InlineEdit {
   const { t } = useTranslation()
 
   // `keepDirtyValues: false`: the form's `resetOptions` keep dirty values for

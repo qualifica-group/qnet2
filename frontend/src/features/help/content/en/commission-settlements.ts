@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'The **tabs** above filter by state: **Drafts** (default), **Issued**, **Cancelled** and **All**. Below the table are the **totals** of the current filter; you can group by state, agent, company and month. Open the detail from the row.',
+          text: 'The **tabs** above filter by state: **Drafts** (default), **Issued**, **Cancelled** and **All**. Below the table are the **totals** of the current filter; you can group by state, agent, company and month. From the row you open the statement record: state and the allowed action buttons on top, then the statement data, totals, movements and, with the permission, the change history.',
         },
       ],
     },
@@ -61,7 +61,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['State', 'What you can do'],
           rows: [
-            ['**Draft**', '**Recalculate** (picks up new movements up to the end date and redoes the figures), edit the **notes**, add or fix **adjustments**, **Issue**, **Delete draft** (the movements become open again).'],
+            ['**Draft**', '**Recalculate** (picks up new movements up to the end date and redoes the figures), edit the **notes** (pencil on the Notes row, then **Save**), add or fix **adjustments**, **Issue**, **Delete draft** (the movements become open again).'],
             ['**Issued**', 'The statement gets its progressive **number** (n/year, per company) and becomes immutable. The only action is **Cancel statement**.'],
             ['**Cancelled**', 'The reason is mandatory. The movements become open again and can end up in a new statement; the number is not reused.'],
           ],
@@ -83,8 +83,8 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            '**From the Statements or Accruals page** (**New adjustment**): pick agent and company; the adjustment stays open and enters the first suitable run.',
-            '**Inside a draft**: agent and company are those of the draft, the adjustment is attached right away and the draft is recalculated. Until the draft is issued you can **edit** or **delete** adjustments from the movements list.',
+            '**From the Statements or Accruals page** (**New adjustment**): a side sheet opens; open the Agent and Company rows, then Amount, Date and Notes, confirm each with **Done** and press **Save**; the adjustment stays open and enters the first suitable run.',
+            '**Inside a draft** (**New adjustment** button on the Movements section): agent and company are those of the draft, the adjustment is attached right away and the draft is recalculated. Until the draft is issued you can **edit** or **delete** adjustments from the movements list.',
           ],
         },
       ],

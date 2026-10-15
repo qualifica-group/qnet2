@@ -13,6 +13,7 @@ import {
 import {
   EMPTY_FORM_VALUES,
   buildAgentFiscalProfilePayload,
+  buildAgentFiscalProfileUpdatePayload,
   toFormValues,
 } from '@/features/agent-fiscal-profiles/agent-fiscal-profile-form-payload'
 import {
@@ -38,11 +39,15 @@ const SERVER_ERROR_FIELDS: Path<AgentFiscalProfileFormValues>[] = [
 
 interface UseAgentFiscalProfileFormArgs {
   mode: AgentFiscalProfileFormMode
-  /** Called after a successful create/update so the caller can close + refresh. */
+  /** Called after a successful create/update so the caller can close the row or navigate. */
   onSuccess: (profile: AgentFiscalProfileDetail) => void
 }
 
-/** Owns every non-render concern of `AgentFiscalProfileForm`: RHF/Zod wiring, defaults, 422 mapping, submit. */
+/**
+ * Owns every non-render concern of the agent fiscal profile form: RHF/Zod
+ * wiring, defaults, 422 mapping and the submit. Create backs the create
+ * draft; edit backs the detail's in-place rows (diff PATCH, spec 0264 D-4).
+ */
 export function useAgentFiscalProfileForm({ mode, onSuccess }: UseAgentFiscalProfileFormArgs) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -55,23 +60,29 @@ export function useAgentFiscalProfileForm({ mode, onSuccess }: UseAgentFiscalPro
     [mode],
   )
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<AgentFiscalProfileFormValues, unknown, AgentFiscalProfileSchemaOutput>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: mode.type === 'edit' ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: AgentFiscalProfileSchemaOutput) => {
     setServerError(null)
-    const payload = buildAgentFiscalProfilePayload(values)
     try {
       if (mode.type === 'edit') {
-        const saved = await updateAgentFiscalProfile(mode.profile.id, payload)
+        const saved = await updateAgentFiscalProfile(
+          mode.profile.id,
+          buildAgentFiscalProfileUpdatePayload(values, mode.profile),
+        )
         queryClient.setQueryData(agentFiscalProfileKeys.detail(mode.profile.id), saved)
         toast.success(t('agentFiscalProfiles.form.updated'))
         onSuccess(saved)
         return
       }
-      const created = await createAgentFiscalProfile(payload)
+      const created = await createAgentFiscalProfile(buildAgentFiscalProfilePayload(values))
       toast.success(t('agentFiscalProfiles.form.created'))
       onSuccess(created)
     } catch (error) {
@@ -81,5 +92,5 @@ export function useAgentFiscalProfileForm({ mode, onSuccess }: UseAgentFiscalPro
     }
   }
 
-  return { form, serverError, onSubmit }
+  return { form, serverError, clearServerError: () => setServerError(null), onSubmit }
 }

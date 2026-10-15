@@ -25,6 +25,7 @@ use App\Services\TaskPriorityService;
 use App\Services\TaskStatusService;
 use App\Services\TaskTypeService;
 use App\Services\UserService;
+use App\Services\VatRateService;
 use App\Services\WorkOrderService;
 
 /**
@@ -72,6 +73,7 @@ final class RelationValueScopeChecker
         private readonly OpportunityService $opportunities,
         private readonly SectorService $sectors,
         private readonly InvoiceTagService $invoiceTags,
+        private readonly VatRateService $vatRates,
     ) {}
 
     /**
@@ -115,6 +117,8 @@ final class RelationValueScopeChecker
             'sectors' => $this->sectors->forSelect($query)->items,
             // Spec 0260, D-4: the invoices grid's tag picker.
             'invoice-tags' => $this->invoiceTags->forSelect($query)->items,
+            // Spec 0264, D-2: the agent fiscal profiles grid's VAT rate picker.
+            'vat-rates' => $this->vatRates->forSelect($query)->items,
             default => null,
         };
 

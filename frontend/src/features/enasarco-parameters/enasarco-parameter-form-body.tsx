@@ -1,111 +1,55 @@
+import { Percent } from 'lucide-react'
+import { useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import type { Control } from 'react-hook-form'
-import { Button } from '@/components/ui/button'
-import { Form, FormControl } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { MetaField } from '@/features/authorization/MetaField'
+import { DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordCreateLayout } from '@/components/record-form/record-create-layout'
+import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
+import { Form } from '@/components/ui/form'
+import { EnasarcoParameterSections } from '@/features/enasarco-parameters/enasarco-parameter-rows'
 import { useEnasarcoParameterForm } from '@/features/enasarco-parameters/use-enasarco-parameter-form'
-import type {
-  EnasarcoParameterFormValues,
-  EnasarcoParameterSchemaOutput,
-} from '@/features/enasarco-parameters/enasarco-parameter-schema'
-import type { EnasarcoParameterDetail, EnasarcoParameterFormMode } from '@/features/enasarco-parameters/types'
+import type { EnasarcoParameterDetail } from '@/features/enasarco-parameters/types'
 
-type ParameterControl = Control<EnasarcoParameterFormValues, unknown, EnasarcoParameterSchemaOutput>
-type DecimalFieldName = 'total_rate' | 'agent_share_percent' | 'single_firm_ceiling' | 'multi_firm_ceiling'
+/** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
+const ENASARCO_PARAMETER_FORM_ID = 'enasarco-parameter-form'
 
-const PERCENT_FIELDS: DecimalFieldName[] = ['total_rate', 'agent_share_percent']
-const CEILING_FIELDS: DecimalFieldName[] = ['single_firm_ceiling', 'multi_firm_ceiling']
-
-function DecimalField({ control, name, percent }: { control: ParameterControl; name: DecimalFieldName; percent: boolean }) {
-  const { t } = useTranslation()
-  return (
-    <MetaField control={control} name={name} metaKey={name} label={t(`enasarcoParameters.form.${name}`)} required>
-      {({ field, disabled, readOnly }) => (
-        <FormControl>
-          <Input
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            min={0}
-            max={percent ? 100 : undefined}
-            disabled={disabled}
-            readOnly={readOnly}
-            {...field}
-          />
-        </FormControl>
-      )}
-    </MetaField>
-  )
-}
+const CREATE_MODE = { type: 'create' } as const
 
 interface EnasarcoParameterFormBodyProps {
-  mode: EnasarcoParameterFormMode
   onSuccess: (parameter: EnasarcoParameterDetail) => void
   onCancel: () => void
 }
 
 /**
- * The ENASARCO parameters create/edit form UI. Every field is wrapped in
- * `MetaField`; all non-render logic lives in `useEnasarcoParameterForm`.
+ * The create form as a replica of the detail (spec 0264 D-5): the same rows,
+ * closed until clicked (Fatto/Ripristina, nothing saved per row); Salva
+ * validates and creates everything at once.
  */
-export function EnasarcoParameterFormBody({ mode, onSuccess, onCancel }: EnasarcoParameterFormBodyProps) {
+export function EnasarcoParameterFormBody({ onSuccess, onCancel }: EnasarcoParameterFormBodyProps) {
   const { t } = useTranslation()
-  const { form, serverError, onSubmit } = useEnasarcoParameterForm({ mode, onSuccess })
-  const control = form.control
+  const { form, serverError, onSubmit } = useEnasarcoParameterForm({ mode: CREATE_MODE, onSuccess })
+  const draft = useDraftInlineEdit(form)
+  const year = useWatch({ control: form.control, name: 'year' }).trim()
+  const heading = year !== '' ? t('enasarcoParameters.detail.title', { year }) : t('enasarcoParameters.form.newParameter')
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 p-4" noValidate>
-          <MetaField control={control} name="year" metaKey="year" label={t('enasarcoParameters.form.year')} required>
-            {({ field, disabled, readOnly }) => (
-              <FormControl>
-                <Input type="number" inputMode="numeric" step="1" disabled={disabled} readOnly={readOnly} {...field} />
-              </FormControl>
-            )}
-          </MetaField>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {PERCENT_FIELDS.map((name) => (
-              <DecimalField key={name} control={control} name={name} percent />
-            ))}
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {CEILING_FIELDS.map((name) => (
-              <DecimalField key={name} control={control} name={name} percent={false} />
-            ))}
-          </div>
-          <MetaField control={control} name="notes" metaKey="notes" label={t('enasarcoParameters.form.notes')}>
-            {({ field, disabled, readOnly }) => (
-              <FormControl>
-                <Textarea disabled={disabled} readOnly={readOnly} {...field} />
-              </FormControl>
-            )}
-          </MetaField>
-
-          {serverError && (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {serverError}
-            </p>
-          )}
-
-          <div className="mt-auto flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="bg-card"
-              onClick={onCancel}
-              disabled={form.formState.isSubmitting}
-            >
-              {t('enasarcoParameters.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? t('enasarcoParameters.form.saving') : t('enasarcoParameters.form.save')}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </div>
+    <Form {...form}>
+      <RecordCreateLayout
+        formId={ENASARCO_PARAMETER_FORM_ID}
+        onSubmit={form.handleSubmit(onSubmit)}
+        title={heading}
+        subtitle={t('enasarcoParameters.form.createSubtitle')}
+        media={<DetailMonogram name={heading} icon={<Percent />} />}
+        isSubmitting={form.formState.isSubmitting}
+        serverError={serverError}
+        onCancel={onCancel}
+        labels={{
+          save: t('enasarcoParameters.form.save'),
+          saving: t('enasarcoParameters.form.saving'),
+          cancel: t('common.cancel'),
+        }}
+      >
+        <EnasarcoParameterSections inline={draft} canEdit />
+      </RecordCreateLayout>
+    </Form>
   )
 }

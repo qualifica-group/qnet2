@@ -4,10 +4,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
-import {
-  CommissionSettlementRunDetailDialog,
-  CommissionSettlementRunDialog,
-} from '@/features/commission-settlement-runs/commission-settlement-run-dialogs'
+import { ConfirmDialogProvider } from '@/components/confirm-dialog'
+import { CommissionSettlementRunSheet } from '@/features/commission-settlement-runs/commission-settlement-run-sheet'
+import { CommissionSettlementRunDetailSheet } from '@/features/commission-settlement-runs/commission-settlement-run-detail-sheet'
 import type { CommissionSettlementRunResult } from '@/features/commission-settlement-runs/types'
 
 const apiMocks = vi.hoisted(() => ({ create: vi.fn(), fetch: vi.fn() }))
@@ -55,7 +54,9 @@ function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>
-      <MemoryRouter>{children}</MemoryRouter>
+      <ConfirmDialogProvider>
+        <MemoryRouter>{children}</MemoryRouter>
+      </ConfirmDialogProvider>
     </QueryClientProvider>
   )
 }
@@ -69,17 +70,34 @@ beforeEach(() => {
   apiMocks.fetch.mockReset()
 })
 
-describe('CommissionSettlementRunDialog (spec 0213 AC-020)', () => {
-  it('sends the contract body and shows created and skipped with the translated reason', async () => {
+const openRow = (label: string) =>
+  fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: label }) }))
+const applyRow = () => fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.apply') }))
+const launch = () => fireEvent.click(screen.getAllByRole('button', { name: 'Run' })[0])
+
+function setPeriod(from: string, to: string) {
+  openRow('Period')
+  fireEvent.change(screen.getByLabelText(/^Period from/), { target: { value: from } })
+  fireEvent.change(screen.getByLabelText(/^Period to/), { target: { value: to } })
+  applyRow()
+}
+
+// REQUIREMENT CHANGED (spec 0265 D-4): "Nuovo lancio" is a record draft in a side sheet, rows closed until opened.
+describe('CommissionSettlementRunSheet (spec 0213 AC-020, spec 0265 D-4)', () => {
+  it('sends the contract body and then shows the run it created', async () => {
     apiMocks.create.mockResolvedValue(RESULT)
     const onLaunched = vi.fn()
-    render(<CommissionSettlementRunDialog open onClose={vi.fn()} onLaunched={onLaunched} />, { wrapper: wrapper() })
+    render(<CommissionSettlementRunSheet open onClose={vi.fn()} onLaunched={onLaunched} />, { wrapper: wrapper() })
 
-    fireEvent.change(screen.getByLabelText(/^Period from/), { target: { value: '2026-09-01' } })
-    fireEvent.change(screen.getByLabelText(/^Period to/), { target: { value: '2026-09-30' } })
-    fireEvent.change(screen.getByLabelText(/^Minimum threshold/), { target: { value: '25' } })
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    setPeriod('2026-09-01', '2026-09-30')
+    openRow('Minimum threshold (€)')
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '25' } })
+    applyRow()
+    openRow('Roles')
     fireEvent.click(screen.getByRole('checkbox', { name: 'Commercial' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Run' }))
+    applyRow()
+    launch()
 
     await waitFor(() => expect(apiMocks.create).toHaveBeenCalled())
     expect(apiMocks.create.mock.calls[0][0]).toEqual({
@@ -90,7 +108,7 @@ describe('CommissionSettlementRunDialog (spec 0213 AC-020)', () => {
       recipient_roles: ['COMMERCIAL'],
       min_amount: 25,
     })
-    expect(await screen.findByText('Run outcome')).toBeInTheDocument()
+    expect(await screen.findByText('Run by Admin', { exact: false })).toBeInTheDocument()
     expect(onLaunched).toHaveBeenCalled()
     expect(screen.getByRole('link', { name: 'Open the draft of Mario Rossi - Acme Srl' })).toHaveAttribute(
       'href',
@@ -100,28 +118,36 @@ describe('CommissionSettlementRunDialog (spec 0213 AC-020)', () => {
     expect(screen.getByText('Amount below the minimum threshold: the accrual stays open')).toBeInTheDocument()
   })
 
-  it('does not call the API when period_to precedes period_from and flags the field accessibly', async () => {
-    render(<CommissionSettlementRunDialog open onClose={vi.fn()} onLaunched={vi.fn()} />, { wrapper: wrapper() })
+  it('does not call the API when the end precedes the start and shows it on the period row', async () => {
+    render(<CommissionSettlementRunSheet open onClose={vi.fn()} onLaunched={vi.fn()} />, { wrapper: wrapper() })
 
-    fireEvent.change(screen.getByLabelText(/^Period from/), { target: { value: '2026-09-10' } })
-    fireEvent.change(screen.getByLabelText(/^Period to/), { target: { value: '2026-09-01' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Run' }))
+    setPeriod('2026-09-10', '2026-09-01')
+    launch()
 
-    const periodTo = screen.getByLabelText(/^Period to/)
-    await waitFor(() => expect(periodTo).toHaveAttribute('aria-invalid', 'true'))
-    const message = screen.getByText('The end date cannot be before the start date.')
-    expect(message).toHaveAttribute('role', 'alert')
-    expect(periodTo.getAttribute('aria-describedby')).toContain(message.id)
+    expect(await screen.findByText('The end date cannot be before the start date.')).toHaveAttribute('role', 'alert')
     expect(apiMocks.create).not.toHaveBeenCalled()
+  })
+
+  it('asks before leaving a changed draft', async () => {
+    const onClose = vi.fn()
+    render(<CommissionSettlementRunSheet open onClose={onClose} onLaunched={vi.fn()} />, { wrapper: wrapper() })
+
+    setPeriod('2026-08-01', '2026-08-31')
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[0])
+
+    expect(await screen.findByText('Leave without running?')).toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
   })
 })
 
-describe('CommissionSettlementRunDetailDialog', () => {
-  it('loads and shows the outcome of a past run', async () => {
+// REQUIREMENT CHANGED (spec 0265 D-3): a past run opens as a record in a side sheet, no longer a dialog.
+describe('CommissionSettlementRunDetailSheet', () => {
+  it('loads a past run and shows it as a record', async () => {
     apiMocks.fetch.mockResolvedValue(RESULT)
-    render(<CommissionSettlementRunDetailDialog runId={4} onClose={vi.fn()} />, { wrapper: wrapper() })
+    render(<CommissionSettlementRunDetailSheet runId={4} onClose={vi.fn()} />, { wrapper: wrapper() })
 
     expect(await screen.findByText('Luca Bianchi')).toBeInTheDocument()
+    expect(screen.getByText(/^Run by /)).toBeInTheDocument()
     expect(apiMocks.fetch).toHaveBeenCalledWith(4)
   })
 })

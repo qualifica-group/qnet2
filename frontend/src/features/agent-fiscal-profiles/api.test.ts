@@ -7,7 +7,7 @@ import {
 } from '@/features/agent-fiscal-profiles/api'
 import type { AgentFiscalProfilePayload } from '@/features/agent-fiscal-profiles/types'
 
-const client = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() }))
+const client = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() }))
 vi.mock('@/api/client', () => ({ apiClient: client }))
 
 const PAYLOAD: AgentFiscalProfilePayload = {
@@ -46,12 +46,15 @@ describe('agent fiscal profiles api (spec 0212 data_contract, AC-020)', () => {
     expect(client.post).toHaveBeenCalledWith('/agent-fiscal-profiles', PAYLOAD)
   })
 
-  it('updates with PUT /agent-fiscal-profiles/{id}', async () => {
-    client.put.mockResolvedValue({ data: { data: { id: 8 } } })
+  // REQUIREMENT CHANGED (spec 0264 D-1): the in-place rows send a partial PATCH and get the permissions back.
+  it('updates with a partial PATCH /agent-fiscal-profiles/{id}, permissions included', async () => {
+    const permissions = { resource: {}, fields: {}, actions: {} }
+    client.patch.mockResolvedValue({ data: { data: { id: 8 }, permissions } })
 
-    await updateAgentFiscalProfile(8, PAYLOAD)
+    const saved = await updateAgentFiscalProfile(8, { notes: 'ok' })
 
-    expect(client.put).toHaveBeenCalledWith('/agent-fiscal-profiles/8', PAYLOAD)
+    expect(client.patch).toHaveBeenCalledWith('/agent-fiscal-profiles/8', { notes: 'ok' })
+    expect(saved).toEqual({ id: 8, permissions })
   })
 
   it('deletes with DELETE /agent-fiscal-profiles/{id}', async () => {

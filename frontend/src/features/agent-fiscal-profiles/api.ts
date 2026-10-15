@@ -29,12 +29,16 @@ export async function createAgentFiscalProfile(payload: AgentFiscalProfilePayloa
   return data.data
 }
 
+/** Partial PATCH (spec 0264 D-1): fields left out keep their saved value. */
 export async function updateAgentFiscalProfile(
   id: number,
-  payload: AgentFiscalProfilePayload,
-): Promise<AgentFiscalProfileDetail> {
-  const { data } = await apiClient.put<ApiResponse<AgentFiscalProfileDetail>>(`${ENDPOINT}/${id}`, payload)
-  return data.data
+  payload: Partial<AgentFiscalProfilePayload>,
+): Promise<AgentFiscalProfileDetailWithPermissions> {
+  const { data } = await apiClient.patch<ApiResponseWithPermissions<AgentFiscalProfileDetail, ResourcePermissions>>(
+    `${ENDPOINT}/${id}`,
+    payload,
+  )
+  return { ...data.data, permissions: data.permissions }
 }
 
 /** 204 without body. */

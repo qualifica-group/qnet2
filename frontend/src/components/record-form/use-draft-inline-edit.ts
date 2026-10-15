@@ -11,7 +11,9 @@ import type { InlineEdit } from '@/components/record-form/record-inline-field'
  * row), "Ripristina" puts the draft back as it was when the row opened, cascades
  * included. The header's Salva validates and creates everything at once.
  */
-export function useDraftInlineEdit<TFieldValues extends FieldValues>(form: UseFormReturn<TFieldValues>): InlineEdit {
+export function useDraftInlineEdit<TFieldValues extends FieldValues, TTransformedValues = TFieldValues>(
+  form: UseFormReturn<TFieldValues, unknown, TTransformedValues>,
+): InlineEdit {
   const { t } = useTranslation()
   const [editingField, setEditingField] = useState<string | null>(null)
   // The whole draft as the row found it: a cancelled pick must bring back

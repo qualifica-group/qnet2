@@ -4,6 +4,7 @@ namespace App\Tables\AgentFiscalProfiles;
 
 use App\Enums\EnasarcoMandateType;
 use App\Models\VatRate;
+use App\Tables\Support\EditableColumns;
 
 /**
  * Declarative column/filter/action catalogue for the `agent-fiscal-profiles`
@@ -32,7 +33,7 @@ final class AgentFiscalProfileColumnCatalog
      */
     public static function columns(): array
     {
-        return [
+        return EditableColumns::apply([
             self::column('referent', 'text', sortable: true, filterType: 'set'),
             self::column('withholding_enabled', 'boolean', sortable: true, filterType: 'set'),
             self::column('withholding_rate', 'number', sortable: true, filterType: 'number'),
@@ -44,7 +45,36 @@ final class AgentFiscalProfileColumnCatalog
             self::column('valid_until', 'date', sortable: true, filterType: 'date'),
             self::column('is_current', 'badge', sortable: false, filterType: 'set', options: [self::CURRENT_YES, self::CURRENT_NO]),
             self::column('updated_at', 'date', sortable: true, filterType: 'date'),
+        ], [
+            // Spec 0264, D-2: the switches and the agent stay on the record page.
+            'valid_from' => [],
+            'valid_until' => EditableColumns::NULLABLE,
+            'withholding_rate' => [],
+            'withholding_base_percent' => [],
+            'enasarco_mandate_type' => ['options' => EnasarcoMandateType::values()],
+            'vat_rate' => ['relation' => ['resource' => 'vat-rates'], 'editableField' => 'vat_rate_id', 'nullable' => true],
+        ]);
+    }
+
+    /**
+     * The editable columns a row takes a cell edit on (spec 0264, D-2): the
+     * rates only while the withholding is on, the mandate type only while
+     * ENASARCO is on.
+     *
+     * @return array<int, string>
+     */
+    public static function rowEditableColumnIds(bool $withholdingEnabled, bool $enasarcoEnabled): array
+    {
+        $switched = [
+            'withholding_rate' => $withholdingEnabled,
+            'withholding_base_percent' => $withholdingEnabled,
+            'enasarco_mandate_type' => $enasarcoEnabled,
         ];
+
+        return array_values(array_filter(
+            array_column(array_filter(self::columns(), static fn (array $column): bool => ($column['editable'] ?? false) === true), 'id'),
+            static fn (string $id): bool => $switched[$id] ?? true,
+        ));
     }
 
     /**

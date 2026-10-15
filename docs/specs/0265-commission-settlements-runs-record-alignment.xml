@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0265-commission-settlements-runs-record-alignment" status="approved" owner="utente" date="2026-10-15">
+
+  <goal>
+    Provvigioni agenti, tappa 2: Estratti e Lanci si allineano alle altre schede (kit record, spec 0233/0264).
+    Maturato invariato: e' gia' una lista standard in sola lettura.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-15 ("Ma la voce Estratti non e' stata lavorata?"), scope deciso con la spec 0264.
+    Le liste Estratti e Lanci non hanno campi modificabili in cella: importi calcolati, periodo fissato dal lancio.
+    Backend invariato: PATCH note, abilitazioni, registro attivita' (`view_activity`) esistono gia'.
+  </context>
+
+  <decisions>
+    D-1 Scheda Estratto: RecordBody con banda d'identita' (stato + azioni consentite in alto a destra), sezioni
+        Estratto (periodo, emissione, annullo, Note), Totali, Movimenti (piena larghezza, "Nuova rettifica" come
+        azione della sezione), scheda Attivita' se `view_activity`, piede con la data di creazione. Le Note sono una
+        riga modificabile sul posto (matita, Salva/Annulla, PATCH note), solo in bozza con `update`; spariscono la
+        textarea e il pulsante "Salva note".
+    D-2 Rettifiche (utente 2026-10-15, "questa non l'hai fatta"): la finestra diventa una scheda laterale a
+        bozza di record (RecordCreateLayout + useDraftInlineEdit): sezioni Agente e societa' (scelte solo nella
+        rettifica libera, fisse dentro una bozza, assenti in modifica) e Rettifica (importo con segno, data, note);
+        righe chiuse con Fatto/Ripristina, Salva unico, conferma d'uscita se ci sono dati non salvati. Stessa
+        scheda da Estratti, Maturato e dalla riga movimento di una bozza (modifica). Contratto API invariato.
+    D-3 Lanci: "Visualizza" apre il lancio in una scheda laterale (come gli Estratti) con intestazione (periodo,
+        chi e quando), sezione Lancio (periodo, soglia, esito) e le sezioni Estratti creati / Saltati.
+    D-4 Nuovo lancio (utente 2026-10-15, "Adegua anche nuovo lancio"): la finestra diventa una scheda laterale a
+        bozza di record: sezioni Periodo (dal + al in una riga, con la nota) e Filtri (societa', agenti, ruoli,
+        soglia minima; vuoto = tutti / soglia predefinita); "Lancia" esegue e la stessa scheda mostra il lancio
+        creato con la vista di D-3. Conferma d'uscita se la bozza e' cambiata. Contratto API invariato.
+  </decisions>
+
+  <acceptance>
+    <ac id="AC-001">Estratto in bozza: matita sulle Note, Salva invia PATCH {notes}; emesso: nessuna matita.</ac>
+    <ac id="AC-002">Azioni nella banda d'identita'; "Nuova rettifica" sulla sezione Movimenti solo in bozza con adjust.</ac>
+    <ac id="AC-003">Lancio passato aperto in scheda laterale con creati e saltati.</ac>
+    <ac id="AC-004">Guide in-app IT/EN commission-settlements e commission-settlement-runs aggiornate.</ac>
+  </acceptance>
+</spec>

@@ -2,42 +2,42 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AxiosError } from 'axios'
 import { useController, type Control, type FieldValues } from 'react-hook-form'
 import i18n from '@/i18n'
 import { AgentFiscalProfileForm } from '@/features/agent-fiscal-profiles/agent-fiscal-profile-form'
-import type { AgentFiscalProfileDetailWithPermissions } from '@/features/agent-fiscal-profiles/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 
-const apiMocks = vi.hoisted(() => ({ create: vi.fn(), update: vi.fn() }))
+/**
+ * Spec 0264 D-4: the form is create-only, a replica of the detail with its
+ * rows closed; the in-place edits live in `agent-fiscal-profile-detail.test.tsx`.
+ */
+
+const createMock = vi.fn()
+const useMeta = vi.hoisted(() => vi.fn())
 
 vi.mock('@/features/agent-fiscal-profiles/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/agent-fiscal-profiles/api')>()),
-  createAgentFiscalProfile: (...args: unknown[]) => apiMocks.create(...args),
-  updateAgentFiscalProfile: (...args: unknown[]) => apiMocks.update(...args),
+  createAgentFiscalProfile: (...args: unknown[]) => createMock(...args),
 }))
-
+vi.mock('@/features/authorization/use-resource-meta', () => ({
+  useResourceMeta: (...args: unknown[]) => useMeta(...args),
+}))
 vi.mock('@/components/form/relation-select-field', () => ({
   RelationSelectField: ({ control, name, label }: { control: Control<FieldValues>; name: string; label: string }) => {
     const { field } = useController({ control, name })
     return (
       <button type="button" onClick={() => field.onChange(5)}>
-        {label === 'Agent' ? 'Pick referent' : label}
+        {`Pick ${label}`}
       </button>
     )
   },
 }))
-
-vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
-
-vi.mock('@/features/for-select/api', () => ({
-  FOR_SELECT_PAGE_SIZE: 25,
-  fetchForSelect: () => Promise.resolve({ data: [], meta: { has_more: false } }),
+// The picked ids resolve their closed-row names through the for-select hydration.
+vi.mock('@/features/for-select/use-for-select', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/for-select/use-for-select')>()),
+  useForSelectLabels: ({ ids }: { ids: number[] }) => new Map(ids.map((id) => [id, { id, label: `Name ${id}` }])),
 }))
-
-vi.mock('@/features/auth/use-abilities', () => ({
-  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
-}))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const PERMISSIONS: ResourcePermissions = {
   resource: { view: true, create: true, update: true, delete: true, export: true, import: false },
@@ -45,51 +45,16 @@ const PERMISSIONS: ResourcePermissions = {
   actions: {},
 }
 
-vi.mock('@/features/agent-fiscal-profiles/use-agent-fiscal-profile-form-meta', () => ({
-  useAgentFiscalProfileFormMeta: () => ({ status: 'ready', permissions: PERMISSIONS }),
-}))
+const openRow = (label: string) =>
+  fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: label }) }))
+const applyRow = () => fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.apply') }))
+const save = () => fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
-function wrapper() {
+function renderForm(onSuccess = vi.fn(), onCancel = vi.fn()) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  )
-}
-
-function profile(overrides: Partial<AgentFiscalProfileDetailWithPermissions> = {}): AgentFiscalProfileDetailWithPermissions {
-  return {
-    id: 9,
-    referent_id: 5,
-    referent: { id: 5, name: 'Mario Rossi' },
-    withholding_enabled: true,
-    withholding_rate: '23.00',
-    withholding_base_percent: '50.00',
-    enasarco_enabled: false,
-    enasarco_mandate_type: null,
-    vat_rate_id: null,
-    vat_rate: null,
-    valid_from: '2026-01-01',
-    valid_until: null,
-    notes: null,
-    created_at: '2026-10-12T08:00:00Z',
-    updated_at: '2026-10-12T08:00:00Z',
-    permissions: PERMISSIONS,
-    ...overrides,
-  }
-}
-
-function unprocessable(errors: Record<string, string[]>) {
-  return new AxiosError('Unprocessable', '422', undefined, undefined, {
-    status: 422,
-    data: { success: false, message: 'Validation failed', errors },
-  } as never)
-}
-
-function renderEdit(onSuccess = vi.fn(), overrides: Partial<AgentFiscalProfileDetailWithPermissions> = {}) {
-  return render(
-    <AgentFiscalProfileForm mode={{ type: 'edit', profile: profile(overrides) }} onSuccess={onSuccess} onCancel={vi.fn()} />,
-    { wrapper: wrapper() },
-  )
+  return render(<AgentFiscalProfileForm onSuccess={onSuccess} onCancel={onCancel} />, {
+    wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+  })
 }
 
 beforeAll(async () => {
@@ -97,106 +62,60 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
-  apiMocks.create.mockReset()
-  apiMocks.update.mockReset()
+  createMock.mockReset()
+  useMeta.mockReturnValue({ data: { permissions: PERMISSIONS }, isError: false, refetch: vi.fn() })
 })
 
-describe('AgentFiscalProfileForm - conditional fields (spec 0212 AC-020)', () => {
-  it('shows the rates while the withholding is on and hides them when switched off', () => {
-    renderEdit()
+describe('AgentFiscalProfileForm - create draft (spec 0264 D-4)', () => {
+  it('starts with every row closed', () => {
+    renderForm()
 
-    expect(screen.getByLabelText(/^Withholding rate/)).toHaveValue(23)
-    expect(screen.getByLabelText(/^Taxable base/)).toHaveValue(50)
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'New fiscal profile' })).toBeInTheDocument()
+  })
 
+  it('shows the rates only while the withholding switch of its row is on', () => {
+    renderForm()
+
+    openRow('Withholding')
+    expect(screen.getByLabelText(/^Withholding rate/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('switch', { name: /^Apply withholding tax/ }))
 
     expect(screen.queryByLabelText(/^Withholding rate/)).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/^Taxable base/)).not.toBeInTheDocument()
   })
 
-  it('shows the mandate type only while ENASARCO is on', () => {
-    renderEdit()
-    expect(screen.queryByRole('combobox', { name: /^Mandate type/ })).not.toBeInTheDocument()
+  it('shows the errors on the closed rows and does not call the API when required data is missing', async () => {
+    renderForm()
 
-    fireEvent.click(screen.getByRole('switch', { name: /^Apply ENASARCO/ }))
+    save()
 
-    expect(screen.getByRole('combobox', { name: /^Mandate type/ })).toBeInTheDocument()
+    expect(await screen.findByText('The start date is required.')).toHaveAttribute('role', 'alert')
+    expect(screen.getByText('The agent is required.')).toBeInTheDocument()
+    expect(createMock).not.toHaveBeenCalled()
   })
-})
 
-describe('AgentFiscalProfileForm - create', () => {
-  it('does not call the API and flags the missing fields accessibly', async () => {
-    render(<AgentFiscalProfileForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    const validFrom = await screen.findByLabelText(/^Valid from/)
-    await waitFor(() => expect(validFrom).toHaveAttribute('aria-invalid', 'true'))
-    const message = screen.getByText('The start date is required.')
-    expect(message).toHaveAttribute('role', 'alert')
-    expect(validFrom.getAttribute('aria-describedby')).toContain(message.id)
-    expect(apiMocks.create).not.toHaveBeenCalled()
-  })
-})
-
-describe('AgentFiscalProfileForm - edit', () => {
-  it('submits the whole resource to the update endpoint with the profile id', async () => {
-    apiMocks.update.mockResolvedValue(profile({ notes: 'ok' }))
+  it('posts the whole draft on Save', async () => {
+    createMock.mockResolvedValue({ id: 9 })
     const onSuccess = vi.fn()
-    renderEdit(onSuccess)
+    renderForm(onSuccess)
 
-    fireEvent.change(screen.getByLabelText(/^Notes/), { target: { value: 'ok' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    await waitFor(() => expect(apiMocks.update).toHaveBeenCalledTimes(1))
-    expect(apiMocks.update).toHaveBeenCalledWith(9, {
-      referent_id: 5,
-      withholding_enabled: true,
-      withholding_rate: 23,
-      withholding_base_percent: 50,
-      enasarco_enabled: false,
-      enasarco_mandate_type: null,
-      vat_rate_id: null,
-      valid_from: '2026-01-01',
-      valid_until: null,
-      notes: 'ok',
-    })
-    await waitFor(() => expect(onSuccess).toHaveBeenCalled())
-  })
-
-  it('shows the server overlapping-validity error on valid_from with the accessible error triad', async () => {
-    const overlapping = 'The validity overlaps another profile of this agent.'
-    apiMocks.update.mockRejectedValue(unprocessable({ valid_from: [overlapping] }))
-    renderEdit()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-
-    const message = await screen.findByText(overlapping)
-    expect(message).toHaveAttribute('role', 'alert')
-    const validFrom = screen.getByLabelText(/^Valid from/)
-    expect(validFrom).toHaveAttribute('aria-invalid', 'true')
-    expect(validFrom.getAttribute('aria-describedby')).toContain(message.id)
-  })
-})
-
-describe('AgentFiscalProfileForm - create submit', () => {
-  it('posts the payload to the create endpoint', async () => {
-    apiMocks.create.mockResolvedValue(profile())
-    const onSuccess = vi.fn()
-    render(<AgentFiscalProfileForm mode={{ type: 'create' }} onSuccess={onSuccess} onCancel={vi.fn()} />, {
-      wrapper: wrapper(),
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'Pick referent' }))
+    openRow('Agent')
+    fireEvent.click(screen.getByRole('button', { name: 'Pick Agent' }))
+    applyRow()
+    expect(screen.getByRole('heading', { name: 'Name 5' })).toBeInTheDocument()
+    openRow('Validity')
     fireEvent.change(screen.getByLabelText(/^Valid from/), { target: { value: '2026-02-01' } })
+    applyRow()
+    openRow('Withholding')
     fireEvent.change(screen.getByLabelText(/^Withholding rate/), { target: { value: '20' } })
     fireEvent.change(screen.getByLabelText(/^Taxable base/), { target: { value: '50' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    applyRow()
+    save()
 
-    await waitFor(() => expect(apiMocks.create).toHaveBeenCalledTimes(1))
-    expect(apiMocks.create).toHaveBeenCalledWith({
+    await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
+    expect(createMock).toHaveBeenCalledWith({
       referent_id: 5,
       withholding_enabled: true,
       withholding_rate: 20,
@@ -208,7 +127,15 @@ describe('AgentFiscalProfileForm - create submit', () => {
       valid_until: null,
       notes: null,
     })
-    expect(apiMocks.update).not.toHaveBeenCalled()
     await waitFor(() => expect(onSuccess).toHaveBeenCalled())
+  })
+
+  it('Cancel leaves the form through onCancel', () => {
+    const onCancel = vi.fn()
+    renderForm(vi.fn(), onCancel)
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[0])
+
+    expect(onCancel).toHaveBeenCalled()
   })
 })

@@ -37,7 +37,7 @@ export interface EnasarcoParameterPayload {
   notes: string | null
 }
 
-/** Discriminated form mode shared by the form hook/meta-resolver and the form component. */
+/** Discriminated mode of the form hook: the create draft or the detail's in-place rows. */
 export type EnasarcoParameterFormMode =
   | { type: 'create' }
   | { type: 'edit'; parameter: EnasarcoParameterDetailWithPermissions }

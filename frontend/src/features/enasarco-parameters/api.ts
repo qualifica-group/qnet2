@@ -29,12 +29,16 @@ export async function createEnasarcoParameter(payload: EnasarcoParameterPayload)
   return data.data
 }
 
+/** Partial PATCH (spec 0264 D-1): fields left out keep their saved value. */
 export async function updateEnasarcoParameter(
   id: number,
-  payload: EnasarcoParameterPayload,
-): Promise<EnasarcoParameterDetail> {
-  const { data } = await apiClient.put<ApiResponse<EnasarcoParameterDetail>>(`${ENDPOINT}/${id}`, payload)
-  return data.data
+  payload: Partial<EnasarcoParameterPayload>,
+): Promise<EnasarcoParameterDetailWithPermissions> {
+  const { data } = await apiClient.patch<ApiResponseWithPermissions<EnasarcoParameterDetail, ResourcePermissions>>(
+    `${ENDPOINT}/${id}`,
+    payload,
+  )
+  return { ...data.data, permissions: data.permissions }
 }
 
 /** 204 without body; 409 when the year is used by an issued settlement. */

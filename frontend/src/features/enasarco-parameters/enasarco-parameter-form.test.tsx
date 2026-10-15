@@ -17,9 +17,22 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
 
 const PERMISSIONS: ResourcePermissions = { resource: {}, fields: {}, actions: {} } as unknown as ResourcePermissions
 
-vi.mock('@/features/enasarco-parameters/use-enasarco-parameter-form-meta', () => ({
-  useEnasarcoParameterFormMeta: () => ({ status: 'ready', permissions: PERMISSIONS }),
+vi.mock('@/features/authorization/use-resource-meta', () => ({
+  useResourceMeta: () => ({ data: { permissions: PERMISSIONS }, isError: false, refetch: vi.fn() }),
 }))
+
+const openRow = (label: string) =>
+  fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: label }) }))
+const applyRow = () => fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.apply') }))
+const save = () => fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
+
+/** Each value goes in through its own closed row (spec 0264 D-5: the create form replicates the detail). */
+function enter(label: string, value: string) {
+  openRow(label)
+  // One row open at a time: its input is the only one on screen.
+  fireEvent.change(screen.getByRole('spinbutton'), { target: { value } })
+  applyRow()
+}
 
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -33,12 +46,12 @@ function unprocessable(errors: Record<string, string[]>) {
   } as never)
 }
 
-function fill() {
-  fireEvent.change(screen.getByLabelText(/^Year/), { target: { value: '2026' } })
-  fireEvent.change(screen.getByLabelText(/^Total rate/), { target: { value: '17' } })
-  fireEvent.change(screen.getByLabelText(/^Agent share/), { target: { value: '50' } })
-  fireEvent.change(screen.getByLabelText(/^Single-firm ceiling/), { target: { value: '13000' } })
-  fireEvent.change(screen.getByLabelText(/^Multi-firm ceiling/), { target: { value: '26000' } })
+function fill(year = '2026') {
+  enter('Year', year)
+  enter('Total rate (%)', '17')
+  enter('Agent share (%)', '50')
+  enter('Single-firm ceiling', '13000')
+  enter('Multi-firm ceiling', '26000')
 }
 
 beforeAll(async () => {
@@ -49,31 +62,52 @@ beforeEach(() => {
   apiMocks.create.mockReset()
 })
 
-describe('EnasarcoParameterForm (spec 0213 AC-023)', () => {
-  it('flags an out-of-range year accessibly without calling the API', async () => {
-    render(<EnasarcoParameterForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
+describe('EnasarcoParameterForm - create draft (spec 0213 AC-023, spec 0264 D-5)', () => {
+  it('starts with every row closed', () => {
+    render(<EnasarcoParameterForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
+
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'New year' })).toBeInTheDocument()
+  })
+
+  it('flags an out-of-range year on its closed row without calling the API', async () => {
+    render(<EnasarcoParameterForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
+
+    fill('1999')
+    save()
+
+    const message = await screen.findByText('Enter a year between 2000 and 2100.')
+    expect(message).toHaveAttribute('role', 'alert')
+    expect(apiMocks.create).not.toHaveBeenCalled()
+  })
+
+  it('posts the whole draft on Save', async () => {
+    apiMocks.create.mockResolvedValue({ id: 3 })
+    render(<EnasarcoParameterForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
     fill()
-    fireEvent.change(screen.getByLabelText(/^Year/), { target: { value: '1999' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    save()
 
-    const year = screen.getByLabelText(/^Year/)
-    await waitFor(() => expect(year).toHaveAttribute('aria-invalid', 'true'))
-    const message = screen.getByText('Enter a year between 2000 and 2100.')
-    expect(message).toHaveAttribute('role', 'alert')
-    expect(year.getAttribute('aria-describedby')).toContain(message.id)
-    expect(apiMocks.create).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(apiMocks.create).toHaveBeenCalledWith({
+        year: 2026,
+        total_rate: 17,
+        agent_share_percent: 50,
+        single_firm_ceiling: 13000,
+        multi_firm_ceiling: 26000,
+        notes: null,
+      }),
+    )
   })
 
   it('shows the server 422 of a duplicated year on the year field', async () => {
     apiMocks.create.mockRejectedValue(unprocessable({ year: ['The year has already been taken.'] }))
-    render(<EnasarcoParameterForm mode={{ type: 'create' }} onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
+    render(<EnasarcoParameterForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
     fill()
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    save()
 
     const message = await screen.findByText('The year has already been taken.')
     expect(message).toHaveAttribute('role', 'alert')
-    expect(screen.getByLabelText(/^Year/)).toHaveAttribute('aria-invalid', 'true')
   })
 })

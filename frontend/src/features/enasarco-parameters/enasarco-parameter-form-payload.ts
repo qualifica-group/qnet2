@@ -35,3 +35,19 @@ export function buildEnasarcoParameterPayload(values: EnasarcoParameterSchemaOut
     notes: notes === '' ? null : notes,
   }
 }
+
+/** The fields an in-place row changed (spec 0264 D-5): the saved record is the baseline, the PATCH keeps the rest. */
+export function buildEnasarcoParameterUpdatePayload(
+  values: EnasarcoParameterSchemaOutput,
+  parameter: EnasarcoParameterDetail,
+): Partial<EnasarcoParameterPayload> {
+  const next = buildEnasarcoParameterPayload(values)
+  const saved = buildEnasarcoParameterPayload(toFormValues(parameter))
+  const changed: Partial<Record<keyof EnasarcoParameterPayload, unknown>> = {}
+  for (const key of Object.keys(next) as (keyof EnasarcoParameterPayload)[]) {
+    if (next[key] !== saved[key]) {
+      changed[key] = next[key]
+    }
+  }
+  return changed as Partial<EnasarcoParameterPayload>
+}

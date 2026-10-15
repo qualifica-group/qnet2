@@ -13,7 +13,9 @@ use Illuminate\Validation\Rule;
 /**
  * Validates the payload of POST /api/enasarco-parameters and of
  * PUT/PATCH /api/enasarco-parameters/{enasarcoParameter} (spec 0213, D-3):
- * both take the same full body. Authorization stays in the controller (Policy).
+ * POST and PUT take the full body; PATCH is partial (spec 0264, D-1): the
+ * fields it omits keep their saved value, then the same rules run.
+ * Authorization stays in the controller (Policy).
  */
 class EnasarcoParameterRequest extends FormRequest
 {
@@ -28,6 +30,29 @@ class EnasarcoParameterRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    /**
+     * Spec 0264, D-1: on PATCH the saved values sit UNDER the input (input wins).
+     */
+    protected function prepareForValidation(): void
+    {
+        $parameter = $this->parameter();
+
+        if ($parameter === null || ! $this->isMethod('PATCH')) {
+            return;
+        }
+
+        $stored = [
+            'year' => $parameter->year,
+            'total_rate' => $parameter->total_rate,
+            'agent_share_percent' => $parameter->agent_share_percent,
+            'single_firm_ceiling' => $parameter->single_firm_ceiling,
+            'multi_firm_ceiling' => $parameter->multi_firm_ceiling,
+            'notes' => $parameter->notes,
+        ];
+
+        $this->merge(array_diff_key($stored, $this->all()));
     }
 
     /**

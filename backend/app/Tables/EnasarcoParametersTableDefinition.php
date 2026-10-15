@@ -2,12 +2,15 @@
 
 namespace App\Tables;
 
+use App\Http\Requests\EnasarcoParameters\EnasarcoParameterRequest;
 use App\Models\EnasarcoParameter;
 use App\Models\User;
 use App\Services\EnasarcoParameterService;
+use App\Services\Table\FormRequestCellValidator;
 use App\Tables\EnasarcoParameters\EnasarcoParameterColumnCatalog as Catalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -18,7 +21,24 @@ use Illuminate\Support\Facades\Gate;
  */
 class EnasarcoParametersTableDefinition extends AbstractTableDefinition
 {
-    public function __construct(private readonly EnasarcoParameterService $service) {}
+    public function __construct(
+        private readonly EnasarcoParameterService $service,
+        private readonly FormRequestCellValidator $cells,
+    ) {}
+
+    /**
+     * Spec 0264, D-3: a cell edit follows the parameter's own FormRequest
+     * (partial PATCH merge, unique year) and service.
+     */
+    public function updateCell(Model $row, string $columnId, mixed $value): Model
+    {
+        /** @var EnasarcoParameter $row */
+        /** @var User $actor */
+        $actor = Auth::user();
+        $request = $this->cells->validate(EnasarcoParameterRequest::class, 'enasarcoParameter', $row, $actor, [$columnId => $value]);
+
+        return $this->service->update($row, $request->toData());
+    }
 
     public function domain(): string
     {

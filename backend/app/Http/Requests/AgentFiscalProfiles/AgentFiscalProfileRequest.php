@@ -15,9 +15,11 @@ use Illuminate\Validation\Rule;
 /**
  * Validates the payload of POST /api/agent-fiscal-profiles and of
  * PUT/PATCH /api/agent-fiscal-profiles/{agentFiscalProfile} (spec 0212, D-8):
- * both take the same full body. Rate/base are required only with the
- * withholding switch on, the mandate type only with ENASARCO on, and both are
- * refused otherwise. Authorization stays in the controller (Policy).
+ * POST and PUT take the full body; PATCH is partial (spec 0264, D-1): the
+ * fields it omits keep their saved value, then the same rules run. Rate/base
+ * are required only with the withholding switch on, the mandate type only
+ * with ENASARCO on, and both are refused otherwise. Authorization stays in
+ * the controller (Policy).
  */
 class AgentFiscalProfileRequest extends FormRequest
 {
@@ -28,6 +30,34 @@ class AgentFiscalProfileRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    /**
+     * Spec 0264, D-1: on PATCH the saved values sit UNDER the input (input
+     * wins), so the cross rules judge the resulting profile, not the fragment.
+     */
+    protected function prepareForValidation(): void
+    {
+        $profile = $this->profile();
+
+        if ($profile === null || ! $this->isMethod('PATCH')) {
+            return;
+        }
+
+        $stored = [
+            'referent_id' => $profile->referent_id,
+            'withholding_enabled' => $profile->withholding_enabled,
+            'withholding_rate' => $profile->withholding_rate,
+            'withholding_base_percent' => $profile->withholding_base_percent,
+            'enasarco_enabled' => $profile->enasarco_enabled,
+            'enasarco_mandate_type' => $profile->enasarco_mandate_type?->value,
+            'vat_rate_id' => $profile->vat_rate_id,
+            'valid_from' => $profile->valid_from?->format('Y-m-d'),
+            'valid_until' => $profile->valid_until?->format('Y-m-d'),
+            'notes' => $profile->notes,
+        ];
+
+        $this->merge(array_diff_key($stored, $this->all()));
     }
 
     /**

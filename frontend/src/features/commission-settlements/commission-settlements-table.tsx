@@ -8,7 +8,7 @@ import { ResourceActivityDialog } from '@/features/activity-log/resource-activit
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
-import { CommissionAdjustmentDialog } from '@/features/commission-settlements/commission-adjustment-dialog'
+import { CommissionAdjustmentSheet } from '@/features/commission-settlements/commission-adjustment-sheet'
 import { commissionSettlementColumnRenderers } from '@/features/commission-settlements/column-renderers'
 import { CommissionSettlementDetailSheet } from '@/features/commission-settlements/commission-settlement-detail-sheet'
 import { CommissionSettlementQuickFilterToolbar } from '@/features/commission-settlements/commission-settlement-quick-filter-toolbar'
@@ -66,7 +66,7 @@ export function CommissionSettlementsTable() {
       />
 
       <CommissionSettlementDetailSheet settlementId={viewId} onClose={() => setViewId(null)} onChanged={refreshGrid} />
-      <CommissionAdjustmentDialog
+      <CommissionAdjustmentSheet
         mode={adjusting ? { type: 'standalone' } : null}
         onClose={() => setAdjusting(false)}
         onSaved={refreshGrid}

@@ -1,70 +1,87 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Percent } from 'lucide-react'
-import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
-import {
-  RecordCanvas,
-  RecordCardHeader,
-  RecordField,
-  RecordFieldList,
-  RecordMeta,
-  RecordSection,
-  RecordSectionsGrid,
-} from '@/components/detail/record-panel'
+import { DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordCanvas, RecordCardHeader, RecordMeta } from '@/components/detail/record-panel'
 import { RecordBody } from '@/components/detail/record-body'
-import { RecordEditButton } from '@/components/detail/record-edit-button'
+import { useInlineEditingField, useRecordInlineEdit } from '@/components/record-form/use-record-inline-edit'
+import { Form } from '@/components/ui/form'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import { formatEuro } from '@/features/invoices/invoice-format'
+import { EnasarcoParameterSections } from '@/features/enasarco-parameters/enasarco-parameter-rows'
+import type {
+  EnasarcoParameterFormValues,
+  EnasarcoParameterSchemaOutput,
+} from '@/features/enasarco-parameters/enasarco-parameter-schema'
+import { useEnasarcoParameterForm } from '@/features/enasarco-parameters/use-enasarco-parameter-form'
 import {
   ENASARCO_PARAMETERS_DOMAIN,
   type EnasarcoParameterDetailWithPermissions,
+  type EnasarcoParameterFormMode,
 } from '@/features/enasarco-parameters/types'
 
 interface EnasarcoParameterDetailViewProps {
   parameter: EnasarcoParameterDetailWithPermissions
-  /** Opens the module's edit surface; absent = no edit affordance. */
-  onEdit?: () => void
+  /** Called after an in-place save, so the host refreshes whatever lists the record. */
+  onChanged?: () => void
 }
 
-/** Read-only record view of the ENASARCO parameters of one year. */
-export function EnasarcoParameterDetailView({ parameter, onEdit }: EnasarcoParameterDetailViewProps) {
+/**
+ * Detail of the ENASARCO parameters of one year on the record kit (spec 0264
+ * D-5): there is no edit page, every row edits IN PLACE and saves alone.
+ */
+export function EnasarcoParameterDetailView(props: EnasarcoParameterDetailViewProps) {
+  // The rows read the field permissions, so the provider wraps the whole detail.
+  return (
+    <ResourcePermissionsProvider permissions={props.parameter.permissions}>
+      <EnasarcoParameterDetailContent {...props} />
+    </ResourcePermissionsProvider>
+  )
+}
+
+function EnasarcoParameterDetailContent({ parameter, onChanged }: EnasarcoParameterDetailViewProps) {
   const { t } = useTranslation()
+  const editing = useInlineEditingField()
+  // Stable per saved record: the form re-syncs its values on a new one.
+  const mode = useMemo<EnasarcoParameterFormMode>(() => ({ type: 'edit', parameter }), [parameter])
+  const { form, onSubmit, serverError, clearServerError } = useEnasarcoParameterForm({
+    mode,
+    onSuccess: () => {
+      editing.close()
+      onChanged?.()
+    },
+  })
+  const inline = useRecordInlineEdit<EnasarcoParameterFormValues, EnasarcoParameterSchemaOutput>({
+    editing,
+    form,
+    onSubmit,
+    serverError,
+    clearServerError,
+    genericErrorMessage: t('enasarcoParameters.form.genericError'),
+  })
   const createdAt = formatDateTime(parameter.created_at)
   const updatedAt = formatDateTime(parameter.updated_at)
-  const canEdit = parameter.permissions.resource.update
-  const canViewActivity = parameter.permissions.actions.view_activity
 
   return (
     <RecordCanvas>
       <RecordBody
-        collaborationTabs={canViewActivity ? [activityLogTab(ENASARCO_PARAMETERS_DOMAIN, parameter.id, t('activityLog.title'))] : []}
+        collaborationTabs={
+          parameter.permissions.actions.view_activity
+            ? [activityLogTab(ENASARCO_PARAMETERS_DOMAIN, parameter.id, t('activityLog.title'))]
+            : []
+        }
         header={
           <RecordCardHeader
             media={<DetailMonogram name={String(parameter.year)} icon={<Percent />} />}
             title={t('enasarcoParameters.detail.title', { year: parameter.year })}
-            actions={canEdit && onEdit ? <RecordEditButton onClick={onEdit} /> : null}
           />
         }
       >
-        <RecordSectionsGrid>
-          <RecordSection title={t('enasarcoParameters.detail.parameters')} full>
-            <RecordFieldList>
-              <RecordField label={t('enasarcoParameters.detail.total_rate')}>{`${parameter.total_rate}%`}</RecordField>
-              <RecordField label={t('enasarcoParameters.detail.agent_share_percent')}>
-                {`${parameter.agent_share_percent}%`}
-              </RecordField>
-              <RecordField label={t('enasarcoParameters.detail.single_firm_ceiling')}>
-                {formatEuro(parameter.single_firm_ceiling)}
-              </RecordField>
-              <RecordField label={t('enasarcoParameters.detail.multi_firm_ceiling')}>
-                {formatEuro(parameter.multi_firm_ceiling)}
-              </RecordField>
-              <RecordField label={t('enasarcoParameters.detail.notes')}>
-                {parameter.notes ? parameter.notes : <DetailEmpty />}
-              </RecordField>
-            </RecordFieldList>
-          </RecordSection>
-        </RecordSectionsGrid>
+        {/* Provider only (no DOM): the in-place rows share the edit form. */}
+        <Form {...form}>
+          <EnasarcoParameterSections inline={inline} canEdit={parameter.permissions.resource.update} />
+        </Form>
       </RecordBody>
 
       {createdAt || updatedAt ? (

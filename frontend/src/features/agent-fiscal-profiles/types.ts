@@ -3,6 +3,7 @@
  * spec 0212 (`agent_fiscal_profiles`).
  */
 
+import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import type { ResourcePermissions } from '@/features/authorization/types'
 
 /** Domain key shared by the table, the module registry and the ability checks. */
@@ -51,7 +52,13 @@ export interface AgentFiscalProfilePayload {
   notes: string | null
 }
 
-/** Discriminated form mode shared by the form hook/meta-resolver and the form component. */
+/** Discriminated mode of the form hook: the create draft or the detail's in-place rows. */
 export type AgentFiscalProfileFormMode =
   | { type: 'create' }
   | { type: 'edit'; profile: AgentFiscalProfileDetailWithPermissions }
+
+/** The `{id, name}` the relation rows show closed: from the saved detail, or resolved for the create draft. */
+export interface AgentFiscalProfileRefs {
+  referent: RelationFieldRef | null
+  vatRate: RelationFieldRef | null
+}

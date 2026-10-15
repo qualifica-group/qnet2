@@ -1,148 +1,55 @@
-import { IdCard, Landmark, Percent, ReceiptEuro } from 'lucide-react'
+import { IdCard } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { FormSection } from '@/components/form-section'
-import { RelationSelectField } from '@/components/form/relation-select-field'
-import { Button } from '@/components/ui/button'
-import { Form, FormControl } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { MetaField } from '@/features/authorization/MetaField'
-import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
-import { VAT_RATES_FOR_SELECT_RESOURCE } from '@/features/vat-rates/for-select-api'
+import { DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordCreateLayout } from '@/components/record-form/record-create-layout'
+import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
+import { Form } from '@/components/ui/form'
+import { AgentFiscalProfileSections } from '@/features/agent-fiscal-profiles/agent-fiscal-profile-rows'
+import { useAgentFiscalProfileDraftRefs } from '@/features/agent-fiscal-profiles/use-agent-fiscal-profile-draft-refs'
 import { useAgentFiscalProfileForm } from '@/features/agent-fiscal-profiles/use-agent-fiscal-profile-form'
-import {
-  EnasarcoFields,
-  WithholdingFields,
-} from '@/features/agent-fiscal-profiles/agent-fiscal-profile-tax-fields'
-import type { AgentFiscalProfileDetail, AgentFiscalProfileFormMode } from '@/features/agent-fiscal-profiles/types'
+import type { AgentFiscalProfileDetail } from '@/features/agent-fiscal-profiles/types'
+
+/** DOM id bridging the header's and the footer's save actions to the RHF `<form>`. */
+const AGENT_FISCAL_PROFILE_FORM_ID = 'agent-fiscal-profile-form'
+
+const CREATE_MODE = { type: 'create' } as const
 
 interface AgentFiscalProfileFormBodyProps {
-  mode: AgentFiscalProfileFormMode
   onSuccess: (profile: AgentFiscalProfileDetail) => void
   onCancel: () => void
 }
 
 /**
- * The agent fiscal profile create/edit form UI. Every field is wrapped in
- * `MetaField` (hidden means absent, non-editable means disabled); the
- * withholding rates and the mandate type only render while their switch is
- * on. All non-render logic lives in `useAgentFiscalProfileForm`.
+ * The create form as a replica of the detail (spec 0264 D-4): the same rows,
+ * closed until clicked (Fatto/Ripristina, nothing saved per row); Salva
+ * validates and creates everything at once.
  */
-export function AgentFiscalProfileFormBody({ mode, onSuccess, onCancel }: AgentFiscalProfileFormBodyProps) {
+export function AgentFiscalProfileFormBody({ onSuccess, onCancel }: AgentFiscalProfileFormBodyProps) {
   const { t } = useTranslation()
-  const { form, serverError, onSubmit } = useAgentFiscalProfileForm({ mode, onSuccess })
-  const profile = mode.type === 'edit' ? mode.profile : null
-  const control = form.control
+  const { form, serverError, onSubmit } = useAgentFiscalProfileForm({ mode: CREATE_MODE, onSuccess })
+  const draft = useDraftInlineEdit(form)
+  const refs = useAgentFiscalProfileDraftRefs(form)
+  const heading = refs.referent?.name ?? t('agentFiscalProfiles.form.newProfile')
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 p-4" noValidate>
-          <FormSection
-            icon={IdCard}
-            title={t('agentFiscalProfiles.form.sections.validity.title')}
-            description={t('agentFiscalProfiles.form.sections.validity.description')}
-          >
-            <RelationSelectField
-              control={control}
-              name="referent_id"
-              metaKey="referent_id"
-              label={t('agentFiscalProfiles.form.referent')}
-              resource={REFERENTS_FOR_SELECT_RESOURCE}
-              searchPlaceholder={t('agentFiscalProfiles.form.referentSearch')}
-              selected={profile?.referent ?? null}
-              placeholder={t('agentFiscalProfiles.form.referentPlaceholder')}
-              emptyLabel={t('agentFiscalProfiles.form.referentEmpty')}
-              errorLabel={t('agentFiscalProfiles.form.referentError')}
-              clearLabel={t('common.clear')}
-              retryLabel={t('common.retry')}
-              required
-            />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <MetaField control={control} name="valid_from" metaKey="valid_from" label={t('agentFiscalProfiles.form.validFrom')} required>
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input type="date" disabled={disabled} readOnly={readOnly} {...field} />
-                  </FormControl>
-                )}
-              </MetaField>
-              <MetaField control={control} name="valid_until" metaKey="valid_until" label={t('agentFiscalProfiles.form.validUntil')}>
-                {({ field, disabled, readOnly }) => (
-                  <FormControl>
-                    <Input type="date" disabled={disabled} readOnly={readOnly} {...field} />
-                  </FormControl>
-                )}
-              </MetaField>
-            </div>
-          </FormSection>
-
-          <FormSection
-            icon={Percent}
-            title={t('agentFiscalProfiles.form.sections.withholding.title')}
-            description={t('agentFiscalProfiles.form.sections.withholding.description')}
-          >
-            <WithholdingFields control={control} />
-          </FormSection>
-
-          <FormSection
-            icon={Landmark}
-            title={t('agentFiscalProfiles.form.sections.enasarco.title')}
-            description={t('agentFiscalProfiles.form.sections.enasarco.description')}
-          >
-            <EnasarcoFields control={control} />
-          </FormSection>
-
-          <FormSection
-            icon={ReceiptEuro}
-            title={t('agentFiscalProfiles.form.sections.vat.title')}
-            description={t('agentFiscalProfiles.form.sections.vat.description')}
-          >
-            <RelationSelectField
-              control={control}
-              name="vat_rate_id"
-              metaKey="vat_rate_id"
-              label={t('agentFiscalProfiles.form.vatRate')}
-              resource={VAT_RATES_FOR_SELECT_RESOURCE}
-              searchPlaceholder={t('agentFiscalProfiles.form.vatRateSearch')}
-              selected={profile?.vat_rate ?? null}
-              placeholder={t('agentFiscalProfiles.form.vatRatePlaceholder')}
-              emptyLabel={t('agentFiscalProfiles.form.vatRateEmpty')}
-              errorLabel={t('agentFiscalProfiles.form.vatRateError')}
-              clearLabel={t('common.clear')}
-              retryLabel={t('common.retry')}
-            />
-          </FormSection>
-
-          <MetaField control={control} name="notes" metaKey="notes" label={t('agentFiscalProfiles.form.notes')}>
-            {({ field, disabled, readOnly }) => (
-              <FormControl>
-                <Textarea disabled={disabled} readOnly={readOnly} {...field} />
-              </FormControl>
-            )}
-          </MetaField>
-
-          {serverError && (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {serverError}
-            </p>
-          )}
-
-          <div className="mt-auto flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="bg-card"
-              onClick={onCancel}
-              disabled={form.formState.isSubmitting}
-            >
-              {t('agentFiscalProfiles.form.cancel')}
-            </Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? t('agentFiscalProfiles.form.saving') : t('agentFiscalProfiles.form.save')}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </div>
+    <Form {...form}>
+      <RecordCreateLayout
+        formId={AGENT_FISCAL_PROFILE_FORM_ID}
+        onSubmit={form.handleSubmit(onSubmit)}
+        title={heading}
+        subtitle={t('agentFiscalProfiles.form.createSubtitle')}
+        media={<DetailMonogram name={heading} icon={<IdCard />} />}
+        isSubmitting={form.formState.isSubmitting}
+        serverError={serverError}
+        onCancel={onCancel}
+        labels={{
+          save: t('agentFiscalProfiles.form.save'),
+          saving: t('agentFiscalProfiles.form.saving'),
+          cancel: t('common.cancel'),
+        }}
+      >
+        <AgentFiscalProfileSections inline={draft} canEdit refs={refs} />
+      </RecordCreateLayout>
+    </Form>
   )
 }

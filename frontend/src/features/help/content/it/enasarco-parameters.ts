@@ -41,6 +41,24 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'edit',
+      title: 'Modificare i parametri',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Non c’è una pagina di modifica: nella scheda dell’anno clicca la **matita** accanto al valore, cambialo e conferma con **Salva**; **Annulla** ripristina il valore. Ogni riga si salva da sola.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Nella lista puoi modificare direttamente in cella **Anno**, **Aliquota totale**, **Quota agente** e i due **massimali**. Le stesse regole valgono ovunque: un anno già presente o una percentuale oltre 100 vengono rifiutati.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Il nuovo anno si crea con la stessa scheda: apri le righe, confermale con **Fatto** e premi **Salva**. Se esci senza salvare ti viene chiesta conferma.',
+        },
+      ],
+    },
+    {
       id: 'in-development',
       title: 'Modulo in sviluppo',
       blocks: [

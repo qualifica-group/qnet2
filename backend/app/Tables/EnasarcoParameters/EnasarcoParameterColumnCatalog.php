@@ -2,6 +2,8 @@
 
 namespace App\Tables\EnasarcoParameters;
 
+use App\Tables\Support\EditableColumns;
+
 /**
  * Declarative column/filter/action catalogue of the `enasarco-parameters`
  * table (spec 0213): every column is a real column, handled by the generic
@@ -16,14 +18,21 @@ final class EnasarcoParameterColumnCatalog
      */
     public static function columns(): array
     {
-        return [
+        return EditableColumns::apply([
             self::column('year', 'number', filter: 'number'),
             self::column('total_rate', 'number', filter: 'number'),
             self::column('agent_share_percent', 'number', filter: 'number'),
             self::column('single_firm_ceiling', 'number', filter: 'number'),
             self::column('multi_firm_ceiling', 'number', filter: 'number'),
             self::column('updated_at', 'date'),
-        ];
+        ], [
+            // Spec 0264, D-3: the notes stay on the record page.
+            'year' => [],
+            'total_rate' => [],
+            'agent_share_percent' => [],
+            'single_firm_ceiling' => [],
+            'multi_firm_ceiling' => [],
+        ]);
     }
 
     /**

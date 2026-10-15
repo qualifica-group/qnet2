@@ -3,6 +3,42 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0265 — Provvigioni agenti tappa 2: Estratti e Lanci allineati alle schede — VERDE, NON COMMITTATO (2026-10-15)
+
+- Spec `docs/specs/0265-commission-settlements-runs-record-alignment.xml` (D-1..D-3). Solo frontend.
+- Estratti: `commission-settlement-detail.tsx` su RecordBody (azioni in `RecordCardHeader.actions`, tab Attivita',
+  RecordMeta), "Nuova rettifica" come `action` della sezione Movimenti (tolta da `CommissionSettlementActions`, prop
+  `onAdjust` rimossa). Note = `CommissionSettlementNotesRow` (RecordInlineField + useRecordInlineEdit), `saveNotes`
+  ora `mutateAsync`, `isSavingNotes` rimosso, chiave `notes.save` rimossa. Rettifiche (D-2): `commission-adjustment-sheet.tsx` + `commission-adjustment-rows.tsx` sostituiscono
+  `commission-adjustment-dialog.tsx` (Estratti, Maturato, scheda estratto); `ForSelectFormField` ha `hideLabel`.
+  Nota: `formState.isDirty` va letto nel render (RHF traccia solo i flag letti) per la conferma d'uscita.
+- Lanci: `commission-settlement-run-detail-sheet.tsx` (Sheet + RecordCard) sostituisce `CommissionSettlementRunDetailDialog`;
+  `commission-settlement-run-result.tsx` esporta `RunCreatedTable` / `RunSkippedTable` (riusate anche dall'esito del
+  nuovo lancio). Maturato invariato.
+- Nuovo lancio (D-4): `commission-settlement-run-sheet.tsx` + `commission-settlement-run-rows.tsx` sostituiscono
+  `commission-settlement-run-dialogs.tsx` / `commission-settlement-run-form.tsx`; dopo il lancio mostra `RunRecord`
+  (esportato da detail-sheet). Rimossa `CommissionSettlementRunResultView` e la chiave `result.summary`.
+- Test aggiornati (REQUIREMENT CHANGED): note inline nel dettaglio estratto, dettaglio lancio in scheda laterale.
+- Guide IT/EN commission-settlements e commission-settlement-runs aggiornate. Manuale Claude Docs: da aggiornare a mano.
+
+## Spec 0264 — Provvigioni agenti tappa 1: Profili fiscali e Parametri ENASARCO inline — VERDE, NON COMMITTATO (2026-10-15)
+
+- Spec `docs/specs/0264-agent-fiscal-profiles-enasarco-inline-editing.xml` (D-1..D-6). Rinumerata da 0263: quel numero
+  e' della sessione parallela (0263-invoice-lines-inline-editing). Richiesta utente: modifica inline + allineamento
+  visivo di tutta la sezione Provvigioni agenti; tappa 2 (Estratti, Maturato, Lanci) ancora da specificare.
+- BE: `AgentFiscalProfileRequest` / `EnasarcoParameterRequest::prepareForValidation` (solo PATCH: salvato sotto
+  l'input). Celle: profili valid_from, valid_until, withholding_rate/base (solo ritenuta attiva), enasarco_mandate_type
+  (solo ENASARCO attivo), vat_rate (relazione `vat-rates`, editableField vat_rate_id) con `editable_columns` per riga
+  (`Catalog::rowEditableColumnIds`); ENASARCO year, total_rate, agent_share_percent, i due massimali. `updateCell` =
+  FormRequestCellValidator + service. `RelationValueScopeChecker` ramo `vat-rates`. Test: AgentFiscalProfileInlineEditTest,
+  EnasarcoParameterInlineEditTest. Nota: il PHP 8.4 di Laragon richiede `-d extension=pdo_sqlite -d extension=sqlite3`.
+- FE: schede sul kit (righe raggruppate Validita', Ritenuta, ENASARCO), creazione = replica (RecordCreateLayout +
+  useDraftInlineEdit + conferma d'uscita), registry `generateEditRoute: false`. `update*` = PATCH diff con permissions.
+  Kit: `useRecordInlineEdit` / `useDraftInlineEdit` accettano un 2o generico (valori validati, schema con transform).
+  Rimossi `use-*-form-meta.ts` dei due moduli e chiavi i18n orfane. Guide IT/EN aggiornate (sezione `edit`).
+- Manuale Claude Docs: connettore senza accesso al documento (non condiviso) -> aggiornare a mano Profili fiscali e
+  Parametri ENASARCO (modifica in scheda/cella, niente pagina di modifica).
+
 ## Spec 0263 — Righe fattura attiva e passiva modificabili nella scheda — VERDE, NON COMMITTATO (2026-10-15)
 
 - Spec `docs/specs/0263-invoice-lines-inline-editing.xml` (D-1..D-4). Richiesta utente: la finestra "Modifica

@@ -10,6 +10,8 @@ interface BaseProps {
   label: string
   placeholder: string
   required?: boolean
+  /** The row around it already shows the label (an in-place record row): keep it for assistive tech only. */
+  hideLabel?: boolean
 }
 
 interface SingleProps<TFieldValues extends FieldValues> extends BaseProps {
@@ -34,6 +36,7 @@ export function ForSelectFormField<TFieldValues extends FieldValues>({
   label,
   placeholder,
   required = false,
+  hideLabel = false,
 }: SingleProps<TFieldValues>) {
   const { t } = useTranslation()
   return (
@@ -42,7 +45,7 @@ export function ForSelectFormField<TFieldValues extends FieldValues>({
       name={name}
       render={({ field }) => (
         <FormItem className="gap-1">
-          <FormLabel required={required} className="text-xs">
+          <FormLabel required={required} className={hideLabel ? 'sr-only' : 'text-xs'}>
             {label}
           </FormLabel>
           <FormControl>
@@ -75,6 +78,7 @@ export function ForSelectMultiFormField<TFieldValues extends FieldValues>({
   resource,
   label,
   placeholder,
+  hideLabel = false,
 }: MultiProps<TFieldValues>) {
   const { t } = useTranslation()
   return (
@@ -83,7 +87,7 @@ export function ForSelectMultiFormField<TFieldValues extends FieldValues>({
       name={name}
       render={({ field }) => (
         <FormItem className="gap-1">
-          <FormLabel className="text-xs">{label}</FormLabel>
+          <FormLabel className={hideLabel ? 'sr-only' : 'text-xs'}>{label}</FormLabel>
           <FormControl>
             <AsyncPaginatedMultiSelect
               resource={resource}

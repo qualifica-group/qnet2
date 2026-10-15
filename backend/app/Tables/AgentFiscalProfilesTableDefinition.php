@@ -5,10 +5,12 @@ namespace App\Tables;
 use App\Authorization\AuthorizationRegistry;
 use App\DataObjects\Enums\EnumMeta;
 use App\Enums\EnasarcoMandateType;
+use App\Http\Requests\AgentFiscalProfiles\AgentFiscalProfileRequest;
 use App\Models\AgentFiscalProfile;
 use App\Models\Referent;
 use App\Models\User;
 use App\Services\AgentFiscalProfileService;
+use App\Services\Table\FormRequestCellValidator;
 use App\Tables\AgentFiscalProfiles\AgentFiscalProfileColumnCatalog as Catalog;
 use App\Tables\AgentFiscalProfiles\AgentFiscalProfileVatRateQuery;
 use Illuminate\Database\Eloquent\Builder;
@@ -45,7 +47,22 @@ class AgentFiscalProfilesTableDefinition extends AbstractTableDefinition
     public function __construct(
         private readonly AgentFiscalProfileService $service,
         private readonly AuthorizationRegistry $authorization,
+        private readonly FormRequestCellValidator $cells,
     ) {}
+
+    /**
+     * Spec 0264, D-2: a cell edit follows the profile's own FormRequest (partial
+     * PATCH merge, cross rules, overlap) and service, never the generic update.
+     */
+    public function updateCell(Model $row, string $columnId, mixed $value): Model
+    {
+        /** @var AgentFiscalProfile $row */
+        /** @var User $actor */
+        $actor = Auth::user();
+        $request = $this->cells->validate(AgentFiscalProfileRequest::class, 'agentFiscalProfile', $row, $actor, [$columnId => $value]);
+
+        return $this->service->update($row, $request->toData());
+    }
 
     public function domain(): string
     {
@@ -152,6 +169,8 @@ class AgentFiscalProfilesTableDefinition extends AbstractTableDefinition
             'valid_until' => $row->valid_until?->format('Y-m-d'),
             'is_current' => $this->isCurrent($row) ? Catalog::CURRENT_YES : Catalog::CURRENT_NO,
             'updated_at' => $row->updated_at,
+            // Spec 0264, D-2: the rates and the mandate type follow their switch.
+            'editable_columns' => Catalog::rowEditableColumnIds($row->withholding_enabled, $row->enasarco_enabled),
             'abilities' => [
                 'update' => Gate::forUser($actor)->allows('update', $row),
                 'delete' => Gate::forUser($actor)->allows('delete', $row),

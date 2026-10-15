@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Use **New fiscal profile** to create one; from a row you can open, edit or delete it. The profile valid at the **end date of a run period** is the one used to compute the agent statement; without a valid profile the agent is skipped.',
+          text: 'Use **New fiscal profile** to create one; from a row you can open or delete it; editing happens on the record or directly in the list cell. The profile valid at the **end date of a run period** is the one used to compute the agent statement; without a valid profile the agent is skipped.',
         },
       ],
     },
@@ -52,6 +52,28 @@ const guide: HelpGuide = {
         {
           type: 'tip',
           text: 'The **Current** column tells which profiles are valid today.',
+        },
+      ],
+    },
+    {
+      id: 'edit',
+      title: 'Editing a profile',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'There is no edit page: on the profile record hover the value and click the **pencil** (or the value itself), change it and confirm with **Save**; **Cancel** (or Esc) restores the value without saving. One row opens at a time and each save changes that row only.',
+        },
+        {
+          type: 'paragraph',
+          text: 'The data the system checks together share one row: **Validity** (Valid from and Valid until), **Withholding** (switch, rate and taxable base) and **ENASARCO** (switch and mandate type). If a save is refused, the reason shows on the open row.',
+        },
+        {
+          type: 'paragraph',
+          text: 'In the list you can edit **Valid from**, **Valid until**, **VAT rate** directly in the cell and, only on profiles with the matching switch on, **Withholding rate**, **Taxable base** and **Mandate type**. Agent and switches are changed on the record.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Creating a profile looks like the record too: open the rows one at a time, confirm each with **Done** (or **Revert** to go back) and finally press **Save**. Leaving without saving asks for confirmation.',
         },
       ],
     },

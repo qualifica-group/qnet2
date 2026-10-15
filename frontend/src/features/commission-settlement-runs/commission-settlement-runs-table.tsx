@@ -8,10 +8,8 @@ import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { commissionSettlementRunColumnRenderers } from '@/features/commission-settlement-runs/column-renderers'
-import {
-  CommissionSettlementRunDetailDialog,
-  CommissionSettlementRunDialog,
-} from '@/features/commission-settlement-runs/commission-settlement-run-dialogs'
+import { CommissionSettlementRunSheet } from '@/features/commission-settlement-runs/commission-settlement-run-sheet'
+import { CommissionSettlementRunDetailSheet } from '@/features/commission-settlement-runs/commission-settlement-run-detail-sheet'
 import { COMMISSION_SETTLEMENT_RUNS_DOMAIN } from '@/features/commission-settlement-runs/types'
 
 /**
@@ -53,8 +51,8 @@ export function CommissionSettlementRunsTable() {
         onAction={handleAction}
       />
 
-      <CommissionSettlementRunDialog open={launching} onClose={() => setLaunching(false)} onLaunched={refreshGrid} />
-      <CommissionSettlementRunDetailDialog runId={viewRunId} onClose={() => setViewRunId(null)} />
+      <CommissionSettlementRunSheet open={launching} onClose={() => setLaunching(false)} onLaunched={refreshGrid} />
+      <CommissionSettlementRunDetailSheet runId={viewRunId} onClose={() => setViewRunId(null)} />
     </div>
   )
 }

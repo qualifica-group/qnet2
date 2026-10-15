@@ -1,31 +1,36 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FileSpreadsheet } from 'lucide-react'
+import { FilePlus2, FileSpreadsheet, ListOrdered, ReceiptText, Wallet } from 'lucide-react'
 import { DetailEmpty, DetailError, DetailLoading, DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordBody } from '@/components/detail/record-body'
 import {
   RecordCanvas,
-  RecordCard,
   RecordCardHeader,
   RecordField,
   RecordFieldList,
+  RecordMeta,
   RecordSection,
   RecordSectionsGrid,
 } from '@/components/detail/record-panel'
+import { Button } from '@/components/ui/button'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { formatDate } from '@/lib/formatting/date-display'
+import { activityLogTab } from '@/features/activity-log/activity-log-tab'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { commissionSettlementKeys, fetchCommissionSettlement } from '@/features/commission-settlements/api'
-import { CommissionAdjustmentDialog } from '@/features/commission-settlements/commission-adjustment-dialog'
+import { CommissionAdjustmentSheet } from '@/features/commission-settlements/commission-adjustment-sheet'
 import { CommissionSettlementActions } from '@/features/commission-settlements/commission-settlement-actions'
 import { CommissionSettlementMovements } from '@/features/commission-settlements/commission-settlement-movements'
-import { CommissionSettlementNotes } from '@/features/commission-settlements/commission-settlement-notes'
+import { CommissionSettlementNotesRow } from '@/features/commission-settlements/commission-settlement-notes'
 import { CommissionSettlementTotals } from '@/features/commission-settlements/commission-settlement-totals'
 import { SettlementStatusBadge } from '@/features/commission-settlements/settlement-status-badge'
 import { useSettlementDetailActions } from '@/features/commission-settlements/use-settlement-detail-actions'
-import type {
-  AdjustmentMode,
-  SettlementDetailWithPermissions,
-  SettlementMovement,
+import {
+  COMMISSION_SETTLEMENTS_DOMAIN,
+  type AdjustmentMode,
+  type SettlementDetailWithPermissions,
+  type SettlementMovement,
 } from '@/features/commission-settlements/types'
 
 interface DetailBodyProps {
@@ -34,12 +39,18 @@ interface DetailBodyProps {
   onDeleted: () => void
 }
 
+/**
+ * The settlement record (spec 0265): identity band with the status and the
+ * actions the server allows, the header data with the notes edited in place,
+ * the totals and the movements, an activity tab and a metadata footer.
+ */
 function DetailBody({ settlement, onChanged, onDeleted }: DetailBodyProps) {
   const { t } = useTranslation()
   const actions = useSettlementDetailActions({ settlementId: settlement.id, onChanged, onDeleted })
   const [adjustment, setAdjustment] = useState<AdjustmentMode | null>(null)
 
   const isDraft = settlement.status === 'DRAFT'
+  const canAdjust = isDraft && settlement.abilities.adjust
   const draftMode: AdjustmentMode = {
     type: 'draft',
     settlementId: settlement.id,
@@ -58,74 +69,100 @@ function DetailBody({ settlement, onChanged, onDeleted }: DetailBodyProps) {
       notes: movement.notes ?? '',
     })
   }
+  const createdAt = formatDateTime(settlement.created_at)
 
   return (
     <RecordCanvas>
-      <RecordCard>
-        <RecordCardHeader
-          media={<DetailMonogram name={settlement.referent.name} icon={<FileSpreadsheet />} />}
-          title={
-            settlement.code
-              ? t('commissionSettlements.detail.title', { code: settlement.code })
-              : t('commissionSettlements.detail.draftTitle')
-          }
-          subtitle={`${settlement.referent.name} - ${settlement.company.name}`}
-          badges={<SettlementStatusBadge status={settlement.status} />}
-        />
-        <div className="border-b p-4">
-          <CommissionSettlementActions
-            abilities={settlement.abilities}
-            actions={actions}
-            onAdjust={() => setAdjustment(draftMode)}
+      <RecordBody
+        collaborationTabs={
+          settlement.permissions.actions.view_activity
+            ? [activityLogTab(COMMISSION_SETTLEMENTS_DOMAIN, settlement.id, t('activityLog.title'))]
+            : []
+        }
+        header={
+          <RecordCardHeader
+            media={<DetailMonogram name={settlement.referent.name} icon={<FileSpreadsheet />} />}
+            title={
+              settlement.code
+                ? t('commissionSettlements.detail.title', { code: settlement.code })
+                : t('commissionSettlements.detail.draftTitle')
+            }
+            subtitle={`${settlement.referent.name} - ${settlement.company.name}`}
+            badges={<SettlementStatusBadge status={settlement.status} />}
+            actions={<CommissionSettlementActions abilities={settlement.abilities} actions={actions} />}
           />
-        </div>
-        <RecordSectionsGrid>
-          <RecordSection title={t('commissionSettlements.detail.header')}>
-            <RecordFieldList>
-              <RecordField label={t('commissionSettlements.columns.period_from')}>{formatDate(settlement.period_from)}</RecordField>
-              <RecordField label={t('commissionSettlements.columns.period_to')}>{formatDate(settlement.period_to)}</RecordField>
-              <RecordField label={t('commissionSettlements.columns.issued_at')}>
-                {settlement.issued_at ? formatDateTime(settlement.issued_at) : <DetailEmpty />}
-              </RecordField>
-              {settlement.issued_by ? (
-                <RecordField label={t('commissionSettlements.detail.issuedBy')}>{settlement.issued_by.name}</RecordField>
-              ) : null}
-              {settlement.status === 'CANCELLED' ? (
-                <>
-                  <RecordField label={t('commissionSettlements.detail.cancelledAt')}>
-                    {settlement.cancelled_at ? formatDateTime(settlement.cancelled_at) : <DetailEmpty />}
-                  </RecordField>
-                  <RecordField label={t('commissionSettlements.detail.cancellationReason')}>
-                    {settlement.cancellation_reason ?? <DetailEmpty />}
-                  </RecordField>
-                </>
-              ) : null}
-            </RecordFieldList>
-          </RecordSection>
-          <RecordSection title={t('commissionSettlements.totals.label')}>
-            <CommissionSettlementTotals settlement={settlement} />
-          </RecordSection>
-          <RecordSection title={t('commissionSettlements.notes.label')} full>
-            <CommissionSettlementNotes
-              key={settlement.id}
-              notes={settlement.notes}
-              editable={isDraft && settlement.abilities.update}
-              isSaving={actions.isSavingNotes}
-              onSave={actions.saveNotes}
-            />
-          </RecordSection>
-        </RecordSectionsGrid>
-        <div className="flex flex-col gap-2 border-t p-4">
-          <h3 className="text-sm font-semibold">{t('commissionSettlements.movements.title')}</h3>
-          <CommissionSettlementMovements
-            movements={settlement.movements}
-            canManageAdjustments={isDraft && settlement.abilities.adjust}
-            onEdit={editMovement}
-            onDelete={(movement) => actions.removeAdjustment(movement.id)}
-          />
-        </div>
-      </RecordCard>
-      <CommissionAdjustmentDialog mode={adjustment} onClose={() => setAdjustment(null)} onSaved={onChanged} />
+        }
+      >
+        {/* Provider only (no DOM): the notes row reads the field permissions. */}
+        <ResourcePermissionsProvider permissions={settlement.permissions}>
+          <RecordSectionsGrid>
+            <RecordSection title={t('commissionSettlements.detail.header')} icon={<ReceiptText />}>
+              <RecordFieldList>
+                <RecordField label={t('commissionSettlements.detail.period')}>
+                  {t('commissionSettlements.detail.periodRange', {
+                    from: formatDate(settlement.period_from),
+                    to: formatDate(settlement.period_to),
+                  })}
+                </RecordField>
+                <RecordField label={t('commissionSettlements.columns.issued_at')}>
+                  {settlement.issued_at ? formatDateTime(settlement.issued_at) : <DetailEmpty />}
+                </RecordField>
+                {settlement.issued_by ? (
+                  <RecordField label={t('commissionSettlements.detail.issuedBy')}>{settlement.issued_by.name}</RecordField>
+                ) : null}
+                {settlement.status === 'CANCELLED' ? (
+                  <>
+                    <RecordField label={t('commissionSettlements.detail.cancelledAt')}>
+                      {settlement.cancelled_at ? formatDateTime(settlement.cancelled_at) : <DetailEmpty />}
+                    </RecordField>
+                    <RecordField label={t('commissionSettlements.detail.cancellationReason')}>
+                      {settlement.cancellation_reason ?? <DetailEmpty />}
+                    </RecordField>
+                  </>
+                ) : null}
+                <CommissionSettlementNotesRow
+                  notes={settlement.notes}
+                  editable={isDraft && settlement.abilities.update}
+                  onSave={actions.saveNotes}
+                />
+              </RecordFieldList>
+            </RecordSection>
+            <RecordSection title={t('commissionSettlements.totals.label')} icon={<Wallet />}>
+              <CommissionSettlementTotals settlement={settlement} />
+            </RecordSection>
+            <RecordSection
+              title={t('commissionSettlements.movements.title')}
+              icon={<ListOrdered />}
+              full
+              action={
+                canAdjust ? (
+                  <Button variant="secondary" size="xs" disabled={actions.isBusy} onClick={() => setAdjustment(draftMode)}>
+                    <FilePlus2 aria-hidden="true" />
+                    {t('commissionSettlements.actions.newAdjustment')}
+                  </Button>
+                ) : null
+              }
+            >
+              <CommissionSettlementMovements
+                movements={settlement.movements}
+                canManageAdjustments={canAdjust}
+                onEdit={editMovement}
+                onDelete={(movement) => actions.removeAdjustment(movement.id)}
+              />
+            </RecordSection>
+          </RecordSectionsGrid>
+        </ResourcePermissionsProvider>
+      </RecordBody>
+
+      {createdAt ? (
+        <RecordMeta>
+          <span>
+            <span className="font-medium">{t('commissionSettlements.detail.createdAt')}</span>{' '}
+            <span aria-hidden="true">·</span> {createdAt}
+          </span>
+        </RecordMeta>
+      ) : null}
+      <CommissionAdjustmentSheet mode={adjustment} onClose={() => setAdjustment(null)} onSaved={onChanged} />
     </RecordCanvas>
   )
 }

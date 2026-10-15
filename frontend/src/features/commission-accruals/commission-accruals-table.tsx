@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { RowActionHandler } from '@/features/table/row-actions'
-import { CommissionAdjustmentDialog } from '@/features/commission-settlements/commission-adjustment-dialog'
+import { CommissionAdjustmentSheet } from '@/features/commission-settlements/commission-adjustment-sheet'
 import { commissionAccrualColumnRenderers } from '@/features/commission-accruals/column-renderers'
 import { CommissionAccrualQuickFilterToolbar } from '@/features/commission-accruals/commission-accrual-quick-filter-toolbar'
 import { CommissionAccrualTotalsFooter } from '@/features/commission-accruals/commission-accrual-totals-footer'
@@ -53,7 +53,7 @@ export function CommissionAccrualsTable() {
         renderFooter={(aggregates) => <CommissionAccrualTotalsFooter aggregates={aggregates} />}
       />
 
-      <CommissionAdjustmentDialog
+      <CommissionAdjustmentSheet
         mode={adjusting ? { type: 'standalone' } : null}
         onClose={() => setAdjusting(false)}
         onSaved={() => tableRef.current?.refresh()}

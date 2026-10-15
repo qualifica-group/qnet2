@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0264-agent-fiscal-profiles-enasarco-inline-editing" status="approved" owner="utente" date="2026-10-15">
+
+  <goal>
+    Provvigioni agenti, tappa 1: Profili fiscali e Parametri ENASARCO si allineano al resto dell'applicazione (kit
+    0233, specs 0256-0262): scheda modificabile sul posto, creazione come replica della scheda, modifica in cella
+    nelle liste. Niente piu' pagina/finestra di modifica.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-15: "Adatta graficamente anche la sezione Provvigioni Agente" -> modifica inline +
+    allineamento visivo, scope Profili fiscali, Parametri ENASARCO, Estratti, Maturato e Lanci. Tappa 2 (Estratti,
+    Maturato, Lanci) in una spec separata. Fatti verificati: PUT/PATCH dei due moduli prendono oggi lo stesso corpo
+    completo; le regole incrociate (ritenuta on -> aliquota e base richieste, off -> vietate; ENASARCO on -> tipo
+    mandato richiesto, off -> vietato; validita' senza sovrapposizioni per agente; valid_until >= valid_from; anno
+    ENASARCO unico) restano server-side.
+  </context>
+
+  <decisions>
+    D-1 (contratto) PATCH /agent-fiscal-profiles/{id} e PATCH /enasarco-parameters/{id}: i campi non inviati prendono
+        il valore salvato (`prepareForValidation`, solo PATCH), poi le stesse regole e lo stesso update. PUT e POST
+        invariati. Risposta invariata (dettaglio + `permissions`).
+    D-2 Lista Profili fiscali, modifica in cella: valid_from, valid_until (nullable), withholding_rate e
+        withholding_base_percent (solo righe con ritenuta attiva), enasarco_mandate_type (options, solo righe con
+        ENASARCO attivo), vat_rate (relazione `vat-rates`, editableField vat_rate_id, nullable). Interruttori e agente
+        solo dalla scheda. Riga per riga via `editable_columns` (estensione 0259). `updateCell` =
+        FormRequestCellValidator(AgentFiscalProfileRequest) + service->update.
+    D-3 Lista Parametri ENASARCO, modifica in cella: year, total_rate, agent_share_percent, single_firm_ceiling,
+        multi_firm_ceiling. `updateCell` = FormRequestCellValidator(EnasarcoParameterRequest) + service->update.
+    D-4 Scheda Profilo fiscale (kit 0233): righe Agente; Validita' (dal + al insieme); Ritenuta d'acconto (interruttore
+        + aliquota + base insieme); ENASARCO (interruttore + tipo mandato insieme); Aliquota IVA; Note. Ogni salvataggio
+        e' un PATCH con i soli campi della riga (gruppo). Creazione = replica (RecordCreateLayout + useDraftInlineEdit),
+        uscita con conferma.
+    D-5 Scheda Parametri ENASARCO (kit 0233): righe Anno, Aliquota totale, Quota agente, Massimale monomandatario,
+        Massimale plurimandatario, Note; ogni riga un PATCH del proprio campo. Creazione = replica.
+    D-6 Registry: `generateEditRoute: false`, `detailOwnsEditAction: true`, `formOwnsHeader: true`; dettagli senza
+        `onEdit`, con `onChanged`; `update*` restituisce il dettaglio CON `permissions`.
+  </decisions>
+
+  <acceptance>
+    <ac id="AC-001">PATCH profilo con le sole note lascia invariato il resto; PATCH che spegne la ritenuta senza
+      azzerare le aliquote -> 422 (regola invariata); PATCH che sovrappone la validita' -> 422.</ac>
+    <ac id="AC-002">PATCH ENASARCO col solo massimale lascia il resto; anno duplicato -> 422.</ac>
+    <ac id="AC-003">Cella profilo: valid_until, aliquota (ritenuta attiva), IVA salvano; aliquota su riga con ritenuta
+      spenta non editabile; utente senza update -> 403.</ac>
+    <ac id="AC-004">Cella ENASARCO: anno e massimali salvano; anno duplicato -> 422.</ac>
+    <ac id="AC-005">Schede: nessuna rotta :id/edit ne' pulsante Modifica; ogni riga salva solo i suoi campi; Annulla
+      non chiama; 422 sulla riga; senza update nessuna matita. Creazione a righe chiuse con conferma d'uscita.</ac>
+    <ac id="AC-006">Guide in-app IT/EN agent-fiscal-profiles ed enasarco-parameters aggiornate.</ac>
+  </acceptance>
+</spec>

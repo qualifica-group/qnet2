@@ -13,6 +13,7 @@ import {
 import {
   EMPTY_FORM_VALUES,
   buildEnasarcoParameterPayload,
+  buildEnasarcoParameterUpdatePayload,
   toFormValues,
 } from '@/features/enasarco-parameters/enasarco-parameter-form-payload'
 import {
@@ -34,11 +35,15 @@ const SERVER_ERROR_FIELDS: Path<EnasarcoParameterFormValues>[] = [
 
 interface UseEnasarcoParameterFormArgs {
   mode: EnasarcoParameterFormMode
-  /** Called after a successful create/update so the caller can close + refresh. */
+  /** Called after a successful create/update so the caller can close the row or navigate. */
   onSuccess: (parameter: EnasarcoParameterDetail) => void
 }
 
-/** Owns every non-render concern of `EnasarcoParameterFormBody`: RHF/Zod wiring, defaults, 422 mapping, submit. */
+/**
+ * Owns every non-render concern of the ENASARCO parameters form: RHF/Zod
+ * wiring, defaults, 422 mapping and the submit. Create backs the create
+ * draft; edit backs the detail's in-place rows (diff PATCH, spec 0264 D-5).
+ */
 export function useEnasarcoParameterForm({ mode, onSuccess }: UseEnasarcoParameterFormArgs) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -50,23 +55,29 @@ export function useEnasarcoParameterForm({ mode, onSuccess }: UseEnasarcoParamet
     [mode],
   )
 
+  // Edit backs the detail's in-place rows: a saved record re-syncs the form,
+  // `keepDirtyValues` spares a row still open over a background refetch.
   const form = useForm<EnasarcoParameterFormValues, unknown, EnasarcoParameterSchemaOutput>({
     resolver: zodResolver(schema),
     defaultValues,
+    values: mode.type === 'edit' ? defaultValues : undefined,
+    resetOptions: { keepDirtyValues: true },
   })
 
   const onSubmit = async (values: EnasarcoParameterSchemaOutput) => {
     setServerError(null)
-    const payload = buildEnasarcoParameterPayload(values)
     try {
       if (mode.type === 'edit') {
-        const saved = await updateEnasarcoParameter(mode.parameter.id, payload)
+        const saved = await updateEnasarcoParameter(
+          mode.parameter.id,
+          buildEnasarcoParameterUpdatePayload(values, mode.parameter),
+        )
         queryClient.setQueryData(enasarcoParameterKeys.detail(mode.parameter.id), saved)
         toast.success(t('enasarcoParameters.form.updated'))
         onSuccess(saved)
         return
       }
-      const created = await createEnasarcoParameter(payload)
+      const created = await createEnasarcoParameter(buildEnasarcoParameterPayload(values))
       toast.success(t('enasarcoParameters.form.created'))
       onSuccess(created)
     } catch (error) {
@@ -76,5 +87,5 @@ export function useEnasarcoParameterForm({ mode, onSuccess }: UseEnasarcoParamet
     }
   }
 
-  return { form, serverError, onSubmit }
+  return { form, serverError, clearServerError: () => setServerError(null), onSubmit }
 }

@@ -50,3 +50,19 @@ export function buildAgentFiscalProfilePayload(values: AgentFiscalProfileSchemaO
     notes: notes === '' ? null : notes,
   }
 }
+
+/** The fields an in-place row changed (spec 0264 D-4): the saved record is the baseline, the PATCH keeps the rest. */
+export function buildAgentFiscalProfileUpdatePayload(
+  values: AgentFiscalProfileSchemaOutput,
+  profile: AgentFiscalProfileDetail,
+): Partial<AgentFiscalProfilePayload> {
+  const next = buildAgentFiscalProfilePayload(values)
+  const saved = buildAgentFiscalProfilePayload({ ...toFormValues(profile), referent_id: profile.referent_id })
+  const changed: Partial<Record<keyof AgentFiscalProfilePayload, unknown>> = {}
+  for (const key of Object.keys(next) as (keyof AgentFiscalProfilePayload)[]) {
+    if (next[key] !== saved[key]) {
+      changed[key] = next[key]
+    }
+  }
+  return changed as Partial<AgentFiscalProfilePayload>
+}
