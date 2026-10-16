@@ -40,7 +40,6 @@ export const migrations = {
     opportunities: 'Opportunità',
     quotes: 'Offerte',
     'work-orders': 'Commesse',
-    'work-order-line-payments': 'Commesse — collega dati di pagamento alle righe',
     'product-suppliers': 'Prodotti — collega fornitori',
     'commission-configurations': 'Configuratore commissioni',
   },

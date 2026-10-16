@@ -263,7 +263,8 @@
           valore ignoto -> null + warning.
       company-sites:
         province: ?string = sigla della provincia (`provincies.sigla`, come registries e referents; prima il nome
-          `provincia`). region e country restano etichette.
+          `provincia`). region e' un'etichetta; country e' il codice ISO alpha-2 (spec 0189 G-28, vale per tutti
+          gli endpoint con indirizzo).
       operational-sites:
         city: ?string = comune pulito dall'etichetta di sede (`LegacyCityLabel`: tolto tutto da " - ", le parentesi
           e un numero finale; "Roma - 2" -> "Roma"; vuoto -> null).

@@ -41,7 +41,7 @@ if (! function_exists('runMigrationJobFor')) {
 
 it('creates a site with its address, resolving geo names to ids', function () {
     seedMigrationsConfig();
-    $country = Country::factory()->create(['name' => 'Italy']);
+    $country = Country::factory()->create(['name' => 'Italy', 'iso2' => 'IT']);
     $state = State::factory()->for($country)->create(['name' => 'Lazio']);
     $city = City::factory()->forState($state)->create(['name' => 'Rome']);
 
@@ -49,7 +49,7 @@ it('creates a site with its address, resolving geo names to ids', function () {
         fakeMigrationsBaseUrl().'/operational-sites*' => Http::response([
             'items' => [[
                 'id' => 1,
-                'country' => 'Italy',
+                'country' => 'IT',
                 'region' => 'Lazio',
                 'city' => 'Rome',
                 'street' => 'Via Roma 1',
@@ -83,7 +83,7 @@ it('creates a site with its address, resolving geo names to ids', function () {
 
 it('stores the legacy site label as alias and resolves Italian names + province code', function () {
     seedMigrationsConfig();
-    $country = Country::factory()->create(['name' => 'Italy']);
+    $country = Country::factory()->create(['name' => 'Italy', 'iso2' => 'IT']);
     $state = State::factory()->for($country)->create(['name' => 'Campania']);
     $province = Province::factory()->forState($state)->create(['name' => 'Naples']);
     $city = City::factory()->forProvince($province)->create(['name' => 'Frattamaggiore']);
@@ -92,7 +92,7 @@ it('stores the legacy site label as alias and resolves Italian names + province 
         fakeMigrationsBaseUrl().'/operational-sites*' => Http::response([
             'items' => [[
                 'id' => 10,
-                'country' => 'Italia',
+                'country' => 'IT',
                 'region' => 'Campania',
                 'province' => 'NA',
                 'city' => 'FRATTAMAGGIORE',
@@ -124,13 +124,13 @@ it('stores the legacy site label as alias and resolves Italian names + province 
 
 it('creates the site with a warning when the region name cannot be resolved', function () {
     seedMigrationsConfig();
-    Country::factory()->create(['name' => 'Italy']);
+    Country::factory()->create(['name' => 'Italy', 'iso2' => 'IT']);
 
     Http::fake([
         fakeMigrationsBaseUrl().'/operational-sites*' => Http::response([
             'items' => [[
                 'id' => 2,
-                'country' => 'Italy',
+                'country' => 'IT',
                 'region' => 'Unknown Region',
                 'street' => 'Via Milano 5',
             ]],
@@ -152,6 +152,35 @@ it('creates the site with a warning when the region name cannot be resolved', fu
         ->and($fresh->report)->not->toBeNull()
         ->and($fresh->report[0]['level'])->toBe('warning')
         ->and($fresh->report[0]['message'])->toContain('Unknown Region');
+});
+
+it('resolves the country by its ISO code and warns on a country name (spec 0189 G-28)', function () {
+    seedMigrationsConfig();
+    $spain = Country::factory()->create(['name' => 'Spain', 'iso2' => 'ES']);
+
+    Http::fake([
+        fakeMigrationsBaseUrl().'/operational-sites*' => Http::response([
+            'items' => [
+                ['id' => 3, 'country' => 'es', 'street' => 'Calle Mayor 1'],
+                ['id' => 4, 'country' => 'Spagna', 'street' => 'Calle Mayor 2'],
+            ],
+            'pagination' => ['total' => 2],
+        ]),
+    ]);
+
+    $actor = migrationsSuperAdminActor();
+    $run = MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'operational-sites']);
+
+    runMigrationJobFor($run);
+
+    expect(OperationalSite::query()->where('old_id', 3)->first()->addresses()->first()->country_id)->toBe($spain->id)
+        ->and(OperationalSite::query()->where('old_id', 4)->first()->addresses()->first()->country_id)->toBeNull();
+
+    $fresh = $run->fresh();
+    expect($fresh->created_rows)->toBe(2)
+        ->and($fresh->report)->toHaveCount(1)
+        ->and($fresh->report[0]['old_id'])->toBe(4)
+        ->and($fresh->report[0]['message'])->toBe("Unresolved country 'Spagna'.");
 });
 
 it('isolates a failed row (missing street) without blocking the valid one', function () {

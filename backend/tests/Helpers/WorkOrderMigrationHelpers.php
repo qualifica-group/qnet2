@@ -6,7 +6,9 @@ use Illuminate\Support\Facades\Http;
 
 /*
  * Legacy work order fixtures shared by the `work-orders` migration source tests
- * (WorkOrdersSourceImportTest, WorkOrdersSourceAttributeValuesImportTest).
+ * (WorkOrdersSourceImportTest, WorkOrdersSourceAttributeValuesImportTest,
+ * WorkOrdersSourceCostsAndPaymentsImportTest). The legacy never sends a
+ * commessa without lines (2026-10-14): the default record carries line 900.
  */
 
 if (! function_exists('legacyWorkOrderRecord')) {
@@ -27,9 +29,13 @@ if (! function_exists('legacyWorkOrderRecord')) {
             'internal_notes' => 'Legacy notes',
             'force_close_reason' => null,
             'status_label' => 'Aperta',
-            'quote_line_ids' => [],
+            'stato_pagamento' => null,
+            'accordo_pagamento' => null,
+            'insoluti' => false,
+            'quote_line_ids' => [900],
             'supervisor_user_ids' => [],
             'participant_user_ids' => [],
+            'costs' => [],
             'created_at' => '2024-04-20 09:00:00',
             'updated_at' => '2024-04-21 09:00:00',
         ], $overrides);

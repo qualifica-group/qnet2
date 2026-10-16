@@ -70,6 +70,9 @@
           Richiede che l'API legacy `work-orders` (repo `/Users/Repository/qnet`,
           `Api/V2/WorkOrderMigrationController`) esponga `stato_pagamento`, `accordo_pagamento`,
           `insoluti` di `orderisos`: modifica FUORI da questo repo, va autorizzata a parte.
+          Emendamento 2026-10-14 (spec 0189 G-24, decisione utente): la sorgente separata e' eliminata; i
+          pagamenti si scrivono dentro `work-orders` alla creazione della commessa
+          (LegacyWorkOrderLinePaymentWriter). AC-014 vale per quella sorgente.
           (2026-10-13, autorizzata ed eseguita) Il legacy espone i tre campi dalla riga `orderisos` della
           commessa (id piu' basso se ce ne sono piu' d'una): `stato_pagamento` int|null (0 -> null),
           `accordo_pagamento` string|null, `insoluti` bool.

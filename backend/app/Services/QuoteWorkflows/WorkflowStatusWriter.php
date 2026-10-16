@@ -103,6 +103,37 @@ final class WorkflowStatusWriter
     }
 
     /**
+     * Appends one custom row to $set, after its existing customs and before
+     * the pinned tail rows 'closed_won'/'closed_lost'.
+     */
+    public function appendCustom(?int $workflowId, string $name, WorkflowStatusGroup $group): QuoteWorkflowStatus
+    {
+        return DB::transaction(function () use ($workflowId, $name, $group): QuoteWorkflowStatus {
+            $customIds = QuoteWorkflowStatus::query()
+                ->where('quote_workflow_id', $workflowId)
+                ->whereNull('system_key')
+                ->orderBy('sort_order')
+                ->pluck('id')
+                ->all();
+
+            $created = QuoteWorkflowStatus::query()->forceCreate([
+                'quote_workflow_id' => $workflowId,
+                'name' => $name,
+                'description' => null,
+                'color' => null,
+                'sort_order' => 0,
+                'system_key' => null,
+                'group' => $group,
+                'requires_note' => false,
+            ]);
+
+            $this->resequence($workflowId, [...$customIds, $created->id]);
+
+            return $created->fresh();
+        });
+    }
+
+    /**
      * A system row accepts every descriptive change (name, description,
      * color, requires_note) but never a `group` one (spec 0047 data
      * contract): rejects, with a 422, any submission whose `group` differs

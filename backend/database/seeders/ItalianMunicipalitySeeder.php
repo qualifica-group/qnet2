@@ -35,11 +35,54 @@ class ItalianMunicipalitySeeder extends Seeder
      *
      * - Fonte Nuova (RM): comune since 1997, born from the Mentana/Guidonia
      *   split; the extract only carries its frazioni Tor Lupara and Santa Lucia.
+     * - Montoro (AV): comune since 2013, born from the merger of Montoro
+     *   Inferiore and Montoro Superiore.
+     * - The others (spec 0189 G-28): comuni of the legacy QNet addresses the
+     *   extract lacks, or files only under another province (Carpi under
+     *   Reggio Emilia, Marcon under Treviso, Fontanafredda under Padua...).
      *
      * @var array<int, array{0: string, 1: string}>
      */
     private const array MUNICIPALITIES = [
         ['Fonte Nuova', 'Rome'],
+        ['Buggiano', 'Pistoia'],
+        ['Buja', 'Udine'],
+        ['Campolongo Maggiore', 'Venice'],
+        ['Carpi', 'Modena'],
+        ["Castel d'Azzano", 'Verona'],
+        ['Castellabate', 'Salerno'],
+        ['Colfelice', 'Frosinone'],
+        ['Comezzano-Cizzago', 'Brescia'],
+        ['Conza della Campania', 'Avellino'],
+        ['Fagnano Alto', "L'Aquila"],
+        ['Fontana Liri', 'Frosinone'],
+        ['Fontanafredda', 'Pordenone'],
+        ['Gatteo', 'Forlì-Cesena'],
+        ['Gibellina', 'Trapani'],
+        ['Giffoni Sei Casali', 'Salerno'],
+        ['Greccio', 'Rieti'],
+        ['Ionadi', 'Vibo Valentia'],
+        ['Jesolo', 'Venice'],
+        ['Marcon', 'Venice'],
+        ['Martello', 'South Tyrol'],
+        ['Massa e Cozzile', 'Pistoia'],
+        ['Montopoli di Sabina', 'Rieti'],
+        ['Montoro', 'Avellino'],
+        ['Ne', 'Genoa'],
+        ['Ocre', "L'Aquila"],
+        ['Peschiera Borromeo', 'Milan'],
+        ['Piancogno', 'Brescia'],
+        ["Rocca d'Evandro", 'Caserta'],
+        ['Roccafluvione', 'Ascoli Piceno'],
+        ['Roccamontepiano', 'Chieti'],
+        ['Romagnano al Monte', 'Salerno'],
+        ['San Dorligo della Valle - Dolina', 'Trieste'],
+        ['San Giovanni Teatino', 'Chieti'],
+        ["Sant'Olcese", 'Genoa'],
+        ['Santarcangelo di Romagna', 'Rimini'],
+        ['Spigno Saturnia', 'Latina'],
+        ['Villorba', 'Treviso'],
+        ['Zimella', 'Verona'],
     ];
 
     public function run(): void

@@ -43,7 +43,7 @@ if (! function_exists('runMigrationJobFor')) {
 
 it('creates a referent with its card, primary address, contacts and derived name', function () {
     seedMigrationsConfig();
-    $country = Country::factory()->create(['name' => 'Italy']);
+    $country = Country::factory()->create(['name' => 'Italy', 'iso2' => 'IT']);
     State::factory()->for($country)->create(['name' => 'Lazio']);
 
     // The referent's type is a phase-1 anchor, referenced by its EXTERNAL id.
@@ -61,7 +61,7 @@ it('creates a referent with its card, primary address, contacts and derived name
                 'last_name' => 'Rossi',
                 'tax_code' => 'RSSMRA80A01H501U',
                 'notes' => 'Key account',
-                'country' => 'Italy',
+                'country' => 'IT',
                 'region' => 'Lazio',
                 'city' => 'Rome',
                 'street' => 'Via Roma 1',

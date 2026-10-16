@@ -7,6 +7,7 @@ use App\Models\OpportunityProductLine;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\WorkOrder;
+use App\Services\ProductCategories\CategoryActivity;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,7 +20,8 @@ use Illuminate\Support\Collection;
  * every step can cover them first and then append its ordinary batch.
  *
  * A category is SELLABLE when an opportunity can stand on it and an offer can
- * be priced on it: selectable (spec 0074), with an effective business function
+ * be priced on it: selectable (spec 0074), effectively active (spec 0208: not
+ * hidden from the pickers by its own flag or an ancestor's), with an effective business function
  * (spec 0044), and with at least one product of its OWN usable as SALE
  * (spec 0142). A category without one is out of reach by construction, never
  * padded with a fabricated product.
@@ -35,7 +37,10 @@ use Illuminate\Support\Collection;
  */
 final class SampleCategoryCoverage
 {
-    public function __construct(private readonly CategoryHierarchy $hierarchy) {}
+    public function __construct(
+        private readonly CategoryHierarchy $hierarchy,
+        private readonly CategoryActivity $activity,
+    ) {}
 
     /**
      * Sellable categories not yet carried down to their deepest level: the
@@ -146,6 +151,7 @@ final class SampleCategoryCoverage
         return ProductCategory::query()
             ->where('is_selectable', true)
             ->whereIn('id', $withSaleProduct)
+            ->whereNotIn('id', $this->activity->inactiveCategoryIds())
             ->orderBy('id')
             ->pluck('id')
             ->filter(static fn (int $id): bool => ($summaries[$id] ?? null) !== null)

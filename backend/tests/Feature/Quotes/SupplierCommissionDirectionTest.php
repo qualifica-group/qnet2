@@ -267,9 +267,10 @@ it('AC-002: the migrations are reversible', function () {
     // spec 0211's three payable tables, spec 0212's two agent commission tables; the product category
     // active flag, the api_clients table, users service-account flag and token api_client_id, the
     // referents fulltext name index, the sector active flag, the sector code, the work order title
-    // flag, the quote date, spec 0250's payable invoice lines, spec 0251's cost type on products and costs, and
-    // spec 0254's three receipt migrations, spec 0267's five settlement document migrations).
-    expect(Artisan::call('migrate:rollback', ['--step' => 56]))->toBe(0);
+    // flag, the quote date, spec 0250's payable invoice lines, spec 0251's cost type on products and costs,
+    // spec 0254's three receipt migrations, spec 0189 G-28's two Italian geo reference fixes and spec 0267's
+    // five settlement document migrations).
+    expect(Artisan::call('migrate:rollback', ['--step' => 58]))->toBe(0);
     expect(Schema::hasColumn('quote_lines', 'supplier_commission_direction'))->toBeFalse()
         ->and(Schema::hasColumn('product_typologies', 'supplier_commission_enabled'))->toBeFalse();
 });

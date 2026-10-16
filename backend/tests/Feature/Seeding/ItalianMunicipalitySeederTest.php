@@ -60,3 +60,20 @@ it('is a no-op when the geo dataset was never loaded', function (): void {
 
     expect(City::query()->count())->toBe(0);
 });
+
+it('adds a comune the extract only files under another province', function (): void {
+    $rome = seedRomeProvince();
+    $state = State::factory()->create(['name' => 'Emilia-Romagna', 'country_id' => $rome->country_id]);
+    $province = fn (string $name): Province => Province::factory()->create([
+        'name' => $name, 'state_id' => $state->id, 'country_id' => $rome->country_id, 'country_code' => 'IT',
+    ]);
+    $modena = $province('Modena');
+    City::factory()->create([
+        'name' => 'Carpi', 'province_id' => $province('Reggio Emilia')->id, 'state_id' => $state->id,
+        'country_id' => $rome->country_id, 'country_code' => 'IT',
+    ]);
+
+    test()->seed(ItalianMunicipalitySeeder::class);
+
+    expect(City::query()->where('name', 'Carpi')->where('province_id', $modena->id)->exists())->toBeTrue();
+});

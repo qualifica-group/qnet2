@@ -41,7 +41,7 @@ export const migrationRequirements = {
   products:
     'A product without a category in the legacy goes under the “No categoria” category, to reclassify it from there; a category not imported yet fails the row. Without VAT rates the rate stays empty with a warning. The supplier is set by “Products — link suppliers”.',
   'cost-products':
-    'Without VAT rates the rate stays empty with a warning. It creates the Costi category and its sub-categories itself, with no need for Product categories.',
+    'Without VAT rates the rate stays empty with a warning. It creates the Costi category and its sub-categories itself, with no need for Product categories. It also imports the employee levels used by the employee costs of quotes and work orders.',
   'email-templates':
     'No prerequisites. The body is cleaned as in the editor, losing images, tables and styles; a name already in use gets a suffix.',
   'document-bundles':
@@ -51,13 +51,11 @@ export const migrationRequirements = {
   registries:
     'Without Users, Referents, Sources and Sectors, managers, supervisor, referents, source and sector stay empty with a warning: the registry is created anyway. The sector is matched by name among the imported sectors only. The name is required; placeholder VAT numbers (0, 1, dot) are not imported. No notifications are sent during the import.',
   opportunities:
-    'Without its imported registry the row fails: run Registries first. Missing referents, users, source, category and operational site stay empty with a warning. GOL course requests without a customer are not imported.',
+    'Without its imported registry the row fails: run Registries first. Missing referents, users, source and operational site stay empty with a warning. An opportunity without a customer (for example a GOL course request) or with a category not imported fails with the reason.',
   quotes:
-    'Without its imported opportunity the row fails. A line without an imported product, for example a discount, is skipped with a warning. Missing VAT rates, payment methods, sites, referents, users and commission recipients stay empty with a warning. An accepted or contracted quote also creates the contract. A cost without an imported cost product is skipped with a warning; a cost supplier other than the product one and a customer other than the opportunity one raise a warning.',
+    'Without its imported opportunity the row fails. Even a single line that cannot be imported (no product, for example a discount, product not imported, commission recipient not imported, cost without a cost product) fails the whole quote with the reason. Missing VAT rates, payment methods, sites, referents and users stay empty with a warning. An accepted or contracted quote also creates the contract. A cost supplier other than the product one and a customer other than the opportunity one raise a warning.',
   'work-orders':
-    'Without its imported quote the row fails. A quote line already linked to another work order is copied into the quote, with its commissions, and the quote total grows. The flexible fields come too, only those the categories of the work order lines provide (run Product categories — link attributes first): a field not provided, an invalid value or a user or registry not imported is skipped with a warning. The stages come too, open or closed as in the legacy system, without tasks. Notes, documents and tasks are not imported.',
-  'work-order-line-payments':
-    'Creates no records: it copies the payment status, payment agreement and unpaid amounts of the work order onto each of its lines. Without the imported work order the row fails. Every import rewrites the payment data of the lines.',
+    'Without its imported quote the row fails. A quote line already linked to another work order is copied into the quote, with its commissions, and the quote total grows. The flexible fields come too, only those the categories of the work order lines provide (run Product categories — link attributes first): a field not provided, an invalid value or a user or registry not imported is skipped with a warning. The stages come too, open or closed as in the legacy system, without tasks. Payment status, payment agreement and unpaid amounts land on every line of the work order. The costs of the legacy Offer panel (expense reports and employees) come as work order costs, linked to the line of their service: a cost without an imported cost product fails the work order (run Cost products first). A work order without lines, or with a quote line not imported, fails with the reason. Notes, documents and tasks are not imported.',
   'product-suppliers':
     'Creates no records: it sets the supplier on the imported products. Without the product the row fails; a supplier not yet imported from Registries is skipped with a warning. A supplier already chosen in QNet is never overwritten.',
   'commission-configurations':

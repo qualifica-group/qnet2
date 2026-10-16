@@ -165,9 +165,11 @@ it('assigns, scopes and lays out the contact-processing set across Formazione, D
     // — the nine Formazione categories that add a field of their own, or sit
     // behind a barrier ("Corsi E-Campus" since the 2026-10-01 directive) —
     // plus the APL internships, apprenticeships and orientation, behind theirs
-    // (2026-10-02 and 2026-10-05 directives). The Consulenza leaf carries no
-    // attribute at all since the 2026-09-10 directive, so they compose to nothing.
-    expect(AttributeLayout::query()->where('context', AttributeContext::Quote->value)->count())->toBe(12);
+    // (2026-10-02 and 2026-10-05 directives), and the SOA root (REQUIREMENT
+    // CHANGED, 2026-10-15). The Consulenza leaf carries no attribute at all
+    // since the 2026-09-10 directive, so they compose to nothing.
+    // Plus the Sicurezza root (REQUIREMENT CHANGED, 2026-10-15).
+    expect(AttributeLayout::query()->where('context', AttributeContext::Quote->value)->count())->toBe(14);
 
     $molise = ProductCategory::query()->where('name', 'GOL - Molise')->firstOrFail();
     $moliseQuoteLayout = $service->resolveWithFallback($molise, AttributeContext::Quote, FormMode::Create);
@@ -235,8 +237,9 @@ it('assigns, scopes and lays out the contact-processing set across Formazione, D
     // Spec 0115: a row only where the composition differs from the ancestor's.
     // One fewer than the Offerta's eight — "Autoimpiego" adds its
     // self-employment flag in the `quote` context alone, so on the Commessa it
-    // has nothing its parent does not already say.
-    expect(AttributeLayout::query()->where('context', AttributeContext::WorkOrder->value)->count())->toBe(7);
+    // has nothing its parent does not already say. Plus the SOA root's own
+    // Commessa form (REQUIREMENT CHANGED, QualificaSoaWorkOrderSeeder, 2026-10-15).
+    expect(AttributeLayout::query()->where('context', AttributeContext::WorkOrder->value)->count())->toBe(8);
 
     $moliseWorkOrderLayout = $service->resolveWithFallback($molise, AttributeContext::WorkOrder, FormMode::Create);
 

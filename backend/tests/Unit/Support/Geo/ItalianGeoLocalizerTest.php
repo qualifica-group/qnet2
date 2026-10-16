@@ -26,7 +26,8 @@ it('maps a province plate code to the reference name, null when unknown', functi
         ->and($this->localizer->province('rg'))->toBe('Ragusa')
         ->and($this->localizer->province(' MI '))->toBe('Milan')
         ->and($this->localizer->province('MA'))->toBeNull()
-        ->and($this->localizer->province('Po'))->toBe('Prato');
+        ->and($this->localizer->province('Po'))->toBe('Prato')
+        ->and($this->localizer->province('AO'))->toBe('Aosta');
 });
 
 it('cleans the legacy comune label down to the bare city name', function () {
@@ -42,6 +43,13 @@ it('translates anglicized cities after cleaning, null for a pure placeholder', f
         ->and($this->localizer->city('Roma - 2'))->toBe('Rome')
         ->and($this->localizer->city('Frattamaggiore'))->toBe('Frattamaggiore')
         ->and($this->localizer->city('(HQ)'))->toBeNull();
+});
+
+it('keeps the comuni the reference dataset stores in Italian, unlike their province', function () {
+    expect($this->localizer->city('Padova'))->toBe('Padova')
+        ->and($this->localizer->city('Mantova'))->toBe('Mantova')
+        ->and($this->localizer->province('PD'))->toBe('Padua')
+        ->and($this->localizer->province('MN'))->toBe('Mantua');
 });
 
 it('maps a comune the reference dataset spells differently', function () {

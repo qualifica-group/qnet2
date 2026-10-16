@@ -12,6 +12,8 @@ use App\Migrations\Sources\Concerns\MapsLegacyOperationalRecord;
 use App\Migrations\Sources\Concerns\MapsLegacyWorkOrderFields;
 use App\Migrations\Support\ExternalApiClient;
 use App\Migrations\Support\LegacyAttributeValueApplier;
+use App\Migrations\Support\LegacyWorkOrderCostWriter;
+use App\Migrations\Support\LegacyWorkOrderLinePaymentWriter;
 use App\Migrations\Support\LegacyWorkOrderStageWriter;
 use App\Migrations\Support\QuoteLineDuplicator;
 use App\Models\Quote;
@@ -33,10 +35,14 @@ use RuntimeException;
  * lines matched on `quote_lines.old_id`; a line already programmed into
  * another commessa stays with it and this one gets a copy of the line on the
  * offer (QuoteLineDuplicator, user decision 2026-10-02), never reaching
- * WorkOrderLineWriter's 422. A legacy `force_close_reason` forces the close.
- * The legacy flexible fields land in the attribute values applicable to the
- * commessa's own lines (G-20/G-21) and its phases become the commessa's stages
- * (G-22). The whole row runs without activity log (G-3).
+ * WorkOrderLineWriter's 422. A legacy line not found on the offer, a commessa
+ * without lines or a cost that cannot be written fail the row with the reason
+ * (user decision 2026-10-14: nothing is dropped silently). A legacy
+ * `force_close_reason` forces the close. The legacy flexible fields land in
+ * the attribute values applicable to the commessa's own lines (G-20/G-21), its
+ * phases become the commessa's stages (G-22), its costs the commessa's actual
+ * costs (G-23) and its payment data the payment data of every line (G-24).
+ * The whole row runs without activity log (G-3).
  */
 class WorkOrdersSource extends AbstractMigrationSource
 {
@@ -51,6 +57,8 @@ class WorkOrdersSource extends AbstractMigrationSource
         private readonly QuoteLineDuplicator $lineDuplicator,
         private readonly LegacyAttributeValueApplier $attributeValueApplier,
         private readonly LegacyWorkOrderStageWriter $stageWriter,
+        private readonly LegacyWorkOrderLinePaymentWriter $linePaymentWriter,
+        private readonly LegacyWorkOrderCostWriter $costWriter,
     ) {
         parent::__construct($client);
     }
@@ -98,6 +106,7 @@ class WorkOrdersSource extends AbstractMigrationSource
             ['id' => 'quote_line_ids', 'label' => 'Quote lines (external ids)', 'type' => 'string'],
             ['id' => 'supervisor_user_ids', 'label' => 'Supervisors (external ids)', 'type' => 'string'],
             ['id' => 'stages', 'label' => 'Stages', 'type' => 'number'],
+            ['id' => 'costs', 'label' => 'Costs', 'type' => 'number'],
             ['id' => 'created_at', 'label' => 'Created at', 'type' => 'date'],
         ];
     }
@@ -138,15 +147,24 @@ class WorkOrdersSource extends AbstractMigrationSource
     {
         $warnings = [];
 
-        // Step 1: the mandatory parent offer.
+        // Step 1: the mandatory parent offer, people and lines; none may be dropped.
         $quoteId = $this->resolveQuote($record['quote_id'] ?? null);
+        $this->assertUsersMigrated($record['supervisor_user_ids'] ?? [], 'Supervisor');
+        $this->assertUsersMigrated($record['participant_user_ids'] ?? [], 'Participant');
+        $lineIdsByOldId = $this->legacyQuoteLineIds($quoteId, $record['quote_line_ids'] ?? [], $warnings);
+
+        if ($lineIdsByOldId === []) {
+            throw new RuntimeException('The work order has no quote line in the legacy; it is not imported.');
+        }
 
         // Step 2: create through the domain service, without task template (G-2).
-        $workOrder = $this->service->create($this->buildData($externalId, $quoteId, $record, $warnings));
+        $workOrder = $this->service->create($this->buildData($externalId, $quoteId, array_values($lineIdsByOldId), $record, $warnings));
 
-        // Step 3: the legacy phases and flexible fields (G-20/G-21/G-22).
+        // Step 3: the legacy phases, flexible fields, payment data and costs (G-20..G-24).
         $this->stageWriter->write($workOrder, (array) ($record['stages'] ?? []), $warnings);
         $this->attributeValueApplier->applyToWorkOrder($workOrder, (array) ($record['attribute_values'] ?? []), $warnings);
+        $this->linePaymentWriter->write($workOrder, $record, $warnings);
+        $this->costWriter->write($workOrder, (array) ($record['costs'] ?? []), $lineIdsByOldId, $warnings);
 
         // Step 4: old_id, the attribute values and the legacy timestamps in one quiet save.
         $this->finalizeLegacyRecord($workOrder, $externalId, $record);
@@ -168,10 +186,11 @@ class WorkOrdersSource extends AbstractMigrationSource
     }
 
     /**
+     * @param  array<int, int>  $quoteLineIds
      * @param  array<string, mixed>  $record
      * @param  array<int, string>  $warnings
      */
-    private function buildData(int|string $externalId, int $quoteId, array $record, array &$warnings): CreateWorkOrderData
+    private function buildData(int|string $externalId, int $quoteId, array $quoteLineIds, array $record, array &$warnings): CreateWorkOrderData
     {
         $forceCloseReason = $this->blankToNull($record['force_close_reason'] ?? null);
 
@@ -186,10 +205,25 @@ class WorkOrdersSource extends AbstractMigrationSource
             internalNotes: $this->blankToNull($record['internal_notes'] ?? null),
             isForceClosed: $forceCloseReason !== null,
             forceCloseReason: $forceCloseReason,
-            quoteLineIds: $this->legacyQuoteLineIds($quoteId, $record['quote_line_ids'] ?? [], $warnings),
+            quoteLineIds: $quoteLineIds,
             supervisorIds: $this->remapLegacyIds(User::class, $record['supervisor_user_ids'] ?? [], 'supervisor_user_ids', $warnings),
             participantSlots: $this->legacyManagerSlots($record['participant_user_ids'] ?? [], $warnings, 'participant_user_ids'),
         );
+    }
+
+    /**
+     * A supervisor or participant that is not migrated fails the commessa (the
+     * legacy already replaced its deleted users with an account manager, G-27).
+     *
+     * @throws RuntimeException
+     */
+    private function assertUsersMigrated(mixed $legacyUserIds, string $role): void
+    {
+        foreach (array_unique(array_map(intval(...), (array) ($legacyUserIds ?? []))) as $legacyUserId) {
+            if ($this->resolveOldId(User::class, $legacyUserId) === null) {
+                throw new RuntimeException("{$role} (legacy user id {$legacyUserId}) not migrated and the offer has no account manager to replace it; the work order is not imported.");
+            }
+        }
     }
 
     /**
@@ -218,7 +252,7 @@ class WorkOrdersSource extends AbstractMigrationSource
      * with a warning (the offer total grows by the copy).
      *
      * @param  array<int, string>  $warnings
-     * @return array<int, int>
+     * @return array<int, int> legacy line id => the commessa's line id
      */
     private function legacyQuoteLineIds(int $quoteId, mixed $externalLineIds, array &$warnings): array
     {
@@ -235,7 +269,7 @@ class WorkOrdersSource extends AbstractMigrationSource
             ->pluck('id', 'old_id');
 
         foreach (array_diff($externalLineIds, $lineIdsByOldId->keys()->all()) as $missing) {
-            $warnings[] = "Unresolved quote line (legacy id {$missing}) on this offer; not linked.";
+            throw new RuntimeException("Quote line (legacy id {$missing}) not imported on this offer; the work order is not imported.");
         }
 
         $programmed = DB::table('quote_line_work_order')
@@ -248,13 +282,13 @@ class WorkOrdersSource extends AbstractMigrationSource
 
         foreach ($lineIdsByOldId as $oldId => $lineId) {
             if (! in_array($lineId, $programmed, true)) {
-                $lineIds[] = $lineId;
+                $lineIds[$oldId] = $lineId;
 
                 continue;
             }
 
             $copy = $this->lineDuplicator->duplicate(QuoteLine::query()->with('commissions', 'quote')->findOrFail($lineId));
-            $lineIds[] = $copy->id;
+            $lineIds[$oldId] = $copy->id;
             $warnings[] = "Quote line (legacy id {$oldId}) already belongs to another work order; duplicated on the offer (+{$copy->net_amount} net).";
         }
 

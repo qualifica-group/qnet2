@@ -56,11 +56,36 @@ it('falls back to the first pending status when the set has no negotiation statu
     expect(importedLegacyQuoteStatus()->id)->toBe($pending->id);
 });
 
-it('leaves an offer open with a warning when its set has no status for the outcome', function () {
-    $run = runLegacyQuotesImport([legacyQuoteRecord(['outcome' => 'call_back'])]);
+// REQUIREMENT CHANGED (spec 0189 G-29, user decision 2026-10-15): a set
+// without the outcome's status gets an [OLD] one instead of leaving the offer open.
+it('creates the [OLD] status of the outcome in a set that lacks it, before the closed ones', function (string $outcome, string $name, WorkflowStatusGroup $group) {
+    $run = runLegacyQuotesImport([legacyQuoteRecord(['outcome' => $outcome])]);
 
-    expect(importedLegacyQuoteStatus()->system_key)->toBe('open')
-        ->and(legacyQuoteWarnings($run))->toContain("The offer's status set has no status for legacy outcome 'call_back'; the offer was left open.");
+    $status = importedLegacyQuoteStatus();
+    $closed = QuoteWorkflowStatus::query()->whereNull('quote_workflow_id')->whereNotNull('system_key')->where('system_key', '!=', 'open')->pluck('sort_order');
+
+    expect($status->name)->toBe($name)
+        ->and($status->group)->toBe($group)
+        ->and($status->quote_workflow_id)->toBeNull()
+        ->and($status->system_key)->toBeNull()
+        ->and($status->sort_order)->toBeLessThan($closed->min())
+        ->and(legacyQuoteWarnings($run))->toBe([]);
+})->with([
+    'negotiation' => ['negotiation', '[OLD] In trattativa', WorkflowStatusGroup::Pending],
+    'call back' => ['call_back', '[OLD] Da Richiamare', WorkflowStatusGroup::Open],
+    'stand-by' => ['stand_by', '[OLD] Stand-by', WorkflowStatusGroup::Open],
+]);
+
+it('reuses the [OLD] status already created in the set', function () {
+    runLegacyQuotesImport([
+        legacyQuoteRecord(['outcome' => 'stand_by']),
+        legacyQuoteRecord(['id' => 43, 'outcome' => 'stand_by', 'lines' => [[...legacyQuoteRecord()['lines'][0], 'id' => 901]]]),
+    ]);
+
+    $ids = Quote::query()->whereIn('old_id', [42, 43])->pluck('quote_workflow_status_id')->unique();
+
+    expect($ids)->toHaveCount(1)
+        ->and(QuoteWorkflowStatus::query()->where('name', '[OLD] Stand-by')->count())->toBe(1);
 });
 
 it('keeps an offer open on the open outcome, without warnings', function () {

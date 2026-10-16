@@ -51,7 +51,7 @@ function registriesRunWarnings(MigrationRun $run): array
 
 it('imports a company with every field, remapped relations and no notification or activity log', function () {
     Notification::fake();
-    Country::factory()->create(['name' => 'Italy']);
+    Country::factory()->create(['name' => 'Italy', 'iso2' => 'IT']);
     $source = Source::factory()->create();
     $source->forceFill(['old_id' => 3])->save();
     $sector = Sector::factory()->create(['name' => 'EA 28']);
@@ -77,8 +77,8 @@ it('imports a company with every field, remapped relations and no notification o
         'commercial_referent_id' => 701, 'reporter_referent_id' => 702, 'referent_ids' => [703],
         'email' => 'info@acme.test', 'pec' => 'acme@pec.test', 'phone' => '+39 06 1234567', 'phone2' => '+39 06 7654321',
         'fax' => '+39 06 1111111', 'website' => 'https://www.acme.test',
-        'country' => 'Italy', 'city' => 'Roma', 'street' => 'Via Roma 1', 'postal_code' => '00100',
-        'addresses' => [['site_type' => 'delivery', 'country' => 'Italy', 'city' => 'Milano', 'street' => 'Via Milano 2', 'postal_code' => '20100']],
+        'country' => 'IT', 'city' => 'Roma', 'street' => 'Via Roma 1', 'postal_code' => '00100',
+        'addresses' => [['site_type' => 'delivery', 'country' => 'IT', 'city' => 'Milano', 'street' => 'Via Milano 2', 'postal_code' => '20100']],
         'created_at' => '2019-03-04 10:11:12', 'updated_at' => '2021-05-06 07:08:09',
     ]]);
 

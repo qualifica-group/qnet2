@@ -41,7 +41,7 @@ if (! function_exists('runMigrationJobFor')) {
 
 it('resolves an EMPTY region from the province plate code, backfilling region + country', function () {
     seedMigrationsConfig();
-    $country = Country::factory()->create(['name' => 'Italy']);
+    $country = Country::factory()->create(['name' => 'Italy', 'iso2' => 'IT']);
     $state = State::factory()->for($country)->create(['name' => 'Basilicata']);
     $province = Province::factory()->forState($state)->create(['name' => 'Potenza']);
     $city = City::factory()->forProvince($province)->create(['name' => 'Melfi']);
@@ -51,7 +51,7 @@ it('resolves an EMPTY region from the province plate code, backfilling region + 
             'items' => [[
                 'id' => 20,
                 'denomination' => 'Lucania Srl',
-                'country' => 'Italia',
+                'country' => 'IT',
                 'region' => '', // the companies shape: region is blank
                 'province' => 'PZ',
                 'city' => 'Melfi',
@@ -78,7 +78,7 @@ it('resolves an EMPTY region from the province plate code, backfilling region + 
 
 it('creates a company with its address, resolving geo names to ids', function () {
     seedMigrationsConfig();
-    $country = Country::factory()->create(['name' => 'Italy']);
+    $country = Country::factory()->create(['name' => 'Italy', 'iso2' => 'IT']);
     $state = State::factory()->for($country)->create(['name' => 'Lazio']);
 
     Http::fake([
@@ -87,7 +87,7 @@ it('creates a company with its address, resolving geo names to ids', function ()
                 'id' => 1,
                 'denomination' => 'Acme Srl',
                 'vat_number' => 'IT12345678901',
-                'country' => 'Italy',
+                'country' => 'IT',
                 'region' => 'Lazio',
                 'city' => 'Rome',
                 'street' => 'Via Roma 1',

@@ -6,6 +6,8 @@ use App\Migrations\Sources\ProductsSource;
 use App\Models\BusinessFunction;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
+use Database\Seeders\QualificaCatalog\SafetyCatalogue;
+use Database\Seeders\QualificaCatalog\SoaCatalogue;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -19,6 +21,10 @@ use Illuminate\Support\Str;
  *   - "APL", the root of its own branch (user directive 2026-09-07);
  *   - "Presa Appuntamenti", the Consulenza leaf (user directive 2026-09-28),
  *     linked to "Consulenza";
+ *   - "SOA", the root of its own branch (user directive 2026-10-15), linked to
+ *     the "SOA" function the legacy import already brings (adopted by name);
+ *   - "Sicurezza", likewise, linked to the "Sicurezza" function (the legacy
+ *     "SICUREZZA", adopted by name without case);
  *   - "No categoria", the holding root of the legacy products imported without
  *     a category (user decision 2026-10-12): linked to "No funzione aziendale",
  *     so an offer line on one of those products can still extend its
@@ -51,6 +57,8 @@ class QualificaBusinessFunctionLinkSeeder extends Seeder
         'Formazione' => 'Formazione',
         'APL' => 'APL',
         'Presa Appuntamenti' => 'Consulenza',
+        SoaCatalogue::ROOT => SoaCatalogue::BUSINESS_FUNCTION,
+        SafetyCatalogue::ROOT => SafetyCatalogue::BUSINESS_FUNCTION,
         ProductsSource::UNCATEGORIZED_CATEGORY => self::UNCATEGORIZED_FUNCTION,
     ];
 

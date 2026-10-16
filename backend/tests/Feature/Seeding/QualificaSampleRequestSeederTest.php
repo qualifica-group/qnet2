@@ -151,3 +151,28 @@ it('seeds nothing more once every anagrafica carries an open deal', function () 
 
     expect(Quote::query()->count())->toBe(SAMPLE_REQUESTS);
 });
+
+it('never draws a category the pickers hide: inactive itself or under an inactive parent', function () use ($seedOffer): void {
+    // Spec 0208: an effectively inactive category is out of every picker and
+    // refused by SelectableProductCategory, even when still selectable.
+    $seedOffer();
+    $hidden = static function (array $rules): int {
+        $category = ProductCategory::factory()->create(['business_function_id' => BusinessFunction::factory(), ...$rules]);
+        Product::factory()->create(['category_id' => $category->getKey()]);
+
+        return $category->getKey();
+    };
+    $inactiveParent = ProductCategory::factory()->create(['is_active' => false, 'is_selectable' => false]);
+    $hiddenIds = [$hidden(['is_active' => false]), $hidden(['parent_id' => $inactiveParent->getKey()])];
+    OperationalSite::factory()->create();
+    User::factory()->count(3)->create();
+    Registry::factory()->count(SAMPLE_REQUESTS)->create();
+
+    test()->seed(QualificaSampleRequestSeeder::class);
+
+    $quotes = Quote::query()->with(['opportunity.productLines', 'lines.product'])->get();
+
+    expect($quotes)->toHaveCount(SAMPLE_REQUESTS)
+        ->and($quotes->flatMap(fn (Quote $quote) => $quote->opportunity->productLines->pluck('product_category_id'))->intersect($hiddenIds))->toBeEmpty()
+        ->and($quotes->flatMap(fn (Quote $quote) => $quote->lines->pluck('product.category_id'))->intersect($hiddenIds))->toBeEmpty();
+});

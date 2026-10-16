@@ -140,7 +140,7 @@ it('warns on unresolved optional references and keeps manager positions', functi
     $manager->forceFill(['old_id' => 603])->save();
     fakeLegacyOpportunities([[
         'id' => 904, 'registry_id' => 12, 'referent_id' => 1, 'supervisor_user_id' => 2,
-        'manager_user_ids' => [3, 603], 'source_id' => 4, 'operational_site_id' => 5, 'product_category_ids' => [6],
+        'manager_user_ids' => [3, 603], 'source_id' => 4, 'operational_site_id' => 5,
     ]]);
 
     $run = runOpportunitiesMigration();
@@ -149,7 +149,6 @@ it('warns on unresolved optional references and keeps manager positions', functi
     expect($run->created_rows)->toBe(1)
         ->and($opportunity->managers->pluck('pivot.position', 'id')->all())->toBe([$manager->id => 2])
         ->and(collect($run->report)->pluck('message')->all())->toEqualCanonicalizing([
-            'Unresolved product_category_ids (legacy id 6).',
             'Unresolved referent_id (legacy id 1).',
             'Unresolved supervisor_user_id (legacy id 2).',
             'Unresolved source_id (legacy id 4).',
@@ -204,30 +203,49 @@ it('creates the product lines on a migrated category that is not active, history
         ->and(Opportunity::query()->where('old_id', 906)->firstOrFail()->productLines()->pluck('product_category_id')->all())->toBe([$inactive->id]);
 });
 
-it('back-fills the product lines of an imported opportunity that has none on a re-run, never overwriting', function () {
+// REQUIREMENT CHANGED (user decision 2026-10-14): a product category not
+// migrated fails the opportunity instead of dropping the line with a warning.
+it('fails an opportunity whose product category is not migrated, and one without a customer', function () {
     opportunitiesSourceRegistry(15);
+    fakeLegacyOpportunities([
+        ['id' => 908, 'registry_id' => 15, 'product_category_ids' => [43]],
+        ['id' => 911, 'registry_id' => null],
+    ]);
+
+    $run = runOpportunitiesMigration();
+
+    expect($run->failed_rows)->toBe(2)
+        ->and($run->created_rows)->toBe(0)
+        ->and(Opportunity::query()->whereIn('old_id', [908, 911])->count())->toBe(0)
+        ->and(collect($run->report)->where('level', 'error')->pluck('message')->all())->toBe([
+            'Failed to import the record: Product category (legacy id 43) not migrated; the opportunity is not imported.',
+            'Failed to import the record: The opportunity has no customer in the legacy; it is not imported.',
+        ]);
+});
+
+it('back-fills the product lines of an opportunity imported without any on a re-run, never overwriting', function () {
+    $registry = opportunitiesSourceRegistry(15);
     [$own, $late] = ProductCategory::factory()->count(2)->create(['business_function_id' => BusinessFunction::factory()->create()->id]);
     $own->forceFill(['old_id' => 44])->save();
+    $late->forceFill(['old_id' => 43])->save();
+    Opportunity::factory()->create(['registry_id' => $registry->id])->forceFill(['old_id' => 908])->save();
     fakeLegacyOpportunities([
         ['id' => 908, 'registry_id' => 15, 'product_category_ids' => [43]],
         ['id' => 909, 'registry_id' => 15, 'product_category_ids' => [44]],
     ]);
-    $first = runOpportunitiesMigration();
-    $late->forceFill(['old_id' => 43])->save();
 
+    $first = runOpportunitiesMigration();
     $second = runOpportunitiesMigration();
-    $third = runOpportunitiesMigration();
     $lines = fn (int $oldId): array => Opportunity::query()->where('old_id', $oldId)->firstOrFail()
         ->productLines()->pluck('product_category_id')->all();
 
-    expect(collect($first->report)->pluck('message')->all())->toBe(['Unresolved product_category_ids (legacy id 43).'])
-        ->and($second->skipped_rows)->toBe(2)
-        ->and($second->created_rows)->toBe(0)
-        ->and(collect($second->report)->pluck('message')->all())->toBe(['Missing product categories back-filled.'])
+    expect($first->created_rows)->toBe(1)
+        ->and($first->skipped_rows)->toBe(1)
+        ->and(collect($first->report)->pluck('message')->all())->toBe(['Missing product categories back-filled.'])
         ->and($lines(908))->toBe([$late->id])
         ->and($lines(909))->toBe([$own->id])
-        ->and($third->skipped_rows)->toBe(2)
-        ->and($third->report ?? [])->toBe([]);
+        ->and($second->skipped_rows)->toBe(2)
+        ->and($second->report ?? [])->toBe([]);
 });
 
 it('writes the general notes the legacy composed, Info preliminari blocks included', function () {
