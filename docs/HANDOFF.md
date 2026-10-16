@@ -3,6 +3,23 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## SEED PRODUZIONE: PRODOTTI DI COSTO NUOVI (NON [OLD]) — VERDE, COMMITTATO (2026-10-16)
+
+- Decisioni utente 2026-10-16: le voci di costo legacy diventano prodotti NUOVI e attivi in qnet-2, catalogo SEPARATO
+  da "[OLD] Costi" (nessun `old_id`/`old_source`: l'import `cost-products` crea ancora le copie [OLD] e le righe COSTO
+  migrate di offerte/commesse puntano a quelle). Esclusi i livelli dipendenti (`user_levels`) e i record di prova
+  legacy (Alpha, oust, Motosega). Nomi ripuliti (lista confermata dall'utente), importo legacy = cost = price,
+  IVA 22% solo dove il legacy aveva rate_id 6, altrimenti vuota.
+- Nuovi `database/seeders/QualificaCatalog/CostCatalogue.php` (dati: radice "Costi", foglie Note spese 9, Articoli 4,
+  Veicoli 3, Attrezzature 1 = 17 prodotti) e `database/seeders/QualificaCostProductSeeder.php` (ProductService::create,
+  usages [COST], radice non selezionabile senza funzione aziendale, idempotente su (name, category), IVA 22% adottata
+  per percentuale come `CatalogProducts::plusVatRate`). Chiamato in `QualificaProductionDataSeeder` subito dopo
+  `QualificaCatalogSeeder`.
+- Test: nuovo `tests/Feature/Seeding/QualificaCostProductSeederTest.php` (3); `QualificaProductionDataSeederTest`
+  conteggio prodotti 540 -> 557 (REQUIREMENT CHANGED). Seeding 162/162, Migration 416/416, Products 229/229, Pint ok.
+- Manuale: guida in-app `migrations` IT+EN (nota Prodotti di costo) e manuale Claude Docs (paragrafo dopo
+  "[OLD] Costi") aggiornati. Help vitest 131/131, ESLint ok, tsc -b ok.
+
 ## Modulo HR — documento di prodotto, BOZZA (2026-10-16)
 
 - `docs/product/hr.md`: campi e regole del modulo HR (fonte: pagine WeA HR), con lo stato di ogni campo in qnet-2.
