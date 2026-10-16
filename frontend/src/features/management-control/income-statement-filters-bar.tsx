@@ -1,11 +1,12 @@
-import { useId, type ReactNode } from 'react'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AsyncPaginatedMultiSelect } from '@/components/ui/async-paginated-multi-select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SegmentedControl, type SegmentedControlOption } from '@/components/ui/segmented-control'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { FilterField as Field, ScopeFilterFields } from '@/features/management-control/scope-filter-fields'
+import { useMultiSelectLabels } from '@/features/management-control/use-multi-select-labels'
 import {
   SEGMENT_BYS,
   REVENUE_BASES,
@@ -19,38 +20,16 @@ interface IncomeStatementFiltersBarProps {
   onChange: (filters: IncomeStatementFilters) => void
 }
 
-function Field({ label, htmlFor, children }: { label: string; htmlFor?: string; children: ReactNode }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-1">
-      <Label htmlFor={htmlFor} className="text-xs text-muted-foreground">
-        {label}
-      </Label>
-      {children}
-    </div>
-  )
-}
-
 /** Common filters of the module (spec 0268): period, analytic dimensions, revenue basis and grouping. */
 export function IncomeStatementFiltersBar({ filters, onChange }: IncomeStatementFiltersBarProps) {
   const { t } = useTranslation()
-  const fromId = useId()
-  const toId = useId()
+  const multiLabels = useMultiSelectLabels()
 
   const basisOptions: SegmentedControlOption<(typeof REVENUE_BASES)[number]>[] = REVENUE_BASES.map((value) => ({
     value,
     label: t(`managementControl.filters.bases.${value}`),
   }))
   const segmentById = useId()
-
-  const multiLabels = (label: string) => ({
-    placeholder: t('managementControl.filters.placeholder'),
-    searchPlaceholder: t('managementControl.filters.search'),
-    empty: t('managementControl.filters.empty'),
-    error: t('managementControl.filters.error'),
-    removeLabel: t('managementControl.filters.remove'),
-    triggerLabel: label,
-    retry: t('managementControl.filters.retry'),
-  })
 
   const toggleType = (type: WorkOrderTypeValue, checked: boolean) => {
     const next = checked ? [...filters.workOrderTypes, type] : filters.workOrderTypes.filter((value) => value !== type)
@@ -62,48 +41,11 @@ export function IncomeStatementFiltersBar({ filters, onChange }: IncomeStatement
       aria-label={t('managementControl.filters.title')}
       className="grid grid-cols-1 gap-3 rounded-lg border bg-surface p-3 sm:grid-cols-2 lg:grid-cols-3"
     >
-      <Field label={t('managementControl.filters.dateFrom')} htmlFor={fromId}>
-        <Input
-          id={fromId}
-          type="date"
-          className="h-8 text-xs"
-          value={filters.dateFrom}
-          onChange={(event) => onChange({ ...filters, dateFrom: event.target.value })}
-        />
-      </Field>
-      <Field label={t('managementControl.filters.dateTo')} htmlFor={toId}>
-        <Input
-          id={toId}
-          type="date"
-          className="h-8 text-xs"
-          value={filters.dateTo}
-          onChange={(event) => onChange({ ...filters, dateTo: event.target.value })}
-        />
-      </Field>
-      <Field label={t('managementControl.filters.company')}>
-        <AsyncPaginatedMultiSelect
-          resource="companies"
-          value={filters.companyIds}
-          onChange={(companyIds) => onChange({ ...filters, companyIds })}
-          labels={multiLabels(t('managementControl.filters.company'))}
-        />
-      </Field>
-      <Field label={t('managementControl.filters.companySite')}>
-        <AsyncPaginatedMultiSelect
-          resource="company-sites"
-          value={filters.companySiteIds}
-          onChange={(companySiteIds) => onChange({ ...filters, companySiteIds })}
-          labels={multiLabels(t('managementControl.filters.companySite'))}
-        />
-      </Field>
-      <Field label={t('managementControl.filters.operationalSite')}>
-        <AsyncPaginatedMultiSelect
-          resource="operational-sites"
-          value={filters.operationalSiteIds}
-          onChange={(operationalSiteIds) => onChange({ ...filters, operationalSiteIds })}
-          labels={multiLabels(t('managementControl.filters.operationalSite'))}
-        />
-      </Field>
+      <ScopeFilterFields
+        filters={filters}
+        onChange={(patch) => onChange({ ...filters, ...patch })}
+        dateFromLabel={t('managementControl.filters.dateFrom')}
+      />
       <Field label={t('managementControl.filters.businessFunction')}>
         <AsyncPaginatedMultiSelect
           resource="business-functions"

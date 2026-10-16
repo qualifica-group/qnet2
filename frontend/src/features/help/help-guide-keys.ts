@@ -61,6 +61,7 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'invoice-installments',
   'ledger',
   'management-control',
+  'management-control-exposure',
   'purchase-invoices',
   'purchase-invoice-installments',
   'agent-fiscal-profiles',

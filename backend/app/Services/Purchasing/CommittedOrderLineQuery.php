@@ -69,6 +69,27 @@ final class CommittedOrderLineQuery
     }
 
     /**
+     * The groups committing the most, largest first (ties by group value), with
+     * the number of orders that still commit something. `$groupColumn` is an
+     * internal constant, never request input.
+     *
+     * @return array<int, array{id: int, cents: int, orders: int}>
+     */
+    public function topCommittedBy(Builder $query, string $groupColumn, int $limit): array
+    {
+        $amount = self::COMMITTED_AMOUNT;
+
+        return $query->groupBy($groupColumn)
+            ->selectRaw("{$groupColumn} as group_id, SUM({$amount}) as total, COUNT(DISTINCT CASE WHEN {$amount} > 0 THEN purchase_orders.id END) as orders")
+            ->having('total', '>', 0)
+            ->orderByDesc('total')->orderBy('group_id')
+            ->limit($limit)
+            ->get()
+            ->map(fn (object $row): array => ['id' => (int) $row->group_id, 'cents' => (int) round((float) $row->total * 100), 'orders' => (int) $row->orders])
+            ->all();
+    }
+
+    /**
      * Grouped sum in integer cents. `$amountExpression` and `$groupColumn` are
      * internal constants, never request input.
      *

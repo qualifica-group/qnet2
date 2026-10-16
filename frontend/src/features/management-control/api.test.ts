@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { apiClient } from '@/api/client'
 import {
+  defaultExposureFilters,
   defaultIncomeStatementFilters,
+  fetchExposure,
   fetchIncomeStatement,
   fetchStructureCosts,
   managementControlKeys,
+  toExposureParams,
   toIncomeStatementParams,
   toStructureCostsParams,
 } from '@/features/management-control/api'
+import { makeExposure } from '@/features/management-control/exposure-fixtures'
 import { makeIncomeStatement, makeStructureCosts } from '@/features/management-control/management-control-fixtures'
 
 vi.mock('@/api/client', () => ({ apiClient: { get: vi.fn() } }))
@@ -102,6 +106,68 @@ describe('management control api helpers', () => {
     await expect(fetchStructureCosts({ group_by: 'company' })).resolves.toBe(payload)
     expect(getMock).toHaveBeenCalledWith('/management-control/structure-costs', {
       params: { group_by: 'company' },
+      paramsSerializer: { indexes: false },
+    })
+  })
+})
+
+describe('exposure api helpers', () => {
+  it('AC-015 defaults to 1 January - today, invoices, by company, top 10 and empty arrays', () => {
+    const filters = defaultExposureFilters()
+    const year = String(new Date().getFullYear())
+
+    expect(filters.dateFrom).toBe(`${year}-01-01`)
+    expect(filters.dateTo.startsWith(year)).toBe(true)
+    expect(filters.documentType).toBe('invoice')
+    expect(filters.groupBy).toBe('company')
+    expect(filters.top).toBe(10)
+    expect(filters.companyIds).toEqual([])
+    expect(filters.companySiteIds).toEqual([])
+    expect(filters.operationalSiteIds).toEqual([])
+  })
+
+  it('AC-015 omits empty filters and keeps arrays as contract keys', () => {
+    expect(toExposureParams({ ...defaultExposureFilters(), dateFrom: '', dateTo: '' })).toEqual({
+      document_type: 'invoice',
+      group_by: 'company',
+      top: 10,
+    })
+
+    expect(
+      toExposureParams({
+        ...defaultExposureFilters(),
+        dateFrom: '2026-01-01',
+        dateTo: '2026-06-30',
+        companyIds: [1, 2],
+        operationalSiteIds: [5],
+        documentType: 'all',
+        groupBy: 'operational_site',
+        top: 25,
+      }),
+    ).toEqual({
+      date_from: '2026-01-01',
+      date_to: '2026-06-30',
+      company_id: [1, 2],
+      operational_site_id: [5],
+      document_type: 'all',
+      group_by: 'operational_site',
+      top: 25,
+    })
+  })
+
+  it('AC-015 puts the params in the query key', () => {
+    const base = { document_type: 'invoice' as const, group_by: 'company' as const, top: 10 as const }
+    expect(managementControlKeys.exposure(base)).not.toEqual(managementControlKeys.exposure({ ...base, top: 5 }))
+  })
+
+  it('AC-015 fetchExposure reads data.data and serializes arrays without indexes', async () => {
+    const payload = makeExposure()
+    getMock.mockResolvedValue({ data: { success: true, message: 'OK', data: payload } })
+    const params = { company_id: [1, 2], document_type: 'invoice' as const, group_by: 'company' as const, top: 10 as const }
+
+    await expect(fetchExposure(params)).resolves.toBe(payload)
+    expect(getMock).toHaveBeenCalledWith('/management-control/exposure', {
+      params,
       paramsSerializer: { indexes: false },
     })
   })

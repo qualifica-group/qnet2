@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { SegmentedControl, type SegmentedControlOption } from '@/components/ui/segmented-control'
 import { Skeleton } from '@/components/ui/skeleton'
+import { CostTypeLabel } from '@/features/management-control/cost-type-label'
 import { MoneyValue } from '@/features/management-control/money-value'
 import {
   STRUCTURE_GROUP_BYS,
@@ -19,23 +20,6 @@ const NUMERIC_HEAD_CELL = 'px-2 py-1.5 text-right text-xs font-medium text-muted
 const CELL = 'px-2 py-1.5 text-sm'
 const NUMERIC_CELL = 'px-2 py-1.5 text-right text-sm'
 const FIGURES = ['committed_net', 'invoiced_net', 'total_net'] as const
-
-function CostTypeCell({ row }: { row: StructureCostTypeRow }) {
-  const { t } = useTranslation()
-  const { cost_type: costType } = row
-
-  if (costType === null) {
-    return <span className="text-muted-foreground">{t('managementControl.structure.noCostType')}</span>
-  }
-  return (
-    <span className="flex items-center gap-1.5">
-      {costType.color ? (
-        <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full border" style={{ backgroundColor: costType.color }} />
-      ) : null}
-      <span className="truncate">{costType.name}</span>
-    </span>
-  )
-}
 
 function CostTypeTable({ rows }: { rows: StructureCostTypeRow[] }) {
   const { t } = useTranslation()
@@ -62,7 +46,7 @@ function CostTypeTable({ rows }: { rows: StructureCostTypeRow[] }) {
           {rows.map((row) => (
             <tr key={row.cost_type?.id ?? 'none'} className="border-t hover:bg-muted/40">
               <th scope="row" className={`${CELL} text-left font-medium`}>
-                <CostTypeCell row={row} />
+                <CostTypeLabel costType={row.cost_type} />
               </th>
               <td className={CELL}>
                 {row.cost_type?.nature ? t(`managementControl.structure.natures.${row.cost_type.nature}`) : ''}

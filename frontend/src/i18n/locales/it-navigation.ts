@@ -28,6 +28,7 @@ export const navigation = {
   financialAccounts: 'Gestione Conti',
   managementControl: 'Controllo di gestione',
   incomeStatement: 'Conto economico',
+  exposure: 'Scadenzario ed esposizione',
   accountingReceivable: 'Attiva',
   proformaRequests: 'Richieste Proforma',
   invoices: 'Fatture Attive',

@@ -3,7 +3,49 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0268 — Controllo di gestione F1: conto economico per commessa e per dimensione — VERDE, NON COMMITTATO (2026-10-16)
+## Spec 0269 — Controllo di gestione F2: scadenzario, aging, impegni, esposizione, concentrazione — VERDE, NON COMMITTATO (2026-10-16)
+
+- Spec `docs/specs/0269-management-control-exposure.xml` (D-1..D-16, AC-001..AC-020). Stesso modulo e permesso
+  `management-control.view`. Voce di menu `management-control-exposure` ("Scadenzario ed esposizione",
+  `/management-control/exposure`, icona `calendar-clock`); guida in-app con la stessa chiave.
+- Endpoint `GET management-control/exposure` (ExposureRequest/ExposureFilters/ExposureController, cache per attore +
+  parametri + giorno): `applied`, `today`, `receivable` e `payable` (Side: open_total, overdue_total, not_due_total,
+  aging a 7 fasce con le chiavi di LedgerCalculator, invoiced_in_period, settled_in_period, average_days = DSO/DPO
+  pesato o null, by_status con documenti e aperto, top anagrafiche per scaduto con worst_bucket; il passivo anche
+  by_cost_type), `committed` (CommittedOrderLineQuery: total, con/senza commessa, by_supplier top N, by_cost_type),
+  `exposure` (receivable_open - payable_open - committed_total, by_dimension per group_by company|company_site|
+  operational_site, "unattributed" ultimo), `concentration` (prime N per fatturato del periodo con quote e scaduto).
+  Parametri: date_from/date_to (SOLO flussi: incassato/pagato/fatturato nel periodo; stock e aging a oggi, D-1),
+  company_id[], company_site_id[], operational_site_id[], document_type all|proforma|invoice (default invoice),
+  group_by (default company), top 1..25 (default 10).
+- Regole: rata aperta = residual_amount > 0; passivo sugli importi rata (gia' al netto di ritenuta/ENASARCO),
+  fatturato passivo = total - withholding - enasarco; fatture passive degli estratti conto provvigioni INCLUSE;
+  sedi attive dall'offerta (fattura senza offerta -> "unattributed" per sede); SQL driver-dipendente (DATEDIFF vs
+  julianday) in `Exposure/AgingSql`; nessun loop PHP sui documenti.
+- Backend: `app/Services/ManagementControl/Exposure/{AgingSql, ExposureSupport, ScheduleAggregator (astratta),
+  ReceivableScheduleAggregator, PayableScheduleAggregator, CommittedExposureAggregator,
+  CustomerConcentrationAggregator, ExposureBuilder}`, `CommittedOrderLineQuery::topCommittedBy()` (metodi esistenti
+  invariati). Test `tests/Feature/ManagementControl/Exposure*Test.php`; helper `mcDay`, `mcReceivable`, `mcPayable`,
+  `mcExposureScenario` in ManagementControlHelpers.
+- Frontend: `features/management-control/exposure-*.tsx`, `exposure-types.ts` (shape 0269; `types.ts` tiene
+  `ScopeFilters`), `scope-filter-fields.tsx` (periodo + societa' + sedi, riusato dalla barra del Conto economico a
+  comportamento invariato), `cost-type-label.tsx` condiviso, pagina `pages/management-control-exposure-page.tsx`,
+  i18n `managementControl.exposure.*`, guide `help/content/{it,en}/management-control-exposure.ts`. Link al
+  Partitario `/ledger?registry={id}` sempre sottolineati; raggruppamento come `Select`; `ComparisonBarChart` ha la
+  prop opzionale `headingLevel` (2|3|4, default 3).
+- Drill-down limitato: le pagine Scadenze non leggono filtri da URL (fuori scope); pulsanti semplici verso
+  `/invoice-installments` e `/purchase-invoice-installments`.
+- Test: backend 688/688 sulle cartelle toccate e adiacenti + Pint; frontend 403/403 mirati, ESLint e tsc puliti
+  (dettaglio e verdetto del verifier nel riepilogo di sessione). Test esistente modificato: `help-guide-keys.test.ts`
+  79 -> 80.
+- Manuale Claude Docs: NON aggiornato (documento non condiviso con l'accesso del connettore); va aggiunto il
+  capitolo "Controllo di gestione > Scadenzario ed esposizione" (testo pronto nella guida IT).
+- Migliorie segnalate, non fatte: altezza del grafico proporzionale ai punti; prima colonna sticky sulle tabelle
+  piu' larghe; `aria-label` + caption duplicati nelle regioni tabellari (tollerato).
+- Prossimo: F3 cash flow previsionale per mese, trend mensile per funzione aziendale, incassi per conto finanziario,
+  da fatturare, ciclo proforma; F4 provvigioni per agente, costo orario personale (nuovi campi, da decidere).
+
+## Spec 0268 — Controllo di gestione F1: conto economico per commessa e per dimensione — VERDE, COMMITTATO 7276ab1c (2026-10-16)
 
 - Spec `docs/specs/0268-management-control-income-statement.xml` (decisioni utente D-1..D-9, tecniche D-10..D-21,
   AC-001..AC-021). Fase 1 di 4: F2 scadenzario/aging/esposizione, F3 cash flow previsionale e indicatori,

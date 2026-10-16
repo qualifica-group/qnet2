@@ -17,5 +17,12 @@ return [
             'route' => '/management-control/income-statement',
             'permission' => 'management-control.view',
         ],
+        [
+            'key' => 'management-control-exposure',
+            'label' => 'navigation.exposure',
+            'icon' => 'calendar-clock',
+            'route' => '/management-control/exposure',
+            'permission' => 'management-control.view',
+        ],
     ],
 ];

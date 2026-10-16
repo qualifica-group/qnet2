@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0269 — Controllo di gestione, fase 2 di 4: scadenzario attivo e passivo con aging, impegni aperti,
+  esposizione netta e concentrazione clienti. Stesso modulo, permesso e pattern della spec 0268.
+  Fasi successive: F3 cash flow previsionale, trend mensile per funzione, indicatori; F4 provvigioni e personale.
+-->
+<spec id="0269-management-control-exposure" status="draft" owner="utente" date="2026-10-16">
+
+  <goal>
+    Dare alla direzione una seconda pagina del modulo "Controllo di gestione", "Scadenzario ed esposizione", che
+    mostra in forma aggregata quanto resta da incassare e da pagare e con quale ritardo (aging a fasce), gli
+    impegni verso i fornitori non ancora fatturati, l'esposizione netta per societa' e sede, i tempi medi di
+    incasso e pagamento, i clienti e fornitori con lo scaduto piu' alto e la concentrazione del fatturato sui
+    primi clienti. Nessun elenco per documento: il dettaglio resta alle pagine Scadenze e Partitario.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-16 ("mi fido: proponi tutto"). Decisioni gia' prese (spec 0268): D-6 esposizione e
+    cassa sul TOTALE documento; D-3 proforma fuori dal fatturato; D-9 fatture passive degli estratti conto
+    provvigioni escluse dai costi di struttura ma, qui, INCLUSE nello scadenzario passivo (debiti reali verso gli
+    agenti); D-7 permesso unico `management-control.view`, tutte le societa' visibili al titolare.
+
+    Decisioni proposte (il lead decide, l'utente valida con l'approvazione del piano):
+    - D-1 Stock e flussi. Il "da incassare/da pagare", l'aging, lo scaduto per anagrafica, gli impegni e
+      l'esposizione sono una FOTOGRAFIA A OGGI (data del server, `today` in risposta), indipendente dal periodo. Il
+      periodo (`date_from`/`date_to`) governa solo i FLUSSI: incassato/pagato nel periodo (`collected_at`/`paid_at`),
+      fatturato attivo e passivo del periodo (`document_date`), tempi medi (DSO/DPO) e concentrazione clienti.
+    - D-2 Tipo documento come il Partitario (spec 0266): `document_type` all|proforma|invoice, default `invoice`, su
+      entrambi i lati (attivo `invoices.type`, passivo `purchase_invoices.document_type`).
+    - D-3 Importi: lato attivo le rate `invoice_installments` (`amount`, `collected_amount`, `residual_amount`
+      virtuale); lato passivo le rate `purchase_invoice_installments` (`amount`, `paid_amount`, `residual_amount`),
+      che gia' rappresentano l'importo pagabile al netto di ritenute ed ENASARCO (spec 0267 D-6,
+      `PurchaseInvoice::payableAmount()`). Fatturato del periodo: attivo `invoices.total_amount`, passivo
+      `total_amount - withholding_amount - enasarco_amount` (stessa formula di `payableAmount()`).
+    - D-4 Aging a fasce con le stesse chiavi del Partitario (`LedgerCalculator`): a scadere `due_0_30`, `due_31_60`,
+      `due_over_60`; scaduto `overdue_1_30`, `overdue_31_60`, `overdue_61_90`, `overdue_over_90`. Una rata e'
+      aperta se `residual_amount > 0`; scaduta se `due_date < today`; i giorni si contano come
+      `InstallmentSql::daysOverdue()` (DATEDIFF su MySQL, julianday su SQLite). Calcolo in SQL (CASE WHEN per fascia,
+      SUM), mai in PHP sui singoli documenti: numero di query costante al crescere dei documenti.
+    - D-5 Stato pagamento per documento (distribuzione): come `InvoicePaymentStatusResolver` (rata aperta piu'
+      vecchia per `sequence`; paid = nessuna aperta; not_due = non scaduta; overdue = scaduta fino a 21 giorni;
+      seriously_overdue oltre, `InvoicePaymentStatus::SERIOUSLY_OVERDUE_DAYS`), in SQL con una sottoquery per
+      documento (min `due_date` delle rate aperte) e conteggio per stato; per ogni stato: numero documenti e
+      importo aperto. Stessa regola sul passivo.
+    - D-6 DSO/DPO = media dei giorni tra `document_date` del documento e `collected_at`/`paid_at` della rata, sulle
+      rate incassate/pagate nel periodo, PESATA sull'importo incassato/pagato; `null` se nessuna rata nel periodo.
+      Arrotondata a intero.
+    - D-7 Top anagrafiche: le prime `top` (default 10, max 25) per scaduto decrescente, poi aperto decrescente; per
+      ciascuna aperto, scaduto e fascia peggiore (la fascia di scaduto piu' alta con importo > 0, altrimenti la
+      fascia a scadere piu' lontana). Link al Partitario `/ledger?registry={id}`.
+    - D-8 Impegni aperti = `CommittedOrderLineQuery` (ordini in `INVOICEABLE_STATUSES`, quantita' non fatturata x
+      prezzo, come 0252/0268): totale, con commessa / senza commessa, per fornitore top N (`purchase_orders.supplier_id`),
+      per tipo di costo con natura. Fotografia a oggi; filtri societa'/sedi dalla testata ordine.
+    - D-9 Esposizione netta = da incassare aperto - da pagare aperto - impegnato aperto, totale e per dimensione
+      (`group_by` company|company_site|operational_site, default company). Lato attivo societa' da
+      `invoices.company_id` e sedi dall'offerta (`invoices.quote_id -> quotes.company_site_id/operational_site_id`,
+      spec 0266); passivo e impegni dalle testate. Valore nullo -> "unattributed", ultimo, label null.
+    - D-10 Concentrazione clienti: sul fatturato del periodo (documenti del `document_type` scelto, `document_date`
+      nel periodo, `total_amount`) e sullo scaduto a oggi: le prime `top` anagrafiche per fatturato con quota sul
+      totale, lo scaduto di ciascuna con quota sullo scaduto totale, e la quota cumulata delle prime N.
+    - D-11 Filtri societa'/sedi: come 0268 (`company_id[]`, `company_site_id[]`, `operational_site_id[]`); sul lato
+      attivo le sedi passano dall'offerta (una fattura senza offerta non ha sede: esclusa dai filtri di sede, va in
+      "unattributed" nel raggruppamento per sede).
+    - D-12 Un solo endpoint `GET /api/management-control/exposure` con tutte le sezioni, cache `AggregateCache` per
+      attore + parametri + giorno (la fotografia cambia con la data).
+    - D-13 Drill-down: pulsanti "Apri Scadenze attive" (`/invoice-installments`) e "Apri Scadenze passive"
+      (`/purchase-invoice-installments`) senza filtri precompilati (le pagine tabellari non leggono filtri da URL:
+      fuori scope estenderle), link al Partitario con `?registry=` dalle righe cliente/fornitore.
+    - D-14 Frontend: i campi comuni della barra filtri (periodo, societa', sede societa', sede operativa) escono da
+      `income-statement-filters-bar.tsx` in un componente condiviso `scope-filter-fields.tsx` della stessa feature,
+      riusato dalle due barre; nessun cambiamento di comportamento della pagina Conto economico.
+    - D-15 Menu: seconda voce della sezione `management-control-section`, key `management-control-exposure`
+      (= chiave guida in-app), label `navigation.exposure`, icona `calendar-clock` (gia' in `icon-map.ts`), route
+      `/management-control/exposure`, permesso `management-control.view`. Breadcrumb segmento `exposure`.
+    - D-16 Grafici: aging attivo vs passivo con `ComparisonBarChart` (una coppia di barre per fascia, serie
+      "Da incassare" / "Da pagare"); nessun nuovo componente ui. (Revisione ui-design in build: al componente si
+      aggiunge la prop opzionale `headingLevel` per la gerarchia dei titoli; il raggruppamento della barra filtri
+      e' un `Select`, non un `SegmentedControl`, perche' tre segmenti in una cella da un quarto troncano le
+      etichette; i link al Partitario sono sempre sottolineati, WCAG 1.4.1.)
+
+    Fatti verificati nel repo:
+    - `invoice_installments`: `invoice_id`, `sequence`, `due_date`, `amount`, `collected_amount`, `collected_at`,
+      `residual_amount` (virtuale, indice con `due_date`). `purchase_invoice_installments`: `purchase_invoice_id`,
+      `sequence`, `due_date`, `amount`, `paid_amount`, `paid_at`, `financial_account_id`, `residual_amount`.
+    - `invoices`: `type`, `company_id`, `customer_registry_id`, `quote_id`, `document_date`, `total_amount`.
+      `purchase_invoices`: `document_type`, `company_id`, `supplier_id`, `company_site_id`, `operational_site_id`,
+      `cost_type_id` (nullable), `document_date`, `total_amount`, `withholding_amount`, `enasarco_amount`.
+      `purchase_orders`: `supplier_id`, `company_id`, `company_site_id`, `operational_site_id`, `status`.
+      `registries.name`, `companies.denomination`, `company_sites.name`, `operational_sites.alias` (fallback id).
+    - Riuso: `App\Tables\InvoiceInstallments\InstallmentSql` (`unpaid`, `overdue`, `daysOverdue` con driver
+      MySQL/SQLite, `operationalSiteLabel`), `App\Services\Ledger\LedgerCalculator` (chiavi e soglie delle fasce),
+      `App\Services\Invoices\InvoicePaymentStatusResolver`, `App\Services\Purchasing\CommittedOrderLineQuery`
+      (spec 0268), `App\Support\Cache\AggregateCache`, pattern `IncomeStatementRequest`/`IncomeStatementFilters`/
+      `IncomeStatementController`. Helper Pest: `invoiceWithPlan`, `collectInstallment`, `purchaseDocumentWithPlan`,
+      `payInstallment`, `purchaseOrderWithLines`, `mcActor`, `mcGet` (`tests/Helpers`, caricati da `tests/Pest.php`).
+    - Frontend: feature `src/features/management-control/` (api.ts con `managementControlKeys`, hook TanStack
+      Query, `money-value.tsx`, `row-label.ts`, `income-statement-totals.tsx` come pattern tile), pagina lazy in
+      `src/routes/router.tsx` accanto a `management-control/income-statement`, i18n `{it,en}-management-control.ts`,
+      guide `help/content/{it,en}/`, `HELP_GUIDE_KEYS`, `routes/breadcrumbs.tsx`, `components/ui/comparison-bar-chart.tsx`,
+      pagina Partitario con `?registry=<id>`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Voce di menu "Scadenzario ed esposizione" nella sezione Controllo di gestione, stessa autorizzazione.</item>
+      <item>Endpoint `GET /api/management-control/exposure` con le sezioni attivo, passivo, impegni, esposizione, concentrazione.</item>
+      <item>Pagina `/management-control/exposure`: barra filtri (periodo, societa', sedi, tipo documento, raggruppamento esposizione), tile KPI, aging attivo vs passivo (tabella + grafico), distribuzione per stato, top clienti e top fornitori con link al Partitario, impegni per fornitore e tipo di costo, esposizione per dimensione, concentrazione clienti, pulsanti verso le pagine Scadenze.</item>
+      <item>Estrazione dei campi comuni della barra filtri in `scope-filter-fields.tsx` (riuso nella pagina Conto economico senza cambiamenti funzionali).</item>
+      <item>Test Pest e Vitest sugli AC; guide in-app IT/EN `management-control-exposure`; aggiornamento HANDOFF.</item>
+    </in>
+    <out>
+      <item>Elenco per documento o per rata, paginazione, export (restano le pagine Scadenze e Partitario).</item>
+      <item>Filtri precompilati via URL sulle pagine Scadenze (il framework tabellare non li legge).</item>
+      <item>Cash flow previsionale per mese, trend mensili, incassi per conto finanziario (fase 3).</item>
+      <item>Provvigioni per agente (fase 4). Registrazione di incassi/pagamenti (si fa dalle pagine Scadenze).</item>
+      <item>Qualsiasi modifica a LedgerCalculator, alle sorgenti del Partitario, a InstallmentSql o alle TableDefinition.</item>
+      <item>Nuovi componenti in `components/ui/`.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/management-control/exposure">
+      <request>
+        date_from: "YYYY-MM-DD" | null          (opzionale; flussi: collected_at/paid_at e document_date; default FE 1/1 anno corrente)
+        date_to: "YYYY-MM-DD" | null            (opzionale; >= date_from se entrambi; default FE oggi)
+        company_id[]: int[]                     (opzionale, exists:companies,id)
+        company_site_id[]: int[]                (opzionale, exists:company_sites,id)
+        operational_site_id[]: int[]            (opzionale, exists:operational_sites,id)
+        document_type: "all"|"proforma"|"invoice"   (opzionale, default "invoice", D-2)
+        group_by: "company"|"company_site"|"operational_site"   (opzionale, default "company", D-9)
+        top: int                                (opzionale, 1..25, default 10, D-7)
+      </request>
+      <response status="200">
+        { success: true, message: "OK", data: {
+            applied: { date_from, date_to, company_id: int[], company_site_id: int[], operational_site_id: int[],
+                       document_type: string, group_by: string, top: int },
+            today: "YYYY-MM-DD",
+            receivable: Side,
+            payable: Side & { by_cost_type: CostTypeRow[] },
+            committed: {
+              total: number, with_work_order: number, without_work_order: number,
+              by_supplier: CommittedTopRow[],          (top N per impegnato decrescente)
+              by_cost_type: CostTypeRow[]              (ordine catalogo; senza tipo ultimo)
+            },
+            exposure: {
+              receivable_open: number, payable_open: number, committed_total: number, net: number,
+              by_dimension: ExposureRow[]              (ordinate per label; "unattributed" ultimo)
+            },
+            concentration: {
+              invoiced_total: number, overdue_total: number,
+              top_invoiced_share: number,              (quota cumulata delle prime N sul fatturato, 0..100 con 1 decimale)
+              top_overdue_share: number,
+              rows: ConcentrationRow[]                 (prime N per fatturato decrescente)
+            }
+        } }
+
+        Side = {
+          open_total: number,            (somma residui delle rate aperte, a oggi)
+          overdue_total: number,         (residui con due_date < today)
+          not_due_total: number,         (residui con due_date >= today)
+          aging: { due_0_30: number, due_31_60: number, due_over_60: number,
+                   overdue_1_30: number, overdue_31_60: number, overdue_61_90: number, overdue_over_90: number },
+          invoiced_in_period: number,    (documenti con document_date nel periodo, D-3)
+          settled_in_period: number,     (collected_amount / paid_amount delle rate con collected_at / paid_at nel periodo)
+          average_days: int | null,      (DSO / DPO, D-6)
+          by_status: { paid: StatusCell, not_due: StatusCell, overdue: StatusCell, seriously_overdue: StatusCell },
+          top: TopRow[]                  (D-7)
+        }
+        StatusCell = { documents: int, open: number }
+        TopRow = { registry: { id: int, name: string }, open: number, overdue: number,
+                   worst_bucket: "overdue_over_90"|"overdue_61_90"|"overdue_31_60"|"overdue_1_30"|"due_0_30"|"due_31_60"|"due_over_60" }
+        CostTypeRow = { cost_type: { id: int, name: string, color: string|null, nature: "direct"|"indirect"|"general"|null } | null,
+                        open: number, overdue: number }          (per il passivo; per gli impegni `open` = impegnato, `overdue` = 0)
+        CommittedTopRow = { registry: { id: int, name: string }, committed: number, orders: int }
+        ExposureRow = { key: string, label: string|null, receivable_open: number, payable_open: number,
+                        committed: number, net: number }
+        ConcentrationRow = { registry: { id: int, name: string }, invoiced: number, invoiced_share: number,
+                             overdue: number, overdue_share: number }
+
+        Importi: number con 2 decimali sul totale documento (D-6 di 0268), calcolati in centesimi. Quote in
+        percentuale con 1 decimale. Invarianti: open_total = overdue_total + not_due_total = somma delle 7 fasce;
+        somma di by_dimension campo per campo = i totali di exposure; exposure.net = receivable_open -
+        payable_open - committed_total.
+      </response>
+      <errors>
+        401 non autenticato. 403 senza `management-control.view`.
+        422 parametri non validi (date, date_to &lt; date_from, id inesistenti, document_type/group_by fuori lista,
+            top fuori da 1..25).
+      </errors>
+    </endpoint>
+
+    <frontend_contract>
+      Rotta `/management-control/exposure` (pagina lazy `src/pages/management-control-exposure-page.tsx`, gated da
+      `<Can permission="management-control.view">`). Feature `src/features/management-control/`:
+      `api.ts` (+ `managementControlKeys.exposure(params)`, `defaultExposureFilters()`, `toExposureParams()`,
+      `fetchExposure()`), `types.ts` (+ le shape sopra; filtri UI camelCase `ExposureFilters`), `use-exposure.ts`,
+      `scope-filter-fields.tsx` (periodo + societa' + sede societa' + sede operativa, estratto da
+      `income-statement-filters-bar.tsx` e riusato da entrambe le barre), `exposure-filters-bar.tsx` (campi comuni +
+      tipo documento `SegmentedControl` + raggruppamento `SegmentedControl` a tre valori + top come `Select` 5/10/25),
+      `exposure-panel.tsx` (stati loading/errore/vuoto, composizione), `exposure-totals.tsx` (8 tile: da incassare,
+      scaduto attivo, da pagare, scaduto passivo, impegnato, esposizione netta, DSO, DPO), `exposure-aging.tsx`
+      (tabella fasce attivo/passivo + `ComparisonBarChart`), `exposure-status-table.tsx` (per stato, due lati),
+      `exposure-top-table.tsx` (clienti o fornitori: nome con link `/ledger?registry={id}`, aperto, scaduto, fascia
+      peggiore tradotta), `exposure-committed.tsx` (totali, per fornitore, per tipo di costo con pallino colore e
+      natura), `exposure-by-dimension.tsx`, `exposure-concentration.tsx` (tabella con quote in percentuale),
+      `exposure-fixtures.ts`, test.
+      i18n: chiavi sotto `managementControl.exposure.*` in `{it,en}-management-control.ts`; `navigation.exposure`.
+      Guide: `help/content/{it,en}/management-control-exposure.ts` (sezioni `overview`, `filters`, `aging`, `status`,
+      `top`, `committed`, `exposure`, `concentration`, `permissions`), chiave in HELP_GUIDE_KEYS; breadcrumb `exposure`.
+    </frontend_contract>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato il menu, la voce "Scadenzario ed esposizione" compare nella sezione Controllo di gestione solo a chi ha `management-control.view`, con key `management-control-exposure` e route `/management-control/exposure`; `permissions:sync` non crea permessi nuovi (Pest).</criterion>
+    <criterion id="AC-002">Senza autenticazione l'endpoint da' 401; senza il permesso 403; parametri non validi (date, date_to &lt; date_from, id inesistenti, document_type/group_by fuori lista, top 0 o 26) danno 422 (Pest).</criterion>
+    <criterion id="AC-003">Date fatture attive con rate aperte a -100, -45, -10, +5, +45, +90 giorni da oggi e una rata chiusa, quando si chiama l'endpoint, allora `receivable.aging` mette ogni residuo nella fascia giusta, `overdue_total` e `not_due_total` sono le somme delle fasce scadute e a scadere, `open_total` la loro somma, e la rata chiusa non conta (Pest).</criterion>
+    <criterion id="AC-004">Date rate incassate dentro e fuori il periodo e documenti con data dentro e fuori il periodo, allora `settled_in_period` e `invoiced_in_period` contano solo quelli nel periodo, mentre `open_total` e `aging` non cambiano al variare del periodo (D-1) (Pest).</criterion>
+    <criterion id="AC-005">Date due rate incassate nel periodo, una da 100 a 10 giorni e una da 300 a 30 giorni dalla data documento, allora `average_days` vale 25 (media pesata arrotondata); senza rate incassate nel periodo vale null (Pest).</criterion>
+    <criterion id="AC-006">Dati documenti con rata aperta piu' vecchia non scaduta, scaduta da 10 giorni, scaduta da 30 giorni e documento tutto incassato, allora `by_status` conta rispettivamente not_due, overdue, seriously_overdue e paid con l'importo aperto di ciascuno (Pest).</criterion>
+    <criterion id="AC-007">Dati tre clienti con scaduto 500, 300 e 0 e aperto non scaduto, con `top` = 2 allora `receivable.top` ha i due clienti con scaduto, in ordine decrescente, con `worst_bucket` coerente con la rata piu' in ritardo; con `top` = 10 compare anche il terzo con `worst_bucket` a scadere (Pest).</criterion>
+    <criterion id="AC-008">Dato il lato passivo con documenti con ritenuta ed ENASARCO, rate aperte, pagate nel periodo e fuori periodo, allora `payable` replica le regole di AC-003..AC-007 sulle rate passive, `invoiced_in_period` e' al netto di ritenuta ed ENASARCO, `by_cost_type` somma aperto e scaduto per tipo con `nature` e la riga senza tipo ultima; una fattura passiva collegata a un estratto conto provvigioni e' inclusa (Pest).</criterion>
+    <criterion id="AC-009">Dato `document_type`, allora proforma e fatture entrano o escono da entrambi i lati secondo il valore, default invoice (Pest).</criterion>
+    <criterion id="AC-010">Dati ordini in stato approved/fulfilled con righe parzialmente fatturate, un ordine draft e righe con e senza commessa, allora `committed.total` e' il non fatturato dei soli ordini fatturabili, `with_work_order` + `without_work_order` = `total`, `by_supplier` e' in ordine decrescente limitato a `top` con il conteggio ordini, `by_cost_type` e' nell'ordine del catalogo (Pest).</criterion>
+    <criterion id="AC-011">Dati documenti e ordini su due societa' e sedi diverse, allora `exposure.by_dimension` per company, company_site e operational_site ha una riga per valore con `net` = aperto attivo - aperto passivo - impegnato, la somma delle righe coincide con i totali di exposure, le fatture attive senza offerta vanno in "unattributed" per le sedi, `exposure.net` = receivable_open - payable_open - committed_total (Pest).</criterion>
+    <criterion id="AC-012">Dati filtri company_id, company_site_id, operational_site_id, allora tutte le sezioni (attivo via offerta, passivo e impegni via testata) restano coerenti con i soli documenti filtrati (Pest).</criterion>
+    <criterion id="AC-013">Dati quattro clienti con fatturato nel periodo 400, 300, 200, 100 e scaduto 50, 0, 150, 0, con `top` = 2 allora `concentration.rows` ha i primi due per fatturato con quote 40.0 e 30.0, `top_invoiced_share` 70.0, lo scaduto di ciascuno con la quota sullo scaduto totale (25.0 e 0.0) e `top_overdue_share` 25.0 (Pest).</criterion>
+    <criterion id="AC-014">Dato un insieme di 5 e poi di 25 documenti per lato con rate, ordini e clienti, il numero di query e' identico nei due casi (Pest, pattern 0266/0268).</criterion>
+    <criterion id="AC-015">`defaultExposureFilters()` da' periodo 1/1 anno corrente - oggi, document_type invoice, group_by company, top 10, array vuoti; `toExposureParams()` omette i vuoti e serializza gli array come `key[]`; `fetchExposure()` legge `data.data` (Vitest).</criterion>
+    <criterion id="AC-016">La barra filtri espone per ruolo periodo, societa', sede societa', sede operativa, tipo documento, raggruppamento e top, e ogni cambio chiama `onChange`; la barra del Conto economico continua a esporre gli stessi campi di prima dopo l'estrazione di `scope-filter-fields.tsx` (Vitest, i test esistenti restano verdi).</criterion>
+    <criterion id="AC-017">Con una fixture, la pagina mostra le 8 tile (DSO/DPO con "n.d." se null), la tabella aging con le 7 fasce per i due lati e il grafico, la distribuzione per stato, le tabelle top clienti e top fornitori con link `/ledger?registry={id}` e fascia peggiore tradotta, gli impegni per fornitore e tipo di costo, l'esposizione per dimensione con "Non attribuito" tradotto, la concentrazione con percentuali, e i due pulsanti verso le pagine Scadenze; stati loading, errore con riprova e vuoto (Vitest).</criterion>
+    <criterion id="AC-018">Senza `management-control.view` compare il messaggio di permesso mancante e nessuna chiamata API parte (Vitest).</criterion>
+    <criterion id="AC-019">Guide IT/EN `management-control-exposure` con gli stessi id di sezione, chiave in HELP_GUIDE_KEYS, breadcrumb `exposure`; parity test help e i18n verdi; ESLint e `tsc -b --force` puliti (Vitest + comandi).</criterion>
+    <criterion id="AC-020">Verifica manuale ui-design sul codice: tabelle in `overflow-auto` con regione focusabile, superfici a rung corretti, negativi con `text-amount-negative`, nessun colore hard-coded (pallino tipo costo escluso: dato), griglia tile senza orfane a 375/768/1024, nessuna larghezza fissa.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza; nessun nuovo componente in `components/ui/`.
+    - Authz in `authorize()` della FormRequest; filtri da allow-list (`Rule::in`/`exists`); espressioni SQL costanti
+      compatibili MySQL e SQLite (riusare `InstallmentSql::daysOverdue()` o lo stesso schema driver-dipendente);
+      nessun `throttle`; nessun model raw in output.
+    - Calcolo in SQL aggregato con numero di query costante; centesimi interi; `AggregateCache` con chiave che
+      include il giorno corrente.
+    - Layering 0268: Request -> DTO `ExposureFilters` -> `ExposureBuilder` (orchestrazione `handle()` con `// Step N`)
+      -> classi per sezione (`ReceivableScheduleAggregator`, `PayableScheduleAggregator`, `CommittedExposureAggregator`,
+      `CustomerConcentrationAggregator`, `AgingSql` per le CASE condivise), ciascuna <= 300 righe.
+    - Frontend: TanStack Query, nessun `useEffect` + fetch, nessun `any`, i18n IT/EN, componenti compatti, LF.
+    - Test eseguiti davvero (Pest con il binario Herd e `memory_limit=-1`; Vitest, ESLint, `./node_modules/.bin/tsc -b --force`).
+    - Git: nessun commit senza ordine esplicito; a verde si aggiorna docs/HANDOFF.md e si chiede.
+  </constraints>
+
+</spec>

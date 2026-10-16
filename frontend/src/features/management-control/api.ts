@@ -1,20 +1,15 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
 import { todayIso } from '@/features/invoices/invoice-format'
-import type {
-  IncomeStatement,
-  IncomeStatementFilters,
-  IncomeStatementParams,
-  StructureCosts,
-  StructureCostsParams,
-  StructureGroupBy,
-} from '@/features/management-control/types'
+import type { Exposure, ExposureFilters, ExposureParams } from '@/features/management-control/exposure-types'
+import type { IncomeStatement, IncomeStatementFilters, IncomeStatementParams, StructureCosts, StructureCostsParams, StructureGroupBy } from '@/features/management-control/types'
 
 /** Centralized query keys; the params are part of the key, so a change refetches. */
 export const managementControlKeys = {
   all: ['management-control'] as const,
   incomeStatement: (params: IncomeStatementParams) => ['management-control', 'income-statement', params] as const,
   structureCosts: (params: StructureCostsParams) => ['management-control', 'structure-costs', params] as const,
+  exposure: (params: ExposureParams) => ['management-control', 'exposure', params] as const,
 }
 
 /** Default filters: 1 January of the current year to today, contractual revenue, no segmentation. */
@@ -62,6 +57,35 @@ export function toStructureCostsParams(filters: IncomeStatementFilters, groupBy:
   }
 }
 
+/** Default filters: 1 January of the current year to today, invoices only, by company, top 10. */
+export function defaultExposureFilters(): ExposureFilters {
+  const today = todayIso()
+  return {
+    dateFrom: `${today.slice(0, 4)}-01-01`,
+    dateTo: today,
+    companyIds: [],
+    companySiteIds: [],
+    operationalSiteIds: [],
+    documentType: 'invoice',
+    groupBy: 'company',
+    top: 10,
+  }
+}
+
+/** Maps the UI filters to the contract query parameters; empty values are omitted. */
+export function toExposureParams(filters: ExposureFilters): ExposureParams {
+  return {
+    ...(filters.dateFrom ? { date_from: filters.dateFrom } : {}),
+    ...(filters.dateTo ? { date_to: filters.dateTo } : {}),
+    ...(filters.companyIds.length > 0 ? { company_id: filters.companyIds } : {}),
+    ...(filters.companySiteIds.length > 0 ? { company_site_id: filters.companySiteIds } : {}),
+    ...(filters.operationalSiteIds.length > 0 ? { operational_site_id: filters.operationalSiteIds } : {}),
+    document_type: filters.documentType,
+    group_by: filters.groupBy,
+    top: filters.top,
+  }
+}
+
 /** Arrays go out as repeated `key[]=` (Laravel convention). */
 const ARRAY_SERIALIZER = { indexes: false } as const
 
@@ -75,6 +99,14 @@ export async function fetchIncomeStatement(params: IncomeStatementParams): Promi
 
 export async function fetchStructureCosts(params: StructureCostsParams): Promise<StructureCosts> {
   const { data } = await apiClient.get<ApiResponse<StructureCosts>>('/management-control/structure-costs', {
+    params,
+    paramsSerializer: ARRAY_SERIALIZER,
+  })
+  return data.data
+}
+
+export async function fetchExposure(params: ExposureParams): Promise<Exposure> {
+  const { data } = await apiClient.get<ApiResponse<Exposure>>('/management-control/exposure', {
     params,
     paramsSerializer: ARRAY_SERIALIZER,
   })

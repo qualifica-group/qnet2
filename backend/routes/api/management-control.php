@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ManagementControl\ExposureController;
 use App\Http\Controllers\ManagementControl\IncomeStatementController;
 use App\Http\Controllers\ManagementControl\StructureCostsController;
 use Illuminate\Support\Facades\Route;
@@ -16,4 +17,5 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('management-control')->group(function () {
     Route::get('income-statement', IncomeStatementController::class);
     Route::get('structure-costs', StructureCostsController::class);
+    Route::get('exposure', ExposureController::class);
 });

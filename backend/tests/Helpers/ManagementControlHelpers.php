@@ -4,15 +4,20 @@ declare(strict_types=1);
 
 use App\Enums\CommissionRecipientRole;
 use App\Enums\InvoiceType;
+use App\Enums\PurchaseInvoiceType;
 use App\Enums\PurchaseOrderStatus;
 use App\Enums\QuoteLineType;
 use App\Enums\SupplierCommissionDirection;
 use App\Models\BusinessFunction;
+use App\Models\Company;
+use App\Models\CompanySite;
 use App\Models\Invoice;
 use App\Models\InvoiceInstallment;
+use App\Models\OperationalSite;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\PurchaseInvoice;
+use App\Models\PurchaseInvoiceInstallment;
 use App\Models\PurchaseInvoiceLine;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderLine;
@@ -22,6 +27,7 @@ use App\Models\QuoteLineCommission;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderCost;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Testing\TestResponse;
 use Spatie\Permission\Models\Permission;
@@ -166,5 +172,105 @@ if (! function_exists('mcPayableLine')) {
             'net_amount' => $net,
             ...$line,
         ]);
+    }
+}
+
+if (! function_exists('mcDay')) {
+    /** A date relative to today ("Y-m-d"): the exposure report is a snapshot at the current day (spec 0269). */
+    function mcDay(int $offset): string
+    {
+        return CarbonImmutable::today()->addDays($offset)->toDateString();
+    }
+}
+
+if (! function_exists('mcReceivable')) {
+    /**
+     * An active document whose installments are given as `due` (days from today),
+     * `amount` and, when collected, `collected` (amount) and `collected_at` (days
+     * from today, default -1). The total is the sum of the installments.
+     *
+     * @param  array<int, array<string, mixed>>  $installments
+     * @param  array<string, mixed>  $invoice  document attributes
+     */
+    function mcReceivable(array $installments, array $invoice = []): Invoice
+    {
+        $total = (string) array_sum(array_column($installments, 'amount'));
+        $document = Invoice::factory()->create([
+            'type' => InvoiceType::Invoice, 'document_date' => mcDay(-120),
+            'net_amount' => $total, 'vat_amount' => '0.00', 'total_amount' => $total, ...$invoice,
+        ]);
+
+        foreach (array_values($installments) as $index => $installment) {
+            InvoiceInstallment::factory()->create([
+                'invoice_id' => $document->id, 'sequence' => $index + 1,
+                'due_date' => mcDay($installment['due']), 'amount' => $installment['amount'],
+                'collected_amount' => $installment['collected'] ?? null,
+                'collected_at' => isset($installment['collected']) ? mcDay($installment['collected_at'] ?? -1) : null,
+            ]);
+        }
+
+        return $document;
+    }
+}
+
+if (! function_exists('mcPayable')) {
+    /**
+     * A payable document whose installments are given as in `mcReceivable()`
+     * (`paid`, `paid_at`). Installments are the amount to pay, so the total is
+     * their sum plus withholding and ENASARCO.
+     *
+     * @param  array<int, array<string, mixed>>  $installments
+     * @param  array<string, mixed>  $document  document attributes
+     */
+    function mcPayable(array $installments, array $document = []): PurchaseInvoice
+    {
+        $total = (string) (array_sum(array_column($installments, 'amount')) + (float) ($document['withholding_amount'] ?? 0) + (float) ($document['enasarco_amount'] ?? 0));
+        $invoice = PurchaseInvoice::factory()->create([
+            'document_type' => PurchaseInvoiceType::Invoice, 'document_date' => mcDay(-120),
+            'net_amount' => $total, 'vat_amount' => '0.00', 'total_amount' => $total, ...$document,
+        ]);
+
+        foreach (array_values($installments) as $index => $installment) {
+            PurchaseInvoiceInstallment::factory()->create([
+                'purchase_invoice_id' => $invoice->id, 'sequence' => $index + 1,
+                'due_date' => mcDay($installment['due']), 'amount' => $installment['amount'],
+                'paid_amount' => $installment['paid'] ?? null,
+                'paid_at' => isset($installment['paid']) ? mcDay($installment['paid_at'] ?? -1) : null,
+            ]);
+        }
+
+        return $invoice;
+    }
+}
+
+if (! function_exists('mcExposureScenario')) {
+    /**
+     * Two companies with a site each and two operational sites. Open amounts:
+     * receivable Alfa 100 (offer on Sede 1 / Torino) + 50 (no offer), Beta 200
+     * (Sede 2 / Roma); payable Alfa 30 (Sede 1 / Torino), Beta 20 (Sede 2, no
+     * operational site); committed Alfa 40 (Sede 1 / Torino), Beta 70 (Sede 2 / Roma).
+     *
+     * @return array<string, Company|CompanySite|OperationalSite>
+     */
+    function mcExposureScenario(): array
+    {
+        $alfa = Company::factory()->create(['denomination' => 'Alfa']);
+        $beta = Company::factory()->create(['denomination' => 'Beta']);
+        $siteOne = CompanySite::factory()->create(['company_id' => $alfa->id, 'name' => 'Sede 1']);
+        $siteTwo = CompanySite::factory()->create(['company_id' => $beta->id, 'name' => 'Sede 2']);
+        $torino = OperationalSite::factory()->create(['alias' => 'Torino']);
+        $roma = OperationalSite::factory()->create(['alias' => 'Roma']);
+        $quoteOne = Quote::factory()->create(['company_id' => $alfa->id, 'company_site_id' => $siteOne->id, 'operational_site_id' => $torino->id]);
+        $quoteTwo = Quote::factory()->create(['company_id' => $beta->id, 'company_site_id' => $siteTwo->id, 'operational_site_id' => $roma->id]);
+
+        mcReceivable([['due' => 10, 'amount' => '100.00']], ['company_id' => $alfa->id, 'quote_id' => $quoteOne->id]);
+        mcReceivable([['due' => 10, 'amount' => '200.00']], ['company_id' => $beta->id, 'quote_id' => $quoteTwo->id]);
+        mcReceivable([['due' => 10, 'amount' => '50.00']], ['company_id' => $alfa->id]);
+        mcPayable([['due' => 10, 'amount' => '30.00']], ['company_id' => $alfa->id, 'company_site_id' => $siteOne->id, 'operational_site_id' => $torino->id]);
+        mcPayable([['due' => 10, 'amount' => '20.00']], ['company_id' => $beta->id, 'company_site_id' => $siteTwo->id]);
+        mcOrderLine(null, '40.00', PurchaseOrderStatus::Approved, ['company_id' => $alfa->id, 'company_site_id' => $siteOne->id, 'operational_site_id' => $torino->id]);
+        mcOrderLine(null, '70.00', PurchaseOrderStatus::Approved, ['company_id' => $beta->id, 'company_site_id' => $siteTwo->id, 'operational_site_id' => $roma->id]);
+
+        return compact('alfa', 'beta', 'siteOne', 'siteTwo', 'torino', 'roma');
     }
 }

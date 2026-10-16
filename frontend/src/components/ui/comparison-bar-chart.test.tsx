@@ -81,6 +81,14 @@ describe('ComparisonBarChart', () => {
     ])
   })
 
+  it('renders the title at the requested heading level', () => {
+    render(
+      <ComparisonBarChart title="Expected vs actual" points={[]} seriesLabels={SERIES_LABELS} headingLevel={4} />,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Expected vs actual', level: 4 })).toBeInTheDocument()
+  })
+
   it('shows a discreet placeholder and loads no chart when there are no points', () => {
     const { container } = render(
       <ComparisonBarChart

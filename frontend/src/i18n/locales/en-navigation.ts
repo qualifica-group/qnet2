@@ -27,6 +27,7 @@ export const navigation = {
   financialAccounts: 'Financial accounts',
   managementControl: 'Management control',
   incomeStatement: 'Income statement',
+  exposure: 'Schedule and exposure',
   accountingReceivable: 'Receivables',
   proformaRequests: 'Proforma requests',
   invoices: 'Active invoices',

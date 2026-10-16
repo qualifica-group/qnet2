@@ -109,13 +109,17 @@ export interface StructureCosts {
   by_dimension: StructureDimensionRow[]
 }
 
-/** Filter state of the page (UI side; mapped to the request by `toIncomeStatementParams`). */
-export interface IncomeStatementFilters {
+/** Filters common to the pages of the module: period and analytic scope (UI side). */
+export interface ScopeFilters {
   dateFrom: string
   dateTo: string
   companyIds: number[]
   companySiteIds: number[]
   operationalSiteIds: number[]
+}
+
+/** Filter state of the page (UI side; mapped to the request by `toIncomeStatementParams`). */
+export interface IncomeStatementFilters extends ScopeFilters {
   businessFunctionIds: number[]
   workOrderTypes: WorkOrderTypeValue[]
   commercialIds: number[]
