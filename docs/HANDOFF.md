@@ -33,6 +33,10 @@
 - Avvisi 300 righe: CommissionSettlementsTableDefinition (325), PurchaseInvoiceService (321), locale
   {it,en}-commission-settlements.ts (330).
 - Manuale Claude Docs: da aggiornare (Estratti, Fatture passive, Scadenziario passivo, Referenti, Profili fiscali, Partitario).
+- Fix post-commit: `commission_settlements.status` era string(16) e `DOCUMENT_RECEIVED` (17) falliva su MySQL
+  (500 su POST /document); migrazione `2026_10_19_100400_widen_status_on_commission_settlements_table` -> string(32).
+  Lezione: SQLite non applica ne' riporta la lunghezza dei varchar, i test non la intercettano: verificare a mano la
+  lunghezza delle colonne stringa contro i valori enum nuovi. Step rollback ora 41 / 56 / 192.
 - Prossimo: resto di M3 (PDF estratto, email massiva, export paghe) e M5.
 
 ## Spec 0266 — Partitario clienti/fornitori tappa 1 — VERDE, COMMITTATO (2026-10-15)

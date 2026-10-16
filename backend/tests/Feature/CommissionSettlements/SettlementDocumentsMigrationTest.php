@@ -101,3 +101,21 @@ it('links one purchase invoice to at most one settlement', function () {
         ->and(fn () => CommissionSettlement::factory()->approved()->create(['purchase_invoice_id' => $invoice->id]))
         ->toThrow(QueryException::class);
 });
+
+it('fits every settlement status in the widened status column', function () {
+    // SQLite neither enforces nor reports a varchar length: the bound is the 32 declared by the widening migration.
+    $longest = max(array_map('strlen', array_column(CommissionSettlementStatus::cases(), 'value')));
+
+    expect($longest)->toBeLessThanOrEqual(32);
+});
+
+it('moves received documents back to ISSUED when the widening rolls back', function () {
+    $received = CommissionSettlement::factory()->documentReceived()->create();
+    $migration = require database_path('migrations/2026_10_19_100400_widen_status_on_commission_settlements_table.php');
+
+    $migration->down();
+
+    expect(DB::table('commission_settlements')->where('id', $received->id)->value('status'))->toBe('ISSUED');
+
+    $migration->up();
+});
