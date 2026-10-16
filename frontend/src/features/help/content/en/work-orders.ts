@@ -127,10 +127,11 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Open the **Actual costs** tab (read-only without the permission to manage costs).',
-            'Press **Add row**: the cost date defaults to today.',
-            'Pick the cost **product**: unit price, VAT rate, unit of measure and **cost type** (if the product has a default one) are prefilled from the product.',
-            'Enter quantity, price, VAT, **cost type** (optional, editable), **supplier**, **document reference** and the **reference offer line**.',
+            'Open the **Actual costs** tab: a single panel with the **Product catalogue** on the left and the actual costs as cards on the right (stacked on narrow screens). Without the permission to manage costs the catalogue is hidden and the cards are read-only.',
+            'In the **Product catalogue** search by name or description: each product shows name, code, type, cost price with unit of measure, category and description.',
+            'Tick one or more products and press **Add N selected**: each product becomes a cost with today\'s date, quantity 1, cost price, VAT, unit of measure and the product\'s **cost type**. The same product can be added more than once.',
+            'Each card shows product, code and category at the top with the bin to remove it; below, quantity times unit price, VAT, **Reference offer line** and net amount, VAT and total; at the bottom date, **cost type**, **supplier**, **document reference** and extra description. The **Cost total** is at the bottom of the panel.',
+            'To change product, remove the card and pick the product from the catalogue.',
             'Press **Save** to replace the whole list of costs, or **Cancel** to go back to the last saved state.',
           ],
         },

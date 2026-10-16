@@ -50,11 +50,12 @@ export const workOrderCosts = {
   editor: {
     readOnly: 'Non hai i permessi per modificare i costi effettivi.',
     empty: 'Nessun costo effettivo inserito.',
-    add: 'Aggiungi riga',
+    /** Spec 0270: the rows pane of the catalogue + rows block. */
+    rowsTitle: 'Costi effettivi',
+    totalLabel: 'Totale costi',
     save: 'Salva',
     saved: 'Costi effettivi salvati.',
     saveError: 'Impossibile salvare i costi effettivi.',
-    product: 'Prodotto costo, riga {{n}}',
     quantity: 'Quantità, riga {{n}}',
     unitPrice: 'Prezzo unitario, riga {{n}}',
     vatRate: 'Aliquota IVA, riga {{n}}',
@@ -77,17 +78,9 @@ export const workOrderCosts = {
     documentReferencePlaceholder: 'Rif. documento',
     remove: 'Rimuovi riga {{n}}',
     headers: {
-      product: 'Prodotto',
-      code: 'Codice',
-      quantity: 'Q.tà',
-      unit: 'UdM',
-      unitPrice: 'Prezzo unit.',
-      vatRate: 'IVA',
-      revenueLine: 'Riga offerta di riferimento',
       net: 'Imponibile',
       vat: 'IVA',
       total: 'Totale',
-      remove: 'Rimuovi',
     },
     errors: {
       productRequired: 'Seleziona un prodotto.',

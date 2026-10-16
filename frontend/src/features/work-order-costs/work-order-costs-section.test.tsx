@@ -27,6 +27,8 @@ const PRODUCT_ITEM = {
   label: 'Noleggio auto',
   subtitle: 'Spese',
   meta: {
+    category_id: null,
+    description: null,
     code: 'CST-0009',
     price: null,
     cost: '12.50',
@@ -52,6 +54,17 @@ async function openEditor(canManage: boolean) {
   renderSection(canManage)
   fireEvent.mouseDown(await screen.findByRole('tab', { name: 'Actual costs' }), { button: 0 })
   fireEvent.click(screen.getByRole('tab', { name: 'Actual costs' }))
+}
+
+/**
+ * Spec 0270: rows come from the catalogue beside the cards. REQUIREMENT
+ * CHANGED: no "Add row" + per-row product combobox any more.
+ */
+async function addFromCatalogue(times = 1) {
+  for (let pick = 0; pick < times; pick += 1) {
+    fireEvent.click(await screen.findByRole('option', { name: /Noleggio auto/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add 1 selected' }))
+  }
 }
 
 function unprocessable(errors: Record<string, string[]>): AxiosError {
@@ -119,21 +132,32 @@ describe('WorkOrderCostsSection — Comparison tab (AC-011)', () => {
 })
 
 describe('WorkOrderCostsSection — Actual costs editor (AC-012)', () => {
-  it('is read-only without manage_costs: no add row, no save, disabled fields', async () => {
+  it('is read-only without manage_costs: no catalogue, no save, disabled fields', async () => {
     await openEditor(false)
 
     expect(await screen.findByText('You do not have permission to edit the actual costs.')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Add row' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Product catalogue' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
     expect(screen.getByRole('spinbutton', { name: 'Quantity, row 1' })).toBeDisabled()
   })
 
-  it('adds a row with today as default date', async () => {
+  it('adds a catalogue product as a row dated today', async () => {
     await openEditor(true)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Add row' }))
+    await addFromCatalogue()
 
     expect(screen.getByLabelText('Cost date, row 2')).toHaveValue(todayIsoDate())
+  })
+
+  it('AC-003: lists the whole COST catalogue and lets the same product be added twice', async () => {
+    await openEditor(true)
+
+    await addFromCatalogue(2)
+
+    expect(fetchForSelectMock).toHaveBeenCalledWith('products', expect.objectContaining({ params: { usage: 'COST' } }))
+    expect(screen.getByRole('spinbutton', { name: 'Unit price, row 2' })).toHaveValue(12.5)
+    expect(screen.getByRole('spinbutton', { name: 'Unit price, row 3' })).toHaveValue(12.5)
+    expect(screen.queryByRole('button', { name: 'Add row' })).not.toBeInTheDocument()
   })
 
   it('saves the exact contract payload for an edited row and a new picked row', async () => {
@@ -141,17 +165,14 @@ describe('WorkOrderCostsSection — Actual costs editor (AC-012)', () => {
 
     fireEvent.change(await screen.findByRole('spinbutton', { name: 'Quantity, row 1' }), { target: { value: '3' } })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add row' }))
-    fireEvent.click(screen.getByRole('combobox', { name: 'Cost product, row 2' }))
-    fireEvent.click(await screen.findByRole('option', { name: /Noleggio auto/ }))
-    // Radix hands focus back to the product trigger on the next tick; opening the next popover before that dismisses it.
-    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
-    await new Promise((resolve) => setTimeout(resolve, 0))
+    await addFromCatalogue()
     fireEvent.click(screen.getByRole('combobox', { name: 'Supplier, row 2' }))
     fireEvent.click(await screen.findByRole('option', { name: /Fornitore Due/ }))
     fireEvent.change(screen.getByLabelText('Document reference, row 2'), { target: { value: 'FT-99' } })
 
     expect(screen.getByRole('spinbutton', { name: 'Unit price, row 2' })).toHaveValue(12.5)
+    // AC-004: the block's net total follows the cards (3 x 50 + 1 x 12.50).
+    expect(within(screen.getByRole('region', { name: 'Actual costs' })).getAllByText('162.50').length).toBeGreaterThan(0)
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
@@ -190,11 +211,7 @@ describe('WorkOrderCostsSection — Actual costs editor (AC-012)', () => {
   it('AC-008: precompiles the cost type from the picked product and lets the user change it', async () => {
     await openEditor(true)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Add row' }))
-    fireEvent.click(screen.getByRole('combobox', { name: 'Cost product, row 2' }))
-    fireEvent.click(await screen.findByRole('option', { name: /Noleggio auto/ }))
-    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
-    await new Promise((resolve) => setTimeout(resolve, 0))
+    await addFromCatalogue()
 
     expect(screen.getByRole('combobox', { name: 'Cost type, row 2' })).toHaveTextContent('Travel')
 
@@ -212,17 +229,18 @@ describe('WorkOrderCostsSection — Actual costs editor (AC-012)', () => {
   it('does not call the server while a row is invalid and shows the field error', async () => {
     await openEditor(true)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Add row' }))
+    // A catalogue row always carries its product, so the invalid row is an emptied quantity.
+    fireEvent.change(await screen.findByRole('spinbutton', { name: 'Quantity, row 1' }), { target: { value: '' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
-    expect(await screen.findAllByText('Select a product.')).toHaveLength(1)
+    expect(await screen.findAllByText('Enter the quantity.')).toHaveLength(1)
     expect(syncCostsMock).not.toHaveBeenCalled()
   })
 
   it('Cancel restores the persisted rows', async () => {
     await openEditor(true)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Add row' }))
+    await addFromCatalogue()
     expect(screen.getByRole('spinbutton', { name: 'Quantity, row 2' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))

@@ -10,13 +10,16 @@
   migrate di offerte/commesse puntano a quelle). Esclusi i livelli dipendenti (`user_levels`) e i record di prova
   legacy (Alpha, oust, Motosega). Nomi ripuliti (lista confermata dall'utente), importo legacy = cost = price,
   IVA 22% solo dove il legacy aveva rate_id 6, altrimenti vuota.
-- Nuovi `database/seeders/QualificaCatalog/CostCatalogue.php` (dati: radice "Costi", foglie Note spese 9, Articoli 4,
-  Veicoli 3, Attrezzature 1 = 17 prodotti) e `database/seeders/QualificaCostProductSeeder.php` (ProductService::create,
+- Revisione utente 2026-10-16: tolti dalla lista Pompa derattizzante, i 3 veicoli, Commissioni partner formazione,
+  Contributo discenti, Pagamento fornitore; spariscono le foglie Veicoli e Attrezzature. Ora 10 prodotti (Note spese 6,
+  Articoli 4); `QualificaProductionDataSeederTest` 557 -> 550. Il seeder non cancella: le righe gia' seminate restano.
+- Nuovi `database/seeders/QualificaCatalog/CostCatalogue.php` (dati: radice "Costi", foglie Note spese 6, Articoli 4
+  = 10 prodotti) e `database/seeders/QualificaCostProductSeeder.php` (ProductService::create,
   usages [COST], radice non selezionabile senza funzione aziendale, idempotente su (name, category), IVA 22% adottata
   per percentuale come `CatalogProducts::plusVatRate`). Chiamato in `QualificaProductionDataSeeder` subito dopo
   `QualificaCatalogSeeder`.
 - Test: nuovo `tests/Feature/Seeding/QualificaCostProductSeederTest.php` (3); `QualificaProductionDataSeederTest`
-  conteggio prodotti 540 -> 557 (REQUIREMENT CHANGED). Seeding 162/162, Migration 416/416, Products 229/229, Pint ok.
+  conteggio prodotti 540 -> 550 (REQUIREMENT CHANGED). Seeding 162/162, Migration 416/416, Products 229/229, Pint ok.
 - Manuale: guida in-app `migrations` IT+EN (nota Prodotti di costo) e manuale Claude Docs (paragrafo dopo
   "[OLD] Costi") aggiornati. Help vitest 131/131, ESLint ok, tsc -b ok.
 
@@ -30,7 +33,25 @@
 - Aperte: campi *proposta* da confermare; reparti; se la posizione assegna le sue mansioni/permessi. Prossimo passo:
   `/plan-feature` sulla struttura organizzativa (§5).
 
-## Spec 0269 — Editor catalogo + righe nel form Offerte (Prodotti e Costi) — VERDE, NON COMMITTATO (2026-10-16)
+## Spec 0270 — Costi effettivi Commessa sul blocco catalogo + righe — VERDE, NON COMMITTATO (2026-10-16)
+
+- Spec `docs/specs/0270-work-order-costs-catalog-editor.xml` (D-1..D-5, AC-001..AC-008). Solo frontend.
+- `QuoteLineEditorFrame` (`features/quotes/line-editor/quote-line-editor-frame.tsx`) estratto da `QuoteLineEditor`:
+  cornice unica, pannello righe (titolo, conteggio, vuoto, totali `{net, vat, gross, totalLabel}`), slot catalogo.
+- Costi commessa: `WorkOrderCostsLinesField` = frame + `QuoteLineCatalog` (variant cost, `{kind:'all'}`, duplicati
+  ammessi) + `WorkOrderCostCard` (livelli 1-2) + `WorkOrderCostCardDetails` (livello 3: data, tipo costo, fornitore,
+  riferimento, descrizione). Hook `useWorkOrderCostsEditor.addProducts(items)` (createEmptyCostRow +
+  costRowPatchFromProduct) al posto di `addRow`/`changeProduct`. Cancellato `WorkOrderCostRow` + grid classes.
+- i18n: + `workOrders.costs.editor.rowsTitle/totalLabel`; - `editor.add`, `editor.product`, 8 `editor.headers.*`.
+- Test: `work-order-costs-section.test.tsx` adeguato (REQUIREMENT CHANGED) + AC-003 duplicati/usage COST + totale.
+  Lead: 175 file / 1419 test verdi (quotes, request-management, costi commessa, commesse, i18n); tsc -b pulito.
+- Manuale: guida in-app `work-orders` IT/EN (sezione `costs`); manuale Claude Docs: Commesse ancora "in fase di
+  sviluppo" (§4-bis), nessun aggiornamento.
+- Verifier: AC-001..AC-008 PASS (vitest completo 8304/8304, tsc -b ed ESLint puliti). Riserva chiusa dal lead: nuovo
+  `work-order-cost-card.test.tsx` (importi live, tutti i campi -> onChangeField, rimozione, sola lettura, triade errore).
+  Il seeder costi (`cad1b2d5`) e' un lavoro parallelo, non di questa spec.
+
+## Spec 0269 — Editor catalogo + righe nel form Offerte (Prodotti e Costi) — VERDE, COMMITTATO 119d980c (2026-10-16)
 
 - Spec `docs/specs/0269-quote-lines-catalog-editor.xml` (D-1..D-8, AC-001..AC-013). Solo frontend, backend invariato.
 - L'editor della 0268 e' ora modulo condiviso `features/quotes/line-editor/`: `QuoteLineEditor`, `QuoteLineCatalog`,

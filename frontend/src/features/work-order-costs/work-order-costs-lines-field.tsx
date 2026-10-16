@@ -1,31 +1,50 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
+import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
+import { QuoteLineCatalog } from '@/features/quotes/line-editor/quote-line-catalog'
+import { QuoteLineEditorFrame, type QuoteLineEditorTotals } from '@/features/quotes/line-editor/quote-line-editor-frame'
+import type { QuoteCatalogProduct, QuoteCatalogScope } from '@/features/quotes/line-editor/types'
+import { MAX_LINES_PER_TAB } from '@/features/quotes/quote-schema'
+import { fromCents, lineAmounts } from '@/lib/amounts/line-amounts'
 import type { CostRowErrors } from '@/features/work-order-costs/cost-row-error'
-import {
-  COST_ROW_GRID_CLASS,
-  COST_ROW_MIN_WIDTH_CLASS,
-  WorkOrderCostRow,
-  type RevenueLineOption,
-} from '@/features/work-order-costs/work-order-cost-row'
+import { COST_QUANTITY_SCALE, WorkOrderCostCard, type RevenueLineOption } from '@/features/work-order-costs/work-order-cost-card'
 import type { WorkOrderCostRowValues } from '@/features/work-order-costs/work-order-costs-schema'
-import type { QuoteProductForSelectItem } from '@/features/quotes/quote-product-select'
-import { LINE_TABLE_SCROLL_CLASS } from '@/components/record-form/layout'
 
 interface WorkOrderCostsLinesFieldProps {
-  /** Stable RHF ids, one per row: they key the rows so typing never remounts them. */
+  /** Stable RHF ids, one per row: they key the cards so typing never remounts them. */
   rowKeys: string[]
   rows: WorkOrderCostRowValues[]
   readOnly: boolean
   revenueOptions: RevenueLineOption[]
   rowErrors: (index: number) => CostRowErrors | undefined
   onChangeField: (index: number, patch: Partial<WorkOrderCostRowValues>) => void
-  onChangeProduct: (index: number, item: QuoteProductForSelectItem | null) => void
+  onAddProducts: (items: QuoteCatalogProduct[]) => void
   onRemove: (index: number) => void
-  onAdd: () => void
 }
 
-/** The repeatable real-cost row editor; horizontally scrollable so the wide grid never scrolls the page (ui-design §3). */
+/** Spec 0270 D-4: the whole COST catalogue, never scoped by category; a real cost may repeat a product. */
+const WHOLE_CATALOGUE: QuoteCatalogScope = { kind: 'all' }
+const NO_ADDED_IDS = new Set<number>()
+const EMPTY_TREE: ProductCategoryTreeNode[] = []
+
+/** Sums the cards' live amounts in cents, the same rounding each card shows. */
+function costTotals(rows: WorkOrderCostRowValues[]): Omit<QuoteLineEditorTotals, 'totalLabel'> {
+  const cents = rows.reduce(
+    (sum, row) => {
+      const amounts = lineAmounts(row.quantity ?? 0, row.unit_price ?? 0, row.display.vat_percent, COST_QUANTITY_SCALE)
+      return { net: sum.net + amounts.net, vat: sum.vat + amounts.vat, gross: sum.gross + amounts.total }
+    },
+    { net: 0, vat: 0, gross: 0 },
+  )
+  return { net: fromCents(cents.net), vat: fromCents(cents.vat), gross: fromCents(cents.gross) }
+}
+
+/**
+ * "Costi effettivi" as the shared "catalogo + righe" block (spec 0270): the
+ * COST catalogue beside the real-cost cards, one frame. Rows only come from
+ * the catalogue; the save is still the tab's single replace of the whole set.
+ */
 export function WorkOrderCostsLinesField({
   rowKeys,
   rows,
@@ -33,64 +52,51 @@ export function WorkOrderCostsLinesField({
   revenueOptions,
   rowErrors,
   onChangeField,
-  onChangeProduct,
+  onAddProducts,
   onRemove,
-  onAdd,
 }: WorkOrderCostsLinesFieldProps) {
   const { t } = useTranslation()
+  const categoryTree = useProductCategoryTree().data ?? EMPTY_TREE
+  const totals = useMemo(() => costTotals(rows), [rows])
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className={LINE_TABLE_SCROLL_CLASS}>
-        <div className={COST_ROW_MIN_WIDTH_CLASS}>
-          <div
-            className={`${COST_ROW_GRID_CLASS} border-b bg-muted/40 px-2 py-1.5 text-[11px] font-medium text-muted-foreground`}
-          >
-            <span>{t('workOrders.costs.editor.headers.product')}</span>
-            <span>{t('workOrders.costs.editor.headers.code')}</span>
-            <span>{t('workOrders.costs.editor.headers.quantity')}</span>
-            <span>{t('workOrders.costs.editor.headers.unit')}</span>
-            <span>{t('workOrders.costs.editor.headers.unitPrice')}</span>
-            <span>{t('workOrders.costs.editor.headers.vatRate')}</span>
-            <span>{t('workOrders.costs.editor.headers.revenueLine')}</span>
-            <span className="text-right">{t('workOrders.costs.editor.headers.net')}</span>
-            <span className="text-right">{t('workOrders.costs.editor.headers.vat')}</span>
-            <span className="text-right">{t('workOrders.costs.editor.headers.total')}</span>
-            <span className="sr-only">{t('workOrders.costs.editor.headers.remove')}</span>
-          </div>
-
-          {rows.length === 0 ? (
-            <p className="px-2 py-3 text-xs text-muted-foreground">{t('workOrders.costs.editor.empty')}</p>
-          ) : (
-            rows.map((row, index) => (
-              <WorkOrderCostRow
-                key={rowKeys[index]}
-                index={index}
-                row={row}
-                disabled={readOnly}
-                revenueOptions={revenueOptions}
-                error={rowErrors(index)}
-                onChangeField={(patch) => onChangeField(index, patch)}
-                onChangeProduct={(item) => onChangeProduct(index, item)}
-                onRemove={() => onRemove(index)}
-              />
-            ))
-          )}
-        </div>
-      </div>
-
-      {readOnly ? null : (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onAdd}
-          className="w-full justify-center border-dashed bg-card text-muted-foreground hover:border-solid hover:text-foreground"
-        >
-          <Plus aria-hidden="true" className="size-3.5" />
-          {t('workOrders.costs.editor.add')}
-        </Button>
-      )}
-    </div>
+    <QuoteLineEditorFrame
+      title={t('workOrders.costs.editor.rowsTitle')}
+      count={rows.length}
+      emptyText={t('workOrders.costs.editor.empty')}
+      totals={{ ...totals, totalLabel: t('workOrders.costs.editor.totalLabel') }}
+      catalog={
+        readOnly ? null : (
+          <QuoteLineCatalog
+            variant="cost"
+            scope={WHOLE_CATALOGUE}
+            categoryTree={categoryTree}
+            lockedHint=""
+            singleSelect={false}
+            remainingSlots={Math.max(0, MAX_LINES_PER_TAB - rows.length)}
+            addedProductIds={NO_ADDED_IDS}
+            onAdd={async (items) => {
+              onAddProducts(items)
+              return true
+            }}
+            onPickSingle={() => undefined}
+            listClassName="max-h-96"
+          />
+        )
+      }
+    >
+      {rows.map((row, index) => (
+        <WorkOrderCostCard
+          key={rowKeys[index]}
+          index={index}
+          row={row}
+          disabled={readOnly}
+          revenueOptions={revenueOptions}
+          error={rowErrors(index)}
+          onChangeField={(patch) => onChangeField(index, patch)}
+          onRemove={() => onRemove(index)}
+        />
+      ))}
+    </QuoteLineEditorFrame>
   )
 }

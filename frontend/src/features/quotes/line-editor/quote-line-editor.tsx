@@ -1,15 +1,14 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/lib/utils'
 import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
 import { categoryPathLabel } from '@/features/product-lines/category-path-label'
 import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-types'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
-import { formatQuoteAmount } from '@/features/quotes/quote-summary'
 import type { QuoteLine, QuoteLineVatRateRef } from '@/features/quotes/types'
 import type { QuoteLineVariant } from '@/features/quotes/use-quote-lines-field'
 import { QuoteLineCard } from './quote-line-card'
 import { QuoteLineCatalog } from './quote-line-catalog'
+import { QuoteLineEditorFrame } from './quote-line-editor-frame'
 import type {
   QuoteCatalogProduct,
   QuoteCatalogScope,
@@ -110,93 +109,53 @@ export function QuoteLineEditor({
   const title = t(variant === 'revenue' ? 'quotes.lineEditor.rows.titleRevenue' : 'quotes.lineEditor.rows.titleCost')
 
   return (
-    <div className="@container">
-      {/* One block (user directive 2026-10-16): a single `bg-surface` frame, the
-          catalogue and the rows split by a hairline — vertical side by side,
-          horizontal once stacked. The row cards stay one rung above it. */}
-      <div
-        className={cn(
-          'grid rounded-lg border bg-surface',
-          !disabled && '@3xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]',
-        )}
-      >
-        <section
-          aria-label={title}
-          className="flex min-w-0 flex-col @3xl:order-2"
-        >
-          <p className="border-b p-3 text-sm font-semibold">
-            {title}
-            <span className="ml-1.5 font-normal text-muted-foreground">({editor.visibleLines.length})</span>
-          </p>
-
-          {editor.visibleLines.length === 0 ? (
-            <p className="m-2 rounded-lg border border-dashed bg-card px-3 py-6 text-center text-xs text-muted-foreground">
-              {t('quotes.lineEditor.rows.empty')}
-            </p>
-          ) : (
-            <ul className="flex flex-col gap-2 p-2">
-              {editor.visibleLines.map(({ row, index }, position) => {
-                const product = row.product_id === null ? undefined : editor.productViews.get(row.product_id)
-                return (
-                  // The row's identity IS its form position.
-                  <QuoteLineCard
-                    key={index}
-                    position={position + 1}
-                    row={row}
-                    product={product}
-                    categoryPath={pathOf(product?.categoryId)}
-                    knownVatRate={vatRateById(row.vat_rate_id)}
-                    disabled={disabled}
-                    simplified={simplified}
-                    error={errors?.[index]}
-                    vatRatePercentFor={vatRatePercentFor}
-                    rememberVatRatePercent={rememberVatRatePercent}
-                    onChangeField={(patch) => editor.setField(index, patch)}
-                    onRemove={() => editor.removeRow(index)}
-                    slots={renderRowSlots?.(row, index, position + 1, product)}
-                  />
-                )
-              })}
-            </ul>
-          )}
-
-          {editor.visibleLines.length > 0 ? (
-            <dl className="mt-auto flex flex-wrap items-baseline justify-end gap-x-4 gap-y-1 border-t px-3 py-2.5 text-xs">
-              <div className="flex gap-1.5">
-                <dt className="text-muted-foreground">{t('quotes.form.lineNetHeader')}</dt>
-                <dd className="tabular-nums">{formatQuoteAmount(editor.totals.net)}</dd>
-              </div>
-              <div className="flex gap-1.5">
-                <dt className="text-muted-foreground">{t('quotes.form.lineVatHeader')}</dt>
-                <dd className="tabular-nums">{formatQuoteAmount(editor.totals.vat)}</dd>
-              </div>
-              <div className="flex gap-1.5 text-sm">
-                <dt className="font-medium">
-                  {t(variant === 'revenue' ? 'quotes.lineEditor.rows.totalRevenue' : 'quotes.lineEditor.rows.totalCost')}
-                </dt>
-                <dd className="font-semibold tabular-nums">{formatQuoteAmount(editor.totals.gross)}</dd>
-              </div>
-            </dl>
-          ) : null}
-        </section>
-
-        {disabled ? null : (
-          <div className="flex min-w-0 flex-col border-t @3xl:order-1 @3xl:border-t-0 @3xl:border-r">
-            <QuoteLineCatalog
-              variant={variant}
-              scope={catalogScope}
-              categoryTree={categoryTree}
-              lockedHint={lockedHint}
-              singleSelect={singleCategoryMode}
-              remainingSlots={editor.remainingSlots}
-              addedProductIds={editor.addedProductIds}
-              onAdd={editor.addProducts}
-              onPickSingle={(item) => void editor.pickSingle(item)}
-              listClassName={catalogListClassName}
-            />
-          </div>
-        )}
-      </div>
-    </div>
+    <QuoteLineEditorFrame
+      title={title}
+      count={editor.visibleLines.length}
+      emptyText={t('quotes.lineEditor.rows.empty')}
+      totals={{
+        ...editor.totals,
+        totalLabel: t(variant === 'revenue' ? 'quotes.lineEditor.rows.totalRevenue' : 'quotes.lineEditor.rows.totalCost'),
+      }}
+      catalog={
+        disabled ? null : (
+          <QuoteLineCatalog
+            variant={variant}
+            scope={catalogScope}
+            categoryTree={categoryTree}
+            lockedHint={lockedHint}
+            singleSelect={singleCategoryMode}
+            remainingSlots={editor.remainingSlots}
+            addedProductIds={editor.addedProductIds}
+            onAdd={editor.addProducts}
+            onPickSingle={(item) => void editor.pickSingle(item)}
+            listClassName={catalogListClassName}
+          />
+        )
+      }
+    >
+      {editor.visibleLines.map(({ row, index }, position) => {
+        const product = row.product_id === null ? undefined : editor.productViews.get(row.product_id)
+        return (
+          // The row's identity IS its form position.
+          <QuoteLineCard
+            key={index}
+            position={position + 1}
+            row={row}
+            product={product}
+            categoryPath={pathOf(product?.categoryId)}
+            knownVatRate={vatRateById(row.vat_rate_id)}
+            disabled={disabled}
+            simplified={simplified}
+            error={errors?.[index]}
+            vatRatePercentFor={vatRatePercentFor}
+            rememberVatRatePercent={rememberVatRatePercent}
+            onChangeField={(patch) => editor.setField(index, patch)}
+            onRemove={() => editor.removeRow(index)}
+            slots={renderRowSlots?.(row, index, position + 1, product)}
+          />
+        )
+      })}
+    </QuoteLineEditorFrame>
   )
 }

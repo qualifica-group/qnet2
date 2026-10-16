@@ -50,11 +50,12 @@ export const workOrderCosts = {
   editor: {
     readOnly: 'You do not have permission to edit the actual costs.',
     empty: 'No actual costs entered.',
-    add: 'Add row',
+    /** Spec 0270: the rows pane of the catalogue + rows block. */
+    rowsTitle: 'Actual costs',
+    totalLabel: 'Cost total',
     save: 'Save',
     saved: 'Actual costs saved.',
     saveError: 'Unable to save the actual costs.',
-    product: 'Cost product, row {{n}}',
     quantity: 'Quantity, row {{n}}',
     unitPrice: 'Unit price, row {{n}}',
     vatRate: 'VAT rate, row {{n}}',
@@ -77,17 +78,9 @@ export const workOrderCosts = {
     documentReferencePlaceholder: 'Doc. reference',
     remove: 'Remove row {{n}}',
     headers: {
-      product: 'Product',
-      code: 'Code',
-      quantity: 'Qty',
-      unit: 'UoM',
-      unitPrice: 'Unit price',
-      vatRate: 'VAT',
-      revenueLine: 'Reference offer line',
       net: 'Net',
       vat: 'VAT',
       total: 'Total',
-      remove: 'Remove',
     },
     errors: {
       productRequired: 'Select a product.',
