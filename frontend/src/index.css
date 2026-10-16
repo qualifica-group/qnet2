@@ -70,6 +70,11 @@
   --accent: hsl(216 18% 76%);
   --accent-foreground: hsl(218 31% 27%);
   --destructive: hsl(0 84.2% 60.2%);
+  /* Negative-amount TEXT. --destructive cannot carry it: as ink it measures
+     3.8:1 on the card in light and 1.3:1 in dark. This one holds AA (>= 4.5:1)
+     on the card and on the `bg-muted/40` wash of hover rows and table heads:
+     7.5:1 / 6.2:1. */
+  --amount-negative: hsl(0 70% 38%);
   /* Esito positivo di un'azione di dominio (valida, riattiva), la controparte
      di `--destructive`: un'unica tinta per TUTTE le azioni positive, in griglia
      e nelle barre azioni delle schede. Scelta scura (33) perche' regge sia da
@@ -151,6 +156,8 @@
   --accent: hsl(220 14% 44%);
   --accent-foreground: hsl(0 0% 98%);
   --destructive: hsl(0 62.8% 30.6%);
+  /* Light ink for the dark card (23) and its `bg-muted/40` wash: 5.8:1 / 5.1:1. */
+  --amount-negative: hsl(0 85% 78%);
   /* Chiara, non scura come la controparte light: qui la card e' gia' a 23, e un
      verde scuro come icona ci sparirebbe sopra. A 48 tiene 3:1 sulla card come
      colore di icona, e da riempimento passa comunque per `bg-success/60` (come
@@ -206,6 +213,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-amount-negative: var(--amount-negative);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-favorite: var(--favorite);

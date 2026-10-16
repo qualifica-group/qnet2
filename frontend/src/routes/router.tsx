@@ -43,6 +43,9 @@ const InvoicesPage = lazyRoute(() => import('@/pages/invoices-page'))
 const InvoiceTagsPage = lazyRoute(() => import('@/pages/invoice-tags-page'))
 const InvoiceInstallmentsPage = lazyRoute(() => import('@/pages/invoice-installments-page'))
 const LedgerPage = lazyRoute(() => import('@/pages/ledger-page'))
+const ManagementControlIncomeStatementPage = lazyRoute(
+  () => import('@/pages/management-control-income-statement-page'),
+)
 const ProductTypologiesPage = lazyRoute(() => import('@/pages/product-typologies-page'))
 const PaymentMethodsPage = lazyRoute(() => import('@/pages/payment-methods-page'))
 const TagsPage = lazyRoute(() => import('@/pages/tags-page'))
@@ -236,6 +239,10 @@ export const router = createBrowserRouter([
           {
             path: 'ledger',
             element: <LedgerPage />,
+          },
+          {
+            path: 'management-control/income-statement',
+            element: <ManagementControlIncomeStatementPage />,
           },
           {
             path: 'invoice-tags',

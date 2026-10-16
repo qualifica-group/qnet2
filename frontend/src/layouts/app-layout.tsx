@@ -40,7 +40,9 @@ export function AppLayout() {
         <FirstAccessDialog />
         <SidebarProvider>
           <AppSidebar />
-          <SidebarInset>
+          {/* min-w-0: a flex item cannot shrink below its content's intrinsic width, so a wide
+              scrollable table (spec 0268) would widen the whole page instead of scrolling in place. */}
+          <SidebarInset className="min-w-0">
             <VersionUpdateBanner />
             <ImpersonationBanner />
             <header className="relative flex h-12 shrink-0 items-center gap-2 border-b border-sidebar-border bg-sidebar px-4 text-sidebar-foreground">

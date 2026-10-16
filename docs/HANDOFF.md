@@ -3,6 +3,86 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0268 — Controllo di gestione F1: conto economico per commessa e per dimensione — VERDE, NON COMMITTATO (2026-10-16)
+
+- Spec `docs/specs/0268-management-control-income-statement.xml` (decisioni utente D-1..D-9, tecniche D-10..D-21,
+  AC-001..AC-021). Fase 1 di 4: F2 scadenzario/aging/esposizione, F3 cash flow previsionale e indicatori,
+  F4 provvigioni per agente e costo orario del personale (spec separate, da pianificare con `/plan-feature`).
+- REVISIONE UTENTE in corso di build (D-22/D-23): la funzione aziendale e' il perno; NESSUN elenco commesse ne'
+  drill-down (migliaia di commesse); andamento mensile per funzione rinviato a F3.
+- Endpoint (routes/api/management-control.php, sola lettura, `AggregateCache`):
+  `GET management-control/income-statement` -> `applied`, `totals` (Figures + `work_orders_count`),
+  `by_business_function[]` (sempre, ripartizione D-11, "unattributed" ultimo con label null, conteggio = commesse con
+  almeno una riga nella funzione, non additivo), `segments[]` (solo con `segment_by` != none: Figures intere del
+  segmento + `by_business_function` annidato delle sue commesse). Parametri: `date_from/date_to` su
+  `work_orders.start_date`, `company_id[]`, `company_site_id[]`, `operational_site_id[]`, `business_function_id[]`,
+  `work_order_type[]`, `commercial_id[]`, `revenue_basis` contract|invoiced|collected, `segment_by`
+  none|company|company_site|operational_site|work_order_type|commercial (default none).
+  `GET management-control/structure-costs` (`by_cost_type`, `by_dimension`, totals; `group_by` company|company_site|
+  operational_site). Shape congelata nella spec; importi `number` a 2 decimali, imponibile, calcolo in centesimi.
+- Permesso unico `management-control.view` (ManagementControlPolicy abilities ['view'],
+  ManagementControlAuthorization in `config/authorization.php`). Menu: sezione `management-control-section`
+  ("Controllo di gestione", dopo Contabilita') con voce `management-control` ("Conto economico",
+  `/management-control/income-statement`): la key della voce con route DEVE restare `management-control` perche'
+  la guida in-app si aggancia a quella. Tutte le commesse visibili al titolare del permesso (D-7, niente
+  WorkOrderVisibilityScope).
+- CORREZIONE D-5 (2026-10-16): la funzione aziendale di una riga e' quella EFFETTIVA della categoria prodotto
+  (propria, altrimenti del primo antenato: `CategoryHierarchy::effectiveBusinessFunctionSummaries()`), risolta in
+  memoria con query costanti; vale anche per il filtro `business_function_id[]`. Senza, nei dati demo (prodotti in
+  sottocategorie) tutto finiva in "unattributed". Nei dati demo restano a ricavo zero 11 commesse con righe di
+  tipologia "Ente" (direzione RECEIVED: ricavo = sola provvigione fornitore, spec 0202) prive di provvigione
+  fornitore configurata: dato demo incompleto, non un bug; le loro cifre vanno in "unattributed" (D-11).
+- Backend: `App\Services\ManagementControl\{IncomeStatementBuilder, WorkOrderFigureSources, IncomeStatementGrouper
+  (prospetto per funzione), IncomeStatementSegmenter (segmenti + funzioni annidate), StructureCostsBuilder}`, `App\Services\Purchasing\CommittedOrderLineQuery` (formula ODA impegnato estratta da
+  WorkOrderPassiveCostAggregator, che ora la riusa a output invariato). Regole: offerta di riferimento =
+  `quote_id` o min id delle sorgenti (D-10); ripartizione per funzione proporzionale al ricavo di riga, residuo di
+  arrotondamento sull'ultima quota (D-11); provvigioni SUPPLIER solo se PAID, accrual firmati (D-8); fatture passive
+  degli estratti conto escluse dai costi di struttura (D-9).
+- Frontend: `features/management-control/*` (`income-statement-function-table.tsx` riusata da
+  `income-statement-functions.tsx` e `income-statement-segments.tsx`; nessuna tabella commesse), pagina
+  `pages/management-control-income-statement-page.tsx`,
+  `components/ui/comparison-bar-chart{,-impl,.test}.tsx` (due serie, recharts solo nell'impl), token
+  `--amount-negative` / `text-amount-negative` in `index.css` (AA su card e muted/40; `--destructive` come testo e'
+  3.8:1 light e 1.3:1 dark). Il raggruppamento a sei valori e' un `Select` (SegmentedControl a sei segmenti tronca a
+  375 px). i18n `{it,en}-management-control.ts`, guide `help/content/{it,en}/management-control.ts`.
+- Test eseguiti (verifier, seconda passata dopo D-22, VERDE; rilancio del lead dopo la correzione D-5): Pest
+  ManagementControl 17, WorkOrders 318, PurchaseInvoices 103, PurchaseOrders 259, Navigation 17, Authorization 106,
+  FinancialAccounts 61, Ledger 31, ProductCategories 340, tutti verdi; Pint ok. Prima passata: suite completa 11356 verdi (unici rossi: 3
+  `QuoteDocumentPdfTest` per `soffice` assente sulla macchina, ambiente). Vitest finale mirato 413/413 (suite
+  completa prima passata 8295 verdi); ESLint pulito sui file toccati; `tsc -b --force` exit 0; fine riga LF ovunque.
+- BUG LAYOUT risolto (segnalato dall'utente con screenshot): la tabella per funzione (13 colonne, `min-w-max`)
+  allargava l'intera pagina (scroll orizzontale di documento) e la colonna ancorata finiva sopra il menu, perche'
+  `SidebarInset` e' un flex item senza `min-w-0` e non poteva restringersi sotto la larghezza intrinseca del
+  contenuto. Fix in `frontend/src/layouts/app-layout.tsx`: `<SidebarInset className="min-w-0">` (non in
+  `components/ui/sidebar.tsx`, file shadcn gia' oltre il limite hard di 500 righe: il code-guard lo blocca).
+  Verifica visiva da fare a mano: il browser automatizzato non raggiunge il dev server Vite (ascolta su [::1]:5173).
+  Seconda causa (con base ricavo Fatturato/Incassato la pagina si riallargava): le etichette dell'asse valori del
+  `ComparisonBarChart` agli estremi (es. "-22.424,35 €") sporgono dall'svg, che non ritaglia il testo, e creano
+  overflow di documento. Fix in `comparison-bar-chart-impl.tsx`: `overflow-hidden` sul box del grafico e margine
+  destro 48 px; test di sizing del componente aggiornato alla nuova stringa di classi (stesso intento).
+- Revisione ui-design applicata: card segmento `bg-surface` con tabella `bg-card` dentro; contenitori scrollabili con
+  `tabIndex=0 role=region aria-label`; prima colonna della tabella per funzione sticky `bg-card`; tile totali
+  `grid-cols-2 sm:grid-cols-3`. Migliorie segnalate non fatte: altezza del `ComparisonBarChart` fissa (con molte
+  funzioni le barre si stringono), colonna "Funzione" senza hover sulla cella ancorata.
+- Test esistenti modificati (requisito cambiato dalla spec, dichiarato): `FieldCatalogueEndpointTest` (+ risorsa
+  `management-control`), `help-guide-keys.test.ts` (78 -> 79 chiavi), `FinancialAccountSchemaTest` (ordine menu:
+  accounting -> management-control-section -> administration), `tests/Pest.php` (+ `ManagementControlHelpers`).
+- Ambiente test su questa macchina: il php di Laragon nel PATH non ha SQLite; usare
+  `/c/Users/ciroc/.config/herd/bin/php84/php.exe` con `-d memory_limit=-1` (o `PHPRC` verso un php.ini copia),
+  altrimenti out-of-memory. `npx tsc` risolve un pacchetto sbagliato: usare `./node_modules/.bin/tsc -b --force`.
+- Segnalati, NON fatti (fuori scope): `routes/api.php` e' a 499 righe (un commento sugli import e' stato compattato
+  per restare sotto il limite hard: prossimo require richiede uno split); `SegmentedControl` con `flex-1` tronca
+  oltre 4-5 segmenti a 375 px; i messaggi di errore `text-destructive` in dark sono ~1.3:1 (tema globale);
+  nessun seeder demo dedicato (il demo esistente alimenta gia' il modulo); nessun test su MySQL delle nuove query
+  (solo `CASE WHEN`/`GROUP BY` standard).
+- Manuale: guide in-app IT/EN fatte. Manuale Claude Docs "Manuale Utente QNet" NON aggiornato: il connettore
+  risponde "doc non condiviso con questo accesso" (verificare la condivisione del documento con l'account del
+  connettore). Da aggiungere a mano o nella prossima sessione con accesso: nuovo capitolo "Controllo di gestione >
+  Conto economico" (menu e permesso `management-control.view`; filtri periodo/societa'/sedi/funzione/tipo/commerciale;
+  base ricavo contrattuale-fatturato-incassato; ricavo, costi preventivati e reali per fonte, provvigioni, margine
+  atteso e consuntivo, scostamenti; raggruppamenti e ripartizione per funzione; costi di struttura per tipo di costo
+  e per societa'/sede). Fonte testuale pronta: `frontend/src/features/help/content/it/management-control.ts`.
+
 ## MERGE main (2f8d47ce) -> feature/amministrazione — RISOLTO (2026-10-16)
 
 - Conflitti: HANDOFF (voci di entrambi i lati mantenute) e i contatori `migrate:rollback --step`, che sommano le 5

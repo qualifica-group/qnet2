@@ -26,6 +26,8 @@ export const navigation = {
   vatRates: 'IVA',
   unitsOfMeasure: 'Unita di Misura',
   financialAccounts: 'Gestione Conti',
+  managementControl: 'Controllo di gestione',
+  incomeStatement: 'Conto economico',
   accountingReceivable: 'Attiva',
   proformaRequests: 'Richieste Proforma',
   invoices: 'Fatture Attive',

@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\WorkOrders;
 
-use App\Enums\PurchaseOrderStatus;
 use App\Models\CostType;
 use App\Models\WorkOrder;
-use App\Services\PurchaseInvoices\PurchaseInvoiceDraftBuilder;
-use Illuminate\Database\Query\Builder;
+use App\Services\Purchasing\CommittedOrderLineQuery;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -18,17 +16,12 @@ use Illuminate\Support\Facades\DB;
  * not yet billed by a payable document, spec 0254 D-9) and payable document
  * lines. Billed quantity leaves the committed: the document line replaces it. Three
  * aggregate queries plus one for the cost types, whatever the number of rows.
- * Amounts are net, summed as integer cents.
+ * Amounts are net, summed as integer cents. The committed formula is shared
+ * through CommittedOrderLineQuery (spec 0268, D-14).
  */
 final class WorkOrderPassiveCostAggregator
 {
-    /**
-     * Committed net of one order line: the billable ceiling (received once the
-     * residual is closed, ordered otherwise) minus what documents bill, never
-     * below zero, times the unit price, per line to the cent. CASE WHEN instead
-     * of GREATEST so it runs on MySQL and SQLite; constant text, no input.
-     */
-    private const string COMMITTED_AMOUNT = 'ROUND(CASE WHEN (CASE WHEN purchase_order_lines.residual_closed_at IS NOT NULL THEN purchase_order_lines.received_quantity ELSE purchase_order_lines.quantity END) - COALESCE(billed.billed_quantity, 0) > 0 THEN (CASE WHEN purchase_order_lines.residual_closed_at IS NOT NULL THEN purchase_order_lines.received_quantity ELSE purchase_order_lines.quantity END) - COALESCE(billed.billed_quantity, 0) ELSE 0 END * purchase_order_lines.unit_price, 2)';
+    public function __construct(private readonly CommittedOrderLineQuery $committed) {}
 
     /**
      * Ordered by cost type sort order, the row without a type last.
@@ -39,9 +32,9 @@ final class WorkOrderPassiveCostAggregator
     {
         // Step 1: the three sources, summed per cost type id (0 = no type)
         $sources = [
-            'manual_cents' => $this->sums(DB::table('work_order_costs')->where('work_order_id', $workOrder->id), 'net_amount', 'cost_type_id'),
-            'committed_cents' => $this->sums($this->committedQuery($workOrder), self::COMMITTED_AMOUNT, 'purchase_order_lines.cost_type_id'),
-            'invoiced_cents' => $this->sums(DB::table('purchase_invoice_lines')->where('work_order_id', $workOrder->id), 'net_amount', 'cost_type_id'),
+            'manual_cents' => $this->committed->centsBy(DB::table('work_order_costs')->where('work_order_id', $workOrder->id), 'net_amount', 'cost_type_id'),
+            'committed_cents' => $this->committed->committedCentsBy($this->committed->forWorkOrders([$workOrder->id]), 'purchase_order_lines.cost_type_id'),
+            'invoiced_cents' => $this->committed->centsBy(DB::table('purchase_invoice_lines')->where('work_order_id', $workOrder->id), 'net_amount', 'cost_type_id'),
         ];
 
         // Step 2: the types involved, in display order
@@ -58,37 +51,6 @@ final class WorkOrderPassiveCostAggregator
         }
 
         return $rows->values();
-    }
-
-    /**
-     * Order lines of the commessa on invoiceable orders, with the quantity
-     * billed on them by any payable document (spec 0254, D-2, D-9).
-     */
-    private function committedQuery(WorkOrder $workOrder): Builder
-    {
-        $statuses = array_map(fn (PurchaseOrderStatus $status): string => $status->value, PurchaseInvoiceDraftBuilder::INVOICEABLE_STATUSES);
-        $billed = DB::table('purchase_invoice_lines')
-            ->whereNotNull('purchase_order_line_id')
-            ->groupBy('purchase_order_line_id')
-            ->selectRaw('purchase_order_line_id, SUM(quantity) as billed_quantity');
-
-        return DB::table('purchase_order_lines')
-            ->join('purchase_orders', 'purchase_orders.id', '=', 'purchase_order_lines.purchase_order_id')
-            ->leftJoinSub($billed, 'billed', 'billed.purchase_order_line_id', '=', 'purchase_order_lines.id')
-            ->where('purchase_order_lines.work_order_id', $workOrder->id)
-            ->whereIn('purchase_orders.status', $statuses);
-    }
-
-    /**
-     * @return array<int, int> cents keyed by cost type id (0 = no type)
-     */
-    private function sums(Builder $query, string $amountColumn, string $typeColumn): array
-    {
-        return $query->groupBy($typeColumn)
-            ->selectRaw("{$typeColumn} as cost_type_id, SUM({$amountColumn}) as total")
-            ->get()
-            ->mapWithKeys(fn (object $row): array => [(int) $row->cost_type_id => (int) round((float) $row->total * 100)])
-            ->all();
     }
 
     /**

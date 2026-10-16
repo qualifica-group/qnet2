@@ -25,6 +25,7 @@ use App\Authorization\InvoicesAuthorization;
 use App\Authorization\InvoiceTagsAuthorization;
 use App\Authorization\LeadsAuthorization;
 use App\Authorization\LedgerAuthorization;
+use App\Authorization\ManagementControlAuthorization;
 use App\Authorization\OperationalSitesAuthorization;
 use App\Authorization\OpportunitiesAuthorization;
 use App\Authorization\PaymentMethodsAuthorization;
@@ -171,6 +172,8 @@ return [
         'invoice-installments' => InvoiceInstallmentsAuthorization::class,
         // spec 0266: Partitario clienti/fornitori (sola lettura, solo `ledger.view`).
         'ledger' => LedgerAuthorization::class,
+        // spec 0268: Controllo di gestione (sola lettura, solo `management-control.view`).
+        'management-control' => ManagementControlAuthorization::class,
         'product-typologies' => ProductTypologiesAuthorization::class,
         // spec 0101: il modulo Task e i suoi cinque configuratori.
         'tasks' => TasksAuthorization::class,

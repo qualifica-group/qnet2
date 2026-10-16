@@ -1,0 +1,349 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0268 — Controllo di gestione, fase 1 di 4: conto economico per commessa e per dimensione,
+  costi di struttura. Contract-first: backend e frontend lavorano contro il data_contract qui sotto.
+  Fasi successive (spec separate): F2 scadenzario/aging/esposizione, F3 cash flow previsionale e
+  indicatori, F4 provvigioni per agente e costo orario del personale.
+-->
+<spec id="0268-management-control-income-statement" status="draft" owner="utente" date="2026-10-16">
+
+  <goal>
+    Dare alla direzione un modulo "Controllo di gestione" che mostra, per le commesse selezionate con filtri
+    comuni (periodo, societa', sedi, funzione aziendale, tipo commessa, commerciale), il conto economico PER
+    FUNZIONE AZIENDALE (ricavo, costi preventivati e reali per fonte, provvigioni, margine atteso e consuntivo,
+    scostamenti), lo stesso prospetto per funzione dentro ogni societa', sede, tipo commessa o commerciale
+    (segmentazione), e i costi passivi non legati a nessuna commessa ("costi di struttura") per societa', sede e
+    tipo di costo. Nessun elenco per commessa: il modulo e' aggregato (migliaia di commesse).
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-16. Decisioni utente nella stessa data (vincolanti):
+    - D-1 Costi passivi senza commessa = "costi di struttura", mostrati per societa'/sede e tipo di costo, mai
+      ripartiti sulle commesse.
+    - D-2 Il periodo seleziona le COMMESSE per data di inizio (`work_orders.start_date`, NOT NULL); i valori di
+      ogni commessa sono a vita intera. Il taglio per data documento arriva con il cash flow (fase 3).
+    - D-3 Le proforma attive non sono fatturato: conta solo `invoices.type = invoice`. (Sul passivo resta la
+      regola della spec 0252 D-2: proforma e fatture passive contano allo stesso modo come costo.)
+    - D-4 Costo orario del personale: rinviato alla fase 4. Il segnatempo non entra nel margine in questa fase.
+    - D-5 Funzione aziendale derivata dalla categoria prodotto delle righe di ricavo
+      (`quote_lines.product_id -> products.category_id -> product_categories.business_function_id`, nullable);
+      le righe senza funzione vanno in "non attribuito". CORREZIONE (2026-10-16, dopo la build): la funzione
+      aziendale di una categoria e' quella EFFETTIVA del progetto, cioe' la propria se impostata, altrimenti quella
+      del primo antenato che la ha (`CategoryHierarchy::effectiveBusinessFunction`, spec 0040): il modulo risolve
+      l'albero in memoria con una sola query sulle categorie (id, parent_id, business_function_id), mai una query
+      per riga. "Non attribuito" resta solo per le categorie senza funzione in tutto il ramo.
+    - D-6 Conto economico sull'imponibile (net). Esposizione e cassa sul totale documento (fasi 2-3).
+    - D-7 Visibilita': chi ha il permesso del modulo vede TUTTE le commesse, senza WorkOrderVisibilityScope
+      (come Partitario spec 0266 e statistiche Offerte spec 0151 D-8).
+    - D-8 Provvigioni preventivate = `quote_line_commissions.calculated_amount` delle righe REVENUE assegnate alla
+      commessa, ruoli COMMERCIAL/REPORTER/SUPERVISOR sempre, SUPPLIER solo se la riga ha
+      `supplier_commission_direction = PAID` (se RECEIVED e' ricavo, spec 0202). Provvigioni consuntive =
+      somma firmata di `commission_accruals.amount` (ACCRUAL positivo, REVERSAL negativo, ADJUSTMENT firmato)
+      delle stesse righe (`commission_accruals.quote_line_id`). Entrambe riducono il margine rispettivo.
+    - D-9 Le fatture passive collegate a un estratto conto provvigioni (`commission_settlements.purchase_invoice_id`)
+      sono escluse dai costi di struttura: quelle provvigioni sono gia' nel margine delle commesse (D-8).
+
+    Decisioni tecniche proposte (da validare con l'approvazione del piano):
+    - D-10 "Offerta di riferimento" di una commessa = `work_orders.quote_id`; per una commessa multi-offerta
+      (spec 0267, `quote_id` NULL) = la sorgente con id minore tra `quote_lines.quote_id` delle righe nel pivot
+      `quote_line_work_order`. Societa', sede societa', sede operativa, commerciale (`quotes.commercial_id ->
+      referents`) e cliente (`quotes.opportunity_id -> opportunities.registry_id`) della commessa sono quelli
+      dell'offerta di riferimento. Le fatture attive NON portano le sedi (spec 0266).
+    - D-11 Raggruppamento per funzione aziendale: le cifre di una commessa si ripartiscono tra le funzioni delle
+      sue righe di ricavo in proporzione al ricavo contrattuale di riga (LineEffectiveRevenue). Una riga con
+      funzione nulla pesa su "non attribuito"; una commessa con ricavo contrattuale zero va tutta in
+      "non attribuito". Il gruppo "non attribuito" e' sempre ultimo. Per gli altri raggruppamenti (societa', sedi,
+      tipo, commerciale) ogni commessa sta in un solo gruppo; valore nullo -> "non attribuito".
+    - D-12 Il filtro funzione aziendale include una commessa se ALMENO una riga di ricavo appartiene a una delle
+      funzioni scelte; la riga della commessa mostra le cifre intere (non ripartite); solo i gruppi ripartiscono.
+    - D-13 Base del ricavo consuntivo selezionabile (`revenue_basis`): `contract` (ricavo contrattuale, default,
+      come `total_actual_margin_net` di 0252), `invoiced` (imponibile delle fatture `type = invoice` con
+      `invoices.work_order_id` della commessa), `collected` (incassato netto: per ogni fattura `type = invoice`,
+      somma `invoice_installments.collected_amount` x `net_amount / total_amount`, arrotondata al centesimo per
+      fattura; `total_amount` zero -> zero). Il margine atteso usa sempre il ricavo contrattuale.
+    - D-14 Costi reali per fonte come spec 0252: manuali (`work_order_costs.net_amount`, attribuiti e non),
+      ODA impegnato (righe `purchase_order_lines.work_order_id` su ordini in
+      `PurchaseInvoiceDraftBuilder::INVOICEABLE_STATUSES`, formula `COMMITTED_AMOUNT` al netto della quantita'
+      fatturata) e fatturato passivo (`purchase_invoice_lines.work_order_id`, `net_amount`). La formula
+      dell'impegnato e la query vanno estratte da `WorkOrderPassiveCostAggregator` in una classe condivisa
+      (`App\Services\Purchasing\CommittedOrderLineQuery`) usata dall'aggregatore (output invariato) e dai
+      nuovi builder, che la applicano a insiemi di commesse (GROUP BY work_order_id) o alle righe senza commessa.
+    - D-15 Costi di struttura = righe ODA con `work_order_id` NULL su ordini fatturabili, al netto del fatturato
+      (impegnato), + righe `purchase_invoice_lines` con `work_order_id` NULL (fatturato), esclusi i documenti di
+      D-9. Periodo su `purchase_orders.order_date` / `purchase_invoices.document_date`; societa' e sedi dalle
+      testate (`purchase_orders.company_id/company_site_id/operational_site_id`,
+      `purchase_invoices.company_id/company_site_id/operational_site_id`). Unione con i costi di commessa = tutto
+      il ciclo passivo, nessun doppio conteggio.
+    - D-16 Calcolo in lettura con query aggregate (una per fonte, GROUP BY work_order_id), somme in centesimi
+      interi, numero di query costante al crescere delle commesse; cache AggregateCache per attore + parametri
+      normalizzati (pattern RequestManagementDashboardController). Nessuna tabella di riepilogo in questa fase.
+    - D-17 Nessuna paginazione: la tabella commesse e' client-side (ordinamento in pagina), come il Partitario.
+      Se in produzione supera il migliaio di commesse per periodo, si valuta la tabella di riepilogo notturna
+      senza cambiare il frontend.
+    - D-18 Permesso unico `management-control.view` (ManagementControlPolicy, abilities ['view'], pattern
+      LedgerPolicy) + ManagementControlAuthorization registrata in `config/authorization.php` `definitions`
+      cosi' e' assegnabile dal form Ruoli nell'area del menu. Nuova sezione di menu "Controllo di gestione"
+      (`config/navigation/management-control.php`, dopo `accounting.php`, `key` della sezione
+      `management-control-section`) con la voce "Conto economico" (`key` della voce `management-control`, perche'
+      la guida in-app si aggancia alla key della voce con route; `/management-control/income-statement`, icona
+      `chart-column`, gia' in `icon-map.ts`). Breadcrumb: segmenti `management-control` e `income-statement` in
+      `routes/breadcrumbs.tsx`.
+    - D-19 Le etichette dei gruppi "non attribuito" e dei tipi commessa le traduce il frontend: il backend manda
+      `label: null` per "non attribuito" e, per `work_order_type`, il valore dell'enum come `key`.
+    - D-20 Grafico atteso vs consuntivo: nuovo `components/ui/comparison-bar-chart.tsx` a due serie
+      (lazy `comparison-bar-chart-impl.tsx` unico importatore di recharts, pattern `report-bar-chart.tsx`),
+      colori dai token `--chart-N`, mai esadecimali.
+    - D-21 (revisione ui-design in build) Gli importi negativi usano il nuovo token `--amount-negative`
+      (`text-amount-negative`, light e dark con contrasto >= 4.5:1 su `bg-card` e `bg-muted/40`), perche'
+      `--destructive` non raggiunge AA come testo (3.8:1 light, 1.3:1 dark); i messaggi di errore restano
+      `text-destructive` per coerenza con il resto dell'app. Il raggruppamento a sei valori usa un `Select`,
+      non un `SegmentedControl` (a 375 px sei segmenti troncano le etichette); il `SegmentedControl` resta per
+      la base ricavo (tre valori) e per il group_by dei costi di struttura (tre valori).
+    - D-22 (REVISIONE UTENTE 2026-10-16, requisito cambiato dopo la prima build) La funzione aziendale e' il perno
+      del prospetto: la risposta NON contiene l'elenco delle commesse (`rows` eliminato: con migliaia di commesse il
+      dato analitico non serve) ne' il raggruppamento piatto `group_by`. Il prospetto principale e' SEMPRE per
+      funzione aziendale (`by_business_function`, ripartizione D-11); la "segmentazione" opzionale (`segment_by`:
+      societa', sede societa', sede operativa, tipo commessa, commerciale) produce, per ogni valore del segmento,
+      il subtotale del segmento e dentro di esso lo stesso prospetto per funzione. Nessun drill-down alle commesse.
+      L'andamento mensile per funzione (fatturato, costi, margine per mese) e' rinviato alla fase 3.
+    - D-23 Il conteggio `work_orders_count` di una riga funzione = commesse con almeno una riga di ricavo in quella
+      funzione (la somma dei conteggi delle funzioni puo' superare il totale, a differenza degli importi che sono
+      ripartiti). Il conteggio di un segmento = commesse del segmento. Il totale = commesse selezionate.
+
+    Fatti verificati nel repo:
+    - Commessa `work_orders` (WorkOrder): `code` COM-, `quote_id` nullable (0267), `type` WorkOrderType
+      processing|project, `start_date` NOT NULL, `is_force_closed`. Righe assegnate: pivot `quote_line_work_order`
+      (`WorkOrder::quoteLines()`), `sourceQuoteIds()`, `isMultiQuote()`.
+    - Offerta `quotes`: `company_id`, `company_site_id`, `operational_site_id`, `commercial_id -> referents.name`,
+      `opportunity_id -> opportunities.registry_id -> registries.name`. Societa' `companies.denomination`,
+      `company_sites.name`, `operational_sites.alias` (nullable: fallback id come stringa,
+      InstallmentSql::operationalSiteLabel), `business_functions.name`.
+    - Righe `quote_lines`: `line_type` REVENUE|COST, `offer_line_id` (COST allocata a una REVENUE, spec 0144),
+      `net_amount`, `supplier_commission_direction`, `product_id -> products.category_id` (NOT NULL).
+      Ricavo effettivo di riga: `App\Services\WorkOrders\LineEffectiveRevenue::cents()`.
+      Budget costi: `WorkOrderCostOverviewBuilder::budgetLines()` (COST delle offerte sorgente con
+      `offer_line_id` tra le righe della commessa; le generiche non entrano, 0190 D-1).
+    - Provvigioni: `quote_line_commissions` (`recipient_role`, `calculated_amount`), `commission_accruals`
+      (`quote_line_id`, `type`, `amount` firmato: CommissionAccrualSynchronizer posta i REVERSAL con delta
+      negativo).
+    - Attivo: `invoices` (`type`, `work_order_id`, `company_id`, `net_amount`, `total_amount`),
+      `invoice_installments` (`collected_amount`). Passivo: `purchase_invoices` (`document_type`, `company_id`,
+      `company_site_id`, `operational_site_id`, `document_date`), `purchase_invoice_lines` (`work_order_id`,
+      `cost_type_id`, `purchase_order_line_id` unique, `net_amount`), `purchase_orders` (`status`, `order_date`,
+      `company_id`, `company_site_id`, `operational_site_id`), `purchase_order_lines` (`work_order_id`,
+      `cost_type_id`, `quantity`, `received_quantity`, `residual_closed_at`, `unit_price`), `cost_types`
+      (`name`, `color`, `nature` direct|indirect|general, `sort_order`). `commission_settlements.purchase_invoice_id`.
+    - Pattern endpoint di sola lettura con filtri: spec 0266 (RegistryLedgerRequest::authorize + rules,
+      LedgerFilters readonly DTO, controller thin, `BaseApiController::ok()` -> `{ success, message, data }`,
+      errori via handleControllerException). Cache: `App\Support\Cache\AggregateCache::remember(key, fn, actor)`.
+    - Permessi: `permissions:sync` legge navigation config + policy; test di riferimento
+      `tests/Feature/Ledger/LedgerPermissionTest.php`. Helper Pest condivisi in `tests/Helpers/*Helpers.php`
+      (`workOrderUserWith`, `invoiceWithPlan`, `collectInstallment`, `purchaseOrderWithLines`,
+      `createPurchaseInvoice`, `multiQuoteReadFixture`...), caricati da `tests/Pest.php`. Suite in parallelo.
+    - Frontend: pagina `src/pages/ledger-page.tsx` + rotta in `src/routes/router.tsx`; feature
+      `src/features/ledger/{api.ts, types.ts, use-ledger.ts, ledger-filters-bar.tsx, ...}` con
+      `AsyncPaginatedMultiSelect` sui `*/for-select` (esistono `companies`, `company-sites`,
+      `operational-sites`, `business-functions`, `referents`); i18n `src/i18n/locales/{it,en}-ledger.ts`
+      importati da `{it,en}-accounting.ts`; `navigation.*` in `{it,en}-navigation.ts`; `<Can permission>`;
+      grafici `components/ui/{report-bar-chart, stat-column-chart, stat-chart}.tsx` (serie singola, lazy impl);
+      guide in-app `src/features/help/content/{it,en}/<key>.ts` + `HELP_GUIDE_KEYS`; parity test
+      `help-content-parity.test.ts`. Dettaglio commessa: `/work-orders/{id}`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Permesso `management-control.view`, policy, authorization, sezione di menu "Controllo di gestione" con voce "Conto economico".</item>
+      <item>Endpoint `GET /api/management-control/income-statement`: prospetto per funzione aziendale, segmenti opzionali con il prospetto per funzione annidato, totali, base ricavo selezionabile, filtri comuni (D-22).</item>
+      <item>Endpoint `GET /api/management-control/structure-costs`: costi passivi senza commessa per tipo di costo e per societa'/sede.</item>
+      <item>Estrazione della formula ODA impegnato in `CommittedOrderLineQuery`, riusata da WorkOrderPassiveCostAggregator senza cambiarne l'output.</item>
+      <item>Pagina `/management-control/income-statement`: barra filtri, tile totali, tabella per funzione aziendale + grafico atteso vs consuntivo per funzione, blocchi per segmento (subtotale + tabella per funzione), blocco costi di struttura.</item>
+      <item>Componente `ComparisonBarChart` a due serie in `components/ui/`.</item>
+      <item>Test Pest (backend) e Vitest (frontend) sugli AC; guide in-app IT/EN `management-control`; aggiornamento manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Scadenzario, aging, esposizione netta, DSO/DPO (fase 2).</item>
+      <item>Cash flow previsionale, trend mensili per data documento, indicatori sintetici (fase 3).</item>
+      <item>Provvigioni per agente, costo orario del personale e ore del segnatempo nel margine (fase 4).</item>
+      <item>Ripartizione dei costi di struttura sulle commesse; attribuzione dei costi passivi alla funzione tramite il prodotto di costo.</item>
+      <item>Filtro o colonna sullo stato calcolato della commessa (WorkOrderStatusResolver) e sulla chiusura forzata.</item>
+      <item>Elenco delle commesse, drill-down da funzione o segmento alle commesse, link al dettaglio commessa (D-22).</item>
+      <item>Andamento mensile per funzione aziendale (fase 3).</item>
+      <item>Export CSV/XLSX, paginazione server, tabella di riepilogo materializzata, seeder demo dedicati.</item>
+      <item>Modifiche a WorkOrderCostOverviewBuilder, alla sezione Costi della commessa o alle griglie esistenti.</item>
+      <item>Gating con i permessi dei moduli sorgente (`invoices.view`, `work-orders.viewCosts`...): basta `management-control.view` (D-7).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/management-control/income-statement">
+      <request>
+        date_from: "YYYY-MM-DD" | null          (opzionale; su work_orders.start_date, inclusivo; default FE 1/1 anno corrente)
+        date_to: "YYYY-MM-DD" | null            (opzionale; >= date_from se entrambi; default FE oggi)
+        company_id[]: int[]                     (opzionale, exists:companies,id; offerta di riferimento, D-10)
+        company_site_id[]: int[]                (opzionale, exists:company_sites,id)
+        operational_site_id[]: int[]            (opzionale, exists:operational_sites,id)
+        business_function_id[]: int[]           (opzionale, exists:business_functions,id; almeno una riga, D-12)
+        work_order_type[]: ("processing"|"project")[]   (opzionale)
+        commercial_id[]: int[]                  (opzionale, exists:referents,id)
+        revenue_basis: "contract"|"invoiced"|"collected"  (opzionale, default "contract", D-13)
+        segment_by: "none"|"company"|"company_site"|"operational_site"|"work_order_type"|"commercial"
+                                                (opzionale, default "none", D-22)
+      </request>
+      <response status="200">
+        { success: true, message: "OK", data: {
+            applied: {
+              date_from: string|null, date_to: string|null,
+              company_id: int[], company_site_id: int[], operational_site_id: int[],
+              business_function_id: int[], work_order_type: string[], commercial_id: int[],
+              revenue_basis: string, segment_by: string
+            },
+            totals: Figures & { work_orders_count: int },   (tutte le commesse selezionate)
+            by_business_function: FunctionRow[],  (sempre; una per funzione, ordinate per label; "unattributed" ultimo)
+            segments: SegmentRow[]                (vuoto con segment_by = none; una per valore del segmento, ordinate
+                                                   per label; "unattributed" ultimo)
+        } }
+
+        Figures = {
+          revenue_contract: number,      (somma LineEffectiveRevenue delle righe REVENUE assegnate)
+          revenue_invoiced: number,      (somma invoices.net_amount, type = invoice, work_order_id = commessa)
+          revenue_collected: number,     (D-13)
+          revenue_actual: number,        (= revenue_contract | revenue_invoiced | revenue_collected secondo revenue_basis)
+          cost_budget: number,           (righe COST allocate alle righe della commessa, 0190 D-1)
+          cost_manual: number,           (work_order_costs.net_amount, tutte)
+          cost_committed: number,        (ODA impegnato netto del fatturato, D-14)
+          cost_invoiced: number,         (purchase_invoice_lines.net_amount con work_order_id = commessa)
+          cost_actual: number,           (= cost_manual + cost_committed + cost_invoiced)
+          commission_budget: number,     (D-8)
+          commission_actual: number,     (D-8, puo' essere negativa in presenza di soli storni)
+          margin_budget: number,         (= revenue_contract - cost_budget - commission_budget)
+          margin_actual: number,         (= revenue_actual - cost_actual - commission_actual)
+          cost_delta: number,            (= cost_actual - cost_budget; positivo = sforamento)
+          margin_delta: number           (= margin_actual - margin_budget)
+        }
+
+        FunctionRow = {
+          key: string,                   (id della funzione aziendale come stringa; "unattributed")
+          label: string | null,          (business_functions.name; null per "unattributed", D-19)
+          work_orders_count: int,        (commesse con almeno una riga in quella funzione, D-23)
+          ...Figures                     (ripartite per funzione, D-11)
+        }
+
+        SegmentRow = {
+          key: string,                   (id della dimensione come stringa; valore enum per work_order_type; "unattributed")
+          label: string | null,          (nome; null per "unattributed" e per work_order_type, D-19)
+          work_orders_count: int,        (commesse del segmento)
+          ...Figures,                    (somme intere delle commesse del segmento)
+          by_business_function: FunctionRow[]   (il prospetto per funzione delle sole commesse del segmento)
+        }
+
+        Importi: number con 2 decimali, imponibile (D-6), calcolati in centesimi interi.
+        Invarianti: somma di by_business_function = totals campo per campo (il residuo di arrotondamento della
+        ripartizione va sull'ultima quota); somma dei segments = totals; in ogni segmento la somma del suo
+        by_business_function = le cifre del segmento. I conteggi delle funzioni NON si sommano (D-23).
+      </response>
+      <errors>
+        401 non autenticato.
+        403 senza `management-control.view`.
+        422 parametri non validi (date malformate, date_to &lt; date_from, id inesistenti, revenue_basis o
+            segment_by o work_order_type fuori lista).
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/management-control/structure-costs">
+      <request>
+        date_from: "YYYY-MM-DD" | null          (opzionale; purchase_orders.order_date / purchase_invoices.document_date, inclusivo)
+        date_to: "YYYY-MM-DD" | null            (opzionale; >= date_from se entrambi)
+        company_id[]: int[]                     (opzionale, exists:companies,id; testata documento, D-15)
+        company_site_id[]: int[]                (opzionale, exists:company_sites,id)
+        operational_site_id[]: int[]            (opzionale, exists:operational_sites,id)
+        group_by: "company"|"company_site"|"operational_site"   (opzionale, default "company")
+      </request>
+      <response status="200">
+        { success: true, message: "OK", data: {
+            applied: { date_from, date_to, company_id: int[], company_site_id: int[], operational_site_id: int[], group_by: string },
+            totals: StructureFigures,
+            by_cost_type: StructureCostTypeRow[],   (ordine cost_types.sort_order, name, id; senza tipo ultimo)
+            by_dimension: StructureDimensionRow[]   (ordinate per label; "non attribuito" ultimo)
+        } }
+
+        StructureFigures = { committed_net: number, invoiced_net: number, total_net: number }
+        StructureCostTypeRow = {
+          cost_type: { id: int, name: string, color: string|null, nature: "direct"|"indirect"|"general"|null } | null,
+          ...StructureFigures
+        }
+        StructureDimensionRow = { key: string, label: string | null, ...StructureFigures }
+      </response>
+      <errors>
+        401 non autenticato. 403 senza `management-control.view`. 422 parametri non validi.
+      </errors>
+    </endpoint>
+
+    <frontend_contract>
+      Rotta `/management-control/income-statement` (pagina lazy `src/pages/management-control-income-statement-page.tsx`,
+      gated da `<Can permission="management-control.view">`). Feature `src/features/management-control/`:
+      `api.ts` (chiavi query `managementControlKeys`, `defaultIncomeStatementFilters()`, `toIncomeStatementParams()`,
+      `fetchIncomeStatement()`, `fetchStructureCosts()`), `types.ts` (le shape sopra, camelCase sui filtri UI e
+      snake_case sul wire come `ledger/types.ts`), `use-income-statement.ts`, `use-structure-costs.ts`,
+      `income-statement-filters-bar.tsx`, `income-statement-totals.tsx`, `income-statement-function-table.tsx`
+      (tabella per funzione, riusata dai segmenti), `income-statement-functions.tsx` (tabella principale + grafico
+      margine atteso vs consuntivo per funzione), `income-statement-segments.tsx` (un blocco per segmento con
+      subtotale e tabella per funzione), `structure-costs-panel.tsx`, `management-control-fixtures.ts`.
+      Eliminati rispetto alla prima build (D-22): `income-statement-table.tsx`, `income-statement-sort.ts`,
+      `income-statement-groups.tsx` e i loro test.
+      Componente ui: `ComparisonBarChart({ title, points: { label, budget, actual }[], seriesLabels: { budget, actual },
+      formatValue?, emptyLabel?, className? })`.
+      i18n: `src/i18n/locales/{it,en}-management-control.ts` (namespace `managementControl`) importati da
+      `{it,en}-accounting.ts`; `navigation.managementControl`, `navigation.incomeStatement`.
+      Guide: `src/features/help/content/{it,en}/management-control.ts`, chiave `management-control` in HELP_GUIDE_KEYS.
+    </frontend_contract>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Permessi e menu -->
+    <criterion id="AC-001">Dato il catalogo permessi, quando gira `permissions:sync`, allora esiste esattamente `management-control.view` per la risorsa `management-control`, e' offerto una sola volta dal form Ruoli, e la voce di menu "Controllo di gestione > Conto economico" compare solo a chi lo detiene (Pest, pattern LedgerPermissionTest).</criterion>
+    <criterion id="AC-002">Dato un utente senza il permesso, quando chiama uno dei due endpoint, allora riceve 403; senza autenticazione 401. Dato un utente con il permesso che NON e' responsabile ne' partecipante di una commessa e non ha `work-orders.viewAll`, allora la commessa conta comunque in `totals.work_orders_count` e nelle cifre (D-7).</criterion>
+    <!-- Cifre per commessa -->
+    <criterion id="AC-003">Data una sola commessa mono-offerta, con tutte le righe di ricavo in una stessa funzione aziendale, con due righe REVENUE (una con direzione fornitore RECEIVED), due righe COST allocate e una generica, costi manuali attribuiti e non, una riga ODA impegnata parzialmente fatturata, una riga passiva collegata, una fattura attiva `invoice` con rata incassata al 50% e una proforma, provvigioni di riga (commerciale, fornitore PAID, fornitore RECEIVED) e maturati (ACCRUAL + REVERSAL), quando si chiama income-statement, allora `totals` e l'unica riga di `by_business_function` riportano: revenue_contract = net delle righe + sola provvigione fornitore della riga RECEIVED; cost_budget = sole COST allocate; cost_manual tutte; cost_committed = residuo non fatturato della riga ODA; cost_invoiced = riga passiva; revenue_invoiced = net della sola fattura `invoice`; revenue_collected = incassato x net/total; commission_budget esclude la fornitore RECEIVED; commission_actual = somma firmata; margini e delta come da formule del contratto; `work_orders_count` = 1.</criterion>
+    <criterion id="AC-004">Dato lo stesso insieme, quando `revenue_basis` vale contract, invoiced, collected, allora `revenue_actual` e `margin_actual` di totals e della riga funzione cambiano di conseguenza mentre `margin_budget` resta identico; un valore fuori lista da' 422.</criterion>
+    <criterion id="AC-005">Date commesse con `start_date` prima, dentro e dopo l'intervallo, quando si passano date_from e date_to, allora solo quelle dentro (estremi inclusi) contribuiscono a totals, by_business_function e segments; `date_to` minore di `date_from` da' 422.</criterion>
+    <criterion id="AC-006">Date commesse con offerte di riferimento su societa', sedi, commerciali e tipi diversi, quando si filtra per company_id, company_site_id, operational_site_id, commercial_id o work_order_type, allora contribuiscono solo le commesse la cui offerta di riferimento combacia (verificato su totals.work_orders_count e sulle cifre); una commessa multi-offerta usa l'offerta sorgente con id minore (D-10); id inesistenti danno 422.</criterion>
+    <criterion id="AC-007">Data una commessa con righe su due funzioni aziendali, quando si filtra per una sola delle due, allora la commessa e' inclusa (totals la contiene intera, D-12) e `by_business_function` mostra entrambe le funzioni, ciascuna con la sua quota (D-11).</criterion>
+    <criterion id="AC-008">Quando una commessa ha righe su due funzioni con ricavo 300 e 100, allora ogni cifra della commessa va per 3/4 e 1/4 nelle due righe di by_business_function; una riga con funzione nulla pesa su "unattributed"; una commessa a ricavo zero va tutta in "unattributed"; "unattributed" e' l'ultima riga con label null; la somma di by_business_function coincide esattamente con totals (residuo di arrotondamento sull'ultima quota); `work_orders_count` di ogni funzione conta le commesse con almeno una riga in essa (D-23). Una riga il cui prodotto sta in una sottocategoria senza funzione propria, figlia di una categoria con funzione, pesa su quella funzione ereditata (D-5 corretta); solo un ramo senza funzione da' "unattributed".</criterion>
+    <criterion id="AC-009">Dato segment_by in company, company_site, operational_site, work_order_type, commercial, allora `segments` ha una voce per valore distinto con `work_orders_count` esatto e cifre pari alla somma delle sue commesse, un `by_business_function` annidato la cui somma coincide con le cifre del segmento, un valore nullo finisce in "unattributed" (ultimo), per work_order_type `key` e' il valore dell'enum con label null, e la somma dei segments coincide con totals; con segment_by = none (default) `segments` e' vuoto; un segment_by fuori lista da' 422.</criterion>
+    <criterion id="AC-010">Date piu' commesse, allora `totals` e' la somma campo per campo delle commesse selezionate con `work_orders_count` pari al loro numero, la risposta NON contiene chiavi `rows` ne' `groups`, e `applied` rispecchia i parametri validati (array vuoti se assenti, default contract/none).</criterion>
+    <!-- Costi di struttura -->
+    <criterion id="AC-011">Date righe ODA senza commessa su ordini approved/sent_to_supplier/partially_fulfilled/fulfilled (una parzialmente fatturata) e su un ordine draft, righe passive senza commessa (una collegata alla riga ODA, una libera), righe passive e ODA CON commessa, e una fattura passiva di un estratto conto provvigioni, quando si chiama structure-costs, allora committed_net = solo il residuo non fatturato delle righe senza commessa su ordini fatturabili, invoiced_net = righe passive senza commessa escluso il documento dell'estratto conto (D-9), nulla delle righe con commessa, total_net = somma; `by_cost_type` ha una riga per tipo nell'ordine del catalogo, con la riga senza tipo ultima e `nature` valorizzata.</criterion>
+    <criterion id="AC-012">Dati documenti su societa' e sedi diverse e date diverse, quando si filtra per periodo (order_date/document_date), company_id, company_site_id, operational_site_id e si cambia group_by, allora `by_dimension` ha un gruppo per valore con "unattributed" ultimo per sede nulla, le somme coincidono con totals, e i documenti fuori filtro non contano; parametri non validi danno 422.</criterion>
+    <!-- Non regressione e performance -->
+    <criterion id="AC-013">Dopo l'estrazione di `CommittedOrderLineQuery`, i test esistenti di spec 0252/0254 su WorkOrderPassiveCostAggregator e `GET /api/work-orders/{id}/costs` restano verdi senza modifiche (`tests/Feature/WorkOrders`, `tests/Feature/PurchaseInvoices`, `tests/Feature/PurchaseOrders`).</criterion>
+    <criterion id="AC-014">Dato un insieme di 5 e poi di 25 commesse con documenti, quando si chiama income-statement, allora il numero di query eseguite e' identico nei due casi (pattern "keeps the number of queries constant" del Partitario).</criterion>
+    <!-- Frontend -->
+    <criterion id="AC-015">`defaultIncomeStatementFilters()` da' periodo 1/1 anno corrente - oggi, base contract, segment_by none, array vuoti; `toIncomeStatementParams()` omette i filtri vuoti e serializza gli array come `key[]`; `fetchIncomeStatement`/`fetchStructureCosts` leggono `data.data` (Vitest `api.test.ts`).</criterion>
+    <criterion id="AC-016">La barra filtri espone per ruolo accessibile periodo, societa', sede societa', sede operativa, funzione aziendale, tipo commessa, commerciale, base ricavo e segmentazione (Select a sei valori incluso "nessuna"), e ogni cambio chiama `onChange` con i filtri aggiornati (Vitest, query a11y-role-first).</criterion>
+    <criterion id="AC-017">Con una fixture di risposta, la pagina mostra le tile dei totali (con il numero di commesse), la tabella per funzione aziendale con le cifre formattate in valuta e il grafico margine atteso vs consuntivo per funzione, un blocco per ogni segmento con subtotale e tabella per funzione annidata (nessun blocco con segment_by none), e il blocco costi di struttura; nessuna tabella di commesse e nessun link a `/work-orders/`; "unattributed" e i tipi commessa sono tradotti; stati loading, errore con riprova e vuoto sono resi (Vitest).</criterion>
+    <criterion id="AC-018">Un utente senza `management-control.view` vede il messaggio di permesso mancante e nessuna chiamata API parte (Vitest).</criterion>
+    <criterion id="AC-019">`ComparisonBarChart` rende due serie per punto con etichette di serie, usa un'implementazione lazy che e' l'unico importatore di recharts, mostra `emptyLabel` senza punti e colori dai token `--chart-N` (Vitest + grep su `import.*recharts`).</criterion>
+    <criterion id="AC-020">Guide in-app `management-control` IT ed EN con gli stessi id di sezione (overview, filters, income-statement, groups, structure-costs, permissions), chiave in HELP_GUIDE_KEYS; `help-content-parity.test.ts` e i parity test i18n restano verdi; `npx tsc -b --force` ed ESLint puliti.</criterion>
+    <criterion id="AC-021">Verifica manuale UI (ui-design): a 375/768/1024 px nessuna scrollbar orizzontale, filtri incolonnati su mobile, tabelle con `overflow-auto`, superfici a rung corretti (barra `bg-surface`, card `bg-card`), contrasto AA sui valori negativi.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Solo librerie gia' presenti (recharts gia' in package.json; nessuna nuova dipendenza).
+    - Authz server-side nella FormRequest (`authorize()`), mai solo nel frontend. Nessun `throttle` (backend.md §2).
+    - Filtri e raggruppamenti da allow-list (Rule::in / enum), mai dall'input grezzo in `selectRaw`/`orderByRaw`;
+      le espressioni SQL costanti (formula impegnato) sono testo fisso senza input.
+    - Importi in centesimi interi lato calcolo, number a 2 decimali sul wire; compatibilita' MySQL e SQLite (CASE WHEN, no GREATEST).
+    - Layering: Controller thin -> FormRequest -> DTO filtri -> Builder/Service -> array di risposta (nessun model raw).
+    - File entro 300/500 righe: builder orchestratore + classi sorgente separate (`IncomeStatementBuilder`,
+      `WorkOrderFigureSources`, `IncomeStatementGrouper`, `StructureCostsBuilder`, `CommittedOrderLineQuery`).
+    - Frontend: TanStack Query per i dati, nessun `useEffect` + fetch, nessun `any`, stringhe via i18next, componenti
+      shadcn esistenti (`AsyncPaginatedMultiSelect`, `SegmentedControl`, `Select`, `Card`, `Table`), token di
+      superficie (ui-design.md §1-bis), default compatti (§2).
+    - Test eseguiti davvero: `cd backend && XDEBUG_MODE=off ./vendor/bin/pest tests/Feature/ManagementControl
+      tests/Feature/WorkOrders tests/Feature/PurchaseInvoices tests/Feature/PurchaseOrders`,
+      `cd frontend && npx vitest run src/features/management-control src/components/ui/comparison-bar-chart.test.tsx
+      src/features/help`, `npx tsc -b --force --pretty false`, Pint ed ESLint.
+    - Git: nessun commit o cambio branch senza ordine esplicito (CLAUDE.md §3.6); a verde si aggiorna docs/HANDOFF.md e si chiede.
+  </constraints>
+
+</spec>

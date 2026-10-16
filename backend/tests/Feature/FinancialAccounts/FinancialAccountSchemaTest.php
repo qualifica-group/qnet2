@@ -44,8 +44,10 @@ it('AC-019: the accounting section with the financial-accounts entry shows only 
         ])
         ->and(array_column(config('navigation.items'), 'key'))->toContain('accounting', 'administration');
 
+    // Spec 0268 (D-18): the "Controllo di gestione" section sits between Contabilita' and Amministrazione.
     $order = array_column(config('navigation.items'), 'key');
-    expect(array_search('accounting', $order, true))->toBe(array_search('administration', $order, true) - 1);
+    expect(array_search('accounting', $order, true))->toBe(array_search('management-control-section', $order, true) - 1)
+        ->and(array_search('management-control-section', $order, true))->toBe(array_search('administration', $order, true) - 1);
 });
 
 it('AC-020: the migration creates the contract columns, the unique IBAN and rolls back cleanly', function () {
