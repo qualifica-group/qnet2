@@ -34,8 +34,8 @@ use Illuminate\Database\Seeder;
  *                                    categories are linked to
  *                                    (QualificaBusinessFunctionLinkSeeder).
  *      QualificaCostProductSeeder  — the cost-only products (note spese,
- *                                    articoli, veicoli, attrezzature) under
- *                                    the active "Costi" branch: the legacy
+ *                                    articoli) under the active "Costi"
+ *                                    branch: the legacy
  *                                    cost items as NEW products, separate
  *                                    from step 5's "[OLD] Costi" history.
  *   3. QualificaTaskTaxonomySeeder — the other block of hard-coded reference

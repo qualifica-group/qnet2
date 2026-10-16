@@ -21,9 +21,9 @@ it('files every cost item under the active Costi branch, usable only as a cost',
     expect($root->is_active)->toBeTrue()
         ->and($root->is_selectable)->toBeFalse()
         ->and($root->business_function_id)->toBeNull()
-        ->and($leaves->pluck('name')->all())->toBe(['Note spese', 'Articoli', 'Veicoli', 'Attrezzature'])
+        ->and($leaves->pluck('name')->all())->toBe(['Note spese', 'Articoli'])
         ->and($leaves->every(fn (ProductCategory $leaf): bool => $leaf->is_active && $leaf->is_selectable))->toBeTrue()
-        ->and($products)->toHaveCount(17)
+        ->and($products)->toHaveCount(10)
         ->and($products->every(fn (Product $product): bool => $product->usages->all() === [ProductUsage::Cost]))->toBeTrue()
         ->and($products->every(fn (Product $product): bool => $product->old_id === null && $product->old_source === null))->toBeTrue()
         ->and(Product::query()->where('name', 'like', '[OLD]%')->exists())->toBeFalse();
@@ -50,7 +50,7 @@ it('duplicates nothing on a re-run and keeps a manual edit', function (): void {
     test()->seed(QualificaCostProductSeeder::class);
 
     expect(ProductCategory::query()->where('name', 'Costi')->count())->toBe(1)
-        ->and(Product::query()->count())->toBe(17)
+        ->and(Product::query()->count())->toBe(10)
         ->and((float) Product::query()->where('name', 'Spese varie')->sole()->cost)->toBe(5.0)
         ->and(VatRate::query()->count())->toBe(1);
 });
