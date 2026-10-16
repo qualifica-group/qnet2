@@ -225,6 +225,7 @@ const BASE_EMPLOYMENT: EmploymentDetail = {
   terminated_at: null,
   standard_daily_minutes: null,
   break_daily_minutes: null,
+  hourly_cost: null,
   reports_to_ids: [],
   company_id: null,
   primary_operational_site_id: null,

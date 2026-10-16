@@ -85,12 +85,12 @@ beforeEach(() => {
 })
 
 describe('ManagementControlTrendPage', () => {
-  it('AC-015 shows the three tiles with the previous year and the change, n/a when the previous year is zero', async () => {
+  it('AC-015 shows the four tiles with the previous year and the change, n/a when the previous year is zero', async () => {
     mockApi()
     renderPage()
 
     const totals = await screen.findByRole('region', { name: 'Totals of the period' })
-    expect(within(totals).getAllByRole('term')).toHaveLength(3)
+    expect(within(totals).getAllByRole('term')).toHaveLength(4)
     const revenue = within(totals).getByText('Revenue').closest('div') as HTMLElement
     expect(revenue.textContent).toContain(formatEuro(6200))
     expect(revenue.textContent).toContain(`Previous year: ${formatEuro(2100)}`)
@@ -180,12 +180,43 @@ describe('ManagementControlTrendPage', () => {
     expect(direct).toHaveTextContent('n/a')
     expect(direct).toHaveTextContent('19.4%')
     expect(within(table).getByRole('row', { name: /^No cost type/ })).toHaveTextContent('16.7%')
-    expect(cellTexts(within(table).getByRole('row', { name: /^Total costs/ }))).toEqual(
-      [500, 600, 700, 1800].map((value) => formatEuro(value)),
+    // Spec 0272: the footer is the purchase costs only (cost 500/600/700 minus labor 120/170/220).
+    expect(cellTexts(within(table).getByRole('row', { name: /^Total purchase costs/ }))).toEqual(
+      [380, 430, 480, 1290].map((value) => formatEuro(value)),
     )
     expect(cellTexts(within(table).getByRole('row', { name: /^Revenue/ }))).toEqual(
       [1200, 2000, 3000, 6200].map((value) => formatEuro(value)),
     )
+  })
+
+  it('AC-009 the labor tile shows the labor cost, the hours recorded and the part not valued', async () => {
+    mockApi()
+    renderPage()
+
+    const totals = await screen.findByRole('region', { name: 'Totals of the period' })
+    const labor = within(totals).getByText('Labor cost').closest('div') as HTMLElement
+    expect(labor.textContent).toContain(formatEuro(510))
+    expect(labor).toHaveTextContent('Hours recorded: 25:30')
+    expect(labor).toHaveTextContent('of which 1:00 not valued')
+    expect(labor).toHaveTextContent('n/a vs previous year')
+  })
+
+  it('AC-009 the Labor cost measure switches the table and the charts to the labor series', async () => {
+    mockApi()
+    renderPage()
+    await screen.findByRole('region', { name: 'Revenue by business function and month' })
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Labor cost' }))
+
+    const table = screen.getByRole('region', { name: 'Labor cost by business function and month' })
+    expect(cellTexts(within(table).getByRole('row', { name: /^Engineering/ }))).toEqual(
+      [100, 150, 200, 450].map((value) => formatEuro(value)),
+    )
+    expect(cellTexts(within(table).getByRole('row', { name: /^Structure/ }))).toEqual(
+      [20, 20, 20, 60].map((value) => formatEuro(value)),
+    )
+    const lines = screen.getByRole('figure', { name: 'Labor cost by business function' })
+    expect(within(lines).getAllByRole('listitem')[0]).toHaveTextContent('Engineering: 100 | 150 | 200')
   })
 
   it('AC-015 labels months and rows in the active language', async () => {
@@ -242,8 +273,9 @@ describe('ManagementControlTrendPage', () => {
     mockApi(makeMonthlyTrend({
       functions: [],
       totals: {
-        revenue: zeros, cost: zeros, margin: zeros,
-        previous_year: { revenue: [100, 0, 0], cost: zeros, margin: [100, 0, 0] },
+        revenue: zeros, cost: zeros, labor: zeros, margin: zeros,
+        labor_minutes: zeros, unpriced_minutes: zeros,
+        previous_year: { revenue: [100, 0, 0], cost: zeros, labor: zeros, margin: [100, 0, 0] },
       },
       by_nature: [],
     }))

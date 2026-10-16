@@ -154,17 +154,19 @@ final class IncomeStatementBuilder
      * The wire figures: base and derived amounts (D-6, D-13), in euros.
      *
      * @param  array<string, int>  $base
-     * @return array<string, float>
+     * @return array<string, float|int>
      */
     private function figures(array $base, string $revenueBasis): array
     {
         $revenueActual = $base['revenue_'.$revenueBasis];
-        $costActual = $base['cost_manual'] + $base['cost_committed'] + $base['cost_invoiced'];
+        $costActual = $base['cost_manual'] + $base['cost_committed'] + $base['cost_invoiced'] + $base['cost_labor'];
         $marginBudget = $base['revenue_contract'] - $base['cost_budget'] - $base['commission_budget'];
         $marginActual = $revenueActual - $costActual - $base['commission_actual'];
 
-        return array_map($this->euros(...), [
-            ...$base,
+        $minutes = array_intersect_key($base, array_flip(WorkOrderFigureSources::MINUTE_FIGURES));
+
+        return $minutes + array_map($this->euros(...), [
+            ...array_diff_key($base, $minutes),
             'revenue_actual' => $revenueActual,
             'cost_actual' => $costActual,
             'margin_budget' => $marginBudget,

@@ -16,7 +16,8 @@ export function makeFigures(overrides: Partial<IncomeStatementFigures> = {}): In
     cost_budget: 300,
     cost_manual: 100,
     cost_committed: 50,
-    cost_invoiced: 200,
+    cost_invoiced: 120,
+    cost_labor: 80,
     cost_actual: 350,
     commission_budget: 100,
     commission_actual: 90,
@@ -24,12 +25,18 @@ export function makeFigures(overrides: Partial<IncomeStatementFigures> = {}): In
     margin_actual: 560,
     cost_delta: 50,
     margin_delta: -40,
+    labor_minutes: 240,
+    unpriced_minutes: 0,
     ...overrides,
   }
 }
 
 export function makeTotals(overrides: Partial<IncomeStatementTotals> = {}): IncomeStatementTotals {
-  return { work_orders_count: 3, ...makeFigures({ margin_actual: 660, margin_budget: 900, margin_delta: -240 }), ...overrides }
+  return {
+    work_orders_count: 3,
+    ...makeFigures({ margin_actual: 660, margin_budget: 900, margin_delta: -240, cost_labor: 120, labor_minutes: 360, unpriced_minutes: 60 }),
+    ...overrides,
+  }
 }
 
 export function makeFunction(overrides: Partial<FunctionRow> = {}): FunctionRow {
@@ -62,7 +69,7 @@ export function makeIncomeStatement(overrides: Partial<IncomeStatement> = {}): I
       segment_by: 'none',
     },
     totals: makeTotals(),
-    by_business_function: [makeFunction(), makeFunction({ key: 'unattributed', label: null, work_orders_count: 1 })],
+    by_business_function: [makeFunction(), makeFunction({ key: 'unattributed', label: null, work_orders_count: 1, cost_labor: 40, labor_minutes: 120, unpriced_minutes: 60 })],
     segments: [],
     ...overrides,
   }

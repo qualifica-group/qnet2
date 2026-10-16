@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0272 — Controllo di gestione, fase 4: costo orario per utente e ore interne nel margine (conto economico e
+  andamento mensile), pagina "Agenti" per le provvigioni (maturato, da liquidare, in estratto conto, approvato,
+  pagato). Chiude il ciclo delle quattro fasi concordate.
+-->
+<spec id="0272-management-control-labor-cost-and-agents" status="draft" owner="utente" date="2026-10-16">
+
+  <goal>
+    Valorizzare le ore del segnatempo con un costo orario per utente, cosi' che il conto economico per funzione e
+    commessa e l'andamento mensile includano il costo del lavoro interno; e dare una pagina "Agenti" che mostra per
+    ogni agente quanto e' maturato nel periodo, quanto resta da liquidare, quanto e' in estratto conto, approvato e
+    pagato. Tutto aggregato.
+  </goal>
+
+  <context>
+    Decisione utente 2026-10-16: costo orario PER PERSONA (utente), senza storico delle variazioni (il valore vale
+    da quando e' inserito). Decisioni gia' prese: 0268 D-6 (conto economico sull'imponibile), D-7, D-8 (provvigioni
+    preventivate e maturate), D-11 (quote per funzione); 0270 D-6/D-7 (trend per data documento, attribuzione per
+    funzione, gruppo "structure"); 0269 D-1 (stock a oggi, flussi nel periodo).
+
+    Decisioni proposte:
+    - D-1 Nuova colonna `employment_profiles.hourly_cost` decimal(10,2) nullable (euro/ora, costo aziendale lordo
+      della persona). Migrazione reversibile. Campo `employment.hourly_cost` nel form Utente > Impiego, con le stesse
+      regole di visibilita'/modifica degli altri campi `employment.*` (FieldDefinition `number` in
+      UsersAuthorization, `ValidatesEmployment`: `nullable|numeric|min:0|max:9999.99`, `EmploymentData`,
+      `EmploymentResource`, fillable). Nessun permesso dedicato: chi modifica l'impiego vede il costo. Nelle
+      dashboard il costo compare solo aggregato, sotto `management-control.view`.
+    - D-2 Costo del lavoro di una commessa = somma di `time_entries.minutes / 60 x hourly_cost` dell'utente, per le
+      ore con `work_order_id` della commessa; ore di utenti senza costo orario contano nei minuti ma non nel costo
+      e si contano a parte (`unpriced_minutes`) perche' l'utente veda il dato mancante. Calcolo in SQL con join su
+      `employment_profiles` (`user_id` unique), arrotondato al centesimo per commessa.
+    - D-3 Conto economico (0268, contratto esteso, compatibile): Figures guadagna `cost_labor` (number),
+      `labor_minutes` (int) e `unpriced_minutes` (int); `cost_actual` INCLUDE `cost_labor`; `margin_actual`,
+      `cost_delta`, `margin_delta` ne tengono conto. Le ore si ripartiscono tra le funzioni con le quote della
+      commessa (D-11) come le altre cifre di commessa. Totali e segmenti idem. Tile e colonne nuove nella pagina;
+      la guida in-app `management-control` aggiornata.
+    - D-4 Andamento mensile (0270, contratto esteso): per ogni funzione e per i totali si aggiunge la serie
+      `labor` (costo del lavoro per mese di `time_entries.date`), `cost` INCLUDE labor (cost = passivo + labor,
+      `margin = revenue - cost`), `previous_year` idem; ore con commessa -> quote della commessa, ore senza commessa
+      -> gruppo `structure`. `by_nature` resta sui soli costi passivi (le ore non hanno natura): si documenta nella
+      guida. `labor_minutes` e `unpriced_minutes` per mese nei totali.
+    - D-5 Pagina "Agenti": agente = `referents` destinatario dei maturati (`commission_accruals.recipient_type =
+      referent`, qualunque ruolo). Per agente e per il periodo scelto: `accrued` (somma firmata di `amount` con
+      `accrued_on` nel periodo), `to_settle` (a oggi: maturati senza `commission_settlement_id`), `in_statement`
+      (a oggi: `net_payable` degli estratti in ISSUED o DOCUMENT_RECEIVED, con il conteggio di quelli in attesa
+      di documento = ISSUED), `approved_unpaid` (a oggi: `net_payable` degli APPROVED meno il pagato della loro
+      fattura passiva), `paid` (nel periodo: `paid_amount` delle rate della fattura passiva collegata
+      all'estratto, `paid_at` nel periodo). Totali, `by_month` (accrued e paid per mese), top agenti per
+      `to_settle`. Filtri: periodo, societa' (`commission_accruals.company_id` / `commission_settlements.company_id`).
+    - D-6 Endpoint `GET /api/management-control/agents` (sola lettura, cache con giorno). Menu
+      `management-control-agents` ("Agenti", `/management-control/agents`, icona `hand-coins`); guida con la
+      stessa chiave; breadcrumb `agents`; rotta in `management-control-routes.tsx`.
+    - D-7 Grafici: per agente maturato vs pagato (`ComparisonBarChart`); per mese maturato vs pagato
+      (`ComparisonBarChart`). Nessun componente ui nuovo.
+    - D-8 (decisioni in build) `to_settle` esclude i maturati gia' liquidati fuori sistema
+      (`settled_externally_on` valorizzato), come `OpenMovementSelector`. `approved_unpaid` = net_payable meno
+      pagato senza limite a zero (un estratto pagato in eccesso riduce il totale). Nel trend il filtro societa' si
+      applica alle ore tramite `employment_profiles.company_id` dell'utente (ore senza profilo o societa' escluse
+      con filtro attivo); i filtri sedi non si applicano alle ore. Nel conto economico le ore seguono la commessa.
+      `by_nature` nel frontend chiude con "Costi passivi totali" = cost - labor. `others` porta anche
+      `pending_document_count`.
+
+    Fatti verificati nel repo:
+    - `employment_profiles` (`user_id` unique, `standard_daily_minutes`...), pipeline del campo:
+      `UsersAuthorization` (FieldDefinition `employment.*`, ceiling comune), `ValidatesEmployment`,
+      `EmploymentData` (DTO con `toArray`), `EmploymentWriter`, `EmploymentResource`; frontend
+      `features/users/{types.ts, user-schema.ts, user-form-defaults.ts, user-form-payload.ts,
+      user-employment-fields.tsx (campo numerico `employment.standard_daily_minutes` come pattern),
+      user-form-employment.test.tsx}`, i18n `it-users-employment.ts`, guida `help/content/{it,en}/users.ts`.
+    - `time_entries` (`user_id`, `date`, `minutes`, `work_order_id` nullable, `task_id`, `work_order_stage_id`).
+    - Provvigioni: `commission_accruals` (`recipient_type`/`recipient_id` morph su referent, `recipient_role`,
+      `type` ACCRUAL|REVERSAL|ADJUSTMENT, `amount` firmato, `accrued_on`, `company_id`,
+      `commission_settlement_id` nullable), `commission_settlements` (`referent_id`, `company_id`, `status`
+      DRAFT|ISSUED|DOCUMENT_RECEIVED|APPROVED|CANCELLED, `period_from/to`, `net_payable`, `purchase_invoice_id`),
+      `purchase_invoice_installments` (`paid_amount`, `paid_at`), `referents.name`.
+    - Pattern 0268-0271: WorkOrderFigureSources (per commessa), WorkOrderFunctionShares, IncomeStatementGrouper/
+      Segmenter, Trend/*, FlowSupport, request/DTO/controller/cache, test e helper `mc*`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione `hourly_cost`, campo nel form Utente (backend + frontend + guida users IT/EN).</item>
+      <item>Costo del lavoro nel conto economico (contratto esteso) e nell'andamento mensile (contratto esteso), con minuti non valorizzati.</item>
+      <item>Endpoint e pagina "Agenti" con tile, tabella per agente, per mese, grafici; guida IT/EN.</item>
+      <item>Test Pest/Vitest sugli AC; HANDOFF.</item>
+    </in>
+    <out>
+      <item>Storico delle variazioni del costo orario; costo per funzione; costi del personale non legati a ore (stipendi fissi senza segnatempo).</item>
+      <item>Ore nel cash flow previsionale e nel da fatturare; natura di costo per le ore.</item>
+      <item>Elenchi per ora o per movimento, export, modifiche ai moduli Segnatempo e Provvigioni.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="PUT/POST" path="/api/users (esistenti)">
+      <request>employment.hourly_cost: number | null   (0..9999.99, due decimali; omesso = invariato)</request>
+      <response status="200">EmploymentResource: + hourly_cost: number | null</response>
+      <errors>422 se negativo, oltre il massimo o non numerico.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/management-control/income-statement (esteso)">
+      <response status="200">
+        Figures += { cost_labor: number, labor_minutes: int, unpriced_minutes: int }
+        cost_actual = cost_manual + cost_committed + cost_invoiced + cost_labor; margin_actual, cost_delta, margin_delta coerenti.
+        Vale per totals, by_business_function[] (ripartizione D-11) e segments[] (+ by_business_function annidato).
+      </response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/management-control/monthly-trend (esteso)">
+      <response status="200">
+        FunctionTrendRow += { labor: number[] }   (cost include labor)
+        totals += { labor: number[], labor_minutes: int[], unpriced_minutes: int[], previous_year.labor: number[] }
+        by_nature invariato (solo costi passivi).
+      </response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/management-control/agents">
+      <request>
+        date_from: "YYYY-MM-DD" | null, date_to: "YYYY-MM-DD" | null   (opzionali; default FE 1/1 anno corrente - oggi; max 24 mesi)
+        company_id[]: int[]                     (opzionale, exists)
+        top: int                                (opzionale 1..50, default 20: agenti mostrati per to_settle decrescente; gli altri sommati in una riga "others")
+      </request>
+      <response status="200">
+        { success: true, message: "OK", data: {
+            applied: { date_from, date_to, company_id: int[], top: int },
+            today: "YYYY-MM-DD",
+            totals: AgentFigures & { agents_count: int, pending_document_count: int },
+            agents: AgentRow[],                  (top N per to_settle desc, poi accrued desc)
+            others: AgentFigures & { agents_count: int, pending_document_count: int } | null,   (null se nessun altro agente)
+            by_month: { month: "YYYY-MM", accrued: number, paid: number }[]   (tutti i mesi del periodo)
+        } }
+        AgentFigures = { accrued: number, to_settle: number, in_statement: number, approved_unpaid: number, paid: number }
+        AgentRow = { referent: { id: int, name: string }, pending_document_count: int, ...AgentFigures }
+        Importi: maturati imponibili (come i maturati), estratti e pagamenti come registrati (net_payable, paid_amount);
+        number a 2 decimali. Invarianti: somma agents + others = totals campo per campo; somma by_month.accrued =
+        totals.accrued; somma by_month.paid = totals.paid.
+      </response>
+      <errors>401; 403 senza `management-control.view`; 422 (date, intervallo oltre 24 mesi, id inesistenti, top fuori da 1..50).</errors>
+    </endpoint>
+
+    <frontend_contract>
+      Utenti: `user-schema.ts` (+ `employment.hourly_cost` number|null), `types.ts`, `user-form-defaults.ts`,
+      `user-form-payload.ts`, `user-employment-fields.tsx` (+ campo numerico con suffisso euro/ora, stesso pattern
+      di `standard_daily_minutes`), i18n `it/en-users-employment.ts`, guida `users.ts` IT/EN (sezione impiego).
+      Conto economico: `exposure-types.ts`/`types.ts` + figure nuove; `income-statement-function-table.tsx` +
+      colonne "Costo lavoro" e "Ore" (con nota "di cui non valorizzate" quando `unpriced_minutes` > 0);
+      `income-statement-totals.tsx` + tile "Costo del lavoro" e "Ore registrate"; fixture e test aggiornati.
+      Andamento: `trend-types.ts` + `labor`; `trend-function-table.tsx` misura aggiuntiva "Lavoro";
+      `trend-totals.tsx` tile "Costo del lavoro"; fixture e test aggiornati.
+      Agenti: `agents-types.ts`, `api.ts` (+ `agents(params)`, `defaultAgentsFilters()`, `toAgentsParams()`,
+      `fetchAgents()`), `use-agents.ts`, `agents-filters-bar.tsx` (periodo + societa' + `Select` top 10/20/50),
+      `agents-panel.tsx`, `agents-totals.tsx` (6 tile: maturato, da liquidare, in estratto conto (con conteggio in
+      attesa documento), approvato non pagato, pagato, agenti), `agents-table.tsx` (agente, da liquidare, maturato,
+      in estratto, in attesa documento, approvato non pagato, pagato; riga "Altri" e totale; prima colonna sticky),
+      `agents-chart.tsx` (`ComparisonBarChart` per agente maturato vs pagato; per mese), fixture, test; pagina
+      `pages/management-control-agents-page.tsx`, rotta in `management-control-routes.tsx`, breadcrumb `agents`,
+      `navigation.agents`, i18n `{it,en}-management-control-agents.ts`, guida `management-control-agents.ts`
+      (`overview`, `filters`, `agents`, `months`, `permissions`), HELP_GUIDE_KEYS 84 -> 85.
+    </frontend_contract>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">La migrazione aggiunge `employment_profiles.hourly_cost` nullable e fa rollback pulito; il campo e' fillable, validato (negativo o 10000 -> 422), salvato da `EmploymentWriter` e restituito da `EmploymentResource`; il catalogo campi Utente espone `employment.hourly_cost` con lo stesso ceiling degli altri `employment.*` (Pest).</criterion>
+    <criterion id="AC-002">Nel form Utente il campo "Costo orario" compare nella sezione Impiego, accetta decimali, va nel payload come `employment.hourly_cost` e torna nei valori di default dal dettaglio; i test esistenti del form restano verdi (Vitest).</criterion>
+    <criterion id="AC-003">Data una commessa con ore di due utenti (30 €/h x 90 minuti e 20 €/h x 120 minuti) e ore di un utente senza costo (60 minuti), allora `cost_labor` = 85.00, `labor_minutes` = 270, `unpriced_minutes` = 60, `cost_actual` include 85.00 e i margini/delta ne tengono conto; le ore senza `work_order_id` non entrano nel conto economico (Pest).</criterion>
+    <criterion id="AC-004">Con righe su due funzioni (3/4, 1/4) il costo del lavoro e i minuti si ripartiscono come le altre cifre; totals e segmenti coerenti; i test 0268 esistenti aggiornati ai nuovi campi restano verdi (requisito cambiato, dichiarato) (Pest).</criterion>
+    <criterion id="AC-005">Nel trend, ore con commessa nel mese M vanno alla funzione (quote) e ore senza commessa a `structure`; `cost` = passivo + labor, `margin` coerente; `previous_year.labor` sui mesi -12; `labor_minutes` e `unpriced_minutes` per mese nei totali; `by_nature` invariato (Pest).</criterion>
+    <criterion id="AC-006">Endpoint agenti: 401/403/422; dato un agente con maturati nel periodo (ACCRUAL + REVERSAL), maturati fuori periodo, maturati senza estratto, estratti ISSUED, DOCUMENT_RECEIVED, APPROVED (con fattura passiva pagata in parte nel periodo e in parte fuori) e CANCELLED, allora `accrued`, `to_settle`, `in_statement`, `pending_document_count`, `approved_unpaid`, `paid` valgono quanto da D-5 e il CANCELLED non conta (Pest).</criterion>
+    <criterion id="AC-007">Dati 3 agenti e `top` = 2, allora `agents` ha i due con `to_settle` maggiore, `others` somma il terzo con `agents_count` 1, `totals` = agents + others, `by_month` copre i mesi del periodo con somme coerenti; filtro societa' rispettato; con `top` >= numero agenti `others` e' null (Pest).</criterion>
+    <criterion id="AC-008">Numero di query costante per income-statement, monthly-trend e agents con 5 e 25 elementi (Pest).</criterion>
+    <criterion id="AC-009">Conto economico e andamento in pagina: colonne e tile nuove con le cifre della fixture, nota ore non valorizzate quando > 0, misura "Lavoro" nel trend; test esistenti aggiornati (Vitest).</criterion>
+    <criterion id="AC-010">Pagina Agenti con fixture: 6 tile, tabella con riga "Altri" e totale, grafici, stati loading/errore/vuoto, permesso; default e mapper dei filtri; fetch su `data.data` (Vitest).</criterion>
+    <criterion id="AC-011">Guide: `users` IT/EN con il campo costo orario; `management-control` e `management-control-trend` IT/EN con il costo del lavoro; nuova `management-control-agents` IT/EN con gli stessi id; HELP_GUIDE_KEYS 85; breadcrumb; parity test, ESLint, `tsc -b --force` puliti.</criterion>
+    <criterion id="AC-012">Verifica ui-design sul codice: campo euro/ora compatto e accessibile nel form Utente; tabelle con regione focusabile e colonna sticky; tile senza orfane; negativi con `text-amount-negative`; nessun colore hard-coded.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza; nessun componente ui nuovo. Migrazione nuova, mai modificare migrazioni esistenti.
+    - Authz in `authorize()`; allow-list; SQL costante con bind; MySQL/SQLite; query costanti; centesimi.
+    - Layering: `LaborCostSource` (per commessa e per mese, riusato da WorkOrderFigureSources e Trend),
+      `Agents/{AgentAccrualAggregator, AgentSettlementAggregator, AgentsBuilder}`; file <= 300 righe.
+    - I test 0268/0270 esistenti si aggiornano SOLO per i nuovi campi (requisito cambiato, dichiarato), senza allentare asserzioni.
+    - Frontend: TanStack Query, nessun `useEffect` + fetch, nessun `any`, i18n IT/EN, LF.
+    - Test eseguiti davvero (binario Herd; Vitest; ESLint; `./node_modules/.bin/tsc -b --force`).
+    - Git: nessun commit senza ordine esplicito; a verde HANDOFF e stop.
+  </constraints>
+
+</spec>

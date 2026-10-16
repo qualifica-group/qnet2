@@ -46,6 +46,7 @@ function buildEmploymentPayload(values: EmploymentFormValues): EmploymentPayload
     terminated_at: values.terminated_at || null,
     standard_daily_minutes: values.standard_daily_minutes,
     break_daily_minutes: values.break_daily_minutes,
+    hourly_cost: values.hourly_cost,
   }
 }
 

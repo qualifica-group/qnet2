@@ -18,6 +18,9 @@ const PASSWORD_MIN_LENGTH = 8
 /** Contract bound (spec 0015): a daily duration never exceeds a full day. */
 const MAX_DAILY_MINUTES = 1440
 
+/** Contract bound (spec 0272): decimal(10,2) cap enforced server-side on the hourly cost. */
+const MAX_HOURLY_COST = 9999.99
+
 const localeSchema = z.enum(['en', 'it'])
 
 /**
@@ -60,6 +63,7 @@ function buildEmploymentSchema(t: TFunction) {
       terminated_at: z.string(),
       standard_daily_minutes: z.number().int().min(0).max(MAX_DAILY_MINUTES).nullable(),
       break_daily_minutes: z.number().int().min(0).max(MAX_DAILY_MINUTES).nullable(),
+      hourly_cost: z.number().min(0).max(MAX_HOURLY_COST).nullable(),
     })
     .superRefine((values, ctx) => {
       if (values.hired_at && values.terminated_at && values.terminated_at < values.hired_at) {

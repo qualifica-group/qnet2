@@ -33,6 +33,8 @@ export interface IncomeStatementFigures {
   cost_manual: number
   cost_committed: number
   cost_invoiced: number
+  /** Internal labor: timesheet hours x the user's hourly cost, included in `cost_actual` (spec 0272). */
+  cost_labor: number
   cost_actual: number
   commission_budget: number
   commission_actual: number
@@ -40,6 +42,10 @@ export interface IncomeStatementFigures {
   margin_actual: number
   cost_delta: number
   margin_delta: number
+  /** Timesheet minutes on the work orders, valued or not. */
+  labor_minutes: number
+  /** Of `labor_minutes`, those of users with no hourly cost: counted but not valued. */
+  unpriced_minutes: number
 }
 
 /** One business function of the statement; amounts are split by revenue share (D-11), counts are not additive (D-23). */

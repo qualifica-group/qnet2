@@ -2,7 +2,8 @@ import type { CostNature, ScopeFilters } from '@/features/management-control/typ
 
 /* Spec 0270: GET /api/management-control/monthly-trend. */
 
-export const TREND_MEASURES = ['revenue', 'cost', 'margin'] as const
+/** `cost` already includes `labor` (internal hours valued at the hourly cost, spec 0272 D-4). */
+export const TREND_MEASURES = ['revenue', 'cost', 'labor', 'margin'] as const
 export type TrendMeasure = (typeof TREND_MEASURES)[number]
 
 /** Key the server gives to the purchase costs tied to no work order. */
@@ -14,6 +15,13 @@ export type TrendSeries = Record<TrendMeasure, number[]>
 export interface FunctionTrendRow extends TrendSeries {
   key: string
   label: string | null
+}
+
+/** Timesheet minutes per month: `unpriced_minutes` are the part of `labor_minutes` with no hourly cost. */
+export type TrendTotalsSeries = TrendSeries & {
+  labor_minutes: number[]
+  unpriced_minutes: number[]
+  previous_year: TrendSeries
 }
 
 export interface NatureTrendRow {
@@ -34,7 +42,7 @@ export interface MonthlyTrend {
   /** `YYYY-MM`, every month of the interval, in order. */
   months: string[]
   functions: FunctionTrendRow[]
-  totals: TrendSeries & { previous_year: TrendSeries }
+  totals: TrendTotalsSeries
   by_nature: NatureTrendRow[]
 }
 

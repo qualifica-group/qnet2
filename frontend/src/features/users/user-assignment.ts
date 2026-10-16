@@ -142,6 +142,7 @@ export function useUserSectionVisibility() {
       'employment.terminated_at',
       'employment.standard_daily_minutes',
       'employment.break_daily_minutes',
+      'employment.hourly_cost',
     ]),
   }
 }

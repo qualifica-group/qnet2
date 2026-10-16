@@ -31,6 +31,7 @@ const employment = {
   terminated_at: '',
   standard_daily_minutes: null,
   break_daily_minutes: null,
+  hourly_cost: null,
 }
 
 function values(password: string, confirmation: string) {
@@ -69,5 +70,25 @@ describe('buildCreateUserSchema password', () => {
 
   it('accepts a valid matching pair', () => {
     expect(schema.safeParse(values('longenough1', 'longenough1')).success).toBe(true)
+  })
+})
+
+describe('buildCreateUserSchema employment.hourly_cost (spec 0272)', () => {
+  const schema = buildCreateUserSchema(t, buildCustomFieldsSchema([], PERMISSIONS, t))
+  const withCost = (hourly_cost: number | null) => ({ ...values('', ''), employment: { ...employment, hourly_cost } })
+
+  it('accepts null, zero, two decimals and the maximum', () => {
+    for (const cost of [null, 0, 27.5, 9999.99]) {
+      expect(schema.safeParse(withCost(cost)).success).toBe(true)
+    }
+  })
+
+  it('rejects a negative cost and one above 9999.99', () => {
+    for (const cost of [-0.01, 10000]) {
+      const result = schema.safeParse(withCost(cost))
+
+      expect(result.success).toBe(false)
+      expect(result.error?.issues[0]?.path).toEqual(['employment', 'hourly_cost'])
+    }
   })
 })

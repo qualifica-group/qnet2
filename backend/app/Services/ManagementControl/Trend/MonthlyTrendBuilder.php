@@ -7,13 +7,17 @@ namespace App\Services\ManagementControl\Trend;
 use App\DataObjects\ManagementControl\MonthlyTrendFilters;
 use App\Services\ManagementControl\Exposure\ExposureSupport;
 use App\Services\ManagementControl\FlowSupport;
+use App\Services\ManagementControl\LaborCostSource;
 use App\Services\ManagementControl\WorkOrderFunctionShares;
 use Illuminate\Support\Facades\DB;
 
 /**
  * The monthly trend by business function (spec 0270): revenue, costs and margin
  * for every month of the interval, the totals against the same months one year
- * earlier and the costs by nature. Computed with a constant number of queries;
+ * earlier and the costs by nature. The cost includes the internal labor cost
+ * (spec 0272, D-4): the hours of a commessa follow its function weights, the
+ * hours of no commessa are structure costs; the nature stays on the payable
+ * documents, the hours have none. Computed with a constant number of queries;
  * amounts are integer cents summed and leave as numbers with two decimals. The
  * functions always add up to the totals: a commessa's figures are split with the
  * rounding on the last share. Visibility is not scoped (D-7 of spec 0268).
@@ -24,6 +28,7 @@ final class MonthlyTrendBuilder
         private readonly RevenueTrendAggregator $revenue,
         private readonly CostTrendAggregator $cost,
         private readonly NatureTrendAggregator $nature,
+        private readonly LaborCostSource $labor,
         private readonly WorkOrderFunctionShares $shares,
     ) {}
 
@@ -36,25 +41,30 @@ final class MonthlyTrendBuilder
         $months = $filters->months();
         $revenueRows = $this->revenue->rows($filters);
         $costRows = $this->cost->rows($filters);
+        $laborRows = $this->labor->byMonth(...$filters->queryRange(), companyIds: $filters->companyIds);
 
         // Step 2: the function weights of the commesse the rows of the interval refer to
-        $weights = $this->shares->forWorkOrders($this->workOrderIds([...$revenueRows, ...$costRows], $months));
+        $weights = $this->shares->forWorkOrders($this->workOrderIds([...$revenueRows, ...$costRows, ...$laborRows], $months));
 
         // Step 3: revenue and cost by function
         $revenueByFunction = $this->revenue->byFunction($revenueRows, $months, $weights);
         $costByFunction = $this->cost->byFunction($costRows, $months, $weights);
+        $laborByFunction = $this->cost->byFunction($laborRows, $months, $weights);
 
         // Step 4: totals, previous year and nature
         $revenueByMonth = $this->sumByMonth($revenueRows);
         $costByMonth = $this->sumByMonth($costRows);
+        $laborByMonth = $this->sumByMonth($laborRows);
         $previousMonths = array_map(MonthlyTrendFilters::previousYear(...), $months);
 
         return [
             'months' => $months,
-            'functions' => $this->functionRows($revenueByFunction, $costByFunction, $months),
+            'functions' => $this->functionRows($revenueByFunction, $costByFunction, $laborByFunction, $months),
             'totals' => [
-                ...$this->series($revenueByMonth, $costByMonth, $months),
-                'previous_year' => $this->series($revenueByMonth, $costByMonth, $previousMonths),
+                ...$this->series($revenueByMonth, $costByMonth, $laborByMonth, $months),
+                'labor_minutes' => $this->minutesSeries($laborRows, 'minutes', $months),
+                'unpriced_minutes' => $this->minutesSeries($laborRows, 'unpriced_minutes', $months),
+                'previous_year' => $this->series($revenueByMonth, $costByMonth, $laborByMonth, $previousMonths),
             ],
             'by_nature' => $this->nature->handle($costRows, $months, $revenueByMonth),
         ];
@@ -92,20 +102,40 @@ final class MonthlyTrendBuilder
     }
 
     /**
-     * @param  array<string, int>  $revenue  cents by month
-     * @param  array<string, int>  $cost  cents by month
-     * @param  array<int, string>  $months  the months to read, in order
-     * @return array{revenue: array<int, float>, cost: array<int, float>, margin: array<int, float>}
+     * Minutes of the given kind by month of the interval.
+     *
+     * @param  array<int, array{month: string, minutes: int, unpriced_minutes: int}>  $laborRows
+     * @param  array<int, string>  $months
+     * @return array<int, int>
      */
-    private function series(array $revenue, array $cost, array $months): array
+    private function minutesSeries(array $laborRows, string $kind, array $months): array
+    {
+        $byMonth = [];
+        foreach ($laborRows as $row) {
+            $byMonth[$row['month']] = ($byMonth[$row['month']] ?? 0) + $row[$kind];
+        }
+
+        return array_map(fn (string $month): int => $byMonth[$month] ?? 0, $months);
+    }
+
+    /**
+     * @param  array<string, int>  $revenue  cents by month
+     * @param  array<string, int>  $cost  payable cost cents by month
+     * @param  array<string, int>  $labor  labor cost cents by month, added to the cost
+     * @param  array<int, string>  $months  the months to read, in order
+     * @return array{revenue: array<int, float>, cost: array<int, float>, labor: array<int, float>, margin: array<int, float>}
+     */
+    private function series(array $revenue, array $cost, array $labor, array $months): array
     {
         $at = fn (array $cents): array => array_map(fn (string $month): int => $cents[$month] ?? 0, $months);
         $revenueCents = $at($revenue);
-        $costCents = $at($cost);
+        $laborCents = $at($labor);
+        $costCents = array_map(fn (int $payable, int $hours): int => $payable + $hours, $at($cost), $laborCents);
 
         return [
             'revenue' => array_map(ExposureSupport::euros(...), $revenueCents),
             'cost' => array_map(ExposureSupport::euros(...), $costCents),
+            'labor' => array_map(ExposureSupport::euros(...), $laborCents),
             'margin' => array_map(fn (int $revenue, int $cost): float => ExposureSupport::euros($revenue - $cost), $revenueCents, $costCents),
         ];
     }
@@ -115,21 +145,22 @@ final class MonthlyTrendBuilder
      *
      * @param  array<string, array<string, int>>  $revenue  cents by month by function key
      * @param  array<string, array<string, int>>  $cost
+     * @param  array<string, array<string, int>>  $labor
      * @param  array<int, string>  $months
      * @return array<int, array<string, mixed>>
      */
-    private function functionRows(array $revenue, array $cost, array $months): array
+    private function functionRows(array $revenue, array $cost, array $labor, array $months): array
     {
-        $keys = array_keys($revenue + $cost);
+        $keys = array_keys($revenue + $cost + $labor);
         $names = $this->functionNames($keys);
         $rows = [];
 
         foreach ($keys as $key) {
-            if (array_sum(array_map('abs', $revenue[$key] ?? [])) + array_sum(array_map('abs', $cost[$key] ?? [])) === 0) {
+            if (array_sum(array_map('abs', $revenue[$key] ?? [])) + array_sum(array_map('abs', $cost[$key] ?? [])) + array_sum(array_map('abs', $labor[$key] ?? [])) === 0) {
                 continue;
             }
 
-            $rows[] = ['key' => (string) $key, 'label' => $names[$key] ?? null, ...$this->series($revenue[$key] ?? [], $cost[$key] ?? [], $months)];
+            $rows[] = ['key' => (string) $key, 'label' => $names[$key] ?? null, ...$this->series($revenue[$key] ?? [], $cost[$key] ?? [], $labor[$key] ?? [], $months)];
         }
 
         usort($rows, fn (array $a, array $b): int => $this->rank($a['key']) <=> $this->rank($b['key']) ?: strcasecmp((string) $a['label'], (string) $b['label']));

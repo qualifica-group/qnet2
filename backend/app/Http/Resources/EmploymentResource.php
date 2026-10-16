@@ -64,6 +64,7 @@ class EmploymentResource extends JsonResource
             'terminated_at' => $this->terminated_at,
             'standard_daily_minutes' => $this->standard_daily_minutes,
             'break_daily_minutes' => $this->break_daily_minutes,
+            'hourly_cost' => $this->hourly_cost === null ? null : (float) $this->hourly_cost,
 
             'reports_to_ids' => $this->reports_to_ids,
             'company_id' => $this->company_id,

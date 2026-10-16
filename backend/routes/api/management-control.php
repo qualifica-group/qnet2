@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ManagementControl\AccountFlowsController;
+use App\Http\Controllers\ManagementControl\AgentsController;
 use App\Http\Controllers\ManagementControl\BillingController;
 use App\Http\Controllers\ManagementControl\CashFlowController;
 use App\Http\Controllers\ManagementControl\ExposureController;
@@ -26,4 +27,5 @@ Route::prefix('management-control')->group(function () {
     Route::get('monthly-trend', MonthlyTrendController::class);
     Route::get('billing', BillingController::class);
     Route::get('account-flows', AccountFlowsController::class);
+    Route::get('agents', AgentsController::class);
 });

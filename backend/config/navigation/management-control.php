@@ -52,5 +52,12 @@ return [
             'route' => '/management-control/accounts',
             'permission' => 'management-control.view',
         ],
+        [
+            'key' => 'management-control-agents',
+            'label' => 'navigation.agents',
+            'icon' => 'hand-coins',
+            'route' => '/management-control/agents',
+            'permission' => 'management-control.view',
+        ],
     ],
 ];

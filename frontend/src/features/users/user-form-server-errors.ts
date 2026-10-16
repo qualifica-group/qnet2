@@ -38,6 +38,7 @@ export const SERVER_ERROR_FIELDS = [
   'employment.terminated_at',
   'employment.standard_daily_minutes',
   'employment.break_daily_minutes',
+  'employment.hourly_cost',
 ] as const
 
 /**

@@ -68,6 +68,8 @@ it('200: returns the field catalogue and the full permissions block (create-cont
         'employment.primary_operational_site_id', 'employment.remote_operational_site_ids',
         'employment.qualification_type', 'employment.hired_at',
         'employment.terminated_at', 'employment.standard_daily_minutes', 'employment.break_daily_minutes',
+        // spec 0272 — the hourly cost of the person.
+        'employment.hourly_cost',
     ]);
 
     // Spec 0008 follow-up: `mandatory` is a new flag on every catalogue entry.

@@ -23,7 +23,8 @@ const guide: HelpGuide = {
             '**Contract revenue**: what the contract provides, i.e. the sum of the revenue of the lines assigned to the work order.',
             '**Invoiced**: the taxable amount of the sales invoices issued on the work order. Proforma invoices do not count as invoiced.',
             '**Collected**: the part of the invoiced taxable amount the customer has already paid, in proportion to the collections recorded on the installments.',
-            '**Costs**: from three sources, added up. The **manual costs** entered on the work order, the **supplier orders (PO)** not yet invoiced (committed) and the **purchase invoices** linked to the work order.',
+            '**Costs**: from four sources, added up. The **manual costs** entered on the work order, the **supplier orders (PO)** not yet invoiced (committed), the **purchase invoices** linked to the work order and the **labor cost**.',
+            '**Labor cost**: the timesheet hours recorded on the work order, each multiplied by the **hourly cost** of the person who worked them (set in the User form, Employment section). Hours without a work order do not enter the income statement. The hours of people with no hourly cost are **counted in the hours but not valued**: a note “of which … not valued” appears under the hours, and the cost is understated until you enter the missing hourly cost. The hourly cost applies from the moment you enter it, with no history.',
             '**Commissions**: those of the sales representative, reporter, supervisor and the supplier commissions that are paid out. They reduce the margin.',
             '**Expected margin**: contract revenue minus budgeted costs minus budgeted commissions. **Actual margin**: actual revenue minus actual costs minus accrued commissions.',
           ],
@@ -63,7 +64,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The main statement is **by business function** and covers **all** the work orders selected by the filters. There is no list of single work orders: for each function you see the number of work orders, contract and actual revenue, budgeted and actual costs (manual, committed orders and purchase invoiced), commissions, expected margin, actual margin and variance. The **total line** closes the table.',
+          text: 'The main statement is **by business function** and covers **all** the work orders selected by the filters. There is no list of single work orders: for each function you see the number of work orders, contract and actual revenue, budgeted and actual costs (manual, committed orders, purchase invoiced and labor cost), the **hours recorded** (with the note on the hours not valued), commissions, expected margin, actual margin and variance. The **total line** closes the table.',
         },
         {
           type: 'paragraph',

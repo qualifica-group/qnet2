@@ -1,6 +1,12 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
 import { todayIso } from '@/features/invoices/invoice-format'
+import {
+  DEFAULT_AGENTS_TOP,
+  type Agents,
+  type AgentsFilters,
+  type AgentsParams,
+} from '@/features/management-control/agents-types'
 import type { AccountFlows, AccountFlowsFilters, AccountFlowsParams } from '@/features/management-control/accounts-types'
 import type { Billing, BillingFilters, BillingParams } from '@/features/management-control/billing-types'
 import type { CashFlow, CashFlowFilters, CashFlowParams } from '@/features/management-control/cash-flow-types'
@@ -18,6 +24,7 @@ export const managementControlKeys = {
   monthlyTrend: (params: TrendParams) => ['management-control', 'monthly-trend', params] as const,
   billing: (params: BillingParams) => ['management-control', 'billing', params] as const,
   accountFlows: (params: AccountFlowsParams) => ['management-control', 'account-flows', params] as const,
+  agents: (params: AgentsParams) => ['management-control', 'agents', params] as const,
 }
 
 /** Default filters: 1 January of the current year to today, contractual revenue, no segmentation. */
@@ -198,6 +205,22 @@ export function toAccountFlowsParams(filters: AccountFlowsFilters): AccountFlows
   }
 }
 
+/** Default filters: 1 January of the current year to today, every company, top 20 agents. */
+export function defaultAgentsFilters(): AgentsFilters {
+  const today = todayIso()
+  return { dateFrom: `${today.slice(0, 4)}-01-01`, dateTo: today, companyIds: [], top: DEFAULT_AGENTS_TOP }
+}
+
+/** Maps the UI filters to the contract query parameters; empty values are omitted. */
+export function toAgentsParams(filters: AgentsFilters): AgentsParams {
+  return {
+    ...(filters.dateFrom ? { date_from: filters.dateFrom } : {}),
+    ...(filters.dateTo ? { date_to: filters.dateTo } : {}),
+    ...(filters.companyIds.length > 0 ? { company_id: filters.companyIds } : {}),
+    top: filters.top,
+  }
+}
+
 /** Arrays go out as repeated `key[]=` (Laravel convention). */
 const ARRAY_SERIALIZER = { indexes: false } as const
 
@@ -251,6 +274,14 @@ export async function fetchBilling(params: BillingParams): Promise<Billing> {
 
 export async function fetchAccountFlows(params: AccountFlowsParams): Promise<AccountFlows> {
   const { data } = await apiClient.get<ApiResponse<AccountFlows>>('/management-control/account-flows', {
+    params,
+    paramsSerializer: ARRAY_SERIALIZER,
+  })
+  return data.data
+}
+
+export async function fetchAgents(params: AgentsParams): Promise<Agents> {
+  const { data } = await apiClient.get<ApiResponse<Agents>>('/management-control/agents', {
     params,
     paramsSerializer: ARRAY_SERIALIZER,
   })

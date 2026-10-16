@@ -72,6 +72,7 @@ const emptyEmployment: UserFormValues['employment'] = {
   terminated_at: '',
   standard_daily_minutes: null,
   break_daily_minutes: null,
+  hourly_cost: null,
 }
 
 const formValues: UserFormValues = {
@@ -230,6 +231,7 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
       terminated_at: null,
       standard_daily_minutes: 480,
       break_daily_minutes: 30,
+      hourly_cost: null,
     })
   })
 
@@ -407,6 +409,7 @@ describe('buildUpdatePayload — employment (spec 0015)', () => {
       terminated_at: null,
       standard_daily_minutes: null,
       break_daily_minutes: null,
+      hourly_cost: null,
     })
   })
 
@@ -445,5 +448,23 @@ describe('buildCreatePayload — optional password (spec 0177 AC-016)', () => {
 
     expect(payload.password).toBe(TEST_PASSWORD)
     expect(payload.password_confirmation).toBe(TEST_PASSWORD)
+  })
+})
+
+describe('employment.hourly_cost (spec 0272 AC-002)', () => {
+  it('travels in the create payload as employment.hourly_cost, decimals kept', () => {
+    const payload = buildCreatePayload({ ...formValues, employment: { ...emptyEmployment, hourly_cost: 27.5 } }, draft())
+
+    expect(payload.employment.hourly_cost).toBe(27.5)
+  })
+
+  it('sends the employment object with the new cost when only the cost changed on edit', () => {
+    const payload = buildUpdatePayload(
+      { ...formValues, password: '', password_confirmation: '', employment: { ...emptyEmployment, hourly_cost: 31.25 } },
+      original(),
+      draft(),
+    )
+
+    expect(payload.employment?.hourly_cost).toBe(31.25)
   })
 })

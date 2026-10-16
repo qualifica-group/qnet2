@@ -111,6 +111,7 @@ trait ValidatesEmployment
 
             'employment.standard_daily_minutes' => ['nullable', 'integer', 'min:0', 'max:1440'],
             'employment.break_daily_minutes' => ['nullable', 'integer', 'min:0', 'max:1440'],
+            'employment.hourly_cost' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
         ];
     }
 
@@ -207,7 +208,16 @@ trait ValidatesEmployment
             terminatedAt: $this->input('employment.terminated_at'),
             standardDailyMinutes: $this->nullableInt('employment.standard_daily_minutes'),
             breakDailyMinutes: $this->nullableInt('employment.break_daily_minutes'),
+            hourlyCost: $this->nullableDecimal('employment.hourly_cost'),
         );
+    }
+
+    /** Two-decimal string of a validated numeric input, null when blank (the column is decimal(10,2)). */
+    private function nullableDecimal(string $key): ?string
+    {
+        $value = $this->input($key);
+
+        return $value === null || $value === '' ? null : number_format((float) $value, 2, '.', '');
     }
 
     private function nullableInt(string $key): ?int

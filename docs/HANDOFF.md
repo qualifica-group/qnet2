@@ -3,7 +3,44 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0271 — Controllo di gestione F3b: fatturazione (da fatturare, ciclo proforma) e conti — VERDE, NON COMMITTATO (2026-10-16)
+## Spec 0272 — Controllo di gestione F4: costo orario, ore nel margine, pagina Agenti — VERDE, NON COMMITTATO (2026-10-16)
+
+- Spec `docs/specs/0272-management-control-labor-cost-and-agents.xml` (D-1..D-8, AC-001..AC-012). Chiude le 4
+  fasi del modulo (7 pagine: Conto economico, Scadenzario ed esposizione, Cash flow, Andamento, Fatturazione,
+  Conti, Agenti).
+- Migrazione `2026_10_20_100000_add_hourly_cost_to_employment_profiles_table` (`hourly_cost` decimal(10,2) nullable,
+  euro/ora, senza storico). Campo `employment.hourly_cost` in tutta la pipeline impiego (UsersAuthorization
+  FieldDefinition number con lo stesso ceiling, ValidatesEmployment `nullable|numeric|min:0|max:9999.99`,
+  EmploymentData, EmploymentResource); frontend `features/users/user-hourly-cost-field.tsx` in "Dati
+  contrattuali". Contatori `migrate:rollback --step` aggiornati (+1): PurchaseOrderMigrationTest 47,
+  QuoteWorkflowMigrationTest 198, SupplierCommissionDirectionTest 62; campi `employment.*` = 16.
+- Costo del lavoro: `app/Services/ManagementControl/LaborCostSource.php` (per commessa e per mese; costo =
+  minuti/60 x hourly_cost, arrotondato al centesimo per riga di aggregazione; utenti senza costo -> minuti in
+  `unpriced_minutes`). Conto economico: Figures + `cost_labor`, `labor_minutes`, `unpriced_minutes`;
+  `cost_actual` INCLUDE `cost_labor`; minuti ripartiti come le cifre. Trend: serie `labor` per funzione
+  (`structure` per ore senza commessa), `cost` = passivo + labor, `previous_year.labor`, `labor_minutes`/
+  `unpriced_minutes` per mese; filtro societa' sulle ore via `employment_profiles.company_id` (sedi non
+  applicabili); `by_nature` solo passivo (riga di chiusura "Costi passivi totali" = cost - labor nel frontend).
+- `GET management-control/agents` (periodo max 24 mesi, `company_id[]`, `top` 1..50 default 20): per agente
+  (referent destinatario dei maturati) `accrued` (periodo), `to_settle` (a oggi, senza estratto e senza
+  `settled_externally_on`), `in_statement` + `pending_document_count` (ISSUED|DOCUMENT_RECEIVED; ISSUED = in
+  attesa documento), `approved_unpaid` (APPROVED net_payable - pagato, senza clamp), `paid` (rate della fattura
+  passiva dell'estratto pagate nel periodo); `agents` top N per to_settle, `others` (con agents_count e
+  pending_document_count) o null, `totals`, `by_month`. Menu `management-control-agents` ("Agenti", icona
+  `hand-coins`); guida con la stessa chiave (HELP_GUIDE_KEYS = 85); 7 figli nel menu del modulo.
+- Backend: `Agents/{AgentAccrualAggregator,AgentSettlementAggregator,AgentsBuilder}`; test `UserHourlyCostTest`,
+  `IncomeStatementLaborTest`, `MonthlyTrendLaborTest`, `Agents*Test`; helper `mcTimeEntry`, `mcAgentAccrual`,
+  `mcAgentSettlement`, `mcAgentPayable`.
+- Frontend: `features/management-control/{income-statement-hours.tsx, agents-*}`, `scope-filter-fields.tsx`
+  espone anche `PeriodFields` e `CompanyFilterField`; i18n `{it,en}-management-control-agents.ts`; guide
+  `users`, `management-control`, `management-control-trend`, `management-control-agents` IT/EN aggiornate.
+- Manuale Claude Docs: NON aggiornato (documento non condiviso con il connettore) per F2, F3a, F3b, F4:
+  sette pagine del modulo + campo "Costo orario" in Utenti > Impiego. Testo pronto nelle guide IT.
+- Prossimi possibili (non pianificati): budget annuale per funzione/societa' (nuovi dati); filtri da URL sulle
+  pagine tabellari per il drill-down; robustezza del test flaky `stat-column-chart.test.tsx`; `Switch` da spento
+  sotto 3:1; split di `backend/routes/api.php` (499 righe).
+
+## Spec 0271 — Controllo di gestione F3b: fatturazione (da fatturare, ciclo proforma) e conti — VERDE, COMMITTATO ba14923a (2026-10-16)
 
 - Spec `docs/specs/0271-management-control-billing-and-accounts.xml` (D-1..D-11, AC-001..AC-015). Voci di menu
   `management-control-billing` ("Fatturazione", `/management-control/billing`, icona `file-text`) e

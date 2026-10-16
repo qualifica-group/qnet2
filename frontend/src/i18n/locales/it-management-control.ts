@@ -1,4 +1,5 @@
 import { accounts } from './it-management-control-accounts'
+import { agents } from './it-management-control-agents'
 import { billing } from './it-management-control-billing'
 import { cashFlow } from './it-management-control-cash-flow'
 import { trend } from './it-management-control-trend'
@@ -47,6 +48,8 @@ export const managementControl = {
     cost_manual: 'Costi manuali',
     cost_committed: 'ODA impegnato',
     cost_invoiced: 'Fatturato passivo',
+    cost_labor: 'Costo del lavoro',
+    labor_minutes: 'Ore registrate',
     revenue_contract: 'Ricavo contrattuale',
     revenue_actual: 'Ricavo consuntivo',
     cost_budget: 'Costi preventivati',
@@ -62,6 +65,9 @@ export const managementControl = {
     chartTitle: 'Margine atteso e consuntivo per funzione aziendale',
     businessFunction: 'Funzione aziendale',
     workOrders: 'Commesse',
+    hours: 'Ore',
+    unpriced: 'di cui {{hours}} non valorizzate',
+    unpricedHint: 'Ore di persone senza costo orario: contate tra le ore ma non nel costo del lavoro.',
     total: 'Totale',
     empty: 'Nessun dato da mostrare.',
   },
@@ -212,4 +218,5 @@ export const managementControl = {
   trend,
   billing,
   accounts,
+  agents,
 }

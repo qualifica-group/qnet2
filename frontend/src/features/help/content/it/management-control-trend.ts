@@ -3,7 +3,7 @@ import type { HelpGuide } from '../../types'
 const guide: HelpGuide = {
   key: 'management-control-trend',
   title: 'Andamento mensile',
-  summary: 'Fatturato, costi e margine per funzione aziendale mese per mese, il confronto con gli stessi mesi dell’anno precedente e i costi per natura in rapporto al fatturato.',
+  summary: 'Fatturato, costi, costo del lavoro e margine per funzione aziendale mese per mese, il confronto con gli stessi mesi dell’anno precedente e i costi per natura in rapporto al fatturato.',
   sections: [
     {
       id: 'overview',
@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'In alto trovi 3 riquadri: **Fatturato**, **Costi** e **Margine** del periodo, ciascuno con l’anno precedente e la variazione in percentuale. Sotto, la tabella per funzione, i grafici e i costi per natura.',
+          text: 'In alto trovi 4 riquadri: **Fatturato**, **Costi**, **Costo del lavoro** e **Margine** del periodo, ciascuno con l’anno precedente e la variazione in percentuale; il riquadro del costo del lavoro riporta anche le **ore registrate** e, se ci sono, quelle **non valorizzate**. Sotto, la tabella per funzione, i grafici e i costi per natura.',
         },
       ],
     },
@@ -29,7 +29,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Il **fatturato** conta solo le fatture (le proforma non sono fatturato); i **costi** contano i documenti passivi, proforma comprese.',
+          text: 'Il **fatturato** conta solo le fatture (le proforma non sono fatturato); i **costi** contano i documenti passivi, proforma comprese, **più il costo del lavoro**: le ore del segnatempo moltiplicate per il costo orario di chi le ha lavorate, per mese della data del segnatempo. Le ore di chi non ha il costo orario sono contate come ore ma non valorizzate.',
         },
       ],
     },
@@ -39,7 +39,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Scegli la **misura** (Fatturato, Costi o Margine) per vedere ogni funzione aziendale mese per mese, con una colonna **Totale**. Una riga di ricavo con riga d’offerta va alla funzione della categoria del suo prodotto; senza, si ripartisce con le quote della commessa; una fattura senza commessa va in **Non attribuito**. Un costo con commessa si ripartisce con le quote della commessa; senza commessa va in **Struttura**.',
+          text: 'Scegli la **misura** (Fatturato, Costi, Costo del lavoro o Margine; i Costi includono già il costo del lavoro) per vedere ogni funzione aziendale mese per mese, con una colonna **Totale**. Una riga di ricavo con riga d’offerta va alla funzione della categoria del suo prodotto; senza, si ripartisce con le quote della commessa; una fattura senza commessa va in **Non attribuito**. Un costo con commessa si ripartisce con le quote della commessa; senza commessa va in **Struttura**. Lo stesso vale per le ore: con commessa seguono le quote della commessa, senza commessa vanno in **Struttura**.',
         },
         {
           type: 'paragraph',
@@ -63,7 +63,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La tabella ripartisce i costi di ogni mese per **natura** del tipo di costo (diretto, indiretto, generale, o senza tipo) e, sotto ogni importo, mostra la sua **quota sul fatturato** del mese. Dove non c’è fatturato la quota è **n.d.**. In fondo, costi totali e fatturato.',
+          text: 'La tabella ripartisce i costi di ogni mese per **natura** del tipo di costo (diretto, indiretto, generale, o senza tipo) e, sotto ogni importo, mostra la sua **quota sul fatturato** del mese. Dove non c’è fatturato la quota è **n.d.**. Le ore interne **non hanno una natura**: il costo del lavoro non compare in questa tabella, che riguarda i soli costi passivi. In fondo, costi passivi totali e fatturato.',
         },
       ],
     },

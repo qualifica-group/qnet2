@@ -8,12 +8,12 @@ import {
   NUMERIC_HEAD_CELL,
 } from '@/features/management-control/exposure-table'
 import { formatShare } from '@/features/management-control/exposure-format'
-import { sumMoney } from '@/features/management-control/money-math'
+import { roundMoney, sumMoney } from '@/features/management-control/money-math'
 import { MoneyValue } from '@/features/management-control/money-value'
 import { monthLabelFormatter } from '@/features/management-control/month-label'
 import type { MonthlyTrend } from '@/features/management-control/trend-types'
 
-const STICKY = 'sticky left-0 z-10 bg-card group-hover:bg-muted'
+const STICKY = 'sticky left-0 z-10 bg-card group-hover:bg-[color-mix(in_oklab,var(--card),var(--muted)_40%)]'
 
 /** Share of the revenue as the server sends it (0..100, one decimal); "n/a" when there is no revenue to compare with. */
 function ShareLabel({ share, locale }: { share: number | null; locale: string }) {
@@ -31,6 +31,8 @@ export function TrendNatureTable({ data }: { data: MonthlyTrend }) {
   const { t, i18n } = useTranslation()
   const monthLabel = monthLabelFormatter(i18n.language)
   const revenueTotal = sumMoney(data.totals.revenue)
+  // `totals.cost` includes the internal labor, which has no nature: the rows add up to the purchase costs only.
+  const purchaseCosts = data.totals.cost.map((value, index) => roundMoney(value - (data.totals.labor[index] ?? 0)))
 
   return (
     <ExposureSection title={t('managementControl.trend.nature.title')} hint={t('managementControl.trend.nature.hint')}>
@@ -69,10 +71,10 @@ export function TrendNatureTable({ data }: { data: MonthlyTrend }) {
         <tfoot className="border-t-2">
           <tr className="font-semibold">
             <th scope="row" className={`${CELL} ${STICKY} text-left`}>{t('managementControl.trend.nature.cost')}</th>
-            {data.totals.cost.map((value, index) => (
+            {purchaseCosts.map((value, index) => (
               <td key={data.months[index]} className={NUMERIC_CELL}><MoneyValue value={value} /></td>
             ))}
-            <td className={NUMERIC_CELL}><MoneyValue value={sumMoney(data.totals.cost)} /></td>
+            <td className={NUMERIC_CELL}><MoneyValue value={sumMoney(purchaseCosts)} /></td>
           </tr>
           <tr>
             <th scope="row" className={`${CELL} ${STICKY} text-left font-medium`}>{t('managementControl.trend.nature.revenue')}</th>

@@ -61,6 +61,7 @@ export interface UserRecordValues {
   terminated_at: string | null
   standard_daily_minutes: number | null
   break_daily_minutes: number | null
+  hourly_cost: number | null
   /** The assignment verdict these values add up to (competence + Sedi + flag). */
   assignment: AssignmentSummary
   custom_fields: Record<string, CustomFieldValue>
@@ -126,6 +127,7 @@ export function persistedUserValues(user: UserDetail): UserRecordValues {
     terminated_at: employment?.terminated_at ?? null,
     standard_daily_minutes: employment?.standard_daily_minutes ?? null,
     break_daily_minutes: employment?.break_daily_minutes ?? null,
+    hourly_cost: employment?.hourly_cost ?? null,
     assignment: persistedAssignment(employment),
     custom_fields: user.custom_fields ?? {},
   }

@@ -42,6 +42,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'terminated_at',
     'standard_daily_minutes',
     'break_daily_minutes',
+    'hourly_cost',
 ])]
 class EmploymentProfile extends BaseModel
 {
@@ -63,6 +64,7 @@ class EmploymentProfile extends BaseModel
             'terminated_at' => 'date:Y-m-d',
             'standard_daily_minutes' => 'integer',
             'break_daily_minutes' => 'integer',
+            'hourly_cost' => 'decimal:2',
         ];
     }
 

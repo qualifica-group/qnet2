@@ -6,7 +6,7 @@ export const trend = {
   empty: 'Nessun fatturato o costo nel periodo scelto con questi filtri.',
   structure: 'Struttura',
   notAvailable: 'n.d.',
-  measures: { revenue: 'Fatturato', cost: 'Costi', margin: 'Margine' },
+  measures: { revenue: 'Fatturato', cost: 'Costi', labor: 'Costo del lavoro', margin: 'Margine' },
   filters: {
     title: 'Filtri dell’andamento mensile',
     dateFrom: 'Documenti dal',
@@ -15,10 +15,13 @@ export const trend = {
     title: 'Totali del periodo',
     previousYear: 'Anno precedente: {{value}}',
     variation: 'sull’anno precedente',
+    hours: 'Ore registrate: {{hours}}',
+    unpriced: 'di cui {{hours}} non valorizzate',
+    unpricedHint: 'Ore di persone senza costo orario: contate tra le ore ma non nel costo del lavoro.',
   },
   functions: {
     title: 'Andamento per funzione aziendale',
-    hint: 'Importi al netto dell’IVA, per mese del documento. I costi non legati a una commessa vanno sotto Struttura.',
+    hint: 'Importi al netto dell’IVA, per mese del documento; il costo del lavoro è per mese del segnatempo ed è compreso nei costi. I costi e le ore non legati a una commessa vanno sotto Struttura.',
     caption: '{{measure}} per funzione aziendale e mese',
     measure: 'Misura',
     businessFunction: 'Funzione aziendale',
@@ -32,12 +35,12 @@ export const trend = {
   },
   nature: {
     title: 'Costi per natura',
-    hint: 'Costi per mese e natura, con la quota sul fatturato del mese.',
+    hint: 'Costi passivi per mese e natura, con la quota sul fatturato del mese. Le ore interne non hanno natura: il costo del lavoro non compare qui.',
     caption: 'Costi per natura e mese, con quota sul fatturato',
     nature: 'Natura',
     total: 'Totale',
     revenue: 'Fatturato',
-    cost: 'Costi totali',
+    cost: 'Costi passivi totali',
     natures: { direct: 'Diretto', indirect: 'Indiretto', general: 'Generale', none: 'Senza tipo di costo' },
   },
 }

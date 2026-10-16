@@ -71,6 +71,7 @@ const guide: HelpGuide = {
             ['**Assunto il** / **Cessato il**', 'Date di inizio e fine del rapporto. La cessazione non può precedere l’assunzione.'],
             ['**Durata giornaliera standard**', 'Tempo di lavoro previsto in una giornata.'],
             ['**Durata pausa giornaliera**', 'Durata della pausa quotidiana.'],
+            ['**Costo orario**', 'Costo aziendale lordo della persona in euro all’ora, con due decimali (da 0 a 9999,99). Il Controllo di gestione lo moltiplica per le ore del segnatempo sulle commesse per ottenere il costo del lavoro; le ore di chi non ha il costo orario vengono contate ma non valorizzate. Vale da quando lo inserisci, senza storico delle variazioni.'],
           ],
         },
         { type: 'paragraph', text: 'Le sezioni del rapporto di lavoro ci sono anche per un utente che non ha ancora un profilo: il primo salvataggio lo crea. Seguono **Contatti** e **Indirizzi**; in fondo può comparire la sezione **Altri campi**, con i campi personalizzati degli utenti.' },

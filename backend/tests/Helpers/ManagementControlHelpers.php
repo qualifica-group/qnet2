@@ -9,6 +9,8 @@ use App\Enums\PurchaseOrderStatus;
 use App\Enums\QuoteLineType;
 use App\Enums\SupplierCommissionDirection;
 use App\Models\BusinessFunction;
+use App\Models\CommissionAccrual;
+use App\Models\CommissionSettlement;
 use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\FinancialAccount;
@@ -26,6 +28,8 @@ use App\Models\PurchaseOrderLine;
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\QuoteLineCommission;
+use App\Models\Referent;
+use App\Models\TimeEntry;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderCost;
@@ -392,5 +396,63 @@ if (! function_exists('mcAccount')) {
     function mcAccount(string $name): FinancialAccount
     {
         return FinancialAccount::factory()->create(['name' => $name]);
+    }
+}
+
+if (! function_exists('mcTimeEntry')) {
+    /**
+     * A time entry of `$minutes` on `$date`, tied to `$workOrder` when given, by `$user` or by a new
+     * user whose employment profile has `$hourlyCost` (null = a profile without hourly cost).
+     */
+    function mcTimeEntry(?WorkOrder $workOrder, int $minutes, ?string $hourlyCost, string $date = '2026-03-10', ?User $user = null): TimeEntry
+    {
+        $user ??= User::factory()->withEmployment(fn ($factory) => $factory->state(['hourly_cost' => $hourlyCost]))->create();
+
+        return TimeEntry::factory()->create(['user_id' => $user->id, 'work_order_id' => $workOrder?->id, 'minutes' => $minutes, 'date' => $date]);
+    }
+}
+
+if (! function_exists('mcAgentAccrual')) {
+    /**
+     * A ledger movement owed to the referent `$agent`.
+     *
+     * @param  array<string, mixed>  $attributes  accrual attributes (company_id, commission_settlement_id, type...)
+     */
+    function mcAgentAccrual(Referent $agent, string $amount, string $accruedOn, array $attributes = []): CommissionAccrual
+    {
+        return CommissionAccrual::factory()->create([
+            'recipient_type' => 'referent', 'recipient_id' => $agent->id, 'amount' => $amount, 'accrued_on' => $accruedOn, ...$attributes,
+        ]);
+    }
+}
+
+if (! function_exists('mcAgentSettlement')) {
+    /** A settlement statement of `$agent` in the given status (DRAFT, ISSUED, DOCUMENT_RECEIVED, APPROVED, CANCELLED). */
+    function mcAgentSettlement(Referent $agent, string $status, string $netPayable, ?Company $company = null, ?PurchaseInvoice $invoice = null): CommissionSettlement
+    {
+        return CommissionSettlement::factory()->create([
+            'referent_id' => $agent->id, 'status' => $status, 'net_payable' => $netPayable,
+            'company_id' => $company?->id ?? Company::factory(), 'purchase_invoice_id' => $invoice?->id,
+        ]);
+    }
+}
+
+if (! function_exists('mcAgentPayable')) {
+    /**
+     * The payable invoice of a statement, one installment per `[amount, paid, paid_at]` triple (paid and paid_at null = open).
+     *
+     * @param  array<int, array{0: string, 1: string|null, 2: string|null}>  $installments
+     */
+    function mcAgentPayable(array $installments): PurchaseInvoice
+    {
+        $invoice = PurchaseInvoice::factory()->create(['document_type' => PurchaseInvoiceType::Invoice]);
+
+        foreach ($installments as $index => [$amount, $paid, $paidAt]) {
+            PurchaseInvoiceInstallment::factory()->create([
+                'purchase_invoice_id' => $invoice->id, 'sequence' => $index + 1, 'amount' => $amount, 'paid_amount' => $paid, 'paid_at' => $paidAt,
+            ]);
+        }
+
+        return $invoice;
     }
 }

@@ -26,6 +26,7 @@ it('AC-008: the previous year reports the same measures twelve months back, with
         ->and($data['totals']['previous_year'])->toEqual([
             'revenue' => [0, 70, 0, 15],
             'cost' => [9, 0, 25, 0],
+            'labor' => [0, 0, 0, 0],
             'margin' => [-9, 70, -25, 15],
         ]);
 });

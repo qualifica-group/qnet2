@@ -23,7 +23,8 @@ const guide: HelpGuide = {
             '**Ricavo contrattuale**: quanto prevede il contratto, cioè la somma dei ricavi delle righe assegnate alla commessa.',
             '**Fatturato**: l’imponibile delle fatture attive emesse sulla commessa. Le proforma non contano come fatturato.',
             '**Incassato**: la parte dell’imponibile fatturato che il cliente ha già pagato, in proporzione agli incassi registrati sulle scadenze.',
-            '**Costi**: da tre fonti, sommate. I **costi manuali** inseriti sulla commessa, gli **ordini a fornitore (ODA)** ancora da fatturare (impegnato) e il **fatturato passivo** collegato alla commessa.',
+            '**Costi**: da quattro fonti, sommate. I **costi manuali** inseriti sulla commessa, gli **ordini a fornitore (ODA)** ancora da fatturare (impegnato), il **fatturato passivo** collegato alla commessa e il **costo del lavoro**.',
+            '**Costo del lavoro**: le ore del segnatempo registrate sulla commessa, ciascuna moltiplicata per il **costo orario** di chi le ha lavorate (si imposta nel form Utente, sezione Impiego). Le ore senza commessa non entrano nel conto economico. Le ore di chi non ha il costo orario sono **contate nelle ore ma non valorizzate**: sotto le ore compare la nota “di cui … non valorizzate”, e il costo è sottostimato finché non inserisci il costo orario mancante. Il costo orario vale da quando lo inserisci, senza storico.',
             '**Provvigioni**: quelle di commerciale, segnalatore, supervisore e le provvigioni fornitore pagate. Riducono il margine.',
             '**Margine atteso**: ricavo contrattuale meno costi preventivati meno provvigioni preventivate. **Margine consuntivo**: ricavo consuntivo meno costi reali meno provvigioni maturate.',
           ],
@@ -63,7 +64,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Il prospetto principale è **per funzione aziendale** e riguarda **tutte** le commesse scelte dai filtri. Non c’è un elenco delle singole commesse: per ogni funzione vedi il numero di commesse, il ricavo contrattuale e consuntivo, i costi preventivati e reali (manuali, ordini impegnati e fatturato passivo), le provvigioni, il margine atteso, il margine consuntivo e lo scostamento. In fondo trovi la **riga di totale**.',
+          text: 'Il prospetto principale è **per funzione aziendale** e riguarda **tutte** le commesse scelte dai filtri. Non c’è un elenco delle singole commesse: per ogni funzione vedi il numero di commesse, il ricavo contrattuale e consuntivo, i costi preventivati e reali (manuali, ordini impegnati, fatturato passivo e costo del lavoro), le **ore registrate** (con la nota sulle ore non valorizzate), le provvigioni, il margine atteso, il margine consuntivo e lo scostamento. In fondo trovi la **riga di totale**.',
         },
         {
           type: 'paragraph',

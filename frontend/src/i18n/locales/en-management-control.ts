@@ -1,4 +1,5 @@
 import { accounts } from './en-management-control-accounts'
+import { agents } from './en-management-control-agents'
 import { billing } from './en-management-control-billing'
 import { cashFlow } from './en-management-control-cash-flow'
 import { trend } from './en-management-control-trend'
@@ -47,6 +48,8 @@ export const managementControl = {
     cost_manual: 'Manual costs',
     cost_committed: 'PO committed',
     cost_invoiced: 'Purchase invoiced',
+    cost_labor: 'Labor cost',
+    labor_minutes: 'Hours recorded',
     revenue_contract: 'Contract revenue',
     revenue_actual: 'Actual revenue',
     cost_budget: 'Budgeted costs',
@@ -62,6 +65,9 @@ export const managementControl = {
     chartTitle: 'Expected vs actual margin by business function',
     businessFunction: 'Business function',
     workOrders: 'Work orders',
+    hours: 'Hours',
+    unpriced: 'of which {{hours}} not valued',
+    unpricedHint: 'Hours of people with no hourly cost: counted among the hours but not in the labor cost.',
     total: 'Total',
     empty: 'No data to show.',
   },
@@ -212,4 +218,5 @@ export const managementControl = {
   trend,
   billing,
   accounts,
+  agents,
 }

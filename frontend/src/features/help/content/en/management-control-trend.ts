@@ -3,7 +3,7 @@ import type { HelpGuide } from '../../types'
 const guide: HelpGuide = {
   key: 'management-control-trend',
   title: 'Monthly trend',
-  summary: 'Revenue, costs and margin by business function month by month, the comparison with the same months of the previous year and the costs by nature against revenue.',
+  summary: 'Revenue, costs, labor cost and margin by business function month by month, the comparison with the same months of the previous year and the costs by nature against revenue.',
   sections: [
     {
       id: 'overview',
@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'At the top are 3 tiles: **Revenue**, **Costs** and **Margin** of the period, each with the previous year and the change in percent. Below, the table by function, the charts and the costs by nature.',
+          text: 'At the top are 4 tiles: **Revenue**, **Costs**, **Labor cost** and **Margin** of the period, each with the previous year and the change in percent; the labor cost tile also shows the **hours recorded** and, when there are any, those **not valued**. Below, the table by function, the charts and the costs by nature.',
         },
       ],
     },
@@ -29,7 +29,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: '**Revenue** counts invoices only (proforma are not revenue); **costs** count purchase documents, proforma included.',
+          text: '**Revenue** counts invoices only (proforma are not revenue); **costs** count purchase documents, proforma included, **plus the labor cost**: timesheet hours multiplied by the hourly cost of the person who worked them, by month of the timesheet date. The hours of people with no hourly cost are counted as hours but not valued.',
         },
       ],
     },
@@ -39,7 +39,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Choose the **measure** (Revenue, Costs or Margin) to see each business function month by month, with a **Total** column. A revenue line with a quote line goes to the function of its product category; one without it is split by the shares of the work order; an invoice without a work order goes to **Unattributed**. A cost with a work order is split by the shares of the work order; one without goes to **Structure**.',
+          text: 'Choose the **measure** (Revenue, Costs, Labor cost or Margin; Costs already include the labor cost) to see each business function month by month, with a **Total** column. A revenue line with a quote line goes to the function of its product category; one without it is split by the shares of the work order; an invoice without a work order goes to **Unattributed**. A cost with a work order is split by the shares of the work order; one without goes to **Structure**. The same goes for hours: with a work order they follow its shares, without one they go to **Structure**.',
         },
         {
           type: 'paragraph',
@@ -63,7 +63,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The table splits the costs of each month by **nature** of the cost type (direct, indirect, general, or none) and, under each amount, shows its **share of the revenue** of the month. Where there is no revenue the share is **n/a**. At the bottom, total costs and revenue.',
+          text: 'The table splits the costs of each month by **nature** of the cost type (direct, indirect, general, or none) and, under each amount, shows its **share of the revenue** of the month. Where there is no revenue the share is **n/a**. Internal hours **have no nature**: the labor cost does not appear in this table, which covers purchase costs only. At the bottom, total purchase costs and revenue.',
         },
       ],
     },

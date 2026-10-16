@@ -54,6 +54,9 @@ export const usersFormEmployment = {
   terminatedAt: 'Terminated at',
   standardDailyMinutes: 'Standard daily duration',
   breakDailyMinutes: 'Daily break duration',
+  hourlyCost: 'Hourly cost',
+  hourlyCostUnit: '€/h',
+  hourlyCostPerHour: '/h',
   jobDescriptionMax: 'Job description must be at most 255 characters.',
   terminatedBeforeHiredAt: 'Termination date must be on or after the hire date.',
 }
@@ -86,6 +89,7 @@ export const usersDetailEmployment = {
   terminatedAt: 'Terminated at',
   standardDailyMinutes: 'Standard daily duration',
   breakDailyMinutes: 'Daily break duration',
+  hourlyCost: 'Hourly cost',
   none: 'None',
 }
 

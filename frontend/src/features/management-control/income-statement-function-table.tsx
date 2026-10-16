@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { HoursValue } from '@/features/management-control/income-statement-hours'
 import { MoneyValue } from '@/features/management-control/money-value'
 import { rowLabel } from '@/features/management-control/row-label'
 import type { FunctionRow, IncomeStatementTotals } from '@/features/management-control/types'
@@ -6,7 +7,7 @@ import type { FunctionRow, IncomeStatementTotals } from '@/features/management-c
 const HEAD_CELL = 'px-2 py-1.5 text-left text-xs font-medium text-muted-foreground'
 const NUMERIC_HEAD_CELL = 'px-2 py-1.5 text-right text-xs font-medium text-muted-foreground'
 const CELL = 'px-2 py-1.5 text-sm'
-const STICKY = 'sticky left-0 z-10 bg-card'
+const STICKY = 'sticky left-0 z-10 bg-card group-hover:bg-[color-mix(in_oklab,var(--card),var(--muted)_40%)]'
 const NUMERIC_CELL = 'px-2 py-1.5 text-right text-sm'
 
 const FIGURE_COLUMNS = [
@@ -16,12 +17,10 @@ const FIGURE_COLUMNS = [
   'cost_manual',
   'cost_committed',
   'cost_invoiced',
-  'cost_actual',
-  'commission_actual',
-  'margin_budget',
-  'margin_actual',
-  'margin_delta',
+  'cost_labor',
 ] as const
+
+const RESULT_COLUMNS = ['cost_actual', 'commission_actual', 'margin_budget', 'margin_actual', 'margin_delta'] as const
 
 interface FunctionTableProps {
   rows: FunctionRow[]
@@ -54,11 +53,17 @@ export function IncomeStatementFunctionTable({ rows, total, caption }: FunctionT
                 {t(`managementControl.figures.${column}`)}
               </th>
             ))}
+            <th scope="col" className={NUMERIC_HEAD_CELL}>{t('managementControl.functions.hours')}</th>
+            {RESULT_COLUMNS.map((column) => (
+              <th key={column} scope="col" className={NUMERIC_HEAD_CELL}>
+                {t(`managementControl.figures.${column}`)}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.key} className="border-t hover:bg-muted/40">
+            <tr key={row.key} className="group border-t hover:bg-muted/40">
               <th
                 scope="row"
                 title={rowLabel(t, row)}
@@ -68,6 +73,14 @@ export function IncomeStatementFunctionTable({ rows, total, caption }: FunctionT
               </th>
               <td className={`${NUMERIC_CELL} tabular-nums`}>{row.work_orders_count}</td>
               {FIGURE_COLUMNS.map((column) => (
+                <td key={column} className={NUMERIC_CELL}>
+                  <MoneyValue value={row[column]} />
+                </td>
+              ))}
+              <td className={NUMERIC_CELL}>
+                <HoursValue laborMinutes={row.labor_minutes} unpricedMinutes={row.unpriced_minutes} />
+              </td>
+              {RESULT_COLUMNS.map((column) => (
                 <td key={column} className={NUMERIC_CELL}>
                   <MoneyValue value={row[column]} />
                 </td>
@@ -82,6 +95,14 @@ export function IncomeStatementFunctionTable({ rows, total, caption }: FunctionT
             </th>
             <td className={`${NUMERIC_CELL} tabular-nums`}>{total.work_orders_count}</td>
             {FIGURE_COLUMNS.map((column) => (
+              <td key={column} className={NUMERIC_CELL}>
+                <MoneyValue value={total[column]} />
+              </td>
+            ))}
+            <td className={NUMERIC_CELL}>
+              <HoursValue laborMinutes={total.labor_minutes} unpricedMinutes={total.unpriced_minutes} />
+            </td>
+            {RESULT_COLUMNS.map((column) => (
               <td key={column} className={NUMERIC_CELL}>
                 <MoneyValue value={total[column]} />
               </td>

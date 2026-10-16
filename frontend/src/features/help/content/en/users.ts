@@ -71,6 +71,7 @@ const guide: HelpGuide = {
             ['**Hired on** / **Terminated on**', 'Start and end dates of the relationship. Termination cannot precede hiring.'],
             ['**Standard daily duration**', 'Expected working time in a day.'],
             ['**Daily break duration**', 'Length of the daily break.'],
+            ['**Hourly cost**', 'The gross company cost of the person in euro per hour, with two decimals (0 to 9999.99). Management Control multiplies it by the timesheet hours on work orders to get the labor cost; hours of people without an hourly cost are counted but not valued. It applies from the moment you enter it, with no history of changes.'],
           ],
         },
         { type: 'paragraph', text: 'The employment sections are there even for a user with no profile yet: the first save creates it. **Contacts** and **Addresses** follow; at the bottom, an **Other fields** section may appear, with the custom fields for users.' },

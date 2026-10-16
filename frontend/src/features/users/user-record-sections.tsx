@@ -7,6 +7,7 @@ import { RecordInlineField } from '@/components/record-form/record-inline-field'
 import { useCascadeEditable } from '@/components/record-form/use-cascade-editable'
 import { Badge } from '@/components/ui/badge'
 import { useEnumOptions } from '@/features/config/use-config'
+import { formatEuro } from '@/features/invoices/invoice-format'
 import { formatDate } from '@/lib/formatting/date-display'
 import { UserEmailField, UserPasswordFields, UserRolesField, UserSwitchField } from '@/features/users/user-account-fields'
 import {
@@ -18,6 +19,7 @@ import {
   UserRelationshipTypeField,
   UserReportsToField,
 } from '@/features/users/user-employment-fields'
+import { UserHourlyCostField } from '@/features/users/user-hourly-cost-field'
 import { MANAGER_CASCADE_FIELDS, type UserRecordSectionProps } from '@/features/users/user-record'
 import type { EmploymentRelationRef } from '@/features/users/types'
 
@@ -195,6 +197,7 @@ export function UserContractDataRecordSection({ values, form, inline }: UserReco
   const terminatedLabel = t('users.detail.employment.terminatedAt')
   const standardLabel = t('users.detail.employment.standardDailyMinutes')
   const breakLabel = t('users.detail.employment.breakDailyMinutes')
+  const hourlyCostLabel = t('users.detail.employment.hourlyCost')
 
   return (
     <RecordSection title={t('users.form.sections.contractData.title')} icon={<CalendarClock />}>
@@ -238,6 +241,14 @@ export function UserContractDataRecordSection({ values, form, inline }: UserReco
           editor={<UserDurationField control={control} name="employment.break_daily_minutes" label={breakLabel} />}
         >
           {formatMinutes(values.break_daily_minutes) ?? <DetailEmpty />}
+        </RecordInlineField>
+        <RecordInlineField
+          field="employment.hourly_cost"
+          label={hourlyCostLabel}
+          inline={inline}
+          editor={<UserHourlyCostField control={control} label={hourlyCostLabel} />}
+        >
+          {values.hourly_cost !== null ? `${formatEuro(values.hourly_cost)}${t('users.form.employment.hourlyCostPerHour')}` : <DetailEmpty />}
         </RecordInlineField>
       </RecordFieldList>
     </RecordSection>

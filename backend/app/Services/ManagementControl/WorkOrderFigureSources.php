@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\DB;
  * query per source, grouped by work order, so the number of queries does not
  * depend on how many commesse are asked for. Every amount is integer cents.
  *
- * Returned `figures` hold the nine base figures per work order id; `weights`
+ * Returned `figures` hold the base figures (the labor ones from LaborCostSource, spec 0272) per work order id; `weights`
  * hold, per work order id, the effective revenue of its REVENUE lines by
  * business function id (0 = no function), the basis of the D-11 split.
  */
@@ -31,7 +31,11 @@ final class WorkOrderFigureSources
         'revenue_contract', 'revenue_invoiced', 'revenue_collected',
         'cost_budget', 'cost_manual', 'cost_committed', 'cost_invoiced',
         'commission_budget', 'commission_actual',
+        'cost_labor', 'labor_minutes', 'unpriced_minutes',
     ];
+
+    /** Figures that are minutes, not cents. */
+    public const array MINUTE_FIGURES = ['labor_minutes', 'unpriced_minutes'];
 
     /** Recipient roles whose line commission is always a cost of the commessa (D-8). */
     private const array COST_ROLES = [CommissionRecipientRole::Commercial, CommissionRecipientRole::Reporter, CommissionRecipientRole::Supervisor];
@@ -41,6 +45,7 @@ final class WorkOrderFigureSources
         private readonly LineEffectiveRevenue $effectiveRevenue,
         private readonly CategoryHierarchy $categories,
         private readonly WorkOrderFunctionShares $functionShares,
+        private readonly LaborCostSource $labor,
     ) {}
 
     /**
@@ -64,6 +69,7 @@ final class WorkOrderFigureSources
         $committed = $this->committed->committedCentsBy($this->committed->forWorkOrders($workOrderIds), 'purchase_order_lines.work_order_id');
         $payable = $this->committed->centsBy(DB::table('purchase_invoice_lines')->whereIn('work_order_id', $workOrderIds), 'net_amount', 'work_order_id');
         $collected = $this->collectedByWorkOrder($workOrderIds);
+        $labor = $this->labor->byWorkOrder($workOrderIds);
         $budgetByLine = $this->budgetByRevenueLine($lines->keys()->all());
         $accrualByLine = $this->committed->centsBy(DB::table('commission_accruals')->whereIn('quote_line_id', $lines->keys()->all()), 'amount', 'quote_line_id');
 
@@ -83,6 +89,9 @@ final class WorkOrderFigureSources
                 'cost_invoiced' => $payable[$id] ?? 0,
                 'commission_budget' => (int) $ownLines->sum(fn (QuoteLine $line): int => $this->budgetCommissionCents($line)),
                 'commission_actual' => (int) $ownLines->sum(fn (QuoteLine $line): int => $accrualByLine[$line->id] ?? 0),
+                'cost_labor' => $labor[$id]['cents'] ?? 0,
+                'labor_minutes' => $labor[$id]['minutes'] ?? 0,
+                'unpriced_minutes' => $labor[$id]['unpriced_minutes'] ?? 0,
             ];
             $weights[$id] = $this->functionShares->fromLines($ownLines, $categoryFunctions);
         }

@@ -14,7 +14,7 @@ import { monthLabelFormatter } from '@/features/management-control/month-label'
 import { trendRowLabel } from '@/features/management-control/trend-row-label'
 import { TREND_MEASURES, type MonthlyTrend, type TrendMeasure } from '@/features/management-control/trend-types'
 
-const STICKY = 'sticky left-0 z-10 bg-card group-hover:bg-muted'
+const STICKY = 'sticky left-0 z-10 bg-card group-hover:bg-[color-mix(in_oklab,var(--card),var(--muted)_40%)]'
 
 interface TrendFunctionTableProps {
   data: MonthlyTrend

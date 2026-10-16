@@ -84,6 +84,7 @@ class UsersAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('employment.terminated_at', 'date', 'employment'),
             new FieldDefinition('employment.standard_daily_minutes', 'number', 'employment'),
             new FieldDefinition('employment.break_daily_minutes', 'number', 'employment'),
+            new FieldDefinition('employment.hourly_cost', 'number', 'employment'),
         ];
     }
 
@@ -174,6 +175,7 @@ class UsersAuthorization extends AbstractResourceAuthorization
             'employment.terminated_at' => $permission,
             'employment.standard_daily_minutes' => $permission,
             'employment.break_daily_minutes' => $permission,
+            'employment.hourly_cost' => $permission,
         ];
     }
 

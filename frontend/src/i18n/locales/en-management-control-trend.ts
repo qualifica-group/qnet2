@@ -6,7 +6,7 @@ export const trend = {
   empty: 'No revenue or costs in the selected period with these filters.',
   structure: 'Structure',
   notAvailable: 'n/a',
-  measures: { revenue: 'Revenue', cost: 'Costs', margin: 'Margin' },
+  measures: { revenue: 'Revenue', cost: 'Costs', labor: 'Labor cost', margin: 'Margin' },
   filters: {
     title: 'Monthly trend filters',
     dateFrom: 'Documents from',
@@ -15,10 +15,13 @@ export const trend = {
     title: 'Totals of the period',
     previousYear: 'Previous year: {{value}}',
     variation: 'vs previous year',
+    hours: 'Hours recorded: {{hours}}',
+    unpriced: 'of which {{hours}} not valued',
+    unpricedHint: 'Hours of people with no hourly cost: counted among the hours but not in the labor cost.',
   },
   functions: {
     title: 'Trend by business function',
-    hint: 'Amounts net of VAT, by document month. Costs not tied to a work order go under Structure.',
+    hint: 'Amounts net of VAT, by document month; labor cost is by timesheet month and is included in the costs. Costs and hours not tied to a work order go under Structure.',
     caption: '{{measure}} by business function and month',
     measure: 'Measure',
     businessFunction: 'Business function',
@@ -32,12 +35,12 @@ export const trend = {
   },
   nature: {
     title: 'Costs by nature',
-    hint: 'Costs by month and nature, with the share of the revenue of the month.',
+    hint: 'Purchase costs by month and nature, with the share of the revenue of the month. Internal hours have no nature: the labor cost is not shown here.',
     caption: 'Costs by nature and month, with share of revenue',
     nature: 'Nature',
     total: 'Total',
     revenue: 'Revenue',
-    cost: 'Total costs',
+    cost: 'Total purchase costs',
     natures: { direct: 'Direct', indirect: 'Indirect', general: 'General', none: 'No cost type' },
   },
 }

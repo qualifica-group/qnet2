@@ -17,6 +17,23 @@ export function FilterField({ label, htmlFor, children }: { label: string; htmlF
   )
 }
 
+/** Company multi-select, shared by the scope fields and by the pages filtering on the company only. */
+export function CompanyFilterField({ value, onChange }: { value: number[]; onChange: (companyIds: number[]) => void }) {
+  const { t } = useTranslation()
+  const multiLabels = useMultiSelectLabels()
+
+  return (
+    <FilterField label={t('managementControl.filters.company')}>
+      <AsyncPaginatedMultiSelect
+        resource="companies"
+        value={value}
+        onChange={onChange}
+        labels={multiLabels(t('managementControl.filters.company'))}
+      />
+    </FilterField>
+  )
+}
+
 interface ScopeSelectionFieldsProps {
   filters: ScopeSelection
   onChange: (patch: Partial<ScopeSelection>) => void
@@ -29,14 +46,7 @@ export function ScopeSelectionFields({ filters, onChange }: ScopeSelectionFields
 
   return (
     <>
-      <FilterField label={t('managementControl.filters.company')}>
-        <AsyncPaginatedMultiSelect
-          resource="companies"
-          value={filters.companyIds}
-          onChange={(companyIds) => onChange({ companyIds })}
-          labels={multiLabels(t('managementControl.filters.company'))}
-        />
-      </FilterField>
+      <CompanyFilterField value={filters.companyIds} onChange={(companyIds) => onChange({ companyIds })} />
       <FilterField label={t('managementControl.filters.companySite')}>
         <AsyncPaginatedMultiSelect
           resource="company-sites"
@@ -57,18 +67,15 @@ export function ScopeSelectionFields({ filters, onChange }: ScopeSelectionFields
   )
 }
 
-interface ScopeFilterFieldsProps {
-  filters: ScopeFilters
-  onChange: (patch: Partial<ScopeFilters>) => void
+interface PeriodFieldsProps {
+  filters: { dateFrom: string; dateTo: string }
+  onChange: (patch: { dateFrom?: string; dateTo?: string }) => void
   /** The meaning of the period depends on the page (work order start, flows of the schedule). */
   dateFromLabel: string
 }
 
-/**
- * Fields common to the module pages (spec 0268, 0269 D-14): period, company, company site and
- * operational site. Renders the cells only; the page bar owns the grid that lays them out.
- */
-export function ScopeFilterFields({ filters, onChange, dateFromLabel }: ScopeFilterFieldsProps) {
+/** The two date inputs of the period; renders the cells only. */
+export function PeriodFields({ filters, onChange, dateFromLabel }: PeriodFieldsProps) {
   const { t } = useTranslation()
   const fromId = useId()
   const toId = useId()
@@ -93,6 +100,24 @@ export function ScopeFilterFields({ filters, onChange, dateFromLabel }: ScopeFil
           onChange={(event) => onChange({ dateTo: event.target.value })}
         />
       </FilterField>
+    </>
+  )
+}
+
+interface ScopeFilterFieldsProps {
+  filters: ScopeFilters
+  onChange: (patch: Partial<ScopeFilters>) => void
+  dateFromLabel: string
+}
+
+/**
+ * Fields common to the module pages (spec 0268, 0269 D-14): period, company, company site and
+ * operational site. Renders the cells only; the page bar owns the grid that lays them out.
+ */
+export function ScopeFilterFields({ filters, onChange, dateFromLabel }: ScopeFilterFieldsProps) {
+  return (
+    <>
+      <PeriodFields filters={filters} onChange={onChange} dateFromLabel={dateFromLabel} />
       <ScopeSelectionFields filters={filters} onChange={onChange} />
     </>
   )

@@ -107,6 +107,36 @@ describe('ManagementControlIncomeStatementPage', () => {
     expect(within(functions).getByRole('figure', { name: 'Expected vs actual margin by business function' })).toBeInTheDocument()
   })
 
+  it('AC-009 shows the labor cost and hours in the tiles and in the by-function columns, with the part not valued', async () => {
+    mockApi()
+    renderPage()
+
+    const totals = await screen.findByRole('region', { name: 'Totals' })
+    expect(within(totals).getByText('Labor cost').closest('div')?.textContent).toContain(formatEuro(120))
+    const hours = within(totals).getByText('Hours recorded').closest('div') as HTMLElement
+    expect(hours).toHaveTextContent('6:00')
+    expect(hours).toHaveTextContent('of which 1:00 not valued')
+    expect(within(hours).getByTitle(/no hourly cost/)).toBeInTheDocument()
+
+    const functions = screen.getByRole('region', { name: 'Statement by business function' })
+    expect(within(functions).getByRole('columnheader', { name: 'Labor cost' })).toBeInTheDocument()
+    expect(within(functions).getByRole('columnheader', { name: 'Hours' })).toBeInTheDocument()
+    const training = within(functions).getByRole('row', { name: /Training/ })
+    expect(training.textContent).toContain(formatEuro(80))
+    expect(training).toHaveTextContent('4:00')
+    expect(training).not.toHaveTextContent('not valued')
+    expect(within(functions).getByRole('row', { name: /Unattributed/ })).toHaveTextContent('of which 1:00 not valued')
+  })
+
+  it('AC-009 gives the totals eleven tiles, the hours one spanning two columns so the grid closes without orphans', async () => {
+    mockApi()
+    renderPage()
+
+    const totals = await screen.findByRole('region', { name: 'Totals' })
+    expect(within(totals).getAllByRole('term')).toHaveLength(11)
+    expect(within(totals).getByText('Hours recorded').closest('div')).toHaveClass('col-span-2')
+  })
+
   it('AC-017 renders no work orders table, no detail link and no segment block without segmentation', async () => {
     mockApi()
     renderPage()

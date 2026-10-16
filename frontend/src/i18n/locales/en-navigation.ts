@@ -32,6 +32,7 @@ export const navigation = {
   trend: 'Monthly trend',
   billing: 'Billing',
   accounts: 'Accounts',
+  agents: 'Agents',
   accountingReceivable: 'Receivables',
   proformaRequests: 'Proforma requests',
   invoices: 'Active invoices',

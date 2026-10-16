@@ -227,14 +227,16 @@ it('spec 0008/0015/0111/0129: users.fields contains exactly the 4 existing + 13 
         'employment.primary_operational_site_id', 'employment.remote_operational_site_ids',
         'employment.qualification_type', 'employment.hired_at',
         'employment.terminated_at', 'employment.standard_daily_minutes', 'employment.break_daily_minutes',
+        // spec 0272 — the hourly cost of the person.
+        'employment.hourly_cost',
     ]);
 
-    // Spec 0129/0194: exactly 15 employment.* keys (13 + the wildcard flag +
-    // the "Assegnabile" switch), and
+    // Spec 0129/0194/0272: exactly 16 employment.* keys (13 + the wildcard flag +
+    // the "Assegnabile" switch + the hourly cost), and
     // neither of the two keys product_lines replaced survives anywhere in the
     // catalogue.
     $employmentKeys = $byKey->keys()->filter(static fn (string $key): bool => str_starts_with($key, 'employment.'));
-    expect($employmentKeys)->toHaveCount(15)
+    expect($employmentKeys)->toHaveCount(16)
         ->and($byKey)->not->toHaveKey('employment.business_function_id')
         ->and($byKey)->not->toHaveKey('employment.product_category_ids')
         ->and($byKey->get('employment.product_lines'))->toMatchArray(['type' => 'collection', 'group' => 'employment']);
