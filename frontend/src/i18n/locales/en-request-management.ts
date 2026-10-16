@@ -209,6 +209,30 @@ export const requestManagement = {
     dialogDescription: 'Edit product, quantity, unit price and VAT of this offer\'s rows.',
     validationSummary: 'Check the highlighted rows before saving.',
     prunedNotice: 'Removed from the offer rows, their product category is no longer selected: {{names}}.',
+    /** Spec 0268: the product catalogue on the editor's left. */
+    catalog: {
+      title: 'Product catalogue',
+      search: 'Search by name or description…',
+      categories: 'Filter by category',
+      allCategories: 'All',
+      list: 'Catalogue products',
+      empty: 'No products found.',
+      error: 'Could not load the products.',
+      alreadyAdded: 'Already added',
+      noPrice: 'No price set',
+      addSelected_one: 'Add {{count}} selected',
+      addSelected_other: 'Add {{count}} selected',
+      addNone: 'Select the products to add',
+      singleHint: 'Single-row category: the product you pick replaces the one on the row.',
+      limitReached: 'You reached the maximum number of rows.',
+    },
+    /** Spec 0268: the picked rows on the editor's right. */
+    rows: {
+      title: 'Offer rows',
+      empty: 'No rows yet: pick the products from the catalogue.',
+      offerTotal: 'Offer total',
+      productMissing: 'Product no longer available for the chosen categories: remove the row and pick one from the catalogue.',
+    },
   },
   workPanel: {
     loadError: 'Could not load the record.',

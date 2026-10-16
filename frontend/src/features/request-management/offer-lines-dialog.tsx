@@ -25,6 +25,9 @@ import { RequestOfferLinesField } from '@/features/request-management/request-of
 import { useOfferLinesForm } from '@/features/request-management/use-offer-lines-form'
 import type { RequestWorkPanelWithPermissions } from '@/features/request-management/types'
 
+/** The dialog is the editor's only content: the catalogue list may take most of the viewport (spec 0268). */
+const DIALOG_CATALOG_LIST_CLASS = 'max-h-[55vh]'
+
 /**
  * Mounts the "Linee di prodotto" editor once for a whole grid and hands its
  * opener down through context, for `OfferLinesCellEditor` to call.
@@ -145,6 +148,7 @@ function OfferLinesDialogForm({ panel, target, onClose }: OfferLinesDialogFormPr
             }
             vatRatePercentFor={vatRatePercentFor}
             rememberVatRatePercent={rememberVatRatePercent}
+            catalogListClassName={DIALOG_CATALOG_LIST_CLASS}
           />
 
           {submitError !== null && (

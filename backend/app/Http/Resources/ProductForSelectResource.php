@@ -46,6 +46,9 @@ class ProductForSelectResource extends ForSelectResource
                 // its category leaves the request's product lines.
                 'category_id' => $this->category_id,
                 'code' => $this->code,
+                // Spec 0268, D-5: the request-management catalogue shows the
+                // description on its own line without parsing `subtitle`.
+                'description' => $this->squishedDescription(),
                 'price' => $this->price,
                 'cost' => $this->cost,
                 'vat_rate_id' => $this->vat_rate_id,
@@ -68,10 +71,17 @@ class ProductForSelectResource extends ForSelectResource
         ];
     }
 
+    private function squishedDescription(): ?string
+    {
+        $description = Str::squish((string) $this->description);
+
+        return filled($description) ? $description : null;
+    }
+
     private function subtitle(): ?string
     {
         $parts = array_filter(
-            [$this->category?->name, Str::squish((string) $this->description)],
+            [$this->category?->name, $this->squishedDescription()],
             static fn (?string $part): bool => filled($part),
         );
 

@@ -3,6 +3,36 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0268 — Editor "Linee di prodotto" catalogo + righe (Richieste/Iscritti) — VERDE, NON COMMITTATO (2026-10-16)
+
+- Spec `docs/specs/0268-offer-lines-catalog-editor.xml` (D-1..D-7, AC-001..AC-017). Decisioni utente: layout catalogo a
+  sinistra + righe a due livelli a destra; tutte e tre le superfici (dialog cella, scheda, Nuova richiesta) di Richieste
+  e Iscritti; prodotto gia' nelle righe = badge "Gia' aggiunto" non selezionabile; filtri solo chip categoria.
+- Backend: `ProductForSelectResource` espone `meta.description` (string|null, squished, additivo); `subtitle` invariato.
+- Frontend: `features/request-management/offer-lines-editor/` (`OfferLinesEditor`, `OfferLinesCatalog`,
+  `OfferCatalogItem`, `OfferLineCard`, hook `useOfferLinesEditor`/`useOfferLinesCatalog`/`useNextPageSentinel`, tipi
+  `OfferCatalogProduct`/`OfferLineProductView`). `RequestOfferLinesField` monta `OfferLinesEditor` al posto di
+  `QuoteLinesField`; il form Offerte (`features/quotes/**`) NON e' toccato. Riusati: `seedSoleProductRows` (multi-add,
+  riempie prima le righe pristine), `useQuoteLinesField` (setField/removeRow/setProduct per la sostituzione single-mode),
+  `aggregateLines`, `categoryPathLabel`, `useForSelectLabels` (nome dei prodotti di righe create dall'autofill).
+- Contratti invariati: valori form `QuoteLineFormValues[]`, PATCH cella `offer_lines`, submit scheda/creazione.
+- i18n nuove: `requestManagement.offerLines.catalog.*`, `requestManagement.offerLines.rows.*` (IT+EN). Etichette riga
+  riusano `quotes.form.line*` ("Quantita' riga N", "Rimuovi riga N"...).
+- Test esistenti adeguati (REQUIREMENT CHANGED, commentati): `offer-lines-dialog.test.tsx`,
+  `request-work-panel-offer-lines.test.tsx`, `use-offer-lines-autofill.test.tsx` (niente combobox "Prodotto riga N",
+  riga pristine non disegnata, probe autofill distinto dalla lista catalogo per `limit: 2`).
+- Manuale: guide in-app IT/EN `request-management` (nuova sezione `offer-rows-editor`); manuale Claude Docs aggiornato
+  (blocco "Editor delle righe dell'offerta" + 3 passaggi). Il PDF derivato va rigenerato.
+- Ritocchi utente dopo il build: pannello righe su `bg-surface` (gemello del catalogo) con card `bg-card shadow-sm`,
+  fascia importi `bg-muted/40`, numero riga `bg-primary/10`; select IVA alto come gli input (`min-h-8`); etichetta
+  "Righe offerta" sopra l'editor solo sr-only (`MetaFieldRowContext`). Guida Iscritti IT/EN: sezione `offer-rows-editor`.
+- Verifier: AC-001..AC-017 PASS (AC-016 responsive da guardare a mano a 375/1024px). Pest completo 11345/11349: i 3 rossi
+  sono `QuoteDocumentPdfTest` (LibreOffice assente su questa macchina, ambientale). Vitest completo 8301/8302: 1 flaky
+  da carico (`purchase-request-submit.test.tsx`, verde da solo). tsc -b e ESLint puliti.
+- Prossimo: spec 0269 = stesso editor nel form Offerte (schede Prodotti E Costi; "Sblocca" diventa chip "Tutto il
+  catalogo" con la stessa conferma) — decisioni utente 2026-10-16, da pianificare.
+- Da sistemare (segnalato): questo HANDOFF pesa ~630 KB, ben oltre i 50 KB: va archiviato in `docs/handoff-archive/`.
+
 ## MERGE main (2f8d47ce) -> feature/amministrazione — RISOLTO (2026-10-16)
 
 - Conflitti: HANDOFF (voci di entrambi i lati mantenute) e i contatori `migrate:rollback --step`, che sommano le 5

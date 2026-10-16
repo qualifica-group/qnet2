@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import i18n from '@/i18n'
@@ -42,6 +42,20 @@ const SOLE_PRODUCT: QuoteProductForSelectItem = {
     product_typology: null,
   },
 }
+
+/** A second product of the crowded category, in the full for-select shape the catalogue renders. */
+const CROWDED_PRODUCT: QuoteProductForSelectItem = {
+  ...SOLE_PRODUCT,
+  id: 901,
+  label: 'Fibra 2000',
+  meta: { ...SOLE_PRODUCT.meta, code: 'FIB-2000' },
+}
+
+/** The probe's own page size: what tells it apart from the catalogue's list request (spec 0268). */
+const SOLE_PRODUCT_PROBE = { limit: 2, params: { usage: 'SALE', category_ids: [SOLE_CATEGORY_ID] } }
+
+/** What the editor shows while the form holds only its pristine opening row (spec 0268 D-7). */
+const NO_ROWS_TEXT = 'Nessuna riga: scegli i prodotti dal catalogo.'
 
 const fetchForSelectMock = vi.fn()
 vi.mock('@/features/for-select/api', () => ({
@@ -150,9 +164,10 @@ beforeEach(() => {
       return Promise.resolve(page([SOLE_PRODUCT]))
     }
     if (categoryIds.includes(CROWDED_CATEGORY_ID)) {
-      return Promise.resolve(page([SOLE_PRODUCT, { id: 901, label: 'Fibra 2000' }], 2))
+      return Promise.resolve(page([SOLE_PRODUCT, CROWDED_PRODUCT], 2))
     }
-    return Promise.resolve(page([]))
+    // `ids[]` hydration, as the server answers it (ProductService::appendHydratedIds).
+    return Promise.resolve(page([SOLE_PRODUCT, CROWDED_PRODUCT].filter((product) => params.ids?.includes(product.id))))
   })
 })
 
@@ -177,18 +192,20 @@ describe('offer-line autofill', () => {
         expect.objectContaining({ params: { usage: 'SALE', category_ids: [CROWDED_CATEGORY_ID] } }),
       ),
     )
-    expect(screen.getByLabelText('Quantità riga 1')).toHaveValue(null)
-    expect(screen.getByLabelText('Prezzo unitario riga 1')).toHaveValue(null)
+    // REQUIREMENT CHANGED (spec 0268 D-7): the untouched pristine row is not
+    // drawn — the editor stays on its empty state.
+    expect(screen.getByText(NO_ROWS_TEXT)).toBeInTheDocument()
+    expect(screen.queryByLabelText('Quantità riga 1')).not.toBeInTheDocument()
   })
 
   it('never probes the category the form opened on: a hydrated request gains no row', async () => {
     renderHarness({ initialCategoryId: SOLE_CATEGORY_ID })
 
-    await waitFor(() => expect(screen.getByLabelText('Quantità riga 1')).toHaveValue(null))
-    expect(fetchForSelectMock).not.toHaveBeenCalledWith(
-      'products',
-      expect.objectContaining({ params: { usage: 'SALE', category_ids: [SOLE_CATEGORY_ID] } }),
-    )
+    // REQUIREMENT CHANGED (spec 0268): the catalogue now lists that category's
+    // products (a page-sized request), so the assertion targets the probe's
+    // own two-row request, which must still never run.
+    await waitFor(() => expect(screen.getByText(NO_ROWS_TEXT)).toBeInTheDocument())
+    expect(fetchForSelectMock).not.toHaveBeenCalledWith('products', expect.objectContaining(SOLE_PRODUCT_PROBE))
   })
 
   it('seeds a category only once, so the operator can delete the row it created', async () => {
@@ -208,7 +225,7 @@ describe('offer-line autofill', () => {
 // row cap each own on their own — this is the one place that holds them
 // together instead of testing each primitive in isolation.
 describe('offer-line autofill — single-managed AND simplified category (spec 0114 AC-023)', () => {
-  it('seeds the single row already congealed, hides its controls, and caps "Aggiungi riga"', async () => {
+  it('seeds the single row already congealed, hides its controls, and caps the catalogue to a single pick', async () => {
     categoryTreeMock.mockReturnValue([
       treeNode({
         id: SOLE_CATEGORY_ID,
@@ -225,19 +242,25 @@ describe('offer-line autofill — single-managed AND simplified category (spec 0
 
     // The row has no quantity/price input to read back (D-2), so completion
     // is asserted off the congealed amounts: net AND total both land on the
-    // product's own price (49,90) once the seed lands, vs 0,00 on the empty
-    // row it replaces.
-    await waitFor(() => expect(screen.getAllByText('49,90')).toHaveLength(2))
+    // product's own price (49,90) once the seed lands. REQUIREMENT CHANGED
+    // (spec 0268): the row's two amounts are repeated by the offer total
+    // footer, which only appears once a row exists.
+    const rows = screen.getByRole('region', { name: "Righe dell'offerta" })
+    await waitFor(() => expect(within(rows).getAllByText('49,90')).toHaveLength(4))
 
     expect(screen.queryByLabelText('Quantità riga 1')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Prezzo unitario riga 1')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Aliquota IVA riga 1')).not.toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Prodotto riga 1' })).toBeInTheDocument()
+    // The autofill hands the row an id only: its label is resolved by id.
+    expect(await within(rows).findByText('Fibra 1000')).toBeInTheDocument()
 
     // `single` management mode caps the card at the one row the autofill
-    // already created: "Aggiungi riga" stays disabled, exactly as it would
-    // on a non-simplified single-managed category.
-    expect(screen.getByRole('button', { name: 'Aggiungi riga' })).toBeDisabled()
+    // already created. REQUIREMENT CHANGED (spec 0268 D-6): the catalogue
+    // turns into a single pick that replaces that row — no multi-add action.
+    expect(
+      screen.getByText('Categoria a riga singola: il prodotto che scegli sostituisce quello della riga.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Aggiungi/ })).not.toBeInTheDocument()
   })
 })
 

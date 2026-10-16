@@ -210,6 +210,30 @@ export const requestManagement = {
     validationSummary: 'Controlla le righe evidenziate prima di salvare.',
     prunedNotice:
       'Rimossi dalle righe dell\'offerta, la loro categoria prodotto non è più selezionata: {{names}}.',
+    /** Spec 0268: il catalogo prodotti a sinistra dell'editor. */
+    catalog: {
+      title: 'Catalogo prodotti',
+      search: 'Cerca per nome o descrizione…',
+      categories: 'Filtra per categoria',
+      allCategories: 'Tutte',
+      list: 'Prodotti del catalogo',
+      empty: 'Nessun prodotto trovato.',
+      error: 'Impossibile caricare i prodotti.',
+      alreadyAdded: 'Già aggiunto',
+      noPrice: 'Prezzo non definito',
+      addSelected_one: 'Aggiungi {{count}} selezionato',
+      addSelected_other: 'Aggiungi {{count}} selezionati',
+      addNone: 'Seleziona i prodotti da aggiungere',
+      singleHint: 'Categoria a riga singola: il prodotto che scegli sostituisce quello della riga.',
+      limitReached: 'Hai raggiunto il numero massimo di righe.',
+    },
+    /** Spec 0268: le righe scelte a destra dell'editor. */
+    rows: {
+      title: 'Righe dell\'offerta',
+      empty: 'Nessuna riga: scegli i prodotti dal catalogo.',
+      offerTotal: 'Totale offerta',
+      productMissing: 'Prodotto non più disponibile per le categorie scelte: rimuovi la riga e scegline uno dal catalogo.',
+    },
   },
   workPanel: {
     loadError: 'Impossibile caricare il record.',

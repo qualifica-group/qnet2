@@ -183,6 +183,35 @@ it('exposes the product unit of measure in meta, so a quote line can show it on 
         ->assertJsonPath('items.0.meta.unit_of_measure.symbol', 'kg');
 });
 
+// Spec 0268 (D-5, AC-001): the squished description as its own meta key.
+it('exposes the squished description in meta.description, leaving the other meta keys and subtitle untouched (spec 0268 AC-001)', function () {
+    $actor = productForSelectActor();
+    $category = ProductCategory::factory()->create(['name' => 'Fibra']);
+    Product::factory()->create(['name' => 'Corso', 'category_id' => $category->id, 'code' => 'PRD-0001', 'description' => '  Corso   base ']);
+    Sanctum::actingAs($actor);
+
+    $this->getJson('/api/products/for-select')
+        ->assertOk()
+        ->assertJsonPath('items.0.subtitle', 'Fibra · Corso base')
+        ->assertJsonPath('items.0.meta.description', 'Corso base')
+        ->assertJsonPath('items.0.meta.code', 'PRD-0001')
+        ->assertJsonPath('items.0.meta.category_id', $category->id)
+        ->assertJsonStructure(['items' => [['meta' => [
+            'category_id', 'code', 'description', 'price', 'cost', 'vat_rate_id', 'vat_rate_name',
+            'vat_rate', 'unit_of_measure', 'product_typology', 'cost_type',
+        ]]]]);
+});
+
+it('meta.description is null when the product description is null or empty (spec 0268 AC-001)', function (?string $description) {
+    $actor = productForSelectActor();
+    Product::factory()->create(['name' => 'No description', 'description' => $description]);
+    Sanctum::actingAs($actor);
+
+    $this->getJson('/api/products/for-select')
+        ->assertOk()
+        ->assertJsonPath('items.0.meta.description', null);
+})->with([null, '']);
+
 it('no N+1 on the vatRate/unitOfMeasure relations across the page (AC-009, spec 0088)', function () {
     $actor = productForSelectActor();
     $vatRate = VatRate::factory()->create();
