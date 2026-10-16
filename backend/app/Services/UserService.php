@@ -10,6 +10,7 @@ use App\DataObjects\Users\ProfileData;
 use App\DataObjects\Users\UpdateUserData;
 use App\Models\User;
 use App\Services\Assignment\OperatorCompetence;
+use App\Services\Users\BusinessFunctionCoverageGuard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -38,6 +39,8 @@ class UserService
         // off this same eager-loaded collection.
         'employment.reportsTo',
         'employment.company',
+        // Spec 0271: the person's job roles ({id,name} in EmploymentResource).
+        'employment.jobRoles',
         // The operational-site label is "line1[- city]" (EmploymentResource),
         // so the pivot's sites, their primary address and city must all be
         // eager-loaded, or reading them would lazy-load (blocked outside
@@ -58,6 +61,7 @@ class UserService
         private readonly ProfileWriter $profileWriter,
         private readonly EmploymentWriter $employmentWriter,
         private readonly OperatorCompetence $competence,
+        private readonly BusinessFunctionCoverageGuard $coverageGuard,
     ) {}
 
     /**
@@ -121,8 +125,11 @@ class UserService
      * is persisted in the SAME transaction via EmploymentWriter — a null
      * $employment (the key was absent) leaves no row, matching the wire
      * contract ("employment absent or null => no row" on create).
+     *
+     * `$enforceCoverage` false skips the mandatory business function rule (spec 0271 D-6 applies to
+     * the API only; the legacy import must not fail on unmapped users).
      */
-    public function create(User $actor, CreateUserData $data, ?ProfileData $profile = null, ?EmploymentData $employment = null): User
+    public function create(User $actor, CreateUserData $data, ?ProfileData $profile = null, ?EmploymentData $employment = null, bool $enforceCoverage = true): User
     {
         if ($profile === null) {
             // The StoreUserRequest guarantees a profile (it is the only source of
@@ -130,7 +137,7 @@ class UserService
             throw new InvalidArgumentException('A personal-data profile is required to create a user (its name is derived from the card).');
         }
 
-        $user = DB::transaction(function () use ($actor, $data, $profile, $employment): User {
+        $user = DB::transaction(function () use ($actor, $data, $profile, $employment, $enforceCoverage): User {
             $attributes = $data->attributes();
             // `users.name` is NOT NULL but the authoritative value is derived by
             // the shared ProfileWriter from the card (single derivation point —
@@ -148,6 +155,11 @@ class UserService
 
             $this->writeProfile($user, $profile);
             $this->employmentWriter->write($user, $employment, $actor);
+
+            // Spec 0271 D-6: the mandatory business function rule on the resulting state.
+            if ($enforceCoverage) {
+                $this->coverageGuard->assertCovered($user);
+            }
 
             return $user;
         });
@@ -177,6 +189,7 @@ class UserService
     {
         $user = DB::transaction(function () use ($actor, $user, $data, $profile, $employment): User {
             $attributes = $data->submittedAttributes();
+            $wasActive = (bool) $user->is_active;
 
             // Unconditional save: fire the model's saved event even when no native
             // attribute changed, so the HasCustomFields write pipeline (spec 0021)
@@ -199,6 +212,12 @@ class UserService
 
             $this->writeProfile($user, $profile);
             $this->employmentWriter->write($user, $employment, $actor);
+
+            // Spec 0271 D-6: only when the request touched employment or
+            // activated the user; any other edit leaves legacy data alone.
+            if ($employment !== null || (! $wasActive && $user->is_active)) {
+                $this->coverageGuard->assertCovered($user);
+            }
 
             return $user;
         });

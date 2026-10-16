@@ -94,6 +94,8 @@ function businessFunction(overrides: Partial<BusinessFunctionDetailWithPermissio
     parent: { id: 5, name: 'Operations' },
     operational_site_ids: [30],
     operational_sites: [{ id: 30, label: 'Via Roma 1 - Milano' }],
+    company_ids: [4],
+    companies: [{ id: 4, label: 'Acme Srl' }],
     created_at: '2026-01-15T10:30:00Z',
     custom_fields: { notes: 'Existing note' },
     permissions: permissions(),
@@ -164,11 +166,13 @@ describe('BusinessFunctionDetailView — detail fields', () => {
           parent: null,
           operational_site_ids: [],
           operational_sites: [],
+          company_ids: [],
+          companies: [],
         })}
       />,
     )
 
-    expect(screen.getAllByText('—')).toHaveLength(4)
+    expect(screen.getAllByText('—')).toHaveLength(5)
   })
 })
 
@@ -198,7 +202,7 @@ describe('BusinessFunctionDetailView — in-place editing', () => {
 
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-    for (const key of ['name', 'type.label', 'parent', 'manager', 'users', 'operationalSites']) {
+    for (const key of ['name', 'type.label', 'parent', 'manager', 'users', 'companies', 'operationalSites']) {
       expect(pencilOf(label(key))).toBeInTheDocument()
     }
     expect(await screen.findByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Notes' }) })).toBeInTheDocument()
@@ -271,6 +275,22 @@ describe('BusinessFunctionDetailView — in-place editing', () => {
     await waitFor(() => expect(updateBusinessFunctionMock).toHaveBeenCalledWith(1, { operational_sites: [30, 70] }))
   })
 
+  it('shows the companies of the record', () => {
+    render(<BusinessFunctionDetailView businessFunction={businessFunction()} />)
+
+    expect(screen.getByText('Acme Srl')).toBeInTheDocument()
+  })
+
+  it('the companies row syncs the whole set', async () => {
+    updateBusinessFunctionMock.mockResolvedValue(businessFunction())
+    render(<BusinessFunctionDetailView businessFunction={businessFunction()} />)
+
+    openRow(label('companies'))
+    fireEvent.click(screen.getByText('add-companies-70'))
+    saveRow()
+    await waitFor(() => expect(updateBusinessFunctionMock).toHaveBeenCalledWith(1, { company_ids: [4, 70] }))
+  })
+
   it('a custom field row saves only that custom field', async () => {
     updateBusinessFunctionMock.mockResolvedValue(businessFunction({ custom_fields: { notes: 'Updated note' } }))
     render(<BusinessFunctionDetailView businessFunction={businessFunction()} />)
@@ -323,7 +343,7 @@ describe('BusinessFunctionDetailView — in-place editing', () => {
       />,
     )
 
-    for (const key of ['name', 'type.label', 'parent', 'manager', 'users', 'operationalSites']) {
+    for (const key of ['name', 'type.label', 'parent', 'manager', 'users', 'companies', 'operationalSites']) {
       expect(pencilOf(label(key))).not.toBeInTheDocument()
     }
     await screen.findByText('Existing note')

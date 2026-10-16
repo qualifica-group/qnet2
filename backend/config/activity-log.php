@@ -20,6 +20,8 @@ use App\Models\FieldChangeRequest;
 use App\Models\FinancialAccount;
 use App\Models\Invoice;
 use App\Models\InvoiceTag;
+use App\Models\JobActivity;
+use App\Models\JobRole;
 use App\Models\Lead;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
@@ -94,6 +96,13 @@ return [
         ],
         'business-functions' => [
             'model' => BusinessFunction::class,
+        ],
+        // spec 0271: HR org structure catalogues.
+        'job-roles' => [
+            'model' => JobRole::class,
+        ],
+        'job-activities' => [
+            'model' => JobActivity::class,
         ],
         'campaigns' => [
             'model' => Campaign::class,

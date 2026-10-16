@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Authorization\LegacyIdVisibility;
 use App\Models\Address;
 use App\Models\BusinessFunction;
+use App\Models\Company;
 use App\Models\OperationalSite;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -35,6 +36,8 @@ class BusinessFunctionResource extends JsonResource
             'users' => $this->users->map(fn (User $user): array => $this->userSummary($user))->all(),
             'operational_site_ids' => $this->operationalSites->pluck('id')->map(static fn (mixed $id): int => (int) $id)->all(),
             'operational_sites' => $this->operationalSites->map(fn (OperationalSite $site): array => $this->operationalSiteSummary($site))->all(),
+            'company_ids' => $this->companies->pluck('id')->map(static fn (mixed $id): int => (int) $id)->all(),
+            'companies' => $this->companies->map(static fn (Company $company): array => ['id' => $company->id, 'label' => (string) $company->denomination])->all(),
             'created_at' => $this->created_at,
         ];
     }

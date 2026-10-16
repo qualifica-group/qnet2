@@ -10,6 +10,7 @@ import { categoryPathLabel } from '@/features/product-lines/category-path-label'
 import type { ProductLineLike } from '@/features/product-lines/types'
 import { ROLES_FOR_SELECT_RESOURCE } from '@/features/roles/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
+import { JOB_ROLES_FOR_SELECT_RESOURCE } from '@/features/job-roles/for-select-api'
 import { summarizeAssignment } from '@/features/users/user-assignment'
 import { EMPTY_EMPLOYMENT } from '@/features/users/user-form-defaults'
 import type { UserRecordValues } from '@/features/users/user-record'
@@ -60,6 +61,7 @@ export function useUserDraftValues(control: Control<UserFormValues>): UserRecord
     resource: OPERATIONAL_SITES_FOR_SELECT_RESOURCE,
     ids: [...idsOf(employment.primary_operational_site_id), ...employment.remote_operational_site_ids],
   })
+  const jobRoles = useForSelectLabels({ resource: JOB_ROLES_FOR_SELECT_RESOURCE, ids: employment.job_role_ids })
   const managers = useForSelectLabels({ resource: USERS_FOR_SELECT_RESOURCE, ids: employment.reports_to_ids })
   const companies = useForSelectLabels({ resource: COMPANIES_FOR_SELECT_RESOURCE, ids: idsOf(employment.company_id) })
   const functions = useForSelectLabels({ resource: BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE, ids: functionIds })
@@ -92,7 +94,7 @@ export function useUserDraftValues(control: Control<UserFormValues>): UserRecord
     primary_operational_site: refOf(sites, employment.primary_operational_site_id),
     remote_operational_sites: refsOf(sites, employment.remote_operational_site_ids),
     is_manager: employment.is_manager,
-    job_description: employment.job_description || null,
+    job_roles: refsOf(jobRoles, employment.job_role_ids),
     reports_to: refsOf(managers, employment.reports_to_ids),
     relationship_type: employment.relationship_type,
     company: refOf(companies, employment.company_id),

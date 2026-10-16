@@ -26,7 +26,7 @@ function member(overrides: Partial<TeamPulseMember> & { id: number; name: string
   return {
     user: { id, name, email: `${name.toLowerCase().replace(/\s+/g, '.')}@example.test`, avatar_url: null },
     manager_ids: [],
-    job_description: null,
+    job_roles: [],
     roles: [],
     business_functions: [],
     operational_site: null,

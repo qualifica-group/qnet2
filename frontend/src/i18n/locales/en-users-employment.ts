@@ -16,7 +16,12 @@ export const usersFormEmploymentSections = {
 export const usersFormEmployment = {
   isManager: 'Manager',
   isManagerDescription: 'This person manages other employees.',
-  jobDescription: 'Job description',
+  jobRoles: 'Job roles',
+  jobRolesPlaceholder: 'Select job roles…',
+  jobRolesSearch: 'Search job roles…',
+  jobRolesEmpty: 'No job roles found.',
+  jobRolesError: 'Unable to load job roles.',
+  jobRolesRemove: 'Remove job role',
   reportsTo: 'Reports to',
   reportsToPlaceholder: 'Select managers…',
   reportsToSearch: 'Search users…',
@@ -54,7 +59,6 @@ export const usersFormEmployment = {
   terminatedAt: 'Terminated at',
   standardDailyMinutes: 'Standard daily duration',
   breakDailyMinutes: 'Daily break duration',
-  jobDescriptionMax: 'Job description must be at most 255 characters.',
   terminatedBeforeHiredAt: 'Termination date must be on or after the hire date.',
 }
 
@@ -74,7 +78,7 @@ export const usersColumnsEmployment = {
 /** Read-only detail labels for the employment sections (spec 0015). */
 export const usersDetailEmployment = {
   isManager: 'Manager',
-  jobDescription: 'Job description',
+  jobRoles: 'Job roles',
   reportsTo: 'Reports to',
   productLines: 'Competence',
   relationshipType: 'Relationship type',

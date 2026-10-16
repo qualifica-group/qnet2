@@ -29,7 +29,7 @@ import type { UserFormValues } from '@/features/users/use-user-form'
 function buildEmploymentPayload(values: EmploymentFormValues): EmploymentPayload {
   return {
     is_manager: values.is_manager,
-    job_description: values.job_description || null,
+    job_role_ids: values.job_role_ids,
     reports_to_ids: values.is_manager ? [] : values.reports_to_ids,
     relationship_type: values.relationship_type,
     company_id: values.company_id,

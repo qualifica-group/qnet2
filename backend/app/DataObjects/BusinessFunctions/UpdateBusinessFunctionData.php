@@ -23,6 +23,7 @@ final readonly class UpdateBusinessFunctionData
     /**
      * @param  array<int, int>|null  $users
      * @param  array<int, int>|null  $operationalSites
+     * @param  array<int, int>|null  $companyIds
      */
     public function __construct(
         public ?string $name = null,
@@ -34,6 +35,7 @@ final readonly class UpdateBusinessFunctionData
         public bool $parentIdSubmitted = false,
         public ?array $users = null,
         public ?array $operationalSites = null,
+        public ?array $companyIds = null,
     ) {}
 
     /**
@@ -58,6 +60,9 @@ final readonly class UpdateBusinessFunctionData
             users: array_key_exists('users', $data) ? array_map('intval', (array) $data['users']) : null,
             operationalSites: array_key_exists('operational_sites', $data)
                 ? array_map('intval', (array) $data['operational_sites'])
+                : null,
+            companyIds: array_key_exists('company_ids', $data) && $data['company_ids'] !== null
+                ? array_map('intval', (array) $data['company_ids'])
                 : null,
         );
     }
@@ -85,6 +90,15 @@ final readonly class UpdateBusinessFunctionData
     public function hasOperationalSites(): bool
     {
         return $this->operationalSites !== null;
+    }
+
+    /**
+     * `company_ids: null` is treated as "not submitted" (the pivot is only
+     * synced when an array arrives; `[]` detaches every company).
+     */
+    public function hasCompanies(): bool
+    {
+        return $this->companyIds !== null;
     }
 
     /**

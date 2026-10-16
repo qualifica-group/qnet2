@@ -58,7 +58,7 @@ const TEST_PASSWORD = 'x'.repeat(12)
 /** Blank employment sub-form, mirroring `EMPTY_EMPLOYMENT` in `user-form-defaults.ts`. */
 const emptyEmployment: UserFormValues['employment'] = {
   is_manager: false,
-  job_description: '',
+  job_role_ids: [],
   reports_to_ids: [],
   relationship_type: null,
   company_id: null,
@@ -208,7 +208,7 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
           terminated_at: '',
           standard_daily_minutes: 480,
           break_daily_minutes: 30,
-          job_description: 'Backend engineer',
+          job_role_ids: [4, 7],
         },
       },
       draft(),
@@ -216,7 +216,7 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
 
     expect(payload.employment).toEqual({
       is_manager: false,
-      job_description: 'Backend engineer',
+      job_role_ids: [4, 7],
       reports_to_ids: [],
       relationship_type: 'employee',
       company_id: 5,
@@ -385,7 +385,7 @@ describe('buildUpdatePayload — employment (spec 0015)', () => {
         ...formValues,
         password: '',
         password_confirmation: '',
-        employment: { ...formValues.employment, job_description: 'Analyst' },
+        employment: { ...formValues.employment, job_role_ids: [9] },
       },
       original(),
       draft(),
@@ -393,7 +393,7 @@ describe('buildUpdatePayload — employment (spec 0015)', () => {
 
     expect(payload.employment).toEqual({
       is_manager: false,
-      job_description: 'Analyst',
+      job_role_ids: [9],
       reports_to_ids: [],
       relationship_type: null,
       company_id: null,

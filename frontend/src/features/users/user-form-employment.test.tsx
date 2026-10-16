@@ -13,7 +13,6 @@ import {
   fillRequiredCreateRows,
   pencilOf,
   permissionsFor,
-  typeInRow,
   userFixture,
   userWrapper,
 } from '@/features/users/user-test-fixtures'
@@ -110,7 +109,8 @@ beforeEach(() => {
 function userWithEmployment(): UserDetailWithPermissions {
   return userFixture({
     employment: employmentFixture({
-      job_description: 'Backend engineer',
+      job_role_ids: [3],
+      job_roles: [{ id: 3, label: 'Backend developer' }],
       relationship_type: 'employee',
       qualification_type: 'coordinator',
       hired_at: '2026-01-15',
@@ -181,7 +181,7 @@ describe('UserForm — is_manager / reports_to (spec 0015 AC-015, spec 0166 D-5)
     )
 
     expect(screen.queryByRole('button', { name: 'Edit Manager' })).not.toBeInTheDocument()
-    expect(pencilOf('Job description')).toBeInTheDocument()
+    expect(pencilOf('Job roles')).toBeInTheDocument()
   })
 })
 
@@ -192,6 +192,11 @@ describe('UserDetailView — employment relation pickers (spec 0015 AC-016)', ()
     fireEvent.click(pencilOf('Reports to'))
     expect(screen.getByTestId('resource-Reports to')).toHaveTextContent('users')
     expect(screen.getByTestId('selected-label-Reports to')).toHaveTextContent('Grace Hopper')
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    fireEvent.click(pencilOf('Job roles'))
+    expect(screen.getByTestId('resource-Job roles')).toHaveTextContent('job-roles')
+    expect(screen.getByTestId('selected-label-Job roles')).toHaveTextContent('Backend developer')
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
 
     fireEvent.click(pencilOf('Company'))
@@ -209,7 +214,7 @@ describe('UserForm — employment payload + 422 mapping (spec 0015 AC-018)', () 
     await waitFor(() => expect(createUserMock).toHaveBeenCalledTimes(1))
     expect(createUserMock.mock.calls[0][0].employment).toEqual({
       is_manager: false,
-      job_description: null,
+      job_role_ids: [],
       reports_to_ids: [],
       relationship_type: null,
       company_id: null,
@@ -229,12 +234,14 @@ describe('UserForm — employment payload + 422 mapping (spec 0015 AC-018)', () 
   it('sends the whole employment object, and nothing else, when one employment row is saved', async () => {
     await renderDetail(userWithEmployment())
 
-    typeInRow('Job description', 'Platform engineer', 'Save')
+    fireEvent.click(pencilOf('Job roles'))
+    fireEvent.click(screen.getByText('pick-Job roles'))
+    confirmOpenRow('Save')
 
     await waitFor(() => expect(updateUserMock).toHaveBeenCalledTimes(1))
     const payload = updateUserMock.mock.calls[0][1]
     expect(Object.keys(payload)).toEqual(['employment'])
-    expect(payload.employment).toMatchObject({ job_description: 'Platform engineer', company_id: 5, reports_to_ids: [2] })
+    expect(payload.employment).toMatchObject({ job_role_ids: [3, 1], company_id: 5, reports_to_ids: [2] })
   })
 
   it('maps a nested employment.* 422 error onto its open row, inline', async () => {

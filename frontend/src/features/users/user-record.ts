@@ -52,7 +52,7 @@ export interface UserRecordValues {
   primary_operational_site: EmploymentRelationRef | null
   remote_operational_sites: EmploymentRelationRef[]
   is_manager: boolean
-  job_description: string | null
+  job_roles: EmploymentRelationRef[]
   reports_to: EmploymentRelationRef[]
   relationship_type: RelationshipType | null
   company: EmploymentRelationRef | null
@@ -117,7 +117,7 @@ export function persistedUserValues(user: UserDetail): UserRecordValues {
     primary_operational_site: employment?.primary_operational_site ?? null,
     remote_operational_sites: employment?.remote_operational_sites ?? NO_REFS,
     is_manager: employment?.is_manager ?? false,
-    job_description: employment?.job_description ?? null,
+    job_roles: employment?.job_roles ?? NO_REFS,
     reports_to: employment?.reports_to ?? NO_REFS,
     relationship_type: employment?.relationship_type ?? null,
     company: employment?.company ?? null,

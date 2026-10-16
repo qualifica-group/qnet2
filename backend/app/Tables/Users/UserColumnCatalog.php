@@ -269,6 +269,15 @@ final class UserColumnCatalog
                 'filterType' => 'set',
             ],
             [
+                'id' => 'job_roles',
+                'label' => 'users.columns.job_roles',
+                'type' => 'text',
+                'visible' => false,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
+            ],
+            [
                 // No real DB column (derived from employment): an enumerated
                 // checklist of exact hire dates is not a useful UX either, so
                 // this is CONDITIONS-ONLY like `operational_site`/`primary_address`.
@@ -322,6 +331,7 @@ final class UserColumnCatalog
             ['columnId' => 'qualification_type', 'type' => 'set', 'options' => QualificationTypeEnum::values()],
             ['columnId' => 'is_manager', 'type' => 'set'],
             ['columnId' => 'reports_to', 'type' => 'set'],
+            ['columnId' => 'job_roles', 'type' => 'set'],
             ['columnId' => 'hired_at', 'type' => 'date'],
             ['columnId' => 'terminated_at', 'type' => 'date'],
         ];

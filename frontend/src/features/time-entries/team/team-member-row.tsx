@@ -181,19 +181,19 @@ export function TeamMemberRow({
                 {roleLabel || t('timeEntries.team.noRole')}
               </span>
             </span>
-            {member.job_description ? (
+            {member.job_roles.length > 0 ? (
               <span className="flex min-w-0 items-center gap-1">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Briefcase
                       className="size-3 shrink-0 text-muted-foreground"
-                      aria-label={t('timeEntries.team.jobDescription')}
+                      aria-label={t('timeEntries.team.jobRoles')}
                     />
                   </TooltipTrigger>
-                  <TooltipContent side="top">{t('timeEntries.team.jobDescription')}</TooltipContent>
+                  <TooltipContent side="top">{t('timeEntries.team.jobRoles')}</TooltipContent>
                 </Tooltip>
-                <span className="truncate" title={member.job_description}>
-                  {member.job_description}
+                <span className="truncate" title={member.job_roles.join(', ')}>
+                  {member.job_roles.join(', ')}
                 </span>
               </span>
             ) : null}

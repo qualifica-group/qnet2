@@ -3,10 +3,12 @@
 namespace App\Tables;
 
 use App\Models\BusinessFunction;
+use App\Models\Company;
 use App\Models\User;
 use App\Services\BusinessFunctionService;
 use App\Tables\BusinessFunctions\BusinessFunctionColumnCatalog;
 use App\Tables\BusinessFunctions\BusinessFunctionOperationalSitesColumn;
+use App\Tables\BusinessFunctions\BusinessFunctionOrganizationColumns;
 use App\Tables\BusinessFunctions\BusinessFunctionParentColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -38,6 +40,7 @@ class BusinessFunctionsTableDefinition extends AbstractTableDefinition
         private readonly BusinessFunctionService $service,
         private readonly BusinessFunctionParentColumn $parentColumn,
         private readonly BusinessFunctionOperationalSitesColumn $operationalSitesColumn,
+        private readonly BusinessFunctionOrganizationColumns $organizationColumns,
     ) {}
 
     public function domain(): string
@@ -67,7 +70,7 @@ class BusinessFunctionsTableDefinition extends AbstractTableDefinition
         // user, plus parent (spec 0010 REV) and operationalSites' primary
         // address + city for the composed label (BusinessFunctionOperationalSitesColumn).
         return BusinessFunction::query()->with([
-            'manager.avatar', 'users.avatar', 'parent', 'operationalSites.addresses.city',
+            'manager.avatar', 'users.avatar', 'parent', 'companies', 'operationalSites.addresses.city',
         ]);
     }
 
@@ -129,6 +132,7 @@ class BusinessFunctionsTableDefinition extends AbstractTableDefinition
             'is_business_service' => $row->is_business_service,
             'manager' => $this->userSummary($row->manager),
             'parent' => $this->parentSummary($row->parent),
+            'companies' => $row->companies->map(static fn (Company $company): array => ['id' => $company->id, 'label' => (string) $company->denomination])->all(),
             'users' => $row->users->map(fn (User $user): array => $this->userSummary($user))->all(),
             'operational_sites' => $this->operationalSitesColumn->summarize($row),
             'created_at' => $row->created_at,
@@ -203,6 +207,7 @@ class BusinessFunctionsTableDefinition extends AbstractTableDefinition
             'users' => $this->filterByRelatedName($query, 'users', $filter),
             'parent' => $this->parentColumn->applyFilter($query, $filter),
             'operational_sites' => $this->operationalSitesColumn->applyFilter($query, $filter),
+            BusinessFunctionOrganizationColumns::COMPANIES => $this->organizationColumns->applyFilter($query, $columnId, $filter),
             default => false,
         };
     }
@@ -296,6 +301,7 @@ class BusinessFunctionsTableDefinition extends AbstractTableDefinition
             'users' => $this->withBlanksFor($this->distinctAssociatedUserNames($query, $search, $limit), 'users', $search, $query),
             'parent' => $this->parentColumn->distinctValues($query, $search, $limit),
             'operational_sites' => $this->operationalSitesColumn->distinctValues($query, $search, $limit),
+            BusinessFunctionOrganizationColumns::COMPANIES => $this->organizationColumns->distinctValues($query, $columnId, $search, $limit),
             default => null,
         };
     }

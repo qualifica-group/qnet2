@@ -18,6 +18,7 @@ final readonly class TimeEntryTeamMemberData
 {
     /**
      * @param  list<int>  $managerIds  ascending, [] if none (spec 0166 data_contract)
+     * @param  list<string>  $jobRoles  names, alphabetical, [] if none (spec 0271 D-11)
      * @param  list<array{id: int, name: string, is_manager: bool}>  $businessFunctions
      * @param  array{percentage: int, working_days: int, tracked_days: int}  $coverage
      * @param  array{task_type: array{id: int, name: string, color: ?string, icon: ?string}, minutes: int, percentage: int}|null  $primaryCluster
@@ -25,7 +26,7 @@ final readonly class TimeEntryTeamMemberData
     public function __construct(
         public User $user,
         public array $managerIds,
-        public ?string $jobDescription,
+        public array $jobRoles,
         public array $businessFunctions,
         public ?OperationalSite $operationalSite,
         public array $coverage,

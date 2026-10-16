@@ -69,7 +69,6 @@ export interface EmploymentProductLine {
 export interface EmploymentDetail {
   id: number
   is_manager: boolean
-  job_description: string | null
   relationship_type: RelationshipType | null
   qualification_type: QualificationType | null
   hired_at: string | null
@@ -78,6 +77,8 @@ export interface EmploymentDetail {
   break_daily_minutes: number | null
   /** Zero or more managers (spec 0166), ordered by name; [] when none. */
   reports_to_ids: number[]
+  /** Mansioni ids (spec 0271); [] when none. */
+  job_role_ids: number[]
   company_id: number | null
   /** The user's single physical site (spec 0103 D-3), at most one, optional. */
   primary_operational_site_id: number | null
@@ -103,6 +104,8 @@ export interface EmploymentDetail {
   product_lines?: EmploymentProductLine[]
   /** Same order as `reports_to_ids`; emitted whenever the relation is loaded (always in the detail). */
   reports_to: EmploymentRelationRef[]
+  /** Mansioni (spec 0271), same order as `job_role_ids`. */
+  job_roles: EmploymentRelationRef[]
   company: EmploymentRelationRef | null
   /** Present only when the relation is eager-loaded (whenLoaded), like `company`. */
   primary_operational_site?: EmploymentRelationRef | null
@@ -166,7 +169,8 @@ export interface UserDetailWithPermissions extends UserDetail {
  */
 export interface EmploymentPayload {
   is_manager: boolean
-  job_description: string | null
+  /** Mansioni ids (spec 0271): always sent, [] clears them. */
+  job_role_ids: number[]
   /** Zero or more manager ids (spec 0166); [] when `is_manager` is true. */
   reports_to_ids: number[]
   relationship_type: RelationshipType | null

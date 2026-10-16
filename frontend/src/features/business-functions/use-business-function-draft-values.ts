@@ -4,6 +4,7 @@ import { useForSelectLabels } from '@/features/for-select/use-for-select'
 import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
 import type { BusinessFunctionRecordValues } from '@/features/business-functions/business-function-record'
 import type { BusinessFunctionFormValues } from '@/features/business-functions/use-business-function-form'
+import { COMPANIES_FOR_SELECT_RESOURCE } from '@/features/companies/for-select-api'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 
@@ -30,6 +31,8 @@ export function useBusinessFunctionDraftValues(control: Control<BusinessFunction
   const draft = useWatch({ control })
   const userIds = (draft.users ?? NO_IDS).filter((id): id is number => id !== undefined)
   const siteIds = (draft.operational_sites ?? NO_IDS).filter((id): id is number => id !== undefined)
+  const companyIds = (draft.company_ids ?? NO_IDS).filter((id): id is number => id !== undefined)
+  const companies = useForSelectLabels({ resource: COMPANIES_FOR_SELECT_RESOURCE, ids: companyIds })
   const parents = useForSelectLabels({ resource: BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE, ids: idsOf(draft.parent_id) })
   const managers = useForSelectLabels({ resource: USERS_FOR_SELECT_RESOURCE, ids: idsOf(draft.manager_id) })
   const users = useForSelectLabels({ resource: USERS_FOR_SELECT_RESOURCE, ids: userIds })
@@ -43,6 +46,7 @@ export function useBusinessFunctionDraftValues(control: Control<BusinessFunction
         : null,
     users: userIds.map((id) => ({ id, name: labelOf(users, id), avatar_url: null })),
     operational_sites: siteIds.map((id) => ({ id, label: labelOf(sites, id) })),
+    companies: companyIds.map((id) => ({ id, label: labelOf(companies, id) })),
     custom_fields: (draft.custom_fields ?? {}) as BusinessFunctionRecordValues['custom_fields'],
   }
 }

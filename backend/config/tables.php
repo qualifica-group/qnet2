@@ -25,6 +25,8 @@ use App\Tables\FinancialAccountsTableDefinition;
 use App\Tables\InvoiceInstallmentsTableDefinition;
 use App\Tables\InvoicesTableDefinition;
 use App\Tables\InvoiceTagsTableDefinition;
+use App\Tables\JobActivitiesTableDefinition;
+use App\Tables\JobRolesTableDefinition;
 use App\Tables\LeadImportsTableDefinition;
 use App\Tables\LeadsTableDefinition;
 use App\Tables\NotificationsTableDefinition;
@@ -98,6 +100,9 @@ return [
         'api-clients' => ApiClientsTableDefinition::class,
         'roles' => RolesTableDefinition::class,
         'business-functions' => BusinessFunctionsTableDefinition::class,
+        // spec 0271: HR org structure catalogues.
+        'job-roles' => JobRolesTableDefinition::class,
+        'job-activities' => JobActivitiesTableDefinition::class,
         'companies' => CompaniesTableDefinition::class,
         'commission-configurations' => CommissionConfigurationsTableDefinition::class,
         'company-sites' => CompanySitesTableDefinition::class,

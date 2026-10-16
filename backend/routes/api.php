@@ -6,8 +6,6 @@ use App\Http\Controllers\Attachments\AttachmentController;
 use App\Http\Controllers\Attributes\AttributeController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\ImpersonationController;
-use App\Http\Controllers\BusinessFunctions\BusinessFunctionController;
-use App\Http\Controllers\BusinessFunctions\BusinessFunctionForSelectController;
 use App\Http\Controllers\Companies\CompanyController;
 use App\Http\Controllers\Companies\CompanyForSelectController;
 use App\Http\Controllers\CompanySites\CompanySiteController;
@@ -266,22 +264,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::match(['put', 'patch'], 'roles/{role}', [RoleController::class, 'update']);
     Route::delete('roles/{role}', [RoleController::class, 'destroy']);
 
-    // Business functions CRUD backing the table row-actions (view/edit/delete)
-    // + create (spec 0010). Authorization (business-functions.view/create/
-    // update/delete) is enforced server-side in BusinessFunctionController via
-    // BusinessFunctionPolicy on every endpoint.
-    // Minimal searchable/paginated business-function list for entity-backed
-    // selects (for-select standard, ADR 0011), feeding the spec 0015 user-
-    // form "function" select. Declared ABOVE business-functions/{businessFunction}
-    // so the literal `for-select` segment wins over the bound wildcard.
-    // The only gate is auth:sanctum (ADR 0011, amended 2026-07-31).
-    Route::get('business-functions/for-select', BusinessFunctionForSelectController::class);
-
-    Route::get('business-functions/{businessFunction}', [BusinessFunctionController::class, 'show']);
-    Route::post('business-functions', [BusinessFunctionController::class, 'store']);
-    Route::match(['put', 'patch'], 'business-functions/{businessFunction}', [BusinessFunctionController::class, 'update']);
-    Route::delete('business-functions/{businessFunction}', [BusinessFunctionController::class, 'destroy']);
-
     // Companies CRUD backing the table row-actions (view/edit/delete) + create
     // (spec 0010). Authorization (companies.view/create/update/delete) is
     // enforced server-side in CompanyController via CompanyPolicy on every
@@ -341,7 +323,7 @@ Route::middleware('auth:sanctum')->group(function () {
     require __DIR__.'/api/referents.php';
     require __DIR__.'/api/accounting.php'; // Accounting: financial accounts, proforma requests, invoices
     require __DIR__.'/api/purchasing.php'; // Purchasing: RDA (spec 0208), cost types and ODA (spec 0210)
-
+    require __DIR__.'/api/hr.php'; // HR: business functions, job roles, job activities (spec 0271)
     require __DIR__.'/api/rewards.php'; // Reward inline status edit (spec 0060 §4, file-size split engineering.md §6)
 
     // Registries CRUD (spec 0020, "Anagrafiche"): extracted into

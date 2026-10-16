@@ -2,6 +2,7 @@
 
 use App\DataObjects\PersonalData\CreatePersonalData;
 use App\DataObjects\Users\CreateUserData;
+use App\DataObjects\Users\EmploymentData;
 use App\DataObjects\Users\ProfileData;
 use App\DataObjects\Users\UpdateUserData;
 use App\Enums\PersonalDataTypeEnum;
@@ -59,6 +60,7 @@ it('a super-admin actor CAN assign super-admin (positive control)', function () 
         'locale' => 'en',
         'password' => 'Str0ng-P4ssw0rd!',
         'password_confirmation' => 'Str0ng-P4ssw0rd!',
+        'employment' => ['covers_all_product_categories' => true],
         'roles' => [$superAdmin->id],
         'personal_data' => ['type' => 'individual', 'first_name' => 'An', 'last_name' => 'Ointed'],
     ])->assertCreated();
@@ -87,7 +89,7 @@ it('service create() silently drops super-admin for a non super-admin actor (byp
             firstName: 'By',
             lastName: 'Pass',
         ),
-    ));
+    ), new EmploymentData(coversAllProductCategories: true));
 
     expect($created->hasRole('super-admin'))->toBeFalse()
         ->and($created->hasRole('editor'))->toBeTrue();

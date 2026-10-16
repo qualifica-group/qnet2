@@ -61,7 +61,7 @@ it('200: returns the field catalogue and the full permissions block (create-cont
         'employment.covers_all_product_categories',
         // spec 0194 — the "Assegnabile" switch.
         'employment.is_assignable',
-        'employment.job_description', 'employment.reports_to_ids',
+        'employment.job_role_ids', 'employment.reports_to_ids',
         // spec 0111 — the assignment competence as {function, category} rows.
         'employment.product_lines',
         'employment.relationship_type', 'employment.company_id',

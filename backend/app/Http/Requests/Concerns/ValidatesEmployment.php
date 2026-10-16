@@ -64,7 +64,10 @@ trait ValidatesEmployment
             'employment.covers_all_product_categories' => ['sometimes', 'boolean'],
             // Spec 0194 D-3: absent = untouched, so no default here.
             'employment.is_assignable' => ['sometimes', 'boolean'],
-            'employment.job_description' => ['nullable', 'string', 'max:255'],
+            // Spec 0271 D-2: job roles from the catalogue, same tri-state as
+            // `reports_to_ids` (absent = untouched, null/[] = cleared).
+            'employment.job_role_ids' => ['sometimes', 'nullable', 'array'],
+            'employment.job_role_ids.*' => ['integer', 'distinct', Rule::exists('job_roles', 'id')],
             // Spec 0166 (D-2/D-8): a user may report to several managers, so
             // the single `reports_to_id` becomes a tri-state array, same shape
             // as `remote_operational_site_ids` below.
@@ -191,7 +194,6 @@ trait ValidatesEmployment
             isManager: (bool) $this->input('employment.is_manager', false),
             coversAllProductCategories: $this->boolean('employment.covers_all_product_categories'),
             isAssignable: $this->has('employment.is_assignable') ? $this->boolean('employment.is_assignable') : null,
-            jobDescription: $this->input('employment.job_description'),
             reportsToIdsProvided: $this->has('employment.reports_to_ids'),
             reportsToIds: $this->submittedIds('employment.reports_to_ids'),
             relationshipType: RelationshipTypeEnum::tryFrom((string) $this->input('employment.relationship_type')),
@@ -202,6 +204,8 @@ trait ValidatesEmployment
             remoteOperationalSiteIds: $this->submittedIds('employment.remote_operational_site_ids'),
             productLinesProvided: $this->has('employment.product_lines'),
             productLines: $this->submittedProductLines(),
+            jobRoleIdsProvided: $this->has('employment.job_role_ids'),
+            jobRoleIds: $this->submittedIds('employment.job_role_ids'),
             qualificationType: QualificationTypeEnum::tryFrom((string) $this->input('employment.qualification_type')),
             hiredAt: $this->input('employment.hired_at'),
             terminatedAt: $this->input('employment.terminated_at'),

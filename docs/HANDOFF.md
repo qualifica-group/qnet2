@@ -23,15 +23,32 @@
 - Manuale: guida in-app `migrations` IT+EN (nota Prodotti di costo) e manuale Claude Docs (paragrafo dopo
   "[OLD] Costi") aggiornati. Help vitest 131/131, ESLint ok, tsc -b ok.
 
-## Modulo HR — documento di prodotto, BOZZA (2026-10-16)
+## Spec 0271 — Modulo HR passo 1: Mansioni, Attivita', societa' delle funzioni, funzione obbligatoria — VERDE (2026-10-16, branch feature/hr)
 
-- `docs/product/hr.md`: campi e regole del modulo HR (fonte: pagine WeA HR), con lo stato di ogni campo in qnet-2.
-  Elenca informazioni, non tabelle: dove integrarle si decide nella spec di ogni area. Nessun codice scritto.
-- Decisioni utente: dati sempre importati da `backend/app/Migrations/`; nessuna persona senza account (dipendente =
-  utente); niente SSO; assenze rinviate ma da fare (§11 del documento); mansione = ruolo di permessi Spatie, arricchito
-  dei dati organizzativi (D-6); Controllo di Gestione fuori dal documento per ora (D-7).
-- Aperte: campi *proposta* da confermare; reparti; se la posizione assegna le sue mansioni/permessi. Prossimo passo:
-  `/plan-feature` sulla struttura organizzativa (§5).
+- Documento di prodotto `docs/product/hr.md` (campi, non tabelle; decisioni D-1..D-9). Spec
+  `docs/specs/0271-hr-org-structure.xml` rev.3: Divisioni ELIMINATE (utente), posizioni non servono, nessun importer
+  (il legacy non ha questi dati), mansione = catalogo proprio SENZA legame con ruoli/permessi, niente SSO, Controllo di
+  Gestione fuori. Mai sigle di dominio (BU/BS): "business unit" / "business service" per esteso (utente).
+- Backend: tabelle `job_roles`, `job_activities`, `job_activity_job_role`, `employment_profile_job_role`,
+  `business_function_company` (unique con nomi corti: MySQL max 64 caratteri, SQLite non lo intercetta); drop
+  `employment_profiles.job_description` (valori persi, decisione utente); permesso di campo rinominato in
+  `employment.job_role_ids`. CRUD `/api/job-roles`, `/api/job-activities` (+ for-select solo auth, ADR 0011; delete in
+  uso 409, libero 204), tabelle omonime, permessi `job-roles.*`/`job-activities.*`, menu Configurazione. Rotte HR
+  raggruppate in `routes/api/hr.php` (anche business-functions, per stare sotto 500 righe in `api.php`).
+- Regola funzione obbligatoria (D-6, `Services/Users/BusinessFunctionCoverageGuard`): utente attivo, non di servizio,
+  senza `covers_all_product_categories` deve avere almeno una riga `employment.product_lines`; solo via API (create,
+  attivazione, update che tocca `employment`); 422 su `employment.product_lines`; l'import legacy la salta
+  (`enforceCoverage: false`).
+- Funzioni aziendali: `company_ids`/`companies`. Scheda utente: `employment.job_role_ids` (tri-state) /
+  `job_roles`; griglia utenti colonna `job_roles`; segnatempo team `job_roles: string[]`.
+- Frontend: `features/job-roles/`, `features/job-activities/`, i18n raggruppati in `{it,en}-hr.ts`, guide in-app
+  `job-roles`/`job-activities` + aggiornate users, business-functions, time-entries.
+- Test con rollback a step fisso aggiornati (+4 migrazioni 0271): QuoteWorkflowMigrationTest 201,
+  SupplierCommissionDirectionTest 65, PurchaseOrderMigrationTest 50.
+- Da fare: manuale Claude Docs (sezioni Mansioni, Attivita', Funzioni aziendali > Societa', Utenti > Mansioni e regola
+  della funzione obbligatoria, segnatempo team). `OperatorRoster` porta ancora la colonna mansione del foglio cliente
+  (inutilizzata): potrebbe popolare il catalogo Mansioni. Il legacy invia ancora `job_description` (ignorato).
+- Prossimo passo HR: scheda dipendente estesa (storico contrattuale, CCNL e livelli, IBAN, recapiti di lavoro).
 
 ## Spec 0270 — Costi effettivi Commessa sul blocco catalogo + righe — VERDE, NON COMMITTATO (2026-10-16)
 

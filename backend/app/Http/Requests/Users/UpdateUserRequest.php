@@ -97,14 +97,15 @@ class UpdateUserRequest extends FormRequest
      * `employment.remote_operational_site_ids`, which since spec 0103 are
      * accessors over the site-membership pivot rather than plain columns.
      * Loading the relation here keeps that comparison to the queries this
-     * request already needs, instead of one lazy load per checked field.
+     * request already needs, instead of one lazy load per checked field. Same
+     * for the job roles pivot behind `employment.job_role_ids` (spec 0271).
      */
     protected function authorizationModel(): ?Model
     {
         /** @var User $user */
         $user = $this->route('user');
 
-        return $user->loadMissing('employment.operationalSites');
+        return $user->loadMissing(['employment.operationalSites', 'employment.jobRoles']);
     }
 
     /**

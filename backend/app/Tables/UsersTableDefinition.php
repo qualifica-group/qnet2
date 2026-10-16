@@ -9,6 +9,7 @@ use App\Tables\Users\UserBusinessFunctionColumn;
 use App\Tables\Users\UserColumnCatalog;
 use App\Tables\Users\UserEmploymentColumns;
 use App\Tables\Users\UserGeoColumns;
+use App\Tables\Users\UserJobRolesColumn;
 use App\Tables\Users\UserPersonalDataColumns;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -106,6 +107,7 @@ class UsersTableDefinition extends AbstractTableDefinition
                 UserBusinessFunctionColumn::RELATION_PATH,
                 'employment.company',
                 'employment.reportsTo',
+                UserJobRolesColumn::RELATION_PATH,
                 // Spec 0103 D-7: the CELL always shows the PHYSICAL site only
                 // (never a remote membership), so only the pivot-scoped
                 // `primaryOperationalSite` relation is eager-loaded here —

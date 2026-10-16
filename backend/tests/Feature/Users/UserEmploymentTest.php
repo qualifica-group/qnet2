@@ -3,6 +3,7 @@
 use App\Models\BusinessFunction;
 use App\Models\Company;
 use App\Models\EmploymentProfile;
+use App\Models\JobRole;
 use App\Models\OperationalSite;
 use App\Models\ProductCategory;
 use App\Models\User;
@@ -56,6 +57,7 @@ it('0015 AC-001: create with a full employment block persists the row and resolv
     $category = ProductCategory::factory()->create(['name' => 'Fibra', 'business_function_id' => $function->id]);
     $company = Company::factory()->create(['denomination' => 'Acme Srl', 'vat_number' => 'IT123']);
     $site = OperationalSite::factory()->withAddress()->create();
+    $jobRole = JobRole::factory()->create(['name' => 'Backend engineer']);
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/users', [
@@ -66,7 +68,7 @@ it('0015 AC-001: create with a full employment block persists the row and resolv
         'personal_data' => employmentTestProfile(),
         'employment' => [
             'is_manager' => false,
-            'job_description' => 'Backend engineer',
+            'job_role_ids' => [$jobRole->id],
             'reports_to_ids' => [$manager->id],
             // Spec 0111: the business function is written as a competence row,
             // not as a column of the profile.
@@ -105,6 +107,9 @@ it('0015 AC-001: create with a full employment block persists the row and resolv
     ]);
 
     $response->assertJsonPath('data.employment.reports_to_ids', [$manager->id])
+        ->assertJsonPath('data.employment.job_role_ids', [$jobRole->id])
+        ->assertJsonPath('data.employment.job_roles', [['id' => $jobRole->id, 'name' => 'Backend engineer']])
+        ->assertJsonMissingPath('data.employment.job_description')
         ->assertJsonPath('data.employment.reports_to.0.id', $manager->id)
         ->assertJsonPath('data.employment.reports_to.0.label', 'Manager One')
         ->assertJsonPath('data.employment.product_lines.0.business_function', ['id' => $function->id, 'name' => 'Engineering'])
@@ -128,6 +133,7 @@ it('0015 AC-002: create without employment persists no employment row', function
         'locale' => 'en',
         'password' => 'Str0ng-P4ssw0rd!',
         'password_confirmation' => 'Str0ng-P4ssw0rd!',
+        'is_active' => false,
         'personal_data' => employmentTestProfile(),
     ])->assertCreated()->assertJsonMissingPath('data.employment');
 
@@ -150,7 +156,7 @@ it('0166 AC-005: is_manager=true forces employment.reports_to_ids empty', functi
         'password' => 'Str0ng-P4ssw0rd!',
         'password_confirmation' => 'Str0ng-P4ssw0rd!',
         'personal_data' => employmentTestProfile(),
-        'employment' => ['is_manager' => true, 'reports_to_ids' => [$wouldBeManager->id]],
+        'employment' => ['is_manager' => true, 'covers_all_product_categories' => true, 'reports_to_ids' => [$wouldBeManager->id]],
     ])->assertCreated();
 
     $response->assertJsonPath('data.employment.is_manager', true)
@@ -218,7 +224,7 @@ it('0015 AC-005: update with employment:null deletes the row', function () {
     $target = User::factory()->withEmployment()->create();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/users/{$target->id}", ['employment' => null])
+    $this->patchJson("/api/users/{$target->id}", ['is_active' => false, 'employment' => null])
         ->assertOk()
         ->assertJsonMissingPath('data.employment');
 
@@ -231,21 +237,21 @@ it('0015 AC-005: update with an employment object upserts the row', function () 
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/users/{$target->id}", [
-        'employment' => ['is_manager' => false, 'job_description' => 'Updated role'],
-    ])->assertOk()->assertJsonPath('data.employment.job_description', 'Updated role');
+        'employment' => ['is_manager' => false, 'covers_all_product_categories' => true, 'standard_daily_minutes' => 420],
+    ])->assertOk()->assertJsonPath('data.employment.standard_daily_minutes', 420);
 
     $this->assertDatabaseHas('employment_profiles', [
         'user_id' => $target->id,
-        'job_description' => 'Updated role',
+        'standard_daily_minutes' => 420,
     ]);
 
     // A second upsert on the SAME row (no duplicate 1:1 row).
     $this->patchJson("/api/users/{$target->id}", [
-        'employment' => ['is_manager' => false, 'job_description' => 'Updated again'],
+        'employment' => ['is_manager' => false, 'covers_all_product_categories' => true, 'standard_daily_minutes' => 360],
     ])->assertOk();
 
     expect(EmploymentProfile::where('user_id', $target->id)->count())->toBe(1);
-    $this->assertDatabaseHas('employment_profiles', ['user_id' => $target->id, 'job_description' => 'Updated again']);
+    $this->assertDatabaseHas('employment_profiles', ['user_id' => $target->id, 'standard_daily_minutes' => 360]);
 });
 
 // ---------------------------------------------------------------------------
@@ -308,7 +314,7 @@ it('0015 AC-007: an actor with only users.create/update (no dedicated employment
         'password' => 'Str0ng-P4ssw0rd!',
         'password_confirmation' => 'Str0ng-P4ssw0rd!',
         'personal_data' => employmentTestProfile(),
-        'employment' => ['is_manager' => true],
+        'employment' => ['is_manager' => true, 'covers_all_product_categories' => true],
     ])->assertCreated()->assertJsonPath('data.employment.is_manager', true);
 });
 
@@ -331,6 +337,7 @@ it('0103 AC-004: create with a primary site and two remote sites persists three 
         'password_confirmation' => 'Str0ng-P4ssw0rd!',
         'personal_data' => employmentTestProfile(),
         'employment' => [
+            'covers_all_product_categories' => true,
             'primary_operational_site_id' => $primary->id,
             'remote_operational_site_ids' => [$remoteOne->id, $remoteTwo->id],
         ],
@@ -359,7 +366,7 @@ it('0103 AC-005: switching the primary site from A to B leaves a single primary 
     $siteA = OperationalSite::factory()->withAddress()->create();
     $siteB = OperationalSite::factory()->withAddress()->create();
     $target = User::factory()
-        ->withEmployment(fn (EmploymentProfileFactory $factory): EmploymentProfileFactory => $factory->physicalSite($siteA))
+        ->withEmployment(fn (EmploymentProfileFactory $factory): EmploymentProfileFactory => $factory->physicalSite($siteA)->competentInEveryCategoryOf(BusinessFunction::factory()->create()))
         ->create();
     Sanctum::actingAs($actor);
 
@@ -421,7 +428,7 @@ it('0103 AC-008: setting primary_operational_site_id to null clears the physical
     $remoteOne = OperationalSite::factory()->withAddress()->create();
     $remoteTwo = OperationalSite::factory()->withAddress()->create();
     $target = User::factory()
-        ->withEmployment(fn (EmploymentProfileFactory $factory): EmploymentProfileFactory => $factory->physicalSite($physical)->remoteSites($remoteOne, $remoteTwo))
+        ->withEmployment(fn (EmploymentProfileFactory $factory): EmploymentProfileFactory => $factory->physicalSite($physical)->remoteSites($remoteOne, $remoteTwo)->competentInEveryCategoryOf(BusinessFunction::factory()->create()))
         ->create();
     Sanctum::actingAs($actor);
 

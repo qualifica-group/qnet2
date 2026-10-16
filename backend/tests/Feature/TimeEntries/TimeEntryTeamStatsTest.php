@@ -2,6 +2,7 @@
 
 use App\Models\BusinessFunction;
 use App\Models\EmploymentProfile;
+use App\Models\JobRole;
 use App\Models\TaskType;
 use App\Models\TimeEntry;
 use App\Models\User;
@@ -45,13 +46,16 @@ it('AC-019: a responsabile sees items for a DIRECT and an INDIRECT subordinate, 
     $direct = User::factory()->create(['name' => 'Bob Direct']);
     $indirect = User::factory()->create(['name' => 'Carl Indirect']);
     EmploymentProfile::factory()->manager()->create(['user_id' => $manager->id]);
-    EmploymentProfile::factory()->reportsTo($manager)->create([
+    $directProfile = EmploymentProfile::factory()->reportsTo($manager)->create([
         'user_id' => $direct->id,
-        'job_description' => 'Developer',
         'standard_daily_minutes' => 480,
         'break_daily_minutes' => 0,
     ]);
     EmploymentProfile::factory()->reportsTo($direct)->create(['user_id' => $indirect->id]);
+    $directProfile->jobRoles()->attach([
+        JobRole::factory()->create(['name' => 'Developer'])->id,
+        JobRole::factory()->create(['name' => 'Analyst'])->id,
+    ]);
 
     $function = BusinessFunction::factory()->create(['manager_id' => $direct->id]);
     $function->users()->attach($direct->id);
@@ -72,7 +76,9 @@ it('AC-019: a responsabile sees items for a DIRECT and an INDIRECT subordinate, 
     $indirectItem = $byId->get($indirect->id);
 
     expect($directItem['manager_ids'])->toBe([$manager->id])
-        ->and($directItem['job_description'])->toBe('Developer')
+        ->and($directItem['job_roles'])->toBe(['Analyst', 'Developer'])
+        ->and($directItem)->not->toHaveKey('job_description')
+        ->and($indirectItem['job_roles'])->toBe([])
         ->and($directItem['business_functions'])->toBe([['id' => $function->id, 'name' => $function->name, 'is_manager' => true]])
         ->and($directItem['coverage'])->toBe(['percentage' => 50, 'working_days' => 1, 'tracked_days' => 1])
         ->and($directItem['primary_cluster']['task_type']['id'])->toBe($typeA->id)

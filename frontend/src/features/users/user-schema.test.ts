@@ -17,7 +17,7 @@ const t = ((key: string) => key) as unknown as TFunction
 
 const employment = {
   is_manager: false,
-  job_description: '',
+  job_role_ids: [],
   reports_to_ids: [],
   relationship_type: null,
   company_id: null,

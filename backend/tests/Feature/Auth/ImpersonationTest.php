@@ -80,6 +80,7 @@ if (! function_exists('impersonationCreateUserPayload')) {
             'password' => 'Str0ng-P4ssw0rd!',
             'password_confirmation' => 'Str0ng-P4ssw0rd!',
             'personal_data' => ['type' => 'individual', 'first_name' => 'New', 'last_name' => 'Person'],
+            'employment' => ['covers_all_product_categories' => true],
         ];
     }
 }

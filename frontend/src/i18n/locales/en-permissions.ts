@@ -146,6 +146,8 @@ export const permissions = {
     'purchase-requests': 'Purchase requests (RDA)',
     'purchase-orders': 'Purchase orders (ODA)',
     'cost-types': 'Cost types',
+    'job-roles': 'Job roles',
+    'job-activities': 'Activities',
     'purchase-request-priorities': 'RDA priorities',
     'purchase-order-statuses': 'ODA statuses',
     'purchase-request-line-statuses': 'RDA line statuses',

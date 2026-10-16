@@ -26,7 +26,7 @@ export const SERVER_ERROR_FIELDS = [
   'roles',
   'password',
   'employment.is_manager',
-  'employment.job_description',
+  'employment.job_role_ids',
   REPORTS_TO_IDS_FIELD,
   'employment.relationship_type',
   'employment.company_id',

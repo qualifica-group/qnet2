@@ -20,6 +20,7 @@ function firstAccessCreatePayload(array $overrides = []): array
         'email' => 'new.person@example.com',
         'locale' => 'it',
         'personal_data' => individualProfile(),
+        'employment' => ['covers_all_product_categories' => true],
     ], $overrides);
 }
 

@@ -37,7 +37,7 @@ class BusinessFunctionService
      *
      * @var array<int, string>
      */
-    private const array HYDRATED_RELATIONS = ['manager.avatar', 'parent', 'users.avatar', 'operationalSites.addresses.city'];
+    private const array HYDRATED_RELATIONS = ['manager.avatar', 'parent', 'companies', 'users.avatar', 'operationalSites.addresses.city'];
 
     public function __construct(private readonly BusinessFunctionHierarchy $hierarchy) {}
 
@@ -56,6 +56,10 @@ class BusinessFunctionService
 
             if ($data->hasOperationalSites()) {
                 $businessFunction->operationalSites()->sync($data->operationalSites);
+            }
+
+            if ($data->hasCompanies()) {
+                $businessFunction->companies()->sync($data->companyIds);
             }
 
             return $businessFunction->fresh(self::HYDRATED_RELATIONS);
@@ -86,6 +90,10 @@ class BusinessFunctionService
 
             if ($data->hasOperationalSites()) {
                 $businessFunction->operationalSites()->sync($data->operationalSites);
+            }
+
+            if ($data->hasCompanies()) {
+                $businessFunction->companies()->sync($data->companyIds);
             }
 
             return $businessFunction->fresh(self::HYDRATED_RELATIONS);

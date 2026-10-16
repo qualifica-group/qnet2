@@ -51,6 +51,7 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'paragraph', text: 'Physical site and remote sites count the same way for assignment. In the figures strip at the top, **Matching** shows **Assignable** or **Not assignable**.' },
+        { type: 'note', text: 'An active person (not a service account) must have at least one **Competency** row or **Covers all product categories** turned on: otherwise the save is refused and the error appears on the **Competency** row.' },
         { type: 'warning', text: 'The person receives assignments only when all three conditions hold: **Assignable** on, at least one competency and at least one site. The module flags the missing one with "Assignment turned off", "Missing competency" or "Missing site".' },
       ],
     },
@@ -63,7 +64,7 @@ const guide: HelpGuide = {
           headers: ['Field', 'What to enter'],
           rows: [
             ['**Manager**', 'Turn it on if the person is responsible for other employees.'],
-            ['**Job title**', 'Description of the job (up to 255 characters).'],
+            ['**Job roles**', 'The job roles the person performs, chosen from the Job roles module list: you can pick several or none.'],
             ['**Reports to**', 'The direct managers, chosen among users: you can pick more than one. The field is hidden when **Manager** is on.'],
             ['**Employment type**', 'The type of employment relationship.'],
             ['**Company**', 'The reference company.'],

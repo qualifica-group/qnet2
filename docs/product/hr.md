@@ -16,15 +16,17 @@
 | D-3 | Niente accesso unico (SSO) | Fuori scope |
 | D-4 | Le assenze sono rinviate ma **obbligatorie** | Vedi §11: requisito di prodotto da sviluppare in una fase successiva |
 | D-5 | Il segnatempo resta quello esistente (`time_entries`) | HR lo legge, non lo rifà |
-| D-6 | **Mansione e ruolo di permessi sono la stessa cosa** | La mansione è il ruolo esistente (Spatie), arricchito dei dati organizzativi (§5). Assegnare una mansione a una persona le dà anche i permessi di quel ruolo |
+| D-6 | **La mansione è un catalogo a sé, senza legame con ruoli e permessi** (rivista il 2026-10-16, sostituisce "mansione = ruolo") | Una persona ha una o più mansioni scelte da un select; il testo libero `job_description` sparisce |
+| D-8 | Le posizioni non servono | Sede e mansioni descrivono già dove e cosa fa una persona |
+| D-9 | Le divisioni non servono (2026-10-16) | Le funzioni aziendali (business unit e business service), con il loro albero, sono già il primo livello |
 | D-7 | Il Controllo di Gestione è fuori da questo documento | Nessuna matrice di attribuzione, chiusura mensile o export verso il CdG per ora |
 
 ## 2. Regole che valgono su tutto il modulo
 
-1. **Ogni persona attiva ha almeno una funzione aziendale (BU o BS).** Non si può attivare una persona senza funzione,
+1. **Ogni persona attiva ha almeno una funzione aziendale (business unit o business service).** Non si può attivare una persona senza funzione,
    né togliere l'ultima funzione a una persona attiva: l'operazione fallisce con un messaggio chiaro.
-2. **La struttura viene prima delle persone.** Una persona senza posizione non si può allocare, né costare, e non
-   compare nell'organigramma.
+2. **La struttura viene prima delle persone.** Una persona senza funzione e mansioni non si può allocare, né
+   costare, e non compare nell'organigramma.
 3. **Il contratto ha una storia.** Un cambio di retribuzione o inquadramento crea una nuova condizione con data di
    decorrenza; quella precedente resta. I costi di un mese passato usano la condizione valida in quel mese.
 4. **Le allocazioni di una persona in un periodo fanno 100%.** Un totale diverso blocca il salvataggio: non deve
@@ -53,10 +55,8 @@
 | È responsabile | se guida una squadra | presente (`is_manager`) |
 | Sede principale, sedi remote | dove lavora | presente (`employment_profile_operational_site`) |
 | Orario standard e pausa giornaliera | minuti | presente |
-| Funzioni aziendali (BU/BS) | appartenenza, obbligatoria (regola 1) | presente (`business_function_user`); **vincolo da aggiungere** |
-| Posizione | il posto organizzativo che occupa | **da aggiungere** (§5) |
-| Mansioni | che cosa fa: i ruoli assegnati alla persona (D-6) | presente come assegnazione dei ruoli; `job_description` resta testo libero |
-| Attività escluse | attività di una sua mansione che quella persona non svolge | **da aggiungere** |
+| Funzioni aziendali (business unit o business service) | appartenenza, obbligatoria (regola 1) | presente (`business_function_user`); **vincolo da aggiungere** |
+| Mansioni | che cosa fa: una o più mansioni dal catalogo (D-6) | **da aggiungere** (spec 0271); oggi testo libero `job_description`, che viene rimosso |
 | Stato attivo / cessato | chi è uscito si conserva, non si cancella | presente (`is_active`, `terminated_at`); **manca** una vista dei cessati |
 
 ## 4. Contratto, CCNL e pagamento
@@ -92,24 +92,21 @@ Una riga per ogni cambio, mai sovrascritta.
 
 ## 5. Struttura organizzativa
 
-La scala è Divisione → Funzione aziendale → Posizione → Mansione → Attività; sedi e società stanno accanto.
+Il primo livello è la Funzione aziendale (business unit o business service, con il suo albero padre-figlio); la persona ha mansioni, e ogni mansione comprende attività. Sedi e
+società stanno accanto. Le posizioni non si fanno (D-8). Primo passo: spec 0271.
 
 | Elemento | Campi | Oggi in qnet-2 |
 |---|---|---|
-| Divisione | nome; società in cui esiste | **da aggiungere** |
-| Funzione aziendale | nome, BU o BS, funzione padre, responsabile | presente (`business_functions`) |
-| | divisione di appartenenza; società in cui esiste | **da aggiungere** |
-| Posizione | nome, funzione di appartenenza, descrizione (*proposta*) — il posto, non la persona | **da aggiungere** |
-| Mansione | è il ruolo di permessi (D-6): nome presente; **da aggiungere** descrizione, posizioni in cui sta, attività, competenze richieste (§8) | presente come ruolo (seeder `QualificaRoleSeeder`); mancano i dati organizzativi |
+| Funzione aziendale | nome, tipo (business unit o business service), funzione padre, responsabile | presente (`business_functions`) |
+| | società in cui esiste | **da aggiungere** (spec 0271) |
+| Mansione | nome, descrizione, attività comprese; competenze richieste (§8, passo successivo) | **da aggiungere** come catalogo (D-6) |
 | Attività | nome, mansione di appartenenza | **da aggiungere** (`task_types` è il tipo attività del segnatempo, non la stessa cosa) |
-| Reparto | nome | **da aggiungere** (*da confermare* se serve accanto a divisione e funzione) |
+| Reparto | nome | **da aggiungere** (*da confermare* se serve accanto alle funzioni) |
 | Sede | nome, indirizzo, attiva | presente (`operational_sites`) |
 | Società | denominazione, partita IVA, sedi | presente (`companies`, `company_sites`) |
 
-Legami da gestire: posizione ↔ mansioni, mansione ↔ attività, persona ↔ mansioni (presente: assegnazione dei ruoli),
-persona ↔ funzione (presente), funzione ↔ società, divisione ↔ società, eccezioni persona ↔ attività esclusa.
-Da definire nella spec: se assegnare una posizione a una persona le assegna anche le mansioni (quindi i permessi)
-di quella posizione, o se le mansioni restano assegnate a mano.
+Legami da gestire: mansione ↔ attività, persona ↔ mansioni, persona ↔ funzione (presente: le competenze
+commerciali, che valgono anche per la regola della funzione obbligatoria), funzione ↔ società.
 
 ## 6. Organigramma
 
@@ -117,7 +114,7 @@ La stessa struttura vista dall'alto, non un disegno separato.
 
 | Campo | Significato | Oggi in qnet-2 |
 |---|---|---|
-| Unità | riquadri dell'organigramma (*proposta*: ricavati da divisioni, funzioni, posizioni) | **da aggiungere**; oggi esiste solo l'albero dei responsabili nel team del segnatempo |
+| Unità | riquadri dell'organigramma (*proposta*: ricavati dalle funzioni) | **da aggiungere**; oggi esiste solo l'albero dei responsabili nel team del segnatempo |
 | Ruolo nell'unità | i ruoli dentro ogni riquadro | **da aggiungere** |
 | Assegnazione | chi occupa quale ruolo | **da aggiungere** |
 | Registro spostamenti | chi ha spostato cosa | coperto dall'activity log (regola 5) |
@@ -145,7 +142,7 @@ concetto HR (esistono solo allegati generici e la mail di benvenuto).
 | Corsi | titolo, durata in ore, obbligatorio, validità (*proposta*) | persona, corso, scadenza, data completamento, esito |
 | Competenze | nome, categoria (*proposta*) | persona ↔ competenza con livello e data; mansione ↔ competenza richiesta con livello minimo |
 | Obiettivi (KPI) | nome, unità di misura, target, periodicità (*proposta*) | persona, periodo, valore raggiunto, target, nota |
-| Onboarding | modello: nome, a quale mansione o posizione si applica; passi: titolo, ordine, responsabile, giorni dall'ingresso, tipo (documento, corso, attività) | percorso della persona: modello, data inizio, stato; per ogni passo: stato, completato il, da chi |
+| Onboarding | modello: nome, a quale mansione si applica; passi: titolo, ordine, responsabile, giorni dall'ingresso, tipo (documento, corso, attività) | percorso della persona: modello, data inizio, stato; per ogni passo: stato, completato il, da chi |
 
 ## 9. Il quotidiano della persona e del responsabile
 
@@ -160,8 +157,9 @@ concetto HR (esistono solo allegati generici e la mail di benvenuto).
 
 Ogni area ha un importer in `backend/app/Migrations/`, con lookup `old_id`, upsert idempotente e warning sui
 riferimenti mancanti. Già esistono gli importer di utenti (con profilo d'impiego), ruoli, funzioni aziendali e membri,
-società, sedi. Da aggiungere, in ordine di dipendenza: struttura (divisioni, posizioni, mansioni, attività e legami),
-condizioni contrattuali e CCNL, metodi di pagamento, allocazioni, costi mensili, cataloghi e assegnazioni.
+società, sedi. La struttura (mansioni, attività) non ha importer: il legacy non ha questi dati e si
+compilano in app (spec 0271). Da valutare spec per spec: condizioni contrattuali e CCNL, metodi di pagamento,
+allocazioni, costi mensili, cataloghi e assegnazioni.
 Per ognuno va verificato prima che il legacy abbia il dato; se non lo ha, il campo nasce vuoto.
 
 ## 11. Assenze e richieste di ferie (rinviate, da fare)
@@ -182,12 +180,11 @@ Requisito di prodotto da sviluppare in una fase successiva, sul modello delle ap
 ## 12. Decisioni aperte
 
 1. **Campi *proposta*:** da confermare area per area prima della spec.
-2. **Reparti:** servono accanto a divisioni e funzioni?
-3. **Posizione e mansioni:** assegnare una posizione assegna anche le sue mansioni (e i permessi)? Vedi §5.
+2. **Reparti:** servono accanto alle funzioni?
 
 ## 13. Ordine di sviluppo
 
-1. Struttura organizzativa (§5) e vincolo BU/BS (regola 1).
+1. Struttura organizzativa (§5) e vincolo della funzione aziendale obbligatoria (regola 1).
 2. Scheda dipendente estesa e contratto (§3, §4).
 3. Allocazioni e costo del personale (§7).
 4. Organigramma (§6).

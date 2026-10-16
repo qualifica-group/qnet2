@@ -37,6 +37,8 @@ function baseFields(t: TFunction) {
     parent_id: z.number().nullable(),
     // Multiselect operational sites (for-select standard): ids, full-replace.
     operational_sites: z.array(z.number()),
+    // Multiselect companies (for-select standard): ids, full-replace.
+    company_ids: z.array(z.number()),
   }
 }
 

@@ -19,7 +19,7 @@ function member(overrides: Partial<TeamPulseMember> & { id: number; name: string
   return {
     user: { id, name, email: `${name}@example.test`, avatar_url: null },
     manager_ids: [],
-    job_description: null,
+    job_roles: [],
     roles: [],
     business_functions: [],
     operational_site: null,
@@ -64,6 +64,16 @@ describe('TimeEntriesTeamPulse', () => {
 
     expect(await screen.findByText('Anna Ceo')).toBeInTheDocument()
     expect(screen.getByText('Bruno Manager')).toBeInTheDocument()
+  })
+
+  it('spec 0271 AC-015: shows the member job role names, and nothing when there are none', async () => {
+    renderTeamPulse([
+      member({ id: 1, name: 'Anna Ceo' }),
+      member({ id: 2, name: 'Bruno Manager', manager_ids: [1], job_roles: ['Analyst', 'Developer'] }),
+    ])
+
+    expect(await screen.findByText('Analyst, Developer')).toBeInTheDocument()
+    expect(screen.getAllByLabelText('Job roles')).toHaveLength(1)
   })
 
   it('does not call onSelectMember when clicking the current user own row', async () => {

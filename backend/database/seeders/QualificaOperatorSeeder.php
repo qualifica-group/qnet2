@@ -63,7 +63,7 @@ class QualificaOperatorSeeder extends Seeder
         $this->functionIdByName = $this->resolveFunctionIds();
 
         // Step 3: one account per row, with its employment profile.
-        foreach (OperatorRoster::OPERATORS as [$firstName, $lastName, $email, $job, $role, $physicalCity, $cities, $categories]) {
+        foreach (OperatorRoster::OPERATORS as [$firstName, $lastName, $email, , $role, $physicalCity, $cities, $categories]) {
             $user = $this->seedAccount("{$firstName} {$lastName}", $email, $role);
             $this->syncPersonName($user, $firstName, $lastName);
 
@@ -72,7 +72,6 @@ class QualificaOperatorSeeder extends Seeder
 
             // Never the wildcard: a profile seeded as "Tutte" before converges.
             $employment = $user->employment()->updateOrCreate([], [
-                'job_description' => $job,
                 'covers_all_product_categories' => false,
                 'is_assignable' => $isAssignable,
             ]);

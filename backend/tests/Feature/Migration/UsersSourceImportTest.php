@@ -143,7 +143,11 @@ it('creates a user with card, primary address, contacts, verbatim password hash 
         ->and($employment->remote_operational_site_ids)->toBe([])
         ->and($employment->relationship_type->value)->toBe('employee')
         ->and($employment->qualification_type->value)->toBe('coordinator')
-        ->and($employment->standard_daily_minutes)->toBe(480);
+        ->and($employment->standard_daily_minutes)->toBe(480)
+        // 0271 AC-014 / D-6: the legacy still sends job_description (fixture above) and is
+        // ignored without failing; the import also bypasses the mandatory business function rule (API only).
+        ->and($employment->getAttributes())->not->toHaveKey('job_description')
+        ->and($employment->productLines()->count())->toBe(0);
 
     $fresh = $run->fresh();
     expect($fresh->status)->toBe(MigrationStatus::Completed)

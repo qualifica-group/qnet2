@@ -34,7 +34,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'is_manager',
     'covers_all_product_categories',
     'is_assignable',
-    'job_description',
     'relationship_type',
     'company_id',
     'qualification_type',
@@ -139,6 +138,16 @@ class EmploymentProfile extends BaseModel
     }
 
     /**
+     * The job roles assigned to this person (spec 0271 D-2).
+     *
+     * @return BelongsToMany<JobRole, $this>
+     */
+    public function jobRoles(): BelongsToMany
+    {
+        return $this->belongsToMany(JobRole::class, 'employment_profile_job_role');
+    }
+
+    /**
      * Read-only proxy onto the pivot for the field-permission catalogue
      * (spec 0103 D-9, replacing the former `operational_site_id` column):
      * EnforcesFieldPermissions::readNestedPath() resolves
@@ -182,6 +191,19 @@ class EmploymentProfile extends BaseModel
                 ->pluck('id')
                 ->all()
         );
+    }
+
+    /**
+     * Read-only proxy onto the `jobRoles` pivot (spec 0271 D-10), the same
+     * reason as reportsToIds() below: EnforcesFieldPermissions resolves
+     * `employment.job_role_ids` down to this accessor and needs a plain array.
+     * Reads off the already-loaded `jobRoles` collection.
+     *
+     * @return Attribute<array<int, int>, never>
+     */
+    public function jobRoleIds(): Attribute
+    {
+        return Attribute::get(fn (): array => $this->jobRoles->pluck('id')->all());
     }
 
     /**

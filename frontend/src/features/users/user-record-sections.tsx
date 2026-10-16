@@ -13,7 +13,7 @@ import {
   UserCompanyField,
   UserDateField,
   UserDurationField,
-  UserJobDescriptionField,
+  UserJobRolesField,
   UserQualificationField,
   UserRelationshipTypeField,
   UserReportsToField,
@@ -130,12 +130,12 @@ export function UserProfileRecordSection({ values, form, inline }: UserRecordSec
           {t(values.is_manager ? 'common.yes' : 'common.no')}
         </RecordInlineField>
         <RecordInlineField
-          field="employment.job_description"
-          label={t('users.detail.employment.jobDescription')}
+          field="employment.job_role_ids"
+          label={t('users.detail.employment.jobRoles')}
           inline={inline}
-          editor={<UserJobDescriptionField control={control} />}
+          editor={<UserJobRolesField control={control} selected={values.job_roles} />}
         >
-          {values.job_description || <DetailEmpty />}
+          <RefBadges refs={values.job_roles} />
         </RecordInlineField>
         {values.is_manager ? null : (
           <RecordInlineField

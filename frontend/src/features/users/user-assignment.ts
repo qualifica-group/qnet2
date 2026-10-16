@@ -134,7 +134,7 @@ export function useUserSectionVisibility() {
   const anyVisible = (keys: string[]) => keys.some((key) => field(key).visible)
   return {
     access: anyVisible(['email', 'password', 'roles', 'is_active']),
-    profile: anyVisible(['employment.is_manager', 'employment.job_description', 'employment.reports_to_ids']),
+    profile: anyVisible(['employment.is_manager', 'employment.job_role_ids', 'employment.reports_to_ids']),
     contract: anyVisible(['employment.relationship_type', 'employment.company_id']),
     contractData: anyVisible([
       'employment.qualification_type',

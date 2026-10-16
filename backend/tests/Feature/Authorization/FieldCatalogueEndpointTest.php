@@ -87,6 +87,8 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         'purchase-requests',
         // spec 0210 `cost-types` (CostTypesAuthorization: the purchase order line cost type lookup).
         'cost-types',
+        // spec 0271 (REQUIREMENT CHANGED): the HR org structure catalogues are registered in the generic registry.
+        'job-roles', 'job-activities',
         // spec 0247 `purchase-request-priorities` (PurchaseRequestPrioritiesAuthorization: the RDA priority lookup).
         'purchase-request-priorities',
         // spec 0248 `purchase-order-statuses` and `purchase-request-line-statuses` (presentation catalogues of the ODA and RDA line statuses).
@@ -218,7 +220,7 @@ it('spec 0008/0015/0111/0129: users.fields contains exactly the 4 existing + 13 
         'employment.covers_all_product_categories',
         // spec 0194 — the "Assegnabile" switch.
         'employment.is_assignable',
-        'employment.job_description', 'employment.reports_to_ids',
+        'employment.job_role_ids', 'employment.reports_to_ids',
         // spec 0111 — the assignment competence as {function, category} rows,
         // replacing the former business_function_id/product_category_ids pair.
         'employment.product_lines',

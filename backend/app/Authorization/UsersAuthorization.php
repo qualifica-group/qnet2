@@ -70,7 +70,7 @@ class UsersAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('employment.is_manager', 'boolean', 'employment'),
             new FieldDefinition('employment.covers_all_product_categories', 'boolean', 'employment'),
             new FieldDefinition('employment.is_assignable', 'boolean', 'employment'),
-            new FieldDefinition('employment.job_description', 'text', 'employment'),
+            new FieldDefinition('employment.job_role_ids', 'multiselect', 'employment'),
             // Spec 0166 (D-8): a user may report to several managers now,
             // replacing the single `employment.reports_to_id` (select).
             new FieldDefinition('employment.reports_to_ids', 'multiselect', 'employment'),
@@ -162,7 +162,7 @@ class UsersAuthorization extends AbstractResourceAuthorization
             'employment.is_manager' => $permission,
             'employment.covers_all_product_categories' => $permission,
             'employment.is_assignable' => $permission,
-            'employment.job_description' => $permission,
+            'employment.job_role_ids' => $permission,
             'employment.reports_to_ids' => $permission,
             'employment.product_lines' => $permission,
             'employment.relationship_type' => $permission,

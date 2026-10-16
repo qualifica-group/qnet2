@@ -142,7 +142,7 @@ const TEAM: TeamPulse = {
     {
       user: { id: 2, name: 'Bruno Manager', email: 'bruno@example.test', avatar_url: null },
       manager_ids: [1],
-      job_description: null,
+      job_roles: [],
       roles: [],
       business_functions: [],
       operational_site: null,

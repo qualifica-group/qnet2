@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The 9 employment-derived grid columns on the `users` table (spec 0015):
+ * The 10 employment-derived grid columns on the `users` table (spec 0015):
  * company (related NAME), relationship_type/qualification_type (enums),
  * is_manager (boolean), hired_at/terminated_at (dates), business_function
  * (AGGREGATED over the competence rows since spec 0111 D-1, delegated to
@@ -22,7 +22,8 @@ use Illuminate\Support\Facades\DB;
  * cell/filter/sort split physical-vs-remote per spec 0103 D-7, delegated to
  * UserOperationalSiteColumn) and reports_to (AGGREGATED over the
  * `employment_profile_manager` pivot since spec 0166 D-2/D-9, delegated to
- * UserReportsToColumn).
+ * UserReportsToColumn) and job_roles (AGGREGATED over the
+ * `employment_profile_job_role` pivot, spec 0271, UserJobRolesColumn).
  *
  * None of these has a real column on `users`: every filter/sort/distinct-
  * values resolution goes through `employment` (a hasOne), matched via
@@ -62,6 +63,7 @@ class UserEmploymentColumns
         private readonly UserOperationalSiteColumn $operationalSiteColumn,
         private readonly UserBusinessFunctionColumn $businessFunctionColumn,
         private readonly UserReportsToColumn $reportsToColumn,
+        private readonly UserJobRolesColumn $jobRolesColumn,
     ) {}
 
     public function isEmploymentColumn(string $columnId): bool
@@ -72,7 +74,8 @@ class UserEmploymentColumns
             || $columnId === 'is_manager'
             || $columnId === 'business_function'
             || $columnId === 'operational_site'
-            || $columnId === 'reports_to';
+            || $columnId === 'reports_to'
+            || $columnId === 'job_roles';
     }
 
     /**
@@ -90,6 +93,7 @@ class UserEmploymentColumns
             'qualification_type' => $employment?->qualification_type?->value,
             'is_manager' => $employment?->is_manager ?? false,
             'reports_to' => $this->reportsToColumn->managers($employment),
+            'job_roles' => $this->jobRolesColumn->label($employment),
             'hired_at' => $employment?->hired_at,
             'terminated_at' => $employment?->terminated_at,
         ];
@@ -119,6 +123,12 @@ class UserEmploymentColumns
 
         if ($columnId === 'reports_to') {
             $this->reportsToColumn->applyFilter($query, $filter);
+
+            return;
+        }
+
+        if ($columnId === 'job_roles') {
+            $this->jobRolesColumn->applyFilter($query, $filter);
 
             return;
         }
@@ -218,6 +228,10 @@ class UserEmploymentColumns
             return $this->reportsToColumn->sortSubquery();
         }
 
+        if ($columnId === 'job_roles') {
+            return $this->jobRolesColumn->sortSubquery();
+        }
+
         if (array_key_exists($columnId, self::RELATED_NAME_COLUMNS)) {
             return $this->relatedNameSortSubquery($columnId);
         }
@@ -268,6 +282,10 @@ class UserEmploymentColumns
 
         if ($columnId === 'reports_to') {
             return $this->reportsToColumn->distinctValues($query, $search, $limit);
+        }
+
+        if ($columnId === 'job_roles') {
+            return $this->jobRolesColumn->distinctValues($query, $search, $limit);
         }
 
         if (array_key_exists($columnId, self::RELATED_NAME_COLUMNS)) {

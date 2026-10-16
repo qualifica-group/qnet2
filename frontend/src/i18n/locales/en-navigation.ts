@@ -82,6 +82,8 @@ export const navigation = {
   purchaseRequestLines: 'RDA line management',
   purchaseOrders: 'ODA',
   costTypes: 'Cost types',
+  jobRoles: 'Job roles',
+  jobActivities: 'Activities',
   purchaseRequestPriorities: 'RDA priorities',
   purchaseOrderStatuses: 'ODA statuses',
   purchaseRequestLineStatuses: 'RDA line statuses',

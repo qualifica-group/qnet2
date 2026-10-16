@@ -33,7 +33,7 @@ const CREATE_SHEET_CLOSED: CreateSheetState = { open: false }
 /** "Ruolo · Mansione" caption under a drilled-into member's name, q-net parity. */
 function buildMemberSubtitle(member: TeamPulseMember): string {
   const roleLabel = member.roles.join(', ')
-  return [roleLabel, member.job_description].filter((part) => part && part.trim().length > 0).join(' · ')
+  return [roleLabel, member.job_roles.join(', ')].filter((part) => part && part.trim().length > 0).join(' · ')
 }
 
 export function TimeEntriesDashboard() {

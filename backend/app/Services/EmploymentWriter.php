@@ -24,6 +24,8 @@ use App\Services\ProductLines\ProductLineWriter;
  *    tri-state instead of trusting whatever shape the payload sends;
  *  - the assignment competence (spec 0111) is written on its own child
  *    table, with the same tri-state discipline (see syncProductLines());
+ *  - the job roles (spec 0271) are written on their own pivot
+ *    (`employment_profile_job_role`), same tri-state discipline;
  *  - the reports-to managers (spec 0166) are written on their own pivot
  *    (`employment_profile_manager`), with the same tri-state discipline
  *    (see syncManagers()) — a genuine set change is logged as ONE explicit
@@ -76,6 +78,23 @@ class EmploymentWriter
         // Step 4: apply the reports-to tri-state onto its own pivot,
         // enforcing D-5 (a manager reports to no one) unconditionally.
         $this->syncManagers($profile, $employment, $user, $actor);
+
+        // Step 5: apply the job-roles tri-state onto its own pivot.
+        $this->syncJobRoles($profile, $employment);
+    }
+
+    /**
+     * Apply the `job_role_ids` tri-state (spec 0271 D-2) onto
+     * `employment_profile_job_role`: absent leaves the pivot alone, any
+     * submitted array replaces it wholesale (an empty one clears it).
+     */
+    private function syncJobRoles(EmploymentProfile $profile, EmploymentData $employment): void
+    {
+        if (! $employment->jobRoleIdsProvided) {
+            return;
+        }
+
+        $profile->jobRoles()->sync($employment->jobRoleIds);
     }
 
     /**

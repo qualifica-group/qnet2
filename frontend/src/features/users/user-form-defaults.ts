@@ -24,13 +24,15 @@ const EMPTY_REMOTE_SITE_IDS: number[] = []
 /** Same stable-reference reasoning for the reports-to id array (spec 0166). */
 const EMPTY_REPORTS_TO_IDS: number[] = []
 
+const EMPTY_JOB_ROLE_IDS: number[] = []
+
 /** Same stable-reference reasoning for the competence row field (spec 0111). */
 const EMPTY_PRODUCT_LINES: CompetenceLineRow[] = []
 
 /** A blank employment sub-form, used for both create and an edit user with no profile yet. */
 export const EMPTY_EMPLOYMENT: EmploymentFormValues = {
   is_manager: false,
-  job_description: '',
+  job_role_ids: EMPTY_JOB_ROLE_IDS,
   reports_to_ids: EMPTY_REPORTS_TO_IDS,
   relationship_type: null,
   company_id: null,
@@ -75,7 +77,7 @@ export function editDefaults(user: UserDetail, customFieldDefaults: Record<strin
     employment: employment
       ? {
           is_manager: employment.is_manager,
-          job_description: employment.job_description ?? '',
+          job_role_ids: employment.job_role_ids,
           reports_to_ids: employment.reports_to_ids,
           relationship_type: employment.relationship_type,
           company_id: employment.company_id,

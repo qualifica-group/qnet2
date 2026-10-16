@@ -16,7 +16,12 @@ export const usersFormEmploymentSections = {
 export const usersFormEmployment = {
   isManager: 'Responsabile',
   isManagerDescription: 'Questa persona è responsabile di altri dipendenti.',
-  jobDescription: 'Mansione',
+  jobRoles: 'Mansioni',
+  jobRolesPlaceholder: 'Seleziona le mansioni…',
+  jobRolesSearch: 'Cerca mansioni…',
+  jobRolesEmpty: 'Nessuna mansione trovata.',
+  jobRolesError: 'Impossibile caricare le mansioni.',
+  jobRolesRemove: 'Rimuovi mansione',
   reportsTo: 'Risponde a',
   reportsToPlaceholder: 'Seleziona i responsabili…',
   reportsToSearch: 'Cerca utenti…',
@@ -54,7 +59,6 @@ export const usersFormEmployment = {
   terminatedAt: 'Cessato il',
   standardDailyMinutes: 'Durata giornaliera standard',
   breakDailyMinutes: 'Durata pausa giornaliera',
-  jobDescriptionMax: 'La mansione può contenere al massimo 255 caratteri.',
   terminatedBeforeHiredAt: 'La data di cessazione deve essere successiva o uguale a quella di assunzione.',
 }
 
@@ -74,7 +78,7 @@ export const usersColumnsEmployment = {
 /** Etichette in sola lettura per le sezioni del rapporto di lavoro (spec 0015). */
 export const usersDetailEmployment = {
   isManager: 'Responsabile',
-  jobDescription: 'Mansione',
+  jobRoles: 'Mansioni',
   reportsTo: 'Risponde a',
   productLines: 'Competenza',
   relationshipType: 'Tipo di rapporto',

@@ -46,6 +46,10 @@ use App\Enums\RelationshipTypeEnum;
  * lets a row's `product_category_id` be null ("every category of this row's
  * function").
  *
+ * `jobRoleIds` (spec 0271 D-2, replacing the free-text `job_description`)
+ * carries the SAME per-field tri-state as `reportsToIds`: a pivot
+ * (`employment_profile_job_role`), absent = untouched, empty = cleared.
+ *
  * `coversAllProductCategories` (spec 0129 D-1) is a THIRD way to widen the
  * competence: a plain scalar column, no tri-state (D-10, same as `isManager`
  * — absent on write reads as false). EmploymentWriter enforces D-2 (true =>
@@ -61,6 +65,7 @@ final readonly class EmploymentData
 {
     /**
      * @param  array<int, int>  $reportsToIds
+     * @param  array<int, int>  $jobRoleIds
      * @param  array<int, int>  $remoteOperationalSiteIds
      * @param  array<int, array{business_function_id: int, product_category_id: int|null}>  $productLines
      */
@@ -69,7 +74,6 @@ final readonly class EmploymentData
         public bool $isManager = false,
         public bool $coversAllProductCategories = false,
         public ?bool $isAssignable = null,
-        public ?string $jobDescription = null,
         public bool $reportsToIdsProvided = false,
         public array $reportsToIds = [],
         public ?RelationshipTypeEnum $relationshipType = null,
@@ -80,6 +84,8 @@ final readonly class EmploymentData
         public array $remoteOperationalSiteIds = [],
         public bool $productLinesProvided = false,
         public array $productLines = [],
+        public bool $jobRoleIdsProvided = false,
+        public array $jobRoleIds = [],
         public ?QualificationTypeEnum $qualificationType = null,
         public ?string $hiredAt = null,
         public ?string $terminatedAt = null,
@@ -110,7 +116,6 @@ final readonly class EmploymentData
         $attributes = [
             'is_manager' => $this->isManager,
             'covers_all_product_categories' => $this->coversAllProductCategories,
-            'job_description' => $this->jobDescription,
             'relationship_type' => $this->relationshipType,
             'company_id' => $this->companyId,
             'qualification_type' => $this->qualificationType,

@@ -34,7 +34,7 @@ if (! function_exists('businessFunctionUserWith')) {
 // AC-003 — columns config
 // ---------------------------------------------------------------------------
 
-it('returns the 9 columns in order with the declared flags, 403 without viewAny', function () {
+it('returns the 11 columns in order with the declared flags, 403 without viewAny', function () {
     $actor = businessFunctionUserWith([]);
     Sanctum::actingAs($actor);
     $this->getJson('/api/tables/business-functions/columns')->assertForbidden();
@@ -53,7 +53,7 @@ it('returns the 9 columns in order with the declared flags, 403 without viewAny'
         ->and($data['searchable'])->toBe(['name']);
 
     $ids = collect($data['columns'])->pluck('id')->all();
-    expect($ids)->toBe(['id', 'name', 'is_business_unit', 'is_business_service', 'manager', 'parent', 'users', 'operational_sites', 'created_at']);
+    expect($ids)->toBe(['id', 'name', 'is_business_unit', 'is_business_service', 'manager', 'parent', 'users', 'operational_sites', 'companies', 'created_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['id']['type'])->toBe('number')

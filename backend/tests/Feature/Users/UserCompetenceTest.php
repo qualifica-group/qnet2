@@ -140,7 +140,7 @@ it('0111 AC-002: omitting product_lines leaves the existing competence untouched
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/users/{$target->id}", [
-        'employment' => ['job_description' => 'Untouched by this write'],
+        'employment' => ['standard_daily_minutes' => 480],
     ])->assertOk();
 
     expect(competenceRowsOf($target))->toBe([
@@ -160,6 +160,7 @@ it('0111 AC-003: submitting an empty product_lines array clears the competence',
     Sanctum::actingAs($actor);
 
     $response = $this->patchJson("/api/users/{$target->id}", [
+        'is_active' => false,
         'employment' => ['product_lines' => []],
     ])->assertOk();
 
@@ -275,7 +276,7 @@ it('0111 AC-008: submitting employment: null deletes the profile and its compete
     $profileId = $target->employment->id;
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/users/{$target->id}", ['employment' => null])->assertOk();
+    $this->patchJson("/api/users/{$target->id}", ['is_active' => false, 'employment' => null])->assertOk();
 
     expect($target->fresh()->employment)->toBeNull();
     expect(DB::table('employment_product_lines')->where('employment_profile_id', $profileId)->count())->toBe(0);

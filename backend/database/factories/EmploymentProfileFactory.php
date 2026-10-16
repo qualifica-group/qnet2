@@ -28,7 +28,6 @@ class EmploymentProfileFactory extends Factory
         return [
             'user_id' => User::factory(),
             'is_manager' => false,
-            'job_description' => fake()->optional()->jobTitle(),
             'relationship_type' => fake()->randomElement(RelationshipTypeEnum::values()),
             'company_id' => null,
             'qualification_type' => fake()->randomElement(QualificationTypeEnum::values()),

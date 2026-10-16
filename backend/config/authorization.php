@@ -23,6 +23,8 @@ use App\Authorization\FinancialAccountsAuthorization;
 use App\Authorization\InvoiceInstallmentsAuthorization;
 use App\Authorization\InvoicesAuthorization;
 use App\Authorization\InvoiceTagsAuthorization;
+use App\Authorization\JobActivitiesAuthorization;
+use App\Authorization\JobRolesAuthorization;
 use App\Authorization\LeadsAuthorization;
 use App\Authorization\LedgerAuthorization;
 use App\Authorization\OperationalSitesAuthorization;
@@ -93,6 +95,9 @@ return [
         'users' => UsersAuthorization::class,
         'roles' => RolesAuthorization::class,
         'business-functions' => BusinessFunctionsAuthorization::class,
+        // spec 0271: HR org structure catalogues.
+        'job-roles' => JobRolesAuthorization::class,
+        'job-activities' => JobActivitiesAuthorization::class,
         'companies' => CompaniesAuthorization::class,
         'commission-configurations' => CommissionConfigurationsAuthorization::class,
         'company-sites' => CompanySitesAuthorization::class,

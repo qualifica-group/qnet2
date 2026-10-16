@@ -141,7 +141,6 @@ trait MapsExternalUserRecord
 
         $employment = new EmploymentData(
             isManager: (bool) ($record['is_manager'] ?? false),
-            jobDescription: $this->blankToNull($record['job_description'] ?? null),
             reportsToIdsProvided: true,
             reportsToIds: $reportsToId === null ? [] : [$reportsToId],
             relationshipType: $this->resolveRelationshipType($record['relationship_type'] ?? null, $warnings),
@@ -355,7 +354,7 @@ trait MapsExternalUserRecord
     private function hasEmploymentPayload(array $record): bool
     {
         $employmentFields = [
-            'is_manager', 'job_description', 'reports_to_id', 'relationship_type',
+            'is_manager', 'reports_to_id', 'relationship_type',
             'company_id', 'operational_site_id', 'qualification_type',
             'hired_at', 'terminated_at', 'standard_daily_minutes', 'break_daily_minutes',
         ];

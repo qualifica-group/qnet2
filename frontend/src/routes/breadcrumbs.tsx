@@ -46,6 +46,8 @@ const SEGMENT_LABELS: Record<string, string> = {
   'purchase-request-lines': 'navigation.purchaseRequestLines',
   'purchase-orders': 'navigation.purchaseOrders',
   'cost-types': 'navigation.costTypes',
+  'job-roles': 'navigation.jobRoles',
+  'job-activities': 'navigation.jobActivities',
   'purchase-request-priorities': 'navigation.purchaseRequestPriorities',
   'purchase-order-statuses': 'navigation.purchaseOrderStatuses',
   'purchase-request-line-statuses': 'navigation.purchaseRequestLineStatuses',

@@ -218,7 +218,8 @@ vi.mock('@/components/ui/searchable-select', () => ({
 const BASE_EMPLOYMENT: EmploymentDetail = {
   id: 1,
   is_manager: false,
-  job_description: null,
+  job_role_ids: [],
+  job_roles: [],
   relationship_type: null,
   qualification_type: null,
   hired_at: null,
@@ -431,6 +432,25 @@ describe('UserForm — competence rows (spec 0111 AC-023)', () => {
         screen.getByText('That category does not belong to the chosen function.'),
       ).toBeInTheDocument(),
     )
+  })
+
+  /** Spec 0271 D-6: the mandatory business function rule reports on the field's own path, not an indexed sub-key. */
+  it('surfaces the 422 on employment.product_lines (mandatory business function rule) under the competence field', async () => {
+    updateUserMock.mockRejectedValue(
+      new AxiosError('Unprocessable', '422', undefined, undefined, {
+        status: 422,
+        data: {
+          success: false,
+          message: 'Validation failed',
+          errors: { 'employment.product_lines': ['An active person needs at least one business function.'] },
+        },
+      } as never),
+    )
+    await renderEditForm()
+
+    save()
+
+    expect(await screen.findByText('An active person needs at least one business function.')).toBeInTheDocument()
   })
 
   it('does not render the field for a role whose matrix hides it', async () => {

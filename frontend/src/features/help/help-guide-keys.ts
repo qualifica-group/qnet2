@@ -73,6 +73,8 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'reward-statuses',
   'work-order-payment-statuses',
   'business-functions',
+  'job-roles',
+  'job-activities',
   'sectors',
   'tags',
   'sources',

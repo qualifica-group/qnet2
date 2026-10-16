@@ -26,6 +26,7 @@ const guide: HelpGuide = {
             ['**Responsible**', 'The user responsible for the function.'],
             ['**Associated users**', 'The users who belong to it.'],
             ['**Parent function**', 'To build a hierarchy between business functions.'],
+            ['**Companies**', 'The companies the function is linked to (one or more).'],
             ['**Operational sites**', 'The physical sites where this function operates.'],
           ],
         },
@@ -36,7 +37,7 @@ const guide: HelpGuide = {
       id: 'manage',
       title: 'Creating, editing, deactivating or deleting',
       blocks: [
-        { type: 'paragraph', text: 'From the list, press the button to create a new business function: the record opens with its rows closed, for each row press the pencil (or the value), fill it in and press **Done** (**Revert** puts the row back as it was), then **Save**. Use **View** and **Delete** on the row (if your role allows it). There is no separate edit form: open the record with **View**, press the pencil on the row (name, type, parent, responsible, associated users, operational sites), change the value and press **Save** (only that row is saved); **Cancel** or Esc leave the row as it was.' },
+        { type: 'paragraph', text: 'From the list, press the button to create a new business function: the record opens with its rows closed, for each row press the pencil (or the value), fill it in and press **Done** (**Revert** puts the row back as it was), then **Save**. Use **View** and **Delete** on the row (if your role allows it). There is no separate edit form: open the record with **View**, press the pencil on the row (name, type, parent, responsible, associated users, companies, operational sites), change the value and press **Save** (only that row is saved); **Cancel** or Esc leave the row as it was.' },
         { type: 'warning', text: 'A business function with child functions cannot be deleted: move the child functions under another parent first, or delete them.' },
       ],
     },

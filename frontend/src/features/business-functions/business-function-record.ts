@@ -1,4 +1,5 @@
 import type {
+  BusinessFunctionCompany,
   BusinessFunctionDetail,
   BusinessFunctionMember,
   BusinessFunctionOperationalSite,
@@ -17,6 +18,7 @@ export interface BusinessFunctionRecordValues {
   manager: BusinessFunctionMember | null
   users: BusinessFunctionMember[]
   operational_sites: BusinessFunctionOperationalSite[]
+  companies: BusinessFunctionCompany[]
   custom_fields: Record<string, CustomFieldValue>
 }
 
@@ -29,6 +31,7 @@ export function persistedBusinessFunctionValues(businessFunction: BusinessFuncti
     manager: businessFunction.manager,
     users: businessFunction.users,
     operational_sites: businessFunction.operational_sites,
+    companies: businessFunction.companies,
     custom_fields: businessFunction.custom_fields ?? NO_CUSTOM_FIELDS,
   }
 }

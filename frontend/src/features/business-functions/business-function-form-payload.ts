@@ -18,6 +18,7 @@ export function buildCreatePayload(
     users: values.users,
     parent_id: values.parent_id,
     operational_sites: values.operational_sites,
+    company_ids: values.company_ids,
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
   }
 }
@@ -53,6 +54,9 @@ export function buildUpdatePayload(
   }
   if (!sameIdSet(values.operational_sites, original.operational_site_ids)) {
     payload.operational_sites = values.operational_sites
+  }
+  if (!sameIdSet(values.company_ids, original.company_ids)) {
+    payload.company_ids = values.company_ids
   }
 
   const customFields = buildCustomFieldsUpdate(values.custom_fields, original.custom_fields ?? {})

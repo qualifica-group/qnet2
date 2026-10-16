@@ -39,6 +39,8 @@ use App\Models\FinancialAccount;
 use App\Models\Invoice;
 use App\Models\InvoiceInstallment;
 use App\Models\InvoiceTag;
+use App\Models\JobActivity;
+use App\Models\JobRole;
 use App\Models\Lead;
 use App\Models\Note;
 use App\Models\OperationalSite;
@@ -231,6 +233,8 @@ class AppServiceProvider extends ServiceProvider
             'purchase_order_receipt' => PurchaseOrderReceipt::class,
             'purchase_order_receipt_line' => PurchaseOrderReceiptLine::class,
             'cost_type' => CostType::class,
+            'job_role' => JobRole::class,
+            'job_activity' => JobActivity::class,
             'purchase_request_priority' => PurchaseRequestPriority::class,
             'purchase_order_status_label' => PurchaseOrderStatusLabel::class,
             'purchase_request_line_status_label' => PurchaseRequestLineStatusLabel::class,

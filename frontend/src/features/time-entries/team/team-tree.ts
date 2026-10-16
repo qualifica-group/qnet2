@@ -100,7 +100,7 @@ function memberSearchHaystack(member: TeamPulseMember): string[] {
   return [
     member.user.name,
     member.user.email,
-    member.job_description ?? '',
+    ...member.job_roles,
     member.operational_site?.label ?? '',
     ...member.roles,
     ...member.business_functions.map((businessFunction) => businessFunction.name),

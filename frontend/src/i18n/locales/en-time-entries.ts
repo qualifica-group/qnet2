@@ -176,7 +176,7 @@ export const timeEntries = {
     activityAll: 'All',
     active: 'Active',
     inactive: 'Inactive',
-    jobDescription: 'Job title',
+    jobRoles: 'Job roles',
     coverageMin: 'Minimum coverage',
     coverageMax: 'Maximum coverage',
     searchPlaceholder: 'Search by name, role, email…',

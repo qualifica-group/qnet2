@@ -51,6 +51,7 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'paragraph', text: 'Sede fisica e sedi remote valgono allo stesso modo per l’assegnazione. Nella fascia dei numeri in alto, **Abbinamento** indica **Assegnabile** oppure **Non assegnabile**.' },
+        { type: 'note', text: 'Una persona attiva (non account di servizio) deve avere almeno una riga di **Competenza** oppure **Competente per tutte le categorie** attivo: altrimenti il salvataggio viene rifiutato e l’errore compare sulla riga **Competenza**.' },
         { type: 'warning', text: 'La persona riceve assegnazioni solo se sono vere tutte e tre le condizioni: **Assegnabile** acceso, almeno una competenza e almeno una sede. Il modulo segnala la condizione mancante con "Assegnazione disattivata", "Manca la competenza" o "Manca la sede".' },
       ],
     },
@@ -63,7 +64,7 @@ const guide: HelpGuide = {
           headers: ['Campo', 'Cosa indicare'],
           rows: [
             ['**Responsabile**', 'Attivalo se la persona è responsabile di altri dipendenti.'],
-            ['**Mansione**', 'Descrizione del lavoro svolto (massimo 255 caratteri).'],
+            ['**Mansioni**', 'Le mansioni svolte, scelte dall’elenco del modulo Mansioni: puoi indicarne più di una oppure nessuna.'],
             ['**Risponde a**', 'I responsabili diretti, scelti tra gli utenti: puoi indicarne più di uno. Il campo non compare se **Responsabile** è attivo.'],
             ['**Tipo di rapporto**', 'Il tipo di rapporto di lavoro.'],
             ['**Società**', 'La società di riferimento.'],

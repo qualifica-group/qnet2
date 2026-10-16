@@ -19,6 +19,8 @@ const RolesPage = lazyRoute(() => import('@/pages/roles-page'))
 const CompaniesPage = lazyRoute(() => import('@/pages/companies-page'))
 const CompanySitesPage = lazyRoute(() => import('@/pages/company-sites-page'))
 const BusinessFunctionsPage = lazyRoute(() => import('@/pages/business-functions-page'))
+const JobRolesPage = lazyRoute(() => import('@/pages/job-roles-page'))
+const JobActivitiesPage = lazyRoute(() => import('@/pages/job-activities-page'))
 const ReferentsPage = lazyRoute(() => import('@/pages/referents-page'))
 const ReferentDetailPage = lazyRoute(() => import('@/pages/referent-detail-page'))
 const ReferentFormPage = lazyRoute(() => import('@/pages/referent-form-page'))
@@ -142,6 +144,14 @@ export const router = createBrowserRouter([
           {
             path: 'business-functions',
             element: <BusinessFunctionsPage />,
+          },
+          {
+            path: 'job-roles',
+            element: <JobRolesPage />,
+          },
+          {
+            path: 'job-activities',
+            element: <JobActivitiesPage />,
           },
           {
             path: 'referents',

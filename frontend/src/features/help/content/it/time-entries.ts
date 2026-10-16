@@ -91,7 +91,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'tip',
-          text: 'I responsabili possono passare da **Vista personale** a **Il mio team** e vedere in sola lettura i dati dei collaboratori. Un collaboratore che risponde a più responsabili compare sotto ciascuno di loro.',
+          text: 'I responsabili possono passare da **Vista personale** a **Il mio team** e vedere in sola lettura i dati dei collaboratori. Un collaboratore che risponde a più responsabili compare sotto ciascuno di loro. Accanto a ogni collaboratore compaiono le sue **Mansioni** (se ne ha più di una, separate da virgole).',
         },
         {
           type: 'note',

@@ -119,7 +119,6 @@ class UsersSource extends AbstractMigrationSource
             ['id' => 'personal_phone', 'label' => 'Personal phone', 'type' => 'string'],
             ['id' => 'is_active', 'label' => 'Is active', 'type' => 'boolean'],
             ['id' => 'is_manager', 'label' => 'Is manager', 'type' => 'boolean'],
-            ['id' => 'job_description', 'label' => 'Job description', 'type' => 'string'],
             ['id' => 'reports_to_id', 'label' => 'Reports to (external id)', 'type' => 'number'],
             ['id' => 'relationship_type', 'label' => 'Relationship type', 'type' => 'string'],
             ['id' => 'company_id', 'label' => 'Company (external id)', 'type' => 'number'],
@@ -235,6 +234,8 @@ class UsersSource extends AbstractMigrationSource
                 addresses: $addressInput === null ? null : [$addressInput],
             ),
             $employment,
+            // Spec 0271 D-6 applies to the API only: the import writes as-is.
+            enforceCoverage: false,
         );
 
         // The external hash is already bcrypt: writing it through the model's

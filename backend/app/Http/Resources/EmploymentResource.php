@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Company;
 use App\Models\EmploymentProfile;
+use App\Models\JobRole;
 use App\Models\OperationalSite;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
@@ -57,7 +58,6 @@ class EmploymentResource extends JsonResource
             'is_manager' => $this->is_manager,
             'covers_all_product_categories' => $this->covers_all_product_categories,
             'is_assignable' => $this->is_assignable,
-            'job_description' => $this->job_description,
             'relationship_type' => $this->relationship_type,
             'qualification_type' => $this->qualification_type,
             'hired_at' => $this->hired_at,
@@ -66,6 +66,14 @@ class EmploymentResource extends JsonResource
             'break_daily_minutes' => $this->break_daily_minutes,
 
             'reports_to_ids' => $this->reports_to_ids,
+            'job_role_ids' => $this->when($this->relationLoaded('jobRoles'), fn (): array => $this->job_role_ids),
+            'job_roles' => $this->when(
+                $this->relationLoaded('jobRoles'),
+                fn (): array => $this->jobRoles
+                    ->map(fn (JobRole $role): array => $this->summarizeByName($role))
+                    ->values()
+                    ->all(),
+            ),
             'company_id' => $this->company_id,
             'primary_operational_site_id' => $this->primary_operational_site_id,
             'remote_operational_site_ids' => $this->remote_operational_site_ids,

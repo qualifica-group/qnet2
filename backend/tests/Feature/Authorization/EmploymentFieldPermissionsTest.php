@@ -1,11 +1,14 @@
 <?php
 
+use App\Models\BusinessFunction;
 use App\Models\EmploymentProfile;
+use App\Models\JobRole;
 use App\Models\OperationalSite;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
@@ -24,7 +27,7 @@ uses(RefreshDatabase::class);
  */
 const EMPLOYMENT_FIELD_KEYS = [
     'employment.is_manager', 'employment.covers_all_product_categories',
-    'employment.job_description', 'employment.reports_to_ids',
+    'employment.job_role_ids', 'employment.reports_to_ids',
     'employment.product_lines', 'employment.relationship_type', 'employment.company_id',
     'employment.primary_operational_site_id', 'employment.remote_operational_site_ids',
     'employment.qualification_type', 'employment.hired_at',
@@ -69,34 +72,37 @@ it('AC-012: employment.* fields are visibleReadonly when the actor may NOT updat
 
     $fields = $this->getJson("/api/users/{$target->id}")->assertOk()->json('permissions.fields');
 
-    expect($fields['employment.job_description']['editable'])->toBeFalse()
-        ->and($fields['employment.job_description']['readonly'])->toBeTrue();
+    expect($fields['employment.job_role_ids']['editable'])->toBeFalse()
+        ->and($fields['employment.job_role_ids']['readonly'])->toBeTrue();
 });
 
-it('AC-012: a role denying employment.job_description in the matrix cannot write it, and the existing value is preserved', function () {
+it('AC-012: a role denying employment.job_role_ids in the matrix cannot write it, and the existing roles are preserved', function () {
     Permission::findOrCreate('users.view');
     Permission::findOrCreate('users.update');
 
     $role = Role::create(['name' => 'employment-field-perm-'.uniqid()]);
     $role->givePermissionTo(['users.view', 'users.update']);
     $role->fieldPermissions()->create([
-        'resource' => 'users', 'field' => 'employment.job_description', 'visible' => true, 'editable' => false, 'required' => false,
+        'resource' => 'users', 'field' => 'employment.job_role_ids', 'visible' => true, 'editable' => false, 'required' => false,
     ]);
 
     $actor = User::factory()->create();
     $actor->assignRole($role);
 
-    $target = User::factory()->withEmployment(fn ($f) => $f->state(['job_description' => 'Original role']))->create();
+    $target = User::factory()->withEmployment()->create();
+    $original = JobRole::factory()->create();
+    $changed = JobRole::factory()->create();
+    $target->employment->jobRoles()->attach($original->id);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/users/{$target->id}", [
-        'employment' => ['job_description' => 'Changed role'],
-    ])->assertStatus(422)->assertJsonValidationErrors(['employment.job_description']);
+        'employment' => ['job_role_ids' => [$changed->id]],
+    ])->assertStatus(422)->assertJsonValidationErrors(['employment.job_role_ids']);
 
-    $this->assertDatabaseHas('employment_profiles', [
-        'user_id' => $target->id,
-        'job_description' => 'Original role',
-    ]);
+    $this->assertDatabaseHas('employment_profile_job_role', [
+        'employment_profile_id' => $target->employment->id,
+        'job_role_id' => $original->id,
+    ])->assertDatabaseMissing('employment_profile_job_role', ['job_role_id' => $changed->id]);
 });
 
 it('AC-012: no employment.* resource permission exists in the system — governed entirely by the field matrix', function () {
@@ -105,7 +111,7 @@ it('AC-012: no employment.* resource permission exists in the system — governe
 
 /**
  * An actor whose role denies $field (visible/readonly) on `users` — same
- * shape as the job_description role above, reused for the two site keys
+ * shape as the job_role_ids role above, reused for the two site keys
  * spec 0103 (D-9) split `employment.operational_site_id` into.
  */
 if (! function_exists('roleDenyingEmploymentField')) {
@@ -135,7 +141,7 @@ if (! function_exists('roleDenyingEmploymentField')) {
 it('AC-013: resubmitting the same physical site on a readonly employment.primary_operational_site_id is a no-op (200)', function () {
     $siteA = OperationalSite::factory()->create();
     $actor = roleDenyingEmploymentField('employment.primary_operational_site_id');
-    $target = User::factory()->withEmployment(fn ($f) => $f->physicalSite($siteA))->create();
+    $target = User::factory()->withEmployment(fn ($f) => $f->physicalSite($siteA)->competentInEveryCategoryOf(BusinessFunction::factory()->create()))->create();
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/users/{$target->id}", [
@@ -164,7 +170,7 @@ it('AC-014: resubmitting the same remote site set in a different order on a read
     $siteA = OperationalSite::factory()->create();
     $siteB = OperationalSite::factory()->create();
     $actor = roleDenyingEmploymentField('employment.remote_operational_site_ids');
-    $target = User::factory()->withEmployment(fn ($f) => $f->remoteSites($siteA, $siteB))->create();
+    $target = User::factory()->withEmployment(fn ($f) => $f->remoteSites($siteA, $siteB)->competentInEveryCategoryOf(BusinessFunction::factory()->create()))->create();
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/users/{$target->id}", [
@@ -235,7 +241,7 @@ it('0129 AC-017: changing employment.covers_all_product_categories on a readonly
 it('the field-permission read of employment.primary_operational_site_id lazy-loads operationalSites but never trips preventLazyLoading on a single record', function () {
     $siteA = OperationalSite::factory()->create();
     $actor = roleDenyingEmploymentField('employment.primary_operational_site_id');
-    $target = User::factory()->withEmployment(fn ($f) => $f->physicalSite($siteA))->create();
+    $target = User::factory()->withEmployment(fn ($f) => $f->physicalSite($siteA)->competentInEveryCategoryOf(BusinessFunction::factory()->create()))->create();
     Sanctum::actingAs($actor);
 
     EmploymentProfile::preventLazyLoading();
@@ -354,7 +360,7 @@ it('0166 AC-008: resubmitting the same reports_to_ids set in a different order o
     $managerA = User::factory()->create();
     $managerB = User::factory()->create();
     $actor = roleDenyingEmploymentField('employment.reports_to_ids');
-    $target = User::factory()->withEmployment(fn ($f) => $f->reportsTo($managerA, $managerB))->create();
+    $target = User::factory()->withEmployment(fn ($f) => $f->reportsTo($managerA, $managerB)->competentInEveryCategoryOf(BusinessFunction::factory()->create()))->create();
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/users/{$target->id}", [
@@ -375,4 +381,52 @@ it('0166 AC-008: changing the reports_to_ids set on a readonly field 422s', func
     $this->patchJson("/api/users/{$target->id}", [
         'employment' => ['reports_to_ids' => [$managerA->id, $managerC->id]],
     ])->assertStatus(422)->assertJsonValidationErrors(['employment.reports_to_ids']);
+});
+
+// ---------------------------------------------------------------------------
+// Spec 0271 (D-10) AC-013 — the rename migration turns an
+// employment.job_description row into employment.job_role_ids, same flags,
+// and back.
+// ---------------------------------------------------------------------------
+
+it('0271 AC-013: the migration renames an employment.job_description row to employment.job_role_ids, same flags, and back', function () {
+    $role = Role::create(['name' => 'field-perm-job-role-rename-'.uniqid()]);
+    $migration = require database_path('migrations/2026_10_20_100400_rename_employment_job_description_field_permission.php');
+
+    DB::table('role_field_permissions')->insert([
+        'role_id' => $role->id, 'resource' => 'users', 'field' => 'employment.job_description',
+        'visible' => true, 'editable' => false, 'required' => false,
+    ]);
+
+    $migration->up();
+
+    $row = DB::table('role_field_permissions')->where('role_id', $role->id)->sole();
+    expect($row->field)->toBe('employment.job_role_ids')
+        ->and((bool) $row->visible)->toBeTrue()
+        ->and((bool) $row->editable)->toBeFalse()
+        ->and((bool) $row->required)->toBeFalse();
+
+    $migration->down();
+
+    expect(DB::table('role_field_permissions')->where('role_id', $role->id)->sole()->field)->toBe('employment.job_description');
+});
+
+it('0271 AC-013: a pre-existing row on employment.job_role_ids does not break the rename, the configured one wins', function () {
+    $role = Role::create(['name' => 'field-perm-job-role-conflict-'.uniqid()]);
+    $migration = require database_path('migrations/2026_10_20_100400_rename_employment_job_description_field_permission.php');
+
+    DB::table('role_field_permissions')->insert([
+        ['role_id' => $role->id, 'resource' => 'users', 'field' => 'employment.job_description', 'visible' => true, 'editable' => false, 'required' => false],
+        ['role_id' => $role->id, 'resource' => 'users', 'field' => 'employment.job_role_ids', 'visible' => true, 'editable' => true, 'required' => false],
+    ]);
+
+    $migration->up();
+
+    $row = DB::table('role_field_permissions')->where('role_id', $role->id)->sole();
+    expect($row->field)->toBe('employment.job_role_ids')
+        ->and((bool) $row->editable)->toBeFalse();
+});
+
+it('0271 AC-013: the employment_profiles.job_description column is gone', function () {
+    expect(Schema::hasColumn('employment_profiles', 'job_description'))->toBeFalse();
 });

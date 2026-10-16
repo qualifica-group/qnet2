@@ -43,7 +43,7 @@ it('200: field catalogue matches the frozen contract, in order', function () {
         ->assertJsonPath('success', true);
 
     $keys = collect($response->json('data.fields'))->pluck('key')->all();
-    expect($keys)->toBe(['name', 'type', 'manager_id', 'parent_id', 'users', 'operational_sites']);
+    expect($keys)->toBe(['name', 'type', 'manager_id', 'parent_id', 'users', 'operational_sites', 'company_ids']);
 
     $fields = collect($response->json('data.fields'))->keyBy('key');
     expect($fields['name']['mandatory'])->toBeTrue()

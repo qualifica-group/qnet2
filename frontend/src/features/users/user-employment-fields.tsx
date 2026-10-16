@@ -14,6 +14,7 @@ import type { KnownProductLine } from '@/features/product-lines/types'
 import { DurationInput } from '@/features/users/duration-input'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import { toFieldRefs } from '@/features/users/user-record'
+import { JOB_ROLES_FOR_SELECT_RESOURCE } from '@/features/job-roles/for-select-api'
 import {
   QUALIFICATION_TYPES,
   RELATIONSHIP_TYPES,
@@ -132,21 +133,24 @@ export function UserRemoteSitesField({ control, selected }: FieldProps & { selec
   )
 }
 
-export function UserJobDescriptionField({ control }: FieldProps) {
+/** "Mansioni" (spec 0271): zero or more job roles, same picker as "Riporta a". */
+export function UserJobRolesField({ control, selected }: FieldProps & { selected: EmploymentRelationRef[] }) {
   const { t } = useTranslation()
   return (
-    <MetaField
+    <RelationMultiSelectField
       control={control}
-      name="employment.job_description"
-      metaKey="employment.job_description"
-      label={t('users.form.employment.jobDescription')}
-    >
-      {({ field, disabled, readOnly }) => (
-        <FormControl>
-          <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
-        </FormControl>
-      )}
-    </MetaField>
+      name="employment.job_role_ids"
+      metaKey="employment.job_role_ids"
+      label={t('users.form.employment.jobRoles')}
+      resource={JOB_ROLES_FOR_SELECT_RESOURCE}
+      searchPlaceholder={t('users.form.employment.jobRolesSearch')}
+      selected={toFieldRefs(selected)}
+      placeholder={t('users.form.employment.jobRolesPlaceholder')}
+      emptyLabel={t('users.form.employment.jobRolesEmpty')}
+      errorLabel={t('users.form.employment.jobRolesError')}
+      removeLabel={t('users.form.employment.jobRolesRemove')}
+      retryLabel={t('common.retry')}
+    />
   )
 }
 
