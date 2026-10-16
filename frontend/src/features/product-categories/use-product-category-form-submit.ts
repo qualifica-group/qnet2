@@ -37,6 +37,7 @@ const SERVER_ERROR_FIELDS = [
   'management_mode',
   'single_quote_per_opportunity',
   'generates_contract',
+  'multi_quote_work_order',
   'simplified_offer_line',
   'simplified_offer_line_override',
   'manager_labels',

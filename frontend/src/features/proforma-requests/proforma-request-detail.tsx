@@ -67,6 +67,7 @@ export function ProformaRequestDetailView({ proformaRequest: request, onEdit }: 
               <RecordField label={t('proformaRequests.columns.work_order_title')}>
                 {request.work_order.title ? request.work_order.title : <DetailEmpty />}
               </RecordField>
+              <RecordField label={t('proformaRequests.columns.quote')}>{request.quote.code}</RecordField>
               <RecordField label={t('proformaRequests.columns.company')}>
                 {request.company ? request.company.name : <DetailEmpty />}
               </RecordField>

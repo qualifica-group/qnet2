@@ -10,6 +10,7 @@ use App\Enums\WorkOrderType;
 use App\Models\Registry;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Services\WorkOrders\WorkOrderSourceQuotes;
 use App\Services\WorkOrders\WorkOrderStatusResolver;
 use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use App\Services\WorkOrderService;
@@ -18,7 +19,9 @@ use App\Tables\WorkOrders\WorkOrderColumnCatalog;
 use App\Tables\WorkOrders\WorkOrderDerivedColumns;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -51,11 +54,15 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
 
     private const string PROFORMA_CREATE_PERMISSION = 'proforma-requests.create';
 
+    /** Joins the distinct offers / clients of a multi-offer commessa in one cell (spec 0267, D-8). */
+    private const string MULTI_SEPARATOR = ' · ';
+
     public function __construct(
         private readonly WorkOrderService $service,
         private readonly WorkOrderStatusResolver $statusResolver,
         private readonly WorkOrderDerivedColumns $derivedColumns,
         private readonly WorkOrderCellWriter $cellWriter,
+        private readonly WorkOrderSourceQuotes $sourceQuotes,
     ) {}
 
     /**
@@ -106,7 +113,20 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         // `quote.contract` the contract expiry date.
         // The root-task aggregates feed `status`/`completion_percentage`
         // (spec 0149, D-8) without one query per row.
-        $query = $this->statusResolver->withProgress(WorkOrder::query()->with(['quote.opportunity.registry', 'quote.contract', 'supervisors.avatar', 'participants']));
+        $query = $this->statusResolver->withProgress(WorkOrder::query()->with([
+            'quote.opportunity.registry',
+            'quote.contract',
+            'supervisors.avatar',
+            'participants',
+            // Spec 0267, D-8: only multi-offer rows need their lines' offers.
+            'quoteLines' => static fn ($lines) => $lines->whereExists(
+                DB::table('work_orders')
+                    ->whereColumn('work_orders.id', 'quote_line_work_order.work_order_id')
+                    ->whereNull('work_orders.quote_id')
+                    ->select(DB::raw(1))
+            ),
+            'quoteLines.quote.opportunity.registry',
+        ]));
 
         // Spec 0193, D-11: the proforma state is two EXISTS subqueries, never
         // a query per row, and only computed for actors who may raise requests.
@@ -227,15 +247,20 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
 
         $proforma = $this->mayRequestProforma($actor) ? [self::PROFORMA_STATUS_COLUMN => $this->proformaStatus($row)] : [];
 
+        $multi = $row->isMultiQuote();
+        $sourceQuotes = $multi ? $this->sourceQuotes->fromLoadedLines($row) : null;
+
         return [
             ...$proforma,
             'id' => $row->id,
             'code' => $row->code,
             'title' => $row->title,
-            'contract_number' => $row->quote?->code,
-            'quote' => $row->quote?->title,
+            'contract_number' => $sourceQuotes === null ? $row->quote?->code : $this->joinDistinct($sourceQuotes->pluck('code')),
+            'quote' => $sourceQuotes === null ? $row->quote?->title : $this->joinDistinct($sourceQuotes->pluck('title')),
             'contract_expiry_date' => $row->quote?->contract?->expiry_date,
-            'registry' => $this->registrySummary($row->quote?->opportunity?->registry),
+            'registry' => $sourceQuotes === null
+                ? $this->registrySummary($row->quote?->opportunity?->registry)
+                : $this->joinDistinct($sourceQuotes->map(static fn ($quote) => $quote->opportunity?->registry?->name)->sort()),
             'type' => $row->type?->value,
             'start_date' => $row->start_date,
             'supervisors' => $row->supervisors->map(fn (User $user): array => $this->userSummary($user))->all(),
@@ -246,6 +271,18 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'created_at' => $row->created_at,
             'updated_at' => $row->updated_at,
         ];
+    }
+
+    /**
+     * Distinct non-empty values joined by " · " (spec 0267, D-8); null when none.
+     *
+     * @param  Collection<int, string|null>  $values
+     */
+    private function joinDistinct(Collection $values): ?string
+    {
+        $joined = $values->filter(static fn ($value): bool => $value !== null && $value !== '')->unique()->implode(self::MULTI_SEPARATOR);
+
+        return $joined === '' ? null : $joined;
     }
 
     /**

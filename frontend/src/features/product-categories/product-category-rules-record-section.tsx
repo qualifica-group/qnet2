@@ -6,6 +6,7 @@ import { RecordFieldList, RecordSection } from '@/components/detail/record-panel
 import { RecordInlineField } from '@/components/record-form/record-inline-field'
 import { ProductCategoryGeneratesContractField } from '@/features/product-categories/product-category-generates-contract-field'
 import { ProductCategoryManagementModeField } from '@/features/product-categories/product-category-management-mode-field'
+import { ProductCategoryMultiQuoteWorkOrderField } from '@/features/product-categories/product-category-multi-quote-work-order-field'
 import { ProductCategoryReportColumnsField } from '@/features/product-categories/product-category-report-columns-field'
 import { ProductCategoryRequiresQuoteField } from '@/features/product-categories/product-category-requires-quote-field'
 import { ProductCategorySimplifiedOfferLineField } from '@/features/product-categories/product-category-simplified-offer-line-field'
@@ -107,6 +108,16 @@ export function ProductCategoryRulesRecordSection({ values, form, inline, mode, 
           inheritedFrom={values.generates_contract_source_category?.name}
           inheritedLabel={inheritedLabel('generatesContractInherited', values.generates_contract_source_category)}
           editor={<ProductCategoryGeneratesContractField {...editorProps} />}
+        />
+        <RuleRow
+          field="multi_quote_work_order"
+          label={t('productCategories.form.multiQuoteWorkOrder')}
+          inline={inline}
+          canEdit={canEdit && values.multi_quote_work_order_source_category === null}
+          value={yesNo(values.multi_quote_work_order)}
+          inheritedFrom={values.multi_quote_work_order_source_category?.name}
+          inheritedLabel={inheritedLabel('multiQuoteWorkOrderInherited', values.multi_quote_work_order_source_category)}
+          editor={<ProductCategoryMultiQuoteWorkOrderField {...editorProps} />}
         />
         {/* A root declares the value, a child forces its own override (spec 0188): two form fields, one row. */}
         <RuleRow

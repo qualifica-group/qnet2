@@ -55,6 +55,25 @@ final class OfferLinesColumn
     /** Maximum number of names honoured in the set filter (caps the WHERE IN cardinality, defence in depth). */
     private const int MAX_FILTER_VALUES = 200;
 
+    /** The quote's id column on a `quotes` base query / the relation prefix to reach the quote from a `contracts` one. */
+    private const string QUOTES_ID_COLUMN = 'quotes.id';
+
+    public const string CONTRACT_QUOTE_ID_COLUMN = 'contracts.quote_id';
+
+    public const string CONTRACT_QUOTE_RELATION = 'quote.';
+
+    /**
+     * The read-only variant (Contratti and Offerte grids, user directive
+     * 2026-10-15): same display/filter contract, no editor keys — the cell
+     * is never writable there.
+     *
+     * @return array<string, mixed>
+     */
+    public static function readOnlyDeclaration(string $label): array
+    {
+        return array_diff_key(self::declaration($label), array_flip(['editable', 'editor', 'editableField']));
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -88,8 +107,9 @@ final class OfferLinesColumn
      *
      * @param  Builder<Model>  $query
      * @param  array<int, string>  $values
+     * @param  string  $quoteRelation  relation path to the quote (`quote.` from a `contracts` query)
      */
-    public static function applyFilter(Builder $query, array $values, bool $matchesBlank = false): void
+    public static function applyFilter(Builder $query, array $values, bool $matchesBlank = false, string $quoteRelation = ''): void
     {
         $values = array_slice($values, 0, self::MAX_FILTER_VALUES);
 
@@ -99,15 +119,15 @@ final class OfferLinesColumn
 
         // The blank entry ("(Vuoti)") selects the quotes with no revenue-line
         // product at all — exactly what an empty cell shows.
-        $query->where(static function (Builder $group) use ($values, $matchesBlank): void {
+        $query->where(static function (Builder $group) use ($values, $matchesBlank, $quoteRelation): void {
             if ($values !== []) {
-                $group->whereHas('offerLines.product', static function (Builder $relatedQuery) use ($values): void {
+                $group->whereHas($quoteRelation.'offerLines.product', static function (Builder $relatedQuery) use ($values): void {
                     $relatedQuery->whereIn('name', $values);
                 });
             }
 
             if ($matchesBlank) {
-                $group->orWhereDoesntHave('offerLines.product');
+                $group->orWhereDoesntHave($quoteRelation.'offerLines.product');
             }
         });
     }
@@ -119,11 +139,18 @@ final class OfferLinesColumn
      * `offerLines` scope to inherit it from).
      *
      * @param  Builder<Model>  $query
+     * @param  string  $quoteIdColumn  the query's column holding the quote id
+     * @param  string  $quoteRelation  relation path to the quote (`quote.` from a `contracts` query)
      * @return array<int, string|null>
      */
-    public static function distinctValues(Builder $query, ?string $search, int $limit): array
-    {
-        $quoteIds = (clone $query)->select('quotes.id');
+    public static function distinctValues(
+        Builder $query,
+        ?string $search,
+        int $limit,
+        string $quoteIdColumn = self::QUOTES_ID_COLUMN,
+        string $quoteRelation = '',
+    ): array {
+        $quoteIds = (clone $query)->select($quoteIdColumn);
 
         $values = DB::table(self::LINES_TABLE)
             ->join('products', 'products.id', '=', self::LINES_TABLE.'.'.self::PRODUCT_FK)
@@ -139,7 +166,7 @@ final class OfferLinesColumn
             ->map(static fn (mixed $name): string => (string) $name)
             ->all();
 
-        if (($search === null || $search === '') && (clone $query)->whereDoesntHave('offerLines.product')->exists()) {
+        if (($search === null || $search === '') && (clone $query)->whereDoesntHave($quoteRelation.'offerLines.product')->exists()) {
             array_unshift($values, null);
         }
 
@@ -154,8 +181,8 @@ final class OfferLinesColumn
 
     /**
      * The row projection: the distinct products of the Quote's own REVENUE
-     * lines as `{id, name, category_id}` refs — read from the eager-loaded
-     * `offerLines.product` relation, never queried here. `category_id` lets the
+     * lines as `{id, name, category_id, category_name}` refs — read from the
+     * eager-loaded `offerLines.product.category` relation, never queried here. `category_id` lets the
      * grid's category cell warn which rows a classification change would
      * delete (bug 2026-10-05), before it commits. Deduplicated by product
      * id: several lines of the same product (different quantities) project
@@ -174,6 +201,8 @@ final class OfferLinesColumn
                     'id' => $product->id,
                     'name' => $product->name,
                     'category_id' => $product->category_id,
+                    // Shown beside the product in Contratti/Offerte (user request 2026-10-15).
+                    'category_name' => $product->category?->name,
                 ])
                 ->values()
                 ->all(),

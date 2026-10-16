@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Contracts\ContractController;
+use App\Http\Controllers\Contracts\ContractMultiProgrammableLinesController;
+use App\Http\Controllers\Contracts\ContractMultiQuoteWorkOrderController;
 use App\Http\Controllers\Contracts\ContractProgrammableLinesController;
 use App\Http\Controllers\Contracts\ContractReactivationController;
 use App\Http\Controllers\Contracts\ContractStatusChangeController;
@@ -24,6 +26,12 @@ use Illuminate\Support\Facades\Route;
 | hand, only born/suspended by the automation on the quote's status
 | transition (ContractLifecycleManager, MT-03).
 */
+
+// "Programma commessa unica" (spec 0267, D-3): static paths BEFORE
+// `contracts/{contract}` so they never reach model binding. Both routes gate
+// every selected contract on `contracts.program` AND ClosedWon.
+Route::get('contracts/multi-programmable-lines', ContractMultiProgrammableLinesController::class);
+Route::post('contracts/multi-quote-work-orders', ContractMultiQuoteWorkOrderController::class);
 
 // Contracts show/update. Authorization (contracts.view/update) is enforced
 // server-side in ContractController via ContractPolicy on every endpoint.

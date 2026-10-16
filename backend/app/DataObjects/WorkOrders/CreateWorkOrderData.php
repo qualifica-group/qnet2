@@ -38,10 +38,11 @@ final readonly class CreateWorkOrderData
      * @param  array<int, int>  $supervisorIds
      * @param  array<int, int|null>  $participantSlots
      * @param  array<string, mixed>|null  $attributeValues
+     * @param  array<int, int>  $multiQuoteIds  the selected contracts' offers of a multi-offer commessa (spec 0267), empty otherwise
      */
     public function __construct(
         public ?string $code,
-        public int $quoteId,
+        public ?int $quoteId,
         public ?string $title,
         public WorkOrderType $type,
         public string $startDate,
@@ -55,6 +56,7 @@ final readonly class CreateWorkOrderData
         public array $participantSlots,
         public ?array $attributeValues = null,
         public ?int $taskTemplateId = null,
+        public array $multiQuoteIds = [],
     ) {}
 
     /**
@@ -141,6 +143,57 @@ final readonly class CreateWorkOrderData
             attributeValues: $attributeValues,
             taskTemplateId: $taskTemplateId,
         );
+    }
+
+    /**
+     * Built by "Programma commessa unica" (spec 0267, D-3/D-4): no `quote_id`
+     * (null marks the multi-offer commessa), the lines are validated against
+     * the offers of the selected contracts. Same defaults as
+     * forContractGeneration().
+     *
+     * @param  array<int, int>  $quoteIds
+     * @param  array<int, int>  $supervisorIds
+     * @param  array<int, int>  $quoteLineIds
+     * @param  array<string, mixed>|null  $attributeValues
+     */
+    public static function forMultiQuoteProgram(
+        array $quoteIds,
+        ?string $title,
+        WorkOrderType $type,
+        string $startDate,
+        array $supervisorIds,
+        array $quoteLineIds,
+        ?array $attributeValues = null,
+        ?int $taskTemplateId = null,
+    ): self {
+        return new self(
+            code: null,
+            quoteId: null,
+            title: self::normalizeTitle($title),
+            type: $type,
+            startDate: $startDate,
+            callbackDate: null,
+            description: null,
+            internalNotes: null,
+            isForceClosed: false,
+            forceCloseReason: null,
+            quoteLineIds: self::normalizeIds($quoteLineIds),
+            supervisorIds: self::normalizeIds($supervisorIds),
+            participantSlots: [],
+            attributeValues: $attributeValues,
+            taskTemplateId: $taskTemplateId,
+            multiQuoteIds: self::normalizeIds($quoteIds),
+        );
+    }
+
+    /**
+     * Offers the submitted lines may belong to: the own offer, or the selected contracts' ones.
+     *
+     * @return array<int, int>
+     */
+    public function allowedQuoteIds(): array
+    {
+        return $this->quoteId !== null ? [$this->quoteId] : $this->multiQuoteIds;
     }
 
     /**

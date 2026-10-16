@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
+import { fireEvent, render as rtlRender, screen, within } from '@testing-library/react'
 import type { ReactElement, ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -104,13 +104,15 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     participants: [{ id: 31, name: 'Bruno Bianchi', position: 1 }],
     description: 'Descrizione libera',
     internal_notes: 'Nota interna',
+    is_multi_quote: false,
+    source_quotes: [],
     contract_number: 'QUO-0004',
     quote: { id: 4, code: 'QUO-0004', title: 'Fornitura annuale' },
     contract: { id: 9, code: 'QUO-0004', title: 'Fornitura annuale', expiry_date: '2027-03-31' },
     task_template: null,
     quote_lines: [
-      { id: 11, sort_order: 2, product: { id: 2, code: 'PRD-0002', name: 'Installazione' } },
-      { id: 12, sort_order: 1, product: { id: 1, code: 'PRD-0001', name: 'Consulenza' } },
+      { id: 11, sort_order: 2, product: { id: 2, code: 'PRD-0002', name: 'Installazione' }, registry: null },
+      { id: 12, sort_order: 1, product: { id: 1, code: 'PRD-0001', name: 'Consulenza' }, registry: null },
     ],
     applicable_attributes: [],
     attribute_layout: null,
@@ -515,5 +517,64 @@ describe('WorkOrderDetailView — Costi section (spec 0190)', () => {
     openCostsTab()
 
     expect(screen.getByText('costs-section manage:true')).toBeInTheDocument()
+  })
+})
+
+describe('WorkOrderDetailView — multi-offer work order (spec 0267 AC-016)', () => {
+  const multi = () =>
+    workOrder({
+      is_multi_quote: true,
+      source_quotes: [
+        {
+          id: 4,
+          code: 'QUO-0004',
+          title: 'Fornitura annuale',
+          contract: { id: 9 },
+          registry: { id: 1, name: 'Rossi S.r.l.' },
+          company: { id: 2, name: 'Qualifica Group' },
+        },
+        {
+          id: 5,
+          code: 'QUO-0005',
+          title: null,
+          contract: null,
+          registry: { id: 3, name: 'Bianchi S.p.A.' },
+          company: null,
+        },
+      ],
+      contract_number: null,
+      quote: null,
+      contract: null,
+      registry: null,
+      company: null,
+      company_site: null,
+      operational_site: null,
+    })
+
+  it('names the client on each product line instead of the contract and company sections', () => {
+    render(
+      <WorkOrderDetailView
+        workOrder={{
+          ...multi(),
+          quote_lines: [
+            { id: 11, sort_order: 1, product: { id: 1, code: 'PRD-0001', name: 'Consulenza' }, registry: { id: 1, name: 'Rossi S.r.l.' } },
+            { id: 12, sort_order: 2, product: { id: 2, code: 'PRD-0002', name: 'Installazione' }, registry: { id: 3, name: 'Bianchi S.p.A.' } },
+          ],
+        }}
+      />,
+    )
+
+    const items = screen.getAllByRole('listitem').filter((item) => /PRD-000/.test(item.textContent ?? ''))
+    expect(within(items[0]).getByRole('link', { name: 'Rossi S.r.l.' })).toBeInTheDocument()
+    expect(within(items[1]).getByRole('link', { name: 'Bianchi S.p.A.' })).toBeInTheDocument()
+    expect(screen.getByText('Multi-offer')).toBeInTheDocument()
+    expect(screen.queryByText('Client registry')).not.toBeInTheDocument()
+    expect(screen.queryByText('Company and sites')).not.toBeInTheDocument()
+  })
+
+  it('keeps the single-offer sections and no badge on a single-offer work order', () => {
+    render(<WorkOrderDetailView workOrder={workOrder()} />)
+
+    expect(screen.queryByText('Multi-offer')).not.toBeInTheDocument()
   })
 })

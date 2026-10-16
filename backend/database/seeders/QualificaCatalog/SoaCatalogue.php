@@ -7,17 +7,19 @@ use App\Enums\LayoutSectionVariant;
 /**
  * The "SOA" branch of the catalogue (user directive 2026-10-15, "Q-crm SOA"
  * sheet and "PRODOTTI SOA" list): a root of its own, linked to the "SOA"
- * business function, with two classification targets — "Ente SOA" (the
+ * business function, with two classification targets — "SOA - Ente" (the
  * attestations bought from a certifying body, one product per body and
- * service) and "Consulenza SOA" (the yearly consultancy). Pure data, read by
+ * service) and "SOA - Consulenza" (the yearly consultancy). Pure data, read by
  * QualificaCatalogSeeder (tree and offer fields), QualificaQuoteLayoutSeeder
  * (offer form), QualificaSoaWorkOrderSeeder (Commessa fields and form),
  * CatalogProducts and BranchProducts (products, suppliers, typologies and "Mesi scadenza"),
  * CatalogRootRules and QualificaBusinessFunctionLinkSeeder.
  *
- * The subcategories are not called "Ente" / "Consulenza": the name is the
- * catalogue's natural key and "Consulenza" is already a root (user decision
- * 2026-10-15). Both inherit the root's fields and forms.
+ * The subcategories carry the branch as prefix, never a bare "Ente" /
+ * "Consulenza": the name is the catalogue's natural key and "Consulenza" is
+ * already a root (user decisions 2026-10-15; renamed from "Ente SOA" /
+ * "Consulenza SOA", see CatalogCategoryRenames). Both inherit the root's
+ * fields and forms.
  *
  * NOT FIELDS, by design (user decision 2026-10-15): the Commessa's "Stato
  * Lavorazione" — a SOA deal uses the default working states — and the
@@ -35,9 +37,9 @@ final class SoaCatalogue
 
     public const string BUSINESS_FUNCTION = 'SOA';
 
-    public const string CERTIFYING_BODY_CATEGORY = 'Ente SOA';
+    public const string CERTIFYING_BODY_CATEGORY = 'SOA - Ente';
 
-    public const string CONSULTING_CATEGORY = 'Consulenza SOA';
+    public const string CONSULTING_CATEGORY = 'SOA - Consulenza';
 
     /**
      * The root's subcategories, for QualificaCatalogSeeder::CATALOG: both host

@@ -15,10 +15,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Facades\DB;
 
 /**
  * WorkOrder entity (spec 0093, D-1): "Commessa", numbered `COM-0001...`,
- * belonging to exactly one Quote and zero-or-more of that same Quote's
+ * belonging to one Quote (or, spec 0267, to several via its lines) and zero-or-more of that same Quote's
  * REVENUE lines (`quoteLines()`, via the dedicated `quote_line_work_order`
  * pivot, D-6). `code` is DELIBERATELY absent from #[Fillable] (D-1): the
  * service assigns it after mass-assignment, inside the create transaction,
@@ -42,6 +44,10 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * registered as the `work-orders` host in config/notes.php via
  * WorkOrderNotable) and `HasAttachments` (the documents, alias `work_order`
  * in config/attachments.php).
+ *
+ * Spec 0267 (D-4): `quote_id` is NULLABLE; a NULL one marks a MULTI-OFFER
+ * commessa (isMultiQuote()), whose source offers are derived from the
+ * `quote_line_work_order` pivot (sourceQuoteIds()), with no extra pivot.
  *
  * `task_template_id` (spec 0124, D-5/D-7) IS fillable — unlike `code`, it is
  * genuine client input (`CreateWorkOrderData`), the same category as
@@ -92,6 +98,81 @@ class WorkOrder extends BaseModel
     public function quote(): BelongsTo
     {
         return $this->belongsTo(Quote::class);
+    }
+
+    /**
+     * Multi-offer commessa (spec 0267, D-4): no offer of its own.
+     */
+    public function isMultiQuote(): bool
+    {
+        return $this->quote_id === null;
+    }
+
+    /**
+     * Distinct ids of the offers this commessa draws from (spec 0267, D-4):
+     * its own `quote_id` (mono-offer) merged with the offers of the pivot lines.
+     *
+     * @return list<int>
+     */
+    public function sourceQuoteIds(): array
+    {
+        $ids = DB::table('quote_line_work_order')
+            ->join('quote_lines', 'quote_lines.id', '=', 'quote_line_work_order.quote_line_id')
+            ->where('quote_line_work_order.work_order_id', $this->getKey())
+            ->distinct()
+            ->pluck('quote_lines.quote_id')
+            ->map(static fn (mixed $id): int => (int) $id);
+
+        if ($this->quote_id !== null) {
+            $ids->push((int) $this->quote_id);
+        }
+
+        return $ids->unique()->sort()->values()->all();
+    }
+
+    /**
+     * Work orders tied to the offer directly or through one of their lines.
+     *
+     * @param  Builder<WorkOrder>  $query
+     */
+    public function scopeWithQuoteLineOfQuote(Builder $query, int $quoteId): void
+    {
+        $query->where(function (Builder $query) use ($quoteId): void {
+            $query->where('work_orders.quote_id', $quoteId)
+                ->orWhereExists(self::pivotLinesQuery()->where('quote_lines.quote_id', $quoteId));
+        });
+    }
+
+    /**
+     * Work orders of a registry (customer), directly or through one of their
+     * lines' offers (quotes.opportunity_id -> opportunities.registry_id).
+     *
+     * @param  Builder<WorkOrder>  $query
+     */
+    public function scopeWithQuoteLineOfRegistry(Builder $query, int $registryId): void
+    {
+        $query->where(function (Builder $query) use ($registryId): void {
+            $query->whereExists(
+                DB::table('quotes')
+                    ->join('opportunities', 'opportunities.id', '=', 'quotes.opportunity_id')
+                    ->whereColumn('quotes.id', 'work_orders.quote_id')
+                    ->where('opportunities.registry_id', $registryId)
+                    ->select(DB::raw(1))
+            )->orWhereExists(
+                self::pivotLinesQuery()
+                    ->join('quotes', 'quotes.id', '=', 'quote_lines.quote_id')
+                    ->join('opportunities', 'opportunities.id', '=', 'quotes.opportunity_id')
+                    ->where('opportunities.registry_id', $registryId)
+            );
+        });
+    }
+
+    private static function pivotLinesQuery(): QueryBuilder
+    {
+        return DB::table('quote_line_work_order')
+            ->join('quote_lines', 'quote_lines.id', '=', 'quote_line_work_order.quote_line_id')
+            ->whereColumn('quote_line_work_order.work_order_id', 'work_orders.id')
+            ->select(DB::raw(1));
     }
 
     /**

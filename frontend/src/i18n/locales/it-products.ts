@@ -88,6 +88,7 @@ export const productCategories = {
     management_mode: 'Modalità di gestione',
     single_quote_per_opportunity: 'Offerta unica per opportunità',
     generates_contract: 'Prevede un contratto',
+    multi_quote_work_order: "Commessa multi-offerta",
     simplified_offer_line: 'Semplificazione riga offerta',
     created_at: 'Creato il',
     tooltipEmpty: 'Nessun elemento da mostrare.',
@@ -104,6 +105,7 @@ export const productCategories = {
     managementModeInherited: 'Ereditata da {{category}}',
     singleQuotePerOpportunityInherited: 'Ereditata da {{category}}',
     generatesContractInherited: 'Ereditata da {{category}}',
+    multiQuoteWorkOrderInherited: "Ereditata da {{category}}",
     simplifiedOfferLineInherited: 'Ereditata da {{category}}',
     managerLabelInherited: 'Ereditata',
     inheritedCount: '+{{count}} ereditati',
@@ -227,7 +229,17 @@ export const productCategories = {
       'La regola sul contratto è ereditata dalla categoria radice "{{category}}". Per modificarla, agisci su quella categoria.',
     generatesContractInfo:
       "Decide se il ramo viene venduto sotto contratto. Se spento, quando l'offerta entra in uno stato di lavorazione chiuso positivo NON viene creato alcun contratto e la scheda non compare nel modulo Contratti; la chiusura positiva resta comunque possibile. I contratti già aperti prima dello spegnimento restano dove sono e continuano a vivere normalmente. Se una scheda copre più categorie, basta che UNA non preveda il contratto perché non venga creato. La regola è decisa dalla categoria RADICE e tutto il sottoalbero la segue, a meno che una sottocategoria non forzi un proprio valore (che vale poi per il suo sottoalbero).",
+    generatesContractLockedByMulti: 'Spegni prima Commessa multi-offerta.',
     generatesContractInfoLabel: 'Maggiori informazioni su Prevede un contratto',
+    multiQuoteWorkOrder: "Commessa multi-offerta",
+    multiQuoteWorkOrderHint:
+      "Consente di programmare dalla tabella Contratti un'unica commessa con righe di piu' contratti vinti di questo ramo.",
+    multiQuoteWorkOrderInheritedHint:
+      "La regola sulla commessa multi-offerta è ereditata dalla categoria radice \"{{category}}\". Per modificarla, agisci su quella categoria.",
+    multiQuoteWorkOrderInfo:
+      "Decide se, dalla tabella Contratti, si può programmare un'unica commessa che raccoglie righe di ricavo di più contratti vinti (anche di clienti diversi) appartenenti a questo ramo. Se spento, ogni commessa resta legata a una sola offerta. Le commesse già create non cambiano. La regola è decisa dalla categoria RADICE e tutto il sottoalbero la segue.",
+    multiQuoteWorkOrderNeedsContract: 'Richiede Prevede un contratto.',
+    multiQuoteWorkOrderInfoLabel: "Maggiori informazioni su Commessa multi-offerta",
     simplifiedOfferLine: 'Semplificazione riga offerta',
     simplifiedOfferLineHint:
       "Se attivo, in Gestione Richieste l'operatore sceglie solo il prodotto: quantità, prezzo unitario e aliquota IVA della riga vengono compilati automaticamente dal sistema.",

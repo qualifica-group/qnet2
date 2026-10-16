@@ -73,4 +73,13 @@ class WorkOrderFactory extends Factory
             'force_close_reason' => fake()->sentence(),
         ]);
     }
+
+    /**
+     * Spec 0267: multi-offer commessa, no offer of its own; the lines are
+     * attached by the test.
+     */
+    public function multiQuote(): static
+    {
+        return $this->state(fn (): array => ['quote_id' => null]);
+    }
 }

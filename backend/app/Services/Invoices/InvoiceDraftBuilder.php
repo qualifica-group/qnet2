@@ -26,9 +26,9 @@ final class InvoiceDraftBuilder
     public function build(ProformaRequest $request): array
     {
         // Step 1: load the request context
-        $request->load('workOrder.quote.company', 'workOrder.quote.paymentMethod', 'workOrder.quote.opportunity.registry', 'supplier', 'paymentMethod');
+        $request->load('workOrder', 'quote.company', 'quote.paymentMethod', 'quote.opportunity.registry', 'supplier', 'paymentMethod');
         $workOrder = $request->workOrder;
-        $quote = $workOrder->quote;
+        $quote = $request->quote;
 
         // Step 2: bank accounts of every company, each tagged with its company
         $banks = FinancialAccount::query()
@@ -61,7 +61,7 @@ final class InvoiceDraftBuilder
 
     private function defaultCustomer(ProformaRequest $request): ?Registry
     {
-        $opportunityRegistry = $request->workOrder->quote->opportunity?->registry;
+        $opportunityRegistry = $request->quote->opportunity?->registry;
 
         return $request->kind === ProformaRequestKind::Institution
             ? ($request->supplier ?? $opportunityRegistry)
@@ -76,6 +76,7 @@ final class InvoiceDraftBuilder
     private function availableLines(ProformaRequest $request): Collection
     {
         return $request->workOrder->quoteLines()
+            ->where('quote_lines.quote_id', $request->quote_id)
             ->where('line_type', QuoteLineType::Revenue->value)
             ->whereNotIn('quote_lines.id', InvoiceLine::query()->whereNotNull('quote_line_id')->select('quote_line_id'))
             ->with('product:id,name,supplier_id,product_typology_id,vat_rate_id', 'product.productTypology:id,proforma_kind', 'product.vatRate:id,name,rate', 'vatRate:id,name,rate')

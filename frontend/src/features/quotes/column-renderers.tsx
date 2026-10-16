@@ -1,11 +1,12 @@
 import { Briefcase, Building, Building2, Handshake, MapPin, UserRound } from 'lucide-react'
 import type { ICellRendererParams } from 'ag-grid-community'
 import { CELL_WRAPPER, DateTimeCell } from '@/features/table/cell-renderers'
-import { CodeBadgeCell, CurrencyCell, RelationCell, StatusBadgeCell } from '@/features/table/rich-cells'
+import { CodeBadgeCell, CurrencyCell, RefNamesCell, RelationCell, StatusBadgeCell } from '@/features/table/rich-cells'
 import { UserCell, UserStackCell } from '@/features/table/user-cell'
 import { QuoteAlertBadge } from '@/features/quotes/quote-alert-badge'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import type { QuoteAlert } from '@/features/quotes/types'
+import { OfferLinesCell } from '@/features/quotes/offer-lines-cell'
 
 /** The `alert` column cell (spec 0102 D-4): centered like every other badge cell, mirrors `contracts/column-renderers.tsx`'s `AlertCell`. */
 function AlertCell({ value }: ICellRendererParams) {
@@ -61,4 +62,6 @@ export const quoteColumnRenderers: TableRendererMap = {
   operational_site: (params) => <RelationCell {...params} icon={MapPin} />,
   next_callback_at: (params) => <DateTimeCell {...params} optionalTime />,
   alert: (params) => <AlertCell {...params} />,
+  offer_lines: (params) => <OfferLinesCell {...params} />,
+  root_categories: (params) => <RefNamesCell {...params} />,
 }

@@ -50,12 +50,13 @@ it('a root category persists its own single_quote_per_opportunity flag', functio
     expect(ProductCategory::query()->firstWhere('name', 'Formazione')->single_quote_per_opportunity)->toBeTrue();
 });
 
-it('omitting the flag on a fresh root defaults to false (pre-existing behaviour)', function () {
+// REQUIREMENT CHANGED (user decision 2026-10-15): a fresh root now defaults to true.
+it('omitting the flag on a fresh root defaults to true', function () {
     Sanctum::actingAs(productCategoryUserWith(['create']));
 
     $this->postJson('/api/product-categories', ['name' => 'Consulenza'])
         ->assertCreated()
-        ->assertJsonPath('data.single_quote_per_opportunity', false);
+        ->assertJsonPath('data.single_quote_per_opportunity', true);
 });
 
 it('a child inherits the root flag even when the payload omits it', function () {

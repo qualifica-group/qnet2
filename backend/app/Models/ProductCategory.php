@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * hierarchy. A category's EFFECTIVE attributes are its own `attributes()`
  * assignments UNION every ancestor's (see ProductCategoryService).
  */
-#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_quote_attributes', 'inherits_work_order_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'is_active', 'is_reportable', 'report_columns', 'management_mode', 'single_quote_per_opportunity', 'generates_contract', 'simplified_offer_line', 'simplified_offer_line_override', 'manager_labels', 'inherits_manager_labels'])]
+#[Fillable(['name', 'parent_id', 'inherits_product_attributes', 'inherits_quote_attributes', 'inherits_work_order_attributes', 'description', 'business_function_id', 'requires_quote', 'is_selectable', 'is_active', 'is_reportable', 'report_columns', 'management_mode', 'single_quote_per_opportunity', 'generates_contract', 'multi_quote_work_order', 'simplified_offer_line', 'simplified_offer_line_override', 'manager_labels', 'inherits_manager_labels'])]
 class ProductCategory extends BaseModel
 {
     /** @use HasFactory<ProductCategoryFactory> */
@@ -96,6 +96,11 @@ class ProductCategory extends BaseModel
             // when false an offer of this branch closing positively opens no
             // contract. Defaults to true, the pre-existing behaviour.
             'generates_contract' => 'boolean',
+            // Spec 0267 — owned by the branch ROOT and mirrored on every
+            // descendant by MultiQuoteWorkOrderInheritance, same shape again:
+            // when true, revenue lines of this branch from different quotes
+            // can share one work order. Defaults to false.
+            'multi_quote_work_order' => 'boolean',
             // Spec 0114 — owned by the branch ROOT and mirrored on every
             // descendant by SimplifiedOfferLineInheritance, same shape again:
             // when true, an offer line of this branch in Gestione Richieste

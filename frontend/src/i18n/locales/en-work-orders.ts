@@ -32,6 +32,7 @@ export const workOrders = {
     updated_at: 'Updated at',
   },
   detail: {
+    multiQuoteBadge: 'Multi-offer',
     title: 'Work order details',
     subtitle: 'Read-only view of the selected work order.',
     loadError: 'Unable to load the work order. Please try again.',

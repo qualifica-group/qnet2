@@ -19,8 +19,8 @@ class ProformaRequestResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $company = $this->workOrder->quote?->company;
-        $customer = $this->workOrder->quote?->opportunity?->registry;
+        $company = $this->quote->company;
+        $customer = $this->quote->opportunity?->registry;
 
         return [
             'id' => $this->id,
@@ -29,6 +29,7 @@ class ProformaRequestResource extends JsonResource
             'issued_at' => $this->issued_at,
             'note' => $this->note,
             'work_order' => ['id' => $this->workOrder->id, 'code' => $this->workOrder->code, 'title' => $this->workOrder->title],
+            'quote' => ['id' => $this->quote->id, 'code' => $this->quote->code],
             'company' => $company === null ? null : ['id' => $company->id, 'name' => $company->denomination],
             'customer' => $customer === null ? null : ['id' => $customer->id, 'name' => $customer->name],
             'supplier' => $this->supplier === null ? null : ['id' => $this->supplier->id, 'name' => $this->supplier->name],

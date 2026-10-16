@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\ProformaRequestKind;
 use App\Enums\ProformaRequestStatus;
 use App\Models\ProformaRequest;
+use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\User;
 use App\Models\WorkOrder;
@@ -21,10 +22,10 @@ class ProformaRequestService
     /** Relations the ProformaRequestResource reads. */
     private const array RESOURCE_RELATIONS = [
         'workOrder:id,code,title,quote_id',
-        'workOrder.quote:id,company_id,opportunity_id',
-        'workOrder.quote.company:id,denomination',
-        'workOrder.quote.opportunity:id,registry_id',
-        'workOrder.quote.opportunity.registry:id,name',
+        'quote:id,code,company_id,opportunity_id',
+        'quote.company:id,denomination',
+        'quote.opportunity:id,registry_id',
+        'quote.opportunity.registry:id,name',
         'supplier:id,name',
         'paymentMethod:id,name',
         'assignee:id,name',
@@ -51,14 +52,17 @@ class ProformaRequestService
                 abort(422, __('proforma_requests.no_billable_lines'));
             }
 
-            // Step 3: persist them with the offer payment method as a snapshot (D-9)
-            $paymentMethodId = $workOrder->quote->payment_method_id;
+            // Step 3: persist them with the payment method of their own offer as a snapshot (D-9, spec 0267 D-6)
+            $paymentMethods = Quote::query()
+                ->whereIn('id', array_unique(array_column($drafts, 'quote_id')))
+                ->pluck('payment_method_id', 'id');
 
             $created = collect($drafts)->map(fn (array $draft): ProformaRequest => ProformaRequest::create([
                 'work_order_id' => $workOrder->getKey(),
+                'quote_id' => $draft['quote_id'],
                 'kind' => $draft['kind'],
                 'supplier_id' => $draft['supplier_id'],
-                'payment_method_id' => $paymentMethodId,
+                'payment_method_id' => $paymentMethods[$draft['quote_id']],
                 'status' => ProformaRequestStatus::Pending,
                 'note' => $note,
                 'assigned_to' => $actor->getKey(),
@@ -72,15 +76,15 @@ class ProformaRequestService
 
     /**
      * The modal read model: request state, latest request date and the
-     * offer payment method.
+     * offer payment method (none on a multi-offer work order: each request
+     * carries the one of its own offer).
      *
      * @return array<string, mixed>
      */
     public function summary(WorkOrder $workOrder): array
     {
-        $workOrder->loadMissing('quote.paymentMethod');
         $statuses = $workOrder->proformaRequests()->pluck('status');
-        $paymentMethod = $workOrder->quote->paymentMethod;
+        $paymentMethod = $workOrder->isMultiQuote() ? null : $workOrder->loadMissing('quote.paymentMethod')->quote->paymentMethod;
         $lastRequest = $workOrder->proformaRequests()->latest('created_at')->first(['id', 'created_at']);
 
         return [
@@ -136,12 +140,13 @@ class ProformaRequestService
     }
 
     /**
-     * One consultancy request for all consultancy lines, one institution
-     * request per distinct supplier (null supplier = one shared request).
-     * The product typology's proforma_kind decides the group (spec 0247,
-     * D-6): lines whose typology has none are ignored (D-2).
+     * Per offer: one consultancy request for all its consultancy lines, one
+     * institution request per distinct supplier (null supplier = one shared
+     * request). The product typology's proforma_kind decides the group (spec
+     * 0247, D-6): lines whose typology has none are ignored (D-2). A request
+     * never mixes offers (spec 0267, D-6).
      *
-     * @return array<int, array{kind: ProformaRequestKind, supplier_id: int|null}>
+     * @return array<int, array{quote_id: int, kind: ProformaRequestKind, supplier_id: int|null}>
      */
     private function buildDrafts(WorkOrder $workOrder): array
     {
@@ -150,16 +155,18 @@ class ProformaRequestService
             ->get();
         $drafts = [];
 
-        if ($this->linesOfKind($lines, ProformaRequestKind::Consultancy)->isNotEmpty()) {
-            $drafts[] = ['kind' => ProformaRequestKind::Consultancy, 'supplier_id' => null];
-        }
+        foreach ($lines->groupBy('quote_id') as $quoteId => $quoteLines) {
+            if ($this->linesOfKind($quoteLines, ProformaRequestKind::Consultancy)->isNotEmpty()) {
+                $drafts[] = ['quote_id' => (int) $quoteId, 'kind' => ProformaRequestKind::Consultancy, 'supplier_id' => null];
+            }
 
-        $suppliers = $this->linesOfKind($lines, ProformaRequestKind::Institution)
-            ->map(fn (QuoteLine $line): ?int => $line->product->supplier_id)
-            ->unique();
+            $suppliers = $this->linesOfKind($quoteLines, ProformaRequestKind::Institution)
+                ->map(fn (QuoteLine $line): ?int => $line->product->supplier_id)
+                ->unique();
 
-        foreach ($suppliers as $supplierId) {
-            $drafts[] = ['kind' => ProformaRequestKind::Institution, 'supplier_id' => $supplierId];
+            foreach ($suppliers as $supplierId) {
+                $drafts[] = ['quote_id' => (int) $quoteId, 'kind' => ProformaRequestKind::Institution, 'supplier_id' => $supplierId];
+            }
         }
 
         return $drafts;

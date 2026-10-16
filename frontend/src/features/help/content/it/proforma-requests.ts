@@ -42,6 +42,23 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'multi-quote-work-order',
+      title: 'Commesse multi-offerta',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Su una commessa **multi-offerta** le richieste sono generate **per ogni offerta** (e, come sempre, per tipo e per fornitore): nessuna richiesta mescola righe di offerte diverse.',
+        },
+        {
+          type: 'list',
+          items: [
+            'Ogni richiesta riporta la propria **offerta**.',
+            'Cliente, azienda emittente e modalità di pagamento della fattura vengono presi dall\'**offerta della richiesta**, quindi ogni cliente riceve il proprio proforma.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'issue',
       title: 'Emettere il proforma',
       blocks: [

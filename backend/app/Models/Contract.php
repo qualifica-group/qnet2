@@ -7,6 +7,7 @@ use App\Models\Concerns\HasAttachments;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\ContractFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -28,6 +29,9 @@ class Contract extends BaseModel
 {
     /** @use HasFactory<ContractFactory> */
     use HasAttachments, HasFactory, LogsModelActivity;
+
+    /** Attribute added by scopeWithMultiQuoteWorkOrderFlag() (spec 0267, D-14). */
+    public const string MULTI_QUOTE_FLAG = 'allows_multi_quote_work_order';
 
     /**
      * @return array<string, string>
@@ -86,6 +90,46 @@ class Contract extends BaseModel
     public function terminatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'terminated_by');
+    }
+
+    /**
+     * Adds the MULTI_QUOTE_FLAG attribute: one EXISTS per row, no N+1
+     * (spec 0267, D-14).
+     *
+     * @param  Builder<Contract>  $query
+     */
+    public function scopeWithMultiQuoteWorkOrderFlag(Builder $query): void
+    {
+        $query->withExists(['quote as '.self::MULTI_QUOTE_FLAG => static function (Builder $quote): void {
+            self::constrainToMultiQuoteLines($quote);
+        }]);
+    }
+
+    /**
+     * Whether the offer has at least one revenue line whose product category
+     * allows the multi-offer work order (spec 0267, D-14). Uses the flag loaded
+     * by scopeWithMultiQuoteWorkOrderFlag() when present, else queries.
+     */
+    public function allowsMultiQuoteWorkOrder(): bool
+    {
+        if (array_key_exists(self::MULTI_QUOTE_FLAG, $this->attributes)) {
+            return (bool) $this->attributes[self::MULTI_QUOTE_FLAG];
+        }
+
+        $quote = $this->quote();
+        self::constrainToMultiQuoteLines($quote->getQuery());
+
+        return $quote->exists();
+    }
+
+    /**
+     * @param  Builder<Quote>  $quote
+     */
+    private static function constrainToMultiQuoteLines(Builder $quote): void
+    {
+        $quote->whereHas('offerLines.product.category', static function (Builder $category): void {
+            $category->where('multi_quote_work_order', true);
+        });
     }
 
     /**

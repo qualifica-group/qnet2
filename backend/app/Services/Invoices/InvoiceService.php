@@ -12,7 +12,6 @@ use App\Models\Invoice;
 use App\Models\PaymentMethod;
 use App\Models\ProformaRequest;
 use App\Models\User;
-use App\Models\WorkOrder;
 use App\Services\Commissions\Accruals\CommissionAccrualSynchronizer;
 use App\Support\Amounts\LineAmountCalculator;
 use Carbon\CarbonImmutable;
@@ -72,8 +71,7 @@ class InvoiceService
             $this->assertNotInvoiced($locked);
 
             // Step 2: validate and compute everything before touching the sequence
-            $workOrder = WorkOrder::query()->findOrFail($locked->work_order_id, ['id', 'quote_id']);
-            $prepared = $this->prepare($data, $workOrder->id, null);
+            $prepared = $this->prepare($data, $locked->work_order_id, $locked->quote_id, null);
 
             // Step 3: allocate the number and persist header, lines, schedule
             $invoice = Invoice::query()->create($prepared['header'] + [
@@ -81,8 +79,8 @@ class InvoiceService
                 'number' => $this->numbers->next($prepared['header']['company_id'], CarbonImmutable::parse($data['document_date'])->year),
                 'year' => CarbonImmutable::parse($data['document_date'])->year,
                 'proforma_request_id' => $locked->id,
-                'work_order_id' => $workOrder->id,
-                'quote_id' => $workOrder->quote_id,
+                'work_order_id' => $locked->work_order_id,
+                'quote_id' => $locked->quote_id,
                 'created_by' => $actor->id,
             ]);
             $this->writeChildren($invoice, $prepared);
@@ -114,7 +112,7 @@ class InvoiceService
             // Step 2: validate and compute; with collections plan the rebalancing first
             $collected = $this->schedule->hasCollections($locked);
             $collected && $this->schedule->assertFrozenFields($locked, $data);
-            $prepared = $this->prepare($data, $locked->work_order_id, $locked->id, ! $collected);
+            $prepared = $this->prepare($data, $locked->work_order_id, $locked->quote_id, $locked->id, ! $collected);
             $plan = $collected ? $this->schedule->plan($locked, $prepared['header']['total_amount']) : null;
 
             // Step 3: replace header, lines and schedule
@@ -215,10 +213,10 @@ class InvoiceService
      * @param  array<string, mixed>  $data
      * @return array{header: array<string, mixed>, lines: array<int, array<string, mixed>>, installments: array<int, array<string, mixed>>}
      */
-    private function prepare(array $data, ?int $workOrderId, ?int $ignoreInvoiceId, bool $withSchedule = true): array
+    private function prepare(array $data, ?int $workOrderId, ?int $quoteId, ?int $ignoreInvoiceId, bool $withSchedule = true): array
     {
         $this->assertBankBelongsToCompany($data);
-        $this->lineGuard->assert($data['lines'], $workOrderId, $ignoreInvoiceId);
+        $this->lineGuard->assert($data['lines'], $workOrderId, $quoteId, $ignoreInvoiceId);
 
         $computed = $this->amounts->compute($data['lines'], $this->amounts->vatRates(array_column($data['lines'], 'vat_rate_id')));
 

@@ -10,6 +10,7 @@ use Database\Seeders\Concerns\SeedsCategoryAttributes;
 use Database\Seeders\QualificaCatalog\AplInternshipAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\AplPracticeCatalogue;
 use Database\Seeders\QualificaCatalog\ApprenticeshipAttributeCatalogue;
+use Database\Seeders\QualificaCatalog\CatalogCategoryRenames;
 use Database\Seeders\QualificaCatalog\CatalogPickLists;
 use Database\Seeders\QualificaCatalog\CatalogProducts;
 use Database\Seeders\QualificaCatalog\CatalogRootRules;
@@ -328,6 +329,10 @@ class QualificaCatalogSeeder extends Seeder
 
     private function seedCatalog(): void
     {
+        // The name is the natural key: renamed nodes are renamed in place
+        // first, or the loop below would seed them a second time.
+        app(CatalogCategoryRenames::class)->apply();
+
         foreach (self::CATALOG as $rootName => $subcategories) {
             // A root always parents subcategories, so it is a container by
             // construction (spec 0074): never a classification target.

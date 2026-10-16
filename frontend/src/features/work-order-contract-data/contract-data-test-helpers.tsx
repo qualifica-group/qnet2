@@ -9,11 +9,11 @@ export const STATUS_ITEMS = [
   { id: 4, label: 'Da pagare', name: 'Da pagare', color: 'red', allows_delivery: false },
 ]
 
-export function renderSection(canManage: boolean) {
+export function renderSection(canManage: boolean, showRegistry = false) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <WorkOrderContractDataSection workOrderId={4} canManage={canManage} />
+      <WorkOrderContractDataSection workOrderId={4} canManage={canManage} showRegistry={showRegistry} />
     </QueryClientProvider>,
   )
 }

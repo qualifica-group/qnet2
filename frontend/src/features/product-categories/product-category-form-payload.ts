@@ -80,6 +80,8 @@ export function buildCreatePayload(
       : {}),
     // And once more for the contract rule (spec 0091): root-owned, inherited.
     ...(values.parent_id === null ? { generates_contract: values.generates_contract } : {}),
+    // And for the multi-offer work order rule (spec 0267): root-owned, inherited.
+    ...(values.parent_id === null ? { multi_quote_work_order: values.multi_quote_work_order } : {}),
     // And once more for the simplified-offer-line rule (spec 0114): root-owned, inherited.
     // A child sends its override instead (spec 0188), a root its own value.
     ...(values.parent_id === null
@@ -175,6 +177,11 @@ export function buildUpdatePayload(
   // Same root-only guard for the contract rule (spec 0091).
   if (values.parent_id === null && values.generates_contract !== original.generates_contract) {
     payload.generates_contract = values.generates_contract
+  }
+
+  // Same root-only guard for the multi-offer work order rule (spec 0267).
+  if (values.parent_id === null && values.multi_quote_work_order !== original.multi_quote_work_order) {
+    payload.multi_quote_work_order = values.multi_quote_work_order
   }
 
   // Simplified-offer-line (spec 0114, 0188): a ROOT declares the value itself,

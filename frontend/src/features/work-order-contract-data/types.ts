@@ -38,6 +38,8 @@ export interface ContractDataLine {
   quote_line_id: number
   product: { id: number; code: string; name: string }
   typology: { id: number; code: string; name: string; color: string } | null
+  /** Spec 0267: the client of the line's own offer, shown on the line of a multi-offer work order. */
+  registry: { id: number; name: string } | null
   /** Spec 0202 D-11: read from the row's frozen snapshot; null = Supplier commission not calculated. */
   supplier_commission_direction: SupplierCommissionDirection | null
   quantity: string

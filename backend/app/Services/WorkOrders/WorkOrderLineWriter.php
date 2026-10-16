@@ -26,21 +26,33 @@ use Illuminate\Validation\ValidationException;
  */
 final class WorkOrderLineWriter
 {
+    public function __construct(private readonly MultiQuoteLineRules $multiQuoteRules) {}
+
     /**
      * Full-replace sync (AC-025), a no-op when `$quoteLineIds` is null — the
      * key was not submitted at all (AC-026, PATCH only; create always
      * submits an array, defaulting to `[]`).
      *
+     * `$allowedQuoteIds` is the single own offer of a mono-offer commessa, or
+     * the selected contracts' offers (create) / the current source offers
+     * (update) of a multi-offer one (spec 0267, D-2/D-5), whose extra rules
+     * live in MultiQuoteLineRules.
+     *
+     * @param  array<int, int>  $allowedQuoteIds
      * @param  array<int, int>|null  $quoteLineIds
      */
-    public function writeSubmitted(WorkOrder $workOrder, int $quoteId, ?array $quoteLineIds): void
+    public function writeSubmitted(WorkOrder $workOrder, array $allowedQuoteIds, ?array $quoteLineIds): void
     {
         if ($quoteLineIds === null) {
             return;
         }
 
-        $this->assertBelongToRevenueLines($quoteId, $quoteLineIds);
+        $this->assertBelongToRevenueLines($allowedQuoteIds, $quoteLineIds);
         $this->assertNotAlreadyProgrammed($workOrder, $quoteLineIds);
+
+        if ($workOrder->isMultiQuote()) {
+            $this->multiQuoteRules->assert($workOrder, $quoteLineIds);
+        }
 
         $changes = $workOrder->quoteLines()->sync($quoteLineIds);
 
@@ -49,16 +61,17 @@ final class WorkOrderLineWriter
     }
 
     /**
+     * @param  array<int, int>  $allowedQuoteIds
      * @param  array<int, int>  $quoteLineIds
      */
-    public function assertBelongToRevenueLines(int $quoteId, array $quoteLineIds): void
+    public function assertBelongToRevenueLines(array $allowedQuoteIds, array $quoteLineIds): void
     {
         if ($quoteLineIds === []) {
             return;
         }
 
         $validIds = QuoteLine::query()
-            ->where('quote_id', $quoteId)
+            ->whereIn('quote_id', $allowedQuoteIds)
             ->where('line_type', QuoteLineType::Revenue)
             ->whereIn('id', $quoteLineIds)
             ->pluck('id')
@@ -68,7 +81,7 @@ final class WorkOrderLineWriter
 
         if ($invalidIds !== []) {
             throw ValidationException::withMessages([
-                'quote_line_ids' => 'The selected quote_line_ids must belong to the quote and be revenue lines.',
+                'quote_line_ids' => __('work_orders.lines_not_offer_revenue'),
             ]);
         }
     }
@@ -101,7 +114,7 @@ final class WorkOrderLineWriter
         }
 
         throw ValidationException::withMessages([
-            'quote_line_ids' => "Quote line #{$conflict->quote_line_id} is already programmed in work order {$conflict->code}.",
+            'quote_line_ids' => __('work_orders.line_already_programmed', ['code' => $conflict->code]),
         ]);
     }
 }

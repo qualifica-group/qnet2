@@ -138,6 +138,7 @@ describe('create form — replica of the detail (spec 0229 D-4)', () => {
       'managementMode',
       'singleQuotePerOpportunity',
       'generatesContract',
+      'multiQuoteWorkOrder',
       'simplifiedOfferLine',
       'isSelectable',
       'isActive',

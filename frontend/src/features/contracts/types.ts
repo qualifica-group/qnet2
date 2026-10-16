@@ -207,3 +207,39 @@ export interface TerminateContractPayload {
   termination_reason: string
   contract_status_id?: number
 }
+
+/** One contract header of `GET /contracts/multi-programmable-lines` (spec 0267): its offer and customer. */
+export interface MultiProgrammableContract {
+  id: number
+  quote: { id: number; code: string; title: string | null }
+  registry: { id: number; name: string } | null
+}
+
+/**
+ * A programmable line enriched for the multi-offer dialog (spec 0267):
+ * `multi_quote_eligible` = revenue line with a product, in a flagged branch,
+ * not yet in a work order. `branch_root` is the catalog branch the same-branch
+ * rule compares on.
+ */
+export interface MultiProgrammableLine extends ContractProgrammableLine {
+  contract_id: number
+  quote_id: number
+  branch_root: { id: number; name: string } | null
+  multi_quote_eligible: boolean
+}
+
+export interface MultiProgrammableLinesData {
+  contracts: MultiProgrammableContract[]
+  lines: MultiProgrammableLine[]
+}
+
+/** Body of `POST /contracts/multi-quote-work-orders` (spec 0267): ONE work order across several offers. */
+export interface MultiQuoteWorkOrderPayload {
+  contract_ids: number[]
+  quote_line_ids: number[]
+  title: string | null
+  type: WorkOrderType
+  start_date: string
+  supervisor_ids: number[]
+  task_template_id: number | null
+}

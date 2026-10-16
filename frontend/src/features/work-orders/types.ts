@@ -58,6 +58,20 @@ export interface WorkOrderContractRef {
 }
 
 /**
+ * One entry of `WorkOrderResource.source_quotes` (spec 0267 D-7): an offer the
+ * work order's lines come from. Always at least one entry; the single-offer
+ * fields of the resource are `null` when there is more than one.
+ */
+export interface WorkOrderSourceQuote {
+  id: number
+  code: string
+  title: string | null
+  contract: { id: number } | null
+  registry: { id: number; name: string } | null
+  company: { id: number; name: string } | null
+}
+
+/**
  * `WorkOrderResource.task_template` projection (spec 0124 D-9): the Modello
  * di Task used to generate this work order's tasks, immutable after create
  * (D-5) — shown read-only once set, never re-picked.
@@ -79,6 +93,8 @@ export interface WorkOrderQuoteLine {
   id: number
   sort_order: number
   product: WorkOrderQuoteLineProduct | null
+  /** Spec 0267: the client of the line's own offer, shown on the line of a multi-offer work order. */
+  registry: { id: number; name: string } | null
 }
 
 /** A single labeled choice of an enum-type Attribute (spec 0049), local per module (mirrors `quotes.AttributeOptionRef`). */
@@ -158,7 +174,11 @@ export interface WorkOrderDetail {
   participants: WorkOrderParticipant[]
   description: string | null
   internal_notes: string | null
-  /** = `quote.code`, derived, read-only (D-2). */
+  /** Spec 0267 D-7: true when the lines come from more than one offer (the single-offer fields below are then null). */
+  is_multi_quote: boolean
+  /** Spec 0267 D-7: always present, one element on a single-offer work order. */
+  source_quotes: WorkOrderSourceQuote[]
+  /** = `quote.code`, derived, read-only (D-2); `null` on a multi-offer work order. */
   contract_number: string | null
   quote: WorkOrderQuoteRef | null
   /** The detail names this record, not the offer underneath it. */

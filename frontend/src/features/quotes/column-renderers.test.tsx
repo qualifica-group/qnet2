@@ -145,3 +145,33 @@ describe('quoteColumnRenderers.supervisor', () => {
     expect(screen.getByText('—')).toBeInTheDocument()
   })
 })
+
+describe('quoteColumnRenderers.offer_lines', () => {
+  it('renders the product names of the revenue lines', () => {
+    renderCell('offer_lines', [
+      { id: 1, name: 'SOA OG1', category_id: 4, category_name: 'SOA - Ente' },
+      { id: 2, name: 'ISO 9001', category_id: 5 },
+    ])
+    expect(screen.getByText('SOA OG1 (SOA - Ente), ISO 9001')).toBeInTheDocument()
+  })
+
+  it('renders an em dash for an empty array', () => {
+    renderCell('offer_lines', [])
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
+})
+
+describe('quoteColumnRenderers.root_categories', () => {
+  it('renders the root category names', () => {
+    renderCell('root_categories', [
+      { id: 1, name: 'Formazione' },
+      { id: 2, name: 'Consulenza' },
+    ])
+    expect(screen.getByText('Formazione, Consulenza')).toBeInTheDocument()
+  })
+
+  it('renders an em dash for an empty array', () => {
+    renderCell('root_categories', [])
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
+})

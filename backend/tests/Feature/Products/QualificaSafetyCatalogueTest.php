@@ -3,7 +3,9 @@
 use App\Enums\AttributeContext;
 use App\Enums\CategoryManagementMode;
 use App\Enums\FormMode;
+use App\Enums\LayoutFormScope;
 use App\Models\Attribute;
+use App\Models\AttributeLayout;
 use App\Models\BusinessFunction;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -85,6 +87,62 @@ it('gives every subcategory the root offer fields and form, and no Commessa fiel
             ->and($hierarchy->effectiveAttributes($category, AttributeContext::WorkOrder)->all())->toBe([])
             ->and(array_column($sections, 'title'))->toBe(['Sicurezza 81/08', 'Patentino saldatori']);
     }
+});
+
+it('replaces the two course fields of the first revision with "Numero e tipo di corsi richiesti" and "Documenti richiesti" on an installation already seeded', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $layouts = app(AttributeLayoutService::class);
+    $root = ProductCategory::query()->where('name', SafetyCatalogue::ROOT)->sole();
+    $seeded = $layouts->resolveExact($root, AttributeContext::Quote, LayoutFormScope::All);
+
+    // The first revision: its two course fields assigned instead of today's, its form stored.
+    $root->attributes()->wherePivot('context', AttributeContext::Quote->value)
+        ->detach(Attribute::query()->whereIn('code', ['safety_requested_courses', 'safety_required_documents'])->pluck('id')->all());
+    foreach (SafetyCatalogue::RETIRED_ATTRIBUTES as $code) {
+        $attribute = Attribute::query()->create(['code' => $code, 'name' => $code, 'type' => 'textarea']);
+        $root->attributes()->attach($attribute->id, ['context' => AttributeContext::Quote->value, 'is_required' => false, 'sort_order' => 0]);
+    }
+    // Built the way SeedsAttributeLayouts::layoutSection() wrote it.
+    $section = static fn (string $id, string $title, string $description, int $sortOrder, array $rows): array => [
+        'id' => $id, 'title' => $title, 'description' => $description, 'variant' => 'default',
+        'collapsible' => false, 'default_collapsed' => false, 'columns' => 2, 'sort_order' => $sortOrder,
+        'rows' => array_map(static fn (array $codes, int $index): array => [
+            'id' => "{$id}-{$index}",
+            'items' => array_map(static fn (string $code): array => [
+                'attribute_code' => $code, 'width' => count($codes) === 1 ? 'full' : 'half',
+            ], $codes),
+        ], $rows, array_keys($rows)),
+    ];
+    AttributeLayout::query()
+        ->where(['product_category_id' => $root->id, 'context' => AttributeContext::Quote->value])
+        ->update(['layout' => ['sections' => [
+            $section('safety-request', 'Sicurezza 81/08', 'Dati dell\'azienda e corsi richiesti.', 0, [
+                ['safety_company_report', 'safety_employee_count'],
+                ['safety_requested_course_types'],
+                ['safety_course_count_per_type'],
+                ['safety_shifts_roles_workplaces'],
+                ['safety_active_sites_count', 'safety_company_sites_count'],
+            ]),
+            $section('safety-welder-licences', 'Patentino saldatori', 'Descrizione patentini: tipo di saldatura, spessori e materiale.', 1, [
+                ['safety_welder_licences_count'],
+                ['safety_welding_method', 'safety_weld_joint'],
+                ['safety_weld_thickness', 'safety_weld_material'],
+            ]),
+        ]]]);
+
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $subcategory = ProductCategory::query()->where('name', SafetyCatalogue::TRAINING_COURSES)->sole();
+
+    expect(app(CategoryHierarchy::class)->effectiveAttributes($subcategory, AttributeContext::Quote)->pluck('code')->all())
+        ->toContain('safety_requested_courses', 'safety_required_documents')
+        ->not->toContain(...SafetyCatalogue::RETIRED_ATTRIBUTES)
+        ->and(Attribute::query()->where('code', 'safety_requested_courses')->sole()->only(['name', 'type']))
+        ->toBe(['name' => 'Numero e tipo di corsi richiesti', 'type' => 'text'])
+        ->and(Attribute::query()->where('code', 'safety_required_documents')->sole()->only(['name', 'type']))
+        ->toBe(['name' => 'Documenti richiesti', 'type' => 'text'])
+        ->and($layouts->resolveExact($root, AttributeContext::Quote, LayoutFormScope::All))->toBe($seeded);
 });
 
 it('seeds the 127 listed products with their price, 22% VAT and the Consulenza typology, the repeated title split by code', function (): void {

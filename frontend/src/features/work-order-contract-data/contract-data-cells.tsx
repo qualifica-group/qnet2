@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { MessageSquareText } from 'lucide-react'
+import { BookUser, MessageSquareText } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { RecordLink } from '@/components/detail/record-link'
 import { cn } from '@/lib/utils'
@@ -11,24 +11,43 @@ import { ProductTypologyBadge } from '@/features/product-typologies/product-typo
 import { PaymentStatusLabel } from '@/features/work-order-contract-data/payment-status-label'
 import type { ContractDataLine } from '@/features/work-order-contract-data/types'
 
-/** The product on ONE line: code, name (truncated, full name on hover), typology badge, warning icons. */
-export function ProductCell({ line }: { line: ContractDataLine }) {
+interface ProductCellProps {
+  line: ContractDataLine
+  /** Multi-offer work order (spec 0267): the client of the line's own offer goes under the product. */
+  showRegistry: boolean
+}
+
+/**
+ * The product on ONE line: code, name (truncated, full name on hover), typology
+ * badge, warning icons; on a multi-offer work order, the line's client below.
+ */
+export function ProductCell({ line, showRegistry }: ProductCellProps) {
   const { t } = useTranslation()
   const { code, name } = line.product
 
   return (
-    <div className="flex min-w-0 items-center gap-1.5">
-      <span className="shrink-0 font-mono text-muted-foreground">{code}</span>
-      <RecordLink domain="products" id={line.product.id} className="min-w-0 font-medium">
-        <span className="min-w-0 truncate" title={name}>
-          {name}
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <div className="flex min-w-0 items-center gap-1.5">
+        <span className="shrink-0 font-mono text-muted-foreground">{code}</span>
+        <RecordLink domain="products" id={line.product.id} className="min-w-0 font-medium">
+          <span className="min-w-0 truncate" title={name}>
+            {name}
+          </span>
+        </RecordLink>
+        <ProductTypologyBadge
+          name={line.typology?.name ?? t('workOrders.contractData.kind.consultancy')}
+          color={line.typology?.color}
+        />
+        <ContractDataWarnings warnings={line.warnings} />
+      </div>
+      {showRegistry && line.registry ? (
+        <span className="flex min-w-0 items-center gap-1 text-[11px]">
+          <BookUser className="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <RecordLink domain="registries" id={line.registry.id} className="min-w-0 text-primary">
+            {line.registry.name}
+          </RecordLink>
         </span>
-      </RecordLink>
-      <ProductTypologyBadge
-        name={line.typology?.name ?? t('workOrders.contractData.kind.consultancy')}
-        color={line.typology?.color}
-      />
-      <ContractDataWarnings warnings={line.warnings} />
+      ) : null}
     </div>
   )
 }

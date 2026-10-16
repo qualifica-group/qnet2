@@ -40,6 +40,7 @@ require_once __DIR__.'/Helpers/RequestManagementHelpers.php';
 require_once __DIR__.'/Helpers/CampaignHelpers.php';
 require_once __DIR__.'/Helpers/RegistryHelpers.php';
 require_once __DIR__.'/Helpers/ProformaRequestHelpers.php';
+require_once __DIR__.'/Helpers/ProformaMultiQuoteHelpers.php';
 require_once __DIR__.'/Helpers/PurchaseRequestHelpers.php';
 require_once __DIR__.'/Helpers/CostTypeHelpers.php';
 require_once __DIR__.'/Helpers/PurchaseOrderHelpers.php';
@@ -50,6 +51,7 @@ require_once __DIR__.'/Helpers/ContractHelpers.php';
 require_once __DIR__.'/Helpers/ImportHelpers.php';
 require_once __DIR__.'/Helpers/UserHelpers.php';
 require_once __DIR__.'/Helpers/WorkOrderHelpers.php';
+require_once __DIR__.'/Helpers/WorkOrderMultiQuoteHelpers.php';
 require_once __DIR__.'/Helpers/StatsHelpers.php';
 require_once __DIR__.'/Helpers/EmailTemplateHelpers.php';
 require_once __DIR__.'/Helpers/DocumentBundleHelpers.php';
@@ -65,6 +67,7 @@ require_once __DIR__.'/Helpers/PurchaseInvoiceInstallmentHelpers.php';
 require_once __DIR__.'/Helpers/PurchaseInvoiceHelpers.php';
 require_once __DIR__.'/Helpers/ApiClientAdminHelpers.php';
 require_once __DIR__.'/Helpers/ApiDocsHelpers.php';
+require_once __DIR__.'/Helpers/ProductCategoryHelpers.php';
 
 /*
 |--------------------------------------------------------------------------

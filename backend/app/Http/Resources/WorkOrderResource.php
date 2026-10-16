@@ -4,10 +4,12 @@ namespace App\Http\Resources;
 
 use App\Authorization\LegacyIdVisibility;
 use App\Enums\FormMode;
+use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\RequestManagement\ApplicableAttribute;
+use App\Services\WorkOrders\WorkOrderSourceQuotes;
 use App\Services\WorkOrders\WorkOrderStatusResolver;
 use App\Services\WorkOrders\WorkOrderTaskForceCloser;
 use App\Support\OperationalSiteLabel;
@@ -72,6 +74,8 @@ class WorkOrderResource extends JsonResource
             'internal_notes' => $this->internal_notes,
             'contract_number' => $this->quote?->code,
             'task_template' => $this->summarizeTaskTemplate(),
+            'is_multi_quote' => $this->isMultiQuote(),
+            'source_quotes' => $this->summarizeSourceQuotes(),
             'quote' => $this->summarizeQuote(),
             'contract' => $this->summarizeContract(),
             'registry' => $this->summarizeRegistry(),
@@ -160,6 +164,33 @@ class WorkOrderResource extends JsonResource
     }
 
     /**
+     * The offers this commessa draws from (spec 0267, D-7): one element on a
+     * mono-offer commessa, the distinct offers of its lines on a multi-offer
+     * one. Ordered by code.
+     *
+     * @return array<int, array{id: int, code: string, title: string|null, contract: array{id: int}|null, registry: array{id: int, name: string}|null, company: array{id: int, name: string}|null}>
+     */
+    private function summarizeSourceQuotes(): array
+    {
+        return app(WorkOrderSourceQuotes::class)->forDetail($this->resource)
+            ->map(static function (Quote $quote): array {
+                $registry = $quote->opportunity?->registry;
+                $company = $quote->company;
+
+                return [
+                    'id' => $quote->id,
+                    'code' => $quote->code,
+                    'title' => $quote->title,
+                    'contract' => $quote->contract === null ? null : ['id' => $quote->contract->id],
+                    'registry' => $registry === null ? null : ['id' => $registry->id, 'name' => $registry->name],
+                    'company' => $company === null ? null : ['id' => $company->id, 'name' => $company->denomination],
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
      * @return array{id: int, code: string, title: string}|null
      */
     private function summarizeQuote(): ?array
@@ -241,7 +272,11 @@ class WorkOrderResource extends JsonResource
     }
 
     /**
-     * @return array<int, array{id: int, sort_order: int, product: array{id: int, code: string, name: string}|null}>
+     * `registry` is the client of the line's own offer (spec 0267): on a
+     * multi-offer commessa it tells the lines apart, in place of the single
+     * `registry` of the resource.
+     *
+     * @return array<int, array{id: int, sort_order: int, product: array{id: int, code: string, name: string}|null, registry: array{id: int, name: string}|null}>
      */
     private function summarizeQuoteLines(): array
     {
@@ -250,11 +285,13 @@ class WorkOrderResource extends JsonResource
 
         return $lines->map(static function ($line): array {
             $product = $line->product;
+            $registry = $line->quote?->opportunity?->registry;
 
             return [
                 'id' => $line->id,
                 'sort_order' => $line->sort_order,
                 'product' => $product === null ? null : ['id' => $product->id, 'code' => $product->code, 'name' => $product->name],
+                'registry' => $registry === null ? null : ['id' => $registry->id, 'name' => $registry->name],
             ];
         })->all();
     }

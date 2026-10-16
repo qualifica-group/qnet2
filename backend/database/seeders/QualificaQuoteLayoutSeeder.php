@@ -90,6 +90,28 @@ class QualificaQuoteLayoutSeeder extends Seeder
     ];
 
     /**
+     * Category name => the OFFERTA-context codes its catalogue dropped and
+     * Step 1 withdraws from that category alone.
+     *
+     * @var array<string, list<string>>
+     */
+    private const array RETIRED_ATTRIBUTES = [
+        ...AplPracticeCatalogue::RETIRED_ATTRIBUTES,
+        SafetyCatalogue::ROOT => SafetyCatalogue::RETIRED_ATTRIBUTES,
+    ];
+
+    /**
+     * Category name => the form a previous revision seeded for a category of
+     * OWN_FORMS, recognised and recomposed (isPreviousOwnForm).
+     *
+     * @var array<string, list<array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string}}>>
+     */
+    private const array PREVIOUS_OWN_FORMS = [
+        ...AplPracticeCatalogue::PREVIOUS_FORMS,
+        SafetyCatalogue::ROOT => SafetyCatalogue::PREVIOUS_QUOTE_SECTIONS,
+    ];
+
+    /**
      * The compositions PREVIOUS revisions of this seeder wrote, recognised
      * byte for byte so an installation already seeded is recomposed instead of
      * being frozen on an obsolete arrangement. Anything else — one item moved,
@@ -148,9 +170,9 @@ class QualificaQuoteLayoutSeeder extends Seeder
 
     public function run(): void
     {
-        // Step 1: the codes the APL catalogues dropped leave their category,
+        // Step 1: the codes the catalogues dropped leave their category,
         // assignment and form alike, so the layouts below compose without them.
-        $this->retireAplAttributes();
+        $this->retireCatalogueAttributes();
 
         // Step 2: one form per category.
         foreach ($this->layoutCategories() as $category) {
@@ -158,9 +180,9 @@ class QualificaQuoteLayoutSeeder extends Seeder
         }
     }
 
-    private function retireAplAttributes(): void
+    private function retireCatalogueAttributes(): void
     {
-        foreach (AplPracticeCatalogue::RETIRED_ATTRIBUTES as $categoryName => $codes) {
+        foreach (self::RETIRED_ATTRIBUTES as $categoryName => $codes) {
             $category = ProductCategory::query()->where('name', $categoryName)->first();
 
             if ($category !== null) {
@@ -266,7 +288,7 @@ class QualificaQuoteLayoutSeeder extends Seeder
 
     /**
      * Whether $blob is the form a previous revision seeded for a category
-     * with a form of its own (AplPracticeCatalogue::PREVIOUS_FORMS), white or
+     * with a form of its own (PREVIOUS_OWN_FORMS), white or
      * with its PREVIOUSLY_HIGHLIGHTED sections grey. Composed from today's
      * codes: a field added since is simply absent from the old rows, and one
      * retired since was stripped from the blob, so the filter leaves exactly
@@ -277,7 +299,7 @@ class QualificaQuoteLayoutSeeder extends Seeder
      */
     private function isPreviousOwnForm(ProductCategory $category, array $blob, array $effective): bool
     {
-        $previous = AplPracticeCatalogue::PREVIOUS_FORMS[$category->name] ?? null;
+        $previous = self::PREVIOUS_OWN_FORMS[$category->name] ?? null;
 
         if ($previous === null) {
             return false;

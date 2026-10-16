@@ -14,6 +14,7 @@ use App\Tables\Quotes\QuoteAdvancedFilterCatalog;
 use App\Tables\Quotes\QuoteCellWriter;
 use App\Tables\Quotes\QuoteColumnCatalog;
 use App\Tables\Quotes\QuoteRelationColumns;
+use App\Tables\Shared\OfferLinesColumn;
 use App\Tables\Shared\OperationalSiteColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -194,6 +195,8 @@ class QuotesTableDefinition extends AbstractTableDefinition
             'code' => $row->code,
             'title' => $row->title,
             'opportunity' => $this->summarize($row->opportunity),
+            ...OfferLinesColumn::project($row),
+            ...$this->relationColumns->projectRootCategories($row),
             'quote_workflow_status' => $this->summarizeWorkflowStatus($row->quoteWorkflowStatus),
             'quote_workflow_status_options' => $this->allowedWorkflowStatusIds($row),
             'commercial' => $this->summarize($row->commercial),
@@ -211,11 +214,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
             // uses so both grids parse the value identically.
             'next_callback_at' => $row->next_callback_at?->format('Y-m-d\TH:i'),
             'notes_count' => (int) ($row->notes_count ?? 0),
-            // "Gestori Account" (spec 0087, D-1/T-10): the avatar stack —
-            // ordered by pivot position (Quote::managers()), no `position`
-            // in the cell itself (mirrors OpportunitiesTableDefinition's own
-            // `managers` projection). Never null at the column level: an
-            // empty array when the Offerta has no team yet.
+            // "Gestori Account" (spec 0087, D-1/T-10): avatar stack by pivot position; [] when no team.
             'managers' => $row->managers->map(fn (User $user): array => $this->userSummary($user))->all(),
             'alert' => $this->resolveAlert($row),
         ];

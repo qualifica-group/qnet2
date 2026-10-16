@@ -33,6 +33,8 @@ interface ContractDataTableProps {
   workOrderId: number
   data: WorkOrderContractData
   canManage: boolean
+  /** Multi-offer work order: each line names its own client. */
+  showRegistry: boolean
 }
 
 /**
@@ -40,7 +42,7 @@ interface ContractDataTableProps {
  * container when narrow; below `md` the same markup lays each line out as a
  * compact card (one DOM, so tooltips and the actions button stay single).
  */
-export function ContractDataTable({ workOrderId, data, canManage }: ContractDataTableProps) {
+export function ContractDataTable({ workOrderId, data, canManage, showRegistry }: ContractDataTableProps) {
   const { t } = useTranslation()
   const [editingLineId, setEditingLineId] = useState<number | null>(null)
   const editingLine = data.lines.find((line) => line.quote_line_id === editingLineId) ?? null
@@ -77,6 +79,7 @@ export function ContractDataTable({ workOrderId, data, canManage }: ContractData
               line={line}
               commissionsVisible={data.commissions_visible}
               canManage={canManage}
+              showRegistry={showRegistry}
               onEdit={() => setEditingLineId(line.quote_line_id)}
             />
           ))}

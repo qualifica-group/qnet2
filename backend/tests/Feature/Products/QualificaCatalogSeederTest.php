@@ -65,25 +65,22 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
         'Autofinanziato - Campania', 'Autofinanziato - Lazio',
         'Autofinanziato - Lombardia', 'Autofinanziato - Sicilia',
         'Autoimpiego',
-        // REQUIREMENT CHANGED: the SOA and Sicurezza targets (user directives 2026-10-15).
-        'Consulenza SOA',
         // The e-Campus leaf, every degree fee on it (user directive 2026-10-02).
         'Corsi E-Campus',
-        'Corsi di formazione',
         'DIL - Lombardia',
-        'Documenti',
-        'Ente SOA',
         'GOL - Abruzzo', 'GOL - Basilicata', 'GOL - Calabria', 'GOL - Campania',
         'GOL - Lazio', 'GOL - Lombardia', 'GOL - Molise', 'GOL - Puglia',
         'GOL - Sicilia', 'GOL - Umbria',
         'Orientamento specialistico',
         // The Consulenza leaf (user directive 2026-09-28).
         'Presa Appuntamenti',
-        'Sopralluogo',
+        // REQUIREMENT CHANGED: the SOA and Sicurezza targets, prefixed with
+        // their branch (user directives 2026-10-15).
+        'SOA - Consulenza', 'SOA - Ente',
+        'Sicurezza - Corsi di formazione', 'Sicurezza - Documenti', 'Sicurezza - Sopralluogo',
+        'Sicurezza - Trasferta', 'Sicurezza - Visite mediche',
         // The APL internships (user directives 2026-10-02, 2026-10-05).
         'Tirocinio',
-        'Trasferta',
-        'Visite mediche',
         'Yisu',
     ]);
 

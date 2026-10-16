@@ -16,13 +16,14 @@ final class InvoiceLineGuard
 {
     /**
      * @param  array<int, array<string, mixed>>  $lines
+     * @param  int|null  $quoteId  the offer of the document: its lines are the only ones allowed (spec 0267, D-6)
      * @param  int|null  $ignoreInvoiceId  the document being edited: its own lines do not count
      */
-    public function assert(array $lines, ?int $workOrderId, ?int $ignoreInvoiceId = null): void
+    public function assert(array $lines, ?int $workOrderId, ?int $quoteId, ?int $ignoreInvoiceId = null): void
     {
         $allowed = $workOrderId === null
             ? []
-            : WorkOrder::query()->findOrFail($workOrderId, ['id'])->quoteLines()->pluck('quote_lines.id')->all();
+            : WorkOrder::query()->findOrFail($workOrderId, ['id'])->quoteLines()->when($quoteId !== null, fn ($query) => $query->where('quote_lines.quote_id', $quoteId))->pluck('quote_lines.id')->all();
         $taken = $this->invoicedElsewhere($lines, $ignoreInvoiceId);
         $errors = [];
 

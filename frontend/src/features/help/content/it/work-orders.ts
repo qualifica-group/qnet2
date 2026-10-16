@@ -185,6 +185,32 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'multi-quote-work-order',
+      title: 'Commessa multi-offerta',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Una commessa **multi-offerta** raccoglie righe di più offerte (e quindi di più clienti). Si crea dalla tabella **Contratti** con **Programma commessa unica** (vedi la guida Contratti) e si riconosce dal badge **Multi-offerta**.',
+        },
+        {
+          type: 'list',
+          items: [
+            'Nel dettaglio non ci sono le sezioni cliente, contratto, azienda e sede: ogni riga prodotto mostra sotto il nome l\'**anagrafica** a cui si riferisce, con il collegamento alla sua scheda.',
+            'Le righe, dopo la creazione, si possono solo **togliere** (almeno una deve restare): non se ne possono aggiungere di altre offerte.',
+            'Nell\'elenco le colonne Cliente e Offerta mostrano più valori separati da " · "; filtrando per uno dei clienti la commessa viene trovata. La scadenza contratto resta vuota.',
+            'La commessa compare nel tab **Commesse** del contratto di ciascuna offerta di origine.',
+            'Il budget dei costi è dato dalle righe di costo di **tutte** le offerte di origine.',
+            'I task generati dal modello non hanno un cliente.',
+            'Nella scheda Email non ci sono variabili di cliente o offerta e i destinatari non sono precompilati.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Le richieste proforma di una commessa multi-offerta sono una per offerta: vedi la guida Richieste Proforma. Un\'offerta con righe in una commessa multi-offerta non si può eliminare.',
+        },
+      ],
+    },
+    {
       id: 'proforma-request',
       title: 'Richiesta di proforma (pulsante €)',
       blocks: [

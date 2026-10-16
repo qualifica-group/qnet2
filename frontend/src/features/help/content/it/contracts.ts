@@ -81,12 +81,37 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'program-multi-quote-work-order',
+      title: 'Programmare una commessa unica da più contratti',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Se le categorie prodotto del ramo hanno attiva l\'impostazione **Commessa multi-offerta**, puoi raccogliere in **una sola commessa** le righe di più contratti vinti, anche di clienti diversi.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Nella tabella **Contratti** seleziona da 2 a 50 contratti **Chiusi con esito positivo**.',
+            'Premi l\'azione **Programma commessa unica** (serve il permesso di programmare).',
+            'Nella finestra le righe sono raggruppate per contratto. Sono selezionabili solo le **righe di ricavo** di un ramo con l\'impostazione attiva e **non ancora in una commessa**; le altre restano visibili ma disattivate.',
+            'Scegli le righe: devono essere tutte dello **stesso ramo** e provenire da **almeno due offerte** diverse.',
+            'Compila i campi comuni: **Titolo** (facoltativo), **Tipo**, **Data inizio**, **Responsabili** (almeno uno) e, se serve, il **Modello di Task**.',
+            'Premi il pulsante di conferma: viene creata **una commessa** e si apre subito.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Il salvataggio è **tutto o niente**: se qualcosa non va non viene creata nessuna commessa e l\'errore compare sul campo delle righe. Una riga già in un\'altra commessa non si può riutilizzare. Se tra i contratti selezionati ce n\'è almeno uno non ancora in uno stato **Chiuso positivo** (per esempio **Da validare**) o che non si può cumulare (la sua offerta non ha righe di un ramo con **Commessa multi-offerta** attivo), la finestra si apre comunque e mostra quali contratti, con il cliente, vanno tolti dalla selezione.',
+        },
+      ],
+    },
+    {
       id: 'expiry-and-renewal',
       title: 'Scadenze e rinnovi',
       blocks: [
         {
           type: 'paragraph',
-          text: 'La colonna **Avviso** mostra **In scadenza** (scadenza entro 30 giorni) o **Da rinnovare** (rinnovo entro 30 giorni); se valgono entrambe, prevale **In scadenza**. I contratti in **Chiuso negativo** non mostrano avvisi.',
+          text: 'La colonna **Avviso** mostra **In scadenza** (scadenza entro 30 giorni) o **Da rinnovare** (rinnovo entro 30 giorni); se valgono entrambe, prevale **In scadenza**. I contratti in **Chiuso negativo** non mostrano avvisi. La colonna **Linee di prodotto** elenca i prodotti delle righe di ricavo dell\'offerta, ciascuno con la sua categoria tra parentesi (sola lettura). La colonna **Categoria madre** mostra la macrocategoria dei prodotti dell\'offerta, ad esempio Formazione (sola lettura, filtrabile).',
         },
         {
           type: 'tip',

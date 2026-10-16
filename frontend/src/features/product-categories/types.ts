@@ -39,6 +39,8 @@ export interface ProductCategoryTreeNode {
   single_quote_per_opportunity: boolean
   /** The EFFECTIVE contract rule: authored by the branch root, mirrored on every descendant server-side (spec 0091). */
   generates_contract: boolean
+  /** The EFFECTIVE multi-offer work order rule: authored by the branch root, mirrored on every descendant server-side (spec 0267). */
+  multi_quote_work_order: boolean
   /** The EFFECTIVE simplified-offer-line rule: the nearest declaring ancestor's value, denormalized on every node (spec 0114, 0188). */
   simplified_offer_line: boolean
   /** The node's OWN simplified-offer-line override (spec 0188): null inherits; always null on a root. */
@@ -182,6 +184,10 @@ export interface ProductCategoryDetail {
   generates_contract: boolean
   /** The root `generates_contract` is inherited from; null when this category IS the root and owns the flag. */
   generates_contract_source_category: { id: number; name: string } | null
+  /** Whether work orders of this branch may gather lines of several won contracts (spec 0267) — authored by the branch ROOT, mirrored here on every descendant. */
+  multi_quote_work_order: boolean
+  /** The root `multi_quote_work_order` is inherited from; null when this category IS the root and owns the flag. */
+  multi_quote_work_order_source_category: { id: number; name: string } | null
   /** The EFFECTIVE simplified-offer-line rule (spec 0114): the root's own value, or the nearest override (spec 0188). */
   simplified_offer_line: boolean
   /** The category's OWN override (spec 0188): null inherits; always null on a root. */
@@ -295,6 +301,8 @@ export interface CreateProductCategoryPayload {
   single_quote_per_opportunity?: boolean
   /** Same root-only rule again for the contract rule (spec 0091). */
   generates_contract?: boolean
+  /** Same root-only rule for the multi-offer work order rule (spec 0267). */
+  multi_quote_work_order?: boolean
   /** Same root-only rule again for the simplified-offer-line rule (spec 0114): a child sends the override instead. */
   simplified_offer_line?: boolean
   /** Child-only (spec 0188): true/false forces the rule, null inherits. Never sent for a root. */

@@ -2,6 +2,9 @@
 
 namespace App\Tables\Quotes;
 
+use App\Tables\Shared\OfferLinesColumn;
+use App\Tables\Shared\RootCategoriesColumn;
+
 /**
  * Declarative column/filter/action catalogue for the `quotes` domain (spec
  * 0065, MT-05). Extracted out of QuotesTableDefinition (file-size split,
@@ -72,6 +75,10 @@ final class QuoteColumnCatalog
                 'nullable' => true,
             ],
             self::derivedColumn('opportunity', 'quotes.columns.opportunity'),
+            // "Linee di prodotto" (user directive 2026-10-15): the products of
+            // the REVENUE lines, read-only here (edited from Gestione Richieste).
+            OfferLinesColumn::readOnlyDeclaration('quotes.columns.offerLines'),
+            RootCategoriesColumn::declaration('quotes.columns.rootCategories'),
             [
                 ...self::derivedColumn('quote_workflow_status', 'quotes.columns.quoteWorkflowStatus'),
                 // Spec 0206, D-6: same select + transition note as Gestione Richieste.

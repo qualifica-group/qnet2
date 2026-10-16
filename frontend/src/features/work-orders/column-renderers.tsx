@@ -1,9 +1,9 @@
-import { Building2 } from 'lucide-react'
-import { BooleanBadgeCell, CodeBadgeCell, DateCell, RelationCell } from '@/features/table/rich-cells'
+import { BooleanBadgeCell, CodeBadgeCell, DateCell } from '@/features/table/rich-cells'
 import { UserStackCell } from '@/features/table/user-cell'
 import { DateTimeCell } from '@/features/table/cell-renderers'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import i18n from '@/i18n'
+import { RegistryCell } from '@/features/work-orders/registry-cell'
 import { CompletionCell } from '@/features/table/completion-cell'
 
 /**
@@ -32,7 +32,7 @@ import { CompletionCell } from '@/features/table/completion-cell'
 
 export const workOrderColumnRenderers: TableRendererMap = {
   code: (params) => <CodeBadgeCell {...params} />,
-  registry: (params) => <RelationCell {...params} icon={Building2} />,
+  registry: (params) => <RegistryCell {...params} />,
   is_force_closed: (params) => <BooleanBadgeCell {...params} />,
   callback_date: (params) => <DateCell {...params} />,
   start_date: (params) => <DateCell {...params} />,

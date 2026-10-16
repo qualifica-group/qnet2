@@ -2,11 +2,12 @@
 import { Briefcase, Building2, Handshake, UserRound } from 'lucide-react'
 import type { ICellRendererParams } from 'ag-grid-community'
 import { CELL_WRAPPER } from '@/features/table/cell-renderers'
-import { CodeBadgeCell, CurrencyCell, DateCell, RelationCell, StatusBadgeCell } from '@/features/table/rich-cells'
+import { CodeBadgeCell, CurrencyCell, DateCell, RefNamesCell, RelationCell, StatusBadgeCell } from '@/features/table/rich-cells'
 import { UserCell, UserStackCell } from '@/features/table/user-cell'
 import { ContractAlertBadge } from '@/features/contracts/contract-status-badges'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import type { ContractAlert } from '@/features/contracts/types'
+import { OfferLinesCell } from '@/features/quotes/offer-lines-cell'
 
 /** The `alert` column cell: the same expiring/renewal_due badge as the detail hero, centered like every other badge cell. */
 function AlertCell({ value }: ICellRendererParams) {
@@ -54,4 +55,6 @@ export const contractColumnRenderers: TableRendererMap = {
   revenue_vat: (params) => <CurrencyCell {...params} />,
   revenue_gross: (params) => <CurrencyCell {...params} />,
   alert: (params) => <AlertCell {...params} />,
+  offer_lines: (params) => <OfferLinesCell {...params} />,
+  root_categories: (params) => <RefNamesCell {...params} />,
 }

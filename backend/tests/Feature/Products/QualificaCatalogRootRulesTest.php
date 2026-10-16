@@ -59,7 +59,7 @@ it('applies every root rule to Formazione and Consulenza, cascades it to their d
 
     // generates_contract cascade (AC-013, was: 'AC-013: cascades the no-contract rule...', 'AC-013: leaves "Consulenza" and its descendants generating contracts')
     expect($formazioneDescendantIds)->not->toBeEmpty()
-        ->and(ProductCategory::query()->whereIn('id', $formazioneDescendantIds)->where('generates_contract', true)->count())
+        ->and(ProductCategory::query()->whereIn('id', $formazioneDescendantIds)->where('generates_contract', false)->count())
         ->toBe(0)
         ->and($consulenzaDescendantIds)->not->toBeEmpty()
         ->and(ProductCategory::query()->whereIn('id', $consulenzaDescendantIds)->where('generates_contract', false)->count())
@@ -96,7 +96,7 @@ it('applies every root rule to Formazione and Consulenza, cascades it to their d
         ->and(ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->value('single_quote_per_opportunity'))
         ->toBeFalsy()
         ->and(ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->value('generates_contract'))
-        ->toBeFalsy()
+        ->toBeTruthy()
         ->and(ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->value('generates_contract'))
         ->toBeTruthy()
         ->and(ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->value('simplified_offer_line'))
@@ -109,7 +109,7 @@ it('applies every root rule to Formazione and Consulenza, cascades it to their d
     expect($molise->fresh()->updated_at)->toEqual($moliseUpdatedAt);
 });
 
-it('works the "APL" branch exactly like "Formazione", down to every subcategory (user directive 2026-10-05)', function (): void {
+it('works the "APL" branch like "Formazione" except contract and multi-offer, down to every subcategory (user directive 2026-10-05; Formazione generates a contract since 2026-10-15)', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
     $rules = ['management_mode', 'single_quote_per_opportunity', 'generates_contract', 'simplified_offer_line'];
@@ -117,13 +117,29 @@ it('works the "APL" branch exactly like "Formazione", down to every subcategory 
     $apl = ProductCategory::query()->where('name', 'APL')->whereNull('parent_id')->firstOrFail();
     $children = ProductCategory::query()->where('parent_id', $apl->id)->get();
 
-    expect($apl->only($rules))->toBe($formazione->only($rules))
+    $contractFree = array_diff($rules, ['generates_contract']);
+
+    expect($apl->only($contractFree))->toBe($formazione->only($contractFree))
+        ->and($apl->generates_contract)->toBeFalse()
         ->and($apl->manager_labels)->toBe($formazione->manager_labels)
         ->and($children)->toHaveCount(3);
 
     foreach ($children as $child) {
-        expect($child->only($rules))->toBe($formazione->only($rules));
+        expect($child->only($contractFree))->toBe($formazione->only($contractFree))
+            ->and($child->generates_contract)->toBeFalse();
     }
+});
+
+it('lets only the "Formazione" branch allow the multi-offer work order (spec 0267, user decision 2026-10-15)', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $formazione = ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->firstOrFail();
+    $descendants = ProductCategory::query()->where('parent_id', $formazione->id)->pluck('multi_quote_work_order')->unique()->values()->all();
+
+    expect($formazione->multi_quote_work_order)->toBeTrue()
+        ->and($descendants)->toBe([true])
+        ->and(ProductCategory::query()->where('name', 'APL')->whereNull('parent_id')->value('multi_quote_work_order'))->toBeFalsy()
+        ->and(ProductCategory::query()->where('name', 'Consulenza')->whereNull('parent_id')->value('multi_quote_work_order'))->toBeFalsy();
 });
 
 /**
@@ -178,9 +194,9 @@ it('realigns a branch seeded before every directive existed, cascading each inde
 
     // generates_contract (AC-014, was: 'AC-014: realigns a "Formazione" branch seeded before the no-contract directive, cascading to its descendants')
     expect(ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->value('generates_contract'))
-        ->toBeFalsy()
-        ->and(ProductCategory::query()->where('name', 'GOL')->value('generates_contract'))->toBeFalsy()
-        ->and(ProductCategory::query()->where('name', 'GOL - Molise')->value('generates_contract'))->toBeFalsy();
+        ->toBeTruthy()
+        ->and(ProductCategory::query()->where('name', 'GOL')->value('generates_contract'))->toBeTruthy()
+        ->and(ProductCategory::query()->where('name', 'GOL - Molise')->value('generates_contract'))->toBeTruthy();
 
     // simplified_offer_line (AC-007, was: 'AC-007: realigns a "Formazione" branch seeded before the simplified-offer-line directive, cascading to its descendants')
     expect(ProductCategory::query()->where('name', 'Formazione')->whereNull('parent_id')->value('simplified_offer_line'))

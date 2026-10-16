@@ -10,6 +10,8 @@
 export const quotes = {
   forbidden: 'Non hai i permessi per visualizzare le offerte.',
   columns: {
+    offerLines: 'Linee di prodotto',
+    rootCategories: 'Categoria madre',
     code: 'Codice',
     title: 'Titolo',
     opportunity: 'Opportunità',

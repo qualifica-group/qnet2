@@ -114,8 +114,14 @@ final class WorkOrderDerivedColumns
             return false;
         }
 
-        $query->whereHas('quote', function (Builder $quoteQuery) use ($quoteColumn, $columnConfig, $filter): void {
-            $this->filterApplier->apply($quoteQuery, $quoteColumn, $columnConfig, $filter);
+        // Spec 0267, D-8: a multi-offer commessa has no `quote_id`; it is found
+        // through the offers of its lines.
+        $query->where(function (Builder $scope) use ($quoteColumn, $columnConfig, $filter): void {
+            $scope->whereHas('quote', function (Builder $quoteQuery) use ($quoteColumn, $columnConfig, $filter): void {
+                $this->filterApplier->apply($quoteQuery, $quoteColumn, $columnConfig, $filter);
+            })->orWhereHas('quoteLines.quote', function (Builder $quoteQuery) use ($quoteColumn, $columnConfig, $filter): void {
+                $this->filterApplier->apply($quoteQuery, $quoteColumn, $columnConfig, $filter);
+            });
         });
 
         return true;
@@ -263,6 +269,8 @@ final class WorkOrderDerivedColumns
         }
 
         $query->orWhereHas('quote', function (Builder $quoteQuery) use ($pattern): void {
+            $quoteQuery->where('code', 'like', $pattern);
+        })->orWhereHas('quoteLines.quote', function (Builder $quoteQuery) use ($pattern): void {
             $quoteQuery->where('code', 'like', $pattern);
         });
 
