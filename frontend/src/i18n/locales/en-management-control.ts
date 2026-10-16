@@ -1,3 +1,5 @@
+import { accounts } from './en-management-control-accounts'
+import { billing } from './en-management-control-billing'
 import { cashFlow } from './en-management-control-cash-flow'
 import { trend } from './en-management-control-trend'
 
@@ -208,4 +210,6 @@ export const managementControl = {
   },
   cashFlow,
   trend,
+  billing,
+  accounts,
 }

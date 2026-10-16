@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0271 — Controllo di gestione, fase 3b: da fatturare e ciclo proforma ("Fatturazione"), incassi e pagamenti
+  per conto finanziario ("Conti"). Include lo split del router frontend (limite 500 righe). Stesso modulo,
+  permesso e pattern di 0268/0269/0270. Fase 4 (spec separata): provvigioni per agente e costo orario del personale.
+-->
+<spec id="0271-management-control-billing-and-accounts" status="draft" owner="utente" date="2026-10-16">
+
+  <goal>
+    Due pagine nuove del modulo "Controllo di gestione". "Fatturazione": quanto valore contrattuale delle commesse
+    aperte resta da fatturare, per funzione aziendale, societa' o commerciale e per eta' della commessa; e il ciclo
+    delle proforma attive (emesse, convertite in fattura, ancora aperte con la loro eta', tempi medi). "Conti":
+    incassi e pagamenti del periodo per conto finanziario e per mese. Tutto aggregato, senza elenchi per documento.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-16 ("committa e procedi"). Decisioni gia' prese: 0268 D-3 (proforma fuori dal
+    fatturato), D-6 (cassa sul totale documento), D-7 (permesso unico), D-10 (offerta di riferimento della
+    commessa), D-11 (quote per funzione); 0269 D-1 (stock a oggi, flussi nel periodo); 0270 D-14.
+
+    Decisioni proposte:
+    - D-1 Da fatturare = fotografia a oggi delle commesse NON chiuse forzatamente (`work_orders.is_force_closed =
+      false`): `contract` = ricavo contrattuale delle righe assegnate (LineEffectiveRevenue, come `revenue_contract`
+      di `WorkOrderFigureSources::collect()`), `invoiced` = imponibile delle fatture `type = invoice` con
+      `invoices.work_order_id` (come `revenue_invoiced`), `to_invoice = contract - invoiced` (puo' essere negativo:
+      commessa sovrafatturata, mostrata col segno). Il periodo NON si applica al da fatturare.
+    - D-2 Dimensioni del da fatturare (`group_by`): `business_function` (quote di `WorkOrderFunctionShares`, D-11;
+      "unattributed" per commesse senza ricavo), `company` e `commercial` dall'offerta di riferimento (espressione
+      `REFERENCE_QUOTE` di `IncomeStatementBuilder`, da estrarre in una costante/classe condivisa
+      `WorkOrderReferenceQuote`); valore nullo -> "unattributed", ultimo. Conteggio commesse per riga (per funzione
+      non additivo, 0268 D-23).
+    - D-3 Eta' della commessa = mesi interi tra `work_orders.start_date` e oggi, fasce `0_3` (< 3), `3_6`, `6_12`,
+      `over_12`; `by_age` con conteggio e da fatturare per fascia, calcolato in SQL con la differenza in giorni
+      (DATEDIFF / julianday come `InstallmentSql::daysOverdue`) e soglie 90/180/365 giorni.
+    - D-4 Ciclo proforma sulle fatture attive: "emesse nel periodo" = `invoices` create nel periodo (`created_at`)
+      come proforma, cioe' tutte le fatture nate da proforma: una fattura nasce sempre proforma (spec 0194 D-3) e
+      diventa `invoice` alla registrazione del numero esterno; quindi emesse = `invoices.created_at` nel periodo
+      (qualunque `type` attuale). "Convertite nel periodo" = voci di `activity_log` con `subject_type` Invoice,
+      `event = updated` e `properties->attributes->type = 'invoice'` con `created_at` nel periodo (prima
+      conversione per documento: `MIN(created_at)` per subject_id); la data di conversione e' quella. "Aperte" =
+      `type = proforma` a oggi, eta' da `created_at` in fasce `0_30`, `31_60`, `61_90`, `over_90` giorni.
+    - D-5 Tempi medi: proforma -> fattura = media dei giorni tra `invoices.created_at` e la data di conversione,
+      sulle conversioni del periodo; fattura -> incasso = media pesata sull'importo dei giorni tra data di
+      conversione e `collected_at` delle rate incassate nel periodo (solo documenti con conversione nota);
+      interi, null se vuoto. Per tipologia = `proforma_requests.kind` via `invoices.proforma_request_id`
+      (consultancy | institution | null se la fattura non nasce da una richiesta).
+    - D-6 Conti: incassi = `invoice_installments.collected_amount` con `collected_at` nel periodo, conto =
+      `invoices.financial_account_id` (nullable -> "unattributed"); pagamenti = `purchase_invoice_installments.paid_amount`
+      con `paid_at` nel periodo, conto = `COALESCE(purchase_invoice_installments.financial_account_id,
+      purchase_invoices.financial_account_id)`. Importi sul totale documento (D-6 di 0268). `by_month` per
+      `collected_at`/`paid_at`. Etichetta conto = `financial_accounts.name`, con `type` (bank_account|card|cash).
+    - D-7 Due endpoint di sola lettura con `AggregateCache` (chiave con giorno per la fotografia):
+      `GET /api/management-control/billing` e `GET /api/management-control/account-flows`.
+    - D-8 Menu: voci `management-control-billing` ("Fatturazione", `/management-control/billing`, icona
+      `file-text`) e `management-control-accounts` ("Conti", `/management-control/accounts`, icona `landmark`),
+      stesso permesso; chiavi guida uguali; breadcrumb `billing`, `accounts`.
+    - D-9 Split del router frontend PRIMA delle nuove rotte (il file e' a 494 righe, limite 500): le rotte del
+      modulo (income-statement, exposure, cash-flow, trend + le due nuove) vanno in
+      `src/routes/management-control-routes.tsx` (`MANAGEMENT_CONTROL_ROUTES: RouteObject[]`, pattern
+      `agent-commission-routes.tsx`) e `router.tsx` le include con lo spread; comportamento invariato
+      (`router.test.tsx` verde senza modifiche). `backend/routes/api.php` non cambia (le rotte nuove stanno in
+      `routes/api/management-control.php`).
+    - D-10 Grafici: da fatturare per dimensione con `ComparisonBarChart` (contratto vs fatturato); incassi vs
+      pagamenti per mese con `ComparisonBarChart`; per conto con `StatColumnChart` (colori `--chart-N` a
+      rotazione, un colore per conto). Nessun componente ui nuovo.
+    - D-11 Barra filtri: Fatturazione = societa'/sedi (`ScopeSelectionFields`) + periodo (solo per il ciclo
+      proforma) + `Select` raggruppamento del da fatturare; Conti = periodo + societa'/sedi (`ScopeFilterFields`).
+
+    Fatti verificati nel repo:
+    - `work_orders`: `start_date` NOT NULL, `is_force_closed`, `quote_id` nullable + pivot `quote_line_work_order`.
+      `WorkOrderFigureSources::collect(array $workOrderIds)` (revenue_contract, revenue_invoiced per commessa),
+      `WorkOrderFunctionShares::forWorkOrders()`, `IncomeStatementBuilder::REFERENCE_QUOTE` (privata, da estrarre).
+      `quotes.commercial_id -> referents.name`, `quotes.company_id -> companies.denomination`.
+    - `invoices`: `type` fillable e loggato da `LogsModelActivity` (`logFillable`, `logOnlyDirty`, log name =
+      tabella): la conversione proforma -> fattura lascia una riga in `activity_log` (`subject_type`, `subject_id`,
+      `event`, `properties` json, `created_at`). `invoices.proforma_request_id` nullable ->
+      `proforma_requests.kind` (consultancy|institution), `invoices.financial_account_id` nullable,
+      `invoices.created_at`. `InvoiceService::updateDetails()` imposta `type` dal numero esterno.
+    - `invoice_installments` (`collected_amount`, `collected_at`), `purchase_invoice_installments` (`paid_amount`,
+      `paid_at`, `financial_account_id`), `purchase_invoices.financial_account_id`, `financial_accounts` (`name`,
+      `type` FinancialAccountType, `company_id`).
+    - Frontend: `routes/router.tsx` (494 righe, pattern di split gia' presente: `agent-commission-routes.tsx`,
+      `purchasing-routes.tsx`, `dev-routes.tsx`), feature `management-control` (0268-0270), `components/ui/
+      {comparison-bar-chart, stat-column-chart}`, icone `file-text` e `landmark` gia' in `icon-map.ts`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Split del router frontend in `management-control-routes.tsx` a comportamento invariato.</item>
+      <item>Due voci di menu, due endpoint, due pagine con barra filtri, tile, tabelle e grafici.</item>
+      <item>Estrazione di `WorkOrderReferenceQuote` (espressione SQL condivisa) usata anche da IncomeStatementBuilder a output invariato.</item>
+      <item>Test Pest/Vitest sugli AC; guide in-app IT/EN; HANDOFF.</item>
+    </in>
+    <out>
+      <item>Provvigioni per agente, costo orario del personale (fase 4).</item>
+      <item>Elenchi per documento o per commessa, export, drill-down con filtri da URL.</item>
+      <item>Tempi per tipologia di prodotto (si usa la tipologia della richiesta proforma).</item>
+      <item>Riconciliazione bancaria, saldi dei conti, movimenti non legati a rate.</item>
+      <item>Modifiche a `backend/routes/api.php`, a LogsModelActivity, alle TableDefinition.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/management-control/billing">
+      <request>
+        date_from: "YYYY-MM-DD" | null          (opzionale; solo ciclo proforma; default FE 1/1 anno corrente)
+        date_to: "YYYY-MM-DD" | null            (opzionale; >= date_from)
+        company_id[]: int[], company_site_id[]: int[], operational_site_id[]: int[]   (opzionali, exists; commesse via offerta di riferimento, fatture via company_id e offerta)
+        group_by: "business_function"|"company"|"commercial"   (opzionale, default "business_function")
+      </request>
+      <response status="200">
+        { success: true, message: "OK", data: {
+            applied: { date_from, date_to, company_id: int[], company_site_id: int[], operational_site_id: int[], group_by: string },
+            today: "YYYY-MM-DD",
+            backlog: {
+              work_orders_count: int, contract: number, invoiced: number, to_invoice: number,
+              by_dimension: BacklogRow[],          (ordinate per label; "unattributed" ultimo, label null)
+              by_age: BacklogAgeRow[]              (ordine 0_3, 3_6, 6_12, over_12; sempre 4 righe)
+            },
+            proforma: {
+              issued: { documents: int, amount: number },           (created_at nel periodo, importo totale documento)
+              converted: { documents: int, amount: number, average_days_to_invoice: int|null },
+              open: { documents: int, amount: number },             (type = proforma a oggi)
+              open_by_age: ProformaAgeRow[],                        (ordine 0_30, 31_60, 61_90, over_90; sempre 4 righe)
+              average_days_invoice_to_collection: int|null,
+              by_kind: ProformaKindRow[]                            (consultancy, institution, null; sempre 3 righe)
+            }
+        } }
+        BacklogRow = { key: string, label: string|null, work_orders_count: int, contract: number, invoiced: number, to_invoice: number }
+        BacklogAgeRow = { bucket: "0_3"|"3_6"|"6_12"|"over_12", work_orders_count: int, to_invoice: number }
+        ProformaAgeRow = { bucket: "0_30"|"31_60"|"61_90"|"over_90", documents: int, amount: number }
+        ProformaKindRow = { kind: "consultancy"|"institution"|null, issued: int, converted: int, open: int, average_days_to_invoice: int|null }
+        Importi: contratto/fatturato imponibile (number 2 decimali); proforma sul totale documento. Invarianti:
+        somma di by_dimension = backlog (per funzione con residuo sull'ultima quota; i conteggi per funzione non si
+        sommano); somma di by_age = backlog.to_invoice e work_orders_count; somma by_kind.issued/converted/open =
+        proforma.issued/converted/open .documents.
+      </response>
+      <errors>401; 403; 422 (date, group_by fuori lista, id inesistenti).</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/management-control/account-flows">
+      <request>
+        date_from: "YYYY-MM-DD" | null, date_to: "YYYY-MM-DD" | null   (opzionali; default FE 1/1 anno corrente - oggi)
+        company_id[]: int[], company_site_id[]: int[], operational_site_id[]: int[]   (opzionali; attivo via offerta, passivo via testata)
+      </request>
+      <response status="200">
+        { success: true, message: "OK", data: {
+            applied: { date_from, date_to, company_id: int[], company_site_id: int[], operational_site_id: int[] },
+            collections: { total: number, installments: int, by_account: AccountRow[] },
+            payments: { total: number, installments: int, by_account: AccountRow[] },
+            by_month: { month: "YYYY-MM", collected: number, paid: number, net: number }[]   (tutti i mesi del periodo, in ordine)
+        } }
+        AccountRow = { account: { id: int, name: string, type: "bank_account"|"card"|"cash" } | null, amount: number, installments: int }
+                     (ordinate per amount decrescente; conto null = "unattributed", ultimo)
+        Importi sul totale documento. Invarianti: somma by_account = total; somma by_month.collected = collections.total; idem paid.
+      </response>
+      <errors>401; 403; 422 (date, id inesistenti, intervallo oltre 24 mesi).</errors>
+    </endpoint>
+
+    <frontend_contract>
+      `src/routes/management-control-routes.tsx` (`MANAGEMENT_CONTROL_ROUTES`, sei rotte lazy) incluso in `router.tsx`
+      al posto delle quattro voci attuali. Pagine `src/pages/management-control-billing-page.tsx`,
+      `management-control-accounts-page.tsx`. Feature `src/features/management-control/`: `billing-types.ts`,
+      `accounts-types.ts`, `api.ts` (+ `billing(params)`, `accountFlows(params)`, `defaultBillingFilters()`,
+      `defaultAccountFlowsFilters()`, mapper e fetch), `use-billing.ts`, `use-account-flows.ts`,
+      `billing-filters-bar.tsx` (societa'/sedi + periodo + `Select` raggruppamento), `billing-panel.tsx`,
+      `billing-backlog-totals.tsx` (4 tile: commesse aperte, contratto, fatturato, da fatturare),
+      `billing-backlog-table.tsx` (per dimensione + `ComparisonBarChart` contratto vs fatturato),
+      `billing-age-table.tsx`, `billing-proforma.tsx` (tile emesse/convertite/aperte + tempi medi; tabelle per eta' e
+      per tipologia), `accounts-filters-bar.tsx`, `accounts-panel.tsx`, `accounts-totals.tsx` (3 tile: incassi,
+      pagamenti, netto), `accounts-table.tsx` (riusata per incassi e pagamenti, con tipo conto tradotto),
+      `accounts-chart.tsx` (`ComparisonBarChart` per mese + `StatColumnChart` per conto), fixture, test.
+      i18n: `{it,en}-management-control-billing.ts`, `{it,en}-management-control-accounts.ts` (spread in
+      `managementControl.billing` / `managementControl.accounts`), `navigation.billing`, `navigation.accounts`.
+      Guide: `help/content/{it,en}/management-control-billing.ts` (`overview`, `filters`, `backlog`, `age`,
+      `proforma`, `permissions`), `management-control-accounts.ts` (`overview`, `filters`, `accounts`, `months`,
+      `permissions`); HELP_GUIDE_KEYS 82 -> 84; breadcrumb `billing`, `accounts`.
+    </frontend_contract>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dopo lo split, `router.tsx` e' sotto le 300 righe o comunque ridotto delle rotte del modulo, `MANAGEMENT_CONTROL_ROUTES` espone sei rotte, `router.test.tsx` e i test delle pagine esistenti del modulo restano verdi senza modifiche (Vitest).</criterion>
+    <criterion id="AC-002">Le due voci di menu compaiono solo con `management-control.view`; `permissions:sync` non crea permessi; entrambi gli endpoint danno 401/403/422 come da contratto (Pest).</criterion>
+    <criterion id="AC-003">Date commesse con righe assegnate (una con direzione fornitore RECEIVED), fatture `invoice` e proforma collegate, una commessa chiusa forzatamente e una sovrafatturata, allora `backlog` conta solo le commesse non chiuse, `contract` e `invoiced` coincidono con `revenue_contract`/`revenue_invoiced` di 0268, `to_invoice` e' negativo per la sovrafatturata, le proforma non contano nel fatturato (Pest).</criterion>
+    <criterion id="AC-004">Dato `group_by` business_function, company, commercial, allora `by_dimension` ha una riga per valore con le quote per funzione (residuo sull'ultima), societa'/commerciale dall'offerta di riferimento (multi-offerta: id minore), "unattributed" ultimo, e le somme coincidono con `backlog`; un valore fuori lista da' 422 (Pest).</criterion>
+    <criterion id="AC-005">Date commesse con `start_date` a 1, 4, 8 e 15 mesi fa, allora `by_age` ha sempre 4 righe con i conteggi e il da fatturare nella fascia giusta e la somma coincide con il totale (Pest).</criterion>
+    <criterion id="AC-006">Date fatture create dentro e fuori il periodo, alcune convertite in `invoice` (via `InvoiceService::updateDetails` con numero esterno, cosi' l'activity log registra il cambio) dentro e fuori il periodo, e proforma aperte di 10, 45, 80 e 120 giorni, allora `proforma.issued`, `converted` (con la data della prima conversione) e `open` contano correttamente, `open_by_age` ha 4 righe, `by_kind` ha 3 righe (consultancy, institution, null) le cui somme coincidono (Pest).</criterion>
+    <criterion id="AC-007">Dati documenti convertiti 10 e 30 giorni dopo la creazione, allora `average_days_to_invoice` vale 20 (e per tipologia il valore proprio); date rate incassate 5 e 15 giorni dopo la conversione con importi 100 e 300, allora `average_days_invoice_to_collection` vale 13 (media pesata arrotondata); null senza dati (Pest).</criterion>
+    <criterion id="AC-008">Date rate attive incassate e passive pagate dentro e fuori il periodo, su conti diversi, con fattura attiva senza conto e rata passiva senza conto ma con conto sulla testata, allora `collections` e `payments` sommano solo le rate del periodo, `by_account` attribuisce i conti (fallback alla testata sul passivo, "unattributed" ultimo per il conto mancante), `installments` conta le rate, `by_month` copre tutti i mesi del periodo con somme coerenti con i totali; filtri societa'/sedi rispettati; intervallo oltre 24 mesi da' 422 (Pest).</criterion>
+    <criterion id="AC-009">I test di 0268 restano verdi dopo l'estrazione di `WorkOrderReferenceQuote`; numero di query costante per entrambi gli endpoint con 5 e 25 documenti/commesse (Pest).</criterion>
+    <criterion id="AC-010">Default e mapper dei filtri, fetch su `data.data` per entrambi gli endpoint (Vitest `api.test.ts` o file dedicato).</criterion>
+    <criterion id="AC-011">Le due barre filtri espongono i campi del contratto e chiamano `onChange`; le barre delle pagine precedenti restano invariate (Vitest).</criterion>
+    <criterion id="AC-012">Con una fixture, la pagina Fatturazione mostra le 4 tile, la tabella per dimensione con grafico, la tabella per eta' (fasce tradotte), il blocco proforma con tile, tempi medi ("n.d." se null), tabelle per eta' e tipologia (tipologie e "Senza richiesta" tradotte); da fatturare negativo evidenziato con `MoneyValue`; stati e permesso (Vitest).</criterion>
+    <criterion id="AC-013">Con una fixture, la pagina Conti mostra le 3 tile, le due tabelle per conto con tipo tradotto e "Non attribuito", il grafico per mese e per conto; stati e permesso (Vitest).</criterion>
+    <criterion id="AC-014">Guide IT/EN con gli stessi id, HELP_GUIDE_KEYS 84, breadcrumb; parity test verdi; ESLint e `tsc -b --force` puliti.</criterion>
+    <criterion id="AC-015">Verifica ui-design sul codice: tabelle con regione focusabile e prima colonna sticky dove larghe, superfici a rung corretti, negativi con `text-amount-negative`, nessun colore hard-coded, tile senza orfane, nessuna larghezza fissa.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza; nessun componente ui nuovo.
+    - Authz in `authorize()`; allow-list; SQL costante con bind; JSON path dell'activity log con la sintassi
+      `properties->attributes->type` di Eloquent (compatibile MySQL e SQLite); DATEDIFF/julianday per le eta';
+      numero di query costante; centesimi.
+    - Layering: Request -> DTO -> Builder (`handle()` con `// Step N`) -> aggregatori
+      (`Billing/{BacklogAggregator, ProformaCycleAggregator, BillingBuilder}`, `Accounts/{CollectionAggregator,
+      PaymentAggregator, AccountFlowsBuilder}`, `WorkOrderReferenceQuote`), file <= 300 righe.
+    - Frontend: TanStack Query, nessun `useEffect` + fetch, nessun `any`, i18n IT/EN, LF, test a11y-role-first.
+    - Test eseguiti davvero (binario Herd; Vitest; ESLint; `./node_modules/.bin/tsc -b --force`).
+    - Git: nessun commit senza ordine esplicito; a verde HANDOFF e stop.
+  </constraints>
+
+</spec>

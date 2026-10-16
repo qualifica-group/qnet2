@@ -23,7 +23,7 @@ it('AC-001: the exposure entry follows management-control.view and permissions:s
     Sanctum::actingAs(User::factory()->create()->givePermissionTo('management-control.view'));
     $section = collect($this->getJson('/api/navigation')->json('data'))->firstWhere('key', 'management-control-section');
 
-    expect(array_column($section['children'], 'key'))->toBe(['management-control', 'management-control-exposure', 'management-control-cash-flow', 'management-control-trend'])
+    expect(array_column($section['children'], 'key'))->toBe(['management-control', 'management-control-exposure', 'management-control-cash-flow', 'management-control-trend', 'management-control-billing', 'management-control-accounts'])
         ->and($section['children'][1])->toMatchArray([
             'key' => 'management-control-exposure', 'label' => 'navigation.exposure',
             'route' => '/management-control/exposure', 'icon' => 'calendar-clock',

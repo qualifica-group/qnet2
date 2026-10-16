@@ -64,6 +64,8 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'management-control-exposure',
   'management-control-cash-flow',
   'management-control-trend',
+  'management-control-billing',
+  'management-control-accounts',
   'purchase-invoices',
   'purchase-invoice-installments',
   'agent-fiscal-profiles',

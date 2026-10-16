@@ -21,12 +21,6 @@ use Illuminate\Support\Facades\DB;
  */
 final class IncomeStatementBuilder
 {
-    /**
-     * The reference offer of a commessa (D-10): its own, or the lowest id among
-     * the offers of its assigned lines on a multi-offer one. Constant text.
-     */
-    private const string REFERENCE_QUOTE = 'COALESCE(work_orders.quote_id, (SELECT MIN(quote_lines.quote_id) FROM quote_line_work_order INNER JOIN quote_lines ON quote_lines.id = quote_line_work_order.quote_line_id WHERE quote_line_work_order.work_order_id = work_orders.id))';
-
     public function __construct(
         private readonly WorkOrderFigureSources $sources,
         private readonly IncomeStatementGrouper $grouper,
@@ -71,8 +65,7 @@ final class IncomeStatementBuilder
      */
     private function workOrders(IncomeStatementFilters $filters): Collection
     {
-        $query = DB::table('work_orders')
-            ->leftJoin('quotes', 'quotes.id', '=', DB::raw(self::REFERENCE_QUOTE))
+        $query = WorkOrderReferenceQuote::join(DB::table('work_orders'))
             ->leftJoin('companies', 'companies.id', '=', 'quotes.company_id')
             ->leftJoin('company_sites', 'company_sites.id', '=', 'quotes.company_site_id')
             ->leftJoin('operational_sites', 'operational_sites.id', '=', 'quotes.operational_site_id')

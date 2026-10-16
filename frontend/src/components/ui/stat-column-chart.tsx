@@ -19,6 +19,10 @@ export interface StatColumnChartProps {
   /** Discreet placeholder shown when `items` is empty. Pass a translated string. */
   emptyLabel?: string
   className?: string
+  /** Tag of the title, so the chart nests under the heading of the section hosting it. @default 3 */
+  headingLevel?: 2 | 3 | 4
+  /** Width in px reserved for the value-axis labels: raise it for formatted amounts. @default 36 */
+  valueAxisWidth?: number
 }
 
 /**
@@ -29,16 +33,31 @@ export interface StatColumnChartProps {
 const StatColumnChartImpl = React.lazy(() => import("@/components/ui/stat-column-chart-impl"))
 
 /** Distribution widget rendered as vertical columns, one color per category. Composes `Card`. */
-function StatColumnChart({ title, items, formatValue, emptyLabel = "—", className }: StatColumnChartProps) {
+function StatColumnChart({
+  title,
+  items,
+  formatValue,
+  emptyLabel = "—",
+  className,
+  headingLevel = 3,
+  valueAxisWidth,
+}: StatColumnChartProps) {
+  const Heading = `h${headingLevel}` as const
+
   return (
     <Card className={cn("gap-2 py-3", className)}>
       <CardContent className="flex flex-col gap-2 px-3">
-        <h3 className="truncate text-xs font-medium text-muted-foreground">{title}</h3>
+        <Heading className="truncate text-xs font-medium text-muted-foreground">{title}</Heading>
         {items.length === 0 ? (
           <p className="text-xs text-muted-foreground">{emptyLabel}</p>
         ) : (
           <React.Suspense fallback={<Skeleton className="h-40 w-full sm:h-48" />}>
-            <StatColumnChartImpl title={title} items={items} formatValue={formatValue} />
+            <StatColumnChartImpl
+              title={title}
+              items={items}
+              formatValue={formatValue}
+              valueAxisWidth={valueAxisWidth}
+            />
           </React.Suspense>
         )}
       </CardContent>

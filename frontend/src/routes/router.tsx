@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { lazyRoute } from '@/routes/lazy-route'
 import { ProtectedRoute } from '@/routes/protected-route'
 import { AGENT_COMMISSION_ROUTES } from '@/routes/agent-commission-routes'
+import { MANAGEMENT_CONTROL_ROUTES } from '@/routes/management-control-routes'
 import { PURCHASING_ROUTES } from '@/routes/purchasing-routes'
 import { AppLayout } from '@/layouts/app-layout'
 import { devRoutes } from '@/routes/dev-routes'
@@ -43,12 +44,6 @@ const InvoicesPage = lazyRoute(() => import('@/pages/invoices-page'))
 const InvoiceTagsPage = lazyRoute(() => import('@/pages/invoice-tags-page'))
 const InvoiceInstallmentsPage = lazyRoute(() => import('@/pages/invoice-installments-page'))
 const LedgerPage = lazyRoute(() => import('@/pages/ledger-page'))
-const ManagementControlIncomeStatementPage = lazyRoute(
-  () => import('@/pages/management-control-income-statement-page'),
-)
-const ManagementControlExposurePage = lazyRoute(() => import('@/pages/management-control-exposure-page'))
-const ManagementControlCashFlowPage = lazyRoute(() => import('@/pages/management-control-cash-flow-page'))
-const ManagementControlTrendPage = lazyRoute(() => import('@/pages/management-control-trend-page'))
 const ProductTypologiesPage = lazyRoute(() => import('@/pages/product-typologies-page'))
 const PaymentMethodsPage = lazyRoute(() => import('@/pages/payment-methods-page'))
 const TagsPage = lazyRoute(() => import('@/pages/tags-page'))
@@ -243,16 +238,7 @@ export const router = createBrowserRouter([
             path: 'ledger',
             element: <LedgerPage />,
           },
-          {
-            path: 'management-control/income-statement',
-            element: <ManagementControlIncomeStatementPage />,
-          },
-          {
-            path: 'management-control/exposure',
-            element: <ManagementControlExposurePage />,
-          },
-          { path: 'management-control/cash-flow', element: <ManagementControlCashFlowPage /> },
-          { path: 'management-control/trend', element: <ManagementControlTrendPage /> },
+          ...MANAGEMENT_CONTROL_ROUTES,
           {
             path: 'invoice-tags',
             element: <InvoiceTagsPage />,

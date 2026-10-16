@@ -47,6 +47,27 @@ describe('StatColumnChart', () => {
     expect(screen.getByRole('heading', { name: 'By source' })).toBeInTheDocument()
   })
 
+  it('renders the title at the requested heading level', () => {
+    render(<StatColumnChart title="Per account" items={[]} headingLevel={4} />)
+
+    expect(screen.getByRole('heading', { name: 'Per account', level: 4 })).toBeInTheDocument()
+  })
+
+  it('widens the value axis by valueAxisWidth', async () => {
+    const axisWidth = async (valueAxisWidth?: number) => {
+      const { container, unmount } = render(
+        <StatColumnChart title="Per account" items={ITEMS} valueAxisWidth={valueAxisWidth} />,
+      )
+      await screen.findByRole('list')
+      const width = container.querySelector('text[orientation="left"]')?.getAttribute('width')
+      unmount()
+      return width
+    }
+
+    expect(await axisWidth()).toBe('36')
+    expect(await axisWidth(80)).toBe('80')
+  })
+
   it('exposes every item as text once the lazy chart has loaded', async () => {
     render(<StatColumnChart title="By source" items={ITEMS} />)
 

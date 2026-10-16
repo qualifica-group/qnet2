@@ -1,6 +1,8 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
 import { todayIso } from '@/features/invoices/invoice-format'
+import type { AccountFlows, AccountFlowsFilters, AccountFlowsParams } from '@/features/management-control/accounts-types'
+import type { Billing, BillingFilters, BillingParams } from '@/features/management-control/billing-types'
 import type { CashFlow, CashFlowFilters, CashFlowParams } from '@/features/management-control/cash-flow-types'
 import type { Exposure, ExposureFilters, ExposureParams } from '@/features/management-control/exposure-types'
 import type { MonthlyTrend, TrendFilters, TrendParams } from '@/features/management-control/trend-types'
@@ -14,6 +16,8 @@ export const managementControlKeys = {
   exposure: (params: ExposureParams) => ['management-control', 'exposure', params] as const,
   cashFlow: (params: CashFlowParams) => ['management-control', 'cash-flow', params] as const,
   monthlyTrend: (params: TrendParams) => ['management-control', 'monthly-trend', params] as const,
+  billing: (params: BillingParams) => ['management-control', 'billing', params] as const,
+  accountFlows: (params: AccountFlowsParams) => ['management-control', 'account-flows', params] as const,
 }
 
 /** Default filters: 1 January of the current year to today, contractual revenue, no segmentation. */
@@ -150,6 +154,50 @@ export function toTrendParams(filters: TrendFilters): TrendParams {
   }
 }
 
+/** Default filters: 1 January of the current year to today (proforma cycle), backlog by business function, no scope. */
+export function defaultBillingFilters(): BillingFilters {
+  const today = todayIso()
+  return {
+    dateFrom: `${today.slice(0, 4)}-01-01`,
+    dateTo: today,
+    companyIds: [],
+    companySiteIds: [],
+    operationalSiteIds: [],
+    groupBy: 'business_function',
+  }
+}
+
+/** Maps the UI filters to the contract query parameters; empty values are omitted. */
+export function toBillingParams(filters: BillingFilters): BillingParams {
+  return {
+    ...(filters.dateFrom ? { date_from: filters.dateFrom } : {}),
+    ...(filters.dateTo ? { date_to: filters.dateTo } : {}),
+    ...scopeParams(filters),
+    group_by: filters.groupBy,
+  }
+}
+
+/** Default filters: 1 January of the current year to today, no scope. */
+export function defaultAccountFlowsFilters(): AccountFlowsFilters {
+  const today = todayIso()
+  return {
+    dateFrom: `${today.slice(0, 4)}-01-01`,
+    dateTo: today,
+    companyIds: [],
+    companySiteIds: [],
+    operationalSiteIds: [],
+  }
+}
+
+/** Maps the UI filters to the contract query parameters; empty values are omitted. */
+export function toAccountFlowsParams(filters: AccountFlowsFilters): AccountFlowsParams {
+  return {
+    ...(filters.dateFrom ? { date_from: filters.dateFrom } : {}),
+    ...(filters.dateTo ? { date_to: filters.dateTo } : {}),
+    ...scopeParams(filters),
+  }
+}
+
 /** Arrays go out as repeated `key[]=` (Laravel convention). */
 const ARRAY_SERIALIZER = { indexes: false } as const
 
@@ -187,6 +235,22 @@ export async function fetchCashFlow(params: CashFlowParams): Promise<CashFlow> {
 
 export async function fetchMonthlyTrend(params: TrendParams): Promise<MonthlyTrend> {
   const { data } = await apiClient.get<ApiResponse<MonthlyTrend>>('/management-control/monthly-trend', {
+    params,
+    paramsSerializer: ARRAY_SERIALIZER,
+  })
+  return data.data
+}
+
+export async function fetchBilling(params: BillingParams): Promise<Billing> {
+  const { data } = await apiClient.get<ApiResponse<Billing>>('/management-control/billing', {
+    params,
+    paramsSerializer: ARRAY_SERIALIZER,
+  })
+  return data.data
+}
+
+export async function fetchAccountFlows(params: AccountFlowsParams): Promise<AccountFlows> {
+  const { data } = await apiClient.get<ApiResponse<AccountFlows>>('/management-control/account-flows', {
     params,
     paramsSerializer: ARRAY_SERIALIZER,
   })

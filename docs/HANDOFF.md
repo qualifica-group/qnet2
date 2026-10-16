@@ -3,7 +3,45 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0270 — Controllo di gestione F3a: cash flow previsionale e andamento mensile — VERDE, NON COMMITTATO (2026-10-16)
+## Spec 0271 — Controllo di gestione F3b: fatturazione (da fatturare, ciclo proforma) e conti — VERDE, NON COMMITTATO (2026-10-16)
+
+- Spec `docs/specs/0271-management-control-billing-and-accounts.xml` (D-1..D-11, AC-001..AC-015). Voci di menu
+  `management-control-billing` ("Fatturazione", `/management-control/billing`, icona `file-text`) e
+  `management-control-accounts` ("Conti", `/management-control/accounts`, icona `landmark`); guide con le stesse
+  chiavi (HELP_GUIDE_KEYS = 84). Router frontend spezzato: `src/routes/management-control-routes.tsx`
+  (`MANAGEMENT_CONTROL_ROUTES`, 6 rotte) incluso con spread in `router.tsx` (480 righe).
+- `GET management-control/billing` (date solo per il ciclo proforma; company/sites; `group_by`
+  business_function|company|commercial): `backlog` a oggi sulle commesse NON chiuse forzatamente (contract e
+  invoiced da `WorkOrderFigureSources::collect()`, `to_invoice` anche negativo = sovrafatturato; `by_dimension`
+  con quote per funzione o offerta di riferimento via `WorkOrderReferenceQuote` (estratta da 0268, output
+  invariato); `by_age` 4 fasce su start_date, soglie 90/180/365 giorni); `proforma` (issued = invoices created_at
+  nel periodo; converted = prima riga di `activity_log` con `properties->attributes->type = invoice`; open = type
+  proforma a oggi con 4 fasce di eta'; medie giorni proforma->fattura semplice e fattura->incasso pesata;
+  `by_kind` 3 righe da proforma_requests.kind).
+- `GET management-control/account-flows` (periodo max 24 mesi; company/sites): incassi (rate attive per
+  collected_at, conto = invoices.financial_account_id) e pagamenti (rate passive per paid_at, conto = rata con
+  fallback testata), `by_account` per importo con null ultimo, `by_month` completo. Estremi dei periodi esclusivi
+  sul giorno dopo (SQLite salva le date con ora).
+- Backend: `app/Services/ManagementControl/{WorkOrderReferenceQuote}.php`, `Billing/{BacklogAggregator,
+  ProformaCycleAggregator,BillingBuilder}`, `Accounts/{CollectionAggregator,PaymentAggregator,AccountFlowsBuilder}`;
+  test `Billing*Test`, `AccountFlowsTest`; helper `mcProforma`, `mcConvert` (passa da InvoiceService::updateDetails
+  e retrodata l'activity log), `mcCollect`, `mcAccount`.
+- Frontend: `features/management-control/billing-*`, `accounts-*`, i18n `{it,en}-management-control-{billing,
+  accounts}.ts`, guide `help/content/{it,en}/management-control-{billing,accounts}.ts`.
+- Non provato su MySQL: JSON path dell'activity log, DATEDIFF, GROUP BY su alias (solo SQLite).
+- Test flaky preesistente sotto carico: `components/ui/stat-column-chart.test.tsx` "shows the skeleton fallback
+  until the lazy chart chunk resolves" (asserisce lo skeleton PRIMA che il chunk lazy si risolva: con molti worker
+  il chunk arriva prima); 3/3 verde da solo. Stessa classe dei 5 timeout non riprodotti visti in F3a. Da
+  irrobustire (es. mock del lazy import) in un intervento a parte.
+- Revisione ui-design applicata: `StatColumnChart` con prop `headingLevel` e `valueAxisWidth` (80 per gli euro);
+  colore stabile per conto nei due grafici; thead opaco sulle tabelle con colonna sticky; hover della cella
+  sticky via `color-mix`; titoli visibili sulle tabelle proforma; griglia filtri Fatturazione `sm:3 xl:6`.
+- Manuale Claude Docs: NON aggiornato per F2, F3a, F3b (documento non condiviso con il connettore): sei pagine
+  del modulo da descrivere; testo pronto nelle guide IT.
+- Prossimo: F4 (provvigioni per agente: maturato/liquidato/da liquidare per agente e periodo; costo orario del
+  personale: richiede nuovo campo su employment_profiles o utenti, da decidere con l'utente).
+
+## Spec 0270 — Controllo di gestione F3a: cash flow previsionale e andamento mensile — VERDE, COMMITTATO 2ff79e0d (2026-10-16)
 
 - Spec `docs/specs/0270-management-control-cash-flow-and-trend.xml` (D-1..D-14, AC-001..AC-018). Stesso permesso.
   Voci di menu `management-control-cash-flow` ("Cash flow previsionale", `/management-control/cash-flow`, icona

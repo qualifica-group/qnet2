@@ -38,5 +38,19 @@ return [
             'route' => '/management-control/trend',
             'permission' => 'management-control.view',
         ],
+        [
+            'key' => 'management-control-billing',
+            'label' => 'navigation.billing',
+            'icon' => 'file-text',
+            'route' => '/management-control/billing',
+            'permission' => 'management-control.view',
+        ],
+        [
+            'key' => 'management-control-accounts',
+            'label' => 'navigation.accounts',
+            'icon' => 'landmark',
+            'route' => '/management-control/accounts',
+            'permission' => 'management-control.view',
+        ],
     ],
 ];

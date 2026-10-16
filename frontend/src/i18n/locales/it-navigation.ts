@@ -31,6 +31,8 @@ export const navigation = {
   exposure: 'Scadenzario ed esposizione',
   cashFlow: 'Cash flow previsionale',
   trend: 'Andamento mensile',
+  billing: 'Fatturazione',
+  accounts: 'Conti',
   accountingReceivable: 'Attiva',
   proformaRequests: 'Richieste Proforma',
   invoices: 'Fatture Attive',

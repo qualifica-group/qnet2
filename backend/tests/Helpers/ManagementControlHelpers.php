@@ -11,6 +11,7 @@ use App\Enums\SupplierCommissionDirection;
 use App\Models\BusinessFunction;
 use App\Models\Company;
 use App\Models\CompanySite;
+use App\Models\FinancialAccount;
 use App\Models\Invoice;
 use App\Models\InvoiceInstallment;
 use App\Models\InvoiceLine;
@@ -28,6 +29,7 @@ use App\Models\QuoteLineCommission;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderCost;
+use App\Services\Invoices\InvoiceService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -339,5 +341,56 @@ if (! function_exists('mcQueryCount')) {
         DB::disableQueryLog();
 
         return $count;
+    }
+}
+
+if (! function_exists('mcProforma')) {
+    /**
+     * A proforma of `$total` created `$createdDaysAgo` days ago (10:00), without installments.
+     *
+     * @param  array<string, mixed>  $invoice  document attributes
+     */
+    function mcProforma(string $total, int $createdDaysAgo, array $invoice = []): Invoice
+    {
+        return Invoice::factory()->create([
+            'type' => InvoiceType::Proforma, 'net_amount' => $total, 'vat_amount' => '0.00', 'total_amount' => $total,
+            'created_at' => mcDay(-$createdDaysAgo).' 10:00:00', ...$invoice,
+        ]);
+    }
+}
+
+if (! function_exists('mcConvert')) {
+    /**
+     * Registers the external number of a proforma through the service, so the activity log records
+     * the change of type, and dates that log row `$daysAfterCreation` days after the creation.
+     */
+    function mcConvert(Invoice $document, int $daysAfterCreation): Invoice
+    {
+        $created = CarbonImmutable::parse($document->created_at);
+        app(InvoiceService::class)->updateDetails($document, ['external_number' => 'T-'.$document->id, 'external_date' => $created->toDateString()], User::factory()->create());
+        DB::table('activity_log')
+            ->where('subject_type', $document->getMorphClass())->where('subject_id', $document->id)->where('event', 'updated')
+            ->update(['created_at' => $created->addDays($daysAfterCreation)->toDateTimeString()]);
+
+        return $document->refresh();
+    }
+}
+
+if (! function_exists('mcCollect')) {
+    /** One installment of `$amount` already collected `$daysAgo` days ago (or still open when null). */
+    function mcCollect(Invoice $document, string $amount, ?int $collectedDaysAgo, int $sequence = 1): InvoiceInstallment
+    {
+        return InvoiceInstallment::factory()->create([
+            'invoice_id' => $document->id, 'sequence' => $sequence, 'due_date' => mcDay(10), 'amount' => $amount,
+            'collected_amount' => $collectedDaysAgo === null ? null : $amount,
+            'collected_at' => $collectedDaysAgo === null ? null : mcDay(-$collectedDaysAgo),
+        ]);
+    }
+}
+
+if (! function_exists('mcAccount')) {
+    function mcAccount(string $name): FinancialAccount
+    {
+        return FinancialAccount::factory()->create(['name' => $name]);
     }
 }

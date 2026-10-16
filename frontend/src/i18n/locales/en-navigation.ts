@@ -30,6 +30,8 @@ export const navigation = {
   exposure: 'Schedule and exposure',
   cashFlow: 'Cash flow forecast',
   trend: 'Monthly trend',
+  billing: 'Billing',
+  accounts: 'Accounts',
   accountingReceivable: 'Receivables',
   proformaRequests: 'Proforma requests',
   invoices: 'Active invoices',

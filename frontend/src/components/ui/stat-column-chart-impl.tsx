@@ -5,11 +5,14 @@ import { CHART_AXIS_TICK, CHART_MARGIN, CHART_TOOLTIP_CONTENT_STYLE } from "@/co
 
 /** Bar/column mark cap (marks-and-anatomy: <=24px thick, never fill the slot). */
 const COLUMN_BAR_SIZE = 20
+/** Default room for the value-axis labels (plain counts), in px. */
+const DEFAULT_VALUE_AXIS_WIDTH = 36
 
 interface StatColumnChartImplProps {
   title: string
   items: StatColumnItem[]
   formatValue?: (value: number) => string
+  valueAxisWidth?: number
 }
 
 function defaultFormatValue(value: number): string {
@@ -21,6 +24,7 @@ export default function StatColumnChartImpl({
   title,
   items,
   formatValue = defaultFormatValue,
+  valueAxisWidth = DEFAULT_VALUE_AXIS_WIDTH,
 }: StatColumnChartImplProps) {
   return (
     <figure className="m-0 flex flex-col">
@@ -31,7 +35,7 @@ export default function StatColumnChartImpl({
             <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="label" tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
             <YAxis
-              width={36}
+              width={valueAxisWidth}
               tick={CHART_AXIS_TICK}
               tickLine={false}
               axisLine={false}
