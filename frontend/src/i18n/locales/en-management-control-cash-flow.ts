@@ -1,0 +1,53 @@
+/** Management control, cash flow forecast (spec 0270). */
+export const cashFlow = {
+  title: 'Cash flow forecast',
+  loading: 'Loading the cash flow',
+  error: 'Unable to load the cash flow.',
+  empty: 'No open installments or commitments with these filters.',
+  snapshot: 'Open installments and supplier commitments as of today ({{date}}), by expected due month. The backlog is what is already overdue.',
+  filters: {
+    title: 'Cash flow filters',
+    documentType: 'Document type',
+    documentTypes: { all: 'All', proforma: 'Proforma', invoice: 'Invoices' },
+    horizon: 'Horizon',
+    horizonOption: '{{count}} months',
+  },
+  totals: {
+    title: 'Cash flow totals',
+    backlog_net: 'Net backlog',
+    receivable: 'Receipts in the horizon',
+    payable: 'Payments in the horizon',
+    committed: 'Commitments in the horizon',
+    net: 'Net balance in the horizon',
+    scenario_net: 'Net balance with scenario',
+  },
+  table: {
+    title: 'Forecast by month',
+    hint: 'Amounts on the document total. The cumulative adds the monthly net and leaves the backlog out.',
+    caption: 'Cash flow by month: backlog, months of the horizon and beyond',
+    item: 'Item',
+    backlog: 'Backlog',
+    beyond: 'Beyond',
+    rows: {
+      receivable: 'Receipts',
+      payable: 'Payments',
+      committed: 'Commitments',
+      net: 'Net',
+      cumulative: 'Cumulative',
+    },
+    scenario: 'Backlog collected and paid within 30 days',
+  },
+  chart: {
+    title: 'Receipts and payments by month',
+    seriesReceipts: 'Receipts',
+    seriesPayments: 'Payments and commitments',
+    cumulativeTitle: 'Cumulative net by month',
+  },
+  byCompany: {
+    title: 'Net by company',
+    hint: 'Receipts - payments - commitments, by company of the document.',
+    caption: 'Net cash flow by company and month',
+    company: 'Company',
+    total: 'Total',
+  },
+}

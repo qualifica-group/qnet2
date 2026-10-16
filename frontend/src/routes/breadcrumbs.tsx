@@ -56,6 +56,8 @@ const SEGMENT_LABELS: Record<string, string> = {
   'management-control': 'navigation.managementControl',
   'income-statement': 'navigation.incomeStatement',
   exposure: 'navigation.exposure',
+  'cash-flow': 'navigation.cashFlow',
+  trend: 'navigation.trend',
   'purchase-invoices': 'navigation.purchaseInvoices',
   'purchase-invoice-installments': 'navigation.purchaseInvoiceInstallments',
   'agent-fiscal-profiles': 'navigation.agentFiscalProfiles',

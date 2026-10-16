@@ -23,6 +23,8 @@ export interface StatChartProps {
   variant?: StatChartVariant
   /** `--chart-{tone}` theme slot (spec 0152 D-4). @default 1 */
   tone?: 1 | 2 | 3 | 4 | 5
+  /** Tag of the title, so the chart nests under the heading of the section hosting it. @default 3 */
+  headingLevel?: 2 | 3 | 4
 }
 
 /**
@@ -40,11 +42,14 @@ function StatChart({
   className,
   variant = "area",
   tone = 1,
+  headingLevel = 3,
 }: StatChartProps) {
+  const Heading = `h${headingLevel}` as const
+
   return (
     <Card className={cn("gap-2 py-3", className)}>
       <CardContent className="flex flex-col gap-2 px-3">
-        <h3 className="truncate text-xs font-medium text-muted-foreground">{title}</h3>
+        <Heading className="truncate text-xs font-medium text-muted-foreground">{title}</Heading>
         {points.length === 0 ? (
           <p className="text-xs text-muted-foreground">{emptyLabel}</p>
         ) : (

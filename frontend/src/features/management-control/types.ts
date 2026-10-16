@@ -109,13 +109,17 @@ export interface StructureCosts {
   by_dimension: StructureDimensionRow[]
 }
 
-/** Filters common to the pages of the module: period and analytic scope (UI side). */
-export interface ScopeFilters {
-  dateFrom: string
-  dateTo: string
+/** Company and site selection, common to every page of the module (UI side). */
+export interface ScopeSelection {
   companyIds: number[]
   companySiteIds: number[]
   operationalSiteIds: number[]
+}
+
+/** Filters common to the pages with a period: period and analytic scope (UI side). */
+export interface ScopeFilters extends ScopeSelection {
+  dateFrom: string
+  dateTo: string
 }
 
 /** Filter state of the page (UI side; mapped to the request by `toIncomeStatementParams`). */

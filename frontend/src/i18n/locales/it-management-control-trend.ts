@@ -1,0 +1,43 @@
+/** Controllo di gestione, andamento mensile (spec 0270). */
+export const trend = {
+  title: 'Andamento mensile',
+  loading: 'Caricamento dell’andamento mensile',
+  error: 'Impossibile caricare l’andamento mensile.',
+  empty: 'Nessun fatturato o costo nel periodo scelto con questi filtri.',
+  structure: 'Struttura',
+  notAvailable: 'n.d.',
+  measures: { revenue: 'Fatturato', cost: 'Costi', margin: 'Margine' },
+  filters: {
+    title: 'Filtri dell’andamento mensile',
+    dateFrom: 'Documenti dal',
+  },
+  totals: {
+    title: 'Totali del periodo',
+    previousYear: 'Anno precedente: {{value}}',
+    variation: 'sull’anno precedente',
+  },
+  functions: {
+    title: 'Andamento per funzione aziendale',
+    hint: 'Importi al netto dell’IVA, per mese del documento. I costi non legati a una commessa vanno sotto Struttura.',
+    caption: '{{measure}} per funzione aziendale e mese',
+    measure: 'Misura',
+    businessFunction: 'Funzione aziendale',
+    total: 'Totale',
+    previousYear: 'Anno precedente',
+    variation: 'Variazione %',
+    chartTitle: '{{measure}} per funzione aziendale',
+    comparisonTitle: '{{measure}}: totale e anno precedente',
+    seriesCurrent: 'Periodo scelto',
+    seriesPrevious: 'Anno precedente',
+  },
+  nature: {
+    title: 'Costi per natura',
+    hint: 'Costi per mese e natura, con la quota sul fatturato del mese.',
+    caption: 'Costi per natura e mese, con quota sul fatturato',
+    nature: 'Natura',
+    total: 'Totale',
+    revenue: 'Fatturato',
+    cost: 'Costi totali',
+    natures: { direct: 'Diretto', indirect: 'Indiretto', general: 'Generale', none: 'Senza tipo di costo' },
+  },
+}

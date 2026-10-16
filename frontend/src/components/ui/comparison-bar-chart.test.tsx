@@ -126,6 +126,15 @@ describe('ComparisonBarChart', () => {
     expect(impl).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
   })
 
+  it('grows the chart box with the number of points so many categories stay readable', async () => {
+    const manyPoints = Array.from({ length: 14 }, (_, index) => ({ label: `P${index}`, budget: index, actual: -index }))
+    render(<ComparisonBarChart title="Expected vs actual" points={manyPoints} seriesLabels={SERIES_LABELS} />)
+
+    const chart = await screen.findByRole('img', { name: /Expected vs actual/ })
+
+    expect(chart).toHaveStyle({ minHeight: '504px' })
+  })
+
   it('sizes the chart with responsive classes instead of a fixed pixel height', () => {
     const impl = readSource('comparison-bar-chart-impl.tsx')
 

@@ -3,7 +3,41 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0269 — Controllo di gestione F2: scadenzario, aging, impegni, esposizione, concentrazione — VERDE, NON COMMITTATO (2026-10-16)
+## Spec 0270 — Controllo di gestione F3a: cash flow previsionale e andamento mensile — VERDE, NON COMMITTATO (2026-10-16)
+
+- Spec `docs/specs/0270-management-control-cash-flow-and-trend.xml` (D-1..D-14, AC-001..AC-018). Stesso permesso.
+  Voci di menu `management-control-cash-flow` ("Cash flow previsionale", `/management-control/cash-flow`, icona
+  `wallet`) e `management-control-trend` ("Andamento mensile", `/management-control/trend`, icona `trending-up`,
+  aggiunta a `icon-map.ts`); guide in-app con le stesse chiavi (HELP_GUIDE_KEYS = 82).
+- `GET management-control/cash-flow` (company/sites, `document_type` default all, `horizon_months` 1..24 default 6):
+  `backlog` (scaduto a oggi), `months[]` dal mese corrente con `cumulative` SENZA arretrato, `beyond`, `by_company`.
+  Entrate = rate attive aperte per mese di due_date; uscite = rate passive aperte + ODA impegnati con data attesa
+  = `InstallmentScheduleCalculator::firstDueDate(order_date, metodo)` (nuovo metodo pubblico, `dueDate` invariato),
+  senza metodo = order_date; ODA aggregati in SQL per (societa', metodo, data ordine) e datati in PHP.
+  Scenario "arretrato entro 30 giorni" = frontend puro (`cash-flow-scenario.ts`), anche su by_company.
+- `GET management-control/monthly-trend` (date obbligatorie, max 24 mesi, data finale esclusiva sul mese
+  successivo; company/sites): `months[]`, `functions[]` (chiavi id funzione | `structure` | `unattributed`;
+  fatturato = invoice_lines net di fatture type=invoice per mese documento, riga con quote_line_id -> funzione
+  effettiva della categoria, senza -> quote di `WorkOrderFunctionShares` della commessa, altrimenti unattributed;
+  costi = purchase_invoice_lines net (proforma e fatture, incluse quelle degli estratti conto provvigioni, D-14) con
+  commessa -> quote, senza -> structure), `totals` + `previous_year` (mesi -12), `by_nature` (direct/indirect/
+  general; riga null solo teorica). `WorkOrderFunctionShares` estratta da 0268 a output invariato.
+- Backend: `app/Services/ManagementControl/{WorkOrderFunctionShares,FlowSupport}.php`, `CashFlow/{Receivable,
+  Payable,Committed}FlowAggregator + CashFlowBuilder`, `Trend/{Revenue,Cost,Nature}TrendAggregator +
+  MonthlyTrendBuilder`; test `CashFlow*Test`, `MonthlyTrend*Test`, `tests/Unit/Invoices/FirstDueDateTest`.
+- Frontend: `features/management-control/cash-flow-*`, `trend-*`, `money-math.ts`, `month-label.ts`,
+  `ScopeSelectionFields` (societa'+sedi, esportato da `scope-filter-fields.tsx`, che lo compone con il periodo), i18n in file
+  separati `{it,en}-management-control-{cash-flow,trend}.ts`; `components/ui/trend-line-chart{,-impl,.test}.tsx`
+  (multi-serie), `headingLevel` anche su `StatChart`, `ComparisonBarChart` con altezza minima proporzionale ai punti.
+- ATTENZIONE: `frontend/src/routes/router.tsx` e' a 494 righe (hard limit 500): la prossima rotta richiede lo split
+  del router (es. per sezione di menu). Idem `backend/routes/api.php` a 499.
+- Migliorie segnalate, non fatte: `Switch` da spento sotto 3:1 (design system); hover della cella sticky in
+  thead/tfoot; manuale Claude Docs per le due pagine (documento non condiviso con il connettore).
+- Prossimo: spec 3b (da fatturare per funzione/societa'/commerciale con eta' commessa; ciclo proforma con data di
+  conversione dall'activity log del cambio `type`; incassi/pagamenti per conto finanziario: attivo via
+  `invoices.financial_account_id`, passivo via `purchase_invoice_installments.financial_account_id`), poi F4.
+
+## Spec 0269 — Controllo di gestione F2: scadenzario, aging, impegni, esposizione, concentrazione — VERDE, COMMITTATO 8140bc9b (2026-10-16)
 
 - Spec `docs/specs/0269-management-control-exposure.xml` (D-1..D-16, AC-001..AC-020). Stesso modulo e permesso
   `management-control.view`. Voce di menu `management-control-exposure` ("Scadenzario ed esposizione",

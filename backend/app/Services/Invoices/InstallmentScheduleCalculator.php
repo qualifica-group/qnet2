@@ -58,6 +58,14 @@ final class InstallmentScheduleCalculator
     }
 
     /**
+     * Due date of the first installment, with the same rule `calculate()` applies.
+     */
+    public function firstDueDate(CarbonImmutable $documentDate, PaymentMethod $method): CarbonImmutable
+    {
+        return $this->dueDate($documentDate, $method, 1);
+    }
+
+    /**
      * @return array<int, int>
      */
     private function amountsInCents(VatAllocation $allocation, int $count, int $net, int $vat, int $total): array

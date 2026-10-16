@@ -28,6 +28,8 @@ export const navigation = {
   managementControl: 'Management control',
   incomeStatement: 'Income statement',
   exposure: 'Schedule and exposure',
+  cashFlow: 'Cash flow forecast',
+  trend: 'Monthly trend',
   accountingReceivable: 'Receivables',
   proformaRequests: 'Proforma requests',
   invoices: 'Active invoices',

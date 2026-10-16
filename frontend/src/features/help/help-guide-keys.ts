@@ -62,6 +62,8 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'ledger',
   'management-control',
   'management-control-exposure',
+  'management-control-cash-flow',
+  'management-control-trend',
   'purchase-invoices',
   'purchase-invoice-installments',
   'agent-fiscal-profiles',

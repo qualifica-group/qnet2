@@ -1,3 +1,6 @@
+import { cashFlow } from './it-management-control-cash-flow'
+import { trend } from './it-management-control-trend'
+
 /** Controllo di gestione, conto economico (spec 0268). */
 export const managementControl = {
   title: 'Conto economico',
@@ -203,4 +206,6 @@ export const managementControl = {
       empty: 'Nessun fatturato nel periodo scelto.',
     },
   },
+  cashFlow,
+  trend,
 }

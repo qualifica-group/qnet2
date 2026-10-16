@@ -26,6 +26,9 @@ const ACTUAL_COLOR = CHART_SERIES_COLORS[1]
 const CHART_MARGIN = { top: 4, right: 48, bottom: 0, left: 4 } as const
 /** Width recharts reserves for the category axis labels, in px. */
 const CATEGORY_AXIS_WIDTH = 96
+/** Vertical room per category (a pair of bars plus its label) and the fixed part (axis, legend), in px. */
+const POINT_HEIGHT = 32
+const CHART_CHROME_HEIGHT = 56
 const LEGEND_STYLE = { fontSize: "0.75rem" } as const
 /** Keeps zero inside the value axis so negative values draw below the baseline. */
 const VALUE_AXIS_DOMAIN: [(min: number) => number, (max: number) => number] = [
@@ -56,6 +59,9 @@ export default function ComparisonBarChartImpl({
         // overflow-hidden: svg text is not clipped by default, so a long axis label at the
         // edge would add horizontal scroll to the whole page instead of staying in the card.
         className="h-48 w-full overflow-hidden sm:h-64"
+        // Content-driven minimum on the inner box only: with many categories the bars would shrink to
+        // slivers and recharts would drop axis labels. h-48/sm:h-64 stay the floor for few points.
+        style={{ minHeight: points.length * POINT_HEIGHT + CHART_CHROME_HEIGHT }}
       >
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={points} layout="vertical" margin={CHART_MARGIN}>

@@ -13,6 +13,7 @@ use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\Invoice;
 use App\Models\InvoiceInstallment;
+use App\Models\InvoiceLine;
 use App\Models\OperationalSite;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -29,6 +30,7 @@ use App\Models\WorkOrder;
 use App\Models\WorkOrderCost;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
@@ -272,5 +274,70 @@ if (! function_exists('mcExposureScenario')) {
         mcOrderLine(null, '70.00', PurchaseOrderStatus::Approved, ['company_id' => $beta->id, 'company_site_id' => $siteTwo->id, 'operational_site_id' => $roma->id]);
 
         return compact('alfa', 'beta', 'siteOne', 'siteTwo', 'torino', 'roma');
+    }
+}
+
+if (! function_exists('mcMonth')) {
+    /** "YYYY-MM" of the month `$months` after the current one (spec 0270). */
+    function mcMonth(int $months): string
+    {
+        return CarbonImmutable::today()->startOfMonth()->addMonthsNoOverflow($months)->format('Y-m');
+    }
+}
+
+if (! function_exists('mcMonthDue')) {
+    /** Days from today to the 15th of the month `$months` after the current one (always in the future for $months >= 1). */
+    function mcMonthDue(int $months): int
+    {
+        $today = CarbonImmutable::today();
+
+        return (int) $today->diffInDays($today->startOfMonth()->addMonthsNoOverflow($months)->addDays(14), false);
+    }
+}
+
+if (! function_exists('mcTrendInvoice')) {
+    /**
+     * A receivable document dated `$date` with one line per `[net, quote line]` pair.
+     *
+     * @param  array<int, array{0: string, 1: QuoteLine|null}>  $lines
+     * @param  array<string, mixed>  $invoice  document attributes
+     */
+    function mcTrendInvoice(string $date, array $lines, array $invoice = [], InvoiceType $type = InvoiceType::Invoice): Invoice
+    {
+        $document = Invoice::factory()->create(['type' => $type, 'document_date' => $date, ...$invoice]);
+
+        foreach ($lines as [$net, $quoteLine]) {
+            InvoiceLine::factory()->create(['invoice_id' => $document->id, 'quote_line_id' => $quoteLine?->id, 'net_amount' => $net]);
+        }
+
+        return $document;
+    }
+}
+
+if (! function_exists('mcTrendCost')) {
+    /**
+     * A payable document line of `$net` dated `$date`, tied to `$workOrder` when given.
+     *
+     * @param  array<string, mixed>  $document  purchase invoice attributes
+     * @param  array<string, mixed>  $line  line attributes
+     */
+    function mcTrendCost(string $date, string $net, ?WorkOrder $workOrder = null, array $document = [], array $line = []): PurchaseInvoiceLine
+    {
+        return mcPayableLine($workOrder, $net, document: ['document_date' => $date, ...$document], line: $line);
+    }
+}
+
+if (! function_exists('mcQueryCount')) {
+    /** Number of queries a management control GET runs (the aggregate cache is emptied first; a first call warms the permission lookup). */
+    function mcQueryCount(string $endpoint, array $params = []): int
+    {
+        mcGet($endpoint, $params)->assertOk();
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        mcGet($endpoint, $params)->assertOk();
+        $count = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        return $count;
     }
 }

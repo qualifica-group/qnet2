@@ -1,0 +1,43 @@
+/** Management control, monthly trend (spec 0270). */
+export const trend = {
+  title: 'Monthly trend',
+  loading: 'Loading the monthly trend',
+  error: 'Unable to load the monthly trend.',
+  empty: 'No revenue or costs in the selected period with these filters.',
+  structure: 'Structure',
+  notAvailable: 'n/a',
+  measures: { revenue: 'Revenue', cost: 'Costs', margin: 'Margin' },
+  filters: {
+    title: 'Monthly trend filters',
+    dateFrom: 'Documents from',
+  },
+  totals: {
+    title: 'Totals of the period',
+    previousYear: 'Previous year: {{value}}',
+    variation: 'vs previous year',
+  },
+  functions: {
+    title: 'Trend by business function',
+    hint: 'Amounts net of VAT, by document month. Costs not tied to a work order go under Structure.',
+    caption: '{{measure}} by business function and month',
+    measure: 'Measure',
+    businessFunction: 'Business function',
+    total: 'Total',
+    previousYear: 'Previous year',
+    variation: 'Change %',
+    chartTitle: '{{measure}} by business function',
+    comparisonTitle: '{{measure}}: total and previous year',
+    seriesCurrent: 'Selected period',
+    seriesPrevious: 'Previous year',
+  },
+  nature: {
+    title: 'Costs by nature',
+    hint: 'Costs by month and nature, with the share of the revenue of the month.',
+    caption: 'Costs by nature and month, with share of revenue',
+    nature: 'Nature',
+    total: 'Total',
+    revenue: 'Revenue',
+    cost: 'Total costs',
+    natures: { direct: 'Direct', indirect: 'Indirect', general: 'General', none: 'No cost type' },
+  },
+}

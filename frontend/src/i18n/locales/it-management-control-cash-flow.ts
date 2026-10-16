@@ -1,0 +1,53 @@
+/** Controllo di gestione, cash flow previsionale (spec 0270). */
+export const cashFlow = {
+  title: 'Cash flow previsionale',
+  loading: 'Caricamento del cash flow',
+  error: 'Impossibile caricare il cash flow.',
+  empty: 'Nessuna rata aperta o impegno con questi filtri.',
+  snapshot: 'Rate aperte e impegni verso i fornitori a oggi ({{date}}), per mese di scadenza attesa. L’arretrato è ciò che è già scaduto.',
+  filters: {
+    title: 'Filtri del cash flow',
+    documentType: 'Tipo documento',
+    documentTypes: { all: 'Tutti', proforma: 'Proforma', invoice: 'Fatture' },
+    horizon: 'Orizzonte',
+    horizonOption: '{{count}} mesi',
+  },
+  totals: {
+    title: 'Totali del cash flow',
+    backlog_net: 'Arretrato netto',
+    receivable: 'Entrate nell’orizzonte',
+    payable: 'Uscite nell’orizzonte',
+    committed: 'Impegni nell’orizzonte',
+    net: 'Saldo netto nell’orizzonte',
+    scenario_net: 'Saldo netto con scenario',
+  },
+  table: {
+    title: 'Previsione per mese',
+    hint: 'Importi sul totale del documento. Il cumulato somma il netto mensile e non include l’arretrato.',
+    caption: 'Cash flow per mese: arretrato, mesi dell’orizzonte e oltre',
+    item: 'Voce',
+    backlog: 'Arretrato',
+    beyond: 'Oltre',
+    rows: {
+      receivable: 'Entrate',
+      payable: 'Uscite',
+      committed: 'Impegni',
+      net: 'Netto',
+      cumulative: 'Cumulato',
+    },
+    scenario: 'Arretrato incassato e pagato entro 30 giorni',
+  },
+  chart: {
+    title: 'Entrate e uscite per mese',
+    seriesReceipts: 'Entrate',
+    seriesPayments: 'Uscite e impegni',
+    cumulativeTitle: 'Netto cumulato per mese',
+  },
+  byCompany: {
+    title: 'Netto per società',
+    hint: 'Entrate - uscite - impegni, per società del documento.',
+    caption: 'Cash flow netto per società e mese',
+    company: 'Società',
+    total: 'Totale',
+  },
+}

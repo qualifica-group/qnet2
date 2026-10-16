@@ -1,3 +1,6 @@
+import { cashFlow } from './en-management-control-cash-flow'
+import { trend } from './en-management-control-trend'
+
 /** Management control, income statement (spec 0268). */
 export const managementControl = {
   title: 'Income statement',
@@ -203,4 +206,6 @@ export const managementControl = {
       empty: 'Nothing invoiced in the selected period.',
     },
   },
+  cashFlow,
+  trend,
 }

@@ -40,6 +40,7 @@ final class WorkOrderFigureSources
         private readonly CommittedOrderLineQuery $committed,
         private readonly LineEffectiveRevenue $effectiveRevenue,
         private readonly CategoryHierarchy $categories,
+        private readonly WorkOrderFunctionShares $functionShares,
     ) {}
 
     /**
@@ -83,7 +84,7 @@ final class WorkOrderFigureSources
                 'commission_budget' => (int) $ownLines->sum(fn (QuoteLine $line): int => $this->budgetCommissionCents($line)),
                 'commission_actual' => (int) $ownLines->sum(fn (QuoteLine $line): int => $accrualByLine[$line->id] ?? 0),
             ];
-            $weights[$id] = $this->functionWeights($ownLines, $categoryFunctions);
+            $weights[$id] = $this->functionShares->fromLines($ownLines, $categoryFunctions);
         }
 
         return ['figures' => $figures, 'weights' => $weights];
@@ -154,22 +155,6 @@ final class WorkOrderFigureSources
                 || ($commission->recipient_role === CommissionRecipientRole::Supplier
                     && $line->supplier_commission_direction === SupplierCommissionDirection::Paid))
             ->sum(fn (QuoteLineCommission $commission): int => $this->cents($commission->calculated_amount));
-    }
-
-    /**
-     * @param  Collection<int, QuoteLine>  $lines
-     * @param  array<int, array{id: int, name: string}|null>  $categoryFunctions  effective function by category id (spec 0040)
-     * @return array<int, int>
-     */
-    private function functionWeights(Collection $lines, array $categoryFunctions): array
-    {
-        $weights = [];
-        foreach ($lines as $line) {
-            $functionId = $categoryFunctions[$line->product?->category_id]['id'] ?? 0;
-            $weights[$functionId] = ($weights[$functionId] ?? 0) + $this->effectiveRevenue->cents($line);
-        }
-
-        return $weights;
     }
 
     private function cents(mixed $amount): int

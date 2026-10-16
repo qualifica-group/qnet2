@@ -47,6 +47,8 @@ const ManagementControlIncomeStatementPage = lazyRoute(
   () => import('@/pages/management-control-income-statement-page'),
 )
 const ManagementControlExposurePage = lazyRoute(() => import('@/pages/management-control-exposure-page'))
+const ManagementControlCashFlowPage = lazyRoute(() => import('@/pages/management-control-cash-flow-page'))
+const ManagementControlTrendPage = lazyRoute(() => import('@/pages/management-control-trend-page'))
 const ProductTypologiesPage = lazyRoute(() => import('@/pages/product-typologies-page'))
 const PaymentMethodsPage = lazyRoute(() => import('@/pages/payment-methods-page'))
 const TagsPage = lazyRoute(() => import('@/pages/tags-page'))
@@ -249,6 +251,8 @@ export const router = createBrowserRouter([
             path: 'management-control/exposure',
             element: <ManagementControlExposurePage />,
           },
+          { path: 'management-control/cash-flow', element: <ManagementControlCashFlowPage /> },
+          { path: 'management-control/trend', element: <ManagementControlTrendPage /> },
           {
             path: 'invoice-tags',
             element: <InvoiceTagsPage />,

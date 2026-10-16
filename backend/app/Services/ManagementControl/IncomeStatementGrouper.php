@@ -81,23 +81,13 @@ final class IncomeStatementGrouper
      */
     private function shares(array $base, array $weights): array
     {
-        $positive = array_filter($weights, fn (int $weight): bool => $weight > 0);
-        $total = array_sum($positive);
-        if ($total <= 0) {
+        $split = WorkOrderFunctionShares::split($base, $weights);
+        if ($split === []) {
             return [self::UNATTRIBUTED => $base] + $this->zeroShares($weights, $base);
         }
 
-        $keys = array_keys($positive);
-        usort($keys, fn (int $a, int $b): int => ($a === 0) <=> ($b === 0) ?: $a <=> $b);
-        $remaining = $base;
         $shares = [];
-        foreach ($keys as $position => $functionId) {
-            $isLast = $position === array_key_last($keys);
-            $share = [];
-            foreach ($base as $figure => $cents) {
-                $share[$figure] = $isLast ? $remaining[$figure] : (int) round($cents * $positive[$functionId] / $total);
-                $remaining[$figure] -= $share[$figure];
-            }
+        foreach ($split as $functionId => $share) {
             $shares[$this->key($functionId)] = $share;
         }
 

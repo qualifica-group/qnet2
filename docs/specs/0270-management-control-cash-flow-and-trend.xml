@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0270 — Controllo di gestione, fase 3a: cash flow previsionale per mese e andamento mensile per funzione
+  aziendale (con costi per natura e confronto con l'anno precedente). Stesso modulo, permesso e pattern di 0268/0269.
+  Fase 3b (spec separata): da fatturare, ciclo proforma, incassi e pagamenti per conto finanziario.
+-->
+<spec id="0270-management-control-cash-flow-and-trend" status="draft" owner="utente" date="2026-10-16">
+
+  <goal>
+    Due pagine nuove del modulo "Controllo di gestione". "Cash flow previsionale": entrate e uscite attese mese per
+    mese su un orizzonte scelto, con l'arretrato scaduto a oggi, il saldo mensile e cumulato, per societa', e uno
+    scenario in cui l'arretrato rientra entro 30 giorni. "Andamento mensile": fatturato, costi e margine per
+    funzione aziendale mese per mese, confronto con lo stesso mese dell'anno precedente e costi per natura in
+    rapporto al fatturato. Tutto aggregato, nessun elenco per documento.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-16 ("vai", fase 3). Decisioni gia' prese: 0268 D-3 (proforma nel previsionale di
+    cassa, non nel fatturato), D-6 (cassa sul totale documento, conto economico sull'imponibile), D-7 (permesso
+    unico, tutte le societa'), D-11 (ripartizione delle cifre di commessa tra le funzioni delle righe in
+    proporzione al ricavo contrattuale di riga; funzione effettiva della categoria, D-5 corretta); 0269 D-1 (stock a
+    oggi, flussi nel periodo), D-3 (rate passive gia' al netto di ritenuta/ENASARCO).
+
+    Decisioni proposte (il lead decide, l'utente valida con l'approvazione):
+    - D-1 Cash flow = fotografia a oggi delle rate aperte e degli impegni, proiettata per mese di scadenza attesa.
+      Entrate = `invoice_installments.residual_amount` delle fatture del `document_type` scelto (default `all`:
+      proforma incluse, 0268 D-3). Uscite = `purchase_invoice_installments.residual_amount` (default `all`) +
+      ODA impegnati non fatturati (`CommittedOrderLineQuery`, stessi stati di 0252/0268).
+    - D-2 Mese atteso di una rata = mese di `due_date`. Mese atteso di una riga ODA = prima scadenza del metodo di
+      pagamento dell'ordine calcolata da `InstallmentScheduleCalculator` a partire da `purchase_orders.order_date`
+      (si espone un metodo pubblico `firstDueDate(CarbonImmutable $documentDate, PaymentMethod $method)` che riusa
+      la logica privata `dueDate(..., 1)`, senza cambiarla); ordine senza metodo di pagamento -> `order_date`.
+      Le righe ODA si aggregano in SQL per (`payment_method_id`, `order_date`) e la data attesa si calcola in PHP su
+      quei gruppi (pochi), mai riga per riga: numero di query costante.
+    - D-3 Arretrato ("backlog") = rate aperte con `due_date < today` e righe ODA con data attesa < today, separato
+      dai mesi. L'orizzonte parte dal mese corrente (`horizon_months` 1..24, default 6); cio' che scade oltre
+      l'orizzonte va in `beyond`. Il cumulato dei mesi NON include l'arretrato (lo scenario lo aggiunge).
+    - D-4 Scenario "arretrato incassato/pagato entro 30 giorni" = calcolo lato frontend, funzione pura testata:
+      l'arretrato (entrate, uscite, impegni) si somma al primo mese e il cumulato si ricalcola. Il backend manda i
+      dati base una volta sola.
+    - D-5 Per societa' (`by_company`): stessa proiezione con il netto per mese, l'arretrato netto, l'oltre
+      orizzonte e il totale; societa' da `invoices.company_id`, `purchase_invoices.company_id`,
+      `purchase_orders.company_id`. Filtri sedi: lato attivo dall'offerta (0266/0269 D-9), passivo e ODA dalla testata.
+    - D-6 Andamento mensile: periodo per data documento (`date_from`/`date_to`, massimo 24 mesi, default FE primo
+      giorno di 11 mesi fa -> oggi); i mesi sono tutti quelli dell'intervallo, anche se vuoti.
+      Fatturato = imponibile (`invoice_lines.net_amount`) delle fatture `type = invoice` per mese di
+      `invoices.document_date`. Costi = imponibile (`purchase_invoice_lines.net_amount`) dei documenti passivi
+      (proforma e fatture, come 0252 D-2) per mese di `purchase_invoices.document_date`. Margine = fatturato - costi.
+    - D-7 Attribuzione alla funzione aziendale per mese: una riga di fattura attiva con `quote_line_id` va alla
+      funzione effettiva della categoria del prodotto di quella riga; senza `quote_line_id` ma con
+      `invoices.work_order_id`, si ripartisce con le quote di funzione della commessa (D-11 di 0268: quote di
+      ricavo contrattuale delle righe assegnate); altrimenti "unattributed". Una riga passiva con `work_order_id`
+      si ripartisce con le quote della commessa; senza commessa va al gruppo "structure" (costi di struttura, label
+      null, chiave `structure`). Le quote di commessa si estraggono dal codice di 0268 in una classe riusabile
+      `WorkOrderFunctionShares` (work_order_id -> [function_id|0 => quota]) usata anche da IncomeStatementGrouper,
+      a output invariato (test 0268 verdi).
+    - D-8 Confronto anno precedente: per i totali (fatturato, costi, margine) la stessa serie sui mesi spostati di
+      12 mesi indietro; il frontend mostra la variazione percentuale per mese (null se il valore precedente e' 0).
+    - D-9 Costi per natura: `purchase_invoice_lines.net_amount` per mese e per `cost_types.nature`
+      (direct|indirect|general, null se senza tipo) con la quota sul fatturato del mese (percentuale a 1 decimale,
+      null se fatturato 0). Stesso periodo e filtri della pagina.
+    - D-10 Due endpoint di sola lettura con `AggregateCache` (chiave con giorno per il cash flow):
+      `GET /api/management-control/cash-flow` e `GET /api/management-control/monthly-trend`.
+    - D-11 Menu: due voci nella sezione `management-control-section`: `management-control-cash-flow` ("Cash flow
+      previsionale", `/management-control/cash-flow`, icona `wallet`) e `management-control-trend` ("Andamento
+      mensile", `/management-control/trend`, icona `trending-up`, da aggiungere a `icon-map.ts` se assente).
+      Chiavi guida in-app uguali alle chiavi di menu. Breadcrumb `cash-flow`, `trend`.
+    - D-12 Grafici: cash flow con `ComparisonBarChart` (entrate vs uscite per mese, con l'arretrato come primo
+      punto) e cumulato con `StatChart` variant `line`; andamento con un NUOVO componente ui `TrendLineChart`
+      multi-serie (una linea per funzione o per misura), lazy impl unico importatore di recharts, colori
+      `--chart-N` a rotazione, legenda, props congelate nel frontend_contract; costi per natura con
+      `StatColumnChart` per mese selezionato o tabella (scelta frontend: tabella mesi x natura + quota).
+    - D-14 (decisioni in build) Nel trend i costi includono le fatture passive degli estratti conto provvigioni:
+      sono costi reali per data documento e il trend non usa i maturati, quindi nessun doppio conteggio (diverso
+      dai costi di struttura di 0268 D-9, che convivono con le provvigioni nel margine di commessa). La riga
+      `by_nature` con `nature: null` e la riga `by_company` "unattributed" sono previste dal contratto ma oggi non
+      realizzabili (colonne NOT NULL): il frontend le tratta come opzionali. La data finale del trend e' esclusiva
+      sul primo giorno del mese successivo (SQLite salva le date con ora 00:00:00).
+    - D-13 Mesi in SQL con `SUBSTR(<date>, 1, 7)` (gia' usato in InstallmentSql::dueMonth, valido su MySQL e SQLite
+      perche' le date sono `Y-m-d`). Etichette mese tradotte dal frontend (`YYYY-MM` sul wire).
+
+    Fatti verificati nel repo:
+    - `payment_methods`: `payment_days`, `installments_count`, `days_between_installments`, `end_of_month`,
+      `end_of_month_extra_days`, `vat_allocation`; `App\Services\Invoices\InstallmentScheduleCalculator::calculate()`
+      con `dueDate()` privato. `purchase_orders.payment_method_id` nullable, `order_date`.
+    - Rate: `invoice_installments` (`residual_amount` virtuale, `due_date`), `purchase_invoice_installments`
+      (`residual_amount`, `due_date`). Fatture: `invoices` (`type`, `company_id`, `quote_id`, `work_order_id`,
+      `document_date`), `invoice_lines` (`quote_line_id`, `net_amount`), `purchase_invoices` (`document_type`,
+      `company_id`, `company_site_id`, `operational_site_id`, `document_date`), `purchase_invoice_lines`
+      (`work_order_id`, `cost_type_id`, `net_amount`), `cost_types.nature`.
+    - Riuso: `CommittedOrderLineQuery` (lines, forWorkOrders, withoutWorkOrder, centsBy, committedCentsBy,
+      topCommittedBy), `IncomeStatementGrouper::shares()` e `WorkOrderFigureSources` (quote per funzione, funzione
+      effettiva via `CategoryHierarchy::effectiveBusinessFunctionSummaries()`), `Exposure/AgingSql` (schema SQL
+      driver-dipendente), `ExposureRequest`/`ExposureFilters`/`ExposureController` (pattern), helper Pest
+      `invoiceWithPlan`, `purchaseDocumentWithPlan`, `purchaseOrderWithLines`, `mcExposureScenario`, `mcWorkOrder`,
+      `mcRevenueLine`, `mcInvoice`, `mcPayableLine`.
+    - Frontend: `features/management-control/` (scope-filter-fields.tsx, exposure-* come pattern, money-value,
+      row-label, cost-type-label, exposure-format), `components/ui/{comparison-bar-chart, stat-chart (variant
+      area|columns|line, serie singola), stat-column-chart, report-bar-chart}`, `stat-chart-tokens.ts`
+      (`CHART_SERIES_COLORS`), router/breadcrumbs/i18n/help come 0269.
+  </context>
+
+  <scope>
+    <in>
+      <item>Due voci di menu, due rotte, due endpoint, due pagine con barra filtri comune (`scope-filter-fields`).</item>
+      <item>Cash flow: arretrato, mesi dell'orizzonte, oltre orizzonte, per societa'; scenario arretrato entro 30 giorni (frontend).</item>
+      <item>Andamento: funzioni x mesi (fatturato, costi, margine), totali con anno precedente, costi per natura con quota sul fatturato.</item>
+      <item>`InstallmentScheduleCalculator::firstDueDate()` pubblico; `WorkOrderFunctionShares` estratta da 0268 a output invariato.</item>
+      <item>Nuovo componente ui `TrendLineChart` multi-serie; aggiunta icona `trending-up` alla mappa se assente.</item>
+      <item>Test Pest/Vitest sugli AC; guide in-app IT/EN per le due pagine; HANDOFF.</item>
+    </in>
+    <out>
+      <item>Da fatturare, ciclo proforma, incassi e pagamenti per conto finanziario (spec 3b).</item>
+      <item>Provvigioni per agente, costo orario del personale (fase 4).</item>
+      <item>Elenchi per documento, export, paginazione, filtri da URL sulle pagine tabellari.</item>
+      <item>Modifiche a LedgerCalculator, InstallmentSql, TableDefinition, alla logica di `dueDate()` del calcolatore rate.</item>
+      <item>Budget annuale per funzione o societa' (nuovi dati, da decidere a parte).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/management-control/cash-flow">
+      <request>
+        company_id[]: int[]                     (opzionale, exists)
+        company_site_id[]: int[]                (opzionale, exists)
+        operational_site_id[]: int[]            (opzionale, exists)
+        document_type: "all"|"proforma"|"invoice"   (opzionale, default "all", D-1)
+        horizon_months: int                     (opzionale, 1..24, default 6)
+      </request>
+      <response status="200">
+        { success: true, message: "OK", data: {
+            applied: { company_id: int[], company_site_id: int[], operational_site_id: int[], document_type: string, horizon_months: int },
+            today: "YYYY-MM-DD",
+            backlog: Flow,                                   (scaduto a oggi, D-3)
+            months: (Flow & { month: "YYYY-MM", cumulative: number })[],   (horizon_months elementi dal mese corrente; cumulative = somma dei net fino a quel mese, arretrato escluso)
+            beyond: Flow,                                    (oltre l'orizzonte)
+            by_company: CompanyFlowRow[]                     (ordinate per label; "unattributed" ultimo se presente)
+        } }
+        Flow = { receivable: number, payable: number, committed: number, net: number }   (net = receivable - payable - committed)
+        CompanyFlowRow = { key: string, label: string|null, backlog_net: number, months: { month: "YYYY-MM", net: number }[],
+                           beyond_net: number, total_net: number }   (total_net = backlog_net + somma months + beyond_net)
+        Importi sul totale documento, number a 2 decimali, centesimi interni. Invarianti: per ogni mese la somma dei
+        `net` di by_company = `months[i].net`; idem backlog e beyond.
+      </response>
+      <errors>401; 403 senza `management-control.view`; 422 (id inesistenti, document_type fuori lista, horizon_months fuori da 1..24).</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/management-control/monthly-trend">
+      <request>
+        date_from: "YYYY-MM-DD"                 (obbligatoria; si usa il mese)
+        date_to: "YYYY-MM-DD"                   (obbligatoria; >= date_from; al massimo 24 mesi di distanza)
+        company_id[]: int[], company_site_id[]: int[], operational_site_id[]: int[]   (opzionali, exists)
+      </request>
+      <response status="200">
+        { success: true, message: "OK", data: {
+            applied: { date_from, date_to, company_id: int[], company_site_id: int[], operational_site_id: int[] },
+            months: "YYYY-MM"[],                             (tutti i mesi dell'intervallo, in ordine)
+            functions: FunctionTrendRow[],                   (per label; "structure" e poi "unattributed" in coda)
+            totals: { revenue: number[], cost: number[], margin: number[],
+                      previous_year: { revenue: number[], cost: number[], margin: number[] } },   (stesse posizioni di months)
+            by_nature: NatureTrendRow[]                      (direct, indirect, general, poi null)
+        } }
+        FunctionTrendRow = { key: string, label: string|null, revenue: number[], cost: number[], margin: number[] }
+                           (key = id funzione | "structure" | "unattributed"; D-7)
+        NatureTrendRow = { nature: "direct"|"indirect"|"general"|null, cost: number[], share_of_revenue: (number|null)[] }
+        Importi imponibili, number a 2 decimali; quote percentuali a 1 decimale. Invarianti: per ogni mese la somma
+        di functions.revenue = totals.revenue, functions.cost = totals.cost (residuo di arrotondamento sull'ultima
+        quota), by_nature.cost = totals.cost; margin = revenue - cost ovunque.
+      </response>
+      <errors>401; 403; 422 (date mancanti o malformate, date_to &lt; date_from, intervallo oltre 24 mesi, id inesistenti).</errors>
+    </endpoint>
+
+    <frontend_contract>
+      Rotte `/management-control/cash-flow` e `/management-control/trend` (pagine lazy
+      `src/pages/management-control-cash-flow-page.tsx`, `management-control-trend-page.tsx`, gated da `<Can>`).
+      Feature `src/features/management-control/`: `cash-flow-types.ts`, `trend-types.ts`, `api.ts` (+ chiavi
+      `cashFlow(params)`, `monthlyTrend(params)`, `defaultCashFlowFilters()` (document_type all, horizon 6, array
+      vuoti), `defaultTrendFilters()` (primo giorno di 11 mesi fa -> oggi), `toCashFlowParams()`, `toTrendParams()`,
+      `fetchCashFlow()`, `fetchMonthlyTrend()`), `use-cash-flow.ts`, `use-monthly-trend.ts`,
+      `cash-flow-scenario.ts` (funzione pura `applyBacklogScenario(data)`: arretrato sul primo mese, cumulato
+      ricalcolato; testata), `cash-flow-filters-bar.tsx` (societa'/sedi + `SegmentedControl` tipo documento + `Select`
+      orizzonte 3/6/12/24), `cash-flow-panel.tsx`, `cash-flow-totals.tsx` (tile: arretrato netto, entrate
+      orizzonte, uscite orizzonte, impegni orizzonte, saldo netto orizzonte, saldo con scenario), `cash-flow-table.tsx`
+      (righe: entrate, uscite, impegni, netto, cumulato; colonne: arretrato, mesi, oltre; `Switch` o
+      `SegmentedControl` per lo scenario), `cash-flow-chart.tsx` (`ComparisonBarChart` entrate vs uscite+impegni per
+      colonna + `StatChart` line del cumulato), `cash-flow-by-company.tsx` (tabella societa' x colonne).
+      `trend-filters-bar.tsx` (periodo + societa'/sedi), `trend-panel.tsx`, `trend-totals.tsx` (tile: fatturato,
+      costi, margine del periodo con variazione % sull'anno precedente), `trend-function-table.tsx` (funzioni x mesi
+      con selettore misura fatturato|costi|margine, colonna totale, prima colonna sticky), `trend-chart.tsx`
+      (`TrendLineChart` una linea per funzione sulla misura scelta, oppure totali vs anno precedente),
+      `trend-nature-table.tsx` (mesi x natura con quota sul fatturato), `cash-flow-fixtures.ts`, `trend-fixtures.ts`, test.
+      Mesi: etichetta tradotta con `Intl.DateTimeFormat(i18n.language, { month: 'short', year: '2-digit' })`.
+      Nuovo componente ui (owner ui-design, props congelate):
+        `TrendLineChart({ title, months: string[], series: { key: string; label: string; values: (number|null)[] }[],
+                          formatValue?, emptyLabel?, className?, headingLevel? })`
+        in `components/ui/trend-line-chart.tsx` + `trend-line-chart-impl.tsx` (unico importatore di recharts),
+        colori `CHART_SERIES_COLORS` a rotazione, legenda testuale, lista `sr-only` dei valori, `role="img"`.
+      i18n: `managementControl.cashFlow.*`, `managementControl.trend.*`, `navigation.cashFlow`, `navigation.trend`.
+      Guide: `help/content/{it,en}/management-control-cash-flow.ts` (sezioni `overview`, `filters`, `backlog`,
+      `months`, `scenario`, `by-company`, `permissions`) e `management-control-trend.ts` (`overview`, `filters`,
+      `functions`, `previous-year`, `nature`, `permissions`); chiavi in HELP_GUIDE_KEYS (80 -> 82); breadcrumb
+      `cash-flow`, `trend`; icona `trending-up` in `icon-map.ts` se assente.
+    </frontend_contract>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Le due voci di menu compaiono nella sezione Controllo di gestione solo a chi ha `management-control.view`, con le chiavi e le route del contratto; `permissions:sync` non crea permessi (Pest).</criterion>
+    <criterion id="AC-002">Entrambi gli endpoint: 401 senza autenticazione, 403 senza permesso, 422 sui parametri non validi del contratto (Pest).</criterion>
+    <criterion id="AC-003">Date rate attive aperte scadute (ieri, -40 giorni), nel mese corrente, nei mesi 2 e 6, e oltre l'orizzonte 6, allora `backlog.receivable` somma le scadute, `months` ha 6 elementi dal mese corrente con i residui nel mese giusto, `beyond.receivable` il resto; una rata chiusa non conta; con `horizon_months` 3 il mese 6 passa in `beyond` (Pest).</criterion>
+    <criterion id="AC-004">Date rate passive aperte e righe ODA su ordini fatturabili con metodo di pagamento a 30 giorni, a fine mese, e senza metodo, una riga parzialmente fatturata e un ordine draft, allora `payable` e `committed` finiscono nel mese di `due_date` / di `firstDueDate` / di `order_date`, la riga parzialmente fatturata conta solo il residuo, il draft non conta, e `firstDueDate` coincide con la prima scadenza di `InstallmentScheduleCalculator::calculate()` (Pest, incluso un test unitario del nuovo metodo).</criterion>
+    <criterion id="AC-005">Per ogni elemento di `months`, `net` = receivable - payable - committed e `cumulative` e' la somma dei net precedenti incluso il corrente, senza l'arretrato; `document_type` invoice esclude le proforma dalle entrate e dalle uscite (Pest).</criterion>
+    <criterion id="AC-006">Dati documenti e ordini su due societa', allora `by_company` ha una riga per societa' con `months[i].net` che sommano a `months[i].net` globale, idem `backlog_net` e `beyond_net`, `total_net` coerente; i filtri societa'/sedi restringono tutte le sezioni (attivo via offerta) (Pest).</criterion>
+    <criterion id="AC-007">Dato un periodo di 3 mesi con fatture `invoice` (righe con `quote_line_id` su funzioni diverse, una riga senza `quote_line_id` su commessa con due funzioni 3/4 e 1/4, una fattura senza commessa), una proforma attiva e documenti passivi (righe con commessa e senza), allora `monthly-trend.functions` attribuisce ogni importo alla funzione effettiva (ereditata dalla categoria padre), ripartisce la riga senza `quote_line_id` con le quote della commessa, mette la fattura senza commessa in "unattributed", i costi senza commessa in "structure", esclude la proforma dal fatturato, e per ogni mese la somma delle funzioni coincide con `totals` (Pest).</criterion>
+    <criterion id="AC-008">Dati documenti nei mesi dell'anno precedente, allora `totals.previous_year` riporta le stesse misure sui mesi spostati di 12 mesi, con zero dove non c'e' nulla; i mesi vuoti dell'intervallo compaiono con zeri; un intervallo di 25 mesi da' 422 (Pest).</criterion>
+    <criterion id="AC-009">Dati costi passivi con tipi di natura direct, indirect, general, allora `by_nature` ha le tre righe nell'ordine del contratto (la riga `null` compare solo se esistono costi senza natura, oggi impossibili perche' `cost_type_id` e `nature` sono NOT NULL, D-14), `cost` per mese somma a `totals.cost`, `share_of_revenue` e' la percentuale a 1 decimale sul fatturato del mese e null dove il fatturato e' 0 (Pest).</criterion>
+    <criterion id="AC-010">I test di spec 0268 (`IncomeStatement*Test`) restano verdi dopo l'estrazione di `WorkOrderFunctionShares`; i test esistenti di `InstallmentScheduleCalculator`/fatture restano verdi dopo l'aggiunta di `firstDueDate()` (Pest).</criterion>
+    <criterion id="AC-011">Con 5 e poi 25 documenti e ordini per lato, il numero di query di ciascun endpoint e' identico (Pest).</criterion>
+    <criterion id="AC-012">`defaultCashFlowFilters()` / `defaultTrendFilters()` e i mapper ai parametri rispettano il contratto; `fetchCashFlow`/`fetchMonthlyTrend` leggono `data.data`; `applyBacklogScenario()` sposta l'arretrato sul primo mese e ricalcola il cumulato lasciando invariati gli altri mesi (Vitest).</criterion>
+    <criterion id="AC-013">Le due barre filtri espongono per ruolo i campi del contratto e chiamano `onChange`; la barra del Conto economico e dello Scadenzario restano invariate (Vitest, test esistenti verdi).</criterion>
+    <criterion id="AC-014">Con una fixture, la pagina Cash flow mostra le tile, la tabella con colonne arretrato/mesi/oltre e righe entrate/uscite/impegni/netto/cumulato, lo switch scenario che cambia i valori del primo mese e del cumulato, il grafico, la tabella per societa'; stati loading/errore/vuoto; senza permesso il messaggio e nessuna chiamata (Vitest).</criterion>
+    <criterion id="AC-015">Con una fixture, la pagina Andamento mostra le tile con variazione % sull'anno precedente ("n.d." se il precedente e' 0), la tabella funzioni x mesi con selettore misura e colonna totale, il grafico `TrendLineChart`, la tabella per natura con quote; "Struttura" e "Non attribuito" tradotti; mesi tradotti nella lingua attiva; stati e permesso come AC-014 (Vitest).</criterion>
+    <criterion id="AC-016">`TrendLineChart` rende una linea per serie con legenda, lista `sr-only` dei valori, `emptyLabel` senza serie o mesi, impl lazy unico importatore di recharts, colori dai token (Vitest + grep).</criterion>
+    <criterion id="AC-017">Guide IT/EN per le due pagine con gli stessi id di sezione, chiavi in HELP_GUIDE_KEYS, breadcrumb, icona `trending-up`; parity test help e i18n verdi; ESLint e `tsc -b --force` puliti.</criterion>
+    <criterion id="AC-018">Verifica ui-design sul codice: tabelle larghe (mesi) con regione focusabile e prima colonna sticky `bg-card`, superfici a rung corretti, negativi con `text-amount-negative`, nessun colore hard-coded, tile senza orfane, nessuna larghezza fissa.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Un solo componente ui nuovo (`TrendLineChart`), recharts solo nell'impl lazy.
+    - Authz in `authorize()`; allow-list; SQL costante con bind; MySQL e SQLite; numero di query costante; centesimi.
+    - Layering 0268/0269: Request -> DTO filtri -> Builder (`handle()` con `// Step N`) -> aggregatori per sezione
+      (`CashFlow/{ReceivableFlowAggregator, PayableFlowAggregator, CommittedFlowAggregator, CashFlowBuilder}`,
+      `Trend/{RevenueTrendAggregator, CostTrendAggregator, NatureTrendAggregator, MonthlyTrendBuilder}`,
+      `WorkOrderFunctionShares` in `app/Services/ManagementControl/`), file <= 300 righe.
+    - Frontend: TanStack Query, nessun `useEffect` + fetch, nessun `any`, i18n IT/EN, LF, test a11y-role-first.
+    - Test eseguiti davvero (binario Herd, `memory_limit=-1`; Vitest; ESLint; `./node_modules/.bin/tsc -b --force`).
+    - Git: nessun commit senza ordine esplicito; a verde HANDOFF e stop.
+  </constraints>
+
+</spec>

@@ -24,5 +24,19 @@ return [
             'route' => '/management-control/exposure',
             'permission' => 'management-control.view',
         ],
+        [
+            'key' => 'management-control-cash-flow',
+            'label' => 'navigation.cashFlow',
+            'icon' => 'wallet',
+            'route' => '/management-control/cash-flow',
+            'permission' => 'management-control.view',
+        ],
+        [
+            'key' => 'management-control-trend',
+            'label' => 'navigation.trend',
+            'icon' => 'trending-up',
+            'route' => '/management-control/trend',
+            'permission' => 'management-control.view',
+        ],
     ],
 ];

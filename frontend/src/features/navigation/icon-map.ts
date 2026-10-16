@@ -53,6 +53,7 @@ import {
   IdCard,
   FileSpreadsheet,
   Play,
+  TrendingUp,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -131,6 +132,8 @@ const iconMap: Record<string, LucideIcon> = {
   // Spec 0213: "Lanci" and "Estratti" under Provvigioni agenti (`percent` for the ENASARCO parameters already exists).
   play: Play,
   'file-spreadsheet': FileSpreadsheet,
+  // Spec 0270: "Andamento mensile" under Controllo di gestione.
+  'trending-up': TrendingUp,
 }
 
 export function resolveIcon(name: string | null): LucideIcon {

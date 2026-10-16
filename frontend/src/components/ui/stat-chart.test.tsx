@@ -51,6 +51,12 @@ describe('StatChart', () => {
     expect(screen.getByRole('heading', { name: 'New per month' })).toBeInTheDocument()
   })
 
+  it('renders the title at the requested heading level', () => {
+    render(<StatChart title="New per month" points={[]} headingLevel={4} />)
+
+    expect(screen.getByRole('heading', { name: 'New per month', level: 4 })).toBeInTheDocument()
+  })
+
   it('exposes every point as text once the lazy chart has loaded', async () => {
     render(<StatChart title="New per month" points={POINTS} />)
 
