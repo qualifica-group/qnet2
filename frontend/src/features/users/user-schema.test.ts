@@ -19,18 +19,17 @@ const employment = {
   is_manager: false,
   job_role_ids: [],
   reports_to_ids: [],
-  relationship_type: null,
-  company_id: null,
   primary_operational_site_id: null,
   remote_operational_site_ids: [],
   is_assignable: true,
   covers_all_product_categories: false,
   product_lines: [],
-  qualification_type: null,
   hired_at: '',
   terminated_at: '',
   standard_daily_minutes: null,
   break_daily_minutes: null,
+  iban: '',
+  iban_holder: '',
 }
 
 function values(password: string, confirmation: string) {

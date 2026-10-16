@@ -115,15 +115,9 @@ export const enums = {
     self_employed: 'Self-employed',
     other: 'Other',
   },
-  qualification_type: {
-    employee_level_5: 'Employee Level 5',
-    administrative: 'Administrative',
-    coordinator: 'Coordinator',
-    iso_consultant: 'ISO Consultant',
-    teacher_cococo: 'Co.Co.Co. Teacher',
-    teacher_vat: 'VAT Teacher',
-    trainee_cost: 'Trainee Cost',
-    hourly_cost_me: 'Hourly Cost M.E.',
+  employment_status: {
+    employed: 'Employed',
+    terminated: 'Terminated',
   },
   // Referent contact ambit (spec 0016).
   referent_contact_scope: {

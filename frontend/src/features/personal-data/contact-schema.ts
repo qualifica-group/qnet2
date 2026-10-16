@@ -23,6 +23,8 @@ export function buildContactSchema(t: TFunction) {
       value: z.string().min(1, t('personalData.contacts.valueRequired')),
       label: z.string().optional(),
       is_primary: z.boolean(),
+      // Spec 0272: only the user's contact form shows the flag; absent elsewhere.
+      is_work: z.boolean().optional(),
     })
     .superRefine((values, ctx) => {
       if (!values.value) {

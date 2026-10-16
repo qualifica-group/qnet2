@@ -61,6 +61,8 @@ interface PersonalDataChildCardsProps {
   createMode?: boolean
   /** The quick contact fields marked required; only with `createMode`. */
   requiredCreateTypes?: QuickContactType[]
+  /** Contacts carry the "work" flag (spec 0272 D-7): the user's screens only. */
+  showWorkFlag?: boolean
   contactsBoxProps?: CardBoxProps
   addressesBoxProps?: CardBoxProps
   /** Bare sections for a `RecordSectionsGrid` inside the record card, instead of two cards of their own. */
@@ -85,6 +87,7 @@ export function PersonalDataChildCards({
   onChange,
   createMode = false,
   requiredCreateTypes,
+  showWorkFlag = false,
   contactsBoxProps,
   addressesBoxProps,
   asSections = false,
@@ -109,6 +112,7 @@ export function PersonalDataChildCards({
                 persistence={persistence}
                 createMode={createMode}
                 requiredCreateTypes={requiredCreateTypes}
+                showWorkFlag={showWorkFlag}
               />
             ) : (
               <DetailEmpty />
@@ -159,6 +163,7 @@ interface PersonalDataRecordSectionsProps {
   contactsTitle: string
   addressesTitle: string
   showSiteType?: boolean
+  showWorkFlag?: boolean
   editing?: PersonalDataCardsEditing
 }
 

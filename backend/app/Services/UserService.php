@@ -11,6 +11,7 @@ use App\DataObjects\Users\UpdateUserData;
 use App\Models\User;
 use App\Services\Assignment\OperatorCompetence;
 use App\Services\Users\BusinessFunctionCoverageGuard;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -54,6 +55,9 @@ class UserService
         // function, which used to be a column of the profile.
         'employment.productLines.businessFunction',
         'employment.productLines.productCategory',
+        // Spec 0272: the contract history, so EmploymentResource derives the
+        // condition in force (and its CCNL level label) without a query per row.
+        'employment.contracts.collectiveAgreementLevel.agreement',
     ];
 
     public function __construct(
@@ -155,6 +159,7 @@ class UserService
 
             $this->writeProfile($user, $profile);
             $this->employmentWriter->write($user, $employment, $actor);
+            $this->deactivateIfTerminated($user);
 
             // Spec 0271 D-6: the mandatory business function rule on the resulting state.
             if ($enforceCoverage) {
@@ -212,6 +217,7 @@ class UserService
 
             $this->writeProfile($user, $profile);
             $this->employmentWriter->write($user, $employment, $actor);
+            $this->deactivateIfTerminated($user);
 
             // Spec 0271 D-6: only when the request touched employment or
             // activated the user; any other edit leaves legacy data alone.
@@ -223,6 +229,21 @@ class UserService
         });
 
         return $user->load(self::WRITE_RESULT_RELATIONS);
+    }
+
+    /**
+     * Spec 0272 D-8: a user whose termination date has arrived is saved
+     * inactive, whatever `is_active` the payload carried. Runs before the
+     * coverage guard so a terminated user is never asked for a business
+     * function. The daily job applies the same rule to future terminations.
+     */
+    private function deactivateIfTerminated(User $user): void
+    {
+        $terminatedAt = $user->employment()->value('terminated_at');
+
+        if ($user->is_active && $terminatedAt !== null && Carbon::parse($terminatedAt)->startOfDay()->lte(today())) {
+            $user->forceFill(['is_active' => false])->save();
+        }
     }
 
     /**

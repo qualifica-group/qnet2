@@ -114,15 +114,9 @@ export const enums = {
     self_employed: 'Partita IVA',
     other: 'Altro',
   },
-  qualification_type: {
-    employee_level_5: 'Impiegato 5° Liv.',
-    administrative: 'Amministrativo',
-    coordinator: 'Coordinatore',
-    iso_consultant: 'Consulente ISO',
-    teacher_cococo: 'Docenti Co.Co.Co.',
-    teacher_vat: 'Docenti P.IVA',
-    trainee_cost: 'Costo Tirocinante',
-    hourly_cost_me: 'Costo orario M.E.',
+  employment_status: {
+    employed: 'In forza',
+    terminated: 'Cessato',
   },
   // Ambito di contatto del referente (spec 0016).
   referent_contact_scope: {

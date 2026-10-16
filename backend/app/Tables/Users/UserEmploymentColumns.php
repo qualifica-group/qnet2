@@ -2,7 +2,6 @@
 
 namespace App\Tables\Users;
 
-use App\Enums\QualificationTypeEnum;
 use App\Enums\RelationshipTypeEnum;
 use App\Models\EmploymentProfile;
 use App\Models\User;
@@ -13,8 +12,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The 10 employment-derived grid columns on the `users` table (spec 0015):
- * company (related NAME), relationship_type/qualification_type (enums),
+ * The 11 employment-derived grid columns on the `users` table (spec 0015):
+ * company (related NAME), relationship_type (enum), employment_status
+ * (employed/terminated, spec 0272, UserEmploymentStatusColumn),
  * is_manager (boolean), hired_at/terminated_at (dates), business_function
  * (AGGREGATED over the competence rows since spec 0111 D-1, delegated to
  * UserBusinessFunctionColumn), operational_site (formatted address line,
@@ -54,7 +54,7 @@ class UserEmploymentColumns
         'company' => ['table' => 'companies', 'nameColumn' => 'denomination', 'relation' => 'employment.company', 'fk' => 'company_id'],
     ];
 
-    private const array ENUM_COLUMNS = ['relationship_type', 'qualification_type'];
+    private const array ENUM_COLUMNS = ['relationship_type'];
 
     private const array DATE_COLUMNS = ['hired_at', 'terminated_at'];
 
@@ -64,6 +64,7 @@ class UserEmploymentColumns
         private readonly UserBusinessFunctionColumn $businessFunctionColumn,
         private readonly UserReportsToColumn $reportsToColumn,
         private readonly UserJobRolesColumn $jobRolesColumn,
+        private readonly UserEmploymentStatusColumn $statusColumn,
     ) {}
 
     public function isEmploymentColumn(string $columnId): bool
@@ -75,7 +76,8 @@ class UserEmploymentColumns
             || $columnId === 'business_function'
             || $columnId === 'operational_site'
             || $columnId === 'reports_to'
-            || $columnId === 'job_roles';
+            || $columnId === 'job_roles'
+            || $columnId === 'employment_status';
     }
 
     /**
@@ -90,7 +92,7 @@ class UserEmploymentColumns
             'company' => $employment?->company?->denomination,
             'operational_site' => $this->operationalSiteColumn->label($employment),
             'relationship_type' => $employment?->relationship_type?->value,
-            'qualification_type' => $employment?->qualification_type?->value,
+            'employment_status' => $this->statusColumn->label($employment),
             'is_manager' => $employment?->is_manager ?? false,
             'reports_to' => $this->reportsToColumn->managers($employment),
             'job_roles' => $this->jobRolesColumn->label($employment),
@@ -100,13 +102,12 @@ class UserEmploymentColumns
     }
 
     /**
-     * The snake_case enum key (config/config.php form_enums) for the two
-     * enum columns, so the frontend localizes their options from its own
-     * i18n `enums.*` namespace.
+     * The snake_case enum key for the enum-like columns, so the frontend
+     * localizes their options from its own i18n `enums.*` namespace.
      */
     public function enumKeyFor(string $columnId): ?string
     {
-        return in_array($columnId, self::ENUM_COLUMNS, true) ? $columnId : null;
+        return in_array($columnId, [...self::ENUM_COLUMNS, 'employment_status'], true) ? $columnId : null;
     }
 
     /**
@@ -129,6 +130,12 @@ class UserEmploymentColumns
 
         if ($columnId === 'job_roles') {
             $this->jobRolesColumn->applyFilter($query, $filter);
+
+            return;
+        }
+
+        if ($columnId === 'employment_status') {
+            $this->statusColumn->applyFilter($query, $filter);
 
             return;
         }
@@ -232,6 +239,10 @@ class UserEmploymentColumns
             return $this->jobRolesColumn->sortSubquery();
         }
 
+        if ($columnId === 'employment_status') {
+            return $this->statusColumn->sortSubquery();
+        }
+
         if (array_key_exists($columnId, self::RELATED_NAME_COLUMNS)) {
             return $this->relatedNameSortSubquery($columnId);
         }
@@ -267,7 +278,7 @@ class UserEmploymentColumns
     /**
      * Excel-like distinct values (spec 0004/0005) for the 6 columns that have
      * one (business_function [aggregated]/company/reports_to [aggregated]/
-     * relationship_type/qualification_type/is_manager). `operational_site`/
+     * relationship_type/employment_status/is_manager). `operational_site`/
      * `hired_at`/`terminated_at` declare `hasFilterValues:false`
      * (UserColumnCatalog), so TableService never calls this method for them.
      *
@@ -296,8 +307,8 @@ class UserEmploymentColumns
             return $this->distinctEnumValues(RelationshipTypeEnum::values(), $search, $limit);
         }
 
-        if ($columnId === 'qualification_type') {
-            return $this->distinctEnumValues(QualificationTypeEnum::values(), $search, $limit);
+        if ($columnId === 'employment_status') {
+            return $this->statusColumn->distinctValues($search, $limit);
         }
 
         if ($columnId === 'is_manager') {

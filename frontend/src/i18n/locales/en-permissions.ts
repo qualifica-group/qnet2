@@ -91,6 +91,7 @@ export const permissions = {
     // Spec 0201 D-10: work order Contract data tab and per-line payment management.
     viewContractData: 'View contract data',
     managePayments: 'Manage payments',
+    manageCompensation: 'Manage compensation data',
   },
   resources: {
     users: 'Users',
@@ -146,6 +147,7 @@ export const permissions = {
     'purchase-requests': 'Purchase requests (RDA)',
     'purchase-orders': 'Purchase orders (ODA)',
     'cost-types': 'Cost types',
+    'collective-agreements': 'Collective agreements',
     'job-roles': 'Job roles',
     'job-activities': 'Activities',
     'purchase-request-priorities': 'RDA priorities',

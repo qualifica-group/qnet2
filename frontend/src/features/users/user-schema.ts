@@ -4,7 +4,6 @@ import {
   asCustomFieldsField,
   type CustomFieldsSchema,
 } from '@/features/custom-fields/build-custom-fields-schema'
-import { QUALIFICATION_TYPES, RELATIONSHIP_TYPES } from '@/features/users/types'
 
 /**
  * Zod schemas for the user create/edit form, built as factories so validation
@@ -17,6 +16,9 @@ const PASSWORD_MIN_LENGTH = 8
 
 /** Contract bound (spec 0015): a daily duration never exceeds a full day. */
 const MAX_DAILY_MINUTES = 1440
+
+/** Contract bound (spec 0272): the account holder name column length. */
+const MAX_IBAN_HOLDER_LENGTH = 191
 
 const localeSchema = z.enum(['en', 'it'])
 
@@ -32,8 +34,6 @@ function buildEmploymentSchema(t: TFunction) {
       is_manager: z.boolean(),
       job_role_ids: z.array(z.number()),
       reports_to_ids: z.array(z.number()),
-      relationship_type: z.enum(RELATIONSHIP_TYPES).nullable(),
-      company_id: z.number().nullable(),
       // Site membership (spec 0103): at most one physical site, plus zero or
       // more remote sites — both operative to the same effect (D-1).
       primary_operational_site_id: z.number().nullable(),
@@ -55,7 +55,9 @@ function buildEmploymentSchema(t: TFunction) {
           all_categories: z.boolean().optional(),
         }),
       ),
-      qualification_type: z.enum(QUALIFICATION_TYPES).nullable(),
+      // Payment account (spec 0272 D-6): format and mod-97 are the server's (422 on `iban`).
+      iban: z.string(),
+      iban_holder: z.string().max(MAX_IBAN_HOLDER_LENGTH),
       hired_at: z.string(),
       terminated_at: z.string(),
       standard_daily_minutes: z.number().int().min(0).max(MAX_DAILY_MINUTES).nullable(),

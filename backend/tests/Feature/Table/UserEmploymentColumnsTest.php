@@ -90,7 +90,7 @@ if (! function_exists('attachSiteMembership')) {
 
 const EMPLOYMENT_COLUMN_IDS = [
     'business_function', 'company', 'operational_site', 'relationship_type',
-    'qualification_type', 'is_manager', 'reports_to', 'hired_at', 'terminated_at',
+    'employment_status', 'is_manager', 'reports_to', 'hired_at', 'terminated_at',
 ];
 
 it('exposes the 9 employment columns with english ids, sortable/filterable, and the 2 enumKeys', function () {
@@ -106,7 +106,8 @@ it('exposes the 9 employment columns with english ids, sortable/filterable, and 
     }
 
     expect($columns['relationship_type']['enumKey'])->toBe('relationship_type')
-        ->and($columns['qualification_type']['enumKey'])->toBe('qualification_type')
+        ->and($columns['employment_status']['enumKey'])->toBe('employment_status')
+        ->and($columns['employment_status']['options'])->toBe(['employed', 'terminated'])
         ->and($columns['relationship_type']['options'])->toBe(['employee', 'self_employed', 'other'])
         ->and($columns['operational_site']['hasFilterValues'])->toBeFalse()
         ->and($columns['hired_at']['hasFilterValues'])->toBeFalse();

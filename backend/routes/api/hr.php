@@ -15,3 +15,6 @@
 require __DIR__.'/business-functions.php';
 require __DIR__.'/job-roles.php';
 require __DIR__.'/job-activities.php';
+
+require __DIR__.'/collective-agreements.php';
+require __DIR__.'/employment-contracts.php';

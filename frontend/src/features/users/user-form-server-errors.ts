@@ -28,16 +28,15 @@ export const SERVER_ERROR_FIELDS = [
   'employment.is_manager',
   'employment.job_role_ids',
   REPORTS_TO_IDS_FIELD,
-  'employment.relationship_type',
-  'employment.company_id',
   'employment.primary_operational_site_id',
   'employment.remote_operational_site_ids',
   PRODUCT_LINES_FIELD,
-  'employment.qualification_type',
   'employment.hired_at',
   'employment.terminated_at',
   'employment.standard_daily_minutes',
   'employment.break_daily_minutes',
+  'employment.iban',
+  'employment.iban_holder',
 ] as const
 
 /**

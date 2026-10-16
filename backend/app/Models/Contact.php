@@ -30,6 +30,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property string $value
  * @property string|null $normalized_value
  * @property bool $is_primary
+ * @property bool $is_work
  */
 class Contact extends BaseModel
 {
@@ -41,6 +42,7 @@ class Contact extends BaseModel
         'label',
         'value',
         'is_primary',
+        'is_work',
     ];
 
     protected $casts = [
@@ -49,6 +51,7 @@ class Contact extends BaseModel
         'value' => 'string',
         'normalized_value' => 'string',
         'is_primary' => 'bool',
+        'is_work' => 'bool',
     ];
 
     /**

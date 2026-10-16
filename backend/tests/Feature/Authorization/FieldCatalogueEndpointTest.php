@@ -89,6 +89,8 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         'cost-types',
         // spec 0271 (REQUIREMENT CHANGED): the HR org structure catalogues are registered in the generic registry.
         'job-roles', 'job-activities',
+        // spec 0272 (REQUIREMENT CHANGED): collective agreements (CCNL) join the generic registry.
+        'collective-agreements',
         // spec 0247 `purchase-request-priorities` (PurchaseRequestPrioritiesAuthorization: the RDA priority lookup).
         'purchase-request-priorities',
         // spec 0248 `purchase-order-statuses` and `purchase-request-line-statuses` (presentation catalogues of the ODA and RDA line statuses).
@@ -226,16 +228,18 @@ it('spec 0008/0015/0111/0129: users.fields contains exactly the 4 existing + 13 
         'employment.product_lines',
         'employment.relationship_type', 'employment.company_id',
         'employment.primary_operational_site_id', 'employment.remote_operational_site_ids',
-        'employment.qualification_type', 'employment.hired_at',
+        'employment.hired_at',
         'employment.terminated_at', 'employment.standard_daily_minutes', 'employment.break_daily_minutes',
+        // spec 0272 — payment data, gated by users.manageCompensation.
+        'employment.iban', 'employment.iban_holder',
     ]);
 
-    // Spec 0129/0194: exactly 15 employment.* keys (13 + the wildcard flag +
-    // the "Assegnabile" switch), and
+    // Spec 0129/0194/0272: exactly 16 employment.* keys (13 + the wildcard flag +
+    // the "Assegnabile" switch, - qualification_type + iban + iban_holder), and
     // neither of the two keys product_lines replaced survives anywhere in the
     // catalogue.
     $employmentKeys = $byKey->keys()->filter(static fn (string $key): bool => str_starts_with($key, 'employment.'));
-    expect($employmentKeys)->toHaveCount(15)
+    expect($employmentKeys)->toHaveCount(16)
         ->and($byKey)->not->toHaveKey('employment.business_function_id')
         ->and($byKey)->not->toHaveKey('employment.product_category_ids')
         ->and($byKey->get('employment.product_lines'))->toMatchArray(['type' => 'collection', 'group' => 'employment']);

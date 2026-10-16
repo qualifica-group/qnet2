@@ -5,7 +5,6 @@ namespace App\Migrations\Sources\Concerns;
 use App\DataObjects\Users\ContactInput;
 use App\DataObjects\Users\EmploymentData;
 use App\Enums\ContactTypeEnum;
-use App\Enums\QualificationTypeEnum;
 use App\Enums\RelationshipTypeEnum;
 use App\Migrations\AbstractMigrationSource;
 use App\Migrations\Support\MigrationGeoResolver;
@@ -14,6 +13,8 @@ use App\Models\EmploymentProfile;
 use App\Models\OperationalSite;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\EmploymentContracts\EmploymentContractService;
+use Illuminate\Support\Carbon;
 
 /**
  * Field-mapping helpers for UsersSource (spec 0013): translate one raw external
@@ -109,8 +110,9 @@ trait MapsExternalUserRecord
      * row", mirroring the wire contract's tri-state semantics). Every
      * relational reference (manager/company/operational site) resolves via
      * `old_id`; an unresolved reference is a non-fatal warning and leaves
-     * that link null. An unknown relationship/qualification type is likewise
-     * a non-fatal warning.
+     * that link null. Relationship type and company are NOT part of it: they
+     * become the first contract condition (buildInitialCondition()), and the
+     * legacy `qualification_type` is ignored (spec 0272 D-3/D-9).
      *
      * The external system carries a SINGLE site per user (spec 0103 context):
      * it becomes the PHYSICAL membership, so `primaryOperationalSiteIdProvided`
@@ -136,18 +138,14 @@ trait MapsExternalUserRecord
         $warnings = [];
 
         $reportsToId = $this->resolveEmploymentRelation(User::class, $record['reports_to_id'] ?? null, 'reports_to_id', $warnings);
-        $companyId = $this->resolveEmploymentRelation(Company::class, $record['company_id'] ?? null, 'company_id', $warnings);
         $operationalSiteId = $this->resolveEmploymentRelation(OperationalSite::class, $record['operational_site_id'] ?? null, 'operational_site_id', $warnings);
 
         $employment = new EmploymentData(
             isManager: (bool) ($record['is_manager'] ?? false),
             reportsToIdsProvided: true,
             reportsToIds: $reportsToId === null ? [] : [$reportsToId],
-            relationshipType: $this->resolveRelationshipType($record['relationship_type'] ?? null, $warnings),
-            companyId: $companyId,
             primaryOperationalSiteIdProvided: true,
             primaryOperationalSiteId: $operationalSiteId,
-            qualificationType: $this->resolveQualificationType($record['qualification_type'] ?? null, $warnings),
             hiredAt: $this->blankToNull($record['hired_at'] ?? null),
             terminatedAt: $this->blankToNull($record['terminated_at'] ?? null),
             standardDailyMinutes: $this->blankToInt($record['standard_daily_minutes'] ?? null),
@@ -244,11 +242,12 @@ trait MapsExternalUserRecord
             return [0, $warnings];
         }
 
-        $fill = $this->nullRelationBackfill($user->employment, $employment);
-        $filled = count($fill);
+        $filled = 0;
+        [$initial, $initialWarnings] = $this->buildInitialCondition($record);
+        array_push($warnings, ...$initialWarnings);
 
-        if ($fill !== []) {
-            $user->employment->update($fill);
+        if ($this->applyInitialCondition($user->employment, $initial)) {
+            $filled++;
         }
 
         if ($this->backfillPhysicalSite($user->employment, $employment)) {
@@ -263,33 +262,7 @@ trait MapsExternalUserRecord
     }
 
     /**
-     * The plain employment relation columns still NULL on the existing row
-     * that now resolve to a qnet id — filled once, never overwriting. Neither
-     * the site membership (spec 0103) nor the reports-to manager (spec 0166)
-     * is one of these columns any more: their own counterparts are
-     * backfillPhysicalSite() and backfillManager() below.
-     *
-     * @return array<string, int>
-     */
-    private function nullRelationBackfill(EmploymentProfile $existing, EmploymentData $desired): array
-    {
-        $candidates = [
-            'company_id' => $desired->companyId,
-        ];
-
-        $fill = [];
-
-        foreach ($candidates as $column => $resolvedId) {
-            if ($resolvedId !== null && $existing->{$column} === null) {
-                $fill[$column] = $resolvedId;
-            }
-        }
-
-        return $fill;
-    }
-
-    /**
-     * Self-healing counterpart of nullRelationBackfill() for the site
+     * Self-healing "fill once, never overwrite" for the site
      * membership (spec 0103 D-5/AC-031): a profile with no PHYSICAL site yet
      * gets the resolved external site attached to
      * `employment_profile_operational_site` as `is_primary = true` — the same
@@ -355,7 +328,7 @@ trait MapsExternalUserRecord
     {
         $employmentFields = [
             'is_manager', 'reports_to_id', 'relationship_type',
-            'company_id', 'operational_site_id', 'qualification_type',
+            'company_id', 'operational_site_id',
             'hired_at', 'terminated_at', 'standard_daily_minutes', 'break_daily_minutes',
         ];
 
@@ -408,23 +381,48 @@ trait MapsExternalUserRecord
     }
 
     /**
-     * @param  array<int, string>  $warnings
+     * The first contract condition carried by the legacy record (spec 0272
+     * D-9): relationship type and company, starting at `hired_at` or, when
+     * absent, on the import date. A company without a (valid) type becomes
+     * `other`, consistent with the backfill migration. Null when the record
+     * carries neither.
+     *
+     * @param  array<string, mixed>  $record
+     * @return array{0: ?array{starts_on: string, type: RelationshipTypeEnum, company_id: ?int}, 1: array<int, string>}
      */
-    private function resolveQualificationType(mixed $raw, array &$warnings): ?QualificationTypeEnum
+    private function buildInitialCondition(array $record): array
     {
-        $value = trim((string) ($raw ?? ''));
+        $warnings = [];
+        $type = $this->resolveRelationshipType($record['relationship_type'] ?? null, $warnings);
+        $companyId = $this->resolveEmploymentRelation(Company::class, $record['company_id'] ?? null, 'company_id', $warnings);
 
-        if ($value === '') {
-            return null;
+        if ($type === null && $companyId === null) {
+            return [null, $warnings];
         }
 
-        $case = QualificationTypeEnum::tryFrom($value);
+        $hiredAt = $this->blankToNull($record['hired_at'] ?? null);
 
-        if ($case === null) {
-            $warnings[] = "Unresolved qualification_type '{$value}'.";
+        return [[
+            'starts_on' => Carbon::parse($hiredAt ?? today())->toDateString(),
+            'type' => $type ?? RelationshipTypeEnum::Other,
+            'company_id' => $companyId,
+        ], $warnings];
+    }
+
+    /**
+     * Write the first condition through the contracts service so history and
+     * profile copy stay consistent; idempotent on re-import.
+     *
+     * @param  ?array{starts_on: string, type: RelationshipTypeEnum, company_id: ?int}  $initial
+     */
+    private function applyInitialCondition(EmploymentProfile $profile, ?array $initial): bool
+    {
+        if ($initial === null) {
+            return false;
         }
 
-        return $case;
+        return app(EmploymentContractService::class)
+            ->upsertInitial($profile, $initial['starts_on'], $initial['type'], $initial['company_id']);
     }
 
     /**

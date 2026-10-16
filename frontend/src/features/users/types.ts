@@ -28,18 +28,11 @@ export interface UserRole {
 export const RELATIONSHIP_TYPES = ['employee', 'self_employed', 'other'] as const
 export type RelationshipType = (typeof RELATIONSHIP_TYPES)[number]
 
-/** Employment qualification/role bucket, used for cost/payroll categorization (spec 0015). */
-export const QUALIFICATION_TYPES = [
-  'employee_level_5',
-  'administrative',
-  'coordinator',
-  'iso_consultant',
-  'teacher_cococo',
-  'teacher_vat',
-  'trainee_cost',
-  'hourly_cost_me',
-] as const
-export type QualificationType = (typeof QUALIFICATION_TYPES)[number]
+/** The condition in force, as summarised on the employment profile (spec 0272). */
+export interface CurrentContract {
+  starts_on: string
+  collective_agreement_level: { id: number; label: string } | null
+}
 
 /** A related entity reference as returned inside `employment` ({id, label}). */
 export interface EmploymentRelationRef {
@@ -70,7 +63,6 @@ export interface EmploymentDetail {
   id: number
   is_manager: boolean
   relationship_type: RelationshipType | null
-  qualification_type: QualificationType | null
   hired_at: string | null
   terminated_at: string | null
   standard_daily_minutes: number | null
@@ -80,6 +72,11 @@ export interface EmploymentDetail {
   /** Mansioni ids (spec 0271); [] when none. */
   job_role_ids: number[]
   company_id: number | null
+  /** The condition in force today (spec 0272 D-2): CCNL level and its start; null when the history is empty. */
+  current_contract?: CurrentContract | null
+  /** Payment account (spec 0272 D-6): present only with `users.manageCompensation`. */
+  iban?: string | null
+  iban_holder?: string | null
   /** The user's single physical site (spec 0103 D-3), at most one, optional. */
   primary_operational_site_id: number | null
   /** The user's remote sites (spec 0103 D-1): operative exactly like the physical one. */
@@ -173,8 +170,6 @@ export interface EmploymentPayload {
   job_role_ids: number[]
   /** Zero or more manager ids (spec 0166); [] when `is_manager` is true. */
   reports_to_ids: number[]
-  relationship_type: RelationshipType | null
-  company_id: number | null
   /** At most one physical site (spec 0103 D-3); mirrors `EmploymentDetail`. */
   primary_operational_site_id: number | null
   /** Zero or more remote sites (spec 0103 D-1). */
@@ -189,11 +184,13 @@ export interface EmploymentPayload {
    * is true (the server also enforces this — 422 otherwise).
    */
   product_lines: EmploymentProductLineInput[]
-  qualification_type: QualificationType | null
   hired_at: string | null
   terminated_at: string | null
   standard_daily_minutes: number | null
   break_daily_minutes: number | null
+  /** Payment account (spec 0272 D-6): sent only when changed, and only with `users.manageCompensation`. */
+  iban?: string | null
+  iban_holder?: string | null
 }
 
 /** Payload for POST /users (create). Password omitted = invite mode, present = temporary password (spec 0177). */

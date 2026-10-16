@@ -112,7 +112,6 @@ function userWithEmployment(): UserDetailWithPermissions {
       job_role_ids: [3],
       job_roles: [{ id: 3, label: 'Backend developer' }],
       relationship_type: 'employee',
-      qualification_type: 'coordinator',
       hired_at: '2026-01-15',
       standard_daily_minutes: 480,
       break_daily_minutes: 30,
@@ -198,10 +197,17 @@ describe('UserDetailView — employment relation pickers (spec 0015 AC-016)', ()
     expect(screen.getByTestId('resource-Job roles')).toHaveTextContent('job-roles')
     expect(screen.getByTestId('selected-label-Job roles')).toHaveTextContent('Backend developer')
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+  })
 
-    fireEvent.click(pencilOf('Company'))
-    expect(screen.getByTestId('resource-Company')).toHaveTextContent('companies')
-    expect(screen.getByTestId('selected-label-Company')).toHaveTextContent('Acme Srl')
+  /** REQUIREMENT CHANGED (spec 0272 D-2): relationship type and company are the in-force condition, read only. */
+  it('shows the relationship type and company as plain read-only rows', async () => {
+    await renderDetail(userWithEmployment())
+
+    expect(screen.getByText('Acme Srl')).toBeInTheDocument()
+    expect(screen.getByText('Employee')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Company' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Relationship type' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Qualification')).not.toBeInTheDocument()
   })
 })
 
@@ -216,14 +222,11 @@ describe('UserForm — employment payload + 422 mapping (spec 0015 AC-018)', () 
       is_manager: false,
       job_role_ids: [],
       reports_to_ids: [],
-      relationship_type: null,
-      company_id: null,
       primary_operational_site_id: null,
       remote_operational_site_ids: [],
       is_assignable: true,
       covers_all_product_categories: false,
       product_lines: [],
-      qualification_type: null,
       hired_at: null,
       terminated_at: null,
       standard_daily_minutes: null,
@@ -241,18 +244,22 @@ describe('UserForm — employment payload + 422 mapping (spec 0015 AC-018)', () 
     await waitFor(() => expect(updateUserMock).toHaveBeenCalledTimes(1))
     const payload = updateUserMock.mock.calls[0][1]
     expect(Object.keys(payload)).toEqual(['employment'])
-    expect(payload.employment).toMatchObject({ job_role_ids: [3, 1], company_id: 5, reports_to_ids: [2] })
+    expect(payload.employment).toMatchObject({ job_role_ids: [3, 1], reports_to_ids: [2] })
+    // REQUIREMENT CHANGED (spec 0272 D-2): relationship type and company come from the contract history.
+    expect(payload.employment).not.toHaveProperty('company_id')
+    expect(payload.employment).not.toHaveProperty('relationship_type')
+    expect(payload.employment).not.toHaveProperty('qualification_type')
   })
 
   it('maps a nested employment.* 422 error onto its open row, inline', async () => {
-    updateUserMock.mockRejectedValue(unprocessable({ 'employment.company_id': ['The selected company is invalid.'] }))
+    updateUserMock.mockRejectedValue(unprocessable({ 'employment.terminated_at': ['The termination date is invalid.'] }))
     await renderDetail(userWithEmployment())
 
-    fireEvent.click(pencilOf('Company'))
-    fireEvent.click(screen.getByText('pick-Company'))
+    fireEvent.click(pencilOf('Terminated at'))
+    fireEvent.change(screen.getByLabelText('Terminated at'), { target: { value: '2026-02-01' } })
     confirmOpenRow('Save')
 
-    expect(await screen.findByText('The selected company is invalid.')).toBeInTheDocument()
+    expect(await screen.findByText('The termination date is invalid.')).toBeInTheDocument()
     expect(updateUserMock).toHaveBeenCalledTimes(1)
   })
 

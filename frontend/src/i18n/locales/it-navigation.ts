@@ -83,6 +83,7 @@ export const navigation = {
   purchaseRequestLines: 'Gestione righe RDA',
   purchaseOrders: 'ODA',
   costTypes: 'Tipi di costo',
+  collectiveAgreements: 'CCNL',
   jobRoles: 'Mansioni',
   jobActivities: 'Attività',
   purchaseRequestPriorities: 'Priorità RDA',

@@ -36,6 +36,8 @@ export interface Contact {
   label: string | null
   value: string
   is_primary: boolean
+  /** Work contact (spec 0272 D-7); the server sends it for every contact, default false. */
+  is_work?: boolean
   contactable_type: string
   contactable_id: number
   created_at: string | null
@@ -144,6 +146,7 @@ export interface ContactFields {
   value: string
   label?: string | null
   is_primary?: boolean
+  is_work?: boolean
 }
 
 /** POST /api/contacts — contact fields plus the owner. */
@@ -207,6 +210,8 @@ export interface ContactDraft {
   value: string
   label: string | null
   is_primary: boolean
+  /** Work contact (spec 0272 D-7): set only where the owner's form shows the flag (users). */
+  is_work?: boolean
 }
 
 /** A buffered address awaiting submission inside the user payload. */

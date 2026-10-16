@@ -78,6 +78,7 @@ export function UserFormBody({ onSuccess, onCancel }: UserFormBodyProps) {
       fieldPermission={fieldPermission}
       onChange={(patch) => setProfileDraft({ ...profileDraft, ...patch })}
       createMode
+      showWorkFlag
       contactsBoxProps={anagraphicSectionProps('contacts')}
       addressesBoxProps={anagraphicSectionProps('addresses')}
     />

@@ -3,12 +3,15 @@
 namespace App\Http\Requests\Concerns;
 
 use App\DataObjects\Users\EmploymentData;
-use App\Enums\QualificationTypeEnum;
-use App\Enums\RelationshipTypeEnum;
 use App\Models\User;
+use App\Policies\UserPolicy;
+use App\Rules\ValidIban;
 use App\Services\Assignment\CompetenceLineSetValidator;
+use Closure;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 
 /**
@@ -42,6 +45,9 @@ use Illuminate\Validation\Rule;
  */
 trait ValidatesEmployment
 {
+    /** Columns that mirror the current contract condition (written by the contract service only). */
+    private const array READ_ONLY_EMPLOYMENT_FIELDS = ['relationship_type', 'company_id'];
+
     /**
      * Validation rules for the nested `employment.*` object. Merged into each
      * request's own account-field rules; they never change the account rules.
@@ -80,10 +86,6 @@ trait ValidatesEmployment
                 // target user id is known (AC-006); never applies on create.
                 $currentUserId !== null ? Rule::notIn([$currentUserId]) : null,
             ]),
-            'employment.relationship_type' => ['nullable', Rule::enum(RelationshipTypeEnum::class)],
-
-            'employment.company_id' => ['nullable', 'integer', Rule::exists('companies', 'id')],
-
             // Site membership (spec 0103 D-9, replacing the single
             // `employment.operational_site_id`): at most one physical site
             // plus any number of remote ones.
@@ -108,13 +110,64 @@ trait ValidatesEmployment
             'employment.product_lines' => ['sometimes', 'nullable', 'array'],
             ...$this->competenceLineSetValidator()->rules('employment.product_lines', $this->exemptCompetenceCategoryIds()),
 
-            'employment.qualification_type' => ['nullable', Rule::enum(QualificationTypeEnum::class)],
             'employment.hired_at' => ['nullable', 'date'],
             'employment.terminated_at' => ['nullable', 'date', 'after_or_equal:employment.hired_at'],
 
             'employment.standard_daily_minutes' => ['nullable', 'integer', 'min:0', 'max:1440'],
             'employment.break_daily_minutes' => ['nullable', 'integer', 'min:0', 'max:1440'],
+
+            // Payment data (spec 0272 D-6): absent = untouched, null = cleared.
+            'employment.iban' => ['sometimes', 'nullable', 'string', 'max:64', $this->ibanRule()],
+            'employment.iban_holder' => ['sometimes', 'nullable', 'string', 'max:191'],
         ];
+    }
+
+    /**
+     * Spec 0272 D-2 / AC-009: `relationship_type` and `company_id` are the
+     * read-only copy of the current contract condition, so a payload carrying
+     * them (an older client) is IGNORED rather than rejected: they are dropped
+     * before validation, which also keeps them out of the field-permission diff.
+     */
+    protected function discardReadOnlyEmploymentInput(): void
+    {
+        $input = $this->all();
+
+        Arr::forget($input, array_map(
+            static fn (string $field): string => "employment.{$field}",
+            self::READ_ONLY_EMPLOYMENT_FIELDS,
+        ));
+
+        $this->replace($input);
+    }
+
+    /**
+     * Refuses, with a 403, any attempt to write the payment data without
+     * `users.manageCompensation` (spec 0272 D-5). Called first from each host
+     * request's withValidator(), so the refusal wins over every value-level
+     * error and the submitted IBAN is never echoed back in a message.
+     *
+     * @throws AuthorizationException
+     */
+    protected function assertMayWriteCompensation(): void
+    {
+        $touchesPayment = $this->has('employment.iban') || $this->has('employment.iban_holder');
+
+        if ($touchesPayment && ! $this->user()?->can(UserPolicy::MANAGE_COMPENSATION_PERMISSION)) {
+            throw new AuthorizationException;
+        }
+    }
+
+    /**
+     * Formal IBAN check on the normalized value (the same one that gets
+     * stored); the message never carries the submitted value.
+     */
+    private function ibanRule(): Closure
+    {
+        return static function (string $attribute, mixed $value, Closure $fail): void {
+            if (is_string($value) && trim($value) !== '' && ! ValidIban::isValid(ValidIban::normalize($value))) {
+                $fail(__('The IBAN is not valid.'));
+            }
+        };
     }
 
     /**
@@ -196,8 +249,6 @@ trait ValidatesEmployment
             isAssignable: $this->has('employment.is_assignable') ? $this->boolean('employment.is_assignable') : null,
             reportsToIdsProvided: $this->has('employment.reports_to_ids'),
             reportsToIds: $this->submittedIds('employment.reports_to_ids'),
-            relationshipType: RelationshipTypeEnum::tryFrom((string) $this->input('employment.relationship_type')),
-            companyId: $this->nullableInt('employment.company_id'),
             primaryOperationalSiteIdProvided: $this->has('employment.primary_operational_site_id'),
             primaryOperationalSiteId: $this->nullableInt('employment.primary_operational_site_id'),
             remoteOperationalSiteIdsProvided: $this->has('employment.remote_operational_site_ids'),
@@ -206,12 +257,30 @@ trait ValidatesEmployment
             productLines: $this->submittedProductLines(),
             jobRoleIdsProvided: $this->has('employment.job_role_ids'),
             jobRoleIds: $this->submittedIds('employment.job_role_ids'),
-            qualificationType: QualificationTypeEnum::tryFrom((string) $this->input('employment.qualification_type')),
             hiredAt: $this->input('employment.hired_at'),
             terminatedAt: $this->input('employment.terminated_at'),
             standardDailyMinutes: $this->nullableInt('employment.standard_daily_minutes'),
             breakDailyMinutes: $this->nullableInt('employment.break_daily_minutes'),
+            ibanProvided: $this->has('employment.iban'),
+            iban: $this->submittedIban(),
+            ibanHolderProvided: $this->has('employment.iban_holder'),
+            ibanHolder: $this->filled('employment.iban_holder') ? (string) $this->input('employment.iban_holder') : null,
         );
+    }
+
+    /**
+     * The submitted IBAN in its stored form (uppercase, no separators), or
+     * null when blank.
+     */
+    private function submittedIban(): ?string
+    {
+        $value = $this->input('employment.iban');
+
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        return ValidIban::normalize($value);
     }
 
     private function nullableInt(string $key): ?int

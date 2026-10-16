@@ -103,6 +103,7 @@ function UserDetailRecord({ user, onChanged }: { user: UserDetailWithPermissions
             card={user.personal_data ?? null}
             contactsTitle={t('users.form.sections.contacts.title')}
             addressesTitle={t('users.form.sections.addresses.title')}
+            showWorkFlag
             editing={{ fieldPermission: editor.card.fieldPermission, onChanged: handleCardChanged }}
           />
         </RecordSectionsGrid>

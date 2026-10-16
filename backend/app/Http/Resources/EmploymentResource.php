@@ -3,10 +3,12 @@
 namespace App\Http\Resources;
 
 use App\Models\Company;
+use App\Models\EmploymentContract;
 use App\Models\EmploymentProfile;
 use App\Models\JobRole;
 use App\Models\OperationalSite;
 use App\Models\User;
+use App\Policies\UserPolicy;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -59,11 +61,13 @@ class EmploymentResource extends JsonResource
             'covers_all_product_categories' => $this->covers_all_product_categories,
             'is_assignable' => $this->is_assignable,
             'relationship_type' => $this->relationship_type,
-            'qualification_type' => $this->qualification_type,
             'hired_at' => $this->hired_at,
             'terminated_at' => $this->terminated_at,
             'standard_daily_minutes' => $this->standard_daily_minutes,
             'break_daily_minutes' => $this->break_daily_minutes,
+
+            'current_contract' => $this->when($this->relationLoaded('contracts'), fn (): ?array => $this->currentContract()),
+            ...$this->paymentData($request),
 
             'reports_to_ids' => $this->reports_to_ids,
             'job_role_ids' => $this->when($this->relationLoaded('jobRoles'), fn (): array => $this->job_role_ids),
@@ -104,6 +108,53 @@ class EmploymentResource extends JsonResource
                     ->values()
                     ->all(),
             ),
+        ];
+    }
+
+    /**
+     * IBAN and holder (spec 0272 D-5/D-6): the keys exist ONLY for an actor
+     * holding `users.manageCompensation`, so a viewer without it cannot tell
+     * whether the data is set.
+     *
+     * @return array<string, mixed>
+     */
+    private function paymentData(Request $request): array
+    {
+        if (! $request->user()?->can(UserPolicy::MANAGE_COMPENSATION_PERMISSION)) {
+            return [];
+        }
+
+        return ['iban' => $this->iban, 'iban_holder' => $this->iban_holder];
+    }
+
+    /**
+     * The condition in force today (spec 0272 D-2): the latest `starts_on`
+     * not after today, read off the eager-loaded history (no extra query).
+     *
+     * @return array{starts_on: string, collective_agreement_level: array{id: int, label: string}|null}|null
+     */
+    private function currentContract(): ?array
+    {
+        $today = today();
+
+        /** @var EmploymentContract|null $contract */
+        $contract = $this->contracts
+            ->filter(fn (EmploymentContract $contract): bool => $contract->starts_on->lte($today))
+            ->sortByDesc('starts_on')
+            ->first();
+
+        if ($contract === null) {
+            return null;
+        }
+
+        $level = $contract->collectiveAgreementLevel;
+
+        return [
+            'starts_on' => $contract->starts_on->toDateString(),
+            'collective_agreement_level' => $level === null ? null : [
+                'id' => $level->id,
+                'label' => "{$level->agreement->name} – {$level->code}",
+            ],
         ];
     }
 

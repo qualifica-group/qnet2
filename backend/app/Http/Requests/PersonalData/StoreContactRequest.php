@@ -73,6 +73,7 @@ class StoreContactRequest extends FormRequest
                 $type?->valueRules() ?? [],
             ),
             'is_primary' => ['sometimes', 'boolean'],
+            'is_work' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -149,6 +150,7 @@ class StoreContactRequest extends FormRequest
             value: $this->string('value')->toString(),
             label: $this->input('label'),
             isPrimary: $this->boolean('is_primary'),
+            isWork: $this->has('is_work') ? $this->boolean('is_work') : null,
         );
     }
 }

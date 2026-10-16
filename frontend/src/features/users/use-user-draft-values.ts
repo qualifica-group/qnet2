@@ -1,6 +1,5 @@
 import { useWatch, type Control } from 'react-hook-form'
 import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
-import { COMPANIES_FOR_SELECT_RESOURCE } from '@/features/companies/for-select-api'
 import type { ForSelectItem } from '@/features/for-select/types'
 import { useForSelectLabels } from '@/features/for-select/use-for-select'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
@@ -63,7 +62,6 @@ export function useUserDraftValues(control: Control<UserFormValues>): UserRecord
   })
   const jobRoles = useForSelectLabels({ resource: JOB_ROLES_FOR_SELECT_RESOURCE, ids: employment.job_role_ids })
   const managers = useForSelectLabels({ resource: USERS_FOR_SELECT_RESOURCE, ids: employment.reports_to_ids })
-  const companies = useForSelectLabels({ resource: COMPANIES_FOR_SELECT_RESOURCE, ids: idsOf(employment.company_id) })
   const functions = useForSelectLabels({ resource: BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE, ids: functionIds })
   const tree = useProductCategoryTree().data ?? NO_TREE
 
@@ -96,9 +94,12 @@ export function useUserDraftValues(control: Control<UserFormValues>): UserRecord
     is_manager: employment.is_manager,
     job_roles: refsOf(jobRoles, employment.job_role_ids),
     reports_to: refsOf(managers, employment.reports_to_ids),
-    relationship_type: employment.relationship_type,
-    company: refOf(companies, employment.company_id),
-    qualification_type: employment.qualification_type,
+    // The contract condition exists only after the first save (spec 0272 D-2): a draft has none.
+    relationship_type: null,
+    company: null,
+    current_contract: null,
+    iban: employment.iban || null,
+    iban_holder: employment.iban_holder || null,
     hired_at: employment.hired_at || null,
     terminated_at: employment.terminated_at || null,
     standard_daily_minutes: employment.standard_daily_minutes,

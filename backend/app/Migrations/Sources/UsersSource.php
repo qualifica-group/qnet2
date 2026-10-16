@@ -14,6 +14,7 @@ use App\Migrations\Sources\Concerns\MapsExternalUserRecord;
 use App\Migrations\Support\ExistingUserMatcher;
 use App\Migrations\Support\ExternalApiClient;
 use App\Migrations\Support\MigrationGeoResolver;
+use App\Models\EmploymentProfile;
 use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Support\Facades\DB;
@@ -123,7 +124,6 @@ class UsersSource extends AbstractMigrationSource
             ['id' => 'relationship_type', 'label' => 'Relationship type', 'type' => 'string'],
             ['id' => 'company_id', 'label' => 'Company (external id)', 'type' => 'number'],
             ['id' => 'operational_site_id', 'label' => 'Operational site (external id)', 'type' => 'number'],
-            ['id' => 'qualification_type', 'label' => 'Qualification type', 'type' => 'string'],
             ['id' => 'hired_at', 'label' => 'Hired at', 'type' => 'date'],
             ['id' => 'terminated_at', 'label' => 'Terminated at', 'type' => 'date'],
             ['id' => 'standard_daily_minutes', 'label' => 'Standard daily minutes', 'type' => 'number'],
@@ -210,7 +210,8 @@ class UsersSource extends AbstractMigrationSource
         [$addressInput, $addressWarnings] = $this->buildAddress($record);
         [$contactInputs, $contactWarnings] = $this->buildContacts($record);
         [$employment, $employmentWarnings] = $this->buildEmployment($record);
-        array_push($warnings, ...$roleWarnings, ...$addressWarnings, ...$contactWarnings, ...$employmentWarnings);
+        [$initialCondition, $conditionWarnings] = $this->buildInitialCondition($record);
+        array_push($warnings, ...$roleWarnings, ...$addressWarnings, ...$contactWarnings, ...$employmentWarnings, ...$conditionWarnings);
 
         $user = $this->service->create(
             $context->actor,
@@ -245,6 +246,13 @@ class UsersSource extends AbstractMigrationSource
 
         $user->old_id = $externalId;
         $user->save();
+
+        // Spec 0272 D-9: relationship type and company become the first contract condition.
+        $profile = EmploymentProfile::query()->where('user_id', $user->id)->first();
+
+        if ($profile !== null) {
+            $this->applyInitialCondition($profile, $initialCondition);
+        }
 
         return MigrationRowOutcome::created($warnings, $user);
     }

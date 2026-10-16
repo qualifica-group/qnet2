@@ -34,3 +34,18 @@ describe('userColumnRenderers.reports_to', () => {
     expect(screen.getByText('—')).toBeInTheDocument()
   })
 })
+
+/** Spec 0272 D-8: the `employment_status` column reads "In forza" / "Cessato" (the suite runs in the default Italian). */
+describe('userColumnRenderers.employment_status', () => {
+  it('labels both states', () => {
+    renderCell('employment_status', 'employed')
+    expect(screen.getByText('In forza')).toBeInTheDocument()
+    renderCell('employment_status', 'terminated')
+    expect(screen.getByText('Cessato')).toBeInTheDocument()
+  })
+
+  it('renders an em dash for an unknown value', () => {
+    renderCell('employment_status', null)
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
+})

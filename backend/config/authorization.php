@@ -5,6 +5,7 @@ use App\Authorization\ApiClientsAuthorization;
 use App\Authorization\AttributesAuthorization;
 use App\Authorization\BusinessFunctionsAuthorization;
 use App\Authorization\CampaignsAuthorization;
+use App\Authorization\CollectiveAgreementsAuthorization;
 use App\Authorization\CommissionAccrualsAuthorization;
 use App\Authorization\CommissionConfigurationsAuthorization;
 use App\Authorization\CommissionSettlementsAuthorization;
@@ -98,6 +99,8 @@ return [
         // spec 0271: HR org structure catalogues.
         'job-roles' => JobRolesAuthorization::class,
         'job-activities' => JobActivitiesAuthorization::class,
+        // spec 0272: collective agreements (CCNL).
+        'collective-agreements' => CollectiveAgreementsAuthorization::class,
         'companies' => CompaniesAuthorization::class,
         'commission-configurations' => CommissionConfigurationsAuthorization::class,
         'company-sites' => CompanySitesAuthorization::class,

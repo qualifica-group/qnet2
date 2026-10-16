@@ -23,6 +23,26 @@
 - Manuale: guida in-app `migrations` IT+EN (nota Prodotti di costo) e manuale Claude Docs (paragrafo dopo
   "[OLD] Costi") aggiornati. Help vitest 131/131, ESLint ok, tsc -b ok.
 
+## Spec 0272 — Modulo HR passo 2: scheda dipendente (storico contrattuale, CCNL, IBAN, recapiti di lavoro, cessati) — VERDE, NON COMMITTATO (2026-10-16, branch feature/hr)
+
+- Spec `docs/specs/0272-hr-employee-record.xml` rev.3; `docs/product/hr.md` §3/§4 aggiornati. Nessun importer nuovo.
+- Storico: `employment_contracts` (append-only: si cancella solo l'ultima, 409 altrimenti; `ends_on` derivata). API
+  `GET|POST /api/users/{user}/employment-contracts`, `DELETE .../{employmentContract}` (isolamento nel controller, testato;
+  utente senza profilo = lista vuota). `EmploymentContractService::syncCurrent` scrive la COPIA vigente su
+  `employment_profiles.relationship_type/company_id`, non piu' scrivibili da `PUT /api/users`.
+- CCNL: `collective_agreements` + `collective_agreement_levels` (array `levels` sostituisce i livelli, livello usato = 422),
+  `/api/collective-agreements`, `/api/collective-agreement-levels/for-select` (label "CCNL – codice"), menu Configurazione.
+  `qualification_type` (Inquadramento) e `QualificationTypeEnum` ELIMINATI (decisione utente).
+- Dati retributivi: permesso `users.manageCompensation` (solo super-admin di default). IBAN cifrato (`ValidIban`, mod-97),
+  IBAN + intestatario + retribuzione in `$hidden` (fuori dall'activity log); senza permesso chiavi assenti, scrittura 403.
+- Recapiti: `contacts.is_work` (flag mostrato solo nella scheda utente). Cessazione: salvataggio inattivo se
+  `terminated_at` <= oggi; comando `employment:daily-sync` alle 00:30 (disattiva e riallinea la condizione vigente);
+  colonna griglia `employment_status` (employed/terminated).
+- Rollback a step fisso: QuoteWorkflowMigrationTest 208, SupplierCommissionDirectionTest 72, PurchaseOrderMigrationTest 57
+  (7 migrazioni 0272).
+- Da fare: manuale Claude Docs (CCNL, Utenti > Rapporto contrattuale / Storico / Pagamento / Recapiti di lavoro /
+  Cessazione, colonna Stato). `router.tsx` a 493 righe: il prossimo modulo deve estrarre le rotte HR.
+
 ## Spec 0271 — Modulo HR passo 1: Mansioni, Attivita', societa' delle funzioni, funzione obbligatoria — VERDE (2026-10-16, branch feature/hr)
 
 - Documento di prodotto `docs/product/hr.md` (campi, non tabelle; decisioni D-1..D-9). Spec

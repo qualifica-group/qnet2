@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Enums\QualificationTypeEnum;
 use App\Enums\RelationshipTypeEnum;
 use App\Models\BusinessFunction;
 use App\Models\EmploymentProfile;
@@ -30,7 +29,6 @@ class EmploymentProfileFactory extends Factory
             'is_manager' => false,
             'relationship_type' => fake()->randomElement(RelationshipTypeEnum::values()),
             'company_id' => null,
-            'qualification_type' => fake()->randomElement(QualificationTypeEnum::values()),
             'hired_at' => $hiredAt->format('Y-m-d'),
             'terminated_at' => null,
             'standard_daily_minutes' => 480,

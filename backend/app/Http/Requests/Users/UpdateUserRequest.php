@@ -34,7 +34,15 @@ class UpdateUserRequest extends FormRequest
     use EnforcesFieldPermissions;
     use ResolvesAssignableRoles;
     use ValidatesEmployment;
-    use ValidatesUserProfile;
+    use ValidatesUserProfile {
+        prepareForValidation as protected prepareProfileInput;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->prepareProfileInput();
+        $this->discardReadOnlyEmploymentInput();
+    }
 
     public function authorize(): bool
     {
@@ -80,6 +88,7 @@ class UpdateUserRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            $this->assertMayWriteCompensation();
             $this->validateProfile($validator);
             $this->validateEmploymentProductLines($validator);
             $this->enforceFieldPermissions($validator);

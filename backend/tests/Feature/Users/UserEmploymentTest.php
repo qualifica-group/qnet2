@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\BusinessFunction;
-use App\Models\Company;
 use App\Models\EmploymentProfile;
 use App\Models\JobRole;
 use App\Models\OperationalSite;
@@ -55,7 +54,6 @@ it('0015 AC-001: create with a full employment block persists the row and resolv
     $manager = User::factory()->create(['name' => 'Manager One']);
     $function = BusinessFunction::factory()->create(['name' => 'Engineering']);
     $category = ProductCategory::factory()->create(['name' => 'Fibra', 'business_function_id' => $function->id]);
-    $company = Company::factory()->create(['denomination' => 'Acme Srl', 'vat_number' => 'IT123']);
     $site = OperationalSite::factory()->withAddress()->create();
     $jobRole = JobRole::factory()->create(['name' => 'Backend engineer']);
     Sanctum::actingAs($actor);
@@ -75,10 +73,7 @@ it('0015 AC-001: create with a full employment block persists the row and resolv
             'product_lines' => [
                 ['business_function_id' => $function->id, 'product_category_id' => $category->id],
             ],
-            'relationship_type' => 'employee',
-            'company_id' => $company->id,
             'primary_operational_site_id' => $site->id,
-            'qualification_type' => 'employee_level_5',
             'hired_at' => '2024-01-15',
             'standard_daily_minutes' => 480,
             'break_daily_minutes' => 30,
@@ -89,7 +84,6 @@ it('0015 AC-001: create with a full employment block persists the row and resolv
     $this->assertDatabaseHas('employment_profiles', [
         'user_id' => $created->id,
         'is_manager' => false,
-        'company_id' => $company->id,
     ]);
     $this->assertDatabaseHas('employment_profile_manager', [
         'employment_profile_id' => $created->employment->id,
@@ -114,9 +108,6 @@ it('0015 AC-001: create with a full employment block persists the row and resolv
         ->assertJsonPath('data.employment.reports_to.0.label', 'Manager One')
         ->assertJsonPath('data.employment.product_lines.0.business_function', ['id' => $function->id, 'name' => 'Engineering'])
         ->assertJsonPath('data.employment.product_lines.0.product_category', ['id' => $category->id, 'name' => 'Fibra'])
-        ->assertJsonPath('data.employment.company.id', $company->id)
-        ->assertJsonPath('data.employment.company.label', 'Acme Srl')
-        ->assertJsonPath('data.employment.company.subtitle', 'IT123')
         ->assertJsonPath('data.employment.primary_operational_site.id', $site->id);
 });
 
@@ -188,7 +179,6 @@ it('0015 AC-004: invalid employment fields reject with nested keys and roll back
         'employment' => [
             'reports_to_ids' => [999999],
             'primary_operational_site_id' => 999999,
-            'qualification_type' => 'not-a-real-type',
             'hired_at' => '2024-06-01',
             'terminated_at' => '2024-01-01',
             'standard_daily_minutes' => 1500,
@@ -196,7 +186,6 @@ it('0015 AC-004: invalid employment fields reject with nested keys and roll back
     ])->assertStatus(422)->assertJsonValidationErrors([
         'employment.reports_to_ids.0',
         'employment.primary_operational_site_id',
-        'employment.qualification_type',
         'employment.terminated_at',
         'employment.standard_daily_minutes',
     ]);

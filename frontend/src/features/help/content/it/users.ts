@@ -66,9 +66,7 @@ const guide: HelpGuide = {
             ['**Responsabile**', 'Attivalo se la persona è responsabile di altri dipendenti.'],
             ['**Mansioni**', 'Le mansioni svolte, scelte dall’elenco del modulo Mansioni: puoi indicarne più di una oppure nessuna.'],
             ['**Risponde a**', 'I responsabili diretti, scelti tra gli utenti: puoi indicarne più di uno. Il campo non compare se **Responsabile** è attivo.'],
-            ['**Tipo di rapporto**', 'Il tipo di rapporto di lavoro.'],
-            ['**Società**', 'La società di riferimento.'],
-            ['**Qualifica**', 'La qualifica contrattuale.'],
+            ['**Tipo di rapporto**, **Società**, **CCNL e livello**, **In vigore dal**', 'Sola lettura: mostrano la condizione contrattuale in vigore oggi. Si cambiano dallo **Storico contrattuale** (vedi sotto).'],
             ['**Assunto il** / **Cessato il**', 'Date di inizio e fine del rapporto. La cessazione non può precedere l’assunzione.'],
             ['**Durata giornaliera standard**', 'Tempo di lavoro previsto in una giornata.'],
             ['**Durata pausa giornaliera**', 'Durata della pausa quotidiana.'],
@@ -76,6 +74,39 @@ const guide: HelpGuide = {
         },
         { type: 'paragraph', text: 'Le sezioni del rapporto di lavoro ci sono anche per un utente che non ha ancora un profilo: il primo salvataggio lo crea. Seguono **Contatti** e **Indirizzi**; in fondo può comparire la sezione **Altri campi**, con i campi personalizzati degli utenti.' },
         { type: 'note', text: 'Attivare **Responsabile** svuota **Risponde a**, attivare **Competente per tutte le categorie** azzera le righe di **Competenza**: per questo le due righe non hanno la matita se non puoi modificare anche il campo che svuotano.' },
+      ],
+    },
+    {
+      id: 'contract-history',
+      title: 'Storico contrattuale',
+      blocks: [
+        { type: 'paragraph', text: 'Nella scheda di un utente già salvato, la sezione **Storico contrattuale** elenca le condizioni contrattuali della persona, dalla più recente: decorrenza, fine, tipo di rapporto, società, CCNL e livello e, se hai il permesso, la retribuzione. Quella in vigore oggi ha l’etichetta **Vigente**. Nella creazione di un utente la sezione dice che lo storico si compila dopo il salvataggio.' },
+        { type: 'steps', items: ['Fai clic su **Nuova condizione**.', 'Indica la **Decorrenza** (una data non ancora usata per quella persona), il **Tipo di rapporto**, la **Società** e il **CCNL e livello**.', 'Se hai il permesso sui dati retributivi, indica anche **Retribuzione** e **Periodicità** (mese, anno, ora): vanno insieme.', 'Aggiungi un **Motivo** se serve e premi **Salva**.'] },
+        { type: 'list', items: ['Le condizioni non si modificano: ogni cambio è una nuova condizione. La fine di una condizione è il giorno prima della decorrenza della successiva.', 'Per correggere un errore usa **Cancella ultima condizione** (compare solo sull’ultima) e inseriscine una nuova. Cancellare una condizione che non è l’ultima non è possibile.', 'Una condizione con decorrenza futura non cambia **Tipo di rapporto** e **Società** della scheda finché non arriva la data.', 'Le azioni richiedono il permesso di modifica sugli utenti.'] },
+        { type: 'note', text: 'Se la decorrenza esiste già per quella persona il modulo lo segnala sul campo.' },
+      ],
+    },
+    {
+      id: 'payment',
+      title: 'Pagamento e dati retributivi',
+      blocks: [
+        { type: 'paragraph', text: 'La sezione **Pagamento** contiene l’**IBAN** su cui pagare la persona e l’**Intestatario**; l’IBAN si legge a gruppi di quattro caratteri e si modifica sul posto come gli altri campi. Se l’IBAN non è valido compare un errore sul campo.' },
+        { type: 'warning', text: 'IBAN e retribuzione sono dati retributivi: li vedi e li modifichi solo con il permesso **Gestione dati retributivi** (users.manageCompensation), di default riservato al super-admin. Senza il permesso la sezione **Pagamento** e i campi retribuzione non compaiono.' },
+      ],
+    },
+    {
+      id: 'work-contacts',
+      title: 'Recapiti di lavoro',
+      blocks: [
+        { type: 'paragraph', text: 'Nei **Contatti** di un utente, aggiungendo o modificando un recapito puoi spuntare **Contatto di lavoro**. I recapiti di lavoro mostrano l’etichetta **Lavoro**.' },
+      ],
+    },
+    {
+      id: 'termination',
+      title: 'Cessazione',
+      blocks: [
+        { type: 'paragraph', text: 'Quando la data **Cessato il** arriva (o è già passata al salvataggio) la persona viene disattivata e non può più accedere; scheda e storico restano in archivio. Se togli la data la persona non si riattiva da sola: riaccendi **Attivo** a mano.' },
+        { type: 'paragraph', text: 'Nell’elenco utenti la colonna **Stato** indica **In forza** o **Cessato** ed è filtrabile.' },
       ],
     },
     {

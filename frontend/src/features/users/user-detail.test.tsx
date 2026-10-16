@@ -21,6 +21,13 @@ vi.mock('@/features/users/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/users/api')>()),
   fetchUser: (...args: unknown[]) => fetchUserMock(...args),
 }))
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+vi.mock('@/features/users/contract-history-api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/users/contract-history-api')>()),
+  fetchEmploymentContracts: () => Promise.resolve([]),
+}))
 vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: () => 'modal' }))
 
 vi.mock('@/features/activity-log/activity-log-section', () => ({
@@ -61,7 +68,6 @@ function employment(
     job_role_ids: [],
     job_roles: [],
     relationship_type: null,
-    qualification_type: null,
     hired_at: null,
     terminated_at: null,
     standard_daily_minutes: null,

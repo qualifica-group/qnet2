@@ -5,9 +5,9 @@ import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { ProductLineLike } from '@/features/product-lines/types'
 import { summarizeAssignment, type AssignmentSummary } from '@/features/users/user-assignment'
 import type {
+  CurrentContract,
   EmploymentDetail,
   EmploymentRelationRef,
-  QualificationType,
   RelationshipType,
   UserDetail,
   UserLocale,
@@ -56,7 +56,11 @@ export interface UserRecordValues {
   reports_to: EmploymentRelationRef[]
   relationship_type: RelationshipType | null
   company: EmploymentRelationRef | null
-  qualification_type: QualificationType | null
+  /** The condition in force (spec 0272 D-2), read-only: its CCNL level and start. */
+  current_contract: CurrentContract | null
+  /** Payment account (spec 0272 D-6); null also when the actor may not see it. */
+  iban: string | null
+  iban_holder: string | null
   hired_at: string | null
   terminated_at: string | null
   standard_daily_minutes: number | null
@@ -121,7 +125,9 @@ export function persistedUserValues(user: UserDetail): UserRecordValues {
     reports_to: employment?.reports_to ?? NO_REFS,
     relationship_type: employment?.relationship_type ?? null,
     company: employment?.company ?? null,
-    qualification_type: employment?.qualification_type ?? null,
+    current_contract: employment?.current_contract ?? null,
+    iban: employment?.iban ?? null,
+    iban_holder: employment?.iban_holder ?? null,
     hired_at: employment?.hired_at ?? null,
     terminated_at: employment?.terminated_at ?? null,
     standard_daily_minutes: employment?.standard_daily_minutes ?? null,

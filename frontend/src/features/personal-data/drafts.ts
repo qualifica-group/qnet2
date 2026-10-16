@@ -80,6 +80,7 @@ export function contactToDraft(contact: Contact): ContactDraft {
     value: contact.value,
     label: contact.label,
     is_primary: contact.is_primary,
+    ...(contact.is_work !== undefined ? { is_work: contact.is_work } : {}),
   }
 }
 
@@ -139,6 +140,7 @@ export interface PersonalDataContactPayload {
   value: string
   label: string | null
   is_primary: boolean
+  is_work?: boolean
 }
 
 /** A single address in the nested `personal_data.addresses[]` wire shape. */
@@ -184,6 +186,7 @@ function contactToPayload(draft: ContactDraft): PersonalDataContactPayload {
     value: draft.value,
     label: draft.label,
     is_primary: draft.is_primary,
+    ...(draft.is_work !== undefined ? { is_work: draft.is_work } : {}),
   }
 }
 

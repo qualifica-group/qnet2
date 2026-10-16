@@ -11,6 +11,7 @@ use App\Tables\Users\UserEmploymentColumns;
 use App\Tables\Users\UserGeoColumns;
 use App\Tables\Users\UserJobRolesColumn;
 use App\Tables\Users\UserPersonalDataColumns;
+use App\Tables\Users\UserRolesColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
@@ -41,17 +42,12 @@ class UsersTableDefinition extends AbstractTableDefinition
 {
     use UnwrapsMultiFilter;
 
-    /**
-     * Maximum number of role names honoured in the `roles` set filter. Caps the
-     * WHERE IN cardinality (defence in depth); excess values are ignored.
-     */
-    private const int MAX_ROLE_FILTER_VALUES = 50;
-
     public function __construct(
         private readonly UserService $userService,
         private readonly UserGeoColumns $geoColumns,
         private readonly UserPersonalDataColumns $personalDataColumns,
         private readonly UserEmploymentColumns $employmentColumns,
+        private readonly UserRolesColumn $rolesColumn,
     ) {}
 
     public function domain(): string
@@ -305,9 +301,9 @@ class UsersTableDefinition extends AbstractTableDefinition
         }
 
         return match ($columnId) {
-            'roles' => $this->filterRoles($query, $filter),
-            'user_type' => $this->applyPersonalDataFilter($query, fn (Builder $q): mixed => $this->personalDataColumns->applyTypeFilter($q, $filter)),
-            'primary_address' => $this->applyPersonalDataFilter($query, fn (Builder $q): mixed => $this->personalDataColumns->applyAddressFilter($q, $filter)),
+            'roles' => $this->applyVoidFilter($query, fn (Builder $q): mixed => $this->rolesColumn->applyFilter($q, $filter)),
+            'user_type' => $this->applyVoidFilter($query, fn (Builder $q): mixed => $this->personalDataColumns->applyTypeFilter($q, $filter)),
+            'primary_address' => $this->applyVoidFilter($query, fn (Builder $q): mixed => $this->personalDataColumns->applyAddressFilter($q, $filter)),
             'primary_contact' => $this->applyContactDerivedFilter($query, $filter),
             default => false,
         };
@@ -396,18 +392,7 @@ class UsersTableDefinition extends AbstractTableDefinition
     public function distinctValues(User $actor, string $columnId, array $columnConfig, ?string $search, Builder $query, int $limit): ?array
     {
         if ($columnId === 'roles') {
-            $roles = $this->userService->assignableRoleNames($actor);
-
-            if ($search !== null && $search !== '') {
-                return array_slice(array_values(array_filter(
-                    $roles,
-                    static fn (string $role): bool => stripos($role, $search) !== false,
-                )), 0, $limit);
-            }
-
-            // The blank entry ("(Vuoti)") sits beside the assignable catalogue
-            // (itself offered unscoped): a user may carry no role at all.
-            return array_merge([null], array_slice($roles, 0, $limit));
+            return $this->rolesColumn->distinctValues($this->userService->assignableRoleNames($actor), $search, $limit);
         }
 
         if ($columnId === 'user_type') {
@@ -430,55 +415,13 @@ class UsersTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * Derived `roles` set filter via whereHas on the Spatie role relationship.
-     * Only string names, capped cardinality, bound parameters — never inlined.
-     *
-     * @param  Builder<User>  $query
-     * @param  array<string, mixed>  $filter
-     */
-    private function filterRoles(Builder $query, array $filter): bool
-    {
-        $values = $filter['values'] ?? null;
-
-        if (! is_array($values)) {
-            return true;
-        }
-
-        $roles = array_slice(array_values(array_filter(
-            $values,
-            static fn ($value): bool => is_string($value) && $value !== '',
-        )), 0, self::MAX_ROLE_FILTER_VALUES);
-
-        $matchesBlank = $this->matchesBlankEntry($filter);
-
-        if ($roles === [] && ! $matchesBlank) {
-            return true;
-        }
-
-        $query->where(static function (Builder $group) use ($roles, $matchesBlank): void {
-            if ($roles !== []) {
-                $group->whereHas('roles', static function (Builder $roleQuery) use ($roles): void {
-                    $roleQuery->whereIn('name', $roles);
-                });
-            }
-
-            // The blank entry ("(Vuoti)"): the users carrying no role at all.
-            if ($matchesBlank) {
-                $group->orWhereDoesntHave('roles');
-            }
-        });
-
-        return true;
-    }
-
-    /**
-     * Thin adapter so the personal-data collaborator's `void`-returning
-     * apply*Filter methods fit the `applyDerivedFilter` match arm (which must
+     * Thin adapter so the collaborators' `void`-returning apply*Filter
+     * methods (personal data, roles) fit the `applyDerivedFilter` match arm (which must
      * yield the `true`/handled marker for every branch).
      *
      * @param  Builder<User>  $query
      */
-    private function applyPersonalDataFilter(Builder $query, callable $apply): bool
+    private function applyVoidFilter(Builder $query, callable $apply): bool
     {
         $apply($query);
 

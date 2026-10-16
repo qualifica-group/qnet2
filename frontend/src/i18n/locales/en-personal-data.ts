@@ -79,6 +79,8 @@ export const personalData = {
     label: 'Label',
     primary: 'Primary contact',
     primaryBadge: 'Primary',
+    work: 'Work contact',
+    workBadge: 'Work',
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',

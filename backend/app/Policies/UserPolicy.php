@@ -9,6 +9,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class UserPolicy extends BasePolicy
 {
+    /**
+     * Gates the payment data of an employee (IBAN, holder) and the salary of
+     * the contract conditions (spec 0272 D-5). Checked as a plain permission.
+     */
+    public const string MANAGE_COMPENSATION_PERMISSION = 'users.manageCompensation';
+
     protected function resource(): string
     {
         return 'users';
@@ -30,15 +36,17 @@ class UserPolicy extends BasePolicy
 
     /**
      * Standard CRUD abilities plus `impersonate` ("Login as customer", spec
-     * 0050) — feeds `php artisan permissions:sync` (SyncPermissions
-     * instantiates this class and reads permissions(), late-static-bound on
-     * abilities()), so overriding this is enough to create `users.impersonate`.
+     * 0050) and `manageCompensation` (spec 0272 D-5) — feeds
+     * `php artisan permissions:sync` (SyncPermissions instantiates this class
+     * and reads permissions(), late-static-bound on abilities()), so
+     * overriding this is enough to create `users.impersonate` and
+     * `users.manageCompensation`.
      *
      * @return array<int, string>
      */
     public static function abilities(): array
     {
-        return array_merge(parent::abilities(), ['impersonate']);
+        return array_merge(parent::abilities(), ['impersonate', 'manageCompensation']);
     }
 
     /**

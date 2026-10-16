@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0272-hr-employee-record" status="approved" owner="utente" date="2026-10-16">
+
+  <goal>
+    Secondo passo del modulo HR (docs/product/hr.md §3 e §4): la scheda del dipendente tiene lo storico delle
+    condizioni contrattuali (con CCNL e livello e retribuzione), il conto su cui pagare la persona, la
+    distinzione dei recapiti di lavoro, e le persone cessate vengono disattivate e restano in archivio.
+  </goal>
+
+  <context>
+    <!-- Fatti verificati nel repo il 2026-10-16. -->
+    <fact>`employment_profiles` (1 per utente, model `EmploymentProfile`, LogsModelActivity che esclude gli
+      attributi `$hidden` dal log) ha campi singoli senza storia: `relationship_type` (RelationshipTypeEnum:
+      employee/self_employed/other), `qualification_type` (QualificationTypeEnum, ricalca i `user_levels` del
+      legacy), `company_id`, `hired_at`, `terminated_at`. Usati solo dal modulo utenti (request
+      `ValidatesEmployment`, `EmploymentData`, `EmploymentWriter`, `EmploymentResource`, `UsersAuthorization`
+      campi `employment.*`, griglia `Tables/Users/*`, import `UsersSource`/`MapsExternalUserRecord`).
+      DB locale: 195 profili, nessun valore su questi campi.</fact>
+    <fact>Recapiti: tabella polimorfica `contacts` (type, label, value, normalized_value, is_primary),
+      sezione `personal_data.contacts` della scheda; nessuna distinzione lavoro/personale.</fact>
+    <fact>Cifratura: precedente `FinancialAccount::$casts['card_number'] = 'encrypted'`. IBAN oggi solo sulle
+      banche delle societa' (`company_site_banks.iban`, testo libero max 50).</fact>
+    <fact>Permessi extra per risorsa: `UserPolicy::abilities()` aggiunge `impersonate` → `users.impersonate`
+      (permissions:sync). Permessi di campo per ruolo: `UsersAuthorization` + `role_field_permissions`.</fact>
+    <fact>Scheduler in `routes/console.php` (`Schedule::command(...)->dailyAt(...)`).</fact>
+    <fact>Griglia utenti: colonne `is_active` (set) e `terminated_at` (date) gia' filtrabili;
+      `UsersTableDefinition.php` e' a 498 righe (limite 500).</fact>
+    <fact>Legacy QNet: tabelle `ccnl`, `ccnl_livelli`, `mansioni_ccnl` VUOTE, nessun utente con livello CCNL:
+      niente da importare.</fact>
+    <fact>Rotte annidate: precedente `scopeBindings()` in `routes/api/work-order-contract-data.php`.</fact>
+
+    <decision id="D-1">Storico contrattuale (utente 2026-10-16): ogni cambio e' una nuova condizione con
+      decorrenza; le condizioni non si modificano (append-only). Per correggere si cancella l'ULTIMA condizione
+      e se ne crea una nuova; cancellare una condizione non ultima = 409. La fine di una condizione non si
+      salva: e' il giorno prima della decorrenza della successiva.</decision>
+    <decision id="D-2">Tipo rapporto e Societa' vengono dallo storico (utente): sulla scheda mostrano la
+      condizione vigente (decorrenza piu' recente &lt;= oggi) in sola lettura. Le colonne
+      `employment_profiles.relationship_type`/`company_id` restano come copia della condizione vigente, scritta
+      SOLO dal service delle condizioni e dal job giornaliero (D-8); non sono piu' scrivibili da
+      `PUT /api/users`. Migrazione dati: ogni profilo con almeno uno dei due valori riceve una prima condizione
+      con decorrenza = `hired_at` o, se assente, la data di creazione del profilo.</decision>
+    <decision id="D-3">CCNL sostituisce Inquadramento (utente): `qualification_type` (colonna, enum,
+      permesso di campo, colonna griglia) viene RIMOSSO; l'import utenti lo ignora (D-9). Nuovo catalogo
+      CCNL (`collective_agreements`: nome, codice) con i suoi livelli (`collective_agreement_levels`: codice,
+      descrizione, ordine), gestiti nello stesso form del CCNL. La condizione punta a un livello.</decision>
+    <decision id="D-4">Retribuzione nella condizione (utente): importo (decimal 12,2) + periodicita'
+      (`monthly` | `yearly` | `hourly`), entrambi facoltativi ma insieme.</decision>
+    <decision id="D-5">Dati retributivi (utente): nuovo permesso `users.manageCompensation`. Senza, retribuzione e
+      IBAN non compaiono nelle risposte ne' nel meta, e scriverli risponde 403. Di default solo super-admin.</decision>
+    <decision id="D-6">Pagamento: IBAN (cifrato, cast `encrypted`, in `$hidden` per restare fuori dall'activity
+      log; salvato in maiuscolo senza spazi, validato con controllo mod-97) e intestatario sul profilo d'impiego.
+      Un solo conto vigente (nessuno storico dei conti).</decision>
+    <decision id="D-7">Recapiti di lavoro (utente): flag `is_work` sui recapiti (default false). Il campo e'
+      accettato per ogni recapito, ma il form lo mostra solo nella scheda utente.</decision>
+    <decision id="D-8">Cessati (utente): un utente con `terminated_at` &lt;= oggi viene salvato inattivo; un job
+      giornaliero (`employment:daily-sync`, 00:30) disattiva gli utenti la cui cessazione e' arrivata e
+      riallinea la condizione vigente (D-2). Nella griglia utenti nuova colonna set `employment_status`
+      (`employed` | `terminated`). I dati restano: nessuna cancellazione.</decision>
+    <decision id="D-9">Nessun nuovo importer. `UsersSource` smette di scrivere `qualification_type`, e
+      `relationship_type`/`company_id` dal legacy li scrive creando o aggiornando la PRIMA condizione (decorrenza =
+      `hired_at` o data dell'import) tramite il service delle condizioni, cosi' copia e storico restano coerenti.</decision>
+    <decision id="D-10">Menu: "CCNL" sotto Configurazione, permessi `collective-agreements.*`.</decision>
+  </context>
+
+  <scope>
+    <in>
+      <item>Tabelle `collective_agreements`, `collective_agreement_levels`, `employment_contracts`; colonne
+        `employment_profiles.iban` (text, encrypted), `iban_holder`; `contacts.is_work`; drop
+        `employment_profiles.qualification_type`; migrazione dati della prima condizione (D-2). Migrazioni
+        reversibili, indici con nomi sotto i 64 caratteri (MySQL).</item>
+      <item>CCNL: CRUD + for-select livelli + tabella + Policy + permessi + menu.</item>
+      <item>Condizioni: list/create/delete annidate sotto l'utente, service unico che aggiorna la copia vigente.</item>
+      <item>Scheda utente: condizione vigente in sola lettura, sezione "Storico contrattuale", sezione
+        "Pagamento" (con permesso), flag "di lavoro" sui recapiti; rimozione Inquadramento.</item>
+      <item>Cessazione: salvataggio inattivo, job giornaliero, colonna `employment_status`.</item>
+      <item>`UsersSource` adeguato (D-9). Split di `UsersTableDefinition.php` per restare sotto 500 righe.</item>
+      <item>i18n IT+EN, guide in-app nuova `collective-agreements` + aggiornate `users`; docs/product/hr.md.</item>
+    </in>
+    <out>
+      <item>Importer nuovi; modifiche al QNet legacy.</item>
+      <item>Storico dei conti di pagamento; piu' conti per persona.</item>
+      <item>Calcolo del costo del personale dalla retribuzione (passo allocazioni e costi).</item>
+      <item>Retribuzione minima tabellare sui livelli CCNL; scadenze contrattuali, rinnovi, avvisi.</item>
+      <item>Riattivazione automatica se si toglie la data di cessazione (si riattiva a mano).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope { success, message, data }; liste via /api/tables/{domain}. -->
+    <shared id="ref">{ id: int, name: string }; societa': { id: int, label: string };
+      livello: { id: int, label: string } con label = "NOME CCNL – CODICE livello".</shared>
+
+    <endpoint method="GET|POST|PUT|PATCH|DELETE" path="/api/collective-agreements[/{collectiveAgreement}]">
+      <request>store/update: { name: string required max:191 unico, code: string|null max:50,
+        levels: [{ id?: int, code: string required max:50 (unico nel CCNL), description: string|null max:191 }] }
+        — l'array sostituisce i livelli (ordine = ordine dell'array); rimuovere un livello usato da una condizione = 422
+        su `levels`.</request>
+      <response status="200|201">data: { id, name, code, levels: [{ id, code, description, sort_order,
+        contracts_count }], created_at, updated_at, abilities: { update, delete } }</response>
+      <errors>403 senza `collective-agreements.*`; 404; 422; 409 delete se un livello e' usato.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/collective-agreement-levels/for-select">
+      <request>Parametri standard for-select (search, ids[], offset, limit). Solo auth (ADR 0011).</request>
+      <response status="200">items: [{ id, label }] (label come shared ref livello).</response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tables/collective-agreements">
+      <response status="200">Colonne: name, code, levels_count.</response>
+      <errors>403 senza `collective-agreements.view`.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/users/{user}/employment-contracts">
+      <response status="200">data: [{ id, starts_on: "Y-m-d", ends_on: "Y-m-d"|null (derivata), is_current: bool,
+        relationship_type: string|null, company: ref|null, collective_agreement_level: ref|null,
+        salary_amount: string|null, salary_period: "monthly"|"yearly"|"hourly"|null, change_reason: string|null,
+        created_at }] ordinate per starts_on decrescente. salary_* presenti SOLO con `users.manageCompensation`.</response>
+      <errors>403 senza `users.view`; 404 utente inesistente. Utente senza profilo d'impiego = lista vuota ([revised] rev.2, era 404).</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/users/{user}/employment-contracts">
+      <request>{ starts_on: date required (unica per persona), relationship_type: enum required,
+        company_id: int|null exists, collective_agreement_level_id: int|null exists, salary_amount: number|null
+        min:0, salary_period: enum|null (required_with salary_amount), change_reason: string|null max:255 }</request>
+      <response status="201">la condizione (shape come sopra). Effetto: copia vigente su `employment_profiles` riallineata.</response>
+      <errors>403 senza `users.update`; 403 se salary_* presenti senza `users.manageCompensation`; 422 (starts_on
+        duplicata, enum, id inesistenti); 404 utente senza profilo d'impiego.</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/users/{user}/employment-contracts/{employmentContract}">
+      <response status="204">Cancellata (solo l'ultima per starts_on); copia vigente riallineata.</response>
+      <errors>403 senza `users.update`; 404 condizione di un altro utente (scopeBindings); 409 se non e' l'ultima.</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST|PUT|PATCH" path="/api/users[/{user}]" change="modifica">
+      <request>employment: - qualification_type; - relationship_type e - company_id (ignorati, sola lettura);
+        + iban: string|null (mod-97, normalizzato), + iban_holder: string|null max:191 — entrambi solo con
+        `users.manageCompensation` (altrimenti 403). personal_data.contacts[*].is_work: boolean (default false).
+        employment.terminated_at &lt;= oggi forza is_active=false nel salvataggio.</request>
+      <response status="200|201">employment: - qualification_type; relationship_type/company_id/company invariati
+        (copia vigente); + current_contract: { starts_on, collective_agreement_level: ref|null }|null;
+        + iban, iban_holder SOLO con `users.manageCompensation`. contacts[*]: + is_work.</response>
+      <errors>403 iban/iban_holder senza permesso; 422 iban non valido.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tables/users" change="modifica">
+      <response status="200">+ colonna `employment_status` (set: employed | terminated); - `qualification_type`.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Con `collective-agreements.create`, creare un CCNL con due livelli risponde 201 con i
+      livelli in ordine; nome duplicato o codice livello duplicato nello stesso CCNL = 422.</criterion>
+    <criterion id="AC-002">Rimuovere da un CCNL un livello usato da una condizione = 422 su `levels`; cancellare un
+      CCNL con un livello usato = 409; un CCNL libero si cancella con 204.</criterion>
+    <criterion id="AC-003">Senza `collective-agreements.*` CRUD e tabella rispondono 403; il for-select dei livelli
+      risponde a qualsiasi autenticato (401 senza login) con label "CCNL – codice".</criterion>
+    <criterion id="AC-004">Creare una condizione con decorrenza passata aggiorna `relationship_type` e `company_id`
+      del profilo; una con decorrenza futura NON li aggiorna finche' il job giornaliero non gira alla data.</criterion>
+    <criterion id="AC-005">La lista condizioni e' ordinata per decorrenza decrescente, con `ends_on` = giorno prima
+      della decorrenza successiva e `is_current` sulla vigente.</criterion>
+    <criterion id="AC-006">Decorrenza gia' usata per la stessa persona = 422; cancellare una condizione non ultima =
+      409; cancellare l'ultima = 204 e la copia vigente torna alla precedente (o null).</criterion>
+    <criterion id="AC-007">Senza `users.manageCompensation`: la lista condizioni non contiene `salary_*`, la scheda
+      utente non contiene `iban`/`iban_holder`, il meta li nasconde, e scriverli risponde 403. Con il permesso
+      compaiono e si salvano.</criterion>
+    <criterion id="AC-008">IBAN "it60 x054 2811 1010 0000 0123 456" viene salvato "IT60X0542811101000000123456";
+      un IBAN con check errato = 422; nel DB il valore e' cifrato e non compare nell'activity log.</criterion>
+    <criterion id="AC-009">`PUT /api/users` con `employment.relationship_type`, `company_id` o
+      `qualification_type` non li modifica; la risposta non contiene `qualification_type`.</criterion>
+    <criterion id="AC-010">Migrazione dati: un profilo con relationship_type/company_id riceve una prima condizione
+      (decorrenza hired_at o data di creazione); il rollback la rimuove e ricrea qualification_type vuoto.</criterion>
+    <criterion id="AC-011">Un recapito salvato con `is_work: true` lo restituisce; assente = false.</criterion>
+    <criterion id="AC-012">Salvare un utente attivo con `terminated_at` &lt;= oggi lo salva inattivo; il job
+      `employment:daily-sync` disattiva chi ha cessazione &lt;= oggi e non tocca le cessazioni future.</criterion>
+    <criterion id="AC-013">La griglia utenti ha la colonna `employment_status` filtrabile (employed/terminated) e
+      non ha piu' `qualification_type`; `UsersTableDefinition.php` resta sotto 500 righe.</criterion>
+    <criterion id="AC-014">L'import utenti non scrive `qualification_type`; con relationship_type/company_id dal
+      legacy crea (o aggiorna) la prima condizione e non duplica a un secondo import.</criterion>
+    <criterion id="AC-015">Frontend: scheda utente con condizione vigente in sola lettura, sezione "Storico
+      contrattuale" (lista, nuova condizione, cancella ultima, salary nascosta senza permesso), sezione
+      "Pagamento" solo con permesso, flag "di lavoro" sui recapiti, Inquadramento sparito (Vitest).</criterion>
+    <criterion id="AC-016">Frontend: catalogo CCNL (lista, dettaglio, form con livelli ripetibili) sotto
+      Configurazione; guide in-app IT+EN `collective-agreements` e `users` aggiornate; parity test verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza (controllo mod-97 scritto a mano come Rule). Identificatori in inglese, testi IT+EN.</item>
+    <item>FormRequest + Policy su ogni endpoint; Resource; $fillable; eager loading; liste via TableDefinition
+      con allow-list; rotte annidate isolate per utente: la condizione si risolve dal profilo dell'utente nel
+      controller (404 se di un altro), coperto da test ([revised] rev.3, al posto di `scopeBindings()`).</item>
+    <item>IBAN e retribuzione mai in log, eccezioni o export senza il permesso; IBAN, intestatario e retribuzione
+      fuori dall'activity log ([revised] rev.3: aggiunto l'intestatario).</item>
+    <item>Migrazioni nuove e reversibili; test di rollback a step fisso aggiornati (+N migrazioni).</item>
+    <item>Nessun file oltre 500 righe (split dove serve). Test eseguiti: Pest mirati + `composer test`
+      (COMPOSER_PROCESS_TIMEOUT=0), Vitest, `npx tsc -b --force`, Pint, ESLint. Migrazioni provate anche su MySQL locale.</item>
+  </constraints>
+
+</spec>

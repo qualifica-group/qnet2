@@ -10,12 +10,14 @@ import {
 } from '@/features/personal-data/personal-data-identity-record-section'
 import { anagraphicSectionProps } from '@/features/personal-data/use-reveal-blocked-section'
 import { useAssignmentFieldsVisibility, useUserSectionVisibility } from '@/features/users/user-assignment'
+import { UserContractHistoryCreateNote } from '@/features/users/user-contract-history-section'
+import { usePaymentVisible } from '@/features/users/use-payment-visible'
+import { UserPaymentRecordSection } from '@/features/users/user-payment-section'
 import { UserAssignmentRecordSection } from '@/features/users/user-assignment-record-section'
 import type { UserRecordValues } from '@/features/users/user-record'
 import {
   UserAccessRecordSection,
   UserContractDataRecordSection,
-  UserContractRecordSection,
   UserProfileRecordSection,
 } from '@/features/users/user-record-sections'
 import type { UserFormValues } from '@/features/users/use-user-form'
@@ -41,6 +43,7 @@ export function UserCreateSections({ values, form, draft, card, avatar }: UserCr
   const { t } = useTranslation()
   const visibility = useUserSectionVisibility()
   const assignmentFields = useAssignmentFieldsVisibility()
+  const paymentVisible = usePaymentVisible()
   const sectionProps = { values, form, inline: draft }
 
   return (
@@ -58,8 +61,9 @@ export function UserCreateSections({ values, form, draft, card, avatar }: UserCr
       {visibility.access ? <UserAccessRecordSection {...sectionProps} isEdit={false} /> : null}
       {assignmentFields.any ? <UserAssignmentRecordSection {...sectionProps} /> : null}
       {visibility.profile ? <UserProfileRecordSection {...sectionProps} /> : null}
-      {visibility.contract ? <UserContractRecordSection {...sectionProps} /> : null}
+      <UserContractHistoryCreateNote />
       {visibility.contractData ? <UserContractDataRecordSection {...sectionProps} /> : null}
+      {paymentVisible ? <UserPaymentRecordSection {...sectionProps} /> : null}
       <CustomFieldRecordSections resource="users" values={values.custom_fields} inline={draft} control={form.control} />
     </RecordSectionsGrid>
   )

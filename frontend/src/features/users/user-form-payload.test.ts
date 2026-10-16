@@ -60,18 +60,17 @@ const emptyEmployment: UserFormValues['employment'] = {
   is_manager: false,
   job_role_ids: [],
   reports_to_ids: [],
-  relationship_type: null,
-  company_id: null,
   primary_operational_site_id: null,
   remote_operational_site_ids: [],
   is_assignable: true,
   covers_all_product_categories: false,
   product_lines: [],
-  qualification_type: null,
   hired_at: '',
   terminated_at: '',
   standard_daily_minutes: null,
   break_daily_minutes: null,
+  iban: '',
+  iban_holder: '',
 }
 
 const formValues: UserFormValues = {
@@ -199,11 +198,8 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
         ...formValues,
         employment: {
           ...emptyEmployment,
-          relationship_type: 'employee',
-          company_id: 5,
           primary_operational_site_id: 8,
           remote_operational_site_ids: [11, 12],
-          qualification_type: 'coordinator',
           hired_at: '2026-01-15',
           terminated_at: '',
           standard_daily_minutes: 480,
@@ -218,14 +214,11 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
       is_manager: false,
       job_role_ids: [4, 7],
       reports_to_ids: [],
-      relationship_type: 'employee',
-      company_id: 5,
       primary_operational_site_id: 8,
       remote_operational_site_ids: [11, 12],
       is_assignable: true,
       covers_all_product_categories: false,
       product_lines: [],
-      qualification_type: 'coordinator',
       hired_at: '2026-01-15',
       terminated_at: null,
       standard_daily_minutes: 480,
@@ -395,14 +388,11 @@ describe('buildUpdatePayload — employment (spec 0015)', () => {
       is_manager: false,
       job_role_ids: [9],
       reports_to_ids: [],
-      relationship_type: null,
-      company_id: null,
       primary_operational_site_id: null,
       remote_operational_site_ids: [],
       is_assignable: true,
       covers_all_product_categories: false,
       product_lines: [],
-      qualification_type: null,
       hired_at: null,
       terminated_at: null,
       standard_daily_minutes: null,
@@ -445,5 +435,44 @@ describe('buildCreatePayload — optional password (spec 0177 AC-016)', () => {
 
     expect(payload.password).toBe(TEST_PASSWORD)
     expect(payload.password_confirmation).toBe(TEST_PASSWORD)
+  })
+})
+
+/** Spec 0272 D-6/D-5: the payment account travels only when it changed. */
+describe('employment payment account (spec 0272)', () => {
+  it('omits iban and iban_holder on create while empty', () => {
+    const payload = buildCreatePayload(formValues, draft())
+    expect(payload.employment).not.toHaveProperty('iban')
+    expect(payload.employment).not.toHaveProperty('iban_holder')
+  })
+
+  it('sends iban and iban_holder on create once typed', () => {
+    const payload = buildCreatePayload(
+      { ...formValues, employment: { ...emptyEmployment, iban: 'IT60X0542811101000000123456', iban_holder: 'Ada Lovelace' } },
+      draft(),
+    )
+    expect(payload.employment).toMatchObject({ iban: 'IT60X0542811101000000123456', iban_holder: 'Ada Lovelace' })
+  })
+
+  it('does not send the payment account on a PATCH that did not touch it (no manageCompensation, no 403)', () => {
+    const payload = buildUpdatePayload(
+      { ...formValues, password: '', password_confirmation: '', employment: { ...emptyEmployment, primary_operational_site_id: 8 } },
+      original(),
+      draft(),
+    )
+    expect(payload.employment).toBeDefined()
+    expect(payload.employment).not.toHaveProperty('iban')
+    expect(payload.employment).not.toHaveProperty('iban_holder')
+  })
+
+  it('clears a stored iban by sending null when the field is emptied', () => {
+    const base = original()
+    const withIban = { ...base, employment: { ...base.employment!, iban: 'IT60X0542811101000000123456' } }
+    const payload = buildUpdatePayload(
+      { ...formValues, password: '', password_confirmation: '', employment: { ...emptyEmployment, iban: '' } },
+      withIban,
+      draft(),
+    )
+    expect(payload.employment).toMatchObject({ iban: null })
   })
 })

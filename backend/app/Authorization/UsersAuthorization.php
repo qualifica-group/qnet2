@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Authorization;
 
 use App\Models\User;
+use App\Policies\UserPolicy;
 use App\Services\RoleAssignmentGuard;
 use Illuminate\Database\Eloquent\Model;
 
@@ -79,11 +80,12 @@ class UsersAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('employment.company_id', 'select', 'employment'),
             new FieldDefinition('employment.primary_operational_site_id', 'select', 'employment'),
             new FieldDefinition('employment.remote_operational_site_ids', 'multiselect', 'employment'),
-            new FieldDefinition('employment.qualification_type', 'select', 'employment'),
             new FieldDefinition('employment.hired_at', 'date', 'employment'),
             new FieldDefinition('employment.terminated_at', 'date', 'employment'),
             new FieldDefinition('employment.standard_daily_minutes', 'number', 'employment'),
             new FieldDefinition('employment.break_daily_minutes', 'number', 'employment'),
+            new FieldDefinition('employment.iban', 'text', 'employment'),
+            new FieldDefinition('employment.iban_holder', 'text', 'employment'),
         ];
     }
 
@@ -113,7 +115,7 @@ class UsersAuthorization extends AbstractResourceAuthorization
             'is_active' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'password' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'roles' => $this->rolesFieldPermission($actor, $model, $mayWrite),
-        ], $this->personalDataFieldPermissions($mayWrite), $this->employmentFieldPermissions($mayWrite));
+        ], $this->personalDataFieldPermissions($mayWrite), $this->employmentFieldPermissions($actor, $mayWrite));
     }
 
     /**
@@ -148,15 +150,25 @@ class UsersAuthorization extends AbstractResourceAuthorization
     }
 
     /**
-     * Ceiling for the 15 `employment.*` keys: editable whenever the actor may
+     * Ceiling for the `employment.*` keys: editable whenever the actor may
      * write the user at all, else readonly — same write/read boundary as the
      * personal_data section (no employment.* resource permission, spec 0015).
      *
+     * Two exceptions (spec 0272): `relationship_type`/`company_id` are the
+     * read-only copy of the current contract condition (D-2), so they are never
+     * editable here; the payment fields (D-5/D-6) are hidden altogether unless
+     * the actor holds `users.manageCompensation`, and editable only with it
+     * plus the base write ability.
+     *
      * @return array<string, FieldPermission>
      */
-    private function employmentFieldPermissions(bool $mayWrite): array
+    private function employmentFieldPermissions(User $actor, bool $mayWrite): array
     {
         $permission = $mayWrite ? FieldPermission::visibleEditable(required: false) : FieldPermission::visibleReadonly();
+        $payment = match (true) {
+            ! $actor->can(UserPolicy::MANAGE_COMPENSATION_PERMISSION) => FieldPermission::hidden(),
+            default => $permission,
+        };
 
         return [
             'employment.is_manager' => $permission,
@@ -165,15 +177,16 @@ class UsersAuthorization extends AbstractResourceAuthorization
             'employment.job_role_ids' => $permission,
             'employment.reports_to_ids' => $permission,
             'employment.product_lines' => $permission,
-            'employment.relationship_type' => $permission,
-            'employment.company_id' => $permission,
+            'employment.relationship_type' => FieldPermission::visibleReadonly(),
+            'employment.company_id' => FieldPermission::visibleReadonly(),
             'employment.primary_operational_site_id' => $permission,
             'employment.remote_operational_site_ids' => $permission,
-            'employment.qualification_type' => $permission,
             'employment.hired_at' => $permission,
             'employment.terminated_at' => $permission,
             'employment.standard_daily_minutes' => $permission,
             'employment.break_daily_minutes' => $permission,
+            'employment.iban' => $payment,
+            'employment.iban_holder' => $payment,
         ];
     }
 

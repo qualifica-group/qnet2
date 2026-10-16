@@ -49,6 +49,30 @@ trait ValidatesUserProfile
     {
         $this->formatIdentityInput('personal_data');
         $this->formatContactRowsInput('personal_data.contacts');
+        $this->defaultContactWorkFlag('personal_data.contacts');
+    }
+
+    /**
+     * Spec 0272 D-7: a contact row that does not carry `is_work` is a
+     * personal one. Defaulting it here, before validation, makes the write and
+     * the field-permission diff (EnforcesFieldPermissions) read the same
+     * value the column stores, instead of an absent key against a stored false.
+     */
+    private function defaultContactWorkFlag(string $key): void
+    {
+        $rows = $this->input($key);
+
+        if (! is_array($rows)) {
+            return;
+        }
+
+        foreach ($rows as $index => $row) {
+            if (is_array($row)) {
+                $rows[$index]['is_work'] = $row['is_work'] ?? false;
+            }
+        }
+
+        $this->replaceInput($key, $rows);
     }
 
     /**
@@ -169,6 +193,7 @@ trait ValidatesUserProfile
             'personal_data.contacts.*.value' => ['required', 'string', 'max:255'],
             'personal_data.contacts.*.label' => ['nullable', 'string', 'max:255'],
             'personal_data.contacts.*.is_primary' => ['sometimes', 'boolean'],
+            'personal_data.contacts.*.is_work' => ['sometimes', 'boolean'],
 
             // Addresses: present key (even empty) is authoritative.
             'personal_data.addresses' => ['sometimes', 'array'],
@@ -306,6 +331,7 @@ trait ValidatesUserProfile
                     value: (string) ($row['value'] ?? ''),
                     label: $row['label'] ?? null,
                     isPrimary: (bool) ($row['is_primary'] ?? false),
+                    isWork: (bool) ($row['is_work'] ?? false),
                 ),
             ),
             $rows,

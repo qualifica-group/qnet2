@@ -10,15 +10,12 @@ import { useEnumOptions } from '@/features/config/use-config'
 import { formatDate } from '@/lib/formatting/date-display'
 import { UserEmailField, UserPasswordFields, UserRolesField, UserSwitchField } from '@/features/users/user-account-fields'
 import {
-  UserCompanyField,
   UserDateField,
   UserDurationField,
   UserJobRolesField,
-  UserQualificationField,
-  UserRelationshipTypeField,
   UserReportsToField,
 } from '@/features/users/user-employment-fields'
-import { MANAGER_CASCADE_FIELDS, type UserRecordSectionProps } from '@/features/users/user-record'
+import { MANAGER_CASCADE_FIELDS, type UserRecordSectionProps, type UserRecordValues } from '@/features/users/user-record'
 import type { EmploymentRelationRef } from '@/features/users/types'
 
 /** Formats a total-minutes duration as `H:MM`, or `null` when unset (spec 0015). */
@@ -152,28 +149,22 @@ export function UserProfileRecordSection({ values, form, inline }: UserRecordSec
   )
 }
 
-/** "Rapporto contrattuale": relationship type and employing company. */
-export function UserContractRecordSection({ values, form, inline }: UserRecordSectionProps) {
+/**
+ * "Rapporto contrattuale" (spec 0272 D-2): the condition in force today, read
+ * only. Relationship type and company are copies of the latest condition of the
+ * contract history, which is where they change.
+ */
+export function UserContractRecordSection({ values }: { values: UserRecordValues }) {
   const { t } = useTranslation()
-  const { control } = form
+  const level = values.current_contract?.collective_agreement_level ?? null
 
   return (
     <RecordSection title={t('users.form.sections.contract.title')} icon={<FileSignature />}>
       <RecordFieldList>
-        <RecordInlineField
-          field="employment.relationship_type"
-          label={t('users.detail.employment.relationshipType')}
-          inline={inline}
-          editor={<UserRelationshipTypeField control={control} />}
-        >
+        <RecordField label={t('users.detail.employment.relationshipType')}>
           {values.relationship_type ? t(`enums.relationship_type.${values.relationship_type}`) : <DetailEmpty />}
-        </RecordInlineField>
-        <RecordInlineField
-          field="employment.company_id"
-          label={t('users.detail.employment.company')}
-          inline={inline}
-          editor={<UserCompanyField control={control} selected={values.company} />}
-        >
+        </RecordField>
+        <RecordField label={t('users.detail.employment.company')}>
           {values.company ? (
             <RecordLink domain="companies" id={values.company.id}>
               {values.company.label}
@@ -181,32 +172,32 @@ export function UserContractRecordSection({ values, form, inline }: UserRecordSe
           ) : (
             <DetailEmpty />
           )}
-        </RecordInlineField>
+        </RecordField>
+        <RecordField label={t('users.detail.employment.collectiveAgreementLevel')}>
+          {level ? level.label : <DetailEmpty />}
+        </RecordField>
+        <RecordField label={t('users.detail.employment.contractStartsOn')}>
+          {formatDate(values.current_contract?.starts_on ?? null) || <DetailEmpty />}
+        </RecordField>
       </RecordFieldList>
+      <p className="mt-2 text-xs text-muted-foreground">{t('users.detail.employment.contractReadOnlyHint')}</p>
     </RecordSection>
   )
 }
 
-/** "Dati contrattuali": qualification, dates and daily durations. */
+/** "Dati contrattuali": hire and termination dates and daily durations. */
 export function UserContractDataRecordSection({ values, form, inline }: UserRecordSectionProps) {
   const { t } = useTranslation()
   const { control } = form
   const hiredLabel = t('users.detail.employment.hiredAt')
   const terminatedLabel = t('users.detail.employment.terminatedAt')
+  const terminatedHint = t('users.detail.employment.terminatedAtHint')
   const standardLabel = t('users.detail.employment.standardDailyMinutes')
   const breakLabel = t('users.detail.employment.breakDailyMinutes')
 
   return (
     <RecordSection title={t('users.form.sections.contractData.title')} icon={<CalendarClock />}>
       <RecordFieldList>
-        <RecordInlineField
-          field="employment.qualification_type"
-          label={t('users.detail.employment.qualificationType')}
-          inline={inline}
-          editor={<UserQualificationField control={control} />}
-        >
-          {values.qualification_type ? t(`enums.qualification_type.${values.qualification_type}`) : <DetailEmpty />}
-        </RecordInlineField>
         <RecordInlineField
           field="employment.hired_at"
           label={hiredLabel}
@@ -219,9 +210,17 @@ export function UserContractDataRecordSection({ values, form, inline }: UserReco
           field="employment.terminated_at"
           label={terminatedLabel}
           inline={inline}
-          editor={<UserDateField control={control} name="employment.terminated_at" label={terminatedLabel} />}
+          editor={
+            <UserDateField
+              control={control}
+              name="employment.terminated_at"
+              label={terminatedLabel}
+              description={terminatedHint}
+            />
+          }
         >
           {formatDate(values.terminated_at) || <DetailEmpty />}
+          <span className="block text-xs text-muted-foreground">{terminatedHint}</span>
         </RecordInlineField>
         <RecordInlineField
           field="employment.standard_daily_minutes"

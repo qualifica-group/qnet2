@@ -50,6 +50,20 @@ function ActiveBadgeCell({ value }: ICellRendererParams) {
   )
 }
 
+/** Renders the `employment_status` set column (spec 0272 D-8): in force (green) or terminated (neutral), always with its text. */
+function EmploymentStatusCell({ value }: ICellRendererParams) {
+  if (value !== 'employed' && value !== 'terminated') {
+    return <span className="text-muted-foreground">—</span>
+  }
+  return (
+    <div className="flex h-full items-center justify-center">
+      <Badge variant="secondary" className={value === 'employed' ? BOOLEAN_BADGE_YES : undefined}>
+        {i18n.t(`enums.employment_status.${value}`)}
+      </Badge>
+    </div>
+  )
+}
+
 /** Renders an email as a mailto link (users-specific). */
 function EmailCell({ value }: ICellRendererParams) {
   if (typeof value !== 'string' || value === '') {
@@ -91,8 +105,8 @@ export const userColumnRenderers: TableRendererMap = {
   created_at: (params) => <DateTimeCell {...params} />,
   // All primary contacts (one per type): icon + label badges, value in tooltip.
   primary_contact: (params) => <ContactsCell {...params} />,
-  // Employment profile columns (spec 0015): relationship_type/qualification_type
-  // are `badge` columns, rendered generically by the table's own `BadgeCell`
+  // Employment profile columns (spec 0015): relationship_type
+  // is a `badge` column, rendered generically by the table's own `BadgeCell`
   // fallback (no entry needed here).
   is_active: (params) => <ActiveBadgeCell {...params} />,
   is_manager: (params) => <BooleanCell {...params} />,
@@ -102,4 +116,5 @@ export const userColumnRenderers: TableRendererMap = {
   reports_to: (params) => <UserStackCell {...params} />,
   hired_at: (params) => <DateCell {...params} />,
   terminated_at: (params) => <DateCell {...params} />,
+  employment_status: (params) => <EmploymentStatusCell {...params} />,
 }

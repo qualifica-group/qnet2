@@ -34,6 +34,13 @@ return [
             'permission' => 'job-activities.view',
         ],
         [
+            'key' => 'collective-agreements',
+            'label' => 'navigation.collectiveAgreements',
+            'icon' => 'file-text',
+            'route' => '/collective-agreements',
+            'permission' => 'collective-agreements.view',
+        ],
+        [
             'key' => 'sectors',
             'label' => 'navigation.sectors',
             'icon' => 'list-tree',

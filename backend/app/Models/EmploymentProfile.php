@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\QualificationTypeEnum;
 use App\Enums\RelationshipTypeEnum;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
@@ -36,7 +35,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'is_assignable',
     'relationship_type',
     'company_id',
-    'qualification_type',
+    'iban',
+    'iban_holder',
     'hired_at',
     'terminated_at',
     'standard_daily_minutes',
@@ -48,6 +48,15 @@ class EmploymentProfile extends BaseModel
     use HasFactory, LogsModelActivity;
 
     /**
+     * The IBAN is encrypted at rest (spec 0272 D-6). The IBAN and its holder are
+     * compensation data (D-5): hidden so the activity log (which excludes
+     * hidden attributes) and default serialization never carry them.
+     *
+     * @var list<string>
+     */
+    protected $hidden = ['iban', 'iban_holder'];
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -57,7 +66,7 @@ class EmploymentProfile extends BaseModel
             'covers_all_product_categories' => 'boolean',
             'is_assignable' => 'boolean',
             'relationship_type' => RelationshipTypeEnum::class,
-            'qualification_type' => QualificationTypeEnum::class,
+            'iban' => 'encrypted',
             'hired_at' => 'date:Y-m-d',
             'terminated_at' => 'date:Y-m-d',
             'standard_daily_minutes' => 'integer',
@@ -86,6 +95,16 @@ class EmploymentProfile extends BaseModel
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    /**
+     * Contractual condition history (spec 0272 D-1), latest start first.
+     *
+     * @return HasMany<EmploymentContract, $this>
+     */
+    public function contracts(): HasMany
+    {
+        return $this->hasMany(EmploymentContract::class)->orderByDesc('starts_on');
     }
 
     /**

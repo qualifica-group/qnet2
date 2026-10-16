@@ -28,9 +28,9 @@ uses(RefreshDatabase::class);
 const EMPLOYMENT_FIELD_KEYS = [
     'employment.is_manager', 'employment.covers_all_product_categories',
     'employment.job_role_ids', 'employment.reports_to_ids',
-    'employment.product_lines', 'employment.relationship_type', 'employment.company_id',
+    'employment.product_lines',
     'employment.primary_operational_site_id', 'employment.remote_operational_site_ids',
-    'employment.qualification_type', 'employment.hired_at',
+    'employment.hired_at',
     'employment.terminated_at', 'employment.standard_daily_minutes', 'employment.break_daily_minutes',
 ];
 
@@ -51,7 +51,7 @@ if (! function_exists('employmentFieldPermActor')) {
     }
 }
 
-it('AC-012: permissions.fields includes the 14 employment.* keys, editable when the actor may update', function () {
+it('AC-012: permissions.fields includes the editable employment.* keys, editable when the actor may update (spec 0272: relationship_type/company_id are read-only)', function () {
     $actor = employmentFieldPermActor(['view', 'update']);
     $target = User::factory()->withEmployment()->create();
     Sanctum::actingAs($actor);
@@ -62,6 +62,11 @@ it('AC-012: permissions.fields includes the 14 employment.* keys, editable when 
         expect($fields)->toHaveKey($key);
         expect($fields[$key]['visible'])->toBeTrue()
             ->and($fields[$key]['editable'])->toBeTrue();
+    }
+
+    foreach (['employment.relationship_type', 'employment.company_id'] as $key) {
+        expect($fields[$key]['visible'])->toBeTrue()
+            ->and($fields[$key]['readonly'])->toBeTrue();
     }
 });
 

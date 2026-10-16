@@ -129,4 +129,39 @@ describe('ContactForm (controlled)', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
     expect(onSubmit).not.toHaveBeenCalled()
   })
+
+  /** Spec 0272 D-7: the "work" flag exists only where the owner asks for it (users). */
+  it('does not show the work flag by default and leaves is_work out of the fields', async () => {
+    const onSubmit = vi.fn()
+    render(<ContactForm onSubmit={onSubmit} onCancel={() => {}} />)
+
+    expect(screen.queryByRole('checkbox', { name: 'Work contact' })).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(/^Value/), { target: { value: 'ada@example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty('is_work')
+  })
+
+  it('shows the work flag with showWorkFlag and returns is_work', async () => {
+    const onSubmit = vi.fn()
+    render(<ContactForm showWorkFlag onSubmit={onSubmit} onCancel={() => {}} />)
+
+    fireEvent.change(screen.getByLabelText(/^Value/), { target: { value: 'ada@example.com' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Work contact' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0].is_work).toBe(true)
+  })
+
+  it('defaults is_work to false when the flag is shown and left unchecked', async () => {
+    const onSubmit = vi.fn()
+    render(<ContactForm showWorkFlag contact={contact({ is_work: false })} onSubmit={onSubmit} onCancel={() => {}} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0].is_work).toBe(false)
+  })
 })

@@ -46,18 +46,18 @@
 | Codice fiscale, data e comune di nascita, residenza, genere | anagrafica | presente (`personal_data`) |
 | Email di accesso | login | presente (`users`) |
 | Recapiti personali | telefono, email personale | presente (`contacts`) |
-| Recapiti di lavoro | telefono e caselle aziendali della persona | **da aggiungere**: oggi non si distingue un recapito di lavoro da uno personale |
+| Recapiti di lavoro | telefono e caselle aziendali della persona | presente: opzione "di lavoro" sui recapiti (spec 0272) |
 | Società | per conto di quale società del gruppo lavora | presente (`employment_profiles.company_id`) |
 | Tipo di rapporto | dipendente, autonomo, altro | presente (`relationship_type`) |
-| Inquadramento | qualifica | presente come elenco fisso (`qualification_type`); **da collegare** a CCNL e livello (§4) |
+| Inquadramento | qualifica | rimosso: sostituito da CCNL e livello nello storico contrattuale (spec 0272, §4) |
 | Data di assunzione, data di cessazione | ingresso e uscita | presente (`hired_at`, `terminated_at`) |
 | Responsabili | a chi risponde (anche più di uno) | presente (`employment_profile_manager`) |
 | È responsabile | se guida una squadra | presente (`is_manager`) |
 | Sede principale, sedi remote | dove lavora | presente (`employment_profile_operational_site`) |
 | Orario standard e pausa giornaliera | minuti | presente |
-| Funzioni aziendali (business unit o business service) | appartenenza, obbligatoria (regola 1) | presente (`business_function_user`); **vincolo da aggiungere** |
-| Mansioni | che cosa fa: una o più mansioni dal catalogo (D-6) | **da aggiungere** (spec 0271); oggi testo libero `job_description`, che viene rimosso |
-| Stato attivo / cessato | chi è uscito si conserva, non si cancella | presente (`is_active`, `terminated_at`); **manca** una vista dei cessati |
+| Funzioni aziendali (business unit o business service) | appartenenza, obbligatoria (regola 1) | presente (competenze commerciali) e obbligatoria per le persone attive (spec 0271) |
+| Mansioni | che cosa fa: una o più mansioni dal catalogo (D-6) | presente (spec 0271); il testo libero `job_description` è stato rimosso |
+| Stato attivo / cessato | chi è uscito si conserva, non si cancella | presente: alla cessazione l'utente viene disattivato, colonna "Stato" nella griglia (spec 0272) |
 
 ## 4. Contratto, CCNL e pagamento
 
@@ -67,28 +67,28 @@ Una riga per ogni cambio, mai sovrascritta.
 
 | Campo | Significato | Oggi in qnet-2 |
 |---|---|---|
-| Decorrenza (dal) | da quando vale | **da aggiungere** |
-| Fine (al) | fino a quando, vuoto se vigente | **da aggiungere** |
-| Tipo di rapporto | come in §3, ma storicizzato | oggi solo il valore corrente |
-| CCNL e livello | inquadramento contrattuale | **da aggiungere** |
-| Retribuzione | importo e periodicità (*proposta*: lorda annua) | **da aggiungere** |
-| Società | società del contratto in quel periodo | oggi solo il valore corrente |
-| Motivo del cambio | *proposta*: nota libera | **da aggiungere** |
+| Decorrenza (dal) | da quando vale | presente (spec 0272) |
+| Fine (al) | fino a quando, vuoto se vigente | presente, ricavata dalla condizione successiva (spec 0272) |
+| Tipo di rapporto | come in §3, ma storicizzato | presente (spec 0272) |
+| CCNL e livello | inquadramento contrattuale | presente (spec 0272) |
+| Retribuzione | importo e periodicità (mensile, annua, oraria) | presente, visibile solo con il permesso dati retributivi (spec 0272) |
+| Società | società del contratto in quel periodo | presente (spec 0272) |
+| Motivo del cambio | nota libera | presente (spec 0272) |
 
 ### 4.2 CCNL e livelli
 
 | Campo | Significato | Oggi in qnet-2 |
 |---|---|---|
-| CCNL: nome, codice | contratto collettivo applicato | **da aggiungere** |
-| Livello: CCNL, codice, descrizione, ordine | livelli dentro ogni CCNL | **da aggiungere** |
+| CCNL: nome, codice | contratto collettivo applicato | presente (spec 0272) |
+| Livello: CCNL, codice, descrizione, ordine | livelli dentro ogni CCNL | presente (spec 0272) |
 
 ### 4.3 Metodo di pagamento
 
 | Campo | Significato | Oggi in qnet-2 |
 |---|---|---|
-| IBAN | conto su cui si paga la persona (cifrato) | **da aggiungere**: oggi l'IBAN esiste solo per le banche delle società |
-| Intestatario | se diverso dalla persona | **da aggiungere** |
-| Valido dal | *proposta*: per tenere lo storico dei conti | **da aggiungere** |
+| IBAN | conto su cui si paga la persona (cifrato) | presente, cifrato e visibile solo con il permesso dati retributivi (spec 0272) |
+| Intestatario | se diverso dalla persona | presente (spec 0272) |
+| Valido dal | per tenere lo storico dei conti | non previsto: un solo conto vigente (spec 0272) |
 
 ## 5. Struttura organizzativa
 
@@ -98,9 +98,9 @@ società stanno accanto. Le posizioni non si fanno (D-8). Primo passo: spec 0271
 | Elemento | Campi | Oggi in qnet-2 |
 |---|---|---|
 | Funzione aziendale | nome, tipo (business unit o business service), funzione padre, responsabile | presente (`business_functions`) |
-| | società in cui esiste | **da aggiungere** (spec 0271) |
-| Mansione | nome, descrizione, attività comprese; competenze richieste (§8, passo successivo) | **da aggiungere** come catalogo (D-6) |
-| Attività | nome, mansione di appartenenza | **da aggiungere** (`task_types` è il tipo attività del segnatempo, non la stessa cosa) |
+| | società in cui esiste | presente (spec 0271) |
+| Mansione | nome, descrizione, attività comprese; competenze richieste (§8, passo successivo) | presente come catalogo (spec 0271) |
+| Attività | nome, mansione di appartenenza | presente come catalogo (spec 0271) |
 | Reparto | nome | **da aggiungere** (*da confermare* se serve accanto alle funzioni) |
 | Sede | nome, indirizzo, attiva | presente (`operational_sites`) |
 | Società | denominazione, partita IVA, sedi | presente (`companies`, `company_sites`) |

@@ -191,7 +191,6 @@ const BASE_EMPLOYMENT: EmploymentDetail = {
   job_role_ids: [],
   job_roles: [],
   relationship_type: null,
-  qualification_type: null,
   hired_at: null,
   terminated_at: null,
   standard_daily_minutes: null,

@@ -3,7 +3,6 @@
 namespace App\Tables\Users;
 
 use App\Enums\LocaleEnum;
-use App\Enums\QualificationTypeEnum;
 use App\Enums\RelationshipTypeEnum;
 
 /**
@@ -241,14 +240,14 @@ final class UserColumnCatalog
                 'options' => RelationshipTypeEnum::values(),
             ],
             [
-                'id' => 'qualification_type',
-                'label' => 'users.columns.qualification_type',
+                'id' => 'employment_status',
+                'label' => 'users.columns.employment_status',
                 'type' => 'enum',
                 'visible' => false,
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'set',
-                'options' => QualificationTypeEnum::values(),
+                'options' => UserEmploymentStatusColumn::VALUES,
             ],
             [
                 'id' => 'is_manager',
@@ -328,7 +327,7 @@ final class UserColumnCatalog
             ['columnId' => 'company', 'type' => 'set'],
             ['columnId' => 'operational_site', 'type' => 'text'],
             ['columnId' => 'relationship_type', 'type' => 'set', 'options' => RelationshipTypeEnum::values()],
-            ['columnId' => 'qualification_type', 'type' => 'set', 'options' => QualificationTypeEnum::values()],
+            ['columnId' => 'employment_status', 'type' => 'set', 'options' => UserEmploymentStatusColumn::VALUES],
             ['columnId' => 'is_manager', 'type' => 'set'],
             ['columnId' => 'reports_to', 'type' => 'set'],
             ['columnId' => 'job_roles', 'type' => 'set'],
