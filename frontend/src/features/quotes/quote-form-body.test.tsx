@@ -131,8 +131,10 @@ describe('QuoteFormBody — the detail replica (spec 0197)', () => {
 
     expect(screen.getByRole('tab', { name: 'Offer' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Costs' })).toBeInTheDocument()
-    // The grid is an editor of its own: open, on its single empty row (directive 2026-09-01).
-    expect(screen.getByLabelText('Row 1 quantity')).toBeInTheDocument()
+    // The editor is open on its own (directive 2026-09-01). REQUIREMENT CHANGED
+    // (spec 0269): the pristine opening row is not drawn — the catalogue is.
+    expect(screen.getByRole('region', { name: 'Product catalogue' })).toBeInTheDocument()
+    expect(screen.getByText('No rows yet: pick the products from the catalogue.')).toBeInTheDocument()
     expect(screen.getByText('Expected revenue')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('tab', { name: 'Costs' }))

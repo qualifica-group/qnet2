@@ -1,16 +1,18 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { useForm } from 'react-hook-form'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { useForm, useWatch, type Control } from 'react-hook-form'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { Form } from '@/components/ui/form'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { QuoteCostsTab } from '@/features/quotes/quote-costs-tab'
-import type { QuoteFormValues } from '@/features/quotes/quote-schema'
+import type { QuoteFormValues, QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { ResourcePermissions } from '@/features/authorization/types'
 
-/** Spec 0065 AC-073: the Cost tab's product picker NEVER sends `category_ids`. */
+/** Spec 0065 AC-073: the Cost tab's catalogue NEVER sends `category_ids`. */
+
+const costRowsSpy = vi.fn<(rows: QuoteLineFormValues[]) => void>()
 
 const fetchForSelectMock = vi.fn()
 vi.mock('@/features/for-select/api', async () => {
@@ -23,7 +25,7 @@ vi.mock('@/features/for-select/api', async () => {
   }
 })
 
-const EMPTY_PAGE = { items: [], pagination: { offset: 0, limit: 25, total: 0 }, export_link: null }
+const EMPTY_PAGE = { items: [] as unknown[], pagination: { offset: 0, limit: 25, total: 0, has_more: false }, export_link: null }
 
 const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
   resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
@@ -54,22 +56,6 @@ const EMPTY_VALUES: QuoteFormValues = {
   cost_lines: [],
 }
 
-function Harness() {
-  const form = useForm<QuoteFormValues>({ defaultValues: EMPTY_VALUES })
-  return (
-    <Form {...form}>
-      <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
-        <QuoteCostsTab
-          control={form.control}
-          knownLines={[]}
-          vatRatePercentFor={() => null}
-          rememberVatRatePercent={vi.fn()}
-        />
-      </ResourcePermissionsProvider>
-    </Form>
-  )
-}
-
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: ReactNode }) => (
@@ -86,20 +72,69 @@ beforeEach(() => {
   fetchForSelectMock.mockResolvedValue(EMPTY_PAGE)
 })
 
-describe('QuoteCostsTab (spec 0065 AC-073)', () => {
-  it('never sends category_ids to the product picker, even with an opportunity selected', async () => {
-    render(<Harness />, { wrapper: wrapper() })
+describe('QuoteCostsTab (spec 0065 AC-073, catalogue since spec 0269)', () => {
+  const COST_PRODUCT = {
+    id: 30,
+    label: 'Docenza',
+    subtitle: null,
+    meta: {
+      category_id: 5,
+      code: 'DOC-1',
+      description: null,
+      price: '90.00',
+      cost: '40.00',
+      vat_rate_id: null,
+      vat_rate_name: null,
+      vat_rate: null,
+      unit_of_measure: null,
+      product_typology: null,
+    },
+  }
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add row' }))
-    fireEvent.click(screen.getByRole('combobox', { name: 'Row 1 product' }))
+  function RowsSpy({ control }: { control: Control<QuoteFormValues> }) {
+    costRowsSpy(useWatch({ control, name: 'cost_lines' }))
+    return null
+  }
 
-    await waitFor(() => expect(fetchForSelectMock).toHaveBeenCalledWith('products', expect.anything()))
-
-    // Spec 0142: the only scoping is the tab's own usage, never a category.
-    expect(fetchForSelectMock).toHaveBeenCalledWith(
-      'products',
-      expect.objectContaining({ params: { usage: 'COST' } }),
+  function CatalogueHarness() {
+    const form = useForm<QuoteFormValues>({ defaultValues: EMPTY_VALUES })
+    return (
+      <Form {...form}>
+        <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
+          <QuoteCostsTab control={form.control} knownLines={[]} vatRatePercentFor={() => null} rememberVatRatePercent={vi.fn()} />
+          <RowsSpy control={form.control} />
+        </ResourcePermissionsProvider>
+      </Form>
     )
+  }
+
+  // REQUIREMENT CHANGED (spec 0269): no "Add row" + per-row combobox; the
+  // catalogue lists the whole COST catalogue, still never scoped by category.
+  it('AC-009: lists the whole COST catalogue, never scoped by category, with no chips', async () => {
+    fetchForSelectMock.mockResolvedValue({ ...EMPTY_PAGE, items: [COST_PRODUCT] })
+    render(<CatalogueHarness />, { wrapper: wrapper() })
+
+    await screen.findByText('Docenza')
+    expect(fetchForSelectMock).toHaveBeenCalledWith('products', expect.objectContaining({ params: { usage: 'COST' } }))
+    expect(screen.queryByRole('group', { name: 'Filter by category' })).not.toBeInTheDocument()
+    expect(within(screen.getByRole('option', { name: /Docenza/ })).getByText(/40,00/)).toBeInTheDocument()
+  })
+
+  it('AC-009: adds the same cost product twice, at its cost price', async () => {
+    fetchForSelectMock.mockResolvedValue({ ...EMPTY_PAGE, items: [COST_PRODUCT] })
+    render(<CatalogueHarness />, { wrapper: wrapper() })
+
+    for (let pick = 0; pick < 2; pick += 1) {
+      fireEvent.click(await screen.findByRole('option', { name: /Docenza/ }))
+      fireEvent.click(screen.getByRole('button', { name: 'Add 1 selected' }))
+      await waitFor(() => expect(costRowsSpy.mock.lastCall?.[0]).toHaveLength(pick + 1))
+    }
+
+    const rows = costRowsSpy.mock.lastCall?.[0] ?? []
+    expect(rows.map((row) => [row.product_id, row.unit_price])).toEqual([[30, 40], [30, 40]])
+    expect(screen.getByRole('option', { name: /Docenza/ })).not.toHaveAttribute('aria-disabled', 'true')
+    // A cost row never carries the revenue-only additional description.
+    expect(screen.queryByRole('button', { name: 'Additional description' })).not.toBeInTheDocument()
   })
 })
 

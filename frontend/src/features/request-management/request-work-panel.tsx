@@ -21,7 +21,7 @@ import { RecordFieldChangeRequests } from '@/features/field-change-requests/reco
 import type { FieldChangeRequestResource } from '@/features/field-change-requests/types'
 import { AssignOperatorsDialog } from '@/features/leads/assign-operators-dialog'
 import { QuoteDynamicFieldsSection } from '@/features/quotes/quote-dynamic-fields-section'
-import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
+import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-types'
 import { QuoteWorkflowStatusField } from '@/features/quotes/quote-workflow-status-field'
 import { fetchRequestWorkPanel } from '@/features/request-management/api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'

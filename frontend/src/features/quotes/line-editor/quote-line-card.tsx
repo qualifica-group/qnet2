@@ -6,25 +6,25 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { ForSelectItem } from '@/features/for-select/types'
 import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
-import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
+import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-types'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import { formatQuoteAmount } from '@/features/quotes/quote-summary'
 import { computeLineAmounts } from '@/features/quotes/quote-totals'
 import type { QuoteLineVatRateRef } from '@/features/quotes/types'
 import { VAT_RATES_FOR_SELECT_RESOURCE } from '@/features/vat-rates/for-select-api'
-import type { OfferLineProductView } from './types'
+import type { QuoteLineCardSlots, QuoteLineProductView } from './types'
 
 /** `GET /vat-rates/for-select` meta: the decimal percentage of the picked rate (feeds the live preview). */
 interface VatRateForSelectItem extends ForSelectItem {
   meta: { rate: string | null }
 }
 
-interface OfferLineCardProps {
+interface QuoteLineCardProps {
   /** 1-based position among the visible rows: the row's name in every label. */
   position: number
   row: QuoteLineFormValues
   /** `undefined` while its label is still loading, or when the row lost its product (its category was dropped). */
-  product?: OfferLineProductView
+  product?: QuoteLineProductView
   categoryPath: string | null
   knownVatRate?: QuoteLineVatRateRef
   disabled: boolean
@@ -35,6 +35,8 @@ interface OfferLineCardProps {
   rememberVatRatePercent: (vatRateId: number, percent: number) => void
   onChangeField: (patch: Partial<QuoteLineFormValues>) => void
   onRemove: () => void
+  /** What the channel adds to the card (commissions, associated product, additional description). */
+  slots?: QuoteLineCardSlots
 }
 
 /** One height for the row's three controls: the VAT trigger otherwise stands taller than the inputs. */
@@ -53,12 +55,12 @@ function parseNumberInput(text: string): number | null {
 }
 
 /**
- * One offer row on two levels (spec 0268): the product — what the operator
- * reads first — then the editable amounts and their live result. Same fields
- * and the same accessible names as the Offerte row (`quotes.form.line*`), so
- * the row speaks the module's existing vocabulary.
+ * One line on two levels (spec 0268): the product — what the operator reads
+ * first — then the editable amounts and their live result; a channel's own
+ * extras ride the `slots` (spec 0269). Same fields and accessible names as
+ * the former Offerte row (`quotes.form.line*`).
  */
-export function OfferLineCard({
+export function QuoteLineCard({
   position,
   row,
   product,
@@ -71,7 +73,8 @@ export function OfferLineCard({
   rememberVatRatePercent,
   onChangeField,
   onRemove,
-}: OfferLineCardProps) {
+  slots,
+}: QuoteLineCardProps) {
   const { t } = useTranslation()
   const rowId = useId()
   const vatPercent = row.vat_rate_id === null ? null : vatRatePercentFor(row.vat_rate_id)
@@ -91,7 +94,7 @@ export function OfferLineCard({
           <div className="flex min-w-0 flex-wrap items-center gap-1.5">
             <span className="min-w-0 text-sm font-medium break-words">
               {product?.name ??
-                (row.product_id === null ? t('requestManagement.offerLines.rows.productMissing') : PENDING_LABEL)}
+                (row.product_id === null ? t('quotes.lineEditor.rows.productMissing') : PENDING_LABEL)}
             </span>
             {product?.typology ? (
               <ProductTypologyBadge name={product.typology.name} color={product.typology.color} />
@@ -110,6 +113,7 @@ export function OfferLineCard({
             </span>
           ) : null}
         </div>
+        {slots?.actions}
         <Button
           type="button"
           variant="ghost"
@@ -194,6 +198,8 @@ export function OfferLineCard({
           </div>
         )}
 
+        {slots?.extraField ? <div className="w-full max-w-60">{slots.extraField}</div> : null}
+
         <dl className="ml-auto grid grid-cols-3 gap-x-4 text-right text-xs">
           <dt className="text-muted-foreground">{t('quotes.form.lineNetHeader')}</dt>
           <dt className="text-muted-foreground">{t('quotes.form.lineVatHeader')}</dt>
@@ -203,6 +209,8 @@ export function OfferLineCard({
           <dd className="font-semibold tabular-nums">{formatQuoteAmount(amounts.total)}</dd>
         </dl>
       </div>
+
+      {slots?.footer ? <div className="ml-7">{slots.footer}</div> : null}
     </li>
   )
 }

@@ -2,57 +2,58 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { flattenForSelectPages, useForSelect } from '@/features/for-select/use-for-select'
 import { PRODUCTS_FOR_SELECT_RESOURCE } from '@/features/products/for-select-api'
-import type { OfferCatalogProduct } from './types'
-
-/** Spec 0142: the offer rows only ever take SALE products. */
-const CATALOG_USAGE = 'SALE'
+import type { ProductUsage } from '@/features/products/types'
+import type { QuoteCatalogProduct, QuoteCatalogScope } from './types'
 
 /** Starts the next page a little before the sentinel is actually visible. */
 const SENTINEL_ROOT_MARGIN = '0px 0px 80px 0px'
 
-interface UseOfferLinesCatalogArgs {
-  /** The categories of the classification: the chips, and the scope of "Tutte" (D-4). */
-  categoryIds: number[]
-  /** `false` keeps the catalogue silent: no category yet, or a read-only field (AC-011). */
+interface UseQuoteLineCatalogArgs {
+  scope: QuoteCatalogScope
+  /** Spec 0142: SALE products on revenue rows, COST products on cost rows. */
+  usage: ProductUsage
+  /** `false` keeps the catalogue silent (no category to scope by yet). */
   enabled: boolean
   /** How many more rows the card may take: caps the multi-selection (spec 0077 / MAX_LINES_PER_TAB). */
   remainingSlots: number
-  /** Products already on a row: never selectable (D-3). */
+  /** Products already on a row where the channel forbids repeats: never selectable. */
   addedProductIds: Set<number>
 }
 
+/** The `category_ids` the list sends: the chip, the whole scope, or none (whole catalogue). */
+function categoryParam(scope: QuoteCatalogScope, chipCategoryId: number | null): number[] | null {
+  if (scope.kind === 'all' || scope.fullCatalog?.active) {
+    return null
+  }
+  return chipCategoryId === null ? scope.categoryIds : [chipCategoryId]
+}
+
 /**
- * Data and selection state of the catalogue pane (spec 0268): the debounced
- * search, the active category chip, the infinite `products/for-select` list
- * scoped to the classification, and the multi-selection waiting for
+ * Data and selection state of the catalogue pane (spec 0268, 0269): the
+ * debounced search, the active category chip, the infinite
+ * `products/for-select` list, and the multi-selection waiting for
  * "Aggiungi N selezionati".
  */
-export function useOfferLinesCatalog({ categoryIds, enabled, remainingSlots, addedProductIds }: UseOfferLinesCatalogArgs) {
+export function useQuoteLineCatalog({ scope, usage, enabled, remainingSlots, addedProductIds }: UseQuoteLineCatalogArgs) {
   const [search, setSearch] = useState('')
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null)
-  const [selected, setSelected] = useState<Map<number, OfferCatalogProduct>>(() => new Map())
+  const [selected, setSelected] = useState<Map<number, QuoteCatalogProduct>>(() => new Map())
   const debouncedSearch = useDebouncedValue(search.trim())
 
-  // A chip whose category left the classification falls back to "Tutte".
-  const effectiveCategoryId =
-    activeCategoryId !== null && categoryIds.includes(activeCategoryId) ? activeCategoryId : null
+  // A chip whose category left the scope falls back to "Tutte".
+  const chipCategoryId =
+    scope.kind === 'categories' && activeCategoryId !== null && scope.categoryIds.includes(activeCategoryId)
+      ? activeCategoryId
+      : null
 
-  const params = useMemo(
-    () => ({
-      usage: CATALOG_USAGE,
-      category_ids: effectiveCategoryId === null ? categoryIds : [effectiveCategoryId],
-    }),
-    [categoryIds, effectiveCategoryId],
-  )
+  const params = useMemo((): Record<string, string | number[]> => {
+    const categoryIds = categoryParam(scope, chipCategoryId)
+    return categoryIds === null ? { usage } : { usage, category_ids: categoryIds }
+  }, [scope, chipCategoryId, usage])
 
-  const query = useForSelect({
-    resource: PRODUCTS_FOR_SELECT_RESOURCE,
-    search: debouncedSearch,
-    params,
-    enabled: enabled && categoryIds.length > 0,
-  })
+  const query = useForSelect({ resource: PRODUCTS_FOR_SELECT_RESOURCE, search: debouncedSearch, params, enabled })
   const items = useMemo(
-    () => flattenForSelectPages(query.data?.pages) as OfferCatalogProduct[],
+    () => flattenForSelectPages(query.data?.pages) as QuoteCatalogProduct[],
     [query.data?.pages],
   )
 
@@ -62,7 +63,7 @@ export function useOfferLinesCatalog({ categoryIds, enabled, remainingSlots, add
     [selected, addedProductIds],
   )
 
-  const toggle = (item: OfferCatalogProduct) => {
+  const toggle = (item: QuoteCatalogProduct) => {
     setSelected((previous) => {
       const next = new Map(previous)
       if (next.has(item.id)) {
@@ -74,16 +75,10 @@ export function useOfferLinesCatalog({ categoryIds, enabled, remainingSlots, add
     })
   }
 
-  /** Hands the selection over (to be added as rows) and empties it. */
-  const takeSelection = (): OfferCatalogProduct[] => {
-    setSelected(new Map())
-    return selectedItems
-  }
-
   return {
     search,
     setSearch,
-    activeCategoryId: effectiveCategoryId,
+    activeCategoryId: chipCategoryId,
     setActiveCategoryId,
     items,
     isPending: query.isPending && query.fetchStatus !== 'idle',
@@ -96,7 +91,8 @@ export function useOfferLinesCatalog({ categoryIds, enabled, remainingSlots, add
     selectedItems,
     canSelectMore: selectedItems.length < remainingSlots,
     toggle,
-    takeSelection,
+    /** Emptied only once the rows landed: a failed add keeps the selection to retry (spec 0269 D-6). */
+    clearSelection: () => setSelected(new Map()),
   }
 }
 

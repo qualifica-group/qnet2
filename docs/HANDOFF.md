@@ -3,7 +3,48 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0268 — Editor "Linee di prodotto" catalogo + righe (Richieste/Iscritti) — VERDE, NON COMMITTATO (2026-10-16)
+## Modulo HR — documento di prodotto, BOZZA (2026-10-16)
+
+- `docs/product/hr.md`: campi e regole del modulo HR (fonte: pagine WeA HR), con lo stato di ogni campo in qnet-2.
+  Elenca informazioni, non tabelle: dove integrarle si decide nella spec di ogni area. Nessun codice scritto.
+- Decisioni utente: dati sempre importati da `backend/app/Migrations/`; nessuna persona senza account (dipendente =
+  utente); niente SSO; assenze rinviate ma da fare (§11 del documento); mansione = ruolo di permessi Spatie, arricchito
+  dei dati organizzativi (D-6); Controllo di Gestione fuori dal documento per ora (D-7).
+- Aperte: campi *proposta* da confermare; reparti; se la posizione assegna le sue mansioni/permessi. Prossimo passo:
+  `/plan-feature` sulla struttura organizzativa (§5).
+
+## Spec 0269 — Editor catalogo + righe nel form Offerte (Prodotti e Costi) — VERDE, NON COMMITTATO (2026-10-16)
+
+- Spec `docs/specs/0269-quote-lines-catalog-editor.xml` (D-1..D-8, AC-001..AC-013). Solo frontend, backend invariato.
+- L'editor della 0268 e' ora modulo condiviso `features/quotes/line-editor/`: `QuoteLineEditor`, `QuoteLineCatalog`,
+  `QuoteCatalogItem`, `QuoteLineCard`, `useQuoteLineEditor`, `useQuoteLineCatalog`, `useNextPageSentinel`, tipi in
+  `types.ts` (`QuoteCatalogProduct`, `QuoteCatalogScope` {categories + `fullCatalog` | all},
+  `QuoteLineCommissionsAdapter`, `QuoteLineCardSlots`). Richieste/Iscritti lo montano da `RequestOfferLinesField`.
+- Offerte: `QuoteOfferTab` (scope opportunita', chip "Tutto il catalogo" = vecchio Sblocca con `unlockDialog`, single
+  mode, slot provvigioni `QuoteLineCommissionsAction` + `QuoteLineAdditionalDescription`), `QuoteCostsTab` (`{kind:'all'}`,
+  usage COST, `allowDuplicates`, slot `QuoteCostAssociationSelect`). Provvigioni in `useQuoteLineCommissions`
+  (default al multi-add tutto-o-niente, conferma + default nella sostituzione single, re-sync al cambio ruoli).
+- Helper `appendProductRows` (use-quote-lines-field.ts) con `client_key` per riga; `seedSoleProductRows` lo riusa.
+- Cancellati: `QuoteLinesField`, `QuoteLineRow`, `quote-line-grid.ts`, `addRow` e i parametri remember* di
+  `useQuoteLinesField`, chiavi i18n orfane (`offerTab.unlock/relock/hintScoped/hintUnlocked/hintSingleCategory`,
+  `form.lineProduct/lineAdd/linesEmpty/lineRemoveHeader`). Tipi `QuoteLineRowErrors`/`QuoteCostOfferLineOption` in
+  `quote-line-types.ts`, `knownVatRatesFrom` in `quote-line-values.ts`. i18n editor: `quotes.lineEditor.*`.
+- Test: nuovi `use-quote-line-commissions.test.tsx`; riscritti `quote-offer-tab.test.tsx`, `quote-costs-tab.test.tsx`,
+  `quote-line-additional-description.test.tsx`; adeguati `quote-form-body`/`quote-form-seeded-products` (REQUIREMENT
+  CHANGED dichiarati). Lead: 222 file / 1793 test verdi su quotes, request-management, help, i18n, fatture, costi commessa,
+  commesse, contratti; tsc -b pulito.
+- Manuale: guide in-app `quotes` IT/EN; manuale Claude Docs (sezione righe offerta/costo + risoluzione problemi).
+- Verifier: AC-001..AC-013 PASS (vitest completo 8298/8298, tsc -b pulito, backend non toccato). Riserve chiuse dal
+  lead: `knownVatRatesFrom` interno a `QuoteLineEditor` (prop `knownVatRates` rimossa, `quote-line-values.ts` torna a
+  311 righe come prima); nuovo `line-editor/quote-line-card.test.tsx` (codice, UdM, IVA manuale -> cache, slot);
+  AC-007 apre `QuoteCommissionsDialog` dalla card; AC-010 test catalogo -> PATCH in `quote-detail-inline-edit.test.tsx`.
+  Ultimo giro mirato: 223 file / 1798 test verdi.
+- Ritocco utente: catalogo e righe sono UN blocco (`QuoteLineEditor`: una cornice `rounded-lg border bg-surface`,
+  divisorio `border-r` affiancati / `border-t` impilati); i due pannelli non hanno piu' bordo proprio.
+- Soft limit: `quote-detail-inline-edit.test.tsx` ora 327 righe (era 288): candidato a split del harness in fixture.
+- Segnalato, fuori scope: `features/quotes/column-renderers.tsx` ha un errore ESLint react-refresh preesistente.
+
+## Spec 0268 — Editor "Linee di prodotto" catalogo + righe (Richieste/Iscritti) — VERDE, COMMITTATO 8dd24577 (2026-10-16)
 
 - Spec `docs/specs/0268-offer-lines-catalog-editor.xml` (D-1..D-7, AC-001..AC-017). Decisioni utente: layout catalogo a
   sinistra + righe a due livelli a destra; tutte e tre le superfici (dialog cella, scheda, Nuova richiesta) di Richieste

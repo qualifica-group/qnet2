@@ -19,7 +19,7 @@ const guide: HelpGuide = {
             "Apri **Offerte** e clicca **Nuova offerta** (oppure parti dalla scheda dell'opportunità).",
             "Nei **Dati offerta** scegli l'**Opportunità**: Commerciale, Segnalatore, Supervisore, Gestori account e Sede operativa vengono precompilati dall'opportunità (puoi cambiarli).",
             'Compila le altre righe che ti servono (vedi tabella).',
-            'In fondo, nella scheda **Offerta** aggiungi le righe dei prodotti venduti e nella scheda **Costi** le righe di costo: le griglie sono già aperte e il riepilogo si aggiorna mentre scrivi.',
+            'In fondo, nella scheda **Offerta** aggiungi le righe dei prodotti venduti scegliendoli dal **Catalogo prodotti** e nella scheda **Costi** le righe di costo: gli editor sono già aperti e il riepilogo si aggiorna mentre scrivi.',
             'Clicca **Salva** (in alto o in fondo): QNet controlla tutti i campi e crea l\'offerta; gli errori compaiono sotto le righe da correggere.',
           ],
         },
@@ -85,7 +85,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            "Le righe **Offerta** e **Costi** hanno una matita ciascuna: si apre la griglia di modifica e il riepilogo sotto mostra i totali di ciò che stai scrivendo. Se i nuovi prodotti portano altre Informazioni aggiuntive, compaiono sotto la griglia: compilale nello stesso salvataggio (quelle obbligatorie servono per salvare).",
+            "Le righe **Offerta** e **Costi** hanno una matita ciascuna: si apre l'editor con il catalogo e le righe, e il riepilogo sotto mostra i totali di ciò che stai scrivendo. Se i nuovi prodotti portano altre Informazioni aggiuntive, compaiono sotto la griglia: compilale nello stesso salvataggio (quelle obbligatorie servono per salvare).",
             "I **Buoni** si modificano dalla riga **Segnalatore**. Cambiando Commerciale, Segnalatore o Supervisore QNet aggiorna da sé le commissioni delle righe.",
             "Cambiando la **Società** la **Società sede** viene svuotata nello stesso salvataggio.",
           ],
@@ -118,7 +118,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Colonna', 'Significato'],
           rows: [
-            ['**Prodotto** / **Codice**', 'Il prodotto scelto.'],
+            ['**Prodotto** / **Codice**', 'Il prodotto scelto dal catalogo.'],
             ['**Quantità**', 'Maggiore di zero, al massimo 2 decimali.'],
             ['**Unita**', "L'unità di misura."],
             ['**Prezzo unitario**', 'Non negativo, al massimo 2 decimali.'],
@@ -129,8 +129,11 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'Nella scheda **Offerta** scegli solo prodotti **Vendibile** (prezzo proposto: prezzo di vendita); nella scheda **Costi** solo prodotti **Utilizzabile come costo** (prezzo proposto: costo).',
-            'Scelto il prodotto, QNet precompila unità, prezzo e IVA: puoi modificarli.',
+            "Ogni scheda ha a sinistra il **Catalogo prodotti** e a destra le righe (**Righe dell'offerta** / **Righe di costo**); su schermi stretti stanno uno sotto l'altro. Cerca per nome o descrizione: ogni prodotto mostra nome, codice, tipologia, prezzo con unità di misura (nella scheda Costi il prezzo di costo), percorso della categoria e descrizione.",
+            'Spunta uno o più prodotti e premi **Aggiungi N selezionati**: nasce una riga per prodotto con quantità 1 e prezzo (vendita o costo) e IVA del prodotto, modificabili. Nella scheda **Offerta** vengono caricate anche le provvigioni predefinite di ogni prodotto: se il caricamento fallisce non viene aggiunta nessuna riga e la selezione resta, per riprovare.',
+            "Ogni riga è una card su due livelli: prodotto, codice e tipologia; sotto quantità × prezzo unitario, IVA e imponibile/IVA/totale. In fondo trovi il **Totale offerta** / **Totale costi**.",
+            'Per cambiare il prodotto di una riga, rimuovila e scegli il nuovo prodotto dal catalogo.',
+            'La scheda **Costi** mostra tutto il catalogo dei prodotti di costo, senza filtro per categoria, e lo stesso prodotto si può aggiungere più volte.',
             '**Descrizione aggiuntiva** aggiunge un testo alla riga, stampabile nel preventivo.',
             "Le **Commissioni** di ogni riga si possono aprire e modificare solo per quella riga. Il popup mostra in alto imponibile della riga, costi imputati, base di calcolo e totale commissioni; per ogni ruolo un'etichetta indica l'origine della commissione (**Regola: Prodotto**, **Regola: Categoria** o **Regola personale** se viene da una regola del Configuratore, **Modifica manuale** se è stata cambiata a mano; passando sopra l'etichetta compare la spiegazione). In modifica, ogni ruolo mostra anche il **Calcolo di sistema** (quanto prevede il Configuratore Commissioni): se hai cambiato il valore a mano puoi tenerlo oppure tornare al calcolo con **Applica calcolo di sistema**.",
             'Ogni riga di costo ha un **Prodotto associato**: scegli "Nessuno (costo generico)" oppure una riga del tab Prodotti, per imputare quel costo a quella vendita. Eliminando la riga prodotto associata, il costo torna automaticamente "Nessuno".',
@@ -139,7 +142,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "I prodotti sono limitati alle categorie dell'opportunità; **Mostra tutti i prodotti** apre l'intero catalogo (la nuova categoria viene aggiunta all'opportunità).",
+          text: "Nella scheda **Offerta** il catalogo mostra i prodotti delle categorie dell'opportunità, con la chip **Tutte** e una chip per categoria. La chip **Tutto il catalogo** chiede conferma e poi mostra tutto il catalogo (la nuova categoria viene aggiunta all'opportunità); cliccando **Tutte** o una categoria si torna al filtro. Un prodotto già nelle righe è **Già aggiunto** e non si può selezionare. Se l'opportunità è gestita su una sola categoria non ci sono le caselle: il clic su un prodotto sostituisce quello della riga (con conferma se le provvigioni vanno rigenerate).",
         },
         {
           type: 'paragraph',

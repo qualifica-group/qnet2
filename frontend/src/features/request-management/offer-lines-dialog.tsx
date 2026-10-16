@@ -13,7 +13,7 @@ import { Form } from '@/components/ui/form'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { ResourcePermissionsProvider, useResourcePermissions } from '@/features/authorization/permissions'
-import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
+import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-types'
 import { fetchRequestWorkPanel } from '@/features/request-management/api'
 import {
   OfferLinesDialogContext,

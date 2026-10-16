@@ -4,42 +4,46 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { formatEuro } from '@/features/invoices/invoice-format'
 import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
-import type { OfferCatalogProduct } from './types'
+import type { QuoteLineVariant } from '@/features/quotes/use-quote-lines-field'
+import type { QuoteCatalogProduct } from './types'
 
-interface OfferCatalogItemProps {
-  item: OfferCatalogProduct
+interface QuoteCatalogItemProps {
+  item: QuoteCatalogProduct
+  /** Which of the product's prices the row will take (D-6 of spec 0065): shown on the item. */
+  variant: QuoteLineVariant
   /** "Radice > Categoria", resolved by the caller off the cached category tree. */
   categoryPath: string | null
-  /** `single` mode (D-6): a plain pick, no checkbox. */
+  /** `single` mode: a plain pick, no checkbox. */
   singleSelect: boolean
   selected: boolean
-  /** Already on a row (D-3): shown, never pickable. */
+  /** Already on a row where the channel forbids repeats: shown, never pickable. */
   alreadyAdded: boolean
   /** Not pickable for another reason: the selection already fills every free row. */
   disabled: boolean
-  onActivate: (item: OfferCatalogProduct) => void
+  onActivate: (item: QuoteCatalogProduct) => void
 }
 
 /**
- * One product of the catalogue (spec 0268 AC-003), CRM-style: the name and
+ * One product of the catalogue (spec 0268 AC-003, 0269), CRM-style: the name and
  * the commercial facts that decide the pick (typology, price per unit) on the
  * first line, code and category path on the second, the description last.
  * The whole row is the option: the checkbox is its visual state, not a second
  * focus stop.
  */
-export function OfferCatalogItem({
+export function QuoteCatalogItem({
   item,
+  variant,
   categoryPath,
   singleSelect,
   selected,
   alreadyAdded,
   disabled,
   onActivate,
-}: OfferCatalogItemProps) {
+}: QuoteCatalogItemProps) {
   const { t } = useTranslation()
   const blocked = alreadyAdded || disabled
   const { meta } = item
-  const price = formatEuro(meta.price)
+  const price = formatEuro(variant === 'revenue' ? meta.price : meta.cost)
   const unit = meta.unit_of_measure?.symbol
 
   const activate = () => {
@@ -89,7 +93,7 @@ export function OfferCatalogItem({
           ) : null}
           <span className="shrink-0 text-xs leading-5 font-medium tabular-nums">
             {price === '' ? (
-              <span className="font-normal text-muted-foreground">{t('requestManagement.offerLines.catalog.noPrice')}</span>
+              <span className="font-normal text-muted-foreground">{t('quotes.lineEditor.catalog.noPrice')}</span>
             ) : (
               <>
                 {price}
@@ -105,7 +109,7 @@ export function OfferCatalogItem({
           {categoryPath ? <span className="truncate" title={categoryPath}>{categoryPath}</span> : null}
           {alreadyAdded ? (
             <Badge variant="secondary" className="ml-auto px-1.5 py-0 text-[11px]">
-              {t('requestManagement.offerLines.catalog.alreadyAdded')}
+              {t('quotes.lineEditor.catalog.alreadyAdded')}
             </Badge>
           ) : null}
         </div>

@@ -5,15 +5,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import type { ForSelectParams, ForSelectItem, PaginatedResponse } from '@/features/for-select/types'
 import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
-import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
+import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-types'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import { EMPTY_LINE_ROW } from '@/features/quotes/use-quote-lines-field'
-import { OfferLinesEditor, type OfferLinesEditorProps } from './offer-lines-editor'
-import type { OfferCatalogProduct } from './types'
+import { QuoteLineEditor, type QuoteLineEditorProps } from './quote-line-editor'
+import type { QuoteCatalogProduct, QuoteCatalogScope } from './types'
 
 /**
- * Spec 0268: the "catalogo + righe" editor of Gestione Richieste / Iscritti,
- * exercised on its own with the for-select endpoint mocked at the API seam.
+ * Spec 0268/0269: the "catalogo + righe" line editor shared by Gestione
+ * Richieste/Iscritti and the Offerte form, exercised on its own with the for-select endpoint mocked at the API seam.
  */
 
 const ROOT_ID = 10
@@ -46,7 +46,7 @@ const TREE: ProductCategoryTreeNode[] = [
   treeNode(ROOT_ID, 'Formazione', [treeNode(CATEGORY_A, 'Sicurezza', [], ROOT_ID), treeNode(CATEGORY_B, 'Primo soccorso', [], ROOT_ID)]),
 ]
 
-function product(id: number, label: string, overrides: Partial<OfferCatalogProduct['meta']> = {}): OfferCatalogProduct {
+function product(id: number, label: string, overrides: Partial<QuoteCatalogProduct['meta']> = {}): QuoteCatalogProduct {
   return {
     id,
     label,
@@ -67,6 +67,8 @@ function product(id: number, label: string, overrides: Partial<OfferCatalogProdu
   }
 }
 
+const SCOPE_A_B: QuoteCatalogScope = { kind: 'categories', categoryIds: [CATEGORY_A, CATEGORY_B] }
+
 const SAFETY = product(900, 'Corso Sicurezza Base')
 const FIRST_AID = product(901, 'Corso Primo Soccorso', { category_id: CATEGORY_B, price: null })
 
@@ -82,25 +84,26 @@ vi.mock('@/features/for-select/api', () => ({
 
 const onChangeSpy = vi.fn()
 
-type HarnessProps = Partial<Omit<OfferLinesEditorProps, 'value' | 'onChange'>> & { initialRows?: QuoteLineFormValues[] }
+type HarnessProps = Partial<Omit<QuoteLineEditorProps, 'value' | 'onChange'>> & { initialRows?: QuoteLineFormValues[] }
 
 function Harness({ initialRows = [EMPTY_LINE_ROW], ...props }: HarnessProps) {
   const [rows, setRows] = useState(initialRows)
   return (
-    <OfferLinesEditor
+    <QuoteLineEditor
       value={rows}
       onChange={(next) => {
         onChangeSpy(next)
         setRows(next)
       }}
+      variant="revenue"
       disabled={false}
-      categoryIds={[CATEGORY_A, CATEGORY_B]}
+      catalogScope={SCOPE_A_B}
+      lockedHint="Scegli prima una categoria prodotto: limita i prodotti selezionabili."
       categoryTree={TREE}
       maxRows={200}
       singleCategoryMode={false}
       simplified={false}
       knownLines={[]}
-      knownVatRates={[]}
       vatRatePercentFor={(id) => (id === 7 ? 22 : null)}
       rememberVatRatePercent={() => {}}
       {...props}
@@ -144,7 +147,7 @@ beforeEach(() => {
   })
 })
 
-describe('OfferLinesEditor — catalogo', () => {
+describe('QuoteLineEditor — catalogo', () => {
   it('AC-002: scopes the list to the classification and narrows it with a category chip', async () => {
     renderEditor()
 
@@ -188,7 +191,7 @@ describe('OfferLinesEditor — catalogo', () => {
   })
 
   it('AC-011: without any category the catalogue is locked and fetches nothing', () => {
-    renderEditor({ categoryIds: [] })
+    renderEditor({ catalogScope: { kind: 'categories', categoryIds: [] } })
 
     expect(screen.getByText('Scegli prima una categoria prodotto: limita i prodotti selezionabili.')).toBeInTheDocument()
     expect(screen.getByRole('searchbox')).toBeDisabled()
@@ -196,7 +199,7 @@ describe('OfferLinesEditor — catalogo', () => {
   })
 })
 
-describe('OfferLinesEditor — scelta e righe', () => {
+describe('QuoteLineEditor — scelta e righe', () => {
   it('AC-005: adds every selected product as a precompiled row, filling the pristine one first', async () => {
     renderEditor()
     await screen.findByText('Corso Sicurezza Base')

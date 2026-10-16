@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0269-quote-lines-catalog-editor" status="approved" owner="utente" date="2026-10-16">
+
+  <goal>
+    Il form Offerte (schede Prodotti e Costi, in creazione e nel dettaglio) compone le righe con lo
+    stesso editor "catalogo + righe" introdotto dalla spec 0268 per Gestione Richieste/Iscritti,
+    mantenendo provvigioni, descrizione aggiuntiva, prodotto associato, riepilogo e margini.
+  </goal>
+
+  <context>
+    <!-- Fatti verificati nel repo il 2026-10-16. -->
+    <fact>Editor 0268 oggi in `features/request-management/offer-lines-editor/` (`OfferLinesEditor`,
+      `OfferLinesCatalog`, `OfferCatalogItem`, `OfferLineCard`, `useOfferLinesEditor`,
+      `useOfferLinesCatalog`, `useNextPageSentinel`, tipi `OfferCatalogProduct`/`OfferLineProductView`),
+      montato da `RequestOfferLinesField`. Chiavi i18n `requestManagement.offerLines.catalog.*`/`.rows.*`.</fact>
+    <fact>Offerte: `QuoteOfferLinesEditor`/`QuoteCostLinesEditor` (`quote-lines-editors.tsx`) montano
+      `QuoteOfferTab`/`QuoteCostsTab`, usati da `quote-create-lines.tsx` (creazione) e
+      `quote-detail-lines.tsx` (dettaglio, modifica in place spec 0197). Entrambe le schede montano
+      `QuoteLinesField` -> `QuoteLineRow` -> `QuoteProductSelect`, grid `quote-line-grid.ts`.</fact>
+    <fact>`QuoteOfferTab`: scope = categorie delle `product_lines` dell'opportunita' (`fetchOpportunity`),
+      "Sblocca"/"Ri-blocca" con `useConfirm` (`quotes.form.offerTab.unlockDialog.*`), cap `single`
+      (`resolveManagementMode`), hint `hintNoOpportunity`/`hintSingleCategory`/`hintUnlocked`/
+      `hintNoCategories`/`hintScoped`, `commissionContext` {quoteId, commercialId, reporterId,
+      supervisorId}, `allocatedCostNetByOfferLineKey(cost_lines)` (spec 0145), cache
+      `rememberProductTypology`/`rememberProductName`.</fact>
+    <fact>Logica provvigioni oggi in `QuoteLinesField`: al pick `fetchQuoteCommissionDefaults`
+      ({quote_id?, product_id, line_net_amount, commercial_id, reporter_id, supervisor_id}) ->
+      `commissions` + `supplier_commission_direction`; conferma `quotes.form.commissions.regenerate*`
+      su cambio prodotto; effetto di ri-sincronizzazione al cambio ruoli
+      (`fetchQuoteCommissionRecipients` + defaults); errore -> toast `quotes.form.commissions.defaultsError`.
+      Per riga: `QuoteCommissionsDialog` (pulsante HandCoins, permesso campo `commissions`) e
+      `QuoteLineAdditionalDescription` (solo revenue con provvigioni).</fact>
+    <fact>`QuoteCostsTab`: nessun filtro categoria, `usage: 'COST'`, prezzo da `meta.cost`
+      (`lineValuesFromProduct(item, 'cost')`), colonna "Prodotto associato" (`offerLineOptions` dalle
+      righe offerta con `client_key`, `sanitizeCostOfferLineKeys`, spec 0144).</fact>
+    <fact>`seedSoleProductRows` (autofill Richieste) crea righe da `EMPTY_LINE_ROW` senza `client_key`
+      e sempre variant `revenue`: le righe offerta delle Offerte devono avere `client_key`
+      (`createEmptyLineRow`) perche' le righe costo vi si associano.</fact>
+    <fact>Consumatori esterni a `features/quotes`: `QuoteProductSelect` (fatture, fatture passive, costi
+      commessa) resta; `QuoteLineRowErrors` e `knownVatRatesFrom` importati da request-management;
+      `quote-line-grid.ts`, `QuoteLineRow`, `QuoteLinesField` usati solo dalle due schede Offerte.</fact>
+    <fact>Nessun cambio backend: `GET /products/for-select` espone gia' `usage`, `meta.cost`,
+      `meta.description` (0268), `meta.product_typology.color`.</fact>
+    <decision id="D-1">Schede Prodotti E Costi col nuovo editor (utente 2026-10-16).</decision>
+    <decision id="D-2">"Sblocca" diventa la chip "Tutto il catalogo" in coda alle chip categoria; il
+      clic apre la stessa conferma di oggi (`unlockDialog`); confermato, la lista non manda
+      `category_ids`. Cliccare "Tutte" o una categoria torna allo scope (= "Ri-blocca"). Nessun
+      pulsante separato (utente 2026-10-16).</decision>
+    <decision id="D-3">Duplicati: scheda Prodotti blocca ("Gia' aggiunto", come 0268); scheda Costi li
+      permette, ogni pick aggiunge una riga (utente 2026-10-16).</decision>
+    <decision id="D-4">Cambio prodotto di una riga: si rimuove la riga e si sceglie il nuovo prodotto
+      dal catalogo, come in Richieste (utente 2026-10-16). Unica eccezione la modalita' `single`
+      (0268 D-6): il pick sostituisce il prodotto della riga unica, con la conferma di rigenerazione
+      provvigioni se la riga ne ha.</decision>
+    <decision id="D-5">L'editor diventa un modulo condiviso di dominio offerta in
+      `features/quotes/line-editor/` (le righe sono un concetto delle Offerte; request-management
+      importa gia' da `features/quotes`). I file 0268 si spostano li', generalizzati con: `variant`
+      ('revenue'|'cost'), `allowDuplicates`, scope catalogo `{ kind: 'categories', ids } | { kind:
+      'all' }`, prezzo mostrato da `meta.price` o `meta.cost`, slot della card `actions` (livello 1),
+      `extraField` (livello 2), `footer` (livello 3). Le chiavi i18n passano a `quotes.lineEditor.*`
+      (le `requestManagement.offerLines.catalog/rows.*` vengono cancellate).</decision>
+    <decision id="D-6">Multi-add con provvigioni (Prodotti): i default di tutti i prodotti scelti si
+      caricano in parallelo; se una richiesta fallisce, toast `defaultsError` e nessuna riga aggiunta
+      (operazione atomica, la selezione resta per riprovare).</decision>
+    <decision id="D-7">Righe nuove sempre da `createEmptyLineRow()` (con `client_key`) tramite un
+      helper condiviso `appendProductRows(rows, products, { maxRows, variant, simplified,
+      allowDuplicates })` in `features/quotes`; `seedSoleProductRows` lo riusa (comportamento
+      invariato, piu' il `client_key`).</decision>
+    <decision id="D-8">Codice morto rimosso: `QuoteLinesField`, `QuoteLineRow`, `quote-line-grid.ts` e
+      i loro test vengono cancellati; `QuoteLineRowErrors`, `QuoteCostOfferLineOption`,
+      `knownProductsFrom`, `knownVatRatesFrom` si spostano in `quote-line-types.ts` /
+      `quote-line-values.ts`. La logica provvigioni esce da `QuoteLinesField` in un hook
+      `useQuoteLineCommissions`.</decision>
+  </context>
+
+  <scope>
+    <in>
+      <item>Spostamento e generalizzazione dell'editor 0268 in `features/quotes/line-editor/`
+        (con i suoi test), import aggiornati in request-management, comportamento 0268 invariato.</item>
+      <item>`appendProductRows` condiviso (D-7) e `seedSoleProductRows` che lo usa.</item>
+      <item>Hook `useQuoteLineCommissions`: default al multi-add (D-6), conferma + default sulla
+        sostituzione single (D-4), ri-sincronizzazione al cambio ruoli (comportamento attuale).</item>
+      <item>`QuoteOfferTab` sull'editor: scope opportunita', chip "Tutto il catalogo" (D-2), cap
+        single, hint attuali, card con pulsante provvigioni + `QuoteCommissionsDialog`, descrizione
+        aggiuntiva, cache tipologia/nome, base costi imputati (spec 0145).</item>
+      <item>`QuoteCostsTab` sull'editor: catalogo `usage: COST` senza scope ne' chip, prezzo da
+        `meta.cost`, duplicati permessi (D-3), select "Prodotto associato" nel livello 2 della card.</item>
+      <item>Cancellazione codice morto (D-8) e migrazione dei test che lo coprivano
+        (REQUIREMENT CHANGED dichiarato).</item>
+      <item>i18n `quotes.lineEditor.*` IT+EN; guide in-app `quotes` IT+EN; manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Backend: nessuna modifica (endpoint, regole, payload invariati).</item>
+      <item>Altri picker prodotto: fatture, fatture passive, costi commessa (`QuoteProductSelect` resta).</item>
+      <item>Lista righe in sola lettura del dettaglio (`quote-lines-read-only.tsx`) e PDF.</item>
+      <item>Calcoli provvigioni/margini/riepilogo: si riusano, non si cambiano.</item>
+      <item>Riordino drag&amp;drop delle righe; azione "Cambia prodotto" (D-4).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/products/for-select">
+      <request>Invariata. Prodotti: usage=SALE, category_ids = scope o assente con "Tutto il catalogo".
+        Costi: usage=COST, mai category_ids.</request>
+      <response status="200">Invariata (shape della spec 0268, incluso meta.description).</response>
+      <errors>Invariati.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/quotes/commission-defaults, /api/quotes/commission-recipients (fetchQuoteCommissionDefaults, fetchQuoteCommissionRecipients)">
+      <request>Invariata: chiamata una volta per prodotto aggiunto (line_net_amount = 1 * prezzo).</request>
+      <response status="200">Invariata.</response>
+      <errors>Errore -> toast `quotes.form.commissions.defaultsError`, nessuna riga aggiunta (D-6).</errors>
+    </endpoint>
+    <frontend_contract>
+      Valori form invariati: `offer_lines`/`cost_lines` come `QuoteLineFormValues[]`; payload di
+      creazione e di modifica in place invariati (`toLineInputs`, `commissions`,
+      `additional_description`, `offer_line_id`/`offer_line_index`).
+      Editor condiviso `QuoteLineEditor` (`features/quotes/line-editor/`, props principali): `value`,
+      `onChange`, `variant` ('revenue'|'cost'), `disabled`, `catalogScope: { kind: 'categories';
+      categoryIds; fullCatalog?: { active; onActivate; onRelease } } | { kind: 'all' }`, `lockedHint?`,
+      `categoryTree`, `maxRows`, `singleCategoryMode`, `simplified?`, `allowDuplicates?`, `knownLines`,
+      `knownVatRates`, `errors?`, `vatRatePercentFor`, `rememberVatRatePercent`,
+      `commissions?: QuoteLineCommissionsAdapter` (da `useQuoteLineCommissions`: `defaultsForNewRows`,
+      `defaultsForReplacement`, null = nulla cambia), `onProductsPicked?` (cache tipologia/nome),
+      `renderRowSlots?: (row, index, position, product) => { actions?, extraField?, footer? }`,
+      `catalogListClassName?`. Helper condiviso: `appendProductRows(rows, products, { maxRows, variant,
+      simplified?, allowDuplicates?, extraFor? })` in `use-quote-lines-field.ts`.
+    </frontend_contract>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato lo spostamento in `features/quotes/line-editor/` quando si eseguono i test
+      di request-management e quelli dell'editor 0268 (spostati) allora passano tutti con le stesse
+      asserzioni (nessun cambio di comportamento in Richieste/Iscritti). (Vitest, regressione)</criterion>
+    <criterion id="AC-002">Data un'offerta con opportunita' su categorie A e B quando si apre la scheda
+      Prodotti allora il catalogo chiede usage=SALE e category_ids=[A,B] e mostra le chip Tutte, A, B,
+      "Tutto il catalogo"; senza opportunita' compare `hintNoOpportunity` e il catalogo e' bloccato;
+      con opportunita' senza categorie compare `hintNoCategories`. (Vitest)</criterion>
+    <criterion id="AC-003">Dato il catalogo Prodotti quando si clicca "Tutto il catalogo" allora si apre
+      la conferma `unlockDialog`; confermata, la richiesta parte senza category_ids e la chip risulta
+      attiva; annullata, nulla cambia; poi il clic su "Tutte" torna a category_ids=[A,B]. (Vitest)</criterion>
+    <criterion id="AC-004">Dati due prodotti selezionati nella scheda Prodotti quando si preme "Aggiungi
+      2 selezionati" allora `fetchQuoteCommissionDefaults` e' chiamato una volta per prodotto con
+      product_id, line_net_amount=prezzo e i ruoli correnti, e il form ha 2 righe con quantity=1,
+      unit_price=meta.price, commissions dai default, supplier_commission_direction, client_key non
+      vuoto; tipologia e nome finiscono nelle cache del riepilogo. (Vitest)</criterion>
+    <criterion id="AC-005">Dato un errore di `fetchQuoteCommissionDefaults` durante l'aggiunta allora
+      compare il toast `defaultsError`, nessuna riga viene aggiunta e la selezione resta. (Vitest)</criterion>
+    <criterion id="AC-006">Dato un prodotto gia' nelle righe Prodotti allora nel catalogo e' "Gia'
+      aggiunto" e non selezionabile; dato un'opportunita' single con una riga che ha provvigioni,
+      quando si sceglie un altro prodotto allora compare la conferma di rigenerazione e, confermata,
+      la riga cambia prodotto con i nuovi default; annullata, resta invariata. (Vitest)</criterion>
+    <criterion id="AC-007">Data una riga Prodotti quando si clicca il pulsante provvigioni allora si apre
+      `QuoteCommissionsDialog` con numero riga, nome prodotto e base (incluso il costo imputato,
+      spec 0145); il salvataggio aggiorna `commissions` della riga; senza permesso di vista sul campo
+      `commissions` il pulsante non c'e'. La descrizione aggiuntiva si apre e si salva sulla riga.
+      (Vitest, test migrati da `quote-lines-field-commissions` / `quote-line-row`)</criterion>
+    <criterion id="AC-008">Dato un cambio di commerciale/segnalatore/supervisore quando le righe hanno
+      prodotti allora le provvigioni si ri-sincronizzano come oggi (ruolo seguito dal nuovo titolare,
+      ruolo senza titolare rimosso, default aggiunti per i ruoli cambiati). (Vitest, test migrato)</criterion>
+    <criterion id="AC-009">Data la scheda Costi quando si apre allora il catalogo chiede usage=COST senza
+      category_ids, non mostra chip ne' "Tutto il catalogo", mostra il prezzo di costo; aggiungendo
+      due volte lo stesso prodotto si ottengono due righe con unit_price=meta.cost; ogni card ha la
+      select "Prodotto associato" con le righe offerta che hanno un prodotto. (Vitest)</criterion>
+    <criterion id="AC-010">Dato il form di creazione e la modifica in place del dettaglio quando si
+      salvano righe aggiunte dal catalogo allora il payload ha la shape attuale (offer_lines con
+      commissions e additional_description, cost_lines con offer_line_index/offer_line_id). (Vitest,
+      test payload esistenti + uno nuovo per superficie)</criterion>
+    <criterion id="AC-011">Dopo la migrazione `QuoteLinesField`, `QuoteLineRow` e `quote-line-grid.ts` non
+      esistono piu' e nessun file li importa; `QuoteProductSelect` resta usato da fatture e costi
+      commessa; i test di fatture/costi commessa passano invariati. (grep + Vitest)</criterion>
+    <criterion id="AC-012">Guide in-app IT ed EN `quotes` descrivono catalogo, chip "Tutto il catalogo",
+      duplicati per scheda, provvigioni e prodotto associato sulla card; parity test verde; manuale
+      Claude Docs aggiornato. (Vitest + review)</criterion>
+    <criterion id="AC-013">Typecheck `tsc -b --force` e ESLint puliti; ogni file nuovo o toccato sotto le
+      300 righe. (comandi)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; nessuna modifica backend.</item>
+    <item>Riuso obbligatorio: `lineValuesFromProduct`, `simplifiedLineValuesFromProduct`,
+      `createEmptyLineRow`, `isPristineLineRow`, `computeLineAmounts`, `aggregateLines`,
+      `allocatedCostNetByOfferLineKey`, `sanitizeCostOfferLineKeys`, `QuoteCommissionsDialog`,
+      `QuoteLineAdditionalDescription`, `fetchQuoteCommissionDefaults`/`Recipients`, `useConfirm`.</item>
+    <item>Authz invariata: permessi di campo `offer_lines`/`cost_lines`/`commissions` letti come oggi
+      (`MetaField`, `useResourcePermissions`); il server resta autorevole su ogni regola.</item>
+    <item>Superfici dai token come 0268 (pannelli `bg-surface`, card `bg-card`, tinta `bg-muted/40`),
+      default compatti, nessun colore hard-coded.</item>
+    <item>File &lt;= 300 righe; logica nei custom hook; i test cambiati dichiarano REQUIREMENT CHANGED.</item>
+    <item>Nessun commit/branch senza ordine esplicito (CLAUDE.md §3.6).</item>
+  </constraints>
+
+</spec>

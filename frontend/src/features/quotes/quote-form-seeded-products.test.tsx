@@ -157,6 +157,8 @@ it('opens on one empty offer row when the link carries no product', async () => 
   renderForm({ opportunity_id: 25 })
 
   await waitFor(() => expect(rowValue('Opportunity')).toContain('OPP_25'))
-  expect(screen.getByLabelText('Row 1 quantity')).toHaveValue(null)
-  expect(screen.queryByLabelText('Row 2 quantity')).not.toBeInTheDocument()
+  // REQUIREMENT CHANGED (spec 0269): the pristine opening row stays in the
+  // form but is not drawn — the editor shows its empty state.
+  expect(screen.getByText('No rows yet: pick the products from the catalogue.')).toBeInTheDocument()
+  expect(screen.queryByLabelText('Row 1 quantity')).not.toBeInTheDocument()
 })

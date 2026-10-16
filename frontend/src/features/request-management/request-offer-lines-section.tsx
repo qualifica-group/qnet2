@@ -9,11 +9,11 @@ import { resolveManagementMode, resolveSimplifiedOfferLine } from '@/features/pr
 import type { ProductLineRow } from '@/features/product-lines/types'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
 import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
-import { knownVatRatesFrom } from '@/features/quotes/quote-lines-field'
-import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
+import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-types'
 import { MAX_LINES_PER_TAB, type QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteLine } from '@/features/quotes/types'
-import { OfferLinesEditor } from '@/features/request-management/offer-lines-editor/offer-lines-editor'
+import { QuoteLineEditor } from '@/features/quotes/line-editor/quote-line-editor'
+import type { QuoteCatalogScope } from '@/features/quotes/line-editor/types'
 import { useOfferLinesAutofill } from '@/features/request-management/use-offer-lines-autofill'
 
 /**
@@ -48,10 +48,10 @@ const EMPTY_TREE: ProductCategoryTreeNode[] = []
  * heading. The work panel and the create form keep mounting
  * `RequestOfferLinesSection` below, which is this field plus that card.
  *
- * The editor is the "catalogo + righe" `OfferLinesEditor` (spec 0268): the
+ * The editor is the "catalogo + righe" `QuoteLineEditor` (spec 0268): the
  * same `offer_lines` rows the Offerte form writes (`QuoteLineFormValues`, the
  * same server rules), composed from a scoped product catalogue instead of a
- * per-row picker. The Offerte module keeps its own `QuoteLinesField`.
+ * per-row picker. The Offerte form mounts the very same editor (spec 0269).
  *
  * What this module adds or leaves out compared with `QuoteOfferTab`:
  *  - no provvigioni: the endpoint prohibits the block, so whatever the
@@ -119,7 +119,7 @@ export function RequestOfferLinesField<TFieldValues extends RequestOfferLinesFor
     simplified,
   })
 
-  const knownVatRates = useMemo(() => knownVatRatesFrom(knownLines), [knownLines])
+  const catalogScope = useMemo<QuoteCatalogScope>(() => ({ kind: 'categories', categoryIds }), [categoryIds])
 
   return (
     // The editor's rows pane already titles the collection ("Righe
@@ -138,17 +138,18 @@ export function RequestOfferLinesField<TFieldValues extends RequestOfferLinesFor
 
           return (
             <div className="flex flex-col gap-2">
-              <OfferLinesEditor
+              <QuoteLineEditor
                 value={rows}
                 onChange={field.onChange}
+                variant="revenue"
                 disabled={disabled}
-                categoryIds={categoryIds}
+                catalogScope={catalogScope}
+                lockedHint={t('requestManagement.offerLines.hintNoCategory')}
                 categoryTree={categoryTree}
                 maxRows={singleCategoryMode ? 1 : MAX_LINES_PER_TAB}
                 singleCategoryMode={singleCategoryMode}
                 simplified={simplified}
                 knownLines={knownLines}
-                knownVatRates={knownVatRates}
                 errors={errors}
                 vatRatePercentFor={vatRatePercentFor}
                 rememberVatRatePercent={rememberVatRatePercent}

@@ -1,33 +1,34 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch, type Control } from 'react-hook-form'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { Form } from '@/components/ui/form'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
+import { fetchQuoteCommissionDefaults } from '@/features/quotes/api'
 import { QuoteOfferTab } from '@/features/quotes/quote-offer-tab'
-import type { QuoteFormValues } from '@/features/quotes/quote-schema'
+import type { QuoteFormValues, QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { OpportunityDetailWithPermissions } from '@/features/opportunities/types'
+import type { ForSelectParams } from '@/features/for-select/types'
 
 /**
- * Spec 0065 AC-072: the Offer tab's product picker defaults to the SELECTED
- * opportunity's own product-line categories; unlocking (confirmed) drops it.
- * Spec 0077 (user directive 2026-08-07): an opportunity managed on a `single`
- * product category caps the offer at ONE row — resolved from the same cached
- * category tree the product-line pickers read.
+ * Spec 0065 AC-072 + spec 0269: the Offer tab's catalogue defaults to the
+ * SELECTED opportunity's own product-line categories; the "Whole catalogue"
+ * chip (confirmed) drops that scope. Spec 0077: a `single` category caps the
+ * offer at one row, so the catalogue turns into a single pick. REQUIREMENT
+ * CHANGED (spec 0269): rows come from the catalogue, not from "Add row" + a
+ * per-row product combobox.
  */
 
-/** Mutable so a test can swap the mode the opportunity's category resolves to. */
 const { categoryTree } = vi.hoisted(() => ({ categoryTree: { nodes: [] as unknown[] } }))
 
 vi.mock('@/features/product-categories/use-product-category-tree', () => ({
   useProductCategoryTree: () => ({ data: categoryTree.nodes, isPending: false, isError: false }),
 }))
 
-/** A tree of one root + its two categories, all carrying $mode (mirrored server-side onto every descendant). */
 function treeWithMode(mode: 'single' | 'multiple') {
   const node = (overrides: Record<string, unknown>) => ({
     parent_id: null,
@@ -37,6 +38,7 @@ function treeWithMode(mode: 'single' | 'multiple') {
     business_function_id: null,
     requires_quote: false,
     is_selectable: true,
+    is_active: true,
     management_mode: mode,
     ...overrides,
   })
@@ -52,29 +54,44 @@ function treeWithMode(mode: 'single' | 'multiple') {
   ]
 }
 
+function product(id: number, label: string) {
+  return {
+    id,
+    label,
+    subtitle: null,
+    meta: {
+      category_id: 7,
+      code: `W-${id}`,
+      description: null,
+      price: '50.00',
+      cost: '20.00',
+      vat_rate_id: null,
+      vat_rate_name: null,
+      vat_rate: null,
+      unit_of_measure: null,
+      product_typology: { id: 3, name: 'Course', color: 'blue' },
+    },
+  }
+}
+
+const CATALOGUE = [product(20, 'Widget Pro'), product(21, 'Widget Lite')]
+
 const fetchForSelectMock = vi.fn()
 vi.mock('@/features/for-select/api', async () => {
-  const actual = await vi.importActual<typeof import('@/features/for-select/api')>(
-    '@/features/for-select/api',
-  )
-  return {
-    ...actual,
-    fetchForSelect: (resource: string, params: unknown) => fetchForSelectMock(resource, params),
-  }
+  const actual = await vi.importActual<typeof import('@/features/for-select/api')>('@/features/for-select/api')
+  return { ...actual, fetchForSelect: (resource: string, params: unknown) => fetchForSelectMock(resource, params) }
 })
 
 const fetchOpportunityMock = vi.fn()
 vi.mock('@/features/opportunities/api', async () => {
-  const actual = await vi.importActual<typeof import('@/features/opportunities/api')>(
-    '@/features/opportunities/api',
-  )
-  return {
-    ...actual,
-    fetchOpportunity: (id: number) => fetchOpportunityMock(id),
-  }
+  const actual = await vi.importActual<typeof import('@/features/opportunities/api')>('@/features/opportunities/api')
+  return { ...actual, fetchOpportunity: (id: number) => fetchOpportunityMock(id) }
 })
 
-const EMPTY_PAGE = { items: [], pagination: { offset: 0, limit: 25, total: 0 }, export_link: null }
+vi.mock('@/features/quotes/api', async () => {
+  const actual = await vi.importActual<typeof import('@/features/quotes/api')>('@/features/quotes/api')
+  return { ...actual, fetchQuoteCommissionDefaults: vi.fn(), fetchQuoteCommissionRecipients: vi.fn() }
+})
 
 const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
   resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
@@ -85,71 +102,47 @@ const FULL_ACCESS_PERMISSIONS: ResourcePermissions = {
 function opportunityFixture(): OpportunityDetailWithPermissions {
   return {
     id: 55,
-    name: 'OPP_55',
-    registry_id: 1,
-    registry: { id: 1, name: 'ACME' },
-    referent_id: null,
-    referent: null,
-    commercial_id: null,
-    commercial: null,
-    reporter_id: null,
-    reporter: null,
-    supervisor_id: null,
-    supervisor: null,
-    source_id: null,
-    source: null,
     product_lines: [
       { id: 1, business_function: { id: 1, name: 'Sales' }, product_category: { id: 7, name: 'Widgets' } },
       { id: 2, business_function: { id: 1, name: 'Sales' }, product_category: { id: 9, name: 'Gadgets' } },
     ],
-    lead_id: null,
-    lead: null,
-    managers: [],
-    start_date: null,
-    expected_close_date: null,
-    estimated_value: null,
-    success_probability: 0,
-    general_notes: null,
-    created_at: '2026-01-01T00:00:00Z',
-    updated_at: '2026-01-01T00:00:00Z',
     permissions: FULL_ACCESS_PERMISSIONS,
   } as unknown as OpportunityDetailWithPermissions
 }
 
-const EMPTY_VALUES: QuoteFormValues = {
-  code: 'QUO-0001',
-  title: '',
-  quote_date: '2026-03-15',
+const EMPTY_VALUES = {
   opportunity_id: 55,
-  quote_workflow_status_id: null,
-  note: null,
-  commercial_id: null,
+  commercial_id: 4,
   reporter_id: null,
   supervisor_id: null,
-  manager_slots: [],
-  company_id: null,
-  company_site_id: null,
-  operational_site_id: null,
-  layout_id: null,
-  payment_method_id: null,
-  internal_notes: null,
-  rewards: [],
-  attribute_values: {},
   offer_lines: [],
   cost_lines: [],
+} as unknown as QuoteFormValues
+
+const rowsSpy = vi.fn<(rows: QuoteLineFormValues[]) => void>()
+const rememberProductTypology = vi.fn()
+const rememberProductName = vi.fn()
+
+function RowsSpy({ control }: { control: Control<QuoteFormValues> }) {
+  rowsSpy(useWatch({ control, name: 'offer_lines' }))
+  return null
 }
 
-function Harness() {
-  const form = useForm<QuoteFormValues>({ defaultValues: EMPTY_VALUES })
+function Harness({ permissions = FULL_ACCESS_PERMISSIONS, values = EMPTY_VALUES }: { permissions?: ResourcePermissions; values?: QuoteFormValues }) {
+  const form = useForm<QuoteFormValues>({ defaultValues: values })
   return (
     <Form {...form}>
-      <ResourcePermissionsProvider permissions={FULL_ACCESS_PERMISSIONS}>
+      <ResourcePermissionsProvider permissions={permissions}>
         <QuoteOfferTab
           control={form.control}
           knownLines={[]}
           vatRatePercentFor={() => null}
           rememberVatRatePercent={vi.fn()}
+          rememberProductTypology={rememberProductTypology}
+          rememberProductName={rememberProductName}
+          quoteId={9}
         />
+        <RowsSpy control={form.control} />
       </ResourcePermissionsProvider>
     </Form>
   )
@@ -164,84 +157,142 @@ function wrapper() {
   )
 }
 
-async function addRowAndOpenProductPicker() {
-  fireEvent.click(screen.getByRole('button', { name: 'Add row' }))
-  fireEvent.click(screen.getByRole('combobox', { name: 'Row 1 product' }))
-  await waitFor(() => expect(fetchForSelectMock).toHaveBeenCalledWith('products', expect.anything()))
+/** The last catalogue request (not an ids-keyed label lookup). */
+function lastCatalogParams() {
+  const calls = fetchForSelectMock.mock.calls.filter(([resource, params]) => resource === 'products' && !(params as ForSelectParams).ids?.length)
+  return (calls[calls.length - 1]?.[1] as ForSelectParams | undefined)?.params
 }
+
+const chips = () => within(screen.getByRole('group', { name: 'Filter by category' }))
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
 beforeEach(() => {
-  fetchForSelectMock.mockReset()
-  fetchForSelectMock.mockResolvedValue(EMPTY_PAGE)
-  fetchOpportunityMock.mockReset()
+  vi.clearAllMocks()
+  fetchForSelectMock.mockImplementation((resource: string, params: ForSelectParams = {}) => {
+    // `ids[]` hydration answers the asked products, as ProductService::appendHydratedIds does.
+    const items = resource !== 'products' ? [] : params.ids?.length ? CATALOGUE.filter((item) => params.ids?.includes(item.id)) : CATALOGUE
+    return Promise.resolve({ items, pagination: { offset: 0, limit: 25, total: items.length, has_more: false }, export_link: null })
+  })
   fetchOpportunityMock.mockResolvedValue(opportunityFixture())
+  vi.mocked(fetchQuoteCommissionDefaults).mockReset().mockResolvedValue({ commissions: [], supplier_commission_direction: null })
   categoryTree.nodes = treeWithMode('multiple')
 })
 
-describe('QuoteOfferTab (spec 0065 AC-072)', () => {
-  it("scopes the product picker to the opportunity's product-line categories by default", async () => {
+describe('QuoteOfferTab — catalogo (spec 0269)', () => {
+  it("AC-002: scopes the catalogue to the opportunity's categories, with the chips", async () => {
     render(<Harness />, { wrapper: wrapper() })
 
-    // Wait for the resolved categories to actually reach the row (not just
-    // for the fetch to have fired): until then the picker is locked-without-
-    // scope (AC-072's OWN empty-categories branch) and disabled.
-    await screen.findByText("Products limited to the linked opportunity's categories.")
-    await addRowAndOpenProductPicker()
-
-    expect(fetchForSelectMock).toHaveBeenCalledWith(
-      'products',
-      expect.objectContaining({ params: { usage: 'SALE', category_ids: [7, 9] } }),
-    )
+    await screen.findByText('Widget Pro')
+    expect(lastCatalogParams()).toEqual({ usage: 'SALE', category_ids: [7, 9] })
+    expect(chips().getAllByRole('button').map((chip) => chip.textContent)).toEqual(['All', 'Widgets', 'Gadgets', 'Whole catalogue'])
   })
 
-  it('stops sending category_ids once the operator confirms the unlock', async () => {
+  it('AC-002: locks the catalogue until an opportunity is chosen', () => {
+    render(<Harness values={{ ...EMPTY_VALUES, opportunity_id: null } as unknown as QuoteFormValues} />, { wrapper: wrapper() })
+
+    expect(screen.getByText('Select an opportunity first.')).toBeInTheDocument()
+    expect(screen.getByRole('searchbox')).toBeDisabled()
+  })
+
+  it('AC-003: the whole-catalogue chip asks first, then drops the scope until a category chip is picked again', async () => {
     render(<Harness />, { wrapper: wrapper() })
+    await screen.findByText('Widget Pro')
 
-    await screen.findByText("Products limited to the linked opportunity's categories.")
-
-    fireEvent.click(screen.getByRole('button', { name: 'Show all products' }))
+    fireEvent.click(chips().getByRole('button', { name: 'Whole catalogue' }))
     const dialog = await screen.findByRole('alertdialog')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Show all products' }))
 
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: "Limit to the opportunity's categories" })).toBeInTheDocument(),
-    )
+    await waitFor(() => expect(lastCatalogParams()).toEqual({ usage: 'SALE' }))
+    expect(chips().getByRole('button', { name: 'Whole catalogue' })).toHaveAttribute('aria-pressed', 'true')
 
-    fetchForSelectMock.mockClear()
-    await addRowAndOpenProductPicker()
-
-    // Spec 0142: unlocked means no category scope; the tab's usage stays.
-    expect(fetchForSelectMock).toHaveBeenCalledWith(
-      'products',
-      expect.objectContaining({ params: { usage: 'SALE' } }),
-    )
+    fireEvent.click(chips().getByRole('button', { name: 'All' }))
+    await waitFor(() => expect(lastCatalogParams()).toEqual({ usage: 'SALE', category_ids: [7, 9] }))
   })
 
-  it('caps the offer at one row when the opportunity is managed on a single product category', async () => {
+  it('AC-003: a cancelled confirmation keeps the scope', async () => {
+    render(<Harness />, { wrapper: wrapper() })
+    await screen.findByText('Widget Pro')
+
+    fireEvent.click(chips().getByRole('button', { name: 'Whole catalogue' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Cancel' }))
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(chips().getByRole('button', { name: 'Whole catalogue' })).toHaveAttribute('aria-pressed', 'false')
+    expect(lastCatalogParams()).toEqual({ usage: 'SALE', category_ids: [7, 9] })
+  })
+
+  it('AC-006: a single-managed opportunity turns the catalogue into a single pick', async () => {
     categoryTree.nodes = treeWithMode('single')
     render(<Harness />, { wrapper: wrapper() })
+    await screen.findByText('Widget Pro')
 
-    await screen.findByText('The opportunity is managed on a single product category: its offer may carry one row only.')
+    expect(screen.queryByRole('button', { name: /^Add \d/ })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('option', { name: /Widget Pro/ }))
 
-    const addRow = screen.getByRole('button', { name: 'Add row' })
-    expect(addRow).toBeEnabled()
+    await waitFor(() => expect(rowsSpy).toHaveBeenLastCalledWith([expect.objectContaining({ product_id: 20 })]))
+  })
+})
 
-    fireEvent.click(addRow)
+describe('QuoteOfferTab — righe e provvigioni (spec 0269)', () => {
+  it('AC-004: adds every selected product with its commission defaults and feeds the summary caches', async () => {
+    vi.mocked(fetchQuoteCommissionDefaults).mockResolvedValue({ commissions: [], supplier_commission_direction: 'RECEIVED' })
+    render(<Harness />, { wrapper: wrapper() })
+    await screen.findByText('Widget Pro')
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Add row' })).toBeDisabled())
+    fireEvent.click(screen.getByRole('option', { name: /Widget Pro/ }))
+    fireEvent.click(screen.getByRole('option', { name: /Widget Lite/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add 2 selected' }))
+
+    await waitFor(() => expect(rowsSpy.mock.lastCall?.[0]).toHaveLength(2))
+    const rows = rowsSpy.mock.lastCall?.[0] ?? []
+    expect(fetchQuoteCommissionDefaults).toHaveBeenCalledWith(expect.objectContaining({ quote_id: 9, product_id: 20, line_net_amount: 50, commercial_id: 4 }))
+    expect(rows[0]).toMatchObject({ product_id: 20, quantity: 1, unit_price: 50, supplier_commission_direction: 'RECEIVED' })
+    expect(rows[0].client_key).toEqual(expect.any(String))
+    expect(rows[1].client_key).not.toBe(rows[0].client_key)
+    expect(rememberProductTypology).toHaveBeenCalledWith(20, 3)
+    expect(rememberProductName).toHaveBeenCalledWith(21, 'Widget Lite')
   })
 
-  it('leaves the offer free to grow on a multiple-mode opportunity', async () => {
+  it('AC-005: a failed default adds nothing and keeps the selection', async () => {
+    vi.mocked(fetchQuoteCommissionDefaults).mockRejectedValue(new Error('down'))
     render(<Harness />, { wrapper: wrapper() })
+    await screen.findByText('Widget Pro')
 
-    await screen.findByText("Products limited to the linked opportunity's categories.")
+    fireEvent.click(screen.getByRole('option', { name: /Widget Pro/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add 1 selected' }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add row' }))
+    await waitFor(() => expect(fetchQuoteCommissionDefaults).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add 1 selected' })).toBeEnabled())
+    expect(rowsSpy).toHaveBeenLastCalledWith([])
+    expect(screen.getByRole('option', { name: /Widget Pro/ })).toHaveAttribute('aria-selected', 'true')
+  })
 
-    expect(screen.getByRole('button', { name: 'Add row' })).toBeEnabled()
+  it('AC-006/AC-007: a row card blocks its product in the catalogue and carries commissions and the additional description', async () => {
+    const row = { product_id: 20, quantity: 1, unit_price: 50, vat_rate_id: null, commissions: [], client_key: 'k1' }
+    render(<Harness values={{ ...EMPTY_VALUES, offer_lines: [row] } as unknown as QuoteFormValues} />, { wrapper: wrapper() })
+    await screen.findByText('Widget Lite')
+
+    expect(screen.getByRole('option', { name: /Widget Pro/ })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'Additional description' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Commissions for line 1' }))
+    expect(await screen.findByRole('dialog', { name: /Widget Pro.*1/ })).toBeInTheDocument()
+  })
+
+  it('AC-007: hides the commissions control when the commissions field is not visible', async () => {
+    const row = { product_id: 20, quantity: 1, unit_price: 50, vat_rate_id: null, commissions: [], client_key: 'k1' }
+    const hidden = { visible: false, hidden: true, editable: false, readonly: true, required: false, disabled: true }
+    render(
+      <Harness
+        permissions={{ ...FULL_ACCESS_PERMISSIONS, fields: { commissions: hidden } }}
+        values={{ ...EMPTY_VALUES, offer_lines: [row] } as unknown as QuoteFormValues}
+      />,
+      { wrapper: wrapper() },
+    )
+    await screen.findByText('Widget Lite')
+
+    expect(screen.queryByRole('button', { name: 'Commissions for line 1' })).not.toBeInTheDocument()
   })
 })

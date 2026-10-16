@@ -83,6 +83,37 @@ export const quotes = {
     documentForbidden: "You don't have permission to generate this document.",
     documentGenericError: 'Unable to generate the document. Please try again.',
   },
+  /**
+   * The "catalogue + rows" editor shared by Quotes (Products and Costs tabs)
+   * and Request/Enrollee Management (spec 0268, 0269).
+   */
+  lineEditor: {
+    catalog: {
+      title: 'Product catalogue',
+      search: 'Search by name or description…',
+      categories: 'Filter by category',
+      allCategories: 'All',
+      fullCatalog: 'Whole catalogue',
+      list: 'Catalogue products',
+      empty: 'No products found.',
+      error: 'Could not load the products.',
+      alreadyAdded: 'Already added',
+      noPrice: 'No price set',
+      addSelected_one: 'Add {{count}} selected',
+      addSelected_other: 'Add {{count}} selected',
+      addNone: 'Select the products to add',
+      singleHint: 'Single-row category: the product you pick replaces the one on the row.',
+      limitReached: 'You reached the maximum number of rows.',
+    },
+    rows: {
+      titleRevenue: 'Offer rows',
+      titleCost: 'Cost rows',
+      empty: 'No rows yet: pick the products from the catalogue.',
+      totalRevenue: 'Offer total',
+      totalCost: 'Cost total',
+      productMissing: 'Product no longer available for the chosen categories: remove the row and pick one from the catalogue.',
+    },
+  },
   form: {
     newQuote: 'New quote',
     createTitle: 'Create quote',
@@ -198,12 +229,7 @@ export const quotes = {
     offerTab: {
       fieldLabel: 'Offer rows',
       hintNoOpportunity: 'Select an opportunity first.',
-      hintScoped: "Products limited to the linked opportunity's categories.",
       hintNoCategories: 'The opportunity has no categories yet: add one, or unlock the whole catalogue.',
-      hintUnlocked: 'Full product catalogue, no category filter.',
-      hintSingleCategory: 'The opportunity is managed on a single product category: its offer may carry one row only.',
-      unlock: 'Show all products',
-      relock: "Limit to the opportunity's categories",
       unlockDialog: {
         title: 'Show all products?',
         description:
@@ -250,8 +276,6 @@ export const quotes = {
     lineNetHeader: 'Net',
     lineVatHeader: 'VAT',
     lineTotalHeader: 'Total',
-    lineRemoveHeader: 'Remove row',
-    lineProduct: 'Row {{n}} product',
     lineProductPlaceholder: 'Select a product…',
     lineProductSearch: 'Search products…',
     lineProductEmpty: 'No products found.',
@@ -275,8 +299,6 @@ export const quotes = {
     lineAdditionalDescriptionAdd: 'Additional description',
     lineAdditionalDescriptionPlaceholder: 'Extra text for this row, printable in the quote document',
     lineAdditionalDescriptionRemove: 'Remove row {{n}} additional description',
-    lineAdd: 'Add row',
-    linesEmpty: 'No rows added yet.',
     linesMax: 'You can add at most 200 rows per tab.',
     offerLinesRequired: 'The quote must contain at least one product row.',
     offerLinesRequiredForStatus: 'You cannot move the quote to this status without at least one product row.',
