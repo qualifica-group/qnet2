@@ -20,6 +20,7 @@ export const activityLog = {
     updated: 'Modifica',
     deleted: 'Eliminazione',
     restored: 'Ripristino',
+    moved: 'Spostamento (organigramma)',
   },
   modules: {
     user: 'Utente',
@@ -81,6 +82,9 @@ export const activityLog = {
     value: 'Valore',
     parent_id: 'Elemento padre',
     manager_id: 'Responsabile',
+    manager: 'Responsabile',
+    function_parent: 'Funzione padre',
+    person_function: 'Funzione aziendale',
     is_business_unit: 'Business Unit',
     is_business_service: 'Business Service',
     project_id: 'Progetto',

@@ -30,6 +30,7 @@ export const activityLog = {
     updated: 'Updated',
     deleted: 'Deleted',
     restored: 'Restored',
+    moved: 'Moved (org chart)',
   },
   modules: {
     user: 'User',
@@ -91,6 +92,9 @@ export const activityLog = {
     value: 'Value',
     parent_id: 'Parent',
     manager_id: 'Responsible',
+    manager: 'Manager',
+    function_parent: 'Parent function',
+    person_function: 'Business function',
     is_business_unit: 'Business Unit',
     is_business_service: 'Business Service',
     project_id: 'Project',

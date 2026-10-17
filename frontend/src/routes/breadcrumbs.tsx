@@ -49,6 +49,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'collective-agreements': 'navigation.collectiveAgreements',
   'job-roles': 'navigation.jobRoles',
   'job-activities': 'navigation.jobActivities',
+  'org-chart': 'navigation.orgChart',
   'purchase-request-priorities': 'navigation.purchaseRequestPriorities',
   'purchase-order-statuses': 'navigation.purchaseOrderStatuses',
   'purchase-request-line-statuses': 'navigation.purchaseRequestLineStatuses',

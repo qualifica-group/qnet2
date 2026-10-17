@@ -110,14 +110,16 @@ commerciali, che valgono anche per la regola della funzione obbligatoria), funzi
 
 ## 6. Organigramma
 
-La stessa struttura vista dall'alto, non un disegno separato.
+La stessa struttura vista dall'alto, non un disegno separato: presente (spec 0273), pagina Amministrazione >
+Organigramma con due alberi espandibili.
 
 | Campo | Significato | Oggi in qnet-2 |
 |---|---|---|
-| Unità | riquadri dell'organigramma (*proposta*: ricavati dalle funzioni) | **da aggiungere**; oggi esiste solo l'albero dei responsabili nel team del segnatempo |
-| Ruolo nell'unità | i ruoli dentro ogni riquadro | **da aggiungere** |
-| Assegnazione | chi occupa quale ruolo | **da aggiungere** |
-| Registro spostamenti | chi ha spostato cosa | coperto dall'activity log (regola 5) |
+| Vista Funzioni | albero delle funzioni aziendali con responsabile, persone e mansioni | presente (spec 0273) |
+| Vista Persone | chi riporta a chi | presente (spec 0273) |
+| Spostamenti | cambiare responsabile, spostare una funzione sotto un'altra, spostare una persona di funzione (trascinamento o "Sposta in…") | presente (spec 0273); lo spostamento di funzione cambia le competenze commerciali |
+| Registro spostamenti | chi ha spostato cosa | presente: activity log "Spostamento" sulla persona o sulla funzione |
+| Unità e ruoli separati dalle funzioni | riquadri e ruoli propri dell'organigramma | non previsti: l'organigramma si ricava dalle funzioni aziendali |
 
 ## 7. Allocazioni e costo del personale
 

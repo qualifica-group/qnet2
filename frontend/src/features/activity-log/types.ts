@@ -6,7 +6,7 @@
  */
 
 /** Spatie activitylog event names, as emitted by `LogsModelActivity`. */
-export type ActivityLogEvent = 'created' | 'updated' | 'deleted' | 'restored'
+export type ActivityLogEvent = 'created' | 'updated' | 'deleted' | 'restored' | 'moved'
 
 /**
  * Timeline narrowing sent as the `event` query param; `'all'` is the absence

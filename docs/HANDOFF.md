@@ -23,7 +23,26 @@
 - Manuale: guida in-app `migrations` IT+EN (nota Prodotti di costo) e manuale Claude Docs (paragrafo dopo
   "[OLD] Costi") aggiornati. Help vitest 131/131, ESLint ok, tsc -b ok.
 
-## Spec 0272 — Modulo HR passo 2: scheda dipendente (storico contrattuale, CCNL, IBAN, recapiti di lavoro, cessati) — VERDE, NON COMMITTATO (2026-10-16, branch feature/hr)
+## Spec 0273 — Modulo HR: Organigramma — VERDE, COMMITTATO (2026-10-16, branch feature/hr)
+
+- Spec `docs/specs/0273-hr-org-chart.xml`; `docs/product/hr.md` §6 aggiornato. Nessuna migrazione, nessun importer.
+- Pagina Amministrazione > Organigramma (`/org-chart`, permesso `org-chart.view` generato da `OrgChartAuthorization`
+  come request-statistics): schede Funzioni (albero `parent_id`, persone = righe `employment_product_lines`, nodo
+  "Tutte le funzioni" per covers_all) e Persone (Riporta a; chi ha piu' responsabili compare sotto ciascuno).
+- API: `GET /api/org-chart/functions|people` (6 query per vista); spostamenti `POST /api/org-chart/people/{user}/manager`
+  {from_manager_id,to_manager_id}, `/functions/{id}/parent` {parent_id}, `/people/{user}/function`
+  {from_function_id,to_function_id} (righe di F1 -> una riga F2 a funzione intera). Vincoli: anti-ciclo persone
+  (`TimeEntrySubordinateResolver`) e funzioni (`BusinessFunctionService::assertNoCycle`, ora pubblico, messaggi in
+  `lang/*/business_functions.php`), is_manager, covers_all, persona senza profilo = 422. Permessi: users.update /
+  business-functions.update + campo modificabile (403).
+- Registro: activity log `org-chart`/evento `moved` sul soggetto; `ActivityLogEntryResource` lo rende come una voce
+  {field: manager|function_parent|person_function}; frontend activity-log conosce l'evento `moved`.
+- Frontend: `features/org-chart/` (albero accessibile role tree, ricerca, espandi/comprimi, "Sposta in…" + drag
+  @dnd-kit solo puntatore fine), rotte HR in `routes/hr-routes.tsx` e Task in `routes/task-routes.tsx` (router.tsx 439).
+- Note: `DemoOpportunitySeederTest` e' flaky (dati casuali, spec 0077), non legato a 0273. Manuale Claude Docs: nuova
+  sezione Organigramma da scrivere.
+
+## Spec 0272 — Modulo HR passo 2: scheda dipendente (storico contrattuale, CCNL, IBAN, recapiti di lavoro, cessati) — VERDE, COMMITTATO 1660f477 (2026-10-16, branch feature/hr)
 
 - Spec `docs/specs/0272-hr-employee-record.xml` rev.3; `docs/product/hr.md` §3/§4 aggiornati. Nessun importer nuovo.
 - Storico: `employment_contracts` (append-only: si cancella solo l'ultima, 409 altrimenti; `ends_on` derivata). API

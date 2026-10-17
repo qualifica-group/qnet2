@@ -112,6 +112,28 @@ describe('ActivityLogSection', () => {
     expect(screen.queryByText('8')).not.toBeInTheDocument()
   })
 
+  it('spec 0273: shows an org chart move with its event badge and the from -> to names', async () => {
+    fetchActivityLogMock.mockResolvedValue(
+      page({
+        items: [
+          entry({
+            event: 'moved',
+            changes: [
+              { field: 'manager', old_value: 3, new_value: 8, old_display: 'Anna Ceo', new_display: 'Bruno Lead' },
+            ],
+          }),
+        ],
+      }),
+    )
+
+    renderSection()
+
+    await waitFor(() => expect(screen.getByText('Moved (org chart)')).toBeInTheDocument())
+    expect(screen.getByText('Manager')).toBeInTheDocument()
+    expect(screen.getByText('Anna Ceo')).toBeInTheDocument()
+    expect(screen.getByText('Bruno Lead')).toBeInTheDocument()
+  })
+
   it('shows the extracted text of a rich text field, never the markup (D-13/AC-025)', async () => {
     fetchActivityLogMock.mockResolvedValue(
       page({

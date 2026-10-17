@@ -22,6 +22,9 @@ class ActivityLogEntryResource extends JsonResource
 
     private const string LIST_SEPARATOR = ', ';
 
+    /** Org chart move (spec 0273 D-8): `{ kind, from: {id,name}|null, to: {id,name}|null }`. */
+    private const string EVENT_MOVED = 'moved';
+
     /**
      * @param  Activity  $resource
      * @param  array<string, array<string, array<int, string>>>  $labels  [subject_type alias][field][id] => label, resolved for the whole page (see ForeignKeyLabelResolver)
@@ -74,6 +77,11 @@ class ActivityLogEntryResource extends JsonResource
     private function changes(Activity $activity): array
     {
         $properties = $activity->properties ?? new Collection;
+
+        if ($activity->event === self::EVENT_MOVED) {
+            return $this->moveChanges($properties);
+        }
+
         $attributes = collect($properties->get('attributes', []));
         $old = collect($properties->get('old', []));
 
@@ -92,6 +100,28 @@ class ActivityLogEntryResource extends JsonResource
             ->map(fn (array $change): array => [...$change, ...$this->display($activity->subject_type, $change)])
             ->values()
             ->all();
+    }
+
+    /**
+     * A `moved` entry carries no attributes/old pair: it is shown as ONE
+     * change on the move `kind`, its ids as values and the names (stored at
+     * move time, so a later rename or delete cannot rewrite history) as the
+     * display labels.
+     *
+     * @return array<int, array{field: string, old_value: mixed, new_value: mixed, old_display: string|null, new_display: string|null}>
+     */
+    private function moveChanges(Collection $properties): array
+    {
+        $from = $properties->get('from');
+        $to = $properties->get('to');
+
+        return [[
+            'field' => (string) $properties->get('kind'),
+            'old_value' => $from['id'] ?? null,
+            'new_value' => $to['id'] ?? null,
+            'old_display' => $from['name'] ?? null,
+            'new_display' => $to['name'] ?? null,
+        ]];
     }
 
     /**

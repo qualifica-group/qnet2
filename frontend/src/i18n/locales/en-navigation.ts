@@ -85,6 +85,7 @@ export const navigation = {
   collectiveAgreements: 'Collective agreements',
   jobRoles: 'Job roles',
   jobActivities: 'Activities',
+  orgChart: 'Org chart',
   purchaseRequestPriorities: 'RDA priorities',
   purchaseOrderStatuses: 'ODA statuses',
   purchaseRequestLineStatuses: 'RDA line statuses',

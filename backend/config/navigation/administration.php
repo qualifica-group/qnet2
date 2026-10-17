@@ -20,6 +20,14 @@ return [
             'permission' => 'users.view',
         ],
         [
+            // HR org chart (spec 0273): functions tree and reporting lines.
+            'key' => 'org-chart',
+            'label' => 'navigation.orgChart',
+            'icon' => 'workflow',
+            'route' => '/org-chart',
+            'permission' => 'org-chart.view',
+        ],
+        [
             'key' => 'roles',
             'label' => 'navigation.roles',
             'icon' => 'shield-check',

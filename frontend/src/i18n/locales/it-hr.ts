@@ -6,9 +6,11 @@
 import { collectiveAgreements } from './it-collective-agreements'
 import { jobActivities } from './it-job-activities'
 import { jobRoles } from './it-job-roles'
+import { orgChart } from './it-org-chart'
 
 export const hr = {
   collectiveAgreements,
   jobActivities,
   jobRoles,
+  orgChart,
 }

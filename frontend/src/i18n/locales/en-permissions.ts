@@ -150,6 +150,7 @@ export const permissions = {
     'collective-agreements': 'Collective agreements',
     'job-roles': 'Job roles',
     'job-activities': 'Activities',
+    'org-chart': 'Org chart',
     'purchase-request-priorities': 'RDA priorities',
     'purchase-order-statuses': 'ODA statuses',
     'purchase-request-line-statuses': 'RDA line statuses',

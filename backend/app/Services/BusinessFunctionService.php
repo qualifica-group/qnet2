@@ -217,16 +217,16 @@ class BusinessFunctionService
      * descendants (i.e. $businessFunction may not be an ancestor of the
      * prospective new parent) — either would create a cycle in the tree.
      */
-    private function assertNoCycle(BusinessFunction $businessFunction, int $parentId): void
+    public function assertNoCycle(BusinessFunction $businessFunction, int $parentId): void
     {
         if ($parentId === $businessFunction->id) {
-            abort(422, 'A business function cannot be its own parent.');
+            abort(422, __('business_functions.cannot_be_own_parent'));
         }
 
         $parent = BusinessFunction::find($parentId);
 
         if ($parent !== null && $this->hierarchy->isAncestorOf($parent, $businessFunction->id)) {
-            abort(422, 'A business function cannot be moved under one of its own descendants.');
+            abort(422, __('business_functions.cannot_move_under_descendant'));
         }
     }
 }

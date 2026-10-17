@@ -86,6 +86,7 @@ export const navigation = {
   collectiveAgreements: 'CCNL',
   jobRoles: 'Mansioni',
   jobActivities: 'Attività',
+  orgChart: 'Organigramma',
   purchaseRequestPriorities: 'Priorità RDA',
   purchaseOrderStatuses: 'Stati ODA',
   purchaseRequestLineStatuses: 'Stati righe RDA',

@@ -76,6 +76,7 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'job-roles',
   'collective-agreements',
   'job-activities',
+  'org-chart',
   'sectors',
   'tags',
   'sources',

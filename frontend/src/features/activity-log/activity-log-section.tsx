@@ -30,6 +30,7 @@ const EVENT_BADGE_VARIANT: Record<ActivityLogEvent, 'default' | 'secondary' | 'd
   updated: 'secondary',
   deleted: 'destructive',
   restored: 'outline',
+  moved: 'outline',
 }
 
 /**

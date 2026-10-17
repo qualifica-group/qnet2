@@ -153,6 +153,7 @@ export const permissions = {
     'collective-agreements': 'CCNL',
     'job-roles': 'Mansioni',
     'job-activities': 'Attività',
+    'org-chart': 'Organigramma',
     'purchase-request-priorities': 'Priorità RDA',
     'purchase-order-statuses': 'Stati ODA',
     'purchase-request-line-statuses': 'Stati righe RDA',

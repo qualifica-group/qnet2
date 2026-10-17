@@ -113,6 +113,9 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // spec 0185 `request-statistics` (RequestStatisticsAuthorization: a view-only module, no
         // field — registered only so its permission is assignable from the Role form).
         'request-statistics',
+        // spec 0273 `org-chart` (OrgChartAuthorization: a view-only page, no field — registered only so
+        // `org-chart.view` is assignable from the Role form).
+        'org-chart',
         // spec 0266 `ledger` (LedgerAuthorization: a view-only module, no field — registered only so
         // `ledger.view` is assignable from the Role form under the Accounting area).
         'ledger',

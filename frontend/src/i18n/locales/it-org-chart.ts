@@ -1,0 +1,55 @@
+/**
+ * Organigramma HR (spec 0273). File affiancato per mantenere `it.ts` entro i limiti dimensionali.
+ */
+
+export const orgChart = {
+  title: 'Organigramma',
+  subtitle: 'Chi lavora in quale funzione e chi riporta a chi.',
+  forbidden: "Non hai i permessi per visualizzare l'organigramma.",
+  loading: "Caricamento dell'organigramma…",
+  loadError: "Impossibile caricare l'organigramma. Riprova più tardi.",
+  tabs: {
+    functions: 'Funzioni',
+    people: 'Persone',
+  },
+  type: {
+    business_unit: 'Business unit',
+    business_service: 'Business service',
+  },
+  search: "Cerca nell'organigramma",
+  searchPlaceholder: 'Cerca per nome, mansione o funzione…',
+  expand: 'Espandi',
+  collapse: 'Comprimi',
+  expandAll: 'Espandi tutto',
+  collapseAll: 'Comprimi tutto',
+  responsible: 'Responsabile',
+  peopleCount_one: '{{count}} persona',
+  peopleCount_other: '{{count}} persone',
+  allFunctions: 'Tutte le funzioni',
+  emptyFunctions: 'Nessuna funzione aziendale.',
+  emptyPeople: 'Nessuna persona da mostrare.',
+  noMatch: 'Nessun risultato per questa ricerca.',
+  move: {
+    action: 'Sposta in…',
+    actions: 'Azioni per {{name}}',
+    title: 'Sposta {{name}}',
+    description: 'Scegli la nuova posizione: potrai confermare prima di applicare la modifica.',
+    rootPerson: 'Nessun responsabile (radice)',
+    rootFunction: 'Nessuna funzione padre (radice)',
+    select: {
+      label: 'Destinazione',
+      placeholder: 'Scegli la destinazione…',
+      search: 'Cerca la destinazione…',
+      empty: 'Nessuna destinazione disponibile.',
+      noMatch: 'Nessuna destinazione corrisponde.',
+      retry: 'Riprova',
+    },
+    summary: 'Sposta {{subject}} da «{{from}}» a «{{to}}».',
+    functionWarning: 'Cambiano le competenze commerciali della persona e quindi le assegnazioni automatiche.',
+    cancel: 'Annulla',
+    confirm: 'Conferma lo spostamento',
+    success: '{{name}} spostato.',
+    forbidden: 'Non hai i permessi per eseguire questo spostamento.',
+    error: 'Spostamento non riuscito. Riprova più tardi.',
+  },
+}
