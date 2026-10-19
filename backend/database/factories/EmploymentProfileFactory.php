@@ -3,7 +3,9 @@
 namespace Database\Factories;
 
 use App\Enums\RelationshipTypeEnum;
+use App\Enums\SalaryPeriodEnum;
 use App\Models\BusinessFunction;
+use App\Models\EmploymentContract;
 use App\Models\EmploymentProfile;
 use App\Models\OperationalSite;
 use App\Models\ProductCategory;
@@ -118,6 +120,17 @@ class EmploymentProfileFactory extends Factory
     {
         return $this->afterCreating(function (EmploymentProfile $profile) use ($function): void {
             $profile->businessFunctions()->syncWithoutDetaching([$function->id]);
+        });
+    }
+
+    /**
+     * A contract condition paid `$rate` per hour from `$since` (spec 0277):
+     * the hourly cost the management control values the hours with.
+     */
+    public function paidHourly(string $rate, string $since = '2000-01-01'): static
+    {
+        return $this->afterCreating(function (EmploymentProfile $profile) use ($rate, $since): void {
+            EmploymentContract::factory()->withSalary($rate, SalaryPeriodEnum::Hourly)->create(['employment_profile_id' => $profile->id, 'starts_on' => $since]);
         });
     }
 

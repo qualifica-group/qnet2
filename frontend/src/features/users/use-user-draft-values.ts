@@ -113,7 +113,7 @@ export function useUserDraftValues(control: Control<UserFormValues>): UserRecord
     terminated_at: employment.terminated_at || null,
     standard_daily_minutes: employment.standard_daily_minutes,
     break_daily_minutes: employment.break_daily_minutes,
-    hourly_cost: employment.hourly_cost,
+    hourly_cost: null,
     assignment: summarizeAssignment({
       isAssignable: employment.is_assignable,
       competenceRows,

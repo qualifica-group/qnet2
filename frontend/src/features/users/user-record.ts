@@ -64,6 +64,7 @@ export interface UserRecordValues {
   terminated_at: string | null
   standard_daily_minutes: number | null
   break_daily_minutes: number | null
+  /** Derived from the salary in force today (spec 0277); null also when the actor may not see it. */
   hourly_cost: number | null
   /** The assignment verdict these values add up to (competence + Sedi + flag). */
   assignment: AssignmentSummary

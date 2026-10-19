@@ -72,8 +72,8 @@ export interface EmploymentDetail {
   terminated_at: string | null
   standard_daily_minutes: number | null
   break_daily_minutes: number | null
-  /** Gross company cost of the person in euro/hour (spec 0272); null when not set. */
-  hourly_cost: number | null
+  /** Euro/hour from the salary in force today (spec 0277 D-5): present only with `users.manageCompensation`. */
+  hourly_cost?: number | null
   /** Zero or more managers (spec 0166), ordered by name; [] when none. */
   reports_to_ids: number[]
   /** Mansioni ids (spec 0271); [] when none. */
@@ -204,7 +204,6 @@ export interface EmploymentPayload {
   terminated_at: string | null
   standard_daily_minutes: number | null
   break_daily_minutes: number | null
-  hourly_cost: number | null
   /** Payment account (spec 0272 D-6): sent only when changed, and only with `users.manageCompensation`. */
   iban?: string | null
   iban_holder?: string | null

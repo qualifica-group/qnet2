@@ -71,7 +71,6 @@ const guide: HelpGuide = {
             ['**Assunto il** / **Cessato il**', 'Date di inizio e fine del rapporto. La cessazione non può precedere l’assunzione.'],
             ['**Durata giornaliera standard**', 'Tempo di lavoro previsto in una giornata.'],
             ['**Durata pausa giornaliera**', 'Durata della pausa quotidiana.'],
-            ['**Costo orario**', 'Costo aziendale lordo della persona in euro all’ora, con due decimali (da 0 a 9999,99). Il Controllo di gestione lo moltiplica per le ore del segnatempo sulle commesse per ottenere il costo del lavoro; le ore di chi non ha il costo orario vengono contate ma non valorizzate. Vale da quando lo inserisci, senza storico delle variazioni.'],
           ],
         },
         { type: 'paragraph', text: 'Le sezioni del rapporto di lavoro ci sono anche per un utente che non ha ancora un profilo: il primo salvataggio lo crea. Seguono **Contatti** e **Indirizzi**; in fondo può comparire la sezione **Altri campi**, con i campi personalizzati degli utenti.' },
@@ -94,7 +93,8 @@ const guide: HelpGuide = {
       title: 'Pagamento e dati retributivi',
       blocks: [
         { type: 'paragraph', text: 'La sezione **Pagamento** contiene l’**IBAN** su cui pagare la persona e l’**Intestatario**; l’IBAN si legge a gruppi di quattro caratteri e si modifica sul posto come gli altri campi. Se l’IBAN non è valido compare un errore sul campo.' },
-        { type: 'warning', text: 'IBAN e retribuzione sono dati retributivi: li vedi e li modifichi solo con il permesso **Gestione dati retributivi** (users.manageCompensation), di default riservato al super-admin. Senza il permesso la sezione **Pagamento** e i campi retribuzione non compaiono.' },
+        { type: 'paragraph', text: 'Nella stessa sezione, in sola lettura, c’è il **Costo orario**: non si inserisce a mano ma si calcola dalla retribuzione della condizione contrattuale in vigore oggi. Una retribuzione oraria vale così com’è, una mensile si divide per 173 ore, una annua per 2.076 ore (173 × 12); il risultato è arrotondato al centesimo. È la retribuzione lorda, senza contributi né TFR. Senza retribuzione nella condizione in vigore il costo orario resta vuoto.' },
+        { type: 'warning', text: 'IBAN e retribuzione sono dati retributivi: li vedi e li modifichi solo con il permesso **Gestione dati retributivi** (users.manageCompensation), di default riservato al super-admin. Senza il permesso la sezione **Pagamento** (con il costo orario) e i campi retribuzione non compaiono.' },
       ],
     },
     {

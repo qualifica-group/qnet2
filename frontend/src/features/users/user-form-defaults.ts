@@ -46,7 +46,6 @@ export const EMPTY_EMPLOYMENT: EmploymentFormValues = {
   terminated_at: '',
   standard_daily_minutes: null,
   break_daily_minutes: null,
-  hourly_cost: null,
   iban: '',
   iban_holder: '',
 }
@@ -93,7 +92,6 @@ export function editDefaults(user: UserDetail, customFieldDefaults: Record<strin
           terminated_at: employment.terminated_at ?? '',
           standard_daily_minutes: employment.standard_daily_minutes,
           break_daily_minutes: employment.break_daily_minutes,
-          hourly_cost: employment.hourly_cost,
           iban: employment.iban ?? '',
           iban_holder: employment.iban_holder ?? '',
         }

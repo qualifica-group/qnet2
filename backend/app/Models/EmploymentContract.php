@@ -52,6 +52,19 @@ class EmploymentContract extends BaseModel
     }
 
     /**
+     * The hourly rate this condition's salary amounts to (spec 0277 D-1),
+     * rounded to the cent; null when the condition carries no salary.
+     */
+    public function hourlyCost(): ?string
+    {
+        if ($this->salary_amount === null || $this->salary_period === null) {
+            return null;
+        }
+
+        return number_format(round((float) $this->salary_amount / $this->salary_period->hours(), 2), 2, '.', '');
+    }
+
+    /**
      * @return BelongsTo<EmploymentProfile, $this>
      */
     public function profile(): BelongsTo

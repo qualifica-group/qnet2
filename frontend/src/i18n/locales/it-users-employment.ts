@@ -63,9 +63,6 @@ export const usersFormEmployment = {
   terminatedAt: 'Cessato il',
   standardDailyMinutes: 'Durata giornaliera standard',
   breakDailyMinutes: 'Durata pausa giornaliera',
-  hourlyCost: 'Costo orario',
-  hourlyCostUnit: '€/h',
-  hourlyCostPerHour: '/h',
   terminatedBeforeHiredAt: 'La data di cessazione deve essere successiva o uguale a quella di assunzione.',
 }
 
@@ -100,6 +97,8 @@ export const usersDetailEmployment = {
   standardDailyMinutes: 'Durata giornaliera standard',
   breakDailyMinutes: 'Durata pausa giornaliera',
   hourlyCost: 'Costo orario',
+  hourlyCostPerHour: '/h',
+  hourlyCostHint: 'Calcolato dalla retribuzione della condizione contrattuale in vigore oggi.',
   collectiveAgreementLevel: 'CCNL e livello',
   contractStartsOn: 'In vigore dal',
   contractReadOnlyHint: 'Mostra la condizione in vigore oggi: si cambia dallo storico contrattuale.',

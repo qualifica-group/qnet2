@@ -29,7 +29,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Il **fatturato** conta solo le fatture (le proforma non sono fatturato); i **costi** contano i documenti passivi, proforma comprese, **più il costo del lavoro**: le ore del segnatempo moltiplicate per il costo orario di chi le ha lavorate, per mese della data del segnatempo. Le ore di chi non ha il costo orario sono contate come ore ma non valorizzate.',
+          text: 'Il **fatturato** conta solo le fatture (le proforma non sono fatturato); i **costi** contano i documenti passivi, proforma comprese, **più il costo del lavoro**: le ore del segnatempo moltiplicate per il costo orario di chi le ha lavorate (dalla retribuzione della condizione contrattuale in vigore alla data dell’ora), per mese della data del segnatempo. Le ore di chi in quella data non ha una condizione con retribuzione sono contate come ore ma non valorizzate.',
         },
       ],
     },

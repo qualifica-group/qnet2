@@ -64,7 +64,6 @@ class EmploymentResource extends JsonResource
             'terminated_at' => $this->terminated_at,
             'standard_daily_minutes' => $this->standard_daily_minutes,
             'break_daily_minutes' => $this->break_daily_minutes,
-            'hourly_cost' => $this->hourly_cost === null ? null : (float) $this->hourly_cost,
 
             'current_contract' => $this->when($this->relationLoaded('contracts'), fn (): ?array => $this->currentContract()),
             ...$this->paymentData($request),
@@ -121,9 +120,10 @@ class EmploymentResource extends JsonResource
     }
 
     /**
-     * IBAN and holder (spec 0272 D-5/D-6): the keys exist ONLY for an actor
-     * holding `users.manageCompensation`, so a viewer without it cannot tell
-     * whether the data is set.
+     * IBAN and holder (spec 0272 D-5/D-6), and the hourly cost the salary in
+     * force today amounts to (spec 0277 D-5, with the history loaded): the
+     * keys exist ONLY for an actor holding `users.manageCompensation`, so a
+     * viewer without it cannot tell whether the data is set.
      *
      * @return array<string, mixed>
      */
@@ -133,24 +133,28 @@ class EmploymentResource extends JsonResource
             return [];
         }
 
-        return ['iban' => $this->iban, 'iban_holder' => $this->iban_holder];
+        return [
+            'iban' => $this->iban,
+            'iban_holder' => $this->iban_holder,
+            ...($this->relationLoaded('contracts') ? ['hourly_cost' => $this->currentHourlyCost()] : []),
+        ];
+    }
+
+    private function currentHourlyCost(): ?float
+    {
+        $cost = $this->contractInForceToday()?->hourlyCost();
+
+        return $cost === null ? null : (float) $cost;
     }
 
     /**
-     * The condition in force today (spec 0272 D-2): the latest `starts_on`
-     * not after today, read off the eager-loaded history (no extra query).
+     * The condition in force today (spec 0272 D-2): its start and CCNL level.
      *
      * @return array{starts_on: string, collective_agreement_level: array{id: int, label: string}|null}|null
      */
     private function currentContract(): ?array
     {
-        $today = today();
-
-        /** @var EmploymentContract|null $contract */
-        $contract = $this->contracts
-            ->filter(fn (EmploymentContract $contract): bool => $contract->starts_on->lte($today))
-            ->sortByDesc('starts_on')
-            ->first();
+        $contract = $this->contractInForceToday();
 
         if ($contract === null) {
             return null;
@@ -165,6 +169,17 @@ class EmploymentResource extends JsonResource
                 'label' => "{$level->agreement->name} – {$level->code}",
             ],
         ];
+    }
+
+    /** The latest `starts_on` not after today, read off the eager-loaded history (no extra query). */
+    private function contractInForceToday(): ?EmploymentContract
+    {
+        $today = today();
+
+        return $this->contracts
+            ->filter(fn (EmploymentContract $contract): bool => $contract->starts_on->lte($today))
+            ->sortByDesc('starts_on')
+            ->first();
     }
 
     /**

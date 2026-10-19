@@ -21,6 +21,20 @@ enum SalaryPeriodEnum: string
     #[Label('Hourly')]
     case Hourly = 'hourly';
 
+    private const int MONTHS_PER_YEAR = 12;
+
+    /** Working hours one salary amount of this period pays (spec 0277 D-1). */
+    public function hours(): int
+    {
+        $monthly = (int) config('employment.monthly_salary_hours');
+
+        return match ($this) {
+            self::Hourly => 1,
+            self::Monthly => $monthly,
+            self::Yearly => $monthly * self::MONTHS_PER_YEAR,
+        };
+    }
+
     /**
      * @return array<int, string>
      */

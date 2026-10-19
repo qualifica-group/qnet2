@@ -63,9 +63,6 @@ export const usersFormEmployment = {
   terminatedAt: 'Terminated at',
   standardDailyMinutes: 'Standard daily duration',
   breakDailyMinutes: 'Daily break duration',
-  hourlyCost: 'Hourly cost',
-  hourlyCostUnit: '€/h',
-  hourlyCostPerHour: '/h',
   terminatedBeforeHiredAt: 'Termination date must be on or after the hire date.',
 }
 
@@ -100,6 +97,8 @@ export const usersDetailEmployment = {
   standardDailyMinutes: 'Standard daily duration',
   breakDailyMinutes: 'Daily break duration',
   hourlyCost: 'Hourly cost',
+  hourlyCostPerHour: '/h',
+  hourlyCostHint: 'Derived from the salary of the contract condition in force today.',
   collectiveAgreementLevel: 'Collective agreement and level',
   contractStartsOn: 'In force since',
   contractReadOnlyHint: 'Shows the condition in force today: change it from the contract history.',

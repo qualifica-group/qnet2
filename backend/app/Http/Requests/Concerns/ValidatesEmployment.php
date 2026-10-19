@@ -118,7 +118,6 @@ trait ValidatesEmployment
 
             'employment.standard_daily_minutes' => ['nullable', 'integer', 'min:0', 'max:1440'],
             'employment.break_daily_minutes' => ['nullable', 'integer', 'min:0', 'max:1440'],
-            'employment.hourly_cost' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
 
             // Payment data (spec 0272 D-6): absent = untouched, null = cleared.
             'employment.iban' => ['sometimes', 'nullable', 'string', 'max:64', $this->ibanRule()],
@@ -269,20 +268,11 @@ trait ValidatesEmployment
             terminatedAt: $this->input('employment.terminated_at'),
             standardDailyMinutes: $this->nullableInt('employment.standard_daily_minutes'),
             breakDailyMinutes: $this->nullableInt('employment.break_daily_minutes'),
-            hourlyCost: $this->nullableDecimal('employment.hourly_cost'),
             ibanProvided: $this->has('employment.iban'),
             iban: $this->submittedIban(),
             ibanHolderProvided: $this->has('employment.iban_holder'),
             ibanHolder: $this->filled('employment.iban_holder') ? (string) $this->input('employment.iban_holder') : null,
         );
-    }
-
-    /** Two-decimal string of a validated numeric input, null when blank (the column is decimal(10,2)). */
-    private function nullableDecimal(string $key): ?string
-    {
-        $value = $this->input($key);
-
-        return $value === null || $value === '' ? null : number_format((float) $value, 2, '.', '');
     }
 
     /**

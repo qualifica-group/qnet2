@@ -3,6 +3,22 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0277 — Costo orario dalla retribuzione dello storico contrattuale — VERDE, COMMITTATO (2026-10-19)
+
+- Spec `docs/specs/0277-hourly-cost-from-contract-salary.xml` (D-1..D-5, AC-001..AC-006); supera CdG 0272 D-1.
+- Tariffa: `EmploymentContract::hourlyCost()` (stringa 2 decimali, null senza retribuzione) via
+  `SalaryPeriodEnum::hours()`: hourly 1, monthly `config('employment.monthly_salary_hours')` (173), yearly x12.
+- `LaborCostSource`: sottoquery correlata `contract_id` = condizione con `starts_on` <= `time_entries.date` piu'
+  recente, raggruppo per contract_id e leggo le tariffe con UNA query in piu' (`rates()`); senza condizione o
+  retribuzione -> `unpriced_minutes`. Shape degli endpoint CdG invariata.
+- Eliminati colonna `employment_profiles.hourly_cost` (migrazione 2026_10_22_100000, reversibile) e righe
+  `role_field_permissions` `employment.hourly_cost` (2026_10_22_100100, down no-op); catalogo `employment.*` a 17.
+- `EmploymentResource.hourly_cost` (number|null) solo con `users.manageCompensation` e `contracts` caricati, dalla
+  condizione in vigore oggi; FE: riga in sola lettura nella sezione Pagamento (`user-payment-section.tsx`),
+  rimossi `user-hourly-cost-field.tsx` e il campo da schema/defaults/payload/server-errors/assignment.
+- Factory: `EmploymentProfileFactory::paidHourly($rate, $since)`; `mcTimeEntry()` la usa. Rollback 61 / 212 / 76.
+- Guide aggiornate IT/EN: `users` (payment), `management-control`, `management-control-trend`.
+
 ## Merge `main` -> `feature/amministrazione` (HR 0271-0276 + controllo di gestione 0268-0272) — VERDE (2026-10-19)
 
 - Conflitti risolti per unione: `employment.*` ha sia `hourly_cost` (CdG 0272) sia `iban`/`iban_holder` (HR 0272);

@@ -32,7 +32,6 @@ const EMPLOYMENT_FIELD_KEYS = [
     'employment.primary_operational_site_id', 'employment.remote_operational_site_ids',
     'employment.hired_at',
     'employment.terminated_at', 'employment.standard_daily_minutes', 'employment.break_daily_minutes',
-    'employment.hourly_cost',
 ];
 
 if (! function_exists('employmentFieldPermActor')) {

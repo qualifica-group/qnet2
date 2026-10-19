@@ -18,7 +18,8 @@ import type { UserDetailWithPermissions } from '@/features/users/types'
  * Spec 0272 AC-015: the in-force condition is read only, the "Pagamento"
  * section appears only with `users.manageCompensation`, the IBAN reads in
  * groups of four and a 422 lands under it, the termination date explains the
- * deactivation.
+ * deactivation. Spec 0277 AC-005: the hourly cost derived from the salary
+ * reads there, read-only.
  */
 
 const fetchUserMock = vi.fn()
@@ -62,6 +63,7 @@ function withPayment(overrides: Partial<UserDetailWithPermissions> = {}) {
       current_contract: { starts_on: '2026-03-01', collective_agreement_level: { id: 3, label: 'Commercio - Q1' } },
       iban: 'IT60X0542811101000000123456',
       iban_holder: 'Ada Lovelace',
+      hourly_cost: 14.45,
     }),
     ...overrides,
   })
@@ -108,6 +110,7 @@ describe('UserDetailView — Pagamento (spec 0272 D-5/D-6)', () => {
 
     expect(screen.queryByText('Payment')).not.toBeInTheDocument()
     expect(screen.queryByText('IBAN')).not.toBeInTheDocument()
+    expect(screen.queryByText('Hourly cost')).not.toBeInTheDocument()
   })
 
   it('is not rendered when the field metadata hides the IBAN, even with the permission', async () => {
@@ -124,6 +127,16 @@ describe('UserDetailView — Pagamento (spec 0272 D-5/D-6)', () => {
     expect(screen.getByText('Payment')).toBeInTheDocument()
     expect(screen.getByText('IT60 X054 2811 1010 0000 0123 456')).toBeInTheDocument()
     expect(screen.getByText('Account holder')).toBeInTheDocument()
+  })
+
+  it('shows the hourly cost derived from the salary, read-only', async () => {
+    granted = ['users.manageCompensation']
+    await renderDetail(withPayment())
+
+    expect(screen.getByText('Hourly cost')).toBeInTheDocument()
+    expect(screen.getByText(/14,45.*\/h/)).toBeInTheDocument()
+    expect(screen.getByText('Derived from the salary of the contract condition in force today.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Hourly cost' })).not.toBeInTheDocument()
   })
 
   it('saves an edited IBAN inline and shows a 422 under it', async () => {

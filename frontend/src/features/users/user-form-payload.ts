@@ -48,7 +48,6 @@ function buildEmploymentPayload(
     terminated_at: values.terminated_at || null,
     standard_daily_minutes: values.standard_daily_minutes,
     break_daily_minutes: values.break_daily_minutes,
-    hourly_cost: values.hourly_cost,
     ...(values.iban !== baseline.iban ? { iban: values.iban || null } : {}),
     ...(values.iban_holder !== baseline.iban_holder ? { iban_holder: values.iban_holder || null } : {}),
   }

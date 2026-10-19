@@ -239,17 +239,15 @@ it('spec 0008/0015/0111/0129: users.fields contains exactly the 4 existing + 13 
         'employment.terminated_at', 'employment.standard_daily_minutes', 'employment.break_daily_minutes',
         // spec 0272 — payment data, gated by users.manageCompensation.
         'employment.iban', 'employment.iban_holder',
-        // spec 0272 (management control) — the hourly cost of the person.
-        'employment.hourly_cost',
     ]);
 
-    // Spec 0129/0194/0272: exactly 18 employment.* keys (13 + the wildcard flag +
+    // Spec 0129/0194/0272/0277: exactly 17 employment.* keys (13 + the wildcard flag +
     // the "Assegnabile" switch, - qualification_type + iban + iban_holder + business_function_ids,
-    // - is_manager + managed_business_function_ids, + hourly_cost), and
+    // - is_manager + managed_business_function_ids; spec 0277 drops hourly_cost again), and
     // neither of the two keys product_lines replaced survives anywhere in the
     // catalogue.
     $employmentKeys = $byKey->keys()->filter(static fn (string $key): bool => str_starts_with($key, 'employment.'));
-    expect($employmentKeys)->toHaveCount(18)
+    expect($employmentKeys)->toHaveCount(17)
         ->and($byKey)->not->toHaveKey('employment.business_function_id')
         ->and($byKey)->not->toHaveKey('employment.product_category_ids')
         ->and($byKey->get('employment.product_lines'))->toMatchArray(['type' => 'collection', 'group' => 'employment']);

@@ -258,7 +258,6 @@ describe('UserForm — employment payload + 422 mapping (spec 0015 AC-018)', () 
       terminated_at: null,
       standard_daily_minutes: null,
       break_daily_minutes: null,
-      hourly_cost: null,
     })
   })
 
@@ -319,35 +318,5 @@ describe('UserDetailView — employment i18n (spec 0015 AC-019)', () => {
 
     expect(await screen.findByText('Rapporto contrattuale')).toBeInTheDocument()
     expect(screen.getByText('Dipendente')).toBeInTheDocument()
-  })
-})
-
-describe('UserDetail — hourly cost (spec 0272 AC-002)', () => {
-  it('shows the saved cost in euro/hour and sends a decimal edit as employment.hourly_cost', async () => {
-    const user = userWithEmployment()
-    await renderDetail({ ...user, employment: { ...user.employment!, hourly_cost: 25 } })
-
-    expect(screen.getByText(/25,00.*\/h/)).toBeInTheDocument()
-
-    fireEvent.click(pencilOf('Hourly cost'))
-    const input = screen.getByRole('spinbutton', { name: /Hourly cost/ })
-    expect(input).toHaveAttribute('step', '0.01')
-    expect(screen.getByText('€/h')).toBeInTheDocument()
-    fireEvent.change(input, { target: { value: '27.5' } })
-    confirmOpenRow('Save')
-
-    await waitFor(() => expect(updateUserMock).toHaveBeenCalledTimes(1))
-    expect(updateUserMock.mock.calls[0][1].employment).toMatchObject({ hourly_cost: 27.5, job_role_ids: [3] })
-  })
-
-  it('maps an employment.hourly_cost 422 onto its open row', async () => {
-    updateUserMock.mockRejectedValue(unprocessable({ 'employment.hourly_cost': ['The hourly cost must not exceed 9999.99.'] }))
-    await renderDetail(userWithEmployment())
-
-    fireEvent.click(pencilOf('Hourly cost'))
-    fireEvent.change(screen.getByRole('spinbutton', { name: /Hourly cost/ }), { target: { value: '12' } })
-    confirmOpenRow('Save')
-
-    expect(await screen.findByText('The hourly cost must not exceed 9999.99.')).toBeInTheDocument()
   })
 })

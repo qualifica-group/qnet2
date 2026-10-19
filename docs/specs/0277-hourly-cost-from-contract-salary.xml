@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0277 — Costo orario calcolato dalla retribuzione dello storico contrattuale (HR 0272), al posto del campo
+  manuale `employment_profiles.hourly_cost` (Controllo di gestione 0272 D-1).
+-->
+<spec id="0277-hourly-cost-from-contract-salary" status="approved" owner="utente" date="2026-10-19">
+
+  <goal>
+    Il costo orario di una persona non si inserisce piu' a mano: si ricava dalla retribuzione della condizione
+    contrattuale (storico HR 0272), cosi' esiste una sola fonte del dato retributivo e il costo del lavoro del
+    Controllo di gestione segue gli aumenti nel tempo.
+  </goal>
+
+  <context>
+    Dopo il merge di main in feature/amministrazione convivevano due fonti: il campo manuale `hourly_cost` (CdG 0272
+    D-1) e la retribuzione nelle condizioni contrattuali (HR 0272 D-4: importo + periodicita' monthly|yearly|hourly).
+    Decisioni utente 2026-10-19:
+    - D-1 Tariffa oraria di una condizione: `hourly` = importo; `monthly` = importo / 173; `yearly` = importo /
+      (173 x 12). Il divisore mensile (173, divisore convenzionale CCNL) sta in `config('employment.monthly_salary_hours')`.
+      Tariffa arrotondata al centesimo (poi minuti x tariffa come in CdG 0272 D-2). Condizione senza retribuzione =
+      nessuna tariffa.
+    - D-2 Retribuzione lorda cosi' com'e', nessun coefficiente di costo aziendale (contributi, TFR esclusi).
+    - D-3 Ogni ora del segnatempo usa la condizione in vigore alla data dell'ora (`starts_on` piu' recente non
+      successiva a `time_entries.date`); ore senza condizione in vigore o senza retribuzione = `unpriced_minutes`.
+    - D-4 Eliminati colonna `employment_profiles.hourly_cost`, campo `employment.hourly_cost` (catalogo permessi di
+      campo, validazione, DTO, form) e le righe `role_field_permissions` della chiave. Supera CdG 0272 D-1.
+    - D-5 Il costo orario della condizione in vigore oggi si legge in sola lettura in `EmploymentResource.hourly_cost`
+      e nella sezione Pagamento della scheda utente, SOLO con `users.manageCompensation` (rivela la retribuzione).
+  </context>
+
+  <scope>
+    <in>
+      <item>Calcolo della tariffa (enum `SalaryPeriodEnum` + `EmploymentContract::hourlyCost()`), config.</item>
+      <item>`LaborCostSource`: tariffa dalla condizione in vigore alla data di ogni ora.</item>
+      <item>Migrazioni: drop colonna (reversibile) e pulizia permesso di campo.</item>
+      <item>Frontend: rimozione del campo editabile, valore in sola lettura nella sezione Pagamento.</item>
+      <item>Guide in-app `users`, `management-control`, `management-control-trend` IT/EN.</item>
+    </in>
+    <out>
+      <item>Coefficiente di costo aziendale, ratei, mensilita' aggiuntive, divisori per CCNL o per livello.</item>
+      <item>Riservatezza dei costi aggregati per commessa con una sola persona (invariato rispetto a CdG 0272).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST/PATCH" path="/api/users (esistenti)">
+      <request>`employment.hourly_cost` non e' piu' accettato (chiave ignorata come ogni chiave sconosciuta).</request>
+      <response status="200">EmploymentResource: `hourly_cost: number|null` presente solo con
+        `users.manageCompensation` e storico caricato; null senza condizione in vigore o senza retribuzione.</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/management-control/income-statement, /monthly-trend (invariati)">
+      <response status="200">Stessa shape; `cost_labor`/`unpriced_minutes` calcolati con D-1..D-3.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Tariffa: 30.00 hourly = 30.00; 2595.00 monthly = 15.00; 31140.00 yearly = 15.00;
+      2500.00 monthly = 14.45; senza retribuzione = null (Pest).</criterion>
+    <criterion id="AC-002">Ore dello stesso utente prima e dopo un cambio di condizione si valorizzano ciascuna con
+      la propria tariffa; ore precedenti la prima condizione, o di una condizione senza retribuzione, vanno in
+      `unpriced_minutes` (Pest).</criterion>
+    <criterion id="AC-003">I test CdG del costo del lavoro restano verdi con le ore valorizzate da condizioni orarie
+      (requisito cambiato: la fixture crea una condizione invece del campo manuale) (Pest).</criterion>
+    <criterion id="AC-004">Colonna e chiave rimosse: catalogo campi a 17 chiavi `employment.*`, nessuna riga
+      `role_field_permissions` per `employment.hourly_cost`, migrazioni reversibili (Pest).</criterion>
+    <criterion id="AC-005">`hourly_cost` nel dettaglio utente solo con `users.manageCompensation`, dalla condizione
+      in vigore oggi (Pest); nella sezione Pagamento in sola lettura, nessun campo nel form o nel payload (Vitest).</criterion>
+    <criterion id="AC-006">Guide IT/EN aggiornate con gli stessi id; parity test, ESLint, `tsc -b --force` puliti.</criterion>
+  </acceptance_criteria>
+</spec>

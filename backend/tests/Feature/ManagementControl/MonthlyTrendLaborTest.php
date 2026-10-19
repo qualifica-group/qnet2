@@ -79,7 +79,7 @@ it('AC-008: the number of queries does not depend on the commesse and time entri
 it('AC-005: the company filter keeps the hours of the users of that company, the site filters do not touch them', function () {
     $alfa = Company::factory()->create();
     $beta = Company::factory()->create();
-    $inCompany = fn (Company $company): User => User::factory()->withEmployment(fn ($f) => $f->state(['company_id' => $company->id, 'hourly_cost' => '60.00']))->create();
+    $inCompany = fn (Company $company): User => User::factory()->withEmployment(fn ($f) => $f->state(['company_id' => $company->id])->paidHourly('60.00'))->create();
 
     mcTimeEntry(null, 60, null, '2026-02-05', $inCompany($alfa));
     mcTimeEntry(null, 120, null, '2026-02-06', $inCompany($beta));

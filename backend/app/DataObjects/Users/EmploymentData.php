@@ -102,7 +102,6 @@ final readonly class EmploymentData
         public ?string $terminatedAt = null,
         public ?int $standardDailyMinutes = null,
         public ?int $breakDailyMinutes = null,
-        public ?string $hourlyCost = null,
         public bool $ibanProvided = false,
         public ?string $iban = null,
         public bool $ibanHolderProvided = false,
@@ -135,7 +134,6 @@ final readonly class EmploymentData
             'terminated_at' => $this->terminatedAt,
             'standard_daily_minutes' => $this->standardDailyMinutes,
             'break_daily_minutes' => $this->breakDailyMinutes,
-            'hourly_cost' => $this->hourlyCost,
         ];
 
         if ($this->isAssignable !== null) {

@@ -402,11 +402,11 @@ if (! function_exists('mcAccount')) {
 if (! function_exists('mcTimeEntry')) {
     /**
      * A time entry of `$minutes` on `$date`, tied to `$workOrder` when given, by `$user` or by a new
-     * user whose employment profile has `$hourlyCost` (null = a profile without hourly cost).
+     * user whose contract condition pays `$hourlyCost` per hour (null = a profile without contract, spec 0277).
      */
     function mcTimeEntry(?WorkOrder $workOrder, int $minutes, ?string $hourlyCost, string $date = '2026-03-10', ?User $user = null): TimeEntry
     {
-        $user ??= User::factory()->withEmployment(fn ($factory) => $factory->state(['hourly_cost' => $hourlyCost]))->create();
+        $user ??= User::factory()->withEmployment(fn ($factory) => $hourlyCost === null ? $factory : $factory->paidHourly($hourlyCost))->create();
 
         return TimeEntry::factory()->create(['user_id' => $user->id, 'work_order_id' => $workOrder?->id, 'minutes' => $minutes, 'date' => $date]);
     }
