@@ -3,13 +3,11 @@
  */
 
 export const orgChart = {
-  title: 'Organigramma',
-  subtitle: 'Chi lavora in quale funzione e chi riporta a chi.',
   forbidden: "Non hai i permessi per visualizzare l'organigramma.",
   loading: "Caricamento dell'organigramma…",
   loadError: "Impossibile caricare l'organigramma. Riprova più tardi.",
   tabs: {
-    functions: 'Funzioni',
+    functions: 'Funzioni aziendali',
     people: 'Persone',
   },
   type: {

@@ -3,6 +3,14 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Organigramma — intestazione allineata alle altre pagine — VERDE, NON COMMITTATO (2026-10-19)
+
+- `pages/org-chart-page.tsx`: `<PageHeader />` col solo breadcrumb come Assenze/Funzioni/Mansioni (prima titolo +
+  sottotitolo sotto il breadcrumb). Tolte le chiavi orfane `orgChart.title`/`orgChart.subtitle` (IT+EN).
+  Scheda `orgChart.tabs.functions` rinominata "Funzioni aziendali" / "Business functions" (e' anche l'aria-label
+  dell'albero: test org-chart aggiornati, REQUIREMENT CHANGED). Guide in-app IT+EN e manuale Claude Docs aggiornati.
+  Vitest org-chart/help/i18n 428/428, `tsc -b --force` e ESLint puliti.
+
 ## Spec 0283 — Ruolo "Risorse Umane" + dati contrattuali dietro la matrice dei campi — VERDE, NON COMMITTATO (2026-10-19)
 
 - Spec `docs/specs/0283-hr-office-role-and-sensitive-user-fields.xml` (D-1..D-6, AC-001..AC-010).

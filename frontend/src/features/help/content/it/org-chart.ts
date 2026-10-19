@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "La pagina mostra un organigramma grafico in due schede: **Funzioni** e **Persone**. Ogni riquadro è collegato da una linea al riquadro da cui dipende, dall'alto verso il basso. Mostra solo le persone attive e non gli account di servizio. Il nome di una persona apre la sua scheda utente, il nome di una funzione ne apre il dettaglio.",
+          text: "La pagina mostra un organigramma grafico in due schede: **Funzioni aziendali** e **Persone**. Ogni riquadro è collegato da una linea al riquadro da cui dipende, dall'alto verso il basso. Mostra solo le persone attive e non gli account di servizio. Il nome di una persona apre la sua scheda utente, il nome di una funzione ne apre il dettaglio.",
         },
       ],
     },
@@ -23,7 +23,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Vista', 'Cosa mostra'],
           rows: [
-            ['Funzioni', "Le persone sono raggruppate per funzione aziendale di appartenenza (non per competenze). Un riquadro per ogni funzione aziendale con tipo (business unit o business service), foto e nome del responsabile e numero di persone; sotto, le persone della funzione come riquadri (prima i responsabili, poi le altre in ordine alfabetico) e le sotto-funzioni. Il pulsante con il numero di persone resta e apre un pannello laterale con i **Responsabili** e le altre **Persone** della funzione, con le loro mansioni."],
+            ['Funzioni aziendali', "Le persone sono raggruppate per funzione aziendale di appartenenza (non per competenze). Un riquadro per ogni funzione aziendale con tipo (business unit o business service), foto e nome del responsabile e numero di persone; sotto, le persone della funzione come riquadri (prima i responsabili, poi le altre in ordine alfabetico) e le sotto-funzioni. Il pulsante con il numero di persone resta e apre un pannello laterale con i **Responsabili** e le altre **Persone** della funzione, con le loro mansioni."],
             ['Persone', "Chi riporta a chi: un riquadro per persona con foto, nome, mansioni e funzioni; in cima le persone senza responsabile, sotto ognuna i suoi diretti riporti. Una corona indica chi è responsabile di almeno una funzione. Chi ha più responsabili compare sotto ciascuno di essi. Le persone senza collegamenti stanno dopo le gerarchie."],
           ],
         },
@@ -63,8 +63,8 @@ const guide: HelpGuide = {
           headers: ['Spostamento', 'Effetto'],
           rows: [
             ['Persona sotto un altro responsabile (vista Persone)', 'Nel campo “Riporta a” il responsabile di partenza viene sostituito con quello di arrivo; gli altri responsabili restano. Spostandola a livello radice, perde quel responsabile.'],
-            ['Funzione sotto un’altra funzione (vista Funzioni)', 'Cambia la funzione padre; a livello radice la funzione non ha padre.'],
-            ['Persona da una funzione a un’altra (vista Funzioni, dal pannello laterale)', 'La funzione di appartenenza di partenza è sostituita da quella di arrivo. Dai **Non assegnati** la persona riceve la sua prima appartenenza.'],
+            ['Funzione sotto un’altra funzione (vista Funzioni aziendali)', 'Cambia la funzione padre; a livello radice la funzione non ha padre.'],
+            ['Persona da una funzione a un’altra (vista Funzioni aziendali, dal pannello laterale)', 'La funzione di appartenenza di partenza è sostituita da quella di arrivo. Dai **Non assegnati** la persona riceve la sua prima appartenenza.'],
           ],
         },
         {

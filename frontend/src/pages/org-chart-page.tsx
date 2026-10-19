@@ -21,7 +21,7 @@ export default function OrgChartPage() {
       fallback={<p className="text-sm text-muted-foreground">{t('orgChart.forbidden')}</p>}
     >
       <div className="flex flex-1 flex-col gap-3">
-        <PageHeader title={t('orgChart.title')} subtitle={t('orgChart.subtitle')} />
+        <PageHeader />
         <Tabs value={tab} onValueChange={(value) => setTab(value === 'people' ? 'people' : 'functions')}>
           <TabsList className="w-fit">
             <TabsTrigger value="functions" className="px-2.5 py-1 text-xs">
