@@ -6,6 +6,7 @@ import type { ResourceMeta } from '@/features/authorization/types'
 import { UserDetailView } from '@/features/users/user-detail'
 import { UserForm } from '@/features/users/user-form'
 import {
+  HIDDEN,
   READ_ONLY,
   clickCreateSave,
   confirmOpenRow,
@@ -237,8 +238,42 @@ describe('UserDetailView — employment relation pickers (spec 0015 AC-016)', ()
   })
 })
 
+describe('UserDetailView — contractual data behind the field matrix (spec 0283 AC-009)', () => {
+  const SENSITIVE = [
+    'employment.relationship_type',
+    'employment.company_id',
+    'employment.contracts',
+    'employment.hired_at',
+    'employment.terminated_at',
+    'employment.standard_daily_minutes',
+    'employment.break_daily_minutes',
+  ]
+
+  it('renders neither the contract, its history nor the contract data when the role hides them', async () => {
+    const hidden = Object.fromEntries(SENSITIVE.map((field) => [field, HIDDEN]))
+    await renderDetail({ ...userWithEmployment(), permissions: permissionsFor(hidden) })
+
+    for (const section of ['contract', 'contractHistory', 'contractData']) {
+      expect(screen.queryByText(i18n.t(`users.form.sections.${section}.title`))).not.toBeInTheDocument()
+    }
+    expect(screen.getByText(i18n.t('users.form.sections.profile.title'))).toBeInTheDocument()
+  })
+
+  it('keeps the contract rows the role may see and drops the others', async () => {
+    const permissions = permissionsFor({ 'employment.contracts': HIDDEN, 'employment.company_id': HIDDEN })
+    await renderDetail({ ...userWithEmployment(), permissions })
+
+    expect(screen.getByText(i18n.t('users.form.sections.contract.title'))).toBeInTheDocument()
+    expect(screen.getByText('Employee')).toBeInTheDocument()
+    expect(screen.queryByText('Acme Srl')).not.toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('users.detail.employment.collectiveAgreementLevel'))).not.toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('users.form.sections.contractHistory.title'))).not.toBeInTheDocument()
+  })
+})
+
 describe('UserForm — employment payload + 422 mapping (spec 0015 AC-018)', () => {
-  it('includes the whole employment object with contract snake_case keys on create', async () => {
+  /** REQUIREMENT CHANGED (spec 0283 D-5): untouched contract data are left out of the payload. */
+  it('includes the employment object on create, without the untouched contract data', async () => {
     renderCreate()
     await fillRequiredCreateRows()
     clickCreateSave()
@@ -254,10 +289,6 @@ describe('UserForm — employment payload + 422 mapping (spec 0015 AC-018)', () 
       is_assignable: true,
       covers_all_product_categories: false,
       product_lines: [],
-      hired_at: null,
-      terminated_at: null,
-      standard_daily_minutes: null,
-      break_daily_minutes: null,
     })
   })
 

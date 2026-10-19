@@ -1,4 +1,5 @@
 import { useResourcePermissions } from '@/features/authorization/permissions'
+import { CONTRACTS_FIELD } from '@/features/users/contract-history-types'
 import type { CompetenceLineRow } from '@/features/product-lines/types'
 
 /**
@@ -135,6 +136,9 @@ export function useUserSectionVisibility() {
   return {
     access: anyVisible(['email', 'password', 'roles', 'is_active']),
     profile: anyVisible(['employment.job_role_ids', 'employment.business_function_ids', 'employment.reports_to_ids']),
+    // Spec 0283: the contractual data the field matrix keeps to the HR office.
+    contract: anyVisible(['employment.relationship_type', 'employment.company_id', CONTRACTS_FIELD]),
+    contractHistory: anyVisible([CONTRACTS_FIELD]),
     contractData: anyVisible([
       'employment.hired_at',
       'employment.terminated_at',

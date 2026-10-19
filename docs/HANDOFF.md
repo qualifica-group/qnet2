@@ -3,6 +3,33 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0283 — Ruolo "Risorse Umane" + dati contrattuali dietro la matrice dei campi — VERDE, NON COMMITTATO (2026-10-19)
+
+- Spec `docs/specs/0283-hr-office-role-and-sensitive-user-fields.xml` (D-1..D-6, AC-001..AC-010).
+- Seed: `QualificaCatalog/HrOfficeRoleCatalogue` (ruolo `risorse-umane`, moduli HR completi con delete, NO
+  `users.impersonate`; extra `time-entries.viewAll|exportMonthly`, `companies.viewAny|view`; `SENSITIVE_FIELDS` D-2;
+  `roles` in sola lettura). `QualificaRoleSeeder`: righe NASCOSTE su D-2 a ogni mansione, righe esplicite
+  visibile+modificabile a HR e `admin` (l'unione conta solo i ruoli CON riga: senza grant esplicito vincerebbe il
+  nascosto di `operatore-base`). Nuovo `QualificaHrOfficeSeeder` (persone della funzione
+  `BusinessFunctionCatalogue::HUMAN_RESOURCES` di `OrgChartFunctions`, ruolo AGGIUNTO), step 7b del production seeder.
+  Lanciato sul DB locale: Castaldo/Iorio/Sorrentino = operatore-base + risorse-umane.
+- Backend: nuova chiave `employment.contracts` (`UsersAuthorization::CONTRACTS_FIELD`); `EmploymentResource` toglie le
+  chiavi dei campi nascosti; storico contratti 403 se nascosto (GET) / non modificabile (POST/DELETE); griglia utenti
+  `Users/UserSensitiveColumns` (colonne, filtri, righe, export). D-5: `EmploymentData::$contractData` = hired_at,
+  terminated_at, durate con "assente = invariato" (prima assente = svuotato).
+- Assenze (D-6, decisione utente): nessun permesso "team"; resta proprie + sottoposti automatici + `manageAll`.
+  Il calendario 0279 (calendarOwn/Team/All) e' di un'altra sessione: le mansioni non ricevono quei permessi.
+- Frontend: sezioni Rapporto/Storico per visibilita' di campo, azioni storico su `employment.contracts` editable,
+  payload con date/durate solo se cambiate; tipi `EmploymentDetail` con chiavi contrattuali opzionali.
+- Test: nuovi `UserSensitiveFieldsTest` (5), `QualificaHrOfficeSeederTest` (3), FE AC-009 (2). REQUIREMENT CHANGED:
+  conteggi catalogo campi users 17->18 (FieldCatalogue/Meta/UserCompetenceScope), payload FE senza date invariate,
+  gate storico su campo. Users 255, Authorization 109, Seeding 179, RequestManagement 851, Tables/Table/Migration
+  verdi; vitest users+roles+help verdi; Pint, ESLint, `tsc -b --force` puliti.
+- Manuale: guida in-app users IT/EN (nuova sezione `contract-visibility`, storico, pagamento) + Claude Docs (blocco
+  "Chi vede i dati contrattuali" sotto la tabella Profilo/Rapporto). Il manuale Claude Docs ha ancora la riga
+  "Qualifica" e niente Storico/Pagamento (debito di spec 0272, non toccato).
+- Rischio residuo: un ruolo creato a mano SENZA righe vede tutto (semantica 0006): va ristretto dal form Ruoli.
+
 ## Spec 0282 — Proforma attiva / passiva nel dettaglio commessa — VERDE, COMMITTATO (2026-10-19)
 
 - Spec `docs/specs/0282-work-order-invoices-view.xml` (D-1..D-9, AC-001..AC-011). Sola consultazione, nessuna azione contabile.

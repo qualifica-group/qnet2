@@ -84,7 +84,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: 'Nella scheda di un utente già salvato, la sezione **Storico contrattuale** elenca le condizioni contrattuali della persona, dalla più recente: decorrenza, fine, tipo di rapporto, società, CCNL e livello e, se hai il permesso, la retribuzione. Quella in vigore oggi ha l’etichetta **Vigente**. Nella creazione di un utente la sezione dice che lo storico si compila dopo il salvataggio.' },
         { type: 'steps', items: ['Fai clic su **Nuova condizione**.', 'Indica la **Decorrenza** (una data non ancora usata per quella persona), il **Tipo di rapporto**, la **Società** e il **CCNL e livello**.', 'Se hai il permesso sui dati retributivi, indica anche **Retribuzione** e **Periodicità** (mese, anno, ora): vanno insieme.', 'Aggiungi un **Motivo** se serve e premi **Salva**.'] },
-        { type: 'list', items: ['Le condizioni non si modificano: ogni cambio è una nuova condizione. La fine di una condizione è il giorno prima della decorrenza della successiva.', 'Per correggere un errore usa **Cancella ultima condizione** (compare solo sull’ultima) e inseriscine una nuova. Cancellare una condizione che non è l’ultima non è possibile.', 'Una condizione con decorrenza futura non cambia **Tipo di rapporto** e **Società** della scheda finché non arriva la data.', 'Le azioni richiedono il permesso di modifica sugli utenti.'] },
+        { type: 'list', items: ['Le condizioni non si modificano: ogni cambio è una nuova condizione. La fine di una condizione è il giorno prima della decorrenza della successiva.', 'Per correggere un errore usa **Cancella ultima condizione** (compare solo sull’ultima) e inseriscine una nuova. Cancellare una condizione che non è l’ultima non è possibile.', 'Una condizione con decorrenza futura non cambia **Tipo di rapporto** e **Società** della scheda finché non arriva la data.', 'Le azioni richiedono il permesso di modifica sugli utenti e il campo **Storico contrattuale** modificabile nel tuo ruolo (vedi “Chi vede i dati contrattuali”).'] },
         { type: 'note', text: 'Se la decorrenza esiste già per quella persona il modulo lo segnala sul campo.' },
       ],
     },
@@ -94,7 +94,17 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: 'La sezione **Pagamento** contiene l’**IBAN** su cui pagare la persona e l’**Intestatario**; l’IBAN si legge a gruppi di quattro caratteri e si modifica sul posto come gli altri campi. Se l’IBAN non è valido compare un errore sul campo.' },
         { type: 'paragraph', text: 'Nella stessa sezione, in sola lettura, c’è il **Costo orario**: non si inserisce a mano ma si calcola dalla retribuzione della condizione contrattuale in vigore oggi. Una retribuzione oraria vale così com’è, una mensile si divide per 173 ore, una annua per 2.076 ore (173 × 12); il risultato è arrotondato al centesimo. È la retribuzione lorda, senza contributi né TFR. Senza retribuzione nella condizione in vigore il costo orario resta vuoto.' },
-        { type: 'warning', text: 'IBAN e retribuzione sono dati retributivi: li vedi e li modifichi solo con il permesso **Gestione dati retributivi** (users.manageCompensation), di default riservato al super-admin. Senza il permesso la sezione **Pagamento** (con il costo orario) e i campi retribuzione non compaiono.' },
+        { type: 'warning', text: 'IBAN e retribuzione sono dati retributivi: li vedi e li modifichi solo con il permesso **Gestione dati retributivi** (users.manageCompensation), che hanno il super-admin, l’admin e il ruolo **Risorse Umane**. Senza il permesso la sezione **Pagamento** (con il costo orario) e i campi retribuzione non compaiono.' },
+      ],
+    },
+    {
+      id: 'contract-visibility',
+      title: 'Chi vede i dati contrattuali',
+      blocks: [
+        { type: 'paragraph', text: 'Le sezioni **Rapporto contrattuale**, **Storico contrattuale**, **Dati contrattuali** e **Pagamento** contengono dati delicati. Chi li vede lo decidono i **permessi ai campi** del ruolo (form Ruoli, campi di Utenti): un campo nascosto non compare nella scheda e la sezione sparisce se non resta nessun campo visibile.' },
+        { type: 'list', items: ['Il ruolo **Risorse Umane** (ufficio del personale) vede e modifica tutto: anagrafica del personale, storico contrattuale, pagamento, CCNL, mansioni, attività, funzioni aziendali, organigramma, assenze di tutti e tipi di assenza; in più legge il segnatempo di tutti e le società. Non può cambiare i ruoli di un utente né accedere come un altro utente.', 'L’**admin** e il **super-admin** vedono tutto.', 'Gli altri ruoli dell’installazione (supervisore, coordinatore, marketing, commerciale, supervisore didattica, operatore base) non vedono i dati contrattuali, nemmeno nelle colonne della griglia Utenti (Società, Tipo di rapporto, Stato, Assunto il, Cessato il) né nell’export.', 'Chi ha più ruoli vede un campo se almeno uno dei suoi ruoli glielo mostra.'] },
+        { type: 'note', text: 'Chi non vede le date e le durate del rapporto può comunque salvare la scheda: i valori che non vede restano come sono.' },
+        { type: 'warning', text: 'Un ruolo nuovo creato dal form Ruoli, senza permessi ai campi, vede tutto: se deve vedere gli utenti ma non i dati contrattuali, nascondi nel suo form i campi di Rapporto, Storico contrattuale (employment.contracts), Dati contrattuali e Pagamento.' },
       ],
     },
     {

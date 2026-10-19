@@ -145,10 +145,12 @@ trait MapsExternalUserRecord
             reportsToIds: $reportsToId === null ? [] : [$reportsToId],
             primaryOperationalSiteIdProvided: true,
             primaryOperationalSiteId: $operationalSiteId,
-            hiredAt: $this->blankToNull($record['hired_at'] ?? null),
-            terminatedAt: $this->blankToNull($record['terminated_at'] ?? null),
-            standardDailyMinutes: $this->blankToInt($record['standard_daily_minutes'] ?? null),
-            breakDailyMinutes: $this->blankToInt($record['break_daily_minutes'] ?? null),
+            contractData: [
+                'hired_at' => $this->blankToNull($record['hired_at'] ?? null),
+                'terminated_at' => $this->blankToNull($record['terminated_at'] ?? null),
+                'standard_daily_minutes' => $this->blankToInt($record['standard_daily_minutes'] ?? null),
+                'break_daily_minutes' => $this->blankToInt($record['break_daily_minutes'] ?? null),
+            ],
         );
 
         return [$employment, $warnings];

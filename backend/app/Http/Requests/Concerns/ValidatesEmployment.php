@@ -121,11 +121,12 @@ trait ValidatesEmployment
                 $linkedFunctionIds['competence'],
             ),
 
-            'employment.hired_at' => ['nullable', 'date'],
-            'employment.terminated_at' => ['nullable', 'date', 'after_or_equal:employment.hired_at'],
+            // Contract data (spec 0283 D-5): absent = untouched, null = cleared.
+            'employment.hired_at' => ['sometimes', 'nullable', 'date'],
+            'employment.terminated_at' => ['sometimes', 'nullable', 'date', 'after_or_equal:employment.hired_at'],
 
-            'employment.standard_daily_minutes' => ['nullable', 'integer', 'min:0', 'max:1440'],
-            'employment.break_daily_minutes' => ['nullable', 'integer', 'min:0', 'max:1440'],
+            'employment.standard_daily_minutes' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:1440'],
+            'employment.break_daily_minutes' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:1440'],
 
             // Payment data (spec 0272 D-6): absent = untouched, null = cleared.
             'employment.iban' => ['sometimes', 'nullable', 'string', 'max:64', $this->ibanRule()],
@@ -296,15 +297,33 @@ trait ValidatesEmployment
             businessFunctionIds: $this->submittedIds('employment.business_function_ids'),
             managedBusinessFunctionIdsProvided: $this->input('employment.managed_business_function_ids') !== null,
             managedBusinessFunctionIds: $this->submittedIds('employment.managed_business_function_ids'),
-            hiredAt: $this->input('employment.hired_at'),
-            terminatedAt: $this->input('employment.terminated_at'),
-            standardDailyMinutes: $this->nullableInt('employment.standard_daily_minutes'),
-            breakDailyMinutes: $this->nullableInt('employment.break_daily_minutes'),
+            contractData: $this->submittedContractData(),
             ibanProvided: $this->has('employment.iban'),
             iban: $this->submittedIban(),
             ibanHolderProvided: $this->has('employment.iban_holder'),
             ibanHolder: $this->filled('employment.iban_holder') ? (string) $this->input('employment.iban_holder') : null,
         );
+    }
+
+    /**
+     * The contract-data columns the payload carried (spec 0283 D-5), the
+     * durations as integers.
+     *
+     * @return array<string, string|int|null>
+     */
+    private function submittedContractData(): array
+    {
+        $data = [];
+
+        foreach (EmploymentData::CONTRACT_DATA_COLUMNS as $column) {
+            if ($this->has("employment.{$column}")) {
+                $data[$column] = str_ends_with($column, '_minutes')
+                    ? $this->nullableInt("employment.{$column}")
+                    : $this->input("employment.{$column}");
+            }
+        }
+
+        return $data;
     }
 
     /**

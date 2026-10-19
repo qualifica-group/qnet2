@@ -13,8 +13,10 @@ use App\Tables\Users\UserJobRolesColumn;
 use App\Tables\Users\UserManagedBusinessFunctionsColumn;
 use App\Tables\Users\UserPersonalDataColumns;
 use App\Tables\Users\UserRolesColumn;
+use App\Tables\Users\UserSensitiveColumns;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -49,6 +51,7 @@ class UsersTableDefinition extends AbstractTableDefinition
         private readonly UserPersonalDataColumns $personalDataColumns,
         private readonly UserEmploymentColumns $employmentColumns,
         private readonly UserRolesColumn $rolesColumn,
+        private readonly UserSensitiveColumns $sensitiveColumns,
     ) {}
 
     public function domain(): string
@@ -123,7 +126,7 @@ class UsersTableDefinition extends AbstractTableDefinition
      */
     public function columns(): array
     {
-        return UserColumnCatalog::columns($this->personalDataColumns->typeValues());
+        return $this->sensitiveColumns->filterCatalogue(UserColumnCatalog::columns($this->personalDataColumns->typeValues()), 'id');
     }
 
     /**
@@ -131,7 +134,7 @@ class UsersTableDefinition extends AbstractTableDefinition
      */
     public function filters(): array
     {
-        return UserColumnCatalog::filters($this->personalDataColumns->typeValues());
+        return $this->sensitiveColumns->filterCatalogue(UserColumnCatalog::filters($this->personalDataColumns->typeValues()), 'columnId');
     }
 
     /**
@@ -219,7 +222,7 @@ class UsersTableDefinition extends AbstractTableDefinition
         $card = $row->personalData;
         $address = $card?->addresses->first();
 
-        return array_merge([
+        $mapped = array_merge([
             'id' => $row->id,
             'name' => $row->name,
             'email' => $row->email,
@@ -233,6 +236,8 @@ class UsersTableDefinition extends AbstractTableDefinition
             'province' => $address?->province?->localizedName(),
             'city' => $address?->city?->localizedName(),
         ], $this->personalDataColumns->mapRow($card, $address), $this->employmentColumns->mapRow($row));
+
+        return Arr::except($mapped, $this->sensitiveColumns->hiddenColumns($actor));
     }
 
     /**

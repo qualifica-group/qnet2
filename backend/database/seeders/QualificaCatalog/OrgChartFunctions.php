@@ -163,7 +163,7 @@ final class OrgChartFunctions
                 'antoniosalvatore.peluso@qualificagroup.com',
             ],
         ],
-        'Risorse Umane' => [
+        BusinessFunctionCatalogue::HUMAN_RESOURCES => [
             'heads' => ['anna.castaldo@qualificagroup.com'],
             'members' => [
                 'amelia.iorio@qualificagroup.com',

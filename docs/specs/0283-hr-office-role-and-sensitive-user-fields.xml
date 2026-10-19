@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0283-hr-office-role-and-sensitive-user-fields" status="approved" owner="nicola" date="2026-10-19">
+
+  <goal>
+    Nel seed di produzione l'ufficio del personale (Anna Castaldo, Amelia Iorio, Valentina Sorrentino) riceve un
+    ruolo "Risorse Umane" con tutti i moduli HR; ogni altro ruolo seminato non vede piu' i dati contrattuali della
+    scheda utente (Rapporto contrattuale, Storico contrattuale, Dati contrattuali, Pagamento). La restrizione passa
+    dalla matrice dei permessi di campo per ruolo (spec 0006) ed e' applicata anche lato server.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-10-19:
+    D-1 Ruolo `risorse-umane` ("Risorse Umane"), assegnato IN AGGIUNTA al ruolo che la persona ha gia' alle persone
+        della funzione "Risorse Umane" della Pianta Organica (`OrgChartFunctions`: responsabile + membri = le tre
+        persone). Moduli completi, cancellazione compresa: Utenti (con `users.manageCompensation`), CCNL, Mansioni,
+        Attivita', Funzioni aziendali, Organigramma, Assenze (con `absence-requests.manageAll`), Tipi di assenza.
+        In piu': Segnatempo di tutti in lettura (`time-entries.viewAll` + `exportMonthly`) e Societa' in sola
+        lettura (`companies.viewAny|view`). Restano fuori, per sicurezza: `users.impersonate` (accedere come un
+        admin sarebbe un'escalation) e la modifica del campo Ruoli dell'utente (riga di matrice visibile, non
+        modificabile: l'HR non puo' darsi o dare `admin`).
+    D-2 Dati sensibili = chiavi di campo `users`: `employment.relationship_type`, `employment.company_id`,
+        `employment.contracts` (NUOVA: storico contrattuale e condizione vigente), `employment.hired_at`,
+        `employment.terminated_at`, `employment.standard_daily_minutes`, `employment.break_daily_minutes`,
+        `employment.iban`, `employment.iban_holder`.
+    D-3 Ogni mansione seminata (`OperatorRoleCatalogue::ROLES`, base compresa) riceve righe "nascosto" su D-2. Il
+        ruolo HR e `admin` ricevono righe esplicite "visibile e modificabile" su D-2: la matrice e' l'unione fra i
+        ruoli della persona e solo i ruoli CON una riga partecipano, quindi senza riga esplicita il "nascosto" del
+        ruolo base vincerebbe. La riga "modificabile" non allarga nulla: si interseca col tetto del codice.
+        Il super-admin ignora la matrice (vede tutto). Un ruolo creato a mano senza righe vede tutto (semantica
+        spec 0006 invariata): va ristretto dal form Ruoli.
+    D-4 Lato server, un campo D-2 nascosto: assente dalla risposta della scheda (`employment`), colonna e filtro
+        assenti dalla griglia utenti (e quindi dall'export), storico contrattuale 403. Scrivere lo storico richiede
+        `employment.contracts` modificabile (403 altrimenti).
+    D-5 `hired_at`, `terminated_at`, `standard_daily_minutes`, `break_daily_minutes` passano alla semantica
+        "assente = invariato" (come l'IBAN): chi non li vede e salva la scheda non li cancella. Il form li invia
+        solo se cambiati.
+    D-6 Assenze (utente): di default si vedono le proprie; chi ha sottoposti in "Risponde a" vede anche le loro,
+        automaticamente e senza permesso (comportamento attuale, spec 0278, necessario perche' i superiori diretti
+        sono gli approvatori); `absence-requests.manageAll` vede tutto (HR e admin); il super-admin tutto. Nessun
+        cambio di codice sulle assenze.
+  </context>
+
+  <scope>
+    <in>
+      <item>`UsersAuthorization`: chiave `employment.contracts` (collection, gruppo employment).</item>
+      <item>`EmploymentResource`, `EmploymentContractController`/`StoreEmploymentContractRequest`, griglia utenti
+        (`UsersTableDefinition` + `Users/UserSensitiveColumns`): applicazione server di D-4.</item>
+      <item>`EmploymentData` + `ValidatesEmployment` + `MapsExternalUserRecord`: D-5.</item>
+      <item>Seed: `OperatorRoleCatalogue` (ruolo e blocco HR, chiavi sensibili), `QualificaRoleSeeder` (matrice),
+        nuovo `QualificaHrOfficeSeeder` (assegnazione), `QualificaProductionDataSeeder` (step 7b).</item>
+      <item>Frontend: sezioni Rapporto e Storico mostrate solo con i loro campi visibili, aggiunta/cancellazione
+        condizione solo con `employment.contracts` modificabile; payload D-5.</item>
+      <item>Guida in-app users IT/EN; manuale Claude Docs (sezione Utenti).</item>
+    </in>
+    <out>
+      <item>Permesso "vede il team" sulle assenze (D-6: non serve).</item>
+      <item>Cambi alla semantica dell'unione della matrice (spec 0006).</item>
+      <item>Etichette tradotte delle chiavi `employment.*` nella matrice del form Ruoli (oggi umanizzate).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <shared id="field-keys">Nuova chiave `employment.contracts` in `GET /api/users/{id}` `permissions.fields` e nel
+      catalogo permessi del form Ruoli; tetto: modificabile con `users.update`, altrimenti sola lettura.</shared>
+    <endpoint method="GET" path="/api/users/{user}">
+      <response status="200">`employment` senza le chiavi il cui campo e' nascosto all'attore:
+        relationship_type -> `relationship_type`; company_id -> `company_id`, `company`; contracts ->
+        `current_contract`; hired_at, terminated_at, standard_daily_minutes, break_daily_minutes -> la chiave omonima.
+        Pagamento invariato (`users.manageCompensation`).</response>
+    </endpoint>
+    <endpoint method="PUT|PATCH|POST" path="/api/users[/{user}]">
+      <request>`employment.hired_at|terminated_at|standard_daily_minutes|break_daily_minutes`: assente = invariato,
+        null = svuotato (era: assente = svuotato).</request>
+    </endpoint>
+    <endpoint method="GET|POST|DELETE" path="/api/users/{user}/employment-contracts[/{id}]">
+      <errors>403 se `employment.contracts` e' nascosto (GET) o non modificabile (POST/DELETE), oltre alle regole
+        attuali.</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/tables/users">
+      <response status="200">Colonne e filtri `company`, `relationship_type`, `hired_at`, `terminated_at`,
+        `employment_status` presenti solo se il campo relativo e' visibile (`employment_status` segue
+        `terminated_at`).</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dopo `QualificaRoleSeeder` il ruolo `risorse-umane` ha tutti i permessi di users (tranne impersonate), collective-agreements, job-roles, job-activities, business-functions, org-chart, absence-requests, absence-types, piu' time-entries.viewAll/exportMonthly, companies.viewAny/view, personal_data/contacts/addresses, Task e Segnatempo propri.</criterion>
+    <criterion id="AC-002">Ogni ruolo di `OperatorRoleCatalogue::ROLES` ha righe nascoste sulle chiavi D-2 (le altre righe esistenti, es. own-requests, restano); `risorse-umane` e `admin` hanno righe visibili e modificabili su D-2, e `risorse-umane` ha `roles` visibile non modificabile. Un rilancio converge.</criterion>
+    <criterion id="AC-003">`QualificaHrOfficeSeeder` aggiunge `risorse-umane` alle persone della funzione Risorse Umane senza togliere il ruolo che avevano; un account mancante produce un warning; rilancio idempotente. `QualificaProductionDataSeeder` lo chiama dopo `QualificaStaffSeeder`.</criterion>
+    <criterion id="AC-004">Con `operatore-base` + `risorse-umane` i campi D-2 risultano visibili e modificabili; con `supervisore-commerciale` risultano nascosti.</criterion>
+    <criterion id="AC-005">`GET /api/users/{id}` per un attore con i campi nascosti non contiene le chiavi D-4 in `employment`; per l'HR le contiene.</criterion>
+    <criterion id="AC-006">Storico contrattuale: GET 403 e POST/DELETE 403 per un attore con `users.view|update` ma `employment.contracts` nascosto; invariati per l'HR.</criterion>
+    <criterion id="AC-007">Griglia utenti: per l'attore con campi nascosti le colonne/filtri D-4 mancano e le righe non hanno quelle chiavi; per l'HR ci sono.</criterion>
+    <criterion id="AC-008">Un salvataggio della scheda con `employment` privo di hired_at/terminated_at/durate lascia i valori salvati; con null li svuota.</criterion>
+    <criterion id="AC-009">(FE) Senza i campi visibili le sezioni Rapporto contrattuale e Storico contrattuale non compaiono; con `employment.contracts` in sola lettura lo storico e' visibile senza "Aggiungi"/cestino; il payload di aggiornamento non contiene date e durate non modificate.</criterion>
+    <criterion id="AC-010">Guida in-app users IT ed EN aggiornata con la stessa sezione; parity test verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza. Nessuna migrazione (la chiave di campo e' solo catalogo). Il seed resta idempotente
+    e i ruoli sono sincronizzati per intero. File sotto 500 righe (`UsersTableDefinition` e' a 440: la logica
+    colonne va in una classe dedicata). Test Pest mirati + Vitest users; Pint, ESLint, `tsc -b --force`.
+  </constraints>
+
+</spec>

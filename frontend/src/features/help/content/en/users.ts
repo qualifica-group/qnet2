@@ -84,7 +84,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: 'On the card of an already saved user, the **Contract history** section lists the person’s contract conditions, newest first: start, end, employment type, company, collective agreement and level and, if you have the permission, the salary. The one in force today has the **Current** label. When creating a user the section says the history is filled in after saving.' },
         { type: 'steps', items: ['Click **New condition**.', 'Enter the **Start date** (a date not yet used for that person), the **Relationship type**, the **Company** and the **Collective agreement and level**.', 'If you have the compensation permission, also enter **Salary** and **Period** (month, year, hour): they go together.', 'Add a **Reason** if needed and click **Save**.'] },
-        { type: 'list', items: ['Conditions are never edited: every change is a new condition. The end of a condition is the day before the next one starts.', 'To fix a mistake use **Delete last condition** (shown only on the last one) and enter a new one. Deleting a condition that is not the last is not possible.', 'A condition starting in the future does not change the card’s **Employment type** and **Company** until that date arrives.', 'The actions require the permission to edit users.'] },
+        { type: 'list', items: ['Conditions are never edited: every change is a new condition. The end of a condition is the day before the next one starts.', 'To fix a mistake use **Delete last condition** (shown only on the last one) and enter a new one. Deleting a condition that is not the last is not possible.', 'A condition starting in the future does not change the card’s **Employment type** and **Company** until that date arrives.', 'The actions require the permission to edit users and the **Contract history** field editable in your role (see “Who sees the contract data”).'] },
         { type: 'note', text: 'If the start date is already used for that person, the form reports it on the field.' },
       ],
     },
@@ -94,7 +94,17 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: 'The **Payment** section holds the **IBAN** the person is paid on and the **Account holder**; the IBAN is read in groups of four characters and edited in place like the other fields. An invalid IBAN shows an error on the field.' },
         { type: 'paragraph', text: 'The same section shows the **Hourly cost**, read-only: it is not entered by hand but derived from the salary of the contract condition in force today. An hourly salary counts as is, a monthly one is divided by 173 hours, a yearly one by 2,076 hours (173 × 12); the result is rounded to the cent. It is the gross salary, with no social contributions or severance pay. With no salary in the condition in force the hourly cost stays empty.' },
-        { type: 'warning', text: 'IBAN and salary are compensation data: you see and edit them only with the **Manage compensation data** permission (users.manageCompensation), by default reserved to the super-admin. Without it the **Payment** section (with the hourly cost) and the salary fields do not appear.' },
+        { type: 'warning', text: 'IBAN and salary are compensation data: you see and edit them only with the **Manage compensation data** permission (users.manageCompensation), held by the super-admin, the admin and the **Risorse Umane** (HR) role. Without it the **Payment** section (with the hourly cost) and the salary fields do not appear.' },
+      ],
+    },
+    {
+      id: 'contract-visibility',
+      title: 'Who sees the contract data',
+      blocks: [
+        { type: 'paragraph', text: 'The **Contract**, **Contract history**, **Contract data** and **Payment** sections hold sensitive data. Who sees them is decided by the role’s **field permissions** (Roles form, Users fields): a hidden field does not appear on the card, and the section disappears when none of its fields is left visible.' },
+        { type: 'list', items: ['The **Risorse Umane** (HR office) role sees and edits everything: staff records, contract history, payment, collective agreements, job roles, activities, business functions, org chart, everyone’s absences and absence types; it also reads everyone’s time entries and the companies. It cannot change a user’s roles nor sign in as another user.', 'The **admin** and the **super-admin** see everything.', 'The other roles of the installation (supervisor, coordinator, marketing, sales, teaching supervisor, base operator) do not see the contract data, not even in the Users grid columns (Company, Relationship type, Status, Hired at, Terminated at) nor in the export.', 'Someone with several roles sees a field when at least one of their roles shows it.'] },
+        { type: 'note', text: 'Whoever cannot see the employment dates and durations can still save the card: the values they cannot see stay as they are.' },
+        { type: 'warning', text: 'A new role created from the Roles form, with no field permissions, sees everything: if it must see users but not the contract data, hide in its form the Contract, Contract history (employment.contracts), Contract data and Payment fields.' },
       ],
     },
     {

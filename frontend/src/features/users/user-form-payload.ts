@@ -44,10 +44,14 @@ function buildEmploymentPayload(
     // behind the UI already hiding/clearing the editor while it is on, so a
     // stale row never reaches the server alongside a true flag (422 there).
     product_lines: values.covers_all_product_categories ? [] : completeProductLines(values.product_lines),
-    hired_at: values.hired_at || null,
-    terminated_at: values.terminated_at || null,
-    standard_daily_minutes: values.standard_daily_minutes,
-    break_daily_minutes: values.break_daily_minutes,
+    // Spec 0283 D-5: like the payment data, only what changed travels, so an
+    // actor whose role hides them never overwrites them.
+    ...(values.hired_at !== baseline.hired_at ? { hired_at: values.hired_at || null } : {}),
+    ...(values.terminated_at !== baseline.terminated_at ? { terminated_at: values.terminated_at || null } : {}),
+    ...(values.standard_daily_minutes !== baseline.standard_daily_minutes
+      ? { standard_daily_minutes: values.standard_daily_minutes }
+      : {}),
+    ...(values.break_daily_minutes !== baseline.break_daily_minutes ? { break_daily_minutes: values.break_daily_minutes } : {}),
     ...(values.iban !== baseline.iban ? { iban: values.iban || null } : {}),
     ...(values.iban_holder !== baseline.iban_holder ? { iban_holder: values.iban_holder || null } : {}),
   }

@@ -222,8 +222,9 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
       is_assignable: true,
       covers_all_product_categories: false,
       product_lines: [],
+      // Spec 0283 D-5 (REQUIREMENT CHANGED): only the contract data that differ
+      // from the empty form travel; the untouched termination date is left out.
       hired_at: '2026-01-15',
-      terminated_at: null,
       standard_daily_minutes: 480,
       break_daily_minutes: 30,
     })
@@ -387,10 +388,8 @@ describe('buildUpdatePayload — employment (spec 0015)', () => {
       is_assignable: true,
       covers_all_product_categories: false,
       product_lines: [],
-      hired_at: null,
-      terminated_at: null,
-      standard_daily_minutes: null,
-      break_daily_minutes: null,
+      // Spec 0283 D-5 (REQUIREMENT CHANGED): the untouched contract data are
+      // left out, so a role that cannot see them never overwrites them.
     })
   })
 

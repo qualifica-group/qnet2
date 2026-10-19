@@ -53,8 +53,8 @@ export function UserDetailSections({ user, editor, onChanged }: UserDetailSectio
       {visibility.access ? <UserAccessRecordSection {...sectionProps} isEdit /> : null}
       {assignmentFields.any ? <UserAssignmentRecordSection {...sectionProps} /> : null}
       {visibility.profile ? <UserProfileRecordSection {...sectionProps} /> : null}
-      <UserContractRecordSection values={sectionProps.values} />
-      <UserContractHistorySection userId={user.id} />
+      {visibility.contract ? <UserContractRecordSection values={sectionProps.values} /> : null}
+      {visibility.contractHistory ? <UserContractHistorySection userId={user.id} /> : null}
       {visibility.contractData ? <UserContractDataRecordSection {...sectionProps} /> : null}
       {paymentVisible ? <UserPaymentRecordSection {...sectionProps} /> : null}
       <CustomFieldRecordSections resource="users" values={sectionProps.values.custom_fields} inline={inline} control={form.control} />

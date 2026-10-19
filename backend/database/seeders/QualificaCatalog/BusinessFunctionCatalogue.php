@@ -18,6 +18,9 @@ final class BusinessFunctionCatalogue
     /** The function of the catalogue's "APL" branch and of the APL operators. */
     public const string EMPLOYMENT_AGENCY = 'Agenzia per il Lavoro';
 
+    /** The HR office: its people receive the "Risorse Umane" application role (spec 0283). */
+    public const string HUMAN_RESOURCES = 'Risorse Umane';
+
     /** @var array<string, string> */
     public const array FUNCTIONS = [
         'Amministrazione e Contabilità' => self::BUSINESS_SERVICE,
@@ -30,7 +33,7 @@ final class BusinessFunctionCatalogue
         'Gestione Sedi' => self::BUSINESS_SERVICE,
         'Gare' => self::BUSINESS_UNIT,
         'Privacy' => self::BUSINESS_UNIT,
-        'Risorse Umane' => self::BUSINESS_SERVICE,
+        self::HUMAN_RESOURCES => self::BUSINESS_SERVICE,
         'ISO' => self::BUSINESS_UNIT,
         'Istruzione' => self::BUSINESS_UNIT,
         'Sistemi e Supporto Utenti' => self::BUSINESS_SERVICE,

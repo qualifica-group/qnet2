@@ -90,8 +90,8 @@ export function editDefaults(user: UserDetail, customFieldDefaults: Record<strin
           product_lines: productLinesToRows(employment.product_lines),
           hired_at: employment.hired_at ?? '',
           terminated_at: employment.terminated_at ?? '',
-          standard_daily_minutes: employment.standard_daily_minutes,
-          break_daily_minutes: employment.break_daily_minutes,
+          standard_daily_minutes: employment.standard_daily_minutes ?? null,
+          break_daily_minutes: employment.break_daily_minutes ?? null,
           iban: employment.iban ?? '',
           iban_holder: employment.iban_holder ?? '',
         }

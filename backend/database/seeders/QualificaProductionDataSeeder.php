@@ -68,6 +68,9 @@ use Illuminate\Database\Seeder;
  *                                    base role (Task and Segnatempo only).
  *                                    Create-only: an account that already
  *                                    exists is never touched.
+ *      QualificaHrOfficeSeeder     — the "Risorse Umane" role (spec 0283),
+ *                                    added to the people of the HR function
+ *                                    on top of the role of step 6 or 7.
  *   8. QualificaReportsToSeeder    — who each operator reports to ("Risponde
  *                                    a", spec 0166), from the mansionario's
  *                                    supervision sheet.
@@ -90,7 +93,8 @@ use Illuminate\Database\Seeder;
  *   - step 6 needs the sites step 5 imports and the category functions step 2
  *     links: a competence row carries the category's EFFECTIVE function;
  *   - step 7 runs after step 6, so it finds the named accounts of steps 4
- *     and 6 already there and leaves them alone;
+ *     and 6 already there and leaves them alone; the HR office role lands
+ *     once both have created their accounts;
  *   - step 8 needs every account on both sides of a reports-to link: the
  *     operators of step 6 and the staff of step 7.
  *   - step 9 assigns roles and levels to the accounts of steps 4, 6 and 7, so
@@ -129,6 +133,7 @@ class QualificaProductionDataSeeder extends Seeder
         $this->call(QualificaLegacyImportSeeder::class);
         $this->call(QualificaOperatorSeeder::class);
         $this->call(QualificaStaffSeeder::class);
+        $this->call(QualificaHrOfficeSeeder::class);
         $this->call(QualificaReportsToSeeder::class);
         $this->call(QualificaHrCatalogSeeder::class);
     }

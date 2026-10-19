@@ -68,6 +68,8 @@ it('200: returns the field catalogue and the full permissions block (create-cont
         // spec 0111 — the assignment competence as {function, category} rows.
         'employment.product_lines',
         'employment.relationship_type', 'employment.company_id',
+        // spec 0283 D-2 (REQUIREMENT CHANGED) — the contract history and the condition in force.
+        'employment.contracts',
         'employment.primary_operational_site_id', 'employment.remote_operational_site_ids',
         'employment.hired_at',
         'employment.terminated_at', 'employment.standard_daily_minutes', 'employment.break_daily_minutes',

@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Role;
 use App\Models\User;
 use App\RequestManagement\RequestModule;
+use Database\Seeders\QualificaCatalog\HrOfficeRoleCatalogue as HrOffice;
 use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue as Catalogue;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
@@ -19,6 +20,10 @@ use Spatie\Permission\PermissionRegistrar;
  * Operatori", user directive 2026-09-15): each role is the permission matrix
  * of one mansione, composed from the building blocks declared in
  * OperatorRoleCatalogue. QualificaOperatorSeeder assigns them.
+ *
+ * Next to them the HR office role (HrOfficeRoleCatalogue, spec 0283), and the
+ * per-field matrix keeping the user record's contractual data to that role and
+ * to `admin`.
  *
  * Self-sufficient by design: it re-runs `permissions:sync` first, so a role can
  * never end up silently empty because the catalogue had not been bootstrapped.
@@ -39,20 +44,25 @@ class QualificaRoleSeeder extends Seeder
             $blocks = [...$role['blocks'], ...Catalogue::EVERY_ROLE_BLOCKS];
             $synced = $this->syncRole($name, $role['description'], $this->permissionsOf($blocks, $catalogue));
 
-            // Step 3: the per-FIELD restrictions of the roles scoped to their
-            // own requests (empty for every other role, so a re-run also
-            // clears a matrix left behind by an older definition).
+            // Step 3: the per-FIELD restrictions: the user record's
+            // contractual data for every mansione, plus those of the roles
+            // scoped to their own requests.
             $scoped = in_array(Catalogue::OWN_REQUESTS, $role['blocks'], true);
             $this->syncFieldPermissions(
                 $synced,
-                $scoped ? Catalogue::OWN_REQUESTS_HIDDEN_FIELDS : [],
-                $scoped ? Catalogue::OWN_REQUESTS_READONLY_FIELDS : [],
+                hiddenFields: [...HrOffice::SENSITIVE_FIELDS, ...($scoped ? Catalogue::OWN_REQUESTS_HIDDEN_FIELDS : [])],
+                readonlyFields: $scoped ? Catalogue::OWN_REQUESTS_READONLY_FIELDS : [],
             );
         }
 
         // Step 4: the `admin` role, outside the mansioni: the whole catalogue,
-        // no field restriction.
-        $this->syncFieldPermissions($this->syncRole(Catalogue::ADMIN_ROLE, Catalogue::ADMIN_DESCRIPTION, $catalogue), [], []);
+        // the contractual data granted explicitly (see grantedFields).
+        $admin = $this->syncRole(Catalogue::ADMIN_ROLE, Catalogue::ADMIN_DESCRIPTION, $catalogue);
+        $this->syncFieldPermissions($admin, grantedFields: HrOffice::SENSITIVE_FIELDS);
+
+        // Step 4b: the HR office (spec 0283), held on top of a mansione.
+        $hrOffice = $this->syncRole(HrOffice::ROLE, HrOffice::DESCRIPTION, $this->hrOfficePermissions($catalogue));
+        $this->syncFieldPermissions($hrOffice, readonlyFields: HrOffice::READONLY_FIELDS, grantedFields: HrOffice::SENSITIVE_FIELDS);
 
         // Step 5: drop the roles the Italian names replaced. A model delete, so
         // spatie detaches their permissions and memberships and the field
@@ -78,6 +88,36 @@ class QualificaRoleSeeder extends Seeder
                 ->contains(fn (string $block): bool => $this->blockGrants($block, $permission)))
             ->values();
 
+        return $this->withUserFormStack($permissions, $catalogue);
+    }
+
+    /**
+     * The HR modules in full but the denied abilities, the extra grants, and
+     * the Task and Segnatempo every mansione holds.
+     *
+     * @param  Collection<int, string>  $catalogue
+     * @return Collection<int, string>
+     */
+    private function hrOfficePermissions(Collection $catalogue): Collection
+    {
+        $permissions = $catalogue->filter(static fn (string $permission): bool => (
+            in_array(Str::beforeLast($permission, '.'), HrOffice::MODULES, true)
+                && ! in_array($permission, HrOffice::DENIED_PERMISSIONS, true)
+        ) || in_array($permission, HrOffice::EXTRA_PERMISSIONS, true));
+
+        return $this->withUserFormStack(
+            $permissions->merge($this->permissionsOf(Catalogue::EVERY_ROLE_BLOCKS, $catalogue))->unique()->values(),
+            $catalogue,
+        );
+    }
+
+    /**
+     * @param  Collection<int, string>  $permissions
+     * @param  Collection<int, string>  $catalogue
+     * @return Collection<int, string>
+     */
+    private function withUserFormStack(Collection $permissions, Collection $catalogue): Collection
+    {
         return $permissions->contains(Catalogue::USER_FORM_GATE)
             ? $permissions->merge($catalogue->filter($this->isUserFormGrant(...)))->unique()->values()
             : $permissions;
@@ -154,26 +194,33 @@ class QualificaRoleSeeder extends Seeder
     }
 
     /**
-     * Replaces the role's WHOLE field-permission matrix with the two lists — a
-     * full sync, exactly like RoleService::syncFieldPermissions() on the admin
-     * UI path. ONE writer for both degrees, because the delete-then-create is
-     * what makes the sync convergent.
+     * Replaces the role's WHOLE field-permission matrix with the three lists —
+     * a full sync, exactly like RoleService::syncFieldPermissions() on the
+     * admin UI path. ONE writer for every degree, because the
+     * delete-then-create is what makes the sync convergent.
+     *
+     * A granted row restricts nothing (the matrix intersects the code
+     * ceiling, spec 0006), but it is not the same as no row: the matrix is the
+     * union of the actor's roles that HAVE a row, so only an explicit grant
+     * outweighs the hidden row of another role the same person holds.
      *
      * @param  array<string, array<int, string>>  $hiddenFields  resource => field keys the role never sees
      * @param  array<string, array<int, string>>  $readonlyFields  resource => field keys the role sees but cannot write
+     * @param  array<string, array<int, string>>  $grantedFields  resource => field keys the role sees and writes
      */
-    private function syncFieldPermissions(Role $role, array $hiddenFields, array $readonlyFields): void
+    private function syncFieldPermissions(Role $role, array $hiddenFields = [], array $readonlyFields = [], array $grantedFields = []): void
     {
         $role->fieldPermissions()->delete();
 
-        $this->createFieldPermissions($role, $hiddenFields, visible: false);
-        $this->createFieldPermissions($role, $readonlyFields, visible: true);
+        $this->createFieldPermissions($role, $hiddenFields, visible: false, editable: false);
+        $this->createFieldPermissions($role, $readonlyFields, visible: true, editable: false);
+        $this->createFieldPermissions($role, $grantedFields, visible: true, editable: true);
     }
 
     /**
      * @param  array<string, array<int, string>>  $fieldsByResource
      */
-    private function createFieldPermissions(Role $role, array $fieldsByResource, bool $visible): void
+    private function createFieldPermissions(Role $role, array $fieldsByResource, bool $visible, bool $editable): void
     {
         foreach ($fieldsByResource as $resource => $fields) {
             foreach ($fields as $field) {
@@ -181,9 +228,7 @@ class QualificaRoleSeeder extends Seeder
                     'resource' => $resource,
                     'field' => $field,
                     'visible' => $visible,
-                    // Never editable: the matrix intersects the code ceiling
-                    // (spec 0006), a seed only ever RESTRICTS it.
-                    'editable' => false,
+                    'editable' => $editable,
                     'required' => false,
                 ]);
             }
