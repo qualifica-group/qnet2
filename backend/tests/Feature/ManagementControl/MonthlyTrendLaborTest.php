@@ -95,3 +95,39 @@ it('AC-005: the company filter keeps the hours of the users of that company, the
         ->and($sites['labor_minutes'])->toBe($all['labor_minutes'])
         ->and($all['labor_minutes'])->toBe([0, 240, 0]);
 });
+
+// Spec 0282 — the hours of no commessa go to the business functions the user belongs to.
+it('0282 AC-001: the hours of no commessa are split equally over the functions of the user', function () {
+    [$alpha, $beta] = [BusinessFunction::factory()->create(['name' => 'Alpha function']), BusinessFunction::factory()->create(['name' => 'Beta function'])];
+    $member = User::factory()->withEmployment(fn ($factory) => $factory->paidHourly('30.00'))->create();
+    $member->businessFunctions()->sync([$alpha->id, $beta->id]);
+
+    mcTimeEntry(null, 60, null, '2026-02-07', $member);
+    mcTimeEntry(null, 30, null, '2026-03-07', $member);
+    mcTimeEntry(null, 60, '20.00', '2026-02-08');
+
+    $data = mcGet('monthly-trend', LABOR_TREND_PERIOD)->assertOk()->json('data');
+    $rows = collect($data['functions'])->keyBy('key');
+
+    expect($rows[(string) $alpha->id]['labor'])->toEqual([0, 15, 7.5])
+        ->and($rows[(string) $beta->id]['labor'])->toEqual([0, 15, 7.5])
+        ->and($rows[(string) $alpha->id]['margin'])->toEqual([0, -15, -7.5])
+        ->and($rows['structure']['labor'])->toEqual([0, 20, 0])
+        ->and($data['totals']['labor'])->toEqual([0, 50, 15]);
+});
+
+it('0282 AC-003: the number of queries does not depend on the members and their hours', function () {
+    $seed = function (int $count): void {
+        for ($i = 0; $i < $count; $i++) {
+            $member = User::factory()->withEmployment(fn ($factory) => $factory->paidHourly('25.00'))->create();
+            $member->businessFunctions()->sync([BusinessFunction::factory()->create()->id]);
+            mcTimeEntry(null, 60, null, '2026-02-05', $member);
+        }
+    };
+
+    $seed(3);
+    $few = mcQueryCount('monthly-trend', LABOR_TREND_PERIOD);
+    $seed(15);
+
+    expect(mcQueryCount('monthly-trend', LABOR_TREND_PERIOD))->toBe($few);
+});

@@ -39,7 +39,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Choose the **measure** (Revenue, Costs, Labor cost or Margin; Costs already include the labor cost) to see each business function month by month, with a **Total** column. A revenue line with a quote line goes to the function of its product category; one without it is split by the shares of the work order; an invoice without a work order goes to **Unattributed**. A cost with a work order is split by the shares of the work order; one without goes to **Structure**. The same goes for hours: with a work order they follow its shares, without one they go to **Structure**.',
+          text: 'Choose the **measure** (Revenue, Costs, Labor cost or Margin; Costs already include the labor cost) to see each business function month by month, with a **Total** column. A revenue line with a quote line goes to the function of its product category; one without it is split by the shares of the work order; an invoice without a work order goes to **Unattributed**. A cost with a work order is split by the shares of the work order; one without goes to **Structure**. Time-tracking hours with a work order follow its shares; hours without one go to the business functions the person belongs to, in equal parts when they belong to several, and to **Structure** only when the person belongs to no function. The current membership counts: moving a person to another function moves their past hours too.',
         },
         {
           type: 'paragraph',

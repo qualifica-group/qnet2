@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0282-labor-cost-by-function-membership" status="approved" owner="utente" date="2026-10-19">
+
+  <goal>
+    Nell'Andamento mensile del controllo di gestione il costo delle ore del segnatempo SENZA commessa non
+    finisce piu' in un unico gruppo "Struttura": va sulle funzioni aziendali di appartenenza della persona
+    che ha registrato l'ora. Le ore con commessa restano attribuite alla commessa (quote per funzione).
+  </goal>
+
+  <context>
+    <fact>Oggi (spec 0272 D-4, AC-005) le ore senza commessa vanno al gruppo `structure` di `functions[]`
+      (`CostTrendAggregator::byFunction`, chiave `STRUCTURE`).</fact>
+    <fact>Appartenenza persona-funzione = pivot `business_function_user` (spec 0275 D-1), multipla, senza storico.</fact>
+    <fact>Costo orario dalla condizione contrattuale in vigore alla data dell'ora (spec 0277); invariato.</fact>
+    <decision id="D-1">Decisione utente 2026-10-19: il costo delle ore senza commessa di una persona si divide
+      in parti uguali tra le sue funzioni di appartenenza (arrotondamento sull'ultima quota, come
+      `WorkOrderFunctionShares::split`).</decision>
+    <decision id="D-2">Persona senza alcuna appartenenza: le sue ore senza commessa restano nel gruppo `structure`.</decision>
+    <decision id="D-3">Si usa l'appartenenza attuale (il pivot non ha storico): spostare una persona di funzione
+      sposta anche le sue ore passate. Limite dichiarato, non risolto qui.</decision>
+    <decision id="D-4">Shape dell'endpoint invariata: cambiano solo i valori della serie `labor` (e quindi `cost`
+      e `margin`) tra le righe di `functions[]`. Totali, minuti, `previous_year`, `by_nature` invariati.
+      Numero di query costante (+1 per l'appartenenza).</decision>
+  </context>
+
+  <scope>
+    <in>
+      <item>`LaborCostSource::byMonth`: le righe senza commessa portano `user_id` (raggruppate anche per utente).</item>
+      <item>`CostTrendAggregator::byFunction`: pesi per utente per le righe senza commessa.</item>
+      <item>`MonthlyTrendBuilder`: legge l'appartenenza degli utenti delle righe con UNA query.</item>
+      <item>Test Pest (AC-001..AC-003); guide in-app IT/EN `management-control-trend`.</item>
+    </in>
+    <out>
+      <item>Conto economico (per commessa) e costi di struttura del ciclo passivo: invariati.</item>
+      <item>Storico dell'appartenenza (D-3).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/management-control/monthly-trend">
+      <response status="200">Invariata (spec 0270/0272). `functions[].labor` di una funzione = ore con commessa
+        (quote) + quota delle ore senza commessa dei suoi membri; `structure.labor` = ore senza commessa di
+        persone senza appartenenza.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance>
+    <criterion id="AC-001">Ora senza commessa di una persona membro di due funzioni: il costo va per meta' a
+      ciascuna funzione, nulla a `structure`; i totali non cambiano (Pest).</criterion>
+    <criterion id="AC-002">Ora senza commessa di una persona senza appartenenza: va a `structure` (Pest, test 0272 esistente).</criterion>
+    <criterion id="AC-003">Il numero di query non dipende da utenti e ore (Pest, test 0272 AC-008 esteso con membri).</criterion>
+  </acceptance>
+</spec>

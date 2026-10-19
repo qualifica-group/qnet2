@@ -16,7 +16,8 @@ use Illuminate\Support\Facades\DB;
  * for every month of the interval, the totals against the same months one year
  * earlier and the costs by nature. The cost includes the internal labor cost
  * (spec 0272, D-4): the hours of a commessa follow its function weights, the
- * hours of no commessa are structure costs; the nature stays on the payable
+ * hours of no commessa go in equal shares to the functions their user belongs
+ * to, structure when none (spec 0282); the nature stays on the payable
  * documents, the hours have none. Computed with a constant number of queries;
  * amounts are integer cents summed and leave as numbers with two decimals. The
  * functions always add up to the totals: a commessa's figures are split with the
@@ -49,7 +50,7 @@ final class MonthlyTrendBuilder
         // Step 3: revenue and cost by function
         $revenueByFunction = $this->revenue->byFunction($revenueRows, $months, $weights);
         $costByFunction = $this->cost->byFunction($costRows, $months, $weights);
-        $laborByFunction = $this->cost->byFunction($laborRows, $months, $weights);
+        $laborByFunction = $this->cost->byFunction($laborRows, $months, $weights, $this->memberWeights($laborRows));
 
         // Step 4: totals, previous year and nature
         $revenueByMonth = $this->sumByMonth($revenueRows);
@@ -85,6 +86,27 @@ final class MonthlyTrendBuilder
         }
 
         return array_values($ids);
+    }
+
+    /**
+     * Equal weights on the business functions each user of the hours of no commessa belongs to, one query.
+     *
+     * @param  array<int, array{user_id: int|null}>  $laborRows
+     * @return array<int, array<int, int>> function weights by user id
+     */
+    private function memberWeights(array $laborRows): array
+    {
+        $userIds = array_values(array_unique(array_filter(array_column($laborRows, 'user_id'))));
+        if ($userIds === []) {
+            return [];
+        }
+
+        $weights = [];
+        foreach (DB::table('business_function_user')->whereIn('user_id', $userIds)->get(['user_id', 'business_function_id']) as $member) {
+            $weights[(int) $member->user_id][(int) $member->business_function_id] = 1;
+        }
+
+        return $weights;
     }
 
     /**

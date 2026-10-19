@@ -3,6 +3,44 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0282 + dataset controllo di gestione 2025-2026 — VERDE, COMMITTATO, seed eseguito su qnet2 (2026-10-19)
+
+- Spec `docs/specs/0282-labor-cost-by-function-membership.xml` (decisione utente 2026-10-19): nell'Andamento le ore
+  senza commessa vanno alle funzioni di APPARTENENZA della persona (pivot `business_function_user`), in parti uguali;
+  persona senza funzioni -> `structure`. Appartenenza attuale, senza storico (D-3). Shape invariata.
+  `LaborCostSource::byMonth` porta `user_id` sulle righe senza commessa; `CostTrendAggregator::byFunction($rows,
+  $months, $weights, $userWeights)`; `MonthlyTrendBuilder::memberWeights()` (+1 query). Test in
+  `MonthlyTrendLaborTest` (0282 AC-001/AC-003). Guide IT/EN `management-control-trend` aggiornate.
+  NB: il numero 0278 era stato preso in parallelo da `0278-hr-absence-requests.xml`.
+- Dataset `DemoManagementControlSeeder` (in coda a `DemoDataSeeder`, dopo `DemoTimeEntrySeeder`), file in
+  `database/seeders/ManagementControl/` (`Mc*`): gen 2025 - ott 2026, dati italiani, tutto via servizi reali con
+  orologio simulato (`McTimeline`: coda eventi in ordine di data + `Carbon::setTestNow`, niente oltre oggi).
+  ~360 trattative (55% vinte) -> contratto validato -> commessa; per riga (edizione corso / fase SAL) fattura
+  attiva + registrazione + incassi (12% clienti morosi), ODA+fatture passive (docenti, aule, subappalto IT),
+  costi manuali (materiali, trasferte); costi di struttura mensili (affitto, utenze, software, consulenze...),
+  RDA trimestrali -> ODA; liquidazioni agenti trimestrali; organico con retribuzione mensile dalla data di
+  assunzione + rinnovo CCNL 2026-01-01 (+2,8%), tutti con almeno una funzione; segnatempo completo (~45.800 righe,
+  480 min/giorno, chiusure e festivi) con ore di commessa prima e generiche dopo.
+  Prodotti venduti PROPRI del dataset (tipologia `consultancy` = PAID): quelli demo sono "Ente" (RECEIVED, ricavo =
+  sola provvigione), che azzerava il ricavo da contratto. Durata ~105 s.
+- Fix fuori scope necessario: `Support/ActiveInvoiceWriter::request()` non valorizzava `proforma_requests.quote_id`
+  (obbligatorio dalla 0267): `DemoDataSeeder` falliva su MySQL in `DemoInvoiceSeeder`.
+  Inoltre la pulizia iniziale di `DemoDataSeeder` non reggeva un RE-RUN su DB popolato: ora cancella
+  `PurchaseOrderReceipt` prima di `PurchaseOrder` (le righe di ricevimento restringono le righe d'ordine) e
+  `ProformaRequest` dopo `Invoice` (restringe commessa e offerta). Verificato con re-run su `qnet2_mc` popolato:
+  nessun duplicato (anagrafiche, regole, prodotti), max 480 min/giorno.
+- Verificato su DB MySQL separato `qnet2_mc` (migrate:fresh + DemoDataSeeder): 8 endpoint CdG 200, 0 minuti non
+  valorizzati, numerazione fatture coerente con le date, max 480 min/giorno. Test `Seeding/ManagementControlDatasetTest`.
+  Suite: 11812/11816 (1 fallimento solo ambiente: `QuoteDocumentPdfTest` senza LibreOffice), tsc -b, ESLint, Pint puliti.
+  In locale `composer test` fallisce per il Composer globale (`@no_additional_args`); usare `PHP_INI_SCAN_DIR` con
+  memory_limit=2G + `php artisan test --parallel` (Herd ha 128M).
+  `DemoDataSeeder` non gira su SQLite (`locations:add` usa SQL MySQL), preesistente.
+- Limiti noti: `DemoDataSeeder` usa `WithoutModelEvents` -> niente activity log, quindi nella pagina Fatturazione il
+  ciclo proforma -> fattura (data conversione) resta vuoto per i dati demo. Utilizzo staff di produzione ~42%.
+- Manuale Claude Docs: non condiviso con la sessione -> da aggiornare: Controllo di gestione > Andamento (ore senza
+  commessa per funzione di appartenenza).
+- Seed eseguito su `qnet2` locale (2026-10-19): CE 2025 99 commesse, contratto = fatturato 2,42 M, lavoro 392 k, 0 min non valorizzati.
+
 ## Persone -> Funzioni aziendali e responsabile di livello I dalla Pianta Organica — VERDE, COMMITTATO (2026-10-19)
 
 - Fonte: un foglio per funzione di `Pianta_Organica_Qualifica_Aggiornato 8.09.xlsx`. Dati in

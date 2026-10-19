@@ -57,14 +57,16 @@ final class CostTrendAggregator
     }
 
     /**
-     * Cost cents by function key by month, for the given months only.
+     * Cost cents by function key by month, for the given months only. A row of no commessa goes to the
+     * functions of its user when it carries one with weights (the labor hours, spec 0282), else to structure.
      *
-     * @param  array<int, array{month: string, work_order_id: int|null, nature: string|null, cents: int}>  $rows
+     * @param  array<int, array{month: string, work_order_id: int|null, cents: int, user_id?: int|null}>  $rows
      * @param  array<int, string>  $months
      * @param  array<int, array<int, int>>  $weights  function weights by work order id
+     * @param  array<int, array<int, int>>  $userWeights  function weights by user id
      * @return array<string, array<string, int>>
      */
-    public function byFunction(array $rows, array $months, array $weights): array
+    public function byFunction(array $rows, array $months, array $weights, array $userWeights = []): array
     {
         $byFunction = [];
 
@@ -73,9 +75,12 @@ final class CostTrendAggregator
                 continue;
             }
 
-            $shares = $row['work_order_id'] === null
-                ? [self::STRUCTURE => $row['cents']]
-                : $this->shares($row['cents'], $weights[$row['work_order_id']] ?? []);
+            $members = $userWeights[$row['user_id'] ?? 0] ?? [];
+            $shares = match (true) {
+                $row['work_order_id'] !== null => $this->shares($row['cents'], $weights[$row['work_order_id']] ?? []),
+                $members !== [] => $this->shares($row['cents'], $members),
+                default => [self::STRUCTURE => $row['cents']],
+            };
 
             foreach ($shares as $key => $cents) {
                 $byFunction[$key][$row['month']] = ($byFunction[$key][$row['month']] ?? 0) + $cents;

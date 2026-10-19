@@ -39,7 +39,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Scegli la **misura** (Fatturato, Costi, Costo del lavoro o Margine; i Costi includono già il costo del lavoro) per vedere ogni funzione aziendale mese per mese, con una colonna **Totale**. Una riga di ricavo con riga d’offerta va alla funzione della categoria del suo prodotto; senza, si ripartisce con le quote della commessa; una fattura senza commessa va in **Non attribuito**. Un costo con commessa si ripartisce con le quote della commessa; senza commessa va in **Struttura**. Lo stesso vale per le ore: con commessa seguono le quote della commessa, senza commessa vanno in **Struttura**.',
+          text: 'Scegli la **misura** (Fatturato, Costi, Costo del lavoro o Margine; i Costi includono già il costo del lavoro) per vedere ogni funzione aziendale mese per mese, con una colonna **Totale**. Una riga di ricavo con riga d’offerta va alla funzione della categoria del suo prodotto; senza, si ripartisce con le quote della commessa; una fattura senza commessa va in **Non attribuito**. Un costo con commessa si ripartisce con le quote della commessa; senza commessa va in **Struttura**. Le ore del segnatempo con commessa seguono le quote della commessa; quelle senza commessa vanno alle funzioni aziendali di appartenenza della persona, in parti uguali se appartiene a più funzioni, e in **Struttura** solo se la persona non appartiene a nessuna funzione. Conta l’appartenenza attuale: spostare una persona di funzione sposta anche le sue ore passate.',
         },
         {
           type: 'paragraph',

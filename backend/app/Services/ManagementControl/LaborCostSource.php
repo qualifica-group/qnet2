@@ -49,11 +49,12 @@ final class LaborCostSource
     }
 
     /**
-     * The entries dated in [$from, $until), by month of the date and commessa (null = none). With companies
-     * given, only the hours of users whose employment profile belongs to one of them (no profile or company: out).
+     * The entries dated in [$from, $until), by month of the date and commessa (null = none); the entries of no
+     * commessa also by user (spec 0282), null on the others. With companies given, only the hours of users whose
+     * employment profile belongs to one of them (no profile or company: out).
      *
      * @param  array<int, int>  $companyIds
-     * @return array<int, array{month: string, work_order_id: int|null, cents: int, minutes: int, unpriced_minutes: int}>
+     * @return array<int, array{month: string, work_order_id: int|null, user_id: int|null, cents: int, minutes: int, unpriced_minutes: int}>
      */
     public function byMonth(string $from, string $until, array $companyIds = []): array
     {
@@ -61,17 +62,23 @@ final class LaborCostSource
             ->when($companyIds !== [], fn (Builder $q) => $q->whereIn('employment_profiles.company_id', $companyIds))
             ->selectRaw(
                 'SUBSTR(time_entries.date, 1, 7) AS group_month, time_entries.work_order_id AS group_work_order_id, '
+                .'CASE WHEN time_entries.work_order_id IS NULL THEN time_entries.user_id END AS group_user_id, '
                 .'SUM(time_entries.minutes) AS total_minutes',
             )
-            ->groupBy('group_month', 'group_work_order_id', 'contract_id')
+            ->groupBy('group_month', 'group_work_order_id', 'group_user_id', 'contract_id')
             ->get();
         $rates = $this->rates($rows);
 
         $grouped = [];
         foreach ($rows as $row) {
             $workOrderId = $row->group_work_order_id === null ? null : (int) $row->group_work_order_id;
-            $key = $row->group_month.'|'.($workOrderId ?? '');
-            $grouped[$key] = $this->add($grouped[$key] ?? [...$this->empty(), 'month' => (string) $row->group_month, 'work_order_id' => $workOrderId], $row, $rates);
+            $userId = $row->group_user_id === null ? null : (int) $row->group_user_id;
+            $key = $row->group_month.'|'.($workOrderId ?? '').'|'.($userId ?? '');
+            $grouped[$key] = $this->add(
+                $grouped[$key] ?? [...$this->empty(), 'month' => (string) $row->group_month, 'work_order_id' => $workOrderId, 'user_id' => $userId],
+                $row,
+                $rates,
+            );
         }
 
         return array_values(array_map($this->closed(...), $grouped));

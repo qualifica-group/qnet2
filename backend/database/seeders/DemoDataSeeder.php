@@ -10,8 +10,10 @@ use App\Models\CommissionSettlementRun;
 use App\Models\Invoice;
 use App\Models\Lead;
 use App\Models\Opportunity;
+use App\Models\ProformaRequest;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderReceipt;
 use App\Models\PurchaseRequest;
 use App\Models\Quote;
 use App\Models\WorkOrder;
@@ -64,7 +66,11 @@ class DemoDataSeeder extends Seeder
         CommissionSettlementNumberSequence::query()->delete();
         AgentFiscalProfile::query()->delete();
         Invoice::query()->delete();
+        // Proforma requests restrict their work order and quote: after the invoices they generated.
+        ProformaRequest::query()->delete();
         PurchaseInvoice::query()->delete();
+        // Receipt lines restrict the order lines they receive: the receipts (cascading their lines) go first.
+        PurchaseOrderReceipt::query()->delete();
         PurchaseOrder::query()->delete();
         PurchaseRequest::query()->delete();
         WorkOrder::query()->delete();
@@ -218,6 +224,12 @@ class DemoDataSeeder extends Seeder
         // above) for classification and the demo/seeded users (DemoUserSeeder,
         // inside DatabaseSeeder, plus DemoUsersSeeder above) it logs time for.
         $this->call(DemoTimeEntrySeeder::class);
+        // Controllo di gestione: Jan 2025 - Oct 2026 of deals, invoicing, purchasing, payroll and
+        // a full segnatempo, through the real services on a simulated clock. Needs the catalogue,
+        // the companies with a bank, the users with an employment profile, the functions and the
+        // ENASARCO parameters; it rebuilds the period's hours of the staff, so it runs after
+        // DemoTimeEntrySeeder.
+        $this->call(DemoManagementControlSeeder::class);
         // Needs users (avatars) and company sites (logos) already seeded above;
         // attaches demo files through the real HasAttachments write path.
         $this->call(DemoAttachmentSeeder::class);

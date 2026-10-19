@@ -46,6 +46,7 @@ final class ActiveInvoiceWriter
     public function request(WorkOrder $workOrder, User $actor, int $paymentMethodId): ProformaRequest
     {
         return $workOrder->proformaRequests()->create([
+            'quote_id' => $workOrder->quote_id,
             'kind' => ProformaRequestKind::Consultancy,
             'payment_method_id' => $paymentMethodId,
             'note' => 'Richiesta proforma demo.',
