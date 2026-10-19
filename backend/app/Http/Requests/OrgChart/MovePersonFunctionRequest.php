@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\OrgChart;
 
+use App\Rules\ActiveBusinessFunction;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -21,7 +22,8 @@ class MovePersonFunctionRequest extends FormRequest
     {
         return [
             'from_function_id' => ['present', 'nullable', 'integer', 'exists:business_functions,id'],
-            'to_function_id' => ['required', 'integer', 'exists:business_functions,id', 'different:from_function_id'],
+            // Spec 0280: a person is never moved INTO an inactive function.
+            'to_function_id' => ['required', 'integer', new ActiveBusinessFunction, 'different:from_function_id'],
         ];
     }
 }

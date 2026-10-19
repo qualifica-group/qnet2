@@ -9,6 +9,7 @@ use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesAttributeContextAssignments;
 use App\Http\Requests\Concerns\ValidatesManagerLabelPositions;
 use App\Models\ProductCategory;
+use App\Rules\ActiveBusinessFunction;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -50,7 +51,8 @@ class UpdateProductCategoryRequest extends FormRequest
             // Spec 0098: the fourth usage context's own inheritance barrier.
             'inherits_work_order_attributes' => ['sometimes', 'boolean'],
             'description' => ['sometimes', 'nullable', 'string'],
-            'business_function_id' => ['sometimes', 'nullable', 'integer', 'exists:business_functions,id'],
+            // Spec 0280 D-2: the function already saved on the category stays valid.
+            'business_function_id' => ['sometimes', 'nullable', 'integer', new ActiveBusinessFunction(array_map('intval', array_filter([$this->authorizationModel()?->getAttribute('business_function_id')])))],
             // Only meaningful on a ROOT category: under a parent the value is
             // inherited, and ProductCategoryService refuses a divergent one.
             'requires_quote' => ['sometimes', 'boolean'],

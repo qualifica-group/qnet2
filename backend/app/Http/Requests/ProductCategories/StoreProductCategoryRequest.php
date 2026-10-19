@@ -9,6 +9,7 @@ use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesAttributeContextAssignments;
 use App\Http\Requests\Concerns\ValidatesManagerLabelPositions;
 use App\Models\ProductCategory;
+use App\Rules\ActiveBusinessFunction;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
@@ -50,7 +51,7 @@ class StoreProductCategoryRequest extends FormRequest
             // Spec 0098: the Commessa usage context's own inheritance barrier.
             'inherits_work_order_attributes' => ['sometimes', 'boolean'],
             'description' => ['nullable', 'string'],
-            'business_function_id' => ['nullable', 'integer', 'exists:business_functions,id'],
+            'business_function_id' => ['nullable', 'integer', new ActiveBusinessFunction],
             // Only meaningful on a ROOT category: under a parent the value is
             // inherited, and ProductCategoryService refuses a divergent one.
             'requires_quote' => ['sometimes', 'boolean'],

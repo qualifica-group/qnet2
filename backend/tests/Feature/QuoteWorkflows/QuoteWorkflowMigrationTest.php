@@ -237,9 +237,9 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // `2026_10_15_100000_add_is_active_to_sectors_table`, `2026_10_15_110000_add_code_to_sectors_table`,
     // `2026_10_15_120000_add_title_is_manual_to_work_orders_table` and
     // `2026_10_16_100000_add_quote_date_to_quotes_table` (9 migrations) plus every later one up to spec 0247's priorities, invoice tags and proforma kind, plus spec 0248's two status catalogues and spec 0249's cost type nature and color, plus spec 0250's payable invoice lines and spec 0251's cost type on products and costs, plus spec 0254's three receipt migrations, plus spec 0189 G-28's
-    // two Italian geo reference fixes (`2026_10_18_100000`, `2026_10_18_110000`), plus spec 0267's five settlement document migrations, spec 0267's three multi-quote migrations and spec 0271's four HR org structure migrations and spec 0272's 7 employee record migrations and the hourly cost migration, plus spec 0277's two hourly cost removal migrations: 212 in all.
+    // two Italian geo reference fixes (`2026_10_18_100000`, `2026_10_18_110000`), plus spec 0267's five settlement document migrations, spec 0267's three multi-quote migrations and spec 0271's four HR org structure migrations and spec 0272's 7 employee record migrations and the hourly cost migration, plus spec 0277's two hourly cost removal migrations, plus spec 0280's business function active flag: 213 in all.
     // Adding a migration means bumping this number.
-    Artisan::call('migrate:rollback', ['--step' => 212]);
+    Artisan::call('migrate:rollback', ['--step' => 213]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

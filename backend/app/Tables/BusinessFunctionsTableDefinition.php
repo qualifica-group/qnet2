@@ -19,8 +19,8 @@ use Illuminate\Support\Facades\Gate;
  * Table definition for the `business-functions` domain (spec 0010, spec 0010
  * REV).
  *
- * Real columns (name, is_business_unit, is_business_service, created_at) are
- * handled entirely by the generic engine. `manager` (belongsTo) and `users`
+ * Real columns (name, is_business_unit, is_business_service, is_active,
+ * created_at) are handled entirely by the generic engine. `manager` (belongsTo) and `users`
  * (belongsToMany) have no real DB column of their own and are DERIVED: their
  * set filter/sort/distinct-values are resolved here against the related
  * users' names, mirroring UsersTableDefinition's `roles` derived filter.
@@ -130,6 +130,7 @@ class BusinessFunctionsTableDefinition extends AbstractTableDefinition
             'name' => $row->name,
             'is_business_unit' => $row->is_business_unit,
             'is_business_service' => $row->is_business_service,
+            'is_active' => $row->is_active,
             'manager' => $this->userSummary($row->manager),
             'parent' => $this->parentSummary($row->parent),
             'companies' => $row->companies->map(static fn (Company $company): array => ['id' => $company->id, 'label' => (string) $company->denomination])->all(),

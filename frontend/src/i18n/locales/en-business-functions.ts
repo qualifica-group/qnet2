@@ -13,12 +13,16 @@ export const businessFunctions = {
     name: 'Name',
     is_business_unit: 'Business Unit',
     is_business_service: 'Business Service',
+    is_active: 'Active',
     manager: 'Responsible',
     users: 'Associated users',
     parent: 'Parent function',
     operational_sites: 'Operational sites',
     companies: 'Companies',
     created_at: 'Created at',
+  },
+  badges: {
+    notActive: 'Not active',
   },
   detail: {
     title: 'Business function details',
@@ -44,6 +48,10 @@ export const businessFunctions = {
     parentSearch: 'Search functions…',
     parentEmpty: 'No functions found.',
     parentError: 'Unable to load functions.',
+    isActive: 'Active',
+    isActiveHint:
+      'An inactive function, with all its sub-functions, no longer appears in the pickers. Existing links stay valid.',
+    isActiveInheritedNotice: 'Not active because "{{function}}" is not',
     operationalSites: 'Operational sites',
     operationalSitesPlaceholder: 'Select operational sites…',
     operationalSitesSearch: 'Search operational sites…',

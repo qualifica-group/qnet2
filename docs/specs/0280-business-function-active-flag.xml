@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0280-business-function-active-flag" status="approved" owner="nicola" date="2026-10-19">
+
+  <goal>
+    Ogni funzione aziendale ha l'impostazione "Attiva / Non attiva". Una funzione non attiva, con tutto il suo
+    ramo, sparisce dai select di inserimento e modifica e non e' piu' collegabile come nuovo valore. Lo storico
+    resta valido e i filtri di griglie e report continuano a vederla.
+  </goal>
+
+  <context>
+    Verificato sul codice reale 2026-10-19. Precedenti di forma: spec 0212 (settori: `SectorActivity`,
+    `ActiveSector($exemptIds)`) e 0208 (categorie: parametro for-select `include_inactive` per i filtri).
+
+    Differenze rispetto ai settori:
+    - Nessun endpoint albero: il parent picker del form funzione usa lo stesso
+      `GET /api/business-functions/for-select` dei select di inserimento.
+    - La funzione si sceglie in molti punti (scheda utente, categorie prodotto, RDA, organigramma) e in altri si
+      deriva dalla categoria (righe prodotto di opportunita', progetti, campagne, richieste).
+    - `BusinessFunctionCoverageGuard` (spec 0275): un utente attivo, non di servizio, deve appartenere ad almeno
+      una funzione.
+
+    Decisioni utente 2026-10-19:
+    D-1 Ramo: una funzione non attiva rende non attivo in modo EFFETTIVO tutto il suo sottoalbero; il flag delle
+        figlie non viene riscritto, e' risolto in lettura.
+    D-2 Storico: i collegamenti gia' salvati restano validi e visibili; si blocca solo un NUOVO collegamento
+        (esenti gli id gia' persistiti sul record in aggiornamento).
+    D-3 Funzione derivata dalla categoria (righe prodotto, copertura automatica dell'opportunita', conversione
+        lead): invariata. Una categoria attiva con funzione non attiva si vende ancora; per spostare le vendite si
+        cambia la funzione della categoria.
+    D-4 Copertura utenti: una funzione non attiva gia' assegnata conta ancora per `BusinessFunctionCoverageGuard`
+        e per `BusinessFunctionMembershipGuard`; nessun cambio.
+
+    Decisioni di progetto:
+    D-5 Una sola autorita': `App\Services\BusinessFunctions\BusinessFunctionActivity` (una query `id, parent_id,
+        is_active` + memo per istanza): `inactiveIds()`, `isActive(int)`, `inactiveAncestor(int)`.
+    D-6 For-select: filtro attivo di default; `include_inactive=1` lo toglie (pattern 0208). Lo passano solo i
+        consumatori strutturali o di ricerca: parent picker del form funzione, filtri avanzati "Funzione" di
+        Opportunita' e Progetti (`source.params`), filtro del Conto economico. `ids[]` idrata sempre.
+    D-7 Nuova regola `App\Rules\ActiveBusinessFunction($exemptIds)` che SOSTITUISCE `exists` sui collegamenti
+        nuovi (elenco in data_contract). Restano `exists`: `parent_id` della funzione e lo spostamento di una
+        funzione nell'organigramma (strutturali), `from_function_id` dell'organigramma, filtri e report.
+    D-8 L'avviso "non attiva perche' lo e' «X»" nel form usa `inactive_ancestor` calcolato dal backend (il FE non
+        ha un albero delle funzioni).
+    D-9 Griglia: colonna `is_active` = valore PROPRIO, con lo stesso tipo di filtro delle altre colonne booleane
+        della griglia funzioni (`is_business_unit`).
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione `business_functions.is_active` BOOLEAN NOT NULL DEFAULT true, after `parent_id`, reversibile.</item>
+      <item>Model, Store/UpdateBusinessFunctionRequest, Create/UpdateBusinessFunctionData, BusinessFunctionService, BusinessFunctionResource, BusinessFunctionsAuthorization, BusinessFunctionForSelectRequest.</item>
+      <item>`BusinessFunctionActivity`, filtro for-select con `include_inactive`, `ActiveBusinessFunction` sui collegamenti nuovi.</item>
+      <item>Griglia: colonna + filtro `is_active`.</item>
+      <item>Filtri avanzati Opportunita'/Progetti: `source.params include_inactive`.</item>
+      <item>FE: tipi, schema, payload, switch "Attiva" con avviso di ereditarieta', badge "Non attiva" nel dettaglio, cella griglia, `include_inactive` su parent picker e filtro Conto economico, i18n IT/EN, guida in-app IT/EN.</item>
+      <item>Manuale Claude Docs: sezione Funzioni aziendali (connettore disponibile).</item>
+    </in>
+    <out>
+      <item>Nessun blocco su cancellazione o spostamento delle funzioni; nessuna migrazione dati (default true).</item>
+      <item>Funzione derivata dalla categoria (D-3), guardie di copertura (D-4), lettura dell'organigramma, filtri a valori distinti delle griglie, criterio "Funzione" dei Flussi offerta (il picker la nasconde, la validazione di configurazione resta `exists`).</item>
+      <item>Migrazione dati legacy (`BusinessFunctionsSource`): invariata, le funzioni importate nascono attive.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <db>`business_functions.is_active` BOOLEAN NOT NULL DEFAULT true, `after('parent_id')`. Nessun indice (tabella piccola).</db>
+    <endpoint method="POST|PUT|PATCH" path="/api/business-functions[/{businessFunction}]">
+      <request>`is_active`: `sometimes|boolean`. Create senza il campo -> true.</request>
+      <response status="200|201">`BusinessFunctionResource` guadagna `"is_active": bool` (valore proprio) e
+        `"inactive_ancestor": {"id": int, "name": string} | null` (l'antenato non attivo piu' vicino).</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/business-functions/for-select">
+      <request>Nuovo parametro opzionale `include_inactive` (boolean).</request>
+      <response status="200">Shape invariata. Senza `include_inactive` items e total escludono le funzioni effettivamente
+        non attive; con `include_inactive=1` le includono; `ids[]` idrata comunque.</response>
+    </endpoint>
+    <validation>
+      `ActiveBusinessFunction`: funzione inesistente -> "The selected business function is invalid."; funzione
+      effettivamente non attiva e non esente -> 422 "This business function is not active." (it: "Questa funzione
+      aziendale non è attiva."). Applicata a:
+      - `employment.business_function_ids.*` (utenti; esenti le funzioni gia' collegate all'utente);
+      - `employment.managed_business_function_ids.*` (esenti quelle gia' gestite dall'utente);
+      - `employment.product_lines.*.business_function_id` (competenze; esenti quelle gia' sulle righe salvate);
+      - `business_function_id` di POST/PATCH /api/product-categories (esente il valore proprio salvato);
+      - `business_function_id` delle RDA, form e cella inline (esente il valore salvato);
+      - `to_function_id` di POST /api/org-chart/people/{user}/function (nessuna esenzione).
+    </validation>
+    <table_grid>Colonna `is_active` (boolean, ordinabile, filtrabile) + voce in `filters()`.</table_grid>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">POST /api/business-functions senza `is_active` crea la funzione attiva; PATCH `is_active=false` persiste e lascia invariato il flag delle figlie.</criterion>
+    <criterion id="AC-002">GET /api/business-functions/{id} espone `is_active`; una figlia di una funzione non attiva espone `inactive_ancestor` con id e nome di quella funzione; una funzione senza antenati non attivi espone null.</criterion>
+    <criterion id="AC-003">/business-functions/for-select esclude da items e total una funzione non attiva e le sue discendenti; con `include_inactive=1` le include; con `ids[]` le idrata.</criterion>
+    <criterion id="AC-004">Utente: POST con una funzione non attiva in `employment.business_function_ids` -> 422 su quel campo; PATCH che rimanda una funzione gia' collegata e poi disattivata -> 200; PATCH che ne aggiunge un'altra non attiva -> 422. Stesso comportamento su `managed_business_function_ids` e sulle competenze.</criterion>
+    <criterion id="AC-005">Categoria prodotto: POST con funzione non attiva -> 422; PATCH che lascia la funzione gia' salvata e poi disattivata -> 200.</criterion>
+    <criterion id="AC-006">RDA: creazione con funzione non attiva -> 422 su `business_function_id`; modifica di un altro campo di una RDA la cui funzione e' stata disattivata -> 200.</criterion>
+    <criterion id="AC-007">Organigramma: spostare una persona in una funzione non attiva -> 422.</criterion>
+    <criterion id="AC-008">Una nuova riga prodotto con una categoria attiva la cui funzione non e' attiva si salva con quella funzione (D-3); un utente che appartiene solo a funzioni non attive si salva (D-4).</criterion>
+    <criterion id="AC-009">La griglia Funzioni aziendali espone la colonna `is_active`, filtrabile; i filtri avanzati "Funzione" di Opportunita' e Progetti dichiarano `include_inactive`.</criterion>
+    <criterion id="AC-010">(FE) Il form funzione mostra lo switch "Attiva", attivo di default in creazione; con `inactive_ancestor` mostra l'avviso; il payload di modifica invia `is_active` solo se cambiato; il dettaglio mostra il badge "Non attiva"; parent picker e filtro Conto economico chiedono `include_inactive`.</criterion>
+    <criterion id="AC-011">(FE) Guida in-app `business-functions` IT/EN aggiornata; `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; authz invariata (BusinessFunctionPolicy), campo governato da `BusinessFunctionsAuthorization`.</item>
+    <item>Test di rollback a step fisso (`QuoteWorkflowMigrationTest`, `SupplierCommissionDirectionTest`, `PurchaseOrderMigrationTest`): solo il conteggio degli step sale di 1.</item>
+    <item>`CategoryHierarchy.php` (493 righe) non si tocca.</item>
+  </constraints>
+
+  <microtasks>
+    <task id="T1">Backend base: migrazione, model, authorization, DTO, service, resource (`is_active`, `inactive_ancestor`), `BusinessFunctionActivity`, for-select con `include_inactive`, griglia, filtri avanzati. AC-001, 002, 003, 009.</task>
+    <task id="T2" depends="T1">Regola `ActiveBusinessFunction` sui sei collegamenti, con esenzioni. AC-004..008.</task>
+    <task id="T3" depends="T1">Frontend: tipi, schema, payload, switch + avviso, badge, cella griglia, `include_inactive` su parent picker e Conto economico, i18n. AC-010.</task>
+    <task id="T4" depends="T3">Guida in-app IT/EN, manuale Claude Docs, HANDOFF. AC-011.</task>
+  </microtasks>
+
+</spec>

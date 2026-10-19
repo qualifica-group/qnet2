@@ -6,7 +6,7 @@ import type {
 import type { BusinessFunctionFormValues } from '@/features/business-functions/use-business-function-form'
 import { buildCustomFieldsCreate, buildCustomFieldsUpdate } from '@/features/custom-fields/custom-fields-payload'
 
-/** Builds the create payload: `{name, type, manager_id, users, parent_id, operational_sites}` (spec 0010 AC-019). */
+/** Builds the create payload: `{name, type, manager_id, users, parent_id, is_active, operational_sites}` (spec 0010 AC-019, spec 0280). */
 export function buildCreatePayload(
   values: BusinessFunctionFormValues,
 ): CreateBusinessFunctionPayload {
@@ -17,6 +17,7 @@ export function buildCreatePayload(
     manager_id: values.manager_id,
     users: values.users,
     parent_id: values.parent_id,
+    is_active: values.is_active,
     operational_sites: values.operational_sites,
     company_ids: values.company_ids,
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
@@ -51,6 +52,9 @@ export function buildUpdatePayload(
   }
   if (values.parent_id !== original.parent_id) {
     payload.parent_id = values.parent_id
+  }
+  if (values.is_active !== original.is_active) {
+    payload.is_active = values.is_active
   }
   if (!sameIdSet(values.operational_sites, original.operational_site_ids)) {
     payload.operational_sites = values.operational_sites

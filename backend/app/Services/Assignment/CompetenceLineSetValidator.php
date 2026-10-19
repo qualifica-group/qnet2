@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Assignment;
 
+use App\Rules\ActiveBusinessFunction;
 use App\Rules\ActiveProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
 use App\Services\ProductLines\ProductLineSetValidator;
-use Illuminate\Validation\Rule;
 
 /**
  * THE definition of what makes a user's `employment.product_lines` collection
@@ -59,16 +59,18 @@ final class CompetenceLineSetValidator
      * The per-row rules, keyed for the given collection attribute: the
      * business function is required, the category is OPTIONAL (D-3) and,
      * when present, must exist and be effectively active (spec 0208) — no
-     * selectability constraint (D-6). The categories already persisted on the
-     * user being updated are exempt from the activity check (spec 0208 D-2).
+     * selectability constraint (D-6). The categories and the functions already
+     * persisted on the user being updated are exempt from the activity check
+     * (spec 0208 D-2, spec 0280 D-2).
      *
      * @param  array<int, int>  $exemptCategoryIds
+     * @param  array<int, int>  $exemptFunctionIds
      * @return array<string, array<int, mixed>>
      */
-    public function rules(string $attribute, array $exemptCategoryIds = []): array
+    public function rules(string $attribute, array $exemptCategoryIds = [], array $exemptFunctionIds = []): array
     {
         return [
-            $attribute.'.*.business_function_id' => ['required', 'integer', Rule::exists('business_functions', 'id')],
+            $attribute.'.*.business_function_id' => ['required', 'integer', new ActiveBusinessFunction($exemptFunctionIds)],
             $attribute.'.*.product_category_id' => ['nullable', 'integer', new ActiveProductCategory($exemptCategoryIds)],
         ];
     }

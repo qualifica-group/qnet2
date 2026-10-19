@@ -56,6 +56,18 @@ final class BusinessFunctionColumnCatalog
                 'filterType' => 'set',
             ],
             [
+                // Spec 0280 D-9: the node's OWN flag (a real column); the
+                // effective value inherited from an inactive ancestor is not
+                // derived here.
+                'id' => 'is_active',
+                'label' => 'businessFunctions.columns.is_active',
+                'type' => 'boolean',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
+            ],
+            [
                 // Manager's name, derived from the manager() relation. Rendered
                 // as an avatar + tooltip on the frontend; sorted via a
                 // correlated subquery, filtered via whereHas (both in the
@@ -141,6 +153,7 @@ final class BusinessFunctionColumnCatalog
             ['columnId' => 'name', 'type' => 'text'],
             ['columnId' => 'is_business_unit', 'type' => 'set'],
             ['columnId' => 'is_business_service', 'type' => 'set'],
+            ['columnId' => 'is_active', 'type' => 'set'],
             ['columnId' => 'manager', 'type' => 'set'],
             ['columnId' => 'parent', 'type' => 'set'],
             ['columnId' => 'users', 'type' => 'set'],

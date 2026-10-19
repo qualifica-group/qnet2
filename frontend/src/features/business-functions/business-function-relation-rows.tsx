@@ -12,6 +12,9 @@ import type { BusinessFunctionFormValues } from '@/features/business-functions/u
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 
+/** Spec 0280 D-6: the parent picker is structural, it lists the inactive functions too. */
+const PARENT_PICKER_PARAMS = { include_inactive: 1 }
+
 interface RelationRowProps {
   inline: InlineEdit
   canEdit: boolean
@@ -36,6 +39,7 @@ export function BusinessFunctionParentRow({ inline, canEdit, values }: RelationR
           metaKey="parent_id"
           label={t('businessFunctions.form.parent')}
           resource={BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE}
+          params={PARENT_PICKER_PARAMS}
           searchPlaceholder={t('businessFunctions.form.parentSearch')}
           selected={values.parent}
           placeholder={t('businessFunctions.form.parentPlaceholder')}

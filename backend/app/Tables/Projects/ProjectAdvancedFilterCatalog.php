@@ -45,7 +45,7 @@ final class ProjectAdvancedFilterCatalog
                 'visible' => true,
                 'width' => 'md',
                 'multiple' => true,
-                'source' => ['resource' => 'business-functions'],
+                'source' => ['resource' => 'business-functions', 'params' => ['include_inactive' => 1]],
                 // Spec 0094: NESTED dot-path (`productLines.businessFunction`,
                 // no longer the project's own direct relation) —
                 // AdvancedFilterApplier's `whereHas($target, ...)` call needs

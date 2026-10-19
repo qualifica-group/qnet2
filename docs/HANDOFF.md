@@ -3,6 +3,27 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0280 — Funzioni aziendali attive/non attive — VERDE, COMMITTATO (2026-10-19)
+
+- Spec `docs/specs/0280-business-function-active-flag.xml` (D-1..D-9, AC-001..AC-011), forma della 0212 (settori).
+- `business_functions.is_active` (migrazione `2026_10_24_100000`, default true). Autorita' unica
+  `Services/BusinessFunctions/BusinessFunctionActivity` (`inactiveIds()`, `isActive()`, `inactiveAncestor()`): una
+  funzione non attiva spegne tutto il ramo, risolto in lettura (D-1).
+- `BusinessFunctionResource`: `is_active` (proprio) + `inactive_ancestor` {id,name}|null. For-select: esclude le non
+  attive salvo `include_inactive=1` (parent picker, filtri avanzati Opportunita'/Progetti via `source.params`, filtro
+  Conto economico); `ids[]` idrata sempre.
+- `App\Rules\ActiveBusinessFunction($exemptIds)` al posto di `exists` su: `employment.business_function_ids.*`,
+  `managed_business_function_ids.*`, competenze (`CompetenceLineSetValidator::rules` 3o argomento), categoria prodotto,
+  RDA (form e cella), `to_function_id` dell'organigramma. Esenti gli id gia' collegati al record (D-2). Invariati:
+  funzione derivata dalla categoria (D-3), guardie di copertura (D-4), `parent_id`, criteri dei Flussi offerta.
+- Griglia: colonna `is_active` filtro `set` (come gli altri booleani). Factory: `BusinessFunctionFactory::inactive()`.
+- Test: `BusinessFunctionActiveTest`, `BusinessFunctionActiveLinksTest`; aggiornati (REQUIREMENT CHANGED: nuovo campo)
+  `BusinessFunctionMetaTest`, `BusinessFunctionTableTest`; rollback +1 (66 / 217 / 81, sopra il +4 delle assenze).
+- FE: switch "Attiva" (`BusinessFunctionActiveRow` in `business-function-rows.tsx`) con avviso da `inactive_ancestor`,
+  badge "Non attiva", cella griglia, payload solo se cambiato, i18n IT/EN, guida in-app IT/EN, manuale Claude Docs
+  (voce Funzioni aziendali).
+- `ValidatesEmployment.php` e' a 375 righe (soglia 300 gia' superata prima): candidato a uno split.
+
 ## Mansioni, Attivita' e CCNL dalla "Pianta Organica" nel seed di produzione — VERDE, COMMITTATO (2026-10-19)
 
 - Fonte: `Pianta_Organica_Qualifica_Aggiornato 8.09.xlsx` del cliente (24 fogli di settore). 67 mansioni

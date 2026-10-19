@@ -8,6 +8,7 @@ use App\Models\BusinessFunction;
 use App\Models\Company;
 use App\Models\OperationalSite;
 use App\Models\User;
+use App\Services\BusinessFunctions\BusinessFunctionActivity;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -32,6 +33,10 @@ class BusinessFunctionResource extends JsonResource
             'manager' => $this->userSummary($this->manager),
             'parent_id' => $this->parent_id,
             'parent' => $this->parentSummary($this->parent),
+            // Spec 0280: the OWN flag, plus the closest switched-off ancestor
+            // that makes the function inactive without its own flag (D-8).
+            'is_active' => (bool) $this->is_active,
+            'inactive_ancestor' => app(BusinessFunctionActivity::class)->inactiveAncestor($this->id),
             'user_ids' => $this->users->pluck('id')->map(static fn (mixed $id): int => (int) $id)->all(),
             'users' => $this->users->map(fn (User $user): array => $this->userSummary($user))->all(),
             'operational_site_ids' => $this->operationalSites->pluck('id')->map(static fn (mixed $id): int => (int) $id)->all(),

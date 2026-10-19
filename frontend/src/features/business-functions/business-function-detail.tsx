@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { Network } from 'lucide-react'
+import { Network, Power } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordBody } from '@/components/detail/record-body'
@@ -76,7 +76,17 @@ function BusinessFunctionDetailContent({ businessFunction, onChanged }: Business
             media={<DetailMonogram name={businessFunction.name} icon={<Network />} />}
             title={businessFunction.name}
             legacyId={businessFunction.old_id}
-            badges={<Badge variant="secondary">{typeLabel(t, businessFunction.type)}</Badge>}
+            badges={
+              <>
+                <Badge variant="secondary">{typeLabel(t, businessFunction.type)}</Badge>
+                {!businessFunction.is_active ? (
+                  <Badge variant="outline">
+                    <Power aria-hidden="true" />
+                    {t('businessFunctions.badges.notActive')}
+                  </Badge>
+                ) : null}
+              </>
+            }
           />
         }
       >

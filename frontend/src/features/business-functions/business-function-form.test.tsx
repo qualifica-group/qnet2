@@ -94,6 +94,8 @@ function businessFunction(): BusinessFunctionDetailWithPermissions {
     users: [],
     parent_id: null,
     parent: null,
+    is_active: true,
+    inactive_ancestor: null,
     operational_site_ids: [],
     operational_sites: [],
     company_ids: [],
@@ -216,6 +218,7 @@ describe('BusinessFunctionForm — create (spec 0237)', () => {
       manager_id: 5,
       users: [7],
       parent_id: 50,
+      is_active: true,
       operational_sites: [70],
       company_ids: [70],
     })

@@ -108,7 +108,7 @@ const BOOLEAN_BADGE_YES = 'border-transparent bg-green-100 text-green-700 dark:b
 const BOOLEAN_BADGE_NO = 'border-transparent bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200'
 
 /**
- * Renders a boolean column (`is_business_unit`/`is_business_service`) as a
+ * Renders a boolean column (`is_business_unit`/`is_business_service`/`is_active`) as a
  * colored Sì/No badge with a leading icon (check for yes, cross for no). Color
  * is not the only signal — icon plus text keep it accessible.
  */
@@ -134,6 +134,7 @@ function BooleanCell({ value }: ICellRendererParams) {
 export const businessFunctionColumnRenderers: TableRendererMap = {
   is_business_unit: (params) => <BooleanCell {...params} />,
   is_business_service: (params) => <BooleanCell {...params} />,
+  is_active: (params) => <BooleanCell {...params} />,
   manager: (params) => <UserCell {...params} />,
   users: (params) => <UserStackCell {...params} />,
   parent: (params) => <ParentCell {...params} />,

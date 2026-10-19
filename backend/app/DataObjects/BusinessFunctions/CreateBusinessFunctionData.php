@@ -29,6 +29,8 @@ final readonly class CreateBusinessFunctionData
         public ?array $users = null,
         public ?array $operationalSites = null,
         public ?array $companyIds = null,
+        /** Spec 0280: a plain per-node flag, defaulting to active when omitted. */
+        public bool $isActive = true,
     ) {}
 
     /**
@@ -54,6 +56,7 @@ final readonly class CreateBusinessFunctionData
             companyIds: array_key_exists('company_ids', $data) && $data['company_ids'] !== null
                 ? array_map('intval', (array) $data['company_ids'])
                 : null,
+            isActive: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
         );
     }
 

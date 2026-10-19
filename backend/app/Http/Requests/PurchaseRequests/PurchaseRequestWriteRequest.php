@@ -8,6 +8,7 @@ use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Models\BusinessFunction;
 use App\Models\PurchaseRequest;
 use App\Models\User;
+use App\Rules\ActiveBusinessFunction;
 use App\Services\PurchaseRequests\PurchaseRequestApproverResolver;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -62,7 +63,8 @@ class PurchaseRequestWriteRequest extends FormRequest
                 Rule::exists('company_sites', 'id')->where('company_id', $this->effective('company_id')),
             ],
             'operational_site_id' => ['required', 'integer', Rule::exists('operational_sites', 'id')],
-            'business_function_id' => ['required', 'integer', Rule::exists('business_functions', 'id')],
+            // Active functions only; the one already assigned stays valid even if deactivated since.
+            'business_function_id' => ['required', 'integer', new ActiveBusinessFunction(array_map('intval', array_filter([$this->authorizationModel()?->getAttribute('business_function_id')])))],
             'notes' => ['nullable', 'string', 'max:'.self::TEXT_MAX_LENGTH],
             'delivery_terms' => ['nullable', 'string', 'max:'.self::TEXT_MAX_LENGTH],
             'procurement_plan' => ['nullable', 'string', 'max:'.self::TEXT_MAX_LENGTH],

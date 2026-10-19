@@ -12,12 +12,16 @@ export const businessFunctions = {
     name: 'Nome',
     is_business_unit: 'Business Unit',
     is_business_service: 'Business Service',
+    is_active: 'Attiva',
     manager: 'Responsabile',
     users: 'Utenti associati',
     parent: 'Funzione padre',
     operational_sites: 'Sedi operative',
     companies: 'Società',
     created_at: 'Creato il',
+  },
+  badges: {
+    notActive: 'Non attiva',
   },
   detail: {
     title: 'Dettaglio funzione aziendale',
@@ -43,6 +47,10 @@ export const businessFunctions = {
     parentSearch: 'Cerca funzioni…',
     parentEmpty: 'Nessuna funzione trovata.',
     parentError: 'Impossibile caricare le funzioni.',
+    isActive: 'Attiva',
+    isActiveHint:
+      'Una funzione non attiva, con tutte le sue sotto-funzioni, non compare più nei campi di scelta. I collegamenti esistenti restano validi.',
+    isActiveInheritedNotice: 'Non attiva perché lo è «{{function}}»',
     operationalSites: 'Sedi operative',
     operationalSitesPlaceholder: 'Seleziona le sedi operative…',
     operationalSitesSearch: 'Cerca sedi operative…',

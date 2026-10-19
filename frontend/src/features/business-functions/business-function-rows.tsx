@@ -4,8 +4,9 @@ import { Building2, MapPin, UserCog } from 'lucide-react'
 import { RecordFieldList, RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
 import { TextInlineRow } from '@/components/record-form/inline-rows'
 import { RecordInlineField, type InlineEdit } from '@/components/record-form/record-inline-field'
-import { FormControl } from '@/components/ui/form'
+import { FormControl, FormDescription } from '@/components/ui/form'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { MetaField } from '@/features/authorization/MetaField'
 import type { BusinessFunctionRecordValues } from '@/features/business-functions/business-function-record'
 import { BusinessFunctionCompaniesRow } from '@/features/business-functions/business-function-org-rows'
@@ -76,6 +77,60 @@ function BusinessFunctionTypeRow({ inline, canEdit }: RowProps) {
   )
 }
 
+interface ActiveRowProps extends RowProps {
+  values: BusinessFunctionRecordValues
+}
+
+/**
+ * The active flag. Spec 0280: an inactive ancestor deactivates the whole
+ * branch whatever the own switch says, so the row names the ancestor
+ * responsible (known on a saved record), open or closed.
+ */
+function BusinessFunctionActiveRow({ inline, canEdit, values }: ActiveRowProps) {
+  const { t } = useTranslation()
+  const { control } = useFormContext<BusinessFunctionFormValues>()
+  const isActive = useWatch({ control, name: 'is_active' })
+  const notice =
+    values.inactive_ancestor !== null ? (
+      <p className="text-xs font-medium text-muted-foreground" role="status">
+        {t('businessFunctions.form.isActiveInheritedNotice', { function: values.inactive_ancestor.name })}
+      </p>
+    ) : null
+
+  return (
+    <RecordInlineField
+      field="is_active"
+      label={t('businessFunctions.form.isActive')}
+      inline={inline}
+      canEdit={canEdit}
+      editor={
+        <MetaField
+          control={control}
+          name="is_active"
+          metaKey="is_active"
+          label={t('businessFunctions.form.isActive')}
+          layout="inline"
+          description={
+            <>
+              <FormDescription>{t('businessFunctions.form.isActiveHint')}</FormDescription>
+              {notice}
+            </>
+          }
+        >
+          {({ field, disabled }) => (
+            <FormControl>
+              <Switch checked={field.value} onCheckedChange={field.onChange} disabled={disabled} />
+            </FormControl>
+          )}
+        </MetaField>
+      }
+    >
+      <span>{isActive ? t('common.yes') : t('common.no')}</span>
+      {notice}
+    </RecordInlineField>
+  )
+}
+
 interface BusinessFunctionSectionsProps extends RowProps {
   form: UseFormReturn<BusinessFunctionFormValues>
   /** The relations and custom fields the closed rows show: the saved record's on the detail, the draft's on a create. */
@@ -99,6 +154,7 @@ export function BusinessFunctionSections({ form, inline, canEdit, values }: Busi
           />
           <BusinessFunctionTypeRow inline={inline} canEdit={canEdit} />
           <BusinessFunctionParentRow {...rowProps} />
+          <BusinessFunctionActiveRow {...rowProps} />
         </RecordFieldList>
       </RecordSection>
 

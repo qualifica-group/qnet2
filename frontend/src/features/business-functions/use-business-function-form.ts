@@ -34,6 +34,7 @@ const SERVER_ERROR_FIELDS = [
   'manager_id',
   'users',
   'parent_id',
+  'is_active',
   'operational_sites',
   'company_ids',
 ] as const
@@ -86,6 +87,7 @@ export function useBusinessFunctionForm({ mode, onSuccess }: UseBusinessFunction
         manager_id: mode.businessFunction.manager_id,
         users: mode.businessFunction.user_ids,
         parent_id: mode.businessFunction.parent_id,
+        is_active: mode.businessFunction.is_active,
         operational_sites: mode.businessFunction.operational_site_ids,
         company_ids: mode.businessFunction.company_ids,
         custom_fields: customFields.defaultValues,
@@ -97,6 +99,7 @@ export function useBusinessFunctionForm({ mode, onSuccess }: UseBusinessFunction
       manager_id: null,
       users: [],
       parent_id: null,
+      is_active: true,
       operational_sites: [],
       company_ids: [],
       custom_fields: customFields.defaultValues,

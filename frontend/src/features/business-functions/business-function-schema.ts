@@ -35,6 +35,9 @@ function baseFields(t: TFunction) {
     // Single-select parent function (for-select standard): `null` = top-level.
     // The anti-cycle rule (self/descendant) is enforced server-side (422).
     parent_id: z.number().nullable(),
+    // The function's own "Attiva" flag (spec 0280); an inactive ancestor
+    // deactivates it anyway, resolved server-side.
+    is_active: z.boolean(),
     // Multiselect operational sites (for-select standard): ids, full-replace.
     operational_sites: z.array(z.number()),
     // Multiselect companies (for-select standard): ids, full-replace.

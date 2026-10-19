@@ -42,6 +42,14 @@ class BusinessFunctionFactory extends Factory
     }
 
     /**
+     * Switch the function's own "Attiva" flag off (spec 0280).
+     */
+    public function inactive(): static
+    {
+        return $this->state(fn (): array => ['is_active' => false]);
+    }
+
+    /**
      * Force the exclusive "business unit" type.
      */
     public function businessUnit(): static

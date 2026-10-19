@@ -92,6 +92,8 @@ function businessFunction(overrides: Partial<BusinessFunctionDetailWithPermissio
     ],
     parent_id: 5,
     parent: { id: 5, name: 'Operations' },
+    is_active: true,
+    inactive_ancestor: null,
     operational_site_ids: [30],
     operational_sites: [{ id: 30, label: 'Via Roma 1 - Milano' }],
     company_ids: [4],
@@ -133,6 +135,17 @@ beforeEach(() => {
 })
 
 describe('BusinessFunctionDetailView — detail fields', () => {
+  it('spec 0280: shows the not-active badge and names the inactive ancestor', () => {
+    render(
+      <BusinessFunctionDetailView
+        businessFunction={businessFunction({ is_active: false, inactive_ancestor: { id: 3, name: 'Direzione' } })}
+      />,
+    )
+
+    expect(screen.getByText(i18n.t('businessFunctions.badges.notActive'))).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(label('isActiveInheritedNotice').replace('{{function}}', 'Direzione'))
+  })
+
   it('shows the name, type, manager, users, parent, sites, custom field and creation date', async () => {
     render(<BusinessFunctionDetailView businessFunction={businessFunction()} />)
 

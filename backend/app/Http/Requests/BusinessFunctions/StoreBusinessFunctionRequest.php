@@ -38,6 +38,7 @@ class StoreBusinessFunctionRequest extends FormRequest
             'type' => ['nullable', Rule::in(['business_unit', 'business_service'])],
             'manager_id' => ['nullable', 'integer', 'exists:users,id'],
             'parent_id' => ['nullable', 'integer', 'exists:business_functions,id'],
+            'is_active' => ['sometimes', 'boolean'],
             'users' => ['nullable', 'array'],
             'users.*' => ['integer', 'exists:users,id', 'distinct'],
             'operational_sites' => ['nullable', 'array'],

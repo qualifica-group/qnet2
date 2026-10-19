@@ -11,6 +11,7 @@ const formValues: BusinessFunctionFormValues = {
   manager_id: 1,
   users: [2, 3],
   parent_id: 100,
+  is_active: true,
   operational_sites: [200, 201],
   company_ids: [400, 401],
   custom_fields: {},
@@ -34,6 +35,8 @@ function original(
     ],
     parent_id: 100,
     parent: { id: 100, name: 'Operations' },
+    is_active: true,
+    inactive_ancestor: null,
     operational_site_ids: [200, 201],
     operational_sites: [
       { id: 200, label: 'Via Roma 1 - Milano' },
@@ -63,6 +66,7 @@ describe('buildCreatePayload', () => {
       type: 'business_unit',
       manager_id: 1,
       users: [2, 3],
+      is_active: true,
       parent_id: 100,
       operational_sites: [200, 201],
       company_ids: [400, 401],
@@ -94,6 +98,11 @@ describe('buildUpdatePayload', () => {
     const payload = buildUpdatePayload(formValues, original())
 
     expect(payload).toEqual({})
+  })
+
+  it('sends is_active only when the flag changed (spec 0280)', () => {
+    expect(buildUpdatePayload({ ...formValues, is_active: true }, original())).toEqual({})
+    expect(buildUpdatePayload({ ...formValues, is_active: false }, original())).toEqual({ is_active: false })
   })
 
   it('includes only the changed name', () => {
@@ -148,6 +157,7 @@ describe('buildUpdatePayload', () => {
         manager_id: null,
         users: [9],
         parent_id: null,
+        is_active: true,
         operational_sites: [9],
         company_ids: [9],
         custom_fields: {},

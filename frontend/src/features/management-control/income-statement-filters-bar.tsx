@@ -15,6 +15,9 @@ import {
   type WorkOrderTypeValue,
 } from '@/features/management-control/types'
 
+/** Spec 0280 D-6: a report filter queries history, so the inactive functions stay pickable. */
+const INCLUDE_INACTIVE_PARAMS = { include_inactive: 1 }
+
 interface IncomeStatementFiltersBarProps {
   filters: IncomeStatementFilters
   onChange: (filters: IncomeStatementFilters) => void
@@ -49,6 +52,7 @@ export function IncomeStatementFiltersBar({ filters, onChange }: IncomeStatement
       <Field label={t('managementControl.filters.businessFunction')}>
         <AsyncPaginatedMultiSelect
           resource="business-functions"
+          params={INCLUDE_INACTIVE_PARAMS}
           value={filters.businessFunctionIds}
           onChange={(businessFunctionIds) => onChange({ ...filters, businessFunctionIds })}
           labels={multiLabels(t('managementControl.filters.businessFunction'))}

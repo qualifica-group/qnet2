@@ -15,6 +15,8 @@ import type { CustomFieldValue } from '@/features/custom-fields/types'
  */
 export interface BusinessFunctionRecordValues {
   parent: BusinessFunctionParent | null
+  /** Spec 0280 D-8: known on a saved record only, a draft has none yet. */
+  inactive_ancestor: BusinessFunctionParent | null
   manager: BusinessFunctionMember | null
   users: BusinessFunctionMember[]
   operational_sites: BusinessFunctionOperationalSite[]
@@ -28,6 +30,7 @@ const NO_CUSTOM_FIELDS: Record<string, CustomFieldValue> = {}
 export function persistedBusinessFunctionValues(businessFunction: BusinessFunctionDetail): BusinessFunctionRecordValues {
   return {
     parent: businessFunction.parent,
+    inactive_ancestor: businessFunction.inactive_ancestor,
     manager: businessFunction.manager,
     users: businessFunction.users,
     operational_sites: businessFunction.operational_sites,

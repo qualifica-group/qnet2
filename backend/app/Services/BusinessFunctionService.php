@@ -8,6 +8,7 @@ use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\BusinessFunction;
 use App\Models\User;
+use App\Services\BusinessFunctions\BusinessFunctionActivity;
 use App\Services\BusinessFunctions\BusinessFunctionHierarchy;
 use App\Services\BusinessFunctions\BusinessFunctionMembershipGuard;
 use Illuminate\Support\Collection;
@@ -43,6 +44,7 @@ class BusinessFunctionService
     public function __construct(
         private readonly BusinessFunctionHierarchy $hierarchy,
         private readonly BusinessFunctionMembershipGuard $membershipGuard,
+        private readonly BusinessFunctionActivity $activity,
     ) {}
 
     public function create(User $actor, CreateBusinessFunctionData $data): BusinessFunction
@@ -50,7 +52,12 @@ class BusinessFunctionService
         return DB::transaction(function () use ($data): BusinessFunction {
             /** @var BusinessFunction $businessFunction */
             $businessFunction = BusinessFunction::create(array_merge(
-                ['name' => $data->name, 'manager_id' => $data->managerId, 'parent_id' => $data->parentId],
+                [
+                    'name' => $data->name,
+                    'manager_id' => $data->managerId,
+                    'parent_id' => $data->parentId,
+                    'is_active' => $data->isActive,
+                ],
                 $this->typeToBooleans($data->type),
             ));
 
@@ -139,6 +146,11 @@ class BusinessFunctionService
      * must never offer $self or a node that would create a cycle. Applied
      * only to the paginated/base query, mirroring how search does not reach
      * the explicit `ids[]` hydration below.
+     *
+     * Spec 0280 D-6: the effectively inactive functions (own flag or an
+     * inactive ancestor) are left out unless `include_inactive` is asked;
+     * like the search, the filter never reaches the `ids[]` hydration, so a
+     * saved link to an inactive function still gets its label.
      */
     public function forSelect(ForSelectQuery $query, ?int $excludeDescendantsOf = null): ForSelectResult
     {
@@ -147,6 +159,10 @@ class BusinessFunctionService
         if ($excludeDescendantsOf !== null) {
             $excludedIds = array_merge([$excludeDescendantsOf], $this->hierarchy->descendantIds($excludeDescendantsOf));
             $base->whereNotIn('id', $excludedIds);
+        }
+
+        if (! $query->includeInactive) {
+            $base->whereNotIn('id', $this->activity->inactiveIds());
         }
 
         if ($query->hasSearch()) {

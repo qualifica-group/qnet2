@@ -63,6 +63,10 @@ export interface BusinessFunctionDetail {
   parent_id: number | null
   /** Hydrates the single-select parent-function picker. */
   parent: BusinessFunctionParent | null
+  /** The function's OWN "Attiva" flag (spec 0280). */
+  is_active: boolean
+  /** The closest switched-off ancestor that makes the function inactive anyway (spec 0280 D-8). */
+  inactive_ancestor: BusinessFunctionParent | null
   operational_site_ids: number[]
   /** Hydrates the multiselect operational-sites control. */
   operational_sites: BusinessFunctionOperationalSite[]
@@ -91,6 +95,7 @@ export interface CreateBusinessFunctionPayload {
   manager_id: number | null
   users: number[]
   parent_id: number | null
+  is_active: boolean
   operational_sites: number[]
   company_ids: number[]
   /** All valued custom fields, keyed by raw key (spec 0021, create = full set). */

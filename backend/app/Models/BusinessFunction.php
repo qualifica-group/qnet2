@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * parent/child hierarchy (spec 0010 REV, mirroring ProductCategory) and an
  * optional many-to-many with operational sites.
  */
-#[Fillable(['name', 'is_business_unit', 'is_business_service', 'manager_id', 'parent_id'])]
+#[Fillable(['name', 'is_business_unit', 'is_business_service', 'manager_id', 'parent_id', 'is_active'])]
 class BusinessFunction extends BaseModel
 {
     /** @use HasFactory<BusinessFunctionFactory> */
@@ -32,6 +32,7 @@ class BusinessFunction extends BaseModel
         return [
             'is_business_unit' => 'boolean',
             'is_business_service' => 'boolean',
+            'is_active' => 'boolean',
             // Spec 0013 — external data migration: the source system's id for
             // a migrated business function, guarded (not in $fillable) so it
             // is only ever set by property assignment post-create.

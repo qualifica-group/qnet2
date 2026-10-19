@@ -18,6 +18,9 @@ use Illuminate\Foundation\Http\FormRequest;
  * ForSelectQuery DTO — it feeds the edit-mode parent picker only, so it is
  * read directly off the request by the controller and passed to the Service
  * as a separate argument, never widening the generic for-select contract.
+ *
+ * `include_inactive` (spec 0280 D-6) lifts the active filter for the
+ * structural and search consumers (parent picker, report filters).
  */
 class BusinessFunctionForSelectRequest extends FormRequest
 {
@@ -41,6 +44,7 @@ class BusinessFunctionForSelectRequest extends FormRequest
             'ids' => ['sometimes', 'array'],
             'ids.*' => ['integer'],
             'exclude_descendants_of' => ['sometimes', 'integer', 'exists:business_functions,id'],
+            'include_inactive' => ['sometimes', 'boolean'],
         ];
     }
 

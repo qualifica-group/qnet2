@@ -40,6 +40,7 @@ export function useBusinessFunctionDraftValues(control: Control<BusinessFunction
 
   return {
     parent: draft.parent_id != null ? { id: draft.parent_id, name: labelOf(parents, draft.parent_id) } : null,
+    inactive_ancestor: null,
     manager:
       draft.manager_id != null
         ? { id: draft.manager_id, name: labelOf(managers, draft.manager_id), avatar_url: null }

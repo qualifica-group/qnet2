@@ -5,6 +5,7 @@ namespace App\Http\Requests\Concerns;
 use App\DataObjects\Users\EmploymentData;
 use App\Models\User;
 use App\Policies\UserPolicy;
+use App\Rules\ActiveBusinessFunction;
 use App\Rules\ValidIban;
 use App\Services\Assignment\CompetenceLineSetValidator;
 use Closure;
@@ -58,6 +59,7 @@ trait ValidatesEmployment
         // the same value (AC-006: a remote id equal to the primary is a 422,
         // not a silent drop).
         $primaryOperationalSiteId = $this->nullableInt('employment.primary_operational_site_id');
+        $linkedFunctionIds = $this->linkedBusinessFunctionIds();
 
         return [
             'employment' => ['sometimes', 'nullable', 'array'],
@@ -72,11 +74,13 @@ trait ValidatesEmployment
             'employment.job_role_ids.*' => ['integer', 'distinct', Rule::exists('job_roles', 'id')],
             // Spec 0275 D-3: business function membership, same tri-state.
             'employment.business_function_ids' => ['sometimes', 'nullable', 'array'],
-            'employment.business_function_ids.*' => ['integer', 'distinct', Rule::exists('business_functions', 'id')],
+            // Spec 0280 D-2: a NEW link needs an active function, the ones
+            // already linked to the user stay valid once deactivated.
+            'employment.business_function_ids.*' => ['integer', 'distinct', new ActiveBusinessFunction($linkedFunctionIds['members'])],
             // Spec 0276 D-5: the functions this person manages, same tri-state
             // as the membership (absent/null = untouched, [] = none managed).
             'employment.managed_business_function_ids' => ['sometimes', 'nullable', 'array'],
-            'employment.managed_business_function_ids.*' => ['integer', 'distinct', Rule::exists('business_functions', 'id')],
+            'employment.managed_business_function_ids.*' => ['integer', 'distinct', new ActiveBusinessFunction($linkedFunctionIds['managed'])],
             // Spec 0166 (D-2/D-8): a user may report to several managers, so
             // the single `reports_to_id` becomes a tri-state array, same shape
             // as `remote_operational_site_ids` below.
@@ -111,7 +115,11 @@ trait ValidatesEmployment
             // not ProductLineSetValidator's — no selectability constraint, a
             // nullable category.
             'employment.product_lines' => ['sometimes', 'nullable', 'array'],
-            ...$this->competenceLineSetValidator()->rules('employment.product_lines', $this->exemptCompetenceCategoryIds()),
+            ...$this->competenceLineSetValidator()->rules(
+                'employment.product_lines',
+                $this->exemptCompetenceCategoryIds(),
+                $linkedFunctionIds['competence'],
+            ),
 
             'employment.hired_at' => ['nullable', 'date'],
             'employment.terminated_at' => ['nullable', 'date', 'after_or_equal:employment.hired_at'],
@@ -224,6 +232,30 @@ trait ValidatesEmployment
             ->pluck('product_category_id')
             ->map(static fn (mixed $id): int => (int) $id)
             ->all() ?? [];
+    }
+
+    /**
+     * The functions already linked to the user being updated (spec 0280 D-2):
+     * membership, managed functions and competence rows. Empty on create (no
+     * route model).
+     *
+     * @return array{members: array<int, int>, managed: array<int, int>, competence: array<int, int>}
+     */
+    private function linkedBusinessFunctionIds(): array
+    {
+        $user = $this->route('user');
+
+        if (! $user instanceof User) {
+            return ['members' => [], 'managed' => [], 'competence' => []];
+        }
+
+        $ids = static fn (iterable $values): array => array_map('intval', [...$values]);
+
+        return [
+            'members' => $ids($user->businessFunctions()->pluck('business_functions.id')),
+            'managed' => $ids($user->managedBusinessFunctions()->pluck('id')),
+            'competence' => $ids($user->employment?->productLines()->pluck('business_function_id') ?? []),
+        ];
     }
 
     private function competenceLineSetValidator(): CompetenceLineSetValidator

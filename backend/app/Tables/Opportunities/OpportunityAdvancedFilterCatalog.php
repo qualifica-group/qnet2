@@ -124,7 +124,7 @@ final class OpportunityAdvancedFilterCatalog
                 'visible' => true,
                 'width' => 'md',
                 'multiple' => true,
-                'source' => ['resource' => 'business-functions'],
+                'source' => ['resource' => 'business-functions', 'params' => ['include_inactive' => 1]],
                 'target' => 'productLines.businessFunction',
             ],
             [
