@@ -54,6 +54,8 @@ const SEGMENT_LABELS: Record<string, string> = {
   'absence-types': 'navigation.absenceTypes',
   'staff-trainings': 'navigation.staffTrainings',
   'staff-courses': 'navigation.staffCourses',
+  'user-skills': 'navigation.userSkills',
+  skills: 'navigation.skills',
   'purchase-request-priorities': 'navigation.purchaseRequestPriorities',
   'purchase-order-statuses': 'navigation.purchaseOrderStatuses',
   'purchase-request-line-statuses': 'navigation.purchaseRequestLineStatuses',

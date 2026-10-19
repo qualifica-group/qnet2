@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BookOpen, CalendarCog, CalendarOff, Circle, CreditCard, Files, GraduationCap, LayoutTemplate, Library, Plug, Shapes } from 'lucide-react'
+import { BookOpen, CalendarCog, CalendarOff, Circle, CreditCard, Files, GraduationCap, LayoutTemplate, Library, ListChecks, Plug, Shapes, Sparkles } from 'lucide-react'
 import { resolveIcon } from '@/features/navigation/icon-map'
 
 /**
@@ -76,5 +76,13 @@ describe('resolveIcon — staff training navigation icons (spec 0284)', () => {
   it('resolves "graduation-cap" and "library" to their Lucide components', () => {
     expect(resolveIcon('graduation-cap')).toBe(GraduationCap)
     expect(resolveIcon('library')).toBe(Library)
+  })
+})
+
+/** Spec 0286: "Competenze" and "Catalogo competenze" must not fall back to Circle. */
+describe('resolveIcon — skills navigation icons (spec 0286)', () => {
+  it('resolves "sparkles" and "list-checks" to their Lucide components', () => {
+    expect(resolveIcon('sparkles')).toBe(Sparkles)
+    expect(resolveIcon('list-checks')).toBe(ListChecks)
   })
 })

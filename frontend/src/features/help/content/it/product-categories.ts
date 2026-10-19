@@ -19,7 +19,7 @@ const guide: HelpGuide = {
           headers: ['Impostazione della categoria', 'Dove ha effetto'],
           rows: [
             ["Categoria padre (posizione nell'albero)", 'Decide cosa la categoria eredita. Nelle righe prodotto di progetti, campagne, opportunità e lead scegli prima la Categoria genitore (una radice) e poi una sua discendente; con Filtro, facoltativo, restringi la scelta a una figlia diretta che raggruppa altre categorie (es. Consulenza › ISO › ISO 9001).'],
-            ['Funzione aziendale', "Ricavata in automatico nelle righe prodotto; serve per le competenze degli utenti e l'assegnazione di lead e richieste. Il prodotto la mostra in sola lettura."],
+            ['Funzione aziendale', "Ricavata in automatico nelle righe prodotto; serve per gli ambiti di assegnazione degli utenti e l'assegnazione di lead e richieste. Il prodotto la mostra in sola lettura."],
             ['Attributi Prodotto', 'Campi aggiuntivi nella scheda Prodotto.'],
             ['Attributi Offerta', "Campi nelle Informazioni aggiuntive dell'Offerta e colonne nelle schede per categoria di Gestione Richieste."],
             ['Attributi Commessa', 'Campi nelle Informazioni aggiuntive della Commessa.'],

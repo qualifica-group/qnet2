@@ -17,7 +17,7 @@ const guide: HelpGuide = {
       title: 'Creare un utente',
       blocks: [
         { type: 'steps', items: ['Apri **Amministrazione › Utenti** e fai clic su **Nuovo utente**: il modulo ha lo stesso aspetto della scheda, con le stesse sezioni e **righe chiuse**.', 'Fai clic su una riga (o sulla matita) per aprirla, compila e premi **Fatto** per tenere il valore o **Ripristina** per riportarlo com’era (vedi le tabelle qui sotto). I **Dati anagrafici** sono obbligatori.', '**Contatti** e **Indirizzi** si compilano nella colonna laterale e vengono salvati insieme all’utente.', 'Fai clic su **Salva**. Compare il messaggio "Utente creato con successo." Se esci senza salvare ti viene chiesta conferma.'] },
-        { type: 'paragraph', text: 'Il pulsante **Salva** si trova sia in alto sia in fondo al modulo. La fascia dei numeri in alto (competenze, sedi, ruoli, abbinamento) si aggiorna mentre compili.' },
+        { type: 'paragraph', text: 'Il pulsante **Salva** si trova sia in alto sia in fondo al modulo. La fascia dei numeri in alto (ambiti di assegnazione, sedi, ruoli, abbinamento) si aggiorna mentre compili.' },
         {
           type: 'table',
           headers: ['Campo', 'Cosa indicare'],
@@ -38,21 +38,21 @@ const guide: HelpGuide = {
       id: 'assignment-configuration',
       title: 'Configurazione assegnazione',
       blocks: [
-        { type: 'paragraph', text: 'Questa sezione decide quali richieste possono arrivare alla persona. Una richiesta la raggiunge solo se la persona appartiene alla sede della richiesta e ha una competenza sulla categoria prodotto richiesta.' },
+        { type: 'paragraph', text: 'Questa sezione decide quali richieste possono arrivare alla persona. Una richiesta la raggiunge solo se la persona appartiene alla sede della richiesta e ha un ambito di assegnazione sulla categoria prodotto richiesta.' },
         {
           type: 'table',
           headers: ['Campo', 'Cosa indicare'],
           rows: [
-            ['**Assegnabile**', 'Se lo spegni la persona non riceve nessuna assegnazione (Lead, Gestione Richieste, Iscritti, import), anche con sede e competenza. Competenza e sedi restano configurate, pronte per quando lo riaccendi. Di default è acceso.'],
-            ['**Competente per tutte le categorie**', 'Attivalo se la persona segue qualunque categoria prodotto. Le righe di competenza spariscono e vengono azzerate.'],
-            ['**Competenza**', 'Una riga per ogni coppia funzione aziendale e categoria prodotto. Una categoria madre copre anche le sue sottocategorie. Spunta "Tutte" per coprire ogni categoria di quella funzione.'],
+            ['**Assegnabile**', 'Se lo spegni la persona non riceve nessuna assegnazione (Lead, Gestione Richieste, Iscritti, import), anche con sede e ambito di assegnazione. Ambito di assegnazione e sedi restano configurate, pronte per quando lo riaccendi. Di default è acceso.'],
+            ['**Ambito su tutte le categorie**', 'Attivalo se la persona segue qualunque categoria prodotto. Le righe dell’ambito di assegnazione spariscono e vengono azzerate.'],
+            ['**Ambito di assegnazione**', 'Una riga per ogni coppia funzione aziendale e categoria prodotto. Una categoria madre copre anche le sue sottocategorie. Spunta "Tutte" per coprire ogni categoria di quella funzione.'],
             ['**Sede fisica**', 'La sede operativa principale della persona.'],
             ['**Sedi remote**', 'Altre sedi operative in cui lavora.'],
           ],
         },
         { type: 'paragraph', text: 'Sede fisica e sedi remote valgono allo stesso modo per l’assegnazione. Nella fascia dei numeri in alto, **Abbinamento** indica **Assegnabile** oppure **Non assegnabile**.' },
-        { type: 'note', text: 'Le **Competenze** sono facoltative e separate dall’appartenenza: decidono solo le assegnazioni. L’obbligo per una persona attiva (non account di servizio) riguarda le **Funzioni aziendali di appartenenza** (vedi **Profilo e rapporto contrattuale**).' },
-        { type: 'warning', text: 'La persona riceve assegnazioni solo se sono vere tutte e tre le condizioni: **Assegnabile** acceso, almeno una competenza e almeno una sede. Il modulo segnala la condizione mancante con "Assegnazione disattivata", "Manca la competenza" o "Manca la sede".' },
+        { type: 'note', text: 'Gli **Ambiti di assegnazione** sono facoltativi e separate dall’appartenenza: decidono solo le assegnazioni. L’obbligo per una persona attiva (non account di servizio) riguarda le **Funzioni aziendali di appartenenza** (vedi **Profilo e rapporto contrattuale**).' },
+        { type: 'warning', text: 'La persona riceve assegnazioni solo se sono vere tutte e tre le condizioni: **Assegnabile** acceso, almeno un ambito di assegnazione e almeno una sede. Il modulo segnala la condizione mancante con "Assegnazione disattivata", "Manca l’ambito di assegnazione" o "Manca la sede".' },
       ],
     },
     {
@@ -64,7 +64,7 @@ const guide: HelpGuide = {
           headers: ['Campo', 'Cosa indicare'],
           rows: [
             ['**Mansioni**', 'Le mansioni svolte, scelte dall’elenco del modulo Mansioni: puoi indicarne più di una oppure nessuna.'],
-            ['**Funzioni aziendali di appartenenza**', 'Le funzioni aziendali di cui la persona fa parte, anche più di una. È lo stesso dato degli **Utenti associati** della funzione: cambiarlo qui o là è equivalente. È obbligatoria per una persona attiva (non account di servizio): altrimenti il salvataggio viene rifiutato e l’errore compare sotto il campo. Non è la stessa cosa delle **Competenze**, che restano facoltative.'],
+            ['**Funzioni aziendali di appartenenza**', 'Le funzioni aziendali di cui la persona fa parte, anche più di una. È lo stesso dato degli **Utenti associati** della funzione: cambiarlo qui o là è equivalente. È obbligatoria per una persona attiva (non account di servizio): altrimenti il salvataggio viene rifiutato e l’errore compare sotto il campo. Non è la stessa cosa degli **Ambiti di assegnazione**, che restano facoltativi.'],
             ['**Responsabile delle funzioni**', 'Le funzioni di cui la persona è responsabile, anche più di una. Si modifica sul posto se puoi modificare sia l’utente sia le funzioni aziendali (altrimenti la riga resta in sola lettura). Una funzione che aveva un altro responsabile passa a questa persona, che lo sostituisce; una funzione tolta dall’elenco resta senza responsabile. Lo stesso dato si cambia anche dalla scheda della funzione aziendale. Se non ce ne sono compare “Non è responsabile di nessuna funzione.”.'],
             ['**Risponde a**', 'I responsabili diretti, scelti tra gli utenti: puoi indicarne più di uno. Il campo c’è sempre, anche per chi è responsabile di una funzione.'],
             ['**Tipo di rapporto**, **Società**, **CCNL e livello**, **In vigore dal**', 'Sola lettura: mostrano la condizione contrattuale in vigore oggi. Si cambiano dallo **Storico contrattuale** (vedi sotto).'],
@@ -74,7 +74,7 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'paragraph', text: 'Le sezioni del rapporto di lavoro ci sono anche per un utente che non ha ancora un profilo: il primo salvataggio lo crea. Seguono **Contatti** e **Indirizzi**; in fondo può comparire la sezione **Altri campi**, con i campi personalizzati degli utenti.' },
-        { type: 'note', text: 'Attivare **Competente per tutte le categorie** azzera le righe di **Competenza**: per questo le due righe non hanno la matita se non puoi modificare anche il campo che svuotano.' },
+        { type: 'note', text: 'Attivare **Ambito su tutte le categorie** azzera le righe di **Ambito di assegnazione**: per questo le due righe non hanno la matita se non puoi modificare anche il campo che svuotano.' },
         { type: 'paragraph', text: 'Sotto il nome, nell’intestazione della scheda, compaiono le funzioni aziendali di appartenenza come etichette, con una corona su quelle di cui la persona è responsabile; seguono le funzioni gestite di cui non fa parte. Nell’elenco utenti la colonna **Responsabile delle funzioni** (nascosta di default, filtrabile per funzione) sostituisce la vecchia colonna **Responsabile**.' },
       ],
     },

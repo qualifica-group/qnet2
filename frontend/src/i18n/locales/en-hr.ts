@@ -12,6 +12,8 @@ import { jobRoles } from './en-job-roles'
 import { orgChart } from './en-org-chart'
 import { staffCourses } from './en-staff-courses'
 import { staffTrainings } from './en-staff-trainings'
+import { skills } from './en-skills'
+import { userSkills } from './en-user-skills'
 
 export const hr = {
   absences: { ...absences, balances: absenceBalances },
@@ -22,4 +24,6 @@ export const hr = {
   orgChart,
   staffCourses,
   staffTrainings,
+  skills,
+  userSkills,
 }

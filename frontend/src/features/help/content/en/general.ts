@@ -170,7 +170,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: 'In **Leads** and **Request Management** you can assign multiple records in a single operation.' },
         { type: 'steps', items: ['Select the rows with the checkboxes on the left.', 'Open **Actions** and choose **Assign operators**.', 'If asked, choose the **Site**.', 'Choose the **Assignment type**: **Balanced split** (shows the operators grouped by Site, all selected by default — deselect a group or a single operator to exclude them — and balances the load across whoever stays selected) or **Assign to operator** (all to the same **Operator**).', 'Press **Assign**.'] },
-        { type: 'note', text: 'qnet only suggests competent operators, meaning those whose user record has the site and the competency on the category. If no one is suitable, "No competent operator for the selected records." appears. A group left with no operator selected does not receive its records. At the end, a message states how many records were assigned and how many were left without an operator.' },
+        { type: 'note', text: 'qnet only suggests competent operators, meaning those whose user record has the site and the assignment scope on the category. If no one is suitable, "No competent operator for the selected records." appears. A group left with no operator selected does not receive its records. At the end, a message states how many records were assigned and how many were left without an operator.' },
       ],
     },
     {
@@ -187,7 +187,7 @@ const guide: HelpGuide = {
             ["I can't delete a configuration value.", "It is already used by some record. Turn off **Active** instead: it disappears from drop-downs without touching existing data."],
             ["A product doesn't show up among the ones selectable on a quote.", 'Check **Usage in quote** on the product record (**Sellable** for the Quote tab, **Usable as cost** for the Costs tab) and the category: products are limited to the categories of the opportunity, unless **Show all products** is on.'],
             ["I closed a quote as won but don't see the contract.", 'The product category may have **Generates a contract** turned off. Check it in **Product Categories**.'],
-            ["An operator doesn't receive assignments.", "Their user record is missing the competency on the category or the site: the module flags it at the top with **Not assignable**."],
+            ["An operator doesn't receive assignments.", "Their user record is missing the assignment scope on the category or the site: the module flags it at the top with **Not assignable**."],
             ["I can't convert a lead.", 'The lead already has an opportunity, the campaign has no business function or category, or the registry already has an open opportunity.'],
             ['The quote PDF gives an error.', 'At least one active layout is needed for Quotes: check **Configuration › Layouts** and the **Default** layout.'],
             ["I don't receive the password reset email.", 'Check the spam folder; if the link expired, request a new one.'],

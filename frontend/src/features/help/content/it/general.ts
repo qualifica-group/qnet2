@@ -170,7 +170,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: 'In **Lead** e **Gestione Richieste** puoi assegnare più record in un’unica operazione.' },
         { type: 'steps', items: ['Seleziona le righe con le caselle a sinistra.', 'Apri **Azioni** e scegli **Assegna operatori**.', 'Se richiesto, scegli la **Sede**.', 'Scegli il **Tipo di assegnazione**: **Smistamento equo** (mostra gli operatori raggruppati per Sede, tutti selezionati — deseleziona un gruppo o un singolo operatore per escluderlo — e bilancia il carico tra chi resta selezionato) o **Assegna a operatore** (tutti allo stesso **Operatore**).', 'Premi **Assegna**.'] },
-        { type: 'note', text: 'QNet propone solo operatori competenti, cioè con la sede e la competenza sulla categoria impostate nella loro scheda utente. Se nessuno è adatto compare "Nessun operatore competente per i record selezionati." Un gruppo lasciato senza operatori selezionati non riceve i suoi record. Al termine un messaggio indica quanti record sono stati assegnati e quanti sono rimasti senza operatore.' },
+        { type: 'note', text: 'QNet propone solo operatori competenti, cioè con la sede e l’ambito di assegnazione sulla categoria impostati nella loro scheda utente. Se nessuno è adatto compare "Nessun operatore competente per i record selezionati." Un gruppo lasciato senza operatori selezionati non riceve i suoi record. Al termine un messaggio indica quanti record sono stati assegnati e quanti sono rimasti senza operatore.' },
       ],
     },
     {
@@ -187,7 +187,7 @@ const guide: HelpGuide = {
             ['Non riesco a eliminare un valore di configurazione.', 'È già usato da qualche record. Disattivalo con **Attivo**: sparisce dai menu a tendina senza toccare i dati esistenti.'],
             ['Un prodotto non compare tra quelli selezionabili in un’offerta.', 'Controlla **Utilizzo in offerta** nella scheda prodotto (**Vendibile** per la scheda Offerta, **Utilizzabile come costo** per la scheda Costi) e la categoria: i prodotti sono limitati alle categorie dell’opportunità, salvo **Mostra tutti i prodotti**.'],
             ['Ho chiuso positivamente un’offerta ma non vedo il contratto.', 'La categoria prodotto può avere **Prevede un contratto** spento. Verificalo in **Categorie Prodotto**.'],
-            ['Un operatore non riceve assegnazioni.', 'Nella sua scheda utente mancano la competenza sulla categoria o la sede: in alto il modulo lo segnala con **Non assegnabile**.'],
+            ['Un operatore non riceve assegnazioni.', 'Nella sua scheda utente mancano l’ambito di assegnazione sulla categoria o la sede: in alto il modulo lo segnala con **Non assegnabile**.'],
             ['Non posso convertire un lead.', 'Il lead ha già un’opportunità, la campagna non ha funzione aziendale o categoria, oppure l’anagrafica ha già un’opportunità aperta.'],
             ['Il preventivo PDF dà errore.', 'Serve almeno un layout attivo per i Preventivi: controlla **Configurazione › Layout** e il layout **Predefinito**.'],
             ['Non ricevo la mail di reset password.', 'Controlla la cartella spam; se il link è scaduto, richiedine uno nuovo.'],

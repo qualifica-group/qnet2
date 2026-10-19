@@ -42,10 +42,10 @@ export const usersFormEmployment = {
   reportsToError: 'Impossibile caricare gli utenti.',
   reportsToRemove: 'Rimuovi responsabile',
   isAssignable: 'Assegnabile',
-  isAssignableDescription: 'Se spento la persona non riceve nessuna assegnazione (Lead, Gestione Richieste, Iscritti, import), anche con sede e competenza.',
-  coversAllProductCategories: 'Competente per tutte le categorie',
-  coversAllProductCategoriesDescription: 'La persona è competente su qualunque categoria prodotto, a prescindere dalla funzione aziendale: le righe sottostanti spariscono e vengono azzerate.',
-  productLines: 'Competenza',
+  isAssignableDescription: 'Se spento la persona non riceve nessuna assegnazione (Lead, Gestione Richieste, Iscritti, import), anche con sede e ambito di assegnazione.',
+  coversAllProductCategories: 'Ambito su tutte le categorie',
+  coversAllProductCategoriesDescription: 'L’ambito di assegnazione della persona copre qualunque categoria prodotto, a prescindere dalla funzione aziendale: le righe sottostanti spariscono e vengono azzerate.',
+  productLines: 'Ambito di assegnazione',
   productLinesHint: 'Ogni riga abbina una funzione aziendale a una categoria prodotto, sottocategorie comprese: spunta "Tutte" per coprire ogni categoria di quella funzione, oppure scegli una categoria madre (es. "Formazione") per coprire lei e le sue figlie. Senza almeno una riga (o senza il flag sopra) non riceve alcuna assegnazione.',
   productLineIncomplete: 'Ogni riga richiede sia la funzione aziendale sia la categoria prodotto (oppure "Tutte").',
   primaryOperationalSite: 'Sede fisica',
@@ -87,7 +87,7 @@ export const usersDetailEmployment = {
   managedBusinessFunctions: 'Responsabile delle funzioni',
   managedBusinessFunctionsEmpty: 'Non è responsabile di nessuna funzione.',
   reportsTo: 'Risponde a',
-  productLines: 'Competenza',
+  productLines: 'Ambito di assegnazione',
   relationshipType: 'Tipo di rapporto',
   company: 'Società',
   primaryOperationalSite: 'Sede fisica',
@@ -148,7 +148,7 @@ export const usersDetailEmployment = {
 }
 
 /**
- * Configurazione di assegnazione (direttiva utente 2026-09-11): competenza +
+ * Configurazione di assegnazione (direttiva utente 2026-09-11): ambito di assegnazione +
  * sedi, cioè le due metà che il server interseca per decidere chi può ricevere
  * un record. Condivise da form e scheda, così le due superfici non possono
  * raccontare la regola in due modi diversi.
@@ -161,23 +161,23 @@ export const usersAssignment = {
   /** Spec 0129 D-1: mostrata al posto del conteggio/elenco quando il flag jolly è attivo. */
   allCategories: 'Tutte le categorie',
   chips: {
-    competence: 'Competenze',
+    competence: 'Ambiti di assegnazione',
     physicalSite: 'Sede fisica',
     remoteSites: 'Sedi remote',
   },
   blockers: {
     disabled: "Assegnazione disattivata dall'impostazione Assegnabile",
-    competence: 'Nessuna competenza configurata: senza almeno una coppia funzione aziendale + categoria prodotto la persona non entra in nessun abbinamento.',
+    competence: 'Nessun ambito di assegnazione configurato: senza almeno una coppia funzione aziendale + categoria prodotto la persona non entra in nessun abbinamento.',
     site: 'Nessuna sede operativa: senza sede fisica o remota la persona non entra in nessun abbinamento.',
   },
   stats: {
-    competence: 'Competenze',
+    competence: 'Ambiti di assegnazione',
     sites: 'Sedi',
     sitesBreakdown: '{{physical}} fisica · {{remote}} remote',
     matching: 'Abbinamento',
     blockers: {
       disabled: 'Assegnazione disattivata',
-      competence: 'Manca la competenza',
+      competence: 'Manca l’ambito di assegnazione',
       site: 'Manca la sede',
     },
   },

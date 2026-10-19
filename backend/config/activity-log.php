@@ -51,6 +51,7 @@ use App\Models\RewardStatus;
 use App\Models\RewardType;
 use App\Models\Role;
 use App\Models\Sector;
+use App\Models\Skill;
 use App\Models\Source;
 use App\Models\StaffCourse;
 use App\Models\StaffTraining;
@@ -64,6 +65,7 @@ use App\Models\TaskTemplate;
 use App\Models\TaskType;
 use App\Models\UnitOfMeasure;
 use App\Models\User;
+use App\Models\UserSkill;
 use App\Models\VatRate;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderPaymentStatus;
@@ -118,6 +120,13 @@ return [
         ],
         'staff-trainings' => [
             'model' => StaffTraining::class,
+        ],
+        // spec 0286: skills catalogue and user skills register.
+        'skills' => [
+            'model' => Skill::class,
+        ],
+        'user-skills' => [
+            'model' => UserSkill::class,
         ],
         // spec 0272: collective agreements (CCNL).
         'collective-agreements' => [

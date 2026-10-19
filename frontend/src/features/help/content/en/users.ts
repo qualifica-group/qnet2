@@ -17,7 +17,7 @@ const guide: HelpGuide = {
       title: 'Creating a user',
       blocks: [
         { type: 'steps', items: ['Open **Administration › Users** and click **New user**: the form looks like the record, with the same sections and **closed rows**.', 'Click a row (or its pencil) to open it, fill it in and press **Done** to keep the value or **Revert** to put it back (see the tables below). The **Personal details** are required.', '**Contacts** and **Addresses** are filled in the side column and saved together with the user.', 'Click **Save**. The message "User created successfully." appears. If you leave without saving, you are asked to confirm.'] },
-        { type: 'paragraph', text: 'The **Save** button sits both at the top and at the bottom of the form. The figures strip at the top (competences, sites, roles, matching) updates as you fill it in.' },
+        { type: 'paragraph', text: 'The **Save** button sits both at the top and at the bottom of the form. The figures strip at the top (assignment scopes, sites, roles, matching) updates as you fill it in.' },
         {
           type: 'table',
           headers: ['Field', 'What to enter'],
@@ -38,21 +38,21 @@ const guide: HelpGuide = {
       id: 'assignment-configuration',
       title: 'Assignment configuration',
       blocks: [
-        { type: 'paragraph', text: 'This section decides which requests can reach the person. A request reaches them only if they belong to the site of the request and have a competency on the requested product category.' },
+        { type: 'paragraph', text: 'This section decides which requests can reach the person. A request reaches them only if they belong to the site of the request and have an assignment scope on the requested product category.' },
         {
           type: 'table',
           headers: ['Field', 'What to enter'],
           rows: [
-            ['**Assignable**', 'If you turn it off the person receives no assignments at all (Leads, Request Management, Members, import), even with a site and competency. Competency and sites stay configured, ready for when you turn it back on. It is on by default.'],
-            ['**Competent for all categories**', 'Turn it on if the person follows any product category. Competency rows disappear and are cleared.'],
-            ['**Competency**', 'One row for each pair of business function and product category. A parent category also covers its subcategories. Check "All" to cover every category of that function.'],
+            ['**Assignable**', 'If you turn it off the person receives no assignments at all (Leads, Request Management, Members, import), even with a site and an assignment scope. Assignment scope and sites stay configured, ready for when you turn it back on. It is on by default.'],
+            ['**Scope on all categories**', 'Turn it on if the person follows any product category. Assignment scope rows disappear and are cleared.'],
+            ['**Assignment scope**', 'One row for each pair of business function and product category. A parent category also covers its subcategories. Check "All" to cover every category of that function.'],
             ['**Physical site**', "The person's primary operational site."],
             ['**Remote sites**', 'Other operational sites where they work.'],
           ],
         },
         { type: 'paragraph', text: 'Physical site and remote sites count the same way for assignment. In the figures strip at the top, **Matching** shows **Assignable** or **Not assignable**.' },
-        { type: 'note', text: 'The **Competences** are optional and separate from membership: they only drive assignments. The requirement for an active person (not a service account) applies to the **Business functions of membership** (see **Profile and employment relationship**).' },
-        { type: 'warning', text: 'The person receives assignments only when all three conditions hold: **Assignable** on, at least one competency and at least one site. The module flags the missing one with "Assignment turned off", "Missing competency" or "Missing site".' },
+        { type: 'note', text: 'The **Assignment scopes** are optional and separate from membership: they only drive assignments. The requirement for an active person (not a service account) applies to the **Business functions of membership** (see **Profile and employment relationship**).' },
+        { type: 'warning', text: 'The person receives assignments only when all three conditions hold: **Assignable** on, at least one assignment scope and at least one site. The module flags the missing one with "Assignment turned off", "Missing assignment scope" or "Missing site".' },
       ],
     },
     {
@@ -64,7 +64,7 @@ const guide: HelpGuide = {
           headers: ['Field', 'What to enter'],
           rows: [
             ['**Job roles**', 'The job roles the person performs, chosen from the Job roles module list: you can pick several or none.'],
-            ['**Business functions of membership**', 'The business functions the person belongs to, one or more. It is the same data as the function\'s **Associated users**: changing it here or there is equivalent. It is required for an active person (not a service account): otherwise the save is refused and the error appears under the field. It is not the same as the **Competences**, which stay optional.'],
+            ['**Business functions of membership**', 'The business functions the person belongs to, one or more. It is the same data as the function\'s **Associated users**: changing it here or there is equivalent. It is required for an active person (not a service account): otherwise the save is refused and the error appears under the field. It is not the same as the **Assignment scopes**, which stay optional.'],
             ['**Manager of functions**', 'The functions the person manages, more than one allowed. It is edited in place if you can edit both the user and the business functions (otherwise the row stays read only). A function that had another manager passes to this person, replacing them; a function removed from the list is left without a manager. The same data can also be changed from the business function record. When there are none it reads "Not the manager of any function.".'],
             ['**Reports to**', 'The direct managers, chosen among users: you can pick more than one. The field is always there, also for someone who manages a function.'],
             ['**Employment type**, **Company**, **Collective agreement and level**, **In force since**', 'Read only: they show the contract condition in force today. Change them from the **Contract history** (see below).'],
@@ -74,7 +74,7 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'paragraph', text: 'The employment sections are there even for a user with no profile yet: the first save creates it. **Contacts** and **Addresses** follow; at the bottom, an **Other fields** section may appear, with the custom fields for users.' },
-        { type: 'note', text: 'Turning on **Competent for all categories** clears the **Competence** rows: that is why the two rows have no pencil if you cannot also edit the field they empty.' },
+        { type: 'note', text: 'Turning on **Scope on all categories** clears the **Assignment scope** rows: that is why the two rows have no pencil if you cannot also edit the field they empty.' },
         { type: 'paragraph', text: 'Under the name, in the card header, the business functions of membership appear as tags, with a crown on those the person manages; the managed functions the person is not a member of follow. In the users list the **Manager of functions** column (hidden by default, filterable by function) replaces the old **Manager** column.' },
       ],
     },

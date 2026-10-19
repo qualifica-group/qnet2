@@ -14,7 +14,7 @@
 | D-1 | I dati si importano **sempre** dal framework di migrazione (`backend/app/Migrations/`) | Ogni area ha il suo importer; il legacy invia i dati già pronti (`.claude/rules/backend.md §9`). Un campo che il legacy non ha nasce vuoto e si compila in app |
 | D-2 | Non esiste una persona senza account | Il dipendente **è** l'utente: tutti i campi HR si appoggiano all'utente e al suo profilo d'impiego |
 | D-3 | Niente accesso unico (SSO) | Fuori scope |
-| D-4 | Le assenze sono **obbligatorie** | Vedi §9: sviluppate in spec 0278, manca il calendario della squadra (spec 0279) |
+| D-4 | Le assenze sono **obbligatorie** | Vedi §9: sviluppate in spec 0278 e 0279 (calendario) |
 | D-5 | Il segnatempo resta quello esistente (`time_entries`) | HR lo legge, non lo rifà |
 | D-6 | **La mansione è un catalogo a sé, senza legame con ruoli e permessi** (rivista il 2026-10-16, sostituisce "mansione = ruolo") | Una persona ha una o più mansioni scelte da un select; il testo libero `job_description` sparisce |
 | D-8 | Le posizioni non servono | Sede e mansioni descrivono già dove e cosa fa una persona |
@@ -53,7 +53,7 @@
 | È responsabile | se guida una squadra | presente (`is_manager`) |
 | Sede principale, sedi remote | dove lavora | presente (`employment_profile_operational_site`) |
 | Orario standard e pausa giornaliera | minuti | presente |
-| Funzioni aziendali (business unit o business service) | appartenenza, obbligatoria (regola 1) | presente (competenze commerciali) e obbligatoria per le persone attive (spec 0271) |
+| Funzioni aziendali (business unit o business service) | appartenenza, obbligatoria (regola 1) | presente (appartenenza, spec 0275) e obbligatoria per le persone attive (spec 0271) |
 | Mansioni | che cosa fa: una o più mansioni dal catalogo (D-6) | presente (spec 0271); il testo libero `job_description` è stato rimosso |
 | Stato attivo / cessato | chi è uscito si conserva, non si cancella | presente: alla cessazione l'utente viene disattivato, colonna "Stato" nella griglia (spec 0272) |
 
@@ -97,13 +97,15 @@ società stanno accanto. Le posizioni non si fanno (D-8), i reparti nemmeno (D-1
 |---|---|---|
 | Funzione aziendale | nome, tipo (business unit o business service), funzione padre, responsabile | presente (`business_functions`) |
 | | società in cui esiste | presente (spec 0271) |
-| Mansione | nome, descrizione, attività comprese; competenze richieste (§7.2) | presente come catalogo (spec 0271); competenze richieste da aggiungere |
+| Mansione | nome, descrizione, attività comprese; competenze richieste (§7.2) | presente come catalogo (spec 0271); competenze richieste presenti (spec 0286) |
 | Attività | nome, mansione di appartenenza | presente come catalogo (spec 0271) |
 | Sede | nome, indirizzo, attiva | presente (`operational_sites`) |
 | Società | denominazione, partita IVA, sedi | presente (`companies`, `company_sites`) |
 
-Legami da gestire: mansione ↔ attività, persona ↔ mansioni, persona ↔ funzione (presente: le competenze
-commerciali, che valgono anche per la regola della funzione obbligatoria), funzione ↔ società.
+Legami da gestire: mansione ↔ attività, persona ↔ mansioni, persona ↔ funzione (presente: le funzioni di
+appartenenza, spec 0275, che valgono per la regola della funzione obbligatoria), funzione ↔ società. Gli
+"Ambiti di assegnazione" (coppie funzione + categoria prodotto, un tempo chiamati "Competenza") servono solo
+all'assegnazione di Lead, richieste e iscritti.
 
 ## 6. Organigramma
 
@@ -114,33 +116,32 @@ Organigramma con due alberi espandibili.
 |---|---|---|
 | Vista Funzioni | albero delle funzioni aziendali con responsabile, persone e mansioni | presente (spec 0273) |
 | Vista Persone | chi riporta a chi | presente (spec 0273) |
-| Spostamenti | cambiare responsabile, spostare una funzione sotto un'altra, spostare una persona di funzione (trascinamento o "Sposta in…") | presente (spec 0273); lo spostamento di funzione cambia le competenze commerciali |
+| Spostamenti | cambiare responsabile, spostare una funzione sotto un'altra, spostare una persona di funzione (trascinamento o "Sposta in…") | presente (spec 0273); lo spostamento di funzione cambia l'appartenenza |
 | Registro spostamenti | chi ha spostato cosa | presente: activity log "Spostamento" sulla persona o sulla funzione |
 | Unità e ruoli separati dalle funzioni | riquadri e ruoli propri dell'organigramma | non previsti: l'organigramma si ricava dalle funzioni aziendali |
 
 ## 7. Corsi, formazione e competenze
 
-Stesso modello per entrambe le aree: un **catalogo** e le **assegnazioni** alle persone. Oggi in qnet-2 nessuna
-delle due esiste come concetto HR.
+Stesso modello per entrambe le aree: un **catalogo** e le **assegnazioni** alle persone. Presenti: corsi e
+formazione (spec 0284), competenze (spec 0286).
 
 ### 7.1 Corsi e formazione
 
 | Elemento | Campi |
 |---|---|
-| Corso (catalogo) | titolo, durata in ore, obbligatorio, validità (*proposta*) |
-| Formazione della persona | persona, corso, scadenza, data completamento, esito (*proposta*) |
+| Corso (catalogo) | nome, descrizione, durata in ore, validità in mesi, attivo, mansioni che lo richiedono (spec 0284) |
+| Formazione della persona | persona, corso, data completamento, scadenza calcolata, esito, attestato (spec 0284) |
 
 ### 7.2 Competenze
 
-Le competenze sono **ciò che la persona sa fare** (capacità, conoscenze, strumenti). Non sono le "competenze
-commerciali" già presenti sull'utente, che indicano l'appartenenza alle funzioni aziendali (§3, §5) e restano
-come sono.
+Le competenze sono **ciò che la persona sa fare** (capacità, conoscenze, strumenti). Non sono gli "Ambiti di
+assegnazione" della scheda utente (prima chiamati "Competenza"), rinominati in interfaccia dalla spec 0286 D-1.
 
 | Elemento | Campi |
 |---|---|
-| Competenza (catalogo) | nome, categoria (*proposta*) |
-| Competenza della persona | persona ↔ competenza, con livello e data (*proposta*) |
-| Competenza richiesta dalla mansione | mansione ↔ competenza, con livello minimo (*proposta*) |
+| Competenza (catalogo) | nome, categoria, descrizione, attiva (spec 0286) |
+| Competenza della persona | persona ↔ competenza, livello 1-4 (Base, Intermedio, Avanzato, Esperto), data di valutazione (spec 0286) |
+| Competenza richiesta dalla mansione | mansione ↔ competenza, con livello minimo (spec 0286) |
 
 ## 8. Il quotidiano della persona e del responsabile
 
@@ -152,35 +153,26 @@ come sono.
 
 ## 9. Assenze e richieste di ferie
 
-Sviluppate in spec 0278 (tipi, richieste, approvazione di un livello, saldi in ore, target del segnatempo).
-Resta da fare:
-
-- **Calendario della squadra:** chi c'è e chi non c'è, con festività (riusare il calendario lavorativo esistente).
-  Spec 0279, in bozza.
+Sviluppate in spec 0278 (tipi, richieste, approvazione di un livello, saldi in ore, target del segnatempo) e
+0279 (calendario: chi c'è e chi non c'è, con weekend e festività, visibilità a tre permessi).
 
 ## 10. Importazione dei dati
 
 Ogni area ha un importer in `backend/app/Migrations/`, con lookup `old_id`, upsert idempotente e warning sui
 riferimenti mancanti. Già esistono gli importer di utenti (con profilo d'impiego), ruoli, funzioni aziendali e membri,
 società, sedi. La struttura (mansioni, attività) non ha importer: il legacy non ha questi dati e si
-compilano in app (spec 0271). Da valutare spec per spec: corsi e formazione, competenze.
+compilano in app (spec 0271). Corsi, formazione e competenze: il legacy non ha dati, nessun importer (spec 0284, 0286).
 Per ognuno va verificato prima che il legacy abbia il dato; se non lo ha, il campo nasce vuoto.
 
 ## 11. Decisioni aperte
 
-1. **Campi *proposta*** di corsi e competenze (§7): da confermare prima della spec.
-
-Chiusa il 2026-10-19: visibilità del calendario con tre permessi (solo sé, sé e squadra, tutti), spec 0279 D-1.
+Nessuna. Chiuse il 2026-10-19: visibilità del calendario con tre permessi (spec 0279 D-1); campi di corsi e
+competenze (spec 0284, 0286).
 
 ## 12. Ordine di sviluppo
 
-Già sviluppati: struttura organizzativa (0271, 0275, 0276, 0280, 0281), scheda dipendente e contratto (0272,
-0277), organigramma (0273, 0274), assenze (0278).
-
-Restano, in quest'ordine:
-
-1. Calendario della squadra (§9, spec 0279).
-2. Corsi e formazione (§7.1).
-3. Competenze (§7.2).
+Tutto sviluppato: struttura organizzativa (0271, 0275, 0276, 0280, 0281), scheda dipendente e contratto (0272,
+0277), organigramma (0273, 0274), assenze (0278), calendario della squadra (0279), corsi e formazione (0284),
+competenze (0286). Il perimetro di D-10 è chiuso.
 
 Ogni passo: spec in `docs/specs/` con `/plan-feature`, importer (§10), guida in-app IT/EN e manuale utente.

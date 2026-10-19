@@ -24,7 +24,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Finché non modifichi le preferite, quelle iniziali sono le categorie per cui sei abilitato (in base alla competenza del tuo profilo) e **Mostra solo preferite** è già attivo: tra le schede vedi **Tutte** e le tue categorie, le altre restano in **Altre (N)**. Nel menu un avviso ti ricorda che sono proposte automatiche. Appena tocchi una stella o l'interruttore, vale solo la tua scelta e non cambia più con la competenza. Se sei abilitato a tutte le categorie o non hai competenze, vedi tutte le schede.",
+          text: "Finché non modifichi le preferite, quelle iniziali sono le categorie per cui sei abilitato (in base all’ambito di assegnazione del tuo profilo) e **Mostra solo preferite** è già attivo: tra le schede vedi **Tutte** e le tue categorie, le altre restano in **Altre (N)**. Nel menu un avviso ti ricorda che sono proposte automatiche. Appena tocchi una stella o l'interruttore, vale solo la tua scelta e non cambia più con l’ambito di assegnazione. Se sei abilitato a tutte le categorie o non hai ambiti di assegnazione, vedi tutte le schede.",
         },
         {
           type: 'paragraph',

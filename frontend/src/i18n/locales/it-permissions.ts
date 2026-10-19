@@ -161,6 +161,8 @@ export const permissions = {
     'org-chart': 'Organigramma',
     'staff-trainings': 'Formazione',
     'staff-courses': 'Corsi',
+    'user-skills': 'Competenze',
+    skills: 'Catalogo competenze',
     'purchase-request-priorities': 'Priorità RDA',
     'purchase-order-statuses': 'Stati ODA',
     'purchase-request-line-statuses': 'Stati righe RDA',

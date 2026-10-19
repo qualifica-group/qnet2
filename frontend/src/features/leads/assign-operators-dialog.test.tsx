@@ -206,7 +206,8 @@ describe('AssignOperatorsDialog — derived Sede (spec 0113)', () => {
     )
     expect(
       screen.getByText(
-        'The selection spans more than one Site: the list is filtered by competence only.',
+        // REQUIREMENT CHANGED (spec 0286 D-1): "competence" is now "assignment scope" in the UI copy.
+        'The selection spans more than one Site: the list is filtered by assignment scope only.',
       ),
     ).toBeInTheDocument()
   })

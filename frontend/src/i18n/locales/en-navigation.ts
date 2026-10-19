@@ -97,6 +97,8 @@ export const navigation = {
   absenceTypes: 'Absence types',
   staffTrainings: 'Training',
   staffCourses: 'Courses',
+  userSkills: 'Skills',
+  skills: 'Skills catalogue',
   orgChart: 'Org chart',
   purchaseRequestPriorities: 'RDA priorities',
   purchaseOrderStatuses: 'ODA statuses',

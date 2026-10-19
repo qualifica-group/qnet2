@@ -20,7 +20,7 @@ export const businessFunctions = {
     companies: 'Società',
     users_count: 'Utenti',
     product_categories_count: 'Categorie prodotto',
-    competences_count: 'Persone competenti',
+    competences_count: 'Persone con ambito di assegnazione',
     opportunities_count: 'Opportunità',
     projects_count: 'Progetti',
     campaigns_count: 'Campagne',

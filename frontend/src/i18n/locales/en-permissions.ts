@@ -158,6 +158,8 @@ export const permissions = {
     'org-chart': 'Org chart',
     'staff-trainings': 'Training',
     'staff-courses': 'Courses',
+    'user-skills': 'Skills',
+    skills: 'Skills catalogue',
     'purchase-request-priorities': 'RDA priorities',
     'purchase-order-statuses': 'ODA statuses',
     'purchase-request-line-statuses': 'RDA line statuses',
