@@ -186,6 +186,32 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'invoices',
+      title: 'Proforma attiva e passiva',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Nel dettaglio della commessa, nella stessa card di **Task** e **Costi**, le schede **Proforma attiva** e **Proforma passiva** elencano i documenti legati alla commessa. Compaiono solo se puoi vedere proforma e fatture (permesso "Vedere proforma e fatture"). Sono di **sola consultazione**: da qui non si crea, emette, incassa o paga nulla.',
+        },
+        {
+          type: 'table',
+          headers: ['Scheda', 'Cosa mostra'],
+          rows: [
+            ['Proforma attiva', 'Le proforma e fatture emesse al cliente per la commessa: tipo, numero, data, numero esterno, cliente, totale, incassato, residuo e stato incasso, con una riga **Totali** in fondo.'],
+            ['Proforma passiva', 'Le proforma e fatture dei fornitori con **almeno una riga sulla commessa**: tipo, numero, data, fornitore, totale documento, **Quota commessa** (la somma delle righe del documento imputate a questa commessa), pagato e residuo, con una riga **Totali**.'],
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Una proforma che viene registrata resta in tabella, mostrata ora come **Fattura**. Un documento passivo compare appena una sua riga è sulla commessa, anche se le altre righe sono di altre commesse: per questo il totale documento e la quota commessa possono differire.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Il **numero** del documento è un collegamento: se puoi vedere le fatture attive (o passive) apre il documento in un pannello laterale, dove le azioni abituali restano soggette ai loro permessi; altrimenti è testo semplice.',
+        },
+      ],
+    },
+    {
       id: 'multi-quote-work-order',
       title: 'Commessa multi-offerta',
       blocks: [

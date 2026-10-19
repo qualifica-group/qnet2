@@ -68,7 +68,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'view_emails', 'send_email', 'view_costs', 'manage_costs', 'view_contract_data', 'manage_payments', 'force_close', 'reopen'];
+        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'view_emails', 'send_email', 'view_costs', 'view_invoices', 'manage_costs', 'view_contract_data', 'manage_payments', 'force_close', 'reopen'];
     }
 
     /**
@@ -129,6 +129,8 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             'send_email' => $model !== null && $actor->can('work-orders.sendEmail'),
             // Spec 0190, D-4: gate the "Costi" section and its editor.
             'view_costs' => $model !== null && $actor->can('work-orders.viewCosts'),
+            // Spec 0282, D-8: gates the "Proforma attiva/passiva" tabs.
+            'view_invoices' => $model !== null && $actor->can('work-orders.viewInvoices'),
             'manage_costs' => $model !== null && $actor->can('work-orders.manageCosts'),
             // Spec 0201, D-10: gate the "Dati contrattuali" tab and its payment editor.
             'view_contract_data' => $model !== null && $actor->can('work-orders.viewContractData'),

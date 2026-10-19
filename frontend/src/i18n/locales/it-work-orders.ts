@@ -7,9 +7,11 @@
 
 import { workOrderContractData } from './it-work-order-contract-data'
 import { workOrderCosts } from './it-work-order-costs'
+import { workOrderInvoices } from './it-work-order-invoices'
 
 export const workOrders = {
   costs: workOrderCosts,
+  invoices: workOrderInvoices,
   contractData: workOrderContractData,
   title: 'Commesse',
   subtitle: 'Sfoglia, filtra e gestisci le commesse collegate alle offerte.',

@@ -93,6 +93,7 @@ export const permissions = {
     receive: 'Registrare ricezioni',
     // Spec 0201 D-10: tab Dati contrattuali della commessa e gestione dei pagamenti per riga.
     viewContractData: 'Vedere i dati contrattuali',
+    viewInvoices: 'Vedere proforma e fatture',
     managePayments: 'Gestire i pagamenti',
     manageCompensation: 'Gestire i dati retributivi',
   },

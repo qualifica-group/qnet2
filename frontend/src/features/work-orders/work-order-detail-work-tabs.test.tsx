@@ -24,6 +24,10 @@ vi.mock('@/features/work-order-costs/work-order-costs-section', () => ({
   WorkOrderCostsSection: ({ canManage }: { canManage: boolean }) => <div>costs-section manage:{String(canManage)}</div>,
 }))
 
+vi.mock('@/features/work-order-invoices/work-order-invoices-section', () => ({
+  WorkOrderInvoicesSection: ({ kind }: { kind: string }) => <div>invoices-section {kind}</div>,
+}))
+
 function workOrder(actions: Record<string, boolean>): WorkOrderDetailWithPermissions {
   return {
     id: 4,
@@ -100,5 +104,32 @@ describe('WorkOrderDetailWorkTabs', () => {
 
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Tasks', 'Costs'])
     expect(screen.getByRole('tab', { name: 'Tasks' })).toHaveAttribute('data-state', 'active')
+  })
+
+  it('adds the active and passive proforma tabs after Costs with view_invoices (spec 0282 AC-007)', () => {
+    render(<WorkOrderDetailWorkTabs workOrder={workOrder({ view_costs: true, view_invoices: true })} />)
+
+    const tabs = screen.getAllByRole('tab')
+    expect(tabs.map((tab) => tab.textContent)).toEqual(['Tasks', 'Costs', 'Active proforma', 'Passive proforma'])
+    expect(tabs[2].querySelector('svg')).not.toBeNull()
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Passive proforma' }))
+
+    expect(screen.getByText('invoices-section passive')).toBeInTheDocument()
+  })
+
+  it('has no proforma tabs without view_invoices', () => {
+    render(<WorkOrderDetailWorkTabs workOrder={workOrder({ view_costs: true })} />)
+
+    expect(screen.queryByRole('tab', { name: 'Active proforma' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Passive proforma' })).not.toBeInTheDocument()
+  })
+
+  it('shows the card with only the proforma tabs when tasks and costs are not authorized', () => {
+    canMock.mockReturnValue(false)
+    render(<WorkOrderDetailWorkTabs workOrder={workOrder({ view_invoices: true })} />)
+
+    expect(screen.getByRole('tab', { name: 'Active proforma' })).toHaveAttribute('data-state', 'active')
+    expect(screen.getByText('invoices-section active')).toBeInTheDocument()
   })
 })

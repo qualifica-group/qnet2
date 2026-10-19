@@ -86,6 +86,26 @@ if (! function_exists('workOrderCostsUserWith')) {
     }
 }
 
+if (! function_exists('workOrderInvoicesUserWith')) {
+    /**
+     * A user holding the given work-orders abilities plus `view`/`viewAll`
+     * (so the membership scoping never interferes), spec 0282.
+     *
+     * @param  array<int, string>  $abilities  e.g. ['viewInvoices']
+     */
+    function workOrderInvoicesUserWith(array $abilities, bool $viewAll = true): User
+    {
+        foreach (['view', 'viewInvoices', 'viewAll'] as $ability) {
+            Permission::findOrCreate("work-orders.{$ability}");
+        }
+
+        $user = User::factory()->create();
+        $user->givePermissionTo(array_map(fn (string $ability): string => "work-orders.{$ability}", [...$abilities, ...($viewAll ? ['viewAll'] : [])]));
+
+        return $user;
+    }
+}
+
 if (! function_exists('workOrderPaymentStatusUserWith')) {
     /**
      * A user holding the given work-order-payment-statuses abilities (spec 0201).

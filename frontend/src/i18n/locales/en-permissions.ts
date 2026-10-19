@@ -90,6 +90,7 @@ export const permissions = {
     receive: 'Register receipts',
     // Spec 0201 D-10: work order Contract data tab and per-line payment management.
     viewContractData: 'View contract data',
+    viewInvoices: 'View proforma and invoices',
     managePayments: 'Manage payments',
     manageCompensation: 'Manage compensation data',
   },

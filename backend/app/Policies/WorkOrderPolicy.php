@@ -98,6 +98,16 @@ class WorkOrderPolicy extends BasePolicy
     }
 
     /**
+     * Gates the "Proforma attiva"/"Proforma passiva" tabs (spec 0282, D-3):
+     * permission plus the same membership scoping as view, and deliberately
+     * independent of invoices.viewAny / purchase-invoices.viewAny.
+     */
+    public function viewInvoices(User $user, WorkOrder $workOrder): bool
+    {
+        return $user->can($this->permission('viewInvoices')) && $this->isInScope($user, $workOrder);
+    }
+
+    /**
      * Gates entering/editing/deleting the commessa's actual costs (spec 0190,
      * D-4/D-7): deliberately independent of the commessa's open/closed state.
      */
@@ -129,7 +139,7 @@ class WorkOrderPolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll', 'viewDocuments', 'viewEmails', 'sendEmail', 'viewCosts', 'manageCosts', 'viewContractData', 'managePayments'];
+        return [...parent::abilities(), 'viewAll', 'viewDocuments', 'viewEmails', 'sendEmail', 'viewCosts', 'viewInvoices', 'manageCosts', 'viewContractData', 'managePayments'];
     }
 
     private function isInScope(User $user, Model $model): bool

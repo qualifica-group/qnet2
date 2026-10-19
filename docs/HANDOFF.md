@@ -3,6 +3,23 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0282 — Proforma attiva / passiva nel dettaglio commessa — VERDE, COMMITTATO (2026-10-19)
+
+- Spec `docs/specs/0282-work-order-invoices-view.xml` (D-1..D-9, AC-001..AC-011). Sola consultazione, nessuna azione contabile.
+- Endpoint `GET /api/work-orders/{workOrder}/invoices` -> `{active[], passive[], totals:{active, passive}}`
+  (`WorkOrderInvoiceController` + `Services/WorkOrders/WorkOrderInvoiceOverviewBuilder`, rotte `routes/api/work-order-invoices.php`).
+  Attivi = `invoices.work_order_id`; passivi = documenti con almeno una RIGA sulla commessa (`purchase_invoice_lines.work_order_id`),
+  `work_order_amount` = somma delle sole righe della commessa. Proforma e fatture insieme (colonna Tipo).
+- Permesso nuovo `work-orders.viewInvoices` (policy `viewInvoices` = permesso + `isInScope`, come `viewCosts`), azione
+  `view_invoices`; da assegnare ai ruoli dalla UI (super-admin passa da `Gate::before`). `WorkOrderSecurityTest`: 16 -> 17 permessi (REQUIREMENT CHANGED).
+- Frontend `features/work-order-invoices/` (una sola query per le due schede), schede "Proforma attiva"/"Proforma passiva" in
+  `work-order-detail-work-tabs.tsx`; il numero apre `InvoiceDetailSheet`/`PurchaseInvoiceDetailSheet` solo con `invoices.view`/
+  `purchase-invoices.view`. `PurchaseInvoiceTypeBadge` estratto in `purchase-invoice-installments/purchase-installment-cells.tsx`.
+- Verifica: Pest completo 11814/11818 (3 fail `QuoteDocumentPdfTest` = LibreOffice assente, non correlati), Pint ok; Vitest
+  completo 8760/8760, `tsc -b --force` 0, ESLint ok.
+- Manuale: guida in-app work-orders IT/EN sezione `invoices`; Claude Docs: nessuna modifica (sezione Commesse ancora "in fase di sviluppo").
+- Da verificare a occhio: layout a 375px delle due tabelle (scroll orizzontale interno, `min-w-[720px]`).
+
 ## Persone -> Funzioni aziendali e responsabile di livello I dalla Pianta Organica — VERDE, COMMITTATO (2026-10-19)
 
 - Fonte: un foglio per funzione di `Pianta_Organica_Qualifica_Aggiornato 8.09.xlsx`. Dati in

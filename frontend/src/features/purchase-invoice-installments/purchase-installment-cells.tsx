@@ -40,14 +40,21 @@ export function PurchaseStatusCell({ value }: ICellRendererParams) {
   )
 }
 
+/** Passive document kind (proforma / invoice) badge, shared by the grids and the work order tab. */
+export function PurchaseInvoiceTypeBadge({ type }: { type: PurchaseInvoiceType }) {
+  const { t } = useTranslation()
+  return (
+    <Badge variant="secondary" className={cn(BADGE_BASE, TYPE_COLORS[type])}>
+      {t(`enums.purchase_invoice_type.${type}`)}
+    </Badge>
+  )
+}
+
 /** Document kind (proforma / invoice) as a badge. */
 export function PurchaseDocumentTypeCell({ value }: ICellRendererParams) {
-  const { t } = useTranslation()
   return isOneOf<PurchaseInvoiceType>(PURCHASE_INVOICE_TYPES, value) ? (
     <div className={CELL_WRAPPER}>
-      <Badge variant="secondary" className={cn(BADGE_BASE, TYPE_COLORS[value])}>
-        {t(`enums.purchase_invoice_type.${value}`)}
-      </Badge>
+      <PurchaseInvoiceTypeBadge type={value} />
     </div>
   ) : (
     <EmptyCell />
