@@ -39,7 +39,7 @@ const guide: HelpGuide = {
       title: 'List and counts',
       blocks: [
         { type: 'paragraph', text: 'The list shows, for each function, how many associations it has in the system, one column per kind: **Users** (people who belong to it), **Product categories** (categories that have the function as their own), **People with assignment scope** (people with at least one assignment scope on the function) and **Opportunities**. From the column picker you can also show **Projects**, **Campaigns**, **Purchase requests** and **Sub-functions**. Every column can be sorted; opportunities, projects, campaigns and people count once even with several lines on the same function.' },
-        { type: 'note', text: 'The functions are those of the organisation chart. Functions of the old system without a match arrive with a name starting with **[OLD]** and not active: they stay for history.' },
+        { type: 'note', text: 'The functions are those of the organisation chart, plus **Direzione Generale** (general management), which the heads of every other function report to. Functions of the old system without a match arrive with a name starting with **[OLD]** and not active: they stay for history.' },
       ],
     },
     {

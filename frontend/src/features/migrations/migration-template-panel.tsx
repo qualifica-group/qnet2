@@ -22,6 +22,8 @@ interface MigrationTemplatePanelProps {
   isLoading: boolean
   isError: boolean
   onImportClick: () => void
+  /** False when this installation may not import the source (spec 0285 D-5). */
+  isImportAvailable: boolean
 }
 
 /** Copies `value` to the clipboard and briefly flips to a "copied" state. */
@@ -113,6 +115,7 @@ export function MigrationTemplatePanel({
   isLoading,
   isError,
   onImportClick,
+  isImportAvailable,
 }: MigrationTemplatePanelProps) {
   const { t } = useTranslation('migrations')
 
@@ -121,8 +124,13 @@ export function MigrationTemplatePanel({
       <CardHeader className="border-b pb-4">
         <CardTitle>{t('template.title')}</CardTitle>
         <CardDescription>{t('template.description', { source: sourceLabel })}</CardDescription>
+        {isImportAvailable ? null : (
+          <p className="text-sm text-muted-foreground" role="note">
+            {t('template.importUnavailable')}
+          </p>
+        )}
         <CardAction>
-          <Button type="button" onClick={onImportClick}>
+          <Button type="button" onClick={onImportClick} disabled={!isImportAvailable}>
             <Upload aria-hidden="true" />
             {t('template.importButton')}
           </Button>

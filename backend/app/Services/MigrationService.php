@@ -39,6 +39,8 @@ class MigrationService
 
     public function start(User $actor, string $source): MigrationRun
     {
+        abort_unless($this->registry->resolve($source)->isAvailable(), 422, 'This source is not available on this installation.');
+
         /** @var MigrationRun $run */
         $run = DB::transaction(fn (): MigrationRun => MigrationRun::create([
             'source' => $source,

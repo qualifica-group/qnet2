@@ -14,8 +14,11 @@
     D-2 Abbinamento legacy -> pianta: ACCREDITAMENTI, APL (-> Agenzia per il Lavoro), CONTABILITA'
         (-> Amministrazione e Contabilita'), COMMERCIALE, FINANZA AGEVOLATA, FORMAZIONE, GARE, GDPR (-> Privacy),
         HR (-> Risorse Umane), ISO, ISTRUZIONE, MARKETING, PROGETTAZIONE INTERNA (-> Progettazione), QUALITA,
-        SEGRETERIA e BACK OFFICE (-> Segreteria), SICUREZZA, SOA, TRAVEL (-> Unit Travel), UPPCG.
-        Senza corrispondenza, "[OLD]" e non attive: 231, AVVALIMENTI, DIREZIONE GENERALE, HACCP, IT, PIANIFICAZIONE.
+        SEGRETERIA e BACK OFFICE (-> Segreteria), SICUREZZA, SOA, TRAVEL (-> Unit Travel), UPPCG,
+        DIREZIONE GENERALE (-> Direzione Generale).
+        Senza corrispondenza, "[OLD]" e non attive: 231, AVVALIMENTI, HACCP, IT, PIANIFICAZIONE.
+    D-2b "Direzione Generale" (BS) non e' un foglio della pianta: si aggiunge al catalogo, responsabile e unico
+        membro Enrico Ferrante, aggiunto al "Risponde a" dei responsabili di livello I di tutte le altre funzioni.
     D-3 Conteggi: una colonna numerica per tipo di associazione, ordinabile.
 
     Decisioni di progetto:

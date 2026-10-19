@@ -25,9 +25,9 @@ vi.mock('@/features/migrations/api', () => ({
 
 const PLAN: MigrationPlan = {
   sources: [
-    { source: 'companies', label: 'Companies', enabled: true },
-    { source: 'users', label: 'Users', enabled: true },
-    { source: 'roles', label: 'Roles', enabled: false },
+    { source: 'companies', label: 'Companies', enabled: true, available: true },
+    { source: 'users', label: 'Users', enabled: true, available: true },
+    { source: 'roles', label: 'Roles', enabled: false, available: true },
   ],
 }
 
@@ -116,7 +116,7 @@ describe('MassImportDialog', () => {
 
   it('disables Start and explains when no source is enabled', async () => {
     fetchMigrationPlanMock.mockResolvedValue({
-      sources: [{ source: 'companies', label: 'Companies', enabled: false }],
+      sources: [{ source: 'companies', label: 'Companies', enabled: false, available: true }],
     })
 
     render(<MassImportDialog open onOpenChange={vi.fn()} />, { wrapper: wrapper() })

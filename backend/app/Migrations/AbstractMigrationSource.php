@@ -82,6 +82,16 @@ abstract class AbstractMigrationSource implements MigrationSource
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * Available by default: only a source tied to an installation mode opts out.
+     */
+    public function isAvailable(): bool
+    {
+        return true;
+    }
+
+    /**
      * The external record's own id (the value `old_id` is set to), or null
      * when the record carries none — a fatal, per-row error (never silently
      * skipped) surfaced via processRow().

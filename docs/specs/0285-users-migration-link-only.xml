@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0285-users-migration-link-only" status="approved" owner="nicola" date="2026-10-19">
+
+  <goal>
+    La sorgente di migrazione `users` ha una modalita' "solo abbinamento", scelta per installazione: abbina gli
+    utenti legacy a quelli gia' presenti in qnet-2 scrivendo soltanto `old_id`, senza creare account ne' toccare
+    altri dati. L'import completo resta il comportamento predefinito.
+  </goal>
+
+  <context>
+    Verificato sul codice reale 2026-10-19. Su Qualifica gli account (ruoli, sedi, responsabili, mansioni) li
+    crea QualificaProductionDataSeeder; dal legacy serve solo il collegamento `old_id`, che le sorgenti
+    successive usano per risolvere gli utenti.
+
+    Oggi `UsersSource`: abbina con `ExistingUserMatcher` (email, poi nome e cognome tra i non collegati) e
+    completa i campi di impiego vuoti; crea gli utenti non abbinati ("[OLD] " se attivi); al re-import e nel
+    secondo passaggio (`afterImport`) ricompleta i campi di impiego vuoti.
+
+    Decisioni utente 2026-10-19:
+    D-1 Modalita' per installazione, non per esecuzione: `config('migrations.users_link_only')`, env
+        `EXTERNAL_MIGRATION_USERS_LINK_ONLY`, default false (import completo invariato).
+    D-2 Stessa sorgente `users`, nessuna chiave nuova: dipendenze, `MigrationOrder`, import massivo e stato
+        "Migrata" restano quelli di `users`.
+    D-3 In modalita' solo abbinamento:
+        - `old_id` gia' presente -> riga saltata, nessuna scrittura;
+        - utente abbinato -> si scrive solo `old_id` (niente impiego, ruoli, password, anagrafica, campi custom);
+        - nessun utente abbinato -> riga saltata con avviso, nessun account creato;
+        - conflitti del matcher (email gia' collegata ad altro id, omonimi) -> riga fallita come oggi;
+        - nessun secondo passaggio di ricollegamento.
+    D-4 Conseguenza accettata: i riferimenti agli utenti legacy non abbinati restano vuoti, con avviso, nelle
+        sorgenti successive.
+
+    Decisione utente 2026-10-19 (estensione):
+    D-5 Con la modalita' attiva la sorgente `business-function-members` ("Funzioni aziendali — collega
+        responsabile e operatori") non e' abilitata: su Qualifica responsabili e operatori delle funzioni li
+        provvede il seeder, il legacy li sovrascriverebbe. Resta nell'elenco, ma non si importa ne' da sola ne'
+        con "Importa tutto". Il contratto `MigrationSource` espone `isAvailable()` (default true).
+  </context>
+
+  <scope>
+    <in>
+      <item>`config/migrations.php` (`users_link_only`), `.env.example`.</item>
+      <item>`UsersSource`: ramo di solo abbinamento in `processRow()`, `afterImport()` senza effetto in quella modalita'.</item>
+      <item>Test Pest in `UsersSourceAdoptionTest`.</item>
+      <item>D-5: `MigrationSource::isAvailable()`, `BusinessFunctionMembersSource`, `MigrationService::start`,
+        `MigrationPlanService` (sorgente non disponibile mai inclusa), campo `available` in `GET /migrations` e nel
+        piano; pagina Migrazioni: pulsante Importa e casella del piano disabilitati. Test in
+        `MigrationSourceAvailabilityTest` e Vitest della pagina e del pannello piano.</item>
+      <item>Guida in-app `migrations` IT/EN e manuale Claude Docs (sezione Migrazioni).</item>
+    </in>
+    <out>
+      <item>Nessun cambio a `ExistingUserMatcher`, all'import completo, al legacy.</item>
+      <item>Nessuna scelta della modalita' dalla pagina Migrazioni.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <config>`migrations.users_link_only` bool, da `EXTERNAL_MIGRATION_USERS_LINK_ONLY`, default false.</config>
+    <report>
+      Abbinato: esito "created" con il messaggio "Existing user {email} linked to this legacy record (link-only mode)."
+      Non abbinato: esito "skipped" con il messaggio "No qnet user matches {email}: not created (link-only mode)."
+    </report>
+    <endpoint>Nessun endpoint nuovo; contratto del legacy invariato.</endpoint>
+    <endpoint>D-5: `GET /migrations` -> ogni `sources[]` ha in piu' `available: bool`. `GET|PUT /migrations/plan` ->
+      ogni `plan.sources[]` ha in piu' `available: bool`; una sorgente non disponibile ha sempre `enabled: false`
+      (il valore salvato si conserva e torna valido se la modalita' si spegne). `POST /migrations/{source}/import`
+      su una sorgente non disponibile -> 422, nessuna esecuzione creata.</endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Con `users_link_only` attivo, un utente qnet con la stessa email riceve `old_id`; password, ruoli, nome e impiego (anche se vuoto) restano invariati; nessun account creato.</criterion>
+    <criterion id="AC-002">Con `users_link_only` attivo, l'abbinamento per nome e cognome scrive solo `old_id` e lascia l'email di qnet.</criterion>
+    <criterion id="AC-003">Con `users_link_only` attivo, un record legacy che non abbina nessuno non crea account: riga saltata con l'avviso del contratto.</criterion>
+    <criterion id="AC-004">Con `users_link_only` attivo, un re-import di un utente gia' collegato non completa i campi di impiego vuoti.</criterion>
+    <criterion id="AC-005">Con `users_link_only` attivo, i conflitti del matcher fanno fallire la riga come nell'import completo.</criterion>
+    <criterion id="AC-006">Con `users_link_only` spento (default) i test esistenti dell'import completo restano verdi senza modifiche.</criterion>
+    <criterion id="AC-008">Con `users_link_only` attivo, `business-function-members` ha `available: false` in `GET /migrations` e nel piano, con `enabled: false`; spento, `available: true`.</criterion>
+    <criterion id="AC-009">Con `users_link_only` attivo, `POST /migrations/business-function-members/import` risponde 422 e non crea esecuzioni; "Importa tutto" non la include anche se salvata come inclusa.</criterion>
+    <criterion id="AC-010">Pagina Migrazioni: sorgente non disponibile -> pulsante Importa disabilitato con avviso, casella del piano disabilitata.</criterion>
+    <criterion id="AC-007">Guida in-app `migrations` IT/EN aggiornata; `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; nessun file oltre 500 righe.</item>
+  </constraints>
+
+  <microtasks>
+    <task id="T1">Config + `UsersSource` + test. AC-001..006.</task>
+    <task id="T2" depends="T1">Guida in-app IT/EN, manuale Claude Docs, HANDOFF. AC-007.</task>
+    <task id="T3" depends="T1">D-5 backend + frontend + guida + manuale. AC-008..010.</task>
+  </microtasks>
+
+</spec>

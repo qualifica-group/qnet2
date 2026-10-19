@@ -39,7 +39,7 @@ const guide: HelpGuide = {
       title: 'Elenco e conteggi',
       blocks: [
         { type: 'paragraph', text: 'L’elenco mostra per ogni funzione quante associazioni ha nel sistema, una colonna per tipo: **Utenti** (persone che ne fanno parte), **Categorie prodotto** (categorie che hanno la funzione come propria), **Persone con ambito di assegnazione** (persone con almeno un ambito di assegnazione sulla funzione) e **Opportunità**. Dal selettore delle colonne puoi mostrare anche **Progetti**, **Campagne**, **Richieste di acquisto** e **Sotto-funzioni**. Ogni colonna si ordina; opportunità, progetti, campagne e persone si contano una volta anche con più righe sulla stessa funzione.' },
-        { type: 'note', text: 'Le funzioni sono quelle della pianta organica. Le funzioni del vecchio gestionale senza corrispondenza arrivano con il nome che inizia per **[OLD]** e non attive: restano per lo storico.' },
+        { type: 'note', text: 'Le funzioni sono quelle della pianta organica, più la **Direzione Generale**, a cui rispondono i responsabili di tutte le altre funzioni. Le funzioni del vecchio gestionale senza corrispondenza arrivano con il nome che inizia per **[OLD]** e non attive: restano per lo storico.' },
       ],
     },
     {

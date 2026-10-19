@@ -95,10 +95,14 @@ export function MigrationPlanPanel({ open, onOpenChange }: MigrationPlanPanelPro
                 <label className="flex min-w-0 items-center gap-2">
                   <Checkbox
                     checked={row.enabled}
+                    disabled={!row.available}
                     onCheckedChange={() => toggleEnabled(row.source)}
                     aria-label={t('plan.enabledLabel', { source: label(row.source, row.label) })}
                   />
                   <span className="truncate">{label(row.source, row.label)}</span>
+                  {row.available ? null : (
+                    <span className="shrink-0 text-xs text-muted-foreground">{t('plan.unavailable')}</span>
+                  )}
                 </label>
               )}
             />

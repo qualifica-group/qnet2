@@ -63,7 +63,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Campo', 'Cosa indicare'],
           rows: [
-            ['**Mansioni**', 'Le mansioni svolte, scelte dall’elenco del modulo Mansioni: puoi indicarne più di una oppure nessuna.'],
+            ['**Mansioni**', 'Le mansioni svolte, scelte dall’elenco del modulo Mansioni: puoi indicarne più di una oppure nessuna. Nella scheda, un clic su una mansione apre la sua scheda con l’elenco delle attività (se puoi vedere il modulo Mansioni).'],
             ['**Funzioni aziendali di appartenenza**', 'Le funzioni aziendali di cui la persona fa parte, anche più di una. È lo stesso dato degli **Utenti associati** della funzione: cambiarlo qui o là è equivalente. È obbligatoria per una persona attiva (non account di servizio): altrimenti il salvataggio viene rifiutato e l’errore compare sotto il campo. Non è la stessa cosa degli **Ambiti di assegnazione**, che restano facoltativi.'],
             ['**Responsabile delle funzioni**', 'Le funzioni di cui la persona è responsabile, anche più di una. Si modifica sul posto se puoi modificare sia l’utente sia le funzioni aziendali (altrimenti la riga resta in sola lettura). Una funzione che aveva un altro responsabile passa a questa persona, che lo sostituisce; una funzione tolta dall’elenco resta senza responsabile. Lo stesso dato si cambia anche dalla scheda della funzione aziendale. Se non ce ne sono compare “Non è responsabile di nessuna funzione.”.'],
             ['**Risponde a**', 'I responsabili diretti, scelti tra gli utenti: puoi indicarne più di uno. Il campo c’è sempre, anche per chi è responsabile di una funzione.'],

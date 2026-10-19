@@ -18,7 +18,7 @@ function run(overrides: Partial<MigrationLastRun> = {}): MigrationLastRun {
 }
 
 function source(lastRun: MigrationLastRun | null): MigrationSourceSummary {
-  return { key: 'roles', label: 'Roles', phase: 1, last_run: lastRun, migrated_at: null }
+  return { key: 'roles', label: 'Roles', phase: 1, available: true, last_run: lastRun, migrated_at: null }
 }
 
 describe('resolveMigrationSourceState', () => {

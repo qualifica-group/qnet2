@@ -61,9 +61,9 @@ const USERS_RUN: MigrationLastRun = {
 }
 
 const SOURCES: MigrationSourceSummary[] = [
-  { key: 'roles', label: 'Roles', phase: 1, last_run: null, migrated_at: null },
-  { key: 'users', label: 'Users', phase: 2, last_run: USERS_RUN, migrated_at: '2026-10-12T09:01:00.000000Z' },
-  { key: 'company-sites', label: 'Company sites', phase: 2, last_run: null, migrated_at: null },
+  { key: 'roles', label: 'Roles', phase: 1, available: true, last_run: null, migrated_at: null },
+  { key: 'users', label: 'Users', phase: 2, available: true, last_run: USERS_RUN, migrated_at: '2026-10-12T09:01:00.000000Z' },
+  { key: 'company-sites', label: 'Company sites', phase: 2, available: true, last_run: null, migrated_at: null },
 ]
 
 function previewPage(overrides: Partial<MigrationPreviewPage> = {}): MigrationPreviewPage {
@@ -104,8 +104,8 @@ beforeEach(() => {
   fetchMigrationRunMock.mockReset()
   fetchMigrationPlanMock.mockReset().mockResolvedValue({
     sources: [
-      { source: 'roles', label: 'Roles', enabled: true },
-      { source: 'users', label: 'Users', enabled: true },
+      { source: 'roles', label: 'Roles', enabled: true, available: true },
+      { source: 'users', label: 'Users', enabled: true, available: true },
     ],
   })
   saveMigrationPlanMock.mockReset()
@@ -274,6 +274,19 @@ describe('MigrationsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Import this source' }))
 
     expect(await screen.findByRole('dialog', { name: /import roles/i })).toBeInTheDocument()
+  })
+
+  it('disables the import of a source this installation may not import, saying why', async () => {
+    fetchMigrationSourcesMock.mockResolvedValue([
+      { key: 'roles', label: 'Roles', phase: 1, available: false, last_run: null, migrated_at: null },
+    ])
+    render(<MigrationsPage />, { wrapper: wrapper() })
+
+    await selectRolesSource()
+    await screen.findByText('Expected template')
+
+    expect(screen.getByRole('button', { name: 'Import this source' })).toBeDisabled()
+    expect(screen.getByRole('note')).toHaveTextContent(/Not available on this installation/)
   })
 
   it('only fetches and renders the external preview after the on-demand action is clicked', async () => {

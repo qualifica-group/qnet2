@@ -19,6 +19,7 @@ use App\Services\ContactService;
 use App\Services\EmploymentContracts\EmploymentContractService;
 use App\Services\JobActivityService;
 use App\Services\JobRoleService;
+use Database\Seeders\QualificaCatalog\BusinessFunctionCatalogue;
 use Database\Seeders\QualificaCatalog\CollectiveAgreementCatalogue;
 use Database\Seeders\QualificaCatalog\JobRoleCatalogue;
 use Database\Seeders\QualificaCatalog\OrgChartFunctions;
@@ -49,7 +50,8 @@ use Illuminate\Support\Str;
  * added, never removed; the first head becomes the manager of a function
  * that has none, so a manager set from the module survives; every head is
  * added to the "Risponde a" of the function's other members, next to the
- * superiors they already have.
+ * superiors they already have; the heads of "Direzione Generale" are added
+ * to the "Risponde a" of every other head.
  */
 class QualificaHrCatalogSeeder extends Seeder
 {
@@ -111,6 +113,7 @@ class QualificaHrCatalogSeeder extends Seeder
         $emails = collect(OrgChartFunctions::FUNCTIONS)->flatMap(fn (array $function): array => [...$function['heads'], ...$function['members']]);
         $userIds = User::query()->whereIn('email', $emails->unique())->pluck('id', 'email');
         $superiorIds = [];
+        $allHeadIds = [];
 
         foreach (OrgChartFunctions::FUNCTIONS as $name => $function) {
             $businessFunction = $this->functionNamed($name);
@@ -133,6 +136,14 @@ class QualificaHrCatalogSeeder extends Seeder
             foreach ($memberIds as $memberId) {
                 $superiorIds[$memberId] = [...$superiorIds[$memberId] ?? [], ...array_diff($headIds, [$memberId])];
             }
+
+            $allHeadIds = [...$allHeadIds, ...$headIds];
+        }
+
+        $directorIds = $this->userIdsOf($userIds, OrgChartFunctions::FUNCTIONS[BusinessFunctionCatalogue::GENERAL_MANAGEMENT]['heads']);
+
+        foreach (array_unique($allHeadIds) as $headId) {
+            $superiorIds[$headId] = [...$superiorIds[$headId] ?? [], ...array_diff($directorIds, [$headId])];
         }
 
         $this->addSuperiors(array_filter($superiorIds));

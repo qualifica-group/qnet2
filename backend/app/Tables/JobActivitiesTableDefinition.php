@@ -3,7 +3,6 @@
 namespace App\Tables;
 
 use App\Models\JobActivity;
-use App\Models\JobRole;
 use App\Models\User;
 use App\Services\JobActivityService;
 use App\Tables\Support\CatalogActions;
@@ -99,9 +98,8 @@ class JobActivitiesTableDefinition extends AbstractTableDefinition
             'id' => $row->id,
             'name' => $row->name,
             'description' => $row->description,
-            'job_roles' => $row->jobRoles
-                ->map(static fn (JobRole $role): array => ['id' => $role->id, 'label' => $role->name])
-                ->all(),
+            // A `tags` cell takes the names, a string[] (SSRM contract).
+            'job_roles' => $row->jobRoles->pluck('name')->all(),
             'abilities' => [
                 'update' => Gate::forUser($actor)->allows('update', $row),
                 'delete' => Gate::forUser($actor)->allows('delete', $row),

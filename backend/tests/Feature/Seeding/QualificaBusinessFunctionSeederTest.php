@@ -6,17 +6,18 @@ use Database\Seeders\QualificaCatalog\BusinessFunctionCatalogue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 // The business functions of the client's organisation chart (Pianta Organica
-// 8.09, user decision 2026-10-19), names without the sheet's code prefix.
+// 8.09, user decision 2026-10-19), names without the sheet's code prefix,
+// plus "Direzione Generale" (REQUIREMENT CHANGED, user decision 2026-10-19).
 uses(RefreshDatabase::class);
 
-it('creates the 24 functions of the organisation chart with their BU/BS type, idempotently', function (): void {
+it('creates the 25 functions of the organisation chart with their BU/BS type, idempotently', function (): void {
     test()->seed(QualificaBusinessFunctionSeeder::class);
     test()->seed(QualificaBusinessFunctionSeeder::class);
 
     $functions = BusinessFunction::query()->orderBy('id')->get();
 
     expect($functions->pluck('name')->all())->toBe(array_keys(BusinessFunctionCatalogue::FUNCTIONS))
-        ->and($functions)->toHaveCount(24)
+        ->and($functions)->toHaveCount(25)
         ->and($functions->every(fn (BusinessFunction $function): bool => $function->is_active))->toBeTrue()
         ->and($functions->firstWhere('name', 'Formazione'))
         ->is_business_unit->toBeTrue()
@@ -39,5 +40,5 @@ it('keeps a function already there under the same name in another case, filling 
         ->and($typedByHand->fresh())
         ->is_business_unit->toBeTrue()
         ->is_business_service->toBeFalse()
-        ->and(BusinessFunction::query()->count())->toBe(24);
+        ->and(BusinessFunction::query()->count())->toBe(25);
 });

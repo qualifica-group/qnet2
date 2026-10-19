@@ -13,7 +13,8 @@ use Illuminate\Support\Carbon;
  * @mixin MigrationSource
  *
  * The `sources` item shape (spec 0013 data_contract): `{key, label}`, the
- * 1-based MigrationOrder `phase` it is imported in, and the source's migration
+ * 1-based MigrationOrder `phase` it is imported in, whether this installation
+ * may import it (`available`, spec 0285 D-5), and the source's migration
  * state — `last_run` (its latest run, any status, or null when it never ran)
  * and `migrated_at` (when a run last completed, or null).
  */
@@ -39,6 +40,7 @@ class MigrationSourceResource extends JsonResource
             'key' => $source->key(),
             'label' => $source->label(),
             'phase' => MigrationOrder::phaseOf($source->key()),
+            'available' => $source->isAvailable(),
             'last_run' => $this->lastRun !== null ? new MigrationRunResource($this->lastRun) : null,
             'migrated_at' => $this->migratedAt,
         ];

@@ -3,7 +3,29 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Organigramma — intestazione allineata alle altre pagine — VERDE, NON COMMITTATO (2026-10-19)
+## Spec 0285 — Migrazione utenti in modalita' "solo abbinamento" — VERDE, NON COMMITTATO (2026-10-19)
+
+- Spec `docs/specs/0285-users-migration-link-only.xml` (D-1..D-4, AC-001..AC-007).
+- `config('migrations.users_link_only')` da env `EXTERNAL_MIGRATION_USERS_LINK_ONLY` (default false = import completo
+  invariato). Stessa sorgente `users` (dipendenze, MigrationOrder, import massivo invariati).
+- `UsersSource`: con il flag, `linkRow()` = old_id gia' presente -> skipped; `ExistingUserMatcher` abbina -> solo
+  `old_id` (created, avviso "(link-only mode)"); nessun abbinamento -> skipped con avviso, nessun account; conflitti
+  del matcher -> riga fallita. `afterImport()` senza effetto. Estratto `identity()` (email/nome/cognome obbligatori).
+  File a 366 righe (soft limit superato gia' prima, 311).
+- Test: 5 nuovi in `UsersSourceAdoptionTest`; Pest Migration 428/428 + Unit/Migrations 20/20, Pint pulito.
+- Guida in-app `migrations` IT/EN (nota nuova), help vitest 146/146; manuale Claude Docs: paragrafo dopo la sorgente
+  Utenti in Migrazioni.
+- Da fare sull'installazione Qualifica: `EXTERNAL_MIGRATION_USERS_LINK_ONLY=true` nel `.env` del server.
+- Estensione D-5 (AC-008..010): con il flag la sorgente `business-function-members` non e' abilitata.
+  `MigrationSource::isAvailable()` (default true in `AbstractMigrationSource`, false in
+  `BusinessFunctionMembersSource` col flag); `MigrationService::start` -> 422 senza run; `MigrationPlanService`
+  (ora riceve `MigrationRegistry`) legge `enabled` = salvato AND disponibile, il valore salvato si conserva.
+  Contratto: campo `available` in `GET /migrations` e in `plan.sources[]`. Frontend: `isImportAvailable` su
+  `MigrationTemplatePanel` (pulsante disabilitato + nota), casella del piano disabilitata + "Non disponibile".
+  Test: `MigrationSourceAvailabilityTest` (7), Pest Migration 435/435, Unit/Migrations 20/20, Vitest migrations
+  32/32, help 146/146, `tsc -b --force` pulito, ESLint/Pint puliti. Guida `migrations` IT/EN e manuale aggiornati.
+
+## Organigramma — intestazione allineata alle altre pagine — VERDE, COMMITTATO 84ace3ed (2026-10-19)
 
 - `pages/org-chart-page.tsx`: `<PageHeader />` col solo breadcrumb come Assenze/Funzioni/Mansioni (prima titolo +
   sottotitolo sotto il breadcrumb). Tolte le chiavi orfane `orgChart.title`/`orgChart.subtitle` (IT+EN).
@@ -11,7 +33,7 @@
   dell'albero: test org-chart aggiornati, REQUIREMENT CHANGED). Guide in-app IT+EN e manuale Claude Docs aggiornati.
   Vitest org-chart/help/i18n 428/428, `tsc -b --force` e ESLint puliti.
 
-## Spec 0283 — Ruolo "Risorse Umane" + dati contrattuali dietro la matrice dei campi — VERDE, NON COMMITTATO (2026-10-19)
+## Spec 0283 — Ruolo "Risorse Umane" + dati contrattuali dietro la matrice dei campi — VERDE, COMMITTATO ee81ddac (2026-10-19)
 
 - Spec `docs/specs/0283-hr-office-role-and-sensitive-user-fields.xml` (D-1..D-6, AC-001..AC-010).
 - Seed: `QualificaCatalog/HrOfficeRoleCatalogue` (ruolo `risorse-umane`, moduli HR completi con delete, NO
@@ -55,6 +77,115 @@
 - Manuale: guida in-app work-orders IT/EN sezione `invoices`; Claude Docs: nessuna modifica (sezione Commesse ancora "in fase di sviluppo").
 - Da verificare a occhio: layout a 375px delle due tabelle (scroll orizzontale interno, `min-w-[720px]`).
 
+## Piano HR ridotto — COMMITTATO dcb1e55b (2026-10-19)
+
+- Decisione utente (D-10 in `docs/product/hr.md`): del piano HR restano solo calendario della squadra (0279),
+  corsi e formazione, competenze. FUORI SCOPE, non riproporre: allocazioni e costo del personale, progetti interni,
+  documenti con firma, obiettivi/KPI, onboarding, reparti.
+- Competenze = cio' che la persona sa fare (catalogo + persona <-> competenza con livello + mansione <-> competenza
+  richiesta), NON le "competenze commerciali" (appartenenza alle funzioni), che restano invariate.
+- Ordine: 0279 -> corsi e formazione -> competenze. Campi *proposta* da confermare prima delle spec.
+
+## Spec 0286 — Competenze + rinomina "Ambiti di assegnazione" — VERDE, COMMITTATO 2df5b0de (2026-10-19)
+
+- Spec `docs/specs/0286-hr-skills.xml` approvata (D-1..D-7, AC-001..AC-007). Chiude il perimetro HR ridotto
+  (`docs/product/hr.md` aggiornato: tutto sviluppato).
+- D-1 rinomina SOLO UI: la "Competenza" della Configurazione assegnazione (`employment.product_lines`) ora e'
+  "Ambito/Ambiti di assegnazione" (EN "Assignment scope(s)"), "Ambito su tutte le categorie"; colonna funzioni
+  `competences_count` = "Persone con ambito di assegnazione". Chiavi, API e logica invariate. "operatore competente"
+  (aggettivo) lasciato. Guide users/general/business-functions/product-categories/request-management/org-chart.
+- Modulo: tabelle `skills`, `job_role_skill` (`min_level`), `user_skills` (unica persona+competenza); enum
+  `SkillLevel` 1..4; `Services/Skills/{UserSkillScope,UserSkillVisibility,UserSkillService,UserSkillCoverageService}`.
+  Permessi `skills.*`, `user-skills.viewAny|viewTeam|viewAll|manage`: `viewTeam` scrive sui discendenti attivi,
+  nessuno su se stesso senza `manage`; fuori visibilita' 404, visibile non scrivibile 403; `can_edit` in risposta.
+  Copertura: livello richiesto = max tra le mansioni, `covered|below|missing`, solo competenze attive.
+- Frontend `features/skills`, `features/user-skills` (Persone/Copertura), livello con `SkillLevelBadge`
+  (`skill-level.ts`), guide `skills`/`user-skills` (HELP_GUIDE_KEYS 95), icone `sparkles`/`list-checks`.
+- Test cambiati (REQUIREMENT CHANGED): `FieldCatalogueEndpointTest` (+2 risorse), rollback `--step` +3 (222/71/86),
+  `help-guide-keys.test.ts` 93->95, 4 test users + `assign-operators-dialog.test.tsx` per la rinomina.
+- Verifica (lead): backend suite completa 11896/11922, rossi solo fuori scope (migrazione utenti 0285 di un'altra
+  sessione in corso, `QuoteDocumentPdfTest` LibreOffice); Pint pulito. Vitest completo: 28 rossi da carico macchina
+  (worker timeout), rilanciati isolati tutti verdi; `tsc -b --force` 0; ESLint pulito. Non verificato: 375 px.
+- Manuale Claude Docs: rinomina applicata (17 punti), sezioni "Catalogo competenze" (prima di Corsi) e
+  "Competenze" (dopo Formazione), voce nel menu laterale. Dopo il deploy: `php artisan permissions:sync`.
+
+## Spec 0284 — Corsi e formazione del personale — VERDE, COMMITTATO 29fb83b6 (2026-10-19)
+
+- Spec `docs/specs/0284-hr-staff-training.xml` approvata (D-1..D-6, AC-001..AC-008). Decisioni utente: registro +
+  scadenze (niente pianificazione), obbligo per mansione, registra solo l'ufficio del personale, visibilita' a tre
+  livelli. Legacy senza dati: nessun importer. Nomi `staff_courses` / `staff_trainings` (NON i corsi venduti).
+- Backend: tabelle `staff_courses`, `job_role_staff_course`, `staff_trainings`; `Services/StaffTrainings/
+  {StaffTrainingScope,StaffTrainingVisibility,StaffTrainingService,StaffTrainingComplianceService}`; allegato annidato
+  `/api/staff-trainings/{id}/attachment` (morph map, NON in `attachable_types`); `config/staff_training.php`
+  (`expiring_days` 60, env `STAFF_TRAINING_EXPIRING_DAYS`, non aggiunta a `.env.example`: file con modifiche altrui).
+  Permessi `staff-courses.*`, `staff-trainings.viewAny|viewTeam|viewAll|manage`: `manage` implica la vista di tutti
+  (altrimenti 404 sul record appena creato); il menu "Formazione" vuole `viewAny` (chi ha solo viewAll apre le API ma
+  non vede la voce: assegnare viewAny insieme). Griglia corsi: colonna `duration_hours` (ore decimali, sort su
+  minuti, nessun filtro). Eliminazione corso usato = 422.
+- Frontend: `features/staff-courses`, `features/staff-trainings` (schede Registro/Situazione, dettaglio con
+  attestato, form), i18n `{it,en}-staff-{courses,trainings}.ts` (in `*-hr.ts`), icone `graduation-cap`/`library`,
+  guide `staff-trainings`/`staff-courses` (HELP_GUIDE_KEYS 93).
+- Test cambiati (REQUIREMENT CHANGED): `FieldCatalogueEndpointTest` (2 risorse), rollback `--step` +2 in
+  `QuoteWorkflowMigrationTest`, `PurchaseOrderMigrationTest`, `SupplierCommissionDirectionTest`;
+  `help-guide-keys.test.ts` 91->93; `router.test.tsx` e `icon-map.test.ts` estesi.
+- Verifica (lead): backend suite completa 11882/11886 (3 `QuoteDocumentPdfTest`: LibreOffice assente, 1 skipped),
+  Pint pulito; Vitest 69 file/517 test (staff-*, help, routes, navigation, absences, i18n), `tsc -b --force` 0,
+  ESLint pulito. Non verificato a vista: 375 px.
+- Manuale: guide in-app nuove IT/EN + Claude Docs (sezione "Corsi" prima di "Tipi di assenza", sezione "Formazione"
+  dopo Assenze, voce Formazione nel menu laterale). Dopo il deploy: `php artisan permissions:sync`.
+
+## Spec 0279 — Calendario delle assenze — VERDE, COMMITTATO dcb1e55b (2026-10-19)
+
+- Spec approvata dall'utente. Permessi (D-1 [revised in build]): `absence-requests.calendarOwn|calendarTeam|
+  calendarAll` sulla risorsa del modulo (il form Ruolo raggruppa per voce di menu: una risorsa `absence-calendar`
+  sarebbe finita in "Condivisi"). Vale il piu' ampio; nessuno = 403. Dopo il deploy `php artisan permissions:sync`;
+  i ruoli NON ricevono i permessi dal seed (fuori scope; il ruolo HR di 0283, altra sessione, prende tutto
+  `absence-requests.*`).
+- Backend: `GET /api/absences/calendar` (`routes/api/absence-calendar.php` da `hr.php`), `AbsenceCalendarRequest`
+  (max 62 giorni, `MAX_DAYS`), `Services/Absences/Calendar/{AbsenceCalendarScope,AbsenceCalendarBuilder}`,
+  `AbsenceRequestVisibility::viewChecker()` (canView in blocco, per `can_open`). Solo approved+submitted, spezzate
+  per giorno lavorativo; persone attive; query costanti.
+- Frontend: `features/absences/calendar/*` (griglia con colonna nomi fissa e scroll proprio, cella button solo con
+  `can_open`), schede "Richieste/Calendario" in `absences-page.tsx` (solo con un permesso calendario), il calendario
+  si invalida con `absenceKeys.calendarAll` dopo ogni azione su una richiesta. i18n `absences.calendar.*`,
+  `permissions.abilities.calendar*`.
+- Test: `tests/Feature/AbsenceCalendar` 15/15; aree assenze 91/91 (`AbsenceFoundationTest` aggiornato:
+  REQUIREMENT CHANGED, 3 permessi in piu'); Pint pulito. Vitest absences+help+roles 272/272, `tsc -b --force` 0,
+  ESLint pulito. `FieldCatalogueEndpointTest` rosso per `employment.contracts` (lavoro di un'altra sessione su
+  `UsersAuthorization`, non 0279). Non verificato a vista: 375 px nel browser.
+- Manuale: guida in-app `absences` IT/EN (sezione `in-development` sostituita da `calendar`) + Claude Docs (Assenze:
+  frase introduttiva e paragrafo Calendario con la tabella dei permessi).
+  Solo documentazione: nessun codice, manuale: nessun impatto.
+
+## Mansioni: link dalla scheda utente + FIX griglie Mansioni/Attivita' "[object Object]" — VERDE, NON COMMITTATO (2026-10-19)
+
+- Decisione utente: in "Profilo > Mansioni" della scheda utente ogni mansione e' un `RecordLink` (clic = modale della
+  mansione con le sue attivita'); testo semplice senza `job-roles.view`. `RefBadges` ha un `domain?` opzionale
+  (usato solo per `job_roles`; ruoli e "Risponde a" invariati). Nessun cambio backend/contratto per questo.
+- Bug griglie: le colonne `tags` (`TagsCountCell`) vogliono `string[]`; `JobRolesTableDefinition::mapRow`
+  (`job_activities`) e `JobActivitiesTableDefinition::mapRow` (`job_roles`) mandavano `{id, label}` -> tooltip
+  "[object Object]". Ora `pluck('name')`. I due test di griglia avevano fissato la forma sbagliata: corretti a `[name]`
+  (prima rossi, poi verdi).
+- Test: `user-detail.test.tsx` +2 (link con permesso / testo senza), mock `useAbilities` reso configurabile;
+  JobRoles+JobActivities+HrStructure+Tables 83/83, Pint pulito; vitest users+help 321/321, `tsc -b --force` 0, ESLint ok.
+- Manuale: guida in-app users IT/EN (riga Mansioni) + Claude Docs (riga "Mansione" della tabella campi utente, era
+  ancora il vecchio testo libero da 255 caratteri).
+
+## Direzione Generale (Enrico Ferrante) sopra tutti i responsabili — VERDE, NON COMMITTATO (2026-10-19)
+
+- Decisione utente: nuova funzione "Direzione Generale" (BS), responsabile e unico membro Enrico Ferrante
+  (`OrgChartFunctions::GENERAL_MANAGER`, fuori da `OrgChartRoster`: nessuna mansione/livello); i responsabili di
+  livello I di tutte le altre funzioni ricevono Enrico in "Risponde a" (additivo, come il resto dello Step 5).
+- `BusinessFunctionCatalogue::GENERAL_MANAGEMENT` (25 funzioni), `QualificaHrCatalogSeeder::assignFunctions`.
+- Legacy (`../qnet`, non committato): `LegacyBusinessFunctions::NAMES` 26 => 'Direzione Generale' (non piu' "[OLD]",
+  attiva). Spec 0281 D-2/D-2b aggiornata.
+- DB locale: riga id 29 "[OLD] DIREZIONE GENERALE" (old_id 26) rinominata "Direzione Generale", attiva, BS; rilanciati
+  `QualificaBusinessFunctionSeeder` + `QualificaHrCatalogSeeder`: 16 responsabili rispondono a Enrico, lui a nessuno.
+- Test: nuovo "puts every function head under the general manager"; REQUIREMENT CHANGED: conteggio 24->25 in
+  `QualificaBusinessFunctionSeederTest`, esclusione del direttore in "names only catalogue functions and org chart
+  people". Seeding+Migration+BusinessFunctions 707/707, Pint pulito; vitest help 144/144, `tsc -b --force` 0, ESLint ok.
+- Manuale: guida in-app business-functions IT/EN (nota) + Claude Docs (paragrafo import legacy e Conteggi).
+
 ## Persone -> Funzioni aziendali e responsabile di livello I dalla Pianta Organica — VERDE, COMMITTATO (2026-10-19)
 
 - Fonte: un foglio per funzione di `Pianta_Organica_Qualifica_Aggiornato 8.09.xlsx`. Dati in
@@ -70,8 +201,9 @@
 - Lanciato sul DB locale: 24 funzioni con membri, 22 con manager, 145 appartenenze, 240 righe "Risponde a"; rilancio senza doppioni.
 - Test: +3 in `QualificaHrCatalogSeederTest` (coerenza con roster/catalogo, capi = manager/superiori, additivo + manager
   manuale tenuto). Manuale: nessun impatto (solo dati).
-- DA DECIDERE: se "Risponde a" debba essere SOSTITUITO dal livello I della Pianta (oggi additivo: restano i supervisori
-  del Mansionario di settembre).
+- DECISO (utente 2026-10-19): "Risponde a" resta ADDITIVO, non va sostituito dal livello I della Pianta. Restano i
+  supervisori del Mansionario di settembre (es. Falzarano/Aliberti su Formazione e APL, 46 persone). Verificato lo
+  stesso giorno: DB locale allineato all'Excel 8.09 su funzioni, tipi BU/BS, membri, manager, livelli e mansioni.
 
 ## FIX scheda utente: badge Mansioni vuoto — VERDE, COMMITTATO (2026-10-19)
 

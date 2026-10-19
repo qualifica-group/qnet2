@@ -165,3 +165,75 @@ it('never marks the name of an adopted user', function () {
 
     expect($seeded->fresh()->personalData->first_name)->toBe('Mario');
 });
+
+// ---------------------------------------------------------------------------
+// Spec 0285 — link-only mode: only `old_id`, never an account or other data
+// ---------------------------------------------------------------------------
+
+it('in link-only mode writes only the old_id of the user matched by email', function () {
+    config(['migrations.users_link_only' => true]);
+    $seeded = seededUser('mario.rossi@legacy.test', 'Mario', 'Rossi');
+    $seeded->assignRole(Role::factory()->create(['name' => 'Operatore']));
+    EmploymentProfile::factory()->create(['user_id' => $seeded->id, 'company_id' => null]);
+    Company::factory()->create(['old_id' => 920]);
+    $password = $seeded->password;
+    $users = User::count();
+
+    $run = runLegacyUsersImport([legacyUserRecord(['company_id' => 920, 'relationship_type' => 'employee'])]);
+
+    $seeded->refresh();
+    expect($run->created_rows)->toBe(1)
+        ->and(User::count())->toBe($users + 1) // only the run's actor
+        ->and($seeded->old_id)->toBe(501)
+        ->and($seeded->password)->toBe($password)
+        ->and($seeded->hasRole('Operatore'))->toBeTrue()
+        ->and($seeded->personalData->first_name)->toBe('Mario')
+        ->and($seeded->employment->company_id)->toBeNull()
+        ->and(collect($run->report)->pluck('message')->implode(' '))->toContain('(link-only mode)');
+});
+
+it('in link-only mode links by first and last name keeping the qnet email', function () {
+    config(['migrations.users_link_only' => true]);
+    $seeded = seededUser('m.rossi@qualifica.test', 'Mario', 'Rossi');
+
+    runLegacyUsersImport([legacyUserRecord()]);
+
+    expect($seeded->fresh()->old_id)->toBe(501)
+        ->and($seeded->fresh()->email)->toBe('m.rossi@qualifica.test');
+});
+
+it('in link-only mode skips a legacy user that matches nobody without creating it', function () {
+    config(['migrations.users_link_only' => true]);
+    $users = User::count();
+
+    $run = runLegacyUsersImport([legacyUserRecord()]);
+
+    expect($run->skipped_rows)->toBe(1)
+        ->and($run->created_rows)->toBe(0)
+        ->and(User::count())->toBe($users + 1) // only the run's actor
+        ->and(collect($run->report)->pluck('message')->implode(' '))
+        ->toContain('No qnet user matches mario.rossi@legacy.test: not created (link-only mode).');
+});
+
+it('in link-only mode does not fill the empty employment of an already linked user on re-import', function () {
+    config(['migrations.users_link_only' => true]);
+    Company::factory()->create(['old_id' => 920]);
+    $linked = seededUser('mario.rossi@legacy.test', 'Mario', 'Rossi', oldId: 501);
+    EmploymentProfile::factory()->create(['user_id' => $linked->id, 'company_id' => null]);
+
+    $run = runLegacyUsersImport([legacyUserRecord(['company_id' => 920, 'relationship_type' => 'employee'])]);
+
+    expect($run->skipped_rows)->toBe(1)
+        ->and($run->report)->toBeEmpty()
+        ->and($linked->fresh()->employment->company_id)->toBeNull();
+});
+
+it('in link-only mode still fails the row on a matcher conflict', function () {
+    config(['migrations.users_link_only' => true]);
+    seededUser('mario.rossi@legacy.test', 'Mario', 'Rossi', oldId: 777);
+
+    $run = runLegacyUsersImport([legacyUserRecord()]);
+
+    expect($run->failed_rows)->toBe(1)
+        ->and(collect($run->report)->pluck('message')->implode(' '))->toContain('already belongs to the user linked to legacy id 777');
+});

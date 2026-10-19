@@ -63,7 +63,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Field', 'What to enter'],
           rows: [
-            ['**Job roles**', 'The job roles the person performs, chosen from the Job roles module list: you can pick several or none.'],
+            ['**Job roles**', 'The job roles the person performs, chosen from the Job roles module list: you can pick several or none. On the record, clicking a job role opens its record with the list of activities (if you can view the Job roles module).'],
             ['**Business functions of membership**', 'The business functions the person belongs to, one or more. It is the same data as the function\'s **Associated users**: changing it here or there is equivalent. It is required for an active person (not a service account): otherwise the save is refused and the error appears under the field. It is not the same as the **Assignment scopes**, which stay optional.'],
             ['**Manager of functions**', 'The functions the person manages, more than one allowed. It is edited in place if you can edit both the user and the business functions (otherwise the row stays read only). A function that had another manager passes to this person, replacing them; a function removed from the list is left without a manager. The same data can also be changed from the business function record. When there are none it reads "Not the manager of any function.".'],
             ['**Reports to**', 'The direct managers, chosen among users: you can pick more than one. The field is always there, also for someone who manages a function.'],

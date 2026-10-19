@@ -18,6 +18,10 @@ namespace Database\Seeders\QualificaCatalog;
  * Contabilità" has two, Studio Casiello (CFO, the manager) and Studio
  * Centore (user decision 2026-10-19). Left out: Lorenzo Sepe and Alessandro
  * Zincone, who have no account.
+ *
+ * Not in the sheets: "Direzione Generale", headed by Enrico Ferrante, who is
+ * added to the "Risponde a" of every other function's heads (user decision
+ * 2026-10-19).
  */
 final class OrgChartFunctions
 {
@@ -269,5 +273,13 @@ final class OrgChartFunctions
                 'luigifabio.pescosolido@qualificagroup.com',
             ],
         ],
+        BusinessFunctionCatalogue::GENERAL_MANAGEMENT => [
+            'heads' => [self::GENERAL_MANAGER],
+            'members' => [
+            ],
+        ],
     ];
+
+    /** Not in OrgChartRoster: the sheets give him no role or level. */
+    public const string GENERAL_MANAGER = 'enrico.ferrante@qualificagroup.com';
 }
