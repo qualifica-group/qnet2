@@ -171,3 +171,51 @@ it('never adopts a function another external id already claimed', function () {
         ->and($claimed->fresh()->old_id)->toBe(8)
         ->and(BusinessFunction::query()->where('old_id', 30)->exists())->toBeTrue();
 });
+
+// ---------------------------------------------------------------------------
+// User decision 2026-10-19 — the legacy sends the functions outside the
+// organisation chart as "[OLD] ..." and not active: created switched off
+// ---------------------------------------------------------------------------
+
+it('creates a function sent as not active switched off, and adopts the chart one by name', function () {
+    seedMigrationsConfig();
+    $chart = BusinessFunction::factory()->create(['name' => 'Agenzia per il Lavoro']);
+
+    Http::fake([
+        fakeMigrationsBaseUrl().'/business-functions*' => Http::response([
+            'items' => [
+                ['id' => 8, 'name' => 'Agenzia per il Lavoro', 'is_active' => true],
+                ['id' => 6, 'name' => '[OLD] IT', 'is_active' => false],
+                ['id' => 40, 'name' => 'Without flag'],
+            ],
+            'pagination' => ['total' => 3],
+        ]),
+    ]);
+
+    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => migrationsSuperAdminActor()->id, 'source' => 'business-functions']));
+
+    expect($chart->fresh()->old_id)->toBe(8)
+        ->and($chart->fresh()->is_active)->toBeTrue()
+        ->and(BusinessFunction::query()->where('old_id', 6)->first())
+        ->name->toBe('[OLD] IT')
+        ->is_active->toBeFalse()
+        ->and(BusinessFunction::query()->where('old_id', 40)->value('is_active'))->toBeTrue()
+        ->and(BusinessFunction::query()->count())->toBe(3);
+});
+
+it('keeps the own flag of an adopted function, whatever the legacy sends', function () {
+    seedMigrationsConfig();
+    $switchedOff = BusinessFunction::factory()->inactive()->create(['name' => 'Gare']);
+
+    Http::fake([
+        fakeMigrationsBaseUrl().'/business-functions*' => Http::response([
+            'items' => [['id' => 17, 'name' => 'Gare', 'is_active' => true]],
+            'pagination' => ['total' => 1],
+        ]),
+    ]);
+
+    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => migrationsSuperAdminActor()->id, 'source' => 'business-functions']));
+
+    expect($switchedOff->fresh()->old_id)->toBe(17)
+        ->and($switchedOff->fresh()->is_active)->toBeFalse();
+});

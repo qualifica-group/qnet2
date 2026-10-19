@@ -70,6 +70,10 @@ class AttachmentPolicy extends BasePolicy
             return false;
         }
 
+        if ($model instanceof Attachment && $this->isOutsideGenericBoundary($model)) {
+            return false;
+        }
+
         return parent::view($user, $model);
     }
 
@@ -97,11 +101,22 @@ class AttachmentPolicy extends BasePolicy
      */
     public function delete(User $user, Model $model): bool
     {
-        if ($model instanceof Attachment && $this->isClosedCollection($model->collection)) {
+        if ($model instanceof Attachment && ($this->isClosedCollection($model->collection) || $this->isOutsideGenericBoundary($model))) {
             return false;
         }
 
         return parent::delete($user, $model);
+    }
+
+    /**
+     * An owner outside `attachments.attachable_types` (e.g. an absence request,
+     * spec 0278 D-12) is reachable only through its own dedicated endpoints,
+     * never through the generic ones, whatever `attachments.*` the actor holds.
+     */
+    private function isOutsideGenericBoundary(Attachment $attachment): bool
+    {
+        return $attachment->attachable_type !== null
+            && ! array_key_exists($attachment->attachable_type, (array) config('attachments.attachable_types'));
     }
 
     private function isClosedCollection(?string $collection): bool

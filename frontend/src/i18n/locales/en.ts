@@ -81,6 +81,7 @@ import { leadImports } from './en-lead-imports'
 import { businessFunctions } from './en-business-functions'
 import { moduleStats, statsPanel } from './en-stats'
 import { impersonation } from './en-impersonation'
+import { usersDetailActions } from './en-users-detail-actions'
 import { permissions, permissionExplorer } from './en-permissions'
 import { help } from './en-help'
 import { apiIntegrations } from './en-api-integrations'
@@ -179,6 +180,7 @@ export const en = {
       resendWelcomeError: 'Unable to send the welcome email. Please try again.',
       // Read-only Employment section (spec 0015).
       employment: usersDetailEmployment,
+      actions: usersDetailActions,
     },
     form: {
       newUser: 'New user',

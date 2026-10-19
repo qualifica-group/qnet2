@@ -34,6 +34,7 @@ function daySummary(overrides: Partial<DaySummary> = {}): DaySummary {
     utilization_percentage: 93.75,
     status: 'under_target',
     day_note: null,
+    absences: [],
     entries: [],
     ...overrides,
   }
@@ -106,5 +107,51 @@ describe('TimeEntryDayCard (AC-035)', () => {
     expect(screen.getByText('Active')).toBeInTheDocument()
     expect(screen.getByText('1h 30m')).toBeInTheDocument()
     expect(screen.getByText('19%')).toBeInTheDocument()
+  })
+
+  it('shows a full-day absence with its type and the full-day label (AC-021)', () => {
+    const Wrapper = wrapper()
+    render(
+      <Wrapper>
+        <TimeEntryDayCard
+          canWrite
+          day={daySummary({
+            status: 'no_target',
+            target_minutes: 0,
+            total_minutes: 0,
+            absences: [{ id: 1, absence_type_name: 'Vacation', is_full_day: true, minutes: 480 }],
+          })}
+          isExpanded={false}
+          isToday={false}
+          onCreateForDate={vi.fn()}
+          onEditEntry={vi.fn()}
+          onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    )
+
+    expect(screen.getByText('Vacation - full day')).toBeInTheDocument()
+    expect(screen.queryByText(/Under target/i)).not.toBeInTheDocument()
+  })
+
+  it('shows an hourly absence with its hours (AC-021)', () => {
+    const Wrapper = wrapper()
+    render(
+      <Wrapper>
+        <TimeEntryDayCard
+          canWrite
+          day={daySummary({
+            absences: [{ id: 2, absence_type_name: 'Permit', is_full_day: false, minutes: 120 }],
+          })}
+          isExpanded={false}
+          isToday={false}
+          onCreateForDate={vi.fn()}
+          onEditEntry={vi.fn()}
+          onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    )
+
+    expect(screen.getByText('Permit - 2h 00m')).toBeInTheDocument()
   })
 })

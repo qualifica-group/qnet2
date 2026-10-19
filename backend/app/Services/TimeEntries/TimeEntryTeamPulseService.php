@@ -36,6 +36,7 @@ final class TimeEntryTeamPulseService
         private readonly TimeEntryPeriodResolver $periodResolver,
         private readonly WorkCalendar $calendar,
         private readonly DailyTargetResolver $targetResolver,
+        private readonly TimeEntryAbsenceResolver $absenceResolver,
         private readonly TimeEntryClusterCalculator $clusterCalculator,
     ) {}
 
@@ -58,6 +59,11 @@ final class TimeEntryTeamPulseService
         $members = $this->loadMembers($memberIds);
         $entriesByUserId = $this->loadEntriesByUserId($memberIds, $period);
         $businessFunctionsByUserId = $this->loadBusinessFunctionsByUserId($memberIds);
+        $absences = $this->absenceResolver->resolve(
+            $members->mapWithKeys(fn (User $member): array => [$member->id => $this->targetResolver->resolve($member->employment)])->all(),
+            $period->dateFrom,
+            $period->dateTo,
+        );
 
         // Step 4: one TimeEntryTeamMemberData per member, pure in-memory
         // math off the batches above.
@@ -67,6 +73,7 @@ final class TimeEntryTeamPulseService
                 $workingDates,
                 $entriesByUserId->get($member->id, collect()),
                 $businessFunctionsByUserId->get($member->id, []),
+                $absences,
             ))
             ->all();
 
@@ -177,14 +184,18 @@ final class TimeEntryTeamPulseService
      * @param  Collection<int, TimeEntry>  $entries  the member's WHOLE-period entries, pre-grouped
      * @param  list<array{id: int, name: string, is_manager: bool}>  $businessFunctions
      */
-    private function buildMember(User $member, array $workingDates, Collection $entries, array $businessFunctions): TimeEntryTeamMemberData
+    private function buildMember(User $member, array $workingDates, Collection $entries, array $businessFunctions, DayAbsenceIndex $absences): TimeEntryTeamMemberData
     {
         $workingDateSet = array_flip($workingDates);
         $workingEntries = $entries->filter(
             static fn (TimeEntry $entry): bool => isset($workingDateSet[$entry->date->format('Y-m-d')]),
         );
 
-        $targetMinutes = $this->targetResolver->resolve($member->employment) * count($workingDates);
+        $baseTargetMinutes = $this->targetResolver->resolve($member->employment);
+        $targetMinutes = array_sum(array_map(
+            static fn (string $date): int => DayAbsenceIndex::reduceTarget($baseTargetMinutes, $absences->forDay($member->id, $date)),
+            $workingDates,
+        ));
         $trackedMinutes = (int) $workingEntries->sum('minutes');
         $trackedDays = $workingEntries
             ->map(static fn (TimeEntry $entry): string => $entry->date->format('Y-m-d'))

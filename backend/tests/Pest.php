@@ -69,6 +69,8 @@ require_once __DIR__.'/Helpers/ApiClientAdminHelpers.php';
 require_once __DIR__.'/Helpers/ApiDocsHelpers.php';
 require_once __DIR__.'/Helpers/ProductCategoryHelpers.php';
 require_once __DIR__.'/Helpers/ManagementControlHelpers.php';
+require_once __DIR__.'/Helpers/AbsenceHelpers.php';
+require_once __DIR__.'/Helpers/AbsenceBalanceHelpers.php';
 
 /*
 |--------------------------------------------------------------------------

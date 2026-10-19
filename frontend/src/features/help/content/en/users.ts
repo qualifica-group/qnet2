@@ -117,8 +117,9 @@ const guide: HelpGuide = {
       title: 'Editing, deactivating and deleting',
       blocks: [
         { type: 'paragraph', text: 'Every row in the list has an actions menu with **View**, **Delete**, **Activity** and **Impersonate**. You only see the actions your role allows.' },
-        { type: 'list', items: ['**Edit:** there is no separate edit page. Open the record with **View**, hover the field and press the **pencil** (or click the value), change the value and press **Save**: only that field is saved. **Cancel** (or Esc, or a click outside) closes without saving. Contacts, addresses and the avatar save on their own.', '**Deactivate:** on the record, open the **Active** row and turn it off. The person can no longer sign in, but their record and history remain. **Inactive** appears at the top.', '**Delete:** choose **Delete** and confirm.', '**Activity:** shows the history of changes made to the record.'] },
-        { type: 'warning', text: 'You cannot delete your own account, nor the last user with the super-admin role.' },
+        { type: 'paragraph', text: 'On the record, under the name, there is the actions bar: **Resend welcome email** (only while the user has not completed the first sign-in), **Deactivate** or **Activate**, **Impersonate** and **Delete**. Only the actions possible for that user and allowed by your role appear; on your own account you find neither **Deactivate**, **Impersonate** nor **Delete**.' },
+        { type: 'list', items: ['**Edit:** there is no separate edit page. Open the record with **View**, hover the field and press the **pencil** (or click the value), change the value and press **Save**: only that field is saved. **Cancel** (or Esc, or a click outside) closes without saving. Contacts, addresses and the avatar save on their own.', '**Deactivate:** on the record, press **Deactivate** and confirm (or open the **Active** row and turn it off). The person can no longer sign in, but their record and history remain. **Inactive** appears at the top.', '**Reactivate:** press **Activate**. If the **Terminated at** date has already passed the person stays inactive and a warning appears: remove the date first. An active person must belong to at least one business function, otherwise the activation is refused with the reason.', '**Delete:** choose **Delete** (from the row menu or the record) and confirm. From the record, after deleting you go back to the list.', '**Activity:** shows the history of changes made to the record.'] },
+        { type: 'warning', text: 'You cannot delete your own account, nor the last user with the super-admin role. Nor can you delete a user who is the operator of leads or the supervisor of opportunities: reassign them first.' },
         { type: 'tip', text: 'If a person leaves the company, deactivate them instead of deleting them. This keeps the history of their work.' },
       ],
     },
@@ -135,7 +136,7 @@ const guide: HelpGuide = {
       title: 'Welcome email and first sign-in',
       blocks: [
         { type: 'paragraph', text: "Until a user has completed the first sign-in, their record shows the **Awaiting first sign-in** label." },
-        { type: 'steps', items: ["Open the user's record.", 'Click **Resend welcome email** (you need the edit permission on users).', 'The message "Welcome email sent." appears.'] },
+        { type: 'steps', items: ["Open the user's record.", 'In the actions bar under the name, click **Resend welcome email** (you need the edit permission on users).', 'The message "Welcome email sent." appears.'] },
         { type: 'list', items: ['The link in the email is valid for **72 hours**.', 'Every new send invalidates the previous link.', 'Resending always sends the link to choose the password, even if the user was created with a temporary password.', 'While the user postpones the choice, the label stays and the welcome window reappears at every sign-in.', 'Alternatively the user can use **Forgot your password?** on the sign-in page.'] },
         { type: 'note', text: 'The label and the button disappear once the user chooses their own password.' },
       ],
@@ -146,8 +147,8 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: 'With **Impersonate** you sign into qnet as that user and see exactly what they see. It is used to check permissions or understand a reported issue.' },
         { type: 'steps', items: [
-          "In the users list, open the row's actions menu.",
-          'Choose **Impersonate**. The dashboard opens.',
+          "In the users list, open the row's actions menu, or open the user's record.",
+          'Choose **Impersonate** and confirm. The dashboard opens.',
           'A banner at the top shows "You are operating as" followed by the user’s name.',
           'To exit, click **Back to your account**.',
         ] },

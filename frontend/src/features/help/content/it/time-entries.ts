@@ -99,6 +99,20 @@ const guide: HelpGuide = {
         },
       ],
     },
+    {
+      id: 'absences-and-target',
+      title: 'Assenze e target',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Le assenze approvate (vedi la guida **Assenze**) cambiano il target del giorno: con un’assenza a giornata intera il target è zero; con un’assenza a ore il target si riduce di quelle ore. La card del giorno mostra il tipo di assenza e le ore.',
+        },
+        {
+          type: 'note',
+          text: 'Le richieste ancora in attesa di approvazione non contano: il target cambia solo quando la richiesta è approvata.',
+        },
+      ],
+    },
   ],
 }
 

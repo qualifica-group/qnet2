@@ -84,6 +84,8 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'collective-agreements',
   'job-activities',
   'org-chart',
+  'absences',
+  'absence-types',
   'sectors',
   'tags',
   'sources',

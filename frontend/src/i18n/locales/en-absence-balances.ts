@@ -1,0 +1,36 @@
+/** Absence balances and allowances (spec 0278): root `absences.balances.*`. Mirror of `it-absence-balances.ts`. */
+export const absenceBalances = {
+  title: 'Absence balances',
+  titleFor: 'Absence balances of {{name}}',
+  year: 'Year',
+  empty: 'No absence type deducts a balance.',
+  error: 'Unable to load the balances.',
+  editAllowance: 'Edit allowance',
+  negative: 'Negative residual',
+  columns: {
+    annual: 'Allowance',
+    carriedOver: 'Carry-over',
+    accrued: 'Accrued',
+    used: 'Used',
+    pending: 'Pending',
+    residual: 'Residual',
+  },
+  person: {
+    label: 'Person',
+    placeholder: 'My absences',
+    search: 'Search a person',
+    empty: 'No person found',
+    error: 'Unable to load people',
+  },
+  form: {
+    title: '{{type}} allowance',
+    description: 'Hours for the year {{year}}. Decimals are allowed (e.g. 7.5).',
+    annual: 'Annual allowance (hours)',
+    carried: 'Carry-over (hours, may be negative)',
+    invalidHours: 'Enter a valid number of hours.',
+    annualNegative: 'The allowance cannot be negative.',
+    save: 'Save',
+    saved: 'Allowance saved.',
+    error: 'Unable to save the allowance.',
+  },
+}

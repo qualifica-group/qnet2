@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0279 — Modulo HR passo 6b: calendario della squadra (chi c'e' e chi non c'e'), sulle richieste di 0278.
+  Dipende da 0278 (verde). Da pianificare nel dettaglio a 0278 chiusa.
+-->
+<spec id="0279-hr-team-absence-calendar" status="draft" owner="utente" date="2026-10-19">
+
+  <goal>
+    Il responsabile e l'ufficio del personale vedono in una griglia mensile chi e' assente e chi no, giorno per
+    giorno, con weekend e festivita', per decidere le approvazioni e organizzare il lavoro.
+  </goal>
+
+  <context>
+    Legge `absence_requests` di 0278 (approved e submitted), festivita' da `WorkCalendar`, squadra da
+    `TimeEntrySubordinateResolver::descendantIds()`, visibilita' `absence-requests.viewAny|manageAll`.
+    Nessuna tabella nuova, nessun componente calendario esistente nel frontend (griglia propria).
+    Decisione aperta (da chiedere all'utente prima di approvare questa spec):
+    - D-1 Una persona senza squadra vede nel calendario solo se stessa, oppure anche i colleghi delle proprie
+      funzioni di appartenenza (solo "assente", senza tipo ne' nota)?
+  </context>
+
+  <scope>
+    <in>
+      <item>Endpoint calendario per periodo (max 62 giorni) e persone visibili, filtri funzione e persona.</item>
+      <item>Scheda "Calendario" nella pagina Assenze: righe persone, colonne giorni, celle colorate per
+        approvata / in attesa, weekend e festivi evidenziati, mese precedente/successivo, legenda.</item>
+      <item>Apertura del dettaglio della richiesta dalla cella (se visibile).</item>
+      <item>Guida in-app `absences` IT/EN (sezione calendario).</item>
+    </in>
+    <out>
+      <item>Creazione o spostamento di assenze dal calendario (trascinamento).</item>
+      <item>Festivita' per sede, calendari esterni (iCal), vista settimanale o annuale.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/absences/calendar">
+      <request>{ from: date required, to: date required (to - from &lt;= 61 giorni), business_function_id: int|null,
+        user_ids: int[]|null }</request>
+      <response status="200">data: { days: [{ date, is_holiday, is_non_working_day }], people: [{ id, name,
+        absences: [{ id, date, status: "approved"|"submitted", absence_type_name: string|null, is_full_day,
+        minutes }] }] } — persone visibili all'attore (se stesso, discendenti, tutte con manageAll; D-1 aperta).</response>
+      <errors>403 senza viewAny; 422 periodo non valido o troppo lungo.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Il calendario restituisce solo le persone visibili e le loro assenze approved e
+      submitted nel periodo, spezzate per giorno lavorativo (Pest).</criterion>
+    <criterion id="AC-002">Periodo oltre 62 giorni o `to` prima di `from` = 422; senza viewAny = 403 (Pest).</criterion>
+    <criterion id="AC-003">Griglia mensile con weekend e festivi evidenziati, approvate e in attesa distinte anche
+      senza colore (icona o motivo), navigazione mese, legenda; nessuno scroll orizzontale della pagina a 375 px
+      (la griglia scorre nel proprio contenitore) (Vitest + verifica visiva).</criterion>
+    <criterion id="AC-004">Guida `absences` IT/EN aggiornata, parity test, ESLint, `tsc -b --force` puliti.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; stesso scope di visibilita' di 0278; nessuna copia delle richieste.</item>
+  </constraints>
+
+</spec>

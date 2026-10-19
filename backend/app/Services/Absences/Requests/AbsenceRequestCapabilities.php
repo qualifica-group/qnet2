@@ -1,0 +1,69 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services\Absences\Requests;
+
+use App\Enums\AbsenceRequestStatus;
+use App\Models\AbsenceRequest;
+use App\Models\User;
+
+/**
+ * What an actor may do on a request right now (spec 0278, D-9): the `can`
+ * block of the resource. Role and state rules live here once; the services
+ * apply the same rules in two steps (403 for the role, 409 for the state).
+ */
+final class AbsenceRequestCapabilities
+{
+    public function __construct(private readonly AbsenceRequestVisibility $visibility) {}
+
+    /**
+     * @return array{update: bool, delete: bool, submit: bool, approve: bool, reject: bool, cancel: bool, attach: bool}
+     */
+    public function for(User $actor, AbsenceRequest $request): array
+    {
+        $editable = $request->status === AbsenceRequestStatus::Draft && $this->visibility->isOwnerOrManager($actor, $request);
+        $decidable = $request->status === AbsenceRequestStatus::Submitted && $this->visibility->isApprover($actor, $request);
+
+        return [
+            'update' => $editable,
+            'delete' => $editable,
+            'submit' => $editable,
+            'approve' => $decidable,
+            'reject' => $decidable,
+            'cancel' => $this->canCancel($actor, $request),
+            'attach' => $this->canAttach($actor, $request),
+        ];
+    }
+
+    public function canCancel(User $actor, AbsenceRequest $request): bool
+    {
+        if (! $this->visibility->isOwnerOrManager($actor, $request) || ! $this->isCancellableStatus($request)) {
+            return false;
+        }
+
+        return $this->visibility->canManageAll($actor) || $this->personMayCancel($request);
+    }
+
+    public function isCancellableStatus(AbsenceRequest $request): bool
+    {
+        return in_array($request->status, [AbsenceRequestStatus::Submitted, AbsenceRequestStatus::Approved], true);
+    }
+
+    /** The person cancels a submitted request, or an approved one that has not started yet. */
+    private function personMayCancel(AbsenceRequest $request): bool
+    {
+        return $request->status === AbsenceRequestStatus::Submitted
+            || $request->starts_on->format('Y-m-d') > now()->toDateString();
+    }
+
+    public function canAttach(User $actor, AbsenceRequest $request): bool
+    {
+        if ($this->visibility->canManageAll($actor)) {
+            return true;
+        }
+
+        return (int) $request->user_id === (int) $actor->id
+            && in_array($request->status, [AbsenceRequestStatus::Draft, AbsenceRequestStatus::Submitted], true);
+    }
+}

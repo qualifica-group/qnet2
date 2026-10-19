@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- module registry adapter: exports the `moduleScreen` descriptor alongside its screen components (spec 0042 pattern, same as `project-screens.tsx`) */
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { userDetailQueryKey } from '@/features/users/api'
 import { UserForm } from '@/features/users/user-form'
@@ -12,6 +13,9 @@ import type {
   ModuleRegistryEntry,
 } from '@/features/modules/types'
 import type { UserDetail } from '@/features/users/types'
+import type { UserLeaveReason } from '@/features/users/use-user-record-actions'
+
+const USERS_BASE_PATH = '/users'
 
 /**
  * Content-only `users` screens for the module registry (spec 0042). Reused
@@ -21,10 +25,22 @@ import type { UserDetail } from '@/features/users/types'
  * the id.
  *
  * Spec 0222: the detail edits its fields in place, so `onEdit` is never used;
- * each save reports through `onChanged`.
+ * each save reports through `onChanged`. A deleted record is left: the Sheet
+ * closes (modal) or the page goes back to the list; after "Impersona" the
+ * Sheet closes and the action itself navigates to the dashboard.
  */
-export function UserDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
-  return <UserDetailView userId={id} onChanged={onChanged} />
+export function UserDetailScreen({ id, onChanged, onSaved }: ModuleDetailScreenProps) {
+  const navigate = useNavigate()
+
+  const handleLeave = (reason: UserLeaveReason) => {
+    if (onSaved) {
+      onSaved()
+    } else if (reason === 'deleted') {
+      void navigate(USERS_BASE_PATH)
+    }
+  }
+
+  return <UserDetailView userId={id} onChanged={onChanged} onLeave={handleLeave} />
 }
 
 /**

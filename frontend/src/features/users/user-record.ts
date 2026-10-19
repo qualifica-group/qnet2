@@ -126,7 +126,7 @@ export function persistedUserValues(user: UserDetail): UserRecordValues {
     product_lines: employment?.product_lines ?? NO_LINES,
     primary_operational_site: employment?.primary_operational_site ?? null,
     remote_operational_sites: employment?.remote_operational_sites ?? NO_REFS,
-    job_roles: employment?.job_roles ?? NO_REFS,
+    job_roles: toRelationRefs(employment?.job_roles),
     business_functions: toRelationRefs(employment?.business_functions),
     managed_business_functions: toRelationRefs(user.managed_business_functions),
     reports_to: employment?.reports_to ?? NO_REFS,

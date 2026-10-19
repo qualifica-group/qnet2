@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AbsenceType;
 use App\Models\AgentFiscalProfile;
 use App\Models\Attribute;
 use App\Models\BusinessFunction;
@@ -104,6 +105,10 @@ return [
         ],
         'job-activities' => [
             'model' => JobActivity::class,
+        ],
+        // spec 0278: absence types catalogue.
+        'absence-types' => [
+            'model' => AbsenceType::class,
         ],
         // spec 0272: collective agreements (CCNL).
         'collective-agreements' => [

@@ -50,6 +50,8 @@ const SEGMENT_LABELS: Record<string, string> = {
   'job-roles': 'navigation.jobRoles',
   'job-activities': 'navigation.jobActivities',
   'org-chart': 'navigation.orgChart',
+  absences: 'navigation.absences',
+  'absence-types': 'navigation.absenceTypes',
   'purchase-request-priorities': 'navigation.purchaseRequestPriorities',
   'purchase-order-statuses': 'navigation.purchaseOrderStatuses',
   'purchase-request-line-statuses': 'navigation.purchaseRequestLineStatuses',

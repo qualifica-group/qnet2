@@ -1,5 +1,9 @@
 <?php
 
+use App\Tables\AbsenceRequests\AbsenceRequestsAllTableDefinition;
+use App\Tables\AbsenceRequests\AbsenceRequestsTableDefinition;
+use App\Tables\AbsenceRequests\AbsenceRequestsToApproveTableDefinition;
+use App\Tables\AbsenceTypesTableDefinition;
 use App\Tables\AgentFiscalProfilesTableDefinition;
 use App\Tables\ApiClientsTableDefinition;
 use App\Tables\AttributesTableDefinition;
@@ -104,6 +108,12 @@ return [
         // spec 0271: HR org structure catalogues.
         'job-roles' => JobRolesTableDefinition::class,
         'job-activities' => JobActivitiesTableDefinition::class,
+        // spec 0278: absence types catalogue.
+        'absence-types' => AbsenceTypesTableDefinition::class,
+        // spec 0278: absence requests, one domain per tab (mine / to approve / all).
+        'absence-requests' => AbsenceRequestsTableDefinition::class,
+        'absence-requests-to-approve' => AbsenceRequestsToApproveTableDefinition::class,
+        'absence-requests-all' => AbsenceRequestsAllTableDefinition::class,
         // spec 0272: collective agreements (CCNL) with their levels.
         'collective-agreements' => CollectiveAgreementsTableDefinition::class,
         'companies' => CompaniesTableDefinition::class,

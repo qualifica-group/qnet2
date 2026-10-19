@@ -57,10 +57,10 @@ final class OperatorRoster
      * @var array<string, string>
      */
     public const array FUNCTION_WIDE_COMPETENCE = [
-        'giovanna.gervasio@qualificagroup.com' => 'APL',
-        'raffaele.distico@qualificagroup.com' => 'APL',
-        'gessica.crispo@qualificagroup.com' => 'APL',
-        'emanuele.ascione@qualificagroup.com' => 'APL',
+        'giovanna.gervasio@qualificagroup.com' => BusinessFunctionCatalogue::EMPLOYMENT_AGENCY,
+        'raffaele.distico@qualificagroup.com' => BusinessFunctionCatalogue::EMPLOYMENT_AGENCY,
+        'gessica.crispo@qualificagroup.com' => BusinessFunctionCatalogue::EMPLOYMENT_AGENCY,
+        'emanuele.ascione@qualificagroup.com' => BusinessFunctionCatalogue::EMPLOYMENT_AGENCY,
     ];
 
     /** The function a switched-off operator is made competent for, every category of it. */

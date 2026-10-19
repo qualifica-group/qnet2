@@ -74,6 +74,7 @@ import { leadImports } from './it-lead-imports'
 import { businessFunctions } from './it-business-functions'
 import { moduleStats, statsPanel } from './it-stats'
 import { impersonation } from './it-impersonation'
+import { usersDetailActions } from './it-users-detail-actions'
 import { permissions, permissionExplorer } from './it-permissions'
 import {
   usersAssignment,
@@ -170,6 +171,7 @@ export const it: TranslationResources = {
       resendWelcomeError: "Impossibile inviare l'email di benvenuto. Riprova.",
       // Sezione Rapporto di lavoro in sola lettura (spec 0015).
       employment: usersDetailEmployment,
+      actions: usersDetailActions,
     },
     form: {
       newUser: 'Nuovo utente',

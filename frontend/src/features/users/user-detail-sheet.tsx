@@ -71,7 +71,7 @@ export function UserDetailSheetProvider({ children }: { children: ReactNode }) {
             <SheetTitle>{t('users.detail.title')}</SheetTitle>
             <SheetDescription>{t('users.detail.subtitle')}</SheetDescription>
           </SheetHeader>
-          {userId !== null && <UserDetailView userId={userId} />}
+          {userId !== null && <UserDetailView userId={userId} onLeave={closeUserDetail} />}
         </SheetContent>
       </Sheet>
     </UserDetailSheetContext.Provider>

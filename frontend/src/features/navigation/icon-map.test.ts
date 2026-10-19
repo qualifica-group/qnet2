@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BookOpen, Circle, CreditCard, Files, LayoutTemplate, Plug, Shapes } from 'lucide-react'
+import { BookOpen, CalendarCog, CalendarOff, Circle, CreditCard, Files, LayoutTemplate, Plug, Shapes } from 'lucide-react'
 import { resolveIcon } from '@/features/navigation/icon-map'
 
 /**
@@ -60,5 +60,13 @@ describe('resolveIcon — api-docs navigation icon', () => {
   it('resolves "book-open" to the BookOpen component, not the Circle fallback', () => {
     expect(resolveIcon('book-open')).toBe(BookOpen)
     expect(resolveIcon('book-open')).not.toBe(Circle)
+  })
+})
+
+/** Spec 0278: "Assenze" and "Tipi di assenza" must not fall back to Circle. */
+describe('resolveIcon — absences navigation icons (spec 0278)', () => {
+  it('resolves "calendar-off" and "calendar-cog" to their Lucide components', () => {
+    expect(resolveIcon('calendar-off')).toBe(CalendarOff)
+    expect(resolveIcon('calendar-cog')).toBe(CalendarCog)
   })
 })

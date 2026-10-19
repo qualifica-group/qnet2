@@ -5,12 +5,13 @@ use App\Models\BusinessFunction;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Database\Seeders\QualificaBusinessFunctionLinkSeeder;
+use Database\Seeders\QualificaCatalog\BusinessFunctionCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
-// The "Formazione" and "APL" roots are assigned to the business function of
-// the same name, "Presa Appuntamenti" to "Consulenza" (user directive
-// 2026-09-28) and "No categoria" to "No funzione aziendale" (user decision
+// The "Formazione" root is assigned to the business function of the same name,
+// "APL" to "Agenzia per il Lavoro" (user decision 2026-10-19), "Presa
+// Appuntamenti" to "Consulenza" (user directive 2026-09-28) and "No categoria" to "No funzione aziendale" (user decision
 // 2026-10-12). Every one of those functions is created by the seeder when no
 // function of that name exists, compared without case (user directive
 // 2026-10-14): the legacy import adopts them instead of supplying them.
@@ -28,13 +29,14 @@ $formazione = fn (): ProductCategory => ProductCategory::query()
 
 $apl = fn (): ProductCategory => ProductCategory::query()->where('name', 'APL')->firstOrFail();
 
-it('REQUIREMENT CHANGED (user directive 2026-10-14): creates the "Formazione" and "APL" functions itself and links both roots, idempotently', function () use ($formazione, $apl): void {
+it('REQUIREMENT CHANGED (user decision 2026-10-19): links the roots to the organisation chart functions, creating only the ones outside it, idempotently', function () use ($formazione, $apl): void {
     test()->seed(QualificaCatalogSeeder::class);
     test()->seed(QualificaBusinessFunctionLinkSeeder::class); // re-run: neither duplicated nor relinked.
 
-    expect(BusinessFunction::query()->orderBy('id')->pluck('name')->all())->toBe(['Formazione', 'APL', 'Consulenza', 'SOA', 'Sicurezza', 'No funzione aziendale'])
+    expect(BusinessFunction::query()->orderBy('id')->pluck('name')->all())
+        ->toBe([...array_keys(BusinessFunctionCatalogue::FUNCTIONS), 'Consulenza', 'No funzione aziendale'])
         ->and($formazione()->businessFunction->name)->toBe('Formazione')
-        ->and($apl()->businessFunction->name)->toBe('APL')
+        ->and($apl()->businessFunction->name)->toBe(BusinessFunctionCatalogue::EMPLOYMENT_AGENCY)
         // The sibling subcategories and the Consulenza root resolve nothing of their own.
         ->and(ProductCategory::query()->where('name', 'Orientamento specialistico')->value('business_function_id'))->toBeNull()
         ->and(ProductCategory::query()->whereNull('parent_id')->where('name', 'Consulenza')->value('business_function_id'))->toBeNull();

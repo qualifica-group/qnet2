@@ -117,8 +117,9 @@ const guide: HelpGuide = {
       title: 'Modificare, disattivare ed eliminare',
       blocks: [
         { type: 'paragraph', text: 'Ogni riga dell’elenco ha un menu azioni con **Visualizza**, **Elimina**, **Attività** e **Impersona**. Vedi solo le azioni permesse dal tuo ruolo.' },
-        { type: 'list', items: ['**Modificare:** non esiste una pagina di modifica separata. Apri la scheda con **Visualizza**, passa col mouse sul campo e premi la **matita** (o fai clic sul valore), cambia il valore e premi **Salva**: si salva solo quel campo. **Annulla** (o Esc, o un clic fuori) chiude senza salvare. Contatti, indirizzi e avatar si salvano da soli.', '**Disattivare:** nella scheda apri la riga **Attivo** e spegnilo. La persona non può più accedere, ma scheda e storico restano. In alto compare **Non attivo**.', '**Eliminare:** scegli **Elimina** e conferma.', '**Attività:** mostra lo storico delle modifiche fatte sulla scheda.'] },
-        { type: 'warning', text: 'Non puoi eliminare il tuo stesso account, né l’ultimo utente con ruolo super-admin.' },
+        { type: 'paragraph', text: 'Nella scheda, sotto il nome, c’è la barra delle azioni: **Reinvia email di benvenuto** (solo se l’utente non ha ancora completato il primo accesso), **Disattiva** oppure **Attiva**, **Impersona** ed **Elimina**. Compaiono solo le azioni possibili per quell’utente e permesse dal tuo ruolo; sul tuo stesso account non trovi **Disattiva**, **Impersona** né **Elimina**.' },
+        { type: 'list', items: ['**Modificare:** non esiste una pagina di modifica separata. Apri la scheda con **Visualizza**, passa col mouse sul campo e premi la **matita** (o fai clic sul valore), cambia il valore e premi **Salva**: si salva solo quel campo. **Annulla** (o Esc, o un clic fuori) chiude senza salvare. Contatti, indirizzi e avatar si salvano da soli.', '**Disattivare:** nella scheda premi **Disattiva** e conferma (oppure apri la riga **Attivo** e spegnilo). La persona non può più accedere, ma scheda e storico restano. In alto compare **Non attivo**.', '**Riattivare:** premi **Attiva**. Se la data **Cessato il** è già passata la persona resta non attiva e compare un avviso: togli prima la data. Una persona attiva deve appartenere ad almeno una funzione aziendale, altrimenti l’attivazione viene rifiutata con il motivo.', '**Eliminare:** scegli **Elimina** (dal menu della riga o dalla scheda) e conferma. Dalla scheda, dopo l’eliminazione torni all’elenco.', '**Attività:** mostra lo storico delle modifiche fatte sulla scheda.'] },
+        { type: 'warning', text: 'Non puoi eliminare il tuo stesso account, né l’ultimo utente con ruolo super-admin. Non puoi eliminare nemmeno un utente che è operatore di lead o supervisore di opportunità: riassegnali prima.' },
         { type: 'tip', text: 'Se una persona lascia l’azienda, disattivala invece di eliminarla. Così conservi lo storico del suo lavoro.' },
       ],
     },
@@ -135,7 +136,7 @@ const guide: HelpGuide = {
       title: 'Email di benvenuto e primo accesso',
       blocks: [
         { type: 'paragraph', text: 'Finché un utente non ha completato il primo accesso, nella sua scheda compare l’etichetta **In attesa di primo accesso**.' },
-        { type: 'steps', items: ['Apri la scheda dell’utente.', 'Fai clic su **Reinvia email di benvenuto** (serve il permesso di modifica sugli utenti).', 'Compare il messaggio "Email di benvenuto inviata."'] },
+        { type: 'steps', items: ['Apri la scheda dell’utente.', 'Nella barra delle azioni sotto il nome fai clic su **Reinvia email di benvenuto** (serve il permesso di modifica sugli utenti).', 'Compare il messaggio "Email di benvenuto inviata."'] },
         { type: 'list', items: ['Il link nell’email è valido **72 ore**.', 'Ogni nuovo invio invalida il link precedente.', 'Il reinvio manda sempre il link per scegliere la password, anche se l’utente era stato creato con una password provvisoria.', 'Finché l’utente rimanda la scelta, l’etichetta resta e la finestra di benvenuto ricompare a ogni accesso.', 'In alternativa l’utente può usare **Password dimenticata?** nella pagina di accesso.'] },
         { type: 'note', text: 'L’etichetta e il pulsante spariscono quando l’utente sceglie la propria password.' },
       ],
@@ -145,7 +146,7 @@ const guide: HelpGuide = {
       title: 'Impersonare un utente',
       blocks: [
         { type: 'paragraph', text: 'Con **Impersona** entri nel gestionale come quell’utente e vedi esattamente ciò che vede. Serve per verificare i permessi o capire un problema segnalato.' },
-        { type: 'steps', items: ['Nell’elenco utenti apri il menu azioni della riga.', 'Scegli **Impersona**. Si apre la dashboard.', 'Un avviso in alto mostra "Stai operando come" seguito dal nome dell’utente.', 'Per uscire fai clic su **Torna al tuo account**.'] },
+        { type: 'steps', items: ['Nell’elenco utenti apri il menu azioni della riga, oppure apri la scheda dell’utente.', 'Scegli **Impersona** e conferma. Si apre la dashboard.', 'Un avviso in alto mostra "Stai operando come" seguito dal nome dell’utente.', 'Per uscire fai clic su **Torna al tuo account**.'] },
         { type: 'paragraph', text: 'Serve il permesso **Impersona** sul modulo Utenti. Non puoi impersonare te stesso né un utente disattivato. Solo un super-admin può impersonare un altro super-admin. Ogni inizio e fine di impersonificazione resta registrato.' },
         { type: 'warning', text: 'Mentre impersoni, ogni operazione viene fatta a nome dell’altro utente.' },
       ],

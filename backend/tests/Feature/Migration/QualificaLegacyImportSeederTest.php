@@ -21,6 +21,7 @@ use App\Models\Tag;
 use App\Models\TaskTemplate;
 use App\Models\User;
 use App\Models\VatRate;
+use Database\Seeders\QualificaCatalog\BusinessFunctionCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Database\Seeders\QualificaLegacyImportSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -300,7 +301,9 @@ it('REQUIREMENT CHANGED (user directive 2026-10-14): adopts no static root, nest
     // behind the "[OLD] " prefix the legacy adds.
     Http::fake([
         fakeMigrationsBaseUrl().'/business-functions*' => Http::response([
-            'items' => [['id' => 9, 'name' => 'APL']],
+            // REQUIREMENT CHANGED (user decision 2026-10-19): the legacy sends its
+            // APL function under the organisation chart name.
+            'items' => [['id' => 9, 'name' => BusinessFunctionCatalogue::EMPLOYMENT_AGENCY, 'is_active' => true]],
             'pagination' => ['total' => 1],
         ]),
         fakeMigrationsBaseUrl().'/product-categories*' => Http::response([
@@ -343,15 +346,15 @@ it('REQUIREMENT CHANGED (user directive 2026-10-14): adopts no static root, nest
         ->and($manualApl->parent_id)->toBeNull()
         ->and(ProductCategory::query()->where('parent_id', $manualApl->id)->whereNotNull('old_id')->exists())->toBeFalse()
         // ...its legacy twin is nested under "Old category" like every legacy
-        // root, history only, on the "APL" function as sent (user directive
-        // 2026-10-13: no "APL OLD"), which is the seeded one, adopted (user
-        // directive 2026-10-14)...
+        // root, history only, on the APL function as sent, "Agenzia per il
+        // Lavoro" (user directive 2026-10-13: no "APL OLD"), which is the
+        // seeded one, adopted (user directive 2026-10-14)...
         ->and($legacyApl->is_active)->toBeFalse()
         ->and($manualApl->is_active)->toBeTrue()
         ->and($legacyApl->old_id)->toEqual(56)
         ->and($legacyApl->parent->name)->toBe(LegacyCategoryContainer::NAME)
-        ->and($legacyApl->businessFunction->name)->toBe('APL')
-        ->and(BusinessFunction::query()->where('name', 'APL')->sole()->old_id)->toEqual(9)
+        ->and($legacyApl->businessFunction->name)->toBe(BusinessFunctionCatalogue::EMPLOYMENT_AGENCY)
+        ->and(BusinessFunction::query()->where('name', BusinessFunctionCatalogue::EMPLOYMENT_AGENCY)->sole()->old_id)->toEqual(9)
         ->and($manualApl->business_function_id)->toBe($legacyApl->business_function_id)
         // ...and is never a classification target, unlike the manual one.
         ->and(ProductCategory::query()->whereKey([$legacyApl->id, ...$legacyApl->children()->pluck('id')])->where('is_selectable', true)->exists())->toBeFalse()

@@ -63,6 +63,7 @@ export const timeEntries = {
     noData: 'Nessun dato disponibile',
   },
   dayCard: {
+    absenceFullDay: 'giornata intera',
     expand: 'Espandi',
     collapse: 'Comprimi',
     utilization: 'Utilizzo',

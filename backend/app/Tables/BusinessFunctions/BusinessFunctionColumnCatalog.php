@@ -132,6 +132,8 @@ final class BusinessFunctionColumnCatalog
                 'filterable' => true,
                 'filterType' => 'set',
             ],
+            // Spec 0281: one count per kind of association.
+            ...BusinessFunctionUsageCounts::columns(),
             [
                 'id' => 'created_at',
                 'label' => 'businessFunctions.columns.created_at',

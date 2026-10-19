@@ -19,6 +19,7 @@ import { formatMinutesLabel } from '@/features/time-entries/time-entry-format'
 import { parseDateString } from '@/features/time-entries/time-entry-period'
 import { TimeEntryDayComposition } from '@/features/time-entries/days/time-entry-day-composition'
 import { TimeEntryDayEntriesTable } from '@/features/time-entries/days/time-entry-day-entries-table'
+import { TimeEntryDayAbsences } from '@/features/time-entries/days/time-entry-day-absences'
 import { TimeEntryDayNote } from '@/features/time-entries/days/time-entry-day-note'
 import type { DaySummary } from '@/features/time-entries/types'
 
@@ -101,6 +102,7 @@ export function TimeEntryDayCard({
                   {t(`timeEntries.filters.isActiveOptions.${day.is_active}`)}
                 </Badge>
               </div>
+              <TimeEntryDayAbsences absences={day.absences} />
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <div className="flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[10px] font-medium text-foreground">
                   <span className="text-muted-foreground">{t('timeEntries.kpi.tracked')}</span>

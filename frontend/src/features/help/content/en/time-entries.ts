@@ -99,6 +99,20 @@ const guide: HelpGuide = {
         },
       ],
     },
+    {
+      id: 'absences-and-target',
+      title: 'Absences and target',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Approved absences (see the **Absences** guide) change the day\'s target: with a full-day absence the target is zero; with an absence by hours the target is reduced by those hours. The day card shows the absence type and hours.',
+        },
+        {
+          type: 'note',
+          text: 'Requests still waiting for approval do not count: the target changes only once the request is approved.',
+        },
+      ],
+    },
   ],
 }
 

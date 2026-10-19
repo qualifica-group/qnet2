@@ -10,6 +10,7 @@ use App\Tables\BusinessFunctions\BusinessFunctionColumnCatalog;
 use App\Tables\BusinessFunctions\BusinessFunctionOperationalSitesColumn;
 use App\Tables\BusinessFunctions\BusinessFunctionOrganizationColumns;
 use App\Tables\BusinessFunctions\BusinessFunctionParentColumn;
+use App\Tables\BusinessFunctions\BusinessFunctionUsageCounts;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -68,10 +69,11 @@ class BusinessFunctionsTableDefinition extends AbstractTableDefinition
         // Eager-load manager/users + their avatar relation to avoid N+1 when
         // each row projects avatar_url for the manager and every associated
         // user, plus parent (spec 0010 REV) and operationalSites' primary
-        // address + city for the composed label (BusinessFunctionOperationalSitesColumn).
-        return BusinessFunction::query()->with([
+        // address + city for the composed label (BusinessFunctionOperationalSitesColumn),
+        // and the association counts (spec 0281).
+        return BusinessFunctionUsageCounts::apply(BusinessFunction::query()->with([
             'manager.avatar', 'users.avatar', 'parent', 'companies', 'operationalSites.addresses.city',
-        ]);
+        ]));
     }
 
     /**
@@ -136,6 +138,7 @@ class BusinessFunctionsTableDefinition extends AbstractTableDefinition
             'companies' => $row->companies->map(static fn (Company $company): array => ['id' => $company->id, 'label' => (string) $company->denomination])->all(),
             'users' => $row->users->map(fn (User $user): array => $this->userSummary($user))->all(),
             'operational_sites' => $this->operationalSitesColumn->summarize($row),
+            ...BusinessFunctionUsageCounts::summarize($row),
             'created_at' => $row->created_at,
         ];
     }

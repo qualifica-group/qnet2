@@ -1,0 +1,36 @@
+/** Saldi e spettanze assenze (spec 0278): radice `absences.balances.*`. Specchio di `en-absence-balances.ts`. */
+export const absenceBalances = {
+  title: 'Saldi assenze',
+  titleFor: 'Saldi assenze di {{name}}',
+  year: 'Anno',
+  empty: 'Nessun tipo di assenza scala un saldo.',
+  error: 'Impossibile caricare i saldi.',
+  editAllowance: 'Modifica spettanza',
+  negative: 'Residuo negativo',
+  columns: {
+    annual: 'Spettanza',
+    carriedOver: 'Riporto',
+    accrued: 'Maturato',
+    used: 'Goduto',
+    pending: 'In attesa',
+    residual: 'Residuo',
+  },
+  person: {
+    label: 'Persona',
+    placeholder: 'Le mie assenze',
+    search: 'Cerca una persona',
+    empty: 'Nessuna persona trovata',
+    error: 'Impossibile caricare le persone',
+  },
+  form: {
+    title: 'Spettanza {{type}}',
+    description: 'Ore per l\'anno {{year}}. Sono ammessi i decimali (es. 7,5).',
+    annual: 'Spettanza annua (ore)',
+    carried: 'Riporto (ore, anche negativo)',
+    invalidHours: 'Inserisci un numero di ore valido.',
+    annualNegative: 'La spettanza non puo\' essere negativa.',
+    save: 'Salva',
+    saved: 'Spettanza salvata.',
+    error: 'Impossibile salvare la spettanza.',
+  },
+}

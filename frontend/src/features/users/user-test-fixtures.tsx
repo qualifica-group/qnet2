@@ -3,6 +3,8 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen } from '@testing-library/react'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
+import { AuthContext, type AuthContextValue } from '@/features/auth/auth-context'
+import type { User } from '@/features/auth/types'
 import type { FieldPermission, ResourcePermissions } from '@/features/authorization/types'
 import type { EnumOption } from '@/features/config/types'
 import type { PersonalDataCard } from '@/features/personal-data/types'
@@ -123,16 +125,25 @@ export function userFixture(overrides: Partial<UserDetailWithPermissions> = {}):
   }
 }
 
-/** QueryClient (fresh per test) + router + confirm dialog, as the screens get them. */
-export function userWrapper() {
+/** The signed-in actor of the suites: someone else than the user on screen (`userFixture` is id 7). */
+export const ACTOR_AUTH = {
+  user: { id: 1 } as User,
+  isAuthenticated: true,
+  impersonator: null,
+} as AuthContextValue
+
+/** QueryClient (fresh per test) + router + confirm dialog + signed-in actor, as the screens get them. */
+export function userWrapper(auth: AuthContextValue = ACTOR_AUTH) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return {
     client,
     wrapper: ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={client}>
-        <MemoryRouter>
-          <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
-        </MemoryRouter>
+        <AuthContext.Provider value={auth}>
+          <MemoryRouter>
+            <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
+          </MemoryRouter>
+        </AuthContext.Provider>
       </QueryClientProvider>
     ),
   }

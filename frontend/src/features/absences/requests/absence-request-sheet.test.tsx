@@ -1,0 +1,181 @@
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import i18n from '@/i18n'
+import { AbsenceRequestSheet } from '@/features/absences/requests/absence-request-sheet'
+import { BALANCES, absenceWrapper, buildRequest, httpError } from '@/features/absences/requests/absence-request-fixtures'
+
+const createMock = vi.fn()
+const updateMock = vi.fn()
+const submitMock = vi.fn()
+const uploadMock = vi.fn()
+const typeOptionsMock = vi.fn()
+const TYPE_OPTIONS = [
+  { id: 1, name: 'Ferie', deducts_balance: true, requires_approval: true },
+  { id: 2, name: 'Malattia', deducts_balance: false, requires_approval: false },
+]
+vi.mock('@/features/absences/api', () => ({
+  fetchAbsenceTypeOptions: () => typeOptionsMock(),
+  fetchAbsenceBalances: () => Promise.resolve(BALANCES),
+  createAbsenceRequest: (payload: unknown) => createMock(payload),
+  updateAbsenceRequest: (id: number, payload: unknown) => updateMock(id, payload),
+  submitAbsenceRequest: (id: number) => submitMock(id),
+  uploadAbsenceAttachment: (id: number, file: File) => uploadMock(id, file),
+}))
+
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+
+const label = (key: string) => i18n.t(key)
+const onSaved = vi.fn()
+
+function renderSheet(request?: ReturnType<typeof buildRequest>) {
+  return render(<AbsenceRequestSheet open onOpenChange={vi.fn()} request={request} onSaved={onSaved} />, {
+    wrapper: absenceWrapper(),
+  })
+}
+
+async function pickType(name: string) {
+  fireEvent.keyDown(await screen.findByRole('combobox', { name: new RegExp(label('absences.requests.form.type')) }), {
+    key: 'ArrowDown',
+  })
+  fireEvent.click(await screen.findByRole('option', { name }))
+}
+
+/** Anchored: a required label also renders a trailing "*", and "Al" is a prefix of "Allegato". */
+const labelPattern = (key: string) =>
+  new RegExp(`^${label(key).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\*?$`)
+const dateField = (key: string) => screen.getByLabelText(labelPattern(key))
+
+beforeAll(async () => {
+  await i18n.changeLanguage('it')
+})
+
+beforeEach(() => {
+  createMock.mockReset()
+  updateMock.mockReset()
+  submitMock.mockReset()
+  uploadMock.mockReset()
+  typeOptionsMock.mockReset()
+  typeOptionsMock.mockResolvedValue(TYPE_OPTIONS)
+  onSaved.mockReset()
+})
+
+describe('AbsenceRequestSheet', () => {
+  it('says why the type select is empty when no active type exists', async () => {
+    typeOptionsMock.mockResolvedValue([])
+    renderSheet()
+
+    expect(await screen.findByText(label('absences.requests.form.typesEmpty'))).toBeInTheDocument()
+  })
+
+  it('does not show the empty-types hint when types exist', async () => {
+    renderSheet()
+    await pickType('Ferie')
+
+    expect(screen.queryByText(label('absences.requests.form.typesEmpty'))).not.toBeInTheDocument()
+  })
+
+  it('shows the required errors with the accessible triad and sends nothing', async () => {
+    renderSheet()
+    fireEvent.click(await screen.findByRole('button', { name: label('absences.requests.form.send') }))
+
+    const typeError = await screen.findByText(label('absences.requests.form.typeRequired'))
+    expect(typeError).toHaveAttribute('role', 'alert')
+    const trigger = screen.getByRole('combobox', { name: new RegExp(label('absences.requests.form.type')) })
+    expect(trigger).toHaveAttribute('aria-invalid', 'true')
+    expect(trigger.getAttribute('aria-describedby')).toContain(typeError.id)
+    expect(createMock).not.toHaveBeenCalled()
+  })
+
+  it('creates a full-day draft with the dates and the note', async () => {
+    createMock.mockResolvedValue(buildRequest({ status: 'draft' }))
+    renderSheet()
+    await pickType('Ferie')
+    fireEvent.change(dateField('absences.requests.form.startsOn'), { target: { value: '2026-11-02' } })
+    fireEvent.change(dateField('absences.requests.form.endsOn'), { target: { value: '2026-11-04' } })
+    fireEvent.change(screen.getByLabelText(label('absences.requests.form.note')), { target: { value: 'Mare' } })
+    expect(await screen.findByText(label('absences.requests.form.fullDayDuration'))).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: label('absences.requests.form.saveDraft') }))
+
+    await waitFor(() =>
+      expect(createMock).toHaveBeenCalledWith({
+        absence_type_id: 1,
+        is_full_day: true,
+        starts_on: '2026-11-02',
+        ends_on: '2026-11-04',
+        note: 'Mare',
+        submit: false,
+      }),
+    )
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+  })
+
+  it('switches to an hourly request: one day, duration in minutes, residual after the request, submit and attachment', async () => {
+    createMock.mockResolvedValue(buildRequest({ status: 'submitted' }))
+    uploadMock.mockResolvedValue(buildRequest())
+    renderSheet()
+    await pickType('Ferie')
+    expect(await screen.findByText(/Residuo attuale \(\d{4}\): 73h 20m/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('switch', { name: label('absences.requests.form.fullDay') }))
+    expect(screen.queryByLabelText(labelPattern('absences.requests.form.endsOn'))).not.toBeInTheDocument()
+    fireEvent.change(dateField('absences.requests.form.date'), { target: { value: '2026-11-02' } })
+    fireEvent.change(dateField('absences.requests.form.duration'), { target: { value: '02:30' } })
+    expect(await screen.findByText(/Residuo dopo la richiesta: 70h 50m/)).toBeInTheDocument()
+
+    const file = new File(['x'], 'certificato.pdf', { type: 'application/pdf' })
+    fireEvent.change(screen.getByLabelText(label('absences.requests.form.attachment')), { target: { files: [file] } })
+    fireEvent.click(screen.getByRole('button', { name: label('absences.requests.form.send') }))
+
+    await waitFor(() =>
+      expect(createMock).toHaveBeenCalledWith({
+        absence_type_id: 1,
+        is_full_day: false,
+        starts_on: '2026-11-02',
+        ends_on: '2026-11-02',
+        requested_minutes: 150,
+        note: null,
+        submit: true,
+      }),
+    )
+    await waitFor(() => expect(uploadMock).toHaveBeenCalledWith(5, file))
+  })
+
+  it('says a type that does not deduct has no balance', async () => {
+    renderSheet()
+    await pickType('Malattia')
+    expect(await screen.findByText(label('absences.requests.form.balanceNoDeduct'))).toBeInTheDocument()
+  })
+
+  it('wires a 422 on a field with the accessible triad', async () => {
+    createMock.mockRejectedValue(
+      httpError(422, { message: 'Invalid', errors: { starts_on: ['La richiesta si sovrappone a un\'altra.'] } }),
+    )
+    renderSheet()
+    await pickType('Ferie')
+    fireEvent.change(dateField('absences.requests.form.startsOn'), { target: { value: '2026-11-02' } })
+    fireEvent.change(dateField('absences.requests.form.endsOn'), { target: { value: '2026-11-04' } })
+    fireEvent.click(screen.getByRole('button', { name: label('absences.requests.form.send') }))
+
+    const alert = await screen.findByText('La richiesta si sovrappone a un\'altra.')
+    expect(alert).toHaveAttribute('role', 'alert')
+    const input = dateField('absences.requests.form.startsOn')
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(input.getAttribute('aria-describedby')).toContain(alert.id)
+    expect(onSaved).not.toHaveBeenCalled()
+  })
+
+  it('updates an existing draft and sends it with the submit action', async () => {
+    const draft = buildRequest({ status: 'draft', minutes: null })
+    updateMock.mockResolvedValue(draft)
+    submitMock.mockResolvedValue(buildRequest())
+    renderSheet(draft)
+
+    expect(await screen.findByText(label('absences.requests.form.editTitle'))).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: label('absences.requests.form.send') }))
+
+    await waitFor(() => expect(updateMock).toHaveBeenCalledWith(5, expect.objectContaining({ starts_on: '2026-11-02' })))
+    await waitFor(() => expect(submitMock).toHaveBeenCalledWith(5))
+    expect(createMock).not.toHaveBeenCalled()
+  })
+})

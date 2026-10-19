@@ -3,7 +3,62 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Mansioni, livello ed email condivise assegnati alle persone — VERDE, NON COMMITTATO (2026-10-19)
+## Persone -> Funzioni aziendali e responsabile di livello I dalla Pianta Organica — VERDE, COMMITTATO (2026-10-19)
+
+- Fonte: un foglio per funzione di `Pianta_Organica_Qualifica_Aggiornato 8.09.xlsx`. Dati in
+  `database/seeders/QualificaCatalog/OrgChartFunctions.php` (nome funzione del `BusinessFunctionCatalogue` =>
+  `heads` = righe "Livello I", il primo e' il manager; `members` = gli altri). Stessi abbinamenti nome->email di
+  `OrgChartRoster` (+ Yailin = `yailin.calderon`); esclusi Sepe Lorenzo e Zincone (senza account).
+- Decisioni utente: il responsabile e' il livello I del file Excel; APL (riga livello I vuota) e Segreteria (nessun
+  livello I) restano senza responsabile; A&C ha come manager Studio Casiello, e in "Risponde a" entrano Casiello e Centore.
+- `QualificaHrCatalogSeeder` Step 5 `assignFunctions` (stesso seeder, nessun seeder nuovo), tutto ADDITIVO: membri con
+  `syncWithoutDetaching` (anche i capi sono membri); `manager_id` riempito solo se vuoto (l'import legacy non lo scrive);
+  i capi vengono AGGIUNTI a `reportsTo` degli altri membri, mai se stessi, e chi gia' ne aveva li tiene (es. i commerciali
+  restano con Falzarano/Aliberti dal `ReportsToRoster` + Fabozzi).
+- Lanciato sul DB locale: 24 funzioni con membri, 22 con manager, 145 appartenenze, 240 righe "Risponde a"; rilancio senza doppioni.
+- Test: +3 in `QualificaHrCatalogSeederTest` (coerenza con roster/catalogo, capi = manager/superiori, additivo + manager
+  manuale tenuto). Manuale: nessun impatto (solo dati).
+- DA DECIDERE: se "Risponde a" debba essere SOSTITUITO dal livello I della Pianta (oggi additivo: restano i supervisori
+  del Mansionario di settembre).
+
+## FIX scheda utente: badge Mansioni vuoto — VERDE, COMMITTATO (2026-10-19)
+
+- Bug: in "Profilo > Mansioni" il badge era vuoto. Il backend (`EmploymentResource`) manda `job_roles` come `{id, name}`
+  (contratto spec 0271, `ref`), il frontend lo tipizzava `EmploymentRelationRef` (`{id, label}`) e lo passava senza
+  conversione: `RefBadges` leggeva `label` inesistente.
+- Fix: `features/users/types.ts` `job_roles: NamedRef[]`; `user-record.ts` `toRelationRefs(employment?.job_roles)`
+  (come `business_functions`). Fixture `user-form-employment.test.tsx` allineata al contratto reale (`name`).
+- Test: nuovo `user-detail.test.tsx` "job roles (spec 0271)" (rosso prima del fix); `src/features/users` 175/175,
+  `tsc -b --force` e ESLint puliti; verificato su /users/3 in browser headless. Manuale: nessun impatto.
+
+## Spec 0281 — Funzioni aziendali della pianta organica + conteggi in griglia — VERDE, COMMITTATO (2026-10-19)
+
+- Spec `docs/specs/0281-business-function-org-chart-and-usage-counts.xml` (D-1..D-6, AC-001..AC-006).
+- Seed: `QualificaCatalog/BusinessFunctionCatalogue` (24 funzioni della Pianta Organica 8.09, nomi SENZA codice,
+  tipo BU/BS; costante `EMPLOYMENT_AGENCY` = "Agenzia per il Lavoro") + `QualificaBusinessFunctionSeeder`, chiamato da
+  `QualificaCatalogSeeder` step 5 prima del Link seeder. Esistente per nome (senza maiuscole) -> invariato, solo tipo
+  mancante riempito. La categoria "APL" e gli operatori APL (`OperatorRoster::FUNCTION_WIDE_COMPETENCE`) ora puntano
+  ad "Agenzia per il Lavoro". "Consulenza" e "No funzione aziendale" restano.
+- Legacy (`../qnet`, non committato): `app/Support/Migration/LegacyBusinessFunctions.php` (id legacy -> nome qnet-2,
+  fusione BACK OFFICE 7 -> SEGRETERIA 20). `BusinessFunctionController` invia nome mappato o "[OLD] ..." + `is_active`,
+  esclude le fuse e unisce membri/responsabile; `UserMigrationController` e `ProductCategoryMigrationController`
+  mandano `business_function_id` via `referenceId()`. Verificato con tinker sui dati reali: 25 righe, 6 [OLD] non attive
+  (231, AVVALIMENTI, DIREZIONE GENERALE, HACCP, IT, PIANIFICAZIONE), Segreteria 11 utenti.
+- qnet-2 `BusinessFunctionsSource`: su creazione prende `is_active` dal record (assente -> true); adottata tiene il suo.
+- Griglia: `Tables/BusinessFunctions/BusinessFunctionUsageCounts` (sottoquery correlate, DISTINCT sulle righe prodotto):
+  `users_count`, `product_categories_count`, `competences_count`, `opportunities_count` visibili; `projects_count`,
+  `campaigns_count`, `purchase_requests_count`, `children_count` nascoste. Ordinabili, non filtrabili.
+- Test: nuovi `QualificaBusinessFunctionSeederTest`, `BusinessFunctionUsageCountsTest`, +2 in
+  `BusinessFunctionsSourceImportTest`; REQUIREMENT CHANGED (nome APL / colonne): `QualificaBusinessFunctionLinkSeederTest`,
+  `AssignableSwitchSeedingTest`, `QualificaOperatorSeederTest`, `QualificaLegacyImportSeederTest`, `BusinessFunctionTableTest`.
+  `composer test` 11803/11807 (solo `QuoteDocumentPdfTest`, LibreOffice assente); vitest help/business-functions/i18n
+  425/425; `tsc -b --force` 0 errori; ESLint e Pint puliti.
+- Manuale: guida in-app IT/EN sezione `counts`; Claude Docs (voce Funzioni aziendali + paragrafo import legacy).
+- DA DECIDERE: un DB dove l'import legacy e' gia' girato coi vecchi nomi (DB locale: "APL" old 8, "CONTABILITA'"...)
+  rilanciando il seed avrebbe doppioni (es. "APL" + "Agenzia per il Lavoro"): serve un riallineamento una tantum
+  (rinomina per old_id, [OLD]+non attiva, fusione BACK OFFICE) oppure re-import da zero. Seed NON lanciato in locale.
+
+## Mansioni, livello ed email condivise assegnati alle persone — VERDE, COMMITTATO (2026-10-19)
 
 - Fonti: `Elenco_Dipendenti_Qualifica_Aggiornato 8.csv` (Mansione, Email aziendale) + `Pianta_Organica ... 8.09.xlsx`
   (Livello). Abbinamento per nome -> account: 129 persone; senza account Lorenzo Sepe e Alessandro Zincone. Abbinamenti
@@ -21,8 +76,44 @@
 - Lanciato sul DB locale: 67 mansioni, 150 assegnazioni, 129 condizioni con livello, 137 email. Rilancio senza doppioni.
 - Test: `QualificaHrCatalogSeederTest` (+4: coerenza roster, assegnazione, solo-se-vuoto/additivo, account mancante);
   `tests/Feature/Seeding` 170/170. Manuale: nessun impatto (solo dati).
-- Rinviato dall'utente ("dopo"): appartenenza alle Funzioni aziendali dalla colonna "Funzione aziendale" del CSV.
+- Appartenenza alle Funzioni aziendali: fatta dopo dai fogli della Pianta (vedi voce "Persone -> Funzioni aziendali").
   67 utenti del DB non nel CSV: `~/Downloads/Utenti_DB_non_in_elenco_dipendenti.xlsx`, nessuna azione decisa.
+
+## Spec 0278 — HR passo 6a: assenze (tipi, richieste, approvazione, saldi, segnatempo) — VERDE, COMMITTATO (2026-10-19)
+
+- Spec `docs/specs/0278-hr-absence-requests.xml` (D-1..D-13, AC-001..AC-022, AC-018 [revised]); 0279 (calendario
+  della squadra) solo impostata, D-1 aperta: una persona senza squadra vede solo se stessa o anche i colleghi?
+- Decisioni utente: saldi in ORE (minuti interi) a ratei mensili 1/12 (mese conta con >= 15 giorni in forza),
+  riporto automatico 1/1 00:45 (`absences:carry-over {year?}`); UN livello di approvazione (responsabile diretto;
+  ripiego responsabili delle funzioni di appartenenza, poi titolari `absence-requests.manageAll`); assenza approvata
+  riduce il target del segnatempo. Stati draft|submitted|approved|rejected|cancelled.
+- Tabelle `absence_types`, `absence_requests` (minuti fissati all'invio), pivot `absence_request_approver` (snapshot),
+  `absence_allowances`. Permessi `absence-types.*`, `absence-requests.viewAny|create|manageAll` (solo super-admin:
+  dopo il deploy `php artisan permissions:sync`). Seed produzione `QualificaAbsenceTypeSeeder` (Ferie, Permesso,
+  Malattia): su un DB gia' installato va lanciato a mano (`php artisan db:seed --class=QualificaAbsenceTypeSeeder`),
+  altrimenti il catalogo e' vuoto e il form lo segnala (`absences.requests.form.typesEmpty`); lanciato sul DB locale. Morph map in `AppServiceProvider`. Menu "Assenze" dopo Segnatempo, "Tipi di assenza" in Configurazione.
+- Backend: `Services/Absences/Requests/*` (DurationCalculator, OverlapGuard, ApproverResolver, `AbsenceRequestVisibility`
+  = UNICA visibilita' 404, Capabilities, Service, Transitions, Notifier con `DB::afterCommit`), `Balances/*`
+  (AccrualCalculator puro, BalanceBuilder, CarryOverService); rotte `routes/api/absence-{types,requests,balances}.php`
+  da `hr.php`. Griglia: TRE domini (`absence-requests`, `-to-approve`, `-all`, base astratta) perche' il framework
+  tabellare non passa parametri generici. Allegato su `/api/absence-requests/{id}/attachment`; `AttachmentPolicy`
+  nega view/delete degli allegati fuori da `config('attachments.attachable_types')`.
+- Segnatempo: `TimeEntryAbsenceResolver` (1 query) + `DayAbsenceIndex::reduceTarget` (formula unica, anche team
+  pulse); DaySummary `absences[]`; overview `daily_target_minutes` = target base (prima: ultimo giorno lavorativo).
+- Frontend: `features/absences/{requests,balances}`, `features/absence-types`, card giorno segnatempo; i18n
+  `{it,en}-absence{s,-types,-balances}.ts`; guide `absences`, `absence-types` (HELP_GUIDE_KEYS 91), `time-entries`.
+- Regola: una richiesta a cavallo d'anno conta tutta nell'anno di `starts_on` (da confermare con l'utente).
+- Fix post-verifica (utente): l'ufficio del personale di ripiego include i super-admin (`Gate::before`, nessun
+  permesso salvato: `User::permission()` non li trovava -> 422 "No approver is available"); header della pagina
+  Assenze come il Segnatempo (solo breadcrumb + azione, niente titolo/sottotitolo).
+- Verifica (verifier indipendente + rerun): `composer test` 11790/11795 (fallimenti: `QuoteDocumentPdfTest`
+  LibreOffice; `AbsenceFoundationTest` rollback, corretto con step calcolato, rerun aree assenze+segnatempo 222/222);
+  vitest 8740/8741 (1 flaky `use-task-kanban-filters`, fuori scope); `tsc -b --force` 0 errori; ESLint e Pint puliti.
+  Non verificato a vista: assenza di scroll orizzontale a 375 px.
+- Manuale Claude Docs aggiornato: Organigramma (Parte 1, mancava), Tipi di assenza (Parte 2), Assenze + target nel
+  Segnatempo (Parte 3), elenchi del menu. Mancano ancora CCNL, Mansioni, Attivita' (HR 0271/0272).
+- Prossimo: decisione su 0279 D-1, poi `/build-feature` 0279. Commit separato dagli altri lavori nel working tree
+  (0280, barra azioni utente).
 
 ## Spec 0280 — Funzioni aziendali attive/non attive — VERDE, COMMITTATO (2026-10-19)
 
@@ -44,6 +135,21 @@
   badge "Non attiva", cella griglia, payload solo se cambiato, i18n IT/EN, guida in-app IT/EN, manuale Claude Docs
   (voce Funzioni aziendali).
 - `ValidatesEmployment.php` e' a 375 righe (soglia 300 gia' superata prima): candidato a uno split.
+
+## Barra azioni nel dettaglio utente — VERDE, COMMITTATO (2026-10-19)
+
+- FE `features/users/user-actions-bar.tsx` (banda `border-y bg-muted/40` tra identita' e KPI, come
+  `TaskActionsBar`/`ContractActionsBar`, colori da `ACTION_BUTTON_VARIANT`): Reinvia benvenuto (spostato
+  dall'header), Attiva/Disattiva (PATCH `is_active`, confirm warning solo per disattivare, mai su se stessi),
+  Impersona (confirm, `useAuth().impersonate`, poi `/dashboard`; nascosto se gia' in impersonificazione),
+  Elimina (confirm destructive; 403/422 -> `deleteForbidden`, 409 -> `deleteInUse`).
+- Logica in `use-user-record-actions.ts`; `UserLeaveReason = 'deleted' | 'impersonated'`; `UserDetailView.onLeave`:
+  screen -> `onSaved` (sheet) o `navigate('/users')` sul delete in pagina; sheet condiviso -> chiude.
+- `user-action-errors.ts` (`backendErrorMessage`) condiviso con `use-resend-welcome-email.ts`.
+- BE `UsersAuthorization::actionPermissions` + `actions()` aggiungono `impersonate` (policy + non se stessi +
+  target attivo). Test `tests/Feature/Users/UserDetailActionsTest.php`; FE `user-actions-bar.test.tsx`
+  (sostituisce `user-detail-welcome.test.tsx`, stessi casi AC-020); `userWrapper` ora fornisce `AuthContext`.
+- i18n `{it,en}-users-detail-actions.ts` -> `users.detail.actions`. Guide `users` IT/EN + Manuale Claude Docs aggiornati.
 
 ## Mansioni, Attivita' e CCNL dalla "Pianta Organica" nel seed di produzione — VERDE, COMMITTATO (2026-10-19)
 
@@ -357,7 +463,7 @@
 - Manuale Claude Docs aggiornato (Utenti: riga flag tolta, "Responsabile delle funzioni" modificabile, header; Funzioni
   aziendali). Guide in-app users, business-functions, org-chart IT+EN. Manca ancora la sezione Organigramma nel manuale.
 
-## Spec 0275 — Funzione aziendale di appartenenza (reparto) unica tra Funzioni aziendali e scheda utente — VERDE, NON COMMITTATO (2026-10-19)
+## Spec 0275 — Funzione aziendale di appartenenza (reparto) unica tra Funzioni aziendali e scheda utente — VERDE, COMMITTATO (2026-10-19)
 
 - Decisioni utente 2026-10-19: appartenenza e competenze restano SEPARATE (niente unione). Appartenenza = pivot
   `business_function_user` (lo stesso degli "Utenti associati"), multipla, OBBLIGATORIA per utente attivo non di
@@ -399,7 +505,7 @@
   funzioni" modificabile dalla scheda utente (supera 0275 D-6); la corona d'angolo della card organigramma dipende
   ancora da `is_manager`.
 
-## ORGANIGRAMMA GRAFICO "STILE BIZNEO" (SPEC 0274) — VERDE, NON COMMITTATO (2026-10-19)
+## ORGANIGRAMMA GRAFICO "STILE BIZNEO" (SPEC 0274) — VERDE, COMMITTATO (2026-10-19)
 
 - Decisioni utente 2026-10-19: l'albero a righe di 0273 e' ELIMINATO; resta un organigramma grafico (riquadri dall'alto
   al basso, linee curve SVG, pallino "+N", zoom), persone di una funzione in un pannello laterale (non riquadri),

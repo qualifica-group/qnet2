@@ -1,11 +1,9 @@
 import { useTranslation } from 'react-i18next'
-import { Boxes, MapPin, Send, Shield, Target } from 'lucide-react'
+import { Boxes, MapPin, Shield, Target } from 'lucide-react'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/user-avatar'
 import { FunctionBadges } from '@/features/users/function-badges'
-import { useResendWelcomeEmail } from '@/features/users/use-resend-welcome-email'
 import type { AssignmentSummary } from '@/features/users/user-assignment'
 import type { UserDetail } from '@/features/users/types'
 
@@ -15,17 +13,13 @@ import type { UserDetail } from '@/features/users/types'
  * together — the same split `opportunity-detail-header.tsx` makes.
  */
 
-interface UserDetailHeaderProps {
-  user: UserDetail
-  /** Whether the actor may update this user: gates the resend-welcome action (spec 0177). */
-  canUpdate?: boolean
-}
-
-/** Identity band: avatar, name, email subtitle, account/role pills. No edit action: the record edits in place (spec 0222). */
-export function UserDetailHeader({ user, canUpdate = false }: UserDetailHeaderProps) {
+/**
+ * Identity band: avatar, name, email subtitle, account/role pills. No edit
+ * action: the record edits in place (spec 0222); the domain actions live in
+ * `UserActionsBar`, right under it.
+ */
+export function UserDetailHeader({ user }: { user: UserDetail }) {
   const { t } = useTranslation()
-  const resendWelcome = useResendWelcomeEmail(user.id)
-  const showResend = user.must_set_password && canUpdate
   const memberships = user.employment?.business_functions ?? []
   const memberIds = memberships.map((item) => item.id)
   const functions = [
@@ -56,20 +50,6 @@ export function UserDetailHeader({ user, canUpdate = false }: UserDetailHeaderPr
             </Badge>
           ))}
         </>
-      }
-      actions={
-        showResend ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            disabled={resendWelcome.isPending}
-            onClick={() => resendWelcome.mutate()}
-          >
-            <Send className="size-3.5" aria-hidden="true" />
-            {t('users.detail.resendWelcome')}
-          </Button>
-        ) : null
       }
     />
   )

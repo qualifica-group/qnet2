@@ -94,6 +94,8 @@ export const navigation = {
   collectiveAgreements: 'CCNL',
   jobRoles: 'Mansioni',
   jobActivities: 'Attività',
+  absences: 'Assenze',
+  absenceTypes: 'Tipi di assenza',
   orgChart: 'Organigramma',
   purchaseRequestPriorities: 'Priorità RDA',
   purchaseOrderStatuses: 'Stati ODA',

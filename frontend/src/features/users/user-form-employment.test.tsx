@@ -110,7 +110,7 @@ function userWithEmployment(): UserDetailWithPermissions {
   return userFixture({
     employment: employmentFixture({
       job_role_ids: [3],
-      job_roles: [{ id: 3, label: 'Backend developer' }],
+      job_roles: [{ id: 3, name: 'Backend developer' }],
       relationship_type: 'employee',
       hired_at: '2026-01-15',
       standard_daily_minutes: 480,

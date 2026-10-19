@@ -9,6 +9,7 @@ use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\Role;
 use App\Models\User;
+use Database\Seeders\QualificaCatalog\BusinessFunctionCatalogue;
 use Database\Seeders\QualificaCatalog\OperatorRoster;
 use Database\Seeders\QualificaOperatorSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -159,7 +160,8 @@ it('leaves a "no operatore" profile unassignable: physical Sede only, no compete
 // changed from the APL category row); Martina Mosca mirrors Michela Fabozzi.
 it('seeds the APL supervisors like Rosa Falzarano, competent for APL, and Martina Mosca like Michela Fabozzi', function (): void {
     $sites = standInSites(['FRATTAMAGGIORE 1 (HQ)', 'Frattamaggiore 2']);
-    $function = BusinessFunction::factory()->create(['name' => 'APL']);
+    // REQUIREMENT CHANGED (user decision 2026-10-19): the APL function is the chart's "Agenzia per il Lavoro".
+    $function = BusinessFunction::factory()->create(['name' => BusinessFunctionCatalogue::EMPLOYMENT_AGENCY]);
 
     test()->seed(QualificaOperatorSeeder::class);
 

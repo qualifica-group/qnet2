@@ -213,3 +213,23 @@ describe('UserDetailView — reports_to (spec 0166 AC-015)', () => {
     expect(reportsToRow).toHaveTextContent('—')
   })
 })
+
+describe('UserDetailView — job roles (spec 0271)', () => {
+  it('names every job role from the `{id, name}` refs the API sends', async () => {
+    renderDetail(
+      user({
+        employment: {
+          ...employment([]),
+          job_role_ids: [13, 12],
+          job_roles: [
+            { id: 13, name: 'Software developer' },
+            { id: 12, name: 'Software development lead' },
+          ],
+        },
+      }),
+    )
+
+    await waitFor(() => expect(screen.getByText('Software developer')).toBeInTheDocument())
+    expect(screen.getByText('Software development lead')).toBeInTheDocument()
+  })
+})

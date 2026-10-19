@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\DataObjects\TimeEntries\DayAbsenceData;
 use App\DataObjects\TimeEntries\TimeEntryDaySummaryData;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -36,6 +37,12 @@ class TimeEntryDaySummaryResource extends JsonResource
             'status' => $day->status->value,
             'day_note' => $day->dayNote,
             'entries' => TimeEntryResource::collection($day->entries),
+            'absences' => array_map(static fn (DayAbsenceData $absence): array => [
+                'id' => $absence->id,
+                'absence_type_name' => $absence->absenceTypeName,
+                'is_full_day' => $absence->isFullDay,
+                'minutes' => $absence->minutes,
+            ], $day->absences),
         ];
     }
 }

@@ -5,6 +5,8 @@ import {
   BookUser,
   Briefcase,
   CalendarClock,
+  CalendarCog,
+  CalendarOff,
   Building2,
   Circle,
   ClipboardList,
@@ -134,6 +136,9 @@ const iconMap: Record<string, LucideIcon> = {
   'file-spreadsheet': FileSpreadsheet,
   // Spec 0270: "Andamento mensile" under Controllo di gestione.
   'trending-up': TrendingUp,
+  // Spec 0278: "Assenze" and "Tipi di assenza".
+  'calendar-off': CalendarOff,
+  'calendar-cog': CalendarCog,
 }
 
 export function resolveIcon(name: string | null): LucideIcon {

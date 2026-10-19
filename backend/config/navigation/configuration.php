@@ -41,6 +41,13 @@ return [
             'permission' => 'collective-agreements.view',
         ],
         [
+            'key' => 'absence-types',
+            'label' => 'navigation.absenceTypes',
+            'icon' => 'calendar-cog',
+            'route' => '/absence-types',
+            'permission' => 'absence-types.view',
+        ],
+        [
             'key' => 'sectors',
             'label' => 'navigation.sectors',
             'icon' => 'list-tree',

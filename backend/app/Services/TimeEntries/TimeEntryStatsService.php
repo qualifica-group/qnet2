@@ -25,9 +25,9 @@ use App\Models\User;
  *     period's working days instead (D-11 names them "del periodo", never
  *     "filtrati" — the day filter never removes a working day from this
  *     denominator); `anomalies` intersects both (filtered AND working);
- *     `daily_target_minutes` is the LAST working day's target in the full
- *     period, or the same "target di oggi" figure `meta.
- *     daily_target_minutes` uses when the period has none.
+ *     `daily_target_minutes` is the person's base target (the same figure as
+ *     `meta.daily_target_minutes`); approved absences lower the per-day
+ *     targets summed into `period_target_minutes`, not this base.
  *   - pulse: skips the day filter entirely (D-11: "IGNORA daily_statuses e
  *     is_active"), restricts to the period's working days, and clusters
  *     ENTRY minutes by task type across them.
@@ -58,7 +58,7 @@ final class TimeEntryStatsService
 
         return [
             'period' => ['date_from' => $set->period->dateFrom, 'date_to' => $set->period->dateTo],
-            'daily_target_minutes' => $this->lastWorkingDayTarget($workingDays) ?? $set->baseTargetMinutes,
+            'daily_target_minutes' => $set->baseTargetMinutes,
             'period_target_minutes' => $periodTargetMinutes,
             'working_days' => count($workingDays),
             'tracked_minutes' => $trackedMinutes,
@@ -125,21 +125,6 @@ final class TimeEntryStatsService
     private function countByStatus(array $days, TimeEntryDailyStatus $status): int
     {
         return count(array_filter($days, static fn (TimeEntryDaySummaryData $day): bool => $day->status === $status));
-    }
-
-    /**
-     * $workingDays is chronological ascending (built off TimeEntryPeriod::
-     * dates()), so the last element IS the period's last working day.
-     *
-     * @param  list<TimeEntryDaySummaryData>  $workingDays
-     */
-    private function lastWorkingDayTarget(array $workingDays): ?int
-    {
-        if ($workingDays === []) {
-            return null;
-        }
-
-        return end($workingDays)->targetMinutes;
     }
 
     /**

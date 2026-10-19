@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\TimeEntries;
 
+use App\DataObjects\TimeEntries\DayAbsenceData;
 use App\DataObjects\TimeEntries\TimeEntryDaySummaryData;
 use App\DataObjects\TimeEntries\TimeEntryFilterData;
 use App\Enums\TimeEntryDailyStatus;
@@ -27,9 +28,10 @@ final class TimeEntryDayBuilder
      * @param  list<string>  $dates
      * @param  Collection<int, TimeEntry>  $entries  entry-level (F) filtered, DETAIL_RELATIONS eager-loaded
      * @param  array<string, string>  $notesByDate
+     * @param  array<string, list<DayAbsenceData>>  $absencesByDate  approved absences of the person, by date
      * @return list<TimeEntryDaySummaryData>
      */
-    public function build(array $dates, Collection $entries, array $notesByDate, int $baseTargetMinutes): array
+    public function build(array $dates, Collection $entries, array $notesByDate, int $baseTargetMinutes, array $absencesByDate = []): array
     {
         $entriesByDate = $entries->groupBy(static fn (TimeEntry $entry): string => $entry->date->format('Y-m-d'));
 
@@ -39,6 +41,7 @@ final class TimeEntryDayBuilder
                 $entriesByDate->get($date, collect()),
                 $notesByDate[$date] ?? null,
                 $baseTargetMinutes,
+                $absencesByDate[$date] ?? [],
             ),
             $dates,
         );
@@ -70,8 +73,9 @@ final class TimeEntryDayBuilder
 
     /**
      * @param  Collection<int, TimeEntry>  $dayEntries
+     * @param  list<DayAbsenceData>  $absences
      */
-    private function buildDay(string $date, Collection $dayEntries, ?string $note, int $baseTargetMinutes): TimeEntryDaySummaryData
+    private function buildDay(string $date, Collection $dayEntries, ?string $note, int $baseTargetMinutes, array $absences): TimeEntryDaySummaryData
     {
         $sortedEntries = $dayEntries->sort(function (TimeEntry $a, TimeEntry $b): int {
             $byStartTime = $this->startTimeSortKey($a) <=> $this->startTimeSortKey($b);
@@ -80,7 +84,7 @@ final class TimeEntryDayBuilder
         })->values();
 
         $isNonWorkingDay = $this->calendar->isNonWorkingDay($date);
-        $targetMinutes = $isNonWorkingDay ? 0 : $baseTargetMinutes;
+        $targetMinutes = $isNonWorkingDay ? 0 : DayAbsenceIndex::reduceTarget($baseTargetMinutes, $absences);
         $totalMinutes = (int) $sortedEntries->sum('minutes');
 
         return new TimeEntryDaySummaryData(
@@ -94,6 +98,7 @@ final class TimeEntryDayBuilder
             utilizationPercentage: $targetMinutes > 0 ? round($totalMinutes / $targetMinutes * 100, 2) : 0.0,
             status: TimeEntryDailyStatus::forTotals($targetMinutes, $totalMinutes, $isNonWorkingDay),
             dayNote: $note,
+            absences: $absences,
             entries: $sortedEntries,
         );
     }

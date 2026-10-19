@@ -191,6 +191,7 @@ Requisito di prodotto da sviluppare in una fase successiva, sul modello delle ap
 3. Allocazioni e costo del personale (§7).
 4. Organigramma (§6).
 5. Cataloghi e assegnazioni (§8), una spec per area.
-6. Assenze (§11).
+6. Assenze (§11): tipi, richieste, approvazione di un livello, saldi in ore e target del segnatempo presenti (spec
+   0278); calendario della squadra in spec 0279.
 
 Ogni passo: spec in `docs/specs/` con `/plan-feature`, importer (§10), guida in-app IT/EN e manuale utente.

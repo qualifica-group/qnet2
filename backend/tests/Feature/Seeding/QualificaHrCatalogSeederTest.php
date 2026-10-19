@@ -4,15 +4,19 @@ use App\Enums\ContactTypeEnum;
 use App\Enums\RelationshipTypeEnum;
 use App\Http\Requests\JobActivities\StoreJobActivityRequest;
 use App\Http\Requests\JobRoles\StoreJobRoleRequest;
+use App\Models\BusinessFunction;
 use App\Models\CollectiveAgreement;
 use App\Models\EmploymentContract;
 use App\Models\JobActivity;
 use App\Models\JobRole;
 use App\Models\PersonalData;
 use App\Models\User;
+use Database\Seeders\QualificaBusinessFunctionSeeder;
+use Database\Seeders\QualificaCatalog\BusinessFunctionCatalogue;
 use Database\Seeders\QualificaCatalog\CollectiveAgreementCatalogue;
 use Database\Seeders\QualificaCatalog\JobRoleCatalogue;
 use Database\Seeders\QualificaCatalog\OperatorRoster;
+use Database\Seeders\QualificaCatalog\OrgChartFunctions;
 use Database\Seeders\QualificaCatalog\OrgChartRoster;
 use Database\Seeders\QualificaCatalog\StaffRoster;
 use Database\Seeders\QualificaHrCatalogSeeder;
@@ -191,4 +195,62 @@ it('skips a listed person without an account', function () {
     $this->seed(QualificaHrCatalogSeeder::class);
 
     expect(EmploymentContract::query()->exists())->toBeFalse();
+});
+
+// Who belongs to which business function and who heads it (user directive
+// 2026-10-19): one sheet of the "Pianta Organica" per function, its
+// "Livello I" rows as the manager and as the members' superiors.
+
+function orgChartFunction(string $name): BusinessFunction
+{
+    return BusinessFunction::query()->where('name', $name)->sole();
+}
+
+it('names only catalogue functions and org chart people, each person in a function', function () {
+    $emails = collect(OrgChartFunctions::FUNCTIONS)->flatMap(fn (array $function): array => [...$function['heads'], ...$function['members']]);
+
+    expect(array_diff(array_keys(OrgChartFunctions::FUNCTIONS), array_keys(BusinessFunctionCatalogue::FUNCTIONS)))->toBe([])
+        ->and($emails->unique()->diff(array_keys(OrgChartRoster::PEOPLE))->values()->all())->toBe([])
+        ->and(collect(OrgChartRoster::PEOPLE)->keys()->diff($emails)->values()->all())->toBe([]);
+
+    foreach (OrgChartFunctions::FUNCTIONS as $function) {
+        expect(array_intersect($function['heads'], $function['members']))->toBe([]);
+    }
+});
+
+it('makes the heads the managers and superiors of their function members, never their own', function () {
+    $this->seed(QualificaBusinessFunctionSeeder::class);
+    $head = rosterPerson('ciro.cacciapuoti@qualificagroup.com');
+    $developer = rosterPerson('nicola.eliseo@qualificagroup.com');
+    $commercialHead = rosterPerson('michela.fabozzi@qualificagroup.com');
+    $safetyHead = rosterPerson('fernando.annunziata@qualificagroup.com');
+
+    $this->seed(QualificaHrCatalogSeeder::class);
+
+    expect(orgChartFunction('Sviluppo Software')->manager_id)->toBe($head->id)
+        ->and(orgChartFunction('Sviluppo Software')->users()->pluck('users.id')->all())->toEqualCanonicalizing([$head->id, $developer->id])
+        ->and($developer->employment->reportsTo()->pluck('users.id')->all())->toBe([$head->id])
+        ->and($head->employment->reportsTo()->exists())->toBeFalse()
+        ->and(orgChartFunction('Sicurezza')->manager_id)->toBe($safetyHead->id)
+        ->and($safetyHead->employment->reportsTo()->pluck('users.id')->all())->toBe([$commercialHead->id])
+        ->and($commercialHead->employment->reportsTo()->exists())->toBeFalse()
+        ->and(orgChartFunction(BusinessFunctionCatalogue::EMPLOYMENT_AGENCY)->manager_id)->toBeNull();
+});
+
+it('adds members and superiors without removing, and keeps a manager already set', function () {
+    $this->seed(QualificaBusinessFunctionSeeder::class);
+    $head = rosterPerson('ciro.cacciapuoti@qualificagroup.com');
+    $developer = rosterPerson('nicola.eliseo@qualificagroup.com');
+    $manualSuperior = rosterPerson('anna.castaldo@qualificagroup.com');
+    $manualMember = User::factory()->create();
+    orgChartFunction('Sviluppo Software')->update(['manager_id' => $manualSuperior->id]);
+    orgChartFunction('Sviluppo Software')->users()->attach($manualMember);
+    $developer->employment->reportsTo()->attach($manualSuperior);
+
+    $this->seed(QualificaHrCatalogSeeder::class);
+    $this->seed(QualificaHrCatalogSeeder::class);
+
+    expect(orgChartFunction('Sviluppo Software')->manager_id)->toBe($manualSuperior->id)
+        ->and(orgChartFunction('Sviluppo Software')->users()->pluck('users.id')->all())->toEqualCanonicalizing([$head->id, $developer->id, $manualMember->id])
+        ->and($developer->employment->reportsTo()->pluck('users.id')->all())->toEqualCanonicalizing([$manualSuperior->id, $head->id]);
 });

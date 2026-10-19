@@ -4,6 +4,7 @@ use App\Models\BusinessFunction;
 use App\Models\EmploymentProfile;
 use App\Models\ProductCategory;
 use App\Models\User;
+use Database\Seeders\QualificaCatalog\BusinessFunctionCatalogue;
 use Database\Seeders\QualificaCatalog\StaffRoster;
 use Database\Seeders\QualificaOperatorSeeder;
 use Database\Seeders\QualificaStaffSeeder;
@@ -39,7 +40,8 @@ if (! function_exists('switchSeedLinesOf')) {
 it('D-4: switches the operators on or off and gives the switched-off ones every FORMAZIONE category', function (): void {
     // Upper case, like the imported functions: the roster's "Formazione" must still match.
     $formazione = BusinessFunction::factory()->create(['name' => 'FORMAZIONE']);
-    $apl = BusinessFunction::factory()->create(['name' => 'APL']);
+    // REQUIREMENT CHANGED (user decision 2026-10-19): the APL function is the chart's "Agenzia per il Lavoro".
+    $apl = BusinessFunction::factory()->create(['name' => BusinessFunctionCatalogue::EMPLOYMENT_AGENCY]);
     $root = ProductCategory::factory()->create(['name' => 'Formazione', 'business_function_id' => $formazione->id]);
     $selfEmployment = ProductCategory::factory()->childOf($root)->create(['name' => 'Autoimpiego']);
 

@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0278 — Modulo HR passo 6a: tipi di assenza, richieste con approvazione del responsabile, saldi in ore a
+  ratei mensili, notifiche, effetto sul target del segnatempo. Il calendario della squadra e' la spec 0279.
+-->
+<spec id="0278-hr-absence-requests" status="approved" owner="utente" date="2026-10-19">
+
+  <goal>
+    La persona chiede ferie, permessi e altre assenze dall'app; il responsabile diretto le approva o le rifiuta;
+    l'ufficio del personale vede tutto, imposta le spettanze e annulla. Ogni persona vede il proprio saldo in ore
+    per tipo e anno, e il segnatempo non segna "sotto target" un giorno di assenza approvata.
+  </goal>
+
+  <context>
+    Fonte: `docs/product/hr.md` §11 (D-4). Il legacy non ha dati di assenze: nessun importer.
+    Fatti verificati nel repo:
+    - Calendario: `App\Services\TimeEntries\WorkCalendar` (weekend, 10 festivita' fisse, Pasqua e Pasquetta;
+      date `Y-m-d`, senza timezone). Ore giornaliere: `DailyTargetResolver::resolve(?EmploymentProfile)` =
+      max(0, standard_daily_minutes - break_daily_minutes), fallback `config('time_entries.default_daily_minutes')`.
+    - Target del segnatempo: `TimeEntryDayBuilder::buildDay` (lista giorni, overview/stats via
+      `TimeEntryStatsService`, export) e `TimeEntryTeamPulseService` (target = resolve x giorni lavorativi).
+      `TimeEntryDaySummaryResource` = shape DaySummary.
+    - Superiori: `EmploymentProfile::reportsTo()` (pivot `employment_profile_manager`, piu' superiori, spec 0166);
+      discendenti: `TimeEntrySubordinateResolver::descendantIds()` (attivi). Funzioni di appartenenza: pivot
+      `business_function_user` (spec 0275), responsabile = `business_functions.manager_id`.
+    - Modello di approvatore: `PurchaseRequestApproverResolver` (superiori attivi, poi responsabile di funzione).
+    - Notifiche: modello `PurchaseRequestSubmittedNotification` (database + mail, `ShouldQueue`, mail saltata
+      senza indirizzo, `NotificationData`, `action_url` = path interno risolto per destinatario).
+    - Allegati: `HasAttachments` + `AttachmentService::storeFor`; gli endpoint generici `/api/attachments` usano i
+      permessi `attachments.*` e non conoscono la visibilita' delle assenze.
+    - Permessi: abilities dichiarate nella Policy (`abilities()`), sincronizzate con `permissions:sync`; schema
+      `time-entries.manageAll` per "vede e gestisce tutti". Griglie: `TableDefinition` registrate
+      (`/api/tables/{domain}/...`). Menu: `config/navigation/*.php`. Scheduler: `routes/console.php`.
+    - Profilo d'impiego: `hired_at`, `terminated_at` su `employment_profiles`.
+
+    Decisioni utente 2026-10-19:
+    - D-1 Saldi in ORE (memorizzati in minuti interi). L'ufficio del personale imposta per persona, tipo e anno la
+      spettanza annua; si matura a ratei mensili di 1/12; il residuo dell'anno precedente passa all'anno nuovo con
+      un comando automatico.
+    - D-2 Un solo livello di approvazione: il responsabile diretto. L'ufficio del personale vede tutto, imposta le
+      spettanze e annulla, ma NON approva (salvo D-7, ultimo ripiego). Stati: draft, submitted, approved, rejected,
+      cancelled (lo stato "approvata dal responsabile" del documento di prodotto non serve).
+    - D-3 Un'assenza approvata riduce il target del segnatempo del giorno.
+    - D-4 Due spec: questa (0278) e il calendario della squadra (0279).
+
+    Decisioni proposte (da validare con la spec):
+    - D-5 Catalogo `absence_types`: nome, `deducts_balance` (scala un saldo), `requires_approval`, `is_active`,
+      `sort_order`. Un tipo usato da una richiesta non si cancella (409), si disattiva. Il seed di produzione
+      (`QualificaProductionDataSeeder`) crea Ferie (scala, approvazione), Permesso (scala, approvazione),
+      Malattia (non scala, senza approvazione); il seed pulito `DatabaseSeeder` non li crea.
+    - D-6 Durata di una richiesta, fissata all'invio (`minutes` non cambia piu' anche se cambia l'orario):
+      giornata intera = giorni lavorativi tra `starts_on` e `ends_on` (WorkCalendar) x ore giornaliere della persona
+      (`DailyTargetResolver`); a ore = un solo giorno lavorativo, `minutes` indicati (1..ore giornaliere). Una
+      richiesta senza giorni lavorativi = 422. Due richieste non annullate e non rifiutate della stessa persona non
+      si sovrappongono (422).
+    - D-7 Approvatori fissati all'invio (snapshot su pivot): superiori diretti attivi della persona; se non ne ha,
+      i responsabili attivi delle sue funzioni di appartenenza; se nessuno, chi ha `absence-requests.manageAll`.
+      La persona non approva mai la propria richiesta.
+    - D-8 Tipo senza approvazione: all'invio la richiesta diventa subito `approved` (comunicazione) e gli
+      approvatori ricevono la notifica.
+    - D-9 Annullamento: la persona annulla una richiesta `submitted`, oppure `approved` con `starts_on` futuro;
+      `manageAll` annulla qualunque richiesta `submitted` o `approved`. `rejected` e `cancelled` sono finali. La
+      bozza si modifica e si cancella (solo la persona o `manageAll`).
+    - D-10 Ratei: il mese M dell'anno Y matura 1/12 della spettanza se e' gia' iniziato (anni passati: tutti i
+      mesi) e la persona e' in forza almeno 15 giorni nel mese (`hired_at`/`terminated_at`; senza `hired_at` vale
+      tutto l'anno). Maturato = round(spettanza x mesi / 12). Residuo = riporto + maturato - goduto. Il saldo NON
+      blocca l'invio: il form mostra il residuo dopo la richiesta, decide il responsabile.
+    - D-11 Riporto: comando `absences:carry-over {year?}` (default anno corrente), schedulato il 1 gennaio alle
+      00:45: per ogni spettanza dell'anno precedente crea o aggiorna quella dell'anno con `carried_over_minutes` =
+      residuo di fine anno (anche negativo) e la stessa `annual_minutes` se non ancora impostata. Idempotente.
+    - D-12 Allegato facoltativo (es. certificato), uno per richiesta, su endpoint dedicati con la visibilita'
+      della richiesta; gli endpoint generici `/api/attachments` non lo espongono mai.
+    - D-13 Menu: voce di primo livello "Assenze" accanto al Segnatempo (`/absences`); catalogo "Tipi di assenza"
+      in Configurazione (`/absence-types`).
+  </context>
+
+  <scope>
+    <in>
+      <item>Catalogo `absence_types` (CRUD, TableDefinition `absence-types`, pagina in Configurazione).</item>
+      <item>Richieste `absence_requests` + pivot `absence_request_approver`: create, modifica bozza, invio,
+        approvazione, rifiuto con motivo, annullamento, cancellazione bozza; activity log su ogni modifica.</item>
+      <item>Griglia `absence-requests` con visibilita' a tre livelli e schede "Le mie", "Da approvare", "Tutte".</item>
+      <item>Spettanze `absence_allowances` (per persona, tipo che scala, anno) e endpoint dei saldi.</item>
+      <item>Comando di riporto annuale schedulato.</item>
+      <item>Notifiche database + mail a ogni passaggio di stato.</item>
+      <item>Allegato della richiesta (carica, scarica, togli).</item>
+      <item>Segnatempo: target del giorno ridotto dalle assenze approvate, assenze nel DaySummary.</item>
+      <item>Guide in-app IT/EN `absences`, `absence-types` (nuove, HELP_GUIDE_KEYS +2) e `time-entries`
+        (target); manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Calendario della squadra e vista mensile (spec 0279).</item>
+      <item>Secondo livello di approvazione dell'ufficio del personale (D-2).</item>
+      <item>Festivita' per sede o santo patrono, mezze giornate come unita' a se', giorni come unita' di saldo.</item>
+      <item>Spettanze di default per CCNL o per livello; spettanze in massa.</item>
+      <item>Importer dal legacy (nessun dato).</item>
+      <item>Effetto delle assenze su costo del lavoro e controllo di gestione.</item>
+      <item>Export paghe delle assenze.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope di progetto { success, message, data }. Minuti sempre interi; date `Y-m-d`. -->
+
+    <model name="AbsenceType">
+      { id: int, name: string, deducts_balance: bool, requires_approval: bool, is_active: bool, sort_order: int,
+        created_at: string, updated_at: string }
+    </model>
+
+    <model name="AbsenceRequest">
+      { id: int,
+        user: { id: int, name: string },
+        absence_type: { id: int, name: string, deducts_balance: bool, requires_approval: bool },
+        status: "draft"|"submitted"|"approved"|"rejected"|"cancelled",
+        is_full_day: bool, starts_on: string, ends_on: string,
+        minutes: int|null,            // null finche' draft; fissato all'invio (D-6)
+        requested_minutes: int|null,  // solo per is_full_day=false: i minuti indicati
+        note: string|null, rejection_reason: string|null,
+        approvers: [{ id: int, name: string }],   // snapshot all'invio, [] in bozza
+        decided_by: { id: int, name: string }|null, decided_at: string|null,
+        submitted_at: string|null, cancelled_at: string|null,
+        attachment: { id: int, name: string, size: int, mime_type: string }|null,
+        can: { update: bool, delete: bool, submit: bool, approve: bool, reject: bool, cancel: bool, attach: bool },
+        created_at: string, updated_at: string }
+    </model>
+
+    <endpoint method="GET|POST|PUT|PATCH|DELETE" path="/api/absence-types[/{absenceType}]">
+      <request>POST/PUT: { name: string required max:100 unique, deducts_balance: bool required,
+        requires_approval: bool required, is_active: bool, sort_order: int min:0 }</request>
+      <response status="200|201">data: AbsenceType. DELETE libero: 204.</response>
+      <errors>403 senza `absence-types.*`; 422 validazione; 409 DELETE di un tipo usato da una richiesta.</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/absence-types/for-select">
+      <request>Solo autenticazione (ADR 0011). Tipi attivi ordinati per sort_order, name.</request>
+      <response status="200">data: [{ id, name, deducts_balance, requires_approval }]</response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tables/{absence-requests|absence-requests-to-approve|absence-requests-all}/rows (framework tabellare)">
+      <request>Parametri SSRM standard. [revised 2026-10-19] Il framework non ha parametri generici: la scheda si
+        sceglie col DOMINIO, tre TableDefinition con una base comune che differiscono solo per lo scope.</request>
+      <response status="200">Righe: id, user_name, absence_type_name, status, starts_on, ends_on, is_full_day,
+        minutes, submitted_at, decided_by_name. `absence-requests` = richieste della persona;
+        `absence-requests-to-approve` = `submitted` in cui l'attore e' tra gli approvatori; `absence-requests-all`
+        = discendenti attivi dell'attore + proprie, oppure tutte con `manageAll`.</response>
+      <errors>403 senza `absence-requests.viewAny`.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/absence-requests/{absenceRequest}">
+      <response status="200">data: AbsenceRequest</response>
+      <errors>404 se non visibile (non propria, non approvatore, non discendente, senza manageAll).</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/absence-requests">
+      <request>{ absence_type_id: int required (tipo attivo), is_full_day: bool required, starts_on: date required,
+        ends_on: date required (= starts_on se is_full_day=false, >= starts_on), requested_minutes: int required se
+        is_full_day=false (1..ore giornaliere), note: string|null max:2000, submit: bool (default false),
+        user_id: int (solo `manageAll`: richiesta per conto di un'altra persona; default attore) }</request>
+      <response status="201">data: AbsenceRequest (draft, oppure submitted/approved se submit=true)</response>
+      <errors>403 senza `absence-requests.create`, o user_id altrui senza manageAll; 422 validazione, nessun giorno
+        lavorativo (`starts_on`), sovrapposizione (`starts_on`), utente senza approvatori e nessun titolare
+        manageAll (`user_id`).</errors>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/absence-requests/{absenceRequest}">
+      <request>Stessi campi di POST tranne user_id e submit; solo in draft.</request>
+      <response status="200">data: AbsenceRequest</response>
+      <errors>404 non visibile; 403 non autore e senza manageAll; 409 non in draft; 422 validazione.</errors>
+    </endpoint>
+    <endpoint method="DELETE" path="/api/absence-requests/{absenceRequest}">
+      <response status="204"/>
+      <errors>404; 403; 409 non in draft.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/absence-requests/{absenceRequest}/submit">
+      <response status="200">data: AbsenceRequest (submitted; approved se il tipo non richiede approvazione)</response>
+      <errors>404; 403 non autore e senza manageAll; 409 non in draft; 422 come POST.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/absence-requests/{absenceRequest}/approve">
+      <response status="200">data: AbsenceRequest (approved)</response>
+      <errors>404; 403 attore non tra gli approvatori (anche se e' la persona stessa); 409 non submitted.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/absence-requests/{absenceRequest}/reject">
+      <request>{ rejection_reason: string required max:1000 }</request>
+      <response status="200">data: AbsenceRequest (rejected)</response>
+      <errors>404; 403 come approve; 409 non submitted; 422 motivo mancante.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/absence-requests/{absenceRequest}/cancel">
+      <response status="200">data: AbsenceRequest (cancelled)</response>
+      <errors>404; 403 fuori dalle regole D-9; 409 stato non annullabile.</errors>
+    </endpoint>
+    <endpoint method="POST|GET|DELETE" path="/api/absence-requests/{absenceRequest}/attachment">
+      <request>POST multipart { file: required, mimes+extensions pdf,jpg,jpeg,png, max config('attachments.max_size') }
+        sostituisce l'eventuale allegato; GET scarica (stream); DELETE toglie.</request>
+      <response status="200|204">POST: data: AbsenceRequest; GET: file; DELETE: 204.</response>
+      <errors>404 non visibile o senza allegato (GET); 403 POST/DELETE: solo autore (stati draft/submitted) o
+        manageAll; 422 file non valido.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/absence-balances">
+      <request>{ year: int (default anno corrente), user_id: int (default attore; altrui solo se discendente o
+        manageAll) }</request>
+      <response status="200">data: { user: {id, name}, year: int, balances: [{ absence_type: {id, name},
+        annual_minutes: int, carried_over_minutes: int, accrued_minutes: int, used_minutes: int,
+        pending_minutes: int, residual_minutes: int }] } — una riga per ogni tipo attivo che scala un saldo
+        (zero senza spettanza). used = approved; pending = submitted; residual = carried_over + accrued - used.</response>
+      <errors>403 senza viewAny o persona non visibile.</errors>
+    </endpoint>
+    <endpoint method="PUT" path="/api/absence-allowances">
+      <request>{ user_id: int required, absence_type_id: int required (tipo che scala), year: int required
+        (2000..2100), annual_minutes: int required min:0 max:525600, carried_over_minutes: int required
+        (-525600..525600) }</request>
+      <response status="200">data: la riga balances aggiornata (stessa shape di sopra)</response>
+      <errors>403 senza `absence-requests.manageAll`; 422 validazione o tipo che non scala.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/time-entries (DaySummary, esistente)">
+      <response status="200">DaySummary aggiunge `absences: [{ id: int, absence_type_name: string, is_full_day: bool,
+        minutes: int }]` (solo approved, minuti del giorno); `target_minutes` = 0 con un'assenza a giornata intera,
+        altrimenti max(0, target - minuti delle assenze a ore). Stessa regola nel team pulse e nell'export.</response>
+    </endpoint>
+
+    <notifications>
+      `AbsenceRequestNotification` (database + mail, queued; mail saltata senza indirizzo; action_url
+      `/absences?request={id}`): submitted -> approvatori; approved (anche automatica, D-8) -> persona, e approvatori
+      se automatica; rejected -> persona (con motivo); cancelled -> persona se annulla un altro, approvatori se la
+      richiesta era submitted o approved. Nessuna notifica a chi compie l'azione.
+    </notifications>
+
+    <permissions>
+      `absence-types.view|create|update|delete` (catalogo); `absence-requests.viewAny|create|manageAll`
+      (manageAll = ufficio del personale). Ruolo di default: nessuno oltre `super-admin`; dopo il deploy
+      `php artisan permissions:sync`.
+    </permissions>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">CRUD tipi di assenza con permessi: 403 senza permesso, nome duplicato 422, DELETE di un
+      tipo usato 409, libero 204; for-select solo attivi e ordinati (Pest).</criterion>
+    <criterion id="AC-002">Creazione bozza a giornata intera lun-ven con un festivo nel mezzo: `minutes` null in
+      bozza; all'invio `minutes` = 4 giorni x ore giornaliere della persona (Pest).</criterion>
+    <criterion id="AC-003">Richiesta a ore: minuti oltre le ore giornaliere o su giorno non lavorativo = 422;
+      intervallo solo di weekend = 422 (Pest).</criterion>
+    <criterion id="AC-004">Sovrapposizione con una richiesta submitted o approved = 422; con una rejected o
+      cancelled e' ammessa (Pest).</criterion>
+    <criterion id="AC-005">Approvatori all'invio: superiori attivi; senza superiori, responsabili attivi delle
+      funzioni di appartenenza diversi dalla persona; senza nessuno, titolari manageAll; nessun titolare = 422.
+      La persona non e' mai tra i propri approvatori (Pest).</criterion>
+    <criterion id="AC-006">Approva/rifiuta: solo un approvatore, solo da submitted (409 altrimenti), rifiuto senza
+      motivo 422; `decided_by`/`decided_at` valorizzati; manageAll non tra gli approvatori = 403 (Pest).</criterion>
+    <criterion id="AC-007">Tipo senza approvazione: l'invio porta direttamente ad approved e notifica gli
+      approvatori (Pest).</criterion>
+    <criterion id="AC-008">Annullamento secondo D-9: persona su submitted ok, su approved futura ok, su approved
+      iniziata 403; manageAll su approved iniziata ok; rejected/cancelled 409 (Pest).</criterion>
+    <criterion id="AC-009">Modifica e cancellazione solo in draft (409 altrimenti); un estraneo riceve 404 su
+      show/patch/delete/azioni (Pest).</criterion>
+    <criterion id="AC-010">Griglia: "mine" solo proprie; "to_approve" solo submitted in cui l'attore approva;
+      "all" discendenti + proprie, tutte con manageAll; senza viewAny 403 (Pest).</criterion>
+    <criterion id="AC-011">Notifiche: ogni passaggio invia la notifica ai destinatari del contratto e mai
+      all'autore dell'azione; mail saltata senza indirizzo (Pest, Notification::fake).</criterion>
+    <criterion id="AC-012">Saldi: spettanza 9600 min (160 h), assunto il 10/03, a ottobre: mesi maturati 8
+      (marzo incluso, >= 15 giorni), maturato 6400; con 960 approvati e 480 inviati: used 960, pending 480,
+      residual = riporto + 6400 - 960. Assunto il 20/03: marzo non matura (Pest).</criterion>
+    <criterion id="AC-013">PUT spettanze solo manageAll (403), tipo che non scala 422; saldo altrui visibile al
+      responsabile del discendente, 403 a un estraneo (Pest).</criterion>
+    <criterion id="AC-014">`absences:carry-over 2027` crea le spettanze 2027 con riporto = residuo 2026 (anche
+      negativo) e la stessa spettanza annua; rieseguito non duplica e non cambia i valori (Pest).</criterion>
+    <criterion id="AC-015">Allegato: carica pdf/png ok, exe rinominato in pdf 422; scarica solo chi vede la
+      richiesta (404 altrimenti); `/api/attachments/{id}` e `/download` di un allegato di assenza = 403/404 anche
+      con `attachments.*` (Pest).</criterion>
+    <criterion id="AC-016">Segnatempo: giorno con assenza approvata a giornata intera ha target 0 e status
+      no_target; con 120 min a ore il target scende di 120; le assenze submitted non cambiano nulla; il team
+      pulse usa lo stesso target; `absences` nel DaySummary (Pest).</criterion>
+    <criterion id="AC-017">Activity log: creazione, modifica bozza e ogni cambio di stato registrano chi, cosa,
+      da quale valore (Pest).</criterion>
+    <criterion id="AC-018">[revised 2026-10-19] Pagina Assenze: schede Le mie / Da approvare / Tutte (Tutte sempre
+      visibile: il frontend non sa se la persona ha una squadra, il server restringe le righe), card dei saldi
+      dell'anno della persona, form con tipo, giornata intera o a ore, date, nota, allegato, residuo attuale del
+      tipo e, solo per le richieste a ore, residuo dopo la richiesta (per giornata intera la durata si calcola
+      all'invio: il contratto non ha un endpoint di anteprima); azioni mostrate secondo `can` (Vitest).</criterion>
+    <criterion id="AC-019">Rifiuto dal dettaglio: dialog con motivo obbligatorio; errore 422 cablato con la triade
+      aria; spettanze modificabili in ore (decimali) solo con manageAll, inviate in minuti (Vitest).</criterion>
+    <criterion id="AC-020">Catalogo Tipi di assenza in Configurazione con griglia e scheda modificabile in linea
+      come gli altri cataloghi (Vitest).</criterion>
+    <criterion id="AC-021">Segnatempo frontend: il giorno con assenza mostra il tipo e le ore di assenza (Vitest).</criterion>
+    <criterion id="AC-022">Guide IT/EN `absences`, `absence-types`, `time-entries` con gli stessi id; parity test,
+      HELP_GUIDE_KEYS +2; ESLint, Pint, `tsc -b --force` puliti; layout senza scroll orizzontale a 375 px.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: calendario e date con Carbon (BE) e utility esistenti (FE).</item>
+    <item>Authz server-side su ogni endpoint (Policy + scope di visibilita' unico, riusato da griglia, show,
+      saldi e allegato); 404 per le richieste non visibili.</item>
+    <item>Una sola fonte delle richieste: `absence_requests`; il segnatempo legge, non copia.</item>
+    <item>`WorkCalendar` e `DailyTargetResolver` riusati, non duplicati; `TimeEntrySubordinateResolver` per la
+      squadra.</item>
+    <item>Allegato fuori da `config('attachments.attachable_types')`; `mimes:` + `extensions:`.</item>
+    <item>Migrazioni reversibili; aggiornare i contatori `migrate:rollback --step` dei test a step fisso.</item>
+    <item>Niente throttle (backend.md §2). File sotto 300/500 righe; rotte in `routes/api/absences.php` richiesto
+      da `routes/api/hr.php`.</item>
+  </constraints>
+
+</spec>

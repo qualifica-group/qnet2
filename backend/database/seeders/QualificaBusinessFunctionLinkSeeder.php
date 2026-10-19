@@ -6,6 +6,7 @@ use App\Migrations\Sources\ProductsSource;
 use App\Models\BusinessFunction;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
+use Database\Seeders\QualificaCatalog\BusinessFunctionCatalogue;
 use Database\Seeders\QualificaCatalog\SafetyCatalogue;
 use Database\Seeders\QualificaCatalog\SoaCatalogue;
 use Illuminate\Database\Seeder;
@@ -18,7 +19,8 @@ use Illuminate\Support\Str;
  *   - "Formazione", the ROOT: a category's EFFECTIVE business function is
  *     resolved own-or-inherited (CategoryHierarchy::effectiveBusinessFunction),
  *     so one row there reaches the whole branch, the GOL regions included;
- *   - "APL", the root of its own branch (user directive 2026-09-07);
+ *   - "APL", the root of its own branch (user directive 2026-09-07), linked to
+ *     "Agenzia per il Lavoro" (organisation chart, user decision 2026-10-19);
  *   - "Presa Appuntamenti", the Consulenza leaf (user directive 2026-09-28),
  *     linked to "Consulenza";
  *   - "SOA", the root of its own branch (user directive 2026-10-15), linked to
@@ -30,6 +32,7 @@ use Illuminate\Support\Str;
  *     so an offer line on one of those products can still extend its
  *     opportunity's coverage, which requires a function.
  *
+ * The organisation chart's functions land first (QualificaBusinessFunctionSeeder).
  * Every one of those functions is CREATED here when no function of that name
  * exists yet, compared without case (user directive 2026-10-14): the catalogue
  * no longer waits for the legacy import to have its "Formazione" and "APL"
@@ -55,7 +58,7 @@ class QualificaBusinessFunctionLinkSeeder extends Seeder
      */
     private const array LINKS = [
         'Formazione' => 'Formazione',
-        'APL' => 'APL',
+        'APL' => BusinessFunctionCatalogue::EMPLOYMENT_AGENCY,
         'Presa Appuntamenti' => 'Consulenza',
         SoaCatalogue::ROOT => SoaCatalogue::BUSINESS_FUNCTION,
         SafetyCatalogue::ROOT => SafetyCatalogue::BUSINESS_FUNCTION,

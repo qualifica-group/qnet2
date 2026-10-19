@@ -27,6 +27,10 @@ use RuntimeException;
  * id is ADOPTED instead (user directive 2026-10-14): it takes the `old_id` and
  * the resolved users, additively, so the categories and members the later
  * sources remap land on the one function instead of a duplicate.
+ *
+ * `is_active` is taken as sent on create (user decision 2026-10-19): the
+ * legacy sends the functions outside the organisation chart as "[OLD] ..."
+ * and not active. An adopted function keeps its own flag.
  */
 class BusinessFunctionsSource extends AbstractMigrationSource
 {
@@ -56,6 +60,7 @@ class BusinessFunctionsSource extends AbstractMigrationSource
             ['id' => 'id', 'label' => 'ID', 'type' => 'number'],
             ['id' => 'name', 'label' => 'Name', 'type' => 'string'],
             ['id' => 'type', 'label' => 'Type', 'type' => 'string'],
+            ['id' => 'is_active', 'label' => 'Active', 'type' => 'boolean'],
         ];
     }
 
@@ -79,6 +84,7 @@ class BusinessFunctionsSource extends AbstractMigrationSource
             'id' => $record['id'] ?? null,
             'name' => $record['name'] ?? null,
             'type' => $record['type'] ?? null,
+            'is_active' => $record['is_active'] ?? null,
         ];
     }
 
@@ -118,6 +124,7 @@ class BusinessFunctionsSource extends AbstractMigrationSource
                 name: $name,
                 type: $record['type'] ?? null,
                 users: $userIds === [] ? null : $userIds,
+                isActive: array_key_exists('is_active', $record) ? (bool) $record['is_active'] : true,
             ),
         );
 

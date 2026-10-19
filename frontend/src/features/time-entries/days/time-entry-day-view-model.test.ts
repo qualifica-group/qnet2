@@ -46,6 +46,7 @@ function daySummary(overrides: Partial<DaySummary> = {}): DaySummary {
     utilization_percentage: 93.75,
     status: 'under_target',
     day_note: null,
+    absences: [],
     entries: [],
     ...overrides,
   }

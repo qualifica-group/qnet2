@@ -30,3 +30,7 @@ Schedule::command('commissions:sync-accruals')->dailyAt('02:00')->withoutOverlap
 // Spec 0272, D-8: deactivates the users whose termination date arrived and
 // realigns the contract condition in force on employment profiles. Idempotent.
 Schedule::command('employment:daily-sync')->dailyAt('00:30')->withoutOverlapping()->onOneServer();
+
+// Spec 0278, D-11: yearly carry-over of the absence balances, right after the
+// daily employment sync. Idempotent.
+Schedule::command('absences:carry-over')->yearlyOn(1, 1, '00:45')->withoutOverlapping()->onOneServer();

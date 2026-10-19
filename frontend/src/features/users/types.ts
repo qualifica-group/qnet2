@@ -111,7 +111,7 @@ export interface EmploymentDetail {
   /** Same order as `reports_to_ids`; emitted whenever the relation is loaded (always in the detail). */
   reports_to: EmploymentRelationRef[]
   /** Mansioni (spec 0271), same order as `job_role_ids`. */
-  job_roles: EmploymentRelationRef[]
+  job_roles: NamedRef[]
   /** Funzioni aziendali di appartenenza (spec 0275), same order as `business_function_ids`. */
   business_functions: NamedRef[]
   company: EmploymentRelationRef | null

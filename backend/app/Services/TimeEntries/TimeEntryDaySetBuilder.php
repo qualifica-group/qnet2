@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\TimeEntries;
 
+use App\DataObjects\TimeEntries\DayAbsenceData;
 use App\DataObjects\TimeEntries\TimeEntryDaySet;
 use App\DataObjects\TimeEntries\TimeEntryFilterData;
 use App\Models\TimeEntry;
@@ -27,6 +28,7 @@ final class TimeEntryDaySetBuilder
         private readonly TimeEntryPeriodResolver $periodResolver,
         private readonly TimeEntryDayBuilder $dayBuilder,
         private readonly DailyTargetResolver $targetResolver,
+        private readonly TimeEntryAbsenceResolver $absenceResolver,
     ) {}
 
     public function build(TimeEntryFilterData $filter, User $actor): TimeEntryDaySet
@@ -39,14 +41,43 @@ final class TimeEntryDaySetBuilder
         $period = $this->periodResolver->resolve($filter);
         $baseTargetMinutes = $this->targetResolver->resolve($selectedUser->employment);
 
-        // Step 3: the ONLY two queries this whole read path runs.
+        // Step 3: the entries + notes queries.
         $entries = $this->queryEntries($selectedUser, $period->dateFrom, $period->dateTo, $filter);
         $notesByDate = $this->queryNotesByDate($selectedUser, $period->dateFrom, $period->dateTo);
 
-        // Step 4: one DaySummary per date, entries already F-filtered.
-        $days = $this->dayBuilder->build($period->dates(), $entries, $notesByDate, $baseTargetMinutes);
+        // Step 4: approved absences (spec 0278, D-3) — one more query, which
+        // lowers the day target.
+        $absences = $this->absenceResolver->resolve([$selectedUser->id => $baseTargetMinutes], $period->dateFrom, $period->dateTo);
+
+        // Step 5: one DaySummary per date, entries already F-filtered.
+        $days = $this->dayBuilder->build(
+            $period->dates(),
+            $entries,
+            $notesByDate,
+            $baseTargetMinutes,
+            $this->absencesByDate($absences, $selectedUser->id, $period->dates()),
+        );
 
         return new TimeEntryDaySet($selectedUser, $period, $baseTargetMinutes, $days);
+    }
+
+    /**
+     * @param  list<string>  $dates
+     * @return array<string, list<DayAbsenceData>>
+     */
+    private function absencesByDate(DayAbsenceIndex $absences, int $userId, array $dates): array
+    {
+        $byDate = [];
+
+        foreach ($dates as $date) {
+            $dayAbsences = $absences->forDay($userId, $date);
+
+            if ($dayAbsences !== []) {
+                $byDate[$date] = $dayAbsences;
+            }
+        }
+
+        return $byDate;
     }
 
     /**

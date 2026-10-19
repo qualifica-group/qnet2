@@ -1,5 +1,7 @@
 <?php
 
+use App\Authorization\AbsenceRequestsAuthorization;
+use App\Authorization\AbsenceTypesAuthorization;
 use App\Authorization\AgentFiscalProfilesAuthorization;
 use App\Authorization\ApiClientsAuthorization;
 use App\Authorization\AttributesAuthorization;
@@ -143,6 +145,9 @@ return [
         'request-statistics' => RequestStatisticsAuthorization::class,
         // Spec 0273: the HR "Organigramma" page (view-only permission).
         'org-chart' => OrgChartAuthorization::class,
+        // spec 0278: HR absence types catalogue and absence requests.
+        'absence-types' => AbsenceTypesAuthorization::class,
+        'absence-requests' => AbsenceRequestsAuthorization::class,
         'api-clients' => ApiClientsAuthorization::class,
         'reward-types' => RewardTypesAuthorization::class,
         'reward-statuses' => RewardStatusesAuthorization::class,

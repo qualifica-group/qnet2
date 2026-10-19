@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Policies\UserPolicy;
 use App\Services\RoleAssignmentGuard;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * ResourceAuthorization for the `users` resource (spec 0004).
@@ -96,7 +97,7 @@ class UsersAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'upload_avatar', 'delete_avatar', 'view_activity'];
+        return ['delete', 'export', 'import', 'upload_avatar', 'delete_avatar', 'view_activity', 'impersonate'];
     }
 
     /**
@@ -244,6 +245,13 @@ class UsersAuthorization extends AbstractResourceAuthorization
             // record-level `users.view` boundary is enforced separately by
             // GET /api/activity-log/users/{id} itself.
             'view_activity' => $model !== null && $actor->can('users.viewActivity'),
+            // The detail's "Accedi come" (spec 0050): UserPolicy::impersonate plus
+            // the two business rules ImpersonationService enforces (never self,
+            // never an inactive target), so the action is offered only when it can succeed.
+            'impersonate' => $model !== null
+                && ! $actor->is($model)
+                && $model->is_active
+                && Gate::forUser($actor)->allows('impersonate', $model),
         ];
     }
 }

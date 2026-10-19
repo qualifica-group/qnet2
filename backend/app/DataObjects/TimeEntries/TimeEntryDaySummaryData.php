@@ -18,6 +18,7 @@ final readonly class TimeEntryDaySummaryData
 {
     /**
      * @param  Collection<int, TimeEntry>  $entries
+     * @param  list<DayAbsenceData>  $absences  approved absences covering the day (spec 0278)
      */
     public function __construct(
         public string $date,
@@ -31,5 +32,6 @@ final readonly class TimeEntryDaySummaryData
         public TimeEntryDailyStatus $status,
         public ?string $dayNote,
         public Collection $entries,
+        public array $absences = [],
     ) {}
 }

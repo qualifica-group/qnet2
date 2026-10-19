@@ -70,6 +70,8 @@ use Illuminate\Database\Seeder;
  *     QualificaWorkflowSeeder as the last step: one QuoteWorkflow per
  *     category of QualificaCatalog\WorkflowStatusCatalogue, matched on that
  *     category and carrying its own working-state pick list;
+ *   - the organisation chart's business functions (QualificaBusinessFunctionSeeder,
+ *     user decision 2026-10-19);
  *   - the business functions of "Formazione", "APL", "Presa Appuntamenti",
  *     "SOA" and "No categoria", created and linked by
  *     QualificaBusinessFunctionLinkSeeder (spec 0023, user directive
@@ -289,8 +291,10 @@ class QualificaCatalogSeeder extends Seeder
         // validates each code against the category's effective set.
         $this->call(QualificaQuoteLayoutSeeder::class);
 
-        // Step 5: the business functions of the categories of step 2, before
-        // the import below, which adopts them by name.
+        // Step 5: the organisation chart's business functions and the links
+        // of the categories of step 2, before the import below, which adopts
+        // them by name.
+        $this->call(QualificaBusinessFunctionSeeder::class);
         $this->call(QualificaBusinessFunctionLinkSeeder::class);
 
         // Step 6: the optional follow-up, on demand.

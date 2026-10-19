@@ -10,6 +10,9 @@ use App\FieldChangeRequests\ProtectedFieldRegistry;
 use App\Imports\Recognition\CampaignRecognizer;
 use App\Mail\StagingMailRedirector;
 use App\Mail\Transport\MicrosoftGraphTransport;
+use App\Models\AbsenceAllowance;
+use App\Models\AbsenceRequest;
+use App\Models\AbsenceType;
 use App\Models\Address;
 use App\Models\AgentFiscalProfile;
 use App\Models\Attachment;
@@ -241,6 +244,10 @@ class AppServiceProvider extends ServiceProvider
             'collective_agreement' => CollectiveAgreement::class,
             'collective_agreement_level' => CollectiveAgreementLevel::class,
             'employment_contract' => EmploymentContract::class,
+            // spec 0278: HR absences.
+            'absence_type' => AbsenceType::class,
+            'absence_request' => AbsenceRequest::class,
+            'absence_allowance' => AbsenceAllowance::class,
             'purchase_request_priority' => PurchaseRequestPriority::class,
             'purchase_order_status_label' => PurchaseOrderStatusLabel::class,
             'purchase_request_line_status_label' => PurchaseRequestLineStatusLabel::class,

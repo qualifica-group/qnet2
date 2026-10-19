@@ -9,10 +9,12 @@ import { ResourcePermissionsProvider } from '@/features/authorization/permission
 import { PersonalDataRecordSections } from '@/features/personal-data/personal-data-record-cards'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { fetchUser, userDetailQueryKey } from '@/features/users/api'
+import { UserActionsBar } from '@/features/users/user-actions-bar'
 import { UserDetailHeader, UserDetailStats } from '@/features/users/user-detail-header'
 import { UserDetailSections } from '@/features/users/user-detail-sections'
 import { persistedUserValues } from '@/features/users/user-record'
 import { useUserInlineEdit } from '@/features/users/use-user-inline-edit'
+import type { UserLeaveReason } from '@/features/users/use-user-record-actions'
 import type { UserDetailWithPermissions } from '@/features/users/types'
 import { formatDateTime } from '@/lib/formatting/date-display'
 
@@ -20,6 +22,8 @@ interface UserDetailProps {
   userId: number
   /** Called after an in-place save, so the host refreshes whatever lists the user (spec 0195 D-7). */
   onChanged?: () => void
+  /** Called once the record must be left (deleted, or the session switched to this user): the host closes it. */
+  onLeave?: (reason: UserLeaveReason) => void
 }
 
 /**
@@ -34,7 +38,7 @@ interface UserDetailProps {
  * driven by `useUserInlineEdit`); contacts, addresses and the profile photo
  * are saved on their own.
  */
-export function UserDetailView({ userId, onChanged }: UserDetailProps) {
+export function UserDetailView({ userId, onChanged, onLeave }: UserDetailProps) {
   const { t } = useTranslation()
   const {
     data: user,
@@ -63,12 +67,12 @@ export function UserDetailView({ userId, onChanged }: UserDetailProps) {
   // provider wraps the whole record, not just the sections.
   return (
     <ResourcePermissionsProvider permissions={user.permissions}>
-      <UserDetailRecord user={user} onChanged={onChanged} />
+      <UserDetailRecord user={user} onChanged={onChanged} onLeave={onLeave} />
     </ResourcePermissionsProvider>
   )
 }
 
-function UserDetailRecord({ user, onChanged }: { user: UserDetailWithPermissions; onChanged?: () => void }) {
+function UserDetailRecord({ user, onChanged, onLeave }: Omit<UserDetailProps, 'userId'> & { user: UserDetailWithPermissions }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const editor = useUserInlineEdit(user, onChanged)
@@ -89,7 +93,8 @@ function UserDetailRecord({ user, onChanged }: { user: UserDetailWithPermissions
         collaborationTabs={collaborationTabs}
         header={
           <>
-            <UserDetailHeader user={user} canUpdate={user.permissions.resource.update} />
+            <UserDetailHeader user={user} />
+            <UserActionsBar user={user} onChanged={onChanged} onLeave={onLeave} />
             <UserDetailStats roles={user.roles.length} assignment={persistedUserValues(user).assignment} />
           </>
         }

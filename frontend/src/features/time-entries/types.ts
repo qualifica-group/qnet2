@@ -75,6 +75,14 @@ export interface TimeEntry {
 /** `App\Enums\TimeEntryDailyStatus` (D-7): the ONLY thing UI logic may branch on. */
 export type DailyStatus = 'no_target' | 'under_target' | 'on_target' | 'over_target'
 
+/** An approved absence of the day (spec 0278 AC-021): `minutes` is the day's share, not the request total. */
+export interface DayAbsence {
+  id: number
+  absence_type_name: string
+  is_full_day: boolean
+  minutes: number
+}
+
 /** One day of the dashboard list, present for EVERY date of the period (D-11/list contract). */
 export interface DaySummary {
   date: string
@@ -84,12 +92,14 @@ export interface DaySummary {
   is_non_working_day: boolean
   /** At least one time entry that day; a day note alone does not count (D-7). */
   is_active: boolean
+  /** Already reduced by the backend for approved absences (0 on a full-day absence). */
   target_minutes: number
   total_minutes: number
   /** Two-decimal percentage, e.g. `93.75`. */
   utilization_percentage: number
   status: DailyStatus
   day_note: string | null
+  absences: DayAbsence[]
   /** Ordered `start_time` asc (null last), then `id` asc. */
   entries: TimeEntry[]
 }

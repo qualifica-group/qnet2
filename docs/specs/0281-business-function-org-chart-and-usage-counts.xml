@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0281-business-function-org-chart-and-usage-counts" status="approved" owner="nicola" date="2026-10-19">
+
+  <goal>
+    Le funzioni aziendali di qnet-2 sono quelle della pianta organica del cliente (Pianta Organica 8.09). La
+    migrazione dal legacy associa l'id legacy alla funzione corrispondente; le funzioni legacy senza
+    corrispondenza arrivano come "[OLD] ..." non attive. La griglia Funzioni aziendali mostra, per ogni funzione,
+    quante associazioni ha nel sistema.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-10-19:
+    D-1 Nomi senza il codice del foglio ("FOR – Formazione" diventa "Formazione"); tipo BU/BS dal foglio.
+    D-2 Abbinamento legacy -> pianta: ACCREDITAMENTI, APL (-> Agenzia per il Lavoro), CONTABILITA'
+        (-> Amministrazione e Contabilita'), COMMERCIALE, FINANZA AGEVOLATA, FORMAZIONE, GARE, GDPR (-> Privacy),
+        HR (-> Risorse Umane), ISO, ISTRUZIONE, MARKETING, PROGETTAZIONE INTERNA (-> Progettazione), QUALITA,
+        SEGRETERIA e BACK OFFICE (-> Segreteria), SICUREZZA, SOA, TRAVEL (-> Unit Travel), UPPCG.
+        Senza corrispondenza, "[OLD]" e non attive: 231, AVVALIMENTI, DIREZIONE GENERALE, HACCP, IT, PIANIFICAZIONE.
+    D-3 Conteggi: una colonna numerica per tipo di associazione, ordinabile.
+
+    Decisioni di progetto:
+    D-4 Il legacy (backend.md par. 9) invia nomi gia' nel vocabolario di qnet-2, `is_active` e le fusioni
+        (`App\Support\Migration\LegacyBusinessFunctions`): BACK OFFICE non viene inviata, i suoi membri vanno su
+        SEGRETERIA e ogni suo riferimento (utenti, categorie) diventa l'id di SEGRETERIA. qnet-2 adotta per nome
+        (logica esistente) e su creazione prende `is_active` come inviato; una funzione adottata tiene il suo flag.
+    D-5 Seed: `QualificaBusinessFunctionSeeder` (catalogo `QualificaCatalog\BusinessFunctionCatalogue`), chiamato
+        da `QualificaCatalogSeeder` prima di `QualificaBusinessFunctionLinkSeeder`. Una funzione gia' presente con
+        lo stesso nome (senza maiuscole) resta com'e', si riempie solo un tipo mancante. "Consulenza" e
+        "No funzione aziendale" restano (non sono nella pianta). La categoria "APL" e gli operatori APL puntano
+        ad "Agenzia per il Lavoro".
+    D-6 Conteggi come sottoquery correlate (nessuna JOIN che moltiplichi le righe), conteggio DISTINTO sulle
+        righe prodotto: un'opportunita' con due righe sulla stessa funzione conta una volta.
+  </context>
+
+  <data_contract>
+    Griglia `business-functions`, nuove colonne `type: number`, `sortable: true`, `filterable: false`:
+    - `users_count`              membri (`business_function_user`), visibile
+    - `product_categories_count` categorie con la funzione come propria (`product_categories.business_function_id`), visibile
+    - `competences_count`        persone competenti (DISTINCT `employment_product_lines.employment_profile_id`), visibile
+    - `opportunities_count`      DISTINCT `opportunity_product_lines.opportunity_id`, visibile
+    - `projects_count`           DISTINCT `project_product_lines.project_id`, nascosta
+    - `campaigns_count`          DISTINCT `campaign_product_lines.campaign_id`, nascosta
+    - `purchase_requests_count`  `purchase_requests.business_function_id`, nascosta
+    - `children_count`           sottofunzioni (`business_functions.parent_id`), nascosta
+    Righe: ogni chiave sopra e' un intero >= 0.
+
+    Legacy `GET /api/v2/migration/business-functions`: item + `is_active: bool`; `name` nel vocabolario qnet-2
+    o "[OLD] <descrizione>"; le funzioni fuse non compaiono.
+  </data_contract>
+
+  <acceptance>
+    <ac id="AC-001">Il seeder crea le 24 funzioni della pianta con tipo BU/BS, attive, in modo idempotente.</ac>
+    <ac id="AC-002">Una funzione gia' presente con lo stesso nome in altro maiuscolo non viene duplicata; il tipo si riempie solo se mancante.</ac>
+    <ac id="AC-003">L'import adotta per nome la funzione della pianta (old_id) e crea "[OLD] ..." non attiva quando inviata non attiva; senza `is_active` crea attiva.</ac>
+    <ac id="AC-004">Una funzione adottata tiene il proprio flag attivo.</ac>
+    <ac id="AC-005">La griglia restituisce gli 8 conteggi per riga, distinti sulle righe prodotto.</ac>
+    <ac id="AC-006">La griglia si ordina per un conteggio.</ac>
+  </acceptance>
+
+  <scope>
+    <out>
+      <item>Riallineamento di un DB dove l'import legacy e' gia' girato con i vecchi nomi (vedi HANDOFF).</item>
+      <item>Filtri sui conteggi; criteri dei Flussi offerta, sedi e societa' (gia' colonne a elenco).</item>
+    </out>
+  </scope>
+</spec>

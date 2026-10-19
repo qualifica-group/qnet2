@@ -8,6 +8,7 @@ use App\DataObjects\JobRoles\JobRoleData;
 use App\DataObjects\PersonalData\CreateContact;
 use App\Enums\ContactTypeEnum;
 use App\Enums\RelationshipTypeEnum;
+use App\Models\BusinessFunction;
 use App\Models\CollectiveAgreement;
 use App\Models\EmploymentProfile;
 use App\Models\JobActivity;
@@ -20,8 +21,11 @@ use App\Services\JobActivityService;
 use App\Services\JobRoleService;
 use Database\Seeders\QualificaCatalog\CollectiveAgreementCatalogue;
 use Database\Seeders\QualificaCatalog\JobRoleCatalogue;
+use Database\Seeders\QualificaCatalog\OrgChartFunctions;
 use Database\Seeders\QualificaCatalog\OrgChartRoster;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 /**
  * The client's job activities and job roles (Mansioni, spec 0271) and its
@@ -40,6 +44,12 @@ use Illuminate\Database\Seeder;
  * condition gets a first one starting today. So it runs after the accounts
  * exist, and an account the roster names but the database lacks is skipped
  * with a warning.
+ *
+ * Last, the business functions of OrgChartFunctions, ADDITIVELY too: members
+ * added, never removed; the first head becomes the manager of a function
+ * that has none, so a manager set from the module survives; every head is
+ * added to the "Risponde a" of the function's other members, next to the
+ * superiors they already have.
  */
 class QualificaHrCatalogSeeder extends Seeder
 {
@@ -63,6 +73,8 @@ class QualificaHrCatalogSeeder extends Seeder
         $this->seedCollectiveAgreement();
         // Step 4: each listed person's roles, level and mailboxes
         $this->assignPeople();
+        // Step 5: each function's members and manager, its heads as the members' superiors
+        $this->assignFunctions();
     }
 
     private function assignPeople(): void
@@ -92,6 +104,84 @@ class QualificaHrCatalogSeeder extends Seeder
         }
 
         $this->command?->info(sprintf('%d people assigned from the org chart.', $assigned));
+    }
+
+    private function assignFunctions(): void
+    {
+        $emails = collect(OrgChartFunctions::FUNCTIONS)->flatMap(fn (array $function): array => [...$function['heads'], ...$function['members']]);
+        $userIds = User::query()->whereIn('email', $emails->unique())->pluck('id', 'email');
+        $superiorIds = [];
+
+        foreach (OrgChartFunctions::FUNCTIONS as $name => $function) {
+            $businessFunction = $this->functionNamed($name);
+
+            if ($businessFunction === null) {
+                $this->command?->warn(sprintf('Business function "%s" missing, org chart skipped.', $name));
+
+                continue;
+            }
+
+            $headIds = $this->userIdsOf($userIds, $function['heads']);
+            $memberIds = [...$headIds, ...$this->userIdsOf($userIds, $function['members'])];
+            $businessFunction->users()->syncWithoutDetaching($memberIds);
+
+            if ($businessFunction->manager_id === null && $headIds !== []) {
+                // A per-model update, so the activity log records the manager.
+                $businessFunction->update(['manager_id' => $headIds[0]]);
+            }
+
+            foreach ($memberIds as $memberId) {
+                $superiorIds[$memberId] = [...$superiorIds[$memberId] ?? [], ...array_diff($headIds, [$memberId])];
+            }
+        }
+
+        $this->addSuperiors(array_filter($superiorIds));
+    }
+
+    /**
+     * @param  Collection<string, int>  $userIds  email => id
+     * @param  list<string>  $emails
+     * @return list<int>
+     */
+    private function userIdsOf(Collection $userIds, array $emails): array
+    {
+        $ids = [];
+
+        foreach ($emails as $email) {
+            if (! $userIds->has($email)) {
+                $this->command?->warn(sprintf('%s: no account, business function skipped.', $email));
+
+                continue;
+            }
+
+            $ids[] = $userIds->get($email);
+        }
+
+        return $ids;
+    }
+
+    /**
+     * @param  array<int, list<int>>  $superiorIds  user id => superior ids
+     */
+    private function addSuperiors(array $superiorIds): void
+    {
+        foreach (User::query()->whereIn('id', array_keys($superiorIds))->with('employment')->get() as $user) {
+            // A staff account may have no profile yet: the pivot hangs off one.
+            $employment = $user->employment ?? $user->employment()->create();
+            $employment->reportsTo()->syncWithoutDetaching(array_unique($superiorIds[$user->id]));
+        }
+    }
+
+    /**
+     * `name` is not unique: the lowest id wins, compared without case, as in
+     * QualificaBusinessFunctionSeeder.
+     */
+    private function functionNamed(string $name): ?BusinessFunction
+    {
+        return BusinessFunction::query()
+            ->whereRaw('LOWER(name) = ?', [Str::lower($name)])
+            ->orderBy('id')
+            ->first();
     }
 
     private function assignLevel(EmploymentProfile $employment, int $levelId, bool $isExternal): void
