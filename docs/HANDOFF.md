@@ -3,6 +3,31 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Mansioni, Attivita' e CCNL dalla "Pianta Organica" nel seed di produzione — VERDE, COMMITTATO (2026-10-19)
+
+- Fonte: `Pianta_Organica_Qualifica_Aggiornato 8.09.xlsx` del cliente (24 fogli di settore). 67 mansioni
+  (`job_roles`) e 365 attivita' (`job_activities`), ogni mansione collegata alle sue attivita'.
+- Decisioni utente: niente sede o regione nel nome della mansione (una sola "Operatore Politiche Attive",
+  "Segreteria Didattica", "Consulente Commerciale Junior", "Supervisor Commerciale Sedi Territoriali";
+  "Referente Politiche Attive Lombardia" -> "Referente Territoriale Politiche Attive"); le mansioni "+" sono divise
+  in due ("CFO" + "Supporto Operativo Amministrazione", "... + R&S" -> "Addetto Ricerca e Selezione", "Supervisor
+  Attivita' Formative" + "Coordinatore Segreteria Didattica"); le attivita' quasi uguali sono unificate, senza nomi
+  di persona ne' anni. "Svolgimento di tutte le attivita' dell'Operatore" -> le attivita' dell'operatore sono
+  collegate anche a Supervisor e Referente.
+- Dati: `database/seeders/QualificaCatalog/JobRoleCatalogue.php` (unione + `activities()`/`activityNames()`) e quattro
+  classi per area (`Administration`/`Commercial`/`Training`/`ConsultancyJobRoles`). Voce attivita' = nome oppure
+  `nome => descrizione`; un'attivita' condivisa ha lo STESSO nome in ogni mansione e si crea una volta sola.
+- CCNL (richiesta utente: "c'e' la colonna livello"): la colonna "Livello" del foglio diventa il CCNL
+  `CollectiveAgreementCatalogue::NAME` = "Pianta Organica Qualifica Group" (nome scelto da me, il foglio non ne da'
+  uno; codice CCNL vuoto) con i livelli "Livello I".."Livello IV" e la legenda del foglio come descrizione.
+- `QualificaHrCatalogSeeder` (step di `QualificaProductionDataSeeder` dopo i settori EA): create-only sul nome,
+  passa da `JobActivityService`/`JobRoleService`/`CollectiveAgreementService`; rilanciarlo non duplica e non
+  sovrascrive le modifiche fatte a mano (un CCNL rinominato pero' verrebbe ricreato col nome originale).
+- Test: `tests/Feature/Seeding/QualificaHrCatalogSeederTest.php` (limiti di lunghezza, una sola grafia e una sola
+  descrizione per attivita', nessun "+", conteggi 67/365, collegamenti, rilancio).
+- Manuale: nessun impatto (solo dati, nessun cambio di comportamento). Prossimo passo possibile: assegnare le
+  mansioni agli utenti dal foglio (nome e cognome -> utente), non richiesto.
+
 ## Spec 0277 — Costo orario dalla retribuzione dello storico contrattuale — VERDE, COMMITTATO (2026-10-19)
 
 - Spec `docs/specs/0277-hourly-cost-from-contract-salary.xml` (D-1..D-5, AC-001..AC-006); supera CdG 0272 D-1.
