@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0284 — Modulo HR: corsi e formazione del personale (docs/product/hr.md §7.1, D-10).
+  Formazione INTERNA dei dipendenti: nulla a che vedere con i corsi venduti ai clienti (Gestione iscritti,
+  categoria prodotto "Formazione").
+-->
+<spec id="0284-hr-staff-training" status="approved" owner="utente" date="2026-10-19">
+
+  <goal>
+    L'ufficio del personale tiene il catalogo dei corsi e registra i corsi fatti da ogni persona, con esito,
+    attestato e scadenza. Per ogni persona si vede quali corsi richiesti dalle sue mansioni sono validi, in
+    scadenza, scaduti o mancanti.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-10-19: registro + scadenze (niente pianificazione); obbligo per mansione; registra solo
+    l'ufficio del personale; visibilita' a tre livelli come il calendario assenze (0279).
+    Fatti verificati: il legacy non ha dati di formazione dei dipendenti (nessun importer, campi compilati in app).
+    In qnet-2 non esiste nulla di interno: `enrollee-management` e la categoria prodotto "Formazione" sono vendita.
+    Forma da replicare: catalogo come `AbsenceType` (Model, Policy, Authorization, TableDefinition, Service,
+    controller CRUD + for-select, rotte da `routes/api/hr.php`, voce in Configurazione, feature frontend
+    `absence-types`); registro con un solo allegato come `AbsenceRequest` (endpoint annidato autorizzato sul record,
+    alias nella morph map ma NON in `attachments.attachable_types`). Mansioni: `JobRole` e
+    `EmploymentProfile::jobRoles()` (pivot `employment_profile_job_role`). Squadra:
+    `TimeEntrySubordinateResolver::descendantIds()`.
+  </context>
+
+  <decisions>
+    <decision id="D-1">Nomi: `staff_courses` (catalogo) e `staff_trainings` (corso fatto da una persona), per non
+      confondersi con i corsi venduti. UI: "Corsi" in Configurazione, "Formazione" nel menu.</decision>
+    <decision id="D-2">Corso: nome (unico), descrizione, durata in minuti (in ore nella UI, facoltativa), validita'
+      in mesi (vuota = non scade), attivo/non attivo, mansioni che lo richiedono (pivot `job_role_staff_course`).
+      Un corso usato da almeno una formazione non si elimina (422): si disattiva.</decision>
+    <decision id="D-3">Formazione: persona, corso, data di completamento, esito `passed|failed`, note, un solo
+      attestato (PDF o immagine). La scadenza `expires_on` si calcola al salvataggio = completamento + validita' del
+      corso (vuota se il corso non scade) ed e' una fotografia: cambiare la validita' del corso non tocca le
+      formazioni gia' registrate.</decision>
+    <decision id="D-4">Stato di una persona per un corso, sulla formazione `passed` piu' recente: `valid`,
+      `expiring` (scade entro `config('staff_training.expiring_days')`, default 60), `expired`; `missing` se il corso
+      e' richiesto da una sua mansione e non c'e' una formazione `passed`. Un corso non richiesto compare solo se la
+      persona l'ha fatto.</decision>
+    <decision id="D-5">Permessi, risorsa `staff-trainings`: `viewAny` = apre il modulo e vede la propria
+      formazione; `viewTeam` = anche i discendenti attivi; `viewAll` = tutte le persone; `manage` = registra,
+      modifica, elimina e carica l'attestato per chiunque (ufficio del personale). Vale il piu' ampio. Catalogo:
+      `staff-courses.viewAny|view|create|update|delete`. La formazione fuori visibilita' risponde 404.</decision>
+    <decision id="D-6">Pagina "Formazione" con due schede: "Registro" (griglia delle formazioni visibili, filtri
+      persona, corso, esito, scadenza) e "Situazione" (persona x corso con lo stato di D-4, filtri stato, funzione,
+      corso). "Registra formazione" solo con `manage`. Ogni modifica e' nell'activity log.</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazioni `staff_courses`, `job_role_staff_course`, `staff_trainings` (indici su `user_id`,
+        `staff_course_id`, `expires_on`); model, factory, morph map.</item>
+      <item>Catalogo corsi: CRUD + for-select, griglia, voce "Corsi" in Configurazione.</item>
+      <item>Registro: griglia `staff-trainings` con la visibilita' di D-5, store/update/destroy, allegato annidato.</item>
+      <item>Situazione: endpoint per persona x corso con lo stato di D-4.</item>
+      <item>Frontend: catalogo, pagina Formazione con le due schede, form di registrazione, dettaglio con attestato.</item>
+      <item>i18n IT/EN, guide in-app nuove (`staff-courses`, `staff-trainings`) + `HELP_GUIDE_KEYS`, manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Pianificazione e iscrizione a corsi futuri; notifiche o email di scadenza.</item>
+      <item>Sezione Formazione nella scheda utente (eventuale passo successivo).</item>
+      <item>Assegnazione dei permessi ai ruoli del seed; importer dal legacy (nessun dato).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET|POST|PATCH|DELETE" path="/api/staff-courses[/{id}]">
+      <request>{ name: string required max 255 unique, description: string|null, duration_minutes: int|null min 1,
+        validity_months: int|null 1..240, is_active: bool, job_role_ids: int[] }</request>
+      <response status="200|201">data: { id, name, description, duration_minutes, validity_months, is_active,
+        job_roles: [{ id, name }], trainings_count, created_at, updated_at }</response>
+      <errors>403 senza permesso; 422 validazione; 422 eliminazione di un corso con formazioni.</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/staff-courses/for-select">
+      <response status="200">corsi attivi { id, label }, standard for-select (ADR 0011).</response>
+    </endpoint>
+    <endpoint method="POST|PATCH|DELETE" path="/api/staff-trainings[/{id}]">
+      <request>{ user_id: int required exists, staff_course_id: int required exists, completed_on: date required
+        &lt;= oggi, outcome: "passed"|"failed" required, notes: string|null max 2000 }</request>
+      <response status="200|201">data: { id, user: { id, name }, course: { id, name, validity_months },
+        completed_on, expires_on, outcome, notes, attachment: { id, name, size }|null, recorded_by: { id, name },
+        created_at, updated_at }</response>
+      <errors>403 senza `manage`; 404 fuori visibilita'; 422 validazione.</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/staff-trainings/{id}">
+      <response status="200">come sopra; 404 fuori visibilita'.</response>
+    </endpoint>
+    <endpoint method="POST|GET|DELETE" path="/api/staff-trainings/{id}/attachment">
+      <request>file: pdf, jpg, jpeg, png (`mimes:` + `extensions:`), max `config('attachments')`.</request>
+      <errors>POST/DELETE 403 senza `manage`; GET 404 fuori visibilita'.</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/staff-trainings/compliance">
+      <request>{ status: "valid"|"expiring"|"expired"|"missing"|null, business_function_id: int|null,
+        staff_course_id: int|null }</request>
+      <response status="200">data: { expiring_days, rows: [{ user: { id, name }, course: { id, name },
+        required: bool, status, completed_on: date|null, expires_on: date|null, training_id: int|null }] }</response>
+      <errors>403 senza `viewAny`.</errors>
+    </endpoint>
+    <grid domain="staff-courses">colonne nome, durata (ore), validita' (mesi), mansioni, attivo, n. formazioni.</grid>
+    <grid domain="staff-trainings">colonne persona, corso, completamento, scadenza, esito, attestato (si'/no).</grid>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">CRUD del catalogo con permessi `staff-courses.*`; nome unico; corso con formazioni non
+      eliminabile (422); for-select solo attivi (Pest).</criterion>
+    <criterion id="AC-002">Registrazione solo con `manage`; `expires_on` = completamento + validita', vuota senza
+      validita'; cambiare la validita' del corso non cambia le formazioni esistenti (Pest).</criterion>
+    <criterion id="AC-003">Griglia, dettaglio e allegato rispettano D-5: `viewAny` solo se stesso, `viewTeam` anche i
+      discendenti attivi, `viewAll` tutti; fuori visibilita' 404 (Pest).</criterion>
+    <criterion id="AC-004">Situazione: stati di D-4 sulla formazione `passed` piu' recente, `missing` per i corsi
+      richiesti dalle mansioni, filtri stato/funzione/corso, stessa visibilita'; query costanti (Pest).</criterion>
+    <criterion id="AC-005">Attestato: un solo file, `mimes` + `extensions`, sostituzione e rimozione con `manage`,
+      download per chi vede la formazione (Pest).</criterion>
+    <criterion id="AC-006">Permessi creati da `permissions:sync` e offerti dal form Ruolo; activity log su corsi e
+      formazioni (Pest).</criterion>
+    <criterion id="AC-007">Frontend: catalogo, pagina Formazione con Registro e Situazione, form con validazione Zod
+      che rispecchia il server, stati distinti anche senza colore, azioni nascoste senza permesso; nessuno scroll
+      orizzontale della pagina a 375 px (Vitest).</criterion>
+    <criterion id="AC-008">Guide in-app IT/EN nuove con parity test, manuale Claude Docs, ESLint, `tsc -b --force`,
+      Pint puliti.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Nessun legame con prodotti, iscritti o Gestione richieste.</item>
+    <item>Dopo il deploy: `php artisan permissions:sync`.</item>
+  </constraints>
+
+</spec>

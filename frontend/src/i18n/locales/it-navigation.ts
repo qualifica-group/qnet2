@@ -96,6 +96,8 @@ export const navigation = {
   jobActivities: 'Attività',
   absences: 'Assenze',
   absenceTypes: 'Tipi di assenza',
+  staffTrainings: 'Formazione',
+  staffCourses: 'Corsi',
   orgChart: 'Organigramma',
   purchaseRequestPriorities: 'Priorità RDA',
   purchaseOrderStatuses: 'Stati ODA',

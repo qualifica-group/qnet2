@@ -159,6 +159,8 @@ export const permissions = {
     'job-roles': 'Mansioni',
     'job-activities': 'Attività',
     'org-chart': 'Organigramma',
+    'staff-trainings': 'Formazione',
+    'staff-courses': 'Corsi',
     'purchase-request-priorities': 'Priorità RDA',
     'purchase-order-statuses': 'Stati ODA',
     'purchase-request-line-statuses': 'Stati righe RDA',

@@ -52,6 +52,8 @@ use App\Models\RewardType;
 use App\Models\Role;
 use App\Models\Sector;
 use App\Models\Source;
+use App\Models\StaffCourse;
+use App\Models\StaffTraining;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\TaskCategory;
@@ -109,6 +111,13 @@ return [
         // spec 0278: absence types catalogue.
         'absence-types' => [
             'model' => AbsenceType::class,
+        ],
+        // spec 0284: staff courses catalogue and staff trainings register.
+        'staff-courses' => [
+            'model' => StaffCourse::class,
+        ],
+        'staff-trainings' => [
+            'model' => StaffTraining::class,
         ],
         // spec 0272: collective agreements (CCNL).
         'collective-agreements' => [

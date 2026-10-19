@@ -64,6 +64,8 @@ use App\Tables\RewardTypesTableDefinition;
 use App\Tables\RolesTableDefinition;
 use App\Tables\SectorsTableDefinition;
 use App\Tables\SourcesTableDefinition;
+use App\Tables\StaffCoursesTableDefinition;
+use App\Tables\StaffTrainings\StaffTrainingsTableDefinition;
 use App\Tables\TagsTableDefinition;
 use App\Tables\TaskCategoriesTableDefinition;
 use App\Tables\TaskImportancesTableDefinition;
@@ -114,6 +116,9 @@ return [
         'absence-requests' => AbsenceRequestsTableDefinition::class,
         'absence-requests-to-approve' => AbsenceRequestsToApproveTableDefinition::class,
         'absence-requests-all' => AbsenceRequestsAllTableDefinition::class,
+        // spec 0284: staff courses catalogue and staff trainings register.
+        'staff-courses' => StaffCoursesTableDefinition::class,
+        'staff-trainings' => StaffTrainingsTableDefinition::class,
         // spec 0272: collective agreements (CCNL) with their levels.
         'collective-agreements' => CollectiveAgreementsTableDefinition::class,
         'companies' => CompaniesTableDefinition::class,

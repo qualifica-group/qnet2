@@ -27,7 +27,7 @@ describe('router — time-entries routes', () => {
 
 /** Spec 0273 D-9: HR routes live in `hr-routes.tsx` and still resolve through the main router. */
 describe('router — HR routes', () => {
-  it.each(['job-roles', 'job-activities', 'collective-agreements', 'org-chart', 'absences', 'absence-types'])('resolves /%s', (path) => {
+  it.each(['job-roles', 'job-activities', 'collective-agreements', 'org-chart', 'absences', 'absence-types', 'staff-trainings', 'staff-courses'])('resolves /%s', (path) => {
     const matches = matchRoutes(router.routes, { pathname: `/${path}` })
     expect(matches?.at(-1)?.route.path).toBe(path)
   })

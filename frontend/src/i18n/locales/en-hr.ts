@@ -10,6 +10,8 @@ import { collectiveAgreements } from './en-collective-agreements'
 import { jobActivities } from './en-job-activities'
 import { jobRoles } from './en-job-roles'
 import { orgChart } from './en-org-chart'
+import { staffCourses } from './en-staff-courses'
+import { staffTrainings } from './en-staff-trainings'
 
 export const hr = {
   absences: { ...absences, balances: absenceBalances },
@@ -18,4 +20,6 @@ export const hr = {
   jobActivities,
   jobRoles,
   orgChart,
+  staffCourses,
+  staffTrainings,
 }

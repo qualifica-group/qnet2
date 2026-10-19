@@ -119,6 +119,9 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // spec 0278 (REQUIREMENT CHANGED): absence types and absence requests join the generic registry
         // (the latter has no field, registered so its permissions are role-assignable).
         'absence-types', 'absence-requests',
+        // spec 0284 (REQUIREMENT CHANGED): staff courses join the generic registry; staff trainings has no
+        // field and is registered so its permissions are role-assignable.
+        'staff-courses', 'staff-trainings',
         // spec 0266 `ledger` (LedgerAuthorization: a view-only module, no field — registered only so
         // `ledger.view` is assignable from the Role form under the Accounting area).
         'ledger',

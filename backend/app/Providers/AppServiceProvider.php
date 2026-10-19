@@ -84,6 +84,8 @@ use App\Models\RewardType;
 use App\Models\Role;
 use App\Models\Sector;
 use App\Models\Source;
+use App\Models\StaffCourse;
+use App\Models\StaffTraining;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\TaskCategory;
@@ -248,6 +250,9 @@ class AppServiceProvider extends ServiceProvider
             'absence_type' => AbsenceType::class,
             'absence_request' => AbsenceRequest::class,
             'absence_allowance' => AbsenceAllowance::class,
+            // spec 0284: HR staff training.
+            'staff_course' => StaffCourse::class,
+            'staff_training' => StaffTraining::class,
             'purchase_request_priority' => PurchaseRequestPriority::class,
             'purchase_order_status_label' => PurchaseOrderStatusLabel::class,
             'purchase_request_line_status_label' => PurchaseRequestLineStatusLabel::class,

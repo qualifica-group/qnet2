@@ -95,6 +95,8 @@ export const navigation = {
   jobActivities: 'Activities',
   absences: 'Absences',
   absenceTypes: 'Absence types',
+  staffTrainings: 'Training',
+  staffCourses: 'Courses',
   orgChart: 'Org chart',
   purchaseRequestPriorities: 'RDA priorities',
   purchaseOrderStatuses: 'ODA statuses',

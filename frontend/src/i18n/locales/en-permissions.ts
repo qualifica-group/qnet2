@@ -156,6 +156,8 @@ export const permissions = {
     'job-roles': 'Job roles',
     'job-activities': 'Activities',
     'org-chart': 'Org chart',
+    'staff-trainings': 'Training',
+    'staff-courses': 'Courses',
     'purchase-request-priorities': 'RDA priorities',
     'purchase-order-statuses': 'ODA statuses',
     'purchase-request-line-statuses': 'RDA line statuses',

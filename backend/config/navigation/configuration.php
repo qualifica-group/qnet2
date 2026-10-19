@@ -48,6 +48,13 @@ return [
             'permission' => 'absence-types.view',
         ],
         [
+            'key' => 'staff-courses',
+            'label' => 'navigation.staffCourses',
+            'icon' => 'library',
+            'route' => '/staff-courses',
+            'permission' => 'staff-courses.viewAny',
+        ],
+        [
             'key' => 'sectors',
             'label' => 'navigation.sectors',
             'icon' => 'list-tree',
