@@ -96,6 +96,10 @@ export const permissions = {
     viewInvoices: 'Vedere proforma e fatture',
     managePayments: 'Gestire i pagamenti',
     manageCompensation: 'Gestire i dati retributivi',
+    // Spec 0279: calendario delle assenze, tre livelli di visibilita'.
+    calendarOwn: 'Calendario: solo le proprie',
+    calendarTeam: 'Calendario: proprie e della squadra',
+    calendarAll: 'Calendario: di tutti',
   },
   resources: {
     users: 'Utenti',

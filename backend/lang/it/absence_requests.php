@@ -2,6 +2,7 @@
 
 return [
     'no_working_day' => 'Il periodo selezionato non contiene giorni lavorativi.',
+    'calendar_period_too_long' => 'Il periodo del calendario puo\' coprire al massimo :max giorni.',
     'minutes_out_of_range' => 'I minuti richiesti devono essere tra 1 e :max.',
     'overlap' => 'Il periodo si sovrappone a un\'altra richiesta di assenza della stessa persona.',
     'no_approvers' => 'Nessun approvatore disponibile per questa persona.',

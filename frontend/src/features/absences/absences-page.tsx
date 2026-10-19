@@ -4,16 +4,22 @@ import { useSearchParams } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
+import { FilterTabs } from '@/components/ui/filter-tabs'
 import { Can } from '@/features/auth/can'
+import { useAbilities } from '@/features/auth/use-abilities'
 import type { TableViewHandle } from '@/features/table/table-view'
 import { AbsenceBalancesCard } from '@/features/absences/balances/absence-balances-card'
+import { AbsenceCalendar } from '@/features/absences/calendar/absence-calendar'
 import { AbsenceRequestDetailSheet } from '@/features/absences/requests/absence-request-detail-sheet'
 import { AbsenceRequestSheet } from '@/features/absences/requests/absence-request-sheet'
 import { AbsenceRequestsGrid } from '@/features/absences/requests/absence-requests-grid'
-import type { AbsenceRequest } from '@/features/absences/types'
+import { ABSENCE_CALENDAR_PERMISSIONS, type AbsenceRequest } from '@/features/absences/types'
 
 /** Query parameter of the notifications' `action_url` (`/absences?request={id}`). */
 const REQUEST_PARAM = 'request'
+
+const PAGE_VIEWS = ['requests', 'calendar'] as const
+type PageView = (typeof PAGE_VIEWS)[number]
 
 /** Positive integer id from the URL, or null for anything else. */
 function parseRequestId(value: string | null): number | null {
@@ -24,7 +30,8 @@ function parseRequestId(value: string | null): number | null {
 /**
  * Absences page (spec 0278): the actor's balances, the requests grid with its
  * scope tabs, the create/edit-draft Sheet and the detail Sheet (also opened by
- * `?request={id}`). Gated by `absence-requests.viewAny`.
+ * `?request={id}`). Gated by `absence-requests.viewAny`. The "Calendario" view
+ * (spec 0279) shows up with any of the three calendar permissions.
  */
 export default function AbsencesPage() {
   const { t } = useTranslation()
@@ -32,6 +39,9 @@ export default function AbsencesPage() {
   const tableRef = useRef<TableViewHandle>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<AbsenceRequest | undefined>(undefined)
+  const [view, setView] = useState<PageView>('requests')
+  const { can } = useAbilities()
+  const canSeeCalendar = ABSENCE_CALENDAR_PERMISSIONS.some((permission) => can(permission))
 
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
   const openedId = parseRequestId(searchParams.get(REQUEST_PARAM))
@@ -68,8 +78,22 @@ export default function AbsencesPage() {
             </Can>
           }
         />
-        <AbsenceBalancesCard />
-        <AbsenceRequestsGrid tableRef={tableRef} onOpen={openDetail} />
+        {canSeeCalendar ? (
+          <FilterTabs
+            aria-label={t('absences.page.viewsLabel')}
+            value={view}
+            options={PAGE_VIEWS.map((value) => ({ value, label: t(`absences.page.views.${value}`) }))}
+            onValueChange={setView}
+          />
+        ) : null}
+        {canSeeCalendar && view === 'calendar' ? (
+          <AbsenceCalendar onOpen={openDetail} />
+        ) : (
+          <>
+            <AbsenceBalancesCard />
+            <AbsenceRequestsGrid tableRef={tableRef} onOpen={openDetail} />
+          </>
+        )}
       </div>
 
       <AbsenceRequestDetailSheet

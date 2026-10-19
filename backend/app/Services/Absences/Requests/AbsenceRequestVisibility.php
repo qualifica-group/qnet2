@@ -7,6 +7,7 @@ namespace App\Services\Absences\Requests;
 use App\Models\AbsenceRequest;
 use App\Models\User;
 use App\Services\TimeEntries\TimeEntrySubordinateResolver;
+use Closure;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -49,6 +50,24 @@ final class AbsenceRequestVisibility
     public function canView(User $actor, AbsenceRequest $request): bool
     {
         return $this->canViewPerson($actor, $request->user_id) || $this->isApprover($actor, $request);
+    }
+
+    /**
+     * canView() for many requests at once (spec 0279 D-3): the team is
+     * resolved once instead of per request; `approvers` must be eager loaded.
+     *
+     * @return Closure(AbsenceRequest): bool
+     */
+    public function viewChecker(User $actor): Closure
+    {
+        if ($this->canManageAll($actor)) {
+            return static fn (): bool => true;
+        }
+
+        $visibleUserIds = array_flip($this->ownAndTeamIds($actor));
+
+        return fn (AbsenceRequest $request): bool => isset($visibleUserIds[$request->user_id])
+            || $this->isApprover($actor, $request);
     }
 
     /** 404, never 403: a request the actor cannot see must not be confirmed to exist. */

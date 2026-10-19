@@ -144,12 +144,45 @@ const guide: HelpGuide = {
       ],
     },
     {
-      id: 'in-development',
-      title: 'Team calendar under development',
+      id: 'calendar',
+      title: 'The calendar',
       blocks: [
         {
+          type: 'paragraph',
+          text: 'The **Calendar** view, next to **Requests**, shows month by month who is absent: one row per person, one column per day. Weekends and holidays are highlighted, holidays have their number in red.',
+        },
+        {
+          type: 'table',
+          headers: ['Symbol', 'Meaning'],
+          rows: [
+            ['Filled box with a check', 'Approved absence.'],
+            ['Dashed box with a clock', 'Submitted request, waiting for a decision.'],
+          ],
+        },
+        {
+          type: 'paragraph',
+          text: 'Who you see depends on the permissions of your role:',
+        },
+        {
+          type: 'table',
+          headers: ['Permission', 'Who you see'],
+          rows: [
+            ['Calendar: own only', 'Only yourself.'],
+            ['Calendar: own and team', 'You and the people who report to you, also indirectly.'],
+            ['Calendar: everyone', 'Every active person.'],
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            'The arrows move to the previous or next month; "Current month" brings you back to today.',
+            'When you see more people, you can filter them by business function.',
+            'Hovering a box shows type, duration and status. If you can already see that request under Requests, a click opens its detail.',
+          ],
+        },
+        {
           type: 'note',
-          text: 'The team calendar is under development and will arrive in a later update.',
+          text: 'Without any of the three permissions the Calendar view does not appear. Drafts, rejected and cancelled requests are not in the calendar.',
         },
       ],
     },

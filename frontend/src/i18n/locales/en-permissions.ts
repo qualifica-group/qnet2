@@ -93,6 +93,10 @@ export const permissions = {
     viewInvoices: 'View proforma and invoices',
     managePayments: 'Manage payments',
     manageCompensation: 'Manage compensation data',
+    // Spec 0279: absence calendar, three visibility levels.
+    calendarOwn: 'Calendar: own only',
+    calendarTeam: 'Calendar: own and team',
+    calendarAll: 'Calendar: everyone',
   },
   resources: {
     users: 'Users',

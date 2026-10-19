@@ -75,7 +75,8 @@ it('0278 BE-1: one allowance per user, type and year', function () {
 });
 
 it('0278 BE-1: the policies declare the permissions and permissions:sync creates them', function () {
-    expect(AbsenceRequestPolicy::abilities())->toBe(['viewAny', 'create', 'manageAll'])
+    // REQUIREMENT CHANGED (spec 0279 D-1): the three calendar levels joined the module.
+    expect(AbsenceRequestPolicy::abilities())->toBe(['viewAny', 'create', 'manageAll', 'calendarOwn', 'calendarTeam', 'calendarAll'])
         ->and((new AbsenceTypePolicy)->permissions())->toContain(
             'absence-types.view', 'absence-types.create', 'absence-types.update', 'absence-types.delete',
         );
@@ -83,7 +84,10 @@ it('0278 BE-1: the policies declare the permissions and permissions:sync creates
     $this->artisan('permissions:sync')->assertSuccessful();
 
     expect(Permission::query()->where('name', 'like', 'absence-requests.%')->pluck('name')->sort()->values()->all())
-        ->toBe(['absence-requests.create', 'absence-requests.manageAll', 'absence-requests.viewAny']);
+        ->toBe([
+            'absence-requests.calendarAll', 'absence-requests.calendarOwn', 'absence-requests.calendarTeam',
+            'absence-requests.create', 'absence-requests.manageAll', 'absence-requests.viewAny',
+        ]);
 
     $admin = User::factory()->create();
     $this->artisan('roles:create-super-admin')->assertSuccessful();
