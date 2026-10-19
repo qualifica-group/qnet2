@@ -3,6 +3,27 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Mansioni, livello ed email condivise assegnati alle persone — VERDE, NON COMMITTATO (2026-10-19)
+
+- Fonti: `Elenco_Dipendenti_Qualifica_Aggiornato 8.csv` (Mansione, Email aziendale) + `Pianta_Organica ... 8.09.xlsx`
+  (Livello). Abbinamento per nome -> account: 129 persone; senza account Lorenzo Sepe e Alessandro Zincone. Abbinamenti
+  confermati dall'utente anche se il nome differisce: Letterio=Lillo Irrera, Giuseppina=Pina De Rosa, Studio Centore=
+  Raffaele Centore, Di Martino=#110 De Martino, Maria=#76 Marilisa Scafati Taglialatela. Mansioni CSV e Pianta coincidono.
+- Dati: `database/seeders/QualificaCatalog/OrgChartRoster.php` (email account => roles, level, emails; `EXTERNAL` =
+  studi esterni). Piu' livelli per persona -> il piu' alto. Email del CSV "g.gervasio@...itcv@..." divisa in due.
+- Decisione utente: fuso in `QualificaHrCatalogSeeder` (Step 4 `assignPeople`), NON un seeder nuovo; per questo nella
+  catena di `QualificaProductionDataSeeder` lo step si e' spostato in fondo (step 9, dopo ReportsTo: servono gli account).
+  ADDITIVO: `syncWithoutDetaching` sulle mansioni, email aggiunte se mancanti (`normalized_value`), mai rimosse. Livello:
+  profilo senza condizioni -> prima condizione da oggi, `employee` (studi esterni `other`), senza azienda, via
+  `EmploymentContractService::create`; condizione in vigore senza livello -> livello riempito; livello gia' presente
+  -> invariato. Email come contatto `email` non primario, `is_work`, etichetta "Email aziendale".
+- Attivita': nessuna assegnazione per persona nel modello, arrivano dalla mansione.
+- Lanciato sul DB locale: 67 mansioni, 150 assegnazioni, 129 condizioni con livello, 137 email. Rilancio senza doppioni.
+- Test: `QualificaHrCatalogSeederTest` (+4: coerenza roster, assegnazione, solo-se-vuoto/additivo, account mancante);
+  `tests/Feature/Seeding` 170/170. Manuale: nessun impatto (solo dati).
+- Rinviato dall'utente ("dopo"): appartenenza alle Funzioni aziendali dalla colonna "Funzione aziendale" del CSV.
+  67 utenti del DB non nel CSV: `~/Downloads/Utenti_DB_non_in_elenco_dipendenti.xlsx`, nessuna azione decisa.
+
 ## Spec 0280 — Funzioni aziendali attive/non attive — VERDE, COMMITTATO (2026-10-19)
 
 - Spec `docs/specs/0280-business-function-active-flag.xml` (D-1..D-9, AC-001..AC-011), forma della 0212 (settori).

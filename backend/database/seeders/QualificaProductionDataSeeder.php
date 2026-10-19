@@ -50,12 +50,6 @@ use Illuminate\Database\Seeder;
  *                                    code (spec 0213). Same kind of row, same
  *                                    reasoning; step 5 deactivates only the
  *                                    legacy sectors (`old_id`), never these.
- *      QualificaHrCatalogSeeder    — the job activities and job roles
- *                                    (Mansioni, spec 0271) of the client's
- *                                    "Pianta Organica", merged, each role
- *                                    linked to its activities, and the
- *                                    sheet's levels I-IV as a CCNL (spec
- *                                    0272). Same kind of row, same reasoning.
  *   4. TestUsersSeeder             — the named super-admin account.
  *      WorkOrderPaymentStatusSeeder — the legacy payment statuses of a
  *                                    commessa line.
@@ -74,6 +68,13 @@ use Illuminate\Database\Seeder;
  *   8. QualificaReportsToSeeder    — who each operator reports to ("Risponde
  *                                    a", spec 0166), from the mansionario's
  *                                    supervision sheet.
+ *   9. QualificaHrCatalogSeeder    — the job activities and job roles
+ *                                    (Mansioni, spec 0271) of the client's
+ *                                    "Pianta Organica", merged, each role
+ *                                    linked to its activities, the sheet's
+ *                                    levels I-IV as a CCNL (spec 0272), then
+ *                                    each listed person's roles, level and
+ *                                    shared mailboxes (OrgChartRoster).
  *
  * The order is a contract, not a preference:
  *   - step 5 adopts step 2's sources and business functions by name instead
@@ -89,6 +90,8 @@ use Illuminate\Database\Seeder;
  *     and 6 already there and leaves them alone;
  *   - step 8 needs every account on both sides of a reports-to link: the
  *     operators of step 6 and the staff of step 7.
+ *   - step 9 assigns roles and levels to the accounts of steps 4, 6 and 7, so
+ *     it runs once they all exist.
  *
  * Every step stays runnable on its own and is idempotent, so this seeder is
  * too: re-running it converges instead of duplicating. Step 5 is a no-op with
@@ -117,12 +120,12 @@ class QualificaProductionDataSeeder extends Seeder
         $this->call(QualificaCostProductSeeder::class);
         $this->call(QualificaTaskTaxonomySeeder::class);
         $this->call(QualificaSectorSeeder::class);
-        $this->call(QualificaHrCatalogSeeder::class);
         $this->call(TestUsersSeeder::class);
         $this->call(WorkOrderPaymentStatusSeeder::class);
         $this->call(QualificaLegacyImportSeeder::class);
         $this->call(QualificaOperatorSeeder::class);
         $this->call(QualificaStaffSeeder::class);
         $this->call(QualificaReportsToSeeder::class);
+        $this->call(QualificaHrCatalogSeeder::class);
     }
 }
