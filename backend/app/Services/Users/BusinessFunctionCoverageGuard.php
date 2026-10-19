@@ -6,15 +6,15 @@ use App\Models\User;
 use Illuminate\Validation\ValidationException;
 
 /**
- * The mandatory business function rule (spec 0271 D-6): an active, non-service-account person must
- * cover at least one business function, i.e. own at least one
- * `employment.product_lines` row, unless the profile covers every category
- * (`covers_all_product_categories`, assumption A-1).
+ * The mandatory business function rule (spec 0275 D-4, moved from the
+ * competences of spec 0271 D-6): an active, non-service-account person must
+ * belong to at least one business function, i.e. own at least one
+ * `business_function_user` row. Competences are optional.
  *
  * Checked by UserService inside the write transaction, only when the request
  * touched `employment` or turned the user active (or on create), so an update
- * that touches neither never blocks existing legacy data (AC-011). The
- * exception rolls the whole transaction back: no partial write.
+ * that touches neither never blocks existing legacy data. The exception rolls
+ * the whole transaction back: no partial write.
  */
 class BusinessFunctionCoverageGuard
 {
@@ -30,14 +30,12 @@ class BusinessFunctionCoverageGuard
             return;
         }
 
-        $employment = $user->employment()->first();
-
-        if ($employment !== null && ($employment->covers_all_product_categories || $employment->productLines()->exists())) {
+        if ($user->businessFunctions()->exists()) {
             return;
         }
 
         throw ValidationException::withMessages([
-            'employment.product_lines' => __('users.employment.business_function_required'),
+            'employment.business_function_ids' => __('users.employment.business_function_required'),
         ]);
     }
 }

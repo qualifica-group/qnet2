@@ -23,8 +23,8 @@ const guide: HelpGuide = {
           rows: [
             ['**Name**', 'The name of the business function.'],
             ['**Type**', '**Business Unit**, **Business Service** or **None**.'],
-            ['**Responsible**', 'The user responsible for the function.'],
-            ['**Associated users**', 'The users who belong to it.'],
+            ['**Responsible**', 'The user responsible for the function. It can also be changed from the user record, **Manager of functions** row: the function passes to the chosen person.'],
+            ['**Associated users**', 'The users who belong to it. It is the same data as the user record\'s **Business functions of membership**: changing it here or there is equivalent. The user\'s **Competences** are separate and optional.'],
             ['**Parent function**', 'To build a hierarchy between business functions.'],
             ['**Companies**', 'The companies the function is linked to (one or more).'],
             ['**Operational sites**', 'The physical sites where this function operates.'],
@@ -38,6 +38,7 @@ const guide: HelpGuide = {
       title: 'Creating, editing, deactivating or deleting',
       blocks: [
         { type: 'paragraph', text: 'From the list, press the button to create a new business function: the record opens with its rows closed, for each row press the pencil (or the value), fill it in and press **Done** (**Revert** puts the row back as it was), then **Save**. Use **View** and **Delete** on the row (if your role allows it). There is no separate edit form: open the record with **View**, press the pencil on the row (name, type, parent, responsible, associated users, companies, operational sites), change the value and press **Save** (only that row is saved); **Cancel** or Esc leave the row as it was.' },
+        { type: 'note', text: 'An active person (not a service account) must belong to at least one function: from **Associated users** you cannot remove someone who has no other function (the error lists the names), and you cannot delete a function that would leave active people without any function.' },
         { type: 'warning', text: 'A business function with child functions cannot be deleted: move the child functions under another parent first, or delete them.' },
       ],
     },

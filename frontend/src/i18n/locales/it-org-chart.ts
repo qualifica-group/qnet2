@@ -1,5 +1,5 @@
 /**
- * Organigramma HR (spec 0273). File affiancato per mantenere `it.ts` entro i limiti dimensionali.
+ * Organigramma HR (spec 0273, 0274). File affiancato per mantenere `it.ts` entro i limiti dimensionali.
  */
 
 export const orgChart = {
@@ -25,10 +25,24 @@ export const orgChart = {
   responsible: 'Responsabile',
   peopleCount_one: '{{count}} persona',
   peopleCount_other: '{{count}} persone',
-  allFunctions: 'Tutte le funzioni',
+  unassigned: 'Non assegnati',
   emptyFunctions: 'Nessuna funzione aziendale.',
   emptyPeople: 'Nessuna persona da mostrare.',
   noMatch: 'Nessun risultato per questa ricerca.',
+  noManager: 'Nessun responsabile',
+  unassignedHint: 'Persone attive senza una funzione aziendale di appartenenza',
+  members: {
+    open_one: "{{name}}: {{count}} persona, apri l'elenco",
+    open_other: "{{name}}: {{count}} persone, apri l'elenco",
+    responsible: 'Responsabili',
+    people: 'Persone',
+    empty: 'Nessuna persona in questa funzione.',
+  },
+  zoom: {
+    in: 'Ingrandisci',
+    out: 'Riduci',
+    fit: 'Adatta alla finestra',
+  },
   move: {
     action: 'Sposta in…',
     actions: 'Azioni per {{name}}',
@@ -45,7 +59,7 @@ export const orgChart = {
       retry: 'Riprova',
     },
     summary: 'Sposta {{subject}} da «{{from}}» a «{{to}}».',
-    functionWarning: 'Cambiano le competenze commerciali della persona e quindi le assegnazioni automatiche.',
+    functionWarning: 'Cambia la funzione aziendale di appartenenza della persona.',
     cancel: 'Annulla',
     confirm: 'Conferma lo spostamento',
     success: '{{name}} spostato.',

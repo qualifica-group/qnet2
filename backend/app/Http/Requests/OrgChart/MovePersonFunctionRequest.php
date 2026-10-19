@@ -20,7 +20,7 @@ class MovePersonFunctionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'from_function_id' => ['required', 'integer', 'exists:business_functions,id'],
+            'from_function_id' => ['present', 'nullable', 'integer', 'exists:business_functions,id'],
             'to_function_id' => ['required', 'integer', 'exists:business_functions,id', 'different:from_function_id'],
         ];
     }

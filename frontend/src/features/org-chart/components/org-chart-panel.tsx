@@ -1,11 +1,14 @@
+import { useState } from 'react'
 import { ChevronsDown, ChevronsUp, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { OrgTree, type OrgRowRenderers } from '@/features/org-chart/components/org-tree'
+import { OrgChartCanvas, type OrgRowRenderers } from '@/features/org-chart/components/org-chart-canvas'
+import { OrgMembersSheet } from '@/features/org-chart/components/org-members-sheet'
 import type { OrgTreeNode } from '@/features/org-chart/tree-nodes'
+import { findByKey } from '@/features/org-chart/tree-utils'
 import { useOrgTreeState } from '@/features/org-chart/use-org-tree-state'
 
 const FORBIDDEN_STATUS = 403
@@ -33,8 +36,10 @@ function PanelMessage({ children, tone = 'muted' }: { children: string; tone?: '
 }
 
 /**
- * Shared shell of both views: toolbar (search, expand/collapse all) plus the
- * tree, with the loading / forbidden / error / empty states.
+ * Shared shell of both views: toolbar (search, expand/collapse all), the
+ * graphic chart and the members side panel, with the loading / forbidden /
+ * error / empty states. The panel follows the card by key, so it shows fresh
+ * data after a move.
  */
 export function OrgChartPanel({
   nodes: allNodes,
@@ -48,6 +53,8 @@ export function OrgChartPanel({
 }: OrgChartPanelProps) {
   const { t } = useTranslation()
   const state = useOrgTreeState(allNodes)
+  const [membersKey, setMembersKey] = useState<string | null>(null)
+  const membersNode = membersKey === null ? null : findByKey(state.nodes, membersKey)
 
   if (isLoading) {
     return (
@@ -99,17 +106,18 @@ export function OrgChartPanel({
       {state.nodes.length === 0 ? (
         <PanelMessage>{state.isSearching ? t('orgChart.noMatch') : emptyLabel}</PanelMessage>
       ) : (
-        <div className="max-h-[70vh] overflow-auto p-2">
-          <OrgTree
-            nodes={state.nodes}
-            collapsedKeys={state.collapsedKeys}
-            onToggle={state.toggle}
-            ariaLabel={ariaLabel}
-            renderRowActions={renderRowActions}
-            wrapRow={wrapRow}
-          />
-        </div>
+        <OrgChartCanvas
+          nodes={state.nodes}
+          collapsedKeys={state.collapsedKeys}
+          onToggle={state.toggle}
+          ariaLabel={ariaLabel}
+          highlight={state.isSearching ? state.search.trim().toLowerCase() : ''}
+          onOpenMembers={(node) => setMembersKey(node.key)}
+          renderRowActions={renderRowActions}
+          wrapRow={wrapRow}
+        />
       )}
+      <OrgMembersSheet node={membersNode} onClose={() => setMembersKey(null)} renderRowActions={renderRowActions} />
     </Card>
   )
 }

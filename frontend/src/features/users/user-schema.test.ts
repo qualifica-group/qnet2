@@ -16,8 +16,9 @@ const PERMISSIONS: ResourcePermissions = {
 const t = ((key: string) => key) as unknown as TFunction
 
 const employment = {
-  is_manager: false,
   job_role_ids: [],
+  business_function_ids: [],
+  managed_business_function_ids: [],
   reports_to_ids: [],
   primary_operational_site_id: null,
   remote_operational_site_ids: [],

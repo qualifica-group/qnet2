@@ -3,6 +3,63 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0275 — Funzione aziendale di appartenenza (reparto) unica tra Funzioni aziendali e scheda utente — VERDE, NON COMMITTATO (2026-10-19)
+
+- Decisioni utente 2026-10-19: appartenenza e competenze restano SEPARATE (niente unione). Appartenenza = pivot
+  `business_function_user` (lo stesso degli "Utenti associati"), multipla, OBBLIGATORIA per utente attivo non di
+  servizio (la regola 0271 D-6 passa dalle competenze all'appartenenza; competenze facoltative, cade l'eccezione
+  covers_all). Organigramma raggruppato per appartenenza. Corona gialla sul responsabile come nel segnatempo (D-9).
+- Contratto: `employment.business_function_ids` (tri-state: assente/null = invariato, [] = svuota; DIVERSO da
+  `job_role_ids` dove null svuota), resource `employment.business_function_ids/business_functions` e
+  `UserResource.managed_business_functions` [{id,name}]. `EmploymentProfile::businessFunctions()` = belongsToMany con
+  parentKey `user_id` (la riga sopravvive a `employment: null`). Errore 422 su `employment.business_function_ids`.
+- Pagina funzioni: `Services/BusinessFunctions/BusinessFunctionMembershipGuard` -> 422 su `users` se una persona attiva
+  resterebbe senza funzione, 409 sul delete. Griglia utenti: colonna `business_function` letta dal pivot.
+- Organigramma: `unassigned_people` sostituisce `all_functions_people` (riquadro "Non assegnati", FE `UnassignedCard`,
+  key `unassigned`); spostamento persona-funzione sul pivot, `from_function_id` nullable, 422 `not_in_source_function`,
+  permesso `employment.business_function_ids`; `GET /org-chart/people` `business_functions` = [{id,name,is_manager}]
+  dal pivot (is_manager = manager_id della funzione). Rimossi `covers_all`/`no_line_on_source`.
+- FE: `UserBusinessFunctionsField` (user-employment-fields), `features/users/function-badges.tsx` (corona), elenco sola
+  lettura "Responsabile delle funzioni"; i18n `{it,en}-users-employment.ts`, `{it,en}-org-chart.ts`; guide in-app
+  users, business-functions, org-chart IT+EN.
+- Verifica (verifier indipendente): AC-001..AC-024 PASS; `composer test` 11502 pass, 3 fail solo `QuoteDocumentPdfTest`
+  (LibreOffice assente); Pint ok; vitest 8488/8488; `tsc -b --force` EXIT=0; ESLint 1 errore PREESISTENTE in
+  `features/quotes/column-renderers.tsx:12` (fuori scope). Test cambiati per requisito (REQUIREMENT CHANGED): fixture
+  utenti attivi con `business_function_ids`/`memberOf()` (helper `membershipFunctionId()` in tests/Helpers/UserHelpers),
+  test OrgChart 0273, test FE organigramma ("Tutte le funzioni" -> "Non assegnati").
+- Manuale Claude Docs: aggiornati Funzioni aziendali (Utenti associati) e scheda utente (Funzioni aziendali di
+  appartenenza). Da fare: sezione Organigramma (manca tutto il modulo HR 0271-0274 nel manuale).
+- Dati: 54 utenti attivi locali senza appartenenza: la regola scatta al primo salvataggio della loro scheda.
+- Organigramma, fuori spec (richiesta utente 2026-10-19): fix "Sposta in..." che non apriva il dialog (bug 0274: il pan
+  di `use-chart-viewport.ts` catturava il puntatore anche per eventi React risaliti da portal, ora esce se il target non
+  e' nel DOM del viewport; test `use-chart-viewport.test.ts`). Animazioni espandi/comprimi solo CSS `tw-animate-css`:
+  transizione left/top e `d` degli archi, ingresso fade/zoom, uscita trattenuta per `EXIT_MS` (`use-exiting-cards.ts`,
+  card in uscita `aria-hidden`+`inert`), righe del pannello persone, `motion-reduce` rispettato. Resa visiva non ancora
+  vista nel browser (DB locale `qnet2` azzerato per errore da un'altra sessione, ripristino in corso con l'utente).
+- Prossimo: spec 0276 (sessione separata) elimina `employment_profiles.is_manager` e rende "Responsabile delle
+  funzioni" modificabile dalla scheda utente (supera 0275 D-6); la corona d'angolo della card organigramma dipende
+  ancora da `is_manager`.
+
+## ORGANIGRAMMA GRAFICO "STILE BIZNEO" (SPEC 0274) — VERDE, NON COMMITTATO (2026-10-19)
+
+- Decisioni utente 2026-10-19: l'albero a righe di 0273 e' ELIMINATO; resta un organigramma grafico (riquadri dall'alto
+  al basso, linee curve SVG, pallino "+N", zoom), persone di una funzione in un pannello laterale (non riquadri),
+  spostamenti con menu + trascinamento tra riquadri. Backend e contratto API invariati.
+- Nuovi: `chart-layout.ts` (layout puro: genitore centrato, foglie >4 in griglia da 4 colonne, radici a scaffali oltre
+  1240 px, linee calcolate dalle posizioni finali), `use-chart-viewport.ts` (zoom 0.3-1.5, pan trascinando lo sfondo),
+  `components/org-chart-canvas.tsx` (treeitem piatti con aria-level/setsize/posinset, radici con gerarchia prima),
+  `org-chart-card.tsx`, `org-members-sheet.tsx`. Eliminati `org-tree.tsx`, `org-node-content.tsx`, `org-tree.test.tsx`.
+  `tree-nodes.ts`: `chartChildren` (le persone sotto una funzione non sono riquadri) e `memberPeople`;
+  `use-org-tree-state` apre di default solo le radici.
+- Test: `chart-layout.test.ts` nuovo; `org-chart-page.test.tsx` e `org-chart-move.test.tsx` riscritti sulle viste
+  grafiche (REQUIREMENT CHANGED, spec 0274). Vitest org-chart + help 183/183, ESLint ok, `tsc -b --force` ok,
+  verifica visiva con Chrome su dati locali (nessuno scroll orizzontale a 1440 e 375).
+- Coordinamento: la sessione della spec 0275 (appartenenza a funzione via pivot `business_function_user`) cambia il
+  backend dell'organigramma e rinomina `all_functions_people` -> `unassigned_people`; tocca il frontend org-chart
+  SOLO dopo il via di questa sessione (`types.ts`, `build-function-tree.ts`, etichette `allFunctions`/`allFunctionsHint`,
+  `isMovable` per i non assegnati).
+- Prossimi passi: commit su richiesta; manuale Claude Docs sezione Organigramma.
+
 ## SEED PRODUZIONE: PRODOTTI DI COSTO NUOVI (NON [OLD]) — VERDE, COMMITTATO (2026-10-16)
 
 - Decisioni utente 2026-10-16: le voci di costo legacy diventano prodotti NUOVI e attivi in qnet-2, catalogo SEPARATO

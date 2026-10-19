@@ -40,7 +40,7 @@ it('AC-016: a responsabile reads list/overview/pulse for a DIRECT and an INDIREC
     $manager = timeEntryActorWith(['viewAny']);
     $direct = User::factory()->create();
     $indirect = User::factory()->create();
-    EmploymentProfile::factory()->manager()->create(['user_id' => $manager->id]);
+    EmploymentProfile::factory()->create(['user_id' => $manager->id]);
     EmploymentProfile::factory()->reportsTo($manager)->create(['user_id' => $direct->id]);
     EmploymentProfile::factory()->reportsTo($direct)->create(['user_id' => $indirect->id]);
     Sanctum::actingAs($manager);
@@ -58,7 +58,7 @@ it('AC-016: a responsabile reads list/overview/pulse for a DIRECT and an INDIREC
 
 it('AC-016: a responsabile requesting a STRANGER user_id is 403 on list/overview/pulse', function () {
     $manager = timeEntryActorWith(['viewAny']);
-    EmploymentProfile::factory()->manager()->create(['user_id' => $manager->id]);
+    EmploymentProfile::factory()->create(['user_id' => $manager->id]);
     $stranger = User::factory()->create();
     Sanctum::actingAs($manager);
 
@@ -72,9 +72,9 @@ it('AC-011: a collaborator with TWO managers is readable by BOTH, and by neither
     $managerB = timeEntryActorWith(['viewAny']);
     $stranger = timeEntryActorWith(['viewAny']);
     $member = User::factory()->create();
-    EmploymentProfile::factory()->manager()->create(['user_id' => $managerA->id]);
-    EmploymentProfile::factory()->manager()->create(['user_id' => $managerB->id]);
-    EmploymentProfile::factory()->manager()->create(['user_id' => $stranger->id]);
+    EmploymentProfile::factory()->create(['user_id' => $managerA->id]);
+    EmploymentProfile::factory()->create(['user_id' => $managerB->id]);
+    EmploymentProfile::factory()->create(['user_id' => $stranger->id]);
     EmploymentProfile::factory()->reportsTo($managerA, $managerB)->create(['user_id' => $member->id]);
 
     foreach ([$managerA, $managerB] as $manager) {

@@ -220,7 +220,6 @@ it('spec 0008/0015/0111/0129: users.fields contains exactly the 4 existing + 13 
         // spec 0015 — the employment.* keys; spec 0103 (D-9) split the single
         // employment.operational_site_id into primary/remote; spec 0166 (D-8)
         // renamed employment.reports_to_id to employment.reports_to_ids.
-        'employment.is_manager',
         // spec 0129 D-1 — the profile-wide wildcard flag.
         'employment.covers_all_product_categories',
         // spec 0194 — the "Assegnabile" switch.
@@ -229,6 +228,10 @@ it('spec 0008/0015/0111/0129: users.fields contains exactly the 4 existing + 13 
         // spec 0111 — the assignment competence as {function, category} rows,
         // replacing the former business_function_id/product_category_ids pair.
         'employment.product_lines',
+        // spec 0275 — business function membership.
+        'employment.business_function_ids',
+        // spec 0276 — the functions the person manages (REQUIREMENT CHANGED: replaces employment.is_manager).
+        'employment.managed_business_function_ids',
         'employment.relationship_type', 'employment.company_id',
         'employment.primary_operational_site_id', 'employment.remote_operational_site_ids',
         'employment.hired_at',
@@ -237,12 +240,13 @@ it('spec 0008/0015/0111/0129: users.fields contains exactly the 4 existing + 13 
         'employment.iban', 'employment.iban_holder',
     ]);
 
-    // Spec 0129/0194/0272: exactly 16 employment.* keys (13 + the wildcard flag +
-    // the "Assegnabile" switch, - qualification_type + iban + iban_holder), and
+    // Spec 0129/0194/0272: exactly 17 employment.* keys (13 + the wildcard flag +
+    // the "Assegnabile" switch, - qualification_type + iban + iban_holder + business_function_ids,
+    // - is_manager + managed_business_function_ids), and
     // neither of the two keys product_lines replaced survives anywhere in the
     // catalogue.
     $employmentKeys = $byKey->keys()->filter(static fn (string $key): bool => str_starts_with($key, 'employment.'));
-    expect($employmentKeys)->toHaveCount(16)
+    expect($employmentKeys)->toHaveCount(17)
         ->and($byKey)->not->toHaveKey('employment.business_function_id')
         ->and($byKey)->not->toHaveKey('employment.product_category_ids')
         ->and($byKey->get('employment.product_lines'))->toMatchArray(['type' => 'collection', 'group' => 'employment']);

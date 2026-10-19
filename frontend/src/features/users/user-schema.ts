@@ -31,8 +31,9 @@ const localeSchema = z.enum(['en', 'it'])
 function buildEmploymentSchema(t: TFunction) {
   return z
     .object({
-      is_manager: z.boolean(),
       job_role_ids: z.array(z.number()),
+      business_function_ids: z.array(z.number()),
+      managed_business_function_ids: z.array(z.number()),
       reports_to_ids: z.array(z.number()),
       // Site membership (spec 0103): at most one physical site, plus zero or
       // more remote sites — both operative to the same effect (D-1).

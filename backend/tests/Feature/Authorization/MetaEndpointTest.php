@@ -56,12 +56,15 @@ it('200: returns the field catalogue and the full permissions block (create-cont
         'personal_data.vat_number', 'personal_data.sdi_code', 'personal_data.birth_date',
         'personal_data.birth_city_id', 'personal_data.residence_city_id', 'personal_data.gender',
         'personal_data.contacts', 'personal_data.addresses',
-        'employment.is_manager',
         // spec 0129 D-1 — the profile-wide wildcard flag.
         'employment.covers_all_product_categories',
         // spec 0194 — the "Assegnabile" switch.
         'employment.is_assignable',
         'employment.job_role_ids', 'employment.reports_to_ids',
+        // spec 0275 — business function membership.
+        'employment.business_function_ids',
+        // spec 0276 — the functions the person manages (REQUIREMENT CHANGED: replaces employment.is_manager).
+        'employment.managed_business_function_ids',
         // spec 0111 — the assignment competence as {function, category} rows.
         'employment.product_lines',
         'employment.relationship_type', 'employment.company_id',

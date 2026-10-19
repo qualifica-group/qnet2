@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -131,6 +132,26 @@ class User extends Authenticatable implements HasLocalePreference
         }
 
         return 'data:'.$avatar->mime_type.';base64,'.base64_encode($disk->get($avatar->path));
+    }
+
+    /**
+     * The business functions this person belongs to (spec 0275 D-1).
+     *
+     * @return BelongsToMany<BusinessFunction, $this>
+     */
+    public function businessFunctions(): BelongsToMany
+    {
+        return $this->belongsToMany(BusinessFunction::class, 'business_function_user');
+    }
+
+    /**
+     * The business functions this person is manager of (spec 0275 D-6).
+     *
+     * @return HasMany<BusinessFunction, $this>
+     */
+    public function managedBusinessFunctions(): HasMany
+    {
+        return $this->hasMany(BusinessFunction::class, 'manager_id');
     }
 
     /**

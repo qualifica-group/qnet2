@@ -54,37 +54,82 @@ describe('OrgChartPage', () => {
     expect(fetchFunctionsMock).not.toHaveBeenCalled()
   })
 
-  it('renders the functions tree: type badge, manager, count, link to the function and the all-functions group', async () => {
+  it('renders the function cards: type, manager, link, unassigned card; people are not cards', async () => {
     renderPage()
     const tree = await screen.findByRole('tree', { name: 'Funzioni' })
-    const sales = within(tree).getByRole('treeitem', { name: /Sales/ })
-    expect(within(sales).getAllByText('Business unit').length).toBeGreaterThan(0)
-    expect(within(sales).getAllByText(/Responsabile: Bruno Neri/).length).toBeGreaterThan(0)
+    const sales = within(tree).getByRole('treeitem', { name: 'Sales' })
+    expect(within(sales).getByText('Business unit')).toBeInTheDocument()
+    expect(within(sales).getByText('Responsabile: Bruno Neri')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Sales' })).toHaveAttribute('href', '/business-functions/2')
-    expect(screen.getAllByText('Business service')).toHaveLength(1)
-    expect(within(tree).getByRole('treeitem', { name: /Tutte le funzioni/ })).toBeInTheDocument()
-    expect(screen.getAllByRole('img', { name: 'Responsabile' }).length).toBeGreaterThan(0)
-    expect(screen.getByText('Account')).toBeInTheDocument()
+    expect(within(tree).getByRole('treeitem', { name: 'Support' })).toHaveTextContent('Nessun responsabile')
+    expect(within(tree).getByRole('treeitem', { name: 'Non assegnati' })).toBeInTheDocument()
+    expect(within(tree).queryByRole('treeitem', { name: /Carla Gallo/ })).not.toBeInTheDocument()
   })
 
-  it('switches to the people tree and nests the direct reports', async () => {
+  it('opens the members panel of a function with managers first, then the other people', async () => {
+    renderPage()
+    await screen.findByRole('tree')
+    fireEvent.click(screen.getByRole('button', { name: "Sales: 2 persone, apri l'elenco" }))
+    const panel = await screen.findByRole('dialog', { name: 'Sales' })
+    const [managers, people] = within(panel).getAllByRole('list')
+    expect(within(managers).getByText('Bruno Neri')).toBeInTheDocument()
+    expect(within(managers).getByText('Account')).toBeInTheDocument()
+    expect(within(people).getByText('Carla Gallo')).toBeInTheDocument()
+    expect(within(panel).getByText('Responsabili')).toBeInTheDocument()
+  })
+
+  it('switches to the people chart: one card per person, a person with two managers twice once expanded', async () => {
     renderPage()
     fireEvent.mouseDown(await screen.findByRole('tab', { name: 'Persone' }))
     const tree = await screen.findByRole('tree', { name: 'Persone' })
     const roots = within(tree).getAllByRole('treeitem').filter((item) => item.getAttribute('aria-level') === '1')
     expect(roots).toHaveLength(2)
+    expect(within(tree).getAllByRole('treeitem', { name: /Carla Gallo/ })).toHaveLength(1)
+    // Anna: corner crown + crown on the function she heads (AC-023).
+    expect(within(tree).getAllByRole('img', { name: 'Responsabile' })).toHaveLength(2)
+
+    fireEvent.click(within(tree).getByRole('button', { name: 'Espandi' }))
     expect(within(tree).getAllByRole('treeitem', { name: /Carla Gallo/ })).toHaveLength(2)
   })
 
-  it('search keeps the branches with results, expands them and reports no match', async () => {
+  it('puts a crown only before the function the person heads (AC-023)', async () => {
     renderPage()
-    await screen.findByRole('tree')
+    fireEvent.mouseDown(await screen.findByRole('tab', { name: 'Persone' }))
+    const tree = await screen.findByRole('tree', { name: 'Persone' })
+    const anna = within(tree).getByRole('treeitem', { name: /Anna Rossi/ })
+    const company = within(anna).getByText('Company')
+    const sales = within(anna).getByText('Sales')
+    expect(within(company.parentElement as HTMLElement).getByRole('img', { name: 'Responsabile' })).toBeInTheDocument()
+    expect(within(sales.parentElement as HTMLElement).queryByRole('img')).not.toBeInTheDocument()
+  })
+
+  it('starts with the roots open; the pill shows the hidden cards and toggles the branch', async () => {
+    renderPage()
+    fireEvent.mouseDown(await screen.findByRole('tab', { name: 'Persone' }))
+    const tree = await screen.findByRole('tree', { name: 'Persone' })
+    const bruno = within(tree).getByRole('treeitem', { name: /Bruno Neri/ })
+    expect(bruno).toHaveAttribute('aria-expanded', 'false')
+    expect(within(bruno).getByRole('button', { name: 'Espandi' })).toHaveTextContent('+1')
+
+    const anna = within(tree).getByRole('treeitem', { name: /Anna Rossi/ })
+    fireEvent.click(within(anna).getByRole('button', { name: 'Comprimi' }))
+    expect(within(tree).queryByRole('treeitem', { name: /Bruno Neri/ })).not.toBeInTheDocument()
+    expect(within(anna).getByRole('button', { name: 'Espandi' })).toHaveTextContent('+3')
+  })
+
+  it('search opens the branches with results, highlights the matches and reports no match', async () => {
+    renderPage()
+    fireEvent.mouseDown(await screen.findByRole('tab', { name: 'Persone' }))
+    await screen.findByRole('tree', { name: 'Persone' })
     fireEvent.click(screen.getByRole('button', { name: 'Comprimi tutto' }))
     expect(screen.queryByRole('treeitem', { name: /Carla Gallo/ })).not.toBeInTheDocument()
 
     fireEvent.change(screen.getByRole('searchbox', { name: "Cerca nell'organigramma" }), { target: { value: 'carla' } })
-    expect(await screen.findByRole('treeitem', { name: /Carla Gallo/ })).toBeInTheDocument()
-    expect(screen.queryByRole('treeitem', { name: /Support/ })).not.toBeInTheDocument()
+    const matches = await screen.findAllByRole('treeitem', { name: /Carla Gallo/ })
+    expect(matches).toHaveLength(2)
+    expect(matches[0].querySelector('[data-chart-card]')).toHaveClass('border-primary')
+    expect(screen.getByRole('treeitem', { name: /Anna Rossi/ }).querySelector('[data-chart-card]')).not.toHaveClass('border-primary')
+    expect(screen.queryByRole('treeitem', { name: /Dario Fiore/ })).not.toBeInTheDocument()
 
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'zzz' } })
     expect(await screen.findByText('Nessun risultato per questa ricerca.')).toBeInTheDocument()
@@ -93,27 +138,37 @@ describe('OrgChartPage', () => {
   it('collapse all hides the children and expand all restores them', async () => {
     renderPage()
     await screen.findByRole('tree')
-    expect(screen.getByRole('treeitem', { name: /Carla Gallo/ })).toBeInTheDocument()
+    expect(screen.getByRole('treeitem', { name: 'Sales' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Comprimi tutto' }))
-    expect(screen.queryByRole('treeitem', { name: /Carla Gallo/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('treeitem', { name: 'Sales' })).not.toBeInTheDocument()
     expect(screen.getAllByRole('treeitem')).toHaveLength(2)
     fireEvent.click(screen.getByRole('button', { name: 'Espandi tutto' }))
-    expect(screen.getByRole('treeitem', { name: /Carla Gallo/ })).toBeInTheDocument()
+    expect(screen.getByRole('treeitem', { name: 'Sales' })).toBeInTheDocument()
+  })
+
+  it('zooms in and out within the limits and shows the percentage', async () => {
+    renderPage()
+    await screen.findByRole('tree')
+    expect(screen.getByText('100%')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Ingrandisci' }))
+    expect(screen.getByText('110%')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Riduci' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Riduci' }))
+    expect(screen.getByText('90%')).toBeInTheDocument()
+    expect(screen.getByRole('tree').getAttribute('style')).toContain('scale(0.9)')
   })
 
   it('supports the tree keyboard model: arrows, collapse/expand, Enter opens the link', async () => {
     renderPage()
     const tree = await screen.findByRole('tree')
-    const company = within(tree).getByRole('treeitem', { name: /Company/ })
+    const company = within(tree).getByRole('treeitem', { name: 'Company' })
     company.focus()
     expect(company).toHaveAttribute('aria-expanded', 'true')
 
     fireEvent.keyDown(company, { key: 'ArrowDown' })
-    const sales = within(tree).getByRole('treeitem', { name: /Sales/ })
+    const sales = within(tree).getByRole('treeitem', { name: 'Sales' })
     expect(sales).toHaveFocus()
 
-    fireEvent.keyDown(sales, { key: 'ArrowLeft' })
-    expect(sales).toHaveAttribute('aria-expanded', 'false')
     fireEvent.keyDown(sales, { key: 'ArrowLeft' })
     expect(company).toHaveFocus()
     fireEvent.keyDown(company, { key: 'ArrowLeft' })
@@ -121,8 +176,7 @@ describe('OrgChartPage', () => {
     fireEvent.keyDown(company, { key: 'ArrowRight' })
     expect(company).toHaveAttribute('aria-expanded', 'true')
     fireEvent.keyDown(company, { key: 'ArrowRight' })
-    expect(within(tree).getByRole('treeitem', { name: /Sales/ })).toHaveFocus()
-    fireEvent.keyDown(tree.querySelector('[data-node-key="all"]') as HTMLElement, { key: 'ArrowUp' })
+    expect(within(tree).getByRole('treeitem', { name: 'Sales' })).toHaveFocus()
 
     const link = within(company).getByRole('link', { name: 'Company' })
     const onClick = vi.fn((event: Event) => event.preventDefault())
@@ -131,13 +185,15 @@ describe('OrgChartPage', () => {
     expect(onClick).toHaveBeenCalledTimes(1)
   })
 
-  it('exposes stable node attributes for the move feature', async () => {
+  it('exposes stable node attributes and the flat ARIA position of every card', async () => {
     renderPage()
     const tree = await screen.findByRole('tree')
-    const item = tree.querySelector('[data-node-key="f:1/f:2/p:11"]')
-    expect(item).toHaveAttribute('data-node-kind', 'person')
-    expect(item).toHaveAttribute('data-node-id', '11')
-    expect(item).toHaveAttribute('aria-level', '3')
+    const item = tree.querySelector('[data-node-key="f:1/f:3"]')
+    expect(item).toHaveAttribute('data-node-kind', 'function')
+    expect(item).toHaveAttribute('data-node-id', '3')
+    expect(item).toHaveAttribute('aria-level', '2')
+    expect(item).toHaveAttribute('aria-posinset', '2')
+    expect(item).toHaveAttribute('aria-setsize', '2')
   })
 
   it('shows the loading skeleton, the empty state, the error and the 403 message', async () => {
@@ -146,7 +202,7 @@ describe('OrgChartPage', () => {
     expect(await screen.findByLabelText(/Caricamento/)).toHaveAttribute('aria-busy', 'true')
     unmount()
 
-    fetchFunctionsMock.mockResolvedValue({ functions: [], all_functions_people: [] })
+    fetchFunctionsMock.mockResolvedValue({ functions: [], unassigned_people: [] })
     const empty = renderPage()
     expect(await screen.findByText('Nessuna funzione aziendale.')).toBeInTheDocument()
     empty.unmount()

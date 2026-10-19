@@ -65,10 +65,10 @@ it('0015 AC-001: create with a full employment block persists the row and resolv
         'password_confirmation' => 'Str0ng-P4ssw0rd!',
         'personal_data' => employmentTestProfile(),
         'employment' => [
-            'is_manager' => false,
             'job_role_ids' => [$jobRole->id],
             'reports_to_ids' => [$manager->id],
-            // Spec 0111: the business function is written as a competence row,
+            'business_function_ids' => [$function->id],
+            // Spec 0111: the competence is written as a row,
             // not as a column of the profile.
             'product_lines' => [
                 ['business_function_id' => $function->id, 'product_category_id' => $category->id],
@@ -83,7 +83,6 @@ it('0015 AC-001: create with a full employment block persists the row and resolv
     $created = User::where('email', 'employee@example.com')->first();
     $this->assertDatabaseHas('employment_profiles', [
         'user_id' => $created->id,
-        'is_manager' => false,
     ]);
     $this->assertDatabaseHas('employment_profile_manager', [
         'employment_profile_id' => $created->employment->id,
@@ -133,12 +132,16 @@ it('0015 AC-002: create without employment persists no employment row', function
 });
 
 // ---------------------------------------------------------------------------
-// AC-003 — is_manager=true forces reports_to_id to null server-side.
+// Spec 0276 — a function manager may report to someone.
 // ---------------------------------------------------------------------------
 
-it('0166 AC-005: is_manager=true forces employment.reports_to_ids empty', function () {
+// REQUIREMENT CHANGED (spec 0276 D-2 / AC-007): the "a manager reports to no one" rule is gone.
+it('0276 AC-007: a person who manages a function keeps their employment.reports_to_ids', function () {
     $actor = employmentTestActor(['create']);
-    $wouldBeManager = User::factory()->create();
+    Permission::findOrCreate('business-functions.update');
+    $actor->givePermissionTo('business-functions.update');
+    $boss = User::factory()->create();
+    $function = BusinessFunction::factory()->create();
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/users', [
@@ -147,19 +150,21 @@ it('0166 AC-005: is_manager=true forces employment.reports_to_ids empty', functi
         'password' => 'Str0ng-P4ssw0rd!',
         'password_confirmation' => 'Str0ng-P4ssw0rd!',
         'personal_data' => employmentTestProfile(),
-        'employment' => ['is_manager' => true, 'covers_all_product_categories' => true, 'reports_to_ids' => [$wouldBeManager->id]],
+        'employment' => [
+            'covers_all_product_categories' => true,
+            'business_function_ids' => [membershipFunctionId()],
+            'managed_business_function_ids' => [$function->id],
+            'reports_to_ids' => [$boss->id],
+        ],
     ])->assertCreated();
 
-    $response->assertJsonPath('data.employment.is_manager', true)
-        ->assertJsonPath('data.employment.reports_to_ids', [])
-        ->assertJsonPath('data.employment.reports_to', []);
+    $response->assertJsonPath('data.employment.reports_to_ids', [$boss->id])
+        ->assertJsonMissingPath('data.employment.is_manager')
+        ->assertJsonPath('data.managed_business_functions.0.id', $function->id);
 
     $created = User::where('email', 'manager@example.com')->first();
-    $this->assertDatabaseHas('employment_profiles', [
-        'user_id' => $created->id,
-        'is_manager' => true,
-    ]);
-    $this->assertDatabaseMissing('employment_profile_manager', ['employment_profile_id' => $created->employment->id]);
+    expect($function->fresh()->manager_id)->toBe($created->id)
+        ->and($created->employment->reportsToIds)->toBe([$boss->id]);
 });
 
 // ---------------------------------------------------------------------------
@@ -226,7 +231,7 @@ it('0015 AC-005: update with an employment object upserts the row', function () 
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/users/{$target->id}", [
-        'employment' => ['is_manager' => false, 'covers_all_product_categories' => true, 'standard_daily_minutes' => 420],
+        'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()], 'standard_daily_minutes' => 420],
     ])->assertOk()->assertJsonPath('data.employment.standard_daily_minutes', 420);
 
     $this->assertDatabaseHas('employment_profiles', [
@@ -236,7 +241,7 @@ it('0015 AC-005: update with an employment object upserts the row', function () 
 
     // A second upsert on the SAME row (no duplicate 1:1 row).
     $this->patchJson("/api/users/{$target->id}", [
-        'employment' => ['is_manager' => false, 'covers_all_product_categories' => true, 'standard_daily_minutes' => 360],
+        'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()], 'standard_daily_minutes' => 360],
     ])->assertOk();
 
     expect(EmploymentProfile::where('user_id', $target->id)->count())->toBe(1);
@@ -274,7 +279,7 @@ it('0015 AC-007: create with an employment block is 403 without users.create', f
         'password' => 'Str0ng-P4ssw0rd!',
         'password_confirmation' => 'Str0ng-P4ssw0rd!',
         'personal_data' => employmentTestProfile(),
-        'employment' => ['is_manager' => true],
+        'employment' => ['standard_daily_minutes' => 480],
     ])->assertForbidden();
 
     $this->assertDatabaseMissing('users', ['email' => 'forbidden@example.com']);
@@ -285,7 +290,7 @@ it('0015 AC-007: update with an employment block is 403 without users.update', f
     $target = User::factory()->create();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/users/{$target->id}", ['employment' => ['is_manager' => true]])
+    $this->patchJson("/api/users/{$target->id}", ['employment' => ['standard_daily_minutes' => 480]])
         ->assertForbidden();
 });
 
@@ -303,8 +308,8 @@ it('0015 AC-007: an actor with only users.create/update (no dedicated employment
         'password' => 'Str0ng-P4ssw0rd!',
         'password_confirmation' => 'Str0ng-P4ssw0rd!',
         'personal_data' => employmentTestProfile(),
-        'employment' => ['is_manager' => true, 'covers_all_product_categories' => true],
-    ])->assertCreated()->assertJsonPath('data.employment.is_manager', true);
+        'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()]],
+    ])->assertCreated()->assertJsonPath('data.employment.covers_all_product_categories', true);
 });
 
 // ---------------------------------------------------------------------------
@@ -326,7 +331,7 @@ it('0103 AC-004: create with a primary site and two remote sites persists three 
         'password_confirmation' => 'Str0ng-P4ssw0rd!',
         'personal_data' => employmentTestProfile(),
         'employment' => [
-            'covers_all_product_categories' => true,
+            'covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()],
             'primary_operational_site_id' => $primary->id,
             'remote_operational_site_ids' => [$remoteOne->id, $remoteTwo->id],
         ],
@@ -355,7 +360,7 @@ it('0103 AC-005: switching the primary site from A to B leaves a single primary 
     $siteA = OperationalSite::factory()->withAddress()->create();
     $siteB = OperationalSite::factory()->withAddress()->create();
     $target = User::factory()
-        ->withEmployment(fn (EmploymentProfileFactory $factory): EmploymentProfileFactory => $factory->physicalSite($siteA)->competentInEveryCategoryOf(BusinessFunction::factory()->create()))
+        ->withEmployment(fn (EmploymentProfileFactory $factory): EmploymentProfileFactory => $factory->physicalSite($siteA)->memberOf(BusinessFunction::factory()->create()))
         ->create();
     Sanctum::actingAs($actor);
 
@@ -417,7 +422,7 @@ it('0103 AC-008: setting primary_operational_site_id to null clears the physical
     $remoteOne = OperationalSite::factory()->withAddress()->create();
     $remoteTwo = OperationalSite::factory()->withAddress()->create();
     $target = User::factory()
-        ->withEmployment(fn (EmploymentProfileFactory $factory): EmploymentProfileFactory => $factory->physicalSite($physical)->remoteSites($remoteOne, $remoteTwo)->competentInEveryCategoryOf(BusinessFunction::factory()->create()))
+        ->withEmployment(fn (EmploymentProfileFactory $factory): EmploymentProfileFactory => $factory->physicalSite($physical)->remoteSites($remoteOne, $remoteTwo)->memberOf(BusinessFunction::factory()->create()))
         ->create();
     Sanctum::actingAs($actor);
 

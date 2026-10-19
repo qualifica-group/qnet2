@@ -57,8 +57,9 @@ const TEST_PASSWORD = 'x'.repeat(12)
 
 /** Blank employment sub-form, mirroring `EMPTY_EMPLOYMENT` in `user-form-defaults.ts`. */
 const emptyEmployment: UserFormValues['employment'] = {
-  is_manager: false,
   job_role_ids: [],
+  business_function_ids: [],
+  managed_business_function_ids: [],
   reports_to_ids: [],
   primary_operational_site_id: null,
   remote_operational_site_ids: [],
@@ -94,6 +95,7 @@ function original(overrides: Partial<UserDetailWithPermissions> = {}): UserDetai
     roles: [],
     avatar_url: null,
     must_set_password: false,
+    managed_business_functions: [],
     created_at: null,
     permissions: {
       resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
@@ -211,8 +213,9 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
     )
 
     expect(payload.employment).toEqual({
-      is_manager: false,
       job_role_ids: [4, 7],
+      business_function_ids: [],
+      managed_business_function_ids: [],
       reports_to_ids: [],
       primary_operational_site_id: 8,
       remote_operational_site_ids: [11, 12],
@@ -336,29 +339,19 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
     expect(payload.employment.product_lines).toEqual([{ business_function_id: 4, product_category_id: null }])
   })
 
-  it('spec 0166 D-5 — force-empties reports_to_ids client-side when is_manager is true', () => {
+  // REQUIREMENT CHANGED (spec 0276 D-2): the manager flag is gone, so reports_to_ids is never force-emptied.
+  it('keeps reports_to_ids and sends the managed function ids (spec 0276 D-5)', () => {
     const payload = buildCreatePayload(
       {
         ...formValues,
-        employment: { ...emptyEmployment, is_manager: true, reports_to_ids: [42] },
-      },
-      draft(),
-    )
-
-    expect(payload.employment.is_manager).toBe(true)
-    expect(payload.employment.reports_to_ids).toEqual([])
-  })
-
-  it('keeps reports_to_ids when is_manager is false', () => {
-    const payload = buildCreatePayload(
-      {
-        ...formValues,
-        employment: { ...emptyEmployment, is_manager: false, reports_to_ids: [42, 43] },
+        employment: { ...emptyEmployment, reports_to_ids: [42, 43], managed_business_function_ids: [5, 6] },
       },
       draft(),
     )
 
     expect(payload.employment.reports_to_ids).toEqual([42, 43])
+    expect(payload.employment.managed_business_function_ids).toEqual([5, 6])
+    expect(payload.employment).not.toHaveProperty('is_manager')
   })
 })
 
@@ -385,8 +378,9 @@ describe('buildUpdatePayload — employment (spec 0015)', () => {
     )
 
     expect(payload.employment).toEqual({
-      is_manager: false,
       job_role_ids: [9],
+      business_function_ids: [],
+      managed_business_function_ids: [],
       reports_to_ids: [],
       primary_operational_site_id: null,
       remote_operational_site_ids: [],

@@ -47,9 +47,12 @@ namespace App\DataObjects\Users;
  * carries the SAME per-field tri-state as `reportsToIds`: a pivot
  * (`employment_profile_job_role`), absent = untouched, empty = cleared.
  *
+ * `businessFunctionIds` (spec 0275 D-3) carries the same tri-state for the
+ * membership pivot `business_function_user` (keyed on the user).
+ *
  * `coversAllProductCategories` (spec 0129 D-1) is a THIRD way to widen the
- * competence: a plain scalar column, no tri-state (D-10, same as `isManager`
- * — absent on write reads as false). EmploymentWriter enforces D-2 (true =>
+ * competence: a plain scalar column, no tri-state (D-10 — absent on write
+ * reads as false). EmploymentWriter enforces D-2 (true =>
  * the rows are cleared) rather than trusting the request to have emptied
  * `productLines` itself.
  *
@@ -59,8 +62,11 @@ namespace App\DataObjects\Users;
  * tri-state of the pivots: absent = untouched, null = cleared; the request
  * only lets them through for an actor holding `users.manageCompensation`.
  *
- * `isAssignable` (spec 0194 D-3) is the opposite of `isManager` on purpose:
- * null = the key was absent, the column is left untouched (the DB default
+ * `managedBusinessFunctionIds` (spec 0276 D-5) carries the same tri-state as
+ * `businessFunctionIds` but is written on `business_functions.manager_id`, not
+ * on a pivot of the profile.
+ *
+ * `isAssignable` (spec 0194 D-3) reads null on purpose: null = the key was absent, the column is left untouched (the DB default
  * true applies on a new row). Absent must never read as false, or any client
  * omitting the key would silently take the user out of every assignment pool.
  */
@@ -69,12 +75,13 @@ final readonly class EmploymentData
     /**
      * @param  array<int, int>  $reportsToIds
      * @param  array<int, int>  $jobRoleIds
+     * @param  array<int, int>  $businessFunctionIds
+     * @param  array<int, int>  $managedBusinessFunctionIds
      * @param  array<int, int>  $remoteOperationalSiteIds
      * @param  array<int, array{business_function_id: int, product_category_id: int|null}>  $productLines
      */
     public function __construct(
         public bool $delete = false,
-        public bool $isManager = false,
         public bool $coversAllProductCategories = false,
         public ?bool $isAssignable = null,
         public bool $reportsToIdsProvided = false,
@@ -87,6 +94,10 @@ final readonly class EmploymentData
         public array $productLines = [],
         public bool $jobRoleIdsProvided = false,
         public array $jobRoleIds = [],
+        public bool $businessFunctionIdsProvided = false,
+        public array $businessFunctionIds = [],
+        public bool $managedBusinessFunctionIdsProvided = false,
+        public array $managedBusinessFunctionIds = [],
         public ?string $hiredAt = null,
         public ?string $terminatedAt = null,
         public ?int $standardDailyMinutes = null,
@@ -118,7 +129,6 @@ final readonly class EmploymentData
     public function attributes(): array
     {
         $attributes = [
-            'is_manager' => $this->isManager,
             'covers_all_product_categories' => $this->coversAllProductCategories,
             'hired_at' => $this->hiredAt,
             'terminated_at' => $this->terminatedAt,

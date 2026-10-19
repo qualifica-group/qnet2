@@ -107,14 +107,20 @@ class UpdateUserRequest extends FormRequest
      * accessors over the site-membership pivot rather than plain columns.
      * Loading the relation here keeps that comparison to the queries this
      * request already needs, instead of one lazy load per checked field. Same
-     * for the job roles pivot behind `employment.job_role_ids` (spec 0271).
+     * for the job roles pivot behind `employment.job_role_ids` (spec 0271) and
+     * the membership behind `employment.business_function_ids` (spec 0275) and
+     * the managed functions behind `employment.managed_business_function_ids`
+     * (spec 0276, read off the user and linked back so no lazy load happens).
      */
     protected function authorizationModel(): ?Model
     {
         /** @var User $user */
         $user = $this->route('user');
 
-        return $user->loadMissing(['employment.operationalSites', 'employment.jobRoles']);
+        $user->loadMissing(['managedBusinessFunctions:id,manager_id', 'employment.operationalSites', 'employment.jobRoles', 'employment.businessFunctions']);
+        $user->employment?->setRelation('user', $user);
+
+        return $user;
     }
 
     /**

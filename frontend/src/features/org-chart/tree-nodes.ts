@@ -9,9 +9,9 @@
  * "from" side of a move: manager person id or function id), `null` for roots.
  */
 
-import type { OrgDirectoryPerson, OrgFunction, OrgPerson } from '@/features/org-chart/types'
+import type { OrgDirectoryPerson, OrgFunction, OrgPerson, OrgPersonFunction } from '@/features/org-chart/types'
 
-export type OrgNodeKind = 'function' | 'person' | 'all-functions'
+export type OrgNodeKind = 'function' | 'person' | 'unassigned'
 
 export interface OrgNodeRef {
   kind: OrgNodeKind
@@ -40,18 +40,18 @@ export interface PersonNode extends OrgNodeBase {
   /** Crown: the person is flagged manager, or heads the function they sit under. */
   isResponsible: boolean
   /** Names of the person's business functions (people view only). */
-  functionNames: string[]
+  functions: OrgPersonFunction[]
 }
 
-export interface AllFunctionsNode extends OrgNodeBase {
-  kind: 'all-functions'
+export interface UnassignedNode extends OrgNodeBase {
+  kind: 'unassigned'
   id: null
   peopleCount: number
 }
 
-export type OrgTreeNode = FunctionNode | PersonNode | AllFunctionsNode
+export type OrgTreeNode = FunctionNode | PersonNode | UnassignedNode
 
-export const ALL_FUNCTIONS_KEY = 'all'
+export const UNASSIGNED_KEY = 'unassigned'
 
 export function childKey(parentKey: string | null, segment: string): string {
   return parentKey ? `${parentKey}/${segment}` : segment
@@ -59,6 +59,21 @@ export function childKey(parentKey: string | null, segment: string): string {
 
 export function byName(a: { name: string }, b: { name: string }): number {
   return a.name.localeCompare(b.name)
+}
+
+/**
+ * Children drawn as cards in the chart (spec 0274 D-2/D-3). In the People view
+ * every child is a card; under a function (or "all functions") the people are
+ * not cards but members listed in the side panel, see `memberPeople`.
+ */
+export function chartChildren(node: OrgTreeNode): OrgTreeNode[] {
+  return node.kind === 'person' ? node.children : node.children.filter((child) => child.kind !== 'person')
+}
+
+/** People of a function / "all functions" card, shown in its side panel. */
+export function memberPeople(node: OrgTreeNode): PersonNode[] {
+  if (node.kind === 'person') return []
+  return node.children.filter((child): child is PersonNode => child.kind === 'person')
 }
 
 export function personSearchText(person: OrgPerson, functionNames: readonly string[]): string {

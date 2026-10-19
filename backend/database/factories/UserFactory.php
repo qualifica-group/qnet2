@@ -71,7 +71,7 @@ class UserFactory extends Factory
     /**
      * Attach an employment profile (spec 0015) after creation. Pass a
      * closure to customize the EmploymentProfileFactory state (e.g.
-     * ->manager() or ->reportsTo($manager)).
+     * ->reportsTo($manager)).
      */
     public function withEmployment(?callable $factory = null): static
     {
@@ -81,14 +81,6 @@ class UserFactory extends Factory
 
             $employment->for($user)->create();
         });
-    }
-
-    /**
-     * A responsible manager (is_manager=true, no reports_to).
-     */
-    public function manager(): static
-    {
-        return $this->withEmployment(static fn (EmploymentProfileFactory $factory): EmploymentProfileFactory => $factory->manager());
     }
 
     /**

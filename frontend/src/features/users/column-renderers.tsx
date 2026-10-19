@@ -13,14 +13,6 @@ import { DateCell } from '@/features/table/rich-cells'
 import { UserStackCell } from '@/features/table/user-cell'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 
-/** Renders the `is_manager` boolean column as a localized yes/no label. */
-function BooleanCell({ value }: ICellRendererParams) {
-  if (typeof value !== 'boolean') {
-    return <span className="text-muted-foreground">—</span>
-  }
-  return <span>{i18n.t(value ? 'common.yes' : 'common.no')}</span>
-}
-
 /**
  * Colored tone classes for the boolean badge (green = yes, red = no), matching
  * the business-functions boolean badge so boolean status columns look the same
@@ -109,7 +101,6 @@ export const userColumnRenderers: TableRendererMap = {
   // is a `badge` column, rendered generically by the table's own `BadgeCell`
   // fallback (no entry needed here).
   is_active: (params) => <ActiveBadgeCell {...params} />,
-  is_manager: (params) => <BooleanCell {...params} />,
   // `reports_to` is zero or more managers ([{id, name}], spec 0166): the
   // shared stack cell renders an avatar per manager, each opening that
   // user's detail Sheet on click.

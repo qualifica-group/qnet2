@@ -217,9 +217,10 @@ vi.mock('@/components/ui/searchable-select', () => ({
 
 const BASE_EMPLOYMENT: EmploymentDetail = {
   id: 1,
-  is_manager: false,
   job_role_ids: [],
+  business_function_ids: [],
   job_roles: [],
+  business_functions: [],
   relationship_type: null,
   hired_at: null,
   terminated_at: null,
@@ -433,8 +434,8 @@ describe('UserForm — competence rows (spec 0111 AC-023)', () => {
     )
   })
 
-  /** Spec 0271 D-6: the mandatory business function rule reports on the field's own path, not an indexed sub-key. */
-  it('surfaces the 422 on employment.product_lines (mandatory business function rule) under the competence field', async () => {
+  /** A 422 on the field's own path (not an indexed sub-key) lands under the competence field. REQUIREMENT CHANGED (spec 0275 D-4): the mandatory-function rule moved to employment.business_function_ids; this keeps covering the direct-path mapping. */
+  it('surfaces a 422 on employment.product_lines itself under the competence field', async () => {
     updateUserMock.mockRejectedValue(
       new AxiosError('Unprocessable', '422', undefined, undefined, {
         status: 422,

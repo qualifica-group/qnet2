@@ -26,11 +26,11 @@ export const FUNCTIONS_FIXTURE: OrgChartFunctions = {
     { id: 1, name: 'Company', type: null, parent_id: null, manager: null, people: [person(10, 'Anna Rossi')] },
     { id: 3, name: 'Support', type: 'business_service', parent_id: 1, manager: null, people: [] },
   ],
-  all_functions_people: [person(13, 'Dario Fiore')],
+  unassigned_people: [person(13, 'Dario Fiore')],
 }
 
 export const PEOPLE_FIXTURE: OrgDirectoryPerson[] = [
-  directoryPerson(1, 'Anna Rossi', [], { is_manager: true, business_functions: ['Company'] }),
+  directoryPerson(1, 'Anna Rossi', [], { is_manager: true, business_functions: [{ id: 1, name: 'Company', is_manager: true }, { id: 2, name: 'Sales', is_manager: false }] }),
   directoryPerson(2, 'Bruno Neri', [1], { job_roles: ['Account'] }),
   directoryPerson(3, 'Carla Gallo', [1, 2]),
   directoryPerson(4, 'Dario Fiore', [99]),

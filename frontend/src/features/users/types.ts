@@ -34,6 +34,12 @@ export interface CurrentContract {
   collective_agreement_level: { id: number; label: string } | null
 }
 
+/** A `{id, name}` function reference (spec 0275 contract), unlike the `{id, label}` employment refs. */
+export interface NamedRef {
+  id: number
+  name: string
+}
+
 /** A related entity reference as returned inside `employment` ({id, label}). */
 export interface EmploymentRelationRef {
   id: number
@@ -61,7 +67,6 @@ export interface EmploymentProductLine {
  */
 export interface EmploymentDetail {
   id: number
-  is_manager: boolean
   relationship_type: RelationshipType | null
   hired_at: string | null
   terminated_at: string | null
@@ -71,6 +76,8 @@ export interface EmploymentDetail {
   reports_to_ids: number[]
   /** Mansioni ids (spec 0271); [] when none. */
   job_role_ids: number[]
+  /** Funzioni aziendali di appartenenza (spec 0275): same data as the function's "Utenti associati"; [] when none. */
+  business_function_ids: number[]
   company_id: number | null
   /** The condition in force today (spec 0272 D-2): CCNL level and its start; null when the history is empty. */
   current_contract?: CurrentContract | null
@@ -83,12 +90,12 @@ export interface EmploymentDetail {
   remote_operational_site_ids: number[]
   /**
    * Spec 0194: explicit "Assegnabile" flag. False excludes the person from every
-   * record assignment pool even with Sede and competence. Scalar, like `is_manager`.
+   * record assignment pool even with Sede and competence. Scalar flag.
    */
   is_assignable: boolean
   /**
    * Spec 0129 D-1: jolly flag — competent for ANY category, regardless of
-   * business function, when true. Scalar, same semantics as `is_manager`.
+   * business function, when true. Scalar flag.
    */
   covers_all_product_categories: boolean
   /**
@@ -103,6 +110,8 @@ export interface EmploymentDetail {
   reports_to: EmploymentRelationRef[]
   /** Mansioni (spec 0271), same order as `job_role_ids`. */
   job_roles: EmploymentRelationRef[]
+  /** Funzioni aziendali di appartenenza (spec 0275), same order as `business_function_ids`. */
+  business_functions: NamedRef[]
   company: EmploymentRelationRef | null
   /** Present only when the relation is eager-loaded (whenLoaded), like `company`. */
   primary_operational_site?: EmploymentRelationRef | null
@@ -145,6 +154,8 @@ export interface UserDetail {
   personal_data?: PersonalDataCard | null
   /** The user's employment profile (spec 0015), null when the user has none. */
   employment?: EmploymentDetail | null
+  /** Functions this user manages (spec 0275 D-6), read only, ordered by name; [] when none. */
+  managed_business_functions: NamedRef[]
   created_at: string | null
   /** Custom field values keyed by their raw (un-namespaced) key (spec 0021). */
   custom_fields?: Record<string, CustomFieldValue>
@@ -165,10 +176,13 @@ export interface UserDetailWithPermissions extends UserDetail {
  * built and sent from the form (upsert semantics), mirroring `personal_data`.
  */
 export interface EmploymentPayload {
-  is_manager: boolean
   /** Mansioni ids (spec 0271): always sent, [] clears them. */
   job_role_ids: number[]
-  /** Zero or more manager ids (spec 0166); [] when `is_manager` is true. */
+  /** Funzioni aziendali di appartenenza (spec 0275): always sent, [] clears them (the server refuses it for an active user). */
+  business_function_ids: number[]
+  /** Funzioni aziendali gestite (spec 0276): the listed ones take this user as head; always sent, [] leaves none. */
+  managed_business_function_ids: number[]
+  /** Zero or more manager ids (spec 0166). */
   reports_to_ids: number[]
   /** At most one physical site (spec 0103 D-3); mirrors `EmploymentDetail`. */
   primary_operational_site_id: number | null
@@ -176,7 +190,7 @@ export interface EmploymentPayload {
   remote_operational_site_ids: number[]
   /** Spec 0194: always sent by the form; the server leaves the column untouched only when the key is absent. */
   is_assignable: boolean
-  /** Spec 0129 D-1/D-10: scalar jolly flag, same semantics as `is_manager` (absent = false). */
+  /** Spec 0129 D-1/D-10: scalar jolly flag, (absent = false). */
   covers_all_product_categories: boolean
   /**
    * Assignment competence (spec 0111): the function/category pairs the user

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Authorization;
 
+use App\Models\BusinessFunction;
 use App\Models\User;
 use App\Policies\UserPolicy;
 use App\Services\RoleAssignmentGuard;
@@ -36,7 +37,7 @@ class UsersAuthorization extends AbstractResourceAuthorization
      * `contacts`/`addresses` sections as a SINGLE key each (D1 — no
      * per-column granularity for their child rows).
      *
-     * The 15 `employment.*` keys (spec 0015, plus the competence of spec
+     * The `employment.*` keys (spec 0015, plus the competence of spec
      * 0111 — one `product_lines` collection replacing the former
      * `business_function_id`/`product_category_ids` pair — spec 0129's
      * `covers_all_product_categories` wildcard flag and spec 0194's
@@ -68,10 +69,11 @@ class UsersAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('personal_data.gender', 'select', 'personal_data'),
             new FieldDefinition('personal_data.contacts', 'collection', 'personal_data'),
             new FieldDefinition('personal_data.addresses', 'collection', 'personal_data'),
-            new FieldDefinition('employment.is_manager', 'boolean', 'employment'),
             new FieldDefinition('employment.covers_all_product_categories', 'boolean', 'employment'),
             new FieldDefinition('employment.is_assignable', 'boolean', 'employment'),
             new FieldDefinition('employment.job_role_ids', 'multiselect', 'employment'),
+            new FieldDefinition('employment.business_function_ids', 'multiselect', 'employment'),
+            new FieldDefinition('employment.managed_business_function_ids', 'multiselect', 'employment'),
             // Spec 0166 (D-8): a user may report to several managers now,
             // replacing the single `employment.reports_to_id` (select).
             new FieldDefinition('employment.reports_to_ids', 'multiselect', 'employment'),
@@ -171,10 +173,11 @@ class UsersAuthorization extends AbstractResourceAuthorization
         };
 
         return [
-            'employment.is_manager' => $permission,
             'employment.covers_all_product_categories' => $permission,
             'employment.is_assignable' => $permission,
             'employment.job_role_ids' => $permission,
+            'employment.business_function_ids' => $permission,
+            'employment.managed_business_function_ids' => $this->managedFunctionsPermission($actor, $mayWrite),
             'employment.reports_to_ids' => $permission,
             'employment.product_lines' => $permission,
             'employment.relationship_type' => FieldPermission::visibleReadonly(),
@@ -188,6 +191,23 @@ class UsersAuthorization extends AbstractResourceAuthorization
             'employment.iban' => $payment,
             'employment.iban_holder' => $payment,
         ];
+    }
+
+    /**
+     * Spec 0276 D-4: the managed functions are written on
+     * `business_functions.manager_id`, so editing them from the user needs the
+     * user field editable AND that function field editable for the actor
+     * (resolved with an `update` context: a model-less call would test `create`).
+     */
+    private function managedFunctionsPermission(User $actor, bool $mayWrite): FieldPermission
+    {
+        $userSide = $mayWrite ? FieldPermission::visibleEditable(required: false) : FieldPermission::visibleReadonly();
+
+        $functionSide = app(AuthorizationRegistry::class)
+            ->resolve('business-functions')
+            ->fieldPermissions($actor, new BusinessFunction)['manager_id'] ?? null;
+
+        return $userSide->editable && $functionSide?->editable ? $userSide : FieldPermission::visibleReadonly();
     }
 
     /**

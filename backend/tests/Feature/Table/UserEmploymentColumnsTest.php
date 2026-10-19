@@ -3,9 +3,7 @@
 use App\Models\Address;
 use App\Models\BusinessFunction;
 use App\Models\Company;
-use App\Models\EmploymentProductLine;
 use App\Models\OperationalSite;
-use App\Models\ProductCategory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -45,23 +43,15 @@ if (! function_exists('rowsPayloadForEmployment')) {
     }
 }
 
-if (! function_exists('userCompetentIn')) {
+if (! function_exists('userMemberOf')) {
     /**
-     * A user whose employment profile owns one competence row per given
-     * function (spec 0111): each row gets its own category, so two rows on
-     * the SAME function never collide with the unique (profile, function,
-     * category) constraint.
+     * A user belonging to the given functions (spec 0275: the pivot
+     * `business_function_user`, a repeated function collapses to one row).
      */
-    function userCompetentIn(string $name, BusinessFunction ...$functions): User
+    function userMemberOf(string $name, BusinessFunction ...$functions): User
     {
         $user = User::factory()->withEmployment()->create(['name' => $name]);
-
-        foreach ($functions as $function) {
-            $user->employment->productLines()->create([
-                'business_function_id' => $function->id,
-                'product_category_id' => ProductCategory::factory()->create()->id,
-            ]);
-        }
+        $user->businessFunctions()->syncWithoutDetaching(array_map(static fn (BusinessFunction $function): int => $function->id, $functions));
 
         return $user;
     }
@@ -90,7 +80,7 @@ if (! function_exists('attachSiteMembership')) {
 
 const EMPLOYMENT_COLUMN_IDS = [
     'business_function', 'company', 'operational_site', 'relationship_type',
-    'employment_status', 'is_manager', 'reports_to', 'hired_at', 'terminated_at',
+    'employment_status', 'managed_business_functions', 'reports_to', 'hired_at', 'terminated_at',
 ];
 
 it('exposes the 9 employment columns with english ids, sortable/filterable, and the 2 enumKeys', function () {
@@ -143,13 +133,13 @@ it('rows: sorts by a related-name employment column via the correlated subquery,
     expect(array_values(array_filter($names)))->toBe(['Alpha Spa', 'Zulu Spa']);
 });
 
-it('rows: business_function aggregates the DISTINCT function names of the competence rows, null without rows (spec 0111 AC-017)', function () {
+it('rows: business_function aggregates the function names of the membership, null without any (spec 0275 AC-014)', function () {
     $actor = employmentTableActor(['viewAny']);
     $sales = BusinessFunction::factory()->create(['name' => 'Sales']);
     $legal = BusinessFunction::factory()->create(['name' => 'Legal']);
 
-    $twoFunctions = userCompetentIn('TwoFunctions', $legal, $sales);
-    $repeatedFunction = userCompetentIn('RepeatedFunction', $sales, $sales);
+    $twoFunctions = userMemberOf('TwoFunctions', $legal, $sales);
+    $repeatedFunction = userMemberOf('RepeatedFunction', $sales, $sales);
     $noLines = User::factory()->withEmployment()->create(['name' => 'NoLines']);
     Sanctum::actingAs($actor);
 
@@ -160,33 +150,35 @@ it('rows: business_function aggregates the DISTINCT function names of the compet
         ->and($rows->firstWhere('id', $noLines->id)['business_function'])->toBeNull();
 });
 
-it('rows: the aggregated business_function cell never lazy-loads the competence rows (no N+1)', function () {
+it('rows: the aggregated business_function cell never lazy-loads the membership (no N+1)', function () {
     $actor = employmentTableActor(['viewAny']);
     $sales = BusinessFunction::factory()->create(['name' => 'Sales']);
 
     foreach (range(1, 5) as $index) {
-        userCompetentIn("Competent {$index}", $sales);
+        userMemberOf("Competent {$index}", $sales);
     }
 
     Sanctum::actingAs($actor);
 
-    EmploymentProductLine::preventLazyLoading();
+    User::preventLazyLoading();
 
     try {
         $this->postJson('/api/tables/users/rows', rowsPayloadForEmployment())->assertOk();
     } finally {
-        EmploymentProductLine::preventLazyLoading(false);
+        User::preventLazyLoading(false);
     }
 });
 
-it('rows: the business_function set filter keeps the users owning AT LEAST ONE row with that function (spec 0111 AC-018)', function () {
+it('rows: the business_function set filter keeps the members of AT LEAST ONE picked function (spec 0275 AC-014)', function () {
     $actor = employmentTableActor(['viewAny']);
     $sales = BusinessFunction::factory()->create(['name' => 'Sales']);
     $legal = BusinessFunction::factory()->create(['name' => 'Legal']);
 
-    $matching = userCompetentIn('Matching', $legal, $sales);
-    $other = userCompetentIn('Other', $legal);
+    $matching = userMemberOf('Matching', $legal, $sales);
+    $other = userMemberOf('Other', $legal);
     $noLines = User::factory()->withEmployment()->create(['name' => 'NoLines']);
+    // Competence on Sales only, no membership: must NOT match the filter.
+    $competenceOnly = User::factory()->withEmployment(fn ($profile) => $profile->competentInEveryCategoryOf($sales))->create(['name' => 'CompetenceOnly']);
     Sanctum::actingAs($actor);
 
     $ids = collect($this->postJson('/api/tables/users/rows', rowsPayloadForEmployment([
@@ -195,19 +187,20 @@ it('rows: the business_function set filter keeps the users owning AT LEAST ONE r
 
     expect($ids->all())->toBe([$matching->id])
         ->and($ids)->not->toContain($other->id)
-        ->and($ids)->not->toContain($noLines->id);
+        ->and($ids)->not->toContain($noLines->id)
+        ->and($ids)->not->toContain($competenceOnly->id);
 });
 
-it('rows: sorts business_function by the alphabetically first function of the rows, keeping the users without rows (spec 0111 AC-019)', function () {
+it('rows: sorts business_function by the alphabetically first function of the membership, keeping the users without any (spec 0275 AC-014)', function () {
     $actor = employmentTableActor(['viewAny']);
     $alpha = BusinessFunction::factory()->create(['name' => 'Alpha']);
     $zulu = BusinessFunction::factory()->create(['name' => 'Zulu']);
 
     // `Middle` owns both, so it must sort on `Alpha` — the first name of its
     // rows, not the last one nor the row insertion order.
-    $first = userCompetentIn('First', $alpha);
-    $middle = userCompetentIn('Middle', $zulu, $alpha);
-    $last = userCompetentIn('Last', $zulu);
+    $first = userMemberOf('First', $alpha);
+    $middle = userMemberOf('Middle', $zulu, $alpha);
+    $last = userMemberOf('Last', $zulu);
     $noLines = User::factory()->withEmployment()->create(['name' => 'NoLines']);
     Sanctum::actingAs($actor);
 
@@ -233,17 +226,40 @@ it('rows: sorts business_function by the alphabetically first function of the ro
         ->and($rank($descending, $last->id))->toBeLessThan($rank($descending, $middle->id));
 });
 
-it('rows: filters by the is_manager set filter (derived boolean column)', function () {
+// REQUIREMENT CHANGED (spec 0276 AC-008): `is_manager` is replaced by the functions the person manages.
+it('rows: filters by the managed_business_functions set filter and shows the managed names', function () {
     $actor = employmentTableActor(['viewAny']);
-    User::factory()->withEmployment(fn ($f) => $f->manager())->create();
-    User::factory()->withEmployment(fn ($f) => $f->state(['is_manager' => false]))->create();
+    $function = BusinessFunction::factory()->create(['name' => 'Alpha Unit']);
+    $manager = User::factory()->withEmployment()->create();
+    $function->update(['manager_id' => $manager->id]);
+    User::factory()->withEmployment()->create();
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/users/rows', rowsPayloadForEmployment([
-        'filterModel' => ['is_manager' => ['values' => [true]]],
+        'filterModel' => ['managed_business_functions' => ['values' => ['Alpha Unit']]],
     ]))->assertOk();
 
-    expect(collect($response->json('items'))->pluck('is_manager')->unique()->all())->toBe([true]);
+    expect(collect($response->json('items'))->pluck('id')->all())->toBe([$manager->id])
+        ->and($response->json('items.0.managed_business_functions'))->toBe('Alpha Unit')
+        ->and(collect($response->json('items.0'))->has('is_manager'))->toBeFalse();
+});
+
+it('rows: sorts by the first managed function name and offers the managed names as distinct values', function () {
+    $actor = employmentTableActor(['viewAny']);
+    $manager = User::factory()->withEmployment()->create();
+    BusinessFunction::factory()->create(['name' => 'Zeta Unit', 'manager_id' => $manager->id]);
+    BusinessFunction::factory()->create(['name' => 'Beta Unit', 'manager_id' => $manager->id]);
+    Sanctum::actingAs($actor);
+
+    $response = $this->postJson('/api/tables/users/rows', rowsPayloadForEmployment([
+        'sortModel' => [['colId' => 'managed_business_functions', 'sort' => 'asc']],
+    ]))->assertOk();
+
+    $managerRow = collect($response->json('items'))->firstWhere('id', $manager->id);
+    expect($managerRow['managed_business_functions'])->toBe('Beta Unit, Zeta Unit');
+
+    $values = $this->postJson('/api/tables/users/values', ['columnId' => 'managed_business_functions'])->assertOk()->json('data.values');
+    expect($values)->toBe([null, 'Beta Unit', 'Zeta Unit']);
 });
 
 it('rows: filters relationship_type via allow-listed enum values (no raw input reaches the query)', function () {
@@ -346,12 +362,12 @@ it('rows: sorts by operational_site through the pivot, placing rows without a ph
         ->and(array_search('Alpha', $names, true))->toBeLessThan(array_search('Zulu', $names, true));
 });
 
-it('values: business_function distinct values are resolved from the competence rows, not a whereRaw on `users`', function () {
+it('values: business_function distinct values are resolved from the membership, not a whereRaw on `users`', function () {
     $actor = employmentTableActor(['viewAny']);
     $legal = BusinessFunction::factory()->create(['name' => 'Legal']);
     // A function nobody works on must NOT show up in the checklist.
     BusinessFunction::factory()->create(['name' => 'Unused']);
-    userCompetentIn('Lawyer', $legal, $legal);
+    userMemberOf('Lawyer', $legal, $legal);
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/tables/users/values', ['columnId' => 'business_function'])->assertOk();

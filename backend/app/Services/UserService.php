@@ -42,6 +42,9 @@ class UserService
         'employment.company',
         // Spec 0271: the person's job roles ({id,name} in EmploymentResource).
         'employment.jobRoles',
+        // Spec 0275: the business functions the person belongs to / manages.
+        'employment.businessFunctions:id,name',
+        'managedBusinessFunctions:id,name,manager_id',
         // The operational-site label is "line1[- city]" (EmploymentResource),
         // so the pivot's sites, their primary address and city must all be
         // eager-loaded, or reading them would lazy-load (blocked outside
@@ -130,7 +133,7 @@ class UserService
      * $employment (the key was absent) leaves no row, matching the wire
      * contract ("employment absent or null => no row" on create).
      *
-     * `$enforceCoverage` false skips the mandatory business function rule (spec 0271 D-6 applies to
+     * `$enforceCoverage` false skips the mandatory membership rule (spec 0275 D-4 applies to
      * the API only; the legacy import must not fail on unmapped users).
      */
     public function create(User $actor, CreateUserData $data, ?ProfileData $profile = null, ?EmploymentData $employment = null, bool $enforceCoverage = true): User
@@ -161,7 +164,7 @@ class UserService
             $this->employmentWriter->write($user, $employment, $actor);
             $this->deactivateIfTerminated($user);
 
-            // Spec 0271 D-6: the mandatory business function rule on the resulting state.
+            // Spec 0275 D-4: the mandatory membership rule on the resulting state.
             if ($enforceCoverage) {
                 $this->coverageGuard->assertCovered($user);
             }
@@ -219,7 +222,7 @@ class UserService
             $this->employmentWriter->write($user, $employment, $actor);
             $this->deactivateIfTerminated($user);
 
-            // Spec 0271 D-6: only when the request touched employment or
+            // Spec 0275 D-4: only when the request touched employment or
             // activated the user; any other edit leaves legacy data alone.
             if ($employment !== null || (! $wasActive && $user->is_active)) {
                 $this->coverageGuard->assertCovered($user);

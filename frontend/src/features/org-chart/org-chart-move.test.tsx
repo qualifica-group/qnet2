@@ -78,8 +78,18 @@ async function openMenuAndMove(treeName: string, itemName: RegExp) {
   const tree = await screen.findByRole('tree', { name: treeName })
   const item = within(tree).getAllByRole('treeitem', { name: itemName })[0]
   const trigger = within(item).getAllByRole('button', { name: /Azioni per/ })[0]
+  return chooseMove(trigger)
+}
+
+async function chooseMove(trigger: HTMLElement) {
   fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false })
   fireEvent.click(await screen.findByRole('menuitem', { name: 'Sposta in…' }))
+  return screen.findByRole('dialog', { name: /^Sposta / })
+}
+
+async function openMembers(buttonName: string) {
+  await screen.findByRole('tree', { name: 'Funzioni' })
+  fireEvent.click(screen.getByRole('button', { name: buttonName }))
   return screen.findByRole('dialog')
 }
 
@@ -103,17 +113,22 @@ describe('org chart move - "Sposta in…"', () => {
     canMock.mockImplementation((p: string) => p === 'org-chart.view' || p === 'users.update')
     renderPage()
     const tree = await screen.findByRole('tree', { name: 'Funzioni' })
-    const sales = within(tree).getByRole('treeitem', { name: /Sales/ })
+    const sales = within(tree).getByRole('treeitem', { name: 'Sales' })
     expect(within(sales).queryByRole('button', { name: 'Azioni per Sales' })).not.toBeInTheDocument()
-    expect(within(tree).getAllByRole('button', { name: /Azioni per Carla Gallo/ }).length).toBeGreaterThan(0)
-    expect(screen.queryByRole('button', { name: /Azioni per Dario Fiore/ })).not.toBeInTheDocument()
+    const salesPanel = await openMembers("Sales: 2 persone, apri l'elenco")
+    expect(within(salesPanel).getByRole('button', { name: 'Azioni per Carla Gallo' })).toBeInTheDocument()
+    fireEvent.keyDown(salesPanel, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    const allPanel = await openMembers("Non assegnati: 1 persona, apri l'elenco")
+    expect(within(allPanel).getByText('Dario Fiore')).toBeInTheDocument()
+    expect(within(allPanel).getByRole('button', { name: 'Azioni per Dario Fiore' })).toBeInTheDocument()
   })
 
   it('moves a function: search, confirm, payload, invalidation and toast', async () => {
     renderPage()
     await screen.findByRole('tree')
     const invalidate = vi.spyOn(client, 'invalidateQueries')
-    const dialog = await openMenuAndMove('Funzioni', /Sales/)
+    const dialog = await openMenuAndMove('Funzioni', /^Sales$/)
     await chooseDestination('Nessuna funzione padre (radice)')
     expect(within(dialog).getByText('Sposta Sales da «Company» a «Nessuna funzione padre (radice)».')).toBeInTheDocument()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Conferma lo spostamento' }))
@@ -123,16 +138,27 @@ describe('org chart move - "Sposta in…"', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
-  it('moves a person between functions with the competence warning', async () => {
+  it('moves a person between functions from the members panel, with the competence warning', async () => {
     renderPage()
-    const dialog = await openMenuAndMove('Funzioni', /Carla Gallo/)
+    const panel = await openMembers("Sales: 2 persone, apri l'elenco")
+    const dialog = await chooseMove(within(panel).getByRole('button', { name: 'Azioni per Carla Gallo' }))
     fireEvent.click(within(dialog).getByRole('combobox', { name: 'Destinazione' }))
     fireEvent.change(await screen.findByPlaceholderText('Cerca la destinazione…'), { target: { value: 'supp' } })
     expect(screen.queryByRole('option', { name: 'Company' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('option', { name: 'Support' }))
-    expect(within(dialog).getByRole('note')).toHaveTextContent(/assegnazioni automatiche/)
+    expect(within(dialog).getByRole('note')).toHaveTextContent(/funzione aziendale di appartenenza/)
     fireEvent.click(within(dialog).getByRole('button', { name: 'Conferma lo spostamento' }))
     await waitFor(() => expect(moveFunctionMock).toHaveBeenCalledWith(12, { from_function_id: 2, to_function_id: 3 }))
+  })
+
+  it('assigns an unassigned person to a function with from_function_id null (AC-020)', async () => {
+    renderPage()
+    const panel = await openMembers("Non assegnati: 1 persona, apri l'elenco")
+    const dialog = await chooseMove(within(panel).getByRole('button', { name: 'Azioni per Dario Fiore' }))
+    fireEvent.click(within(dialog).getByRole('combobox', { name: 'Destinazione' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Support' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Conferma lo spostamento' }))
+    await waitFor(() => expect(moveFunctionMock).toHaveBeenCalledWith(13, { from_function_id: null, to_function_id: 3 }))
   })
 
   it('moves a person under another manager in the people view', async () => {
@@ -148,7 +174,7 @@ describe('org chart move - "Sposta in…"', () => {
   it('shows the server message on 422 and the i18n copy on 403, keeping the dialog open', async () => {
     renderPage()
     moveParentMock.mockRejectedValueOnce(serverError(422, 'Spostamento non valido: ciclo.'))
-    const dialog = await openMenuAndMove('Funzioni', /Sales/)
+    const dialog = await openMenuAndMove('Funzioni', /^Sales$/)
     await chooseDestination('Support')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Conferma lo spostamento' }))
     await waitFor(() => expect(toastError).toHaveBeenCalledWith('Spostamento non valido: ciclo.'))

@@ -12,7 +12,7 @@ import { useAbilities } from '@/features/auth/use-abilities'
 import { OrgDragRow, type OrgDragState } from '@/features/org-chart/components/org-drag-row'
 import { OrgMoveDialog } from '@/features/org-chart/components/org-move-dialog'
 import { OrgRowMenu } from '@/features/org-chart/components/org-row-menu'
-import type { OrgRowRenderers } from '@/features/org-chart/components/org-tree'
+import type { OrgRowRenderers } from '@/features/org-chart/components/org-chart-canvas'
 import { getMoveDestinations, isMovable, nodeName, resolveDrop } from '@/features/org-chart/move-destinations'
 import type { MoveDestination, OrgView } from '@/features/org-chart/move-types'
 import type { OrgTreeNode } from '@/features/org-chart/tree-nodes'
@@ -84,7 +84,7 @@ export function OrgMoveLayer({ view, nodes, children }: OrgMoveLayerProps) {
       {children(renderers)}
       <DragOverlay>
         {dragging ? (
-          <div className="rounded-md border border-border bg-card px-2 py-1 text-sm shadow-sm">{nodeName(dragging.node)}</div>
+          <div className="w-fit rounded-lg border border-border bg-card px-2.5 py-1.5 text-sm shadow-md">{nodeName(dragging.node)}</div>
         ) : null}
       </DragOverlay>
       {request ? (

@@ -1,4 +1,4 @@
-import type { OrgTreeNode } from '@/features/org-chart/tree-nodes'
+import { chartChildren, type OrgTreeNode } from '@/features/org-chart/tree-nodes'
 
 export interface VisibleEntry {
   node: OrgTreeNode
@@ -21,12 +21,15 @@ export function filterTree(nodes: OrgTreeNode[], search: string): OrgTreeNode[] 
   return walk(nodes)
 }
 
-/** Keys of every node with children: the expand/collapse-all universe. */
+/** Keys of every card with child cards: the expand/collapse-all universe. */
 export function collectExpandableKeys(nodes: OrgTreeNode[]): string[] {
-  return nodes.flatMap((node) => (node.children.length > 0 ? [node.key, ...collectExpandableKeys(node.children)] : []))
+  return nodes.flatMap((node) => {
+    const children = chartChildren(node)
+    return children.length > 0 ? [node.key, ...collectExpandableKeys(children)] : []
+  })
 }
 
-/** Pre-order list of the rows currently on screen, for keyboard navigation. */
+/** Pre-order list of the cards currently on screen, for keyboard navigation. */
 export function flattenVisible(
   nodes: OrgTreeNode[],
   collapsedKeys: ReadonlySet<string>,
@@ -34,6 +37,15 @@ export function flattenVisible(
 ): VisibleEntry[] {
   return nodes.flatMap((node) => [
     { node, parentKey },
-    ...(collapsedKeys.has(node.key) ? [] : flattenVisible(node.children, collapsedKeys, node.key)),
+    ...(collapsedKeys.has(node.key) ? [] : flattenVisible(chartChildren(node), collapsedKeys, node.key)),
   ])
+}
+
+export function findByKey(nodes: OrgTreeNode[], key: string): OrgTreeNode | null {
+  for (const node of nodes) {
+    if (node.key === key) return node
+    const found = findByKey(node.children, key)
+    if (found) return found
+  }
+  return null
 }

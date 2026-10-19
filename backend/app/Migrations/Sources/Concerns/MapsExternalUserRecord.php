@@ -141,7 +141,6 @@ trait MapsExternalUserRecord
         $operationalSiteId = $this->resolveEmploymentRelation(OperationalSite::class, $record['operational_site_id'] ?? null, 'operational_site_id', $warnings);
 
         $employment = new EmploymentData(
-            isManager: (bool) ($record['is_manager'] ?? false),
             reportsToIdsProvided: true,
             reportsToIds: $reportsToId === null ? [] : [$reportsToId],
             primaryOperationalSiteIdProvided: true,
@@ -293,16 +292,14 @@ trait MapsExternalUserRecord
     /**
      * Self-healing counterpart of backfillPhysicalSite() for the reports-to
      * manager (spec 0166 D-10, replacing the former "fill once" gate on the
-     * NULL `reports_to_id` column): a non-manager profile with NO manager AT
+     * NULL `reports_to_id` column): a profile with NO manager AT
      * ALL yet gets the resolved external manager attached to
      * `employment_profile_manager` — the same "fill once, never overwrite"
      * property translated from a NULL column to an absent/empty pivot. A
      * profile that already has at least one manager (assigned by hand, or by
      * an earlier import pass) is left untouched: this is what keeps a manual
      * assignment surviving re-import, and what makes re-importing the same
-     * record idempotent. A manager can never report to someone (the
-     * EmploymentWriter invariant), so this never attaches when the desired
-     * state itself is a manager.
+     * record idempotent.
      *
      * Reads off the already-eager-loaded `reportsTo` collection
      * (resolveAndBackfillEmployment()) rather than issuing its own query, so
@@ -312,7 +309,7 @@ trait MapsExternalUserRecord
     {
         $managerId = $desired->reportsToIds[0] ?? null;
 
-        if ($desired->isManager || $managerId === null || $existing->reportsToIds !== []) {
+        if ($managerId === null || $existing->reportsToIds !== []) {
             return false;
         }
 
@@ -327,7 +324,7 @@ trait MapsExternalUserRecord
     private function hasEmploymentPayload(array $record): bool
     {
         $employmentFields = [
-            'is_manager', 'reports_to_id', 'relationship_type',
+            'reports_to_id', 'relationship_type',
             'company_id', 'operational_site_id',
             'hired_at', 'terminated_at', 'standard_daily_minutes', 'break_daily_minutes',
         ];

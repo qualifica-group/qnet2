@@ -107,7 +107,7 @@ it('AC-005: an offer with no Sede and no category refuses a switched-off operato
 
 it('AC-006: the switch is written when sent and left untouched when omitted', function (): void {
     $actor = assignableSwitchActor(['users.viewAny', 'users.view', 'users.update']);
-    $target = EmploymentProfile::factory()->competentInEveryCategoryOf(BusinessFunction::factory()->create())->create()->user;
+    $target = EmploymentProfile::factory()->competentInEveryCategoryOf($function = BusinessFunction::factory()->create())->memberOf($function)->create()->user;
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/users/{$target->id}", ['employment' => ['is_assignable' => false]])

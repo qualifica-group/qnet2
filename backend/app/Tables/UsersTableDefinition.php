@@ -10,6 +10,7 @@ use App\Tables\Users\UserColumnCatalog;
 use App\Tables\Users\UserEmploymentColumns;
 use App\Tables\Users\UserGeoColumns;
 use App\Tables\Users\UserJobRolesColumn;
+use App\Tables\Users\UserManagedBusinessFunctionsColumn;
 use App\Tables\Users\UserPersonalDataColumns;
 use App\Tables\Users\UserRolesColumn;
 use Illuminate\Database\Eloquent\Builder;
@@ -95,12 +96,10 @@ class UsersTableDefinition extends AbstractTableDefinition
                 },
                 // Employment profile (spec 0015) + its relations, so mapRow
                 // reads every employment-derived column entirely from memory.
-                // The business function is no longer a single FK on the
-                // profile (spec 0111 D-1): the cell aggregates the functions
-                // of the competence ROWS, so the whole nested path is loaded.
-                // Their product category is deliberately NOT loaded: no cell
-                // reads it.
+                // The business function cell aggregates the user's membership
+                // (spec 0275 D-8), loaded on the user, not on the profile.
                 UserBusinessFunctionColumn::RELATION_PATH,
+                UserManagedBusinessFunctionsColumn::RELATION_PATH,
                 'employment.company',
                 'employment.reportsTo',
                 UserJobRolesColumn::RELATION_PATH,
@@ -233,7 +232,7 @@ class UsersTableDefinition extends AbstractTableDefinition
             'region' => $address?->state?->localizedName(),
             'province' => $address?->province?->localizedName(),
             'city' => $address?->city?->localizedName(),
-        ], $this->personalDataColumns->mapRow($card, $address), $this->employmentColumns->mapRow($row->employment));
+        ], $this->personalDataColumns->mapRow($card, $address), $this->employmentColumns->mapRow($row));
     }
 
     /**

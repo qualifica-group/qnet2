@@ -39,7 +39,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * category of its function), which summarizeByName() already handles.
  *
  * `covers_all_product_categories` (spec 0129 D-1) is a plain scalar, emitted
- * unconditionally like `is_manager` — it needs no eager load.
+ * unconditionally — it needs no eager load.
  *
  * The reports-to managers (spec 0166 D-2, replacing the single
  * `reports_to_id`/`reports_to` pair) follow the same `whenLoaded` discipline
@@ -57,7 +57,6 @@ class EmploymentResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'is_manager' => $this->is_manager,
             'covers_all_product_categories' => $this->covers_all_product_categories,
             'is_assignable' => $this->is_assignable,
             'relationship_type' => $this->relationship_type,
@@ -75,6 +74,15 @@ class EmploymentResource extends JsonResource
                 $this->relationLoaded('jobRoles'),
                 fn (): array => $this->jobRoles
                     ->map(fn (JobRole $role): array => $this->summarizeByName($role))
+                    ->values()
+                    ->all(),
+            ),
+            'business_function_ids' => $this->when($this->relationLoaded('businessFunctions'), fn (): array => $this->business_function_ids),
+            'business_functions' => $this->when(
+                $this->relationLoaded('businessFunctions'),
+                fn (): array => $this->businessFunctions
+                    ->sortBy('name')
+                    ->map(static fn ($function): array => ['id' => $function->id, 'name' => $function->name])
                     ->values()
                     ->all(),
             ),

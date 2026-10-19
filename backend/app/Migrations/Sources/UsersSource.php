@@ -119,7 +119,6 @@ class UsersSource extends AbstractMigrationSource
             ['id' => 'business_phone', 'label' => 'Business phone', 'type' => 'string'],
             ['id' => 'personal_phone', 'label' => 'Personal phone', 'type' => 'string'],
             ['id' => 'is_active', 'label' => 'Is active', 'type' => 'boolean'],
-            ['id' => 'is_manager', 'label' => 'Is manager', 'type' => 'boolean'],
             ['id' => 'reports_to_id', 'label' => 'Reports to (external id)', 'type' => 'number'],
             ['id' => 'relationship_type', 'label' => 'Relationship type', 'type' => 'string'],
             ['id' => 'company_id', 'label' => 'Company (external id)', 'type' => 'number'],

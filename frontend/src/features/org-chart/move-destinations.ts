@@ -14,11 +14,11 @@ export function nodeName(node: OrgTreeNode): string {
 
 /** Cheap, per-row precondition: can this row be moved at all in this view? */
 export function isMovable(view: OrgView, node: OrgTreeNode): boolean {
-  if (node.kind === 'all-functions') return false
+  if (node.kind === 'unassigned') return false
   if (node.kind === 'function') return true
-  if (view === 'people') return !node.person.is_manager || node.parent !== null
-  // A person under "all functions" covers every function: nothing to move.
-  return node.parent?.kind === 'function'
+  if (view === 'people') return true
+  // Under a function or in "Unassigned" (assigns the first membership).
+  return node.parent?.kind === 'function' || node.parent?.kind === 'unassigned'
 }
 
 export function findNode(nodes: OrgTreeNode[], ref: OrgNodeRef): OrgTreeNode | null {
@@ -56,15 +56,13 @@ function candidates(nodes: OrgTreeNode[], kind: 'person' | 'function', excluded:
 
 /** Valid destinations of `node` (taken from the unfiltered tree `allNodes`). */
 export function getMoveDestinations(view: OrgView, node: OrgTreeNode, allNodes: OrgTreeNode[]): MoveDestination[] {
-  if (!isMovable(view, node) || node.kind === 'all-functions' || node.id === null) return []
+  if (!isMovable(view, node) || node.kind === 'unassigned' || node.id === null) return []
 
   const root: MoveDestination = { kind: 'root', id: null, name: '', depth: 0 }
   const fromId = node.parent?.id ?? null
 
   if (view === 'people') {
     const subject = findNode(allNodes, { kind: 'person', id: node.id }) ?? node
-    // A manager can only stop reporting to anyone.
-    if (node.kind === 'person' && node.person.is_manager) return node.parent ? [root] : []
     const excluded = collectIds(subject, new Set())
     if (fromId !== null) excluded.add(fromId)
     // Already one of the person's managers: moving there would only duplicate the link.
@@ -89,7 +87,7 @@ export function resolveDrop(
   destinations: readonly MoveDestination[],
   target: OrgTreeNode,
 ): MoveDestination | null {
-  if (target.kind === 'all-functions') return null
+  if (target.kind === 'unassigned') return null
   return destinations.find((dest) => dest.kind === target.kind && dest.id === target.id) ?? null
 }
 
@@ -109,7 +107,7 @@ export function buildPendingMove(
   let move: OrgMove
   if (node.kind === 'function') move = { type: 'parent', functionId: nodeId, toId }
   else if (view === 'people') move = { type: 'manager', userId: nodeId, fromId, toId }
-  else move = { type: 'function', userId: nodeId, fromId: fromId as number, toId: toId as number }
+  else move = { type: 'function', userId: nodeId, fromId: node.parent?.kind === 'function' ? fromId : null, toId: toId as number }
 
   return {
     move,

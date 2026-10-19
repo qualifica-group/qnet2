@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type KeyboardEvent, type FocusEvent } from 'react'
-import type { OrgTreeNode } from '@/features/org-chart/tree-nodes'
+import { chartChildren, type OrgTreeNode } from '@/features/org-chart/tree-nodes'
 import { flattenVisible } from '@/features/org-chart/tree-utils'
 
 interface TreeNavigationParams {
@@ -8,18 +8,18 @@ interface TreeNavigationParams {
   onToggle: (key: string) => void
 }
 
-/** Selector of the row's primary action (name link / button), activated by Enter. */
+/** Selector of the card's primary action (name link / button), activated by Enter. */
 const PRIMARY_ACTION_SELECTOR = '[data-org-content] a, [data-org-content] button'
 
 /**
  * WAI-ARIA tree keyboard model with a roving tabindex: Up/Down move through
- * the visible rows, Right expands or enters the branch, Left collapses or goes
- * to the parent, Home/End jump to the ends, Enter opens the row's link. Keys
+ * the visible cards (pre-order), Right expands or enters the branch, Left collapses or goes
+ * to the parent, Home/End jump to the ends, Enter opens the card's link. Keys
  * are handled only when the `treeitem` itself holds focus, so links and
- * buttons inside a row keep their native behaviour.
+ * buttons inside a card keep their native behaviour.
  */
 export function useTreeNavigation({ nodes, collapsedKeys, onToggle }: TreeNavigationParams) {
-  const containerRef = useRef<HTMLUListElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const [focusedKey, setFocusedKey] = useState<string | null>(null)
   const visible = useMemo(() => flattenVisible(nodes, collapsedKeys), [nodes, collapsedKeys])
 
@@ -46,7 +46,8 @@ export function useTreeNavigation({ nodes, collapsedKeys, onToggle }: TreeNaviga
     const index = visible.findIndex((entry) => entry.node.key === key)
     if (index < 0) return
     const { node, parentKey } = visible[index]
-    const expanded = node.children.length > 0 && !collapsedKeys.has(node.key)
+    const hasChildren = chartChildren(node).length > 0
+    const expanded = hasChildren && !collapsedKeys.has(node.key)
 
     const handlers: Record<string, () => void> = {
       ArrowDown: () => focusNode(visible[index + 1]?.node.key),
@@ -54,7 +55,7 @@ export function useTreeNavigation({ nodes, collapsedKeys, onToggle }: TreeNaviga
       Home: () => focusNode(visible[0]?.node.key),
       End: () => focusNode(visible.at(-1)?.node.key),
       ArrowRight: () => {
-        if (node.children.length === 0) return
+        if (!hasChildren) return
         if (expanded) focusNode(visible[index + 1]?.node.key)
         else onToggle(node.key)
       },

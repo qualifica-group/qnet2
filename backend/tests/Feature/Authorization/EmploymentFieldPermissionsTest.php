@@ -26,7 +26,7 @@ uses(RefreshDatabase::class);
  * profile-wide wildcard flag (D-1).
  */
 const EMPLOYMENT_FIELD_KEYS = [
-    'employment.is_manager', 'employment.covers_all_product_categories',
+    'employment.covers_all_product_categories',
     'employment.job_role_ids', 'employment.reports_to_ids',
     'employment.product_lines',
     'employment.primary_operational_site_id', 'employment.remote_operational_site_ids',
@@ -146,7 +146,7 @@ if (! function_exists('roleDenyingEmploymentField')) {
 it('AC-013: resubmitting the same physical site on a readonly employment.primary_operational_site_id is a no-op (200)', function () {
     $siteA = OperationalSite::factory()->create();
     $actor = roleDenyingEmploymentField('employment.primary_operational_site_id');
-    $target = User::factory()->withEmployment(fn ($f) => $f->physicalSite($siteA)->competentInEveryCategoryOf(BusinessFunction::factory()->create()))->create();
+    $target = User::factory()->withEmployment(fn ($f) => $f->physicalSite($siteA)->memberOf(BusinessFunction::factory()->create()))->create();
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/users/{$target->id}", [
@@ -175,7 +175,7 @@ it('AC-014: resubmitting the same remote site set in a different order on a read
     $siteA = OperationalSite::factory()->create();
     $siteB = OperationalSite::factory()->create();
     $actor = roleDenyingEmploymentField('employment.remote_operational_site_ids');
-    $target = User::factory()->withEmployment(fn ($f) => $f->remoteSites($siteA, $siteB)->competentInEveryCategoryOf(BusinessFunction::factory()->create()))->create();
+    $target = User::factory()->withEmployment(fn ($f) => $f->remoteSites($siteA, $siteB)->memberOf(BusinessFunction::factory()->create()))->create();
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/users/{$target->id}", [
@@ -205,11 +205,11 @@ it('AC-014: changing the remote site set on a readonly employment.remote_operati
 
 it('0129 AC-017: resubmitting the same value on a readonly employment.covers_all_product_categories is a no-op (200)', function () {
     $actor = roleDenyingEmploymentField('employment.covers_all_product_categories');
-    $target = User::factory()->withEmployment(fn ($f) => $f->coversAllProductCategories())->create();
+    $target = User::factory()->withEmployment(fn ($f) => $f->coversAllProductCategories()->memberOf(BusinessFunction::factory()->create()))->create();
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/users/{$target->id}", [
-        'employment' => ['covers_all_product_categories' => true],
+        'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()]],
     ])->assertOk();
 });
 
@@ -219,7 +219,7 @@ it('0129 AC-017: changing employment.covers_all_product_categories on a readonly
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/users/{$target->id}", [
-        'employment' => ['covers_all_product_categories' => true],
+        'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()]],
     ])->assertStatus(422)->assertJsonValidationErrors(['employment.covers_all_product_categories']);
 });
 
@@ -246,7 +246,7 @@ it('0129 AC-017: changing employment.covers_all_product_categories on a readonly
 it('the field-permission read of employment.primary_operational_site_id lazy-loads operationalSites but never trips preventLazyLoading on a single record', function () {
     $siteA = OperationalSite::factory()->create();
     $actor = roleDenyingEmploymentField('employment.primary_operational_site_id');
-    $target = User::factory()->withEmployment(fn ($f) => $f->physicalSite($siteA)->competentInEveryCategoryOf(BusinessFunction::factory()->create()))->create();
+    $target = User::factory()->withEmployment(fn ($f) => $f->physicalSite($siteA)->memberOf(BusinessFunction::factory()->create()))->create();
     Sanctum::actingAs($actor);
 
     EmploymentProfile::preventLazyLoading();
@@ -365,7 +365,7 @@ it('0166 AC-008: resubmitting the same reports_to_ids set in a different order o
     $managerA = User::factory()->create();
     $managerB = User::factory()->create();
     $actor = roleDenyingEmploymentField('employment.reports_to_ids');
-    $target = User::factory()->withEmployment(fn ($f) => $f->reportsTo($managerA, $managerB)->competentInEveryCategoryOf(BusinessFunction::factory()->create()))->create();
+    $target = User::factory()->withEmployment(fn ($f) => $f->reportsTo($managerA, $managerB)->memberOf(BusinessFunction::factory()->create()))->create();
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/users/{$target->id}", [

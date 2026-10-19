@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\BusinessFunction;
 use App\Models\User;
 use Database\Seeders\QualificaCatalog\OperatorRoster;
 use Database\Seeders\QualificaCatalog\ReportsToRoster;
@@ -90,13 +91,16 @@ it('converges on a re-run and leaves unlisted accounts alone', function (): void
         ->and(managerEmailsOf('nicola.eliseo@qualificagroup.com'))->toBe(['marco.fedele@qualificagroup.com']);
 });
 
-it('skips a profile flagged as manager, which reports to no one', function (): void {
+// REQUIREMENT CHANGED (spec 0276 D-2): the "a manager reports to no one" rule is gone,
+// a person managing a function gets their roster reports-to like everyone else.
+it('syncs the reports-to of a person who manages a function', function (): void {
     test()->seed(QualificaOperatorSeeder::class);
-    User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->sole()->employment->update(['is_manager' => true]);
+    $rosa = User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->sole();
+    BusinessFunction::factory()->create(['manager_id' => $rosa->id]);
 
     test()->seed(QualificaReportsToSeeder::class);
 
-    expect(managerEmailsOf('rosa.falzarano@qualificagroup.com'))->toBe([])
+    expect(managerEmailsOf('rosa.falzarano@qualificagroup.com'))->not->toBe([])
         ->and(managerEmailsOf('marco.fedele@qualificagroup.com'))->toBe([
             'fabrizio.aliberti@qualificagroup.com',
             'rosa.falzarano@qualificagroup.com',

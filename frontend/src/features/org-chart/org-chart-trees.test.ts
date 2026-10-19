@@ -7,11 +7,11 @@ import { collectExpandableKeys, filterTree, flattenVisible } from '@/features/or
 describe('buildFunctionTree', () => {
   const tree = buildFunctionTree(FUNCTIONS_FIXTURE)
 
-  it('nests functions by parent_id with sub-functions before people, plus the all-functions group last', () => {
-    expect(tree.map((node) => node.key)).toEqual(['f:1', 'all'])
+  it('nests functions by parent_id with sub-functions before people, plus the unassigned group last', () => {
+    expect(tree.map((node) => node.key)).toEqual(['f:1', 'unassigned'])
     expect(tree[0].children.map((node) => node.key)).toEqual(['f:1/f:2', 'f:1/f:3', 'f:1/p:10'])
     expect(tree[0].children[0].children.map((node) => node.key)).toEqual(['f:1/f:2/p:11', 'f:1/f:2/p:12'])
-    expect(tree[1].children.map((node) => node.key)).toEqual(['all/p:13'])
+    expect(tree[1].children.map((node) => node.key)).toEqual(['unassigned/p:13'])
   })
 
   it('records the parent reference of every node (from side of a move)', () => {
@@ -19,7 +19,7 @@ describe('buildFunctionTree', () => {
     expect(company.parent).toBeNull()
     expect(company.children[0].parent).toEqual({ kind: 'function', id: 1 })
     expect(company.children[0].children[0].parent).toEqual({ kind: 'function', id: 2 })
-    expect(tree[1].children[0].parent).toEqual({ kind: 'all-functions', id: null })
+    expect(tree[1].children[0].parent).toEqual({ kind: 'unassigned', id: null })
   })
 
   it('flags the function manager and flagged managers as responsible', () => {
@@ -27,10 +27,10 @@ describe('buildFunctionTree', () => {
     expect(sales.map((node) => node.kind === 'person' && node.isResponsible)).toEqual([true, false])
   })
 
-  it('treats a function with an unknown parent as a root and omits an empty all-functions group', () => {
+  it('treats a function with an unknown parent as a root and omits an empty unassigned group', () => {
     const result = buildFunctionTree({
       functions: [{ id: 5, name: 'Orphan', type: null, parent_id: 404, manager: null, people: [] }],
-      all_functions_people: [],
+      unassigned_people: [],
     })
     expect(result.map((node) => node.key)).toEqual(['f:5'])
   })
@@ -41,7 +41,7 @@ describe('buildFunctionTree', () => {
         { id: 1, name: 'A', type: null, parent_id: 2, manager: null, people: [] },
         { id: 2, name: 'B', type: null, parent_id: 1, manager: null, people: [] },
       ],
-      all_functions_people: [],
+      unassigned_people: [],
     })
     expect(result).toEqual([])
   })

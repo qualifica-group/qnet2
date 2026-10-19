@@ -83,7 +83,6 @@ it('creates a user with card, primary address, contacts, verbatim password hash 
                 'business_phone' => '+39 06 1234567',
                 'personal_phone' => '+39 333 1234567',
                 'is_active' => true,
-                'is_manager' => false,
                 'job_description' => 'Engineer',
                 'reports_to_id' => 900,
                 'business_function_id' => 910,

@@ -21,12 +21,19 @@ export interface OrgFunction {
 
 export interface OrgChartFunctions {
   functions: OrgFunction[]
-  all_functions_people: OrgPerson[]
+  unassigned_people: OrgPerson[]
+}
+
+/** A function of membership of a person; `is_manager` when they head it (spec 0275 D-9). */
+export interface OrgPersonFunction {
+  id: number
+  name: string
+  is_manager: boolean
 }
 
 export interface OrgDirectoryPerson extends OrgPerson {
   manager_ids: number[]
-  business_functions: string[]
+  business_functions: OrgPersonFunction[]
 }
 
 /** Request bodies of the three move endpoints (spec 0273 D-4). */
@@ -40,6 +47,6 @@ export interface MoveFunctionParentPayload {
 }
 
 export interface MovePersonFunctionPayload {
-  from_function_id: number
+  from_function_id: number | null
   to_function_id: number
 }

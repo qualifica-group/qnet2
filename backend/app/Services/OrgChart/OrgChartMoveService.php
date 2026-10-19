@@ -6,11 +6,8 @@ namespace App\Services\OrgChart;
 
 use App\Authorization\AuthorizationRegistry;
 use App\Models\BusinessFunction;
-use App\Models\EmploymentProfile;
 use App\Models\User;
-use App\Services\Assignment\CompetenceLineSetValidator;
 use App\Services\BusinessFunctionService;
-use App\Services\ProductLines\ProductLineWriter;
 use App\Services\TimeEntries\TimeEntrySubordinateResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -43,8 +40,6 @@ final class OrgChartMoveService
         private readonly AuthorizationRegistry $authorization,
         private readonly TimeEntrySubordinateResolver $subordinates,
         private readonly BusinessFunctionService $functions,
-        private readonly CompetenceLineSetValidator $competenceValidator,
-        private readonly ProductLineWriter $productLineWriter,
     ) {}
 
     public function moveManager(User $actor, User $subject, ?int $fromId, ?int $toId): void
@@ -55,7 +50,7 @@ final class OrgChartMoveService
             // Step 1: validate against the person's current reporting lines.
             $profile = $subject->employment ?? $this->fail('no_employment', 'from_manager_id');
             $currentIds = $profile->reportsTo()->pluck('users.id')->map(intval(...))->all();
-            $this->assertManagerMove($subject, $profile, $currentIds, $fromId, $toId);
+            $this->assertManagerMove($subject, $currentIds, $fromId, $toId);
 
             // Step 2: replace `from` with `to`, keeping the other managers.
             $targetIds = array_values(array_unique(array_filter(
@@ -97,57 +92,41 @@ final class OrgChartMoveService
     }
 
     /**
+     * `$fromId` null moves an unassigned person (no function at all) into `$toId`.
+     *
      * @return list<int> the person's function ids after the move
      */
-    public function movePersonFunction(User $actor, User $subject, int $fromId, int $toId): array
+    public function movePersonFunction(User $actor, User $subject, ?int $fromId, int $toId): array
     {
-        $this->assertFieldEditable($actor, 'users', 'employment.product_lines', $subject);
+        $this->assertFieldEditable($actor, 'users', 'employment.business_function_ids', $subject);
 
         return DB::transaction(function () use ($actor, $subject, $fromId, $toId): array {
-            // Step 1: the person must be a member of `from` through their own rows.
-            $profile = $subject->employment ?? $this->fail('no_employment', 'from_function_id');
+            // Step 1: the person must currently sit where the move says.
+            $currentIds = $subject->businessFunctions()->pluck('business_functions.id')->map(intval(...))->all();
 
-            if ($profile->covers_all_product_categories) {
-                $this->fail('covers_all', 'from_function_id');
+            $isOnSource = $fromId === null ? $currentIds === [] : in_array($fromId, $currentIds, true);
+
+            if (! $isOnSource) {
+                $this->fail('not_in_source_function', 'from_function_id');
             }
 
-            $rows = $profile->productLines()->get(['business_function_id', 'product_category_id'])
-                ->map(fn ($line): array => [
-                    'business_function_id' => (int) $line->business_function_id,
-                    'product_category_id' => $line->product_category_id === null ? null : (int) $line->product_category_id,
-                ]);
+            // Step 2: leave `from`, join `to` (no duplicate row when already there).
+            $targetIds = array_values(array_unique([...array_diff($currentIds, [$fromId]), $toId]));
+            $subject->businessFunctions()->sync($targetIds);
 
-            if ($rows->where('business_function_id', $fromId)->isEmpty()) {
-                $this->fail('no_line_on_source', 'from_function_id');
-            }
-
-            // Step 2: rows of other functions stay; `from` rows are replaced by
-            // ONE whole-function row on `to`, unless the person already has rows there.
-            $result = $rows->reject(fn (array $row): bool => $row['business_function_id'] === $fromId)->values();
-
-            if ($result->where('business_function_id', $toId)->isEmpty()) {
-                $result->push(['business_function_id' => $toId, 'product_category_id' => null]);
-            }
-
-            // Step 3: validate the resulting set, then write it.
-            $errors = $this->competenceValidator->crossRowErrors($result->all(), 'product_lines');
-
-            if ($errors !== []) {
-                throw ValidationException::withMessages($errors);
-            }
-
-            $this->productLineWriter->sync($profile, $result->all());
-
+            // Step 3: record the move.
             $this->logMove($actor, $subject, self::KIND_PERSON_FUNCTION, $this->functionRef($fromId), $this->functionRef($toId));
 
-            return $result->pluck('business_function_id')->unique()->sort()->values()->all();
+            sort($targetIds);
+
+            return $targetIds;
         });
     }
 
     /**
      * @param  list<int>  $currentIds
      */
-    private function assertManagerMove(User $subject, EmploymentProfile $profile, array $currentIds, ?int $fromId, ?int $toId): void
+    private function assertManagerMove(User $subject, array $currentIds, ?int $fromId, ?int $toId): void
     {
         if ($fromId !== null && ! in_array($fromId, $currentIds, true)) {
             $this->fail('manager_not_current', 'from_manager_id');
@@ -155,10 +134,6 @@ final class OrgChartMoveService
 
         if ($toId === null) {
             return;
-        }
-
-        if ($profile->is_manager) {
-            $this->fail('manager_cannot_report', 'to_manager_id');
         }
 
         if ($toId === $subject->id || in_array($toId, $this->subordinates->allDescendantIds($subject->id), true)) {

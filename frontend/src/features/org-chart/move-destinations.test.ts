@@ -47,15 +47,11 @@ describe('getMoveDestinations - people view', () => {
     expect(names(getMoveDestinations('people', filteredBruno, peopleTree))).not.toContain('Carla Gallo')
   })
 
-  it('a manager (is_manager) can only become a root, and a root manager has no move', () => {
-    const managerUnderSomeone = buildPeopleTree([
-      { ...PEOPLE_FIXTURE[0], manager_ids: [4] },
-      PEOPLE_FIXTURE[3],
-    ])[0].children[0]
-    expect(names(getMoveDestinations('people', managerUnderSomeone, [...peopleTree]))).toEqual(['<root>'])
+  // REQUIREMENT CHANGED (spec 0276 D-2): a function head is moved like anyone else.
+  it('a function head (is_manager) can report to someone like any other person', () => {
     const anna = personNode('p:1')
-    expect(isMovable('people', anna)).toBe(false)
-    expect(getMoveDestinations('people', anna, peopleTree)).toEqual([])
+    expect(isMovable('people', anna)).toBe(true)
+    expect(names(getMoveDestinations('people', anna, peopleTree))).toEqual(['Dario Fiore'])
   })
 })
 
@@ -77,11 +73,17 @@ describe('getMoveDestinations - functions view', () => {
     expect(names(getMoveDestinations('functions', carla, functionTree))).toEqual(['Company', 'Support'])
   })
 
-  it('the all-functions group and people covering all functions are not movable', () => {
-    expect(isMovable('functions', personNode('all'))).toBe(false)
-    const dario = personNode('all/p:13')
-    expect(isMovable('functions', dario)).toBe(false)
-    expect(getMoveDestinations('functions', dario, functionTree)).toEqual([])
+  it('the unassigned group is not movable, an unassigned person is (AC-020)', () => {
+    expect(isMovable('functions', personNode('unassigned'))).toBe(false)
+    const dario = personNode('unassigned/p:13')
+    expect(isMovable('functions', dario)).toBe(true)
+    expect(names(getMoveDestinations('functions', dario, functionTree))).toEqual(['Company', 'Sales', 'Support'])
+    expect(buildPendingMove('functions', dario, { kind: 'function', id: 1, name: 'Company', depth: 0 }, functionTree).move).toEqual({
+      type: 'function',
+      userId: 13,
+      fromId: null,
+      toId: 1,
+    })
   })
 })
 
@@ -92,7 +94,7 @@ describe('resolveDrop', () => {
     expect(resolveDrop(destinations, personNode('p:1/p:2'))?.id).toBe(2)
     expect(resolveDrop(destinations, personNode('p:4'))).toBeNull()
     expect(resolveDrop(destinations, personNode('f:1'))).toBeNull()
-    expect(resolveDrop(destinations, personNode('all'))).toBeNull()
+    expect(resolveDrop(destinations, personNode('unassigned'))).toBeNull()
   })
 
   it('rejects a drop of a function on one of its descendants', () => {

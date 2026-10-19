@@ -2,6 +2,6 @@
 
 return [
     'employment' => [
-        'business_function_required' => 'Una persona attiva deve avere almeno una funzione aziendale (business unit o business service).',
+        'business_function_required' => 'Una persona attiva deve appartenere ad almeno una funzione aziendale.',
     ],
 ];

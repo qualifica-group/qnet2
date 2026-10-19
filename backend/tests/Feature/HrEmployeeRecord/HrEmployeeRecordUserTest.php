@@ -116,7 +116,7 @@ it('0272 AC-008: a typed iban is stored uppercase without spaces, encrypted, and
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/users/{$target->id}", [
-        'employment' => ['covers_all_product_categories' => true, 'iban' => HR_USER_IBAN_TYPED, 'iban_holder' => 'Mario Rossi'],
+        'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()], 'iban' => HR_USER_IBAN_TYPED, 'iban_holder' => 'Mario Rossi'],
     ])->assertOk()->assertJsonPath('data.employment.iban', HR_USER_IBAN);
 
     $raw = DB::table('employment_profiles')->where('user_id', $target->id)->value('iban');
@@ -145,10 +145,10 @@ it('0272 AC-008: a null iban clears it, an absent one leaves it untouched', func
     $target = User::factory()->withEmployment(fn ($f) => $f->state(['iban' => HR_USER_IBAN]))->create();
     Sanctum::actingAs($actor);
 
-    $this->patchJson("/api/users/{$target->id}", ['employment' => ['covers_all_product_categories' => true, 'iban_holder' => 'Mario Rossi']])->assertOk();
+    $this->patchJson("/api/users/{$target->id}", ['employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()], 'iban_holder' => 'Mario Rossi']])->assertOk();
     expect($target->employment->fresh()->iban)->toBe(HR_USER_IBAN);
 
-    $this->patchJson("/api/users/{$target->id}", ['employment' => ['covers_all_product_categories' => true, 'iban' => null]])->assertOk();
+    $this->patchJson("/api/users/{$target->id}", ['employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()], 'iban' => null]])->assertOk();
     expect($target->employment->fresh()->iban)->toBeNull();
 });
 
@@ -168,7 +168,7 @@ it('0272 AC-009: PUT users ignores relationship_type, company_id and qualificati
 
     $response = $this->putJson("/api/users/{$target->id}", [
         'employment' => [
-            'covers_all_product_categories' => true,
+            'covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()],
             'relationship_type' => 'other',
             'company_id' => $other->id,
             'qualification_type' => 'coordinator',
@@ -198,7 +198,7 @@ it('0272 AC-009: a new employment block on create ignores relationship_type and 
         'password' => 'Str0ng-P4ssw0rd!',
         'password_confirmation' => 'Str0ng-P4ssw0rd!',
         'personal_data' => ['type' => 'individual', 'first_name' => 'Ig', 'last_name' => 'Nored'],
-        'employment' => ['covers_all_product_categories' => true, 'relationship_type' => 'employee', 'company_id' => $company->id, 'hired_at' => '2024-01-15'],
+        'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()], 'relationship_type' => 'employee', 'company_id' => $company->id, 'hired_at' => '2024-01-15'],
     ])->assertCreated()->assertJsonPath('data.employment.relationship_type', null);
 
     $this->assertDatabaseHas('employment_profiles', [
@@ -311,7 +311,7 @@ it('0272 AC-012: a future termination date leaves the user active', function () 
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/users/{$target->id}", [
-        'employment' => ['covers_all_product_categories' => true, 'hired_at' => '2020-01-01', 'terminated_at' => today()->addMonth()->toDateString()],
+        'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()], 'hired_at' => '2020-01-01', 'terminated_at' => today()->addMonth()->toDateString()],
     ])->assertOk()->assertJsonPath('data.is_active', true);
 });
 

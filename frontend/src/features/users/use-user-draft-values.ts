@@ -61,6 +61,14 @@ export function useUserDraftValues(control: Control<UserFormValues>): UserRecord
     ids: [...idsOf(employment.primary_operational_site_id), ...employment.remote_operational_site_ids],
   })
   const jobRoles = useForSelectLabels({ resource: JOB_ROLES_FOR_SELECT_RESOURCE, ids: employment.job_role_ids })
+  const memberships = useForSelectLabels({
+    resource: BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE,
+    ids: employment.business_function_ids,
+  })
+  const managedFunctions = useForSelectLabels({
+    resource: BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE,
+    ids: employment.managed_business_function_ids,
+  })
   const managers = useForSelectLabels({ resource: USERS_FOR_SELECT_RESOURCE, ids: employment.reports_to_ids })
   const functions = useForSelectLabels({ resource: BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE, ids: functionIds })
   const tree = useProductCategoryTree().data ?? NO_TREE
@@ -91,8 +99,9 @@ export function useUserDraftValues(control: Control<UserFormValues>): UserRecord
     product_lines: productLines,
     primary_operational_site: refOf(sites, employment.primary_operational_site_id),
     remote_operational_sites: refsOf(sites, employment.remote_operational_site_ids),
-    is_manager: employment.is_manager,
     job_roles: refsOf(jobRoles, employment.job_role_ids),
+    business_functions: refsOf(memberships, employment.business_function_ids),
+    managed_business_functions: refsOf(managedFunctions, employment.managed_business_function_ids),
     reports_to: refsOf(managers, employment.reports_to_ids),
     // The contract condition exists only after the first save (spec 0272 D-2): a draft has none.
     relationship_type: null,

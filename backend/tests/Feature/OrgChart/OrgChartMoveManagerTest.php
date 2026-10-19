@@ -3,6 +3,7 @@
 use App\Authorization\FieldPermission;
 use App\Authorization\FieldPermissionRepository;
 use App\Authorization\UsersAuthorization;
+use App\Models\BusinessFunction;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -69,11 +70,11 @@ it('0273 AC-003: the move shows up in the existing person history', function () 
         ]]);
 });
 
-it('0273 AC-004: refuses a cycle, a manager under someone, a stale source and an inactive target', function (string $case) {
-    $top = orgChartPerson('Top', ['is_manager' => false]);
+it('0273 AC-004: refuses a cycle, a stale source and an inactive target', function (string $case) {
+    $top = orgChartPerson('Top');
     $mid = orgChartPerson('Mid', [], $top);
     $low = orgChartPerson('Low', [], $mid);
-    $boss = orgChartPerson('Boss', ['is_manager' => true]);
+    $boss = orgChartPerson('Boss');
     $gone = orgChartPerson('Gone');
     $gone->forceFill(['is_active' => false])->save();
     Sanctum::actingAs(orgChartActor(['users.update']));
@@ -81,7 +82,6 @@ it('0273 AC-004: refuses a cycle, a manager under someone, a stale source and an
     [$subject, $from, $to] = match ($case) {
         'under a subordinate' => [$top, null, $low],
         'under itself' => [$mid, $top, $mid],
-        'manager under someone' => [$boss, null, $top],
         'from not a manager' => [$low, $top, $boss],
         'inactive target' => [$low, $mid, $gone],
     };
@@ -92,7 +92,22 @@ it('0273 AC-004: refuses a cycle, a manager under someone, a stale source and an
     expect(Activity::query()->where('log_name', 'org-chart')->count())->toBe(0)
         ->and($low->employment->reportsTo()->pluck('users.id')->all())->toBe([$mid->id])
         ->and($top->employment->reportsTo()->count())->toBe(0);
-})->with(['under a subordinate', 'under itself', 'manager under someone', 'from not a manager', 'inactive target']);
+})->with(['under a subordinate', 'under itself', 'from not a manager', 'inactive target']);
+
+// REQUIREMENT CHANGED (spec 0276 D-2 / AC-007): "a manager cannot report to anyone" is gone.
+it('0276 AC-007: a person who manages a function can be moved under someone', function () {
+    $top = orgChartPerson('Top');
+    $boss = orgChartPerson('Boss');
+    BusinessFunction::factory()->create(['manager_id' => $boss->id]);
+    Sanctum::actingAs(orgChartActor(['users.update']));
+
+    $this->postJson("/api/org-chart/people/{$boss->id}/manager", managerMovePayload(null, $top))
+        ->assertOk()
+        ->assertJsonPath('data.is_manager', true)
+        ->assertJsonPath('data.manager_ids', [$top->id]);
+
+    expect($boss->employment->reportsTo()->pluck('users.id')->all())->toBe([$top->id]);
+});
 
 it('0273 AC-007: refuses the manager move without users.update or with a locked field', function () {
     $a = orgChartPerson('A');

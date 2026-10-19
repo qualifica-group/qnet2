@@ -260,7 +260,8 @@ it('create: 403 without business-functions.create', function () {
 it('update: PATCH partial (only users) full-replaces the relation, other fields untouched', function () {
     $actor = businessFunctionUserWith(['update']);
     $target = BusinessFunction::factory()->create(['name' => 'Keep Me']);
-    $old = User::factory()->create();
+    // Inactive: spec 0275 D-5 would refuse stranding an active member without a function.
+    $old = User::factory()->inactive()->create();
     $new = User::factory()->create();
     $target->users()->sync([$old->id]);
     Sanctum::actingAs($actor);
@@ -387,7 +388,7 @@ it('update: 404 for a non-existent function', function () {
 it('delete: 204, removes the function and cleans up the users/operational_sites pivot rows', function () {
     $actor = businessFunctionUserWith(['delete']);
     $target = BusinessFunction::factory()->create();
-    $member = User::factory()->create();
+    $member = User::factory()->inactive()->create();
     $site = OperationalSite::factory()->withAddress()->create();
     $target->users()->sync([$member->id]);
     $target->operationalSites()->sync([$site->id]);

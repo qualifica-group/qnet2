@@ -110,7 +110,7 @@ it('nested user write: stores the comune of birth on the card', function () {
             'last_name' => 'Lovelace',
             'birth_city_id' => $city->id,
         ],
-        'employment' => ['covers_all_product_categories' => true],
+        'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()]],
     ])->assertCreated();
 
     $user = User::findOrFail($response->json('data.id'));
@@ -222,7 +222,7 @@ it('nested user write: stores the comune of residence on the card', function () 
             'last_name' => 'Hopper',
             'residence_city_id' => $city->id,
         ],
-        'employment' => ['covers_all_product_categories' => true],
+        'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()]],
     ])->assertCreated();
 
     $user = User::findOrFail($response->json('data.id'));

@@ -299,15 +299,17 @@ it('users: `by_business_function` counts DISTINCT users per function, not compet
         ]);
 });
 
-it('users: `managers` counts the employment profiles flagged as manager (AC-005)', function () {
-    EmploymentProfile::factory()->count(2)->manager()->create();
-    EmploymentProfile::factory()->create();
+// REQUIREMENT CHANGED (spec 0276 D-3 / AC-009): managers are the distinct people managing a function.
+it('users: `managers` counts the distinct users who manage at least one function (AC-009)', function () {
+    $twice = User::factory()->create();
+    $once = User::factory()->create();
+    BusinessFunction::factory()->count(2)->create(['manager_id' => $twice->id]);
+    BusinessFunction::factory()->create(['manager_id' => $once->id]);
+    BusinessFunction::factory()->create(['manager_id' => null]);
 
     $widgets = statsWidgets('users');
 
-    // 3 users from the profiles + the acting user (statsUserWith).
-    expect(statsWidget($widgets, 'total')['value'])->toBe(4)
-        ->and(statsWidget($widgets, 'managers'))->toMatchArray([
-            'label' => 'users.stats.managers', 'value' => 2,
-        ]);
+    expect(statsWidget($widgets, 'managers'))->toMatchArray([
+        'label' => 'users.stats.managers', 'value' => 2,
+    ]);
 });

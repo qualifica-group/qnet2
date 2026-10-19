@@ -5,7 +5,7 @@ export type OrgView = 'functions' | 'people'
 export type OrgMove =
   | { type: 'manager'; userId: number; fromId: number | null; toId: number | null }
   | { type: 'parent'; functionId: number; toId: number | null }
-  | { type: 'function'; userId: number; fromId: number; toId: number }
+  | { type: 'function'; userId: number; fromId: number | null; toId: number }
 
 /** A valid place to move a node to. `root` has no id: the node becomes a root. */
 export interface MoveDestination {

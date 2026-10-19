@@ -12,6 +12,7 @@ import type { KnownProductLine } from '@/features/product-lines/types'
 import { DurationInput } from '@/features/users/duration-input'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import { toFieldRefs } from '@/features/users/user-record'
+import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
 import { JOB_ROLES_FOR_SELECT_RESOURCE } from '@/features/job-roles/for-select-api'
 import type { EmploymentRelationRef } from '@/features/users/types'
 import type { UserFormValues } from '@/features/users/use-user-form'
@@ -143,7 +144,56 @@ export function UserJobRolesField({ control, selected }: FieldProps & { selected
   )
 }
 
-/** "Riporta a" (spec 0166): zero or more managers; emptied whenever the person is a manager (D-5). */
+/**
+ * "Funzioni aziendali di appartenenza" (spec 0275): the same data as the
+ * function's "Utenti associati". Mandatory for an active person (server 422).
+ */
+export function UserBusinessFunctionsField({ control, selected }: FieldProps & { selected: EmploymentRelationRef[] }) {
+  const { t } = useTranslation()
+  return (
+    <RelationMultiSelectField
+      control={control}
+      name="employment.business_function_ids"
+      metaKey="employment.business_function_ids"
+      label={t('users.form.employment.businessFunctions')}
+      resource={BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE}
+      searchPlaceholder={t('users.form.employment.businessFunctionsSearch')}
+      selected={toFieldRefs(selected)}
+      placeholder={t('users.form.employment.businessFunctionsPlaceholder')}
+      emptyLabel={t('users.form.employment.businessFunctionsEmpty')}
+      errorLabel={t('users.form.employment.businessFunctionsError')}
+      removeLabel={t('users.form.employment.businessFunctionsRemove')}
+      retryLabel={t('common.retry')}
+    />
+  )
+}
+
+/**
+ * "Responsabile delle funzioni" (spec 0276): the listed functions take this
+ * person as their manager, the previous manager loses them.
+ */
+export function UserManagedBusinessFunctionsField({ control, selected }: FieldProps & { selected: EmploymentRelationRef[] }) {
+  const { t } = useTranslation()
+  return (
+    <RelationMultiSelectField
+      control={control}
+      name="employment.managed_business_function_ids"
+      metaKey="employment.managed_business_function_ids"
+      label={t('users.form.employment.managedBusinessFunctions')}
+      description={t('users.form.employment.managedBusinessFunctionsDescription')}
+      resource={BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE}
+      searchPlaceholder={t('users.form.employment.managedBusinessFunctionsSearch')}
+      selected={toFieldRefs(selected)}
+      placeholder={t('users.form.employment.managedBusinessFunctionsPlaceholder')}
+      emptyLabel={t('users.form.employment.managedBusinessFunctionsEmpty')}
+      errorLabel={t('users.form.employment.managedBusinessFunctionsError')}
+      removeLabel={t('users.form.employment.managedBusinessFunctionsRemove')}
+      retryLabel={t('common.retry')}
+    />
+  )
+}
+
+/** "Riporta a" (spec 0166): zero or more managers, whoever they are. */
 export function UserReportsToField({ control, selected }: FieldProps & { selected: EmploymentRelationRef[] }) {
   const { t } = useTranslation()
   return (

@@ -187,9 +187,10 @@ vi.mock('@/components/ui/searchable-select', () => ({
 
 const BASE_EMPLOYMENT: EmploymentDetail = {
   id: 1,
-  is_manager: false,
   job_role_ids: [],
+  business_function_ids: [],
   job_roles: [],
+  business_functions: [],
   relationship_type: null,
   hired_at: null,
   terminated_at: null,

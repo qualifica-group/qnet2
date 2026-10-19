@@ -16,14 +16,16 @@ use Illuminate\Support\Facades\DB;
  * people cost the same handful of queries as 5.
  *
  * Only active, non-service users take part. A person belongs to a function
- * when at least one of their competence rows (`employment_product_lines`)
- * sits on it; `covers_all_product_categories` people have no rows and go in
- * the separate "all functions" list.
+ * through the membership pivot `business_function_user` (spec 0275 D-7);
+ * people with no row there go in the separate "unassigned" list.
  */
 final class OrgChartReadService
 {
+    /** Person.is_manager (spec 0276 D-6): the person manages at least one function. */
+    private const string MANAGES_FUNCTIONS = 'managedBusinessFunctions as manages_functions';
+
     /**
-     * @return array{functions: list<array<string, mixed>>, all_functions_people: list<array<string, mixed>>}
+     * @return array{functions: list<array<string, mixed>>, unassigned_people: list<array<string, mixed>>}
      */
     public function functions(): array
     {
@@ -32,35 +34,31 @@ final class OrgChartReadService
         $profileIds = $this->profileIds($users);
         $jobRoles = $this->jobRolesByProfile($profileIds);
 
-        // Step 2: the function ids each profile belongs to.
-        $functionIdsByProfile = [];
-        foreach ($this->functionLinks($profileIds) as $link) {
-            $functionIdsByProfile[$link->employment_profile_id][] = $link->business_function_id;
+        // Step 2: the function ids each user belongs to.
+        $functionIdsByUser = [];
+        foreach ($this->functionLinks($users->pluck('id')->all()) as $link) {
+            $functionIdsByUser[$link->user_id][] = $link->business_function_id;
         }
 
         // Step 3: people per function; iterating the name-sorted users keeps
         // every function's list in name order.
-        $personByProfile = [];
         $peopleByFunction = [];
+        $unassigned = [];
         foreach ($users as $user) {
-            if ($user->employment === null) {
-                continue;
+            $person = $this->person($user, $jobRoles);
+
+            foreach ($functionIdsByUser[$user->id] ?? [] as $functionId) {
+                $peopleByFunction[$functionId][] = $person;
             }
 
-            $personByProfile[$user->employment->id] = $person = $this->person($user, $jobRoles);
-
-            foreach ($functionIdsByProfile[$user->employment->id] ?? [] as $functionId) {
-                $peopleByFunction[$functionId][] = $person;
+            if (! isset($functionIdsByUser[$user->id])) {
+                $unassigned[] = $person;
             }
         }
 
         return [
             'functions' => $this->functionRows($peopleByFunction),
-            'all_functions_people' => $users
-                ->filter(fn (User $user): bool => (bool) $user->employment?->covers_all_product_categories)
-                ->map(fn (User $user): array => $personByProfile[$user->employment->id])
-                ->values()
-                ->all(),
+            'unassigned_people' => $unassigned,
         ];
     }
 
@@ -73,7 +71,7 @@ final class OrgChartReadService
         $profileIds = $this->profileIds($users);
         $jobRoles = $this->jobRolesByProfile($profileIds);
         $managersByProfile = $this->managerIdsByProfile($profileIds);
-        $functionNames = $this->functionNamesByProfile($profileIds);
+        $functionNames = $this->functionsByUser($users->pluck('id')->all());
         $listed = array_flip($users->pluck('id')->all());
 
         return $users->map(function (User $user) use ($jobRoles, $managersByProfile, $functionNames, $listed): array {
@@ -86,7 +84,7 @@ final class OrgChartReadService
 
             return $this->person($user, $jobRoles) + [
                 'manager_ids' => $managerIds,
-                'business_functions' => $functionNames[$profileId] ?? [],
+                'business_functions' => $functionNames[$user->id] ?? [],
             ];
         })->values()->all();
     }
@@ -99,7 +97,7 @@ final class OrgChartReadService
      */
     public function personWithManagers(User $user): array
     {
-        $user->load(['avatar', 'employment']);
+        $user->load(['avatar', 'employment'])->loadExists(self::MANAGES_FUNCTIONS);
         $profileId = $user->employment?->id;
         $managerIds = $profileId === null ? [] : ($this->managerIdsByProfile([$profileId])[$profileId] ?? []);
         sort($managerIds);
@@ -115,7 +113,8 @@ final class OrgChartReadService
         return User::query()
             ->excludingServiceAccounts()
             ->where('is_active', true)
-            ->with(['avatar', 'employment:id,user_id,is_manager,covers_all_product_categories'])
+            ->with(['avatar', 'employment:id,user_id'])
+            ->withExists(self::MANAGES_FUNCTIONS)
             ->orderBy('name')
             ->orderBy('id')
             ->get(['users.id', 'users.name']);
@@ -141,7 +140,7 @@ final class OrgChartReadService
             'name' => $user->name,
             'avatar_url' => $user->avatarDataUri(),
             'job_roles' => $jobRolesByProfile[$user->employment?->id] ?? [],
-            'is_manager' => (bool) $user->employment?->is_manager,
+            'is_manager' => (bool) $user->manages_functions,
         ];
     }
 
@@ -186,34 +185,37 @@ final class OrgChartReadService
     }
 
     /**
-     * Distinct (profile, function) links, ordered by function name.
+     * Membership links (user, function), ordered by function name.
      *
-     * @param  list<int>  $profileIds
-     * @return Collection<int, object{employment_profile_id: int, business_function_id: int, name: string}>
+     * @param  list<int>  $userIds
+     * @return Collection<int, object{user_id: int, business_function_id: int, name: string, manager_id: int|null}>
      */
-    private function functionLinks(array $profileIds): Collection
+    private function functionLinks(array $userIds): Collection
     {
-        return DB::table('employment_product_lines')
-            ->join('business_functions', 'business_functions.id', '=', 'employment_product_lines.business_function_id')
-            ->whereIn('employment_product_lines.employment_profile_id', $profileIds)
-            ->distinct()
+        return DB::table('business_function_user')
+            ->join('business_functions', 'business_functions.id', '=', 'business_function_user.business_function_id')
+            ->whereIn('business_function_user.user_id', $userIds)
             ->orderBy('business_functions.name')
-            ->get(['employment_product_lines.employment_profile_id', 'employment_product_lines.business_function_id', 'business_functions.name']);
+            ->get(['business_function_user.user_id', 'business_function_user.business_function_id', 'business_functions.name', 'business_functions.manager_id']);
     }
 
     /**
-     * @param  list<int>  $profileIds
-     * @return array<int, list<string>>
+     * @param  list<int>  $userIds
+     * @return array<int, list<array{id: int, name: string, is_manager: bool}>> by user id, name-ordered
      */
-    private function functionNamesByProfile(array $profileIds): array
+    private function functionsByUser(array $userIds): array
     {
-        $names = [];
+        $functions = [];
 
-        foreach ($this->functionLinks($profileIds) as $link) {
-            $names[$link->employment_profile_id][] = $link->name;
+        foreach ($this->functionLinks($userIds) as $link) {
+            $functions[$link->user_id][] = [
+                'id' => (int) $link->business_function_id,
+                'name' => $link->name,
+                'is_manager' => (int) $link->manager_id === (int) $link->user_id,
+            ];
         }
 
-        return $names;
+        return $functions;
     }
 
     /**

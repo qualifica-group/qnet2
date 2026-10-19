@@ -19,8 +19,8 @@ interface OrgDragRowProps {
 }
 
 /**
- * Wraps a tree row as draggable (when movable) and droppable (only while a
- * drag is on and this row is one of its valid destinations). Invalid rows are
+ * Wraps a chart card as draggable (when movable) and droppable (only while a
+ * drag is on and this card is one of its valid destinations). Invalid cards are
  * neither highlighted nor registered as targets. No dnd-kit `attributes`: they
  * would add role/tabindex and break the tree semantics (keyboard path = menu).
  */
@@ -31,9 +31,9 @@ export function OrgDragRow({ node, row, draggable, dragging }: OrgDragRowProps) 
   const drop = useDroppable({ id: node.key, data: { node }, disabled: !isValidTarget })
 
   const stateClass = drop.isOver
-    ? 'ring-2 ring-ring bg-accent/40'
+    ? 'ring-2 ring-primary'
     : isValidTarget
-      ? 'ring-1 ring-border'
+      ? 'ring-2 ring-primary/30'
       : drag.isDragging
         ? 'opacity-50'
         : ''
@@ -45,7 +45,7 @@ export function OrgDragRow({ node, row, draggable, dragging }: OrgDragRowProps) 
         drop.setNodeRef(element)
       }}
       {...(draggable ? drag.listeners : undefined)}
-      className={cn('rounded-md', stateClass)}
+      className={cn('h-full rounded-lg', stateClass)}
     >
       {row}
     </div>

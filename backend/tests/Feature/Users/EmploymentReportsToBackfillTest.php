@@ -56,7 +56,6 @@ function createEmploymentProfileRowWithReportsTo(?int $reportsToId): int
 {
     return DB::table('employment_profiles')->insertGetId([
         'user_id' => User::factory()->create()->id,
-        'is_manager' => false,
         'reports_to_id' => $reportsToId,
         'created_at' => now(),
         'updated_at' => now(),

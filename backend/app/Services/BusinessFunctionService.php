@@ -9,6 +9,7 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\Models\BusinessFunction;
 use App\Models\User;
 use App\Services\BusinessFunctions\BusinessFunctionHierarchy;
+use App\Services\BusinessFunctions\BusinessFunctionMembershipGuard;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -39,7 +40,10 @@ class BusinessFunctionService
      */
     private const array HYDRATED_RELATIONS = ['manager.avatar', 'parent', 'companies', 'users.avatar', 'operationalSites.addresses.city'];
 
-    public function __construct(private readonly BusinessFunctionHierarchy $hierarchy) {}
+    public function __construct(
+        private readonly BusinessFunctionHierarchy $hierarchy,
+        private readonly BusinessFunctionMembershipGuard $membershipGuard,
+    ) {}
 
     public function create(User $actor, CreateBusinessFunctionData $data): BusinessFunction
     {
@@ -85,6 +89,7 @@ class BusinessFunctionService
             $businessFunction->fill($attributes)->save();
 
             if ($data->hasUsers()) {
+                $this->membershipGuard->assertCanReplaceMembers($businessFunction, $data->users);
                 $businessFunction->users()->sync($data->users);
             }
 
@@ -115,6 +120,8 @@ class BusinessFunctionService
         if ($businessFunction->opportunities()->exists()) {
             abort(409, 'This business function has opportunities and cannot be deleted.');
         }
+
+        $this->membershipGuard->assertCanDelete($businessFunction);
 
         // The business_function_user/business_function_operational_site pivot
         // rows cascade on delete (migration FK constraint), so no explicit

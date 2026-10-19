@@ -45,7 +45,7 @@ it('AC-019: a responsabile sees items for a DIRECT and an INDIRECT subordinate, 
     $manager = timeEntryActorWith(['viewAny']);
     $direct = User::factory()->create(['name' => 'Bob Direct']);
     $indirect = User::factory()->create(['name' => 'Carl Indirect']);
-    EmploymentProfile::factory()->manager()->create(['user_id' => $manager->id]);
+    EmploymentProfile::factory()->create(['user_id' => $manager->id]);
     $directProfile = EmploymentProfile::factory()->reportsTo($manager)->create([
         'user_id' => $direct->id,
         'standard_daily_minutes' => 480,
@@ -92,8 +92,8 @@ it('AC-012: a member with two managers has manager_ids ascending, both managers 
     $managerA = timeEntryActorWith(['viewAny']);
     $managerB = timeEntryActorWith(['viewAny']);
     $member = User::factory()->create();
-    EmploymentProfile::factory()->manager()->create(['user_id' => $managerA->id]);
-    EmploymentProfile::factory()->manager()->create(['user_id' => $managerB->id]);
+    EmploymentProfile::factory()->create(['user_id' => $managerA->id]);
+    EmploymentProfile::factory()->create(['user_id' => $managerB->id]);
     EmploymentProfile::factory()->reportsTo($managerB, $managerA)->create(['user_id' => $member->id]);
 
     [$lowId, $highId] = collect([$managerA->id, $managerB->id])->sort()->values()->all();
@@ -156,7 +156,7 @@ it('a cycle in the reporting hierarchy does not loop and excludes the actor', fu
 
 it('runs a bounded, constant number of queries regardless of team size (no N+1)', function () {
     $manager = timeEntryActorWith(['viewAny']);
-    EmploymentProfile::factory()->manager()->create(['user_id' => $manager->id]);
+    EmploymentProfile::factory()->create(['user_id' => $manager->id]);
     $typeA = TaskType::factory()->create();
 
     $smallTeam = User::factory()->count(2)->create();
@@ -174,7 +174,7 @@ it('runs a bounded, constant number of queries regardless of team size (no N+1)'
     DB::flushQueryLog();
 
     $largeManager = timeEntryActorWith(['viewAny']);
-    EmploymentProfile::factory()->manager()->create(['user_id' => $largeManager->id]);
+    EmploymentProfile::factory()->create(['user_id' => $largeManager->id]);
     $largeTeam = User::factory()->count(6)->create();
     foreach ($largeTeam as $member) {
         EmploymentProfile::factory()->reportsTo($largeManager)->create(['user_id' => $member->id]);

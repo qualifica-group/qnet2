@@ -80,7 +80,7 @@ if (! function_exists('impersonationCreateUserPayload')) {
             'password' => 'Str0ng-P4ssw0rd!',
             'password_confirmation' => 'Str0ng-P4ssw0rd!',
             'personal_data' => ['type' => 'individual', 'first_name' => 'New', 'last_name' => 'Person'],
-            'employment' => ['covers_all_product_categories' => true],
+            'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()]],
         ];
     }
 }
@@ -141,8 +141,11 @@ it('AC-003: a write authorized to the target succeeds and is attributed to the t
         ->postJson("/api/users/{$target->id}/impersonate")
         ->assertOk()->json('data.token');
 
+    // Built before asToken(): creating the membership function must not resolve the guard user early.
+    $payload = impersonationCreateUserPayload('attributed@example.com');
+
     asToken($this, $token)
-        ->postJson('/api/users', impersonationCreateUserPayload('attributed@example.com'))
+        ->postJson('/api/users', $payload)
         ->assertCreated();
 
     $created = User::where('email', 'attributed@example.com')->sole();
@@ -165,8 +168,11 @@ it('AC-004: a write NOT permitted to the target is 403 even though the actor cou
         ->postJson("/api/users/{$target->id}/impersonate")
         ->assertOk()->json('data.token');
 
+    // Built before asToken(): creating the membership function must not resolve the guard user early.
+    $payload = impersonationCreateUserPayload('blocked@example.com');
+
     asToken($this, $token)
-        ->postJson('/api/users', impersonationCreateUserPayload('blocked@example.com'))
+        ->postJson('/api/users', $payload)
         ->assertForbidden();
 });
 

@@ -1,9 +1,10 @@
 import { useTranslation } from 'react-i18next'
-import { Boxes, MapPin, Send, Shield, Target, UserCog } from 'lucide-react'
+import { Boxes, MapPin, Send, Shield, Target } from 'lucide-react'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/user-avatar'
+import { FunctionBadges } from '@/features/users/function-badges'
 import { useResendWelcomeEmail } from '@/features/users/use-resend-welcome-email'
 import type { AssignmentSummary } from '@/features/users/user-assignment'
 import type { UserDetail } from '@/features/users/types'
@@ -25,7 +26,13 @@ export function UserDetailHeader({ user, canUpdate = false }: UserDetailHeaderPr
   const { t } = useTranslation()
   const resendWelcome = useResendWelcomeEmail(user.id)
   const showResend = user.must_set_password && canUpdate
-  const isManager = user.employment?.is_manager ?? false
+  const memberships = user.employment?.business_functions ?? []
+  const memberIds = memberships.map((item) => item.id)
+  const functions = [
+    ...memberships,
+    ...user.managed_business_functions.filter((item) => !memberIds.includes(item.id)),
+  ].map((item) => ({ id: item.id, label: item.name }))
+  const managedIds = user.managed_business_functions.map((item) => item.id)
 
   return (
     <RecordCardHeader
@@ -41,12 +48,7 @@ export function UserDetailHeader({ user, canUpdate = false }: UserDetailHeaderPr
           {user.must_set_password ? (
             <Badge variant="outline">{t('users.detail.pendingFirstAccess')}</Badge>
           ) : null}
-          {isManager ? (
-            <Badge variant="outline" className="gap-1.5">
-              <UserCog aria-hidden="true" />
-              {t('users.detail.employment.isManager')}
-            </Badge>
-          ) : null}
+          {functions.length > 0 ? <FunctionBadges refs={functions} managedIds={managedIds} /> : null}
           {user.roles.map((role) => (
             <Badge key={role.id} variant="outline" className="gap-1.5">
               <Shield aria-hidden="true" />

@@ -20,7 +20,7 @@ import type { UserDetailWithPermissions } from '@/features/users/types'
 
 /**
  * Spec 0015 AC-014..019 (frontend) on the record layout of spec 0222: the
- * employment rows, the manager / reports-to cascade (spec 0166 D-5), the
+ * employment rows, the reports-to and managed-functions rows, the
  * relation pickers, the employment payload and its 422 mapping, the i18n.
  * REQUIREMENT CHANGED (spec 0222): rows are closed until opened, the edit
  * cases run on the in-place detail, and `employment` travels only when one of
@@ -142,26 +142,9 @@ describe('UserForm — the record layout (spec 0222 D-2)', () => {
   })
 })
 
-describe('UserForm — is_manager / reports_to (spec 0015 AC-015, spec 0166 D-5)', () => {
-  it('hides reports_to and force-empties it in the payload once is_manager is enabled', async () => {
-    renderCreate()
-    await fillRequiredCreateRows()
-
-    fireEvent.click(pencilOf('Reports to'))
-    fireEvent.click(screen.getByText('pick-Reports to'))
-    confirmOpenRow('Done')
-    fireEvent.click(pencilOf('Manager'))
-    fireEvent.click(screen.getByRole('switch', { name: 'Manager' }))
-    confirmOpenRow('Done')
-
-    expect(screen.queryByRole('button', { name: 'Edit Reports to' })).not.toBeInTheDocument()
-    clickCreateSave()
-
-    await waitFor(() => expect(createUserMock).toHaveBeenCalledTimes(1))
-    expect(createUserMock.mock.calls[0][0].employment).toMatchObject({ is_manager: true, reports_to_ids: [] })
-  })
-
-  it('submits the picked managers when the person is not a manager', async () => {
+// REQUIREMENT CHANGED (spec 0276 D-2): there is no manager flag, so "Reports to" is always editable and never emptied.
+describe('UserForm — reports_to / managed functions (spec 0015 AC-015, spec 0276 AC-007, AC-012)', () => {
+  it('submits the picked managers', async () => {
     renderCreate()
     await fillRequiredCreateRows()
 
@@ -171,16 +154,59 @@ describe('UserForm — is_manager / reports_to (spec 0015 AC-015, spec 0166 D-5)
     clickCreateSave()
 
     await waitFor(() => expect(createUserMock).toHaveBeenCalledTimes(1))
-    expect(createUserMock.mock.calls[0][0].employment).toMatchObject({ is_manager: false, reports_to_ids: [1] })
+    expect(createUserMock.mock.calls[0][0].employment).toMatchObject({ reports_to_ids: [1] })
   })
 
-  it('offers no Manager pencil when "Reports to", which it empties, is read-only (spec 0222 D-4)', async () => {
+  it('sends the managed functions picked on the Manager of functions row', async () => {
+    await renderDetail(userWithEmployment())
+
+    fireEvent.click(pencilOf('Manager of functions'))
+    expect(screen.getByTestId('resource-Manager of functions')).toHaveTextContent('business-functions')
+    expect(screen.getByText('If the function already has a manager, it passes to this person.')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('pick-Manager of functions'))
+    confirmOpenRow('Save')
+
+    await waitFor(() => expect(updateUserMock).toHaveBeenCalledTimes(1))
+    expect(updateUserMock.mock.calls[0][1].employment).toMatchObject({
+      managed_business_function_ids: [1],
+      reports_to_ids: [2],
+    })
+  })
+
+  it('hydrates the picker with the functions the user already manages', async () => {
+    await renderDetail(userFixture({ managed_business_functions: [{ id: 5, name: 'Sales' }] }))
+
+    fireEvent.click(pencilOf('Manager of functions'))
+    expect(screen.getByTestId('selected-label-Manager of functions')).toHaveTextContent('Sales')
+  })
+
+  it('offers no pencil on Manager of functions without the field permission (spec 0276 D-4)', async () => {
     await renderDetail(
-      userFixture({ permissions: permissionsFor({ 'employment.reports_to_ids': READ_ONLY }) }),
+      userFixture({ permissions: permissionsFor({ 'employment.managed_business_function_ids': READ_ONLY }) }),
     )
 
-    expect(screen.queryByRole('button', { name: 'Edit Manager' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Manager of functions' })).not.toBeInTheDocument()
     expect(pencilOf('Job roles')).toBeInTheDocument()
+  })
+
+  it('shows an indexed employment.managed_business_function_ids.N 422 under the field with the aria wiring', async () => {
+    updateUserMock.mockRejectedValue(
+      unprocessable({ 'employment.managed_business_function_ids.0': ['The selected business function is invalid.'] }),
+    )
+    await renderDetail(userWithEmployment())
+
+    fireEvent.click(pencilOf('Manager of functions'))
+    fireEvent.click(screen.getByText('pick-Manager of functions'))
+    confirmOpenRow('Save')
+
+    const message = await screen.findByText('The selected business function is invalid.')
+    expect(message).toHaveAttribute('role', 'alert')
+  })
+
+  it('has no Manager row left (the flag is gone)', async () => {
+    await renderDetail(userWithEmployment())
+
+    expect(screen.queryByRole('button', { name: 'Edit Manager' })).not.toBeInTheDocument()
   })
 })
 
@@ -219,8 +245,9 @@ describe('UserForm — employment payload + 422 mapping (spec 0015 AC-018)', () 
 
     await waitFor(() => expect(createUserMock).toHaveBeenCalledTimes(1))
     expect(createUserMock.mock.calls[0][0].employment).toEqual({
-      is_manager: false,
       job_role_ids: [],
+      business_function_ids: [],
+      managed_business_function_ids: [],
       reports_to_ids: [],
       primary_operational_site_id: null,
       remote_operational_site_ids: [],

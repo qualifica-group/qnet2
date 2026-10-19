@@ -12,6 +12,12 @@ export const PRODUCT_LINES_FIELD = 'employment.product_lines' as const
 /** The reports-to picker's own RHF path (spec 0166), target of its indexed 422s. */
 export const REPORTS_TO_IDS_FIELD = 'employment.reports_to_ids' as const
 
+/** The membership picker's own RHF path (spec 0275), target of its indexed 422s. */
+export const BUSINESS_FUNCTION_IDS_FIELD = 'employment.business_function_ids' as const
+
+/** The managed-functions picker's own RHF path (spec 0276), target of its indexed 422s. */
+export const MANAGED_BUSINESS_FUNCTION_IDS_FIELD = 'employment.managed_business_function_ids' as const
+
 /**
  * Server-side field names mapped onto the form for 422 handling. `avatar` only
  * applies to the create flow's deferred upload; it is mapped to a form-level
@@ -25,8 +31,9 @@ export const SERVER_ERROR_FIELDS = [
   'is_active',
   'roles',
   'password',
-  'employment.is_manager',
   'employment.job_role_ids',
+  BUSINESS_FUNCTION_IDS_FIELD,
+  MANAGED_BUSINESS_FUNCTION_IDS_FIELD,
   REPORTS_TO_IDS_FIELD,
   'employment.primary_operational_site_id',
   'employment.remote_operational_site_ids',
@@ -74,4 +81,20 @@ export function collectProductLinesServerError(error: unknown): string | null {
  */
 export function collectReportsToServerError(error: unknown): string | null {
   return collectIndexedServerError(error, REPORTS_TO_IDS_FIELD)
+}
+
+/**
+ * The membership picker is ONE `MetaField`, but the server reports unknown/
+ * duplicate ids per index (`employment.business_function_ids.{i}`, spec 0275).
+ */
+export function collectBusinessFunctionIdsServerError(error: unknown): string | null {
+  return collectIndexedServerError(error, BUSINESS_FUNCTION_IDS_FIELD)
+}
+
+/**
+ * The managed-functions picker is ONE `MetaField`, but the server reports unknown/
+ * duplicate ids per index (`employment.managed_business_function_ids.{i}`, spec 0276).
+ */
+export function collectManagedBusinessFunctionIdsServerError(error: unknown): string | null {
+  return collectIndexedServerError(error, MANAGED_BUSINESS_FUNCTION_IDS_FIELD)
 }

@@ -30,7 +30,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 #[Fillable([
     'user_id',
-    'is_manager',
     'covers_all_product_categories',
     'is_assignable',
     'relationship_type',
@@ -62,7 +61,6 @@ class EmploymentProfile extends BaseModel
     protected function casts(): array
     {
         return [
-            'is_manager' => 'boolean',
             'covers_all_product_categories' => 'boolean',
             'is_assignable' => 'boolean',
             'relationship_type' => RelationshipTypeEnum::class,
@@ -164,6 +162,41 @@ class EmploymentProfile extends BaseModel
     public function jobRoles(): BelongsToMany
     {
         return $this->belongsToMany(JobRole::class, 'employment_profile_job_role');
+    }
+
+    /**
+     * The business functions this person belongs to (spec 0275 D-3). The pivot
+     * `business_function_user` is keyed on `user_id`, so the parent key is the
+     * profile's `user_id`: the membership survives the profile row (AC-008).
+     *
+     * @return BelongsToMany<BusinessFunction, $this>
+     */
+    public function businessFunctions(): BelongsToMany
+    {
+        return $this->belongsToMany(BusinessFunction::class, 'business_function_user', 'user_id', 'business_function_id', 'user_id');
+    }
+
+    /**
+     * Read-only proxy onto the functions this person manages (spec 0276), for
+     * the field-permission catalogue; reads the owner's `managedBusinessFunctions`
+     * relation, which the request eager-loads (and links back via `user`).
+     *
+     * @return Attribute<array<int, int>, never>
+     */
+    public function managedBusinessFunctionIds(): Attribute
+    {
+        return Attribute::get(fn (): array => $this->user->managedBusinessFunctions->pluck('id')->all());
+    }
+
+    /**
+     * Read-only proxy onto the membership for the field-permission catalogue
+     * (spec 0275), same reason as jobRoleIds() below.
+     *
+     * @return Attribute<array<int, int>, never>
+     */
+    public function businessFunctionIds(): Attribute
+    {
+        return Attribute::get(fn (): array => $this->businessFunctions->pluck('id')->all());
     }
 
     /**

@@ -9,12 +9,12 @@ use Laravel\Sanctum\Sanctum;
 uses(RefreshDatabase::class);
 
 /**
- * An active user already covering every category, so the mandatory business function rule (D-6)
+ * An active user already member of a business function, so the mandatory membership rule (spec 0275 D-4)
  * never interferes with the job-role assertions below.
  */
 function jobRolesTarget(): User
 {
-    return User::factory()->withEmployment(fn ($f) => $f->competentInEveryCategoryOf(BusinessFunction::factory()->create()))->create();
+    return User::factory()->withEmployment(fn ($f) => $f->memberOf(BusinessFunction::factory()->create()))->create();
 }
 
 it('0271 AC-008: saving employment.job_role_ids returns the roles; absent key leaves them; [] clears them', function () {
@@ -66,8 +66,8 @@ it('0271 AC-008: a user without users.update cannot write job roles (403)', func
 
 it('0271 AC-012: the users grid exposes job_roles (comma-joined, alphabetical) with a set filter and no job_description', function () {
     Sanctum::actingAs(userWithUserAbilities(['viewAny']));
-    $withRoles = User::factory()->withEmployment(fn ($f) => $f->competentInEveryCategoryOf(BusinessFunction::factory()->create()))->create(['name' => 'With Roles']);
-    $without = User::factory()->withEmployment(fn ($f) => $f->competentInEveryCategoryOf(BusinessFunction::factory()->create()))->create(['name' => 'Without Roles']);
+    $withRoles = User::factory()->withEmployment(fn ($f) => $f->memberOf(BusinessFunction::factory()->create()))->create(['name' => 'With Roles']);
+    $without = User::factory()->withEmployment(fn ($f) => $f->memberOf(BusinessFunction::factory()->create()))->create(['name' => 'Without Roles']);
     $withRoles->employment->jobRoles()->attach([
         JobRole::factory()->create(['name' => 'Zeta'])->id,
         JobRole::factory()->create(['name' => 'Alpha'])->id,

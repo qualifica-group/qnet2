@@ -22,9 +22,7 @@ import type { UserFormValues } from '@/features/users/use-user-form'
 
 /**
  * Maps the employment form values to the nested wire payload (spec 0015).
- * Text/date `''` sentinels become `null`; `reports_to_ids` is force-emptied
- * client-side when `is_manager` is true, mirroring the server-side rule
- * (spec 0166 D-5) as defense in depth. The payment account (spec 0272) travels
+ * Text/date `''` sentinels become `null`. The payment account (spec 0272) travels
  * only when it differs from `baseline`: an actor without
  * `users.manageCompensation` never sees it, so never changes it, and sending it
  * would be refused with a 403.
@@ -34,9 +32,10 @@ function buildEmploymentPayload(
   baseline: EmploymentFormValues = EMPTY_EMPLOYMENT,
 ): EmploymentPayload {
   return {
-    is_manager: values.is_manager,
     job_role_ids: values.job_role_ids,
-    reports_to_ids: values.is_manager ? [] : values.reports_to_ids,
+    business_function_ids: values.business_function_ids,
+    managed_business_function_ids: values.managed_business_function_ids,
+    reports_to_ids: values.reports_to_ids,
     primary_operational_site_id: values.primary_operational_site_id,
     remote_operational_site_ids: values.remote_operational_site_ids,
     is_assignable: values.is_assignable,

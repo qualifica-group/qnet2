@@ -54,7 +54,8 @@ if (! function_exists('competenceTargetWith')) {
     function competenceTargetWith(?BusinessFunction $function = null, ProductCategory ...$categories): User
     {
         $target = User::factory()->create();
-        $profile = EmploymentProfile::factory()->for($target);
+        $profile = EmploymentProfile::factory()->for($target)
+            ->memberOf($function ?? BusinessFunction::factory()->create());
 
         if ($function !== null) {
             $profile = $profile->competentIn($function, ...$categories);

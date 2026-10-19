@@ -70,7 +70,7 @@ class OrgChartMoveController extends BaseApiController
             $functionIds = $this->moves->movePersonFunction(
                 $request->user(),
                 $user,
-                $request->integer('from_function_id'),
+                $request->integer('from_function_id') ?: null,
                 $request->integer('to_function_id'),
             );
 

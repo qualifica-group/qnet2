@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use App\Models\BusinessFunction;
 
 if (! function_exists('individualProfile')) {
     /**
@@ -17,5 +18,16 @@ if (! function_exists('individualProfile')) {
             'first_name' => 'New',
             'last_name' => 'Person',
         ], $overrides);
+    }
+}
+
+if (! function_exists('membershipFunctionId')) {
+    /**
+     * A fresh business function id to submit as `employment.business_function_ids`:
+     * the mandatory membership of an active person (spec 0275 D-4).
+     */
+    function membershipFunctionId(): int
+    {
+        return BusinessFunction::factory()->create()->id;
     }
 }

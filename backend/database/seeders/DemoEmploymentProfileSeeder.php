@@ -17,8 +17,8 @@ use Illuminate\Support\Collection;
 
 /**
  * Seed an employment profile for every deterministic development user (spec
- * 0015): a small responsible/subordinate hierarchy — the first 2 seeded
- * users become managers (is_manager=true, no reports-to), every other seeded
+ * 0015): a small hierarchy — the first 2 seeded
+ * users sit at the top (no reports-to), every other seeded
  * user is a subordinate reporting to one of them, round-robin. Idempotent:
  * the profile is upserted by owner, its site membership, its reports-to
  * managers and its competence rows recomputed from the same reseeded Faker
@@ -86,7 +86,6 @@ class DemoEmploymentProfileSeeder extends Seeder
 
         $hiredAt = $faker->dateTimeBetween('-8 years', '-2 years')->format('Y-m-d');
         $employment = $manager->employment()->updateOrCreate([], [
-            'is_manager' => true,
             'covers_all_product_categories' => $coversAll,
             'hired_at' => $hiredAt,
             'standard_daily_minutes' => 480,
@@ -94,9 +93,7 @@ class DemoEmploymentProfileSeeder extends Seeder
         ]);
         $this->seedFirstContract($employment, $hiredAt, RelationshipTypeEnum::Employee->value, $this->maybePick($faker, $this->companyIds));
 
-        // D-5: a Responsible reports to no one — sync([]) on every run keeps
-        // this true even if a manager was previously demoted from/promoted
-        // to the role across re-seeds.
+        // Top of the demo hierarchy: sync([]) on every run keeps it so across re-seeds.
         $employment->reportsTo()->sync([]);
         $this->assignOperationalSites($faker, $employment);
         $this->assignProductLines($faker, $employment, coversAll: $coversAll);
@@ -127,7 +124,6 @@ class DemoEmploymentProfileSeeder extends Seeder
 
         $hiredAt = $faker->dateTimeBetween('-5 years', '-1 month')->format('Y-m-d');
         $employment = $user->employment()->updateOrCreate([], [
-            'is_manager' => false,
             'covers_all_product_categories' => $coversAll,
             'hired_at' => $hiredAt,
             'standard_daily_minutes' => 480,

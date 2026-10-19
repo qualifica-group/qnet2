@@ -29,16 +29,13 @@ use Illuminate\Validation\Rule;
  * the membership untouched; present with null/empty clears it. See
  * EmploymentData's docblock and EmploymentWriter::syncSiteMemberships().
  * `reports_to_ids` (spec 0166 D-2, replacing the single `reports_to_id`)
- * behaves identically, on its own pivot (`employment_profile_manager`) —
- * except `is_manager: true` forces it empty server-side regardless of what
- * the array carries (D-5), never trusting the payload's own emptiness.
+ * behaves identically, on its own pivot (`employment_profile_manager`).
  * `product_lines` (spec 0111, the assignment competence) behaves identically,
  * on its own child table — and, since D-1 dropped the single
  * `business_function_id` column, it is also the only place a user's business
  * function is written. Spec 0129 adds a THIRD, plain scalar way to widen that
- * competence: `covers_all_product_categories` follows the same semantics as
- * `is_manager` (absent on write = false, D-10), and — unlike the tri-state
- * fields above — a true value forces `product_lines` empty server-side
+ * competence: `covers_all_product_categories` (absent on write = false, D-10) —
+ * unlike the tri-state fields above, a true value forces `product_lines` empty server-side
  * (EmploymentWriter, D-2), never trusting the payload's own emptiness.
  *
  * @phpstan-require-extends FormRequest
@@ -65,8 +62,7 @@ trait ValidatesEmployment
         return [
             'employment' => ['sometimes', 'nullable', 'array'],
 
-            'employment.is_manager' => ['sometimes', 'boolean'],
-            // Spec 0129 D-1: the wildcard flag, a plain scalar like is_manager.
+            // Spec 0129 D-1: the wildcard flag, a plain scalar.
             'employment.covers_all_product_categories' => ['sometimes', 'boolean'],
             // Spec 0194 D-3: absent = untouched, so no default here.
             'employment.is_assignable' => ['sometimes', 'boolean'],
@@ -74,6 +70,13 @@ trait ValidatesEmployment
             // `reports_to_ids` (absent = untouched, null/[] = cleared).
             'employment.job_role_ids' => ['sometimes', 'nullable', 'array'],
             'employment.job_role_ids.*' => ['integer', 'distinct', Rule::exists('job_roles', 'id')],
+            // Spec 0275 D-3: business function membership, same tri-state.
+            'employment.business_function_ids' => ['sometimes', 'nullable', 'array'],
+            'employment.business_function_ids.*' => ['integer', 'distinct', Rule::exists('business_functions', 'id')],
+            // Spec 0276 D-5: the functions this person manages, same tri-state
+            // as the membership (absent/null = untouched, [] = none managed).
+            'employment.managed_business_function_ids' => ['sometimes', 'nullable', 'array'],
+            'employment.managed_business_function_ids.*' => ['integer', 'distinct', Rule::exists('business_functions', 'id')],
             // Spec 0166 (D-2/D-8): a user may report to several managers, so
             // the single `reports_to_id` becomes a tri-state array, same shape
             // as `remote_operational_site_ids` below.
@@ -244,7 +247,6 @@ trait ValidatesEmployment
         }
 
         return new EmploymentData(
-            isManager: (bool) $this->input('employment.is_manager', false),
             coversAllProductCategories: $this->boolean('employment.covers_all_product_categories'),
             isAssignable: $this->has('employment.is_assignable') ? $this->boolean('employment.is_assignable') : null,
             reportsToIdsProvided: $this->has('employment.reports_to_ids'),
@@ -257,6 +259,11 @@ trait ValidatesEmployment
             productLines: $this->submittedProductLines(),
             jobRoleIdsProvided: $this->has('employment.job_role_ids'),
             jobRoleIds: $this->submittedIds('employment.job_role_ids'),
+            // null reads as absent (spec 0275 contract), unlike the sibling pivots.
+            businessFunctionIdsProvided: $this->input('employment.business_function_ids') !== null,
+            businessFunctionIds: $this->submittedIds('employment.business_function_ids'),
+            managedBusinessFunctionIdsProvided: $this->input('employment.managed_business_function_ids') !== null,
+            managedBusinessFunctionIds: $this->submittedIds('employment.managed_business_function_ids'),
             hiredAt: $this->input('employment.hired_at'),
             terminatedAt: $this->input('employment.terminated_at'),
             standardDailyMinutes: $this->nullableInt('employment.standard_daily_minutes'),

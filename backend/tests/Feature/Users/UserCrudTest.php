@@ -58,7 +58,7 @@ it('create: 201 + persistence + hashed password not exposed', function () {
         'locale' => 'it',
         'password' => 'Str0ng-P4ssw0rd!',
         'password_confirmation' => 'Str0ng-P4ssw0rd!',
-        'employment' => ['covers_all_product_categories' => true],
+        'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()]],
         'personal_data' => individualProfile(),
     ])->assertCreated()
         ->assertJsonPath('success', true)
@@ -89,7 +89,7 @@ it('create: is_active defaults to true when omitted, and is exposed by the resou
         'locale' => 'it',
         'password' => 'Str0ng-P4ssw0rd!',
         'password_confirmation' => 'Str0ng-P4ssw0rd!',
-        'employment' => ['covers_all_product_categories' => true],
+        'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()]],
         'personal_data' => individualProfile(),
     ])->assertCreated()
         ->assertJsonPath('data.is_active', true);
@@ -141,7 +141,7 @@ it('create: derives users.name from an individual card (First Last)', function (
         'locale' => 'en',
         'password' => 'Str0ng-P4ssw0rd!',
         'password_confirmation' => 'Str0ng-P4ssw0rd!',
-        'employment' => ['covers_all_product_categories' => true],
+        'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()]],
         'personal_data' => individualProfile(['first_name' => 'Grace', 'last_name' => 'Hopper']),
     ])->assertCreated()
         ->assertJsonPath('data.name', 'Grace Hopper');
@@ -158,7 +158,7 @@ it('create: derives users.name from a company card (Company Name)', function () 
         'locale' => 'en',
         'password' => 'Str0ng-P4ssw0rd!',
         'password_confirmation' => 'Str0ng-P4ssw0rd!',
-        'employment' => ['covers_all_product_categories' => true],
+        'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()]],
         'personal_data' => ['type' => 'company', 'company_name' => 'Acme Corp'],
     ])->assertCreated()
         ->assertJsonPath('data.name', 'Acme Corp');
@@ -190,7 +190,7 @@ it('create: assigns an assignable role', function () {
         'locale' => 'en',
         'password' => 'Str0ng-P4ssw0rd!',
         'password_confirmation' => 'Str0ng-P4ssw0rd!',
-        'employment' => ['covers_all_product_categories' => true],
+        'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()]],
         'roles' => [$editor->id],
         'personal_data' => individualProfile(),
     ])->assertCreated();

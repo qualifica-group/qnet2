@@ -1,5 +1,5 @@
 import {
-  ALL_FUNCTIONS_KEY,
+  UNASSIGNED_KEY,
   byName,
   childKey,
   personSearchText,
@@ -18,7 +18,7 @@ function toPersonNode(person: OrgPerson, parentKey: string, parent: OrgNodeRef, 
     parent,
     person,
     isResponsible: person.is_manager || isFunctionHead,
-    functionNames: [],
+    functions: [],
     searchText: personSearchText(person, []),
     children: [],
   }
@@ -69,19 +69,19 @@ export function buildFunctionTree(data: OrgChartFunctions): OrgTreeNode[] {
     .sort(byName)
     .map((fn) => toNode(fn, null, null, new Set()))
 
-  if (data.all_functions_people.length === 0) return roots
+  if (data.unassigned_people.length === 0) return roots
 
-  const allRef: OrgNodeRef = { kind: 'all-functions', id: null }
+  const allRef: OrgNodeRef = { kind: 'unassigned', id: null }
   return [
     ...roots,
     {
-      kind: 'all-functions',
+      kind: 'unassigned',
       id: null,
-      key: ALL_FUNCTIONS_KEY,
+      key: UNASSIGNED_KEY,
       parent: null,
-      peopleCount: data.all_functions_people.length,
+      peopleCount: data.unassigned_people.length,
       searchText: '',
-      children: data.all_functions_people.map((person) => toPersonNode(person, ALL_FUNCTIONS_KEY, allRef, false)),
+      children: data.unassigned_people.map((person) => toPersonNode(person, UNASSIGNED_KEY, allRef, false)),
     },
   ]
 }

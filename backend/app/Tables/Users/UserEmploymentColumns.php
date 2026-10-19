@@ -12,12 +12,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The 11 employment-derived grid columns on the `users` table (spec 0015):
+ * The employment-derived grid columns on the `users` table (spec 0015):
  * company (related NAME), relationship_type (enum), employment_status
  * (employed/terminated, spec 0272, UserEmploymentStatusColumn),
- * is_manager (boolean), hired_at/terminated_at (dates), business_function
- * (AGGREGATED over the competence rows since spec 0111 D-1, delegated to
- * UserBusinessFunctionColumn), operational_site (formatted address line,
+ * hired_at/terminated_at (dates), business_function
+ * (AGGREGATED over the membership pivot, delegated to
+ * UserBusinessFunctionColumn), managed_business_functions (the functions the
+ * person manages, spec 0276, UserManagedBusinessFunctionsColumn), operational_site (formatted address line,
  * CONDITIONS-ONLY — mirrors `primary_address`, spec 0005 UX decision;
  * cell/filter/sort split physical-vs-remote per spec 0103 D-7, delegated to
  * UserOperationalSiteColumn) and reports_to (AGGREGATED over the
@@ -62,6 +63,7 @@ class UserEmploymentColumns
         private readonly FilterApplier $filterApplier,
         private readonly UserOperationalSiteColumn $operationalSiteColumn,
         private readonly UserBusinessFunctionColumn $businessFunctionColumn,
+        private readonly UserManagedBusinessFunctionsColumn $managedFunctionsColumn,
         private readonly UserReportsToColumn $reportsToColumn,
         private readonly UserJobRolesColumn $jobRolesColumn,
         private readonly UserEmploymentStatusColumn $statusColumn,
@@ -72,8 +74,8 @@ class UserEmploymentColumns
         return array_key_exists($columnId, self::RELATED_NAME_COLUMNS)
             || in_array($columnId, self::ENUM_COLUMNS, true)
             || in_array($columnId, self::DATE_COLUMNS, true)
-            || $columnId === 'is_manager'
             || $columnId === 'business_function'
+            || $columnId === 'managed_business_functions'
             || $columnId === 'operational_site'
             || $columnId === 'reports_to'
             || $columnId === 'job_roles'
@@ -85,15 +87,17 @@ class UserEmploymentColumns
      *
      * @return array<string, mixed>
      */
-    public function mapRow(?EmploymentProfile $employment): array
+    public function mapRow(User $user): array
     {
+        $employment = $user->employment;
+
         return [
-            'business_function' => $this->businessFunctionColumn->label($employment),
+            'business_function' => $this->businessFunctionColumn->label($user),
             'company' => $employment?->company?->denomination,
             'operational_site' => $this->operationalSiteColumn->label($employment),
             'relationship_type' => $employment?->relationship_type?->value,
             'employment_status' => $this->statusColumn->label($employment),
-            'is_manager' => $employment?->is_manager ?? false,
+            'managed_business_functions' => $this->managedFunctionsColumn->label($user),
             'reports_to' => $this->reportsToColumn->managers($employment),
             'job_roles' => $this->jobRolesColumn->label($employment),
             'hired_at' => $employment?->hired_at,
@@ -122,6 +126,12 @@ class UserEmploymentColumns
             return;
         }
 
+        if ($columnId === 'managed_business_functions') {
+            $this->managedFunctionsColumn->applyFilter($query, $filter);
+
+            return;
+        }
+
         if ($columnId === 'reports_to') {
             $this->reportsToColumn->applyFilter($query, $filter);
 
@@ -146,7 +156,7 @@ class UserEmploymentColumns
             return;
         }
 
-        if (in_array($columnId, self::ENUM_COLUMNS, true) || $columnId === 'is_manager') {
+        if (in_array($columnId, self::ENUM_COLUMNS, true)) {
             $matchesBlank = $this->matchesBlankEntry($filter);
 
             $query->where(function (Builder $group) use ($columnId, $filter, $matchesBlank): void {
@@ -231,6 +241,10 @@ class UserEmploymentColumns
             return $this->businessFunctionColumn->sortSubquery();
         }
 
+        if ($columnId === 'managed_business_functions') {
+            return $this->managedFunctionsColumn->sortSubquery();
+        }
+
         if ($columnId === 'reports_to') {
             return $this->reportsToColumn->sortSubquery();
         }
@@ -247,7 +261,7 @@ class UserEmploymentColumns
             return $this->relatedNameSortSubquery($columnId);
         }
 
-        if (in_array($columnId, self::ENUM_COLUMNS, true) || $columnId === 'is_manager' || in_array($columnId, self::DATE_COLUMNS, true)) {
+        if (in_array($columnId, self::ENUM_COLUMNS, true) || in_array($columnId, self::DATE_COLUMNS, true)) {
             return EmploymentProfile::query()
                 ->select($columnId)
                 ->whereColumn('employment_profiles.user_id', 'users.id')
@@ -276,9 +290,9 @@ class UserEmploymentColumns
     }
 
     /**
-     * Excel-like distinct values (spec 0004/0005) for the 6 columns that have
-     * one (business_function [aggregated]/company/reports_to [aggregated]/
-     * relationship_type/employment_status/is_manager). `operational_site`/
+     * Excel-like distinct values (spec 0004/0005) for the columns that have
+     * one (business_function/managed_business_functions/reports_to/job_roles
+     * [aggregated], company/relationship_type/employment_status). `operational_site`/
      * `hired_at`/`terminated_at` declare `hasFilterValues:false`
      * (UserColumnCatalog), so TableService never calls this method for them.
      *
@@ -289,6 +303,10 @@ class UserEmploymentColumns
     {
         if ($columnId === 'business_function') {
             return $this->businessFunctionColumn->distinctValues($query, $search, $limit);
+        }
+
+        if ($columnId === 'managed_business_functions') {
+            return $this->managedFunctionsColumn->distinctValues($query, $search, $limit);
         }
 
         if ($columnId === 'reports_to') {
@@ -309,10 +327,6 @@ class UserEmploymentColumns
 
         if ($columnId === 'employment_status') {
             return $this->statusColumn->distinctValues($search, $limit);
-        }
-
-        if ($columnId === 'is_manager') {
-            return [true, false];
         }
 
         return [];

@@ -10,9 +10,10 @@ use Laravel\Sanctum\Sanctum;
 uses(RefreshDatabase::class);
 
 /**
- * Spec 0271 D-6: an active, non-service-account person must carry at least
- * one competence row (or the covers-all flag). Guard against a partial write
- * is part of every error-path assertion below.
+ * Spec 0275 D-4 (moved from the competences of spec 0271 D-6): an active,
+ * non-service-account person must belong to at least one business function;
+ * competences are optional. Guard against a partial write is part of every
+ * error-path assertion below.
  */
 function businessFunctionRuleActor(): User
 {
@@ -34,73 +35,79 @@ function businessFunctionRulePayload(array $overrides = []): array
     ], $overrides);
 }
 
-function businessFunctionRuleLine(): array
-{
-    return ['business_function_id' => BusinessFunction::factory()->create()->id, 'product_category_id' => null];
-}
-
-it('0271 AC-009: creating an active person without competence rows is a 422 on employment.product_lines and creates nothing', function () {
+it('0275 AC-005: creating an active person without functions is a 422 on employment.business_function_ids and creates nothing', function () {
     Sanctum::actingAs(businessFunctionRuleActor());
 
     $this->postJson('/api/users', businessFunctionRulePayload())
         ->assertStatus(422)
-        ->assertJsonValidationErrors(['employment.product_lines']);
+        ->assertJsonValidationErrors(['employment.business_function_ids']);
 
-    $this->postJson('/api/users', businessFunctionRulePayload(['employment' => ['is_manager' => false]]))
+    $this->postJson('/api/users', businessFunctionRulePayload(['employment' => ['business_function_ids' => []]]))
         ->assertStatus(422)
-        ->assertJsonValidationErrors(['employment.product_lines'])
+        ->assertJsonValidationErrors(['employment.business_function_ids'])
         ->assertJsonPath('message', __('users.employment.business_function_required'));
 
     $this->assertDatabaseMissing('users', ['email' => 'rule@example.com']);
 });
 
-it('0271 AC-009: creation succeeds with a row, with covers_all, or when inactive', function () {
+it('0275 AC-005: creation succeeds with a function, and when inactive or a service account', function () {
     Sanctum::actingAs(businessFunctionRuleActor());
 
     $this->postJson('/api/users', businessFunctionRulePayload([
         'email' => 'row@example.com',
-        'employment' => ['product_lines' => [businessFunctionRuleLine()]],
-    ]))->assertCreated();
-
-    $this->postJson('/api/users', businessFunctionRulePayload([
-        'email' => 'all@example.com',
-        'employment' => ['covers_all_product_categories' => true],
+        'employment' => ['business_function_ids' => [membershipFunctionId()]],
     ]))->assertCreated();
 
     $this->postJson('/api/users', businessFunctionRulePayload(['email' => 'inactive@example.com', 'is_active' => false]))
         ->assertCreated();
 });
 
-it('0271 AC-010: removing the last row (or sending employment: null) on an active person is a 422 and the row stays', function () {
+it('0275 AC-004: emptying the functions of an active person is a 422 and the rows stay', function () {
     Sanctum::actingAs(businessFunctionRuleActor());
+    $function = BusinessFunction::factory()->create();
     $target = User::factory()->create();
-    $this->patchJson("/api/users/{$target->id}", ['employment' => ['product_lines' => [businessFunctionRuleLine()]]])->assertOk();
+    $this->patchJson("/api/users/{$target->id}", ['employment' => ['business_function_ids' => [$function->id], 'standard_daily_minutes' => 300]])->assertOk();
 
-    $this->patchJson("/api/users/{$target->id}", ['employment' => ['product_lines' => []]])
-        ->assertStatus(422)->assertJsonValidationErrors(['employment.product_lines']);
-    expect($target->employment()->first()->productLines()->count())->toBe(1);
+    $this->patchJson("/api/users/{$target->id}", ['employment' => ['business_function_ids' => [], 'standard_daily_minutes' => 480]])
+        ->assertStatus(422)->assertJsonValidationErrors(['employment.business_function_ids']);
 
-    $this->patchJson("/api/users/{$target->id}", ['employment' => null])
-        ->assertStatus(422)->assertJsonValidationErrors(['employment.product_lines']);
-    expect($target->employment()->exists())->toBeTrue();
+    expect($target->businessFunctions()->pluck('business_functions.id')->all())->toBe([$function->id])
+        ->and($target->employment()->first()->standard_daily_minutes)->toBe(300);
 });
 
-it('0271 AC-010: deactivating and removing the row together succeeds; activating an inactive person without rows is a 422', function () {
+it('0275 AC-008: employment: null deletes the profile and keeps the membership', function () {
     Sanctum::actingAs(businessFunctionRuleActor());
+    $function = BusinessFunction::factory()->create();
     $target = User::factory()->create();
-    $this->patchJson("/api/users/{$target->id}", ['employment' => ['product_lines' => [businessFunctionRuleLine()]]])->assertOk();
+    $this->patchJson("/api/users/{$target->id}", ['employment' => ['business_function_ids' => [$function->id]]])->assertOk();
 
-    $this->patchJson("/api/users/{$target->id}", ['is_active' => false, 'employment' => ['product_lines' => []]])->assertOk();
-    expect($target->fresh()->is_active)->toBeFalse();
+    $this->patchJson("/api/users/{$target->id}", ['employment' => null])->assertOk();
+
+    expect($target->employment()->exists())->toBeFalse()
+        ->and($target->businessFunctions()->pluck('business_functions.id')->all())->toBe([$function->id]);
+});
+
+it('0275 AC-007: activating an inactive person without functions is a 422; with one it succeeds', function () {
+    Sanctum::actingAs(businessFunctionRuleActor());
+    $target = User::factory()->inactive()->create();
 
     $this->patchJson("/api/users/{$target->id}", ['is_active' => true])
-        ->assertStatus(422)->assertJsonValidationErrors(['employment.product_lines']);
+        ->assertStatus(422)->assertJsonValidationErrors(['employment.business_function_ids']);
     expect($target->fresh()->is_active)->toBeFalse();
 
-    $this->patchJson("/api/users/{$target->id}", ['is_active' => true, 'employment' => ['covers_all_product_categories' => true]])->assertOk();
+    $this->patchJson("/api/users/{$target->id}", ['is_active' => true, 'employment' => ['business_function_ids' => [membershipFunctionId()]]])->assertOk();
 });
 
-it('0271 AC-010: the guard exempts a service account and an inactive user', function () {
+it('0275 AC-006: an active person with a function and no competence passes (competences are optional)', function () {
+    Sanctum::actingAs(businessFunctionRuleActor());
+    $target = User::factory()->create();
+
+    $this->patchJson("/api/users/{$target->id}", ['employment' => ['business_function_ids' => [membershipFunctionId()]]])->assertOk();
+
+    expect($target->employment()->first()->productLines()->count())->toBe(0);
+});
+
+it('0275 AC-004: the guard exempts a service account and an inactive user', function () {
     $guard = app(BusinessFunctionCoverageGuard::class);
 
     $guard->assertCovered(User::factory()->serviceAccount()->create());

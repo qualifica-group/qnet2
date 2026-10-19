@@ -79,6 +79,15 @@ class UserResource extends JsonResource
                 $this->relationLoaded('employment') && $this->employment !== null,
                 fn () => new EmploymentResource($this->employment),
             ),
+            // Spec 0275 D-6: read-only, the functions this person is manager of.
+            'managed_business_functions' => $this->when(
+                $this->relationLoaded('managedBusinessFunctions'),
+                fn (): array => $this->managedBusinessFunctions
+                    ->sortBy('name')
+                    ->map(static fn ($function): array => ['id' => $function->id, 'name' => $function->name])
+                    ->values()
+                    ->all(),
+            ),
             'created_at' => $this->created_at,
             // Spec 0042: mode/overrides for the per-user module open preference,
             // defaulted here (never null) when the column is unset.

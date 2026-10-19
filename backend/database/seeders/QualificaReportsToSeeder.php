@@ -18,8 +18,7 @@ use Illuminate\Support\Collection;
  * managers are re-synced from the roster on every run. An account the roster
  * does not list is never touched.
  *
- * NEVER fatal: a missing account or manager is skipped with a warning; so is
- * a profile flagged `is_manager`, which by spec 0166 D-5 reports to no one.
+ * NEVER fatal: a missing account or manager is skipped with a warning.
  */
 class QualificaReportsToSeeder extends Seeder
 {
@@ -40,9 +39,8 @@ class QualificaReportsToSeeder extends Seeder
                 continue;
             }
 
-            if ($this->syncManagers($user, $this->managerIds($usersByEmail, $email, $managerEmails))) {
-                $synced++;
-            }
+            $this->syncManagers($user, $this->managerIds($usersByEmail, $email, $managerEmails));
+            $synced++;
         }
 
         $this->command?->info(sprintf('%d reports-to sets synced.', $synced));
@@ -87,19 +85,11 @@ class QualificaReportsToSeeder extends Seeder
     /**
      * @param  list<int>  $managerIds
      */
-    private function syncManagers(User $user, array $managerIds): bool
+    private function syncManagers(User $user, array $managerIds): void
     {
         // A staff account has no profile yet: the pivot hangs off one.
         $employment = $user->employment ?? $user->employment()->create();
 
-        if ($employment->is_manager && $managerIds !== []) {
-            $this->command?->warn(sprintf('%s: flagged as manager, reports to no one (spec 0166 D-5).', $user->email));
-
-            return false;
-        }
-
         $employment->reportsTo()->sync($managerIds);
-
-        return true;
     }
 }

@@ -58,11 +58,11 @@ class UsersStatsDefinition extends AbstractStatsDefinition
                 value: User::query()->excludingServiceAccounts()->where('is_active', false)->count(),
                 icon: 'user-x',
             ),
-            // `employment_profiles.user_id` is unique, so the flagged profiles
-            // ARE the managers (no distinct needed).
+            // Spec 0276 D-3: a manager is whoever is `manager_id` of at least
+            // one business function (a person can manage several: no double count).
             $this->stat(
                 key: 'managers',
-                value: DB::table(self::EMPLOYMENT_TABLE)->where('is_manager', true)->count(),
+                value: User::query()->excludingServiceAccounts()->whereHas('managedBusinessFunctions')->count(),
                 icon: 'briefcase',
             ),
             $this->distribution(

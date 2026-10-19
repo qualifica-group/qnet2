@@ -4,7 +4,6 @@ import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordLink } from '@/components/detail/record-link'
 import { RecordField, RecordFieldList, RecordSection } from '@/components/detail/record-panel'
 import { RecordInlineField } from '@/components/record-form/record-inline-field'
-import { useCascadeEditable } from '@/components/record-form/use-cascade-editable'
 import { Badge } from '@/components/ui/badge'
 import { useEnumOptions } from '@/features/config/use-config'
 import { formatDate } from '@/lib/formatting/date-display'
@@ -12,10 +11,13 @@ import { UserEmailField, UserPasswordFields, UserRolesField, UserSwitchField } f
 import {
   UserDateField,
   UserDurationField,
+  UserBusinessFunctionsField,
+  UserManagedBusinessFunctionsField,
   UserJobRolesField,
   UserReportsToField,
 } from '@/features/users/user-employment-fields'
-import { MANAGER_CASCADE_FIELDS, type UserRecordSectionProps, type UserRecordValues } from '@/features/users/user-record'
+import { FunctionBadges } from '@/features/users/function-badges'
+import { type UserRecordSectionProps, type UserRecordValues } from '@/features/users/user-record'
 import type { EmploymentRelationRef } from '@/features/users/types'
 
 /** Formats a total-minutes duration as `H:MM`, or `null` when unset (spec 0015). */
@@ -98,34 +100,17 @@ export function UserAccessRecordSection({ values, form, inline, isEdit }: UserRe
 }
 
 /**
- * "Profilo": manager status, job description and the reporting line. A
- * manager reports to no one (spec 0166 D-5): turning the switch on empties
- * "Riporta a", so its row opens only when that is editable too.
+ * "Profilo": job roles, the functions of membership and managed, and the
+ * reporting line.
  */
 export function UserProfileRecordSection({ values, form, inline }: UserRecordSectionProps) {
   const { t } = useTranslation()
   const { control } = form
-  const managerCascadeEditable = useCascadeEditable(MANAGER_CASCADE_FIELDS)
+  const managedFunctionIds = values.managed_business_functions.map((item) => item.id)
 
   return (
     <RecordSection title={t('users.form.sections.profile.title')} icon={<Briefcase />}>
       <RecordFieldList>
-        <RecordInlineField
-          field="employment.is_manager"
-          label={t('users.detail.employment.isManager')}
-          inline={inline}
-          canEdit={managerCascadeEditable}
-          editor={
-            <UserSwitchField
-              control={control}
-              name="employment.is_manager"
-              label={t('users.form.employment.isManager')}
-              description={t('users.form.employment.isManagerDescription')}
-            />
-          }
-        >
-          {t(values.is_manager ? 'common.yes' : 'common.no')}
-        </RecordInlineField>
         <RecordInlineField
           field="employment.job_role_ids"
           label={t('users.detail.employment.jobRoles')}
@@ -134,16 +119,34 @@ export function UserProfileRecordSection({ values, form, inline }: UserRecordSec
         >
           <RefBadges refs={values.job_roles} />
         </RecordInlineField>
-        {values.is_manager ? null : (
-          <RecordInlineField
-            field="employment.reports_to_ids"
-            label={t('users.detail.employment.reportsTo')}
-            inline={inline}
-            editor={<UserReportsToField control={control} selected={values.reports_to} />}
-          >
-            <RefBadges refs={values.reports_to} />
-          </RecordInlineField>
-        )}
+        <RecordInlineField
+          field="employment.business_function_ids"
+          label={t('users.detail.employment.businessFunctions')}
+          inline={inline}
+          editor={<UserBusinessFunctionsField control={control} selected={values.business_functions} />}
+        >
+          <FunctionBadges refs={values.business_functions} managedIds={managedFunctionIds} />
+        </RecordInlineField>
+        <RecordInlineField
+          field="employment.managed_business_function_ids"
+          label={t('users.detail.employment.managedBusinessFunctions')}
+          inline={inline}
+          editor={<UserManagedBusinessFunctionsField control={control} selected={values.managed_business_functions} />}
+        >
+          {values.managed_business_functions.length > 0 ? (
+            <FunctionBadges refs={values.managed_business_functions} managedIds={managedFunctionIds} />
+          ) : (
+            <span className="text-muted-foreground">{t('users.detail.employment.managedBusinessFunctionsEmpty')}</span>
+          )}
+        </RecordInlineField>
+        <RecordInlineField
+          field="employment.reports_to_ids"
+          label={t('users.detail.employment.reportsTo')}
+          inline={inline}
+          editor={<UserReportsToField control={control} selected={values.reports_to} />}
+        >
+          <RefBadges refs={values.reports_to} />
+        </RecordInlineField>
       </RecordFieldList>
     </RecordSection>
   )

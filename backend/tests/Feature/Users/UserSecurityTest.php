@@ -60,7 +60,7 @@ it('a super-admin actor CAN assign super-admin (positive control)', function () 
         'locale' => 'en',
         'password' => 'Str0ng-P4ssw0rd!',
         'password_confirmation' => 'Str0ng-P4ssw0rd!',
-        'employment' => ['covers_all_product_categories' => true],
+        'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()]],
         'roles' => [$superAdmin->id],
         'personal_data' => ['type' => 'individual', 'first_name' => 'An', 'last_name' => 'Ointed'],
     ])->assertCreated();
@@ -89,7 +89,7 @@ it('service create() silently drops super-admin for a non super-admin actor (byp
             firstName: 'By',
             lastName: 'Pass',
         ),
-    ), new EmploymentData(coversAllProductCategories: true));
+    ), new EmploymentData(coversAllProductCategories: true, businessFunctionIdsProvided: true, businessFunctionIds: [membershipFunctionId()]));
 
     expect($created->hasRole('super-admin'))->toBeFalse()
         ->and($created->hasRole('editor'))->toBeTrue();

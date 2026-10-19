@@ -34,8 +34,8 @@ export function buildPeopleTree(people: OrgDirectoryPerson[]): OrgTreeNode[] {
       parent,
       person,
       isResponsible: person.is_manager,
-      functionNames: person.business_functions,
-      searchText: personSearchText(person, person.business_functions),
+      functions: person.business_functions,
+      searchText: personSearchText(person, person.business_functions.map((fn) => fn.name)),
       children: (reportsOf.get(person.id) ?? [])
         .filter((report) => !nextPath.has(report.id))
         .sort(byName)

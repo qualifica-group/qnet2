@@ -5,28 +5,39 @@ import { collectExpandableKeys, filterTree } from '@/features/org-chart/tree-uti
 const NO_COLLAPSED_KEYS: ReadonlySet<string> = new Set()
 
 /**
- * Client-side state of one org-chart tree: search box, collapsed branches
- * (default: everything expanded) and the expand/collapse-all toggle. While a
- * search is active every branch is forced open so each result is visible.
+ * Client-side state of one org chart: search box, expanded cards and the
+ * expand/collapse-all toggle. Until the user touches a branch only the roots
+ * are open (spec 0274 D-4), so a large chart starts readable. While a search is
+ * active every branch is forced open so each result is visible.
  */
 export function useOrgTreeState(allNodes: OrgTreeNode[]) {
   const [search, setSearch] = useState('')
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set())
+  const [expanded, setExpanded] = useState<ReadonlySet<string> | null>(null)
 
   const nodes = useMemo(() => filterTree(allNodes, search), [allNodes, search])
   const expandableKeys = useMemo(() => collectExpandableKeys(nodes), [nodes])
+  const defaultExpanded = useMemo<ReadonlySet<string>>(() => new Set(allNodes.map((node) => node.key)), [allNodes])
+  const current = expanded ?? defaultExpanded
   const isSearching = search.trim() !== ''
 
-  const toggle = useCallback((key: string) => {
-    setCollapsed((current) => {
-      const next = new Set(current)
-      if (!next.delete(key)) next.add(key)
-      return next
-    })
-  }, [])
+  const collapsedKeys = useMemo(
+    () => new Set(expandableKeys.filter((key) => !current.has(key))),
+    [expandableKeys, current],
+  )
 
-  const expandAll = useCallback(() => setCollapsed(new Set()), [])
-  const collapseAll = useCallback(() => setCollapsed(new Set(expandableKeys)), [expandableKeys])
+  const toggle = useCallback(
+    (key: string) => {
+      setExpanded((previous) => {
+        const next = new Set(previous ?? defaultExpanded)
+        if (!next.delete(key)) next.add(key)
+        return next
+      })
+    },
+    [defaultExpanded],
+  )
+
+  const expandAll = useCallback(() => setExpanded(new Set(expandableKeys)), [expandableKeys])
+  const collapseAll = useCallback(() => setExpanded(new Set()), [])
 
   return {
     search,
@@ -34,8 +45,8 @@ export function useOrgTreeState(allNodes: OrgTreeNode[]) {
     nodes,
     isSearching,
     hasExpandable: expandableKeys.length > 0,
-    allCollapsed: expandableKeys.length > 0 && expandableKeys.every((key) => collapsed.has(key)),
-    collapsedKeys: isSearching ? NO_COLLAPSED_KEYS : collapsed,
+    allCollapsed: expandableKeys.length > 0 && collapsedKeys.size === expandableKeys.length,
+    collapsedKeys: isSearching ? NO_COLLAPSED_KEYS : collapsedKeys,
     toggle,
     expandAll,
     collapseAll,

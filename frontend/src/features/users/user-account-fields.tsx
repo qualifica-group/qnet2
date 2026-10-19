@@ -88,14 +88,14 @@ export function UserRolesField({ control, selected }: FieldProps & { selected: E
   )
 }
 
-/** A boolean switch row (account active, assignable, manager...): the label and an optional explanation. */
+/** A boolean switch row (account active, assignable...): the label and an optional explanation. */
 export function UserSwitchField({
   control,
   name,
   label,
   description,
 }: FieldProps & {
-  name: 'is_active' | 'employment.is_assignable' | 'employment.is_manager'
+  name: 'is_active' | 'employment.is_assignable'
   label: string
   description: string
 }) {

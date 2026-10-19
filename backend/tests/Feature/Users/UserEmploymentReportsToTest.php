@@ -49,7 +49,7 @@ it('0166 AC-003: PUT with two manager ids saves both, ordered by name in the res
     Sanctum::actingAs($actor);
 
     $response = $this->patchJson("/api/users/{$target->id}", [
-        'employment' => ['covers_all_product_categories' => true, 'reports_to_ids' => [$managerB->id, $managerA->id]],
+        'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()], 'reports_to_ids' => [$managerB->id, $managerA->id]],
     ])->assertOk();
 
     $profileId = $target->employment()->first()->id;
@@ -70,7 +70,7 @@ it('0166 AC-003: PUT with two manager ids saves both, ordered by name in the res
 it('0166 AC-004: reports_to_ids: [] clears the managers; employment without the key leaves them untouched', function () {
     $actor = employmentTestActor(['update']);
     $manager = User::factory()->create();
-    $target = User::factory()->withEmployment(fn ($f) => $f->reportsTo($manager)->competentInEveryCategoryOf(BusinessFunction::factory()->create()))->create();
+    $target = User::factory()->withEmployment(fn ($f) => $f->reportsTo($manager)->memberOf(BusinessFunction::factory()->create()))->create();
     Sanctum::actingAs($actor);
 
     // Absent key: another employment field changes, managers stay.
@@ -115,7 +115,7 @@ it('0166 AC-007: a genuine change to the manager set logs one explicit activity 
     $actor = employmentTestActor(['update']);
     $managerA = User::factory()->create();
     $managerB = User::factory()->create();
-    $target = User::factory()->withEmployment(fn ($f) => $f->reportsTo($managerA)->competentInEveryCategoryOf(BusinessFunction::factory()->create()))->create();
+    $target = User::factory()->withEmployment(fn ($f) => $f->reportsTo($managerA)->memberOf(BusinessFunction::factory()->create()))->create();
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/users/{$target->id}", [

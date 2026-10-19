@@ -67,7 +67,6 @@ it('back-fills employment relations on re-import once the parents are migrated (
                 'first_name' => 'Nicola',
                 'last_name' => 'Eliseo',
                 'job_description' => 'Senior Full Stack Engineer',
-                'is_manager' => false,
                 'reports_to_id' => 445,
                 'business_function_id' => 6,
                 'operational_site_id' => 15,
@@ -234,7 +233,6 @@ it('relinks the manager in a SINGLE run when it is imported after the subordinat
                     'password' => fakeBcryptHash('sub-secret'),
                     'first_name' => 'Sub',
                     'last_name' => 'Ordinate',
-                    'is_manager' => false,
                     'reports_to_id' => 500,
                 ],
                 [
@@ -243,7 +241,6 @@ it('relinks the manager in a SINGLE run when it is imported after the subordinat
                     'password' => fakeBcryptHash('mgr-secret'),
                     'first_name' => 'Man',
                     'last_name' => 'Ager',
-                    'is_manager' => true,
                     'job_description' => 'Head of Engineering',
                 ],
             ],
