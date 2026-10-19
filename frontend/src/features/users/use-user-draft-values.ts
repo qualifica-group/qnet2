@@ -1,6 +1,5 @@
 import { useWatch, type Control } from 'react-hook-form'
 import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
-import { COMPANIES_FOR_SELECT_RESOURCE } from '@/features/companies/for-select-api'
 import type { ForSelectItem } from '@/features/for-select/types'
 import { useForSelectLabels } from '@/features/for-select/use-for-select'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
@@ -10,6 +9,7 @@ import { categoryPathLabel } from '@/features/product-lines/category-path-label'
 import type { ProductLineLike } from '@/features/product-lines/types'
 import { ROLES_FOR_SELECT_RESOURCE } from '@/features/roles/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
+import { JOB_ROLES_FOR_SELECT_RESOURCE } from '@/features/job-roles/for-select-api'
 import { summarizeAssignment } from '@/features/users/user-assignment'
 import { EMPTY_EMPLOYMENT } from '@/features/users/user-form-defaults'
 import type { UserRecordValues } from '@/features/users/user-record'
@@ -60,8 +60,16 @@ export function useUserDraftValues(control: Control<UserFormValues>): UserRecord
     resource: OPERATIONAL_SITES_FOR_SELECT_RESOURCE,
     ids: [...idsOf(employment.primary_operational_site_id), ...employment.remote_operational_site_ids],
   })
+  const jobRoles = useForSelectLabels({ resource: JOB_ROLES_FOR_SELECT_RESOURCE, ids: employment.job_role_ids })
+  const memberships = useForSelectLabels({
+    resource: BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE,
+    ids: employment.business_function_ids,
+  })
+  const managedFunctions = useForSelectLabels({
+    resource: BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE,
+    ids: employment.managed_business_function_ids,
+  })
   const managers = useForSelectLabels({ resource: USERS_FOR_SELECT_RESOURCE, ids: employment.reports_to_ids })
-  const companies = useForSelectLabels({ resource: COMPANIES_FOR_SELECT_RESOURCE, ids: idsOf(employment.company_id) })
   const functions = useForSelectLabels({ resource: BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE, ids: functionIds })
   const tree = useProductCategoryTree().data ?? NO_TREE
 
@@ -91,12 +99,16 @@ export function useUserDraftValues(control: Control<UserFormValues>): UserRecord
     product_lines: productLines,
     primary_operational_site: refOf(sites, employment.primary_operational_site_id),
     remote_operational_sites: refsOf(sites, employment.remote_operational_site_ids),
-    is_manager: employment.is_manager,
-    job_description: employment.job_description || null,
+    job_roles: refsOf(jobRoles, employment.job_role_ids),
+    business_functions: refsOf(memberships, employment.business_function_ids),
+    managed_business_functions: refsOf(managedFunctions, employment.managed_business_function_ids),
     reports_to: refsOf(managers, employment.reports_to_ids),
-    relationship_type: employment.relationship_type,
-    company: refOf(companies, employment.company_id),
-    qualification_type: employment.qualification_type,
+    // The contract condition exists only after the first save (spec 0272 D-2): a draft has none.
+    relationship_type: null,
+    company: null,
+    current_contract: null,
+    iban: employment.iban || null,
+    iban_holder: employment.iban_holder || null,
     hired_at: employment.hired_at || null,
     terminated_at: employment.terminated_at || null,
     standard_daily_minutes: employment.standard_daily_minutes,

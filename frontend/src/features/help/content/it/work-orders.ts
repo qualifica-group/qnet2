@@ -127,10 +127,11 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Apri la scheda **Costi effettivi** (solo lettura senza il permesso di gestire i costi).',
-            'Premi **Aggiungi riga**: la data del costo è precompilata a oggi.',
-            'Scegli il **prodotto** di costo: prezzo unitario, aliquota IVA, unità di misura e **tipo di costo** (se il prodotto ne ha uno predefinito) si precompilano dal prodotto.',
-            'Indica quantità, prezzo, IVA, **tipo di costo** (facoltativo, modificabile), **fornitore**, **riferimento documento** e la **riga offerta di riferimento**.',
+            'Apri la scheda **Costi effettivi**: un unico riquadro con a sinistra il **Catalogo prodotti** e a destra i costi effettivi come card (su schermi stretti uno sotto l\'altro). Senza il permesso di gestire i costi il catalogo non compare e le card sono in sola lettura.',
+            'Nel **Catalogo prodotti** cerca per nome o descrizione: ogni prodotto mostra nome, codice, tipologia, prezzo di costo con unità di misura, categoria e descrizione.',
+            'Spunta uno o più prodotti e premi **Aggiungi N selezionati**: ogni prodotto diventa un costo con data di oggi, quantità 1, prezzo di costo, IVA, unità di misura e **tipo di costo** del prodotto. Lo stesso prodotto si può aggiungere più volte.',
+            'In ogni card trovi in alto prodotto, codice e categoria con il cestino per rimuoverla; sotto quantità per prezzo unitario, IVA, **Riga offerta di riferimento** e imponibile, IVA e totale; in fondo data, **tipo di costo**, **fornitore**, **riferimento documento** e descrizione aggiuntiva. In fondo al riquadro c\'è il **Totale costi**.',
+            'Per cambiare prodotto rimuovi la card e scegli il prodotto dal catalogo.',
             'Premi **Salva** per sostituire l\'intero elenco dei costi, oppure **Annulla** per tornare all\'ultimo salvataggio.',
           ],
         },

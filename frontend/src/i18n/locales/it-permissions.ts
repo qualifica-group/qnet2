@@ -94,6 +94,7 @@ export const permissions = {
     // Spec 0201 D-10: tab Dati contrattuali della commessa e gestione dei pagamenti per riga.
     viewContractData: 'Vedere i dati contrattuali',
     managePayments: 'Gestire i pagamenti',
+    manageCompensation: 'Gestire i dati retributivi',
   },
   resources: {
     users: 'Utenti',
@@ -149,6 +150,10 @@ export const permissions = {
     'purchase-requests': 'Richieste di acquisto (RDA)',
     'purchase-orders': 'Ordini di acquisto (ODA)',
     'cost-types': 'Tipi di costo',
+    'collective-agreements': 'CCNL',
+    'job-roles': 'Mansioni',
+    'job-activities': 'Attività',
+    'org-chart': 'Organigramma',
     'purchase-request-priorities': 'Priorità RDA',
     'purchase-order-statuses': 'Stati ODA',
     'purchase-request-line-statuses': 'Stati righe RDA',

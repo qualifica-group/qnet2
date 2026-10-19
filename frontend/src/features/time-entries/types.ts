@@ -163,7 +163,8 @@ export interface TeamPulseMember {
   }
   /** Ascending, `[]` if none (0166 D-7/AC-012): the member can have several managers. */
   manager_ids: number[]
-  job_description: string | null
+  /** Mansioni names, alphabetical, `[]` if none (spec 0271). */
+  job_roles: string[]
   roles: string[]
   business_functions: Array<{ id: number; name: string; is_manager: boolean }>
   operational_site: { id: number; label: string | null } | null

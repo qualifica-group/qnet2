@@ -2,9 +2,6 @@
 
 namespace App\DataObjects\Users;
 
-use App\Enums\QualificationTypeEnum;
-use App\Enums\RelationshipTypeEnum;
-
 /**
  * The nested `employment` object submitted alongside a user write (spec
  * 0015): Profile / Contractual relationship / Contractual data.
@@ -46,14 +43,30 @@ use App\Enums\RelationshipTypeEnum;
  * lets a row's `product_category_id` be null ("every category of this row's
  * function").
  *
+ * `jobRoleIds` (spec 0271 D-2, replacing the free-text `job_description`)
+ * carries the SAME per-field tri-state as `reportsToIds`: a pivot
+ * (`employment_profile_job_role`), absent = untouched, empty = cleared.
+ *
+ * `businessFunctionIds` (spec 0275 D-3) carries the same tri-state for the
+ * membership pivot `business_function_user` (keyed on the user).
+ *
  * `coversAllProductCategories` (spec 0129 D-1) is a THIRD way to widen the
- * competence: a plain scalar column, no tri-state (D-10, same as `isManager`
- * — absent on write reads as false). EmploymentWriter enforces D-2 (true =>
+ * competence: a plain scalar column, no tri-state (D-10 — absent on write
+ * reads as false). EmploymentWriter enforces D-2 (true =>
  * the rows are cleared) rather than trusting the request to have emptied
  * `productLines` itself.
  *
- * `isAssignable` (spec 0194 D-3) is the opposite of `isManager` on purpose:
- * null = the key was absent, the column is left untouched (the DB default
+ * `relationship_type`/`company_id` are NOT carried here any more (spec 0272
+ * D-2): they are the copy of the current contract condition, written only by
+ * the contract service. `iban`/`ibanHolder` (D-6) follow the per-field
+ * tri-state of the pivots: absent = untouched, null = cleared; the request
+ * only lets them through for an actor holding `users.manageCompensation`.
+ *
+ * `managedBusinessFunctionIds` (spec 0276 D-5) carries the same tri-state as
+ * `businessFunctionIds` but is written on `business_functions.manager_id`, not
+ * on a pivot of the profile.
+ *
+ * `isAssignable` (spec 0194 D-3) reads null on purpose: null = the key was absent, the column is left untouched (the DB default
  * true applies on a new row). Absent must never read as false, or any client
  * omitting the key would silently take the user out of every assignment pool.
  */
@@ -61,31 +74,39 @@ final readonly class EmploymentData
 {
     /**
      * @param  array<int, int>  $reportsToIds
+     * @param  array<int, int>  $jobRoleIds
+     * @param  array<int, int>  $businessFunctionIds
+     * @param  array<int, int>  $managedBusinessFunctionIds
      * @param  array<int, int>  $remoteOperationalSiteIds
      * @param  array<int, array{business_function_id: int, product_category_id: int|null}>  $productLines
      */
     public function __construct(
         public bool $delete = false,
-        public bool $isManager = false,
         public bool $coversAllProductCategories = false,
         public ?bool $isAssignable = null,
-        public ?string $jobDescription = null,
         public bool $reportsToIdsProvided = false,
         public array $reportsToIds = [],
-        public ?RelationshipTypeEnum $relationshipType = null,
-        public ?int $companyId = null,
         public bool $primaryOperationalSiteIdProvided = false,
         public ?int $primaryOperationalSiteId = null,
         public bool $remoteOperationalSiteIdsProvided = false,
         public array $remoteOperationalSiteIds = [],
         public bool $productLinesProvided = false,
         public array $productLines = [],
-        public ?QualificationTypeEnum $qualificationType = null,
+        public bool $jobRoleIdsProvided = false,
+        public array $jobRoleIds = [],
+        public bool $businessFunctionIdsProvided = false,
+        public array $businessFunctionIds = [],
+        public bool $managedBusinessFunctionIdsProvided = false,
+        public array $managedBusinessFunctionIds = [],
         public ?string $hiredAt = null,
         public ?string $terminatedAt = null,
         public ?int $standardDailyMinutes = null,
         public ?int $breakDailyMinutes = null,
         public ?string $hourlyCost = null,
+        public bool $ibanProvided = false,
+        public ?string $iban = null,
+        public bool $ibanHolderProvided = false,
+        public ?string $ibanHolder = null,
     ) {}
 
     /**
@@ -109,12 +130,7 @@ final readonly class EmploymentData
     public function attributes(): array
     {
         $attributes = [
-            'is_manager' => $this->isManager,
             'covers_all_product_categories' => $this->coversAllProductCategories,
-            'job_description' => $this->jobDescription,
-            'relationship_type' => $this->relationshipType,
-            'company_id' => $this->companyId,
-            'qualification_type' => $this->qualificationType,
             'hired_at' => $this->hiredAt,
             'terminated_at' => $this->terminatedAt,
             'standard_daily_minutes' => $this->standardDailyMinutes,
@@ -124,6 +140,14 @@ final readonly class EmploymentData
 
         if ($this->isAssignable !== null) {
             $attributes['is_assignable'] = $this->isAssignable;
+        }
+
+        if ($this->ibanProvided) {
+            $attributes['iban'] = $this->iban;
+        }
+
+        if ($this->ibanHolderProvided) {
+            $attributes['iban_holder'] = $this->ibanHolder;
         }
 
         return $attributes;

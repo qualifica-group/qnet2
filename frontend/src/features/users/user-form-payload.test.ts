@@ -57,22 +57,22 @@ const TEST_PASSWORD = 'x'.repeat(12)
 
 /** Blank employment sub-form, mirroring `EMPTY_EMPLOYMENT` in `user-form-defaults.ts`. */
 const emptyEmployment: UserFormValues['employment'] = {
-  is_manager: false,
-  job_description: '',
+  job_role_ids: [],
+  business_function_ids: [],
+  managed_business_function_ids: [],
   reports_to_ids: [],
-  relationship_type: null,
-  company_id: null,
   primary_operational_site_id: null,
   remote_operational_site_ids: [],
   is_assignable: true,
   covers_all_product_categories: false,
   product_lines: [],
-  qualification_type: null,
   hired_at: '',
   terminated_at: '',
   standard_daily_minutes: null,
   break_daily_minutes: null,
   hourly_cost: null,
+  iban: '',
+  iban_holder: '',
 }
 
 const formValues: UserFormValues = {
@@ -96,6 +96,7 @@ function original(overrides: Partial<UserDetailWithPermissions> = {}): UserDetai
     roles: [],
     avatar_url: null,
     must_set_password: false,
+    managed_business_functions: [],
     created_at: null,
     permissions: {
       resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
@@ -200,33 +201,28 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
         ...formValues,
         employment: {
           ...emptyEmployment,
-          relationship_type: 'employee',
-          company_id: 5,
           primary_operational_site_id: 8,
           remote_operational_site_ids: [11, 12],
-          qualification_type: 'coordinator',
           hired_at: '2026-01-15',
           terminated_at: '',
           standard_daily_minutes: 480,
           break_daily_minutes: 30,
-          job_description: 'Backend engineer',
+          job_role_ids: [4, 7],
         },
       },
       draft(),
     )
 
     expect(payload.employment).toEqual({
-      is_manager: false,
-      job_description: 'Backend engineer',
+      job_role_ids: [4, 7],
+      business_function_ids: [],
+      managed_business_function_ids: [],
       reports_to_ids: [],
-      relationship_type: 'employee',
-      company_id: 5,
       primary_operational_site_id: 8,
       remote_operational_site_ids: [11, 12],
       is_assignable: true,
       covers_all_product_categories: false,
       product_lines: [],
-      qualification_type: 'coordinator',
       hired_at: '2026-01-15',
       terminated_at: null,
       standard_daily_minutes: 480,
@@ -345,29 +341,19 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
     expect(payload.employment.product_lines).toEqual([{ business_function_id: 4, product_category_id: null }])
   })
 
-  it('spec 0166 D-5 — force-empties reports_to_ids client-side when is_manager is true', () => {
+  // REQUIREMENT CHANGED (spec 0276 D-2): the manager flag is gone, so reports_to_ids is never force-emptied.
+  it('keeps reports_to_ids and sends the managed function ids (spec 0276 D-5)', () => {
     const payload = buildCreatePayload(
       {
         ...formValues,
-        employment: { ...emptyEmployment, is_manager: true, reports_to_ids: [42] },
-      },
-      draft(),
-    )
-
-    expect(payload.employment.is_manager).toBe(true)
-    expect(payload.employment.reports_to_ids).toEqual([])
-  })
-
-  it('keeps reports_to_ids when is_manager is false', () => {
-    const payload = buildCreatePayload(
-      {
-        ...formValues,
-        employment: { ...emptyEmployment, is_manager: false, reports_to_ids: [42, 43] },
+        employment: { ...emptyEmployment, reports_to_ids: [42, 43], managed_business_function_ids: [5, 6] },
       },
       draft(),
     )
 
     expect(payload.employment.reports_to_ids).toEqual([42, 43])
+    expect(payload.employment.managed_business_function_ids).toEqual([5, 6])
+    expect(payload.employment).not.toHaveProperty('is_manager')
   })
 })
 
@@ -387,24 +373,22 @@ describe('buildUpdatePayload — employment (spec 0015)', () => {
         ...formValues,
         password: '',
         password_confirmation: '',
-        employment: { ...formValues.employment, job_description: 'Analyst' },
+        employment: { ...formValues.employment, job_role_ids: [9] },
       },
       original(),
       draft(),
     )
 
     expect(payload.employment).toEqual({
-      is_manager: false,
-      job_description: 'Analyst',
+      job_role_ids: [9],
+      business_function_ids: [],
+      managed_business_function_ids: [],
       reports_to_ids: [],
-      relationship_type: null,
-      company_id: null,
       primary_operational_site_id: null,
       remote_operational_site_ids: [],
       is_assignable: true,
       covers_all_product_categories: false,
       product_lines: [],
-      qualification_type: null,
       hired_at: null,
       terminated_at: null,
       standard_daily_minutes: null,
@@ -466,5 +450,44 @@ describe('employment.hourly_cost (spec 0272 AC-002)', () => {
     )
 
     expect(payload.employment?.hourly_cost).toBe(31.25)
+  })
+})
+
+/** Spec 0272 D-6/D-5: the payment account travels only when it changed. */
+describe('employment payment account (spec 0272)', () => {
+  it('omits iban and iban_holder on create while empty', () => {
+    const payload = buildCreatePayload(formValues, draft())
+    expect(payload.employment).not.toHaveProperty('iban')
+    expect(payload.employment).not.toHaveProperty('iban_holder')
+  })
+
+  it('sends iban and iban_holder on create once typed', () => {
+    const payload = buildCreatePayload(
+      { ...formValues, employment: { ...emptyEmployment, iban: 'IT60X0542811101000000123456', iban_holder: 'Ada Lovelace' } },
+      draft(),
+    )
+    expect(payload.employment).toMatchObject({ iban: 'IT60X0542811101000000123456', iban_holder: 'Ada Lovelace' })
+  })
+
+  it('does not send the payment account on a PATCH that did not touch it (no manageCompensation, no 403)', () => {
+    const payload = buildUpdatePayload(
+      { ...formValues, password: '', password_confirmation: '', employment: { ...emptyEmployment, primary_operational_site_id: 8 } },
+      original(),
+      draft(),
+    )
+    expect(payload.employment).toBeDefined()
+    expect(payload.employment).not.toHaveProperty('iban')
+    expect(payload.employment).not.toHaveProperty('iban_holder')
+  })
+
+  it('clears a stored iban by sending null when the field is emptied', () => {
+    const base = original()
+    const withIban = { ...base, employment: { ...base.employment!, iban: 'IT60X0542811101000000123456' } }
+    const payload = buildUpdatePayload(
+      { ...formValues, password: '', password_confirmation: '', employment: { ...emptyEmployment, iban: '' } },
+      withIban,
+      draft(),
+    )
+    expect(payload.employment).toMatchObject({ iban: null })
   })
 })

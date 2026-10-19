@@ -1,5 +1,5 @@
 import type { Control, FieldPath, FieldPathValue, FieldValues } from 'react-hook-form'
-import { FormControl } from '@/components/ui/form'
+import { FormControl, FormDescription } from '@/components/ui/form'
 import { AsyncPaginatedMultiSelect } from '@/components/ui/async-paginated-multi-select'
 import { MetaField } from '@/features/authorization/MetaField'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
@@ -39,6 +39,8 @@ interface RelationMultiSelectFieldProps<
   showAvatar?: boolean
   /** Ids the option list drops client-side (spec 0118 AC-035); see `AsyncPaginatedMultiSelect.excludeIds`. */
   excludeIds?: number[]
+  /** Short hint rendered under the picker. */
+  description?: string
 }
 
 /** Renders `{id, name}` relation refs as the `ForSelectItem` shape `AsyncPaginatedMultiSelect` hydrates from. */
@@ -72,11 +74,18 @@ export function RelationMultiSelectField<
   retryLabel,
   showAvatar = false,
   excludeIds,
+  description,
 }: RelationMultiSelectFieldProps<TFieldValues, TName>) {
   const { quickCreated, renderAction } = useQuickCreateAction(resource)
 
   return (
-    <MetaField control={control} name={name} metaKey={metaKey} label={label}>
+    <MetaField
+      control={control}
+      name={name}
+      metaKey={metaKey}
+      label={label}
+      description={description ? <FormDescription>{description}</FormDescription> : undefined}
+    >
       {({ field, disabled }) => {
         const isDisabled = disabled || forceDisabled
         const value: number[] = field.value

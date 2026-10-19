@@ -55,6 +55,14 @@ class BusinessFunction extends BaseModel
         return $this->belongsToMany(User::class, 'business_function_user');
     }
 
+    /**
+     * @return BelongsToMany<Company, $this>
+     */
+    public function companies(): BelongsToMany
+    {
+        return $this->belongsToMany(Company::class, 'business_function_company');
+    }
+
     public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_id');

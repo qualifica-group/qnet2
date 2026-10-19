@@ -242,7 +242,7 @@ it('AC-012: competence row on an inactive category is rejected; the saved one pa
     $function = BusinessFunction::factory()->create();
     $saved = ProductCategory::factory()->create(['business_function_id' => $function->id]);
     $target = User::factory()->create();
-    EmploymentProfile::factory()->for($target)->competentIn($function, $saved)->create();
+    EmploymentProfile::factory()->for($target)->competentIn($function, $saved)->memberOf($function)->create();
     $row = fn (ProductCategory $category): array => ['business_function_id' => $function->id, 'product_category_id' => $category->id];
 
     $saved->update(['is_active' => false]);

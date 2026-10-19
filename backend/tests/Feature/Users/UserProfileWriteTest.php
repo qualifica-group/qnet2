@@ -66,6 +66,7 @@ it('create: 201 persists card + contact + address and returns the tree', functio
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/users', userAccountPayload([
+        'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()]],
         'personal_data' => fullProfilePayload(),
     ]))->assertCreated()
         ->assertJsonPath('data.personal_data.type', 'individual')
@@ -109,6 +110,7 @@ it('create: derives users.name from the submitted card', function () {
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/users', userAccountPayload([
+        'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()]],
         'personal_data' => fullProfilePayload(['first_name' => 'Ada', 'last_name' => 'Lovelace']),
     ]))->assertCreated()
         ->assertJsonPath('data.name', 'Ada Lovelace');
@@ -396,6 +398,7 @@ it('create: accepts a valid geo reference (city_id) and persists it', function (
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/users', userAccountPayload([
+        'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()]],
         'personal_data' => fullProfilePayload([
             'addresses' => [['line1' => 'Geo St', 'city_id' => $city->id]],
         ]),

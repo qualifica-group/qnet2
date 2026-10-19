@@ -37,6 +37,8 @@ interface ContactFormProps {
   onCancel: () => void
   /** True while an immediate write is in flight: disables the actions. */
   submitting?: boolean
+  /** Shows the "work" checkbox (spec 0272 D-7): only the user's form does, other owners leave `is_work` untouched. */
+  showWorkFlag?: boolean
 }
 
 /**
@@ -45,7 +47,7 @@ interface ContactFormProps {
  * through `onSubmit`; the manager decides whether to buffer them or persist them
  * immediately. Owner-agnostic.
  */
-export function ContactForm({ contact, onSubmit, onCancel, submitting = false }: ContactFormProps) {
+export function ContactForm({ contact, onSubmit, onCancel, submitting = false, showWorkFlag = false }: ContactFormProps) {
   const { t } = useTranslation()
   const typeOptions = useEnumOptions('contact_type')
   const schema = useMemo(() => buildContactSchema(t), [t])
@@ -63,6 +65,7 @@ export function ContactForm({ contact, onSubmit, onCancel, submitting = false }:
       value: contact?.value ?? '',
       label: contact?.label ?? '',
       is_primary: contact?.is_primary ?? false,
+      is_work: contact?.is_work ?? false,
     },
   })
 
@@ -73,6 +76,7 @@ export function ContactForm({ contact, onSubmit, onCancel, submitting = false }:
       value: values.value,
       label: values.label || null,
       is_primary: values.is_primary,
+      ...(showWorkFlag ? { is_work: values.is_work } : contact?.is_work !== undefined ? { is_work: contact.is_work } : {}),
     })
   }
 
@@ -159,6 +163,27 @@ export function ContactForm({ contact, onSubmit, onCancel, submitting = false }:
             </FormItem>
           )}
         />
+
+        {showWorkFlag ? (
+          <FormField
+            control={form.control}
+            name="is_work"
+            render={({ field }) => (
+              <FormItem>
+                <label className="flex items-center gap-2 text-sm font-normal">
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-primary"
+                    checked={field.value ?? false}
+                    onChange={(event) => field.onChange(event.target.checked)}
+                  />
+                  {t('personalData.contacts.work')}
+                </label>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : null}
 
         <div className="flex justify-end gap-2">
           <Button

@@ -1,0 +1,63 @@
+/**
+ * Catalogo CCNL (spec 0272). File affiancato per mantenere `it.ts` entro i limiti dimensionali.
+ */
+
+export const collectiveAgreements = {
+  title: 'CCNL',
+  subtitle: 'Sfoglia, filtra e gestisci i CCNL e i relativi livelli.',
+  forbidden: 'Non hai i permessi per visualizzare i CCNL.',
+  columns: {
+    name: 'Nome',
+    code: 'Codice',
+    levels_count: 'Livelli',
+    created_at: 'Creato il',
+    updated_at: 'Aggiornato il',
+  },
+  detail: {
+    title: 'Dettaglio CCNL',
+    subtitle: 'Dettaglio del CCNL selezionato.',
+    loadError: 'Impossibile caricare il CCNL. Riprova.',
+    created_at: 'Creato il',
+    updated_at: 'Aggiornato il',
+  },
+  form: {
+    newCollectiveAgreement: 'Nuovo CCNL',
+    createTitle: 'Crea CCNL',
+    createSubtitle: 'Aggiungi un nuovo CCNL con i suoi livelli.',
+    name: 'Nome',
+    code: 'Codice',
+    levels: 'Livelli',
+    levelsEmpty: 'Nessun livello.',
+    levelAdd: 'Aggiungi livello',
+    levelCode: 'Codice livello',
+    levelDescription: 'Descrizione',
+    levelCodeN: 'Codice del livello {{n}}',
+    levelDescriptionN: 'Descrizione del livello {{n}}',
+    levelMoveUp: 'Sposta su il livello {{n}}',
+    levelMoveDown: 'Sposta giù il livello {{n}}',
+    levelRemove: 'Rimuovi il livello {{n}}',
+    save: 'Salva',
+    saving: 'Salvataggio…',
+    cancel: 'Annulla',
+    created: 'CCNL creato con successo.',
+    updated: 'CCNL aggiornato con successo.',
+    deleted: 'CCNL eliminato con successo.',
+    nameRequired: 'Il nome è obbligatorio.',
+    nameMax: 'Il nome può contenere al massimo 191 caratteri.',
+    codeMax: 'Il codice può contenere al massimo 50 caratteri.',
+    levelCodeRequired: 'Il codice del livello è obbligatorio.',
+    levelCodeMax: 'Il codice del livello può contenere al massimo 50 caratteri.',
+    levelDescriptionMax: 'La descrizione può contenere al massimo 191 caratteri.',
+    levelsInUse: 'Un livello usato da una condizione contrattuale non può essere rimosso.',
+    genericError: 'Si è verificato un errore. Riprova.',
+    deleteError: 'Impossibile eliminare il CCNL. Riprova.',
+    deleteForbidden: 'Non puoi eliminare questo CCNL.',
+    deleteInUse: 'Impossibile eliminare: un livello del CCNL è usato da una condizione contrattuale.',
+    sections: {
+      identity: {
+        title: 'Dettagli',
+        description: 'Nome, codice e livelli.',
+      },
+    },
+  },
+}

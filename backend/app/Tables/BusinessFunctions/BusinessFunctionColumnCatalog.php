@@ -110,6 +110,17 @@ final class BusinessFunctionColumnCatalog
                 'filterType' => 'set',
             ],
             [
+                // Companies (spec 0271), aggregated from the companies()
+                // belongsToMany by denomination. Not sortable (to-many).
+                'id' => 'companies',
+                'label' => 'businessFunctions.columns.companies',
+                'type' => 'tags',
+                'visible' => true,
+                'sortable' => false,
+                'filterable' => true,
+                'filterType' => 'set',
+            ],
+            [
                 'id' => 'created_at',
                 'label' => 'businessFunctions.columns.created_at',
                 'type' => 'datetime',
@@ -134,6 +145,7 @@ final class BusinessFunctionColumnCatalog
             ['columnId' => 'parent', 'type' => 'set'],
             ['columnId' => 'users', 'type' => 'set'],
             ['columnId' => 'operational_sites', 'type' => 'set'],
+            ['columnId' => 'companies', 'type' => 'set'],
             ['columnId' => 'created_at', 'type' => 'date'],
         ];
     }

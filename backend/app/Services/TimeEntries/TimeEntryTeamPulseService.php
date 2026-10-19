@@ -103,10 +103,11 @@ final class TimeEntryTeamPulseService
 
     /**
      * `employment.primaryOperationalSite`/`employment.reportsTo` nested eager
-     * loads: the profile (job_description) plus its at-most-one physical site
-     * (D-3) and its manager set (spec 0166 D-7) in the same round trip as
-     * `roles`/`avatar`, so the whole member list costs exactly 6 queries
-     * (users, employment, primaryOperationalSite, reportsTo, roles, avatar)
+     * loads: the profile plus its at-most-one physical site
+     * (D-3), its manager set (spec 0166 D-7) and its job roles (spec 0271
+     * D-11) in the same round trip as `roles`/`avatar`, so the whole member
+     * list costs exactly 7 queries (users, employment, primaryOperationalSite,
+     * reportsTo, jobRoles, roles, avatar)
      * no matter how many members are in $memberIds.
      *
      * @param  list<int>  $memberIds
@@ -116,7 +117,7 @@ final class TimeEntryTeamPulseService
     {
         return User::query()
             ->whereIn('id', $memberIds)
-            ->with(['employment.primaryOperationalSite', 'employment.reportsTo:id,name', 'roles', 'avatar'])
+            ->with(['employment.primaryOperationalSite', 'employment.reportsTo:id,name', 'employment.jobRoles', 'roles', 'avatar'])
             ->orderBy('name')
             ->get();
     }
@@ -196,7 +197,7 @@ final class TimeEntryTeamPulseService
         return new TimeEntryTeamMemberData(
             user: $member,
             managerIds: $managerIds,
-            jobDescription: $member->employment?->job_description,
+            jobRoles: $member->employment?->jobRoles->pluck('name')->sort()->values()->all() ?? [],
             businessFunctions: $businessFunctions,
             operationalSite: $member->employment?->primaryOperationalSite->first(),
             coverage: [

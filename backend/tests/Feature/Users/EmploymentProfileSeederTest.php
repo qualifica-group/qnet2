@@ -40,16 +40,15 @@ it('seeds the manager hierarchy and leaves lookup-dependent columns empty when n
     $this->seed(DemoEmploymentProfileSeeder::class);
 
     // was: 'seeds at least 2 managers and every other seeded user reports to one or more of them (no self-reference)'
-    $managers = EmploymentProfile::where('is_manager', true)->get();
+    // REQUIREMENT CHANGED (spec 0276): the flag is gone, the top of the demo
+    // hierarchy is simply whoever reports to no one.
+    $profiles = EmploymentProfile::with('reportsTo')->get();
+    $managers = $profiles->filter(fn (EmploymentProfile $profile): bool => $profile->reportsToIds === []);
     expect($managers->count())->toBeGreaterThanOrEqual(2);
-
-    foreach ($managers as $manager) {
-        expect($manager->reportsToIds)->toBe([]);
-    }
 
     $managerUserIds = $managers->pluck('user_id')->all();
 
-    $subordinates = EmploymentProfile::where('is_manager', false)->get();
+    $subordinates = $profiles->reject(fn (EmploymentProfile $profile): bool => $profile->reportsToIds === []);
     expect($subordinates->count())->toBeGreaterThanOrEqual(1);
 
     foreach ($subordinates as $subordinate) {
@@ -207,20 +206,12 @@ it('is idempotent — re-running twice never duplicates rows and keeps the wildc
 // Factory states
 // ---------------------------------------------------------------------------
 
-it('EmploymentProfileFactory::manager() forces is_manager true and reports_to empty', function () {
-    $employment = EmploymentProfile::factory()->manager()->create();
-
-    expect($employment->is_manager)->toBeTrue()
-        ->and($employment->reportsToIds)->toBe([]);
-});
-
 it('EmploymentProfileFactory::reportsTo() points to the given manager(s)', function () {
     $manager = User::factory()->create();
 
     $employment = EmploymentProfile::factory()->reportsTo($manager)->create();
 
-    expect($employment->is_manager)->toBeFalse()
-        ->and($employment->reportsToIds)->toBe([$manager->id]);
+    expect($employment->reportsToIds)->toBe([$manager->id]);
 });
 
 it('0166: EmploymentProfileFactory::reportsTo() accepts several managers', function () {
@@ -232,10 +223,9 @@ it('0166: EmploymentProfileFactory::reportsTo() accepts several managers', funct
     expect($employment->reportsToIds)->toEqualCanonicalizing([$managerA->id, $managerB->id]);
 });
 
-it('UserFactory::withEmployment()/manager()/reportsTo() attach an employment profile', function () {
-    $manager = User::factory()->manager()->create();
-    expect($manager->employment)->not->toBeNull()
-        ->and($manager->employment->is_manager)->toBeTrue();
+it('UserFactory::withEmployment()/reportsTo() attach an employment profile', function () {
+    $manager = User::factory()->withEmployment()->create();
+    expect($manager->employment)->not->toBeNull();
 
     $subordinate = User::factory()->reportsTo($manager)->create();
     expect($subordinate->employment->reportsToIds)->toBe([$manager->id]);

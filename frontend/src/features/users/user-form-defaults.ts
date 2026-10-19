@@ -24,27 +24,31 @@ const EMPTY_REMOTE_SITE_IDS: number[] = []
 /** Same stable-reference reasoning for the reports-to id array (spec 0166). */
 const EMPTY_REPORTS_TO_IDS: number[] = []
 
+const EMPTY_JOB_ROLE_IDS: number[] = []
+const EMPTY_BUSINESS_FUNCTION_IDS: number[] = []
+const EMPTY_MANAGED_FUNCTION_IDS: number[] = []
+
 /** Same stable-reference reasoning for the competence row field (spec 0111). */
 const EMPTY_PRODUCT_LINES: CompetenceLineRow[] = []
 
 /** A blank employment sub-form, used for both create and an edit user with no profile yet. */
 export const EMPTY_EMPLOYMENT: EmploymentFormValues = {
-  is_manager: false,
-  job_description: '',
+  job_role_ids: EMPTY_JOB_ROLE_IDS,
+  business_function_ids: EMPTY_BUSINESS_FUNCTION_IDS,
+  managed_business_function_ids: EMPTY_MANAGED_FUNCTION_IDS,
   reports_to_ids: EMPTY_REPORTS_TO_IDS,
-  relationship_type: null,
-  company_id: null,
   primary_operational_site_id: null,
   remote_operational_site_ids: EMPTY_REMOTE_SITE_IDS,
   is_assignable: true,
   covers_all_product_categories: false,
   product_lines: EMPTY_PRODUCT_LINES,
-  qualification_type: null,
   hired_at: '',
   terminated_at: '',
   standard_daily_minutes: null,
   break_daily_minutes: null,
   hourly_cost: null,
+  iban: '',
+  iban_holder: '',
 }
 
 /**
@@ -66,6 +70,7 @@ function productLinesToRows(lines: EmploymentProductLine[] | undefined): Compete
 /** The persisted user as the edit form holds it (the in-place detail's clean state). */
 export function editDefaults(user: UserDetail, customFieldDefaults: Record<string, CustomFieldValue>): UserFormValues {
   const employment = user.employment
+  const managedIds = user.managed_business_functions.map((item) => item.id)
   return {
     email: user.email,
     locale: user.locale,
@@ -75,24 +80,24 @@ export function editDefaults(user: UserDetail, customFieldDefaults: Record<strin
     password_confirmation: '',
     employment: employment
       ? {
-          is_manager: employment.is_manager,
-          job_description: employment.job_description ?? '',
+          job_role_ids: employment.job_role_ids,
+          business_function_ids: employment.business_function_ids,
+          managed_business_function_ids: managedIds,
           reports_to_ids: employment.reports_to_ids,
-          relationship_type: employment.relationship_type,
-          company_id: employment.company_id,
           primary_operational_site_id: employment.primary_operational_site_id,
           remote_operational_site_ids: employment.remote_operational_site_ids,
           is_assignable: employment.is_assignable,
           covers_all_product_categories: employment.covers_all_product_categories,
           product_lines: productLinesToRows(employment.product_lines),
-          qualification_type: employment.qualification_type,
           hired_at: employment.hired_at ?? '',
           terminated_at: employment.terminated_at ?? '',
           standard_daily_minutes: employment.standard_daily_minutes,
           break_daily_minutes: employment.break_daily_minutes,
           hourly_cost: employment.hourly_cost,
+          iban: employment.iban ?? '',
+          iban_holder: employment.iban_holder ?? '',
         }
-      : EMPTY_EMPLOYMENT,
+      : { ...EMPTY_EMPLOYMENT, managed_business_function_ids: managedIds },
     custom_fields: customFieldDefaults,
   }
 }

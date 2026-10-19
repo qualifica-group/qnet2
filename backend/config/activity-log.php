@@ -4,6 +4,7 @@ use App\Models\AgentFiscalProfile;
 use App\Models\Attribute;
 use App\Models\BusinessFunction;
 use App\Models\Campaign;
+use App\Models\CollectiveAgreement;
 use App\Models\CommissionConfiguration;
 use App\Models\CommissionSettlement;
 use App\Models\Company;
@@ -20,6 +21,8 @@ use App\Models\FieldChangeRequest;
 use App\Models\FinancialAccount;
 use App\Models\Invoice;
 use App\Models\InvoiceTag;
+use App\Models\JobActivity;
+use App\Models\JobRole;
 use App\Models\Lead;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
@@ -94,6 +97,17 @@ return [
         ],
         'business-functions' => [
             'model' => BusinessFunction::class,
+        ],
+        // spec 0271: HR org structure catalogues.
+        'job-roles' => [
+            'model' => JobRole::class,
+        ],
+        'job-activities' => [
+            'model' => JobActivity::class,
+        ],
+        // spec 0272: collective agreements (CCNL).
+        'collective-agreements' => [
+            'model' => CollectiveAgreement::class,
         ],
         'campaigns' => [
             'model' => Campaign::class,

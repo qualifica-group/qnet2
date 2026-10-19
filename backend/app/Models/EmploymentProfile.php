@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\QualificationTypeEnum;
 use App\Enums\RelationshipTypeEnum;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
@@ -31,13 +30,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 #[Fillable([
     'user_id',
-    'is_manager',
     'covers_all_product_categories',
     'is_assignable',
-    'job_description',
     'relationship_type',
     'company_id',
-    'qualification_type',
+    'iban',
+    'iban_holder',
     'hired_at',
     'terminated_at',
     'standard_daily_minutes',
@@ -50,16 +48,24 @@ class EmploymentProfile extends BaseModel
     use HasFactory, LogsModelActivity;
 
     /**
+     * The IBAN is encrypted at rest (spec 0272 D-6). The IBAN and its holder are
+     * compensation data (D-5): hidden so the activity log (which excludes
+     * hidden attributes) and default serialization never carry them.
+     *
+     * @var list<string>
+     */
+    protected $hidden = ['iban', 'iban_holder'];
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
     {
         return [
-            'is_manager' => 'boolean',
             'covers_all_product_categories' => 'boolean',
             'is_assignable' => 'boolean',
             'relationship_type' => RelationshipTypeEnum::class,
-            'qualification_type' => QualificationTypeEnum::class,
+            'iban' => 'encrypted',
             'hired_at' => 'date:Y-m-d',
             'terminated_at' => 'date:Y-m-d',
             'standard_daily_minutes' => 'integer',
@@ -89,6 +95,16 @@ class EmploymentProfile extends BaseModel
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    /**
+     * Contractual condition history (spec 0272 D-1), latest start first.
+     *
+     * @return HasMany<EmploymentContract, $this>
+     */
+    public function contracts(): HasMany
+    {
+        return $this->hasMany(EmploymentContract::class)->orderByDesc('starts_on');
     }
 
     /**
@@ -141,6 +157,51 @@ class EmploymentProfile extends BaseModel
     }
 
     /**
+     * The job roles assigned to this person (spec 0271 D-2).
+     *
+     * @return BelongsToMany<JobRole, $this>
+     */
+    public function jobRoles(): BelongsToMany
+    {
+        return $this->belongsToMany(JobRole::class, 'employment_profile_job_role');
+    }
+
+    /**
+     * The business functions this person belongs to (spec 0275 D-3). The pivot
+     * `business_function_user` is keyed on `user_id`, so the parent key is the
+     * profile's `user_id`: the membership survives the profile row (AC-008).
+     *
+     * @return BelongsToMany<BusinessFunction, $this>
+     */
+    public function businessFunctions(): BelongsToMany
+    {
+        return $this->belongsToMany(BusinessFunction::class, 'business_function_user', 'user_id', 'business_function_id', 'user_id');
+    }
+
+    /**
+     * Read-only proxy onto the functions this person manages (spec 0276), for
+     * the field-permission catalogue; reads the owner's `managedBusinessFunctions`
+     * relation, which the request eager-loads (and links back via `user`).
+     *
+     * @return Attribute<array<int, int>, never>
+     */
+    public function managedBusinessFunctionIds(): Attribute
+    {
+        return Attribute::get(fn (): array => $this->user->managedBusinessFunctions->pluck('id')->all());
+    }
+
+    /**
+     * Read-only proxy onto the membership for the field-permission catalogue
+     * (spec 0275), same reason as jobRoleIds() below.
+     *
+     * @return Attribute<array<int, int>, never>
+     */
+    public function businessFunctionIds(): Attribute
+    {
+        return Attribute::get(fn (): array => $this->businessFunctions->pluck('id')->all());
+    }
+
+    /**
      * Read-only proxy onto the pivot for the field-permission catalogue
      * (spec 0103 D-9, replacing the former `operational_site_id` column):
      * EnforcesFieldPermissions::readNestedPath() resolves
@@ -184,6 +245,19 @@ class EmploymentProfile extends BaseModel
                 ->pluck('id')
                 ->all()
         );
+    }
+
+    /**
+     * Read-only proxy onto the `jobRoles` pivot (spec 0271 D-10), the same
+     * reason as reportsToIds() below: EnforcesFieldPermissions resolves
+     * `employment.job_role_ids` down to this accessor and needs a plain array.
+     * Reads off the already-loaded `jobRoles` collection.
+     *
+     * @return Attribute<array<int, int>, never>
+     */
+    public function jobRoleIds(): Attribute
+    {
+        return Attribute::get(fn (): array => $this->jobRoles->pluck('id')->all());
     }
 
     /**

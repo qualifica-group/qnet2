@@ -20,6 +20,27 @@ return [
             'permission' => 'business-functions.view',
         ],
         [
+            'key' => 'job-roles',
+            'label' => 'navigation.jobRoles',
+            'icon' => 'id-card',
+            'route' => '/job-roles',
+            'permission' => 'job-roles.view',
+        ],
+        [
+            'key' => 'job-activities',
+            'label' => 'navigation.jobActivities',
+            'icon' => 'list-checks',
+            'route' => '/job-activities',
+            'permission' => 'job-activities.view',
+        ],
+        [
+            'key' => 'collective-agreements',
+            'label' => 'navigation.collectiveAgreements',
+            'icon' => 'file-text',
+            'route' => '/collective-agreements',
+            'permission' => 'collective-agreements.view',
+        ],
+        [
             'key' => 'sectors',
             'label' => 'navigation.sectors',
             'icon' => 'list-tree',

@@ -3,7 +3,6 @@
 namespace App\Tables\Users;
 
 use App\Enums\LocaleEnum;
-use App\Enums\QualificationTypeEnum;
 use App\Enums\RelationshipTypeEnum;
 
 /**
@@ -241,19 +240,19 @@ final class UserColumnCatalog
                 'options' => RelationshipTypeEnum::values(),
             ],
             [
-                'id' => 'qualification_type',
-                'label' => 'users.columns.qualification_type',
+                'id' => 'employment_status',
+                'label' => 'users.columns.employment_status',
                 'type' => 'enum',
                 'visible' => false,
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'set',
-                'options' => QualificationTypeEnum::values(),
+                'options' => UserEmploymentStatusColumn::VALUES,
             ],
             [
-                'id' => 'is_manager',
-                'label' => 'users.columns.is_manager',
-                'type' => 'boolean',
+                'id' => 'managed_business_functions',
+                'label' => 'users.columns.managed_business_functions',
+                'type' => 'text',
                 'visible' => false,
                 'sortable' => true,
                 'filterable' => true,
@@ -262,6 +261,15 @@ final class UserColumnCatalog
             [
                 'id' => 'reports_to',
                 'label' => 'users.columns.reports_to',
+                'type' => 'text',
+                'visible' => false,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
+            ],
+            [
+                'id' => 'job_roles',
+                'label' => 'users.columns.job_roles',
                 'type' => 'text',
                 'visible' => false,
                 'sortable' => true,
@@ -319,9 +327,10 @@ final class UserColumnCatalog
             ['columnId' => 'company', 'type' => 'set'],
             ['columnId' => 'operational_site', 'type' => 'text'],
             ['columnId' => 'relationship_type', 'type' => 'set', 'options' => RelationshipTypeEnum::values()],
-            ['columnId' => 'qualification_type', 'type' => 'set', 'options' => QualificationTypeEnum::values()],
-            ['columnId' => 'is_manager', 'type' => 'set'],
+            ['columnId' => 'employment_status', 'type' => 'set', 'options' => UserEmploymentStatusColumn::VALUES],
+            ['columnId' => 'managed_business_functions', 'type' => 'set'],
             ['columnId' => 'reports_to', 'type' => 'set'],
+            ['columnId' => 'job_roles', 'type' => 'set'],
             ['columnId' => 'hired_at', 'type' => 'date'],
             ['columnId' => 'terminated_at', 'type' => 'date'],
         ];

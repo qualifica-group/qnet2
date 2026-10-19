@@ -19,6 +19,7 @@ final readonly class CreateBusinessFunctionData
     /**
      * @param  array<int, int>|null  $users
      * @param  array<int, int>|null  $operationalSites
+     * @param  array<int, int>|null  $companyIds
      */
     public function __construct(
         public string $name,
@@ -27,6 +28,7 @@ final readonly class CreateBusinessFunctionData
         public ?int $parentId = null,
         public ?array $users = null,
         public ?array $operationalSites = null,
+        public ?array $companyIds = null,
     ) {}
 
     /**
@@ -49,6 +51,9 @@ final readonly class CreateBusinessFunctionData
             operationalSites: array_key_exists('operational_sites', $data)
                 ? array_map('intval', (array) $data['operational_sites'])
                 : null,
+            companyIds: array_key_exists('company_ids', $data) && $data['company_ids'] !== null
+                ? array_map('intval', (array) $data['company_ids'])
+                : null,
         );
     }
 
@@ -60,5 +65,10 @@ final readonly class CreateBusinessFunctionData
     public function hasOperationalSites(): bool
     {
         return $this->operationalSites !== null;
+    }
+
+    public function hasCompanies(): bool
+    {
+        return $this->companyIds !== null;
     }
 }

@@ -44,6 +44,24 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'offer-rows-editor',
+      title: 'Offer rows',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'The **Product lines** cell and the request card use the same editor as Request Management: the **Product catalogue** on the left (search by name or description, chips for the chosen categories; each product shows code, typology, price per unit, category and description), the **Offer rows** on the right with their amounts and the **Offer total**.',
+        },
+        {
+          type: 'list',
+          items: [
+            'Tick one or more products and press **Add N selected**: each product becomes a row with quantity 1 and the product price and VAT.',
+            'A product already on the rows is marked **Already added** and cannot be selected: change its quantity on the row.',
+            'On a single-row category a click on a product replaces the row product; on a simplified category the row shows the amounts only.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'statistics-differences',
       title: "Statistics are gone",
       blocks: [

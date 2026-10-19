@@ -13,6 +13,7 @@
  * calculation/formatting (see `quote-totals.ts`).
  */
 
+import type { FieldError } from 'react-hook-form'
 import type { CommissionRole, CommissionType } from '@/features/commission-configurations/types'
 import type { SupplierCommissionDirection } from '@/features/product-typologies/types'
 
@@ -199,4 +200,18 @@ export interface QuoteLineInput {
    * `prohibited` on an `offer_lines` row.
    */
   offer_line_index?: number
+}
+
+/** Per-row validation errors a line editor wires to the accessible triad (AC-075). */
+export interface QuoteLineRowErrors {
+  product_id?: FieldError
+  quantity?: FieldError
+  unit_price?: FieldError
+}
+
+/** One selectable OFFER row of the Cost tab's "Associated product" field (spec 0144 AC-011). */
+export interface QuoteCostOfferLineOption {
+  /** The OFFER row's own `client_key` — never the server id, so it also names not-yet-persisted rows. */
+  key: string
+  label: string
 }

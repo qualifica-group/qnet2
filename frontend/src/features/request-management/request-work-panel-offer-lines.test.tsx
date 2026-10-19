@@ -9,11 +9,12 @@ import {
   workPanel as panel,
 } from '@/features/request-management/request-work-panel-fixtures'
 import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
+import type { ForSelectParams } from '@/features/for-select/types'
 
 /**
  * "Linee dell'offerta" nel pannello di lavorazione (direttiva utente
- * 2026-08-07): e' il row editor delle Offerte (`QuoteLinesField`) montato
- * qui, senza il blocco provvigioni — che questo canale non possiede.
+ * 2026-08-07): le stesse righe delle Offerte, senza il blocco provvigioni —
+ * che questo canale non possiede — composte dal catalogo (spec 0268).
  */
 
 const fetchRequestWorkPanelMock = vi.fn()
@@ -44,6 +45,31 @@ vi.mock('@/features/activity-log/activity-log-section', () => ({
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
+/** A catalogue product of the panel's own category (500), in the for-select shape (spec 0268). */
+const CATALOG_PRODUCT = {
+  id: 901,
+  label: 'Fibra 2000',
+  subtitle: null,
+  meta: {
+    category_id: 500,
+    code: 'FIB-2000',
+    description: null,
+    price: '49.90',
+    cost: null,
+    vat_rate_id: 7,
+    vat_rate_name: 'IVA 22%',
+    vat_rate: '22.00',
+    unit_of_measure: null,
+    product_typology: null,
+  },
+}
+
+const fetchForSelectMock = vi.fn()
+vi.mock('@/features/for-select/api', () => ({
+  FOR_SELECT_PAGE_SIZE: 25,
+  fetchForSelect: (...args: unknown[]) => fetchForSelectMock(...args),
+}))
+
 function renderPanel() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
@@ -64,6 +90,11 @@ beforeEach(() => {
   updateRequestWorkMock.mockReset()
   categoryTreeMock.mockReset()
   categoryTreeMock.mockReturnValue([])
+  fetchForSelectMock.mockReset()
+  fetchForSelectMock.mockImplementation((resource: string, params: ForSelectParams = {}) => {
+    const items = resource === 'products' && !params.ids?.length ? [CATALOG_PRODUCT] : []
+    return Promise.resolve({ items, pagination: { total: items.length, offset: 0, limit: 25, total_pages: 1, has_more: false }, export_link: null })
+  })
 })
 
 describe('work panel — Linee dell\'offerta', () => {
@@ -108,6 +139,29 @@ describe('work panel — Linee dell\'offerta', () => {
     })
   })
 
+  // Spec 0268 AC-014: a catalogue pick reaches the panel's own submit, in the shape it always sent.
+  it('sends a product added from the catalogue next to the persisted row', async () => {
+    const loaded = panel()
+    fetchRequestWorkPanelMock.mockResolvedValue(loaded)
+    updateRequestWorkMock.mockResolvedValue(loaded)
+
+    renderPanel()
+
+    fireEvent.click(await screen.findByRole('option', { name: /Fibra 2000/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Aggiungi 1 selezionato' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Salva' })[0])
+
+    await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
+    expect(updateRequestWorkMock.mock.calls[0][2]).toEqual({
+      offer_lines: [
+        { id: OFFER_LINE_FIBRA.id, product_id: OFFER_LINE_FIBRA.product_id, quantity: 1, unit_price: 100, vat_rate_id: null, sort_order: 0 },
+        // A new row carries the empty block every new row always carried
+        // (`createEmptyLineRow`, the autofill seed): `prohibited` accepts it.
+        { product_id: 901, quantity: 1, unit_price: 49.9, vat_rate_id: 7, sort_order: 1, commissions: [] },
+      ],
+    })
+  })
+
   it('leaves the collection out of the payload when nothing in it was touched', async () => {
     const loaded = panel()
     fetchRequestWorkPanelMock.mockResolvedValue(loaded)
@@ -131,9 +185,12 @@ describe('work panel — Linee dell\'offerta', () => {
 
     renderPanel()
 
-    // Direttiva utente 2026-09-09: la riga vuota c'e' gia', non si passa da
-    // "Aggiungi riga". Restando intatta non viaggia (`toLineInputs` la scarta).
-    expect(await screen.findByLabelText('Quantità riga 1')).toHaveValue(null)
+    // Direttiva utente 2026-09-09: la riga vuota c'e' gia' nel form. Restando
+    // intatta non viaggia (`toLineInputs` la scarta). REQUIREMENT CHANGED
+    // (spec 0268 D-7): l'editor non la disegna, mostra lo stato vuoto e il
+    // catalogo da cui riempirla.
+    expect(await screen.findByText('Nessuna riga: scegli i prodotti dal catalogo.')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Quantità riga 1')).not.toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText(/Data del richiamo/i), {
       target: { value: '2026-09-01' },
@@ -192,7 +249,10 @@ describe('work panel — Linee dell\'offerta (categoria semplificata)', () => {
     expect(screen.queryByLabelText('Quantità riga 1')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Prezzo unitario riga 1')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Aliquota IVA riga 1')).not.toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Prodotto riga 1' })).toBeInTheDocument()
+    // REQUIREMENT CHANGED (spec 0268): the row reads its product, the
+    // catalogue beside it replaces the per-row picker.
+    expect(screen.getByText('Fibra 1000')).toBeInTheDocument()
+    expect(screen.getByRole('listbox', { name: 'Prodotti del catalogo' })).toBeInTheDocument()
   })
 
   it('a non-simplified classification keeps the three controls (no regression)', async () => {

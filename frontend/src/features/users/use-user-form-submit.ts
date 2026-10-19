@@ -19,6 +19,10 @@ import { editDefaults } from '@/features/users/user-form-defaults'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/users/user-form-payload'
 import {
   collectProductLinesServerError,
+  BUSINESS_FUNCTION_IDS_FIELD,
+  collectBusinessFunctionIdsServerError,
+  collectManagedBusinessFunctionIdsServerError,
+  MANAGED_BUSINESS_FUNCTION_IDS_FIELD,
   collectReportsToServerError,
   PRODUCT_LINES_FIELD,
   REPORTS_TO_IDS_FIELD,
@@ -140,10 +144,18 @@ export function useUserFormSubmit({
     if (reportsToMessage) {
       form.setError(REPORTS_TO_IDS_FIELD, { message: reportsToMessage })
     }
+    const membershipMessage = collectBusinessFunctionIdsServerError(error)
+    if (membershipMessage) {
+      form.setError(BUSINESS_FUNCTION_IDS_FIELD, { message: membershipMessage })
+    }
+    const managedMessage = collectManagedBusinessFunctionIdsServerError(error)
+    if (managedMessage) {
+      form.setError(MANAGED_BUSINESS_FUNCTION_IDS_FIELD, { message: managedMessage })
+    }
     const personalDataMessage = personalDataServerErrorMessage(error)
     if (personalDataMessage) {
       setServerError(personalDataMessage)
-    } else if (!mappedScalar && !productLinesMessage && !reportsToMessage) {
+    } else if (!mappedScalar && !productLinesMessage && !reportsToMessage && !membershipMessage && !managedMessage) {
       setServerError(t('users.form.genericError'))
     }
   }

@@ -33,6 +33,11 @@ use Illuminate\Database\Seeder;
  *                                    ones, and the business functions its
  *                                    categories are linked to
  *                                    (QualificaBusinessFunctionLinkSeeder).
+ *      QualificaCostProductSeeder  — the cost-only products (note spese,
+ *                                    articoli) under the active "Costi"
+ *                                    branch: the legacy
+ *                                    cost items as NEW products, separate
+ *                                    from step 5's "[OLD] Costi" history.
  *   3. QualificaTaskTaxonomySeeder — the other block of hard-coded reference
  *                                    data: the four Task classification
  *                                    lookups (tipologia, categoria, priorita',
@@ -103,6 +108,7 @@ class QualificaProductionDataSeeder extends Seeder
         // No prompt: step 5 below already runs the import, and the actor it
         // needs only exists after step 4.
         $this->callWith(QualificaCatalogSeeder::class, ['askForLegacyImport' => false]);
+        $this->call(QualificaCostProductSeeder::class);
         $this->call(QualificaTaskTaxonomySeeder::class);
         $this->call(QualificaSectorSeeder::class);
         $this->call(TestUsersSeeder::class);

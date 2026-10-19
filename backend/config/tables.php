@@ -5,6 +5,7 @@ use App\Tables\ApiClientsTableDefinition;
 use App\Tables\AttributesTableDefinition;
 use App\Tables\BusinessFunctionsTableDefinition;
 use App\Tables\CampaignsTableDefinition;
+use App\Tables\CollectiveAgreementsTableDefinition;
 use App\Tables\CommissionAccrualsTableDefinition;
 use App\Tables\CommissionConfigurationsTableDefinition;
 use App\Tables\CommissionSettlementRunsTableDefinition;
@@ -25,6 +26,8 @@ use App\Tables\FinancialAccountsTableDefinition;
 use App\Tables\InvoiceInstallmentsTableDefinition;
 use App\Tables\InvoicesTableDefinition;
 use App\Tables\InvoiceTagsTableDefinition;
+use App\Tables\JobActivitiesTableDefinition;
+use App\Tables\JobRolesTableDefinition;
 use App\Tables\LeadImportsTableDefinition;
 use App\Tables\LeadsTableDefinition;
 use App\Tables\NotificationsTableDefinition;
@@ -98,6 +101,11 @@ return [
         'api-clients' => ApiClientsTableDefinition::class,
         'roles' => RolesTableDefinition::class,
         'business-functions' => BusinessFunctionsTableDefinition::class,
+        // spec 0271: HR org structure catalogues.
+        'job-roles' => JobRolesTableDefinition::class,
+        'job-activities' => JobActivitiesTableDefinition::class,
+        // spec 0272: collective agreements (CCNL) with their levels.
+        'collective-agreements' => CollectiveAgreementsTableDefinition::class,
         'companies' => CompaniesTableDefinition::class,
         'commission-configurations' => CommissionConfigurationsTableDefinition::class,
         'company-sites' => CompanySitesTableDefinition::class,

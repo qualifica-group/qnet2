@@ -170,7 +170,6 @@ it('seeds the APL supervisors like Rosa Falzarano, competent for APL, and Martin
         $employment = $supervisor->employment;
 
         expect($supervisor->getRoleNames()->all())->toBe($reference->getRoleNames()->all())
-            ->and($employment->job_description)->toBe($reference->employment->job_description)
             ->and($employment->primaryOperationalSiteId)->toBe($sites['FRATTAMAGGIORE 1 (HQ)'])
             ->and($employment->remoteOperationalSiteIds)->toBeEmpty()
             ->and($employment->productLines->map(fn ($line): array => [$line->business_function_id, $line->product_category_id])->all())
@@ -182,7 +181,6 @@ it('seeds the APL supervisors like Rosa Falzarano, competent for APL, and Martin
     $mosca = seededOperator('martina.mosca@qualificagroup.com');
 
     expect($mosca->getRoleNames()->all())->toBe($coordinator->getRoleNames()->all())
-        ->and($mosca->employment->job_description)->toBe($coordinator->employment->job_description)
         ->and($mosca->employment->primaryOperationalSiteId)->toBe($sites['FRATTAMAGGIORE 1 (HQ)'])
         ->and($mosca->employment->remoteOperationalSiteIds)->toBeEmpty()
         ->and($mosca->employment->productLines)->toBeEmpty();

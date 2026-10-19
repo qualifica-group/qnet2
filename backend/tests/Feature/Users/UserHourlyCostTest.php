@@ -1,7 +1,9 @@
 <?php
 
+use App\Models\BusinessFunction;
 use App\Models\EmploymentProfile;
 use App\Models\User;
+use Database\Factories\EmploymentProfileFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\Sanctum;
@@ -30,7 +32,7 @@ it('AC-001: the migration adds a nullable hourly_cost and rolls back cleanly', f
 });
 
 it('AC-001: the hourly cost is saved with two decimals and returned by the resource', function () {
-    $target = User::factory()->create();
+    $target = User::factory()->withEmployment(fn (EmploymentProfileFactory $factory): EmploymentProfileFactory => $factory->memberOf(BusinessFunction::factory()->create()))->create();
     Sanctum::actingAs(hourlyCostActor());
 
     $this->patchJson("/api/users/{$target->id}", ['employment' => ['hourly_cost' => 31.5]])
@@ -41,7 +43,7 @@ it('AC-001: the hourly cost is saved with two decimals and returned by the resou
 });
 
 it('AC-001: a blank or null hourly cost clears the value', function () {
-    $target = User::factory()->withEmployment(fn ($f) => $f->state(['hourly_cost' => '25.00']))->create();
+    $target = User::factory()->withEmployment(fn (EmploymentProfileFactory $factory): EmploymentProfileFactory => $factory->state(['hourly_cost' => '25.00'])->memberOf(BusinessFunction::factory()->create()))->create();
     Sanctum::actingAs(hourlyCostActor());
 
     $this->patchJson("/api/users/{$target->id}", ['employment' => ['hourly_cost' => null]])
@@ -61,7 +63,7 @@ it('AC-001: a negative, oversized or non numeric hourly cost is rejected with 42
 })->with([-1, 10000, 'abc']);
 
 it('AC-001: the maximum 9999.99 is accepted', function () {
-    $target = User::factory()->create();
+    $target = User::factory()->withEmployment(fn (EmploymentProfileFactory $factory): EmploymentProfileFactory => $factory->memberOf(BusinessFunction::factory()->create()))->create();
     Sanctum::actingAs(hourlyCostActor());
 
     $this->patchJson("/api/users/{$target->id}", ['employment' => ['hourly_cost' => 9999.99]])->assertOk();

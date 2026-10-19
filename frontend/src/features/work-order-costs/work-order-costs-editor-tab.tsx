@@ -2,18 +2,18 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { WorkOrderCostsLinesField } from '@/features/work-order-costs/work-order-costs-lines-field'
-import type { RevenueLineOption } from '@/features/work-order-costs/work-order-cost-row'
+import type { RevenueLineOption } from '@/features/work-order-costs/work-order-cost-card'
 import { useWorkOrderCostsEditor } from '@/features/work-order-costs/use-work-order-costs-editor'
 import type { WorkOrderCostOverview } from '@/features/work-order-costs/types'
 
 interface WorkOrderCostsEditorTabProps {
   workOrderId: number
   overview: WorkOrderCostOverview
-  /** `work-orders.manageCosts`: without it the grid is read-only (no add row, no save). */
+  /** `work-orders.manageCosts`: without it the cards are read-only (no catalogue, no save). */
   canManage: boolean
 }
 
-/** "Costi effettivi": the inline grid of real costs with one Save replacing the whole set (D-3). */
+/** "Costi effettivi": the catalogue + real-cost cards (spec 0270) with one Save replacing the whole set (D-3). */
 export function WorkOrderCostsEditorTab({ workOrderId, overview, canManage }: WorkOrderCostsEditorTabProps) {
   const { t } = useTranslation()
   const editor = useWorkOrderCostsEditor(workOrderId, overview.lines)
@@ -39,9 +39,8 @@ export function WorkOrderCostsEditorTab({ workOrderId, overview, canManage }: Wo
         revenueOptions={revenueOptions}
         rowErrors={editor.rowErrors}
         onChangeField={editor.changeField}
-        onChangeProduct={editor.changeProduct}
+        onAddProducts={editor.addProducts}
         onRemove={editor.removeRow}
-        onAdd={editor.addRow}
       />
 
       {canManage ? (

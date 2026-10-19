@@ -1,17 +1,18 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { useState } from 'react'
-import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
-import { QuoteLineRow } from '@/features/quotes/quote-line-row'
+import { QuoteLineAdditionalDescription } from '@/features/quotes/quote-line-additional-description'
 import { toLineInputs } from '@/features/quotes/quote-line-values'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 
 /**
- * `additional_description`: editable only on the Offerte revenue row, and sent
- * on the wire only when the row carries the key (an absent key keeps the
- * stored value server-side).
+ * `additional_description`: the row's optional free text, sent on the wire
+ * only when the row carries the key (an absent key keeps the stored value
+ * server-side). REQUIREMENT CHANGED (spec 0269): the control is a slot of the
+ * Offerte revenue card now (`QuoteOfferTab`), so it is exercised on its own
+ * here; "not on a cost row / not in Gestione Richieste" moved to the tab and
+ * editor tests, where that rule now lives.
  */
 
 const ROW: QuoteLineFormValues = {
@@ -24,35 +25,17 @@ const ROW: QuoteLineFormValues = {
   commissions: [],
 }
 
-function wrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  )
-}
-
-function Harness({ initial, variant = 'revenue', withCommissions = true, onChange }: {
-  initial: QuoteLineFormValues
-  variant?: 'revenue' | 'cost'
-  withCommissions?: boolean
-  onChange?: (row: QuoteLineFormValues) => void
-}) {
-  const [row, setRow] = useState(initial)
+function Harness({ initial, onChange }: { initial: string | null; onChange: (value: string | null) => void }) {
+  const [value, setValue] = useState(initial)
   return (
-    <QuoteLineRow
-      index={0}
-      variant={variant}
-      withCommissions={withCommissions}
-      row={row}
+    <QuoteLineAdditionalDescription
+      lineNumber={1}
+      value={value}
       disabled={false}
-      vatRatePercentFor={() => null}
-      onChangeProduct={vi.fn()}
-      onChangeField={(patch) => {
-        const next = { ...row, ...patch }
-        setRow(next)
-        onChange?.(next)
+      onChange={(next) => {
+        setValue(next)
+        onChange(next)
       }}
-      onRemove={vi.fn()}
     />
   )
 }
@@ -61,36 +44,27 @@ beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
-describe('QuoteLineRow additional description', () => {
+describe('QuoteLineAdditionalDescription', () => {
   it('opens the field on demand and bubbles the typed text up', () => {
     const onChange = vi.fn()
-    render(<Harness initial={ROW} onChange={onChange} />, { wrapper: wrapper() })
+    render(<Harness initial={null} onChange={onChange} />)
 
     expect(screen.queryByRole('textbox', { name: 'Row 1 additional description' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Additional description' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Row 1 additional description' }), { target: { value: 'Montaggio incluso' } })
 
-    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ additional_description: 'Montaggio incluso' }))
+    expect(onChange).toHaveBeenLastCalledWith('Montaggio incluso')
   })
 
   it('starts open on a stored description and clears it on remove', () => {
     const onChange = vi.fn()
-    render(<Harness initial={{ ...ROW, additional_description: 'Esistente' }} onChange={onChange} />, { wrapper: wrapper() })
+    render(<Harness initial="Esistente" onChange={onChange} />)
 
     expect(screen.getByRole('textbox', { name: 'Row 1 additional description' })).toHaveValue('Esistente')
     fireEvent.click(screen.getByRole('button', { name: 'Remove row 1 additional description' }))
 
-    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ additional_description: null }))
+    expect(onChange).toHaveBeenLastCalledWith(null)
     expect(screen.queryByRole('textbox', { name: 'Row 1 additional description' })).not.toBeInTheDocument()
-  })
-
-  it('is not editable on a cost row nor on a channel without commissions', () => {
-    const { unmount } = render(<Harness initial={ROW} variant="cost" />, { wrapper: wrapper() })
-    expect(screen.queryByRole('button', { name: 'Additional description' })).not.toBeInTheDocument()
-    unmount()
-
-    render(<Harness initial={ROW} withCommissions={false} />, { wrapper: wrapper() })
-    expect(screen.queryByRole('button', { name: 'Additional description' })).not.toBeInTheDocument()
   })
 })
 

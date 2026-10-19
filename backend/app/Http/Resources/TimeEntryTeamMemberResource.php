@@ -32,7 +32,7 @@ class TimeEntryTeamMemberResource extends JsonResource
                 'avatar_url' => $item->user->avatarDataUri(),
             ],
             'manager_ids' => $item->managerIds,
-            'job_description' => $item->jobDescription,
+            'job_roles' => $item->jobRoles,
             'roles' => $item->user->roles->pluck('name')->values()->all(),
             'business_functions' => $item->businessFunctions,
             'operational_site' => $item->operationalSite === null ? null : [

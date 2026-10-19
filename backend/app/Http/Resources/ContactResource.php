@@ -29,6 +29,7 @@ class ContactResource extends JsonResource
             'label' => $this->label,
             'value' => $this->value,
             'is_primary' => $this->is_primary,
+            'is_work' => $this->is_work,
             'contactable_type' => $this->contactable_type,
             'contactable_id' => $this->contactable_id,
             'created_at' => $this->created_at,

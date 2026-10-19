@@ -28,6 +28,7 @@ function user(mustSetPassword: boolean): UserDetail {
     roles: [],
     avatar_url: null,
     must_set_password: mustSetPassword,
+    managed_business_functions: [],
     created_at: null,
   }
 }

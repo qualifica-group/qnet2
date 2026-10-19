@@ -83,7 +83,6 @@ it('creates a user with card, primary address, contacts, verbatim password hash 
                 'business_phone' => '+39 06 1234567',
                 'personal_phone' => '+39 333 1234567',
                 'is_active' => true,
-                'is_manager' => false,
                 'job_description' => 'Engineer',
                 'reports_to_id' => 900,
                 'business_function_id' => 910,
@@ -142,8 +141,13 @@ it('creates a user with card, primary address, contacts, verbatim password hash 
         ->and($employment->primary_operational_site_id)->toBe($operationalSite->id)
         ->and($employment->remote_operational_site_ids)->toBe([])
         ->and($employment->relationship_type->value)->toBe('employee')
-        ->and($employment->qualification_type->value)->toBe('coordinator')
-        ->and($employment->standard_daily_minutes)->toBe(480);
+        // 0272 AC-014: the legacy still sends qualification_type (fixture above); it is ignored.
+        ->and($employment->getAttributes())->not->toHaveKey('qualification_type')
+        ->and($employment->standard_daily_minutes)->toBe(480)
+        // 0271 AC-014 / D-6: the legacy still sends job_description (fixture above) and is
+        // ignored without failing; the import also bypasses the mandatory business function rule (API only).
+        ->and($employment->getAttributes())->not->toHaveKey('job_description')
+        ->and($employment->productLines()->count())->toBe(0);
 
     $fresh = $run->fresh();
     expect($fresh->status)->toBe(MigrationStatus::Completed)

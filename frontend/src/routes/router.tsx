@@ -4,6 +4,8 @@ import { ProtectedRoute } from '@/routes/protected-route'
 import { AGENT_COMMISSION_ROUTES } from '@/routes/agent-commission-routes'
 import { MANAGEMENT_CONTROL_ROUTES } from '@/routes/management-control-routes'
 import { PURCHASING_ROUTES } from '@/routes/purchasing-routes'
+import { HR_ROUTES } from '@/routes/hr-routes'
+import { TASK_ROUTES } from '@/routes/task-routes'
 import { AppLayout } from '@/layouts/app-layout'
 import { devRoutes } from '@/routes/dev-routes'
 import { buildModuleRoutes } from '@/features/modules/module-routes'
@@ -57,13 +59,6 @@ const QuotesPage = lazyRoute(() => import('@/pages/quotes-page'))
 const ContractStatusesPage = lazyRoute(() => import('@/pages/contract-statuses-page'))
 const ContractsPage = lazyRoute(() => import('@/pages/contracts-page'))
 const WorkOrdersPage = lazyRoute(() => import('@/pages/work-orders-page'))
-const TasksPage = lazyRoute(() => import('@/pages/tasks-page'))
-const TaskStatusesPage = lazyRoute(() => import('@/pages/task-statuses-page'))
-const TaskTypesPage = lazyRoute(() => import('@/pages/task-types-page'))
-const TaskCategoriesPage = lazyRoute(() => import('@/pages/task-categories-page'))
-const TaskPrioritiesPage = lazyRoute(() => import('@/pages/task-priorities-page'))
-const TaskImportancesPage = lazyRoute(() => import('@/pages/task-importances-page'))
-const TaskTemplatesPage = lazyRoute(() => import('@/pages/task-templates-page'))
 const TimeEntriesPage = lazyRoute(() => import('@/pages/time-entries-page'))
 const TimeEntryNewPage = lazyRoute(() => import('@/pages/time-entry-new-page'))
 const TimeEntryDetailPage = lazyRoute(() => import('@/pages/time-entry-detail-page'))
@@ -144,6 +139,7 @@ export const router = createBrowserRouter([
             path: 'business-functions',
             element: <BusinessFunctionsPage />,
           },
+          ...HR_ROUTES,
           {
             path: 'referents',
             element: <ReferentsPage />,
@@ -305,42 +301,7 @@ export const router = createBrowserRouter([
             path: 'work-orders',
             element: <WorkOrdersPage />,
           },
-          // Task module (spec 0101). ONLY the six list routes are declared by
-          // hand: every `new`/`:id`/`:id/edit` deep link is generated from the
-          // module registry by `buildModuleRoutes()` below, since all six
-          // `*-screens.tsx` export a `moduleScreen` (spec 0042, AC-012).
-          {
-            path: 'tasks',
-            element: <TasksPage />,
-          },
-          {
-            path: 'task-statuses',
-            element: <TaskStatusesPage />,
-          },
-          {
-            path: 'task-types',
-            element: <TaskTypesPage />,
-          },
-          {
-            path: 'task-categories',
-            element: <TaskCategoriesPage />,
-          },
-          {
-            path: 'task-priorities',
-            element: <TaskPrioritiesPage />,
-          },
-          {
-            path: 'task-importances',
-            element: <TaskImportancesPage />,
-          },
-          // Modelli di Task (spec 0124): generates the task set of a
-          // Commessa at creation. Only the list route is declared by hand;
-          // `new`/`:id`/`:id/edit` come from the module registry
-          // (`task-template-screens.tsx` exports `moduleScreen`, AC-012).
-          {
-            path: 'task-templates',
-            element: <TaskTemplatesPage />,
-          },
+          ...TASK_ROUTES,
           // Segnatempo (spec 0122, D-1): its own top-level item, not part of
           // the module registry — the dashboard shape (Periodo card, KPI/
           // Polso, day list, team view) breaks from the standard AG Grid +

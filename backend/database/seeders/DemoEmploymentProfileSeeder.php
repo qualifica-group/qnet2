@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Enums\QualificationTypeEnum;
 use App\Enums\RelationshipTypeEnum;
 use App\Models\Company;
 use App\Models\EmploymentProfile;
@@ -18,8 +17,8 @@ use Illuminate\Support\Collection;
 
 /**
  * Seed an employment profile for every deterministic development user (spec
- * 0015): a small responsible/subordinate hierarchy — the first 2 seeded
- * users become managers (is_manager=true, no reports-to), every other seeded
+ * 0015): a small hierarchy — the first 2 seeded
+ * users sit at the top (no reports-to), every other seeded
  * user is a subordinate reporting to one of them, round-robin. Idempotent:
  * the profile is upserted by owner, its site membership, its reports-to
  * managers and its competence rows recomputed from the same reseeded Faker
@@ -85,23 +84,33 @@ class DemoEmploymentProfileSeeder extends Seeder
     {
         $coversAll = $this->isCompetenceWildcardUser($manager);
 
+        $hiredAt = $faker->dateTimeBetween('-8 years', '-2 years')->format('Y-m-d');
         $employment = $manager->employment()->updateOrCreate([], [
-            'is_manager' => true,
             'covers_all_product_categories' => $coversAll,
-            'relationship_type' => RelationshipTypeEnum::Employee->value,
-            'qualification_type' => QualificationTypeEnum::Coordinator->value,
-            'hired_at' => $faker->dateTimeBetween('-8 years', '-2 years')->format('Y-m-d'),
+            'hired_at' => $hiredAt,
             'standard_daily_minutes' => 480,
             'break_daily_minutes' => 30,
-            'company_id' => $this->maybePick($faker, $this->companyIds),
         ]);
+        $this->seedFirstContract($employment, $hiredAt, RelationshipTypeEnum::Employee->value, $this->maybePick($faker, $this->companyIds));
 
-        // D-5: a Responsible reports to no one — sync([]) on every run keeps
-        // this true even if a manager was previously demoted from/promoted
-        // to the role across re-seeds.
+        // Top of the demo hierarchy: sync([]) on every run keeps it so across re-seeds.
         $employment->reportsTo()->sync([]);
         $this->assignOperationalSites($faker, $employment);
         $this->assignProductLines($faker, $employment, coversAll: $coversAll);
+    }
+
+    /**
+     * Spec 0272 D-2: relationship type and company come from the contract
+     * history, so the demo person gets a first condition from the hire date
+     * and the profile's copy is set to it (what the contract service does).
+     */
+    private function seedFirstContract(EmploymentProfile $employment, string $hiredAt, string $relationshipType, mixed $companyId): void
+    {
+        $employment->contracts()->updateOrCreate(
+            ['starts_on' => $hiredAt],
+            ['relationship_type' => $relationshipType, 'company_id' => $companyId],
+        );
+        $employment->update(['relationship_type' => $relationshipType, 'company_id' => $companyId]);
     }
 
     /**
@@ -113,16 +122,14 @@ class DemoEmploymentProfileSeeder extends Seeder
         $manager = $managers[$index % $managers->count()];
         $coversAll = $this->isCompetenceWildcardUser($user);
 
+        $hiredAt = $faker->dateTimeBetween('-5 years', '-1 month')->format('Y-m-d');
         $employment = $user->employment()->updateOrCreate([], [
-            'is_manager' => false,
             'covers_all_product_categories' => $coversAll,
-            'relationship_type' => $faker->randomElement(RelationshipTypeEnum::values()),
-            'qualification_type' => $faker->randomElement(QualificationTypeEnum::values()),
-            'hired_at' => $faker->dateTimeBetween('-5 years', '-1 month')->format('Y-m-d'),
+            'hired_at' => $hiredAt,
             'standard_daily_minutes' => 480,
             'break_daily_minutes' => 30,
-            'company_id' => $this->maybePick($faker, $this->companyIds),
         ]);
+        $this->seedFirstContract($employment, $hiredAt, $faker->randomElement(RelationshipTypeEnum::values()), $this->maybePick($faker, $this->companyIds));
 
         // Spec 0166 D-2: reports to its round-robin manager; the FIRST
         // subordinate reports to EVERY seeded manager, demoing that a user

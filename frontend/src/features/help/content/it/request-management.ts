@@ -40,7 +40,7 @@ const guide: HelpGuide = {
           rows: [
             ['Fonte', 'Canale da cui arriva la richiesta.'],
             ['Richieste di modifica', 'Proposte di modifica ancora in attesa.'],
-            ['Linee di prodotto', "Prodotti presenti nell'offerta."],
+            ['Linee di prodotto', "Prodotti presenti nell'offerta; la cella apre l'editor con il catalogo prodotti."],
             ['Operatore', 'Persona che lavora la richiesta.'],
             ['Sede operativa', 'Sede a cui è assegnata la richiesta.'],
             ['Prossimo richiamo', 'Data della prossima chiamata al cliente.'],
@@ -65,7 +65,7 @@ const guide: HelpGuide = {
             'Scrivi nelle **Note generali** cosa ha chiesto il cliente, con le sue parole.',
             "Se serve, indica il **Prossimo richiamo** (l'ora è facoltativa).",
             'In **Linee di prodotto** aggiungi almeno una riga: categoria genitore, poi categoria prodotto. Se la categoria genitore ha dei gruppi (ad esempio Consulenza › ISO), con **Filtro** scegli il gruppo e la categoria prodotto elenca solo le sue sottocategorie; il filtro non viene salvato, solo la categoria prodotto.',
-            "Compila le righe dell'offerta: prodotto, quantità, prezzo unitario e IVA.",
+            "Nel **Catalogo prodotti** spunta i prodotti e premi **Aggiungi N selezionati**, poi controlla quantità, prezzo unitario e IVA delle righe (vedi **Righe dell'offerta e catalogo prodotti**).",
             "In **Anagrafica cliente** scegli un'**Anagrafica esistente** oppure inserisci un nuovo cliente.",
             'In **Attribuzione** scegli la **Fonte** (obbligatoria) e, se serve, **Segnalatore** e **Sede operativa**.',
             'Compila le **Informazioni aggiuntive**, se presenti.',
@@ -87,6 +87,35 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'offer-rows-editor',
+      title: "Righe dell'offerta e catalogo prodotti",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Lo stesso editor si trova nella cella **Linee di prodotto** della tabella (si apre in una finestra), nella scheda della richiesta e nel form **Nuova richiesta**. A sinistra c'è il **Catalogo prodotti**, a destra le **Righe dell'offerta**; su schermi stretti sono uno sotto l'altro.",
+        },
+        {
+          type: 'steps',
+          items: [
+            'Nel **Catalogo prodotti** cerca per nome o descrizione, oppure filtra con le chip: **Tutte** e una chip per ogni categoria prodotto scelta nella richiesta.',
+            'Ogni prodotto mostra nome, codice, tipologia (badge colorato), prezzo con unità di misura, percorso Categoria genitore › Categoria e descrizione.',
+            'Spunta uno o più prodotti con le caselle e premi **Aggiungi N selezionati**: viene creata una riga per prodotto, con quantità 1 e con prezzo e IVA del prodotto.',
+            "Su ogni riga modifica quantità, prezzo unitario e IVA: vedi imponibile, IVA e totale. Il pulsante di rimozione elimina la riga. In fondo c'è il **Totale offerta**.",
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            'Un prodotto già nelle righe mostra **Già aggiunto** e non è selezionabile: cambia la quantità sulla riga.',
+            'Nelle categorie a riga singola (ad esempio Formazione) non ci sono caselle: il clic su un prodotto sostituisce quello della riga unica.',
+            'Senza categorie prodotto scelte il catalogo è disattivato: scegli prima la categoria.',
+            'Nelle categorie semplificate la riga mostra solo gli importi: quantità, prezzo e IVA li compila il sistema.',
+            'Se la categoria ha un solo prodotto, la riga si crea da sola.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'working-a-request',
       title: 'Lavorare una richiesta',
       blocks: [
@@ -98,7 +127,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             "**Linee di prodotto**: decidono i prodotti selezionabili e i campi specifici. Se cambi o togli una linea, le righe offerta con un prodotto di una categoria non più scelta si svuotano: scegli di nuovo il prodotto.",
-            '**Righe offerta**: prodotti, quantità, prezzi e IVA.',
+            '**Righe offerta**: prodotti scelti dal **Catalogo prodotti**, con quantità, prezzi e IVA.',
             '**Stato**: alcuni stati richiedono una **Nota**.',
             '**Anagrafica**, **Attribuzione** e **Team** (**Supervisore** e **Gestori account**).',
             'Le **Informazioni aggiuntive**, che dipendono dalle categorie scelte.',

@@ -45,6 +45,8 @@ class UpdateBusinessFunctionRequest extends FormRequest
             'users.*' => ['integer', 'exists:users,id', 'distinct'],
             'operational_sites' => ['sometimes', 'nullable', 'array'],
             'operational_sites.*' => ['integer', 'exists:operational_sites,id', 'distinct'],
+            'company_ids' => ['sometimes', 'nullable', 'array'],
+            'company_ids.*' => ['integer', 'distinct', 'exists:companies,id'],
         ];
     }
 

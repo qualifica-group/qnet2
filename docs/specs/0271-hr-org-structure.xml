@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0271-hr-org-structure" status="approved" owner="utente" date="2026-10-16">
+
+  <goal>
+    Primo passo del modulo HR (docs/product/hr.md §5 e §2 regola 1): l'ufficio del personale gestisce i
+    cataloghi Mansioni e Attivita', collega le funzioni aziendali alle societa', assegna
+    a ogni persona una o piu' mansioni (al posto del testo libero) e non puo' salvare una persona attiva
+    senza almeno una funzione aziendale (business unit o business service).
+  </goal>
+
+  <context>
+    <!-- Fatti verificati nel repo il 2026-10-16. -->
+    <fact>Funzioni aziendali: `business_functions` (name, is_business_unit, is_business_service,
+      manager_id, parent_id, old_id), model `BusinessFunction` (LogsModelActivity), pivot
+      `business_function_user` e `business_function_operational_site`; CRUD in
+      `BusinessFunctionController` + `BusinessFunctionService`, request `StoreBusinessFunctionRequest`
+      (name, type, manager_id, parent_id, users[], operational_sites[]), `BusinessFunctionResource`,
+      `BusinessFunctionsTableDefinition`; frontend `features/business-functions/`; menu Configurazione
+      (`config/navigation/configuration.php`, permesso `business-functions.view`). 28 funzioni nel DB locale.</fact>
+    <fact>Societa': `companies`, endpoint `companies/for-select` gia' esistente.</fact>
+    <fact>Legame persona-funzione: l'unico scritto dalla scheda utente e' `employment_product_lines`
+      (profilo x funzione x categoria prodotto, spec 0111), payload `employment.product_lines`.
+      `employment.covers_all_product_categories: true` forza `product_lines` vuoto (spec 0129 D-2).
+      DB locale: 196 utenti attivi non di servizio, 72 con almeno una riga, `business_function_user` vuota.</fact>
+    <fact>Mansione oggi: `employment_profiles.job_description` (string 255, testo libero; 72 valori nel DB
+      locale, es. "Coordinatore Commerciale", "APL - Commerciale"). Usata da `ValidatesEmployment`,
+      `EmploymentData`, `EmploymentResource`, `UsersAuthorization` (permesso di campo
+      `employment.job_description`), `UsersSource`/`MapsExternalUserRecord` (import legacy),
+      `TimeEntryTeamMemberData`/`TimeEntryTeamPulseService` (vista team del segnatempo), e nel frontend
+      in `features/users/*` e `features/time-entries/team/*`.</fact>
+    <fact>Ruoli Spatie (`roles`, model `Role`): 8 ruoli; restano invariati e NON collegati alle mansioni.</fact>
+    <fact>Il QNet legacy non ha posizioni, mansioni ne' attivita' (tabelle assenti o vuote:
+      `attivitas` 0 righe, `mansioni_ccnl` 0 righe).</fact>
+    <fact>Pattern da ricalcare per un catalogo semplice: cost-types (spec 0210/0249) — rotte in
+      `routes/api/cost-types.php`, controller + for-select, FormRequest, Resource con `abilities`,
+      Policy, `*TableDefinition` registrata in `config/tables.php`, delete in uso = 409
+      (`CostTypeService`), frontend `features/cost-types/` (table, detail, form, schema, for-select-api).</fact>
+    <fact>Precedente di rinomina di un permesso di campo:
+      `2026_09_25_100200_rename_employment_reports_to_field_permission.php`.</fact>
+
+    <decision id="D-1">Mansione = catalogo proprio `job_roles`, senza alcun legame con ruoli e permessi
+      (utente 2026-10-16). Supera la D-6 di docs/product/hr.md, aggiornata di conseguenza.</decision>
+    <decision id="D-2">Una persona ha 0..n mansioni (pivot `employment_profile_job_role`), scelte con un
+      select multiplo nella sezione Impiego della scheda utente. `job_description` viene RIMOSSO
+      (colonna eliminata, i valori esistenti si perdono: decisione utente).</decision>
+    <decision id="D-3">Posizioni, reparti, competenze, organigramma: fuori da questo passo (posizioni non
+      servono: decisione utente).</decision>
+    <decision id="D-4">[revised] rev.3 (utente 2026-10-16): le Divisioni sono eliminate. Ogni funzione aziendale
+      appartiene a 0..n societa' (`business_function_company`).</decision>
+    <decision id="D-5">Attivita': `job_activities` (name unico, description), legate alle mansioni molti-a-molti
+      (`job_activity_job_role`). Il legame si modifica solo dalla mansione; l'attivita' lo mostra in lettura.</decision>
+    <decision id="D-6">Regola della funzione aziendale obbligatoria: una persona attiva (non account di servizio) deve avere almeno una riga in
+      `employment.product_lines` (utente 2026-10-16). Si controlla solo in creazione/modifica utente via API,
+      quando lo stato risultante e' attivo; i dati esistenti non vengono toccati. Errore 422 su
+      `employment.product_lines`.</decision>
+    <decision id="D-7">Menu: Mansioni, Attivita' sotto Configurazione (utente 2026-10-16), permessi
+      `job-roles.*`, `job-activities.*` (view, create, update, delete).</decision>
+    <decision id="D-8">Nessun importer (utente 2026-10-16). `UsersSource` smette di scrivere
+      `job_description`; il legacy che lo invia ancora viene ignorato (pulizia lato legacy: segnalata, fuori scope).</decision>
+    <decision id="D-9">Cancellazione di un elemento in uso = 409: mansione con
+      persone, attivita' collegata a una mansione.</decision>
+    <decision id="D-10">Permesso di campo `employment.job_description` rinominato in `employment.job_role_ids`
+      con migrazione delle righe di `role_field_permissions` (stesso schema della rinomina reports_to).</decision>
+    <decision id="D-11">Vista team del segnatempo: al posto della mansione testuale mostra i nomi delle
+      mansioni della persona (`job_roles: string[]`).</decision>
+
+    <assumption id="A-1">Una persona con `covers_all_product_categories: true` copre tutte le funzioni ed e'
+      esente dalla regola della funzione obbligatoria (confermata 2026-10-16).</assumption>
+    <assumption id="A-2">Gli utenti attivi oggi senza funzione si trovano con il filtro "vuoto" gia' presente sulla
+      colonna Funzione aziendale della griglia utenti (`HandlesBlankSetFilter`): nessuna nuova vista.</assumption>
+  </context>
+
+  <scope>
+    <in>
+      <item>Backend: tabelle `job_roles`, `job_activities`, `job_activity_job_role`, `employment_profile_job_role`,
+        `business_function_company`; drop `employment_profiles.job_description` (migrazioni reversibili).</item>
+      <item>Model `JobRole`, `JobActivity` (LogsModelActivity, $fillable), factory; CRUD + for-select +
+        TableDefinition + Policy + permessi per i due cataloghi.</item>
+      <item>Funzioni aziendali: `company_ids` in request, service, resource, griglia (colonna Societa').</item>
+      <item>Scheda utente: `employment.job_role_ids` (tri-state come `reports_to_ids`), resource `job_role_ids` +
+        `job_roles`; colonna griglia utenti "Mansioni" al posto di `job_description`; regola della funzione obbligatoria (D-6).</item>
+      <item>Migrazione rinomina permesso di campo (D-10); `UsersSource` senza `job_description` (D-8); vista team
+        segnatempo con le mansioni (D-11).</item>
+      <item>Frontend: `features/job-roles/`, `features/job-activities/` (lista, dettaglio,
+        form), rotte e menu Configurazione; form/dettaglio funzione aziendale con le societa'; select
+        multiplo mansioni nella scheda utente; vista team segnatempo.</item>
+      <item>i18n IT+EN; guide in-app nuove `job-roles`, `job-activities` (+ `HELP_GUIDE_KEYS`) e
+        aggiornate `users`, `business-functions`, `time-entries`; manuale Claude Docs o segnalazione.</item>
+      <item>docs/product/hr.md allineato a D-1, D-3.</item>
+    </in>
+    <out>
+      <item>Qualsiasi importer o sorgente in `backend/app/Migrations/` per i nuovi cataloghi (D-8).</item>
+      <item>Divisioni (eliminate, rev.3), posizioni, reparti, competenze, organigramma, attivita' escluse per persona.</item>
+      <item>Collegamento mansioni-ruoli/permessi (D-1).</item>
+      <item>Modifiche al QNet legacy.</item>
+      <item>Vincolo della funzione obbligatoria a livello database o sugli import; correzione automatica dei dati esistenti.</item>
+      <item>Contratto, CCNL, IBAN, allocazioni, assenze (passi successivi di docs/product/hr.md).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope di progetto { success, message, data }; liste via framework tabellare /api/tables/{domain}. -->
+    <shared id="ref">Riferimento compatto: { id: int, name: string } (societa': { id: int, label: string }).</shared>
+    <shared id="for-select">Stessa shape e parametri di `GET /api/business-functions/for-select`.</shared>
+
+    <endpoint method="GET" path="/api/tables/{domain}" domains="job-roles | job-activities">
+      <response status="200">Contratto SSRM esistente (columns/rows). Colonne job-roles: name, description, job_activities, users_count.
+        job-activities: name, description, job_roles.</response>
+      <errors>403 senza `{domain}.view`.</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST|PUT|PATCH|DELETE" path="/api/job-roles[/{jobRole}] , /api/job-roles/for-select">
+      <request>store/update: { name: string required max:191 unico, description: string|null max:1000,
+        job_activity_ids: int[]|null (distinct, exists job_activities) }. Assente in update = invariato.</request>
+      <response status="200|201">data: { id, name, description, job_activity_ids: int[], job_activities: ref[],
+        users_count: int, created_at, updated_at, abilities: { update, delete } }</response>
+      <errors>403 senza `job-roles.*`; 404; 422; 409 delete con persone assegnate.</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST|PUT|PATCH|DELETE" path="/api/job-activities[/{jobActivity}] , /api/job-activities/for-select">
+      <request>store/update: { name: string required max:191 unico, description: string|null max:1000 }</request>
+      <response status="200|201">data: { id, name, description, job_role_ids: int[], job_roles: ref[],
+        created_at, updated_at, abilities: { update, delete } }</response>
+      <errors>403 senza `job-activities.*`; 404; 422; 409 delete se collegata a una mansione.</errors>
+    </endpoint>
+
+    <endpoint method="POST|PUT|PATCH|GET" path="/api/business-functions[/{businessFunction}]" change="estensione">
+      <request>+ company_ids: int[]|null (distinct, exists companies); assente in update = invariato.</request>
+      <response status="200|201">+ company_ids: int[], companies: ref[].</response>
+      <errors>invariati + 422 su company_ids.</errors>
+    </endpoint>
+
+    <endpoint method="POST|PUT|PATCH|GET" path="/api/users[/{user}]" change="estensione">
+      <request>employment.job_role_ids: int[]|null (sometimes; distinct, exists job_roles): assente = invariato,
+        null/[] = svuota. employment.job_description: RIMOSSO (ignorato).</request>
+      <response status="200|201">employment: + job_role_ids: int[], job_roles: ref[]; - job_description.</response>
+      <errors>422 `employment.product_lines` con messaggio `users.employment.business_function_required` quando lo
+        stato risultante e' attivo, non account di servizio, `covers_all_product_categories` falso e nessuna riga
+        (creazione, attivazione, rimozione dell'ultima riga, `employment: null`).</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/time-entries/stats/team" change="modifica">
+      <response status="200">membro: - job_description; + job_roles: string[] (nomi, ordine alfabetico).</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">[revised] rev.3: rimosso (Divisioni eliminate).</criterion>
+    <criterion id="AC-002">[revised] rev.3: rimosso (Divisioni eliminate).</criterion>
+    <criterion id="AC-003">[revised] rev.3: rimosso (Divisioni eliminate).</criterion>
+    <criterion id="AC-004">Quando si salva una funzione aziendale con `company_ids`, allora la risposta le
+      restituisce con `companies`; `company_ids` assente in update le lascia, `[]` le scollega ([revised] rev.3).</criterion>
+    <criterion id="AC-005">Quando si crea una mansione con `job_activity_ids` di due attivita', allora la risposta
+      riporta le due attivita' e l'attivita' mostra la mansione in `job_roles`.</criterion>
+    <criterion id="AC-006">Dato una mansione assegnata a una persona, la delete risponde 409; dato un'attivita'
+      collegata a una mansione, la delete risponde 409; gli elementi liberi si cancellano con 204 ([revised] rev.2, era 200).</criterion>
+    <criterion id="AC-007">Dato un utente senza i permessi `job-roles.*`, `job-activities.*`,
+      ogni endpoint dei due cataloghi (show, store, update, destroy, tables) risponde 403; i for-select
+      rispondono a qualsiasi utente autenticato (ADR 0011 emendato 2026-07-31; [revised] rev.2, prima includeva for-select).</criterion>
+    <criterion id="AC-008">Quando si salva un utente con `employment.job_role_ids` [a, b], allora la risposta ha
+      `job_roles` a, b; un update senza la chiave le lascia; con [] le svuota; `job_description` non compare
+      piu' nella risposta.</criterion>
+    <criterion id="AC-009">Creazione di un utente attivo, non di servizio, senza `product_lines` e senza
+      `covers_all_product_categories`: 422 su `employment.product_lines` e nessun utente creato. Con una riga,
+      oppure inattivo, oppure account di servizio, oppure covers_all: 201.</criterion>
+    <criterion id="AC-010">Dato un utente attivo con una sola riga, quando un update la rimuove (o manda
+      `employment: null`) allora 422 e le righe restano; quando lo si disattiva e si rimuove la riga, 200.
+      Dato un utente inattivo senza righe, attivarlo senza aggiungerne risponde 422.</criterion>
+    <criterion id="AC-011">Dato un utente attivo gia' senza righe, un update che non tocca `employment` ne'
+      `is_active` (es. cambio nome) risponde 200.</criterion>
+    <criterion id="AC-012">La griglia utenti espone la colonna "Mansioni" (nomi separati da virgola, filtro set
+      per nome) e non espone piu' `job_description`.</criterion>
+    <criterion id="AC-013">Dato un ruolo con restrizione sul campo `employment.job_description`, dopo la
+      migrazione la stessa restrizione vale su `employment.job_role_ids`; il rollback la riporta indietro.</criterion>
+    <criterion id="AC-014">L'import utenti (`UsersSource`) non scrive piu' `job_description` anche se il legacy lo
+      invia, e l'import non fallisce (fixture REQUIREMENT CHANGED).</criterion>
+    <criterion id="AC-015">`GET /api/time-entries/stats/team` restituisce per ogni membro `job_roles` con i nomi
+      delle sue mansioni; la riga del team nel frontend li mostra.</criterion>
+    <criterion id="AC-016">Il menu Configurazione mostra Mansioni e Attivita' solo a chi ha il
+      rispettivo `.view`; le rotte `/job-roles`, `/job-activities` aprono lista, dettaglio e form.</criterion>
+    <criterion id="AC-017">Frontend: il form utente ha il select multiplo "Mansioni" al posto del campo testo e
+      mostra l'errore 422 della funzione obbligatoria sul blocco competenze; il form funzione aziendale ha le Societa'
+      (Vitest, query per ruolo accessibile).</criterion>
+    <criterion id="AC-018">Guide in-app IT+EN per `job-roles`, `job-activities` registrate in
+      `HELP_GUIDE_KEYS`; guide `users`, `business-functions`, `time-entries` aggiornate; parity test verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Identificatori in inglese; testi utente via i18n IT+EN.</item>
+    <item>Layering backend.md §1-§4: FormRequest + Policy su ogni endpoint, Resource (mai model raw),
+      $fillable, eager loading, liste solo via TableDefinition con allow-list di colonne (mai orderByRaw da input).</item>
+    <item>Migrazioni nuove e reversibili; nessuna migrazione committata modificata.</item>
+    <item>Regola della funzione obbligatoria nel layer applicativo (UserService/EmploymentWriter), non nei FormRequest dei soli campi.</item>
+    <item>File sotto 300 righe (500 hard). Test eseguiti: `XDEBUG_MODE=off ./vendor/bin/pest` mirati + suite
+      parallela, Vitest, `npx tsc -b --force`, Pint, ESLint.</item>
+    <item>I test esistenti che creano/attivano utenti via API senza `product_lines` vanno adeguati
+      (REQUIREMENT CHANGED, D-6), dichiarandolo.</item>
+  </constraints>
+
+</spec>

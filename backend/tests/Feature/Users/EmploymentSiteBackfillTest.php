@@ -60,7 +60,6 @@ function createEmploymentProfileRow(?int $operationalSiteId): int
 {
     return DB::table('employment_profiles')->insertGetId([
         'user_id' => User::factory()->create()->id,
-        'is_manager' => false,
         'operational_site_id' => $operationalSiteId,
         'created_at' => now(),
         'updated_at' => now(),

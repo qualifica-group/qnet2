@@ -17,6 +17,7 @@ export const businessFunctions = {
     users: 'Associated users',
     parent: 'Parent function',
     operational_sites: 'Operational sites',
+    companies: 'Companies',
     created_at: 'Created at',
   },
   detail: {
@@ -49,6 +50,12 @@ export const businessFunctions = {
     operationalSitesEmpty: 'No operational sites found.',
     operationalSitesError: 'Unable to load operational sites.',
     operationalSitesRemove: 'Remove operational site',
+    companies: 'Companies',
+    companiesPlaceholder: 'Select companies…',
+    companiesSearch: 'Search companies…',
+    companiesEmpty: 'No companies found.',
+    companiesError: 'Unable to load companies.',
+    companiesRemove: 'Remove company',
     type: {
       label: 'Type',
       businessUnit: 'Business Unit',
@@ -78,6 +85,9 @@ export const businessFunctions = {
       },
       assignment: {
         title: 'Assignment',
+      },
+      organization: {
+        title: 'Organization',
       },
       locations: {
         title: 'Operational sites',

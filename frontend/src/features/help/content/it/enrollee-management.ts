@@ -44,6 +44,24 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'offer-rows-editor',
+      title: "Righe dell'offerta",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "La cella **Linee di prodotto** e la scheda della richiesta usano lo stesso editor di Gestione Richieste: a sinistra il **Catalogo prodotti** (ricerca per nome o descrizione, chip delle categorie scelte; per ogni prodotto codice, tipologia, prezzo con unità, categoria e descrizione), a destra le **Righe dell'offerta** con importi e **Totale offerta**.",
+        },
+        {
+          type: 'list',
+          items: [
+            'Spunta uno o più prodotti e premi **Aggiungi N selezionati**: ogni prodotto diventa una riga con quantità 1, prezzo e IVA del prodotto.',
+            'Un prodotto già nelle righe è segnato **Già aggiunto** e non si seleziona: la quantità si cambia sulla riga.',
+            'Con una categoria a riga singola il clic su un prodotto sostituisce quello della riga; con una categoria semplificata la riga mostra solo gli importi.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'statistics-differences',
       title: "Le statistiche non ci sono più",
       blocks: [

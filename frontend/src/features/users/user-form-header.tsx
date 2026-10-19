@@ -52,12 +52,6 @@ export function UserFormHeader({ values, profileDraft, formId, isSubmitting, sub
                 {t(values.is_active ? 'users.form.is_active' : 'users.form.header.inactive')}
               </Badge>
             ) : null}
-            {values.is_manager && fieldPermission('employment.is_manager').visible ? (
-              <Badge variant="outline" className="gap-1.5">
-                <UserCog aria-hidden="true" />
-                {t('users.detail.employment.isManager')}
-              </Badge>
-            ) : null}
           </>
         }
         actions={

@@ -3,6 +3,19 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Merge `main` -> `feature/amministrazione` (HR 0271-0276 + controllo di gestione 0268-0272) — VERDE (2026-10-19)
+
+- Conflitti risolti per unione: `employment.*` ha sia `hourly_cost` (CdG 0272) sia `iban`/`iban_holder` (HR 0272);
+  catalogo campi 18 chiavi `employment.*`; HELP_GUIDE_KEYS 89; rollback migrazioni 59 / 210 / 74 (+12 HR, +1 CdG).
+- Adeguati al contratto di main: `UserHourlyCostTest` (utente membro di una funzione, HR 0271 obbligatoria) e
+  `user-form-employment.test.tsx` (`company_id` non e' piu' nel payload employment, ora nello storico contrattuale).
+- Numerazione spec duplicata tra i rami: 0268-0272 esistono sia per CdG sia per HR/catalogo (file con nomi diversi).
+- Verifica: Pest 11670/11674 (3 errori solo ambiente: `QuoteDocumentPdfTest` senza LibreOffice), Vitest verde,
+  `tsc -b --force` pulito, ESLint/Pint puliti.
+- PROSSIMO (decisioni utente 2026-10-19): costo orario calcolato dalla retribuzione dello storico contrattuale HR
+  (condizione in vigore alla data dell'ora; hourly = importo, monthly / 173, yearly / (173 x 12), divisori in config;
+  lordo senza coefficiente), eliminando il campo manuale `employment_profiles.hourly_cost`. Commit separato.
+
 ## Spec 0272 — Controllo di gestione F4: costo orario, ore nel margine, pagina Agenti — VERDE, NON COMMITTATO (2026-10-16)
 
 - Spec `docs/specs/0272-management-control-labor-cost-and-agents.xml` (D-1..D-8, AC-001..AC-012). Chiude le 4
@@ -233,6 +246,260 @@
   base ricavo contrattuale-fatturato-incassato; ricavo, costi preventivati e reali per fonte, provvigioni, margine
   atteso e consuntivo, scostamenti; raggruppamenti e ripartizione per funzione; costi di struttura per tipo di costo
   e per societa'/sede). Fonte testuale pronta: `frontend/src/features/help/content/it/management-control.ts`.
+## Spec 0276 — Responsabile di funzione dalla scheda utente, flag `is_manager` eliminato — VERDE, COMMITTATO DALL'UTENTE in c7bfe497 insieme a 0274/0275 (2026-10-19)
+
+- Decisioni utente 2026-10-19: eliminato `employment_profiles.is_manager` (colonna DB + permesso di campo); la regola
+  "un responsabile non riporta a nessuno" e' ELIMINATA (non trasferita: chiunque puo' avere superiori); colonna griglia
+  `is_manager` -> `managed_business_functions` ("Responsabile delle funzioni", filtro set); card stats `managers` = utenti
+  distinti manager_id di almeno una funzione; organigramma `Person.is_manager` = gestisce almeno una funzione (derivato,
+  `withExists`), nessun blocco agli spostamenti (`manager_cannot_report` rimosso). Supera 0275 D-6.
+- Contratto: `employment.managed_business_function_ids` tri-state come `business_function_ids` (assente/null = invariato,
+  [] = nessuna). Scrittura `Services/BusinessFunctions/FunctionManagerWriter` (update via model -> activity log della
+  funzione; la funzione passa da un responsabile all'altro, le tolte restano senza). Permesso di campo
+  (`UsersAuthorization::managedFunctionsPermission`): editabile solo con campo utente editabile E `business-functions`
+  `manager_id` editabile; altrimenti 422 "field not editable" (meccanismo dei permessi di campo, non 403). Il FE invia
+  sempre il campo con il valore attuale (stesso valore = nessun errore).
+- FE: `UserManagedBusinessFunctionsField` (user-employment-fields), riga inline in `user-record-sections.tsx`, prop
+  `description` in `components/form/relation-multi-select-field.tsx`; header dettaglio (`user-detail-header.tsx`) con
+  funzioni di appartenenza + gestite non di appartenenza, corona sulle gestite; aria-label corona
+  `users.detail.employment.functionManager`. "Risponde a" sempre visibile.
+- Migrazione `2026_10_21_101000_drop_is_manager_from_employment_profiles_table.php`. Legacy:
+  `../qnet/.../UserMigrationController.php` non invia piu' `is_manager`/`livello_crm` (NON committato nel legacy).
+- Verifica (verifier indipendente): `composer test` 11518 pass, 3 fail solo `QuoteDocumentPdfTest` (LibreOffice); Pint ok;
+  vitest 8496/8496; `tsc -b --force` 0 errori; ESLint ok sulle aree toccate. AC-001..014 coperti; AC-011 (superiori
+  importati non piu' scartati) solo indirettamente.
+- Incidente 2026-10-19: un subagente ha eseguito `migrate:fresh --env=testing` senza `.env.testing` -> DB `qnet2`
+  azzerato; ripopolato dall'utente (426 utenti, 28 funzioni, 16 responsabili, 206 righe pivot). Mai `migrate*`/`db:*`
+  sul DB di sviluppo dai subagenti.
+- Manuale Claude Docs aggiornato (Utenti: riga flag tolta, "Responsabile delle funzioni" modificabile, header; Funzioni
+  aziendali). Guide in-app users, business-functions, org-chart IT+EN. Manca ancora la sezione Organigramma nel manuale.
+
+## Spec 0275 — Funzione aziendale di appartenenza (reparto) unica tra Funzioni aziendali e scheda utente — VERDE, NON COMMITTATO (2026-10-19)
+
+- Decisioni utente 2026-10-19: appartenenza e competenze restano SEPARATE (niente unione). Appartenenza = pivot
+  `business_function_user` (lo stesso degli "Utenti associati"), multipla, OBBLIGATORIA per utente attivo non di
+  servizio (la regola 0271 D-6 passa dalle competenze all'appartenenza; competenze facoltative, cade l'eccezione
+  covers_all). Organigramma raggruppato per appartenenza. Corona gialla sul responsabile come nel segnatempo (D-9).
+- Contratto: `employment.business_function_ids` (tri-state: assente/null = invariato, [] = svuota; DIVERSO da
+  `job_role_ids` dove null svuota), resource `employment.business_function_ids/business_functions` e
+  `UserResource.managed_business_functions` [{id,name}]. `EmploymentProfile::businessFunctions()` = belongsToMany con
+  parentKey `user_id` (la riga sopravvive a `employment: null`). Errore 422 su `employment.business_function_ids`.
+- Pagina funzioni: `Services/BusinessFunctions/BusinessFunctionMembershipGuard` -> 422 su `users` se una persona attiva
+  resterebbe senza funzione, 409 sul delete. Griglia utenti: colonna `business_function` letta dal pivot.
+- Organigramma: `unassigned_people` sostituisce `all_functions_people` (riquadro "Non assegnati", FE `UnassignedCard`,
+  key `unassigned`); spostamento persona-funzione sul pivot, `from_function_id` nullable, 422 `not_in_source_function`,
+  permesso `employment.business_function_ids`; `GET /org-chart/people` `business_functions` = [{id,name,is_manager}]
+  dal pivot (is_manager = manager_id della funzione). Rimossi `covers_all`/`no_line_on_source`.
+- FE: `UserBusinessFunctionsField` (user-employment-fields), `features/users/function-badges.tsx` (corona), elenco sola
+  lettura "Responsabile delle funzioni"; i18n `{it,en}-users-employment.ts`, `{it,en}-org-chart.ts`; guide in-app
+  users, business-functions, org-chart IT+EN.
+- Verifica (verifier indipendente): AC-001..AC-024 PASS; `composer test` 11502 pass, 3 fail solo `QuoteDocumentPdfTest`
+  (LibreOffice assente); Pint ok; vitest 8488/8488; `tsc -b --force` EXIT=0; ESLint 1 errore PREESISTENTE in
+  `features/quotes/column-renderers.tsx:12` (fuori scope). Test cambiati per requisito (REQUIREMENT CHANGED): fixture
+  utenti attivi con `business_function_ids`/`memberOf()` (helper `membershipFunctionId()` in tests/Helpers/UserHelpers),
+  test OrgChart 0273, test FE organigramma ("Tutte le funzioni" -> "Non assegnati").
+- Manuale Claude Docs: aggiornati Funzioni aziendali (Utenti associati) e scheda utente (Funzioni aziendali di
+  appartenenza). Da fare: sezione Organigramma (manca tutto il modulo HR 0271-0274 nel manuale).
+- Dati: 54 utenti attivi locali senza appartenenza: la regola scatta al primo salvataggio della loro scheda.
+- Organigramma, fuori spec (richiesta utente 2026-10-19): fix "Sposta in..." che non apriva il dialog (bug 0274: il pan
+  di `use-chart-viewport.ts` catturava il puntatore anche per eventi React risaliti da portal, ora esce se il target non
+  e' nel DOM del viewport; test `use-chart-viewport.test.ts`). Animazioni espandi/comprimi solo CSS `tw-animate-css`:
+  transizione left/top e `d` degli archi, ingresso fade/zoom, uscita trattenuta per `EXIT_MS` (`use-exiting-cards.ts`,
+  card in uscita `aria-hidden`+`inert`), righe del pannello persone, `motion-reduce` rispettato. Resa visiva non ancora
+  vista nel browser (DB locale `qnet2` azzerato per errore da un'altra sessione, ripristino in corso con l'utente).
+- Vista Funzioni (utente 2026-10-19, supera 0274 D-2): le persone sono card sotto la funzione (`chartChildren`: prima
+  persone, responsabili in testa poi per nome, poi sotto-funzioni; idem "Non assegnati"); pulsante membri e pannello
+  restano. Limite noto: funzione con >4 persone E sotto-funzioni = una riga larga (la griglia a colonne scatta solo con
+  figli tutti foglie). Responsabile di funzione emesso solo se attivo e non di servizio (`functionRows`, leftJoin).
+  Guida org-chart IT+EN aggiornata (ceduta dalla sessione 0276, frasi 0276 mantenute).
+- Prossimo: spec 0276 (sessione separata) elimina `employment_profiles.is_manager` e rende "Responsabile delle
+  funzioni" modificabile dalla scheda utente (supera 0275 D-6); la corona d'angolo della card organigramma dipende
+  ancora da `is_manager`.
+
+## ORGANIGRAMMA GRAFICO "STILE BIZNEO" (SPEC 0274) — VERDE, NON COMMITTATO (2026-10-19)
+
+- Decisioni utente 2026-10-19: l'albero a righe di 0273 e' ELIMINATO; resta un organigramma grafico (riquadri dall'alto
+  al basso, linee curve SVG, pallino "+N", zoom), persone di una funzione in un pannello laterale (non riquadri),
+  spostamenti con menu + trascinamento tra riquadri. Backend e contratto API invariati.
+- Nuovi: `chart-layout.ts` (layout puro: genitore centrato, foglie >4 in griglia da 4 colonne, radici a scaffali oltre
+  1240 px, linee calcolate dalle posizioni finali), `use-chart-viewport.ts` (zoom 0.3-1.5, pan trascinando lo sfondo),
+  `components/org-chart-canvas.tsx` (treeitem piatti con aria-level/setsize/posinset, radici con gerarchia prima),
+  `org-chart-card.tsx`, `org-members-sheet.tsx`. Eliminati `org-tree.tsx`, `org-node-content.tsx`, `org-tree.test.tsx`.
+  `tree-nodes.ts`: `chartChildren` (le persone sotto una funzione non sono riquadri) e `memberPeople`;
+  `use-org-tree-state` apre di default solo le radici.
+- Test: `chart-layout.test.ts` nuovo; `org-chart-page.test.tsx` e `org-chart-move.test.tsx` riscritti sulle viste
+  grafiche (REQUIREMENT CHANGED, spec 0274). Vitest org-chart + help 183/183, ESLint ok, `tsc -b --force` ok,
+  verifica visiva con Chrome su dati locali (nessuno scroll orizzontale a 1440 e 375).
+- Coordinamento: la sessione della spec 0275 (appartenenza a funzione via pivot `business_function_user`) cambia il
+  backend dell'organigramma e rinomina `all_functions_people` -> `unassigned_people`; tocca il frontend org-chart
+  SOLO dopo il via di questa sessione (`types.ts`, `build-function-tree.ts`, etichette `allFunctions`/`allFunctionsHint`,
+  `isMovable` per i non assegnati).
+- Prossimi passi: commit su richiesta; manuale Claude Docs sezione Organigramma.
+
+## SEED PRODUZIONE: PRODOTTI DI COSTO NUOVI (NON [OLD]) — VERDE, COMMITTATO (2026-10-16)
+
+- Decisioni utente 2026-10-16: le voci di costo legacy diventano prodotti NUOVI e attivi in qnet-2, catalogo SEPARATO
+  da "[OLD] Costi" (nessun `old_id`/`old_source`: l'import `cost-products` crea ancora le copie [OLD] e le righe COSTO
+  migrate di offerte/commesse puntano a quelle). Esclusi i livelli dipendenti (`user_levels`) e i record di prova
+  legacy (Alpha, oust, Motosega). Nomi ripuliti (lista confermata dall'utente), importo legacy = cost = price,
+  IVA 22% solo dove il legacy aveva rate_id 6, altrimenti vuota.
+- Revisione utente 2026-10-16: tolti dalla lista Pompa derattizzante, i 3 veicoli, Commissioni partner formazione,
+  Contributo discenti, Pagamento fornitore; spariscono le foglie Veicoli e Attrezzature. Ora 10 prodotti (Note spese 6,
+  Articoli 4); `QualificaProductionDataSeederTest` 557 -> 550. Il seeder non cancella: le righe gia' seminate restano.
+- Nuovi `database/seeders/QualificaCatalog/CostCatalogue.php` (dati: radice "Costi", foglie Note spese 6, Articoli 4
+  = 10 prodotti) e `database/seeders/QualificaCostProductSeeder.php` (ProductService::create,
+  usages [COST], radice non selezionabile senza funzione aziendale, idempotente su (name, category), IVA 22% adottata
+  per percentuale come `CatalogProducts::plusVatRate`). Chiamato in `QualificaProductionDataSeeder` subito dopo
+  `QualificaCatalogSeeder`.
+- Test: nuovo `tests/Feature/Seeding/QualificaCostProductSeederTest.php` (3); `QualificaProductionDataSeederTest`
+  conteggio prodotti 540 -> 550 (REQUIREMENT CHANGED). Seeding 162/162, Migration 416/416, Products 229/229, Pint ok.
+- Manuale: guida in-app `migrations` IT+EN (nota Prodotti di costo) e manuale Claude Docs (paragrafo dopo
+  "[OLD] Costi") aggiornati. Help vitest 131/131, ESLint ok, tsc -b ok.
+
+## Spec 0273 — Modulo HR: Organigramma — VERDE, COMMITTATO (2026-10-16, branch feature/hr)
+
+- Spec `docs/specs/0273-hr-org-chart.xml`; `docs/product/hr.md` §6 aggiornato. Nessuna migrazione, nessun importer.
+- Pagina Amministrazione > Organigramma (`/org-chart`, permesso `org-chart.view` generato da `OrgChartAuthorization`
+  come request-statistics): schede Funzioni (albero `parent_id`, persone = righe `employment_product_lines`, nodo
+  "Tutte le funzioni" per covers_all) e Persone (Riporta a; chi ha piu' responsabili compare sotto ciascuno).
+- API: `GET /api/org-chart/functions|people` (6 query per vista); spostamenti `POST /api/org-chart/people/{user}/manager`
+  {from_manager_id,to_manager_id}, `/functions/{id}/parent` {parent_id}, `/people/{user}/function`
+  {from_function_id,to_function_id} (righe di F1 -> una riga F2 a funzione intera). Vincoli: anti-ciclo persone
+  (`TimeEntrySubordinateResolver`) e funzioni (`BusinessFunctionService::assertNoCycle`, ora pubblico, messaggi in
+  `lang/*/business_functions.php`), is_manager, covers_all, persona senza profilo = 422. Permessi: users.update /
+  business-functions.update + campo modificabile (403).
+- Registro: activity log `org-chart`/evento `moved` sul soggetto; `ActivityLogEntryResource` lo rende come una voce
+  {field: manager|function_parent|person_function}; frontend activity-log conosce l'evento `moved`.
+- Frontend: `features/org-chart/` (albero accessibile role tree, ricerca, espandi/comprimi, "Sposta in…" + drag
+  @dnd-kit solo puntatore fine), rotte HR in `routes/hr-routes.tsx` e Task in `routes/task-routes.tsx` (router.tsx 439).
+- Note: `DemoOpportunitySeederTest` e' flaky (dati casuali, spec 0077), non legato a 0273. Manuale Claude Docs: nuova
+  sezione Organigramma da scrivere.
+
+## Spec 0272 — Modulo HR passo 2: scheda dipendente (storico contrattuale, CCNL, IBAN, recapiti di lavoro, cessati) — VERDE, COMMITTATO 1660f477 (2026-10-16, branch feature/hr)
+
+- Spec `docs/specs/0272-hr-employee-record.xml` rev.3; `docs/product/hr.md` §3/§4 aggiornati. Nessun importer nuovo.
+- Storico: `employment_contracts` (append-only: si cancella solo l'ultima, 409 altrimenti; `ends_on` derivata). API
+  `GET|POST /api/users/{user}/employment-contracts`, `DELETE .../{employmentContract}` (isolamento nel controller, testato;
+  utente senza profilo = lista vuota). `EmploymentContractService::syncCurrent` scrive la COPIA vigente su
+  `employment_profiles.relationship_type/company_id`, non piu' scrivibili da `PUT /api/users`.
+- CCNL: `collective_agreements` + `collective_agreement_levels` (array `levels` sostituisce i livelli, livello usato = 422),
+  `/api/collective-agreements`, `/api/collective-agreement-levels/for-select` (label "CCNL – codice"), menu Configurazione.
+  `qualification_type` (Inquadramento) e `QualificationTypeEnum` ELIMINATI (decisione utente).
+- Dati retributivi: permesso `users.manageCompensation` (solo super-admin di default). IBAN cifrato (`ValidIban`, mod-97),
+  IBAN + intestatario + retribuzione in `$hidden` (fuori dall'activity log); senza permesso chiavi assenti, scrittura 403.
+- Recapiti: `contacts.is_work` (flag mostrato solo nella scheda utente). Cessazione: salvataggio inattivo se
+  `terminated_at` <= oggi; comando `employment:daily-sync` alle 00:30 (disattiva e riallinea la condizione vigente);
+  colonna griglia `employment_status` (employed/terminated).
+- Rollback a step fisso: QuoteWorkflowMigrationTest 208, SupplierCommissionDirectionTest 72, PurchaseOrderMigrationTest 57
+  (7 migrazioni 0272).
+- Da fare: manuale Claude Docs (CCNL, Utenti > Rapporto contrattuale / Storico / Pagamento / Recapiti di lavoro /
+  Cessazione, colonna Stato). `router.tsx` a 493 righe: il prossimo modulo deve estrarre le rotte HR.
+
+## Spec 0271 — Modulo HR passo 1: Mansioni, Attivita', societa' delle funzioni, funzione obbligatoria — VERDE (2026-10-16, branch feature/hr)
+
+- Documento di prodotto `docs/product/hr.md` (campi, non tabelle; decisioni D-1..D-9). Spec
+  `docs/specs/0271-hr-org-structure.xml` rev.3: Divisioni ELIMINATE (utente), posizioni non servono, nessun importer
+  (il legacy non ha questi dati), mansione = catalogo proprio SENZA legame con ruoli/permessi, niente SSO, Controllo di
+  Gestione fuori. Mai sigle di dominio (BU/BS): "business unit" / "business service" per esteso (utente).
+- Backend: tabelle `job_roles`, `job_activities`, `job_activity_job_role`, `employment_profile_job_role`,
+  `business_function_company` (unique con nomi corti: MySQL max 64 caratteri, SQLite non lo intercetta); drop
+  `employment_profiles.job_description` (valori persi, decisione utente); permesso di campo rinominato in
+  `employment.job_role_ids`. CRUD `/api/job-roles`, `/api/job-activities` (+ for-select solo auth, ADR 0011; delete in
+  uso 409, libero 204), tabelle omonime, permessi `job-roles.*`/`job-activities.*`, menu Configurazione. Rotte HR
+  raggruppate in `routes/api/hr.php` (anche business-functions, per stare sotto 500 righe in `api.php`).
+- Regola funzione obbligatoria (D-6, `Services/Users/BusinessFunctionCoverageGuard`): utente attivo, non di servizio,
+  senza `covers_all_product_categories` deve avere almeno una riga `employment.product_lines`; solo via API (create,
+  attivazione, update che tocca `employment`); 422 su `employment.product_lines`; l'import legacy la salta
+  (`enforceCoverage: false`).
+- Funzioni aziendali: `company_ids`/`companies`. Scheda utente: `employment.job_role_ids` (tri-state) /
+  `job_roles`; griglia utenti colonna `job_roles`; segnatempo team `job_roles: string[]`.
+- Frontend: `features/job-roles/`, `features/job-activities/`, i18n raggruppati in `{it,en}-hr.ts`, guide in-app
+  `job-roles`/`job-activities` + aggiornate users, business-functions, time-entries.
+- Test con rollback a step fisso aggiornati (+4 migrazioni 0271): QuoteWorkflowMigrationTest 201,
+  SupplierCommissionDirectionTest 65, PurchaseOrderMigrationTest 50.
+- Da fare: manuale Claude Docs (sezioni Mansioni, Attivita', Funzioni aziendali > Societa', Utenti > Mansioni e regola
+  della funzione obbligatoria, segnatempo team). `OperatorRoster` porta ancora la colonna mansione del foglio cliente
+  (inutilizzata): potrebbe popolare il catalogo Mansioni. Il legacy invia ancora `job_description` (ignorato).
+- Prossimo passo HR: scheda dipendente estesa (storico contrattuale, CCNL e livelli, IBAN, recapiti di lavoro).
+
+## Spec 0270 — Costi effettivi Commessa sul blocco catalogo + righe — VERDE, NON COMMITTATO (2026-10-16)
+
+- Spec `docs/specs/0270-work-order-costs-catalog-editor.xml` (D-1..D-5, AC-001..AC-008). Solo frontend.
+- `QuoteLineEditorFrame` (`features/quotes/line-editor/quote-line-editor-frame.tsx`) estratto da `QuoteLineEditor`:
+  cornice unica, pannello righe (titolo, conteggio, vuoto, totali `{net, vat, gross, totalLabel}`), slot catalogo.
+- Costi commessa: `WorkOrderCostsLinesField` = frame + `QuoteLineCatalog` (variant cost, `{kind:'all'}`, duplicati
+  ammessi) + `WorkOrderCostCard` (livelli 1-2) + `WorkOrderCostCardDetails` (livello 3: data, tipo costo, fornitore,
+  riferimento, descrizione). Hook `useWorkOrderCostsEditor.addProducts(items)` (createEmptyCostRow +
+  costRowPatchFromProduct) al posto di `addRow`/`changeProduct`. Cancellato `WorkOrderCostRow` + grid classes.
+- i18n: + `workOrders.costs.editor.rowsTitle/totalLabel`; - `editor.add`, `editor.product`, 8 `editor.headers.*`.
+- Test: `work-order-costs-section.test.tsx` adeguato (REQUIREMENT CHANGED) + AC-003 duplicati/usage COST + totale.
+  Lead: 175 file / 1419 test verdi (quotes, request-management, costi commessa, commesse, i18n); tsc -b pulito.
+- Manuale: guida in-app `work-orders` IT/EN (sezione `costs`); manuale Claude Docs: Commesse ancora "in fase di
+  sviluppo" (§4-bis), nessun aggiornamento.
+- Verifier: AC-001..AC-008 PASS (vitest completo 8304/8304, tsc -b ed ESLint puliti). Riserva chiusa dal lead: nuovo
+  `work-order-cost-card.test.tsx` (importi live, tutti i campi -> onChangeField, rimozione, sola lettura, triade errore).
+  Il seeder costi (`cad1b2d5`) e' un lavoro parallelo, non di questa spec.
+
+## Spec 0269 — Editor catalogo + righe nel form Offerte (Prodotti e Costi) — VERDE, COMMITTATO 119d980c (2026-10-16)
+
+- Spec `docs/specs/0269-quote-lines-catalog-editor.xml` (D-1..D-8, AC-001..AC-013). Solo frontend, backend invariato.
+- L'editor della 0268 e' ora modulo condiviso `features/quotes/line-editor/`: `QuoteLineEditor`, `QuoteLineCatalog`,
+  `QuoteCatalogItem`, `QuoteLineCard`, `useQuoteLineEditor`, `useQuoteLineCatalog`, `useNextPageSentinel`, tipi in
+  `types.ts` (`QuoteCatalogProduct`, `QuoteCatalogScope` {categories + `fullCatalog` | all},
+  `QuoteLineCommissionsAdapter`, `QuoteLineCardSlots`). Richieste/Iscritti lo montano da `RequestOfferLinesField`.
+- Offerte: `QuoteOfferTab` (scope opportunita', chip "Tutto il catalogo" = vecchio Sblocca con `unlockDialog`, single
+  mode, slot provvigioni `QuoteLineCommissionsAction` + `QuoteLineAdditionalDescription`), `QuoteCostsTab` (`{kind:'all'}`,
+  usage COST, `allowDuplicates`, slot `QuoteCostAssociationSelect`). Provvigioni in `useQuoteLineCommissions`
+  (default al multi-add tutto-o-niente, conferma + default nella sostituzione single, re-sync al cambio ruoli).
+- Helper `appendProductRows` (use-quote-lines-field.ts) con `client_key` per riga; `seedSoleProductRows` lo riusa.
+- Cancellati: `QuoteLinesField`, `QuoteLineRow`, `quote-line-grid.ts`, `addRow` e i parametri remember* di
+  `useQuoteLinesField`, chiavi i18n orfane (`offerTab.unlock/relock/hintScoped/hintUnlocked/hintSingleCategory`,
+  `form.lineProduct/lineAdd/linesEmpty/lineRemoveHeader`). Tipi `QuoteLineRowErrors`/`QuoteCostOfferLineOption` in
+  `quote-line-types.ts`, `knownVatRatesFrom` in `quote-line-values.ts`. i18n editor: `quotes.lineEditor.*`.
+- Test: nuovi `use-quote-line-commissions.test.tsx`; riscritti `quote-offer-tab.test.tsx`, `quote-costs-tab.test.tsx`,
+  `quote-line-additional-description.test.tsx`; adeguati `quote-form-body`/`quote-form-seeded-products` (REQUIREMENT
+  CHANGED dichiarati). Lead: 222 file / 1793 test verdi su quotes, request-management, help, i18n, fatture, costi commessa,
+  commesse, contratti; tsc -b pulito.
+- Manuale: guide in-app `quotes` IT/EN; manuale Claude Docs (sezione righe offerta/costo + risoluzione problemi).
+- Verifier: AC-001..AC-013 PASS (vitest completo 8298/8298, tsc -b pulito, backend non toccato). Riserve chiuse dal
+  lead: `knownVatRatesFrom` interno a `QuoteLineEditor` (prop `knownVatRates` rimossa, `quote-line-values.ts` torna a
+  311 righe come prima); nuovo `line-editor/quote-line-card.test.tsx` (codice, UdM, IVA manuale -> cache, slot);
+  AC-007 apre `QuoteCommissionsDialog` dalla card; AC-010 test catalogo -> PATCH in `quote-detail-inline-edit.test.tsx`.
+  Ultimo giro mirato: 223 file / 1798 test verdi.
+- Ritocco utente: catalogo e righe sono UN blocco (`QuoteLineEditor`: una cornice `rounded-lg border bg-surface`,
+  divisorio `border-r` affiancati / `border-t` impilati); i due pannelli non hanno piu' bordo proprio.
+- Soft limit: `quote-detail-inline-edit.test.tsx` ora 327 righe (era 288): candidato a split del harness in fixture.
+- Segnalato, fuori scope: `features/quotes/column-renderers.tsx` ha un errore ESLint react-refresh preesistente.
+
+## Spec 0268 — Editor "Linee di prodotto" catalogo + righe (Richieste/Iscritti) — VERDE, COMMITTATO 8dd24577 (2026-10-16)
+
+- Spec `docs/specs/0268-offer-lines-catalog-editor.xml` (D-1..D-7, AC-001..AC-017). Decisioni utente: layout catalogo a
+  sinistra + righe a due livelli a destra; tutte e tre le superfici (dialog cella, scheda, Nuova richiesta) di Richieste
+  e Iscritti; prodotto gia' nelle righe = badge "Gia' aggiunto" non selezionabile; filtri solo chip categoria.
+- Backend: `ProductForSelectResource` espone `meta.description` (string|null, squished, additivo); `subtitle` invariato.
+- Frontend: `features/request-management/offer-lines-editor/` (`OfferLinesEditor`, `OfferLinesCatalog`,
+  `OfferCatalogItem`, `OfferLineCard`, hook `useOfferLinesEditor`/`useOfferLinesCatalog`/`useNextPageSentinel`, tipi
+  `OfferCatalogProduct`/`OfferLineProductView`). `RequestOfferLinesField` monta `OfferLinesEditor` al posto di
+  `QuoteLinesField`; il form Offerte (`features/quotes/**`) NON e' toccato. Riusati: `seedSoleProductRows` (multi-add,
+  riempie prima le righe pristine), `useQuoteLinesField` (setField/removeRow/setProduct per la sostituzione single-mode),
+  `aggregateLines`, `categoryPathLabel`, `useForSelectLabels` (nome dei prodotti di righe create dall'autofill).
+- Contratti invariati: valori form `QuoteLineFormValues[]`, PATCH cella `offer_lines`, submit scheda/creazione.
+- i18n nuove: `requestManagement.offerLines.catalog.*`, `requestManagement.offerLines.rows.*` (IT+EN). Etichette riga
+  riusano `quotes.form.line*` ("Quantita' riga N", "Rimuovi riga N"...).
+- Test esistenti adeguati (REQUIREMENT CHANGED, commentati): `offer-lines-dialog.test.tsx`,
+  `request-work-panel-offer-lines.test.tsx`, `use-offer-lines-autofill.test.tsx` (niente combobox "Prodotto riga N",
+  riga pristine non disegnata, probe autofill distinto dalla lista catalogo per `limit: 2`).
+- Manuale: guide in-app IT/EN `request-management` (nuova sezione `offer-rows-editor`); manuale Claude Docs aggiornato
+  (blocco "Editor delle righe dell'offerta" + 3 passaggi). Il PDF derivato va rigenerato.
+- Ritocchi utente dopo il build: pannello righe su `bg-surface` (gemello del catalogo) con card `bg-card shadow-sm`,
+  fascia importi `bg-muted/40`, numero riga `bg-primary/10`; select IVA alto come gli input (`min-h-8`); etichetta
+  "Righe offerta" sopra l'editor solo sr-only (`MetaFieldRowContext`). Guida Iscritti IT/EN: sezione `offer-rows-editor`.
+- Verifier: AC-001..AC-017 PASS (AC-016 responsive da guardare a mano a 375/1024px). Pest completo 11345/11349: i 3 rossi
+  sono `QuoteDocumentPdfTest` (LibreOffice assente su questa macchina, ambientale). Vitest completo 8301/8302: 1 flaky
+  da carico (`purchase-request-submit.test.tsx`, verde da solo). tsc -b e ESLint puliti.
+- Prossimo: spec 0269 = stesso editor nel form Offerte (schede Prodotti E Costi; "Sblocca" diventa chip "Tutto il
+  catalogo" con la stessa conferma) — decisioni utente 2026-10-16, da pianificare.
+- Da sistemare (segnalato): questo HANDOFF pesa ~630 KB, ben oltre i 50 KB: va archiviato in `docs/handoff-archive/`.
 
 ## MERGE main (2f8d47ce) -> feature/amministrazione — RISOLTO (2026-10-16)
 

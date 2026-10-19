@@ -19,7 +19,7 @@ const guide: HelpGuide = {
             'Open **Quotes** and click **New quote** (or start from the opportunity record).',
             'In **Quote data**, pick the **Opportunity**: Commercial, Reporter, Supervisor, Account managers and Operational site are prefilled from it (you can change them).',
             'Fill in the other rows you need (see table).',
-            'At the bottom, add the sold product rows on the **Offer** tab and the cost rows on the **Costs** tab: the grids are already open and the summary updates as you type.',
+            'At the bottom, add the sold product rows on the **Offer** tab, picking them from the **Product catalogue**, and the cost rows on the **Costs** tab: the editors are already open and the summary updates as you type.',
             'Click **Save** (top or bottom): QNet checks every field and creates the quote; errors show under the rows to fix.',
           ],
         },
@@ -85,7 +85,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'The **Offer** and **Costs** rows have a pencil each: the editing grid opens and the summary below shows the totals of what you are typing. If the new products bring more Additional information, it appears under the grid: fill it in the same save (required ones are needed to save).',
+            'The **Offer** and **Costs** rows have a pencil each: the editor opens with the catalogue and the rows, and the summary below shows the totals of what you are typing. If the new products bring more Additional information, it appears under the grid: fill it in the same save (required ones are needed to save).',
             '**Rewards** are edited from the **Reporter** row. Changing the Commercial, Reporter or Supervisor makes QNet update the rows\' commissions by itself.',
             'Changing the **Company** clears the **Company site** in the same save.',
           ],
@@ -118,7 +118,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Column', 'Meaning'],
           rows: [
-            ['**Product** / **Code**', 'The chosen product.'],
+            ['**Product** / **Code**', 'The product chosen from the catalogue.'],
             ['**Quantity**', 'Greater than zero, at most 2 decimals.'],
             ['**Unit**', 'The unit of measure.'],
             ['**Unit price**', 'Non-negative, at most 2 decimals.'],
@@ -129,8 +129,11 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'On the **Offer** tab, pick only **Sellable** products (proposed price: sale price); on the **Costs** tab, only products **Usable as a cost** (proposed price: cost).',
-            'Once a product is chosen, QNet prefills unit, price and VAT: you can edit them.',
+            'Each tab has the **Product catalogue** on the left and the rows (**Offer rows** / **Cost rows**) on the right; on narrow screens they stack. Search by name or description: each product shows name, code, typology, price with unit of measure (on the Costs tab the cost price), category path and description.',
+            'Tick one or more products and press **Add N selected**: one row per product is created with quantity 1 and the product\'s price (sale or cost) and VAT, which you can edit. On the **Offer** tab the default commissions of each product are loaded too: if loading fails no row is added and the selection stays, so you can retry.',
+            'Each row is a two-level card: product, code and typology; below, quantity × unit price, VAT and net/VAT/total. At the bottom you find the **Offer total** / **Cost total**.',
+            'To change the product of a row, remove the row and pick the new product from the catalogue.',
+            'The **Costs** tab shows the whole catalogue of cost products, with no category filter, and the same product can be added more than once.',
             '**Additional description** adds text to the row, printable on the quote document.',
             "Each row's **Commissions** can only be opened and changed for that row. The popup shows the line net, imputed costs, calculation base and total commissions at the top; each role carries a label with the commission's origin (**Rule: Product**, **Rule: Category** or **Personal rule** when it comes from a Configurator rule, **Manual override** when it was changed by hand; hovering the label explains it). While editing, every role also shows the **System calculation** (what the Commission Configurator grants): if you changed the value by hand you can keep it or go back to the calculation with **Apply system calculation**.",
             'Every cost row has an **Associated product**: pick "None (generic cost)" or a row from the Products tab to attribute that cost to that sale. Deleting the associated product row sends the cost back to "None" automatically.',
@@ -139,7 +142,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Products are limited to the opportunity's categories; **Show all products** opens the full catalogue (the new category is added to the opportunity).",
+          text: "On the **Offer** tab the catalogue shows the products of the opportunity's categories, with the **All** chip and one chip per category. The **Whole catalogue** chip asks for confirmation and then shows the whole catalogue (the new category is added to the opportunity); clicking **All** or a category goes back to the filter. A product already in the rows is **Already added** and cannot be selected. If the opportunity is managed on a single category there are no checkboxes: clicking a product replaces the row's product (with confirmation if the commissions must be regenerated).",
         },
         {
           type: 'paragraph',

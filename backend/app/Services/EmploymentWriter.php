@@ -5,6 +5,7 @@ namespace App\Services;
 use App\DataObjects\Users\EmploymentData;
 use App\Models\EmploymentProfile;
 use App\Models\User;
+use App\Services\BusinessFunctions\FunctionManagerWriter;
 use App\Services\ProductLines\ProductLineWriter;
 
 /**
@@ -12,9 +13,6 @@ use App\Services\ProductLines\ProductLineWriter;
  * (spec 0015): a plain hasOne upsert/delete, with the server-side invariants
  * enforced here (not trusted from the request):
  *
- *  - a manager cannot also report to someone (`is_manager` forces the
- *    `reportsTo` pivot empty, spec 0166 D-5 — replacing the former
- *    `reports_to_id` column invariant);
  *  - a user can never report to itself (defense in depth — the FormRequest
  *    already 422s this on update; a create can never self-reference since
  *    the user's own id does not exist yet at validation time);
@@ -24,6 +22,13 @@ use App\Services\ProductLines\ProductLineWriter;
  *    tri-state instead of trusting whatever shape the payload sends;
  *  - the assignment competence (spec 0111) is written on its own child
  *    table, with the same tri-state discipline (see syncProductLines());
+ *  - the job roles (spec 0271) are written on their own pivot
+ *    (`employment_profile_job_role`), same tri-state discipline;
+ *  - the business-function membership (spec 0275) is written on the
+ *    `business_function_user` pivot, same tri-state discipline;
+ *  - the functions the person manages (spec 0276) are written on
+ *    `business_functions.manager_id` by FunctionManagerWriter, same tri-state
+ *    discipline;
  *  - the reports-to managers (spec 0166) are written on their own pivot
  *    (`employment_profile_manager`), with the same tri-state discipline
  *    (see syncManagers()) — a genuine set change is logged as ONE explicit
@@ -37,7 +42,10 @@ class EmploymentWriter
 {
     private const string MANAGERS_ACTIVITY_DESCRIPTION = 'Employment reports-to update';
 
-    public function __construct(private readonly ProductLineWriter $productLineWriter) {}
+    public function __construct(
+        private readonly ProductLineWriter $productLineWriter,
+        private readonly FunctionManagerWriter $functionManagerWriter,
+    ) {}
 
     /**
      * Persist the nested employment profile for the user inside the caller's
@@ -73,9 +81,47 @@ class EmploymentWriter
         // Step 3: apply the competence tri-state onto its own child rows.
         $this->syncProductLines($profile, $employment);
 
-        // Step 4: apply the reports-to tri-state onto its own pivot,
-        // enforcing D-5 (a manager reports to no one) unconditionally.
+        // Step 4: apply the reports-to tri-state onto its own pivot.
         $this->syncManagers($profile, $employment, $user, $actor);
+
+        // Step 5: apply the job-roles tri-state onto its own pivot.
+        $this->syncJobRoles($profile, $employment);
+
+        // Step 6: apply the business-function membership tri-state onto the user pivot.
+        $this->syncBusinessFunctions($profile, $employment);
+
+        // Step 7: apply the managed-functions tri-state onto business_functions.manager_id.
+        if ($employment->managedBusinessFunctionIdsProvided) {
+            $this->functionManagerWriter->sync($user, $employment->managedBusinessFunctionIds);
+        }
+    }
+
+    /**
+     * Apply the `business_function_ids` tri-state (spec 0275 D-3) onto
+     * `business_function_user`: absent leaves the pivot alone, any submitted
+     * array replaces it wholesale.
+     */
+    private function syncBusinessFunctions(EmploymentProfile $profile, EmploymentData $employment): void
+    {
+        if (! $employment->businessFunctionIdsProvided) {
+            return;
+        }
+
+        $profile->businessFunctions()->sync($employment->businessFunctionIds);
+    }
+
+    /**
+     * Apply the `job_role_ids` tri-state (spec 0271 D-2) onto
+     * `employment_profile_job_role`: absent leaves the pivot alone, any
+     * submitted array replaces it wholesale (an empty one clears it).
+     */
+    private function syncJobRoles(EmploymentProfile $profile, EmploymentData $employment): void
+    {
+        if (! $employment->jobRoleIdsProvided) {
+            return;
+        }
+
+        $profile->jobRoles()->sync($employment->jobRoleIds);
     }
 
     /**
@@ -189,12 +235,8 @@ class EmploymentWriter
      * `employment_profile_manager`: absent leaves the pivot alone, any
      * submitted array replaces it wholesale (an empty one clears it).
      *
-     * D-5 takes precedence, exactly like the wildcard flag on the competence
-     * (syncProductLines() above): when the profile is a manager, the pivot is
-     * cleared REGARDLESS of what (or whether) `reports_to_ids` was
-     * submitted — a Responsible reports to no one. The self-reference guard
-     * (D-5 "defense in depth") discards the user's own id here too, even
-     * though the FormRequest already 422s it on update.
+     * The self-reference guard (spec 0166 D-5 "defense in depth") discards the
+     * user's own id here, even though the FormRequest already 422s it on update.
      *
      * A genuine set change is logged as ONE explicit activity() entry (D-6);
      * resubmitting the same set — in any order — is a no-op, both on the
@@ -202,11 +244,11 @@ class EmploymentWriter
      */
     private function syncManagers(EmploymentProfile $profile, EmploymentData $employment, User $user, User $actor): void
     {
-        if (! $employment->isManager && ! $employment->reportsToIdsProvided) {
+        if (! $employment->reportsToIdsProvided) {
             return;
         }
 
-        $targetIds = $employment->isManager ? [] : $this->managerIdsExcludingSelf($employment->reportsToIds, $user);
+        $targetIds = $this->managerIdsExcludingSelf($employment->reportsToIds, $user);
 
         // The accessor below reads off this eager-loaded collection, so this
         // is the only query the whole sync needs beyond the sync() itself.

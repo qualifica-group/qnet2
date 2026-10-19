@@ -28,18 +28,17 @@ export interface UserRole {
 export const RELATIONSHIP_TYPES = ['employee', 'self_employed', 'other'] as const
 export type RelationshipType = (typeof RELATIONSHIP_TYPES)[number]
 
-/** Employment qualification/role bucket, used for cost/payroll categorization (spec 0015). */
-export const QUALIFICATION_TYPES = [
-  'employee_level_5',
-  'administrative',
-  'coordinator',
-  'iso_consultant',
-  'teacher_cococo',
-  'teacher_vat',
-  'trainee_cost',
-  'hourly_cost_me',
-] as const
-export type QualificationType = (typeof QUALIFICATION_TYPES)[number]
+/** The condition in force, as summarised on the employment profile (spec 0272). */
+export interface CurrentContract {
+  starts_on: string
+  collective_agreement_level: { id: number; label: string } | null
+}
+
+/** A `{id, name}` function reference (spec 0275 contract), unlike the `{id, label}` employment refs. */
+export interface NamedRef {
+  id: number
+  name: string
+}
 
 /** A related entity reference as returned inside `employment` ({id, label}). */
 export interface EmploymentRelationRef {
@@ -68,10 +67,7 @@ export interface EmploymentProductLine {
  */
 export interface EmploymentDetail {
   id: number
-  is_manager: boolean
-  job_description: string | null
   relationship_type: RelationshipType | null
-  qualification_type: QualificationType | null
   hired_at: string | null
   terminated_at: string | null
   standard_daily_minutes: number | null
@@ -80,19 +76,28 @@ export interface EmploymentDetail {
   hourly_cost: number | null
   /** Zero or more managers (spec 0166), ordered by name; [] when none. */
   reports_to_ids: number[]
+  /** Mansioni ids (spec 0271); [] when none. */
+  job_role_ids: number[]
+  /** Funzioni aziendali di appartenenza (spec 0275): same data as the function's "Utenti associati"; [] when none. */
+  business_function_ids: number[]
   company_id: number | null
+  /** The condition in force today (spec 0272 D-2): CCNL level and its start; null when the history is empty. */
+  current_contract?: CurrentContract | null
+  /** Payment account (spec 0272 D-6): present only with `users.manageCompensation`. */
+  iban?: string | null
+  iban_holder?: string | null
   /** The user's single physical site (spec 0103 D-3), at most one, optional. */
   primary_operational_site_id: number | null
   /** The user's remote sites (spec 0103 D-1): operative exactly like the physical one. */
   remote_operational_site_ids: number[]
   /**
    * Spec 0194: explicit "Assegnabile" flag. False excludes the person from every
-   * record assignment pool even with Sede and competence. Scalar, like `is_manager`.
+   * record assignment pool even with Sede and competence. Scalar flag.
    */
   is_assignable: boolean
   /**
    * Spec 0129 D-1: jolly flag — competent for ANY category, regardless of
-   * business function, when true. Scalar, same semantics as `is_manager`.
+   * business function, when true. Scalar flag.
    */
   covers_all_product_categories: boolean
   /**
@@ -105,6 +110,10 @@ export interface EmploymentDetail {
   product_lines?: EmploymentProductLine[]
   /** Same order as `reports_to_ids`; emitted whenever the relation is loaded (always in the detail). */
   reports_to: EmploymentRelationRef[]
+  /** Mansioni (spec 0271), same order as `job_role_ids`. */
+  job_roles: EmploymentRelationRef[]
+  /** Funzioni aziendali di appartenenza (spec 0275), same order as `business_function_ids`. */
+  business_functions: NamedRef[]
   company: EmploymentRelationRef | null
   /** Present only when the relation is eager-loaded (whenLoaded), like `company`. */
   primary_operational_site?: EmploymentRelationRef | null
@@ -147,6 +156,8 @@ export interface UserDetail {
   personal_data?: PersonalDataCard | null
   /** The user's employment profile (spec 0015), null when the user has none. */
   employment?: EmploymentDetail | null
+  /** Functions this user manages (spec 0275 D-6), read only, ordered by name; [] when none. */
+  managed_business_functions: NamedRef[]
   created_at: string | null
   /** Custom field values keyed by their raw (un-namespaced) key (spec 0021). */
   custom_fields?: Record<string, CustomFieldValue>
@@ -167,19 +178,21 @@ export interface UserDetailWithPermissions extends UserDetail {
  * built and sent from the form (upsert semantics), mirroring `personal_data`.
  */
 export interface EmploymentPayload {
-  is_manager: boolean
-  job_description: string | null
-  /** Zero or more manager ids (spec 0166); [] when `is_manager` is true. */
+  /** Mansioni ids (spec 0271): always sent, [] clears them. */
+  job_role_ids: number[]
+  /** Funzioni aziendali di appartenenza (spec 0275): always sent, [] clears them (the server refuses it for an active user). */
+  business_function_ids: number[]
+  /** Funzioni aziendali gestite (spec 0276): the listed ones take this user as head; always sent, [] leaves none. */
+  managed_business_function_ids: number[]
+  /** Zero or more manager ids (spec 0166). */
   reports_to_ids: number[]
-  relationship_type: RelationshipType | null
-  company_id: number | null
   /** At most one physical site (spec 0103 D-3); mirrors `EmploymentDetail`. */
   primary_operational_site_id: number | null
   /** Zero or more remote sites (spec 0103 D-1). */
   remote_operational_site_ids: number[]
   /** Spec 0194: always sent by the form; the server leaves the column untouched only when the key is absent. */
   is_assignable: boolean
-  /** Spec 0129 D-1/D-10: scalar jolly flag, same semantics as `is_manager` (absent = false). */
+  /** Spec 0129 D-1/D-10: scalar jolly flag, (absent = false). */
   covers_all_product_categories: boolean
   /**
    * Assignment competence (spec 0111): the function/category pairs the user
@@ -187,12 +200,14 @@ export interface EmploymentPayload {
    * is true (the server also enforces this — 422 otherwise).
    */
   product_lines: EmploymentProductLineInput[]
-  qualification_type: QualificationType | null
   hired_at: string | null
   terminated_at: string | null
   standard_daily_minutes: number | null
   break_daily_minutes: number | null
   hourly_cost: number | null
+  /** Payment account (spec 0272 D-6): sent only when changed, and only with `users.manageCompensation`. */
+  iban?: string | null
+  iban_holder?: string | null
 }
 
 /** Payload for POST /users (create). Password omitted = invite mode, present = temporary password (spec 0177). */

@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0268-offer-lines-catalog-editor" status="approved" owner="utente" date="2026-10-16">
+
+  <goal>
+    In Gestione Richieste e Gestione Iscritti l'operatore compone le righe dell'offerta
+    ("Linee di prodotto") da un catalogo prodotti leggibile, a scelta multipla, e vede le
+    righe scelte su due livelli senza scroll orizzontale, al posto della tabella a 10
+    colonne con un select prodotto largo 200px.
+  </goal>
+
+  <context>
+    <!-- Fatti verificati nel repo il 2026-10-16. -->
+    <fact>Superfici che montano l'editor righe di questo modulo (stesso componente
+      `RequestOfferLinesField` in `features/request-management/request-offer-lines-section.tsx`):
+      il dialog della cella griglia `OfferLinesDialog` (`offer-lines-dialog.tsx`, aperto da
+      `OfferLinesCellEditor`, colonna `offer_lines` "Linee di prodotto"), la scheda
+      `request-work-panel.tsx` (`RequestOfferLinesSection`) e il form di creazione
+      `request-create-form.tsx` (`RequestOfferLinesSection`). Gestione Iscritti
+      (`ENROLLEE_MODULE`) riusa gli stessi componenti via `useRequestModule()`.</fact>
+    <fact>Oggi `RequestOfferLinesField` monta `QuoteLinesField` (variant `revenue`,
+      `withCommissions={false}`, `simplified`) -> `QuoteLineRow` -> `QuoteProductSelect`
+      (`AsyncPaginatedSelect` su `GET /products/for-select`). Il grid
+      `quoteLineGridClass(revenue,false,false)` richiede `min-w-[1136px]` dentro un
+      `DialogContent size="xl"` (`sm:max-w-6xl` = 1152px): la colonna prodotto resta a
+      `minmax(200px,1.4fr)`.</fact>
+    <fact>`ProductForSelectResource` espone gia' per ogni prodotto: `label` (nome),
+      `subtitle` ("categoria · descrizione"), `meta.category_id`, `meta.code`, `meta.price`,
+      `meta.cost`, `meta.vat_rate_id`, `meta.vat_rate_name`, `meta.vat_rate`,
+      `meta.unit_of_measure {id,name,symbol}`, `meta.product_typology {id,name,color}`,
+      `meta.cost_type`. La descrizione NON e' esposta da sola (solo dentro `subtitle`).
+      `ProductService::forSelect` filtra per `search` (nome o descrizione), `category_ids`
+      (whereIn esatto), `usage`, esclude le categorie inattive, ordina per nome.</fact>
+    <fact>Il percorso "Radice > Categoria" e' calcolabile lato client da
+      `categoryPathLabel(tree, categoryId)` (`features/product-lines/category-path-label.ts`)
+      sull'albero gia' in cache `useProductCategoryTree()`: nessun dato backend in piu'.</fact>
+    <fact>Regole da preservare, oggi in `RequestOfferLinesField`/`useQuoteLinesField`:
+      scope prodotti = categorie delle `product_lines` watchate (vuoto = editor bloccato con
+      `requestManagement.offerLines.hintNoCategory`); modalita' `single` (spec 0077:
+      `resolveManagementMode(...) === 'single'` -> max 1 riga); `simplified` (spec 0114:
+      niente qta/prezzo/IVA, `simplifiedLineValuesFromProduct`, quantita' forzata a
+      `DEFAULT_LINE_QUANTITY`); autofill a prodotto unico (`useOfferLinesAutofill`,
+      `seedSoleProductRows`); precompilazione al pick (`lineValuesFromProduct`, variant
+      `revenue`, `rememberVatRatePercent`); nessuna provvigione; cap `MAX_LINES_PER_TAB`
+      (200); righe pristine scartate al submit (`toLineInputs` + `isPristineLineRow`);
+      `openingOfferLines` apre con una riga vuota se non ce ne sono.</fact>
+    <fact>Commit invariati: dialog -> `useOfferLinesForm` -> `PATCH /tables/{domain}/rows/{row}`
+      (`column: offer_lines`); scheda e creazione -> i loro submit esistenti. I valori del
+      form restano `QuoteLineFormValues[]`.</fact>
+    <fact>Il form Offerte (`QuoteOfferTab`/`QuoteCostsTab`) usa `QuoteLinesField`/`QuoteLineRow`
+      e NON viene toccato.</fact>
+    <decision id="D-1">Layout "Catalogo + righe" (utente 2026-10-16): pannello catalogo a
+      sinistra, righe scelte a destra; sotto la soglia del container i due pannelli si
+      impilano (righe sopra, catalogo sotto).</decision>
+    <decision id="D-2">Superfici: tutte e tre (dialog griglia, scheda, creazione) in Richieste
+      e Iscritti (utente 2026-10-16). Offerte invariato.</decision>
+    <decision id="D-3">Prodotto gia' presente nelle righe: nel catalogo compare con badge
+      "Gia' aggiunto" e non e' selezionabile; la quantita' si cambia sulla riga (utente
+      2026-10-16).</decision>
+    <decision id="D-4">Filtri: solo chip categoria ("Tutte" + una chip per categoria delle
+      `product_lines` della richiesta), filtro server-side via `category_ids` esistente.
+      Nessun filtro tipologia (utente 2026-10-16); la tipologia e' solo badge.</decision>
+    <decision id="D-5">Unica modifica backend: chiave additiva `meta.description` (string|null,
+      descrizione squished) in `ProductForSelectResource`, per mostrare la descrizione su una
+      riga propria senza fare parsing di `subtitle`. Nessun altro campo cambia.</decision>
+    <decision id="D-6">Modalita' `single`: il catalogo diventa a scelta singola (nessuna
+      checkbox); il clic su un prodotto sostituisce il prodotto della riga unica (o la crea se
+      non c'e'), con la stessa precompilazione di un pick manuale.</decision>
+    <decision id="D-7">Le righe pristine (`isPristineLineRow`) non vengono disegnate come card;
+      "Aggiungi N selezionati" riempie prima le righe pristine, poi appende, fino a
+      `MAX_LINES_PER_TAB`. Gli errori per riga restano indicizzati sulla posizione nel form.</decision>
+  </context>
+
+  <scope>
+    <in>
+      <item>Backend: `meta.description` additivo in `ProductForSelectResource` + test Pest.</item>
+      <item>Frontend: nuovo editor `OfferLinesEditor` (catalogo + righe a due livelli) in
+        `features/request-management/offer-lines-editor/`, montato da `RequestOfferLinesField`
+        al posto di `QuoteLinesField`.</item>
+      <item>Catalogo: ricerca debounced, chip categoria, lista paginata a scroll infinito, riga
+        ricca (nome, codice mono, badge tipologia col suo colore, prezzo + UdM, percorso
+        categoria, descrizione max 2 righe), multi-selezione con "Aggiungi N selezionati",
+        badge "Gia' aggiunto", stati loading/empty/error/retry.</item>
+      <item>Righe: livello 1 prodotto + codice + badge tipologia + percorso; livello 2 quantita',
+        prezzo unitario, IVA (select esistente), UdM, imponibile/IVA/totale, rimuovi; footer
+        con totale offerta (somma `computeLineAmounts`). In `simplified` il livello 2 mostra
+        solo importi in sola lettura.</item>
+      <item>`OfferLinesDialog`: layout adattato ai due pannelli (stesso `size="xl"`, altezza
+        piena `max-h-[85vh]`, scroll interno per pannello).</item>
+      <item>i18n IT+EN nuove chiavi `requestManagement.offerLines.catalog.*` e
+        `requestManagement.offerLines.rows.*`.</item>
+      <item>Guide in-app IT+EN `request-management` e `enrollee-management` aggiornate
+        (stessi id di sezione), parity test verde.</item>
+      <item>Test esistenti del modulo adeguati al nuovo flusso (REQUIREMENT CHANGED, dichiarato):
+        `offer-lines-dialog.test.tsx`, `request-work-panel-offer-lines.test.tsx`,
+        `use-offer-lines-autofill.test.tsx`, e `request-create-form.test.tsx` se interagisce
+        con il picker riga.</item>
+    </in>
+    <out>
+      <item>Form Offerte (`QuoteOfferTab`, `QuoteCostsTab`, `QuoteLinesField`, `QuoteLineRow`,
+        `QuoteProductSelect`, `quote-line-grid.ts`): nessuna modifica.</item>
+      <item>Altri picker prodotto (fatture, fatture passive, costi commessa).</item>
+      <item>Filtro per tipologia, nuovi parametri di `GET /products/for-select`.</item>
+      <item>Colonna "Categoria prodotto" (`ProductLinesCellEditor`) e `ProductLinesField`.</item>
+      <item>Provvigioni, descrizione aggiuntiva di riga, riordino drag&amp;drop delle righe.</item>
+      <item>Regole server di validazione/scrittura delle righe (`CellValueValidator`,
+        `updateWork`, coerenza categorie): invariate.</item>
+      <item>Manuale Claude Docs: aggiornato solo se il connettore e' disponibile al build,
+        altrimenti segnalato.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/products/for-select">
+      <request>
+        Invariata: search?: string, offset?: int, limit?: int (max MAX_LIMIT), ids?: int[],
+        include_total?: bool, category_ids?: int[], usage?: 'SALE'|'COST'.
+        Il catalogo invia sempre usage=SALE e category_ids = [chip attiva] oppure tutte le
+        categorie delle product_lines quando la chip e' "Tutte".
+      </request>
+      <response status="200">
+        Envelope paginato invariato. Ogni item:
+        {
+          id: int,
+          label: string,
+          subtitle: string|null,
+          meta: {
+            category_id: int|null,
+            code: string,
+            description: string|null,      // NUOVO (D-5): Str::squish(description), null se vuota
+            price: string|null,
+            cost: string|null,
+            vat_rate_id: int|null,
+            vat_rate_name: string|null,
+            vat_rate: string|null,
+            unit_of_measure: {id:int,name:string,symbol:string}|null,
+            product_typology: {id:int,name:string,color:string|null}|null,
+            cost_type: {id:int,name:string,color:string|null}|null
+          }
+        }
+      </response>
+      <errors>Invariati: 403 senza permesso di lettura prodotti (ProductPolicy), 422 parametri non validi.</errors>
+    </endpoint>
+    <frontend_contract>
+      Tipo `QuoteProductForSelectMeta` NON si modifica (e' delle Offerte). Il modulo dichiara
+      il proprio `OfferCatalogProductMeta extends QuoteProductForSelectMeta { description: string|null; category_id: number|null }`
+      in `offer-lines-editor/types.ts`. I valori del form restano `QuoteLineFormValues[]`
+      sotto `offer_lines`; i payload di commit (cella PATCH, scheda, creazione) non cambiano.
+    </frontend_contract>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un prodotto con descrizione "  Corso   base " quando si chiama
+      GET /products/for-select allora l'item ha meta.description = "Corso base"; con
+      descrizione vuota/null meta.description = null; tutte le altre chiavi meta restano
+      presenti e invariate. (Pest, `ProductForSelectTest`)</criterion>
+    <criterion id="AC-002">Dato l'editor con product_lines su categorie A e B quando si apre il
+      catalogo allora la richiesta for-select ha usage=SALE e category_ids=[A,B], e compaiono
+      le chip "Tutte", A, B; clic sulla chip A -> nuova richiesta con category_ids=[A].
+      (Vitest, catalogo)</criterion>
+    <criterion id="AC-003">Dato un prodotto nel catalogo quando la lista e' renderizzata allora
+      la sua opzione mostra nome, codice, badge tipologia con il nome della tipologia,
+      prezzo formattato con il simbolo UdM, percorso "Radice > Categoria" dall'albero, e la
+      descrizione. (Vitest)</criterion>
+    <criterion id="AC-004">Dato il catalogo quando l'operatore digita nella ricerca allora,
+      dopo il debounce, la richiesta for-select porta search=testo; senza risultati compare
+      il messaggio vuoto; con errore compare messaggio + "Riprova" che rilancia la query.
+      (Vitest)</criterion>
+    <criterion id="AC-005">Dati due prodotti selezionati (checkbox) quando si clicca
+      "Aggiungi 2 selezionati" allora il form ha 2 righe nuove con product_id, quantity=1,
+      unit_price=meta.price, vat_rate_id=meta.vat_rate_id, unit_of_measure=meta.unit_of_measure,
+      commissions=[]; la riga pristine iniziale viene riempita invece di restare vuota; la
+      selezione si azzera. (Vitest)</criterion>
+    <criterion id="AC-006">Dato un prodotto gia' presente in una riga quando il catalogo lo
+      mostra allora l'opzione ha il badge "Gia' aggiunto", aria-disabled=true e non e'
+      selezionabile. (Vitest)</criterion>
+    <criterion id="AC-007">Dato una classificazione in modalita' single quando l'operatore
+      clicca un prodotto del catalogo allora non ci sono checkbox, il form ha esattamente 1
+      riga con quel prodotto (sostituisce la precedente) e non si possono aggiungere altre
+      righe. (Vitest)</criterion>
+    <criterion id="AC-008">Dato una classificazione simplified quando si aggiunge un prodotto
+      senza prezzo allora la riga ha quantity=1, unit_price=0 e la card non mostra input
+      quantita'/prezzo/IVA ma solo imponibile/IVA/totale in sola lettura. (Vitest)</criterion>
+    <criterion id="AC-009">Dato una riga quando l'operatore cambia quantita' o prezzo o IVA
+      allora imponibile/IVA/totale della card e il totale offerta nel footer si aggiornano
+      con `computeLineAmounts`; il bottone rimuovi toglie la riga dal form. (Vitest)</criterion>
+    <criterion id="AC-010">Dato un errore server/Zod su offer_lines.N.quantity quando il form
+      lo riceve allora la card della riga N mostra il messaggio con aria-invalid,
+      aria-describedby e role="alert". (Vitest)</criterion>
+    <criterion id="AC-011">Dato nessuna categoria nelle product_lines quando si apre l'editor
+      allora il catalogo e' disabilitato, nessuna richiesta for-select parte e compare
+      `hintNoCategory`. (Vitest)</criterion>
+    <criterion id="AC-012">Dato una categoria con un solo prodotto quando la si aggiunge alle
+      product_lines allora l'autofill crea la riga come oggi (`useOfferLinesAutofill`
+      invariato) e la riga e' visibile come card. (Vitest, test autofill adeguato)</criterion>
+    <criterion id="AC-013">Dato il dialog della cella quando l'operatore aggiunge un prodotto
+      dal catalogo e salva allora parte un solo PATCH /tables/{domain}/rows/{id} con
+      column=offer_lines e value nella shape attuale, e la riga griglia viene sostituita.
+      Stesso comportamento in Gestione Iscritti. (Vitest, `offer-lines-dialog.test.tsx`)</criterion>
+    <criterion id="AC-014">Dato la scheda (work panel) e il form di creazione quando si usano
+      catalogo e righe allora il payload inviato dai loro submit esistenti contiene le righe
+      nella shape attuale. (Vitest, test work panel / create form)</criterion>
+    <criterion id="AC-015">Dato il form Offerte quando si eseguono i suoi test esistenti
+      (`quote-lines-field-*.test.tsx`, `quote-line-row.test.tsx`, `quote-offer-tab.test.tsx`)
+      allora passano senza modifiche. (Vitest, regressione)</criterion>
+    <criterion id="AC-016">Dato il catalogo quando si naviga da tastiera allora ricerca, chip,
+      opzioni e "Aggiungi" sono raggiungibili con Tab, le opzioni si attivano con
+      Spazio/Invio, il focus e' visibile; a 375px i pannelli sono impilati senza scroll
+      orizzontale; da 1024px affiancati. (Vitest per tastiera + review manuale responsive)</criterion>
+    <criterion id="AC-017">Guide in-app IT ed EN di request-management ed enrollee-management
+      descrivono catalogo, chip, "Gia' aggiunto", selezione multipla e righe; il parity test
+      `help-content-parity.test.ts` e il parity i18n passano. (Vitest)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: React 19, TanStack Query (`useForSelect` /
+      `flattenForSelectPages`), shadcn/ui (`Badge`, `Button`, `Checkbox`, `Input`,
+      `AsyncPaginatedSelect` per l'IVA), lucide, i18next, RHF.</item>
+    <item>Riuso obbligatorio della logica esistente, senza duplicarla: `lineValuesFromProduct`,
+      `simplifiedLineValuesFromProduct`, `DEFAULT_LINE_QUANTITY`, `createEmptyLineRow`,
+      `isPristineLineRow`, `computeLineAmounts`, `formatQuoteAmount`, `categoryPathLabel`,
+      `resolveManagementMode`, `resolveSimplifiedOfferLine`, `useOfferLinesAutofill`.</item>
+    <item>Nessuna modifica ai file condivisi con le Offerte (`features/quotes/**`).</item>
+    <item>Authz invariata: endpoint for-select gia' autorizzato da `ProductPolicy`; permessi
+      di campo via `MetaField` `offer_lines` invariati (disabled -> editor in sola lettura).</item>
+    <item>Superfici dai token (`bg-surface` pannello catalogo, `bg-card` card riga), nessun
+      colore hard-coded; colore tipologia dal dato (`product_typology.color`). Default
+      compatti (ui-design §2): opzioni `text-xs`/`text-sm`, icone `size-3.5`.</item>
+    <item>Nessuna altezza fissa: pannelli con `min-h-0` + `overflow-y-auto` dentro il
+      `max-h` del dialog; nelle sezioni (scheda/creazione) lista catalogo con `max-h-96`.</item>
+    <item>File &lt;= 300 righe ciascuno (hard 500); logica nei custom hook, componenti puri.</item>
+    <item>Typecheck con `npx tsc -b --force`; test con Vitest mirati + Pest mirato.</item>
+  </constraints>
+
+</spec>

@@ -3,12 +3,15 @@
 namespace App\Http\Requests\Concerns;
 
 use App\DataObjects\Users\EmploymentData;
-use App\Enums\QualificationTypeEnum;
-use App\Enums\RelationshipTypeEnum;
 use App\Models\User;
+use App\Policies\UserPolicy;
+use App\Rules\ValidIban;
 use App\Services\Assignment\CompetenceLineSetValidator;
+use Closure;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 
 /**
@@ -26,22 +29,22 @@ use Illuminate\Validation\Rule;
  * the membership untouched; present with null/empty clears it. See
  * EmploymentData's docblock and EmploymentWriter::syncSiteMemberships().
  * `reports_to_ids` (spec 0166 D-2, replacing the single `reports_to_id`)
- * behaves identically, on its own pivot (`employment_profile_manager`) —
- * except `is_manager: true` forces it empty server-side regardless of what
- * the array carries (D-5), never trusting the payload's own emptiness.
+ * behaves identically, on its own pivot (`employment_profile_manager`).
  * `product_lines` (spec 0111, the assignment competence) behaves identically,
  * on its own child table — and, since D-1 dropped the single
  * `business_function_id` column, it is also the only place a user's business
  * function is written. Spec 0129 adds a THIRD, plain scalar way to widen that
- * competence: `covers_all_product_categories` follows the same semantics as
- * `is_manager` (absent on write = false, D-10), and — unlike the tri-state
- * fields above — a true value forces `product_lines` empty server-side
+ * competence: `covers_all_product_categories` (absent on write = false, D-10) —
+ * unlike the tri-state fields above, a true value forces `product_lines` empty server-side
  * (EmploymentWriter, D-2), never trusting the payload's own emptiness.
  *
  * @phpstan-require-extends FormRequest
  */
 trait ValidatesEmployment
 {
+    /** Columns that mirror the current contract condition (written by the contract service only). */
+    private const array READ_ONLY_EMPLOYMENT_FIELDS = ['relationship_type', 'company_id'];
+
     /**
      * Validation rules for the nested `employment.*` object. Merged into each
      * request's own account-field rules; they never change the account rules.
@@ -59,12 +62,21 @@ trait ValidatesEmployment
         return [
             'employment' => ['sometimes', 'nullable', 'array'],
 
-            'employment.is_manager' => ['sometimes', 'boolean'],
-            // Spec 0129 D-1: the wildcard flag, a plain scalar like is_manager.
+            // Spec 0129 D-1: the wildcard flag, a plain scalar.
             'employment.covers_all_product_categories' => ['sometimes', 'boolean'],
             // Spec 0194 D-3: absent = untouched, so no default here.
             'employment.is_assignable' => ['sometimes', 'boolean'],
-            'employment.job_description' => ['nullable', 'string', 'max:255'],
+            // Spec 0271 D-2: job roles from the catalogue, same tri-state as
+            // `reports_to_ids` (absent = untouched, null/[] = cleared).
+            'employment.job_role_ids' => ['sometimes', 'nullable', 'array'],
+            'employment.job_role_ids.*' => ['integer', 'distinct', Rule::exists('job_roles', 'id')],
+            // Spec 0275 D-3: business function membership, same tri-state.
+            'employment.business_function_ids' => ['sometimes', 'nullable', 'array'],
+            'employment.business_function_ids.*' => ['integer', 'distinct', Rule::exists('business_functions', 'id')],
+            // Spec 0276 D-5: the functions this person manages, same tri-state
+            // as the membership (absent/null = untouched, [] = none managed).
+            'employment.managed_business_function_ids' => ['sometimes', 'nullable', 'array'],
+            'employment.managed_business_function_ids.*' => ['integer', 'distinct', Rule::exists('business_functions', 'id')],
             // Spec 0166 (D-2/D-8): a user may report to several managers, so
             // the single `reports_to_id` becomes a tri-state array, same shape
             // as `remote_operational_site_ids` below.
@@ -77,10 +89,6 @@ trait ValidatesEmployment
                 // target user id is known (AC-006); never applies on create.
                 $currentUserId !== null ? Rule::notIn([$currentUserId]) : null,
             ]),
-            'employment.relationship_type' => ['nullable', Rule::enum(RelationshipTypeEnum::class)],
-
-            'employment.company_id' => ['nullable', 'integer', Rule::exists('companies', 'id')],
-
             // Site membership (spec 0103 D-9, replacing the single
             // `employment.operational_site_id`): at most one physical site
             // plus any number of remote ones.
@@ -105,14 +113,65 @@ trait ValidatesEmployment
             'employment.product_lines' => ['sometimes', 'nullable', 'array'],
             ...$this->competenceLineSetValidator()->rules('employment.product_lines', $this->exemptCompetenceCategoryIds()),
 
-            'employment.qualification_type' => ['nullable', Rule::enum(QualificationTypeEnum::class)],
             'employment.hired_at' => ['nullable', 'date'],
             'employment.terminated_at' => ['nullable', 'date', 'after_or_equal:employment.hired_at'],
 
             'employment.standard_daily_minutes' => ['nullable', 'integer', 'min:0', 'max:1440'],
             'employment.break_daily_minutes' => ['nullable', 'integer', 'min:0', 'max:1440'],
             'employment.hourly_cost' => ['nullable', 'numeric', 'min:0', 'max:9999.99'],
+
+            // Payment data (spec 0272 D-6): absent = untouched, null = cleared.
+            'employment.iban' => ['sometimes', 'nullable', 'string', 'max:64', $this->ibanRule()],
+            'employment.iban_holder' => ['sometimes', 'nullable', 'string', 'max:191'],
         ];
+    }
+
+    /**
+     * Spec 0272 D-2 / AC-009: `relationship_type` and `company_id` are the
+     * read-only copy of the current contract condition, so a payload carrying
+     * them (an older client) is IGNORED rather than rejected: they are dropped
+     * before validation, which also keeps them out of the field-permission diff.
+     */
+    protected function discardReadOnlyEmploymentInput(): void
+    {
+        $input = $this->all();
+
+        Arr::forget($input, array_map(
+            static fn (string $field): string => "employment.{$field}",
+            self::READ_ONLY_EMPLOYMENT_FIELDS,
+        ));
+
+        $this->replace($input);
+    }
+
+    /**
+     * Refuses, with a 403, any attempt to write the payment data without
+     * `users.manageCompensation` (spec 0272 D-5). Called first from each host
+     * request's withValidator(), so the refusal wins over every value-level
+     * error and the submitted IBAN is never echoed back in a message.
+     *
+     * @throws AuthorizationException
+     */
+    protected function assertMayWriteCompensation(): void
+    {
+        $touchesPayment = $this->has('employment.iban') || $this->has('employment.iban_holder');
+
+        if ($touchesPayment && ! $this->user()?->can(UserPolicy::MANAGE_COMPENSATION_PERMISSION)) {
+            throw new AuthorizationException;
+        }
+    }
+
+    /**
+     * Formal IBAN check on the normalized value (the same one that gets
+     * stored); the message never carries the submitted value.
+     */
+    private function ibanRule(): Closure
+    {
+        return static function (string $attribute, mixed $value, Closure $fail): void {
+            if (is_string($value) && trim($value) !== '' && ! ValidIban::isValid(ValidIban::normalize($value))) {
+                $fail(__('The IBAN is not valid.'));
+            }
+        };
     }
 
     /**
@@ -189,26 +248,32 @@ trait ValidatesEmployment
         }
 
         return new EmploymentData(
-            isManager: (bool) $this->input('employment.is_manager', false),
             coversAllProductCategories: $this->boolean('employment.covers_all_product_categories'),
             isAssignable: $this->has('employment.is_assignable') ? $this->boolean('employment.is_assignable') : null,
-            jobDescription: $this->input('employment.job_description'),
             reportsToIdsProvided: $this->has('employment.reports_to_ids'),
             reportsToIds: $this->submittedIds('employment.reports_to_ids'),
-            relationshipType: RelationshipTypeEnum::tryFrom((string) $this->input('employment.relationship_type')),
-            companyId: $this->nullableInt('employment.company_id'),
             primaryOperationalSiteIdProvided: $this->has('employment.primary_operational_site_id'),
             primaryOperationalSiteId: $this->nullableInt('employment.primary_operational_site_id'),
             remoteOperationalSiteIdsProvided: $this->has('employment.remote_operational_site_ids'),
             remoteOperationalSiteIds: $this->submittedIds('employment.remote_operational_site_ids'),
             productLinesProvided: $this->has('employment.product_lines'),
             productLines: $this->submittedProductLines(),
-            qualificationType: QualificationTypeEnum::tryFrom((string) $this->input('employment.qualification_type')),
+            jobRoleIdsProvided: $this->has('employment.job_role_ids'),
+            jobRoleIds: $this->submittedIds('employment.job_role_ids'),
+            // null reads as absent (spec 0275 contract), unlike the sibling pivots.
+            businessFunctionIdsProvided: $this->input('employment.business_function_ids') !== null,
+            businessFunctionIds: $this->submittedIds('employment.business_function_ids'),
+            managedBusinessFunctionIdsProvided: $this->input('employment.managed_business_function_ids') !== null,
+            managedBusinessFunctionIds: $this->submittedIds('employment.managed_business_function_ids'),
             hiredAt: $this->input('employment.hired_at'),
             terminatedAt: $this->input('employment.terminated_at'),
             standardDailyMinutes: $this->nullableInt('employment.standard_daily_minutes'),
             breakDailyMinutes: $this->nullableInt('employment.break_daily_minutes'),
             hourlyCost: $this->nullableDecimal('employment.hourly_cost'),
+            ibanProvided: $this->has('employment.iban'),
+            iban: $this->submittedIban(),
+            ibanHolderProvided: $this->has('employment.iban_holder'),
+            ibanHolder: $this->filled('employment.iban_holder') ? (string) $this->input('employment.iban_holder') : null,
         );
     }
 
@@ -218,6 +283,21 @@ trait ValidatesEmployment
         $value = $this->input($key);
 
         return $value === null || $value === '' ? null : number_format((float) $value, 2, '.', '');
+    }
+
+    /**
+     * The submitted IBAN in its stored form (uppercase, no separators), or
+     * null when blank.
+     */
+    private function submittedIban(): ?string
+    {
+        $value = $this->input('employment.iban');
+
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        return ValidIban::normalize($value);
     }
 
     private function nullableInt(string $key): ?int

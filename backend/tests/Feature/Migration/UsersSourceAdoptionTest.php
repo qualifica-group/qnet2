@@ -2,6 +2,7 @@
 
 use App\Enums\PersonalDataTypeEnum;
 use App\Models\Company;
+use App\Models\EmploymentContract;
 use App\Models\EmploymentProfile;
 use App\Models\MigrationRun;
 use App\Models\Role;
@@ -102,7 +103,9 @@ it('fills only the empty employment references of the adopted user', function ()
     EmploymentProfile::factory()->create(['user_id' => $empty->id, 'company_id' => null]);
     $curated = seededUser('anna.bianchi@legacy.test', 'Anna', 'Bianchi');
     $curatedCompany = Company::factory()->create();
-    EmploymentProfile::factory()->create(['user_id' => $curated->id, 'company_id' => $curatedCompany->id]);
+    // 0272 D-2: the company copy comes from the contract history, so the curated value is a condition.
+    $curatedProfile = EmploymentProfile::factory()->create(['user_id' => $curated->id, 'company_id' => $curatedCompany->id]);
+    EmploymentContract::factory()->create(['employment_profile_id' => $curatedProfile->id, 'company_id' => $curatedCompany->id]);
 
     runLegacyUsersImport([
         legacyUserRecord(['company_id' => 920, 'relationship_type' => 'employee']),

@@ -83,6 +83,17 @@ describe('ContactsManager (controlled)', () => {
     ).toBeInTheDocument()
   })
 
+  /** Spec 0272 D-7: a work contact reads "Work"; others carry no badge. */
+  it('shows the Work badge only on work contacts', () => {
+    renderWithConfirm(
+      <ContactsManager
+        value={[contact({ is_work: true }), contact({ _key: 'c2', id: 2, value: 'b@example.com', is_work: false })]}
+        onChange={() => {}}
+      />,
+    )
+    expect(screen.getAllByText('Work', { selector: '[data-slot="badge"]' })).toHaveLength(1)
+  })
+
   it('removes a contact from the buffer without any network call', async () => {
     const onChange = vi.fn()
 

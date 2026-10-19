@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useFormContext, useWatch, type UseFormReturn } from 'react-hook-form'
-import { MapPin, UserCog } from 'lucide-react'
+import { Building2, MapPin, UserCog } from 'lucide-react'
 import { RecordFieldList, RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
 import { TextInlineRow } from '@/components/record-form/inline-rows'
 import { RecordInlineField, type InlineEdit } from '@/components/record-form/record-inline-field'
@@ -8,6 +8,7 @@ import { FormControl } from '@/components/ui/form'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MetaField } from '@/features/authorization/MetaField'
 import type { BusinessFunctionRecordValues } from '@/features/business-functions/business-function-record'
+import { BusinessFunctionCompaniesRow } from '@/features/business-functions/business-function-org-rows'
 import {
   BusinessFunctionManagerRow,
   BusinessFunctionParentRow,
@@ -105,6 +106,12 @@ export function BusinessFunctionSections({ form, inline, canEdit, values }: Busi
         <RecordFieldList>
           <BusinessFunctionManagerRow {...rowProps} />
           <BusinessFunctionUsersRow {...rowProps} />
+        </RecordFieldList>
+      </RecordSection>
+
+      <RecordSection title={t('businessFunctions.form.sections.organization.title')} icon={<Building2 />}>
+        <RecordFieldList>
+          <BusinessFunctionCompaniesRow {...rowProps} />
         </RecordFieldList>
       </RecordSection>
 

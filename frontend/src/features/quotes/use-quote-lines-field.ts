@@ -1,4 +1,5 @@
 import type { SupplierCommissionDirection } from '@/features/product-typologies/types'
+import { isPristineLineRow } from '@/features/quotes/quote-line-values'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteProductForSelectItem } from '@/features/quotes/quote-product-select'
 
@@ -56,21 +57,6 @@ interface UseQuoteLinesFieldArgs {
    * a percentage, only the product's own `meta` does.
    */
   rememberVatRatePercent: (vatRateId: number, percent: number) => void
-  /**
-   * Feeds the shared product -> typology cache (`use-quote-form.ts`) so the
-   * live per-typology summary (spec 0099) buckets the row the moment a
-   * product is picked. Optional: Gestione Richieste mounts this editor
-   * without that summary.
-   */
-  rememberProductTypology?: (productId: number, typologyId: number) => void
-  /**
-   * Spec 0144: feeds the shared product -> name cache (`use-quote-form.ts`)
-   * so the Cost tab's "Associated product" options and the live per-product
-   * margin block can label a row whose product was picked IN this session
-   * (the row itself carries only `product_id`, never a name). Optional:
-   * Gestione Richieste mounts this editor without either of those.
-   */
-  rememberProductName?: (productId: number, name: string) => void
 }
 
 /**
@@ -114,21 +100,72 @@ export function simplifiedLineValuesFromProduct(
   return { ...base, unit_price: base.unit_price ?? 0 }
 }
 
+interface AppendProductRowsOptions {
+  /** Spec 0077: `1` under a `single` category, `MAX_LINES_PER_TAB` otherwise. */
+  maxRows: number
+  variant: QuoteLineVariant
+  /** Spec 0114: congeal the row as the server does (Gestione Richieste only). */
+  simplified?: boolean
+  /** Cost rows may repeat a product (spec 0269 D-3); every other channel skips one already on the card. */
+  allowDuplicates?: boolean
+  /** Further values per product, e.g. the commission defaults a revenue pick brings (spec 0269 D-6). */
+  extraFor?: (product: QuoteProductForSelectItem) => Partial<QuoteLineFormValues>
+}
+
 /**
- * Owns one tab's (`offer_lines`/`cost_lines`) row array editing: add/remove
- * and the product-driven precompilation (AC-074) — mirrors
- * `useProductLinesField`'s "add empty row / edit in place" shape.
+ * One new row per product, precompiled exactly as a manual pick (spec 0269
+ * D-7): pristine rows are filled first, the rest appended up to `maxRows`.
+ * Every row gets its own `client_key` (`createEmptyLineRow`), which the cost
+ * rows associate to. Returns the SAME array when nothing was added, so the
+ * caller can skip the write.
+ */
+export function appendProductRows(
+  rows: QuoteLineFormValues[],
+  products: QuoteProductForSelectItem[],
+  { maxRows, variant, simplified = false, allowDuplicates = false, extraFor }: AppendProductRowsOptions,
+): QuoteLineFormValues[] {
+  const next = [...rows]
+  let added = false
+
+  for (const product of products) {
+    if (!allowDuplicates && next.some((row) => row.product_id === product.id)) {
+      continue
+    }
+
+    const row: QuoteLineFormValues = {
+      ...createEmptyLineRow(),
+      ...(simplified ? simplifiedLineValuesFromProduct(product, variant) : lineValuesFromProduct(product, variant)),
+      quantity: DEFAULT_LINE_QUANTITY,
+      ...extraFor?.(product),
+    }
+    const pristineIndex = next.findIndex(isPristineLineRow)
+
+    if (pristineIndex !== -1) {
+      next[pristineIndex] = row
+    } else if (next.length < maxRows) {
+      next.push(row)
+    } else {
+      continue
+    }
+
+    added = true
+  }
+
+  return added ? next : rows
+}
+
+/**
+ * Owns one tab's (`offer_lines`/`cost_lines`) in-place row editing: remove,
+ * field patches and the product-driven precompilation (AC-074). New rows come
+ * from `appendProductRows`; the channels' own caches (typology summary,
+ * product names) are fed by the line editor's `onProductsPicked`.
  */
 export function useQuoteLinesField({
   value,
   onChange,
   variant,
   rememberVatRatePercent,
-  rememberProductTypology,
-  rememberProductName,
 }: UseQuoteLinesFieldArgs) {
-  const addRow = () => onChange([...value, createEmptyLineRow()])
-
   const removeRow = (index: number) => onChange(value.filter((_, rowIndex) => rowIndex !== index))
 
   const setField = (index: number, patch: Partial<QuoteLineFormValues>) =>
@@ -160,15 +197,6 @@ export function useQuoteLinesField({
       rememberVatRatePercent(item.meta.vat_rate_id, Number(item.meta.vat_rate))
     }
 
-    // Spec 0099: the picked product's typology, for the live summary's buckets.
-    if (item.meta.product_typology) {
-      rememberProductTypology?.(item.id, item.meta.product_typology.id)
-    }
-
-    // Spec 0144: the picked product's name, for the Cost tab's "Associated
-    // product" options and the live per-product margin block.
-    rememberProductName?.(item.id, item.label)
-
     onChange(
       value.map((row, rowIndex) =>
         rowIndex === index
@@ -193,5 +221,5 @@ export function useQuoteLinesField({
     )
   }
 
-  return { addRow, removeRow, setField, setProduct }
+  return { removeRow, setField, setProduct }
 }

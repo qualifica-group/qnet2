@@ -39,6 +39,7 @@ class BusinessFunctionsAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('parent_id', 'select'),
             new FieldDefinition('users', 'multiselect'),
             new FieldDefinition('operational_sites', 'multiselect'),
+            new FieldDefinition('company_ids', 'multiselect'),
         ];
     }
 
@@ -64,6 +65,7 @@ class BusinessFunctionsAuthorization extends AbstractResourceAuthorization
             'parent_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'users' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'operational_sites' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'company_ids' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 

@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0275-hr-function-membership" status="approved" owner="utente" date="2026-10-19">
+
+  <goal>
+    La funzione aziendale di appartenenza di una persona (il suo "reparto", una o piu') e' UN SOLO dato,
+    visto e modificato allo stesso modo dalla pagina Funzioni aziendali ("Utenti associati") e dal form
+    utente. Le competenze (funzione + categoria) restano un dato separato e diventano facoltative; la
+    regola "utente attivo = almeno una funzione" passa all'appartenenza; l'organigramma raggruppa per
+    appartenenza.
+  </goal>
+
+  <context>
+    <fact>Oggi esistono due relazioni scollegate. Appartenenza: pivot `business_function_user`
+      (`BusinessFunction::users()`, scritto da `BusinessFunctionService` via campo `users`, letto da
+      `BusinessFunctionResource.user_ids/users`, `BusinessFunctionsTableDefinition`, `BusinessFunctionsStatsDefinition`,
+      `TimeEntryTeamPulseService::loadBusinessFunctionsByUserId`, import `BusinessFunctionMembersSource` e
+      `BusinessFunctionsSource`). Competenze: `employment_product_lines` (`EmploymentProfile::productLines()`,
+      campo `employment.product_lines`, spec 0111/0129), lette da assegnazioni, `UserBusinessFunctionColumn`
+      (colonna `business_function` della griglia utenti), `OrgChartReadService`, `OrgChartMoveService`,
+      `BusinessFunctionCoverageGuard` (regola spec 0271 D-6).</fact>
+    <fact>Il responsabile di funzione e' `business_functions.manager_id`; non compare nella scheda utente.
+      Il "Responsabile" della scheda utente e' `employment.reports_to_ids` (capo diretto), altro concetto.</fact>
+    <fact>Dati locali 2026-10-19: 206 righe pivot su 160 utenti, 29 utenti con piu' funzioni (max 5);
+      54 utenti attivi non di servizio senza alcuna appartenenza; 1 utente attivo senza scheda di impiego.</fact>
+    <fact>Pattern da ricalcare: `employment.job_role_ids` (spec 0271) — multiselect tri-state nel blocco
+      `employment` (`ValidatesEmployment`, `EmploymentData`, `EmploymentWriter`, `EmploymentResource`,
+      `UsersAuthorization` FieldDefinition, `user-employment-fields.tsx`, `user-record-sections.tsx`).</fact>
+    <decision id="D-1">Separazione confermata dall'utente (2026-10-19): appartenenza e competenze NON si
+      uniscono. Unica fonte dell'appartenenza = pivot `business_function_user`. Nessuna migrazione di dati,
+      nessuna conversione competenze -> appartenenza o viceversa.</decision>
+    <decision id="D-2">Appartenenza multipla (utente): il form utente ha un multiselect di funzioni.</decision>
+    <decision id="D-3">Contratto lato utente nel blocco `employment` come `job_role_ids` (coerenza con form,
+      permessi di campo e modifica inline della spec 0222): `employment.business_function_ids`. La riga resta
+      chiave `user_id` sul pivot: il writer sincronizza `$user->businessFunctions()`. Cancellare la scheda di
+      impiego (`employment: null`) NON tocca l'appartenenza.</decision>
+    <decision id="D-4">Regola obbligatoria spostata (utente): utente attivo, non di servizio, deve avere almeno
+      una riga pivot. Le competenze diventano facoltative (cade l'eccezione `covers_all_product_categories`:
+      il flag riguarda solo le competenze). Stessi punti di controllo di oggi in `UserService` (create,
+      attivazione, update che tocca `employment`), errore 422 su `employment.business_function_ids`. Import
+      legacy invariato (`enforceCoverage: false`).</decision>
+    <decision id="D-5">Coerenza dalla pagina Funzioni aziendali: un update di `users` che lascerebbe un utente
+      attivo non di servizio senza alcuna funzione -> 422 su `users` con i nomi delle persone. La cancellazione
+      di una funzione con membri attivi che resterebbero senza funzione -> 409 (stessa logica dei vincoli
+      esistenti di `BusinessFunctionService::delete`).</decision>
+    <decision id="D-6">La scheda utente mostra in sola lettura le funzioni di cui la persona e' responsabile
+      (`managed_business_functions`); il responsabile si cambia solo dalla pagina della funzione.</decision>
+    <decision id="D-7">Organigramma (utente: in questa spec): vista per funzioni = appartenenza.
+      `all_functions_people` sostituito da `unassigned_people` (attivi non di servizio senza appartenenza);
+      lo spostamento persona-funzione agisce sul pivot; da "Non assegnati" si puo' spostare verso una funzione
+      (`from_function_id: null`). Concordato con la sessione della spec 0274 (2026-10-19): la parte frontend
+      dell'organigramma parte SOLO dopo la chiusura della 0274, che possiede `frontend/src/features/org-chart/**`,
+      `i18n/locales/{it,en}-org-chart.ts` e la guida `org-chart` fino ad allora.</decision>
+    <decision id="D-8">Griglia utenti: la colonna esistente `business_function` (id invariato) legge
+      l'appartenenza invece delle competenze; filtro set e ordinamento seguono.</decision>
+    <decision id="D-9">Coroncina del responsabile (richiesta utente 2026-10-19, come nel segnatempo
+      `team-member-row.tsx`: `Crown` `text-amber-500` accanto al nome della funzione di cui la persona e'
+      responsabile). Si applica alla card persona dell'organigramma (vista Persone: elenco funzioni con corona
+      per funzione) e alla scheda utente (funzioni di appartenenza ed elenco "Responsabile delle funzioni").
+      Per farlo `GET /api/org-chart/people` emette `business_functions` come oggetti, letti dal pivot
+      (prima erano nomi letti dalle competenze).</decision>
+  </context>
+
+  <scope>
+    <in>
+      <item>Model `User::businessFunctions()` (BelongsToMany su `business_function_user`) e `User::managedBusinessFunctions()` (HasMany su `manager_id`).</item>
+      <item>`employment.business_function_ids`: validazione (`ValidatesEmployment`), `EmploymentData`, `EmploymentWriter` (sync pivot, tri-state), `EmploymentResource` (`business_function_ids`, `business_functions`), `UsersAuthorization` FieldDefinition multiselect sezione `employment`.</item>
+      <item>`UserResource.managed_business_functions` (sola lettura).</item>
+      <item>`BusinessFunctionCoverageGuard` riscritto su pivot (D-4); messaggi `users.employment.business_function_required` aggiornati IT/EN e spostati sul nuovo campo.</item>
+      <item>`BusinessFunctionService`: guard D-5 su update `users` e su delete.</item>
+      <item>`UserBusinessFunctionColumn` su pivot (D-8).</item>
+      <item>`OrgChartReadService` / `OrgChartMoveService` / `lang/{it,en}/org_chart.php` (D-7), permesso di campo dello spostamento persona-funzione = `users` + `employment.business_function_ids`.</item>
+      <item>Frontend utenti: campo multiselect "Funzioni aziendali di appartenenza" nel form e nella scheda (inline edit), elenco sola lettura "Responsabile delle funzioni", mappatura errore 422, competenze senza marcatura di obbligatorieta'.</item>
+      <item>Frontend organigramma (dopo 0274): chiave `unassigned_people`, riquadro/etichette "Non assegnati", spostabilita' dai non assegnati.</item>
+      <item>Guide in-app IT+EN: `users`, `business-functions`, `org-chart` (quest'ultima dopo 0274). Manuale Claude Docs: sezioni Utenti, Funzioni aziendali, Organigramma.</item>
+      <item>Demo seeder: ogni utente demo attivo con almeno un'appartenenza (via `DemoBusinessFunctionSeeder`/factory gia' esistenti) cosi' che la regola D-4 non rompa i test esistenti.</item>
+    </in>
+    <out>
+      <item>Unione o conversione dei dati tra appartenenza e competenze (D-1).</item>
+      <item>Colonna "funzione principale" o appartenenza singola.</item>
+      <item>Modifica del responsabile di funzione dalla scheda utente (D-6).</item>
+      <item>Cambi a statistiche funzioni, griglia funzioni, segnatempo team pulse, import legacy: leggono gia' il pivot.</item>
+      <item>Cambi alla logica di candidatura alle assegnazioni (resta sulle competenze, spec 0111/0129).</item>
+      <item>Riempimento automatico dei 54 utenti attivi oggi senza appartenenza: la regola scatta solo al primo salvataggio che tocca `employment` (come oggi D-6 0271).</item>
+      <item>Qualsiasi file di `frontend/src/features/org-chart/**` prima della chiusura della 0274.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST|PATCH" path="/api/users | /api/users/{user}">
+      <request>
+        employment?: {
+          ...campi esistenti invariati,
+          business_function_ids?: int[] | null   // assente o null = invariato; [] = svuota (poi D-4 decide); distinct, exists:business_functions,id
+          product_lines?: [...]                  // invariato, ora facoltativo anche per utente attivo
+        }
+      </request>
+      <response status="200|201">
+        data: User {
+          ...invariato,
+          managed_business_functions: [{ id: int, name: string }],      // ordinate per name
+          employment?: {
+            ...invariato,
+            business_function_ids: int[],
+            business_functions: [{ id: int, name: string }]             // ordinate per name
+          }
+        }
+      </response>
+      <errors>
+        422 `employment.business_function_ids` — utente attivo non di servizio senza appartenenza (D-4), anche su create/attivazione.
+        422 `employment.business_function_ids.N` — id inesistente o duplicato.
+        403 campo `employment.business_function_ids` non modificabile per l'attore (permessi di campo esistenti).
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/users/{user}">
+      <response status="200">Come sopra: `managed_business_functions` e `employment.business_function_ids/business_functions`.</response>
+    </endpoint>
+
+    <endpoint method="POST|PATCH" path="/api/business-functions | /api/business-functions/{id}">
+      <request>Invariato (`users?: int[] | null`).</request>
+      <response status="200|201">Invariato (`user_ids`, `users`).</response>
+      <errors>
+        422 `users` — la modifica lascerebbe senza funzione uno o piu' utenti attivi non di servizio (D-5); messaggio con i nomi.
+      </errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/business-functions/{id}">
+      <errors>409 — membri attivi che resterebbero senza funzione (D-5); vincoli esistenti invariati.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/org-chart/functions">
+      <response status="200">
+        data: {
+          functions: [...invariato, persone = membri via pivot],
+          unassigned_people: Person[]    // SOSTITUISCE all_functions_people; stessa shape Person
+        }
+      </response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/org-chart/people">
+      <response status="200">
+        Persona: ...invariato, `business_functions: [{ id: int, name: string, is_manager: bool }]` (SOSTITUISCE
+        `string[]`): funzioni di appartenenza dal pivot, ordinate per name; `is_manager` = la persona e'
+        `business_functions.manager_id` di quella funzione (stessa semantica del segnatempo).
+      </response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/org-chart/people/{user}/function">
+      <request>{ from_function_id: int | null, to_function_id: int }   // null = persona non assegnata</request>
+      <response status="200">Invariato (id funzioni della persona dopo lo spostamento).</response>
+      <errors>
+        422 `from_function_id` `not_in_source_function` — persona non membro della funzione di partenza (o membro di qualche funzione con from null).
+        403 campo `employment.business_function_ids` non modificabile.
+        Rimossi: `covers_all`, `no_line_on_source`; `no_employment` non si applica piu' allo spostamento di funzione.
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tables/users/rows (SSRM)">
+      <response status="200">Colonna `business_function` invariata nella shape; valori = funzioni di appartenenza.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente aggiunto agli "Utenti associati" della funzione F dalla pagina Funzioni aziendali, quando si legge `GET /api/users/{user}`, allora `employment.business_function_ids` contiene F.</criterion>
+    <criterion id="AC-002">Dato un PATCH utente con `employment.business_function_ids: [F1, F2]`, quando si legge `GET /api/business-functions/F1`, allora `user_ids` contiene l'utente; F tolta dall'elenco utente sparisce da `user_ids` di F.</criterion>
+    <criterion id="AC-003">PATCH utente con `employment` senza la chiave `business_function_ids` (o null): il pivot resta invariato.</criterion>
+    <criterion id="AC-004">PATCH utente attivo con `employment.business_function_ids: []`: 422 su `employment.business_function_ids`, nessuna scrittura (rollback dell'intera transazione).</criterion>
+    <criterion id="AC-005">Create di un utente attivo senza `business_function_ids`: 422 sul campo; utente inattivo o di servizio senza funzioni: 201.</criterion>
+    <criterion id="AC-006">Utente attivo con almeno una funzione e NESSUNA competenza (e senza `covers_all_product_categories`): PATCH che tocca `employment` passa (competenze facoltative).</criterion>
+    <criterion id="AC-007">Attivazione (`is_active` false -> true) di un utente senza funzioni: 422 sul campo.</criterion>
+    <criterion id="AC-008">`employment: null` su un utente con funzioni: la scheda di impiego e' cancellata, le righe pivot restano.</criterion>
+    <criterion id="AC-009">Id funzione inesistente o duplicato in `business_function_ids`: 422 sulla riga.</criterion>
+    <criterion id="AC-010">Attore con `employment.business_function_ids` in sola lettura che invia un valore diverso: 403 (o 422 secondo il meccanismo esistente dei permessi di campo); valore identico: nessun errore.</criterion>
+    <criterion id="AC-011">`GET /api/users/{user}` di un responsabile di F1 e F2: `managed_business_functions` = [{F1}, {F2}] ordinate per nome; utente non responsabile: [].</criterion>
+    <criterion id="AC-012">PATCH funzione che toglie da `users` un utente attivo che non ha altre funzioni: 422 su `users` con il suo nome; se ha altre funzioni, o e' inattivo, o di servizio: 200.</criterion>
+    <criterion id="AC-013">DELETE di una funzione con un membro attivo senza altre funzioni: 409; senza membri vincolati: 204 come oggi.</criterion>
+    <criterion id="AC-014">Griglia utenti: la colonna `business_function` mostra le funzioni del pivot; filtro set per nome restituisce i membri; un utente con sole competenze su F (nessun pivot) NON compare filtrando F.</criterion>
+    <criterion id="AC-015">`GET /api/org-chart/functions`: le persone di F sono i membri pivot attivi non di servizio; `unassigned_people` = attivi non di servizio senza pivot; la chiave `all_functions_people` non esiste piu'.</criterion>
+    <criterion id="AC-016">Spostamento persona F1 -> F2 nell'organigramma: pivot senza F1 e con F2 (nessuna riga duplicata se gia' in F2); competenze invariate; activity log `moved` come oggi.</criterion>
+    <criterion id="AC-017">Spostamento con `from_function_id: null` di una persona non assegnata: pivot con F2; con `from_function_id: null` di una persona gia' membro di qualche funzione: 422 `not_in_source_function`.</criterion>
+    <criterion id="AC-018">Form utente: il multiselect "Funzioni aziendali di appartenenza" mostra le funzioni attuali, invia `employment.business_function_ids` e mostra sotto il campo l'errore 422 del server (triade aria).</criterion>
+    <criterion id="AC-019">Scheda utente (detail): elenco "Responsabile delle funzioni" in sola lettura, assente/vuoto con testo dedicato se nessuna; il campo appartenenza e' modificabile inline come le mansioni.</criterion>
+    <criterion id="AC-020">Organigramma frontend (dopo 0274): il riquadro "Non assegnati" elenca `unassigned_people`; una persona non assegnata e' trascinabile verso una funzione e la richiesta parte con `from_function_id: null`.</criterion>
+    <criterion id="AC-022">`GET /api/org-chart/people`: `business_functions` di una persona = funzioni del pivot come {id, name, is_manager}, con is_manager true solo dove e' manager_id; una funzione su cui ha solo competenze non compare.</criterion>
+    <criterion id="AC-023">Card persona dell'organigramma (vista Persone): accanto al nome della funzione di cui e' responsabile compare la corona gialla con etichetta accessibile "Responsabile"; sulle altre no.</criterion>
+    <criterion id="AC-024">Scheda utente: la corona gialla con etichetta accessibile compare accanto alle funzioni di appartenenza di cui la persona e' responsabile e sulle voci dell'elenco "Responsabile delle funzioni".</criterion>
+    <criterion id="AC-021">Guide in-app IT+EN aggiornate (users, business-functions, org-chart) con gli stessi id di sezione; `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Nessuna migrazione di schema: il pivot esiste gia'.</item>
+    <item>Authz server-side: permessi di campo esistenti di `users` (`UsersAuthorization`) e di `business-functions`; il frontend nasconde, il backend decide.</item>
+    <item>Nessun N+1: `businessFunctions:id,name` e `managedBusinessFunctions:id,name` eager-loaded in `UserService::WRITE_RESULT_RELATIONS` e nella read del dettaglio.</item>
+    <item>Ownership disgiunta con la sessione della 0274 (D-7): niente scritture in `frontend/src/features/org-chart/**`, `i18n/locales/{it,en}-org-chart.ts`, guida `org-chart` prima del suo via libera.</item>
+    <item>Test con rollback a step fisso: nessuna nuova migrazione, quindi invariati.</item>
+    <item>File sotto 500 righe (`EmploymentWriter`, `UserService`, `BusinessFunctionService`: valutare estrazione del guard D-5 in `Services/BusinessFunctions/`).</item>
+  </constraints>
+
+</spec>

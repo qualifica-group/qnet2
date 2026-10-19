@@ -13,7 +13,7 @@ import { Form } from '@/components/ui/form'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useEntityDetail } from '@/hooks/use-entity-detail'
 import { ResourcePermissionsProvider, useResourcePermissions } from '@/features/authorization/permissions'
-import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
+import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-types'
 import { fetchRequestWorkPanel } from '@/features/request-management/api'
 import {
   OfferLinesDialogContext,
@@ -24,6 +24,9 @@ import { useRequestModule } from '@/features/request-management/request-module'
 import { RequestOfferLinesField } from '@/features/request-management/request-offer-lines-section'
 import { useOfferLinesForm } from '@/features/request-management/use-offer-lines-form'
 import type { RequestWorkPanelWithPermissions } from '@/features/request-management/types'
+
+/** The dialog is the editor's only content: the catalogue list may take most of the viewport (spec 0268). */
+const DIALOG_CATALOG_LIST_CLASS = 'max-h-[55vh]'
 
 /**
  * Mounts the "Linee di prodotto" editor once for a whole grid and hands its
@@ -145,6 +148,7 @@ function OfferLinesDialogForm({ panel, target, onClose }: OfferLinesDialogFormPr
             }
             vatRatePercentFor={vatRatePercentFor}
             rememberVatRatePercent={rememberVatRatePercent}
+            catalogListClassName={DIALOG_CATALOG_LIST_CLASS}
           />
 
           {submitError !== null && (

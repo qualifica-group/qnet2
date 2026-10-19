@@ -63,6 +63,8 @@ interface ContactsManagerProps {
    * `ContactsCreateFields`; ignored outside `createMode`.
    */
   requiredCreateTypes?: QuickContactType[]
+  /** Shows the "work" checkbox in the dialog (spec 0272 D-7); off for every owner but users. */
+  showWorkFlag?: boolean
 }
 
 /** `new` = the add form is open; a string = that contact `_key` is being edited. */
@@ -86,6 +88,7 @@ export function ContactsManager({
   persistence,
   createMode = false,
   requiredCreateTypes,
+  showWorkFlag = false,
 }: ContactsManagerProps) {
   const { t } = useTranslation()
   const confirm = useConfirm()
@@ -165,6 +168,7 @@ export function ContactsManager({
             value: fields.value,
             label: fields.label,
             is_primary: fields.is_primary,
+            ...(fields.is_work !== undefined ? { is_work: fields.is_work } : {}),
           })
           replaceDraft(key, { ...contactToDraft(updated), _key: key })
         },
@@ -252,6 +256,9 @@ export function ContactsManager({
                 {contact.label && <span className="truncate">{contact.label}</span>}
               </span>
             </div>
+            {contact.is_work ? (
+              <Badge variant="outline">{t('personalData.contacts.workBadge')}</Badge>
+            ) : null}
             {contact.is_primary && (
               <Badge variant="secondary">
                 {t('personalData.contacts.primaryBadge')}
@@ -322,6 +329,7 @@ export function ContactsManager({
               }
               onCancel={() => setEditing(null)}
               submitting={pending}
+              showWorkFlag={showWorkFlag}
             />
           )}
         </DialogContent>

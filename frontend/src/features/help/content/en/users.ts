@@ -51,6 +51,7 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'paragraph', text: 'Physical site and remote sites count the same way for assignment. In the figures strip at the top, **Matching** shows **Assignable** or **Not assignable**.' },
+        { type: 'note', text: 'The **Competences** are optional and separate from membership: they only drive assignments. The requirement for an active person (not a service account) applies to the **Business functions of membership** (see **Profile and employment relationship**).' },
         { type: 'warning', text: 'The person receives assignments only when all three conditions hold: **Assignable** on, at least one competency and at least one site. The module flags the missing one with "Assignment turned off", "Missing competency" or "Missing site".' },
       ],
     },
@@ -62,12 +63,11 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Field', 'What to enter'],
           rows: [
-            ['**Manager**', 'Turn it on if the person is responsible for other employees.'],
-            ['**Job title**', 'Description of the job (up to 255 characters).'],
-            ['**Reports to**', 'The direct managers, chosen among users: you can pick more than one. The field is hidden when **Manager** is on.'],
-            ['**Employment type**', 'The type of employment relationship.'],
-            ['**Company**', 'The reference company.'],
-            ['**Qualification**', 'The contractual qualification.'],
+            ['**Job roles**', 'The job roles the person performs, chosen from the Job roles module list: you can pick several or none.'],
+            ['**Business functions of membership**', 'The business functions the person belongs to, one or more. It is the same data as the function\'s **Associated users**: changing it here or there is equivalent. It is required for an active person (not a service account): otherwise the save is refused and the error appears under the field. It is not the same as the **Competences**, which stay optional.'],
+            ['**Manager of functions**', 'The functions the person manages, more than one allowed. It is edited in place if you can edit both the user and the business functions (otherwise the row stays read only). A function that had another manager passes to this person, replacing them; a function removed from the list is left without a manager. The same data can also be changed from the business function record. When there are none it reads "Not the manager of any function.".'],
+            ['**Reports to**', 'The direct managers, chosen among users: you can pick more than one. The field is always there, also for someone who manages a function.'],
+            ['**Employment type**, **Company**, **Collective agreement and level**, **In force since**', 'Read only: they show the contract condition in force today. Change them from the **Contract history** (see below).'],
             ['**Hired on** / **Terminated on**', 'Start and end dates of the relationship. Termination cannot precede hiring.'],
             ['**Standard daily duration**', 'Expected working time in a day.'],
             ['**Daily break duration**', 'Length of the daily break.'],
@@ -75,7 +75,41 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'paragraph', text: 'The employment sections are there even for a user with no profile yet: the first save creates it. **Contacts** and **Addresses** follow; at the bottom, an **Other fields** section may appear, with the custom fields for users.' },
-        { type: 'note', text: 'Turning on **Manager** empties **Reports to**, turning on **Competent for all categories** clears the **Competence** rows: that is why the two rows have no pencil if you cannot also edit the field they empty.' },
+        { type: 'note', text: 'Turning on **Competent for all categories** clears the **Competence** rows: that is why the two rows have no pencil if you cannot also edit the field they empty.' },
+        { type: 'paragraph', text: 'Under the name, in the card header, the business functions of membership appear as tags, with a crown on those the person manages; the managed functions the person is not a member of follow. In the users list the **Manager of functions** column (hidden by default, filterable by function) replaces the old **Manager** column.' },
+      ],
+    },
+    {
+      id: 'contract-history',
+      title: 'Contract history',
+      blocks: [
+        { type: 'paragraph', text: 'On the card of an already saved user, the **Contract history** section lists the person’s contract conditions, newest first: start, end, employment type, company, collective agreement and level and, if you have the permission, the salary. The one in force today has the **Current** label. When creating a user the section says the history is filled in after saving.' },
+        { type: 'steps', items: ['Click **New condition**.', 'Enter the **Start date** (a date not yet used for that person), the **Relationship type**, the **Company** and the **Collective agreement and level**.', 'If you have the compensation permission, also enter **Salary** and **Period** (month, year, hour): they go together.', 'Add a **Reason** if needed and click **Save**.'] },
+        { type: 'list', items: ['Conditions are never edited: every change is a new condition. The end of a condition is the day before the next one starts.', 'To fix a mistake use **Delete last condition** (shown only on the last one) and enter a new one. Deleting a condition that is not the last is not possible.', 'A condition starting in the future does not change the card’s **Employment type** and **Company** until that date arrives.', 'The actions require the permission to edit users.'] },
+        { type: 'note', text: 'If the start date is already used for that person, the form reports it on the field.' },
+      ],
+    },
+    {
+      id: 'payment',
+      title: 'Payment and compensation data',
+      blocks: [
+        { type: 'paragraph', text: 'The **Payment** section holds the **IBAN** the person is paid on and the **Account holder**; the IBAN is read in groups of four characters and edited in place like the other fields. An invalid IBAN shows an error on the field.' },
+        { type: 'warning', text: 'IBAN and salary are compensation data: you see and edit them only with the **Manage compensation data** permission (users.manageCompensation), by default reserved to the super-admin. Without it the **Payment** section and the salary fields do not appear.' },
+      ],
+    },
+    {
+      id: 'work-contacts',
+      title: 'Work contacts',
+      blocks: [
+        { type: 'paragraph', text: 'In a user’s **Contacts**, when you add or edit a contact you can tick **Work contact**. Work contacts show the **Work** label.' },
+      ],
+    },
+    {
+      id: 'termination',
+      title: 'Termination',
+      blocks: [
+        { type: 'paragraph', text: 'When the **Terminated at** date arrives (or has already passed when saving) the person is deactivated and can no longer sign in; the card and history stay on file. If you remove the date the person is not reactivated automatically: turn **Active** back on by hand.' },
+        { type: 'paragraph', text: 'In the users list the **Status** column shows **Employed** or **Terminated** and can be filtered.' },
       ],
     },
     {

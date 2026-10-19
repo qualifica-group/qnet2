@@ -9,6 +9,7 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\Models\BusinessFunction;
 use App\Models\User;
 use App\Services\BusinessFunctions\BusinessFunctionHierarchy;
+use App\Services\BusinessFunctions\BusinessFunctionMembershipGuard;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -37,9 +38,12 @@ class BusinessFunctionService
      *
      * @var array<int, string>
      */
-    private const array HYDRATED_RELATIONS = ['manager.avatar', 'parent', 'users.avatar', 'operationalSites.addresses.city'];
+    private const array HYDRATED_RELATIONS = ['manager.avatar', 'parent', 'companies', 'users.avatar', 'operationalSites.addresses.city'];
 
-    public function __construct(private readonly BusinessFunctionHierarchy $hierarchy) {}
+    public function __construct(
+        private readonly BusinessFunctionHierarchy $hierarchy,
+        private readonly BusinessFunctionMembershipGuard $membershipGuard,
+    ) {}
 
     public function create(User $actor, CreateBusinessFunctionData $data): BusinessFunction
     {
@@ -56,6 +60,10 @@ class BusinessFunctionService
 
             if ($data->hasOperationalSites()) {
                 $businessFunction->operationalSites()->sync($data->operationalSites);
+            }
+
+            if ($data->hasCompanies()) {
+                $businessFunction->companies()->sync($data->companyIds);
             }
 
             return $businessFunction->fresh(self::HYDRATED_RELATIONS);
@@ -81,11 +89,16 @@ class BusinessFunctionService
             $businessFunction->fill($attributes)->save();
 
             if ($data->hasUsers()) {
+                $this->membershipGuard->assertCanReplaceMembers($businessFunction, $data->users);
                 $businessFunction->users()->sync($data->users);
             }
 
             if ($data->hasOperationalSites()) {
                 $businessFunction->operationalSites()->sync($data->operationalSites);
+            }
+
+            if ($data->hasCompanies()) {
+                $businessFunction->companies()->sync($data->companyIds);
             }
 
             return $businessFunction->fresh(self::HYDRATED_RELATIONS);
@@ -107,6 +120,8 @@ class BusinessFunctionService
         if ($businessFunction->opportunities()->exists()) {
             abort(409, 'This business function has opportunities and cannot be deleted.');
         }
+
+        $this->membershipGuard->assertCanDelete($businessFunction);
 
         // The business_function_user/business_function_operational_site pivot
         // rows cascade on delete (migration FK constraint), so no explicit
@@ -209,16 +224,16 @@ class BusinessFunctionService
      * descendants (i.e. $businessFunction may not be an ancestor of the
      * prospective new parent) — either would create a cycle in the tree.
      */
-    private function assertNoCycle(BusinessFunction $businessFunction, int $parentId): void
+    public function assertNoCycle(BusinessFunction $businessFunction, int $parentId): void
     {
         if ($parentId === $businessFunction->id) {
-            abort(422, 'A business function cannot be its own parent.');
+            abort(422, __('business_functions.cannot_be_own_parent'));
         }
 
         $parent = BusinessFunction::find($parentId);
 
         if ($parent !== null && $this->hierarchy->isAncestorOf($parent, $businessFunction->id)) {
-            abort(422, 'A business function cannot be moved under one of its own descendants.');
+            abort(422, __('business_functions.cannot_move_under_descendant'));
         }
     }
 }

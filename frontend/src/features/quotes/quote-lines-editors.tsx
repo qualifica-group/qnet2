@@ -4,7 +4,7 @@ import { QuoteNewAttributesFields } from '@/features/quotes/quote-attributes-sec
 import { QuoteCostsTab } from '@/features/quotes/quote-costs-tab'
 import { QuoteOfferTab } from '@/features/quotes/quote-offer-tab'
 import { QuoteLiveSummary } from '@/features/quotes/quote-summary'
-import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
+import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-types'
 import type { QuoteFormState } from '@/features/quotes/use-quote-form'
 import type { QuoteLine } from '@/features/quotes/types'
 
@@ -14,7 +14,7 @@ import type { QuoteLine } from '@/features/quotes/types'
  * 0197): the same grids, caches and per-row errors in either place.
  */
 
-/** The per-row messages of one tab, as `QuoteLinesField` places them. */
+/** The per-row messages of one tab, as the line editor places them on its cards. */
 function asRowErrors(errors: unknown): (QuoteLineRowErrors | undefined)[] | undefined {
   return Array.isArray(errors) ? (errors as (QuoteLineRowErrors | undefined)[]) : undefined
 }

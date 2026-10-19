@@ -5,6 +5,7 @@ use App\Authorization\ApiClientsAuthorization;
 use App\Authorization\AttributesAuthorization;
 use App\Authorization\BusinessFunctionsAuthorization;
 use App\Authorization\CampaignsAuthorization;
+use App\Authorization\CollectiveAgreementsAuthorization;
 use App\Authorization\CommissionAccrualsAuthorization;
 use App\Authorization\CommissionConfigurationsAuthorization;
 use App\Authorization\CommissionSettlementsAuthorization;
@@ -23,11 +24,14 @@ use App\Authorization\FinancialAccountsAuthorization;
 use App\Authorization\InvoiceInstallmentsAuthorization;
 use App\Authorization\InvoicesAuthorization;
 use App\Authorization\InvoiceTagsAuthorization;
+use App\Authorization\JobActivitiesAuthorization;
+use App\Authorization\JobRolesAuthorization;
 use App\Authorization\LeadsAuthorization;
 use App\Authorization\LedgerAuthorization;
 use App\Authorization\ManagementControlAuthorization;
 use App\Authorization\OperationalSitesAuthorization;
 use App\Authorization\OpportunitiesAuthorization;
+use App\Authorization\OrgChartAuthorization;
 use App\Authorization\PaymentMethodsAuthorization;
 use App\Authorization\PipelineStatusesAuthorization;
 use App\Authorization\ProductCategoriesAuthorization;
@@ -94,6 +98,11 @@ return [
         'users' => UsersAuthorization::class,
         'roles' => RolesAuthorization::class,
         'business-functions' => BusinessFunctionsAuthorization::class,
+        // spec 0271: HR org structure catalogues.
+        'job-roles' => JobRolesAuthorization::class,
+        'job-activities' => JobActivitiesAuthorization::class,
+        // spec 0272: collective agreements (CCNL).
+        'collective-agreements' => CollectiveAgreementsAuthorization::class,
         'companies' => CompaniesAuthorization::class,
         'commission-configurations' => CommissionConfigurationsAuthorization::class,
         'company-sites' => CompanySitesAuthorization::class,
@@ -132,6 +141,8 @@ return [
         'enrollee-management' => EnrolleeManagementAuthorization::class,
         // Spec 0185: "Statistiche Gestione Richieste" — a view-only module.
         'request-statistics' => RequestStatisticsAuthorization::class,
+        // Spec 0273: the HR "Organigramma" page (view-only permission).
+        'org-chart' => OrgChartAuthorization::class,
         'api-clients' => ApiClientsAuthorization::class,
         'reward-types' => RewardTypesAuthorization::class,
         'reward-statuses' => RewardStatusesAuthorization::class,

@@ -4,23 +4,17 @@ import { RelationMultiSelectField } from '@/components/form/relation-multi-selec
 import { RelationSelectField } from '@/components/form/relation-select-field'
 import { FormControl, FormDescription } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { MetaField } from '@/features/authorization/MetaField'
-import { COMPANIES_FOR_SELECT_RESOURCE } from '@/features/companies/for-select-api'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
 import { CompetenceLinesField } from '@/features/product-lines/competence-lines-field'
 import type { KnownProductLine } from '@/features/product-lines/types'
 import { DurationInput } from '@/features/users/duration-input'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import { toFieldRefs } from '@/features/users/user-record'
-import {
-  QUALIFICATION_TYPES,
-  RELATIONSHIP_TYPES,
-  type EmploymentRelationRef,
-  type QualificationType,
-  type RelationshipType,
-} from '@/features/users/types'
+import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
+import { JOB_ROLES_FOR_SELECT_RESOURCE } from '@/features/job-roles/for-select-api'
+import type { EmploymentRelationRef } from '@/features/users/types'
 import type { UserFormValues } from '@/features/users/use-user-form'
 
 /*
@@ -28,9 +22,6 @@ import type { UserFormValues } from '@/features/users/use-user-form'
  * (competence + Sedi), one component each, shared by the detail's in-place
  * rows and the create draft's rows (spec 0222).
  */
-
-/** Radix `Select` cannot hold an empty-string value: "no selection" uses this sentinel. */
-const NONE_VALUE = '__none__'
 
 interface FieldProps {
   control: Control<UserFormValues>
@@ -132,25 +123,77 @@ export function UserRemoteSitesField({ control, selected }: FieldProps & { selec
   )
 }
 
-export function UserJobDescriptionField({ control }: FieldProps) {
+/** "Mansioni" (spec 0271): zero or more job roles, same picker as "Riporta a". */
+export function UserJobRolesField({ control, selected }: FieldProps & { selected: EmploymentRelationRef[] }) {
   const { t } = useTranslation()
   return (
-    <MetaField
+    <RelationMultiSelectField
       control={control}
-      name="employment.job_description"
-      metaKey="employment.job_description"
-      label={t('users.form.employment.jobDescription')}
-    >
-      {({ field, disabled, readOnly }) => (
-        <FormControl>
-          <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
-        </FormControl>
-      )}
-    </MetaField>
+      name="employment.job_role_ids"
+      metaKey="employment.job_role_ids"
+      label={t('users.form.employment.jobRoles')}
+      resource={JOB_ROLES_FOR_SELECT_RESOURCE}
+      searchPlaceholder={t('users.form.employment.jobRolesSearch')}
+      selected={toFieldRefs(selected)}
+      placeholder={t('users.form.employment.jobRolesPlaceholder')}
+      emptyLabel={t('users.form.employment.jobRolesEmpty')}
+      errorLabel={t('users.form.employment.jobRolesError')}
+      removeLabel={t('users.form.employment.jobRolesRemove')}
+      retryLabel={t('common.retry')}
+    />
   )
 }
 
-/** "Riporta a" (spec 0166): zero or more managers; emptied whenever the person is a manager (D-5). */
+/**
+ * "Funzioni aziendali di appartenenza" (spec 0275): the same data as the
+ * function's "Utenti associati". Mandatory for an active person (server 422).
+ */
+export function UserBusinessFunctionsField({ control, selected }: FieldProps & { selected: EmploymentRelationRef[] }) {
+  const { t } = useTranslation()
+  return (
+    <RelationMultiSelectField
+      control={control}
+      name="employment.business_function_ids"
+      metaKey="employment.business_function_ids"
+      label={t('users.form.employment.businessFunctions')}
+      resource={BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE}
+      searchPlaceholder={t('users.form.employment.businessFunctionsSearch')}
+      selected={toFieldRefs(selected)}
+      placeholder={t('users.form.employment.businessFunctionsPlaceholder')}
+      emptyLabel={t('users.form.employment.businessFunctionsEmpty')}
+      errorLabel={t('users.form.employment.businessFunctionsError')}
+      removeLabel={t('users.form.employment.businessFunctionsRemove')}
+      retryLabel={t('common.retry')}
+    />
+  )
+}
+
+/**
+ * "Responsabile delle funzioni" (spec 0276): the listed functions take this
+ * person as their manager, the previous manager loses them.
+ */
+export function UserManagedBusinessFunctionsField({ control, selected }: FieldProps & { selected: EmploymentRelationRef[] }) {
+  const { t } = useTranslation()
+  return (
+    <RelationMultiSelectField
+      control={control}
+      name="employment.managed_business_function_ids"
+      metaKey="employment.managed_business_function_ids"
+      label={t('users.form.employment.managedBusinessFunctions')}
+      description={t('users.form.employment.managedBusinessFunctionsDescription')}
+      resource={BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE}
+      searchPlaceholder={t('users.form.employment.managedBusinessFunctionsSearch')}
+      selected={toFieldRefs(selected)}
+      placeholder={t('users.form.employment.managedBusinessFunctionsPlaceholder')}
+      emptyLabel={t('users.form.employment.managedBusinessFunctionsEmpty')}
+      errorLabel={t('users.form.employment.managedBusinessFunctionsError')}
+      removeLabel={t('users.form.employment.managedBusinessFunctionsRemove')}
+      retryLabel={t('common.retry')}
+    />
+  )
+}
+
+/** "Riporta a" (spec 0166): zero or more managers, whoever they are. */
 export function UserReportsToField({ control, selected }: FieldProps & { selected: EmploymentRelationRef[] }) {
   const { t } = useTranslation()
   return (
@@ -172,108 +215,21 @@ export function UserReportsToField({ control, selected }: FieldProps & { selecte
   )
 }
 
-interface EnumFieldProps<TValue extends string> extends FieldProps {
-  name: 'employment.relationship_type' | 'employment.qualification_type'
-  label: string
-  noneLabel: string
-  options: readonly TValue[]
-  enumKey: 'relationship_type' | 'qualification_type'
-}
-
-/** "Tipo rapporto" / "Qualifica": a closed list with an explicit "none". */
-export function UserEnumField<TValue extends RelationshipType | QualificationType>({
-  control,
-  name,
-  label,
-  noneLabel,
-  options,
-  enumKey,
-}: EnumFieldProps<TValue>) {
-  const { t } = useTranslation()
-  return (
-    <MetaField control={control} name={name} metaKey={name} label={label}>
-      {({ field, disabled }) => (
-        <Select
-          value={field.value ?? NONE_VALUE}
-          onValueChange={(next) => field.onChange(next === NONE_VALUE ? null : next)}
-          disabled={disabled}
-        >
-          <FormControl>
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-          </FormControl>
-          <SelectContent>
-            <SelectItem value={NONE_VALUE}>{noneLabel}</SelectItem>
-            {options.map((option) => (
-              <SelectItem key={option} value={option}>
-                {t(`enums.${enumKey}.${option}`)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-    </MetaField>
-  )
-}
-
-export function UserRelationshipTypeField({ control }: FieldProps) {
-  const { t } = useTranslation()
-  return (
-    <UserEnumField
-      control={control}
-      name="employment.relationship_type"
-      label={t('users.form.employment.relationshipType')}
-      noneLabel={t('users.form.employment.relationshipTypeNone')}
-      options={RELATIONSHIP_TYPES}
-      enumKey="relationship_type"
-    />
-  )
-}
-
-export function UserQualificationField({ control }: FieldProps) {
-  const { t } = useTranslation()
-  return (
-    <UserEnumField
-      control={control}
-      name="employment.qualification_type"
-      label={t('users.form.employment.qualificationType')}
-      noneLabel={t('users.form.employment.qualificationTypeNone')}
-      options={QUALIFICATION_TYPES}
-      enumKey="qualification_type"
-    />
-  )
-}
-
-/** "Azienda": the employing company. */
-export function UserCompanyField({ control, selected }: FieldProps & { selected: EmploymentRelationRef | null }) {
-  const { t } = useTranslation()
-  return (
-    <RelationSelectField
-      control={control}
-      name="employment.company_id"
-      metaKey="employment.company_id"
-      label={t('users.form.employment.company')}
-      resource={COMPANIES_FOR_SELECT_RESOURCE}
-      searchPlaceholder={t('users.form.employment.companySearch')}
-      selected={selected ? { id: selected.id, name: selected.label } : null}
-      placeholder={t('users.form.employment.companyPlaceholder')}
-      emptyLabel={t('users.form.employment.companyEmpty')}
-      errorLabel={t('users.form.employment.companyError')}
-      clearLabel={t('common.clear')}
-      retryLabel={t('common.retry')}
-    />
-  )
-}
-
 /** "Data assunzione" / "Data cessazione": date inputs hold `''` for "empty". */
 export function UserDateField({
   control,
   name,
   label,
-}: FieldProps & { name: 'employment.hired_at' | 'employment.terminated_at'; label: string }) {
+  description,
+}: FieldProps & { name: 'employment.hired_at' | 'employment.terminated_at'; label: string; description?: string }) {
   return (
-    <MetaField control={control} name={name} metaKey={name} label={label}>
+    <MetaField
+      control={control}
+      name={name}
+      metaKey={name}
+      label={label}
+      description={description ? <FormDescription>{description}</FormDescription> : undefined}
+    >
       {({ field, disabled, readOnly }) => (
         <FormControl>
           <Input type="date" disabled={disabled} readOnly={readOnly} {...field} />
@@ -294,6 +250,23 @@ export function UserDurationField({
       {({ field, disabled }) => (
         <FormControl>
           <DurationInput value={field.value} onChange={field.onChange} disabled={disabled} label={label} />
+        </FormControl>
+      )}
+    </MetaField>
+  )
+}
+
+/** "IBAN" / "Intestatario" (spec 0272 D-6): plain text, the server normalises and validates (mod-97). */
+export function UserPaymentTextField({
+  control,
+  name,
+  label,
+}: FieldProps & { name: 'employment.iban' | 'employment.iban_holder'; label: string }) {
+  return (
+    <MetaField control={control} name={name} metaKey={name} label={label}>
+      {({ field, disabled, readOnly }) => (
+        <FormControl>
+          <Input autoComplete="off" disabled={disabled} readOnly={readOnly} {...field} />
         </FormControl>
       )}
     </MetaField>

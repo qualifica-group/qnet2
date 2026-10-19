@@ -4,14 +4,16 @@ import { useWatch, type Control, type Path } from 'react-hook-form'
 import { TrendingUp } from 'lucide-react'
 import { FormSection } from '@/components/form-section'
 import { MetaField } from '@/features/authorization/MetaField'
+import { MetaFieldRowContext } from '@/features/authorization/meta-field-row-context'
 import { resolveManagementMode, resolveSimplifiedOfferLine } from '@/features/product-lines/category-tree-scope'
 import type { ProductLineRow } from '@/features/product-lines/types'
 import { useProductCategoryTree } from '@/features/product-categories/use-product-category-tree'
 import type { ProductCategoryTreeNode } from '@/features/product-categories/types'
-import { QuoteLinesField, knownProductsFrom, knownVatRatesFrom } from '@/features/quotes/quote-lines-field'
-import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
+import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-types'
 import { MAX_LINES_PER_TAB, type QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteLine } from '@/features/quotes/types'
+import { QuoteLineEditor } from '@/features/quotes/line-editor/quote-line-editor'
+import type { QuoteCatalogScope } from '@/features/quotes/line-editor/types'
 import { useOfferLinesAutofill } from '@/features/request-management/use-offer-lines-autofill'
 
 /**
@@ -32,6 +34,8 @@ interface RequestOfferLinesFieldProps<TFieldValues extends RequestOfferLinesForm
   errors?: (QuoteLineRowErrors | undefined)[]
   vatRatePercentFor: (vatRateId: number) => number | null
   rememberVatRatePercent: (vatRateId: number, percent: number) => void
+  /** Height cap of the catalogue list (spec 0268): the grid dialog grants it more room than a page section. */
+  catalogListClassName?: string
 }
 
 /** Stable empty tree while the shared query is still loading: no fresh reference per render. */
@@ -44,30 +48,23 @@ const EMPTY_TREE: ProductCategoryTreeNode[] = []
  * heading. The work panel and the create form keep mounting
  * `RequestOfferLinesSection` below, which is this field plus that card.
  *
- * Literally the Offerte form's row editor (`QuoteLinesField`, variant
- * `revenue`), since the record this module works on IS that Offerta since
- * spec 0086 — same columns, same live net/IVA/totale, same server rules.
+ * The editor is the "catalogo + righe" `QuoteLineEditor` (spec 0268): the
+ * same `offer_lines` rows the Offerte form writes (`QuoteLineFormValues`, the
+ * same server rules), composed from a scoped product catalogue instead of a
+ * per-row picker. The Offerte form mounts the very same editor (spec 0269).
  *
- * Two deliberate differences from `QuoteOfferTab`:
- *  - no provvigioni (`withCommissions={false}`): the endpoint prohibits the
- *    block, so whatever the Offerte form configured is preserved server-side
- *    and never editable — nor droppable — from here;
- *  - no "sblocca" affordance: the product picker is scoped to the categories
- *    THIS form carries (watched, since they are edited right above), and the
+ * What this module adds or leaves out compared with `QuoteOfferTab`:
+ *  - no provvigioni: the endpoint prohibits the block, so whatever the
+ *    Offerte form configured is preserved server-side;
+ *  - no "sblocca" affordance: the catalogue is scoped to the categories THIS
+ *    form carries (watched, since they are edited right above), and the
  *    server widens the classification itself when a product falls outside
- *    them (OpportunityProductLineCoverage, D-7) — an unlock control would
- *    only advertise a filter the operator has no reason to lift here.
- *
- * The single-row cap of a `single`-managed category (spec 0077) is mirrored
- * on "Aggiungi riga" exactly as the Offerte tab mirrors it; the server
- * enforces it either way.
- *
- * A THIRD difference, exclusive to this module (spec 0114, D-3): when the
- * classification covers a category under the simplified-offer-line rule,
- * `simplified` drops quantity/unit price/VAT rate from the editor and
- * congeals them from the picked product, client-side preview of what the
- * server writes regardless. `QuoteOfferTab`/`QuoteCostTab` never pass this
- * prop — the Offerte module keeps the full editor on every category.
+ *    them (OpportunityProductLineCoverage, D-7);
+ *  - the single-row cap of a `single`-managed category (spec 0077) turns the
+ *    catalogue into a single pick; the server enforces the cap either way;
+ *  - `simplified` (spec 0114, D-3) drops quantity/unit price/VAT rate from
+ *    the rows and congeals them from the picked product, client-side preview
+ *    of what the server writes regardless.
  */
 export function RequestOfferLinesField<TFieldValues extends RequestOfferLinesFormShape>({
   control,
@@ -75,6 +72,7 @@ export function RequestOfferLinesField<TFieldValues extends RequestOfferLinesFor
   errors,
   vatRatePercentFor,
   rememberVatRatePercent,
+  catalogListClassName,
 }: RequestOfferLinesFieldProps<TFieldValues>) {
   const { t } = useTranslation()
   // The shape guarantees both keys on every accepted form, but TS cannot
@@ -121,52 +119,53 @@ export function RequestOfferLinesField<TFieldValues extends RequestOfferLinesFor
     simplified,
   })
 
-  const knownProducts = useMemo(() => knownProductsFrom(knownLines), [knownLines])
-  const knownVatRates = useMemo(() => knownVatRatesFrom(knownLines), [knownLines])
+  const catalogScope = useMemo<QuoteCatalogScope>(() => ({ kind: 'categories', categoryIds }), [categoryIds])
 
   return (
-    <MetaField
-      control={control}
-      name={linesField}
-      metaKey="offer_lines"
-      label={t('quotes.form.offerTab.fieldLabel')}
-    >
-      {({ field, disabled }) => {
-        // Same unavoidable cast as the field path above: the generic keeps
-        // the shape's key but not its value type.
-        const rows = field.value as QuoteLineFormValues[]
+    // The editor's rows pane already titles the collection ("Righe
+    // dell'offerta"): the field label stays for assistive tech only.
+    <MetaFieldRowContext.Provider value={linesField}>
+      <MetaField
+        control={control}
+        name={linesField}
+        metaKey="offer_lines"
+        label={t('quotes.form.offerTab.fieldLabel')}
+      >
+        {({ field, disabled }) => {
+          // Same unavoidable cast as the field path above: the generic keeps
+          // the shape's key but not its value type.
+          const rows = field.value as QuoteLineFormValues[]
 
-        return (
-          <div className="flex flex-col gap-2">
-            <QuoteLinesField
-              value={rows}
-              onChange={field.onChange}
-              variant="revenue"
-              disabled={disabled}
-              categoryIds={categoryIds}
-              canAddRow={!singleCategoryMode || rows.length === 0}
-              errors={errors}
-              knownProducts={knownProducts}
-              knownVatRates={knownVatRates}
-              vatRatePercentFor={vatRatePercentFor}
-              rememberVatRatePercent={rememberVatRatePercent}
-              withCommissions={false}
-              simplified={simplified}
-            />
+          return (
+            <div className="flex flex-col gap-2">
+              <QuoteLineEditor
+                value={rows}
+                onChange={field.onChange}
+                variant="revenue"
+                disabled={disabled}
+                catalogScope={catalogScope}
+                lockedHint={t('requestManagement.offerLines.hintNoCategory')}
+                categoryTree={categoryTree}
+                maxRows={singleCategoryMode ? 1 : MAX_LINES_PER_TAB}
+                singleCategoryMode={singleCategoryMode}
+                simplified={simplified}
+                knownLines={knownLines}
+                errors={errors}
+                vatRatePercentFor={vatRatePercentFor}
+                rememberVatRatePercent={rememberVatRatePercent}
+                catalogListClassName={catalogListClassName}
+              />
 
-            <p className="text-xs text-muted-foreground">
-              {categoryIds.length === 0
-                ? t('requestManagement.offerLines.hintNoCategory')
-                : simplified
-                  ? t('requestManagement.offerLines.hintSimplified')
-                  : singleCategoryMode
-                    ? t('quotes.form.offerTab.hintSingleCategory')
-                    : t('quotes.form.offerTab.hintScoped')}
-            </p>
-          </div>
-        )
-      }}
-    </MetaField>
+              {/* The catalogue carries the scope/single-row hints itself (spec
+                  0268); only the simplified rule explains the rows' missing inputs. */}
+              {simplified ? (
+                <p className="text-xs text-muted-foreground">{t('requestManagement.offerLines.hintSimplified')}</p>
+              ) : null}
+            </div>
+          )
+        }}
+      </MetaField>
+    </MetaFieldRowContext.Provider>
   )
 }
 

@@ -5,9 +5,10 @@ import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { ProductLineLike } from '@/features/product-lines/types'
 import { summarizeAssignment, type AssignmentSummary } from '@/features/users/user-assignment'
 import type {
+  CurrentContract,
   EmploymentDetail,
   EmploymentRelationRef,
-  QualificationType,
+  NamedRef,
   RelationshipType,
   UserDetail,
   UserLocale,
@@ -21,9 +22,6 @@ import type { UserFormValues } from '@/features/users/use-user-form'
 export const EDITOR_EXTRA_FIELDS: Readonly<Record<string, readonly string[]>> = {
   password: ['password_confirmation'],
 }
-
-/** The "Responsabile" switch empties "Riporta a" (spec 0166 D-5): its row opens only when both are editable. */
-export const MANAGER_CASCADE_FIELDS = ['employment.is_manager', 'employment.reports_to_ids'] as const
 
 /** The jolly switch clears the competence rows (spec 0129 D-2): same rule. */
 export const COVERS_ALL_CASCADE_FIELDS = [
@@ -51,12 +49,17 @@ export interface UserRecordValues {
   product_lines: ProductLineLike[]
   primary_operational_site: EmploymentRelationRef | null
   remote_operational_sites: EmploymentRelationRef[]
-  is_manager: boolean
-  job_description: string | null
+  job_roles: EmploymentRelationRef[]
+  business_functions: EmploymentRelationRef[]
+  managed_business_functions: EmploymentRelationRef[]
   reports_to: EmploymentRelationRef[]
   relationship_type: RelationshipType | null
   company: EmploymentRelationRef | null
-  qualification_type: QualificationType | null
+  /** The condition in force (spec 0272 D-2), read-only: its CCNL level and start. */
+  current_contract: CurrentContract | null
+  /** Payment account (spec 0272 D-6); null also when the actor may not see it. */
+  iban: string | null
+  iban_holder: string | null
   hired_at: string | null
   terminated_at: string | null
   standard_daily_minutes: number | null
@@ -77,6 +80,11 @@ export interface UserRecordSectionProps {
 /** `{id, label}` refs as the relation pickers' `{id, name}` hydration. */
 export function toFieldRefs(refs: EmploymentRelationRef[]): RelationFieldRef[] {
   return refs.map((ref) => ({ id: ref.id, name: ref.label }))
+}
+
+/** `{id, name}` contract refs as the record's `{id, label}` rows read them. */
+function toRelationRefs(refs: NamedRef[] | undefined): EmploymentRelationRef[] {
+  return refs ? refs.map((ref) => ({ id: ref.id, label: ref.name })) : NO_REFS
 }
 
 /** Stable empty defaults: a user with no employment profile reads like an empty one. */
@@ -117,12 +125,15 @@ export function persistedUserValues(user: UserDetail): UserRecordValues {
     product_lines: employment?.product_lines ?? NO_LINES,
     primary_operational_site: employment?.primary_operational_site ?? null,
     remote_operational_sites: employment?.remote_operational_sites ?? NO_REFS,
-    is_manager: employment?.is_manager ?? false,
-    job_description: employment?.job_description ?? null,
+    job_roles: employment?.job_roles ?? NO_REFS,
+    business_functions: toRelationRefs(employment?.business_functions),
+    managed_business_functions: toRelationRefs(user.managed_business_functions),
     reports_to: employment?.reports_to ?? NO_REFS,
     relationship_type: employment?.relationship_type ?? null,
     company: employment?.company ?? null,
-    qualification_type: employment?.qualification_type ?? null,
+    current_contract: employment?.current_contract ?? null,
+    iban: employment?.iban ?? null,
+    iban_holder: employment?.iban_holder ?? null,
     hired_at: employment?.hired_at ?? null,
     terminated_at: employment?.terminated_at ?? null,
     standard_daily_minutes: employment?.standard_daily_minutes ?? null,

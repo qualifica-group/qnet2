@@ -36,6 +36,12 @@ export interface BusinessFunctionOperationalSite {
   label: string
 }
 
+/** A company reference, hydrated on the detail: `label` is the denomination. */
+export interface BusinessFunctionCompany {
+  id: number
+  label: string
+}
+
 /**
  * Single business-function detail returned by GET/POST/PATCH
  * /business-functions (envelope `data`). Matches `BusinessFunctionResource`.
@@ -60,6 +66,9 @@ export interface BusinessFunctionDetail {
   operational_site_ids: number[]
   /** Hydrates the multiselect operational-sites control. */
   operational_sites: BusinessFunctionOperationalSite[]
+  company_ids: number[]
+  /** Hydrates the multiselect companies control (spec 0271). */
+  companies: BusinessFunctionCompany[]
   created_at: string
   /** Custom field values keyed by their raw (un-namespaced) key (spec 0021). */
   custom_fields?: Record<string, CustomFieldValue>
@@ -83,6 +92,7 @@ export interface CreateBusinessFunctionPayload {
   users: number[]
   parent_id: number | null
   operational_sites: number[]
+  company_ids: number[]
   /** All valued custom fields, keyed by raw key (spec 0021, create = full set). */
   custom_fields?: Record<string, CustomFieldValue>
 }

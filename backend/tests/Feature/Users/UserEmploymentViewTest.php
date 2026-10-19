@@ -3,6 +3,7 @@
 use App\Http\Resources\EmploymentResource;
 use App\Models\BusinessFunction;
 use App\Models\EmploymentProfile;
+use App\Models\JobRole;
 use App\Models\OperationalSite;
 use App\Models\ProductCategory;
 use App\Models\User;
@@ -25,7 +26,9 @@ it('view: employment carries the competence rows, not the old business-function/
     $function = BusinessFunction::factory()->create(['name' => 'Engineering']);
     $category = ProductCategory::factory()->create(['name' => 'Fibra', 'business_function_id' => $function->id]);
     $target = User::factory()->create();
-    $profile = EmploymentProfile::factory()->create(['user_id' => $target->id, 'job_description' => 'Backend engineer']);
+    $profile = EmploymentProfile::factory()->create(['user_id' => $target->id]);
+    $role = JobRole::factory()->create(['name' => 'Backend engineer']);
+    $profile->jobRoles()->attach($role->id);
     $profile->productLines()->create([
         'business_function_id' => $function->id,
         'product_category_id' => $category->id,
@@ -34,7 +37,9 @@ it('view: employment carries the competence rows, not the old business-function/
 
     $response = $this->getJson("/api/users/{$target->id}")
         ->assertOk()
-        ->assertJsonPath('data.employment.job_description', 'Backend engineer')
+        ->assertJsonPath('data.employment.job_role_ids', [$role->id])
+        ->assertJsonPath('data.employment.job_roles', [['id' => $role->id, 'name' => 'Backend engineer']])
+        ->assertJsonMissingPath('data.employment.job_description')
         ->assertJsonCount(1, 'data.employment.product_lines')
         ->assertJsonPath('data.employment.product_lines.0.business_function', ['id' => $function->id, 'name' => 'Engineering'])
         ->assertJsonPath('data.employment.product_lines.0.product_category', ['id' => $category->id, 'name' => 'Fibra'])

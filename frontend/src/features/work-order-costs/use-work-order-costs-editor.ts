@@ -15,7 +15,7 @@ import {
   type WorkOrderCostRowValues,
   type WorkOrderCostsFormValues,
 } from '@/features/work-order-costs/work-order-costs-schema'
-import type { QuoteProductForSelectItem } from '@/features/quotes/quote-product-select'
+import type { QuoteCatalogProduct } from '@/features/quotes/line-editor/types'
 import type { WorkOrderCostLine } from '@/features/work-order-costs/types'
 
 /** Row fields a 422 may be mapped onto (`lines.<n>.<field>`). */
@@ -33,9 +33,9 @@ const ROW_ERROR_FIELDS = [
 ] as const
 
 /**
- * Owns the costs grid: the RHF form (rows hydrated from the persisted lines,
- * reset whenever they change), row editing and the single save that replaces
- * the whole set. Server 422s are mapped back onto the offending row field.
+ * Owns the real costs: the RHF form (rows hydrated from the persisted lines,
+ * reset whenever they change), rows added from the catalogue, row editing and
+ * the single save that replaces the whole set. Server 422s are mapped back onto the offending row field.
  */
 export function useWorkOrderCostsEditor(workOrderId: number, lines: WorkOrderCostLine[]) {
   const { t } = useTranslation()
@@ -54,10 +54,14 @@ export function useWorkOrderCostsEditor(workOrderId: number, lines: WorkOrderCos
       { shouldDirty: true, shouldValidate: isSubmitted },
     )
 
-  const changeProduct = (index: number, item: QuoteProductForSelectItem | null) =>
-    item
-      ? changeField(index, costRowPatchFromProduct(item, form.getValues(`lines.${index}`)))
-      : changeField(index, { product_id: null })
+  /** Spec 0270 D-4: one new row per catalogue product, dated today and precompiled as a pick always was. */
+  const addProducts = (items: QuoteCatalogProduct[]) =>
+    append(
+      items.map((item) => {
+        const row = createEmptyCostRow()
+        return { ...row, ...costRowPatchFromProduct(item, row) }
+      }),
+    )
 
   const submit = form.handleSubmit(async (formValues) => {
     try {
@@ -79,10 +83,9 @@ export function useWorkOrderCostsEditor(workOrderId: number, lines: WorkOrderCos
     fields,
     rows,
     rowErrors,
-    addRow: () => append(createEmptyCostRow()),
+    addProducts,
     removeRow: remove,
     changeField,
-    changeProduct,
     submit,
     cancel: () => form.reset(),
     isSaving: sync.isPending,

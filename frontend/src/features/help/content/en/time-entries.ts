@@ -91,7 +91,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'tip',
-          text: 'Managers can switch from **Personal view** to **My team** and view their collaborators\' data read-only. A collaborator who reports to several managers appears under each of them.',
+          text: 'Managers can switch from **Personal view** to **My team** and view their collaborators\' data read-only. A collaborator who reports to several managers appears under each of them. Next to each collaborator you see their **Job roles** (separated by commas when there are several).',
         },
         {
           type: 'note',

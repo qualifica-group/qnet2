@@ -16,22 +16,22 @@ const PERMISSIONS: ResourcePermissions = {
 const t = ((key: string) => key) as unknown as TFunction
 
 const employment = {
-  is_manager: false,
-  job_description: '',
+  job_role_ids: [],
+  business_function_ids: [],
+  managed_business_function_ids: [],
   reports_to_ids: [],
-  relationship_type: null,
-  company_id: null,
   primary_operational_site_id: null,
   remote_operational_site_ids: [],
   is_assignable: true,
   covers_all_product_categories: false,
   product_lines: [],
-  qualification_type: null,
   hired_at: '',
   terminated_at: '',
   standard_daily_minutes: null,
   break_daily_minutes: null,
   hourly_cost: null,
+  iban: '',
+  iban_holder: '',
 }
 
 function values(password: string, confirmation: string) {

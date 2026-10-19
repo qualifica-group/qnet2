@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0273-hr-org-chart" status="approved" owner="utente" date="2026-10-16">
+
+  <goal>
+    Terzo passo del modulo HR (docs/product/hr.md §6): una pagina "Organigramma" con due viste ad albero
+    espandibile — Funzioni (albero delle funzioni aziendali con responsabile, persone e mansioni) e Persone
+    (chi riporta a chi) — da cui si spostano persone e funzioni trascinando o con l'azione "Sposta in…",
+    con ogni spostamento registrato.
+  </goal>
+
+  <context>
+    <!-- Fatti verificati nel repo il 2026-10-16. -->
+    <fact>Funzioni: `business_functions` (parent_id, manager_id, is_business_unit, is_business_service);
+      `BusinessFunctionService` ha gia' il controllo anti-ciclo sul `parent_id`. DB locale: 28 funzioni, tutte
+      radici, nessun responsabile impostato.</fact>
+    <fact>Appartenenza persona-funzione = funzione aziendale dell'utente = righe `employment_product_lines`
+      (profilo x funzione x categoria prodotto, categoria null = funzione intera; validate da
+      `Services/Assignment/CompetenceLineSetValidator`), le stesse della regola della funzione obbligatoria
+      (spec 0271 D-6) e della colonna "Funzione aziendale" della griglia utenti. Influenzano le assegnazioni
+      automatiche (lead/richieste). `covers_all_product_categories: true` = nessuna riga.</fact>
+    <fact>"Riporta a": pivot `employment_profile_manager` (piu' responsabili per persona); `is_manager: true`
+      forza la lista vuota (spec 0166 D-5). Nessun controllo anti-ciclo oggi. 132 collegamenti nel DB locale.
+      Il resolver ricorsivo esiste in `TimeEntries/TimeEntrySubordinateResolver`.</fact>
+    <fact>Albero espandibile esistente da cui prendere il modello: `features/time-entries/team/` (team-tree,
+      team-tree-branch: una persona con piu' responsabili compare sotto ciascuno). `@dnd-kit/core` gia' in
+      package.json (`components/ui/sortable-list.tsx`).</fact>
+    <fact>Activity log: `spatie/laravel-activitylog`, storico per risorsa in `config/activity-log.php`
+      (`GET /api/activity-log/{resource}/{id}`).</fact>
+    <fact>`frontend/src/routes/router.tsx` e' a 493 righe (limite 500).</fact>
+
+    <decision id="D-1">Due viste (utente 2026-10-16) in una pagina `/org-chart` con schede "Funzioni" e "Persone",
+      albero espandibile con ricerca ed espandi/comprimi tutto, nessuna libreria nuova.</decision>
+    <decision id="D-2">Vista Funzioni: nodi = funzioni (nome, tipo business unit / business service, responsabile);
+      sotto ogni funzione le sue sotto-funzioni e le persone che vi appartengono (nome, avatar, mansioni, se e'
+      responsabile). Le persone con `covers_all_product_categories` stanno in un nodo a parte "Tutte le funzioni".
+      Solo persone attive, non account di servizio.</decision>
+    <decision id="D-3">Vista Persone: radici = persone attive senza responsabili; sotto ognuno i diretti riporti;
+      chi ha piu' responsabili compare sotto ciascuno (come la vista team del segnatempo). Ogni riga: nome, avatar,
+      mansioni, funzioni.</decision>
+    <decision id="D-4">Spostamenti (utente): (a) persona sotto un altro responsabile = in "Riporta a" il
+      responsabile di partenza viene sostituito con quello di arrivo (o la persona diventa radice);
+      (b) funzione sotto un'altra funzione o a radice = `parent_id`; (c) persona da una funzione a un'altra = le
+      righe di competenza della funzione di partenza sono sostituite da UNA riga "funzione intera" (categoria
+      null) sulla funzione di arrivo. La finestra di conferma di (c) avvisa che cambia le assegnazioni automatiche.</decision>
+    <decision id="D-5">Interazione (utente): trascinamento su desktop (`@dnd-kit/core`) E azione "Sposta in…" dal
+      menu della riga (finestra con ricerca della destinazione), entrambi con conferma.</decision>
+    <decision id="D-6">Vincoli degli spostamenti: niente cicli (una persona non va sotto se stessa o un suo
+      sottoposto; una funzione non va sotto se stessa o una sua discendente); un responsabile
+      (`is_manager`) non puo' riportare a nessuno; una persona `covers_all` non si sposta di funzione; la persona
+      deve restare con almeno una funzione (spec 0271). Violazione = 422 con messaggio.</decision>
+    <decision id="D-7">Permessi: vedere = nuovo `org-chart.view`; spostare usa i permessi che gia' governano quei
+      dati: (a) e (c) `users.update` + campo modificabile (`employment.reports_to_ids` / `employment.product_lines`),
+      (b) `business-functions.update`. Senza, l'azione non compare e l'API risponde 403.</decision>
+    <decision id="D-8">Registro: ogni spostamento scrive una riga di activity log sul soggetto (la persona o la
+      funzione), log `org-chart`, evento `moved`, proprieta' { kind, from, to } con id e nomi, visibile nello storico
+      gia' esistente della persona/funzione.</decision>
+    <decision id="D-9">Menu: "Organigramma" sotto Amministrazione, dopo Utenti (permesso `org-chart.view`).
+      Le rotte HR del frontend escono da router.tsx in un file dedicato (`routes/hr-routes.tsx`).</decision>
+  </context>
+
+  <scope>
+    <in>
+      <item>Backend: `GET /api/org-chart/functions`, `GET /api/org-chart/people`, tre endpoint di spostamento,
+        `OrgChartPolicy`/permesso `org-chart.view`, service di spostamento con i vincoli D-6 e il log D-8, voce di menu.</item>
+      <item>Frontend: `features/org-chart/` (pagina con due schede, alberi, ricerca, espandi/comprimi, trascinamento,
+        "Sposta in…", conferme, errori), `routes/hr-routes.tsx` (job-roles, job-activities, collective-agreements,
+        org-chart) estratto da router.tsx.</item>
+      <item>i18n IT+EN; guida in-app nuova `org-chart`; docs/product/hr.md §6.</item>
+    </in>
+    <out>
+      <item>Organigramma a riquadri grafici, zoom, esportazione PDF/immagine.</item>
+      <item>Unita'/ruoli organizzativi separati dalle funzioni (tabelle organigramma del vecchio WeA HR).</item>
+      <item>Spostamenti multipli in un colpo; annulla.</item>
+      <item>Spostare una persona tra funzioni mantenendo le categorie di prodotto (si passa sempre a "funzione intera";
+        il dettaglio si cura nella scheda utente).</item>
+      <item>Importer.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope { success, message, data }. -->
+    <shared id="person">{ id: int, name: string, avatar_url: string|null, job_roles: string[], is_manager: bool }</shared>
+
+    <endpoint method="GET" path="/api/org-chart/functions">
+      <response status="200">data: { functions: [{ id, name, type: "business_unit"|"business_service"|null,
+        parent_id: int|null, manager: { id, name }|null, people: person[] }], all_functions_people: person[] }
+        — lista piatta, il frontend costruisce l'albero; persone ordinate per nome; una persona compare in ogni
+        funzione dove ha almeno una riga.</response>
+      <errors>403 senza `org-chart.view`.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/org-chart/people">
+      <response status="200">data: [ person + { manager_ids: int[], business_functions: string[] } ] — solo attivi
+        non di servizio; manager_ids filtrati sulle persone presenti nella lista.</response>
+      <errors>403 senza `org-chart.view`.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/org-chart/people/{user}/manager">
+      <request>{ from_manager_id: int|null, to_manager_id: int|null } — from = responsabile sotto cui la persona
+        si trova nell'albero (null se e' radice); to null = diventa radice (perde from).</request>
+      <response status="200">data: person + { manager_ids }.</response>
+      <errors>403 (users.update o campo employment.reports_to_ids non modificabile); 404; 422 ciclo, responsabile
+        `is_manager`, from non tra i suoi responsabili, to non attivo.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/org-chart/functions/{businessFunction}/parent">
+      <request>{ parent_id: int|null }</request>
+      <response status="200">data: { id, parent_id }.</response>
+      <errors>403 senza `business-functions.update`; 404; 422 ciclo o se stessa.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/org-chart/people/{user}/function">
+      <request>{ from_function_id: int, to_function_id: int }</request>
+      <response status="200">data: { id, business_function_ids: int[] }.</response>
+      <errors>403 (users.update o campo employment.product_lines non modificabile); 404; 422 persona `covers_all`,
+        nessuna riga sulla funzione di partenza, stessa funzione, regole di `CompetenceLineSetValidator`.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Con `org-chart.view`, `GET /api/org-chart/functions` restituisce ogni funzione con
+      parent_id, responsabile e le persone attive con righe su di essa (con mansioni); le persone covers_all sono in
+      `all_functions_people`; senza permesso 403.</criterion>
+    <criterion id="AC-002">`GET /api/org-chart/people` restituisce le persone attive non di servizio con
+      `manager_ids`; cessati e account di servizio esclusi; senza permesso 403.</criterion>
+    <criterion id="AC-003">Spostare B da sotto A a sotto C sostituisce A con C nei responsabili di B (gli altri
+      responsabili restano) e scrive una riga di activity log `org-chart`/`moved` su B con from A e to C.</criterion>
+    <criterion id="AC-004">Spostare A sotto un suo sottoposto, sotto se stesso, o un responsabile `is_manager` sotto
+      qualcuno = 422 e nulla cambia.</criterion>
+    <criterion id="AC-005">Spostare una funzione sotto un'altra aggiorna parent_id e scrive il log; sotto una sua
+      discendente o se stessa = 422.</criterion>
+    <criterion id="AC-006">Spostare una persona dalla funzione F1 a F2 sostituisce le sue righe F1 con una riga F2
+      a funzione intera (le righe di altre funzioni restano) e scrive il log; persona covers_all, o senza righe su F1
+      = 422.</criterion>
+    <criterion id="AC-007">Senza i permessi di D-7 gli spostamenti rispondono 403 e nulla cambia.</criterion>
+    <criterion id="AC-008">Frontend: pagina con schede Funzioni/Persone, albero espandibile, ricerca che espande i
+      rami trovati, espandi/comprimi tutto, apertura della scheda di persona/funzione dal nome.</criterion>
+    <criterion id="AC-009">Frontend: "Sposta in…" apre una finestra con ricerca della destinazione, conferma (con
+      avviso sulle assegnazioni per lo spostamento di funzione di una persona), invia l'endpoint giusto, aggiorna
+      l'albero e mostra i 422/403; azione nascosta senza permesso.</criterion>
+    <criterion id="AC-010">Frontend: il trascinamento di una riga su un'altra chiede la stessa conferma e usa lo
+      stesso endpoint; le destinazioni non valide (cicli) non accettano il rilascio.</criterion>
+    <criterion id="AC-011">Menu Amministrazione > Organigramma visibile solo con `org-chart.view`; rotte HR in
+      `routes/hr-routes.tsx` e router.tsx sotto 450 righe; guida in-app `org-chart` IT+EN, parity verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza (`@dnd-kit/core` gia' presente). Identificatori in inglese, testi IT+EN.</item>
+    <item>FormRequest + autorizzazione server-side su ogni endpoint; spostamenti in transazione; query senza N+1
+      (le liste devono reggere ~200 persone con 2-3 query).</item>
+    <item>Accessibilita': albero navigabile da tastiera (frecce/Invio), "Sposta in…" come alternativa al trascinamento,
+      focus visibile; responsive a 375/768/1024.</item>
+    <item>File sotto 300 righe (500 hard). Test eseguiti: Pest mirati + `composer test` (COMPOSER_PROCESS_TIMEOUT=0),
+      Vitest, `npx tsc -b --force`, Pint, ESLint.</item>
+  </constraints>
+
+</spec>

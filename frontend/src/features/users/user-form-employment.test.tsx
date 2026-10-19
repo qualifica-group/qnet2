@@ -13,7 +13,6 @@ import {
   fillRequiredCreateRows,
   pencilOf,
   permissionsFor,
-  typeInRow,
   userFixture,
   userWrapper,
 } from '@/features/users/user-test-fixtures'
@@ -21,7 +20,7 @@ import type { UserDetailWithPermissions } from '@/features/users/types'
 
 /**
  * Spec 0015 AC-014..019 (frontend) on the record layout of spec 0222: the
- * employment rows, the manager / reports-to cascade (spec 0166 D-5), the
+ * employment rows, the reports-to and managed-functions rows, the
  * relation pickers, the employment payload and its 422 mapping, the i18n.
  * REQUIREMENT CHANGED (spec 0222): rows are closed until opened, the edit
  * cases run on the in-place detail, and `employment` travels only when one of
@@ -110,9 +109,9 @@ beforeEach(() => {
 function userWithEmployment(): UserDetailWithPermissions {
   return userFixture({
     employment: employmentFixture({
-      job_description: 'Backend engineer',
+      job_role_ids: [3],
+      job_roles: [{ id: 3, label: 'Backend developer' }],
       relationship_type: 'employee',
-      qualification_type: 'coordinator',
       hired_at: '2026-01-15',
       standard_daily_minutes: 480,
       break_daily_minutes: 30,
@@ -143,26 +142,9 @@ describe('UserForm — the record layout (spec 0222 D-2)', () => {
   })
 })
 
-describe('UserForm — is_manager / reports_to (spec 0015 AC-015, spec 0166 D-5)', () => {
-  it('hides reports_to and force-empties it in the payload once is_manager is enabled', async () => {
-    renderCreate()
-    await fillRequiredCreateRows()
-
-    fireEvent.click(pencilOf('Reports to'))
-    fireEvent.click(screen.getByText('pick-Reports to'))
-    confirmOpenRow('Done')
-    fireEvent.click(pencilOf('Manager'))
-    fireEvent.click(screen.getByRole('switch', { name: 'Manager' }))
-    confirmOpenRow('Done')
-
-    expect(screen.queryByRole('button', { name: 'Edit Reports to' })).not.toBeInTheDocument()
-    clickCreateSave()
-
-    await waitFor(() => expect(createUserMock).toHaveBeenCalledTimes(1))
-    expect(createUserMock.mock.calls[0][0].employment).toMatchObject({ is_manager: true, reports_to_ids: [] })
-  })
-
-  it('submits the picked managers when the person is not a manager', async () => {
+// REQUIREMENT CHANGED (spec 0276 D-2): there is no manager flag, so "Reports to" is always editable and never emptied.
+describe('UserForm — reports_to / managed functions (spec 0015 AC-015, spec 0276 AC-007, AC-012)', () => {
+  it('submits the picked managers', async () => {
     renderCreate()
     await fillRequiredCreateRows()
 
@@ -172,16 +154,59 @@ describe('UserForm — is_manager / reports_to (spec 0015 AC-015, spec 0166 D-5)
     clickCreateSave()
 
     await waitFor(() => expect(createUserMock).toHaveBeenCalledTimes(1))
-    expect(createUserMock.mock.calls[0][0].employment).toMatchObject({ is_manager: false, reports_to_ids: [1] })
+    expect(createUserMock.mock.calls[0][0].employment).toMatchObject({ reports_to_ids: [1] })
   })
 
-  it('offers no Manager pencil when "Reports to", which it empties, is read-only (spec 0222 D-4)', async () => {
+  it('sends the managed functions picked on the Manager of functions row', async () => {
+    await renderDetail(userWithEmployment())
+
+    fireEvent.click(pencilOf('Manager of functions'))
+    expect(screen.getByTestId('resource-Manager of functions')).toHaveTextContent('business-functions')
+    expect(screen.getByText('If the function already has a manager, it passes to this person.')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('pick-Manager of functions'))
+    confirmOpenRow('Save')
+
+    await waitFor(() => expect(updateUserMock).toHaveBeenCalledTimes(1))
+    expect(updateUserMock.mock.calls[0][1].employment).toMatchObject({
+      managed_business_function_ids: [1],
+      reports_to_ids: [2],
+    })
+  })
+
+  it('hydrates the picker with the functions the user already manages', async () => {
+    await renderDetail(userFixture({ managed_business_functions: [{ id: 5, name: 'Sales' }] }))
+
+    fireEvent.click(pencilOf('Manager of functions'))
+    expect(screen.getByTestId('selected-label-Manager of functions')).toHaveTextContent('Sales')
+  })
+
+  it('offers no pencil on Manager of functions without the field permission (spec 0276 D-4)', async () => {
     await renderDetail(
-      userFixture({ permissions: permissionsFor({ 'employment.reports_to_ids': READ_ONLY }) }),
+      userFixture({ permissions: permissionsFor({ 'employment.managed_business_function_ids': READ_ONLY }) }),
     )
 
+    expect(screen.queryByRole('button', { name: 'Edit Manager of functions' })).not.toBeInTheDocument()
+    expect(pencilOf('Job roles')).toBeInTheDocument()
+  })
+
+  it('shows an indexed employment.managed_business_function_ids.N 422 under the field with the aria wiring', async () => {
+    updateUserMock.mockRejectedValue(
+      unprocessable({ 'employment.managed_business_function_ids.0': ['The selected business function is invalid.'] }),
+    )
+    await renderDetail(userWithEmployment())
+
+    fireEvent.click(pencilOf('Manager of functions'))
+    fireEvent.click(screen.getByText('pick-Manager of functions'))
+    confirmOpenRow('Save')
+
+    const message = await screen.findByText('The selected business function is invalid.')
+    expect(message).toHaveAttribute('role', 'alert')
+  })
+
+  it('has no Manager row left (the flag is gone)', async () => {
+    await renderDetail(userWithEmployment())
+
     expect(screen.queryByRole('button', { name: 'Edit Manager' })).not.toBeInTheDocument()
-    expect(pencilOf('Job description')).toBeInTheDocument()
   })
 })
 
@@ -194,9 +219,21 @@ describe('UserDetailView — employment relation pickers (spec 0015 AC-016)', ()
     expect(screen.getByTestId('selected-label-Reports to')).toHaveTextContent('Grace Hopper')
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
 
-    fireEvent.click(pencilOf('Company'))
-    expect(screen.getByTestId('resource-Company')).toHaveTextContent('companies')
-    expect(screen.getByTestId('selected-label-Company')).toHaveTextContent('Acme Srl')
+    fireEvent.click(pencilOf('Job roles'))
+    expect(screen.getByTestId('resource-Job roles')).toHaveTextContent('job-roles')
+    expect(screen.getByTestId('selected-label-Job roles')).toHaveTextContent('Backend developer')
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+  })
+
+  /** REQUIREMENT CHANGED (spec 0272 D-2): relationship type and company are the in-force condition, read only. */
+  it('shows the relationship type and company as plain read-only rows', async () => {
+    await renderDetail(userWithEmployment())
+
+    expect(screen.getByText('Acme Srl')).toBeInTheDocument()
+    expect(screen.getByText('Employee')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Company' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Relationship type' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Qualification')).not.toBeInTheDocument()
   })
 })
 
@@ -208,17 +245,15 @@ describe('UserForm — employment payload + 422 mapping (spec 0015 AC-018)', () 
 
     await waitFor(() => expect(createUserMock).toHaveBeenCalledTimes(1))
     expect(createUserMock.mock.calls[0][0].employment).toEqual({
-      is_manager: false,
-      job_description: null,
+      job_role_ids: [],
+      business_function_ids: [],
+      managed_business_function_ids: [],
       reports_to_ids: [],
-      relationship_type: null,
-      company_id: null,
       primary_operational_site_id: null,
       remote_operational_site_ids: [],
       is_assignable: true,
       covers_all_product_categories: false,
       product_lines: [],
-      qualification_type: null,
       hired_at: null,
       terminated_at: null,
       standard_daily_minutes: null,
@@ -230,23 +265,29 @@ describe('UserForm — employment payload + 422 mapping (spec 0015 AC-018)', () 
   it('sends the whole employment object, and nothing else, when one employment row is saved', async () => {
     await renderDetail(userWithEmployment())
 
-    typeInRow('Job description', 'Platform engineer', 'Save')
+    fireEvent.click(pencilOf('Job roles'))
+    fireEvent.click(screen.getByText('pick-Job roles'))
+    confirmOpenRow('Save')
 
     await waitFor(() => expect(updateUserMock).toHaveBeenCalledTimes(1))
     const payload = updateUserMock.mock.calls[0][1]
     expect(Object.keys(payload)).toEqual(['employment'])
-    expect(payload.employment).toMatchObject({ job_description: 'Platform engineer', company_id: 5, reports_to_ids: [2] })
+    expect(payload.employment).toMatchObject({ job_role_ids: [3, 1], reports_to_ids: [2] })
+    // REQUIREMENT CHANGED (spec 0272 D-2): relationship type and company come from the contract history.
+    expect(payload.employment).not.toHaveProperty('company_id')
+    expect(payload.employment).not.toHaveProperty('relationship_type')
+    expect(payload.employment).not.toHaveProperty('qualification_type')
   })
 
   it('maps a nested employment.* 422 error onto its open row, inline', async () => {
-    updateUserMock.mockRejectedValue(unprocessable({ 'employment.company_id': ['The selected company is invalid.'] }))
+    updateUserMock.mockRejectedValue(unprocessable({ 'employment.terminated_at': ['The termination date is invalid.'] }))
     await renderDetail(userWithEmployment())
 
-    fireEvent.click(pencilOf('Company'))
-    fireEvent.click(screen.getByText('pick-Company'))
+    fireEvent.click(pencilOf('Terminated at'))
+    fireEvent.change(screen.getByLabelText('Terminated at'), { target: { value: '2026-02-01' } })
     confirmOpenRow('Save')
 
-    expect(await screen.findByText('The selected company is invalid.')).toBeInTheDocument()
+    expect(await screen.findByText('The termination date is invalid.')).toBeInTheDocument()
     expect(updateUserMock).toHaveBeenCalledTimes(1)
   })
 
@@ -296,7 +337,7 @@ describe('UserDetail — hourly cost (spec 0272 AC-002)', () => {
     confirmOpenRow('Save')
 
     await waitFor(() => expect(updateUserMock).toHaveBeenCalledTimes(1))
-    expect(updateUserMock.mock.calls[0][1].employment).toMatchObject({ hourly_cost: 27.5, company_id: 5 })
+    expect(updateUserMock.mock.calls[0][1].employment).toMatchObject({ hourly_cost: 27.5, job_role_ids: [3] })
   })
 
   it('maps an employment.hourly_cost 422 onto its open row', async () => {

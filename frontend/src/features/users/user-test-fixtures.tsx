@@ -79,10 +79,11 @@ export function userCard(overrides: Partial<PersonalDataCard> = {}): PersonalDat
 export function employmentFixture(overrides: Partial<EmploymentDetail> = {}): EmploymentDetail {
   return {
     id: 1,
-    is_manager: false,
-    job_description: null,
+    job_role_ids: [],
+    job_roles: [],
+    business_function_ids: [],
+    business_functions: [],
     relationship_type: null,
-    qualification_type: null,
     hired_at: null,
     terminated_at: null,
     standard_daily_minutes: null,
@@ -115,6 +116,7 @@ export function userFixture(overrides: Partial<UserDetailWithPermissions> = {}):
     must_set_password: false,
     personal_data: userCard(),
     employment: null,
+    managed_business_functions: [],
     created_at: null,
     permissions: permissionsFor(),
     ...overrides,

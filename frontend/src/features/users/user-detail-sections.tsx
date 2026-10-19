@@ -4,6 +4,9 @@ import { CustomFieldRecordSections } from '@/features/custom-fields/custom-field
 import { PersonalDataIdentityRecordSection } from '@/features/personal-data/personal-data-identity-record-section'
 import { useAssignmentFieldsVisibility, useUserSectionVisibility } from '@/features/users/user-assignment'
 import { UserAssignmentRecordSection } from '@/features/users/user-assignment-record-section'
+import { UserContractHistorySection } from '@/features/users/user-contract-history-section'
+import { usePaymentVisible } from '@/features/users/use-payment-visible'
+import { UserPaymentRecordSection } from '@/features/users/user-payment-section'
 import { UserAvatarField } from '@/features/users/user-avatar-field'
 import { persistedUserValues } from '@/features/users/user-record'
 import {
@@ -25,7 +28,8 @@ interface UserDetailSectionsProps {
  * The user record's `RecordSectionsGrid` body, every user-written field
  * editable in place (spec 0222): the anagraphic card (with the profile
  * photo), credentials and access, the ASSIGNMENT configuration full width,
- * the employment profile and the custom fields. The employment sections are
+ * the employment profile (the condition in force, its history, dates, payment account)
+ * and the custom fields. The employment sections are
  * there even for a user with no profile yet: the first save creates it. The
  * create form renders the same sections in the same order.
  */
@@ -34,6 +38,7 @@ export function UserDetailSections({ user, editor, onChanged }: UserDetailSectio
   const { form, inline, card } = editor
   const visibility = useUserSectionVisibility()
   const assignmentFields = useAssignmentFieldsVisibility()
+  const paymentVisible = usePaymentVisible()
   const sectionProps = { values: persistedUserValues(user), form, inline }
 
   return (
@@ -48,8 +53,10 @@ export function UserDetailSections({ user, editor, onChanged }: UserDetailSectio
       {visibility.access ? <UserAccessRecordSection {...sectionProps} isEdit /> : null}
       {assignmentFields.any ? <UserAssignmentRecordSection {...sectionProps} /> : null}
       {visibility.profile ? <UserProfileRecordSection {...sectionProps} /> : null}
-      {visibility.contract ? <UserContractRecordSection {...sectionProps} /> : null}
+      <UserContractRecordSection values={sectionProps.values} />
+      <UserContractHistorySection userId={user.id} />
       {visibility.contractData ? <UserContractDataRecordSection {...sectionProps} /> : null}
+      {paymentVisible ? <UserPaymentRecordSection {...sectionProps} /> : null}
       <CustomFieldRecordSections resource="users" values={sectionProps.values.custom_fields} inline={inline} control={form.control} />
     </RecordSectionsGrid>
   )

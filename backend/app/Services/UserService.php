@@ -10,6 +10,8 @@ use App\DataObjects\Users\ProfileData;
 use App\DataObjects\Users\UpdateUserData;
 use App\Models\User;
 use App\Services\Assignment\OperatorCompetence;
+use App\Services\Users\BusinessFunctionCoverageGuard;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -38,6 +40,11 @@ class UserService
         // off this same eager-loaded collection.
         'employment.reportsTo',
         'employment.company',
+        // Spec 0271: the person's job roles ({id,name} in EmploymentResource).
+        'employment.jobRoles',
+        // Spec 0275: the business functions the person belongs to / manages.
+        'employment.businessFunctions:id,name',
+        'managedBusinessFunctions:id,name,manager_id',
         // The operational-site label is "line1[- city]" (EmploymentResource),
         // so the pivot's sites, their primary address and city must all be
         // eager-loaded, or reading them would lazy-load (blocked outside
@@ -51,6 +58,9 @@ class UserService
         // function, which used to be a column of the profile.
         'employment.productLines.businessFunction',
         'employment.productLines.productCategory',
+        // Spec 0272: the contract history, so EmploymentResource derives the
+        // condition in force (and its CCNL level label) without a query per row.
+        'employment.contracts.collectiveAgreementLevel.agreement',
     ];
 
     public function __construct(
@@ -58,6 +68,7 @@ class UserService
         private readonly ProfileWriter $profileWriter,
         private readonly EmploymentWriter $employmentWriter,
         private readonly OperatorCompetence $competence,
+        private readonly BusinessFunctionCoverageGuard $coverageGuard,
     ) {}
 
     /**
@@ -121,8 +132,11 @@ class UserService
      * is persisted in the SAME transaction via EmploymentWriter — a null
      * $employment (the key was absent) leaves no row, matching the wire
      * contract ("employment absent or null => no row" on create).
+     *
+     * `$enforceCoverage` false skips the mandatory membership rule (spec 0275 D-4 applies to
+     * the API only; the legacy import must not fail on unmapped users).
      */
-    public function create(User $actor, CreateUserData $data, ?ProfileData $profile = null, ?EmploymentData $employment = null): User
+    public function create(User $actor, CreateUserData $data, ?ProfileData $profile = null, ?EmploymentData $employment = null, bool $enforceCoverage = true): User
     {
         if ($profile === null) {
             // The StoreUserRequest guarantees a profile (it is the only source of
@@ -130,7 +144,7 @@ class UserService
             throw new InvalidArgumentException('A personal-data profile is required to create a user (its name is derived from the card).');
         }
 
-        $user = DB::transaction(function () use ($actor, $data, $profile, $employment): User {
+        $user = DB::transaction(function () use ($actor, $data, $profile, $employment, $enforceCoverage): User {
             $attributes = $data->attributes();
             // `users.name` is NOT NULL but the authoritative value is derived by
             // the shared ProfileWriter from the card (single derivation point —
@@ -148,6 +162,12 @@ class UserService
 
             $this->writeProfile($user, $profile);
             $this->employmentWriter->write($user, $employment, $actor);
+            $this->deactivateIfTerminated($user);
+
+            // Spec 0275 D-4: the mandatory membership rule on the resulting state.
+            if ($enforceCoverage) {
+                $this->coverageGuard->assertCovered($user);
+            }
 
             return $user;
         });
@@ -177,6 +197,7 @@ class UserService
     {
         $user = DB::transaction(function () use ($actor, $user, $data, $profile, $employment): User {
             $attributes = $data->submittedAttributes();
+            $wasActive = (bool) $user->is_active;
 
             // Unconditional save: fire the model's saved event even when no native
             // attribute changed, so the HasCustomFields write pipeline (spec 0021)
@@ -199,11 +220,33 @@ class UserService
 
             $this->writeProfile($user, $profile);
             $this->employmentWriter->write($user, $employment, $actor);
+            $this->deactivateIfTerminated($user);
+
+            // Spec 0275 D-4: only when the request touched employment or
+            // activated the user; any other edit leaves legacy data alone.
+            if ($employment !== null || (! $wasActive && $user->is_active)) {
+                $this->coverageGuard->assertCovered($user);
+            }
 
             return $user;
         });
 
         return $user->load(self::WRITE_RESULT_RELATIONS);
+    }
+
+    /**
+     * Spec 0272 D-8: a user whose termination date has arrived is saved
+     * inactive, whatever `is_active` the payload carried. Runs before the
+     * coverage guard so a terminated user is never asked for a business
+     * function. The daily job applies the same rule to future terminations.
+     */
+    private function deactivateIfTerminated(User $user): void
+    {
+        $terminatedAt = $user->employment()->value('terminated_at');
+
+        if ($user->is_active && $terminatedAt !== null && Carbon::parse($terminatedAt)->startOfDay()->lte(today())) {
+            $user->forceFill(['is_active' => false])->save();
+        }
     }
 
     /**

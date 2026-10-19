@@ -21,6 +21,13 @@ vi.mock('@/features/users/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/users/api')>()),
   fetchUser: (...args: unknown[]) => fetchUserMock(...args),
 }))
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+vi.mock('@/features/users/contract-history-api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/users/contract-history-api')>()),
+  fetchEmploymentContracts: () => Promise.resolve([]),
+}))
 vi.mock('@/features/modules/use-module-open-mode', () => ({ useModuleOpenMode: () => 'modal' }))
 
 vi.mock('@/features/activity-log/activity-log-section', () => ({
@@ -40,6 +47,7 @@ function user(overrides: Partial<UserDetailWithPermissions> = {}): UserDetailWit
     roles: [],
     avatar_url: null,
     must_set_password: false,
+    managed_business_functions: [],
     created_at: null,
     permissions: {
       resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
@@ -57,10 +65,11 @@ function employment(
 ): EmploymentDetail {
   return {
     id: 1,
-    is_manager: false,
-    job_description: null,
+    job_role_ids: [],
+    job_roles: [],
+    business_function_ids: [],
+    business_functions: [],
     relationship_type: null,
-    qualification_type: null,
     hired_at: null,
     terminated_at: null,
     standard_daily_minutes: null,

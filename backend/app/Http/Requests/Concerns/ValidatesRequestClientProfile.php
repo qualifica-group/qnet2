@@ -76,6 +76,7 @@ trait ValidatesRequestClientProfile
             'client_contacts.*.value' => ['required', 'string', 'max:255'],
             'client_contacts.*.label' => ['nullable', 'string', 'max:255'],
             'client_contacts.*.is_primary' => ['sometimes', 'boolean'],
+            'client_contacts.*.is_work' => ['sometimes', 'boolean'],
 
             'client_address' => ['sometimes', 'nullable', 'array'],
             'client_address.id' => ['sometimes', 'integer', 'min:1'],
@@ -228,6 +229,7 @@ trait ValidatesRequestClientProfile
                     value: (string) ($row['value'] ?? ''),
                     label: $row['label'] ?? null,
                     isPrimary: (bool) ($row['is_primary'] ?? false),
+                    isWork: isset($row['is_work']) ? (bool) $row['is_work'] : null,
                 ),
             ),
             $rows,

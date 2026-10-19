@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Enums\QualificationTypeEnum;
 use App\Enums\RelationshipTypeEnum;
 use App\Models\BusinessFunction;
 use App\Models\EmploymentProfile;
@@ -27,26 +26,13 @@ class EmploymentProfileFactory extends Factory
 
         return [
             'user_id' => User::factory(),
-            'is_manager' => false,
-            'job_description' => fake()->optional()->jobTitle(),
             'relationship_type' => fake()->randomElement(RelationshipTypeEnum::values()),
             'company_id' => null,
-            'qualification_type' => fake()->randomElement(QualificationTypeEnum::values()),
             'hired_at' => $hiredAt->format('Y-m-d'),
             'terminated_at' => null,
             'standard_daily_minutes' => 480,
             'break_daily_minutes' => 30,
         ];
-    }
-
-    /**
-     * A responsible manager: never reports to anyone (spec 0015 server rule).
-     */
-    public function manager(): static
-    {
-        return $this->state(fn (): array => [
-            'is_manager' => true,
-        ]);
     }
 
     /**
@@ -57,10 +43,9 @@ class EmploymentProfileFactory extends Factory
      */
     public function reportsTo(User ...$managers): static
     {
-        return $this->state(fn (): array => ['is_manager' => false])
-            ->afterCreating(function (EmploymentProfile $profile) use ($managers): void {
-                $profile->reportsTo()->syncWithoutDetaching(collect($managers)->pluck('id')->all());
-            });
+        return $this->afterCreating(function (EmploymentProfile $profile) use ($managers): void {
+            $profile->reportsTo()->syncWithoutDetaching(collect($managers)->pluck('id')->all());
+        });
     }
 
     /**
@@ -121,6 +106,18 @@ class EmploymentProfileFactory extends Factory
                 'business_function_id' => $function->id,
                 'product_category_id' => null,
             ]);
+        });
+    }
+
+    /**
+     * Makes the person a member of $function (spec 0275): the
+     * `business_function_user` row the mandatory membership rule asks of an
+     * active person.
+     */
+    public function memberOf(BusinessFunction $function): static
+    {
+        return $this->afterCreating(function (EmploymentProfile $profile) use ($function): void {
+            $profile->businessFunctions()->syncWithoutDetaching([$function->id]);
         });
     }
 

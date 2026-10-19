@@ -12,6 +12,7 @@ const formValues: BusinessFunctionFormValues = {
   users: [2, 3],
   parent_id: 100,
   operational_sites: [200, 201],
+  company_ids: [400, 401],
   custom_fields: {},
 }
 
@@ -38,6 +39,11 @@ function original(
       { id: 200, label: 'Via Roma 1 - Milano' },
       { id: 201, label: 'Via Torino 2 - Torino' },
     ],
+    company_ids: [400, 401],
+    companies: [
+      { id: 400, label: 'Acme' },
+      { id: 401, label: 'Beta' },
+    ],
     created_at: '2026-01-01T00:00:00Z',
     permissions: {
       resource: { view: true, create: true, update: true, delete: true, export: true, import: true },
@@ -59,6 +65,7 @@ describe('buildCreatePayload', () => {
       users: [2, 3],
       parent_id: 100,
       operational_sites: [200, 201],
+      company_ids: [400, 401],
     })
   })
 
@@ -70,6 +77,7 @@ describe('buildCreatePayload', () => {
       users: [],
       parent_id: null,
       operational_sites: [],
+      company_ids: [],
     })
 
     expect(payload.type).toBeNull()
@@ -77,6 +85,7 @@ describe('buildCreatePayload', () => {
     expect(payload.users).toEqual([])
     expect(payload.parent_id).toBeNull()
     expect(payload.operational_sites).toEqual([])
+    expect(payload.company_ids).toEqual([])
   })
 })
 
@@ -140,6 +149,7 @@ describe('buildUpdatePayload', () => {
         users: [9],
         parent_id: null,
         operational_sites: [9],
+        company_ids: [9],
         custom_fields: {},
       },
       original(),
@@ -152,6 +162,12 @@ describe('buildUpdatePayload', () => {
       users: [9],
       parent_id: null,
       operational_sites: [9],
+      company_ids: [9],
     })
+  })
+
+  it('sends company_ids only when the id set differs (order-insensitive)', () => {
+    expect(buildUpdatePayload({ ...formValues, company_ids: [401, 400] }, original())).toEqual({})
+    expect(buildUpdatePayload({ ...formValues, company_ids: [] }, original())).toEqual({ company_ids: [] })
   })
 })

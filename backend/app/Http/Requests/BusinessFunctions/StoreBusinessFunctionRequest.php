@@ -42,6 +42,8 @@ class StoreBusinessFunctionRequest extends FormRequest
             'users.*' => ['integer', 'exists:users,id', 'distinct'],
             'operational_sites' => ['nullable', 'array'],
             'operational_sites.*' => ['integer', 'exists:operational_sites,id', 'distinct'],
+            'company_ids' => ['nullable', 'array'],
+            'company_ids.*' => ['integer', 'distinct', 'exists:companies,id'],
         ];
     }
 

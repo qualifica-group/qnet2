@@ -19,8 +19,9 @@ it('rolls back the six purchase order tables (and the payable ones built on them
 
     // Covers every migration stacked on top, up to spec 0254's three receipt migrations, spec 0189 G-28's
     // two Italian geo reference fixes, spec 0267's five settlement document migrations and spec 0267's three
-    // multi-quote migrations.
-    expect(Artisan::call('migrate:rollback', ['--step' => 47]))->toBe(0);
+    // multi-quote migrations, plus spec 0271's four HR org structure migrations, spec 0272's 7 employee record migrations
+    // and the hourly cost migration.
+    expect(Artisan::call('migrate:rollback', ['--step' => 59]))->toBe(0);
 
     foreach ($tables as $table) {
         expect(Schema::hasTable($table))->toBeFalse($table);

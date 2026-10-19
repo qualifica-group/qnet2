@@ -17,6 +17,8 @@ use App\Models\Attribute;
 use App\Models\AttributeLayout;
 use App\Models\BusinessFunction;
 use App\Models\Campaign;
+use App\Models\CollectiveAgreement;
+use App\Models\CollectiveAgreementLevel;
 use App\Models\CommissionAccrual;
 use App\Models\CommissionConfiguration;
 use App\Models\CommissionSettlement;
@@ -32,6 +34,7 @@ use App\Models\CustomFieldOption;
 use App\Models\DocumentBundle;
 use App\Models\DocumentLayout;
 use App\Models\EmailTemplate;
+use App\Models\EmploymentContract;
 use App\Models\EmploymentProfile;
 use App\Models\EnasarcoParameter;
 use App\Models\FieldChangeRequest;
@@ -39,6 +42,8 @@ use App\Models\FinancialAccount;
 use App\Models\Invoice;
 use App\Models\InvoiceInstallment;
 use App\Models\InvoiceTag;
+use App\Models\JobActivity;
+use App\Models\JobRole;
 use App\Models\Lead;
 use App\Models\Note;
 use App\Models\OperationalSite;
@@ -231,6 +236,11 @@ class AppServiceProvider extends ServiceProvider
             'purchase_order_receipt' => PurchaseOrderReceipt::class,
             'purchase_order_receipt_line' => PurchaseOrderReceiptLine::class,
             'cost_type' => CostType::class,
+            'job_role' => JobRole::class,
+            'job_activity' => JobActivity::class,
+            'collective_agreement' => CollectiveAgreement::class,
+            'collective_agreement_level' => CollectiveAgreementLevel::class,
+            'employment_contract' => EmploymentContract::class,
             'purchase_request_priority' => PurchaseRequestPriority::class,
             'purchase_order_status_label' => PurchaseOrderStatusLabel::class,
             'purchase_request_line_status_label' => PurchaseRequestLineStatusLabel::class,

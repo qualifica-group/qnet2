@@ -10,7 +10,7 @@ import { LINE_TABLE_SCROLL_CLASS } from '@/components/record-form/layout'
 
 /**
  * Spec 0144 AC-016: the Cost variant adds the "Associated product" column
- * right after the VAT rate one (mirrors the form's own `quote-line-grid.ts`
+ * right after the VAT rate one (mirrors the former form grid's
  * placement); the Revenue variant keeps its original 10-column grid.
  */
 function linesGridClass(variant: 'revenue' | 'cost'): string {

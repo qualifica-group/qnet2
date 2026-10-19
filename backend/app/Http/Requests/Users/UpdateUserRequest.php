@@ -34,7 +34,15 @@ class UpdateUserRequest extends FormRequest
     use EnforcesFieldPermissions;
     use ResolvesAssignableRoles;
     use ValidatesEmployment;
-    use ValidatesUserProfile;
+    use ValidatesUserProfile {
+        prepareForValidation as protected prepareProfileInput;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->prepareProfileInput();
+        $this->discardReadOnlyEmploymentInput();
+    }
 
     public function authorize(): bool
     {
@@ -80,6 +88,7 @@ class UpdateUserRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            $this->assertMayWriteCompensation();
             $this->validateProfile($validator);
             $this->validateEmploymentProductLines($validator);
             $this->enforceFieldPermissions($validator);
@@ -97,14 +106,21 @@ class UpdateUserRequest extends FormRequest
      * `employment.remote_operational_site_ids`, which since spec 0103 are
      * accessors over the site-membership pivot rather than plain columns.
      * Loading the relation here keeps that comparison to the queries this
-     * request already needs, instead of one lazy load per checked field.
+     * request already needs, instead of one lazy load per checked field. Same
+     * for the job roles pivot behind `employment.job_role_ids` (spec 0271) and
+     * the membership behind `employment.business_function_ids` (spec 0275) and
+     * the managed functions behind `employment.managed_business_function_ids`
+     * (spec 0276, read off the user and linked back so no lazy load happens).
      */
     protected function authorizationModel(): ?Model
     {
         /** @var User $user */
         $user = $this->route('user');
 
-        return $user->loadMissing('employment.operationalSites');
+        $user->loadMissing(['managedBusinessFunctions:id,manager_id', 'employment.operationalSites', 'employment.jobRoles', 'employment.businessFunctions']);
+        $user->employment?->setRelation('user', $user);
+
+        return $user;
     }
 
     /**

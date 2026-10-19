@@ -11,7 +11,7 @@ import {
 import { RecordFormActions } from '@/components/record-form/record-form-actions'
 import { ProductLinesField } from '@/features/product-lines/product-lines-field'
 import { QuoteDynamicFieldsSection } from '@/features/quotes/quote-dynamic-fields-section'
-import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-row'
+import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-types'
 import type { QuoteLine } from '@/features/quotes/types'
 import { RequestOfferLinesSection } from '@/features/request-management/request-offer-lines-section'
 import { RequestCreateAttributionSection } from '@/features/request-management/request-create-attribution-section'

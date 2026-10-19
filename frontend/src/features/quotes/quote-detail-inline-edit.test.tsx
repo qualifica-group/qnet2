@@ -30,17 +30,34 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 vi.mock('@/features/quotes/api', async () => {
   const actual = await vi.importActual<typeof import('@/features/quotes/api')>('@/features/quotes/api')
-  return { ...actual, updateQuote: vi.fn(), fetchQuoteFormContext: vi.fn() }
+  return {
+    ...actual,
+    updateQuote: vi.fn(),
+    fetchQuoteFormContext: vi.fn(),
+    fetchQuoteCommissionDefaults: () => Promise.resolve({ commissions: [], supplier_commission_direction: null }),
+  }
 })
 
 vi.mock('@/features/for-select/api', async () => {
   const actual = await vi.importActual<typeof import('@/features/for-select/api')>('@/features/for-select/api')
   return {
     ...actual,
-    fetchForSelect: () =>
-      Promise.resolve({ items: [], pagination: { offset: 0, limit: 25, total: 0 }, export_link: null }),
+    // The catalogue lists one sellable product (spec 0269); every other picker stays empty.
+    fetchForSelect: (resource: string, params: { ids?: number[] } = {}) =>
+      Promise.resolve({
+        items: resource === 'products' && !params.ids?.length ? [CATALOGUE_PRODUCT] : [],
+        pagination: { offset: 0, limit: 25, total: 0, has_more: false },
+        export_link: null,
+      }),
   }
 })
+
+const CATALOGUE_PRODUCT = vi.hoisted(() => ({
+  id: 77,
+  label: 'Formazione base',
+  subtitle: null,
+  meta: { category_id: null, code: 'FOR-1', description: null, price: '40.00', cost: null, vat_rate_id: null, vat_rate_name: null, vat_rate: null, unit_of_measure: null, product_typology: null },
+}))
 
 const READ_ONLY_FIELD: FieldPermission = {
   visible: true,
@@ -262,6 +279,28 @@ describe('QuoteDetailView — in-place editing (spec 0197)', () => {
     pressRowButton('Cancel')
     expect(screen.queryByLabelText('Row 1 quantity')).not.toBeInTheDocument()
     expect(vi.mocked(updateQuote)).not.toHaveBeenCalled()
+  })
+
+  // Spec 0269 AC-010: a product added from the catalogue reaches the same in-place PATCH, in the shape it always had.
+  it('saves the offer rows with a product picked from the catalogue', async () => {
+    vi.mocked(updateQuote).mockResolvedValueOnce(quote())
+    renderDetail(quote())
+    openRow('Offer rows')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Whole catalogue' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Show all products' }))
+    fireEvent.click(await screen.findByRole('option', { name: /Formazione base/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add 1 selected' }))
+    await screen.findByLabelText('Row 2 quantity')
+    pressRowButton('Save')
+
+    await waitFor(() => expect(vi.mocked(updateQuote)).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(updateQuote).mock.calls[0][1]).toMatchObject({
+      offer_lines: [
+        expect.objectContaining({ id: 3, sort_order: 0 }),
+        expect.objectContaining({ product_id: 77, quantity: 1, unit_price: 40, commissions: [], sort_order: 1 }),
+      ],
+    })
   })
 
   // Spec 0087 D-6/AC-004/AC-005: a G.A. not yet on the Opportunity is refused

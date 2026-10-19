@@ -87,6 +87,10 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         'purchase-requests',
         // spec 0210 `cost-types` (CostTypesAuthorization: the purchase order line cost type lookup).
         'cost-types',
+        // spec 0271 (REQUIREMENT CHANGED): the HR org structure catalogues are registered in the generic registry.
+        'job-roles', 'job-activities',
+        // spec 0272 (REQUIREMENT CHANGED): collective agreements (CCNL) join the generic registry.
+        'collective-agreements',
         // spec 0247 `purchase-request-priorities` (PurchaseRequestPrioritiesAuthorization: the RDA priority lookup).
         'purchase-request-priorities',
         // spec 0248 `purchase-order-statuses` and `purchase-request-line-statuses` (presentation catalogues of the ODA and RDA line statuses).
@@ -109,6 +113,9 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // spec 0185 `request-statistics` (RequestStatisticsAuthorization: a view-only module, no
         // field — registered only so its permission is assignable from the Role form).
         'request-statistics',
+        // spec 0273 `org-chart` (OrgChartAuthorization: a view-only page, no field — registered only so
+        // `org-chart.view` is assignable from the Role form).
+        'org-chart',
         // spec 0266 `ledger` (LedgerAuthorization: a view-only module, no field — registered only so
         // `ledger.view` is assignable from the Role form under the Accounting area).
         'ledger',
@@ -214,29 +221,35 @@ it('spec 0008/0015/0111/0129: users.fields contains exactly the 4 existing + 13 
         // spec 0015 — the employment.* keys; spec 0103 (D-9) split the single
         // employment.operational_site_id into primary/remote; spec 0166 (D-8)
         // renamed employment.reports_to_id to employment.reports_to_ids.
-        'employment.is_manager',
         // spec 0129 D-1 — the profile-wide wildcard flag.
         'employment.covers_all_product_categories',
         // spec 0194 — the "Assegnabile" switch.
         'employment.is_assignable',
-        'employment.job_description', 'employment.reports_to_ids',
+        'employment.job_role_ids', 'employment.reports_to_ids',
         // spec 0111 — the assignment competence as {function, category} rows,
         // replacing the former business_function_id/product_category_ids pair.
         'employment.product_lines',
+        // spec 0275 — business function membership.
+        'employment.business_function_ids',
+        // spec 0276 — the functions the person manages (REQUIREMENT CHANGED: replaces employment.is_manager).
+        'employment.managed_business_function_ids',
         'employment.relationship_type', 'employment.company_id',
         'employment.primary_operational_site_id', 'employment.remote_operational_site_ids',
-        'employment.qualification_type', 'employment.hired_at',
+        'employment.hired_at',
         'employment.terminated_at', 'employment.standard_daily_minutes', 'employment.break_daily_minutes',
-        // spec 0272 — the hourly cost of the person.
+        // spec 0272 — payment data, gated by users.manageCompensation.
+        'employment.iban', 'employment.iban_holder',
+        // spec 0272 (management control) — the hourly cost of the person.
         'employment.hourly_cost',
     ]);
 
-    // Spec 0129/0194/0272: exactly 16 employment.* keys (13 + the wildcard flag +
-    // the "Assegnabile" switch + the hourly cost), and
+    // Spec 0129/0194/0272: exactly 18 employment.* keys (13 + the wildcard flag +
+    // the "Assegnabile" switch, - qualification_type + iban + iban_holder + business_function_ids,
+    // - is_manager + managed_business_function_ids, + hourly_cost), and
     // neither of the two keys product_lines replaced survives anywhere in the
     // catalogue.
     $employmentKeys = $byKey->keys()->filter(static fn (string $key): bool => str_starts_with($key, 'employment.'));
-    expect($employmentKeys)->toHaveCount(16)
+    expect($employmentKeys)->toHaveCount(18)
         ->and($byKey)->not->toHaveKey('employment.business_function_id')
         ->and($byKey)->not->toHaveKey('employment.product_category_ids')
         ->and($byKey->get('employment.product_lines'))->toMatchArray(['type' => 'collection', 'group' => 'employment']);

@@ -83,6 +83,37 @@ export const quotes = {
     documentForbidden: 'Non hai i permessi per generare questo documento.',
     documentGenericError: 'Impossibile generare il documento. Riprova.',
   },
+  /**
+   * Editor "catalogo + righe" condiviso da Offerte (schede Prodotti e Costi)
+   * e Gestione Richieste/Iscritti (spec 0268, 0269).
+   */
+  lineEditor: {
+    catalog: {
+      title: 'Catalogo prodotti',
+      search: 'Cerca per nome o descrizione…',
+      categories: 'Filtra per categoria',
+      allCategories: 'Tutte',
+      fullCatalog: 'Tutto il catalogo',
+      list: 'Prodotti del catalogo',
+      empty: 'Nessun prodotto trovato.',
+      error: 'Impossibile caricare i prodotti.',
+      alreadyAdded: 'Già aggiunto',
+      noPrice: 'Prezzo non definito',
+      addSelected_one: 'Aggiungi {{count}} selezionato',
+      addSelected_other: 'Aggiungi {{count}} selezionati',
+      addNone: 'Seleziona i prodotti da aggiungere',
+      singleHint: 'Categoria a riga singola: il prodotto che scegli sostituisce quello della riga.',
+      limitReached: 'Hai raggiunto il numero massimo di righe.',
+    },
+    rows: {
+      titleRevenue: "Righe dell'offerta",
+      titleCost: 'Righe di costo',
+      empty: 'Nessuna riga: scegli i prodotti dal catalogo.',
+      totalRevenue: 'Totale offerta',
+      totalCost: 'Totale costi',
+      productMissing: 'Prodotto non più disponibile per le categorie scelte: rimuovi la riga e scegline uno dal catalogo.',
+    },
+  },
   form: {
     newQuote: 'Nuova offerta',
     createTitle: 'Crea offerta',
@@ -198,13 +229,7 @@ export const quotes = {
     offerTab: {
       fieldLabel: 'Righe offerta',
       hintNoOpportunity: "Seleziona prima un'opportunità.",
-      hintScoped: "Prodotti limitati alle categorie dell'opportunità collegata.",
       hintNoCategories: "L'opportunità non ha ancora categorie: aggiungine una riga oppure sblocca il catalogo.",
-      hintUnlocked: 'Catalogo prodotti completo, senza filtro per categoria.',
-      hintSingleCategory:
-        "L'opportunità è gestita su una singola categoria prodotto: l'offerta può contenere una sola riga.",
-      unlock: 'Mostra tutti i prodotti',
-      relock: "Limita alle categorie dell'opportunità",
       unlockDialog: {
         title: 'Mostrare tutti i prodotti?',
         description:
@@ -251,8 +276,6 @@ export const quotes = {
     lineNetHeader: 'Imponibile',
     lineVatHeader: 'IVA',
     lineTotalHeader: 'Totale',
-    lineRemoveHeader: 'Rimuovi riga',
-    lineProduct: 'Prodotto riga {{n}}',
     lineProductPlaceholder: 'Seleziona un prodotto…',
     lineProductSearch: 'Cerca prodotti…',
     lineProductEmpty: 'Nessun prodotto trovato.',
@@ -276,8 +299,6 @@ export const quotes = {
     lineAdditionalDescriptionAdd: 'Descrizione aggiuntiva',
     lineAdditionalDescriptionPlaceholder: 'Testo aggiuntivo della riga, stampabile nel preventivo',
     lineAdditionalDescriptionRemove: 'Rimuovi descrizione aggiuntiva riga {{n}}',
-    lineAdd: 'Aggiungi riga',
-    linesEmpty: 'Nessuna riga aggiunta.',
     linesMax: 'Puoi aggiungere al massimo 200 righe per scheda.',
     offerLinesRequired: "L'offerta deve contenere almeno una riga prodotto.",
     offerLinesRequiredForStatus: "Non puoi portare l'offerta a questo stato senza almeno una riga prodotto.",

@@ -57,7 +57,8 @@ if (! function_exists('scopeTargetWith')) {
     function scopeTargetWith(?BusinessFunction $function = null, ProductCategory ...$categories): User
     {
         $target = User::factory()->create();
-        $profile = EmploymentProfile::factory()->for($target);
+        $profile = EmploymentProfile::factory()->for($target)
+            ->memberOf($function ?? BusinessFunction::factory()->create());
 
         if ($function !== null) {
             $profile = $profile->competentIn($function, ...$categories);
@@ -332,7 +333,7 @@ it('0129 AC-016: a NEUTRAL mother (no own function, one child at F) admits F but
 // AC-017 — the field catalogue's new key.
 // ---------------------------------------------------------------------------
 
-it('0129 AC-017: the field catalogue exposes employment.covers_all_product_categories (boolean, employment) and 16 employment.* keys (spec 0194 adds is_assignable, spec 0272 hourly_cost)', function () {
+it('0129 AC-017: the field catalogue exposes employment.covers_all_product_categories (boolean, employment) and 18 employment.* keys (spec 0275 adds business_function_ids) (spec 0194 adds is_assignable, spec 0272 swaps qualification_type for iban and iban_holder and adds hourly_cost)', function () {
     // GET /api/authorization/fields is gated on roles.create/roles.update
     // (you manage roles), not on the users.* abilities the rest of this file
     // exercises (FieldCatalogueController::authorizeManagesRoles()).
@@ -348,7 +349,7 @@ it('0129 AC-017: the field catalogue exposes employment.covers_all_product_categ
     expect($byKey->get('employment.covers_all_product_categories'))
         ->toMatchArray(['type' => 'boolean', 'group' => 'employment']);
     expect($byKey->keys()->filter(fn (string $key): bool => str_starts_with($key, 'employment.')))
-        ->toHaveCount(16);
+        ->toHaveCount(18);
 });
 
 it('0129 AC-017: a readonly employment.covers_all_product_categories resubmitting the identical value is a no-op (200)', function () {
@@ -356,7 +357,7 @@ it('0129 AC-017: a readonly employment.covers_all_product_categories resubmittin
         ['view', 'update'],
         ['resource' => 'users', 'field' => 'employment.covers_all_product_categories', 'visible' => true, 'editable' => false, 'required' => false],
     );
-    $target = User::factory()->withEmployment(fn ($f) => $f->coversAllProductCategories())->create();
+    $target = User::factory()->withEmployment(fn ($f) => $f->coversAllProductCategories()->memberOf(BusinessFunction::factory()->create()))->create();
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/users/{$target->id}", [

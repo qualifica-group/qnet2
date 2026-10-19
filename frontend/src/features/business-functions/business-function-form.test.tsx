@@ -96,6 +96,8 @@ function businessFunction(): BusinessFunctionDetailWithPermissions {
     parent: null,
     operational_site_ids: [],
     operational_sites: [],
+    company_ids: [],
+    companies: [],
     created_at: '2026-01-01T00:00:00Z',
     permissions: permissions(),
   }
@@ -163,6 +165,10 @@ describe('BusinessFunctionForm — create (spec 0237)', () => {
 
     openRow(label('operationalSites'))
     expect(screen.getByTestId('operational-sites-values')).toBeInTheDocument()
+    done()
+
+    openRow(label('companies'))
+    expect(screen.getByTestId('companies-values')).toBeInTheDocument()
   })
 
   it('shows the error on the closed row and does not call the API when name is empty', async () => {
@@ -193,9 +199,13 @@ describe('BusinessFunctionForm — create (spec 0237)', () => {
     openRow(label('operationalSites'))
     fireEvent.click(screen.getByText('add-operational-sites-70'))
     done()
+    openRow(label('companies'))
+    fireEvent.click(screen.getByText('add-companies-70'))
+    done()
 
     expect(await screen.findByText('business-functions 50')).toBeInTheDocument()
     expect(await screen.findByText('operational-sites 70')).toBeInTheDocument()
+    expect(await screen.findByText('companies 70')).toBeInTheDocument()
 
     save()
 
@@ -207,6 +217,7 @@ describe('BusinessFunctionForm — create (spec 0237)', () => {
       users: [7],
       parent_id: 50,
       operational_sites: [70],
+      company_ids: [70],
     })
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(businessFunction()))
   })

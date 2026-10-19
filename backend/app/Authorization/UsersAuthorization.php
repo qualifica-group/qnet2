@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Authorization;
 
+use App\Models\BusinessFunction;
 use App\Models\User;
+use App\Policies\UserPolicy;
 use App\Services\RoleAssignmentGuard;
 use Illuminate\Database\Eloquent\Model;
 
@@ -35,7 +37,7 @@ class UsersAuthorization extends AbstractResourceAuthorization
      * `contacts`/`addresses` sections as a SINGLE key each (D1 — no
      * per-column granularity for their child rows).
      *
-     * The 15 `employment.*` keys (spec 0015, plus the competence of spec
+     * The `employment.*` keys (spec 0015, plus the competence of spec
      * 0111 — one `product_lines` collection replacing the former
      * `business_function_id`/`product_category_ids` pair — spec 0129's
      * `covers_all_product_categories` wildcard flag and spec 0194's
@@ -67,10 +69,11 @@ class UsersAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('personal_data.gender', 'select', 'personal_data'),
             new FieldDefinition('personal_data.contacts', 'collection', 'personal_data'),
             new FieldDefinition('personal_data.addresses', 'collection', 'personal_data'),
-            new FieldDefinition('employment.is_manager', 'boolean', 'employment'),
             new FieldDefinition('employment.covers_all_product_categories', 'boolean', 'employment'),
             new FieldDefinition('employment.is_assignable', 'boolean', 'employment'),
-            new FieldDefinition('employment.job_description', 'text', 'employment'),
+            new FieldDefinition('employment.job_role_ids', 'multiselect', 'employment'),
+            new FieldDefinition('employment.business_function_ids', 'multiselect', 'employment'),
+            new FieldDefinition('employment.managed_business_function_ids', 'multiselect', 'employment'),
             // Spec 0166 (D-8): a user may report to several managers now,
             // replacing the single `employment.reports_to_id` (select).
             new FieldDefinition('employment.reports_to_ids', 'multiselect', 'employment'),
@@ -79,12 +82,13 @@ class UsersAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('employment.company_id', 'select', 'employment'),
             new FieldDefinition('employment.primary_operational_site_id', 'select', 'employment'),
             new FieldDefinition('employment.remote_operational_site_ids', 'multiselect', 'employment'),
-            new FieldDefinition('employment.qualification_type', 'select', 'employment'),
             new FieldDefinition('employment.hired_at', 'date', 'employment'),
             new FieldDefinition('employment.terminated_at', 'date', 'employment'),
             new FieldDefinition('employment.standard_daily_minutes', 'number', 'employment'),
             new FieldDefinition('employment.break_daily_minutes', 'number', 'employment'),
             new FieldDefinition('employment.hourly_cost', 'number', 'employment'),
+            new FieldDefinition('employment.iban', 'text', 'employment'),
+            new FieldDefinition('employment.iban_holder', 'text', 'employment'),
         ];
     }
 
@@ -114,7 +118,7 @@ class UsersAuthorization extends AbstractResourceAuthorization
             'is_active' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'password' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'roles' => $this->rolesFieldPermission($actor, $model, $mayWrite),
-        ], $this->personalDataFieldPermissions($mayWrite), $this->employmentFieldPermissions($mayWrite));
+        ], $this->personalDataFieldPermissions($mayWrite), $this->employmentFieldPermissions($actor, $mayWrite));
     }
 
     /**
@@ -149,34 +153,63 @@ class UsersAuthorization extends AbstractResourceAuthorization
     }
 
     /**
-     * Ceiling for the 15 `employment.*` keys: editable whenever the actor may
+     * Ceiling for the `employment.*` keys: editable whenever the actor may
      * write the user at all, else readonly — same write/read boundary as the
      * personal_data section (no employment.* resource permission, spec 0015).
      *
+     * Two exceptions (spec 0272): `relationship_type`/`company_id` are the
+     * read-only copy of the current contract condition (D-2), so they are never
+     * editable here; the payment fields (D-5/D-6) are hidden altogether unless
+     * the actor holds `users.manageCompensation`, and editable only with it
+     * plus the base write ability.
+     *
      * @return array<string, FieldPermission>
      */
-    private function employmentFieldPermissions(bool $mayWrite): array
+    private function employmentFieldPermissions(User $actor, bool $mayWrite): array
     {
         $permission = $mayWrite ? FieldPermission::visibleEditable(required: false) : FieldPermission::visibleReadonly();
+        $payment = match (true) {
+            ! $actor->can(UserPolicy::MANAGE_COMPENSATION_PERMISSION) => FieldPermission::hidden(),
+            default => $permission,
+        };
 
         return [
-            'employment.is_manager' => $permission,
             'employment.covers_all_product_categories' => $permission,
             'employment.is_assignable' => $permission,
-            'employment.job_description' => $permission,
+            'employment.job_role_ids' => $permission,
+            'employment.business_function_ids' => $permission,
+            'employment.managed_business_function_ids' => $this->managedFunctionsPermission($actor, $mayWrite),
             'employment.reports_to_ids' => $permission,
             'employment.product_lines' => $permission,
-            'employment.relationship_type' => $permission,
-            'employment.company_id' => $permission,
+            'employment.relationship_type' => FieldPermission::visibleReadonly(),
+            'employment.company_id' => FieldPermission::visibleReadonly(),
             'employment.primary_operational_site_id' => $permission,
             'employment.remote_operational_site_ids' => $permission,
-            'employment.qualification_type' => $permission,
             'employment.hired_at' => $permission,
             'employment.terminated_at' => $permission,
             'employment.standard_daily_minutes' => $permission,
             'employment.break_daily_minutes' => $permission,
             'employment.hourly_cost' => $permission,
+            'employment.iban' => $payment,
+            'employment.iban_holder' => $payment,
         ];
+    }
+
+    /**
+     * Spec 0276 D-4: the managed functions are written on
+     * `business_functions.manager_id`, so editing them from the user needs the
+     * user field editable AND that function field editable for the actor
+     * (resolved with an `update` context: a model-less call would test `create`).
+     */
+    private function managedFunctionsPermission(User $actor, bool $mayWrite): FieldPermission
+    {
+        $userSide = $mayWrite ? FieldPermission::visibleEditable(required: false) : FieldPermission::visibleReadonly();
+
+        $functionSide = app(AuthorizationRegistry::class)
+            ->resolve('business-functions')
+            ->fieldPermissions($actor, new BusinessFunction)['manager_id'] ?? null;
+
+        return $userSide->editable && $functionSide?->editable ? $userSide : FieldPermission::visibleReadonly();
     }
 
     /**

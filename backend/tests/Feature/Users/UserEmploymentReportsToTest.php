@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\BusinessFunction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -48,7 +49,7 @@ it('0166 AC-003: PUT with two manager ids saves both, ordered by name in the res
     Sanctum::actingAs($actor);
 
     $response = $this->patchJson("/api/users/{$target->id}", [
-        'employment' => ['reports_to_ids' => [$managerB->id, $managerA->id]],
+        'employment' => ['covers_all_product_categories' => true, 'business_function_ids' => [membershipFunctionId()], 'reports_to_ids' => [$managerB->id, $managerA->id]],
     ])->assertOk();
 
     $profileId = $target->employment()->first()->id;
@@ -69,12 +70,12 @@ it('0166 AC-003: PUT with two manager ids saves both, ordered by name in the res
 it('0166 AC-004: reports_to_ids: [] clears the managers; employment without the key leaves them untouched', function () {
     $actor = employmentTestActor(['update']);
     $manager = User::factory()->create();
-    $target = User::factory()->withEmployment(fn ($f) => $f->reportsTo($manager))->create();
+    $target = User::factory()->withEmployment(fn ($f) => $f->reportsTo($manager)->memberOf(BusinessFunction::factory()->create()))->create();
     Sanctum::actingAs($actor);
 
     // Absent key: another employment field changes, managers stay.
     $this->patchJson("/api/users/{$target->id}", [
-        'employment' => ['job_description' => 'Still reporting'],
+        'employment' => ['standard_daily_minutes' => 300],
     ])->assertOk()->assertJsonPath('data.employment.reports_to_ids', [$manager->id]);
 
     $this->patchJson("/api/users/{$target->id}", [
@@ -114,7 +115,7 @@ it('0166 AC-007: a genuine change to the manager set logs one explicit activity 
     $actor = employmentTestActor(['update']);
     $managerA = User::factory()->create();
     $managerB = User::factory()->create();
-    $target = User::factory()->withEmployment(fn ($f) => $f->reportsTo($managerA))->create();
+    $target = User::factory()->withEmployment(fn ($f) => $f->reportsTo($managerA)->memberOf(BusinessFunction::factory()->create()))->create();
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/users/{$target->id}", [

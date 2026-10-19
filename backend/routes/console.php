@@ -26,3 +26,7 @@ Schedule::command('cache:prune-expired')->hourly()->withoutOverlapping();
 // commissions of an offer are picked up here). Idempotent; never schedule it
 // with --settled-before.
 Schedule::command('commissions:sync-accruals')->dailyAt('02:00')->withoutOverlapping()->onOneServer();
+
+// Spec 0272, D-8: deactivates the users whose termination date arrived and
+// realigns the contract condition in force on employment profiles. Idempotent.
+Schedule::command('employment:daily-sync')->dailyAt('00:30')->withoutOverlapping()->onOneServer();

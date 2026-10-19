@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0274-hr-org-chart-graphic" status="approved" owner="utente" date="2026-10-19">
+
+  <goal>
+    L'organigramma (spec 0273) passa da albero a righe a organigramma grafico "stile Bizneo": riquadri collegati
+    dall'alto verso il basso da linee curve, pallino "+N" per aprire/chiudere i rami, zoom, e pannello laterale con
+    le persone di una funzione. Stessi dati, stessi endpoint, stessi spostamenti.
+  </goal>
+
+  <context>
+    <fact>Riferimento: https://www.bizneo.com/blog/wp-content/uploads/2021/09/software-HR-Organigramma-aziendale.webp
+      (riquadro con nome unita' e foto+nome del responsabile, conteggio persone, pallino "+N" sotto il riquadro,
+      linee curve, pannello laterale "Responsabile" / "Dipendenti").</fact>
+    <fact>Lo stato attuale (spec 0273) rende `OrgTree` (role tree, righe annidate) dentro `OrgChartPanel`; gli alberi
+      sono costruiti da `build-function-tree.ts` / `build-people-tree.ts`; spostamenti in `OrgMoveLayer`
+      (menu + `@dnd-kit/core`) e `move-destinations.ts`.</fact>
+    <fact>L'API `GET /api/org-chart/functions` non manda la foto del responsabile (`manager: { id, name }`), ma il
+      responsabile e' di norma tra le `people` della funzione, che hanno `avatar_url`.</fact>
+
+    <decision id="D-1">Vista grafica unica (utente 2026-10-19): l'albero a righe viene ELIMINATO, resta solo il
+      grafico, nelle due schede Funzioni e Persone.</decision>
+    <decision id="D-2">Vista Funzioni (utente): il riquadro e' la funzione (nome, tipo, foto e nome del responsabile,
+      numero di persone); le persone NON sono riquadri: un clic sul conteggio apre un pannello laterale con
+      "Responsabili" (responsabile della funzione e persone `is_manager`) e "Persone", ciascuna con mansioni e menu
+      "Sposta in…". Il gruppo "Tutte le funzioni" e' un riquadro in fondo alle radici con lo stesso pannello.
+      Foto del responsabile presa dalla persona con lo stesso id tra le `people` della funzione; se non c'e',
+      iniziali. Nessuna modifica al backend.</decision>
+    <decision id="D-3">Vista Persone: un riquadro per persona (foto, nome, mansioni, funzioni, corona se
+      responsabile); sotto i diretti riporti. Chi ha piu' responsabili compare sotto ciascuno (come 0273 D-3).</decision>
+    <decision id="D-4">Linee curve (utente) in SVG calcolate da un layout ad albero proprio (riquadri a dimensione
+      fissa, genitore centrato sui figli, radici affiancate), nessuna libreria nuova. Sotto ogni riquadro con figli un
+      pallino: "+N" (N = riquadri nascosti sotto) quando chiuso, freccia su quando aperto. All'apertura sono aperte
+      solo le radici; "Espandi/Comprimi tutto" restano; la ricerca apre tutti i rami trovati ed evidenzia i riquadri
+      che corrispondono.</decision>
+    <decision id="D-4b">Dati reali (2026-10-19: 207 persone, 129 radici di cui 123 senza collegamenti, un responsabile con
+      63 riporti; 28 funzioni tutte radici): le radici con una gerarchia vengono prima di quelle isolate; le radici vanno
+      a capo su "scaffali" oltre ~1240 px; piu' di 4 figli tutti foglie si impilano in colonne da 4, uniti da linee
+      dritte.</decision>
+    <decision id="D-5">Zoom: pulsanti −, +, "Adatta" e percentuale; spostamento della vista con le barre di
+      scorrimento o trascinando lo sfondo.</decision>
+    <decision id="D-6">Spostamenti (utente): menu "Sposta in…" su ogni riquadro e su ogni persona del pannello,
+      trascinamento di un riquadro su un altro (da computer) con le stesse conferme, gli stessi vincoli e gli stessi
+      endpoint di 0273. Lo spostamento di persona tra funzioni avviene dal pannello (menu).</decision>
+    <decision id="D-7">Accessibilita': i riquadri restano `treeitem` (piatti, con aria-level/setsize/posinset) e
+      mantengono la navigazione da tastiera di 0273 (frecce, Invio).</decision>
+  </context>
+
+  <scope>
+    <in>
+      <item>Frontend `features/org-chart/`: layout del grafico (funzione pura), canvas con riquadri e linee, pallini,
+        zoom/trascinamento sfondo, pannello persone, riuso del livello spostamenti; rimozione di `org-tree.tsx` e
+        `org-node-content.tsx`.</item>
+      <item>i18n IT+EN, guida in-app `org-chart` IT+EN, manuale.</item>
+    </in>
+    <out>
+      <item>Backend e contratto API (invariati).</item>
+      <item>Filtro per dipartimento, esportazione PDF/immagine, minimappa.</item>
+    </out>
+  </scope>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Il layout posiziona i figli sotto il genitore, il genitore centrato sui figli, senza
+      sovrapposizioni tra riquadri; i rami chiusi non hanno figli posizionati e riportano N nascosti.</criterion>
+    <criterion id="AC-002">Vista Funzioni: riquadri per funzione (tipo, responsabile, conteggio, link alla funzione)
+      e "Tutte le funzioni"; le persone non sono riquadri; il conteggio apre il pannello con Responsabili e Persone.</criterion>
+    <criterion id="AC-003">Vista Persone: un riquadro per persona; chi ha due responsabili compare due volte.</criterion>
+    <criterion id="AC-004">All'apertura sono visibili radici e primo livello; il pallino apre/chiude il ramo;
+      Espandi/Comprimi tutto; la ricerca apre i rami ed evidenzia; "nessun risultato".</criterion>
+    <criterion id="AC-005">Zoom −/+/Adatta cambiano la scala entro i limiti e mostrano la percentuale.</criterion>
+    <criterion id="AC-006">Tastiera come 0273 (frecce, sinistra/destra chiudono/aprono, Invio apre il link).</criterion>
+    <criterion id="AC-007">"Sposta in…" dal riquadro (funzione, persona) e dal pannello (persona tra funzioni) e
+      trascinamento tra riquadri: stessa conferma, stessi payload, azione nascosta senza permesso.</criterion>
+    <criterion id="AC-008">Guida in-app aggiornata IT+EN (parity verde); test Vitest, ESLint, `tsc -b --force` verdi.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. File sotto 300 righe. Superfici da token (`bg-card` riquadri su `bg-surface`).</item>
+    <item>Riquadri a dimensione fissa (costanti del layout): necessario per calcolare le linee senza misurare il DOM.</item>
+  </constraints>
+
+</spec>

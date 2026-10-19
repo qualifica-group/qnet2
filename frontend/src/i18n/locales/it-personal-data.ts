@@ -80,6 +80,8 @@ export const personalData = {
     label: 'Etichetta',
     primary: 'Contatto principale',
     primaryBadge: 'Principale',
+    work: 'Contatto di lavoro',
+    workBadge: 'Lavoro',
     save: 'Salva',
     saving: 'Salvataggio…',
     cancel: 'Annulla',

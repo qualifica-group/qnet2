@@ -40,7 +40,7 @@ const guide: HelpGuide = {
           rows: [
             ['Source', 'The channel the request comes from.'],
             ['Change requests', 'Change proposals still awaiting a decision.'],
-            ['Product lines', 'Products present in the quote.'],
+            ['Product lines', 'Products present in the quote; the cell opens the editor with the product catalogue.'],
             ['Operator', 'The person working the request.'],
             ['Operational site', 'The site the request is assigned to.'],
             ['Next callback', 'Date of the next call to the client.'],
@@ -65,7 +65,7 @@ const guide: HelpGuide = {
             'In **General notes** write what the client asked for, in their own words.',
             'If needed, set the **Next callback** (the time is optional).',
             'In **Product lines** add at least one row: parent category, then product category. When the parent category has groups (for example Consulting › ISO), **Filter** lets you pick the group and the product category then lists only its subcategories; the filter is not saved, only the product category.',
-            "Fill in the quote's rows: product, quantity, unit price and VAT.",
+            "In the **Product catalogue** tick the products and press **Add N selected**, then check quantity, unit price and VAT of the rows (see **Offer rows and product catalogue**).",
             'In **Client details** pick an **Existing registry** or enter a new client.',
             'In **Attribution** pick the **Source** (required) and, if needed, **Reporter** and **Operational site**.',
             'Fill in the **Additional information**, if present.',
@@ -87,6 +87,35 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'offer-rows-editor',
+      title: 'Offer rows and product catalogue',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'The same editor is found in the **Product lines** cell of the table (it opens in a dialog), in the request card and in the **New request** form. On the left is the **Product catalogue**, on the right the **Offer rows**; on narrow screens they stack one under the other.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'In the **Product catalogue** search by name or description, or filter with the chips: **All** and one chip for each product category picked in the request.',
+            'Each product shows name, code, type (colored badge), price with unit of measure, parent category › category path and description.',
+            'Tick one or more products with the checkboxes and press **Add N selected**: one row is created per product, with quantity 1 and the product\'s price and VAT.',
+            'On each row edit quantity, unit price and VAT: you see taxable amount, VAT and total. The remove button deletes the row. At the bottom is the **Offer total**.',
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            'A product already in the rows shows **Already added** and cannot be selected: change the quantity on the row.',
+            'Single-row categories (for example Formazione) have no checkboxes: clicking a product replaces the one in the single row.',
+            'With no product category picked the catalogue is disabled: pick the category first.',
+            'In simplified categories the row shows only the amounts: quantity, price and VAT are filled in by the system.',
+            'If the category has a single product, the row is created automatically.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'working-a-request',
       title: 'Work a request',
       blocks: [
@@ -98,7 +127,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             '**Product lines**: they decide the selectable products and the request-specific fields. Changing or removing a line empties the offer rows whose product belongs to a category no longer picked: pick the product again.',
-            '**Offer rows**: products, quantities, prices and VAT.',
+            '**Offer rows**: products picked from the **Product catalogue**, with quantities, prices and VAT.',
             '**Status**: some statuses require a **Note**.',
             '**Client details**, **Attribution** and **Team** (**Supervisor** and **Account managers**).',
             'The **Additional information**, which depends on the categories picked.',

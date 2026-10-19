@@ -16,23 +16,26 @@ import type {
   UpdateUserPayload,
   UserDetailWithPermissions,
 } from '@/features/users/types'
-import { editDefaults } from '@/features/users/user-form-defaults'
+import { EMPTY_EMPLOYMENT, editDefaults } from '@/features/users/user-form-defaults'
 import type { EmploymentFormValues } from '@/features/users/user-schema'
 import type { UserFormValues } from '@/features/users/use-user-form'
 
 /**
  * Maps the employment form values to the nested wire payload (spec 0015).
- * Text/date `''` sentinels become `null`; `reports_to_ids` is force-emptied
- * client-side when `is_manager` is true, mirroring the server-side rule
- * (spec 0166 D-5) as defense in depth.
+ * Text/date `''` sentinels become `null`. The payment account (spec 0272) travels
+ * only when it differs from `baseline`: an actor without
+ * `users.manageCompensation` never sees it, so never changes it, and sending it
+ * would be refused with a 403.
  */
-function buildEmploymentPayload(values: EmploymentFormValues): EmploymentPayload {
+function buildEmploymentPayload(
+  values: EmploymentFormValues,
+  baseline: EmploymentFormValues = EMPTY_EMPLOYMENT,
+): EmploymentPayload {
   return {
-    is_manager: values.is_manager,
-    job_description: values.job_description || null,
-    reports_to_ids: values.is_manager ? [] : values.reports_to_ids,
-    relationship_type: values.relationship_type,
-    company_id: values.company_id,
+    job_role_ids: values.job_role_ids,
+    business_function_ids: values.business_function_ids,
+    managed_business_function_ids: values.managed_business_function_ids,
+    reports_to_ids: values.reports_to_ids,
     primary_operational_site_id: values.primary_operational_site_id,
     remote_operational_site_ids: values.remote_operational_site_ids,
     is_assignable: values.is_assignable,
@@ -41,12 +44,13 @@ function buildEmploymentPayload(values: EmploymentFormValues): EmploymentPayload
     // behind the UI already hiding/clearing the editor while it is on, so a
     // stale row never reaches the server alongside a true flag (422 there).
     product_lines: values.covers_all_product_categories ? [] : completeProductLines(values.product_lines),
-    qualification_type: values.qualification_type,
     hired_at: values.hired_at || null,
     terminated_at: values.terminated_at || null,
     standard_daily_minutes: values.standard_daily_minutes,
     break_daily_minutes: values.break_daily_minutes,
     hourly_cost: values.hourly_cost,
+    ...(values.iban !== baseline.iban ? { iban: values.iban || null } : {}),
+    ...(values.iban_holder !== baseline.iban_holder ? { iban_holder: values.iban_holder || null } : {}),
   }
 }
 
@@ -136,8 +140,9 @@ export function buildUpdatePayload(
     payload.password_confirmation = values.password_confirmation
   }
 
-  const employment = buildEmploymentPayload(values.employment)
-  const originalEmployment = buildEmploymentPayload(editDefaults(original, {}).employment)
+  const originalForm = editDefaults(original, {}).employment
+  const employment = buildEmploymentPayload(values.employment, originalForm)
+  const originalEmployment = buildEmploymentPayload(originalForm, originalForm)
   if (JSON.stringify(employment) !== JSON.stringify(originalEmployment)) {
     payload.employment = employment
   }

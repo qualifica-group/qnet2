@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0270-work-order-costs-catalog-editor" status="approved" owner="utente" date="2026-10-16">
+
+  <goal>
+    I "Costi effettivi" della Commessa si compongono con lo stesso blocco "catalogo + righe" delle
+    Offerte (spec 0268/0269): catalogo prodotti di costo a sinistra, righe a card a destra in un
+    unico riquadro, al posto della griglia a 11 colonne con scroll orizzontale (`min-w-[1284px]`).
+  </goal>
+
+  <context>
+    <!-- Fatti verificati nel repo il 2026-10-16. -->
+    <fact>Superficie: `WorkOrderCostsEditorTab` (`features/work-order-costs/work-order-costs-editor-tab.tsx`)
+      monta `WorkOrderCostsLinesField` -> `WorkOrderCostRow` (`COST_ROW_GRID_CLASS`,
+      `COST_ROW_MIN_WIDTH_CLASS = min-w-[1284px]`) con `QuoteProductSelect usage="COST"`. Form RHF in
+      `useWorkOrderCostsEditor` (`useFieldArray` su `lines`, `changeField`, `changeProduct`,
+      `addRow = append(createEmptyCostRow())`, salvataggio unico `useSyncWorkOrderCosts` che sostituisce
+      l'intero set, 422 mappati su `lines.N.campo`). Permesso `work-orders.manageCosts` (`canManage`):
+      senza, griglia in sola lettura.</fact>
+    <fact>Riga costo (`WorkOrderCostRowValues`, `work-order-costs-schema.ts`): product_id, quantity,
+      unit_price, vat_rate_id, quote_line_id (riga di ricavo), cost_type_id, incurred_on (default oggi),
+      supplier_id, document_reference, additional_description, `display` (product_code, product_name,
+      product_category, unit_symbol, vat_name, vat_percent, supplier_name, cost_type_name,
+      cost_type_color). Importi live con `lineAmounts(...)` in centesimi (scala quantita' 2).
+      Pick prodotto -> `costRowPatchFromProduct(item, row)` (prezzo = meta.cost, IVA, UdM, tipo costo di
+      default spec 0251, quantita' 1 se vuota).</fact>
+    <fact>Riusabili dalla 0269 (`features/quotes/line-editor/`): `QuoteLineCatalog` (variant 'cost',
+      scope `{ kind: 'all' }`, prezzo di costo mostrato, multi-selezione, `onAdd` asincrono) e il layout a
+      blocco unico oggi interno a `QuoteLineEditor` (cornice `rounded-lg border bg-surface`, divisorio
+      `border-r`/`border-t`, pannello righe con titolo/conteggio, stato vuoto, footer totali). La card
+      `QuoteLineCard` NON e' riusabile: lavora su `QuoteLineFormValues`.</fact>
+    <fact>Nessun cambio backend: `products/for-select` gia' fornisce usage COST, meta.cost,
+      meta.cost_type, meta.description; contratto di sync costi invariato.</fact>
+    <decision id="D-1">Scope: SOLO Costi effettivi della Commessa (utente 2026-10-16). Fatture, fatture
+      passive, richieste d'acquisto, ODA, prodotti di interesse restano invariati.</decision>
+    <decision id="D-2">Il layout a blocco unico esce da `QuoteLineEditor` in un componente condiviso
+      `QuoteLineEditorFrame` (`features/quotes/line-editor/`): props titolo, conteggio, testo vuoto, righe
+      (children), totali {net, vat, gross, totalLabel}, nodo catalogo, `disabled`. `QuoteLineEditor` lo
+      usa senza cambi visivi; i Costi commessa pure.</decision>
+    <decision id="D-3">Card propria `WorkOrderCostCard` (sostituisce `WorkOrderCostRow`): livello 1
+      prodotto (nome, codice, categoria) + rimuovi; livello 2 (tinta `bg-muted/40`) quantita' x prezzo
+      unitario, IVA, riga di ricavo, imponibile/IVA/totale; livello 3 data, tipo costo, fornitore,
+      riferimento documento, descrizione aggiuntiva. Etichette accessibili invariate
+      (`workOrders.costs.editor.*`, "Quantity, row N"...).</decision>
+    <decision id="D-4">Righe solo dal catalogo: il pulsante "Aggiungi riga" sparisce. "Aggiungi N
+      selezionati" crea una riga per prodotto: `createEmptyCostRow()` + `costRowPatchFromProduct`
+      (data = oggi). Duplicati permessi, come nella scheda Costi delle Offerte (assunzione: un costo reale
+      puo' ripetersi). Cambio prodotto = rimuovi e riaggiungi (come 0268/0269).</decision>
+    <decision id="D-5">Senza `manageCosts`: niente catalogo, card in sola lettura (come oggi).</decision>
+  </context>
+
+  <scope>
+    <in>
+      <item>`QuoteLineEditorFrame` estratto da `QuoteLineEditor` (nessun cambio visivo per Offerte/Richieste).</item>
+      <item>`WorkOrderCostCard` + nuovo `WorkOrderCostsLinesField` (frame + catalogo + card + totali);
+        `useWorkOrderCostsEditor` con `addProducts(items)` al posto di `addRow`/`changeProduct`.</item>
+      <item>Cancellati: `WorkOrderCostRow`, `COST_ROW_GRID_CLASS`, `COST_ROW_MIN_WIDTH_CLASS`, chiavi i18n
+        orfane (`editor.add`, `editor.product`, `headers.*` se non piu' usate).</item>
+      <item>i18n IT+EN `workOrders.costs.editor.rowsTitle`/`totalLabel`; guide in-app `work-orders` IT+EN;
+        manuale Claude Docs.</item>
+      <item>Test: `work-order-costs-section.test.tsx` adeguato (REQUIREMENT CHANGED) + test della card.</item>
+    </in>
+    <out>
+      <item>Backend e payload di sync (invariati).</item>
+      <item>Tab "Confronto" (`work-order-costs-comparison-tab.tsx`) e tabella per tipo.</item>
+      <item>Altri picker prodotto (fatture, fatture passive, RdA, ODA, prodotti di interesse, commissioni).</item>
+      <item>Filtri del catalogo per categoria/tipo costo (catalogo intero, come Costi Offerte).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/products/for-select">
+      <request>Invariata: usage=COST, mai category_ids.</request>
+      <response status="200">Invariata (shape 0268).</response>
+      <errors>Invariati.</errors>
+    </endpoint>
+    <frontend_contract>
+      Valori form invariati (`WorkOrderCostsFormValues.lines: WorkOrderCostRowValues[]`), payload
+      `toCostsPayload` invariato, 422 sempre su `lines.N.campo`. `QuoteLineEditorFrame` props:
+      `title`, `count`, `emptyText`, `totals: { net; vat; gross; totalLabel } | null`, `catalog: ReactNode | null`,
+      `children` (le card).
+    </frontend_contract>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato `QuoteLineEditorFrame` estratto quando girano i test di Offerte e
+      Richieste/Iscritti allora passano invariati. (Vitest, regressione)</criterion>
+    <criterion id="AC-002">Dato un utente con `manageCosts` quando apre Costi effettivi allora vede un unico
+      riquadro con il catalogo (usage=COST, senza category_ids, prezzi di costo) e le righe; non c'e' piu'
+      "Aggiungi riga" ne' scroll orizzontale. (Vitest)</criterion>
+    <criterion id="AC-003">Dati due prodotti selezionati quando preme "Aggiungi 2 selezionati" allora il form
+      ha 2 righe nuove con quantity=1, unit_price=meta.cost, IVA e UdM del prodotto, tipo costo di default
+      del prodotto, data = oggi; lo stesso prodotto si puo' aggiungere di nuovo. (Vitest)</criterion>
+    <criterion id="AC-004">Data una card quando l'utente modifica quantita'/prezzo/IVA/riga di ricavo/data/
+      tipo costo/fornitore/riferimento/descrizione allora il valore arriva sulla riga, gli importi della card
+      e i totali del riquadro si aggiornano; il salvataggio manda il payload di oggi (stesso test contratto
+      esistente adeguato). (Vitest)</criterion>
+    <criterion id="AC-005">Dato un 422 su `lines.N.quantity` allora la card N mostra l'errore con
+      aria-invalid, aria-describedby e role="alert"; con una riga invalida il server non viene chiamato.
+      (Vitest)</criterion>
+    <criterion id="AC-006">Senza `manageCosts` allora niente catalogo, niente Salva, campi disabilitati.
+      (Vitest)</criterion>
+    <criterion id="AC-007">`WorkOrderCostRow`, `COST_ROW_GRID_CLASS`, `COST_ROW_MIN_WIDTH_CLASS` non esistono
+      piu' e nessuno li importa; chiavi i18n orfane rimosse in IT ed EN; parity i18n e help verdi; guide
+      in-app e manuale aggiornati. (grep + Vitest)</criterion>
+    <criterion id="AC-008">tsc -b e ESLint puliti sui file toccati; file nuovi/toccati sotto 300 righe.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza, nessun cambio backend.</item>
+    <item>Riuso obbligatorio: `QuoteLineCatalog`, `costRowPatchFromProduct`, `createEmptyCostRow`,
+      `lineAmounts`/`fromCents`, `errorAria`/`CostRowError`, `QuoteLineAdditionalDescription`,
+      `costTypeOptionRenderer`.</item>
+    <item>Superfici dai token come 0268/0269; default compatti; nessun colore hard-coded.</item>
+    <item>Test cambiati dichiarano REQUIREMENT CHANGED. Nessun commit/branch senza ordine (CLAUDE.md §3.6).</item>
+  </constraints>
+
+</spec>

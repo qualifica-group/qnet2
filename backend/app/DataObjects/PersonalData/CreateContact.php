@@ -16,6 +16,7 @@ final readonly class CreateContact
         public string $value,
         public ?string $label = null,
         public bool $isPrimary = false,
+        public ?bool $isWork = null,
     ) {}
 
     /**
@@ -26,11 +27,20 @@ final readonly class CreateContact
      */
     public function toAttributes(): array
     {
-        return [
+        $attributes = [
             'type' => $this->type->value,
             'value' => $this->value,
             'label' => $this->label,
             'is_primary' => $this->isPrimary,
         ];
+
+        // Spec 0272 D-7: null = the writer does not speak about the flag (a
+        // re-submission by an unrelated surface), so an update leaves it alone
+        // and a create takes the column default (false).
+        if ($this->isWork !== null) {
+            $attributes['is_work'] = $this->isWork;
+        }
+
+        return $attributes;
     }
 }

@@ -52,12 +52,12 @@ const SITES_CELL_WRAPPER = 'flex h-full w-full items-center justify-center px-2 
 const SITES_BADGE_BASE = 'h-5 min-h-5'
 
 /**
- * Renders the `operational_sites` column: a compact badge with the total,
+ * Renders the `operational_sites` and `companies` columns (`{id, label}` lists): a compact badge with the total,
  * revealing every site's label (`"line1 - city"`) in a hover/focus tooltip —
  * mirrors the count-plus-tooltip pattern shared by `TagsCountCell` and
  * `productCategoryColumnRenderers`'s `CountWithNamesCell`.
  */
-function OperationalSitesCell({ value }: ICellRendererParams) {
+function LabelCountCell({ value }: ICellRendererParams) {
   const sites = Array.isArray(value) ? (value as BusinessFunctionOperationalSite[]) : EMPTY_SITES
 
   if (sites.length === 0) {
@@ -137,6 +137,8 @@ export const businessFunctionColumnRenderers: TableRendererMap = {
   manager: (params) => <UserCell {...params} />,
   users: (params) => <UserStackCell {...params} />,
   parent: (params) => <ParentCell {...params} />,
-  operational_sites: (params) => <OperationalSitesCell {...params} />,
+  operational_sites: (params) => <LabelCountCell {...params} />,
+  // Spec 0271: `companies` is an `{id, label}` list.
+  companies: (params) => <LabelCountCell {...params} />,
   created_at: (params) => <DateTimeCell {...params} />,
 }

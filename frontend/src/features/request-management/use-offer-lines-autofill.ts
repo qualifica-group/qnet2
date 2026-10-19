@@ -4,15 +4,9 @@ import { useController, type Control, type FieldValues, type Path } from 'react-
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { fetchForSelect } from '@/features/for-select/api'
 import { PRODUCTS_FOR_SELECT_RESOURCE } from '@/features/products/for-select-api'
-import { isPristineLineRow } from '@/features/quotes/quote-line-values'
 import type { QuoteProductForSelectItem } from '@/features/quotes/quote-product-select'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
-import {
-  DEFAULT_LINE_QUANTITY,
-  EMPTY_LINE_ROW,
-  lineValuesFromProduct,
-  simplifiedLineValuesFromProduct,
-} from '@/features/quotes/use-quote-lines-field'
+import { appendProductRows } from '@/features/quotes/use-quote-lines-field'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
 import { useRequestModule, type RequestModuleKey } from '@/features/request-management/request-module'
 
@@ -73,8 +67,8 @@ function useSoleCategoryProducts(
  * product the card already carries is never seeded twice. Returns the SAME
  * array when nothing was added, so the caller can skip the write entirely.
  * `simplified` (spec 0114) applies the same congealing a manual pick gets in
- * that mode: `unit_price` never stays null, since the seeded row carries no
- * input to fix an absent product price with.
+ * that mode. The rows themselves come from the shared `appendProductRows`
+ * (spec 0269 D-7), the very helper a catalogue pick goes through.
  */
 export function seedSoleProductRows(
   rows: QuoteLineFormValues[],
@@ -82,37 +76,7 @@ export function seedSoleProductRows(
   maxRows: number,
   simplified = false,
 ): QuoteLineFormValues[] {
-  const seeded = [...rows]
-  let added = false
-
-  for (const product of products) {
-    if (seeded.some((row) => row.product_id === product.id)) {
-      continue
-    }
-
-    // Exactly what a manual pick produces (`useQuoteLinesField.setProduct`):
-    // same precompiled unit price, VAT rate, unit and opening quantity.
-    const row: QuoteLineFormValues = {
-      ...EMPTY_LINE_ROW,
-      ...(simplified
-        ? simplifiedLineValuesFromProduct(product, 'revenue')
-        : lineValuesFromProduct(product, 'revenue')),
-      quantity: DEFAULT_LINE_QUANTITY,
-    }
-    const pristineIndex = seeded.findIndex(isPristineLineRow)
-
-    if (pristineIndex !== -1) {
-      seeded[pristineIndex] = row
-    } else if (seeded.length < maxRows) {
-      seeded.push(row)
-    } else {
-      continue
-    }
-
-    added = true
-  }
-
-  return added ? seeded : rows
+  return appendProductRows(rows, products, { maxRows, variant: 'revenue', simplified })
 }
 
 interface UseOfferLinesAutofillArgs<TFieldValues extends FieldValues> {

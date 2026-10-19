@@ -9,7 +9,10 @@ use App\Tables\Users\UserBusinessFunctionColumn;
 use App\Tables\Users\UserColumnCatalog;
 use App\Tables\Users\UserEmploymentColumns;
 use App\Tables\Users\UserGeoColumns;
+use App\Tables\Users\UserJobRolesColumn;
+use App\Tables\Users\UserManagedBusinessFunctionsColumn;
 use App\Tables\Users\UserPersonalDataColumns;
+use App\Tables\Users\UserRolesColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
@@ -40,17 +43,12 @@ class UsersTableDefinition extends AbstractTableDefinition
 {
     use UnwrapsMultiFilter;
 
-    /**
-     * Maximum number of role names honoured in the `roles` set filter. Caps the
-     * WHERE IN cardinality (defence in depth); excess values are ignored.
-     */
-    private const int MAX_ROLE_FILTER_VALUES = 50;
-
     public function __construct(
         private readonly UserService $userService,
         private readonly UserGeoColumns $geoColumns,
         private readonly UserPersonalDataColumns $personalDataColumns,
         private readonly UserEmploymentColumns $employmentColumns,
+        private readonly UserRolesColumn $rolesColumn,
     ) {}
 
     public function domain(): string
@@ -98,14 +96,13 @@ class UsersTableDefinition extends AbstractTableDefinition
                 },
                 // Employment profile (spec 0015) + its relations, so mapRow
                 // reads every employment-derived column entirely from memory.
-                // The business function is no longer a single FK on the
-                // profile (spec 0111 D-1): the cell aggregates the functions
-                // of the competence ROWS, so the whole nested path is loaded.
-                // Their product category is deliberately NOT loaded: no cell
-                // reads it.
+                // The business function cell aggregates the user's membership
+                // (spec 0275 D-8), loaded on the user, not on the profile.
                 UserBusinessFunctionColumn::RELATION_PATH,
+                UserManagedBusinessFunctionsColumn::RELATION_PATH,
                 'employment.company',
                 'employment.reportsTo',
+                UserJobRolesColumn::RELATION_PATH,
                 // Spec 0103 D-7: the CELL always shows the PHYSICAL site only
                 // (never a remote membership), so only the pivot-scoped
                 // `primaryOperationalSite` relation is eager-loaded here —
@@ -235,7 +232,7 @@ class UsersTableDefinition extends AbstractTableDefinition
             'region' => $address?->state?->localizedName(),
             'province' => $address?->province?->localizedName(),
             'city' => $address?->city?->localizedName(),
-        ], $this->personalDataColumns->mapRow($card, $address), $this->employmentColumns->mapRow($row->employment));
+        ], $this->personalDataColumns->mapRow($card, $address), $this->employmentColumns->mapRow($row));
     }
 
     /**
@@ -303,9 +300,9 @@ class UsersTableDefinition extends AbstractTableDefinition
         }
 
         return match ($columnId) {
-            'roles' => $this->filterRoles($query, $filter),
-            'user_type' => $this->applyPersonalDataFilter($query, fn (Builder $q): mixed => $this->personalDataColumns->applyTypeFilter($q, $filter)),
-            'primary_address' => $this->applyPersonalDataFilter($query, fn (Builder $q): mixed => $this->personalDataColumns->applyAddressFilter($q, $filter)),
+            'roles' => $this->applyVoidFilter($query, fn (Builder $q): mixed => $this->rolesColumn->applyFilter($q, $filter)),
+            'user_type' => $this->applyVoidFilter($query, fn (Builder $q): mixed => $this->personalDataColumns->applyTypeFilter($q, $filter)),
+            'primary_address' => $this->applyVoidFilter($query, fn (Builder $q): mixed => $this->personalDataColumns->applyAddressFilter($q, $filter)),
             'primary_contact' => $this->applyContactDerivedFilter($query, $filter),
             default => false,
         };
@@ -394,18 +391,7 @@ class UsersTableDefinition extends AbstractTableDefinition
     public function distinctValues(User $actor, string $columnId, array $columnConfig, ?string $search, Builder $query, int $limit): ?array
     {
         if ($columnId === 'roles') {
-            $roles = $this->userService->assignableRoleNames($actor);
-
-            if ($search !== null && $search !== '') {
-                return array_slice(array_values(array_filter(
-                    $roles,
-                    static fn (string $role): bool => stripos($role, $search) !== false,
-                )), 0, $limit);
-            }
-
-            // The blank entry ("(Vuoti)") sits beside the assignable catalogue
-            // (itself offered unscoped): a user may carry no role at all.
-            return array_merge([null], array_slice($roles, 0, $limit));
+            return $this->rolesColumn->distinctValues($this->userService->assignableRoleNames($actor), $search, $limit);
         }
 
         if ($columnId === 'user_type') {
@@ -428,55 +414,13 @@ class UsersTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * Derived `roles` set filter via whereHas on the Spatie role relationship.
-     * Only string names, capped cardinality, bound parameters — never inlined.
-     *
-     * @param  Builder<User>  $query
-     * @param  array<string, mixed>  $filter
-     */
-    private function filterRoles(Builder $query, array $filter): bool
-    {
-        $values = $filter['values'] ?? null;
-
-        if (! is_array($values)) {
-            return true;
-        }
-
-        $roles = array_slice(array_values(array_filter(
-            $values,
-            static fn ($value): bool => is_string($value) && $value !== '',
-        )), 0, self::MAX_ROLE_FILTER_VALUES);
-
-        $matchesBlank = $this->matchesBlankEntry($filter);
-
-        if ($roles === [] && ! $matchesBlank) {
-            return true;
-        }
-
-        $query->where(static function (Builder $group) use ($roles, $matchesBlank): void {
-            if ($roles !== []) {
-                $group->whereHas('roles', static function (Builder $roleQuery) use ($roles): void {
-                    $roleQuery->whereIn('name', $roles);
-                });
-            }
-
-            // The blank entry ("(Vuoti)"): the users carrying no role at all.
-            if ($matchesBlank) {
-                $group->orWhereDoesntHave('roles');
-            }
-        });
-
-        return true;
-    }
-
-    /**
-     * Thin adapter so the personal-data collaborator's `void`-returning
-     * apply*Filter methods fit the `applyDerivedFilter` match arm (which must
+     * Thin adapter so the collaborators' `void`-returning apply*Filter
+     * methods (personal data, roles) fit the `applyDerivedFilter` match arm (which must
      * yield the `true`/handled marker for every branch).
      *
      * @param  Builder<User>  $query
      */
-    private function applyPersonalDataFilter(Builder $query, callable $apply): bool
+    private function applyVoidFilter(Builder $query, callable $apply): bool
     {
         $apply($query);
 

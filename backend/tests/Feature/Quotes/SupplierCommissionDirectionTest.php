@@ -269,8 +269,9 @@ it('AC-002: the migrations are reversible', function () {
     // referents fulltext name index, the sector active flag, the sector code, the work order title
     // flag, the quote date, spec 0250's payable invoice lines, spec 0251's cost type on products and costs,
     // spec 0254's three receipt migrations, spec 0189 G-28's two Italian geo reference fixes, spec 0267's
-    // five settlement document migrations and spec 0267's three multi-quote migrations).
-    expect(Artisan::call('migrate:rollback', ['--step' => 62]))->toBe(0);
+    // five settlement document migrations, spec 0267's three multi-quote migrations and spec 0271's four HR org
+    // structure migrations, spec 0272's 7 employee record migrations and the hourly cost migration).
+    expect(Artisan::call('migrate:rollback', ['--step' => 74]))->toBe(0);
     expect(Schema::hasColumn('quote_lines', 'supplier_commission_direction'))->toBeFalse()
         ->and(Schema::hasColumn('product_typologies', 'supplier_commission_enabled'))->toBeFalse();
 });

@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0276-hr-function-manager-from-user" status="approved" owner="utente" date="2026-10-19" depends_on="0275-hr-function-membership">
+
+  <goal>
+    Un solo concetto di "responsabile": il responsabile di funzione aziendale (`business_functions.manager_id`).
+    Il flag "Responsabile Si/No" della scheda di impiego (`employment_profiles.is_manager`) sparisce; i suoi usi
+    reali passano al responsabile di funzione. Il campo "Responsabile delle funzioni" della scheda utente diventa
+    modificabile, e le funzioni aziendali compaiono anche nell'header del dettaglio utente.
+  </goal>
+
+  <context>
+    <fact>`is_manager` (spec 0166/0194) e' usato da: form/scheda utente (riga Si/No, pillola header, `UserFormHeader`),
+      `EmploymentWriter` (svuota `reports_to_ids`), `OrgChartMoveService` (`manager_cannot_report`), `OrgChartReadService`
+      (Person.is_manager), griglia utenti (colonna/filtro `is_manager`), `UsersStatsDefinition` (card `managers`),
+      `UsersAuthorization` (campo `employment.is_manager`), import legacy (`MapsExternalUserRecord`, `UsersSource`,
+      legacy `UserMigrationController` `livello_crm === 1`), seeder `QualificaReportsToSeeder` e
+      `DemoEmploymentProfileSeeder`, factory `EmploymentProfileFactory`/`UserFactory`.</fact>
+    <fact>Dati locali 2026-10-19: 0 profili con `is_manager = true`; 16 responsabili di funzione, 3 dei quali hanno
+      diretti superiori. Eliminare la colonna non perde dati locali.</fact>
+    <fact>Spec 0275 D-6 (sola lettura del responsabile dalla scheda utente) e' SUPERATA da questa spec (REQUIREMENT CHANGED).</fact>
+    <decision id="D-1">Utente 2026-10-19: eliminare il flag, colonna DB compresa (migrazione nuova, reversibile con default false).
+      Il permesso di campo `employment.is_manager` e' cancellato da `role_field_permissions`.</decision>
+    <decision id="D-2">Utente 2026-10-19: la regola "un responsabile non riporta a nessuno" e' ELIMINATA, non trasferita.
+      Chiunque puo' avere diretti superiori; cade `manager_cannot_report` nell'organigramma e lo svuotamento in `EmploymentWriter`.</decision>
+    <decision id="D-3">Utente 2026-10-19: griglia e statistiche passano al responsabile di funzione. La colonna `is_manager`
+      e' sostituita dalla colonna `managed_business_functions` ("Responsabile delle funzioni": nomi, filtro set per
+      funzione, ordinamento sul primo nome), ricalcata su `UserBusinessFunctionColumn`. La card `managers` conta gli utenti
+      distinti che sono `manager_id` di almeno una funzione.</decision>
+    <decision id="D-4">Utente 2026-10-19: modificare "Responsabile delle funzioni" dalla scheda utente richiede il campo utente
+      modificabile E il permesso di modifica delle funzioni aziendali con `manager_id` modificabile
+      (`BusinessFunctionsAuthorization`). Altrimenti 422 "field not editable" se il valore cambia (meccanismo dei permessi di campo); la riga e' in sola lettura nel frontend.</decision>
+    <decision id="D-5">Scrittura: `employment.managed_business_function_ids` (tri-state come `business_function_ids` della 0275).
+      Le funzioni elencate prendono `manager_id = utente` (anche se avevano un altro responsabile, che lo perde); quelle
+      gestite prima e non piu' elencate tornano `manager_id = null`. Ogni funzione si aggiorna via model, cosi' l'activity
+      log della funzione registra il cambio.</decision>
+    <decision id="D-6">Organigramma: `Person.is_manager` resta nella shape ma significa "responsabile di almeno una funzione"
+      (evidenza visiva invariata); non blocca piu' alcuno spostamento. La corona d'angolo della card persona
+      (`isResponsible` in `build-function-tree.ts`/`build-people-tree.ts`) legge quindi il dato derivato; la corona
+      per funzione della vista Persone (`business_functions[].is_manager`, 0275 D-9) resta invariata.</decision>
+    <decision id="D-7">Header del dettaglio utente (richiesta utente 2026-10-19): le funzioni di appartenenza come pillole,
+      con la corona sulle funzioni di cui e' responsabile (componente `FunctionBadges` della 0275), seguite dalle funzioni
+      gestite di cui non e' membro. Sostituisce la pillola "Responsabile".</decision>
+    <decision id="D-8">Import legacy (backend.md §9): il legacy smette di inviare `is_manager`; qnet-2 smette di leggerlo
+      (`MapsExternalUserRecord`, `UsersSource`). Le fixture si aggiornano (REQUIREMENT CHANGED).</decision>
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione: drop `employment_profiles.is_manager`; delete delle righe `role_field_permissions` (users, `employment.is_manager`).</item>
+      <item>Backend utenti: `EmploymentProfile` ($fillable/$casts), `EmploymentData`, `ValidatesEmployment`, `EmploymentWriter`
+        (via la regola D-2, nuova scrittura D-5, file sotto 500 righe: valutare `Services/BusinessFunctions/FunctionManagerWriter`),
+        `EmploymentResource`, `UsersAuthorization` (via `employment.is_manager`, nuovo multiselect `employment.managed_business_function_ids` con D-4).</item>
+      <item>Griglia/statistiche: `UserColumnCatalog`, `UserEmploymentColumns`, nuovo `UserManagedBusinessFunctionsColumn`, `UsersTableDefinition`, `UsersStatsDefinition`, `lang/{it,en}/users.php`.</item>
+      <item>Organigramma backend: `OrgChartReadService` (D-6), `OrgChartMoveService` + `lang/{it,en}/org_chart.php` (via `manager_cannot_report`).</item>
+      <item>Import: `MapsExternalUserRecord`, `UsersSource`; legacy `../qnet/app/Http/Controllers/Api/V2/UserMigrationController.php` (via `is_manager`).</item>
+      <item>Seeder/factory: `QualificaReportsToSeeder`, `DemoEmploymentProfileSeeder`, `EmploymentProfileFactory`, `UserFactory`.</item>
+      <item>Frontend utenti: via il flag (schema, default, payload, draft, record, riga scheda, `UserFormHeader`, `user-account-fields`,
+        `user-assignment`, errori server, renderer colonna, i18n `users-employment`); riga "Responsabile delle funzioni" in modifica inline
+        (multiselect funzioni, avviso che una funzione con altro responsabile passa a questa persona); header del dettaglio (D-7);
+        renderer della nuova colonna griglia.</item>
+      <item>Frontend organigramma: `move-destinations.ts` senza i blocchi sul responsabile (D-2).</item>
+      <item>Guide in-app IT+EN: `users`, `business-functions`, `org-chart`. Manuale Claude Docs: Utenti, Funzioni aziendali, Organigramma.</item>
+    </in>
+    <out>
+      <item>Cambi a `business_functions` (schema), alla pagina Funzioni aziendali e al segnatempo team.</item>
+      <item>Cambi a "Risponde a" (`reports_to_ids`) oltre alla caduta della regola D-2.</item>
+      <item>Funzioni nell'header del form di creazione utente (segnalato, non richiesto).</item>
+      <item>Qualsiasi modifica prima della chiusura della 0275 (stessi file).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST|PATCH" path="/api/users | /api/users/{user}">
+      <request>
+        employment?: {
+          ...invariato SENZA is_manager (chiave rimossa: se inviata viene ignorata dalla validazione),
+          managed_business_function_ids?: int[] | null   // assente o null = invariato; [] = nessuna funzione gestita; distinct, exists:business_functions,id
+        }
+      </request>
+      <response status="200|201">
+        data: User {
+          ...invariato,
+          managed_business_functions: [{ id: int, name: string }],   // invariato (0275), ordinate per name
+          employment?: { ...invariato SENZA is_manager }
+        }
+      </response>
+      <errors>
+        422 `employment.managed_business_function_ids.N` — id inesistente o duplicato.
+        422 `employment.managed_business_function_ids` "field not editable" — valore cambiato senza campo utente modificabile
+            o senza permesso funzioni (D-4). Meccanismo esistente dei permessi di campo, come gli altri `employment.*`
+            (rev. 2026-10-19: era 403 nella prima stesura).
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/org-chart/people | /api/org-chart/functions">
+      <response status="200">Person.is_manager = responsabile di almeno una funzione (D-6); resto invariato.</response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/org-chart/people/{user}/manager">
+      <errors>Rimosso `manager_cannot_report`; resto invariato.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tables/users (meta + SSRM rows)">
+      <response status="200">Colonna `is_manager` rimossa; nuova colonna `managed_business_functions` (string, filtro set per nome funzione, nascosta di default).</response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/stats/users">
+      <response status="200">Card `managers`: utenti distinti con almeno una funzione gestita.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dopo la migrazione `employment_profiles` non ha `is_manager`; il rollback la ricrea (default false).</criterion>
+    <criterion id="AC-002">PATCH utente con `employment.managed_business_function_ids: [F1, F2]`: F1 e F2 hanno `manager_id` = utente; una funzione gestita prima e non elencata ha `manager_id` null.</criterion>
+    <criterion id="AC-003">F1 con responsabile B, PATCH utente A con `[F1]`: F1.manager_id = A; `managed_business_functions` di B non contiene F1; l'activity log di F1 registra il cambio.</criterion>
+    <criterion id="AC-004">PATCH senza la chiave (o null): nessuna funzione cambia responsabile.</criterion>
+    <criterion id="AC-005">Attore con modifica utenti ma senza modifica funzioni: valore diverso = 422 "field not editable", valore identico = nessun errore.</criterion>
+    <criterion id="AC-006">Id inesistente o duplicato: 422 sulla riga.</criterion>
+    <criterion id="AC-007">Un utente responsabile di funzione puo' avere `reports_to_ids` non vuoto (salvataggio e spostamento nell'organigramma).</criterion>
+    <criterion id="AC-008">Griglia utenti: filtro su `managed_business_functions` = F restituisce il responsabile di F; la colonna `is_manager` non esiste.</criterion>
+    <criterion id="AC-009">Statistiche: `managers` = numero di utenti distinti che gestiscono almeno una funzione.</criterion>
+    <criterion id="AC-010">Organigramma: Person.is_manager true solo per chi gestisce almeno una funzione.</criterion>
+    <criterion id="AC-011">Import utenti legacy senza `is_manager` passa; i superiori importati non vengono piu' scartati per il flag.</criterion>
+    <criterion id="AC-012">Scheda utente: la riga "Responsabile delle funzioni" si modifica inline, invia `employment.managed_business_function_ids`, mostra l'errore server con la triade aria; senza permessi D-4 non ha la matita.</criterion>
+    <criterion id="AC-013">Header del dettaglio utente: pillole delle funzioni di appartenenza con la corona dove e' responsabile, piu' le funzioni gestite non di appartenenza; nessuna pillola "Responsabile".</criterion>
+    <criterion id="AC-014">Nessun riferimento residuo al flag nel frontend (form, scheda, header, griglia); guide IT+EN aggiornate e `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Migrazione reversibile, mai modificare quelle committate.</item>
+    <item>Test con rollback a step fisso: la nuova migrazione aggiunge uno step, da riallineare dove serve.</item>
+    <item>Nessun N+1: `managedBusinessFunctions:id,name` gia' eager-loaded (0275).</item>
+    <item>Legacy: verifica con tinker + `php -l`, git del legacy soggetto a CLAUDE.md §3.6.</item>
+    <item>Partenza solo dopo la chiusura della 0275 (stessi file: `EmploymentWriter`, `ValidatesEmployment`, `UsersAuthorization`, `user-record-sections.tsx`, organigramma).</item>
+  </constraints>
+
+</spec>

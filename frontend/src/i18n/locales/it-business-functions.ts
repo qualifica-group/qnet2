@@ -16,6 +16,7 @@ export const businessFunctions = {
     users: 'Utenti associati',
     parent: 'Funzione padre',
     operational_sites: 'Sedi operative',
+    companies: 'Società',
     created_at: 'Creato il',
   },
   detail: {
@@ -48,6 +49,12 @@ export const businessFunctions = {
     operationalSitesEmpty: 'Nessuna sede operativa trovata.',
     operationalSitesError: 'Impossibile caricare le sedi operative.',
     operationalSitesRemove: 'Rimuovi sede operativa',
+    companies: 'Società',
+    companiesPlaceholder: 'Seleziona le società…',
+    companiesSearch: 'Cerca società…',
+    companiesEmpty: 'Nessuna società trovata.',
+    companiesError: 'Impossibile caricare le società.',
+    companiesRemove: 'Rimuovi società',
     type: {
       label: 'Tipo',
       businessUnit: 'Business Unit',
@@ -77,6 +84,9 @@ export const businessFunctions = {
       },
       assignment: {
         title: 'Assegnazione',
+      },
+      organization: {
+        title: 'Organizzazione',
       },
       locations: {
         title: 'Sedi operative',
