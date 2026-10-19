@@ -54,7 +54,7 @@ describe('OrgChartPage', () => {
     expect(fetchFunctionsMock).not.toHaveBeenCalled()
   })
 
-  it('renders the function cards: type, manager, link, unassigned card; people are not cards', async () => {
+  it('renders the function cards: type, manager, link, unassigned card; people are cards under their function', async () => {
     renderPage()
     const tree = await screen.findByRole('tree', { name: 'Funzioni' })
     const sales = within(tree).getByRole('treeitem', { name: 'Sales' })
@@ -63,6 +63,7 @@ describe('OrgChartPage', () => {
     expect(screen.getByRole('link', { name: 'Sales' })).toHaveAttribute('href', '/business-functions/2')
     expect(within(tree).getByRole('treeitem', { name: 'Support' })).toHaveTextContent('Nessun responsabile')
     expect(within(tree).getByRole('treeitem', { name: 'Non assegnati' })).toBeInTheDocument()
+    expect(within(tree).getByRole('treeitem', { name: /Anna Rossi/ })).toHaveAttribute('aria-level', '2')
     expect(within(tree).queryByRole('treeitem', { name: /Carla Gallo/ })).not.toBeInTheDocument()
   })
 
@@ -166,6 +167,10 @@ describe('OrgChartPage', () => {
     expect(company).toHaveAttribute('aria-expanded', 'true')
 
     fireEvent.keyDown(company, { key: 'ArrowDown' })
+    const anna = within(tree).getByRole('treeitem', { name: /Anna Rossi/ })
+    expect(anna).toHaveFocus()
+
+    fireEvent.keyDown(anna, { key: 'ArrowDown' })
     const sales = within(tree).getByRole('treeitem', { name: 'Sales' })
     expect(sales).toHaveFocus()
 
@@ -176,7 +181,7 @@ describe('OrgChartPage', () => {
     fireEvent.keyDown(company, { key: 'ArrowRight' })
     expect(company).toHaveAttribute('aria-expanded', 'true')
     fireEvent.keyDown(company, { key: 'ArrowRight' })
-    expect(within(tree).getByRole('treeitem', { name: 'Sales' })).toHaveFocus()
+    expect(within(tree).getByRole('treeitem', { name: /Anna Rossi/ })).toHaveFocus()
 
     const link = within(company).getByRole('link', { name: 'Company' })
     const onClick = vi.fn((event: Event) => event.preventDefault())
@@ -192,8 +197,8 @@ describe('OrgChartPage', () => {
     expect(item).toHaveAttribute('data-node-kind', 'function')
     expect(item).toHaveAttribute('data-node-id', '3')
     expect(item).toHaveAttribute('aria-level', '2')
-    expect(item).toHaveAttribute('aria-posinset', '2')
-    expect(item).toHaveAttribute('aria-setsize', '2')
+    expect(item).toHaveAttribute('aria-posinset', '3')
+    expect(item).toHaveAttribute('aria-setsize', '3')
   })
 
   it('shows the loading skeleton, the empty state, the error and the 403 message', async () => {

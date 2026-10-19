@@ -23,13 +23,13 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Vista', 'Cosa mostra'],
           rows: [
-            ['Funzioni', "Le persone sono raggruppate per funzione aziendale di appartenenza (non per competenze). Un riquadro per ogni funzione aziendale con tipo (business unit o business service), foto e nome del responsabile e numero di persone; sotto, le sotto-funzioni. Il pulsante con il numero di persone apre un pannello laterale con i **Responsabili** e le altre **Persone** della funzione, con le loro mansioni."],
+            ['Funzioni', "Le persone sono raggruppate per funzione aziendale di appartenenza (non per competenze). Un riquadro per ogni funzione aziendale con tipo (business unit o business service), foto e nome del responsabile e numero di persone; sotto, le persone della funzione come riquadri (prima i responsabili, poi le altre in ordine alfabetico) e le sotto-funzioni. Il pulsante con il numero di persone resta e apre un pannello laterale con i **Responsabili** e le altre **Persone** della funzione, con le loro mansioni."],
             ['Persone', "Chi riporta a chi: un riquadro per persona con foto, nome, mansioni e funzioni; in cima le persone senza responsabile, sotto ognuna i suoi diretti riporti. Una corona indica chi è responsabile di almeno una funzione. Chi ha più responsabili compare sotto ciascuno di essi. Le persone senza collegamenti stanno dopo le gerarchie."],
           ],
         },
         {
           type: 'note',
-          text: 'Le persone attive senza una funzione di appartenenza sono nel riquadro **Non assegnati**, dopo le altre funzioni: il suo pulsante ne apre l’elenco. Trascinandole (o con **Sposta in…**) su una funzione, le si assegna a quella funzione come appartenenza.',
+          text: 'Le persone attive senza una funzione di appartenenza sono nel riquadro **Non assegnati**, dopo le altre funzioni: il suo pulsante ne apre l’elenco. Trascinandole (o con **Sposta in…**) su una funzione, le si assegna a quella funzione come appartenenza. Anche le persone di **Non assegnati** sono riquadri sotto il gruppo.',
         },
       ],
     },

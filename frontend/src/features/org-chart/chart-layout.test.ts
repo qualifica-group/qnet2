@@ -21,17 +21,17 @@ function center(card: ChartCard): number {
 describe('chart children vs members (spec 0274 D-2)', () => {
   const functions = buildFunctionTree(FUNCTIONS_FIXTURE)
 
-  it('keeps people out of the function cards and lists them as members', () => {
+  it('draws people as cards before the sub-functions and still lists them as members', () => {
     const [company, all] = functions
-    expect(chartChildren(company).map((node) => node.key)).toEqual(['f:1/f:2', 'f:1/f:3'])
+    expect(chartChildren(company).map((node) => node.key)).toEqual(['f:1/p:10', 'f:1/f:2', 'f:1/f:3'])
     expect(memberPeople(company).map((node) => node.key)).toEqual(['f:1/p:10'])
-    expect(chartChildren(all)).toEqual([])
+    expect(chartChildren(all).map((node) => node.key)).toEqual(['unassigned/p:13'])
     expect(memberPeople(all).map((node) => node.key)).toEqual(['unassigned/p:13'])
   })
 
-  it('counts only cards as expandable and visible', () => {
-    expect(collectExpandableKeys(functions)).toEqual(['f:1'])
-    expect(flattenVisible(functions, NONE).map((entry) => entry.node.key)).toEqual(['f:1', 'f:1/f:2', 'f:1/f:3', 'unassigned'])
+  it('counts the cards with children as expandable and visible', () => {
+    expect(collectExpandableKeys(functions)).toEqual(['f:1', 'f:1/f:2', 'unassigned'])
+    expect(flattenVisible(functions, NONE).map((entry) => entry.node.key)).toEqual(['f:1', 'f:1/p:10', 'f:1/f:2', 'f:1/f:2/p:11', 'f:1/f:2/p:12', 'f:1/f:3', 'unassigned', 'unassigned/p:13'])
   })
 })
 

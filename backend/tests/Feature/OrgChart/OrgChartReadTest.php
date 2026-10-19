@@ -146,3 +146,20 @@ it('0276 AC-010: Person.is_manager is true only for who manages at least one fun
     expect($people->firstWhere('id', $manager->id)['is_manager'])->toBeTrue()
         ->and($people->firstWhere('id', $plain->id)['is_manager'])->toBeFalse();
 })->with(['/api/org-chart/people', '/api/org-chart/functions']);
+
+it('0275 follow-up: a function manager is shown only when active and not a service account', function () {
+    $active = orgChartPerson('Active Boss');
+    $inactive = orgChartPerson('Retired Boss');
+    $inactive->forceFill(['is_active' => false])->save();
+    $service = User::factory()->create(['is_active' => true, 'is_service_account' => true]);
+    $withActive = BusinessFunction::factory()->create(['manager_id' => $active->id]);
+    $withInactive = BusinessFunction::factory()->create(['manager_id' => $inactive->id]);
+    $withService = BusinessFunction::factory()->create(['manager_id' => $service->id]);
+    Sanctum::actingAs(orgChartActor(['org-chart.view']));
+
+    $byId = collect($this->getJson('/api/org-chart/functions')->assertOk()->json('data.functions'))->keyBy('id');
+
+    expect($byId[$withActive->id]['manager'])->toBe(['id' => $active->id, 'name' => 'Active Boss'])
+        ->and($byId[$withInactive->id]['manager'])->toBeNull()
+        ->and($byId[$withService->id]['manager'])->toBeNull();
+});

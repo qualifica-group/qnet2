@@ -6,6 +6,7 @@ namespace App\Services\OrgChart;
 
 use App\Models\BusinessFunction;
 use App\Models\User;
+use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -225,7 +226,12 @@ final class OrgChartReadService
     private function functionRows(array $peopleByFunction): array
     {
         return BusinessFunction::query()
-            ->leftJoin('users as managers', 'managers.id', '=', 'business_functions.manager_id')
+            // Only an active, non-service manager is shown: the chart lists active people only.
+            ->leftJoin('users as managers', static function (JoinClause $join): void {
+                $join->on('managers.id', '=', 'business_functions.manager_id')
+                    ->where('managers.is_active', true)
+                    ->where('managers.is_service_account', false);
+            })
             ->orderBy('business_functions.name')
             ->get([
                 'business_functions.id', 'business_functions.name', 'business_functions.parent_id',
@@ -237,7 +243,7 @@ final class OrgChartReadService
                 'name' => $function->name,
                 'type' => $function->is_business_unit ? 'business_unit' : ($function->is_business_service ? 'business_service' : null),
                 'parent_id' => $function->parent_id,
-                'manager' => $function->manager_id === null ? null : ['id' => $function->manager_id, 'name' => $function->manager_name],
+                'manager' => $function->manager_name === null ? null : ['id' => $function->manager_id, 'name' => $function->manager_name],
                 'people' => $peopleByFunction[$function->id] ?? [],
             ])
             ->all();

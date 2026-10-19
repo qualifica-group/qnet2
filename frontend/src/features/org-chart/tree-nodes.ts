@@ -62,12 +62,14 @@ export function byName(a: { name: string }, b: { name: string }): number {
 }
 
 /**
- * Children drawn as cards in the chart (spec 0274 D-2/D-3). In the People view
- * every child is a card; under a function (or "all functions") the people are
- * not cards but members listed in the side panel, see `memberPeople`.
+ * Children drawn as cards in the chart. Under a function (or "Unassigned") the
+ * people come first, the responsible ones before the rest and each group by
+ * name, then the sub-functions; a person's children keep their order.
  */
 export function chartChildren(node: OrgTreeNode): OrgTreeNode[] {
-  return node.kind === 'person' ? node.children : node.children.filter((child) => child.kind !== 'person')
+  if (node.kind === 'person') return node.children
+  const people = memberPeople(node).sort((a, b) => Number(b.isResponsible) - Number(a.isResponsible) || byName(a.person, b.person))
+  return [...people, ...node.children.filter((child) => child.kind !== 'person')]
 }
 
 /** People of a function / "all functions" card, shown in its side panel. */

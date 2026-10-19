@@ -3,6 +3,34 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0276 — Responsabile di funzione dalla scheda utente, flag `is_manager` eliminato — VERDE, COMMITTATO DALL'UTENTE in c7bfe497 insieme a 0274/0275 (2026-10-19)
+
+- Decisioni utente 2026-10-19: eliminato `employment_profiles.is_manager` (colonna DB + permesso di campo); la regola
+  "un responsabile non riporta a nessuno" e' ELIMINATA (non trasferita: chiunque puo' avere superiori); colonna griglia
+  `is_manager` -> `managed_business_functions` ("Responsabile delle funzioni", filtro set); card stats `managers` = utenti
+  distinti manager_id di almeno una funzione; organigramma `Person.is_manager` = gestisce almeno una funzione (derivato,
+  `withExists`), nessun blocco agli spostamenti (`manager_cannot_report` rimosso). Supera 0275 D-6.
+- Contratto: `employment.managed_business_function_ids` tri-state come `business_function_ids` (assente/null = invariato,
+  [] = nessuna). Scrittura `Services/BusinessFunctions/FunctionManagerWriter` (update via model -> activity log della
+  funzione; la funzione passa da un responsabile all'altro, le tolte restano senza). Permesso di campo
+  (`UsersAuthorization::managedFunctionsPermission`): editabile solo con campo utente editabile E `business-functions`
+  `manager_id` editabile; altrimenti 422 "field not editable" (meccanismo dei permessi di campo, non 403). Il FE invia
+  sempre il campo con il valore attuale (stesso valore = nessun errore).
+- FE: `UserManagedBusinessFunctionsField` (user-employment-fields), riga inline in `user-record-sections.tsx`, prop
+  `description` in `components/form/relation-multi-select-field.tsx`; header dettaglio (`user-detail-header.tsx`) con
+  funzioni di appartenenza + gestite non di appartenenza, corona sulle gestite; aria-label corona
+  `users.detail.employment.functionManager`. "Risponde a" sempre visibile.
+- Migrazione `2026_10_21_101000_drop_is_manager_from_employment_profiles_table.php`. Legacy:
+  `../qnet/.../UserMigrationController.php` non invia piu' `is_manager`/`livello_crm` (NON committato nel legacy).
+- Verifica (verifier indipendente): `composer test` 11518 pass, 3 fail solo `QuoteDocumentPdfTest` (LibreOffice); Pint ok;
+  vitest 8496/8496; `tsc -b --force` 0 errori; ESLint ok sulle aree toccate. AC-001..014 coperti; AC-011 (superiori
+  importati non piu' scartati) solo indirettamente.
+- Incidente 2026-10-19: un subagente ha eseguito `migrate:fresh --env=testing` senza `.env.testing` -> DB `qnet2`
+  azzerato; ripopolato dall'utente (426 utenti, 28 funzioni, 16 responsabili, 206 righe pivot). Mai `migrate*`/`db:*`
+  sul DB di sviluppo dai subagenti.
+- Manuale Claude Docs aggiornato (Utenti: riga flag tolta, "Responsabile delle funzioni" modificabile, header; Funzioni
+  aziendali). Guide in-app users, business-functions, org-chart IT+EN. Manca ancora la sezione Organigramma nel manuale.
+
 ## Spec 0275 — Funzione aziendale di appartenenza (reparto) unica tra Funzioni aziendali e scheda utente — VERDE, NON COMMITTATO (2026-10-19)
 
 - Decisioni utente 2026-10-19: appartenenza e competenze restano SEPARATE (niente unione). Appartenenza = pivot
@@ -36,6 +64,11 @@
   transizione left/top e `d` degli archi, ingresso fade/zoom, uscita trattenuta per `EXIT_MS` (`use-exiting-cards.ts`,
   card in uscita `aria-hidden`+`inert`), righe del pannello persone, `motion-reduce` rispettato. Resa visiva non ancora
   vista nel browser (DB locale `qnet2` azzerato per errore da un'altra sessione, ripristino in corso con l'utente).
+- Vista Funzioni (utente 2026-10-19, supera 0274 D-2): le persone sono card sotto la funzione (`chartChildren`: prima
+  persone, responsabili in testa poi per nome, poi sotto-funzioni; idem "Non assegnati"); pulsante membri e pannello
+  restano. Limite noto: funzione con >4 persone E sotto-funzioni = una riga larga (la griglia a colonne scatta solo con
+  figli tutti foglie). Responsabile di funzione emesso solo se attivo e non di servizio (`functionRows`, leftJoin).
+  Guida org-chart IT+EN aggiornata (ceduta dalla sessione 0276, frasi 0276 mantenute).
 - Prossimo: spec 0276 (sessione separata) elimina `employment_profiles.is_manager` e rende "Responsabile delle
   funzioni" modificabile dalla scheda utente (supera 0275 D-6); la corona d'angolo della card organigramma dipende
   ancora da `is_manager`.
