@@ -311,7 +311,6 @@ export const workOrders = {
     titleHint:
       'Proposed as the work order code followed by the products of its lines (e.g. COM-0042 - ISO 9001 + SOA). If you edit it, it stays yours; clear the field to go back to the automatic title.',
     startDateRequired: 'The start date is required.',
-    supervisorsRequired: 'Pick at least one supervisor.',
     participantsMax: 'You can assign at most 12 participants.',
     titleMax: 'Title must be at most 191 characters.',
     typeRequired: 'Work order type is required.',

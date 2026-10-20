@@ -38,7 +38,7 @@ final class MultiQuoteWorkOrderProgrammer
             title: isset($validated['title']) ? (string) $validated['title'] : null,
             type: WorkOrderType::from((string) $validated['type']),
             startDate: (string) $validated['start_date'],
-            supervisorIds: (array) $validated['supervisor_ids'],
+            supervisorIds: (array) ($validated['supervisor_ids'] ?? []),
             quoteLineIds: (array) $validated['quote_line_ids'],
             attributeValues: array_key_exists('attribute_values', $validated) ? (array) $validated['attribute_values'] : null,
             taskTemplateId: isset($validated['task_template_id']) ? (int) $validated['task_template_id'] : null,

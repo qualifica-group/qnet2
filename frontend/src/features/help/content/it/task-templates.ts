@@ -117,7 +117,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Un modello si sceglie con l\'azione **Programma** sul contratto, alla creazione della Commessa: QNet crea i task del modello e li assegna ai responsabili. Li trovi nella sezione **Task** della Commessa, raggruppati per fase. Tipologia, priorità e importanza dei task creati sono quelle predefinite (impostate in **Tipologie Task**, **Priorità Task** e **Importanza Task**); puoi cambiarle su ogni task.',
+          text: 'Un modello si sceglie con l\'azione **Programma** sul contratto, alla creazione della Commessa: QNet crea i task del modello e li assegna ai responsabili (senza responsabili i task restano da assegnare). Li trovi nella sezione **Task** della Commessa, raggruppati per fase. Tipologia, priorità e importanza dei task creati sono quelle predefinite (impostate in **Tipologie Task**, **Priorità Task** e **Importanza Task**); puoi cambiarle su ogni task.',
         },
       ],
     },

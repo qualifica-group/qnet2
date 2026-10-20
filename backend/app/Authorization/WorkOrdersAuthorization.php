@@ -18,9 +18,10 @@ use Illuminate\Database\Eloquent\Model;
  * UnitsOfMeasureAuthorization's own `code` ceiling. `status` does not appear
  * (D-3): it is never client-writable.
  *
- * Spec 0096: `start_date`/`supervisor_ids` ("Responsabili") are `required` —
- * a commessa has a start date and at least one responsabile — but plainly
- * editable after create, deliberately NOT create-only like `code`/`quote_id`.
+ * Spec 0096: `start_date` is `required` — a commessa has a start date — but
+ * plainly editable after create, deliberately NOT create-only like
+ * `code`/`quote_id`. `supervisor_ids` ("Responsabili") is optional (user
+ * decision 2026-10-20).
  * `participant_slots` ("Partecipanti") is the optional team, the same
  * `multiselect` field type OpportunitiesAuthorization declares for its own
  * slot field.
@@ -47,7 +48,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('title', 'text'),
             new FieldDefinition('type', 'select', mandatory: true),
             new FieldDefinition('start_date', 'date', mandatory: true),
-            new FieldDefinition('supervisor_ids', 'multiselect', mandatory: true),
+            new FieldDefinition('supervisor_ids', 'multiselect'),
             new FieldDefinition('participant_slots', 'multiselect'),
             new FieldDefinition('callback_date', 'date'),
             new FieldDefinition('description', 'textarea'),
@@ -91,7 +92,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             // Spec 0096, D-6: required, but plainly editable after create —
             // no create-only ceiling like code/quote_id.
             'start_date' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(required: true),
-            'supervisor_ids' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(required: true),
+            'supervisor_ids' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'participant_slots' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'callback_date' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'description' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

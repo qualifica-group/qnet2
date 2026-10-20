@@ -54,6 +54,13 @@ describe('buildCreateWorkOrderSchema — create-only rules', () => {
     expect(issue).toBeDefined()
   })
 
+  // REQUIREMENT CHANGED (user decision 2026-10-20): the Responsabili are optional.
+  it('accepts a create submit without responsabili', () => {
+    const schema = buildCreateWorkOrderSchema(i18n.t.bind(i18n))
+
+    expect(schema.safeParse({ ...VALID_BASE, supervisor_ids: [] }).success).toBe(true)
+  })
+
   it('rejects an empty code (D-1: the create form always prefills it)', () => {
     const schema = buildCreateWorkOrderSchema(i18n.t.bind(i18n))
     const result = schema.safeParse({ ...VALID_BASE, code: '' })

@@ -35,10 +35,11 @@ it('200: field catalogue is in the frozen data_contract order, status is absent 
     // Spec 0215: an empty title is the automatic one, so it is no longer mandatory.
     expect($fields['title']['mandatory'])->toBeFalse()
         ->and($fields['type']['mandatory'])->toBeTrue()
-        // Spec 0096, D-6: NOT NULL columns, hence mandatory — but plainly
-        // editable after create, unlike code/quote_id.
+        // Spec 0096, D-6: NOT NULL column, hence mandatory — but plainly
+        // editable after create, unlike code/quote_id. REQUIREMENT CHANGED
+        // (user decision 2026-10-20): the responsabili are optional.
         ->and($fields['start_date']['mandatory'])->toBeTrue()
-        ->and($fields['supervisor_ids']['mandatory'])->toBeTrue()
+        ->and($fields['supervisor_ids']['mandatory'])->toBeFalse()
         ->and($fields['participant_slots']['mandatory'])->toBeFalse()
         ->and($fields['code']['mandatory'])->toBeFalse();
 });

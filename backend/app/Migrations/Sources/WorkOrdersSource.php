@@ -212,8 +212,8 @@ class WorkOrdersSource extends AbstractMigrationSource
     }
 
     /**
-     * A supervisor or participant that is not migrated fails the commessa (the
-     * legacy already replaced its deleted users with an account manager, G-27).
+     * A supervisor or participant that is not migrated (deleted in the legacy
+     * included, G-27) fails the commessa; a commessa without any is imported.
      *
      * @throws RuntimeException
      */
@@ -221,7 +221,7 @@ class WorkOrdersSource extends AbstractMigrationSource
     {
         foreach (array_unique(array_map(intval(...), (array) ($legacyUserIds ?? []))) as $legacyUserId) {
             if ($this->resolveOldId(User::class, $legacyUserId) === null) {
-                throw new RuntimeException("{$role} (legacy user id {$legacyUserId}) not migrated and the offer has no account manager to replace it; the work order is not imported.");
+                throw new RuntimeException("{$role} (legacy user id {$legacyUserId}) not migrated; the work order is not imported.");
             }
         }
     }

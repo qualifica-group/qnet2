@@ -311,7 +311,6 @@ export const workOrders = {
     titleHint:
       'Proposto come codice della commessa seguito dai prodotti delle sue righe (es. COM-0042 - ISO 9001 + SOA). Se lo modifichi resta il tuo; svuota il campo per tornare al titolo automatico.',
     startDateRequired: 'La data di inizio è obbligatoria.',
-    supervisorsRequired: 'Indica almeno un responsabile.',
     participantsMax: 'Puoi assegnare al massimo 12 partecipanti.',
     titleMax: 'Il titolo può contenere al massimo 191 caratteri.',
     typeRequired: 'Il tipo commessa è obbligatorio.',

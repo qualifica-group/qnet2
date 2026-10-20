@@ -41,14 +41,15 @@ describe('buildContractProgramSchema (spec 0215)', () => {
     expect(schema.safeParse(values([group({ type: 'bogus' as never })])).success).toBe(false)
   })
 
-  it('requires start date, supervisors and lines on every group, pointing at the failing group (AC-026)', () => {
+  // REQUIREMENT CHANGED (user decision 2026-10-20): the Responsabili are optional.
+  it('requires start date and lines on every group, pointing at the failing group (AC-026)', () => {
     const result = schema.safeParse(
       values([group(), group({ start_date: '', supervisor_ids: [], quote_line_ids: [] })]),
     )
 
     expect(result.success).toBe(false)
     const paths = result.success ? [] : result.error.issues.map((issue) => issue.path.join('.'))
-    expect(paths.sort()).toEqual(['groups.1.quote_line_ids', 'groups.1.start_date', 'groups.1.supervisor_ids'])
+    expect(paths.sort()).toEqual(['groups.1.quote_line_ids', 'groups.1.start_date'])
   })
 
   it('accepts an optional task template id', () => {

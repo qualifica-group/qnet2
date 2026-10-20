@@ -208,6 +208,15 @@
       ESEGUENDOLO sia su SQLite sia su MySQL con i dati reali.
     </decision>
 
+    <decision id="D-12">
+      REQUIREMENT CHANGED (decisione utente 2026-10-20): il Responsabile NON e' piu' obbligatorio. `supervisor_ids`
+      e' `sometimes|array` (senza `min:1`) in Store/UpdateWorkOrderRequest, GenerateContractWorkOrderRequest (e
+      MultiQuoteWorkOrderRequest), GenerateContractWorkOrdersBatchRequest; `mandatory`/`required` false in
+      WorkOrdersAuthorization; schemi Zod commessa e "Programma" senza `min(1)`. Gli id inviati devono esistere.
+      Senza responsabili i task da Modello di Task nascono senza assegnatari. Supera D-1/D-5 e AC-020/AC-025 nella
+      parte "almeno un Responsabile".
+    </decision>
+
   </decisions>
 
   <scope>

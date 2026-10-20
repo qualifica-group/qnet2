@@ -57,7 +57,7 @@ const guide: HelpGuide = {
           items: [
             'Select one or more free lines on the left and press **New group**: Group 1 appears and the lines show the **G1** badge.',
             'To add more lines to a group, select them and use **Add to group**. A line belongs to one group only: if it is already in another one, it is **moved**.',
-            "In each group fill in **Type**, **Start date**, **Supervisors** (at least one) and, if needed, the **Task template**. The bin button deletes a group and frees its lines.",
+            "In each group fill in **Type**, **Start date** and, if needed, the **Supervisors** (optional) and the **Task template**. The bin button deletes a group and frees its lines.",
             'Press **Create N work orders**.',
           ],
         },
@@ -95,7 +95,7 @@ const guide: HelpGuide = {
             'Press the **Schedule single work order** action (you need the schedule permission).',
             'In the window the lines are grouped by contract. Only the **revenue lines** of a branch with the setting on and **not yet in a work order** can be selected; the others stay visible but disabled.',
             'Pick the lines: they must all belong to the **same branch** and come from **at least two** different offers.',
-            'Fill in the common fields: **Title** (optional), **Type**, **Start date**, **Supervisors** (at least one) and, if needed, the **Task template**.',
+            'Fill in the common fields: **Title** (optional), **Type**, **Start date**, **Supervisors** (optional) and, if needed, the **Task template**.',
             'Press the confirm button: **one work order** is created and opens right away.',
           ],
         },

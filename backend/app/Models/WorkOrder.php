@@ -177,9 +177,8 @@ class WorkOrder extends BaseModel
 
     /**
      * The internal Users accountable for this commessa — "Responsabili" in
-     * the UI (spec 0096, D-1). MANY, and at least one: the floor is enforced
-     * at the request layer (`supervisor_ids` required, min 1), not by the
-     * pivot, which no engine can constrain that way.
+     * the UI (spec 0096, D-1). MANY, possibly none (user decision
+     * 2026-10-20).
      *
      * An unordered set, deliberately unlike participants(): there is no
      * "n-th responsabile" ranking to preserve.

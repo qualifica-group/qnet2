@@ -111,10 +111,12 @@
       prodotto / prodotto non migrato o non vendibile, provvigione con ruolo/tipo/destinatario non validi, costo senza
       prodotto di costo; commessa senza righe, con una riga legacy non importata o con un costo senza prodotto di costo.
       Restano avvisi (record importato) i riferimenti facoltativi lasciati vuoti (IVA, fornitore, referenti, utenti...).
-      G-27 responsabili/partecipanti cancellati (decisione utente 2026-10-14): nel legacy un utente cancellato
-      (soprattutto il 69) e' sostituito, nello stesso ruolo, dal primo gestore account dell'offerta non gia' presente
-      (LegacyWorkOrderPeople; gia' presenti tutti = ruolo coperto). Senza gestori account resta l'id e qnet-2 fallisce
-      la commessa col motivo (43 commesse al 2026-10-14).
+      G-27 responsabili/partecipanti (REQUIREMENT CHANGED, decisione utente 2026-10-20, supera la sostituzione col
+      gestore account del 2026-10-14): il Responsabile non e' obbligatorio. Il legacy manda gli utenti distinti di
+      `responsabile_services` / `partecipant_services` cosi' come sono, cancellati compresi (LegacyWorkOrderPeople
+      rimosso); qnet-2 fallisce la commessa se un responsabile o partecipante non e' migrato, e importa quella senza
+      responsabili. Al 2026-10-20 su 16.351 commesse: 3.839 senza responsabili (importate), 115 con almeno un utente
+      cancellato nel legacy (fallite col motivo).
       G-28 blocco geografico (decisione utente 2026-10-15): in TUTTI gli endpoint con indirizzo (registries e i loro
       addresses, referents, users, companies, company-sites, operational-sites) `country` e' il codice ISO 3166-1
       alpha-2 (legacy LegacyNation, mappa per id dei 249 `nations` concordata con l'utente; qnet-2 cerca per `iso2`,
@@ -135,6 +137,12 @@
       "[OLD] In trattativa" (pending) / "[OLD] Da Richiamare" (open) / "[OLD] Stand-by" (open), accodato prima delle
       chiusure (WorkflowStatusWriter::appendCustom), e ci mette l'offerta, senza avviso. `quotes:realign-legacy-status`
       fa lo stesso sulle offerte gia' importate rimaste aperte; in --dry-run lo stato non viene creato (rollback).
+      G-30 richieste corso orfane (decisione utente 2026-10-20, deroga a G-26): il legacy NON esporta le offerte in
+      stato 0, senza cliente (`customer_id` null/0), con titolo "Richiesta corso di formazione per..." e opportunita'
+      inesistente in `opportunities` (QuoteMigrationController::orphanCourseRequestIds): bozze senza importo create in
+      blocco da un processo automatico, opportunita' cancellate fuori dall'applicazione. 19.441 offerte al 2026-10-20,
+      nessuna referenziata da una commessa; l'endpoint offerte passa da 47.805 a 28.364. Le altre offerte con
+      opportunita' mancante restano esportate e fallite da qnet-2 col motivo (G-26).
       G-23 costi effettivi (decisione utente 2026-10-14, "preventivo + consuntivo"): i costi del riquadro "Offerta"
       dell'Analisi preventiva legacy (`quotationexpensereports` + `quotationemployees`, helper legacy
       LegacyQuoteCosts) restano righe COSTO dell'offerta (G-13, preventivo) e diventano ANCHE `work_order_costs`
@@ -378,7 +386,7 @@
         stato_pagamento:?int, accordo_pagamento:?string, insoluti:bool (riga `orderisos` della commessa, spec 0201
           D-14),
         quote_line_ids:int[] (orderservices.quotation_service esistenti; fallback per service_id sull'offerta),
-        supervisor_user_ids:int[] (responsabile_services.id_utente distinti),
+        supervisor_user_ids:int[] (responsabile_services.id_utente distinti, cancellati compresi; [] ammesso, G-27),
         participant_user_ids:int[] (partecipant_services.id_utente distinti, ordine di inserimento, max 12),
         attribute_values:{codice:valore} (G-20, G-21; {} se nessuno),
         stages:[{ name:string, closed_at:?datetime, closed_by_user_id:?int }] (G-22, in ordine),

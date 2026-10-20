@@ -11,8 +11,8 @@ const TITLE_MAX_LENGTH = 191
  * "Programma" (spec 0215): one dialog session builds N work-order groups.
  * `common` holds the shared values a new group inherits (never validated on
  * its own: only the groups travel); every group carries what a commessa
- * cannot be left without — `type`, `start_date`, at least one Responsabile
- * and at least one offer line — while `title` is optional (blank = the
+ * cannot be left without — `type`, `start_date` and at least one offer line —
+ * while the Responsabili and `title` are optional (blank title = the
  * automatic `<code> - <products>` title, D-2) and `key` is client-only.
  * Messages reuse the work-order form's own strings (`workOrders.form.*`).
  */
@@ -33,7 +33,7 @@ export function buildContractProgramSchema(t: TFunction) {
           title: z.string().max(TITLE_MAX_LENGTH, t('workOrders.form.titleMax')),
           type,
           start_date: z.string().min(1, t('workOrders.form.startDateRequired')),
-          supervisor_ids: z.array(z.number()).min(1, t('workOrders.form.supervisorsRequired')),
+          supervisor_ids: z.array(z.number()),
           task_template_id: z.number().nullable(),
           quote_line_ids: z.array(z.number()).min(1, t('contracts.actions.programDialog.linesRequired')),
         }),

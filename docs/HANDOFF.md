@@ -3,6 +3,38 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Commessa: Responsabile facoltativo (spec 0096 D-12, 0189 G-27) — VERDE, COMMITTATO qnet-2 (2026-10-20; legacy da committare)
+
+- Richiesta utente: responsabile non obbligatorio sulla commessa, anche in migrazione; la migrazione fallisce se un id
+  della commessa (responsabile, partecipante) non e' valido; senza responsabili ok. Scelta utente: togliere la G-27.
+- Backend: `supervisor_ids` => `sometimes|array` in Store/UpdateWorkOrderRequest, GenerateContractWorkOrderRequest
+  (eredita MultiQuoteWorkOrderRequest), GenerateContractWorkOrdersBatchRequest (`groups.*`); `?? []` in
+  ContractProgramBatch e MultiQuoteWorkOrderProgrammer; WorkOrdersAuthorization senza mandatory/required. Cella griglia
+  Responsabili ora svuotabile (passa da UpdateWorkOrderRequest).
+- Migrazione: legacy `WorkOrderMigrationController::userIds()` manda gli id distinti cosi' come sono (cancellati
+  compresi), `LegacyWorkOrderPeople` CANCELLATO (era usato solo li'). qnet-2 `WorkOrdersSource::assertUsersMigrated()`
+  invariato salvo il messaggio: "{Role} (legacy user id N) not migrated; the work order is not imported."
+  Verificato su DB legacy via tinker: 16.351 commesse, 3.839 senza responsabili, 115 con utente cancellato (falliranno).
+- Frontend: schemi Zod commessa/Programma senza `min(1)`, etichetta Responsabili nel Programma senza asterisco, chiave
+  i18n `workOrders.form.supervisorsRequired` rimossa (IT/EN).
+- REQUIREMENT CHANGED nei test: WorkOrderTeamTest AC-020/AC-025/AC-040, WorkOrderMetaTest, WorkOrderGridInlineEditTest,
+  ContractWorkOrderGenerationTest AC-010, ContractWorkOrderBatchTest (+ gruppo senza responsabili),
+  WorkOrdersSourceCostsAndPaymentsImportTest (messaggio + commessa senza responsabili importata); Vitest
+  work-order-schema, contract-program-schema, contract-program-dialog.
+- Verifica: Pest intera suite 11.957/11.961 (i 4 rossi sono QuoteDocumentPdfTest: LibreOffice assente in locale), con
+  `EXTERNAL_MIGRATION_USERS_LINK_ONLY=false`; Vitest help+work-orders+contracts 546/546; tsc -b 0 errori; ESLint e
+  Pint puliti; legacy `php -l` pulito.
+- Guide IT/EN: work-orders (modifica in griglia), contracts (Programma x2), migrations (commesse), task-templates.
+
+## Spec 0189 G-30 — richieste corso orfane non esportate dal legacy — VERDE, NON COMMITTATO (2026-10-20)
+
+- Report migrazione 20/10: 19.441 offerte scartate = bozze "Richiesta corso di formazione per..." in stato 0, senza
+  cliente, con opportunita' cancellata fuori dall'app. Decisione utente: filtrarle alla fonte (deroga a G-26).
+- Solo legacy: `../qnet` `QuoteMigrationController::orphanCourseRequestIds()` (whereNotIn sugli id). qnet-2 invariato.
+- Verificato su DB legacy via tinker: endpoint offerte 47.805 -> 28.364 (-19.441); "Richiesta corso" con opportunita'
+  valida ancora esportate (10.793); nessuna commessa punta alle escluse. `php -l` pulito. Il legacy non ha test.
+- Le righe fallite dei run 25-27 restano nello storico di quei run; il prossimo run offerte non le riceve piu'.
+
 ## Spec 0285 D-3 — solo abbinamento CREA i non abbinati — VERDE, NON COMMITTATO (2026-10-20)
 
 - Chiarimento utente: "se esiste abbina solo l'id, se non esiste lo crea da import". REQUIREMENT CHANGED su D-3/AC-003,

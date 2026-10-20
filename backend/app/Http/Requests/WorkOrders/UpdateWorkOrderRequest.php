@@ -58,10 +58,10 @@ class UpdateWorkOrderRequest extends FormRequest
             'type' => ['sometimes', 'required', 'string', Rule::in(WorkOrderType::values())],
             // Spec 0096, D-6: editable after create (unlike code/quote_id).
             // `required` rejects an explicit null, so the 422 comes from
-            // validation and not from the database; `min:1` keeps the "a
-            // commessa always has a Responsabile" floor on updates too.
+            // validation and not from the database. The Responsabili may be
+            // emptied (user decision 2026-10-20).
             'start_date' => ['sometimes', 'required', 'date'],
-            'supervisor_ids' => ['sometimes', 'required', 'array', 'min:1'],
+            'supervisor_ids' => ['sometimes', 'array'],
             'supervisor_ids.*' => ['integer', Rule::exists('users', 'id')],
             'callback_date' => ['sometimes', 'nullable', 'date'],
             'description' => ['sometimes', 'nullable', 'string'],

@@ -61,7 +61,7 @@ final class ContractProgramBatch
             title: isset($group['title']) ? (string) $group['title'] : null,
             type: WorkOrderType::from((string) $group['type']),
             startDate: (string) $group['start_date'],
-            supervisorIds: (array) $group['supervisor_ids'],
+            supervisorIds: (array) ($group['supervisor_ids'] ?? []),
             quoteLineIds: (array) $group['quote_line_ids'],
             taskTemplateId: isset($group['task_template_id']) ? (int) $group['task_template_id'] : null,
         );
