@@ -159,7 +159,6 @@ export function RegistriesTable() {
         value={typeTab.tab}
         options={typeTabOptions}
         onValueChange={typeTab.setTab}
-        className="rounded-xl border border-border bg-surface p-3"
       />
 
       <TableView

@@ -3,6 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## UI: TAB DI HR/CONTABILITA' ALLINEATI A GESTIONE RICHIESTE — VERDE, COMMITTATO (2026-10-20)
+
+- Richiesta utente: le strisce di tab di HR/Contabilita' avevano un altro stile; il riferimento e' Gestione Richieste
+  (vasca `bg-surface` + `border-border/60`, tab attivo chip `bg-card` + `text-primary` + ring), NON il contrario
+  (un primo tentativo nel verso opposto e' stato annullato).
+- `components/ui/filter-tabs.tsx` ora riusa `FORM_TAB_LIST_CLASS` / `FORM_TAB_TRIGGER_CLASS` di
+  `components/form-tab-strip.tsx` (le stesse classi della striscia categorie di Gestione Richieste): i bottoni
+  restano `role="tab"` + `aria-selected` + `onClick`, e impostano `data-state` come un Radix `TabsTrigger`.
+  Vasca a tutta larghezza, `flex-wrap`. Chi usa `FilterTabs` NON aggiunge un riquadro proprio (surface su surface).
+- Copie inline sostituite con `FilterTabs`: rate attive/passive (`*-quick-filter-toolbar.tsx`), maturato e
+  liquidazioni provvigioni, stati ordini d'acquisto (`status-tabs.tsx`), stati righe RDA (`line-status-tabs.tsx`),
+  tipo fattura (`invoice-list-toolbar.tsx`: tab fuori dal riquadro, che resta solo per la striscia mesi).
+  Tolto il riquadro passato da `registries-table.tsx`. Cambiano di conseguenza anche Assenze, Formazione,
+  Competenze, Anagrafiche (gia' su `FilterTabs`).
+- NON toccati: `SegmentedControl` (Partitario, Controllo di gestione, saldi Assenze: e' un controllo radio, non tab),
+  griglia mesi delle fatture, filtro eventi del registro attivita'.
+- Verifica: `tsc -b --force` 0 errori; Vitest su components + 12 feature toccate 1686/1686 verdi; ESLint pulito.
+  Non verificato a vista nel browser. Manuale: nessun impatto (le guide non descrivono l'aspetto dei tab).
+
 ## CATALOGO: MACROCATEGORIA FINANZA AGEVOLATA — VERDE, COMMITTATO (2026-10-20)
 
 - Fonte: "Gestione richieste finanza Agevolata.docx" + "FINANZA AGEVOLATAù.xlsx" (47 prodotti, nessuna riga gialla).

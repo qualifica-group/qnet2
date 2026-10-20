@@ -1,9 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/lib/utils'
-import {
-  INSTALLMENT_QUICK_FILTERS,
-  type InstallmentQuickFilter,
-} from '@/features/invoice-installments/types'
+import { FilterTabs } from '@/components/ui/filter-tabs'
+import { INSTALLMENT_QUICK_FILTERS, type InstallmentQuickFilter } from '@/features/invoice-installments/types'
 
 interface InstallmentQuickFilterToolbarProps {
   value: InstallmentQuickFilter | null
@@ -15,30 +12,11 @@ export function InstallmentQuickFilterToolbar({ value, onChange }: InstallmentQu
   const { t } = useTranslation()
 
   return (
-    <div
-      role="tablist"
+    <FilterTabs<InstallmentQuickFilter>
       aria-label={t('invoiceInstallments.quickFilter.label')}
-      className="flex flex-wrap items-center gap-1 rounded-xl border border-border bg-surface p-3"
-    >
-      {INSTALLMENT_QUICK_FILTERS.map((filter) => {
-        const selected = value === filter
-        return (
-          <button
-            key={filter}
-            type="button"
-            role="tab"
-            aria-selected={selected}
-            onClick={() => onChange(filter)}
-            className={cn(
-              'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              selected ? 'bg-primary text-primary-foreground' : 'bg-card text-foreground hover:bg-muted',
-            )}
-          >
-            {t(`invoiceInstallments.quickFilter.${filter}`)}
-          </button>
-        )
-      })}
-    </div>
+      value={value}
+      options={INSTALLMENT_QUICK_FILTERS.map((filter) => ({ value: filter, label: t(`invoiceInstallments.quickFilter.${filter}`) }))}
+      onValueChange={onChange}
+    />
   )
 }

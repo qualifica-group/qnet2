@@ -1,9 +1,17 @@
+import { FORM_TAB_LIST_CLASS, FORM_TAB_TRIGGER_CLASS } from '@/components/form-tab-strip'
 import { cn } from '@/lib/utils'
 
-const TAB_CLASS =
-  'rounded-md px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-const TAB_SELECTED_CLASS = 'bg-primary text-primary-foreground'
-const TAB_IDLE_CLASS = 'bg-card text-foreground hover:bg-muted'
+/**
+ * The look of the Gestione Richieste category strip: a surface trough with the
+ * active tab raised as a card chip. The trigger classes key off `data-state`,
+ * which each button sets the way a Radix `TabsTrigger` would.
+ */
+const TAB_LIST_CLASS = cn('flex flex-wrap items-center border border-border/60 bg-surface', FORM_TAB_LIST_CLASS)
+const TAB_CLASS = cn(
+  'inline-flex shrink-0 items-center font-medium whitespace-nowrap outline-none',
+  'focus-visible:ring-[3px] focus-visible:ring-ring/50',
+  FORM_TAB_TRIGGER_CLASS,
+)
 
 export interface FilterTabOption<T extends string> {
   value: T
@@ -32,7 +40,7 @@ export function FilterTabs<T extends string>({
   className,
 }: FilterTabsProps<T>) {
   return (
-    <div role="tablist" aria-label={ariaLabel} className={cn('flex flex-wrap items-center gap-1', className)}>
+    <div role="tablist" aria-label={ariaLabel} className={cn(TAB_LIST_CLASS, className)}>
       {options.map((option) => {
         const selected = value === option.value
         return (
@@ -41,8 +49,9 @@ export function FilterTabs<T extends string>({
             type="button"
             role="tab"
             aria-selected={selected}
+            data-state={selected ? 'active' : 'inactive'}
             onClick={() => onValueChange(option.value)}
-            className={cn(TAB_CLASS, selected ? TAB_SELECTED_CLASS : TAB_IDLE_CLASS)}
+            className={TAB_CLASS}
           >
             {option.label}
           </button>
