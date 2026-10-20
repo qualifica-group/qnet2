@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## UI HR ALLINEATA (spec 0287) — VERDE, NON COMMITTATO (2026-10-20)
+## UI HR ALLINEATA (spec 0287) — VERDE, COMMITTATO (2026-10-20)
 
 - Spec `docs/specs/0287-hr-ui-alignment.xml`. Richiesta utente: allineare Assenze, Formazione, Competenze a Gestione
   Richieste/Contabilita', "anche le intestazioni" -> stessi componenti di Contabilita' (modello: Liquidazioni).
@@ -23,7 +23,7 @@
   NON accessibile da questo account (`access` deny) -> da aggiornare a mano (vedi riepilogo in chat).
 - Verifica: Vitest intera suite 8908/8908, `tsc -b --force` 0 errori, ESLint pulito. Non verificato a vista nel browser.
 
-## BREADCRUMB: HOME SENZA, /management-control RAGGIUNGIBILE — VERDE, NON COMMITTATO (2026-10-20)
+## BREADCRUMB: HOME SENZA, /management-control RAGGIUNGIBILE — VERDE, COMMITTATO (2026-10-20)
 
 - Richiesta utente: breadcrumb di `/management-control/income-statement` gestite bene, in home tolte.
 - `/management-control` non era una rotta: la crumb "Controllo di gestione" portava al nulla. Aggiunta la rotta
@@ -32,7 +32,7 @@
 - REQUIREMENT CHANGED: `management-control-routes.test.tsx` elenca anche `management-control`; nuovo test "nessuna
   breadcrumb in home" in `dashboard-screen.test.tsx`.
 
-## ASSENZE: TRADUZIONI GRIGLIA RICHIESTE — VERDE, NON COMMITTATO (2026-10-20)
+## ASSENZE: TRADUZIONI GRIGLIA RICHIESTE — VERDE, COMMITTATO (2026-10-20)
 
 - Bug: in `/absences` le intestazioni della griglia richieste mostravano le chiavi grezze (`absenceRequests.columns.*`
   non esisteva nei locale) e la colonna Stato mostrava "—" (colonna `badge` senza `badges`) con valori grezzi nel filtro.
