@@ -24,7 +24,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Until you change your favorites, the initial ones are the categories you are enabled for (based on the competence on your profile) and **Show favorites only** is already on: among the tabs you see **All** and your categories, the others stay in **More (N)**. A notice in the menu reminds you they are automatic suggestions. As soon as you tap a star or the switch, only your own choice applies and it no longer follows your competence. If you are enabled for every category or have no competence, you see all the tabs.",
+          text: "Until you change your favorites, the initial ones are the categories you are enabled for (based on the assignment scope on your profile) and **Show favorites only** is already on: among the tabs you see **All** and your categories, the others stay in **More (N)**. A notice in the menu reminds you they are automatic suggestions. As soon as you tap a star or the switch, only your own choice applies and it no longer follows your assignment scope. If you are enabled for every category or have no assignment scope, you see all the tabs.",
         },
         {
           type: 'paragraph',

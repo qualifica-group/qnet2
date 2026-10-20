@@ -161,6 +161,7 @@ export default function MigrationsPage() {
           isLoading={columnsQuery.isLoading}
           isError={columnsQuery.isError}
           onImportClick={() => setImportOpen(true)}
+          isImportAvailable={selectedSourceMatch?.available ?? true}
         />
       ) : null}
 

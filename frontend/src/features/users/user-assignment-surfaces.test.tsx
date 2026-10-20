@@ -1,3 +1,4 @@
+// REQUIREMENT CHANGED (spec 0286 D-1): the UI label "Competence" is now "Assignment scope"; keys, fields and API are unchanged.
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import i18n from '@/i18n'
@@ -155,7 +156,7 @@ function verdictTile(): HTMLElement {
 }
 
 function addCompetenceRow() {
-  fireEvent.click(pencilOf('Competence'))
+  fireEvent.click(pencilOf('Assignment scope'))
   fireEvent.click(screen.getByRole('button', { name: 'add competence' }))
   confirmOpenRow('Done')
 }
@@ -165,7 +166,7 @@ describe('UserForm — the assignment configuration is one section', () => {
     renderCreate()
 
     const section = (await screen.findByText('Assignment configuration')).closest('section') as HTMLElement
-    for (const row of ['Assignable', 'Competent for all categories', 'Competence', 'Physical site', 'Remote sites']) {
+    for (const row of ['Assignable', 'Scope on all categories', 'Assignment scope', 'Physical site', 'Remote sites']) {
       expect(within(section).getByRole('button', { name: `Edit ${row}` })).toBeInTheDocument()
     }
   })
@@ -177,7 +178,7 @@ describe('UserForm — live assignment verdict', () => {
 
     await screen.findByText('Assignment configuration')
     expect(verdictTile()).toHaveTextContent('Not assignable')
-    expect(screen.getByRole('status')).toHaveTextContent(/No competence configured/)
+    expect(screen.getByRole('status')).toHaveTextContent(/No assignment scope configured/)
     expect(screen.getByRole('status')).toHaveTextContent(/No operational site/)
     // The verdict is guidance, not a gate.
     expect(screen.getAllByRole('button', { name: 'Save' })[0]).toBeEnabled()
@@ -245,13 +246,13 @@ describe('UserDetailView — the assignment configuration on the record', () => 
 
     expect(screen.getByRole('status')).toHaveTextContent('Not assignable')
     expect(screen.getByRole('status')).toHaveTextContent(/Assignment turned off by the Assignable setting/)
-    expect(screen.getByRole('status')).not.toHaveTextContent(/No competence configured/)
+    expect(screen.getByRole('status')).not.toHaveTextContent(/No assignment scope configured/)
   })
 
   it('raises the band, and names the reason, for a person no record can reach', async () => {
     await renderDetail(userWith(employmentFixture()))
 
-    expect(screen.getByRole('status')).toHaveTextContent(/No competence configured/)
+    expect(screen.getByRole('status')).toHaveTextContent(/No assignment scope configured/)
     expect(screen.getByRole('status')).toHaveTextContent(/No operational site/)
   })
 })

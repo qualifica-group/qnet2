@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0286 — Modulo HR: competenze delle persone e competenze richieste dalle mansioni (docs/product/hr.md §7.2,
+  D-10). Ultima area del piano HR ridotto. Rinomina in UI la "Competenza" di assegnazione del form utente.
+-->
+<spec id="0286-hr-skills" status="approved" owner="utente" date="2026-10-19">
+
+  <goal>
+    Si registra che cosa sa fare ogni persona (competenza + livello) e quali competenze richiede ogni mansione, con
+    un livello minimo. Per ogni persona si vede se le competenze richieste dalle sue mansioni sono coperte, sotto il
+    livello o mancanti. La vecchia "Competenza" del form utente, che decide le assegnazioni, cambia nome.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-10-19: rinominare la "Competenza" del form utente; livello a scala fissa 1-4 con nomi;
+    scrivono l'ufficio del personale (tutti) e il responsabile (la propria squadra); vista di copertura come la
+    Situazione della formazione (0284).
+    Fatti verificati: la "Competenza" di oggi sono le righe funzione aziendale + categoria prodotto
+    (`employment.product_lines`, flag `covers_all_product_categories`) della "Configurazione assegnazione": decide
+    chi riceve Lead, Gestione Richieste e Iscritti. Etichette in `i18n/locales/{it,en}-users-employment.ts`
+    (`productLines`, `usersAssignment.chips|blockers|stats.competence`), testi nelle guide `users`, `general`,
+    `business-functions`, `product-categories`, `request-management`, `org-chart` e nel manuale Claude Docs.
+    Le guide `users` e `business-functions` hanno oggi modifiche non committate di altri lavori: la rinomina le
+    tocca solo nelle frasi sulla competenza di assegnazione.
+    Legacy: nessun dato di competenze delle persone (nessun importer). Forma da replicare: 0284 (catalogo + pivot
+    con le mansioni, registro con visibilita' a livelli, vista di stato per persona).
+  </context>
+
+  <decisions>
+    <decision id="D-1">Rinomina solo in interfaccia: la "Competenza" del form utente diventa "Ambiti di assegnazione"
+      (EN "Assignment scopes"); chip, blocchi e statistiche della Configurazione assegnazione seguono ("Manca
+      l'ambito di assegnazione"...). Nomi di campi, colonne, permessi e API invariati (`product_lines`). Guide in-app,
+      manuale e `docs/product/hr.md` aggiornati. Il nuovo modulo si chiama "Competenze".</decision>
+    <decision id="D-2">Catalogo `skills`: nome (unico), categoria (testo libero facoltativo, per raggruppare),
+      descrizione, attivo; mansioni che la richiedono con livello minimo (pivot `job_role_skill.min_level`).
+      Una competenza assegnata ad almeno una persona non si elimina (422): si disattiva. UI: "Catalogo competenze"
+      in Configurazione.</decision>
+    <decision id="D-3">Livello: scala fissa 1 Base, 2 Intermedio, 3 Avanzato, 4 Esperto (enum `SkillLevel`).</decision>
+    <decision id="D-4">Competenza della persona `user_skills`: una riga per persona e competenza (unica), con livello,
+      data di valutazione, note, valutato da. Un cambio di livello aggiorna la riga; la storia sta nell'activity log.</decision>
+    <decision id="D-5">Permessi, risorsa `user-skills`: `viewAny` = apre il modulo e vede le proprie; `viewTeam` =
+      anche i discendenti attivi E puo' assegnare, modificare e rimuovere le loro competenze (il responsabile);
+      `viewAll` = tutte le persone in lettura; `manage` = scrive per chiunque e vede tutti. Nessuno modifica le
+      proprie competenze, salvo `manage`. Vale il piu' ampio; fuori visibilita' 404, visibile ma non scrivibile 403.
+      Catalogo: `skills.viewAny|view|create|update|delete`.</decision>
+    <decision id="D-6">Copertura, per ogni persona attiva visibile e ogni competenza attiva richiesta dalle sue
+      mansioni (livello richiesto = il massimo tra le mansioni): `covered` (livello >= richiesto), `below`
+      (livello inferiore), `missing` (nessuna riga). Le competenze non richieste stanno solo nel registro.</decision>
+    <decision id="D-7">Pagina "Competenze" (voce di menu dopo Formazione) con schede "Persone" (griglia delle
+      competenze assegnate: persona, competenza, categoria, livello, valutata il) e "Copertura" (filtri stato,
+      funzione, competenza). "Assegna competenza" per chi puo' scrivere almeno per una persona.</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Rinomina D-1 (i18n IT/EN, guide in-app coinvolte, manuale, `docs/product/hr.md`).</item>
+      <item>Migrazioni `skills`, `job_role_skill`, `user_skills` (unique user_id+skill_id, indici); model, factory,
+        morph map, activity log.</item>
+      <item>Catalogo: CRUD + for-select, griglia, voce "Catalogo competenze" in Configurazione.</item>
+      <item>Registro: griglia `user-skills` con la visibilita' di D-5, store/update/destroy.</item>
+      <item>Copertura: endpoint per persona x competenza richiesta con lo stato di D-6.</item>
+      <item>Frontend: catalogo, pagina Competenze con le due schede, form di assegnazione.</item>
+      <item>i18n IT/EN, guide in-app nuove (`skills`, `user-skills`) + `HELP_GUIDE_KEYS`, manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Autovalutazione della persona, storico dei livelli in tabella, scadenze delle competenze.</item>
+      <item>Sezione Competenze nella scheda utente; legame tra corsi (0284) e competenze.</item>
+      <item>Assegnazione dei permessi ai ruoli del seed; importer (nessun dato nel legacy).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET|POST|PATCH|DELETE" path="/api/skills[/{id}]">
+      <request>{ name: string required max 255 unique, category: string|null max 100, description: string|null,
+        is_active: bool, job_roles: [{ id: int exists, min_level: 1..4 }] }</request>
+      <response status="200|201">data: { id, name, category, description, is_active,
+        job_roles: [{ id, name, min_level }], users_count, created_at, updated_at } + blocco `permissions`.</response>
+      <errors>403 senza permesso; 422 validazione; 422 eliminazione di una competenza assegnata.</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/skills/for-select">
+      <response status="200">competenze attive { id, label, meta: { category } }, standard for-select (ADR 0011).</response>
+    </endpoint>
+    <endpoint method="POST|PATCH|DELETE" path="/api/user-skills[/{id}]">
+      <request>{ user_id: int required exists, skill_id: int required exists (unica per persona),
+        level: 1..4 required, assessed_on: date required &lt;= oggi, notes: string|null max 2000 }</request>
+      <response status="200|201">data: { id, user: { id, name }, skill: { id, name, category }, level,
+        assessed_on, notes, assessed_by: { id, name }, can_edit: bool, created_at, updated_at }</response>
+      <errors>403 senza diritto di scrittura su quella persona; 404 fuori visibilita'; 422 validazione o coppia
+        persona-competenza gia' presente.</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/user-skills/{id}">
+      <response status="200">come sopra; 404 fuori visibilita'.</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/user-skills/coverage">
+      <request>{ status: "covered"|"below"|"missing"|null, business_function_id: int|null, skill_id: int|null }</request>
+      <response status="200">data: { rows: [{ user: { id, name }, skill: { id, name, category }, required_level,
+        level: int|null, status, user_skill_id: int|null }] }</response>
+      <errors>403 senza `viewAny`.</errors>
+    </endpoint>
+    <grid domain="skills">colonne nome, categoria, mansioni, attivo, n. persone.</grid>
+    <grid domain="user-skills">colonne persona (`user_name`), competenza (`skill_name`), categoria, livello,
+      valutata il; azione `view`.</grid>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Form e scheda utente, chip e statistiche della Configurazione assegnazione mostrano
+      "Ambiti di assegnazione" (IT) / "Assignment scopes" (EN); nessuna API cambia; guide e manuale aggiornati
+      (Vitest + parity test).</criterion>
+    <criterion id="AC-002">CRUD del catalogo con permessi `skills.*`, nome unico, mansioni con livello minimo 1..4,
+      competenza assegnata non eliminabile (422), for-select solo attive (Pest).</criterion>
+    <criterion id="AC-003">Registro: una sola riga per persona e competenza (422 sul doppione); scrivono `manage`
+      per tutti e `viewTeam` per i propri discendenti attivi; nessuno su se stesso senza `manage` (403); lettura
+      secondo D-5, fuori visibilita' 404 (Pest).</criterion>
+    <criterion id="AC-004">Copertura: livello richiesto = massimo tra le mansioni, stati `covered|below|missing`,
+      solo competenze attive, filtri stato/funzione/competenza, stessa visibilita'; query costanti (Pest).</criterion>
+    <criterion id="AC-005">Permessi creati da `permissions:sync` e offerti dal form Ruolo; activity log su
+      competenze e assegnazioni (Pest).</criterion>
+    <criterion id="AC-006">Frontend: catalogo con mansioni e livello minimo, pagina Competenze con Persone e
+      Copertura, form Zod che rispecchia il server, livello e stato con testo e non solo colore, azioni nascoste
+      senza diritto (`can_edit`); nessuno scroll orizzontale della pagina a 375 px (Vitest).</criterion>
+    <criterion id="AC-007">Guide in-app IT/EN nuove, parity test, manuale Claude Docs, ESLint, `tsc -b --force`,
+      Pint puliti.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Nessun cambio a `product_lines` e alla logica di assegnazione.</item>
+    <item>Dopo il deploy: `php artisan permissions:sync`.</item>
+  </constraints>
+
+</spec>

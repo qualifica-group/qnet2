@@ -133,3 +133,50 @@ export interface AllowancePayload {
   annual_minutes: number
   carried_over_minutes: number
 }
+
+/** Calendar of spec 0279: the three permission levels, any of them opens the tab. */
+export const ABSENCE_CALENDAR_PERMISSIONS = [
+  'absence-requests.calendarOwn',
+  'absence-requests.calendarTeam',
+  'absence-requests.calendarAll',
+] as const
+
+export type AbsenceCalendarScope = 'own' | 'team' | 'all'
+
+/** GET /absences/calendar query: at most 62 days, optional function filter. */
+export interface AbsenceCalendarParams {
+  from: string
+  to: string
+  business_function_id?: number
+}
+
+export interface AbsenceCalendarDay {
+  date: string
+  is_non_working_day: boolean
+  is_holiday: boolean
+}
+
+/** One working day of an approved or pending request. */
+export interface AbsenceCalendarEntry {
+  request_id: number
+  date: string
+  status: Extract<AbsenceRequestStatus, 'approved' | 'submitted'>
+  absence_type_name: string
+  is_full_day: boolean
+  /** Null for a full day. */
+  minutes: number | null
+  /** Whether the actor may open the request detail (spec 0278 visibility). */
+  can_open: boolean
+}
+
+export interface AbsenceCalendarPerson {
+  id: number
+  name: string
+  absences: AbsenceCalendarEntry[]
+}
+
+export interface AbsenceCalendar {
+  scope: AbsenceCalendarScope
+  days: AbsenceCalendarDay[]
+  people: AbsenceCalendarPerson[]
+}

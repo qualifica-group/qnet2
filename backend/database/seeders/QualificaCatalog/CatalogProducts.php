@@ -29,7 +29,9 @@ use App\Services\ProductService;
  *     the degree level, "<course> <fee>", on "Corsi E-Campus", at the fee,
  *     described by the course's subject area, plus the services sold once
  *     for the whole branch (ECampusCourseCatalogue::SINGLE_PRODUCTS);
- *   - the SOA and "Sicurezza" lists (SoaCatalogue, SafetyProductCatalogue),
+ *   - the SOA, "Sicurezza", "Gare", "GDPR" and "Finanza Agevolata" lists
+ *     (SoaCatalogue, SafetyProductCatalogue, TenderProductCatalogue,
+ *     GdprProductCatalogue, SubsidisedFinanceProductCatalogue),
  *     delegated to BranchProducts with the 22% VAT rate resolved here.
  *
  * NO ATTRIBUTE VALUE IS WRITTEN (user directive 2026-09-08). The duration and
@@ -98,6 +100,9 @@ final class CatalogProducts
         $vatRateId = $this->plusVatRate()->id;
         $this->branchProducts->seed(SoaCatalogue::PRODUCTS, SoaCatalogue::TYPOLOGIES, $vatRateId);
         $this->branchProducts->seed(SafetyProductCatalogue::PRODUCTS, SafetyCatalogue::TYPOLOGIES, $vatRateId);
+        $this->branchProducts->seed(TenderProductCatalogue::PRODUCTS, TenderCatalogue::TYPOLOGIES, $vatRateId);
+        $this->branchProducts->seed(GdprProductCatalogue::PRODUCTS, GdprCatalogue::TYPOLOGIES, $vatRateId);
+        $this->branchProducts->seed(SubsidisedFinanceProductCatalogue::PRODUCTS, SubsidisedFinanceCatalogue::TYPOLOGIES, $vatRateId);
     }
 
     private function seedECampusCourses(): void

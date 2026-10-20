@@ -22,6 +22,12 @@ use Illuminate\Support\Facades\Gate;
  */
 class UsersAuthorization extends AbstractResourceAuthorization
 {
+    /**
+     * The contract history and the condition in force (spec 0283 D-2): one
+     * key for both, as they are the same rows.
+     */
+    public const string CONTRACTS_FIELD = 'employment.contracts';
+
     public function __construct(FieldPermissionRepository $fieldPermissionRepository)
     {
         parent::__construct($fieldPermissionRepository);
@@ -81,6 +87,7 @@ class UsersAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('employment.product_lines', 'collection', 'employment'),
             new FieldDefinition('employment.relationship_type', 'select', 'employment'),
             new FieldDefinition('employment.company_id', 'select', 'employment'),
+            new FieldDefinition(self::CONTRACTS_FIELD, 'collection', 'employment'),
             new FieldDefinition('employment.primary_operational_site_id', 'select', 'employment'),
             new FieldDefinition('employment.remote_operational_site_ids', 'multiselect', 'employment'),
             new FieldDefinition('employment.hired_at', 'date', 'employment'),
@@ -183,6 +190,8 @@ class UsersAuthorization extends AbstractResourceAuthorization
             'employment.product_lines' => $permission,
             'employment.relationship_type' => FieldPermission::visibleReadonly(),
             'employment.company_id' => FieldPermission::visibleReadonly(),
+            // Written through the history endpoints, with the base write ability.
+            self::CONTRACTS_FIELD => $permission,
             'employment.primary_operational_site_id' => $permission,
             'employment.remote_operational_site_ids' => $permission,
             'employment.hired_at' => $permission,

@@ -119,6 +119,12 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // spec 0278 (REQUIREMENT CHANGED): absence types and absence requests join the generic registry
         // (the latter has no field, registered so its permissions are role-assignable).
         'absence-types', 'absence-requests',
+        // spec 0284 (REQUIREMENT CHANGED): staff courses join the generic registry; staff trainings has no
+        // field and is registered so its permissions are role-assignable.
+        'staff-courses', 'staff-trainings',
+        // spec 0286 (REQUIREMENT CHANGED): skills join the generic registry; user-skills has no field and is
+        // registered so its permissions are role-assignable.
+        'skills', 'user-skills',
         // spec 0266 `ledger` (LedgerAuthorization: a view-only module, no field — registered only so
         // `ledger.view` is assignable from the Role form under the Accounting area).
         'ledger',
@@ -237,6 +243,8 @@ it('spec 0008/0015/0111/0129: users.fields contains exactly the 4 existing + 13 
         // spec 0276 — the functions the person manages (REQUIREMENT CHANGED: replaces employment.is_manager).
         'employment.managed_business_function_ids',
         'employment.relationship_type', 'employment.company_id',
+        // spec 0283 D-2 (REQUIREMENT CHANGED) — the contract history and the condition in force.
+        'employment.contracts',
         'employment.primary_operational_site_id', 'employment.remote_operational_site_ids',
         'employment.hired_at',
         'employment.terminated_at', 'employment.standard_daily_minutes', 'employment.break_daily_minutes',
@@ -244,13 +252,14 @@ it('spec 0008/0015/0111/0129: users.fields contains exactly the 4 existing + 13 
         'employment.iban', 'employment.iban_holder',
     ]);
 
-    // Spec 0129/0194/0272/0277: exactly 17 employment.* keys (13 + the wildcard flag +
+    // Spec 0129/0194/0272/0277/0283: exactly 18 employment.* keys (13 + the wildcard flag +
     // the "Assegnabile" switch, - qualification_type + iban + iban_holder + business_function_ids,
-    // - is_manager + managed_business_function_ids; spec 0277 drops hourly_cost again), and
+    // - is_manager + managed_business_function_ids; spec 0277 drops hourly_cost again; spec 0283
+    // adds contracts, REQUIREMENT CHANGED), and
     // neither of the two keys product_lines replaced survives anywhere in the
     // catalogue.
     $employmentKeys = $byKey->keys()->filter(static fn (string $key): bool => str_starts_with($key, 'employment.'));
-    expect($employmentKeys)->toHaveCount(17)
+    expect($employmentKeys)->toHaveCount(18)
         ->and($byKey)->not->toHaveKey('employment.business_function_id')
         ->and($byKey)->not->toHaveKey('employment.product_category_ids')
         ->and($byKey->get('employment.product_lines'))->toMatchArray(['type' => 'collection', 'group' => 'employment']);

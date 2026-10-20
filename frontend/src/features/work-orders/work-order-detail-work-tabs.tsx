@@ -1,10 +1,11 @@
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Euro, ListChecks } from 'lucide-react'
+import { Euro, ListChecks, Receipt, ReceiptText } from 'lucide-react'
 import { RecordCard } from '@/components/detail/record-panel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { WorkOrderCostsSection } from '@/features/work-order-costs/work-order-costs-section'
+import { WorkOrderInvoicesSection } from '@/features/work-order-invoices/work-order-invoices-section'
 import { WorkOrderTaskBoard } from '@/features/work-orders/task-board/work-order-task-board'
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
@@ -20,9 +21,10 @@ interface WorkTab {
 
 /**
  * Full-width card below the work order record hosting the Task board (spec
- * 0146) and the Costi section (spec 0190) as switchable tabs: the first tab
- * present is the one open by default (Task). Each tab keeps its own gate
- * (`tasks.viewAny`, `view_costs`) and is absent when unauthorized; no tab left
+ * 0146), the Costi section (spec 0190) and the read-only active/passive
+ * proforma tabs (spec 0282) as switchable tabs: the first tab present is the
+ * one open by default (Task). Each tab keeps its own gate
+ * (`tasks.viewAny`, `view_costs`, `view_invoices`) and is absent when unauthorized; no tab left
  * = no card. The contract data (spec 0201) live in the record card itself. The
  * active tab's header actions are portaled by the tab itself into the slot on
  * the right of the strip, so the strip stays the only header row of the card.
@@ -51,6 +53,23 @@ export function WorkOrderDetailWorkTabs({ workOrder }: { workOrder: WorkOrderDet
         <WorkOrderCostsSection workOrderId={workOrder.id} canManage={workOrder.permissions.actions.manage_costs === true} />
       ),
     })
+  }
+
+  if (workOrder.permissions.actions.view_invoices) {
+    tabs.push(
+      {
+        value: 'active-invoices',
+        label: t('workOrders.invoices.tabs.active'),
+        icon: <Receipt className="size-3.5" aria-hidden="true" />,
+        content: <WorkOrderInvoicesSection workOrderId={workOrder.id} kind="active" />,
+      },
+      {
+        value: 'passive-invoices',
+        label: t('workOrders.invoices.tabs.passive'),
+        icon: <ReceiptText className="size-3.5" aria-hidden="true" />,
+        content: <WorkOrderInvoicesSection workOrderId={workOrder.id} kind="passive" />,
+      },
+    )
   }
 
   if (tabs.length === 0) {

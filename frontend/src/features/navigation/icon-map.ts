@@ -18,8 +18,11 @@ import {
   FileUp,
   Files,
   Gift,
+  GraduationCap,
   Handshake,
   Layers,
+  Library,
+  Sparkles,
   LayoutDashboard,
   ListChecks,
   ListTree,
@@ -139,6 +142,11 @@ const iconMap: Record<string, LucideIcon> = {
   // Spec 0278: "Assenze" and "Tipi di assenza".
   'calendar-off': CalendarOff,
   'calendar-cog': CalendarCog,
+  // Spec 0284: "Formazione" and "Corsi".
+  'graduation-cap': GraduationCap,
+  library: Library,
+  // Spec 0286: "Competenze" and "Catalogo competenze" (`list-checks` is already mapped).
+  sparkles: Sparkles,
 }
 
 export function resolveIcon(name: string | null): LucideIcon {

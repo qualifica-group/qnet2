@@ -90,8 +90,13 @@ export const permissions = {
     receive: 'Register receipts',
     // Spec 0201 D-10: work order Contract data tab and per-line payment management.
     viewContractData: 'View contract data',
+    viewInvoices: 'View proforma and invoices',
     managePayments: 'Manage payments',
     manageCompensation: 'Manage compensation data',
+    // Spec 0279: absence calendar, three visibility levels.
+    calendarOwn: 'Calendar: own only',
+    calendarTeam: 'Calendar: own and team',
+    calendarAll: 'Calendar: everyone',
   },
   resources: {
     users: 'Users',
@@ -151,6 +156,10 @@ export const permissions = {
     'job-roles': 'Job roles',
     'job-activities': 'Activities',
     'org-chart': 'Org chart',
+    'staff-trainings': 'Training',
+    'staff-courses': 'Courses',
+    'user-skills': 'Skills',
+    skills: 'Skills catalogue',
     'purchase-request-priorities': 'RDA priorities',
     'purchase-order-statuses': 'ODA statuses',
     'purchase-request-line-statuses': 'RDA line statuses',

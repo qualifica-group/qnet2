@@ -186,6 +186,32 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'invoices',
+      title: 'Active and passive proforma',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'In the Work order detail, in the same card as **Tasks** and **Costs**, the **Active proforma** and **Passive proforma** tabs list the documents tied to the work order. They only appear if you may view proforma and invoices (permission "View proforma and invoices"). They are **read-only**: nothing can be created, issued, collected or paid from here.',
+        },
+        {
+          type: 'table',
+          headers: ['Tab', 'What it shows'],
+          rows: [
+            ['Active proforma', 'The proforma and invoices issued to the customer for the work order: type, number, date, external number, customer, total, collected, residual and collection status, with a **Totals** row at the bottom.'],
+            ['Passive proforma', 'The supplier proforma and invoices with **at least one line on the work order**: type, number, date, supplier, document total, **Work order share** (the sum of the document lines placed on this work order), paid and residual, with a **Totals** row.'],
+          ],
+        },
+        {
+          type: 'note',
+          text: 'A proforma that gets registered stays in the table, now shown as an **Invoice**. A supplier document shows up as soon as one of its lines is on the work order, even if the other lines belong to other work orders: that is why the document total and the work order share can differ.',
+        },
+        {
+          type: 'paragraph',
+          text: 'The **number** of the document is a link: if you may view active invoices (or passive invoices) it opens the document in a side panel, where the usual actions remain subject to their own permissions; otherwise it is plain text.',
+        },
+      ],
+    },
+    {
       id: 'multi-quote-work-order',
       title: 'Multi-offer work order',
       blocks: [

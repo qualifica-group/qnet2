@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0282-work-order-invoices-view" status="approved" owner="nicola" date="2026-10-19">
+
+  <goal>
+    Nel dettaglio commessa, due tabelle di sola consultazione: i documenti attivi (proforma e fatture verso il
+    cliente) e i documenti passivi (proforma e fatture dei fornitori) legati alla commessa, con importi e stato
+    di incasso/pagamento. Nessuna azione contabile dalla commessa.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-10-19:
+    D-1 Le tabelle mostrano proforma E fatture, con colonna Tipo. Una proforma attiva registrata diventa fattura
+        sulla stessa riga (`invoices.type` proforma -> invoice, spec 0194 D-3), e lo stesso vale per i passivi
+        (`purchase_invoices.document_type`, spec 0250 D-2): resta in tabella come fattura.
+    D-2 Passivi: la commessa sta sulle RIGHE (`purchase_invoice_lines.work_order_id`, spec 0250 D-6; il
+        `work_order_id` di testata e' solo il default proposto alle righe). Entra in tabella ogni documento con
+        almeno una riga sulla commessa; colonne: totale documento + quota della commessa (somma di `total_amount`
+        delle sue righe sulla commessa).
+    D-3 Nuovo permesso `work-orders.viewInvoices` ("Vedere proforma e fatture"), stesso schema di `viewCosts`:
+        permesso + ambito della commessa (`WorkOrderPolicy::isInScope`). Non richiede `invoices.viewAny` ne'
+        `purchase-invoices.viewAny`.
+    D-4 Il numero del documento apre il dettaglio esistente in un pannello laterale (`InvoiceDetailSheet`,
+        `PurchaseInvoiceDetailSheet`) solo se l'utente ha `invoices.view` / `purchase-invoices.view`; altrimenti
+        e' testo semplice. Le azioni contabili restano nel dettaglio del documento, con i loro permessi: la
+        commessa non ne aggiunge.
+
+    Decisioni di progetto:
+    D-5 Attivi: `invoices.work_order_id` (la commessa sta sulla testata; `invoice_lines` non ha commessa).
+    D-6 Un solo endpoint per entrambe le tabelle (stesso permesso, stesso caricamento); niente SSRM/TableDefinition:
+        i documenti di una commessa sono pochi e la tabella non ha filtri ne' ordinamento lato server.
+        Ordine fisso: data documento decrescente, poi id decrescente.
+    D-7 Importi come stringhe decimali (bcmath, come `InvoiceResource`/`PurchaseInvoiceResource`). Incassato e
+        residuo attivi, pagato e residuo passivi calcolati come nelle Resource esistenti (somma rate;
+        residuo passivo = da pagare - pagato, `PurchaseInvoice::payableAmount()`); stato incasso attivo con
+        `InvoicePaymentStatusResolver`.
+    D-8 Il dettaglio commessa espone `permissions.actions.view_invoices` (`WorkOrdersAuthorization`).
+    D-9 Interfaccia (nomi decisi dall'utente 2026-10-19): due nuove schede "Proforma attiva" e "Proforma passiva" nella card a schede sotto il record
+        (`WorkOrderDetailWorkTabs`, accanto a Task e Costi), visibili solo con `view_invoices`. Una sola query
+        TanStack condivisa dalle due schede. Riga totali in fondo a ogni tabella.
+
+    Nomi reali: `App\Models\WorkOrder` (`invoices()`, `purchaseInvoices()` su testata), `Invoice`,
+    `PurchaseInvoice`, `PurchaseInvoiceLine`, `App\Policies\WorkOrderPolicy`, `App\Authorization\WorkOrdersAuthorization`,
+    `routes/api/work-orders.php` (file di rotte figli come `work-order-costs.php`), controller in
+    `App\Http\Controllers\WorkOrders\`. Frontend: `features/work-orders/work-order-detail-work-tabs.tsx`,
+    `features/invoices/invoice-status-badges.tsx` (`InvoiceTypeBadge`, `PaymentStatusIndicator`),
+    `features/invoices/invoice-detail-sheet.tsx`, `features/purchase-invoices/purchase-invoice-detail-sheet.tsx`,
+    label permessi in `i18n/locales/{it,en}-permissions.ts`, guida `features/help/content/{it,en}/work-orders.ts`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Permesso `work-orders.viewInvoices` (policy, abilities, `permissions:sync`, label IT/EN) e azione `view_invoices`.</item>
+      <item>Endpoint di lettura `GET /api/work-orders/{workOrder}/invoices`.</item>
+      <item>Schede "Proforma attiva" e "Proforma passiva" nel dettaglio commessa, con totali e link al documento.</item>
+      <item>Guida in-app work-orders IT/EN (nuova sezione) e manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Qualsiasi azione contabile dalla commessa: creare, emettere, registrare, incassare, pagare, eliminare, inviare email, PDF.</item>
+      <item>Richieste di proforma (gia' gestite dalla loro azione e dal loro modulo, spec 0193).</item>
+      <item>Ordini di acquisto (ODA) e costi della commessa (scheda Costi, spec 0190/0252): nessun cambiamento.</item>
+      <item>Filtri, ricerca, ordinamento, export, paginazione nelle due tabelle.</item>
+      <item>Modifiche ai moduli Fatture attive/passive, alla loro griglia o al loro dettaglio.</item>
+      <item>Assegnazione del nuovo permesso a ruoli diversi da super-admin (si fa dalla UI Ruoli).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/work-orders/{workOrder}/invoices">
+      <request>Nessun parametro.</request>
+      <response status="200">
+        { success: true, message, data: {
+          active: ActiveDocument[],
+          passive: PassiveDocument[],
+          totals: {
+            active:  { total_amount: string, collected_amount: string, residual_amount: string },
+            passive: { total_amount: string, work_order_amount: string, paid_amount: string, residual_amount: string }
+          }
+        } }
+
+        ActiveDocument = {
+          id: int,
+          type: 'proforma' | 'invoice',
+          number_label: string,            // "{number}/{year}"
+          document_date: string,           // YYYY-MM-DD
+          external_number: string | null,
+          external_date: string | null,    // YYYY-MM-DD
+          customer: { id: int, name: string },
+          company: { id: int, name: string },
+          net_amount: string, vat_amount: string, total_amount: string,
+          collected_amount: string, residual_amount: string,
+          payment_status: 'paid' | 'not_due' | 'overdue' | 'seriously_overdue'
+        }
+
+        PassiveDocument = {
+          id: int,
+          document_type: 'proforma' | 'invoice',
+          document_number: string,
+          document_date: string,           // YYYY-MM-DD
+          supplier: { id: int, name: string },
+          company: { id: int, name: string },
+          total_amount: string,            // totale del documento
+          work_order_amount: string,       // somma total_amount delle righe sulla commessa (D-2)
+          paid_amount: string,
+          residual_amount: string          // payable_amount - paid_amount
+        }
+
+        Ordine di entrambe le liste: document_date desc, id desc. Liste vuote -> [] e totali "0.00".
+        Totali = somme delle colonne omonime delle righe in lista.
+      </response>
+      <errors>
+        401 non autenticato; 403 senza `work-orders.viewInvoices` o commessa fuori dall'ambito dell'utente;
+        404 commessa inesistente. Envelope `{ success: false, message }`.
+      </errors>
+    </endpoint>
+
+    <permissions>
+      `GET /api/work-orders/{id}` -> `permissions.actions.view_invoices: boolean`
+      (`$model !== null && can('work-orders.viewInvoices')`, come `view_costs`).
+    </permissions>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente con `work-orders.viewInvoices` e una commessa con una proforma e una fattura attive, piu' una fattura attiva di un'altra commessa, quando chiama l'endpoint allora `active` contiene esattamente le due della commessa, con `type`, `number_label`, cliente e importi della shape, in ordine data desc.</criterion>
+    <criterion id="AC-002">Dato un documento passivo con due righe sulla commessa (100.00 e 50.00) e una su un'altra commessa (30.00), e un documento passivo con la commessa solo in testata e nessuna riga sulla commessa, quando chiama l'endpoint allora `passive` contiene solo il primo, con `total_amount` 180.00 e `work_order_amount` 150.00.</criterion>
+    <criterion id="AC-003">Dato un documento attivo con una rata incassata in parte e un passivo con una rata pagata, l'endpoint restituisce incassato/residuo/stato e pagato/residuo uguali a quelli di `InvoiceResource`/`PurchaseInvoiceResource` per lo stesso documento, e `totals` uguali alla somma delle righe.</criterion>
+    <criterion id="AC-004">Dato un utente senza `work-orders.viewInvoices` (anche con `invoices.viewAny` e `purchase-invoices.viewAny`), oppure con il permesso ma su una commessa fuori dal suo ambito, l'endpoint risponde 403; commessa inesistente 404.</criterion>
+    <criterion id="AC-005">Una commessa senza documenti restituisce `active: []`, `passive: []` e totali "0.00". La chiamata non scrive nulla (nessuna riga creata/modificata in invoices, purchase_invoices, activity_log).</criterion>
+    <criterion id="AC-006">`GET /api/work-orders/{id}` espone `permissions.actions.view_invoices` true con il permesso, false senza; `work-orders.viewInvoices` e' nelle abilities di `WorkOrderPolicy` e viene creato da `permissions:sync`.</criterion>
+    <criterion id="AC-007">(FE) Con `view_invoices` il dettaglio commessa mostra le schede "Proforma attiva" e "Proforma passiva"; senza, le schede non ci sono (e senza Task/Costi la card non compare).</criterion>
+    <criterion id="AC-008">(FE) La scheda attiva mostra una riga per documento con Tipo (badge), Numero, Data, Numero esterno, Cliente, Totale, Incassato, Residuo, Stato incasso e una riga totali; la scheda passiva mostra Tipo, Numero, Data, Fornitore, Totale documento, Quota commessa, Pagato, Residuo e una riga totali. Con lista vuota mostra un messaggio di stato vuoto.</criterion>
+    <criterion id="AC-009">(FE) Con `invoices.view` il numero attivo e' un pulsante/link che apre `InvoiceDetailSheet` su quel documento (idem passivi con `purchase-invoices.view` e `PurchaseInvoiceDetailSheet`); senza il permesso e' testo semplice. Nessun'altra azione (menu riga, pulsanti) e' presente nelle tabelle.</criterion>
+    <criterion id="AC-010">(FE) Caricamento con skeleton, errore con messaggio di errore; le due schede usano una sola richiesta all'endpoint.</criterion>
+    <criterion id="AC-011">Guida in-app work-orders IT ed EN con la stessa nuova sezione `invoices`; `help-content-parity.test.ts` verde. Label permesso `viewInvoices` IT/EN presenti.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza. Authz server-side via `WorkOrderPolicy::viewInvoices` nel controller (come
+    `WorkOrderCostController::show`). Mai model raw: risposta costruita da un builder dedicato con shape fissa.
+    Eager loading (niente N+1, `preventLazyLoading` attivo nei test); la quota passiva calcolata in SQL o sulle
+    righe caricate filtrate per commessa, mai una query per documento. bcmath per gli importi. Tabelle UI con
+    token di superficie (ui-design.md par. 1-bis), compatte (`text-xs`/`text-sm`), scroll orizzontale contenuto
+    nella tabella a 375px. Stringhe via i18next (IT/EN). File sotto 300 righe.
+  </constraints>
+
+</spec>

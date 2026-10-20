@@ -90,6 +90,8 @@ export const migrations = {
     loadError: 'Impossibile caricare il template atteso. Riprova.',
     empty: 'Questa sorgente non definisce alcun campo.',
     importButton: 'Importa questa sorgente',
+    importUnavailable:
+      'Non disponibile in questa installazione: gli utenti si migrano in modalità solo abbinamento e responsabili e operatori delle funzioni si gestiscono in qnet.',
     endpointTitle: 'Endpoint atteso',
     method: 'Metodo: {{method}}',
     copyUrl: 'Copia URL',
@@ -131,6 +133,7 @@ export const migrations = {
       'Scegli quali sorgenti include “Importa tutto” e trascina per ordinarle. Le sorgenti successive dipendono dalle precedenti.',
     dragHandle: 'Riordina sorgente',
     enabledLabel: 'Includi {{source}} nell’import massivo',
+    unavailable: 'Non disponibile',
     save: 'Salva ordine',
     saving: 'Salvataggio…',
     saved: 'Ordine salvato.',

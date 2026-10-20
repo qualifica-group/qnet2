@@ -159,7 +159,7 @@ export const en = {
       primary_contact: 'Primary contacts',
       ...usersColumnsEmployment,
     },
-    // Assignment configuration (competence + sites), shared by form and scheda.
+    // Assignment configuration (assignment scope + sites), shared by form and scheda.
     assignment: usersAssignment,
     detail: {
       title: 'User details',

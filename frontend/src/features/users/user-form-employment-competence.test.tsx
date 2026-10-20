@@ -1,3 +1,4 @@
+// REQUIREMENT CHANGED (spec 0286 D-1): the UI label "Competence" is now "Assignment scope"; keys, fields and API are unchanged.
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AxiosError } from 'axios'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -299,7 +300,7 @@ async function renderEditForm(user: UserDetailWithPermissions = userWithCompeten
   fetchUserMock.mockResolvedValue(user)
   const { wrapper } = userWrapper()
   render(<UserDetailView userId={user.id} />, { wrapper })
-  fireEvent.click(await screen.findByRole('button', { name: 'Edit Competence' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Edit Assignment scope' }))
 }
 
 function save() {
@@ -460,7 +461,7 @@ describe('UserForm — competence rows (spec 0111 AC-023)', () => {
     render(<UserDetailView userId={7} />, { wrapper })
 
     await screen.findByRole('button', { name: 'Edit Personal details' })
-    expect(screen.queryByRole('button', { name: 'Edit Competence' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Assignment scope' })).not.toBeInTheDocument()
     expect(screen.queryByText('Photovoltaic')).not.toBeInTheDocument()
   })
 })

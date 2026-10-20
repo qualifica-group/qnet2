@@ -156,7 +156,7 @@ export const leads = {
       derivedSiteCompetenceHint:
         'Solo gli operatori della Sede dei record selezionati, competenti per le loro categorie.',
       derivedSiteMixedHint:
-        'Sede non univoca nella selezione: elenco filtrato per sola competenza.',
+        'Sede non univoca nella selezione: elenco filtrato per solo ambito di assegnazione.',
       derivedSiteUnknownHint: 'Sede dei record selezionati non ancora disponibile.',
     },
     mode: {

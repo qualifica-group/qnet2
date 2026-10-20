@@ -3,14 +3,17 @@ import { AxiosError, type AxiosResponse } from 'axios'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import i18n from '@/i18n'
 import type { EmploymentContract } from '@/features/users/contract-history-types'
-import { userWrapper } from '@/features/users/user-test-fixtures'
+import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
+import { EDITABLE, READ_ONLY, permissionsFor, userWrapper } from '@/features/users/user-test-fixtures'
 import { UserContractHistoryCreateNote, UserContractHistorySection } from '@/features/users/user-contract-history-section'
 import { toContractPayload } from '@/features/users/contract-history-schema'
 
 /**
  * Spec 0272 D-1 / AC-015: the contract history section: list, "Nuova condizione"
  * (salary only with `users.manageCompensation`), delete of the last condition
- * only, and the 403/409/422 messages.
+ * only, and the 403/409/422 messages. Spec 0283: the write actions follow the
+ * `employment.contracts` field, editable here exactly when `users.update` is
+ * granted (the server ceiling).
  */
 
 const fetchMock = vi.fn()
@@ -65,7 +68,13 @@ function failure(status: number, errors?: Record<string, string[]>) {
 function renderSection() {
   const { client, wrapper } = userWrapper()
   const invalidate = vi.spyOn(client, 'invalidateQueries')
-  render(<UserContractHistorySection userId={7} />, { wrapper })
+  const contracts = granted.includes('users.update') ? EDITABLE : READ_ONLY
+  render(
+    <ResourcePermissionsProvider permissions={permissionsFor({ 'employment.contracts': contracts })}>
+      <UserContractHistorySection userId={7} />
+    </ResourcePermissionsProvider>,
+    { wrapper },
+  )
   return invalidate
 }
 
@@ -92,7 +101,8 @@ describe('UserContractHistorySection — list', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
   })
 
-  it('shows no write action without users.update', async () => {
+  /** REQUIREMENT CHANGED (spec 0283): the gate is the read-only `employment.contracts` field. */
+  it('shows no write action when employment.contracts is read-only', async () => {
     renderSection()
     await screen.findByText('Current')
 

@@ -9,11 +9,12 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAbilities } from '@/features/auth/use-abilities'
+import { useResourcePermissions } from '@/features/authorization/permissions'
 import { ContractConditionDialog } from '@/features/users/contract-condition-dialog'
 import { classifyContractError, type ContractErrorKind } from '@/features/users/contract-history-errors'
 import {
+  CONTRACTS_FIELD,
   MANAGE_COMPENSATION_PERMISSION,
-  UPDATE_USERS_PERMISSION,
   type EmploymentContract,
 } from '@/features/users/contract-history-types'
 import { useDeleteEmploymentContract, useEmploymentContracts } from '@/features/users/use-contract-history'
@@ -73,17 +74,19 @@ function ContractRow({
 /**
  * "Storico contrattuale" (spec 0272 D-1): the person's conditions, newest
  * first. Append-only: "Nuova condizione" adds one, only the LAST can be removed
- * (to correct it). Actions need `users.update`; the salary needs
+ * (to correct it). Actions need the `employment.contracts` field editable
+ * (spec 0283: `users.update` and the role's field matrix); the salary needs
  * `users.manageCompensation` (the server omits it otherwise).
  */
 export function UserContractHistorySection({ userId }: { userId: number }) {
   const { t } = useTranslation()
   const confirm = useConfirm()
   const { can } = useAbilities()
+  const { field } = useResourcePermissions()
   const [dialogOpen, setDialogOpen] = useState(false)
   const contracts = useEmploymentContracts(userId)
   const remove = useDeleteEmploymentContract(userId)
-  const canWrite = can(UPDATE_USERS_PERMISSION)
+  const canWrite = field(CONTRACTS_FIELD).editable
   const items = contracts.data ?? []
 
   const handleDelete = async (contract: EmploymentContract) => {

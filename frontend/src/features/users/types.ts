@@ -63,15 +63,16 @@ export interface EmploymentProductLine {
 /**
  * The user's employment profile (spec 0015), present only when the backend
  * loaded it. `standard_daily_minutes`/`break_daily_minutes` are stored as
- * plain minute counts (0..1440), not a TIME column.
+ * plain minute counts (0..1440), not a TIME column. The contractual keys are
+ * optional: the server leaves out those the actor's field matrix hides (spec 0283).
  */
 export interface EmploymentDetail {
   id: number
-  relationship_type: RelationshipType | null
-  hired_at: string | null
-  terminated_at: string | null
-  standard_daily_minutes: number | null
-  break_daily_minutes: number | null
+  relationship_type?: RelationshipType | null
+  hired_at?: string | null
+  terminated_at?: string | null
+  standard_daily_minutes?: number | null
+  break_daily_minutes?: number | null
   /** Euro/hour from the salary in force today (spec 0277 D-5): present only with `users.manageCompensation`. */
   hourly_cost?: number | null
   /** Zero or more managers (spec 0166), ordered by name; [] when none. */
@@ -80,7 +81,7 @@ export interface EmploymentDetail {
   job_role_ids: number[]
   /** Funzioni aziendali di appartenenza (spec 0275): same data as the function's "Utenti associati"; [] when none. */
   business_function_ids: number[]
-  company_id: number | null
+  company_id?: number | null
   /** The condition in force today (spec 0272 D-2): CCNL level and its start; null when the history is empty. */
   current_contract?: CurrentContract | null
   /** Payment account (spec 0272 D-6): present only with `users.manageCompensation`. */
@@ -114,7 +115,7 @@ export interface EmploymentDetail {
   job_roles: NamedRef[]
   /** Funzioni aziendali di appartenenza (spec 0275), same order as `business_function_ids`. */
   business_functions: NamedRef[]
-  company: EmploymentRelationRef | null
+  company?: EmploymentRelationRef | null
   /** Present only when the relation is eager-loaded (whenLoaded), like `company`. */
   primary_operational_site?: EmploymentRelationRef | null
   remote_operational_sites?: EmploymentRelationRef[]
@@ -200,10 +201,11 @@ export interface EmploymentPayload {
    * is true (the server also enforces this — 422 otherwise).
    */
   product_lines: EmploymentProductLineInput[]
-  hired_at: string | null
-  terminated_at: string | null
-  standard_daily_minutes: number | null
-  break_daily_minutes: number | null
+  /** Spec 0283 D-5: the contract data travel only when changed; absent = untouched. */
+  hired_at?: string | null
+  terminated_at?: string | null
+  standard_daily_minutes?: number | null
+  break_daily_minutes?: number | null
   /** Payment account (spec 0272 D-6): sent only when changed, and only with `users.manageCompensation`. */
   iban?: string | null
   iban_holder?: string | null

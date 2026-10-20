@@ -23,9 +23,9 @@ vi.mock('@/features/migrations/api', () => ({
 
 const PLAN: MigrationPlan = {
   sources: [
-    { source: 'companies', label: 'Companies', enabled: true },
-    { source: 'users', label: 'Users', enabled: false },
-    { source: 'roles', label: 'Roles', enabled: true },
+    { source: 'companies', label: 'Companies', enabled: true, available: true },
+    { source: 'users', label: 'Users', enabled: false, available: true },
+    { source: 'roles', label: 'Roles', enabled: true, available: true },
   ],
 }
 
@@ -115,5 +115,22 @@ describe('MigrationPlanPanel', () => {
       { source: 'roles', enabled: true },
       { source: 'users', enabled: true },
     ])
+  })
+
+  it('disables the include checkbox of a source this installation may not import', async () => {
+    fetchMigrationPlanMock.mockResolvedValue({
+      sources: [
+        { source: 'users', label: 'Users', enabled: true, available: true },
+        { source: 'business-function-members', label: 'Members', enabled: false, available: false },
+      ],
+    })
+    render(<MigrationPlanPanel open onOpenChange={vi.fn()} />, { wrapper: wrapper() })
+
+    await screen.findByText('Not available')
+
+    const checkboxes = screen.getAllByRole('checkbox')
+    expect(checkboxes[0]).toBeEnabled()
+    expect(checkboxes[1]).toBeDisabled()
+    expect(checkboxes[1]).not.toBeChecked()
   })
 })

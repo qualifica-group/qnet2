@@ -3,6 +3,280 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CATALOGO: MACROCATEGORIA FINANZA AGEVOLATA — VERDE, COMMITTATO (2026-10-20)
+
+- Fonte: "Gestione richieste finanza Agevolata.docx" + "FINANZA AGEVOLATAù.xlsx" (47 prodotti, nessuna riga gialla).
+  Stesso schema di GDPR: `QualificaCatalog/SubsidisedFinanceCatalogue` + `SubsidisedFinanceProductCatalogue` (generato).
+- Radice "Finanza Agevolata" -> funzione "Finanza Agevolata" (organigramma). 13 sottocategorie "Finanza Agevolata -
+  <linea>" (linee del docx, deduplicate, nomi verbatim: AUT C.NORD, Decreto Turismo, FINANZA AGEVOLATA, FNC, FONDI,
+  FORMAZIONE CONTINUA, FRC, FUNT, INCENTIVI ASSUNZIONI, Industria 4.0, IPERAMMORTAMENTO, ISI INAIL, RESTO AL SUD).
+  Regole Consulenza, `consultancy`, IVA 22% (anche "Supporto alla presentazione bando", senza aliquota nell'xlsx),
+  mesi 0, descrizione solo su "Consulenza ISI Inail - IV fase".
+- Campi Offerta sulla radice, form "Finanza Agevolata": `subsidised_finance_requested_measure` (text, "campo libero"),
+  `subsidised_finance_checklist` (boolean, "Check-list da allegare"), `subsidised_finance_notes` (textarea).
+- Test: nuovo `Products/QualificaSubsidisedFinanceCatalogueTest` (3); REQUIREMENT CHANGED: prodotti 589->636,
+  produzione 599->646, layout offerta 24->25, +13 selezionabili, funzione nei link. Suite completa (flag link-only a
+  false) 11930 verdi, 1 rosso estraneo (PDF). Pint pulito.
+- `QualificaCatalogSeeder.php` ora a 493 righe: lo split e' OBBLIGATORIO prima di un altro ramo.
+- Manuale: nessun impatto (dati di seed).
+
+## CATALOGO: MACROCATEGORIA GDPR — VERDE, COMMITTATO (2026-10-20)
+
+- Fonte: "gestione richieste gdpr.docx" + "SERVIZI GDPR.xlsx". Richiesta utente: "fai la stessa cosa" di Gare. Qui il
+  giallo e' nell'xlsx: riga prodotto "GDPR_" (categoria PROGETTI-) esclusa; le due note gialle ("CATEGORIA MADRE GDPR",
+  "SOTTOCATEGORIA GDPR E DPO") = struttura, non prodotti.
+- `QualificaCatalog/GdprCatalogue` + `GdprProductCatalogue` (generato dall'xlsx, 16 prodotti: 7 GDPR, 9 DPO). Radice
+  "GDPR" -> funzione "Privacy" dell'organigramma (non esiste una funzione "GDPR"); sottocategorie "GDPR - GDPR" e
+  "GDPR - Nomina DPO" (nomi del docx; l'xlsx chiama la seconda "DPO"). Regole Consulenza, `consultancy`, IVA 22%,
+  mesi 0/12/24 dall'xlsx, nessun set Commessa.
+- Campi Offerta sulla RADICE (ereditati da entrambe, form "GDPR" in `OWN_FORMS`): `gdpr_employee_count` (integer),
+  `gdpr_business_activity` (textarea), `gdpr_video_surveillance` (boolean), `gdpr_video_surveillance_sites` (text,
+  "campo libero"), `gdpr_checklist` (boolean, "spunta"), `gdpr_notes` (textarea).
+- `BranchProducts`: nuova chiave opzionale `description` (DPO 1-3 anno ce l'hanno): scritta alla creazione, riempita
+  al re-run solo se vuota.
+- Test: nuovo `Products/QualificaGdprCatalogueTest` (4); REQUIREMENT CHANGED: prodotti 573->589, produzione 583->599,
+  layout offerta 23->24, +2 selezionabili, "GDPR" nei link funzione. Suite completa (flag link-only a false) 11927
+  verdi, 1 rosso estraneo (PDF senza LibreOffice). Pint pulito.
+- Attenzione: `QualificaCatalogSeeder.php` a 488 righe (hard limit 500): il prossimo ramo richiede uno split
+  (es. estrarre CATALOG/SELECTABLE/QUOTE_ATTRIBUTES in una classe `QualificaCatalog/*`).
+- Manuale: nessun impatto (dati di seed).
+
+## CATALOGO: MACROCATEGORIA GARE — VERDE, COMMITTATO (2026-10-20)
+
+- Fonte: "GESTIONE RICHIESTE SETTORE GARE.docx" (linee di prodotto + documenti per linea) + "SERVIZI GARE.xlsx"
+  (33 prodotti). Richiesta utente: nuova categoria nel seed di produzione, campi flessibili e prodotti; "quelli
+  segnati in giallo non devi crearli" = le voci del docx evidenziate in giallo (sezioni di testo libero: scadenza,
+  categorie merceologiche, N° dipendenti, CCNL, fatturato, termine e urgenza, email, telefono...) NON create.
+  Nessuna riga dell'xlsx e' gialla: tutti i 33 prodotti seminati.
+- Come "Sicurezza": radice "Gare" (funzione "Gare" di `BusinessFunctionCatalogue`), regole Consulenza, stati di
+  default, tipologia `consultancy`, IVA 22%, "Mesi scadenza" 0, nessun fornitore, nessun set Commessa. 12
+  sottocategorie selezionabili "Gare - <linea>" (prefisso come Sicurezza; nomi del docx: Mepa, WHITE LIST, ...;
+  "Gare - Gare" per la linea "Gare"). Il menu a tendina ordina gia' per nome.
+- Campi Offerta = i documenti "(DA ALLEGARE)", boolean `tender_*` (12 codici), assegnati SULLE SOTTOCATEGORIE che
+  li chiedono: Avvalimenti/Gare/Progetto Tecnico (7 documenti di gara), Mepa/Albo Fornitori/ANAC (6 di iscrizione),
+  WHITE LIST (3), Giornale Telematico (visura), Corso preparazione gare (visura/documento d'identita'). RTI/ATI,
+  Consorzio Grade, Albo Gestori Ambientali: nessun campo. "Visura" e "Visura camerale aggiornata" = un solo codice.
+  Form: una sezione "Documenti da allegare" per categoria (`QualificaQuoteLayoutSeeder::OWN_FORMS`).
+- File: nuovi `QualificaCatalog/TenderCatalogue.php`, `TenderProductCatalogue.php` (generato dall'xlsx); agganci in
+  `QualificaCatalogSeeder`, `CatalogProducts` step 7, `CatalogRootRules`, `QualificaBusinessFunctionLinkSeeder`,
+  `QualificaQuoteLayoutSeeder`.
+- Test: nuovo `Products/QualificaTenderCatalogueTest` (3); REQUIREMENT CHANGED: prodotti catalogo 540->573, produzione
+  550->583, layout offerta 14->23, +12 selezionabili, "Gare" nei link funzione. Products 232/232, Seeding 180/180,
+  Pint pulito. Suite completa: 14 rossi estranei (Migration utenti per `EXTERNAL_MIGRATION_USERS_LINK_ONLY=true` nel
+  `.env` locale -> verdi 435/435 col flag a false; PDF senza LibreOffice; `CampaignCrudTest` flaky, verde da solo).
+- Da fare: rieseguire `QualificaProductionDataSeeder` (o `QualificaCatalogSeeder`) su locale/staging/prod.
+  Manuale: nessun impatto (dati di seed).
+
+## Spec 0285 — Migrazione utenti in modalita' "solo abbinamento" — VERDE, NON COMMITTATO (2026-10-19)
+
+- Spec `docs/specs/0285-users-migration-link-only.xml` (D-1..D-4, AC-001..AC-007).
+- `config('migrations.users_link_only')` da env `EXTERNAL_MIGRATION_USERS_LINK_ONLY` (default false = import completo
+  invariato). Stessa sorgente `users` (dipendenze, MigrationOrder, import massivo invariati).
+- `UsersSource`: con il flag, `linkRow()` = old_id gia' presente -> skipped; `ExistingUserMatcher` abbina -> solo
+  `old_id` (created, avviso "(link-only mode)"); nessun abbinamento -> skipped con avviso, nessun account; conflitti
+  del matcher -> riga fallita. `afterImport()` senza effetto. Estratto `identity()` (email/nome/cognome obbligatori).
+  File a 366 righe (soft limit superato gia' prima, 311).
+- Test: 5 nuovi in `UsersSourceAdoptionTest`; Pest Migration 428/428 + Unit/Migrations 20/20, Pint pulito.
+- Guida in-app `migrations` IT/EN (nota nuova), help vitest 146/146; manuale Claude Docs: paragrafo dopo la sorgente
+  Utenti in Migrazioni.
+- Da fare sull'installazione Qualifica: `EXTERNAL_MIGRATION_USERS_LINK_ONLY=true` nel `.env` del server.
+- Estensione D-5 (AC-008..010): con il flag la sorgente `business-function-members` non e' abilitata.
+  `MigrationSource::isAvailable()` (default true in `AbstractMigrationSource`, false in
+  `BusinessFunctionMembersSource` col flag); `MigrationService::start` -> 422 senza run; `MigrationPlanService`
+  (ora riceve `MigrationRegistry`) legge `enabled` = salvato AND disponibile, il valore salvato si conserva.
+  Contratto: campo `available` in `GET /migrations` e in `plan.sources[]`. Frontend: `isImportAvailable` su
+  `MigrationTemplatePanel` (pulsante disabilitato + nota), casella del piano disabilitata + "Non disponibile".
+  Test: `MigrationSourceAvailabilityTest` (7), Pest Migration 435/435, Unit/Migrations 20/20, Vitest migrations
+  32/32, help 146/146, `tsc -b --force` pulito, ESLint/Pint puliti. Guida `migrations` IT/EN e manuale aggiornati.
+
+## Organigramma — intestazione allineata alle altre pagine — VERDE, COMMITTATO 84ace3ed (2026-10-19)
+
+- `pages/org-chart-page.tsx`: `<PageHeader />` col solo breadcrumb come Assenze/Funzioni/Mansioni (prima titolo +
+  sottotitolo sotto il breadcrumb). Tolte le chiavi orfane `orgChart.title`/`orgChart.subtitle` (IT+EN).
+  Scheda `orgChart.tabs.functions` rinominata "Funzioni aziendali" / "Business functions" (e' anche l'aria-label
+  dell'albero: test org-chart aggiornati, REQUIREMENT CHANGED). Guide in-app IT+EN e manuale Claude Docs aggiornati.
+  Vitest org-chart/help/i18n 428/428, `tsc -b --force` e ESLint puliti.
+
+## Traduzioni moduli HR 0284/0286 — VERDE, NON COMMITTATO (2026-10-20)
+
+- Audit chiavi i18n (codice FE + label inviate dal backend per colonne/filtri/azioni) di Corsi, Formazione, Catalogo
+  competenze, Competenze: IT/EN allineati, tre difetti corretti.
+- `staff-course-screens.tsx`: `courses.detail.loadError` -> `staffCourses.detail.loadError`, `labelKey`
+  `navigation.courses` -> `navigation.staffCourses` (entrambe inesistenti: si vedeva la chiave grezza).
+- Griglia Formazione, colonna Esito: senza `badges` ne' renderer la cella era vuota e il filtro mostrava
+  `passed`/`failed`. Ora `StaffTrainingsTableDefinition::enumKeyFor('outcome')` = `staff_training_outcome` (filtro
+  tradotto) e renderer `outcome` = `StaffTrainingOutcomeBadge` nel Registro. Etichette spostate da
+  `staffTrainings.outcome.*` a `enums.staff_training_outcome.*` (unica fonte per griglia, filtro, dettaglio, form).
+- Test nuovi: `staff-course-screens.test.tsx`, `staff-training-register.test.tsx`, Pest "outcome column carries its
+  enum key". Aggiornato solo il percorso chiave in `staff-training-detail-sheet.test.tsx` (stessa etichetta).
+- Verifica: vitest 87 file/688 test (moduli HR, i18n, help, data-table), Pest StaffTrainings 33/33, Pint, ESLint,
+  `tsc -b --force` puliti. Manuale: nessun impatto (le guide descrivevano gia' l'Esito).
+- Segnalato, NON corretto (trasversale): i messaggi 422 del server mostrano l'attributo grezzo ("Il campo name e' gia'
+  stato utilizzato") perche' `lang/it/validation.php` non ha `attributes`; vale per tutti i moduli.
+
+## Spec 0283 D-7 — Ruolo "Risorse Umane" esteso a Formazione e Competenze — VERDE, COMMITTATO f5353666 (2026-10-20)
+
+- Decisione utente: l'ufficio del personale (Castaldo, Iorio, Sorrentino) apre anche i moduli HR nati dopo 0283.
+  `HrOfficeRoleCatalogue::MODULES` + `staff-courses`, `staff-trainings`, `skills`, `user-skills` (24 permessi, tutti).
+  Spec 0283 D-7 + AC-011; test `0283 AC-011` in `QualificaHrOfficeSeederTest`. Pest Seeding 180/180, Pint pulito.
+- Guida in-app users IT/EN (elenco moduli del ruolo), help vitest 148/148. Manuale Claude Docs NON aggiornato: il doc
+  non e' condiviso con l'account di questa sessione (sezione Utenti, blocco "Chi vede i dati contrattuali").
+- DB locale: permessi dati al ruolo via `givePermissionTo` (additivo, nessun re-sync degli altri ruoli). In produzione:
+  `php artisan db:seed --class=QualificaRoleSeeder` (risincronizza tutti i ruoli Qualifica).
+
+## Spec 0283 — Ruolo "Risorse Umane" + dati contrattuali dietro la matrice dei campi — VERDE, COMMITTATO ee81ddac (2026-10-19)
+
+- Spec `docs/specs/0283-hr-office-role-and-sensitive-user-fields.xml` (D-1..D-6, AC-001..AC-010).
+- Seed: `QualificaCatalog/HrOfficeRoleCatalogue` (ruolo `risorse-umane`, moduli HR completi con delete, NO
+  `users.impersonate`; extra `time-entries.viewAll|exportMonthly`, `companies.viewAny|view`; `SENSITIVE_FIELDS` D-2;
+  `roles` in sola lettura). `QualificaRoleSeeder`: righe NASCOSTE su D-2 a ogni mansione, righe esplicite
+  visibile+modificabile a HR e `admin` (l'unione conta solo i ruoli CON riga: senza grant esplicito vincerebbe il
+  nascosto di `operatore-base`). Nuovo `QualificaHrOfficeSeeder` (persone della funzione
+  `BusinessFunctionCatalogue::HUMAN_RESOURCES` di `OrgChartFunctions`, ruolo AGGIUNTO), step 7b del production seeder.
+  Lanciato sul DB locale: Castaldo/Iorio/Sorrentino = operatore-base + risorse-umane.
+- Backend: nuova chiave `employment.contracts` (`UsersAuthorization::CONTRACTS_FIELD`); `EmploymentResource` toglie le
+  chiavi dei campi nascosti; storico contratti 403 se nascosto (GET) / non modificabile (POST/DELETE); griglia utenti
+  `Users/UserSensitiveColumns` (colonne, filtri, righe, export). D-5: `EmploymentData::$contractData` = hired_at,
+  terminated_at, durate con "assente = invariato" (prima assente = svuotato).
+- Assenze (D-6, decisione utente): nessun permesso "team"; resta proprie + sottoposti automatici + `manageAll`.
+  Il calendario 0279 (calendarOwn/Team/All) e' di un'altra sessione: le mansioni non ricevono quei permessi.
+- Frontend: sezioni Rapporto/Storico per visibilita' di campo, azioni storico su `employment.contracts` editable,
+  payload con date/durate solo se cambiate; tipi `EmploymentDetail` con chiavi contrattuali opzionali.
+- Test: nuovi `UserSensitiveFieldsTest` (5), `QualificaHrOfficeSeederTest` (3), FE AC-009 (2). REQUIREMENT CHANGED:
+  conteggi catalogo campi users 17->18 (FieldCatalogue/Meta/UserCompetenceScope), payload FE senza date invariate,
+  gate storico su campo. Users 255, Authorization 109, Seeding 179, RequestManagement 851, Tables/Table/Migration
+  verdi; vitest users+roles+help verdi; Pint, ESLint, `tsc -b --force` puliti.
+- Manuale: guida in-app users IT/EN (nuova sezione `contract-visibility`, storico, pagamento) + Claude Docs (blocco
+  "Chi vede i dati contrattuali" sotto la tabella Profilo/Rapporto). Il manuale Claude Docs ha ancora la riga
+  "Qualifica" e niente Storico/Pagamento (debito di spec 0272, non toccato).
+- Rischio residuo: un ruolo creato a mano SENZA righe vede tutto (semantica 0006): va ristretto dal form Ruoli.
+
+## Spec 0282 — Proforma attiva / passiva nel dettaglio commessa — VERDE, COMMITTATO (2026-10-19)
+
+- Spec `docs/specs/0282-work-order-invoices-view.xml` (D-1..D-9, AC-001..AC-011). Sola consultazione, nessuna azione contabile.
+- Endpoint `GET /api/work-orders/{workOrder}/invoices` -> `{active[], passive[], totals:{active, passive}}`
+  (`WorkOrderInvoiceController` + `Services/WorkOrders/WorkOrderInvoiceOverviewBuilder`, rotte `routes/api/work-order-invoices.php`).
+  Attivi = `invoices.work_order_id`; passivi = documenti con almeno una RIGA sulla commessa (`purchase_invoice_lines.work_order_id`),
+  `work_order_amount` = somma delle sole righe della commessa. Proforma e fatture insieme (colonna Tipo).
+- Permesso nuovo `work-orders.viewInvoices` (policy `viewInvoices` = permesso + `isInScope`, come `viewCosts`), azione
+  `view_invoices`; da assegnare ai ruoli dalla UI (super-admin passa da `Gate::before`). `WorkOrderSecurityTest`: 16 -> 17 permessi (REQUIREMENT CHANGED).
+- Frontend `features/work-order-invoices/` (una sola query per le due schede), schede "Proforma attiva"/"Proforma passiva" in
+  `work-order-detail-work-tabs.tsx`; il numero apre `InvoiceDetailSheet`/`PurchaseInvoiceDetailSheet` solo con `invoices.view`/
+  `purchase-invoices.view`. `PurchaseInvoiceTypeBadge` estratto in `purchase-invoice-installments/purchase-installment-cells.tsx`.
+- Verifica: Pest completo 11814/11818 (3 fail `QuoteDocumentPdfTest` = LibreOffice assente, non correlati), Pint ok; Vitest
+  completo 8760/8760, `tsc -b --force` 0, ESLint ok.
+- Manuale: guida in-app work-orders IT/EN sezione `invoices`; Claude Docs: nessuna modifica (sezione Commesse ancora "in fase di sviluppo").
+- Da verificare a occhio: layout a 375px delle due tabelle (scroll orizzontale interno, `min-w-[720px]`).
+
+## Piano HR ridotto — COMMITTATO dcb1e55b (2026-10-19)
+
+- Decisione utente (D-10 in `docs/product/hr.md`): del piano HR restano solo calendario della squadra (0279),
+  corsi e formazione, competenze. FUORI SCOPE, non riproporre: allocazioni e costo del personale, progetti interni,
+  documenti con firma, obiettivi/KPI, onboarding, reparti.
+- Competenze = cio' che la persona sa fare (catalogo + persona <-> competenza con livello + mansione <-> competenza
+  richiesta), NON le "competenze commerciali" (appartenenza alle funzioni), che restano invariate.
+- Ordine: 0279 -> corsi e formazione -> competenze. Campi *proposta* da confermare prima delle spec.
+
+## Spec 0286 — Competenze + rinomina "Ambiti di assegnazione" — VERDE, COMMITTATO 2df5b0de (2026-10-19)
+
+- Spec `docs/specs/0286-hr-skills.xml` approvata (D-1..D-7, AC-001..AC-007). Chiude il perimetro HR ridotto
+  (`docs/product/hr.md` aggiornato: tutto sviluppato).
+- D-1 rinomina SOLO UI: la "Competenza" della Configurazione assegnazione (`employment.product_lines`) ora e'
+  "Ambito/Ambiti di assegnazione" (EN "Assignment scope(s)"), "Ambito su tutte le categorie"; colonna funzioni
+  `competences_count` = "Persone con ambito di assegnazione". Chiavi, API e logica invariate. "operatore competente"
+  (aggettivo) lasciato. Guide users/general/business-functions/product-categories/request-management/org-chart.
+- Modulo: tabelle `skills`, `job_role_skill` (`min_level`), `user_skills` (unica persona+competenza); enum
+  `SkillLevel` 1..4; `Services/Skills/{UserSkillScope,UserSkillVisibility,UserSkillService,UserSkillCoverageService}`.
+  Permessi `skills.*`, `user-skills.viewAny|viewTeam|viewAll|manage`: `viewTeam` scrive sui discendenti attivi,
+  nessuno su se stesso senza `manage`; fuori visibilita' 404, visibile non scrivibile 403; `can_edit` in risposta.
+  Copertura: livello richiesto = max tra le mansioni, `covered|below|missing`, solo competenze attive.
+- Frontend `features/skills`, `features/user-skills` (Persone/Copertura), livello con `SkillLevelBadge`
+  (`skill-level.ts`), guide `skills`/`user-skills` (HELP_GUIDE_KEYS 95), icone `sparkles`/`list-checks`.
+- Test cambiati (REQUIREMENT CHANGED): `FieldCatalogueEndpointTest` (+2 risorse), rollback `--step` +3 (222/71/86),
+  `help-guide-keys.test.ts` 93->95, 4 test users + `assign-operators-dialog.test.tsx` per la rinomina.
+- Verifica (lead): backend suite completa 11896/11922, rossi solo fuori scope (migrazione utenti 0285 di un'altra
+  sessione in corso, `QuoteDocumentPdfTest` LibreOffice); Pint pulito. Vitest completo: 28 rossi da carico macchina
+  (worker timeout), rilanciati isolati tutti verdi; `tsc -b --force` 0; ESLint pulito. Non verificato: 375 px.
+- Manuale Claude Docs: rinomina applicata (17 punti), sezioni "Catalogo competenze" (prima di Corsi) e
+  "Competenze" (dopo Formazione), voce nel menu laterale. Dopo il deploy: `php artisan permissions:sync`.
+
+## Spec 0284 — Corsi e formazione del personale — VERDE, COMMITTATO 29fb83b6 (2026-10-19)
+
+- Spec `docs/specs/0284-hr-staff-training.xml` approvata (D-1..D-6, AC-001..AC-008). Decisioni utente: registro +
+  scadenze (niente pianificazione), obbligo per mansione, registra solo l'ufficio del personale, visibilita' a tre
+  livelli. Legacy senza dati: nessun importer. Nomi `staff_courses` / `staff_trainings` (NON i corsi venduti).
+- Backend: tabelle `staff_courses`, `job_role_staff_course`, `staff_trainings`; `Services/StaffTrainings/
+  {StaffTrainingScope,StaffTrainingVisibility,StaffTrainingService,StaffTrainingComplianceService}`; allegato annidato
+  `/api/staff-trainings/{id}/attachment` (morph map, NON in `attachable_types`); `config/staff_training.php`
+  (`expiring_days` 60, env `STAFF_TRAINING_EXPIRING_DAYS`, non aggiunta a `.env.example`: file con modifiche altrui).
+  Permessi `staff-courses.*`, `staff-trainings.viewAny|viewTeam|viewAll|manage`: `manage` implica la vista di tutti
+  (altrimenti 404 sul record appena creato); il menu "Formazione" vuole `viewAny` (chi ha solo viewAll apre le API ma
+  non vede la voce: assegnare viewAny insieme). Griglia corsi: colonna `duration_hours` (ore decimali, sort su
+  minuti, nessun filtro). Eliminazione corso usato = 422.
+- Frontend: `features/staff-courses`, `features/staff-trainings` (schede Registro/Situazione, dettaglio con
+  attestato, form), i18n `{it,en}-staff-{courses,trainings}.ts` (in `*-hr.ts`), icone `graduation-cap`/`library`,
+  guide `staff-trainings`/`staff-courses` (HELP_GUIDE_KEYS 93).
+- Test cambiati (REQUIREMENT CHANGED): `FieldCatalogueEndpointTest` (2 risorse), rollback `--step` +2 in
+  `QuoteWorkflowMigrationTest`, `PurchaseOrderMigrationTest`, `SupplierCommissionDirectionTest`;
+  `help-guide-keys.test.ts` 91->93; `router.test.tsx` e `icon-map.test.ts` estesi.
+- Verifica (lead): backend suite completa 11882/11886 (3 `QuoteDocumentPdfTest`: LibreOffice assente, 1 skipped),
+  Pint pulito; Vitest 69 file/517 test (staff-*, help, routes, navigation, absences, i18n), `tsc -b --force` 0,
+  ESLint pulito. Non verificato a vista: 375 px.
+- Manuale: guide in-app nuove IT/EN + Claude Docs (sezione "Corsi" prima di "Tipi di assenza", sezione "Formazione"
+  dopo Assenze, voce Formazione nel menu laterale). Dopo il deploy: `php artisan permissions:sync`.
+
+## Spec 0279 — Calendario delle assenze — VERDE, COMMITTATO dcb1e55b (2026-10-19)
+
+- Spec approvata dall'utente. Permessi (D-1 [revised in build]): `absence-requests.calendarOwn|calendarTeam|
+  calendarAll` sulla risorsa del modulo (il form Ruolo raggruppa per voce di menu: una risorsa `absence-calendar`
+  sarebbe finita in "Condivisi"). Vale il piu' ampio; nessuno = 403. Dopo il deploy `php artisan permissions:sync`;
+  i ruoli NON ricevono i permessi dal seed (fuori scope; il ruolo HR di 0283, altra sessione, prende tutto
+  `absence-requests.*`).
+- Backend: `GET /api/absences/calendar` (`routes/api/absence-calendar.php` da `hr.php`), `AbsenceCalendarRequest`
+  (max 62 giorni, `MAX_DAYS`), `Services/Absences/Calendar/{AbsenceCalendarScope,AbsenceCalendarBuilder}`,
+  `AbsenceRequestVisibility::viewChecker()` (canView in blocco, per `can_open`). Solo approved+submitted, spezzate
+  per giorno lavorativo; persone attive; query costanti.
+- Frontend: `features/absences/calendar/*` (griglia con colonna nomi fissa e scroll proprio, cella button solo con
+  `can_open`), schede "Richieste/Calendario" in `absences-page.tsx` (solo con un permesso calendario), il calendario
+  si invalida con `absenceKeys.calendarAll` dopo ogni azione su una richiesta. i18n `absences.calendar.*`,
+  `permissions.abilities.calendar*`.
+- Test: `tests/Feature/AbsenceCalendar` 15/15; aree assenze 91/91 (`AbsenceFoundationTest` aggiornato:
+  REQUIREMENT CHANGED, 3 permessi in piu'); Pint pulito. Vitest absences+help+roles 272/272, `tsc -b --force` 0,
+  ESLint pulito. `FieldCatalogueEndpointTest` rosso per `employment.contracts` (lavoro di un'altra sessione su
+  `UsersAuthorization`, non 0279). Non verificato a vista: 375 px nel browser.
+- Manuale: guida in-app `absences` IT/EN (sezione `in-development` sostituita da `calendar`) + Claude Docs (Assenze:
+  frase introduttiva e paragrafo Calendario con la tabella dei permessi).
+  Solo documentazione: nessun codice, manuale: nessun impatto.
+
+## Mansioni: link dalla scheda utente + FIX griglie Mansioni/Attivita' "[object Object]" — VERDE, NON COMMITTATO (2026-10-19)
+
+- Decisione utente: in "Profilo > Mansioni" della scheda utente ogni mansione e' un `RecordLink` (clic = modale della
+  mansione con le sue attivita'); testo semplice senza `job-roles.view`. `RefBadges` ha un `domain?` opzionale
+  (usato solo per `job_roles`; ruoli e "Risponde a" invariati). Nessun cambio backend/contratto per questo.
+- Bug griglie: le colonne `tags` (`TagsCountCell`) vogliono `string[]`; `JobRolesTableDefinition::mapRow`
+  (`job_activities`) e `JobActivitiesTableDefinition::mapRow` (`job_roles`) mandavano `{id, label}` -> tooltip
+  "[object Object]". Ora `pluck('name')`. I due test di griglia avevano fissato la forma sbagliata: corretti a `[name]`
+  (prima rossi, poi verdi).
+- Test: `user-detail.test.tsx` +2 (link con permesso / testo senza), mock `useAbilities` reso configurabile;
+  JobRoles+JobActivities+HrStructure+Tables 83/83, Pint pulito; vitest users+help 321/321, `tsc -b --force` 0, ESLint ok.
+- Manuale: guida in-app users IT/EN (riga Mansioni) + Claude Docs (riga "Mansione" della tabella campi utente, era
+  ancora il vecchio testo libero da 255 caratteri).
+
+## Direzione Generale (Enrico Ferrante) sopra tutti i responsabili — VERDE, NON COMMITTATO (2026-10-19)
+
+- Decisione utente: nuova funzione "Direzione Generale" (BS), responsabile e unico membro Enrico Ferrante
+  (`OrgChartFunctions::GENERAL_MANAGER`, fuori da `OrgChartRoster`: nessuna mansione/livello); i responsabili di
+  livello I di tutte le altre funzioni ricevono Enrico in "Risponde a" (additivo, come il resto dello Step 5).
+- `BusinessFunctionCatalogue::GENERAL_MANAGEMENT` (25 funzioni), `QualificaHrCatalogSeeder::assignFunctions`.
+- Legacy (`../qnet`, non committato): `LegacyBusinessFunctions::NAMES` 26 => 'Direzione Generale' (non piu' "[OLD]",
+  attiva). Spec 0281 D-2/D-2b aggiornata.
+- DB locale: riga id 29 "[OLD] DIREZIONE GENERALE" (old_id 26) rinominata "Direzione Generale", attiva, BS; rilanciati
+  `QualificaBusinessFunctionSeeder` + `QualificaHrCatalogSeeder`: 16 responsabili rispondono a Enrico, lui a nessuno.
+- Test: nuovo "puts every function head under the general manager"; REQUIREMENT CHANGED: conteggio 24->25 in
+  `QualificaBusinessFunctionSeederTest`, esclusione del direttore in "names only catalogue functions and org chart
+  people". Seeding+Migration+BusinessFunctions 707/707, Pint pulito; vitest help 144/144, `tsc -b --force` 0, ESLint ok.
+- Manuale: guida in-app business-functions IT/EN (nota) + Claude Docs (paragrafo import legacy e Conteggi).
+
 ## Fix filtri Scadenze attive/passive — VERDE, NON COMMITTATO (2026-10-19)
 
 - Causa: le colonne text/number/date usano in griglia `agMultiColumnFilter` (payload `filterType: 'multi'`,
@@ -88,8 +362,9 @@
 - Lanciato sul DB locale: 24 funzioni con membri, 22 con manager, 145 appartenenze, 240 righe "Risponde a"; rilancio senza doppioni.
 - Test: +3 in `QualificaHrCatalogSeederTest` (coerenza con roster/catalogo, capi = manager/superiori, additivo + manager
   manuale tenuto). Manuale: nessun impatto (solo dati).
-- DA DECIDERE: se "Risponde a" debba essere SOSTITUITO dal livello I della Pianta (oggi additivo: restano i supervisori
-  del Mansionario di settembre).
+- DECISO (utente 2026-10-19): "Risponde a" resta ADDITIVO, non va sostituito dal livello I della Pianta. Restano i
+  supervisori del Mansionario di settembre (es. Falzarano/Aliberti su Formazione e APL, 46 persone). Verificato lo
+  stesso giorno: DB locale allineato all'Excel 8.09 su funzioni, tipi BU/BS, membri, manager, livelli e mansioni.
 
 ## FIX scheda utente: badge Mansioni vuoto — VERDE, COMMITTATO (2026-10-19)
 

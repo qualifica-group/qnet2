@@ -63,7 +63,10 @@ use App\Tables\RewardStatusesTableDefinition;
 use App\Tables\RewardTypesTableDefinition;
 use App\Tables\RolesTableDefinition;
 use App\Tables\SectorsTableDefinition;
+use App\Tables\SkillsTableDefinition;
 use App\Tables\SourcesTableDefinition;
+use App\Tables\StaffCoursesTableDefinition;
+use App\Tables\StaffTrainings\StaffTrainingsTableDefinition;
 use App\Tables\TagsTableDefinition;
 use App\Tables\TaskCategoriesTableDefinition;
 use App\Tables\TaskImportancesTableDefinition;
@@ -73,6 +76,7 @@ use App\Tables\TaskStatusesTableDefinition;
 use App\Tables\TaskTemplatesTableDefinition;
 use App\Tables\TaskTypesTableDefinition;
 use App\Tables\UnitsOfMeasureTableDefinition;
+use App\Tables\UserSkills\UserSkillsTableDefinition;
 use App\Tables\UsersTableDefinition;
 use App\Tables\VatRatesTableDefinition;
 use App\Tables\WorkOrderPaymentStatusesTableDefinition;
@@ -114,6 +118,12 @@ return [
         'absence-requests' => AbsenceRequestsTableDefinition::class,
         'absence-requests-to-approve' => AbsenceRequestsToApproveTableDefinition::class,
         'absence-requests-all' => AbsenceRequestsAllTableDefinition::class,
+        // spec 0284: staff courses catalogue and staff trainings register.
+        'staff-courses' => StaffCoursesTableDefinition::class,
+        'staff-trainings' => StaffTrainingsTableDefinition::class,
+        // spec 0286: skills catalogue and user skills register.
+        'skills' => SkillsTableDefinition::class,
+        'user-skills' => UserSkillsTableDefinition::class,
         // spec 0272: collective agreements (CCNL) with their levels.
         'collective-agreements' => CollectiveAgreementsTableDefinition::class,
         'companies' => CompaniesTableDefinition::class,

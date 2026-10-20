@@ -47,6 +47,11 @@ const QUOTE_LAYOUT_OWN_CATEGORIES = [
     'SOA',
     // REQUIREMENT CHANGED: the Sicurezza root, its own form (user directive 2026-10-15).
     'Sicurezza',
+    // REQUIREMENT CHANGED: the Gare lines asking for documents, each its own form (user directive 2026-10-20).
+    'Gare - Albo Fornitori', 'Gare - ANAC', 'Gare - Avvalimenti', 'Gare - Corso preparazione gare', 'Gare - Gare',
+    'Gare - Giornale Telematico', 'Gare - Mepa', 'Gare - Progetto Tecnico', 'Gare - WHITE LIST',
+    // REQUIREMENT CHANGED: the GDPR and Finanza Agevolata roots, their own form (user directives 2026-10-20).
+    'GDPR', 'Finanza Agevolata',
 ];
 
 /**
@@ -60,6 +65,10 @@ const QUOTE_LAYOUT_INHERITING_CATEGORIES = [
     // REQUIREMENT CHANGED: SOA and Sicurezza subcategories prefixed with their branch (user directive 2026-10-15).
     'SOA - Ente', 'SOA - Consulenza',
     'Sicurezza - Corsi di formazione', 'Sicurezza - Documenti', 'Sicurezza - Visite mediche', 'Sicurezza - Sopralluogo', 'Sicurezza - Trasferta',
+    // REQUIREMENT CHANGED: the GDPR lines inherit the root form (user directive 2026-10-20).
+    'GDPR - GDPR', 'GDPR - Nomina DPO',
+    // REQUIREMENT CHANGED: the Finanza Agevolata lines inherit the root form (user directive 2026-10-20).
+    'Finanza Agevolata - FNC', 'Finanza Agevolata - ISI INAIL', 'Finanza Agevolata - FINANZA AGEVOLATA',
     'GOL - Molise', 'GOL - Abruzzo', 'GOL - Calabria', 'GOL - Campania',
     'GOL - Umbria', 'GOL - Puglia', 'GOL - Basilicata',
 ];

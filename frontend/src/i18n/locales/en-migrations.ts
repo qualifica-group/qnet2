@@ -91,6 +91,8 @@ export const migrations = {
     loadError: 'Unable to load the expected template. Please try again.',
     empty: 'This source defines no fields.',
     importButton: 'Import this source',
+    importUnavailable:
+      'Not available on this installation: users are migrated in link-only mode and function managers and operators are managed in qnet.',
     endpointTitle: 'Expected endpoint',
     method: 'Method: {{method}}',
     copyUrl: 'Copy URL',
@@ -131,6 +133,7 @@ export const migrations = {
       'Choose which sources “Import all” includes and drag to set the order. Later sources depend on the earlier ones.',
     dragHandle: 'Reorder source',
     enabledLabel: 'Include {{source}} in the mass import',
+    unavailable: 'Not available',
     save: 'Save order',
     saving: 'Saving…',
     saved: 'Order saved.',

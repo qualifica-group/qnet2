@@ -63,6 +63,11 @@ return [
     // of the user-controlled preview per_page).
     'import_batch_size' => 100,
 
+    // Spec 0285: the `users` source only links the legacy users to the qnet
+    // accounts that already exist (writes `old_id`, creates nothing), for an
+    // installation whose accounts come from its own seeder.
+    'users_link_only' => (bool) env('EXTERNAL_MIGRATION_USERS_LINK_ONLY', false),
+
     /*
     |--------------------------------------------------------------------------
     | Generic, registry-driven migration source map

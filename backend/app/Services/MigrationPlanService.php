@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Migrations\MigrationOrder;
+use App\Migrations\MigrationRegistry;
 use App\Models\MigrationPlan;
 
 /**
@@ -11,10 +12,13 @@ use App\Models\MigrationPlan;
  * singleton row; when absent, the default is App\Migrations\MigrationOrder::PHASES
  * flattened (every registered source, enabled). `current()` always reconciles the
  * stored plan against the live registry so a source added to / removed from
- * config/migrations.php is never silently dropped or left orphaned.
+ * config/migrations.php is never silently dropped or left orphaned, and a source
+ * this installation may not import (spec 0285, D-5) is never enabled.
  */
 class MigrationPlanService
 {
+    public function __construct(private readonly MigrationRegistry $registry) {}
+
     /**
      * The reconciled plan: ordered list of ['source' => key, 'enabled' => bool].
      *
@@ -95,7 +99,8 @@ class MigrationPlanService
     /**
      * Keep the stored order, drop keys no longer registered, and append any
      * registered source missing from the stored plan (enabled) in dependency
-     * order — a new source is never silently excluded.
+     * order — a new source is never silently excluded. An unavailable source
+     * reads as disabled; its stored flag is kept for when it becomes available.
      *
      * @param  array<int, mixed>  $stored
      * @return list<array{source: string, enabled: bool}>
@@ -114,15 +119,20 @@ class MigrationPlanService
             }
 
             $seen[$key] = true;
-            $result[] = ['source' => $key, 'enabled' => (bool) ($item['enabled'] ?? true)];
+            $result[] = ['source' => $key, 'enabled' => (bool) ($item['enabled'] ?? true) && $this->isAvailable($key)];
         }
 
         foreach ($registered as $key) {
             if (! isset($seen[$key])) {
-                $result[] = ['source' => $key, 'enabled' => true];
+                $result[] = ['source' => $key, 'enabled' => $this->isAvailable($key)];
             }
         }
 
         return $result;
+    }
+
+    private function isAvailable(string $key): bool
+    {
+        return $this->registry->resolve($key)->isAvailable();
     }
 }

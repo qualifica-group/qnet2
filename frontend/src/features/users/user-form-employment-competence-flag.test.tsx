@@ -1,3 +1,4 @@
+// REQUIREMENT CHANGED (spec 0286 D-1): the UI label "Competence" is now "Assignment scope"; keys, fields and API are unchanged.
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import i18n from '@/i18n'
@@ -254,7 +255,7 @@ async function submittedEmployment() {
   return updateUserMock.mock.calls[0][1].employment
 }
 
-const COVERS_ALL_SWITCH_NAME = 'Competent for all categories'
+const COVERS_ALL_SWITCH_NAME = 'Scope on all categories'
 
 describe('UserDetailView — is_assignable row (spec 0194)', () => {
   it('AC-008 — on by default; switching it off submits false and keeps the competence rows', async () => {
@@ -299,7 +300,7 @@ describe('UserDetailView — covers_all_product_categories & "all categories" ro
   })
 
   it('AC-021 — checking "All" on a row disables/clears the category, and the row is not incomplete', async () => {
-    await openRow('Competence', userWithCompetence({ ...BASE_EMPLOYMENT, product_lines: [] }))
+    await openRow('Assignment scope', userWithCompetence({ ...BASE_EMPLOYMENT, product_lines: [] }))
 
     fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
     fireEvent.click(screen.getByRole('button', { name: `select Business function 1 ${SALES_FUNCTION}` }))
@@ -316,7 +317,7 @@ describe('UserDetailView — covers_all_product_categories & "all categories" ro
   })
 
   it('AC-022 — a container category (is_selectable=false) is pickable in this variant', async () => {
-    await openRow('Competence')
+    await openRow('Assignment scope')
 
     expect(screen.getByLabelText('Product category 1 options')).toHaveTextContent(
       `100,${PHOTOVOLTAIC_CATEGORY},${HEAT_PUMPS_CATEGORY},${AUDIT_CATEGORY}`,
@@ -325,7 +326,7 @@ describe('UserDetailView — covers_all_product_categories & "all categories" ro
 
   it('AC-023 — a persisted (function, null) row opens with "All" checked', async () => {
     await openRow(
-      'Competence',
+      'Assignment scope',
       userWithCompetence({
         ...BASE_EMPLOYMENT,
         product_lines: [{ id: 93, business_function: { id: SALES_FUNCTION, name: 'Sales' }, product_category: null }],
@@ -344,7 +345,7 @@ describe('UserDetailView — covers_all_product_categories & "all categories" ro
     render(<UserDetailView userId={7} />, { wrapper })
 
     expect(await screen.findByRole('button', { name: `Edit ${COVERS_ALL_SWITCH_NAME}` })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Edit Competence' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Assignment scope' })).not.toBeInTheDocument()
     expect(pencilOf('Assignable')).toBeInTheDocument()
   })
 })

@@ -5,6 +5,7 @@ import { RecordLink } from '@/components/detail/record-link'
 import { RecordField, RecordFieldList, RecordSection } from '@/components/detail/record-panel'
 import { RecordInlineField } from '@/components/record-form/record-inline-field'
 import { Badge } from '@/components/ui/badge'
+import { useResourcePermissions } from '@/features/authorization/permissions'
 import { useEnumOptions } from '@/features/config/use-config'
 import { formatDate } from '@/lib/formatting/date-display'
 import { UserEmailField, UserPasswordFields, UserRolesField, UserSwitchField } from '@/features/users/user-account-fields'
@@ -17,6 +18,8 @@ import {
   UserReportsToField,
 } from '@/features/users/user-employment-fields'
 import { FunctionBadges } from '@/features/users/function-badges'
+import { JOB_ROLES_DOMAIN } from '@/features/job-roles/types'
+import { CONTRACTS_FIELD } from '@/features/users/contract-history-types'
 import { type UserRecordSectionProps, type UserRecordValues } from '@/features/users/user-record'
 import type { EmploymentRelationRef } from '@/features/users/types'
 
@@ -30,8 +33,12 @@ function formatMinutes(value: number | null): string | null {
   return `${hours}:${String(minutes).padStart(2, '0')}`
 }
 
-/** Zero or more refs as chips (roles, managers); the shared empty marker when there is none. */
-export function RefBadges({ refs }: { refs: EmploymentRelationRef[] }) {
+/**
+ * Zero or more refs as chips (roles, managers); the shared empty marker when
+ * there is none. With `domain`, each chip opens its record in a modal
+ * (`RecordLink`, plain text when the actor cannot view that module).
+ */
+export function RefBadges({ refs, domain }: { refs: EmploymentRelationRef[]; domain?: string }) {
   if (refs.length === 0) {
     return <DetailEmpty />
   }
@@ -39,7 +46,13 @@ export function RefBadges({ refs }: { refs: EmploymentRelationRef[] }) {
     <div className="flex flex-wrap gap-1">
       {refs.map((ref) => (
         <Badge key={ref.id} variant="secondary" className="max-w-full">
-          {ref.label}
+          {domain === undefined ? (
+            ref.label
+          ) : (
+            <RecordLink domain={domain} id={ref.id}>
+              {ref.label}
+            </RecordLink>
+          )}
         </Badge>
       ))}
     </div>
@@ -117,7 +130,7 @@ export function UserProfileRecordSection({ values, form, inline }: UserRecordSec
           inline={inline}
           editor={<UserJobRolesField control={control} selected={values.job_roles} />}
         >
-          <RefBadges refs={values.job_roles} />
+          <RefBadges refs={values.job_roles} domain={JOB_ROLES_DOMAIN} />
         </RecordInlineField>
         <RecordInlineField
           field="employment.business_function_ids"
@@ -155,35 +168,48 @@ export function UserProfileRecordSection({ values, form, inline }: UserRecordSec
 /**
  * "Rapporto contrattuale" (spec 0272 D-2): the condition in force today, read
  * only. Relationship type and company are copies of the latest condition of the
- * contract history, which is where they change.
+ * contract history, which is where they change. Each row follows its field
+ * permission (spec 0283); level and start date are the condition itself.
  */
 export function UserContractRecordSection({ values }: { values: UserRecordValues }) {
   const { t } = useTranslation()
+  const { field } = useResourcePermissions()
+  const showContract = field(CONTRACTS_FIELD).visible
   const level = values.current_contract?.collective_agreement_level ?? null
 
   return (
     <RecordSection title={t('users.form.sections.contract.title')} icon={<FileSignature />}>
       <RecordFieldList>
-        <RecordField label={t('users.detail.employment.relationshipType')}>
-          {values.relationship_type ? t(`enums.relationship_type.${values.relationship_type}`) : <DetailEmpty />}
-        </RecordField>
-        <RecordField label={t('users.detail.employment.company')}>
-          {values.company ? (
-            <RecordLink domain="companies" id={values.company.id}>
-              {values.company.label}
-            </RecordLink>
-          ) : (
-            <DetailEmpty />
-          )}
-        </RecordField>
-        <RecordField label={t('users.detail.employment.collectiveAgreementLevel')}>
-          {level ? level.label : <DetailEmpty />}
-        </RecordField>
-        <RecordField label={t('users.detail.employment.contractStartsOn')}>
-          {formatDate(values.current_contract?.starts_on ?? null) || <DetailEmpty />}
-        </RecordField>
+        {field('employment.relationship_type').visible ? (
+          <RecordField label={t('users.detail.employment.relationshipType')}>
+            {values.relationship_type ? t(`enums.relationship_type.${values.relationship_type}`) : <DetailEmpty />}
+          </RecordField>
+        ) : null}
+        {field('employment.company_id').visible ? (
+          <RecordField label={t('users.detail.employment.company')}>
+            {values.company ? (
+              <RecordLink domain="companies" id={values.company.id}>
+                {values.company.label}
+              </RecordLink>
+            ) : (
+              <DetailEmpty />
+            )}
+          </RecordField>
+        ) : null}
+        {showContract ? (
+          <>
+            <RecordField label={t('users.detail.employment.collectiveAgreementLevel')}>
+              {level ? level.label : <DetailEmpty />}
+            </RecordField>
+            <RecordField label={t('users.detail.employment.contractStartsOn')}>
+              {formatDate(values.current_contract?.starts_on ?? null) || <DetailEmpty />}
+            </RecordField>
+          </>
+        ) : null}
       </RecordFieldList>
-      <p className="mt-2 text-xs text-muted-foreground">{t('users.detail.employment.contractReadOnlyHint')}</p>
+      {showContract ? (
+        <p className="mt-2 text-xs text-muted-foreground">{t('users.detail.employment.contractReadOnlyHint')}</p>
+      ) : null}
     </RecordSection>
   )
 }

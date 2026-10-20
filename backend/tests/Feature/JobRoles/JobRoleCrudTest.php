@@ -74,7 +74,7 @@ it('the job-roles grid exposes the contract columns and users_count', function (
     $row = $this->postJson('/api/tables/job-roles/rows', ['startRow' => 0, 'endRow' => 10])->assertOk()->json('items.0');
 
     expect($columns)->toBe(['id', 'name', 'description', 'job_activities', 'users_count'])
-        ->and($row['job_activities'])->toBe([['id' => $activity->id, 'label' => $activity->name]])
+        ->and($row['job_activities'])->toBe([$activity->name])
         ->and($row['users_count'])->toBe(1);
 });
 

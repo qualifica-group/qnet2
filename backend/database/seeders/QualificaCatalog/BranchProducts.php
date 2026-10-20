@@ -14,9 +14,10 @@ use Illuminate\Support\Str;
 
 /**
  * The products of a catalogue branch that comes with its own list — "SOA"
- * (SoaCatalogue::PRODUCTS) and "Sicurezza" (SafetyProductCatalogue::PRODUCTS)
- * — seeded by CatalogProducts. Each one gets, besides its price (0 when the
- * list gives none) and the 22% VAT rate:
+ * (SoaCatalogue::PRODUCTS), "Sicurezza" (SafetyProductCatalogue::PRODUCTS),
+ * "Gare", "GDPR" and "Finanza Agevolata" — seeded by CatalogProducts. Each one gets, besides its
+ * price (0 when the list gives none), its description (when the list gives
+ * one) and the 22% VAT rate:
  *
  *   - the TYPOLOGY of its category (the branch's TYPOLOGIES, by code);
  *   - its SUPPLIER, when a supplier registry of that name exists — usually
@@ -27,7 +28,7 @@ use Illuminate\Support\Str;
  *
  * Idempotent and non-destructive: the natural key is (name, category), and an
  * already-seeded product keeps every value set by hand. What a re-run fills is
- * only what is still blank: the supplier, the expiry, and a typology still on
+ * only what is still blank: the supplier, the description, the expiry, and a typology still on
  * the default "Ente" (an earlier revision seeded every product there).
  */
 final class BranchProducts
@@ -42,7 +43,7 @@ final class BranchProducts
     ) {}
 
     /**
-     * @param  array<string, array<string, array{price?: float, supplier: string|null, expiration_months: int|null}>>  $products  category name => product name => its spec
+     * @param  array<string, array<string, array{description?: string, price?: float, supplier: string|null, expiration_months: int|null}>>  $products  category name => product name => its spec
      * @param  array<string, string>  $typologies  category name => typology code
      */
     public function seed(array $products, array $typologies, int $vatRateId): void
@@ -58,7 +59,7 @@ final class BranchProducts
                 $supplierId = $spec['supplier'] === null ? null : $this->supplierId($spec['supplier']);
 
                 // Step 2: the product, created or with its blanks filled.
-                $product = $this->upsert($category, $name, [$vatRateId, $spec['price'] ?? 0.0], [$typologyId, $defaultTypologyId], $supplierId);
+                $product = $this->upsert($category, [$name, $spec['description'] ?? null], [$vatRateId, $spec['price'] ?? 0.0], [$typologyId, $defaultTypologyId], $supplierId);
 
                 // Step 3: its "Mesi scadenza", when the list gives one.
                 if ($spec['expiration_months'] !== null) {
@@ -69,11 +70,13 @@ final class BranchProducts
     }
 
     /**
+     * @param  array{0: string, 1: string|null}  $identity  the product name, then its description
      * @param  array{0: int, 1: float}  $pricing  the VAT rate id, then the list price
      * @param  array{0: int, 1: int}  $typologyIds  the category's typology, then the default one
      */
-    private function upsert(ProductCategory $category, string $name, array $pricing, array $typologyIds, ?int $supplierId): Product
+    private function upsert(ProductCategory $category, array $identity, array $pricing, array $typologyIds, ?int $supplierId): Product
     {
+        [$name, $description] = $identity;
         [$vatRateId, $price] = $pricing;
         [$typologyId, $defaultTypologyId] = $typologyIds;
         $existing = Product::query()->where('name', $name)->where('category_id', $category->id)->first();
@@ -81,7 +84,7 @@ final class BranchProducts
         if ($existing === null) {
             return $this->products->create(new CreateProductData(
                 name: $name,
-                description: null,
+                description: $description,
                 // Cost is filled in later through the CRUD modules.
                 cost: 0.0,
                 price: $price,
@@ -95,10 +98,11 @@ final class BranchProducts
 
         $existing->fill(array_filter([
             'supplier_id' => $existing->supplier_id ?? $supplierId,
+            'description' => blank($existing->description) ? $description : $existing->description,
             'product_typology_id' => $existing->product_typology_id === $defaultTypologyId
                 ? $typologyId
                 : $existing->product_typology_id,
-        ], static fn (?int $value): bool => $value !== null))->save();
+        ], static fn (int|string|null $value): bool => $value !== null))->save();
 
         return $existing;
     }

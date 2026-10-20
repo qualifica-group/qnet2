@@ -42,10 +42,10 @@ export const usersFormEmployment = {
   reportsToError: 'Unable to load users.',
   reportsToRemove: 'Remove manager',
   isAssignable: 'Assignable',
-  isAssignableDescription: 'When off, the person receives no assignment at all (Leads, Request Management, Members, import), even with a site and competence.',
-  coversAllProductCategories: 'Competent for all categories',
-  coversAllProductCategoriesDescription: 'This person is competent on any product category, regardless of business function: the rows below disappear and are cleared.',
-  productLines: 'Competence',
+  isAssignableDescription: 'When off, the person receives no assignment at all (Leads, Request Management, Members, import), even with a site and an assignment scope.',
+  coversAllProductCategories: 'Scope on all categories',
+  coversAllProductCategoriesDescription: 'This person’s assignment scope covers any product category, regardless of business function: the rows below disappear and are cleared.',
+  productLines: 'Assignment scope',
   productLinesHint: 'Each row pairs a business function with a product category, sub-categories included: check "All" to cover every category of that function, or pick a container category (e.g. "Training") to cover it and its children. With neither a row nor the flag above they receive no assignment.',
   productLineIncomplete: 'Each row requires both a business function and a product category (or "All").',
   primaryOperationalSite: 'Physical site',
@@ -87,7 +87,7 @@ export const usersDetailEmployment = {
   managedBusinessFunctions: 'Manager of functions',
   managedBusinessFunctionsEmpty: 'Not the manager of any function.',
   reportsTo: 'Reports to',
-  productLines: 'Competence',
+  productLines: 'Assignment scope',
   relationshipType: 'Relationship type',
   company: 'Company',
   primaryOperationalSite: 'Physical site',
@@ -148,7 +148,7 @@ export const usersDetailEmployment = {
 }
 
 /**
- * Assignment configuration (user directive 2026-09-11): competence + Sedi, the
+ * Assignment configuration (user directive 2026-09-11): assignment scope + Sedi, the
  * two halves the server intersects to decide who may receive a record. Shared
  * by the form and the scheda so the two surfaces cannot tell the rule
  * differently.
@@ -161,23 +161,23 @@ export const usersAssignment = {
   /** Spec 0129 D-1: shown instead of the count/list while the jolly flag is on. */
   allCategories: 'All categories',
   chips: {
-    competence: 'Competences',
+    competence: 'Assignment scopes',
     physicalSite: 'Physical site',
     remoteSites: 'Remote sites',
   },
   blockers: {
     disabled: 'Assignment turned off by the Assignable setting',
-    competence: 'No competence configured: without at least one business function + product category pair the person enters no assignment pool.',
+    competence: 'No assignment scope configured: without at least one business function + product category pair the person enters no assignment pool.',
     site: 'No operational site: without a physical or remote site the person enters no assignment pool.',
   },
   stats: {
-    competence: 'Competences',
+    competence: 'Assignment scopes',
     sites: 'Sites',
     sitesBreakdown: '{{physical}} physical · {{remote}} remote',
     matching: 'Matching',
     blockers: {
       disabled: 'Assignment turned off',
-      competence: 'Competence missing',
+      competence: 'Assignment scope missing',
       site: 'Site missing',
     },
   },

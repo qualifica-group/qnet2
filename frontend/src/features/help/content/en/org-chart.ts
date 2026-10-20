@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The page shows a graphic org chart in two tabs: **Functions** and **People**. Each card is joined by a line to the card it depends on, top to bottom. It only shows active people, not service accounts. A person\'s name opens their user record, a function\'s name opens its detail.',
+          text: 'The page shows a graphic org chart in two tabs: **Business functions** and **People**. Each card is joined by a line to the card it depends on, top to bottom. It only shows active people, not service accounts. A person\'s name opens their user record, a function\'s name opens its detail.',
         },
       ],
     },
@@ -23,7 +23,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['View', 'What it shows'],
           rows: [
-            ['Functions', 'People are grouped by business function of membership (not by competences). One card per business function with its type (business unit or business service), the manager\'s photo and name and the number of people; below it, the people of the function as cards (managers first, then the others alphabetically) and its sub-functions. The button with the number of people stays and opens a side panel with the function\'s **Managers** and other **People**, with their job roles.'],
+            ['Business functions', 'People are grouped by business function of membership (not by assignment scopes). One card per business function with its type (business unit or business service), the manager\'s photo and name and the number of people; below it, the people of the function as cards (managers first, then the others alphabetically) and its sub-functions. The button with the number of people stays and opens a side panel with the function\'s **Managers** and other **People**, with their job roles.'],
             ['People', 'Who reports to whom: one card per person with photo, name, job roles and functions; people with no manager at the top, each with their direct reports below. A crown marks whoever manages at least one function. Someone with several managers appears under each of them. People with no links come after the hierarchies.'],
           ],
         },
@@ -63,8 +63,8 @@ const guide: HelpGuide = {
           headers: ['Move', 'Effect'],
           rows: [
             ['Person under another manager (People view)', 'In the "Reports to" field the starting manager is replaced with the destination one; the other managers stay. Moving to the top level removes that manager.'],
-            ['Function under another function (Functions view)', 'The parent function changes; at the top level the function has no parent.'],
-            ['Person from one function to another (Functions view, from the side panel)', 'The starting function of membership is replaced with the destination one. From **Unassigned** the person receives their first membership.'],
+            ['Function under another function (Business functions view)', 'The parent function changes; at the top level the function has no parent.'],
+            ['Person from one function to another (Business functions view, from the side panel)', 'The starting function of membership is replaced with the destination one. From **Unassigned** the person receives their first membership.'],
           ],
         },
         {

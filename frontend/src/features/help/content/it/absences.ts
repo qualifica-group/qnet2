@@ -144,12 +144,45 @@ const guide: HelpGuide = {
       ],
     },
     {
-      id: 'in-development',
-      title: 'Calendario della squadra in sviluppo',
+      id: 'calendar',
+      title: 'Il calendario',
       blocks: [
         {
+          type: 'paragraph',
+          text: 'La vista **Calendario**, accanto a **Richieste**, mostra mese per mese chi è assente: una riga per persona, una colonna per giorno. Weekend e festivi sono evidenziati, i festivi hanno il numero in rosso.',
+        },
+        {
+          type: 'table',
+          headers: ['Simbolo', 'Significato'],
+          rows: [
+            ['Riquadro pieno con la spunta', 'Assenza approvata.'],
+            ['Riquadro tratteggiato con l’orologio', 'Richiesta inviata, in attesa di decisione.'],
+          ],
+        },
+        {
+          type: 'paragraph',
+          text: 'Chi vedi dipende dai permessi del tuo ruolo:',
+        },
+        {
+          type: 'table',
+          headers: ['Permesso', 'Chi vedi'],
+          rows: [
+            ['Calendario: solo le proprie', 'Solo te stesso.'],
+            ['Calendario: proprie e della squadra', 'Te e le persone che ti rispondono, anche indirettamente.'],
+            ['Calendario: di tutti', 'Tutte le persone attive.'],
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            'Con le frecce passi al mese precedente o successivo; "Mese corrente" ti riporta a oggi.',
+            'Se vedi più persone, puoi filtrarle per funzione aziendale.',
+            'Passando sopra un riquadro leggi tipo, durata e stato. Se puoi già vedere quella richiesta nelle Richieste, un clic ne apre il dettaglio.',
+          ],
+        },
+        {
           type: 'note',
-          text: 'Il calendario della squadra è in fase di sviluppo e arriverà in un aggiornamento successivo.',
+          text: 'Senza nessuno dei tre permessi la vista Calendario non compare. Bozze, richieste rifiutate e annullate non sono nel calendario.',
         },
       ],
     },

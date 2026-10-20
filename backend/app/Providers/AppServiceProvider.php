@@ -83,7 +83,10 @@ use App\Models\RewardStatus;
 use App\Models\RewardType;
 use App\Models\Role;
 use App\Models\Sector;
+use App\Models\Skill;
 use App\Models\Source;
+use App\Models\StaffCourse;
+use App\Models\StaffTraining;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\TaskCategory;
@@ -98,6 +101,7 @@ use App\Models\TimeEntry;
 use App\Models\TimeEntryDayNote;
 use App\Models\UnitOfMeasure;
 use App\Models\User;
+use App\Models\UserSkill;
 use App\Models\UserTablePreference;
 use App\Models\VatRate;
 use App\Models\WorkOrder;
@@ -248,6 +252,12 @@ class AppServiceProvider extends ServiceProvider
             'absence_type' => AbsenceType::class,
             'absence_request' => AbsenceRequest::class,
             'absence_allowance' => AbsenceAllowance::class,
+            // spec 0284: HR staff training.
+            'staff_course' => StaffCourse::class,
+            'staff_training' => StaffTraining::class,
+            // spec 0286: HR skills.
+            'skill' => Skill::class,
+            'user_skill' => UserSkill::class,
             'purchase_request_priority' => PurchaseRequestPriority::class,
             'purchase_order_status_label' => PurchaseOrderStatusLabel::class,
             'purchase_request_line_status_label' => PurchaseRequestLineStatusLabel::class,

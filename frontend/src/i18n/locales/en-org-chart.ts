@@ -4,13 +4,11 @@
  */
 
 export const orgChart = {
-  title: 'Org chart',
-  subtitle: 'Who works in which function and who reports to whom.',
   forbidden: 'You do not have permission to view the org chart.',
   loading: 'Loading the org chart…',
   loadError: 'Could not load the org chart. Try again later.',
   tabs: {
-    functions: 'Functions',
+    functions: 'Business functions',
     people: 'People',
   },
   type: {

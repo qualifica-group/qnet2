@@ -21,7 +21,7 @@ export const businessFunctions = {
     companies: 'Companies',
     users_count: 'Users',
     product_categories_count: 'Product categories',
-    competences_count: 'Competent people',
+    competences_count: 'People with assignment scope',
     opportunities_count: 'Opportunities',
     projects_count: 'Projects',
     campaigns_count: 'Campaigns',

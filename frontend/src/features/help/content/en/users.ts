@@ -17,7 +17,7 @@ const guide: HelpGuide = {
       title: 'Creating a user',
       blocks: [
         { type: 'steps', items: ['Open **Administration › Users** and click **New user**: the form looks like the record, with the same sections and **closed rows**.', 'Click a row (or its pencil) to open it, fill it in and press **Done** to keep the value or **Revert** to put it back (see the tables below). The **Personal details** are required.', '**Contacts** and **Addresses** are filled in the side column and saved together with the user.', 'Click **Save**. The message "User created successfully." appears. If you leave without saving, you are asked to confirm.'] },
-        { type: 'paragraph', text: 'The **Save** button sits both at the top and at the bottom of the form. The figures strip at the top (competences, sites, roles, matching) updates as you fill it in.' },
+        { type: 'paragraph', text: 'The **Save** button sits both at the top and at the bottom of the form. The figures strip at the top (assignment scopes, sites, roles, matching) updates as you fill it in.' },
         {
           type: 'table',
           headers: ['Field', 'What to enter'],
@@ -38,21 +38,21 @@ const guide: HelpGuide = {
       id: 'assignment-configuration',
       title: 'Assignment configuration',
       blocks: [
-        { type: 'paragraph', text: 'This section decides which requests can reach the person. A request reaches them only if they belong to the site of the request and have a competency on the requested product category.' },
+        { type: 'paragraph', text: 'This section decides which requests can reach the person. A request reaches them only if they belong to the site of the request and have an assignment scope on the requested product category.' },
         {
           type: 'table',
           headers: ['Field', 'What to enter'],
           rows: [
-            ['**Assignable**', 'If you turn it off the person receives no assignments at all (Leads, Request Management, Members, import), even with a site and competency. Competency and sites stay configured, ready for when you turn it back on. It is on by default.'],
-            ['**Competent for all categories**', 'Turn it on if the person follows any product category. Competency rows disappear and are cleared.'],
-            ['**Competency**', 'One row for each pair of business function and product category. A parent category also covers its subcategories. Check "All" to cover every category of that function.'],
+            ['**Assignable**', 'If you turn it off the person receives no assignments at all (Leads, Request Management, Members, import), even with a site and an assignment scope. Assignment scope and sites stay configured, ready for when you turn it back on. It is on by default.'],
+            ['**Scope on all categories**', 'Turn it on if the person follows any product category. Assignment scope rows disappear and are cleared.'],
+            ['**Assignment scope**', 'One row for each pair of business function and product category. A parent category also covers its subcategories. Check "All" to cover every category of that function.'],
             ['**Physical site**', "The person's primary operational site."],
             ['**Remote sites**', 'Other operational sites where they work.'],
           ],
         },
         { type: 'paragraph', text: 'Physical site and remote sites count the same way for assignment. In the figures strip at the top, **Matching** shows **Assignable** or **Not assignable**.' },
-        { type: 'note', text: 'The **Competences** are optional and separate from membership: they only drive assignments. The requirement for an active person (not a service account) applies to the **Business functions of membership** (see **Profile and employment relationship**).' },
-        { type: 'warning', text: 'The person receives assignments only when all three conditions hold: **Assignable** on, at least one competency and at least one site. The module flags the missing one with "Assignment turned off", "Missing competency" or "Missing site".' },
+        { type: 'note', text: 'The **Assignment scopes** are optional and separate from membership: they only drive assignments. The requirement for an active person (not a service account) applies to the **Business functions of membership** (see **Profile and employment relationship**).' },
+        { type: 'warning', text: 'The person receives assignments only when all three conditions hold: **Assignable** on, at least one assignment scope and at least one site. The module flags the missing one with "Assignment turned off", "Missing assignment scope" or "Missing site".' },
       ],
     },
     {
@@ -63,8 +63,8 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Field', 'What to enter'],
           rows: [
-            ['**Job roles**', 'The job roles the person performs, chosen from the Job roles module list: you can pick several or none.'],
-            ['**Business functions of membership**', 'The business functions the person belongs to, one or more. It is the same data as the function\'s **Associated users**: changing it here or there is equivalent. It is required for an active person (not a service account): otherwise the save is refused and the error appears under the field. It is not the same as the **Competences**, which stay optional.'],
+            ['**Job roles**', 'The job roles the person performs, chosen from the Job roles module list: you can pick several or none. On the record, clicking a job role opens its record with the list of activities (if you can view the Job roles module).'],
+            ['**Business functions of membership**', 'The business functions the person belongs to, one or more. It is the same data as the function\'s **Associated users**: changing it here or there is equivalent. It is required for an active person (not a service account): otherwise the save is refused and the error appears under the field. It is not the same as the **Assignment scopes**, which stay optional.'],
             ['**Manager of functions**', 'The functions the person manages, more than one allowed. It is edited in place if you can edit both the user and the business functions (otherwise the row stays read only). A function that had another manager passes to this person, replacing them; a function removed from the list is left without a manager. The same data can also be changed from the business function record. When there are none it reads "Not the manager of any function.".'],
             ['**Reports to**', 'The direct managers, chosen among users: you can pick more than one. The field is always there, also for someone who manages a function.'],
             ['**Employment type**, **Company**, **Collective agreement and level**, **In force since**', 'Read only: they show the contract condition in force today. Change them from the **Contract history** (see below).'],
@@ -74,7 +74,7 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'paragraph', text: 'The employment sections are there even for a user with no profile yet: the first save creates it. **Contacts** and **Addresses** follow; at the bottom, an **Other fields** section may appear, with the custom fields for users.' },
-        { type: 'note', text: 'Turning on **Competent for all categories** clears the **Competence** rows: that is why the two rows have no pencil if you cannot also edit the field they empty.' },
+        { type: 'note', text: 'Turning on **Scope on all categories** clears the **Assignment scope** rows: that is why the two rows have no pencil if you cannot also edit the field they empty.' },
         { type: 'paragraph', text: 'Under the name, in the card header, the business functions of membership appear as tags, with a crown on those the person manages; the managed functions the person is not a member of follow. In the users list the **Manager of functions** column (hidden by default, filterable by function) replaces the old **Manager** column.' },
       ],
     },
@@ -84,7 +84,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: 'On the card of an already saved user, the **Contract history** section lists the person’s contract conditions, newest first: start, end, employment type, company, collective agreement and level and, if you have the permission, the salary. The one in force today has the **Current** label. When creating a user the section says the history is filled in after saving.' },
         { type: 'steps', items: ['Click **New condition**.', 'Enter the **Start date** (a date not yet used for that person), the **Relationship type**, the **Company** and the **Collective agreement and level**.', 'If you have the compensation permission, also enter **Salary** and **Period** (month, year, hour): they go together.', 'Add a **Reason** if needed and click **Save**.'] },
-        { type: 'list', items: ['Conditions are never edited: every change is a new condition. The end of a condition is the day before the next one starts.', 'To fix a mistake use **Delete last condition** (shown only on the last one) and enter a new one. Deleting a condition that is not the last is not possible.', 'A condition starting in the future does not change the card’s **Employment type** and **Company** until that date arrives.', 'The actions require the permission to edit users.'] },
+        { type: 'list', items: ['Conditions are never edited: every change is a new condition. The end of a condition is the day before the next one starts.', 'To fix a mistake use **Delete last condition** (shown only on the last one) and enter a new one. Deleting a condition that is not the last is not possible.', 'A condition starting in the future does not change the card’s **Employment type** and **Company** until that date arrives.', 'The actions require the permission to edit users and the **Contract history** field editable in your role (see “Who sees the contract data”).'] },
         { type: 'note', text: 'If the start date is already used for that person, the form reports it on the field.' },
       ],
     },
@@ -94,7 +94,17 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: 'The **Payment** section holds the **IBAN** the person is paid on and the **Account holder**; the IBAN is read in groups of four characters and edited in place like the other fields. An invalid IBAN shows an error on the field.' },
         { type: 'paragraph', text: 'The same section shows the **Hourly cost**, read-only: it is not entered by hand but derived from the salary of the contract condition in force today. An hourly salary counts as is, a monthly one is divided by 173 hours, a yearly one by 2,076 hours (173 × 12); the result is rounded to the cent. It is the gross salary, with no social contributions or severance pay. With no salary in the condition in force the hourly cost stays empty.' },
-        { type: 'warning', text: 'IBAN and salary are compensation data: you see and edit them only with the **Manage compensation data** permission (users.manageCompensation), by default reserved to the super-admin. Without it the **Payment** section (with the hourly cost) and the salary fields do not appear.' },
+        { type: 'warning', text: 'IBAN and salary are compensation data: you see and edit them only with the **Manage compensation data** permission (users.manageCompensation), held by the super-admin, the admin and the **Risorse Umane** (HR) role. Without it the **Payment** section (with the hourly cost) and the salary fields do not appear.' },
+      ],
+    },
+    {
+      id: 'contract-visibility',
+      title: 'Who sees the contract data',
+      blocks: [
+        { type: 'paragraph', text: 'The **Contract**, **Contract history**, **Contract data** and **Payment** sections hold sensitive data. Who sees them is decided by the role’s **field permissions** (Roles form, Users fields): a hidden field does not appear on the card, and the section disappears when none of its fields is left visible.' },
+        { type: 'list', items: ['The **Risorse Umane** (HR office) role sees and edits everything: staff records, contract history, payment, collective agreements, job roles, activities, business functions, org chart, everyone’s absences and absence types, courses and everyone’s trainings, the skills catalogue and everyone’s skills; it also reads everyone’s time entries and the companies. It cannot change a user’s roles nor sign in as another user.', 'The **admin** and the **super-admin** see everything.', 'The other roles of the installation (supervisor, coordinator, marketing, sales, teaching supervisor, base operator) do not see the contract data, not even in the Users grid columns (Company, Relationship type, Status, Hired at, Terminated at) nor in the export.', 'Someone with several roles sees a field when at least one of their roles shows it.'] },
+        { type: 'note', text: 'Whoever cannot see the employment dates and durations can still save the card: the values they cannot see stay as they are.' },
+        { type: 'warning', text: 'A new role created from the Roles form, with no field permissions, sees everything: if it must see users but not the contract data, hide in its form the Contract, Contract history (employment.contracts), Contract data and Payment fields.' },
       ],
     },
     {

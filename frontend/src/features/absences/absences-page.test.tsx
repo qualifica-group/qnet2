@@ -27,6 +27,13 @@ vi.mock('@/features/absences/requests/absence-requests-grid', () => ({
     </button>
   ),
 }))
+vi.mock('@/features/absences/calendar/absence-calendar', () => ({
+  AbsenceCalendar: ({ onOpen }: { onOpen: (id: number) => void }) => (
+    <button type="button" onClick={() => onOpen(5)}>
+      calendar-open-5
+    </button>
+  ),
+}))
 vi.mock('@/features/absences/api', () => ({
   fetchAbsenceRequest: () => Promise.resolve(buildRequest()),
   fetchAbsenceTypeOptions: () => Promise.resolve([]),
@@ -79,5 +86,22 @@ describe('AbsencesPage', () => {
     render(<AbsencesPage />, { wrapper: absenceWrapper() })
 
     expect(screen.getByText(label('absences.forbidden'))).toBeInTheDocument()
+  })
+
+  it('spec 0279: hides the Calendar view without any calendar permission', () => {
+    render(<AbsencesPage />, { wrapper: absenceWrapper() })
+
+    expect(screen.queryByRole('tab', { name: label('absences.page.views.calendar') })).not.toBeInTheDocument()
+  })
+
+  it('spec 0279: any calendar permission shows the Calendar view, which opens the detail', async () => {
+    permissions.add('absence-requests.calendarOwn')
+    render(<AbsencesPage />, { wrapper: absenceWrapper() })
+
+    fireEvent.click(screen.getByRole('tab', { name: label('absences.page.views.calendar') }))
+    expect(screen.queryByRole('region', { name: 'balances' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'calendar-open-5' }))
+    expect(await screen.findByText('Anna Rossi')).toBeInTheDocument()
   })
 })

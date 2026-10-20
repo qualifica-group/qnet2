@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Authorization\UsersAuthorization;
 use App\Models\Company;
 use App\Models\EmploymentContract;
 use App\Models\EmploymentProfile;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Arr;
 
 /**
  * @mixin EmploymentProfile
@@ -47,13 +49,58 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * accessor (which reads off the `reportsTo` pivot collection, ordered by
  * name), and `reports_to` is the SAME collection projected to `{id,label}`
  * references, both emitted only when `reportsTo` was eager-loaded.
+ *
+ * The contractual data (spec 0283 D-4) leaves the payload when the actor's
+ * field matrix hides it: hiding it on the form alone would still ship it.
  */
 class EmploymentResource extends JsonResource
 {
     /**
+     * `users` field key => the payload keys that carry its value.
+     *
+     * @var array<string, array<int, string>>
+     */
+    private const array KEYS_BY_FIELD = [
+        'employment.relationship_type' => ['relationship_type'],
+        'employment.company_id' => ['company_id', 'company'],
+        UsersAuthorization::CONTRACTS_FIELD => ['current_contract'],
+        'employment.hired_at' => ['hired_at'],
+        'employment.terminated_at' => ['terminated_at'],
+        'employment.standard_daily_minutes' => ['standard_daily_minutes'],
+        'employment.break_daily_minutes' => ['break_daily_minutes'],
+        'employment.iban' => ['iban'],
+        'employment.iban_holder' => ['iban_holder'],
+    ];
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
+    {
+        return Arr::except($this->payload($request), $this->hiddenKeys($request));
+    }
+
+    /**
+     * The payload keys of the fields the actor's matrix hides; all of them
+     * without an actor. Visibility does not depend on the target user.
+     *
+     * @return array<int, string>
+     */
+    private function hiddenKeys(Request $request): array
+    {
+        $actor = $request->user();
+        $fields = $actor === null ? [] : app(UsersAuthorization::class)->fieldPermissions($actor, null);
+
+        return collect(self::KEYS_BY_FIELD)
+            ->reject(static fn (array $keys, string $field): bool => $fields[$field]->visible ?? false)
+            ->flatten()
+            ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function payload(Request $request): array
     {
         return [
             'id' => $this->id,

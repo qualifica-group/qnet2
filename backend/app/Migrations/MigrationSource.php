@@ -49,6 +49,13 @@ interface MigrationSource
     public function dependencies(): array;
 
     /**
+     * Whether this installation may import the source. An unavailable source
+     * stays listed but is refused by the single import and never included in
+     * the mass import (spec 0285, D-5).
+     */
+    public function isAvailable(): bool;
+
+    /**
      * Relative path (under config('migrations.base_url')) of this resource's
      * list endpoint on the external system — the single source of truth also
      * used internally to fetch every page (preview and import alike), and

@@ -200,4 +200,9 @@ export const enums = {
     all: 'Tutti',
     visible: 'Tutti i visibili',
   },
+  // Spec 0284: esito di una formazione del personale (griglia, filtro, dettaglio, form).
+  staff_training_outcome: {
+    passed: 'Superato',
+    failed: 'Non superato',
+  },
 }

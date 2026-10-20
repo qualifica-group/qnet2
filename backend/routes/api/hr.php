@@ -22,3 +22,8 @@ require __DIR__.'/org-chart.php';
 require __DIR__.'/absence-types.php';
 require __DIR__.'/absence-requests.php';
 require __DIR__.'/absence-balances.php';
+require __DIR__.'/absence-calendar.php';
+require __DIR__.'/staff-courses.php';
+require __DIR__.'/staff-trainings.php';
+require __DIR__.'/skills.php';
+require __DIR__.'/user-skills.php';

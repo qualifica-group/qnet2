@@ -150,7 +150,7 @@ export const it: TranslationResources = {
       primary_contact: 'Contatti principali',
       ...usersColumnsEmployment,
     },
-    // Configurazione di assegnazione (competenza + sedi), condivisa fra form e scheda.
+    // Configurazione di assegnazione (ambito di assegnazione + sedi), condivisa fra form e scheda.
     assignment: usersAssignment,
     detail: {
       title: 'Dettaglio utente',

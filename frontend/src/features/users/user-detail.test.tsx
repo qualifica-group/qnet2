@@ -1,3 +1,4 @@
+// REQUIREMENT CHANGED (spec 0286 D-1): the UI label "Competence" is now "Assignment scope"; keys, fields and API are unchanged.
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import i18n from '@/i18n'
@@ -16,13 +17,19 @@ import type { EmploymentDetail, UserDetailWithPermissions } from '@/features/use
 
 const fetchUserMock = vi.fn()
 const activityLogSectionMock = vi.fn()
+const { grantedAbilities } = vi.hoisted(() => ({ grantedAbilities: new Set<string>() }))
 
 vi.mock('@/features/users/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/users/api')>()),
   fetchUser: (...args: unknown[]) => fetchUserMock(...args),
 }))
 vi.mock('@/features/auth/use-abilities', () => ({
-  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+  useAbilities: () => ({
+    can: (permission: string) => grantedAbilities.has(permission),
+    hasRole: () => false,
+    roles: [],
+    isLoading: false,
+  }),
 }))
 vi.mock('@/features/users/contract-history-api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/users/contract-history-api')>()),
@@ -102,6 +109,7 @@ beforeAll(async () => {
 beforeEach(() => {
   fetchUserMock.mockReset()
   activityLogSectionMock.mockReset()
+  grantedAbilities.clear()
 })
 
 describe('UserDetailView — activity log section (AC-015)', () => {
@@ -141,7 +149,7 @@ describe('UserDetailView — competence pairs (spec 0111 AC-025)', () => {
       }),
     )
 
-    await waitFor(() => expect(screen.getByText('Competence')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Assignment scope')).toBeInTheDocument())
     const pairs = screen.getAllByRole('listitem')
     expect(pairs).toHaveLength(2)
     expect(pairs[0]).toHaveTextContent('Sales')
@@ -153,7 +161,7 @@ describe('UserDetailView — competence pairs (spec 0111 AC-025)', () => {
   it('falls back to the empty marker for a user with no competence row', async () => {
     renderDetail(user({ employment: employment([]) }))
 
-    await waitFor(() => expect(screen.getByText('Competence')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Assignment scope')).toBeInTheDocument())
     expect(screen.queryAllByRole('listitem')).toHaveLength(0)
   })
 
@@ -166,7 +174,7 @@ describe('UserDetailView — competence pairs (spec 0111 AC-025)', () => {
       }),
     )
 
-    await waitFor(() => expect(screen.getByText('Competence')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Assignment scope')).toBeInTheDocument())
     const pairs = screen.getAllByRole('listitem')
     expect(pairs).toHaveLength(1)
     expect(pairs[0]).toHaveTextContent('Sales')
@@ -178,9 +186,9 @@ describe('UserDetailView — competence pairs (spec 0111 AC-025)', () => {
   it('spec 0129 AC-025 — shows "all categories" instead of the list when the flag is active', async () => {
     renderDetail(user({ employment: employment([], true) }))
 
-    await waitFor(() => expect(screen.getByText('Competent for all categories')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Scope on all categories')).toBeInTheDocument())
     expect(screen.queryAllByRole('listitem')).toHaveLength(0)
-    expect(screen.queryByText('Competence')).not.toBeInTheDocument()
+    expect(screen.queryByText('Assignment scope')).not.toBeInTheDocument()
     expect(screen.getByText('All categories')).toBeInTheDocument()
   })
 })
@@ -232,4 +240,26 @@ describe('UserDetailView — job roles (spec 0271)', () => {
     await waitFor(() => expect(screen.getByText('Software developer')).toBeInTheDocument())
     expect(screen.getByText('Software development lead')).toBeInTheDocument()
   })
+
+  it('links each job role to its record when the actor may view job roles', async () => {
+    grantedAbilities.add('job-roles.view')
+    renderDetail(userWithJobRole())
+
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: 'Software developer' })).toHaveAttribute('href', '/job-roles/13'),
+    )
+  })
+
+  it('keeps the job role as plain text when the actor may not view job roles', async () => {
+    renderDetail(userWithJobRole())
+
+    await waitFor(() => expect(screen.getByText('Software developer')).toBeInTheDocument())
+    expect(screen.queryByRole('link', { name: 'Software developer' })).not.toBeInTheDocument()
+  })
 })
+
+function userWithJobRole(): UserDetailWithPermissions {
+  return user({
+    employment: { ...employment([]), job_role_ids: [13], job_roles: [{ id: 13, name: 'Software developer' }] },
+  })
+}

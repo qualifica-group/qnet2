@@ -207,7 +207,10 @@ function orgChartFunction(string $name): BusinessFunction
 }
 
 it('names only catalogue functions and org chart people, each person in a function', function () {
-    $emails = collect(OrgChartFunctions::FUNCTIONS)->flatMap(fn (array $function): array => [...$function['heads'], ...$function['members']]);
+    // REQUIREMENT CHANGED (user decision 2026-10-19): the general manager heads
+    // "Direzione Generale" without being in the sheets.
+    $emails = collect(OrgChartFunctions::FUNCTIONS)->flatMap(fn (array $function): array => [...$function['heads'], ...$function['members']])
+        ->reject(fn (string $email): bool => $email === OrgChartFunctions::GENERAL_MANAGER);
 
     expect(array_diff(array_keys(OrgChartFunctions::FUNCTIONS), array_keys(BusinessFunctionCatalogue::FUNCTIONS)))->toBe([])
         ->and($emails->unique()->diff(array_keys(OrgChartRoster::PEOPLE))->values()->all())->toBe([])
@@ -235,6 +238,26 @@ it('makes the heads the managers and superiors of their function members, never 
         ->and($safetyHead->employment->reportsTo()->pluck('users.id')->all())->toBe([$commercialHead->id])
         ->and($commercialHead->employment->reportsTo()->exists())->toBeFalse()
         ->and(orgChartFunction(BusinessFunctionCatalogue::EMPLOYMENT_AGENCY)->manager_id)->toBeNull();
+});
+
+it('puts every function head under the general manager, who heads Direzione Generale alone', function () {
+    $this->seed(QualificaBusinessFunctionSeeder::class);
+    $director = rosterPerson(OrgChartFunctions::GENERAL_MANAGER);
+    $head = rosterPerson('ciro.cacciapuoti@qualificagroup.com');
+    $developer = rosterPerson('nicola.eliseo@qualificagroup.com');
+    $commercialHead = rosterPerson('michela.fabozzi@qualificagroup.com');
+    $safetyHead = rosterPerson('fernando.annunziata@qualificagroup.com');
+
+    $this->seed(QualificaHrCatalogSeeder::class);
+    $this->seed(QualificaHrCatalogSeeder::class);
+
+    expect(orgChartFunction(BusinessFunctionCatalogue::GENERAL_MANAGEMENT)->manager_id)->toBe($director->id)
+        ->and(orgChartFunction(BusinessFunctionCatalogue::GENERAL_MANAGEMENT)->users()->pluck('users.id')->all())->toBe([$director->id])
+        ->and($head->employment->reportsTo()->pluck('users.id')->all())->toBe([$director->id])
+        ->and($commercialHead->employment->reportsTo()->pluck('users.id')->all())->toBe([$director->id])
+        ->and($safetyHead->employment->reportsTo()->pluck('users.id')->all())->toEqualCanonicalizing([$commercialHead->id, $director->id])
+        ->and($developer->employment->reportsTo()->pluck('users.id')->all())->toBe([$head->id])
+        ->and($director->employment->reportsTo()->exists())->toBeFalse();
 });
 
 it('adds members and superiors without removing, and keeps a manager already set', function () {

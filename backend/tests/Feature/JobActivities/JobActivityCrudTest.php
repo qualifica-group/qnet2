@@ -60,7 +60,7 @@ it('the job-activities grid exposes the contract columns', function () {
     $row = $this->postJson('/api/tables/job-activities/rows', ['startRow' => 0, 'endRow' => 10])->assertOk()->json('items.0');
 
     expect($columns)->toBe(['id', 'name', 'description', 'job_roles'])
-        ->and($row['job_roles'])->toBe([['id' => $role->id, 'label' => $role->name]]);
+        ->and($row['job_roles'])->toBe([$role->name]);
 });
 
 it('for-select returns id/label', function () {

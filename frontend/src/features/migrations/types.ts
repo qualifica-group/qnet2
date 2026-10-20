@@ -7,14 +7,16 @@
 
 /**
  * A registered migration source, as returned by `GET /migrations`: its
- * 1-based import `phase` (null when outside the recommended order), its
- * latest run of any status (null when it never ran) and when a run last
- * completed (null when it was never migrated).
+ * 1-based import `phase` (null when outside the recommended order), whether
+ * this installation may import it (spec 0285 D-5), its latest run of any
+ * status (null when it never ran) and when a run last completed (null when it
+ * was never migrated).
  */
 export interface MigrationSourceSummary {
   key: string
   label: string
   phase: number | null
+  available: boolean
   last_run: MigrationLastRun | null
   migrated_at: string | null
 }
@@ -111,12 +113,15 @@ export interface MigrationReportEntry {
 
 /**
  * One entry of the saved mass-import plan (spec 0046): a source, its human
- * label, and whether the "Import all" run includes it. Order is the array order.
+ * label, whether the "Import all" run includes it, and whether this
+ * installation may import it at all (spec 0285 D-5: an unavailable source is
+ * always `enabled: false`). Order is the array order.
  */
 export interface MigrationPlanItem {
   source: string
   label: string
   enabled: boolean
+  available: boolean
 }
 
 /** The saved mass-import plan as returned by `GET/PUT /migrations/plan`. */

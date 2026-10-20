@@ -93,8 +93,13 @@ export const permissions = {
     receive: 'Registrare ricezioni',
     // Spec 0201 D-10: tab Dati contrattuali della commessa e gestione dei pagamenti per riga.
     viewContractData: 'Vedere i dati contrattuali',
+    viewInvoices: 'Vedere proforma e fatture',
     managePayments: 'Gestire i pagamenti',
     manageCompensation: 'Gestire i dati retributivi',
+    // Spec 0279: calendario delle assenze, tre livelli di visibilita'.
+    calendarOwn: 'Calendario: solo le proprie',
+    calendarTeam: 'Calendario: proprie e della squadra',
+    calendarAll: 'Calendario: di tutti',
   },
   resources: {
     users: 'Utenti',
@@ -154,6 +159,10 @@ export const permissions = {
     'job-roles': 'Mansioni',
     'job-activities': 'Attività',
     'org-chart': 'Organigramma',
+    'staff-trainings': 'Formazione',
+    'staff-courses': 'Corsi',
+    'user-skills': 'Competenze',
+    skills: 'Catalogo competenze',
     'purchase-request-priorities': 'Priorità RDA',
     'purchase-order-statuses': 'Stati ODA',
     'purchase-request-line-statuses': 'Stati righe RDA',

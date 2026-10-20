@@ -42,6 +42,10 @@ use Throwable;
  * linked yet: ExistingUserMatcher) is ADOPTED instead of created: it gets the
  * `old_id` and only its empty employment references are filled. An active
  * legacy user that matches nobody is created with "[OLD] " before its first name.
+ *
+ * Link-only mode (`migrations.users_link_only`, spec 0285): for an installation
+ * whose accounts come from its own seeder, a matched user only gets its
+ * `old_id`, an unmatched one is skipped, and nothing else is written.
  */
 class UsersSource extends AbstractMigrationSource
 {
@@ -179,18 +183,16 @@ class UsersSource extends AbstractMigrationSource
             throw new RuntimeException('External id is required.');
         }
 
+        if ($this->linkOnly()) {
+            return $this->linkRow($externalId, $record);
+        }
+
         if ($this->existsByOldId(User::class, $externalId)) {
             return MigrationRowOutcome::skipped($this->reconcileEmployment($externalId, $record));
         }
 
-        $email = trim((string) ($record['email'] ?? ''));
-        $firstName = trim((string) ($record['first_name'] ?? ''));
-        $lastName = trim((string) ($record['last_name'] ?? ''));
+        [$email, $firstName, $lastName] = $this->identity($record);
         $externalHash = (string) ($record['password'] ?? '');
-
-        if ($email === '' || $firstName === '' || $lastName === '') {
-            throw new RuntimeException('email, first_name and last_name are required.');
-        }
 
         $existing = $this->matcher->match($email, $firstName, $lastName);
 
@@ -256,6 +258,54 @@ class UsersSource extends AbstractMigrationSource
         return MigrationRowOutcome::created($warnings, $user);
     }
 
+    private function linkOnly(): bool
+    {
+        return (bool) config('migrations.users_link_only', false);
+    }
+
+    /**
+     * Link-only mode (spec 0285 D-3): the matched qnet user gets the `old_id`
+     * and nothing else; an unmatched record creates no account. A matcher
+     * conflict still throws, so the row fails as in the full import.
+     *
+     * @param  array<string, mixed>  $record
+     */
+    private function linkRow(int|string $externalId, array $record): MigrationRowOutcome
+    {
+        if ($this->existsByOldId(User::class, $externalId)) {
+            return MigrationRowOutcome::skipped();
+        }
+
+        [$email, $firstName, $lastName] = $this->identity($record);
+        $existing = $this->matcher->match($email, $firstName, $lastName);
+
+        if ($existing === null) {
+            return MigrationRowOutcome::skipped(["No qnet user matches {$email}: not created (link-only mode)."]);
+        }
+
+        $existing->old_id = $externalId;
+        $existing->save();
+
+        return MigrationRowOutcome::created(["Existing user {$existing->email} linked to this legacy record (link-only mode)."]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $record
+     * @return array{0: string, 1: string, 2: string} email, first name, last name
+     */
+    private function identity(array $record): array
+    {
+        $email = trim((string) ($record['email'] ?? ''));
+        $firstName = trim((string) ($record['first_name'] ?? ''));
+        $lastName = trim((string) ($record['last_name'] ?? ''));
+
+        if ($email === '' || $firstName === '' || $lastName === '') {
+            throw new RuntimeException('email, first_name and last_name are required.');
+        }
+
+        return [$email, $firstName, $lastName];
+    }
+
     /**
      * Link an existing qnet user to the legacy record: set its `old_id` and fill
      * only its empty employment references. Role, password, email, name and
@@ -280,10 +330,15 @@ class UsersSource extends AbstractMigrationSource
      * (notably the self-referential `reports_to_id`) still unresolved because
      * the referenced user was processed later in the SAME run. Each relink is
      * isolated in its own transaction so a single failure never aborts the
-     * pass; only successful relinks are appended to the run report.
+     * pass; only successful relinks are appended to the run report. Nothing
+     * to relink in link-only mode, which writes no employment reference.
      */
     protected function afterImport(MigrationImportContext $context): void
     {
+        if ($this->linkOnly()) {
+            return;
+        }
+
         $this->eachRecord(fn (array $record): mixed => $this->relinkRow($context, $record));
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\EmploymentContracts;
 
+use App\Authorization\UsersAuthorization;
 use App\Enums\RelationshipTypeEnum;
 use App\Enums\SalaryPeriodEnum;
 use App\Models\EmploymentContract;
@@ -13,9 +14,10 @@ use Illuminate\Validation\Rule;
 
 /**
  * Validates POST /api/users/{user}/employment-contracts (spec 0272 D-1/D-4/D-5).
- * Authorization: `users.update` on the target user, and compensation fields
- * (`salary_*`) additionally need `users.manageCompensation` (403 otherwise,
- * before any payload validation).
+ * Authorization: `users.update` on the target user and the
+ * `employment.contracts` field editable in the actor's matrix (spec 0283), and
+ * compensation fields (`salary_*`) additionally need `users.manageCompensation`
+ * (403 otherwise, before any payload validation).
  */
 class StoreEmploymentContractRequest extends FormRequest
 {
@@ -30,6 +32,10 @@ class StoreEmploymentContractRequest extends FormRequest
         $actor = $this->user();
 
         if (! $actor?->can('update', $target)) {
+            return false;
+        }
+
+        if (! app(UsersAuthorization::class)->fieldPermissions($actor, $target)[UsersAuthorization::CONTRACTS_FIELD]->editable) {
             return false;
         }
 

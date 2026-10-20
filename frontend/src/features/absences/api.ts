@@ -5,6 +5,8 @@ import type {
   AbsenceBalanceRow,
   AbsenceBalances,
   AbsenceBalancesParams,
+  AbsenceCalendar,
+  AbsenceCalendarParams,
   AbsenceRequest,
   AbsenceTypeOption,
   AllowancePayload,
@@ -93,5 +95,11 @@ export async function saveAbsenceAllowance(payload: AllowancePayload): Promise<A
 /** Active types for the request form (authentication only). */
 export async function fetchAbsenceTypeOptions(): Promise<AbsenceTypeOption[]> {
   const { data } = await apiClient.get<ApiResponse<AbsenceTypeOption[]>>('/absence-types/for-select')
+  return data.data
+}
+
+/** Who is absent day by day among the people the actor's calendar permission reveals (spec 0279). */
+export async function fetchAbsenceCalendar(params: AbsenceCalendarParams): Promise<AbsenceCalendar> {
+  const { data } = await apiClient.get<ApiResponse<AbsenceCalendar>>('/absences/calendar', { params })
   return data.data
 }

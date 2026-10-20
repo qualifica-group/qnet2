@@ -1,6 +1,6 @@
 # Modulo HR — documento di prodotto
 
-> Stato: bozza da seguire per lo sviluppo, 2026-10-16.
+> Stato: bozza da seguire per lo sviluppo, 2026-10-16; perimetro ridotto il 2026-10-19 (D-10).
 > Fonte: le due pagine "Il flusso di WeA HR" e "Le tabelle di WeA HR" (misure del 24/09/2026), confrontate con
 > quanto esiste oggi in qnet-2 e con i dati del QNet legacy.
 > Il documento elenca **informazioni (campi) e regole**, non tabelle: dove integrare ogni campo (tabella esistente o
@@ -14,28 +14,26 @@
 | D-1 | I dati si importano **sempre** dal framework di migrazione (`backend/app/Migrations/`) | Ogni area ha il suo importer; il legacy invia i dati già pronti (`.claude/rules/backend.md §9`). Un campo che il legacy non ha nasce vuoto e si compila in app |
 | D-2 | Non esiste una persona senza account | Il dipendente **è** l'utente: tutti i campi HR si appoggiano all'utente e al suo profilo d'impiego |
 | D-3 | Niente accesso unico (SSO) | Fuori scope |
-| D-4 | Le assenze sono rinviate ma **obbligatorie** | Vedi §11: requisito di prodotto da sviluppare in una fase successiva |
+| D-4 | Le assenze sono **obbligatorie** | Vedi §9: sviluppate in spec 0278 e 0279 (calendario) |
 | D-5 | Il segnatempo resta quello esistente (`time_entries`) | HR lo legge, non lo rifà |
 | D-6 | **La mansione è un catalogo a sé, senza legame con ruoli e permessi** (rivista il 2026-10-16, sostituisce "mansione = ruolo") | Una persona ha una o più mansioni scelte da un select; il testo libero `job_description` sparisce |
 | D-8 | Le posizioni non servono | Sede e mansioni descrivono già dove e cosa fa una persona |
 | D-9 | Le divisioni non servono (2026-10-16) | Le funzioni aziendali (business unit e business service), con il loro albero, sono già il primo livello |
 | D-7 | Il Controllo di Gestione è fuori da questo documento | Nessuna matrice di attribuzione, chiusura mensile o export verso il CdG per ora |
+| D-10 | **Perimetro ridotto (2026-10-19):** oltre a quanto già sviluppato restano solo il calendario della squadra, corsi e formazione, competenze | Fuori scope: allocazioni e costo del personale (progetti interni, costi mensili, voci extra, imputazione), documenti con firma, obiettivi (KPI), onboarding, reparti |
 
 ## 2. Regole che valgono su tutto il modulo
 
 1. **Ogni persona attiva ha almeno una funzione aziendale (business unit o business service).** Non si può attivare una persona senza funzione,
    né togliere l'ultima funzione a una persona attiva: l'operazione fallisce con un messaggio chiaro.
-2. **La struttura viene prima delle persone.** Una persona senza funzione e mansioni non si può allocare, né
-   costare, e non compare nell'organigramma.
+2. **La struttura viene prima delle persone.** Una persona senza funzione e mansioni non compare nell'organigramma.
 3. **Il contratto ha una storia.** Un cambio di retribuzione o inquadramento crea una nuova condizione con data di
    decorrenza; quella precedente resta. I costi di un mese passato usano la condizione valida in quel mese.
-4. **Le allocazioni di una persona in un periodo fanno 100%.** Un totale diverso blocca il salvataggio: non deve
-   esistere costo che finisce "da nessuna parte".
-5. **Ogni modifica è tracciata:** chi, che cosa, quando, da quale valore a quale (activity log su ogni nuovo dato).
-6. **Visibilità a tre livelli:** la persona vede sé stessa, il responsabile la propria squadra, l'ufficio del
+4. **Ogni modifica è tracciata:** chi, che cosa, quando, da quale valore a quale (activity log su ogni nuovo dato).
+5. **Visibilità a tre livelli:** la persona vede sé stessa, il responsabile la propria squadra, l'ufficio del
    personale vede tutto (stesso schema già usato da segnatempo e attività).
-7. **Dati sensibili** (retribuzione, IBAN) visibili e modificabili solo con permesso dedicato; l'IBAN è cifrato.
-8. **Un catalogo vuoto esiste comunque.** CCNL, livelli e metodi di pagamento nascono anche senza dati, con la
+6. **Dati sensibili** (retribuzione, IBAN) visibili e modificabili solo con permesso dedicato; l'IBAN è cifrato.
+7. **Un catalogo vuoto esiste comunque.** CCNL, livelli e metodi di pagamento nascono anche senza dati, con la
    schermata che li compila.
 
 ## 3. Scheda del dipendente
@@ -55,7 +53,7 @@
 | È responsabile | se guida una squadra | presente (`is_manager`) |
 | Sede principale, sedi remote | dove lavora | presente (`employment_profile_operational_site`) |
 | Orario standard e pausa giornaliera | minuti | presente |
-| Funzioni aziendali (business unit o business service) | appartenenza, obbligatoria (regola 1) | presente (competenze commerciali) e obbligatoria per le persone attive (spec 0271) |
+| Funzioni aziendali (business unit o business service) | appartenenza, obbligatoria (regola 1) | presente (appartenenza, spec 0275) e obbligatoria per le persone attive (spec 0271) |
 | Mansioni | che cosa fa: una o più mansioni dal catalogo (D-6) | presente (spec 0271); il testo libero `job_description` è stato rimosso |
 | Stato attivo / cessato | chi è uscito si conserva, non si cancella | presente: alla cessazione l'utente viene disattivato, colonna "Stato" nella griglia (spec 0272) |
 
@@ -93,20 +91,21 @@ Una riga per ogni cambio, mai sovrascritta.
 ## 5. Struttura organizzativa
 
 Il primo livello è la Funzione aziendale (business unit o business service, con il suo albero padre-figlio); la persona ha mansioni, e ogni mansione comprende attività. Sedi e
-società stanno accanto. Le posizioni non si fanno (D-8). Primo passo: spec 0271.
+società stanno accanto. Le posizioni non si fanno (D-8), i reparti nemmeno (D-10). Primo passo: spec 0271.
 
 | Elemento | Campi | Oggi in qnet-2 |
 |---|---|---|
 | Funzione aziendale | nome, tipo (business unit o business service), funzione padre, responsabile | presente (`business_functions`) |
 | | società in cui esiste | presente (spec 0271) |
-| Mansione | nome, descrizione, attività comprese; competenze richieste (§8, passo successivo) | presente come catalogo (spec 0271) |
+| Mansione | nome, descrizione, attività comprese; competenze richieste (§7.2) | presente come catalogo (spec 0271); competenze richieste presenti (spec 0286) |
 | Attività | nome, mansione di appartenenza | presente come catalogo (spec 0271) |
-| Reparto | nome | **da aggiungere** (*da confermare* se serve accanto alle funzioni) |
 | Sede | nome, indirizzo, attiva | presente (`operational_sites`) |
 | Società | denominazione, partita IVA, sedi | presente (`companies`, `company_sites`) |
 
-Legami da gestire: mansione ↔ attività, persona ↔ mansioni, persona ↔ funzione (presente: le competenze
-commerciali, che valgono anche per la regola della funzione obbligatoria), funzione ↔ società.
+Legami da gestire: mansione ↔ attività, persona ↔ mansioni, persona ↔ funzione (presente: le funzioni di
+appartenenza, spec 0275, che valgono per la regola della funzione obbligatoria), funzione ↔ società. Gli
+"Ambiti di assegnazione" (coppie funzione + categoria prodotto, un tempo chiamati "Competenza") servono solo
+all'assegnazione di Lead, richieste e iscritti.
 
 ## 6. Organigramma
 
@@ -117,81 +116,63 @@ Organigramma con due alberi espandibili.
 |---|---|---|
 | Vista Funzioni | albero delle funzioni aziendali con responsabile, persone e mansioni | presente (spec 0273) |
 | Vista Persone | chi riporta a chi | presente (spec 0273) |
-| Spostamenti | cambiare responsabile, spostare una funzione sotto un'altra, spostare una persona di funzione (trascinamento o "Sposta in…") | presente (spec 0273); lo spostamento di funzione cambia le competenze commerciali |
+| Spostamenti | cambiare responsabile, spostare una funzione sotto un'altra, spostare una persona di funzione (trascinamento o "Sposta in…") | presente (spec 0273); lo spostamento di funzione cambia l'appartenenza |
 | Registro spostamenti | chi ha spostato cosa | presente: activity log "Spostamento" sulla persona o sulla funzione |
 | Unità e ruoli separati dalle funzioni | riquadri e ruoli propri dell'organigramma | non previsti: l'organigramma si ricava dalle funzioni aziendali |
 
-## 7. Allocazioni e costo del personale
+## 7. Corsi, formazione e competenze
 
-| Elemento | Campi | Oggi in qnet-2 |
-|---|---|---|
-| Allocazione | persona, periodo (mese/anno), destinazione (funzione, commessa o progetto interno), percentuale; somma 100 (regola 4) | **da aggiungere**. Il legacy ha `user_allocazioni` (persona, società, categoria analitica, anno, % per mese): fonte dell'importer |
-| Progetto interno | nome, funzione, date di inizio e fine (*proposta*) | **da aggiungere** (il modulo `projects` esistente è marketing, non questo) |
-| Commessa | destinazione dell'allocazione | presente (`work_orders`) |
-| Costo mensile per persona | persona, mese, costo pieno e sue componenti dal foglio paghe | **da aggiungere**; componenti da definire sul tracciato reale del foglio paghe |
-| Voce extra del mese | persona, mese, tipo voce, importo, nota — costi che non stanno in busta paga | **da aggiungere** |
-| Registro dei caricamenti | file, mese, righe importate e scartate, chi, quando | **da aggiungere** |
-| Imputazione | quanto costo di ogni persona va a ogni funzione, commessa o progetto nel mese (calcolato da allocazione × costo) | **da aggiungere** |
+Stesso modello per entrambe le aree: un **catalogo** e le **assegnazioni** alle persone. Presenti: corsi e
+formazione (spec 0284), competenze (spec 0286).
 
-## 8. Documenti, formazione, competenze, obiettivi, onboarding
+### 7.1 Corsi e formazione
 
-Stesso modello per tutti: un **catalogo** e le **assegnazioni** alle persone. Oggi in qnet-2 nessuno di questi esiste come
-concetto HR (esistono solo allegati generici e la mail di benvenuto).
+| Elemento | Campi |
+|---|---|
+| Corso (catalogo) | nome, descrizione, durata in ore, validità in mesi, attivo, mansioni che lo richiedono (spec 0284) |
+| Formazione della persona | persona, corso, data completamento, scadenza calcolata, esito, attestato (spec 0284) |
 
-| Area | Catalogo | Assegnazione alla persona |
-|---|---|---|
-| Documenti | titolo, tipo, file, versione, obbligatorio (*proposta*) | persona, documento, data assegnazione, scadenza, data firma, stato |
-| Corsi | titolo, durata in ore, obbligatorio, validità (*proposta*) | persona, corso, scadenza, data completamento, esito |
-| Competenze | nome, categoria (*proposta*) | persona ↔ competenza con livello e data; mansione ↔ competenza richiesta con livello minimo |
-| Obiettivi (KPI) | nome, unità di misura, target, periodicità (*proposta*) | persona, periodo, valore raggiunto, target, nota |
-| Onboarding | modello: nome, a quale mansione si applica; passi: titolo, ordine, responsabile, giorni dall'ingresso, tipo (documento, corso, attività) | percorso della persona: modello, data inizio, stato; per ogni passo: stato, completato il, da chi |
+### 7.2 Competenze
 
-## 9. Il quotidiano della persona e del responsabile
+Le competenze sono **ciò che la persona sa fare** (capacità, conoscenze, strumenti). Non sono gli "Ambiti di
+assegnazione" della scheda utente (prima chiamati "Competenza"), rinominati in interfaccia dalla spec 0286 D-1.
+
+| Elemento | Campi |
+|---|---|
+| Competenza (catalogo) | nome, categoria, descrizione, attiva (spec 0286) |
+| Competenza della persona | persona ↔ competenza, livello 1-4 (Base, Intermedio, Avanzato, Esperto), data di valutazione (spec 0286) |
+| Competenza richiesta dalla mansione | mansione ↔ competenza, con livello minimo (spec 0286) |
+
+## 8. Il quotidiano della persona e del responsabile
 
 | Chi | Che cosa vede o fa |
 |---|---|
-| Persona | il proprio profilo; firma dei documenti assegnati; propri obiettivi, competenze, formazione; il proprio segnatempo in lettura; notifiche |
-| Responsabile | la propria squadra, gli obiettivi del team; (con §11) approvazioni, calendario, saldi |
+| Persona | il proprio profilo; la propria formazione e le proprie competenze; il proprio segnatempo in lettura; le proprie assenze; notifiche |
+| Responsabile | la propria squadra; approvazioni delle assenze, calendario della squadra, saldi |
 | Ufficio del personale | tutto, più struttura, contratti, cataloghi |
-| Amministrazione | allocazioni, costi mensili, voci extra, imputazione |
+
+## 9. Assenze e richieste di ferie
+
+Sviluppate in spec 0278 (tipi, richieste, approvazione di un livello, saldi in ore, target del segnatempo) e
+0279 (calendario: chi c'è e chi non c'è, con weekend e festività, visibilità a tre permessi).
 
 ## 10. Importazione dei dati
 
 Ogni area ha un importer in `backend/app/Migrations/`, con lookup `old_id`, upsert idempotente e warning sui
 riferimenti mancanti. Già esistono gli importer di utenti (con profilo d'impiego), ruoli, funzioni aziendali e membri,
 società, sedi. La struttura (mansioni, attività) non ha importer: il legacy non ha questi dati e si
-compilano in app (spec 0271). Da valutare spec per spec: condizioni contrattuali e CCNL, metodi di pagamento,
-allocazioni, costi mensili, cataloghi e assegnazioni.
+compilano in app (spec 0271). Corsi, formazione e competenze: il legacy non ha dati, nessun importer (spec 0284, 0286).
 Per ognuno va verificato prima che il legacy abbia il dato; se non lo ha, il campo nasce vuoto.
 
-## 11. Assenze e richieste di ferie (rinviate, da fare)
+## 11. Decisioni aperte
 
-Requisito di prodotto da sviluppare in una fase successiva, sul modello delle app HR di mercato:
+Nessuna. Chiuse il 2026-10-19: visibilità del calendario con tre permessi (spec 0279 D-1); campi di corsi e
+competenze (spec 0284, 0286).
 
-- **Catalogo dei tipi:** ferie, permesso, malattia, e altri configurabili; per ognuno se scala un saldo e se richiede
-  approvazione.
-- **Richiesta della persona:** tipo, dal/al, giornata intera o a ore, nota, eventuale allegato (es. certificato).
-- **Approvazione a due livelli quando serve:** prima il responsabile diretto, poi l'ufficio del personale; stati
-  della richiesta (bozza, inviata, approvata dal responsabile, approvata, rifiutata, annullata); motivo del rifiuto.
-- **Saldi per persona e per anno:** quanto spetta, quanto è goduto, quanto resta; maturazione e residuo dell'anno
-  precedente.
-- **Calendario della squadra:** chi c'è e chi non c'è, con festività (riusare il calendario lavorativo esistente).
-- **Notifiche** a ogni passaggio di stato.
-- Una sola fonte delle richieste: nessuna tabella doppia.
+## 12. Ordine di sviluppo
 
-## 12. Decisioni aperte
-
-1. **Campi *proposta*:** da confermare area per area prima della spec.
-2. **Reparti:** servono accanto alle funzioni?
-
-## 13. Ordine di sviluppo
-
-1. Struttura organizzativa (§5) e vincolo della funzione aziendale obbligatoria (regola 1).
-2. Scheda dipendente estesa e contratto (§3, §4).
-3. Allocazioni e costo del personale (§7).
-4. Organigramma (§6).
-5. Cataloghi e assegnazioni (§8), una spec per area.
-6. Assenze (§11): tipi, richieste, approvazione di un livello, saldi in ore e target del segnatempo presenti (spec
-   0278); calendario della squadra in spec 0279.
+Tutto sviluppato: struttura organizzativa (0271, 0275, 0276, 0280, 0281), scheda dipendente e contratto (0272,
+0277), organigramma (0273, 0274), assenze (0278), calendario della squadra (0279), corsi e formazione (0284),
+competenze (0286). Il perimetro di D-10 è chiuso.
 
 Ogni passo: spec in `docs/specs/` con `/plan-feature`, importer (§10), guida in-app IT/EN e manuale utente.

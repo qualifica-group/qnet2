@@ -51,19 +51,24 @@ class MigrationPlanController extends BaseApiController
     }
 
     /**
-     * Enrich each plan item with the source's human label from the registry.
-     * `current()` is reconciled to registered keys only, so resolve() never
-     * misses.
+     * Enrich each plan item with the source's human label and availability
+     * (spec 0285, D-5) from the registry. `current()` is reconciled to
+     * registered keys only, so resolve() never misses.
      *
      * @param  list<array{source: string, enabled: bool}>  $plan
-     * @return list<array{source: string, label: string, enabled: bool}>
+     * @return list<array{source: string, label: string, enabled: bool, available: bool}>
      */
     private function decoratePlan(array $plan): array
     {
-        return array_map(fn (array $item): array => [
-            'source' => $item['source'],
-            'label' => $this->registry->resolve($item['source'])->label(),
-            'enabled' => $item['enabled'],
-        ], $plan);
+        return array_map(function (array $item): array {
+            $source = $this->registry->resolve($item['source']);
+
+            return [
+                'source' => $item['source'],
+                'label' => $source->label(),
+                'enabled' => $item['enabled'],
+                'available' => $source->isAvailable(),
+            ];
+        }, $plan);
     }
 }

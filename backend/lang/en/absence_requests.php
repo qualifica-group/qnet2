@@ -2,6 +2,7 @@
 
 return [
     'no_working_day' => 'The selected period has no working day.',
+    'calendar_period_too_long' => 'The calendar period can cover at most :max days.',
     'minutes_out_of_range' => 'The requested minutes must be between 1 and :max.',
     'overlap' => 'The period overlaps another absence request of the same person.',
     'no_approvers' => 'No approver is available for this person.',

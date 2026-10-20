@@ -156,7 +156,7 @@ export const leads = {
       derivedSiteCompetenceHint:
         'Only operators of the selected records Site, competent for their categories.',
       derivedSiteMixedHint:
-        'The selection spans more than one Site: the list is filtered by competence only.',
+        'The selection spans more than one Site: the list is filtered by assignment scope only.',
       derivedSiteUnknownHint: 'The Site of the selected records is not available yet.',
     },
     mode: {

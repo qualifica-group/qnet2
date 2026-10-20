@@ -7,8 +7,11 @@ export type SalaryPeriod = (typeof SALARY_PERIODS)[number]
 /** Permission gating the salary and the payment account (spec 0272 D-5). */
 export const MANAGE_COMPENSATION_PERMISSION = 'users.manageCompensation'
 
-/** Permission gating the history actions (create / delete the last condition). */
-export const UPDATE_USERS_PERMISSION = 'users.update'
+/**
+ * The `users` field key of the contract history and of the condition in force
+ * (spec 0283): visible to read them, editable to add or delete a condition.
+ */
+export const CONTRACTS_FIELD = 'employment.contracts'
 
 /** One condition of a person's contract history (`GET /users/{user}/employment-contracts`). */
 export interface EmploymentContract {

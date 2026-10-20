@@ -56,7 +56,7 @@ describe('OrgChartPage', () => {
 
   it('renders the function cards: type, manager, link, unassigned card; people are cards under their function', async () => {
     renderPage()
-    const tree = await screen.findByRole('tree', { name: 'Funzioni' })
+    const tree = await screen.findByRole('tree', { name: 'Funzioni aziendali' })
     const sales = within(tree).getByRole('treeitem', { name: 'Sales' })
     expect(within(sales).getByText('Business unit')).toBeInTheDocument()
     expect(within(sales).getByText('Responsabile: Bruno Neri')).toBeInTheDocument()

@@ -89,6 +89,16 @@ class BusinessFunctionMembersSource extends AbstractMigrationSource
         return 'business-functions';
     }
 
+    /**
+     * Not in users link-only mode (spec 0285, D-5): that installation provisions
+     * the function managers and operators itself, and the legacy links would
+     * overwrite the manager and add operators on top of them.
+     */
+    public function isAvailable(): bool
+    {
+        return ! config('migrations.users_link_only', false);
+    }
+
     protected function externalId(array $record): int|string|null
     {
         return $record['id'] ?? null;

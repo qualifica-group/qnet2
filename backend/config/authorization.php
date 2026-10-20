@@ -60,7 +60,10 @@ use App\Authorization\RewardStatusesAuthorization;
 use App\Authorization\RewardTypesAuthorization;
 use App\Authorization\RolesAuthorization;
 use App\Authorization\SectorsAuthorization;
+use App\Authorization\SkillsAuthorization;
 use App\Authorization\SourcesAuthorization;
+use App\Authorization\StaffCoursesAuthorization;
+use App\Authorization\StaffTrainingsAuthorization;
 use App\Authorization\TagsAuthorization;
 use App\Authorization\TaskCategoriesAuthorization;
 use App\Authorization\TaskImportancesAuthorization;
@@ -71,6 +74,7 @@ use App\Authorization\TaskTemplatesAuthorization;
 use App\Authorization\TaskTypesAuthorization;
 use App\Authorization\UnitsOfMeasureAuthorization;
 use App\Authorization\UsersAuthorization;
+use App\Authorization\UserSkillsAuthorization;
 use App\Authorization\VatRatesAuthorization;
 use App\Authorization\WorkOrderPaymentStatusesAuthorization;
 use App\Authorization\WorkOrdersAuthorization;
@@ -148,6 +152,12 @@ return [
         // spec 0278: HR absence types catalogue and absence requests.
         'absence-types' => AbsenceTypesAuthorization::class,
         'absence-requests' => AbsenceRequestsAuthorization::class,
+        // spec 0284: HR staff courses catalogue and staff trainings register.
+        'staff-courses' => StaffCoursesAuthorization::class,
+        'staff-trainings' => StaffTrainingsAuthorization::class,
+        // spec 0286: HR skills catalogue and user skills register.
+        'skills' => SkillsAuthorization::class,
+        'user-skills' => UserSkillsAuthorization::class,
         'api-clients' => ApiClientsAuthorization::class,
         'reward-types' => RewardTypesAuthorization::class,
         'reward-statuses' => RewardStatusesAuthorization::class,

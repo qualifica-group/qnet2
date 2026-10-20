@@ -1,61 +1,98 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Spec 0279 — Modulo HR passo 6b: calendario della squadra (chi c'e' e chi non c'e'), sulle richieste di 0278.
-  Dipende da 0278 (verde). Da pianificare nel dettaglio a 0278 chiusa.
+  Spec 0279 — Modulo HR passo 6b: calendario delle assenze (chi c'e' e chi non c'e'), sulle richieste di 0278.
+  Dipende da 0278 (verde, committata). Perimetro HR ridotto: docs/product/hr.md D-10.
 -->
-<spec id="0279-hr-team-absence-calendar" status="draft" owner="utente" date="2026-10-19">
+<spec id="0279-hr-team-absence-calendar" status="approved" owner="utente" date="2026-10-19">
 
   <goal>
-    Il responsabile e l'ufficio del personale vedono in una griglia mensile chi e' assente e chi no, giorno per
-    giorno, con weekend e festivita', per decidere le approvazioni e organizzare il lavoro.
+    Una griglia mensile mostra, giorno per giorno, chi e' assente e chi no, con weekend e festivita', per
+    organizzare il lavoro e decidere le approvazioni. Chi vede chi lo decidono tre permessi dedicati.
   </goal>
 
   <context>
-    Legge `absence_requests` di 0278 (approved e submitted), festivita' da `WorkCalendar`, squadra da
-    `TimeEntrySubordinateResolver::descendantIds()`, visibilita' `absence-requests.viewAny|manageAll`.
-    Nessuna tabella nuova, nessun componente calendario esistente nel frontend (griglia propria).
-    Decisione aperta (da chiedere all'utente prima di approvare questa spec):
-    - D-1 Una persona senza squadra vede nel calendario solo se stessa, oppure anche i colleghi delle proprie
-      funzioni di appartenenza (solo "assente", senza tipo ne' nota)?
+    Legge `absence_requests` di 0278 (solo `approved` e `submitted`), giorni non lavorativi e festivita' da
+    `App\Services\TimeEntries\WorkCalendar`, squadra da `TimeEntrySubordinateResolver::descendantIds()` (stessa
+    regola di 0278: discendenti attivi nella catena "Risponde a"). Nessuna tabella nuova, nessuna copia delle
+    richieste, nessun componente calendario esistente nel frontend (griglia propria).
+    I permessi nascono come quelli delle altre risorse: `abilities()` della Policy (letta da `permissions:sync`);
+    il form Ruolo raggruppa i permessi per voce di menu, quindi stanno sulla risorsa `absence-requests` (modulo
+    Assenze), non su una risorsa propria che finirebbe nell'area "Condivisi".
   </context>
+
+  <decisions>
+    <decision id="D-1">Visibilita' (decisione utente 2026-10-19): tre permessi dedicati del modulo Assenze.
+      `absence-requests.calendarOwn` = solo se stesso; `absence-requests.calendarTeam` = se stesso + discendenti
+      attivi; `absence-requests.calendarAll` = tutte le persone attive. Vale il piu' ampio posseduto. Nessuno dei
+      tre = 403. Indipendenti da `absence-requests.manageAll`. [revised in build: prima `absence-calendar.view*`,
+      spostati sulla risorsa del modulo perche' il form Ruolo li mostri sotto Assenze; comportamento invariato]</decision>
+    <decision id="D-2">Chi vede una persona nel calendario ne vede tipo di assenza, stato (approvata / in attesa),
+      giornata intera o a ore: il permesso e' assegnato esplicitamente, nessun dato oscurato.</decision>
+    <decision id="D-3">Il dettaglio della richiesta si apre dalla cella solo se l'attore puo' gia' vederla con le
+      regole di 0278 (`AbsenceRequestVisibility::canView`): flag `can_open` per assenza. Il calendario non allarga
+      la visibilita' delle richieste.</decision>
+    <decision id="D-4">Le richieste di piu' giorni si spezzano per giorno lavorativo (weekend e festivi saltati,
+      come il calcolo della durata di 0278). Giornata intera: `minutes` null; a ore: minuti della richiesta.</decision>
+    <decision id="D-5">Righe: le persone attive visibili, anche senza assenze nel periodo ("chi c'e'"), ordinate
+      per nome. Filtro opzionale per funzione aziendale di appartenenza.</decision>
+    <decision id="D-6">UI: nella pagina Assenze una striscia di schede "Richieste" / "Calendario" (`FilterTabs`);
+      la scheda Calendario appare solo con almeno uno dei tre permessi. La pagina resta sotto
+      `absence-requests.viewAny`.</decision>
+  </decisions>
 
   <scope>
     <in>
-      <item>Endpoint calendario per periodo (max 62 giorni) e persone visibili, filtri funzione e persona.</item>
-      <item>Scheda "Calendario" nella pagina Assenze: righe persone, colonne giorni, celle colorate per
-        approvata / in attesa, weekend e festivi evidenziati, mese precedente/successivo, legenda.</item>
-      <item>Apertura del dettaglio della richiesta dalla cella (se visibile).</item>
-      <item>Guida in-app `absences` IT/EN (sezione calendario).</item>
+      <item>`AbsenceRequestPolicy::abilities()` + `calendarOwn`, `calendarTeam`, `calendarAll`.</item>
+      <item>Endpoint calendario per periodo (max 62 giorni), filtro funzione.</item>
+      <item>Scheda "Calendario" nella pagina Assenze: righe persone (colonna nome fissa), colonne giorni, celle
+        distinte per approvata / in attesa anche senza colore, weekend e festivi evidenziati, mese
+        precedente/successivo e "oggi", legenda; la griglia scorre nel proprio contenitore.</item>
+      <item>Apertura del dettaglio richiesta dalla cella (D-3), riusando `AbsenceRequestDetailSheet`.</item>
+      <item>i18n IT/EN delle etichette dei permessi e della scheda; guida in-app `absences` IT/EN (sezione
+        calendario); manuale Claude Docs (Assenze).</item>
     </in>
     <out>
       <item>Creazione o spostamento di assenze dal calendario (trascinamento).</item>
       <item>Festivita' per sede, calendari esterni (iCal), vista settimanale o annuale.</item>
+      <item>Assegnazione dei tre permessi ai ruoli del seed Qualifica (si assegnano dal form Ruolo).</item>
     </out>
   </scope>
 
   <data_contract>
     <endpoint method="GET" path="/api/absences/calendar">
-      <request>{ from: date required, to: date required (to - from &lt;= 61 giorni), business_function_id: int|null,
-        user_ids: int[]|null }</request>
-      <response status="200">data: { days: [{ date, is_holiday, is_non_working_day }], people: [{ id, name,
-        absences: [{ id, date, status: "approved"|"submitted", absence_type_name: string|null, is_full_day,
-        minutes }] }] } — persone visibili all'attore (se stesso, discendenti, tutte con manageAll; D-1 aperta).</response>
-      <errors>403 senza viewAny; 422 periodo non valido o troppo lungo.</errors>
+      <request>{ from: date Y-m-d required, to: date Y-m-d required (to &gt;= from, al massimo 62 giorni inclusi),
+        business_function_id: int|null (exists) }</request>
+      <response status="200">{ success: true, data: {
+        scope: "own"|"team"|"all",
+        days: [{ date, is_non_working_day: bool, is_holiday: bool }],
+        people: [{ id, name, absences: [{ request_id, date, status: "approved"|"submitted",
+          absence_type_name: string, is_full_day: bool, minutes: int|null, can_open: bool }] }] } }</response>
+      <errors>403 senza nessuno dei tre permessi; 422 periodo mancante, invertito o oltre 62 giorni, funzione
+        inesistente.</errors>
     </endpoint>
   </data_contract>
 
   <acceptance_criteria>
-    <criterion id="AC-001">Il calendario restituisce solo le persone visibili e le loro assenze approved e
-      submitted nel periodo, spezzate per giorno lavorativo (Pest).</criterion>
-    <criterion id="AC-002">Periodo oltre 62 giorni o `to` prima di `from` = 422; senza viewAny = 403 (Pest).</criterion>
-    <criterion id="AC-003">Griglia mensile con weekend e festivi evidenziati, approvate e in attesa distinte anche
-      senza colore (icona o motivo), navigazione mese, legenda; nessuno scroll orizzontale della pagina a 375 px
-      (la griglia scorre nel proprio contenitore) (Vitest + verifica visiva).</criterion>
-    <criterion id="AC-004">Guida `absences` IT/EN aggiornata, parity test, ESLint, `tsc -b --force` puliti.</criterion>
+    <criterion id="AC-001">`viewOwn` vede solo se stesso, `viewTeam` se stesso e i discendenti attivi,
+      `viewAll` tutte le persone attive; con piu' permessi vale il piu' ampio; senza permessi 403 (Pest).</criterion>
+    <criterion id="AC-002">Solo richieste `approved` e `submitted` che toccano il periodo, spezzate per giorno
+      lavorativo; bozze, rifiutate e annullate escluse; persone senza assenze presenti con `absences` vuoto (Pest).</criterion>
+    <criterion id="AC-003">`can_open` vero solo per le richieste che l'attore vede gia' per 0278 (Pest).</criterion>
+    <criterion id="AC-004">Filtro funzione restringe alle persone che vi appartengono; 422 per periodo invertito,
+      oltre 62 giorni o funzione inesistente; numero di query costante al crescere delle persone (Pest).</criterion>
+    <criterion id="AC-005">I tre permessi esistono dopo `permissions:sync` e il form Ruolo li offre nel modulo
+      Assenze (Pest).</criterion>
+    <criterion id="AC-006">Scheda Calendario visibile solo con un permesso del calendario; griglia con weekend e
+      festivi evidenziati, approvate e in attesa distinte anche senza colore, navigazione mese, legenda; clic
+      su una cella apre il dettaglio solo con `can_open` (Vitest).</criterion>
+    <criterion id="AC-007">Nessuno scroll orizzontale della pagina a 375 px (la griglia scorre nel proprio
+      contenitore); guida `absences` IT/EN aggiornata, parity test, ESLint, `tsc -b --force`, Pint puliti.</criterion>
   </acceptance_criteria>
 
   <constraints>
-    <item>Nessuna nuova dipendenza; stesso scope di visibilita' di 0278; nessuna copia delle richieste.</item>
+    <item>Nessuna nuova dipendenza; nessuna copia delle richieste; la visibilita' delle richieste resta quella di
+      0278 (`AbsenceRequestVisibility`, unica).</item>
+    <item>Dopo il deploy: `php artisan permissions:sync`; i super-admin vedono tutto via `Gate::before`.</item>
   </constraints>
 
 </spec>

@@ -2,7 +2,6 @@
 
 namespace App\Tables;
 
-use App\Models\JobActivity;
 use App\Models\JobRole;
 use App\Models\User;
 use App\Services\JobRoleService;
@@ -100,9 +99,8 @@ class JobRolesTableDefinition extends AbstractTableDefinition
             'id' => $row->id,
             'name' => $row->name,
             'description' => $row->description,
-            'job_activities' => $row->jobActivities
-                ->map(static fn (JobActivity $activity): array => ['id' => $activity->id, 'label' => $activity->name])
-                ->all(),
+            // A `tags` cell takes the names, a string[] (SSRM contract).
+            'job_activities' => $row->jobActivities->pluck('name')->all(),
             'users_count' => (int) $row->users_count,
             'abilities' => [
                 'update' => Gate::forUser($actor)->allows('update', $row),

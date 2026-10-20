@@ -88,7 +88,7 @@ async function chooseMove(trigger: HTMLElement) {
 }
 
 async function openMembers(buttonName: string) {
-  await screen.findByRole('tree', { name: 'Funzioni' })
+  await screen.findByRole('tree', { name: 'Funzioni aziendali' })
   fireEvent.click(screen.getByRole('button', { name: buttonName }))
   return screen.findByRole('dialog')
 }
@@ -112,7 +112,7 @@ describe('org chart move - "Sposta in…"', () => {
   it('hides the action without the permission (functions need business-functions.update, people users.update)', async () => {
     canMock.mockImplementation((p: string) => p === 'org-chart.view' || p === 'users.update')
     renderPage()
-    const tree = await screen.findByRole('tree', { name: 'Funzioni' })
+    const tree = await screen.findByRole('tree', { name: 'Funzioni aziendali' })
     const sales = within(tree).getByRole('treeitem', { name: 'Sales' })
     expect(within(sales).queryByRole('button', { name: 'Azioni per Sales' })).not.toBeInTheDocument()
     const salesPanel = await openMembers("Sales: 2 persone, apri l'elenco")
@@ -128,7 +128,7 @@ describe('org chart move - "Sposta in…"', () => {
     renderPage()
     await screen.findByRole('tree')
     const invalidate = vi.spyOn(client, 'invalidateQueries')
-    const dialog = await openMenuAndMove('Funzioni', /^Sales$/)
+    const dialog = await openMenuAndMove('Funzioni aziendali', /^Sales$/)
     await chooseDestination('Nessuna funzione padre (radice)')
     expect(within(dialog).getByText('Sposta Sales da «Company» a «Nessuna funzione padre (radice)».')).toBeInTheDocument()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Conferma lo spostamento' }))
@@ -174,7 +174,7 @@ describe('org chart move - "Sposta in…"', () => {
   it('shows the server message on 422 and the i18n copy on 403, keeping the dialog open', async () => {
     renderPage()
     moveParentMock.mockRejectedValueOnce(serverError(422, 'Spostamento non valido: ciclo.'))
-    const dialog = await openMenuAndMove('Funzioni', /^Sales$/)
+    const dialog = await openMenuAndMove('Funzioni aziendali', /^Sales$/)
     await chooseDestination('Support')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Conferma lo spostamento' }))
     await waitFor(() => expect(toastError).toHaveBeenCalledWith('Spostamento non valido: ciclo.'))

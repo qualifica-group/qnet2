@@ -8,6 +8,9 @@ namespace Database\Seeders\QualificaCatalog;
  * (BS). Names without the sheet's code prefix ("FOR – Formazione" is
  * "Formazione"), user decision 2026-10-19. The legacy sends its matching
  * functions under these very names, so the import adopts them.
+ *
+ * "Direzione Generale" is not a sheet of the chart: it is the function of the
+ * general manager, above every function's head (user decision 2026-10-19).
  */
 final class BusinessFunctionCatalogue
 {
@@ -17,6 +20,12 @@ final class BusinessFunctionCatalogue
 
     /** The function of the catalogue's "APL" branch and of the APL operators. */
     public const string EMPLOYMENT_AGENCY = 'Agenzia per il Lavoro';
+
+    /** The function whose heads every other function's heads report to. */
+    public const string GENERAL_MANAGEMENT = 'Direzione Generale';
+
+    /** The HR office: its people receive the "Risorse Umane" application role (spec 0283). */
+    public const string HUMAN_RESOURCES = 'Risorse Umane';
 
     /** @var array<string, string> */
     public const array FUNCTIONS = [
@@ -30,7 +39,7 @@ final class BusinessFunctionCatalogue
         'Gestione Sedi' => self::BUSINESS_SERVICE,
         'Gare' => self::BUSINESS_UNIT,
         'Privacy' => self::BUSINESS_UNIT,
-        'Risorse Umane' => self::BUSINESS_SERVICE,
+        self::HUMAN_RESOURCES => self::BUSINESS_SERVICE,
         'ISO' => self::BUSINESS_UNIT,
         'Istruzione' => self::BUSINESS_UNIT,
         'Sistemi e Supporto Utenti' => self::BUSINESS_SERVICE,
@@ -44,5 +53,6 @@ final class BusinessFunctionCatalogue
         'SOA' => self::BUSINESS_UNIT,
         'Unit Travel' => self::BUSINESS_UNIT,
         'UPPCG' => self::BUSINESS_SERVICE,
+        self::GENERAL_MANAGEMENT => self::BUSINESS_SERVICE,
     ];
 }
