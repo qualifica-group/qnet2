@@ -3,6 +3,7 @@
 use App\Models\Invoice;
 use App\Models\InvoiceInstallment;
 use App\Models\ProformaRequest;
+use App\Models\Registry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -179,4 +180,31 @@ it('AC-007: proforma-requests rows expose invoice_id and the invoice action only
 
     expect($rows()[$open->id]['actions'])->not->toContain('invoice')
         ->and($actionKeys())->not->toContain('invoice');
+});
+
+it('filters the number column on the "number/year" label with every text operator', function () {
+    Sanctum::actingAs(invoicesTableUserWith(['viewAny']));
+    $twelve = invoiceOn('2026-01-10', ['number' => 12, 'year' => 2026]);
+    $hundredTwelve = invoiceOn('2026-01-11', ['number' => 112, 'year' => 2026]);
+    $seven = invoiceOn('2025-12-10', ['number' => 7, 'year' => 2025]);
+    $ids = fn (string $type, string $term) => collect(invoiceRows(['filterModel' => ['number_label' => ['filterType' => 'text', 'type' => $type, 'filter' => $term]]])['items'])->pluck('id')->all();
+
+    expect($ids('contains', '12/'))->toEqualCanonicalizing([$twelve->id, $hundredTwelve->id])
+        ->and($ids('equals', '12/2026'))->toBe([$twelve->id])
+        ->and($ids('startsWith', '1'))->toEqualCanonicalizing([$twelve->id, $hundredTwelve->id])
+        ->and($ids('endsWith', '/2025'))->toBe([$seven->id])
+        ->and($ids('notContains', '2026'))->toBe([$seven->id]);
+});
+
+it('filters the customer column with every text operator', function () {
+    Sanctum::actingAs(invoicesTableUserWith(['viewAny']));
+    $acme = invoiceOn('2026-01-10', ['number' => 1, 'customer_registry_id' => Registry::factory()->create(['name' => 'Acme Spa'])->id]);
+    $beta = invoiceOn('2026-01-11', ['number' => 2, 'customer_registry_id' => Registry::factory()->create(['name' => 'Beta Acme'])->id]);
+    $ids = fn (string $type, string $term) => collect(invoiceRows(['filterModel' => ['customer' => ['filterType' => 'text', 'type' => $type, 'filter' => $term]]])['items'])->pluck('id')->all();
+
+    expect($ids('contains', 'Acme'))->toEqualCanonicalizing([$acme->id, $beta->id])
+        ->and($ids('startsWith', 'Acme'))->toBe([$acme->id])
+        ->and($ids('endsWith', 'Acme'))->toBe([$beta->id])
+        ->and($ids('notContains', 'Spa'))->toBe([$beta->id])
+        ->and($ids('equals', 'Beta Acme'))->toBe([$beta->id]);
 });

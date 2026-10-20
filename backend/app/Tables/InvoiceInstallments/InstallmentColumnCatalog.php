@@ -36,7 +36,7 @@ final class InstallmentColumnCatalog
             self::column('sequence', 'number', sortable: true),
             self::column('due_date', 'date', sortable: true, filter: 'date'),
             self::column('due_month', 'text', visible: false, filter: 'set'),
-            self::column('days_overdue', 'number', sortable: true, filter: 'number'),
+            self::column('days_overdue', 'number', sortable: true, filter: 'number', valueList: false),
             self::column('status', 'badge', sortable: true, filter: 'set', options: InstallmentStatus::values()),
             self::column('overdue', 'badge', filter: 'set', options: self::OVERDUE_VALUES),
             self::column('customer', 'text', sortable: true, filter: 'set'),
@@ -91,9 +91,10 @@ final class InstallmentColumnCatalog
 
     /**
      * @param  array<int, string>|null  $options
+     * @param  bool  $valueList  false on a composed value (a day count, a list of codes): the grid offers the condition alone, no Set checklist
      * @return array<string, mixed>
      */
-    private static function column(string $id, string $type, bool $visible = true, bool $sortable = false, ?string $filter = null, ?array $options = null): array
+    private static function column(string $id, string $type, bool $visible = true, bool $sortable = false, ?string $filter = null, ?array $options = null, bool $valueList = true): array
     {
         $column = [
             'id' => $id,
@@ -110,6 +111,10 @@ final class InstallmentColumnCatalog
 
         if ($options !== null) {
             $column['options'] = $options;
+        }
+
+        if (! $valueList) {
+            $column['hasFilterValues'] = false;
         }
 
         return $column;

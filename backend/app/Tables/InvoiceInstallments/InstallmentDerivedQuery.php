@@ -6,6 +6,7 @@ use App\Enums\InstallmentStatus;
 use App\Models\InvoiceInstallment;
 use App\Services\Table\FilterApplier;
 use App\Tables\Invoices\InvoiceDerivedQuery;
+use App\Tables\Support\ZeroWhenEmptyAmountFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
@@ -24,6 +25,9 @@ final class InstallmentDerivedQuery
     /** Columns whose set filter / distinct values are an SQL expression. */
     private const array SET_COLUMNS = ['customer', 'work_order', 'company', 'company_site', 'operational_site', 'payment_method_code', 'due_month'];
 
+    /** Grid multi-filter columns whose Set value list is read from their SQL label (the joins repeat plain names). */
+    private const array LISTED_COLUMNS = ['invoice_number_label', 'invoice_document_date'];
+
     /** Columns with a dedicated filter instead of the generic one on a plain column. */
     private const array SPECIAL_COLUMNS = ['invoice_number_label', 'days_overdue', 'status', 'overdue'];
 
@@ -41,6 +45,7 @@ final class InstallmentDerivedQuery
             $columnId === 'days_overdue' => self::applyDaysOverdue($query, $columnConfig, $filter),
             $columnId === 'status' => self::applyStatus($query, $filter),
             $columnId === 'overdue' => self::applyOverdue($query, $filter),
+            $columnId === 'collected_amount' => ZeroWhenEmptyAmountFilter::apply($query, 'invoice_installments', 'collected_amount', $columnConfig, $filter),
             in_array($columnId, self::SET_COLUMNS, true) => self::applySet($query, (string) InstallmentSql::label($columnId), $filter),
             isset(InstallmentSql::PLAIN_COLUMNS[$columnId]) => app(FilterApplier::class)->apply($query, InstallmentSql::PLAIN_COLUMNS[$columnId], $columnConfig, $filter),
             default => null,
@@ -93,7 +98,7 @@ final class InstallmentDerivedQuery
     }
 
     /**
-     * Distinct values of the set columns; null for any other column.
+     * Distinct values of the set and listed columns; null for any other column.
      *
      * @param  Builder<InvoiceInstallment>  $query
      * @return array<int, string|null>|null
@@ -108,7 +113,7 @@ final class InstallmentDerivedQuery
             return InstallmentColumnCatalog::OVERDUE_VALUES;
         }
 
-        if (! in_array($columnId, self::SET_COLUMNS, true)) {
+        if (! in_array($columnId, [...self::SET_COLUMNS, ...self::LISTED_COLUMNS], true)) {
             return null;
         }
 

@@ -2,6 +2,7 @@
 
 namespace App\Tables\PurchaseInvoiceInstallments;
 
+use App\Tables\Support\OperationalSiteLabelSql;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -91,10 +92,10 @@ final class PurchaseInstallmentSql
             : "CONCAT(work_orders.code, ' - ', work_orders.title)";
     }
 
-    /** The operational site alias, falling back to its id when it has none. */
+    /** The operational site alias, else its primary address (see OperationalSiteLabelSql). */
     public static function operationalSiteLabel(): string
     {
-        return 'COALESCE(operational_sites.alias, CAST(operational_sites.id AS CHAR))';
+        return OperationalSiteLabelSql::expression();
     }
 
     /**

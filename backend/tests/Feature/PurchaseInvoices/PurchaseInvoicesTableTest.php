@@ -200,3 +200,12 @@ it('AC-009: the installments grid offers open_document only with purchase-invoic
 
     expect($row['actions'])->toBe(['record_payment']);
 });
+
+it('offers no value list on the computed payable amount, which filters by condition only', function () {
+    Sanctum::actingAs(listActor(LIST_FULL_ABILITIES));
+
+    $columns = collect($this->getJson('/api/tables/purchase-invoices/columns')->assertOk()->json('data.columns'))->keyBy('id');
+
+    expect($columns['payable_amount']['hasFilterValues'])->toBeFalse();
+    $this->postJson('/api/tables/purchase-invoices/values', ['columnId' => 'payable_amount', 'filterModel' => []])->assertOk()->assertJsonPath('data.values', []);
+});

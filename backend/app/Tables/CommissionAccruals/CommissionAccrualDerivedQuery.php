@@ -22,6 +22,9 @@ final class CommissionAccrualDerivedQuery
     /** Text columns that only exist as an SQL expression ("n/year" labels). */
     private const array LABEL_COLUMNS = ['invoice', 'settlement'];
 
+    /** Text columns of joined tables whose Set value list is read from their SQL label. */
+    private const array LISTED_COLUMNS = ['invoice', 'quote', 'product', 'settlement'];
+
     /**
      * Handles every filterable column of the domain; false for an unknown one.
      *
@@ -81,7 +84,7 @@ final class CommissionAccrualDerivedQuery
     }
 
     /**
-     * Distinct values of the set columns; null for any other column.
+     * Distinct values of the set and listed columns; null for any other column.
      *
      * @param  Builder<CommissionAccrual>  $query
      * @return array<int, string|null>|null
@@ -100,7 +103,7 @@ final class CommissionAccrualDerivedQuery
             return $fixed;
         }
 
-        if (! in_array($columnId, self::SET_COLUMNS, true)) {
+        if (! in_array($columnId, [...self::SET_COLUMNS, ...self::LISTED_COLUMNS], true)) {
             return null;
         }
 

@@ -282,3 +282,11 @@ it('AC-018: the grid has no inline edit and no bulk delete, even for a super-adm
 
     expect($draft->fresh()->notes)->toBe('keep');
 });
+
+it('lists the values of the code column', function () {
+    CommissionSettlement::factory()->issued(7, 2026)->create();
+
+    $values = $this->postJson('/api/tables/commission-settlements/values', ['columnId' => 'code', 'filterModel' => []])->assertOk()->json('data.values');
+
+    expect($values)->toContain('7/2026');
+});

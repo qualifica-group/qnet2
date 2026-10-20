@@ -464,3 +464,14 @@ it('bulk-delete: a category with products is guarded, not force-deleted', functi
 
     $this->assertDatabaseHas('product_categories', ['id' => $category->id]);
 });
+
+it('filter: the count columns read the grid multi filter (condition and value list)', function () {
+    Sanctum::actingAs(productCategoryUserWith(['viewAny']));
+    ProductCategory::factory()->create(['name' => 'None']);
+    $one = ProductCategory::factory()->create(['name' => 'One']);
+    $one->attributes()->attach(Attribute::factory()->create()->id, ['is_required' => false, 'sort_order' => 0, 'context' => 'quote']);
+    $names = fn (array $filter): array => collect($this->postJson('/api/tables/product-categories/rows', ['startRow' => 0, 'endRow' => 25, 'filterModel' => ['attributes_count' => $filter]])->assertOk()->json('items'))->pluck('name')->all();
+
+    expect($names(['filterType' => 'multi', 'filterModels' => [['filterType' => 'number', 'type' => 'greaterThan', 'filter' => 0], null]]))->toBe(['One'])
+        ->and($names(['filterType' => 'multi', 'filterModels' => [null, ['filterType' => 'set', 'values' => ['0']]]]))->toBe(['None']);
+});

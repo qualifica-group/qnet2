@@ -2,6 +2,7 @@
 
 namespace App\Tables\ProductCategories;
 
+use App\Tables\Concerns\UnwrapsMultiFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -15,12 +16,15 @@ use Illuminate\Support\Facades\DB;
  * distinct-values are delegated here instead, via a relation-count condition
  * (`has()`), mirroring RoleUsersCountColumn. Parameterized by relation name
  * (method argument, not constructor) so ONE instance serves both count
- * columns — a plain `number` condition widget (equals/range/comparisons),
- * no Set sub-model (unlike RoleUsersCountColumn's richer `multi` widget —
- * not requested for this domain).
+ * columns. The column exposes its value list, so the grid sends the `multi`
+ * widget (Set of exact counts + number condition), as on RoleUsersCountColumn.
  */
 final class ProductCategoryCountColumn
 {
+    use UnwrapsMultiFilter;
+
+    private const int MAX_FILTER_VALUES = 100;
+
     /**
      * Excel-like distinct values (spec 0004/0005): `$query` already carries
      * the `$alias` column (baseQuery() applies withCount()) and every
@@ -49,7 +53,45 @@ final class ProductCategoryCountColumn
     }
 
     /**
-     * A plain `number` condition filter (equals/notEqual/greaterThan(OrEqual)/
+     * @param  Builder<Model>  $query
+     * @param  array<string, mixed>  $filter
+     */
+    public function applyDerivedFilter(Builder $query, string $relation, array $filter): bool
+    {
+        $this->dispatchDerivedFilter(
+            $filter,
+            fn (array $set): mixed => $this->applySet($query, $relation, $set),
+            fn (array $condition): mixed => $this->applyCondition($query, $relation, $condition),
+        );
+
+        return true;
+    }
+
+    /**
+     * SET sub-model: the ticked values are exact counts, matched as an OR of
+     * count comparisons on $relation.
+     *
+     * @param  Builder<Model>  $query
+     * @param  array<string, mixed>  $filter
+     */
+    private function applySet(Builder $query, string $relation, array $filter): void
+    {
+        $values = is_array($filter['values'] ?? null) ? $filter['values'] : [];
+        $counts = array_slice(array_values(array_filter($values, 'is_numeric')), 0, self::MAX_FILTER_VALUES);
+
+        if ($counts === []) {
+            return;
+        }
+
+        $query->where(function (Builder $match) use ($relation, $counts): void {
+            foreach ($counts as $count) {
+                $match->orHas($relation, '=', max(0, (int) $count));
+            }
+        });
+    }
+
+    /**
+     * A `number` condition (equals/notEqual/greaterThan(OrEqual)/
      * lessThan(OrEqual)/inRange), applied as a count comparison on $relation
      * via has() — a bound correlated-subquery WHERE that is portable across
      * drivers and respected by the (clone)->count() total.
@@ -57,7 +99,7 @@ final class ProductCategoryCountColumn
      * @param  Builder<Model>  $query
      * @param  array<string, mixed>  $filter
      */
-    public function applyDerivedFilter(Builder $query, string $relation, array $filter): bool
+    private function applyCondition(Builder $query, string $relation, array $filter): void
     {
         $type = is_string($filter['type'] ?? null) ? $filter['type'] : 'equals';
 
@@ -73,13 +115,13 @@ final class ProductCategoryCountColumn
                 $query->has($relation, '<=', $to);
             }
 
-            return true;
+            return;
         }
 
         $value = $this->intOrNull($filter['filter'] ?? null);
 
         if ($value === null) {
-            return true; // blank / notBlank / malformed → no constraint
+            return; // blank / notBlank / malformed → no constraint
         }
 
         $operator = match ($type) {
@@ -92,8 +134,6 @@ final class ProductCategoryCountColumn
         };
 
         $query->has($relation, $operator, $value);
-
-        return true;
     }
 
     /**

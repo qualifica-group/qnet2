@@ -27,7 +27,7 @@ final class PurchaseInvoiceColumnCatalog
             self::column('company', 'text', sortable: true, filter: 'set'),
             self::column('purchase_orders', 'text'),
             self::column('total_amount', 'number', sortable: true),
-            self::column('payable_amount', 'number', sortable: true, filter: 'number'),
+            self::column('payable_amount', 'number', sortable: true, filter: 'number', valueList: false),
             self::column('paid_amount', 'number'),
             self::column('residual_amount', 'number'),
             self::column('payment_status', 'badge', options: InvoicePaymentStatus::values()),
@@ -74,7 +74,7 @@ final class PurchaseInvoiceColumnCatalog
      * @param  array<int, string>|null  $options
      * @return array<string, mixed>
      */
-    private static function column(string $id, string $type, bool $sortable = false, ?string $filter = null, ?array $options = null): array
+    private static function column(string $id, string $type, bool $sortable = false, ?string $filter = null, ?array $options = null, bool $valueList = true): array
     {
         $column = [
             'id' => $id,
@@ -91,6 +91,11 @@ final class PurchaseInvoiceColumnCatalog
 
         if ($options !== null) {
             $column['options'] = $options;
+        }
+
+        // A computed amount has no useful checklist: the grid offers the condition alone.
+        if (! $valueList) {
+            $column['hasFilterValues'] = false;
         }
 
         return $column;

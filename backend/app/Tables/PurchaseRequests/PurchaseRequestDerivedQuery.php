@@ -19,8 +19,13 @@ final class PurchaseRequestDerivedQuery
 {
     private const int MAX_SET_VALUES = 20;
 
+    /** Column config of a related text column handed to FilterApplier. */
+    private const array TEXT_COLUMN = ['type' => 'text', 'filterType' => 'text'];
+
     /**
-     * "contains" filter on a related column (`$target` = [relation path, column]).
+     * Text filter on a related column (`$target` = [relation path, column]):
+     * the grid multi filter (condition + value list), a picked value list, or
+     * a text condition with any operator, applied to the related column.
      *
      * @param  Builder<Model>  $query
      * @param  array{0: string, 1: string}  $target
@@ -28,23 +33,49 @@ final class PurchaseRequestDerivedQuery
      */
     public static function applyText(Builder $query, array $target, array $filter): void
     {
+        $filterType = $filter['filterType'] ?? null;
+
+        if ($filterType === 'multi') {
+            foreach (is_array($filter['filterModels'] ?? null) ? $filter['filterModels'] : [] as $subFilter) {
+                if (is_array($subFilter) && $subFilter !== []) {
+                    self::applyText($query, $target, $subFilter);
+                }
+            }
+
+            return;
+        }
+
         // The column menu's value list sends the picked values as a set filter.
-        if (($filter['filterType'] ?? null) === 'set') {
+        if ($filterType === 'set') {
             self::applyRelatedValues($query, $target, $filter);
 
             return;
         }
 
-        $term = $filter['filter'] ?? null;
-
-        if (! is_string($term) || trim($term) === '') {
+        if (! self::hasTextCondition($filter)) {
             return;
         }
 
         [$relation, $column] = $target;
-        $pattern = '%'.app(FilterApplier::class)->escapeLike(trim($term)).'%';
 
-        $query->whereHas($relation, static fn (Builder $related) => $related->where($column, 'like', $pattern));
+        $query->whereHas($relation, static fn (Builder $related) => app(FilterApplier::class)->apply($related, $related->qualifyColumn($column), self::TEXT_COLUMN, $filter));
+    }
+
+    /**
+     * A single condition with a term, or a combined one: an empty condition
+     * must not narrow to the rows that have the relation.
+     *
+     * @param  array<string, mixed>  $filter
+     */
+    private static function hasTextCondition(array $filter): bool
+    {
+        if (is_array($filter['conditions'] ?? null) && $filter['conditions'] !== []) {
+            return true;
+        }
+
+        $term = $filter['filter'] ?? null;
+
+        return is_scalar($term) && trim((string) $term) !== '';
     }
 
     /**

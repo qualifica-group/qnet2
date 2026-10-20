@@ -21,6 +21,13 @@ final class InvoiceDerivedQuery
 
     private const int MAX_VALUES = 50;
 
+    /**
+     * Column config of the text columns filtered through FilterApplier (the
+     * "number/year" label, the customer name): every operator and the Set part
+     * of a grid multi filter match the value the cell shows.
+     */
+    private const array TEXT_COLUMN = ['type' => 'text', 'filterType' => 'text'];
+
     /** Set filters resolved by name through a relation: column id => [relation, name column]. */
     private const array NAMED_RELATIONS = [
         'company' => ['company', 'denomination'],
@@ -140,43 +147,36 @@ final class InvoiceDerivedQuery
      */
     private static function applyCustomer(Builder $query, array $filter): void
     {
-        $term = self::textTerm($filter);
-
-        if ($term === null) {
-            return;
-        }
-
-        $query->whereHas('customer', static function (Builder $related) use ($term): void {
-            $related->where('name', 'like', '%'.app(FilterApplier::class)->escapeLike($term).'%');
+        $query->whereHas('customer', static function (Builder $related) use ($filter): void {
+            app(FilterApplier::class)->apply($related, $related->qualifyColumn('name'), self::TEXT_COLUMN, $filter);
         });
     }
 
     /**
-     * "12/2026" matches number and year, "12" the number only; anything else
-     * matches nothing.
+     * Filters on the "number/year" label through a derived table, so every
+     * text operator (contains, starts with, not contains...) behaves as on the cell.
      *
      * @param  Builder<Invoice>  $query
      * @param  array<string, mixed>  $filter
      */
     private static function applyNumberLabel(Builder $query, array $filter): void
     {
-        $term = self::textTerm($filter);
+        $derived = DB::table('invoices')
+            ->select('invoices.id')
+            ->selectRaw(self::numberLabelSql().' as number_label');
 
-        if ($term === null) {
-            return;
-        }
+        $matching = Invoice::query()->fromSub($derived, 'derived')->select('derived.id');
+        app(FilterApplier::class)->apply($matching, 'derived.number_label', self::TEXT_COLUMN, $filter);
 
-        if (preg_match('/^(\d{1,9})(?:\/(\d{4}))?$/', $term, $matches) !== 1) {
-            $query->where('invoices.id', '<', 0);
+        $query->whereIn('invoices.id', $matching);
+    }
 
-            return;
-        }
-
-        $query->where('invoices.number', (int) $matches[1]);
-
-        if (isset($matches[2])) {
-            $query->where('invoices.year', (int) $matches[2]);
-        }
+    /** The invoice as "number/year", the label every grid shows. */
+    public static function numberLabelSql(): string
+    {
+        return DB::getDriverName() === 'sqlite'
+            ? "invoices.number || '/' || invoices.year"
+            : "CONCAT(invoices.number, '/', invoices.year)";
     }
 
     /**
@@ -214,15 +214,5 @@ final class InvoiceDerivedQuery
             array_map(static fn (mixed $value): ?string => is_string($value) || is_int($value) ? trim((string) $value) : null, $values),
             static fn (?string $value): bool => $value !== null && $value !== '',
         )), 0, self::MAX_VALUES);
-    }
-
-    /**
-     * @param  array<string, mixed>  $filter
-     */
-    private static function textTerm(array $filter): ?string
-    {
-        $term = $filter['filter'] ?? null;
-
-        return is_string($term) && trim($term) !== '' ? trim($term) : null;
     }
 }

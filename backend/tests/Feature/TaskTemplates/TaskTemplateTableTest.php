@@ -193,3 +193,14 @@ it('bulk-delete: a template referenced by a Commessa is NOT removed, an unrefere
     $this->assertDatabaseHas('task_templates', ['id' => $used->id]);
     $this->assertDatabaseMissing('task_templates', ['id' => $free->id]);
 });
+
+it('filters by items_count with the grid multi filter (condition and value list)', function () {
+    Sanctum::actingAs(taskTemplateUserWith(['viewAny']));
+    $busy = TaskTemplate::factory()->create(['name' => 'Busy']);
+    TaskTemplateItem::factory()->count(2)->forTemplate($busy)->create();
+    TaskTemplate::factory()->create(['name' => 'Empty']);
+    $names = fn (array $filter): array => collect($this->postJson('/api/tables/task-templates/rows', ['startRow' => 0, 'endRow' => 25, 'filterModel' => ['items_count' => $filter]])->assertOk()->json('items'))->pluck('name')->all();
+
+    expect($names(['filterType' => 'multi', 'filterModels' => [['filterType' => 'number', 'type' => 'greaterThanOrEqual', 'filter' => 2], null]]))->toBe(['Busy'])
+        ->and($names(['filterType' => 'multi', 'filterModels' => [null, ['filterType' => 'set', 'values' => ['0']]]]))->toBe(['Empty']);
+});

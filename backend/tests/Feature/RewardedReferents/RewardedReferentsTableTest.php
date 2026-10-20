@@ -246,3 +246,19 @@ it('rows: the query count is CONSTANT regardless of the number of referents/rewa
 
     expect($largeDatasetQueries)->toBe($smallDatasetQueries);
 });
+
+it('filters rewards_count and last_assigned_at with the grid multi filter', function () {
+    $actor = rewardedReferentUserWith(['viewAny']);
+    $busy = Referent::factory()->create();
+    $quiet = Referent::factory()->create();
+    rewardForOpportunity($busy, Opportunity::factory()->create());
+    rewardForOpportunity($busy, Opportunity::factory()->create());
+    rewardForOpportunity($quiet, Opportunity::factory()->create());
+    Sanctum::actingAs($actor);
+    $ids = fn (array $filterModel): array => collect($this->postJson('/api/tables/rewarded-referents/rows', ['startRow' => 0, 'endRow' => 25, 'filterModel' => $filterModel])->assertOk()->json('items'))->pluck('id')->all();
+
+    expect($ids(['rewards_count' => ['filterType' => 'multi', 'filterModels' => [['filterType' => 'number', 'type' => 'greaterThan', 'filter' => 1], null]]]))->toBe([$busy->id])
+        ->and($ids(['rewards_count' => ['filterType' => 'multi', 'filterModels' => [null, ['filterType' => 'set', 'values' => ['1']]]]]))->toBe([$quiet->id])
+        ->and($ids(['last_assigned_at' => ['filterType' => 'multi', 'filterModels' => [['filterType' => 'date', 'type' => 'greaterThan', 'dateFrom' => '2000-01-01 00:00:00'], null]]]))->toHaveCount(2)
+        ->and($ids(['last_assigned_at' => ['filterType' => 'multi', 'filterModels' => [null, ['filterType' => 'set', 'values' => ['1999-01-01']]]]]))->toBe([]);
+});

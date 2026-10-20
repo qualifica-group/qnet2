@@ -2,6 +2,8 @@
 
 namespace App\Tables\InvoiceInstallments;
 
+use App\Tables\Invoices\InvoiceDerivedQuery;
+use App\Tables\Support\OperationalSiteLabelSql;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -86,18 +88,19 @@ final class InstallmentSql
             : "CONCAT(work_orders.code, ' - ', work_orders.title)";
     }
 
-    /** The operational site alias, falling back to its id when it has none. */
+    /** The operational site alias, else its primary address (see OperationalSiteLabelSql). */
     public static function operationalSiteLabel(): string
     {
-        return 'COALESCE(operational_sites.alias, CAST(operational_sites.id AS CHAR))';
+        return OperationalSiteLabelSql::expression();
     }
 
     /**
-     * Value shown for a set-filter / group column, as one SQL expression.
+     * Value shown for a set-filter / group / value-list column, as one SQL expression.
      */
     public static function label(string $columnId): ?string
     {
         return match ($columnId) {
+            'invoice_number_label' => InvoiceDerivedQuery::numberLabelSql(),
             'work_order' => self::workOrderLabel(),
             'operational_site' => self::operationalSiteLabel(),
             'due_month' => self::dueMonth(),

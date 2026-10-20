@@ -207,3 +207,17 @@ it('AC-015: the column definitions load for a user with view (no persisted order
 
     expect($columns)->toContain('code', 'status', 'supplier', 'grand_total');
 });
+
+it('filters the related text columns with the grid multi filter and every text operator', function () {
+    Sanctum::actingAs(purchaseOrderUserWith(['view']));
+    $acme = orderWithTotals(['supplier_id' => Registry::factory()->supplier()->create(['name' => 'Acme Forniture'])->id]);
+    $beta = orderWithTotals(['supplier_id' => Registry::factory()->supplier()->create(['name' => 'Beta Docenti'])->id]);
+    $ids = fn (array $filter): array => array_column(orderRows($this, ['filterModel' => ['supplier' => $filter]]), 'id');
+    $condition = static fn (string $type, string $term): array => ['filterType' => 'multi', 'filterModels' => [['filterType' => 'text', 'type' => $type, 'filter' => $term], null]];
+
+    expect($ids($condition('contains', 'forn')))->toBe([$acme->id])
+        ->and($ids($condition('startsWith', 'Beta')))->toBe([$beta->id])
+        ->and($ids($condition('notContains', 'Acme')))->toBe([$beta->id])
+        ->and($ids($condition('equals', 'Acme Forniture')))->toBe([$acme->id])
+        ->and($ids(['filterType' => 'multi', 'filterModels' => [null, ['filterType' => 'set', 'values' => ['Beta Docenti']]]]))->toBe([$beta->id]);
+});

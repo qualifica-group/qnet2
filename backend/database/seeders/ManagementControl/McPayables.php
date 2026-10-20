@@ -71,15 +71,23 @@ final class McPayables
 
     /**
      * The supplier invoice of an order: one line per order line, linked to it.
+     * As the invoice draft does, the header takes the work order (and its
+     * offer's operational site) when every line agrees on one.
      */
     public function billOrder(McTimeline $timeline, McContext $context, Generator $faker, PurchaseOrder $order, string $date): void
     {
-        $order->load('lines');
+        $order->load('lines.workOrder.quote');
+        $workOrders = $order->lines->pluck('workOrder')->unique('id');
+        $workOrder = $workOrders->count() === 1 ? $workOrders->first() : null;
+
         $invoice = $this->document($context, $order->supplier_id, $order->company_id, $order->company_site_id, $date, $order->lines->map(fn ($line): array => [
             'purchase_order_line_id' => $line->id, 'product_id' => $line->product_id, 'description' => $line->description,
             'quantity' => (string) $line->quantity, 'unit_price' => (string) $line->unit_price, 'vat_rate_id' => $line->vat_rate_id,
             'cost_type_id' => $line->cost_type_id, 'work_order_id' => $line->work_order_id,
-        ])->all(), $order->lines->first()?->cost_type_id);
+        ])->all(), $order->lines->first()?->cost_type_id, [
+            'work_order_id' => $workOrder?->id,
+            'operational_site_id' => $workOrder?->quote?->operational_site_id,
+        ]);
         $invoice->purchaseOrders()->sync([$order->id]);
 
         $this->schedulePayments($timeline, $faker, $invoice);
@@ -117,8 +125,9 @@ final class McPayables
 
     /**
      * @param  array<int, array<string, mixed>>  $lines
+     * @param  array{work_order_id?: int|null, operational_site_id?: int|null}  $references
      */
-    private function document(McContext $context, int $supplierId, int $companyId, ?int $companySiteId, string $date, array $lines, ?int $costTypeId): PurchaseInvoice
+    private function document(McContext $context, int $supplierId, int $companyId, ?int $companySiteId, string $date, array $lines, ?int $costTypeId, array $references = []): PurchaseInvoice
     {
         $year = CarbonImmutable::parse($date)->year;
         $key = "{$supplierId}|{$year}";
@@ -135,7 +144,7 @@ final class McPayables
             'cost_type_id' => $costTypeId,
             'company_site_id' => $companySiteId,
             'lines' => $lines,
-        ]);
+        ] + array_filter($references));
     }
 
     private function schedulePayments(McTimeline $timeline, Generator $faker, PurchaseInvoice $invoice): void

@@ -401,3 +401,14 @@ it('AC-018: an ADJUSTMENT movement has no invoice, quote, product or role and is
 
     expect($byRole['__null__']['child_count'])->toBe(1);
 });
+
+it('lists the values of the invoice, quote, product and settlement text columns', function () {
+    $invoice = installmentInvoice(null, null, null, ['number' => 7, 'year' => 2026]);
+    ledgerAccrualOf(['invoice_id' => $invoice->id, 'commission_settlement_id' => CommissionSettlement::factory()->issued(10, 2026)->create()->id]);
+    $values = fn (string $column): array => $this->postJson('/api/tables/commission-accruals/values', ['columnId' => $column, 'filterModel' => []])->assertOk()->json('data.values');
+
+    expect($values('invoice'))->toContain('7/2026')
+        ->and($values('settlement'))->toContain('10/2026')
+        ->and($values('quote'))->toBeArray()
+        ->and($values('product'))->toBeArray();
+});

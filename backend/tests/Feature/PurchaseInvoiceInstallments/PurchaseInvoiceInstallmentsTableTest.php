@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Address;
 use App\Models\CompanySite;
 use App\Models\CostType;
 use App\Models\ExportRun;
@@ -266,4 +267,33 @@ it('AC-005 (spec 0249): the cost_type cell carries name and color, null without 
     expect($rows[$typed->id]['cost_type'])->toBe(['name' => 'Trasferte', 'color' => 'teal'])
         ->and($rows[$untyped->id]['cost_type'])->toBeNull()
         ->and(collect($filtered['items'])->pluck('id')->all())->toBe([$typed->id]);
+});
+
+it('offers no value list on the linked orders and days overdue columns, whose values are composed', function () {
+    purchaseViewer();
+    purchaseInstallmentOf(purchaseDocument());
+
+    $columns = collect($this->getJson('/api/tables/purchase-invoice-installments/columns')->assertOk()->json('data.columns'))->keyBy('id');
+
+    expect($columns['purchase_orders']['hasFilterValues'])->toBeFalse()
+        ->and($columns['days_overdue']['hasFilterValues'])->toBeFalse()
+        ->and($columns['document_number']['hasFilterValues'])->toBeTrue();
+
+    foreach (['purchase_orders', 'days_overdue'] as $column) {
+        $this->postJson('/api/tables/purchase-invoice-installments/values', ['columnId' => $column, 'filterModel' => []])->assertOk()->assertJsonPath('data.values', []);
+    }
+});
+
+it('labels an operational site without alias by its primary address and reads a paid amount never recorded as 0', function () {
+    purchaseViewer();
+    $site = OperationalSite::factory()->create(['alias' => null]);
+    Address::factory()->primary()->for($site, 'addressable')->create(['line1' => 'Via Roma 1']);
+    $open = purchaseInstallmentOf(purchaseDocument(null, ['operational_site_id' => $site->id]), ['amount' => '100.00']);
+    $paid = purchaseInstallmentOf(purchaseDocument(), ['amount' => '100.00', 'paid_amount' => '100.00', 'paid_at' => '2026-04-02']);
+    $ids = static fn (array $filter): array => array_column(purchaseRows(['filterModel' => $filter])['items'], 'id');
+
+    expect(collect(purchaseRows()['items'])->firstWhere('id', $open->id)['operational_site'])->toBe('Via Roma 1')
+        ->and($ids(['operational_site' => ['filterType' => 'set', 'values' => ['Via Roma 1']]]))->toBe([$open->id])
+        ->and($ids(['paid_amount' => ['filterType' => 'multi', 'filterModels' => [['filterType' => 'number', 'type' => 'equals', 'filter' => 0], null]]]))->toBe([$open->id])
+        ->and($ids(['paid_amount' => ['filterType' => 'number', 'type' => 'greaterThan', 'filter' => 0]]))->toBe([$paid->id]);
 });

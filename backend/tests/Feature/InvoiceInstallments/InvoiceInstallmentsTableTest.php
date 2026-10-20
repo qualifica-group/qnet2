@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Address;
 use App\Models\CompanySite;
 use App\Models\ExportRun;
 use App\Models\OperationalSite;
@@ -208,4 +209,67 @@ it('AC-015: exports the filtered installments as csv and refuses without invoice
 
     Sanctum::actingAs(installmentUserWith(['viewAny', 'view']));
     $this->postJson('/api/exports/invoice-installments', ['format' => 'csv', 'columns' => [['colId' => 'customer', 'header' => 'Customer']]])->assertForbidden();
+});
+
+it('filters the invoice column on its "number/year" label with the grid multi filter, condition and value list alike', function () {
+    viewer();
+    $twelve = installmentOf(installmentInvoice(null, null, null, ['number' => 12, 'year' => 2026, 'document_date' => '2026-02-10']));
+    $hundredTwelve = installmentOf(installmentInvoice(null, null, null, ['number' => 112, 'year' => 2026, 'document_date' => '2026-02-11']));
+    $seven = installmentOf(installmentInvoice(null, null, null, ['number' => 7, 'year' => 2025, 'document_date' => '2025-12-01']));
+    $condition = static fn (string $type, string $term): array => ['invoice_number_label' => ['filterType' => 'multi', 'filterModels' => [['filterType' => 'text', 'type' => $type, 'filter' => $term], null]]];
+    $ids = static fn (array $filter): array => array_column(installmentRows(['filterModel' => $filter])['items'], 'id');
+
+    expect($ids($condition('contains', '12/')))->toEqualCanonicalizing([$twelve->id, $hundredTwelve->id])
+        ->and($ids($condition('equals', '12/2026')))->toBe([$twelve->id])
+        ->and($ids($condition('startsWith', '1')))->toEqualCanonicalizing([$twelve->id, $hundredTwelve->id])
+        ->and($ids($condition('endsWith', '/2025')))->toBe([$seven->id])
+        ->and($ids($condition('notContains', '2026')))->toBe([$seven->id])
+        ->and($ids(['invoice_number_label' => ['filterType' => 'multi', 'filterModels' => [null, ['filterType' => 'set', 'values' => ['112/2026', '7/2025']]]]]))->toEqualCanonicalizing([$hundredTwelve->id, $seven->id])
+        ->and($ids(['invoice_number_label' => ['filterType' => 'text', 'type' => 'contains', 'filter' => '7/20']]))->toBe([$seven->id]);
+});
+
+it('lists the values of the invoice and invoice date columns and offers no value list on days overdue', function () {
+    viewer();
+    installmentOf(installmentInvoice(null, null, null, ['number' => 12, 'year' => 2026, 'document_date' => '2026-02-10']));
+    installmentOf(installmentInvoice(null, null, null, ['number' => 7, 'year' => 2025, 'document_date' => '2025-12-01']));
+    $values = fn (string $column): array => $this->postJson('/api/tables/invoice-installments/values', ['columnId' => $column, 'filterModel' => []])->assertOk()->json('data.values');
+
+    expect($values('invoice_number_label'))->toBe(['12/2026', '7/2025'])
+        ->and(array_map(static fn (string $date): string => substr($date, 0, 10), $values('invoice_document_date')))->toBe(['2025-12-01', '2026-02-10'])
+        ->and($values('days_overdue'))->toBe([]);
+
+    $columns = collect($this->getJson('/api/tables/invoice-installments/columns')->assertOk()->json('data.columns'))->keyBy('id');
+    expect($columns['days_overdue']['hasFilterValues'])->toBeFalse()
+        ->and($columns['invoice_number_label']['hasFilterValues'])->toBeTrue();
+});
+
+it('labels an operational site without alias by its primary address, in cell, set filter and value list', function () {
+    viewer();
+    $site = OperationalSite::factory()->create(['alias' => null]);
+    Address::factory()->primary()->for($site, 'addressable')->create(['line1' => 'Via Roma 1']);
+    $installment = installmentOf(installmentInvoice(null, null, $site));
+    installmentOf(installmentInvoice());
+
+    $row = collect(installmentRows()['items'])->firstWhere('id', $installment->id);
+    $values = $this->postJson('/api/tables/invoice-installments/values', ['columnId' => 'operational_site', 'filterModel' => []])->assertOk()->json('data.values');
+    $filtered = installmentRows(['filterModel' => ['operational_site' => ['filterType' => 'set', 'values' => ['Via Roma 1']]]])['items'];
+
+    expect($row['operational_site'])->toBe('Via Roma 1')
+        ->and($values)->toContain('Via Roma 1')
+        ->and(array_column($filtered, 'id'))->toBe([$installment->id]);
+});
+
+it('reads a collected amount never recorded as 0 in the number condition, while the blank entry still matches it', function () {
+    viewer();
+    $invoice = installmentInvoice();
+    $open = installmentOf($invoice, ['amount' => '100.00']);
+    $partly = installmentOf($invoice, ['amount' => '100.00', 'collected_amount' => '40.00', 'collected_at' => '2026-04-02']);
+    $condition = static fn (string $type, float $value): array => ['collected_amount' => ['filterType' => 'multi', 'filterModels' => [['filterType' => 'number', 'type' => $type, 'filter' => $value], null]]];
+    $ids = static fn (array $filter): array => array_column(installmentRows(['filterModel' => $filter])['items'], 'id');
+
+    expect($ids($condition('equals', 0)))->toBe([$open->id])
+        ->and($ids($condition('lessThan', 50)))->toEqualCanonicalizing([$open->id, $partly->id])
+        ->and($ids($condition('greaterThan', 0)))->toBe([$partly->id])
+        ->and($ids(['collected_amount' => ['filterType' => 'multi', 'filterModels' => [null, ['filterType' => 'set', 'values' => [null]]]]]))->toBe([$open->id])
+        ->and(collect(installmentRows()['items'])->firstWhere('id', $open->id)['collected_amount'])->toBeNull();
 });

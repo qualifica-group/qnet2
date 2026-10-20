@@ -36,11 +36,11 @@ final class PurchaseInstallmentColumnCatalog
             self::column('document_type', 'badge', sortable: true, filter: 'set', options: PurchaseInvoiceType::values()),
             self::column('document_number', 'text', sortable: true, filter: 'text'),
             self::column('document_date', 'date', sortable: true, filter: 'date'),
-            self::column('purchase_orders', 'text', filter: 'text'),
+            self::column('purchase_orders', 'text', filter: 'text', valueList: false),
             self::column('sequence', 'number', sortable: true),
             self::column('due_date', 'date', sortable: true, filter: 'date'),
             self::column('due_month', 'text', visible: false, filter: 'set'),
-            self::column('days_overdue', 'number', sortable: true, filter: 'number'),
+            self::column('days_overdue', 'number', sortable: true, filter: 'number', valueList: false),
             self::column('status', 'badge', sortable: true, filter: 'set', options: PurchaseInstallmentStatus::values()),
             self::column('overdue', 'badge', filter: 'set', options: self::OVERDUE_VALUES),
             self::column('supplier', 'text', sortable: true, filter: 'set'),
@@ -97,9 +97,10 @@ final class PurchaseInstallmentColumnCatalog
 
     /**
      * @param  array<int, string>|null  $options
+     * @param  bool  $valueList  false on a composed value (a day count, a list of codes): the grid offers the condition alone, no Set checklist
      * @return array<string, mixed>
      */
-    private static function column(string $id, string $type, bool $visible = true, bool $sortable = false, ?string $filter = null, ?array $options = null): array
+    private static function column(string $id, string $type, bool $visible = true, bool $sortable = false, ?string $filter = null, ?array $options = null, bool $valueList = true): array
     {
         $column = [
             'id' => $id,
@@ -116,6 +117,10 @@ final class PurchaseInstallmentColumnCatalog
 
         if ($options !== null) {
             $column['options'] = $options;
+        }
+
+        if (! $valueList) {
+            $column['hasFilterValues'] = false;
         }
 
         return $column;

@@ -19,6 +19,9 @@ final class CommissionSettlementDerivedQuery
     /** Columns whose set filter / distinct values are a column or an SQL expression. */
     private const array SET_COLUMNS = ['status', 'referent', 'company', 'period_month', 'payment_status'];
 
+    /** Text columns whose Set value list is read from their SQL label (the code only exists as an expression). */
+    private const array LISTED_COLUMNS = ['code'];
+
     /**
      * Handles every filterable column of the domain; false for an unknown one.
      *
@@ -85,7 +88,7 @@ final class CommissionSettlementDerivedQuery
             return CommissionSettlementStatus::values();
         }
 
-        if (! in_array($columnId, self::SET_COLUMNS, true)) {
+        if (! in_array($columnId, [...self::SET_COLUMNS, ...self::LISTED_COLUMNS], true)) {
             return null;
         }
 

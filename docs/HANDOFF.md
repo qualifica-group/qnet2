@@ -3,6 +3,38 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Fix filtri Scadenze attive/passive — VERDE, NON COMMITTATO (2026-10-19)
+
+- Causa: le colonne text/number/date usano in griglia `agMultiColumnFilter` (payload `filterType: 'multi'`,
+  `filterModels: [condizione, set]`). La colonna **Fattura** (`invoice_number_label`) passava da
+  `InvoiceDerivedQuery::applyNumberLabel`, che legge solo `filter` (match esatto sul numero) -> col multi il
+  filtro era ignorato (tutte le righe). Inoltre `/values` andava in 500 (fallback `SELECT DISTINCT` su colonna
+  inesistente) per `invoice_number_label`, `invoice_document_date`, `days_overdue` (attive) e
+  `purchase_orders`, `days_overdue` (passive).
+- Fix Scadenze: `InvoiceDerivedQuery::applyNumberLabel` filtra sull'etichetta "n/anno" (tabella derivata +
+  FilterApplier, `numberLabelSql()` unica fonte, riusata da `InstallmentSql::label`) -> vale per Fatture e Scadenze;
+  `LISTED_COLUMNS` (Fattura, Data fattura) nei distinctValues; `valueList: false` -> `hasFilterValues: false` su
+  `days_overdue` (entrambe) e `purchase_orders`.
+- Sede operativa (scadenze): `Tables/Support/OperationalSiteLabelSql` = alias, altrimenti `line1` dell'indirizzo
+  principale (subquery correlata, convenzione OperationalSiteColumn), id solo come ultima risorsa.
+- Importo incassato/pagato: `Tables/Support/ZeroWhenEmptyAmountFilter` -> la CONDIZIONE numerica legge NULL come 0;
+  il Set ("(Vuoti)") e la cella restano sul valore grezzo (contratto riga invariato, vedi InvoiceInstallmentUpdateTest).
+- Seeder `McPayables::billOrder`: testata con la commessa quando tutte le righe concordano (regola di
+  PurchaseInvoiceDraftBuilder) + sede operativa dell'offerta. DB `qnet2` riallineato con UPDATE (404 fatture).
+- Stessa classe di bug in altre griglie (sonda su tutte le TableDefinition): `PurchaseRequestDerivedQuery::applyText`
+  ignorava `multi` e l'operatore (Ordini, RDA, righe RDA, Assenze) -> ora spacchetta il multi e delega a
+  FilterApplier nel whereHas; `ProductCategoryCountColumn`, `TaskTemplateItemsCountColumn`,
+  `RewardedReferentDerivedColumns` (rewards_count, last_assigned_at) -> `UnwrapsMultiFilter`; `payable_amount`
+  (fatture passive) `hasFilterValues: false`; liste valori in 500 sistemate in Provvigioni (invoice, quote, product,
+  settlement) ed Estratti (code); Cliente in Fatture ignorava l'operatore.
+- Test: nuovi in InvoiceInstallments, PurchaseInvoiceInstallments, Invoices (x2), ProductCategories, TaskTemplates,
+  RewardedReferents, PurchaseOrders, PurchaseInvoices, CommissionAccrualsTable, CommissionSettlementTables.
+  Verificato anche su MySQL (sonda scratchpad `probe3.php`). Manuale: nessun impatto.
+- Aperti: (1) "non contiene"/"diverso" escludono le celle vuote (SQL NOT LIKE su NULL; AG Grid client le includerebbe)
+  -> decisione utente, tocca FilterApplier di tutte le griglie; (2) DB locale con 7 migrazioni pending (absence_*,
+  `is_active` business_functions, drop `hourly_cost`) -> filtri Funzioni aziendali/Assenze in 500 finche' non migrato;
+  (3) le 3 copie di colonna-conteggio (Role/ProductCategory/TaskTemplate) andrebbero consolidate.
+
 ## Spec 0282 + dataset controllo di gestione 2025-2026 — VERDE, COMMITTATO, seed eseguito su qnet2 (2026-10-19)
 
 - Spec `docs/specs/0282-labor-cost-by-function-membership.xml` (decisione utente 2026-10-19): nell'Andamento le ore

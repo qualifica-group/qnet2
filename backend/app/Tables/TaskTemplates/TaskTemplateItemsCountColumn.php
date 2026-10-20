@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tables\TaskTemplates;
 
+use App\Tables\Concerns\UnwrapsMultiFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -14,11 +15,15 @@ use Illuminate\Support\Facades\DB;
  * WHERE cannot see a SELECT-list alias (MySQL), while ORDER BY IS handled
  * generically by the engine. Filter + distinct-values are delegated here
  * instead, via a relation-count condition (`has()`), mirroring
- * ProductCategoryCountColumn — a plain `number` condition widget
- * (equals/range/comparisons), no Set sub-model.
+ * ProductCategoryCountColumn. The column exposes its value list, so the grid
+ * sends the `multi` widget (Set of exact counts + number condition).
  */
 final class TaskTemplateItemsCountColumn
 {
+    use UnwrapsMultiFilter;
+
+    private const int MAX_FILTER_VALUES = 100;
+
     /**
      * Excel-like distinct values (spec 0004/0005): `$query` already carries
      * the `items_count` alias (baseQuery() applies withCount('items')) and
@@ -47,7 +52,45 @@ final class TaskTemplateItemsCountColumn
     }
 
     /**
-     * A plain `number` condition filter (equals/notEqual/greaterThan(OrEqual)/
+     * @param  Builder<Model>  $query
+     * @param  array<string, mixed>  $filter
+     */
+    public function applyDerivedFilter(Builder $query, array $filter): bool
+    {
+        $this->dispatchDerivedFilter(
+            $filter,
+            fn (array $set): mixed => $this->applySet($query, $set),
+            fn (array $condition): mixed => $this->applyCondition($query, $condition),
+        );
+
+        return true;
+    }
+
+    /**
+     * SET sub-model: the ticked values are exact counts, matched as an OR of
+     * count comparisons on `items`.
+     *
+     * @param  Builder<Model>  $query
+     * @param  array<string, mixed>  $filter
+     */
+    private function applySet(Builder $query, array $filter): void
+    {
+        $values = is_array($filter['values'] ?? null) ? $filter['values'] : [];
+        $counts = array_slice(array_values(array_filter($values, 'is_numeric')), 0, self::MAX_FILTER_VALUES);
+
+        if ($counts === []) {
+            return;
+        }
+
+        $query->where(function (Builder $match) use ($counts): void {
+            foreach ($counts as $count) {
+                $match->orHas('items', '=', max(0, (int) $count));
+            }
+        });
+    }
+
+    /**
+     * A `number` condition (equals/notEqual/greaterThan(OrEqual)/
      * lessThan(OrEqual)/inRange), applied as a count comparison on the
      * `items` relation via has() — a bound correlated-subquery WHERE that is
      * portable across drivers and respected by the (clone)->count() total.
@@ -55,7 +98,7 @@ final class TaskTemplateItemsCountColumn
      * @param  Builder<Model>  $query
      * @param  array<string, mixed>  $filter
      */
-    public function applyDerivedFilter(Builder $query, array $filter): bool
+    private function applyCondition(Builder $query, array $filter): void
     {
         $type = is_string($filter['type'] ?? null) ? $filter['type'] : 'equals';
 
@@ -71,13 +114,13 @@ final class TaskTemplateItemsCountColumn
                 $query->has('items', '<=', $to);
             }
 
-            return true;
+            return;
         }
 
         $value = $this->intOrNull($filter['filter'] ?? null);
 
         if ($value === null) {
-            return true; // blank / notBlank / malformed → no constraint
+            return; // blank / notBlank / malformed → no constraint
         }
 
         $operator = match ($type) {
@@ -90,8 +133,6 @@ final class TaskTemplateItemsCountColumn
         };
 
         $query->has('items', $operator, $value);
-
-        return true;
     }
 
     /**

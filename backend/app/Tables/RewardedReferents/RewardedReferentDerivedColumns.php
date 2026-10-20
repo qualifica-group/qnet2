@@ -6,6 +6,7 @@ namespace App\Tables\RewardedReferents;
 
 use App\Models\Referent;
 use App\Tables\Concerns\HandlesBlankSetFilter;
+use App\Tables\Concerns\UnwrapsMultiFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -31,6 +32,7 @@ use Illuminate\Support\Facades\DB;
 final class RewardedReferentDerivedColumns
 {
     use HandlesBlankSetFilter;
+    use UnwrapsMultiFilter;
 
     /**
      * Maximum number of names honoured in the `registries` set filter. Caps
@@ -71,14 +73,42 @@ final class RewardedReferentDerivedColumns
     }
 
     /**
-     * `rewards_count` NUMBER condition filter (equals/notEqual/greaterThan
+     * `rewards_count` filter: the grid multi widget, i.e. a Set of exact counts
+     * and/or a number condition.
+     *
+     * @param  Builder<Referent>  $query
+     * @param  array<string, mixed>  $filter
+     */
+    public function applyRewardsCountFilter(Builder $query, array $filter): bool
+    {
+        $this->dispatchDerivedFilter(
+            $filter,
+            function (array $set) use ($query): void {
+                $counts = array_slice(array_values(array_filter(is_array($set['values'] ?? null) ? $set['values'] : [], 'is_numeric')), 0, self::MAX_FILTER_VALUES);
+
+                if ($counts !== []) {
+                    $query->where(static function (Builder $match) use ($counts): void {
+                        foreach ($counts as $count) {
+                            $match->orHas('rewards', '=', max(0, (int) $count));
+                        }
+                    });
+                }
+            },
+            fn (array $condition): bool => $this->applyRewardsCountCondition($query, $condition),
+        );
+
+        return true;
+    }
+
+    /**
+     * `rewards_count` NUMBER condition (equals/notEqual/greaterThan
      * (OrEqual)/lessThan(OrEqual)/inRange), applied as a count comparison on
      * the `rewards` relation via has().
      *
      * @param  Builder<Referent>  $query
      * @param  array<string, mixed>  $filter
      */
-    public function applyRewardsCountFilter(Builder $query, array $filter): bool
+    private function applyRewardsCountCondition(Builder $query, array $filter): bool
     {
         $type = is_string($filter['type'] ?? null) ? $filter['type'] : 'equals';
 
@@ -119,6 +149,47 @@ final class RewardedReferentDerivedColumns
      * @param  array<string, mixed>  $filter
      */
     public function applyLastAssignedAtFilter(Builder $query, array $filter): bool
+    {
+        $this->dispatchDerivedFilter(
+            $filter,
+            fn (array $set): bool => $this->applyLastAssignedAtSet($query, $set),
+            fn (array $condition): bool => $this->applyLastAssignedAtCondition($query, $condition),
+        );
+
+        return true;
+    }
+
+    /**
+     * Set of exact `last_assigned_at` days, matched on the true MAX.
+     *
+     * @param  Builder<Referent>  $query
+     * @param  array<string, mixed>  $filter
+     */
+    private function applyLastAssignedAtSet(Builder $query, array $filter): bool
+    {
+        $days = array_slice(array_values(array_filter($this->stringValues($filter['values'] ?? null), static fn (string $day): bool => strtotime($day) !== false)), 0, self::MAX_FILTER_VALUES);
+
+        if ($days === []) {
+            return true;
+        }
+
+        $wrapped = DB::query()->fromSub((clone $query), 'rewarded_referents_dates')->select('id')
+            ->where(static function ($match) use ($days): void {
+                foreach ($days as $day) {
+                    $match->orWhereDate('last_assigned_at', '=', substr($day, 0, 10));
+                }
+            });
+
+        $query->whereIn('referents.id', $wrapped->pluck('id'));
+
+        return true;
+    }
+
+    /**
+     * @param  Builder<Referent>  $query
+     * @param  array<string, mixed>  $filter
+     */
+    private function applyLastAssignedAtCondition(Builder $query, array $filter): bool
     {
         $type = is_string($filter['type'] ?? null) ? $filter['type'] : 'equals';
         $from = is_string($filter['dateFrom'] ?? null) ? $filter['dateFrom'] : null;

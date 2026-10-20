@@ -5,6 +5,7 @@ namespace App\Tables\PurchaseInvoiceInstallments;
 use App\Enums\PurchaseInstallmentStatus;
 use App\Models\PurchaseInvoiceInstallment;
 use App\Services\Table\FilterApplier;
+use App\Tables\Support\ZeroWhenEmptyAmountFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
@@ -40,6 +41,7 @@ final class PurchaseInstallmentDerivedQuery
             $columnId === 'days_overdue' => self::applyDaysOverdue($query, $columnConfig, $filter),
             $columnId === 'status' => self::applyStatus($query, $filter),
             $columnId === 'overdue' => self::applyOverdue($query, $filter),
+            $columnId === 'paid_amount' => ZeroWhenEmptyAmountFilter::apply($query, 'purchase_invoice_installments', 'paid_amount', $columnConfig, $filter),
             in_array($columnId, self::SET_COLUMNS, true) => self::applySet($query, (string) PurchaseInstallmentSql::label($columnId), $filter),
             isset(PurchaseInstallmentSql::PLAIN_COLUMNS[$columnId]) => app(FilterApplier::class)->apply($query, PurchaseInstallmentSql::PLAIN_COLUMNS[$columnId], $columnConfig, $filter),
             default => null,
