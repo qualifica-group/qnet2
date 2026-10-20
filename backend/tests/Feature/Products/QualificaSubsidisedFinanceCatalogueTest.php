@@ -88,12 +88,13 @@ it('gives every line the root offer fields and form, and no Commessa field', fun
     }
 });
 
-it('seeds the 47 listed products with price, description, 22% VAT, the Consulenza typology and "Mesi scadenza" 0, idempotently', function (): void {
+it('seeds the 47 listed products with price, description, 22% VAT, the Consulenza typology and "Mesi scadenza", idempotently', function (): void {
     test()->seed(QualificaTemplateSeeder::class);
     test()->seed(QualificaCatalogSeeder::class);
     test()->seed(QualificaCatalogSeeder::class);
 
     $products = subsidisedFinanceProducts()->keyBy('name');
+    $months = $products->map(fn (Product $product): mixed => $product->custom_fields[BranchProducts::EXPIRATION_MONTHS_FIELD] ?? null);
 
     expect($products)->toHaveCount(47)
         ->and($products->countBy('category.name')->all())->toEqual([
@@ -115,5 +116,8 @@ it('seeds the 47 listed products with price, description, 22% VAT, the Consulenz
         ->and($products->map(fn (Product $product): string => (string) $product->vatRate?->rate)->unique()->values()->all())->toBe(['22.00'])
         ->and((float) $products->get('Vendita ed installazione Software Qnet e relativa personalizzazione per business cliente')->price)->toBe(12000.0)
         ->and($products->get('Consulenza ISI Inail - IV fase')->description)->toBe('8% calcolato sul contributo a fondo perduto.')
-        ->and($products->map(fn (Product $product): mixed => $product->custom_fields[BranchProducts::EXPIRATION_MONTHS_FIELD] ?? null)->unique()->values()->all())->toBe([0]);
+        // REQUIREMENT CHANGED (user directive 2026-10-20): the FNC phases II and III expire after 12 and 24 months.
+        ->and($months->only(['FNC_ Fondo Nuove Competenze_Fase II', 'FNC_ Fondo Nuove Competenze_Fase III'])->all())
+        ->toBe(['FNC_ Fondo Nuove Competenze_Fase II' => 12, 'FNC_ Fondo Nuove Competenze_Fase III' => 24])
+        ->and($months->except(['FNC_ Fondo Nuove Competenze_Fase II', 'FNC_ Fondo Nuove Competenze_Fase III'])->unique()->values()->all())->toBe([0]);
 });

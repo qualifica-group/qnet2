@@ -12,6 +12,9 @@
   FORMAZIONE CONTINUA, FRC, FUNT, INCENTIVI ASSUNZIONI, Industria 4.0, IPERAMMORTAMENTO, ISI INAIL, RESTO AL SUD).
   Regole Consulenza, `consultancy`, IVA 22% (anche "Supporto alla presentazione bando", senza aliquota nell'xlsx),
   mesi 0, descrizione solo su "Consulenza ISI Inail - IV fase".
+- SEGUITO COMMITTATO (richiesta utente 2026-10-20): "Mesi scadenza" FNC Fase II = 12, Fase III = 24 (l'xlsx ha
+  0). `BranchProducts` scrive i mesi solo se vuoti: su un DB gia' seminato con 0 il re-run NON li cambia (correggere
+  a mano dal prodotto o ri-seminare da zero).
 - Campi Offerta sulla radice, form "Finanza Agevolata": `subsidised_finance_requested_measure` (text, "campo libero"),
   `subsidised_finance_checklist` (boolean, "Check-list da allegare"), `subsidised_finance_notes` (textarea).
 - Test: nuovo `Products/QualificaSubsidisedFinanceCatalogueTest` (3); REQUIREMENT CHANGED: prodotti 589->636,

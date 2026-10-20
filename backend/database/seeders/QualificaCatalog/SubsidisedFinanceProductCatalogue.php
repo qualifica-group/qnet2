@@ -6,10 +6,11 @@ namespace Database\Seeders\QualificaCatalog;
  * The products of the "Finanza Agevolata" branch, transcribed from the
  * "FINANZA AGEVOLATA" list (user directive 2026-10-20): one row per product,
  * filed on the subcategory of its "Categoria" column, with its price, its
- * "Mesi scadenza" and, where the list gives one, its description. No supplier
- * is named. Pure data, seeded by BranchProducts with the 22% VAT rate (also on
- * the one row the list leaves without a rate) and the "Consulenza" typology
- * (SubsidisedFinanceCatalogue::TYPOLOGIES).
+ * "Mesi scadenza" (12 and 24 on the FNC phases II and III, user directive
+ * 2026-10-20, where the list has 0) and, where the list gives one, its
+ * description. No supplier is named. Pure data, seeded by BranchProducts with
+ * the 22% VAT rate (also on the one row the list leaves without a rate) and
+ * the "Consulenza" typology (SubsidisedFinanceCatalogue::TYPOLOGIES).
  *
  * Names are the list's titles verbatim.
  */
@@ -44,8 +45,8 @@ final class SubsidisedFinanceProductCatalogue
         SubsidisedFinanceCatalogue::FNC => [
             'FNC_ Fondo Nuove Competenze_Fase I' => ['price' => 500.0, 'supplier' => null, 'expiration_months' => 0],
             'Attività di docenza Fondo Nuove Competenze' => ['price' => 0.0, 'supplier' => null, 'expiration_months' => 0],
-            'FNC_ Fondo Nuove Competenze_Fase II' => ['price' => 0.0, 'supplier' => null, 'expiration_months' => 0],
-            'FNC_ Fondo Nuove Competenze_Fase III' => ['price' => 0.0, 'supplier' => null, 'expiration_months' => 0],
+            'FNC_ Fondo Nuove Competenze_Fase II' => ['price' => 0.0, 'supplier' => null, 'expiration_months' => 12],
+            'FNC_ Fondo Nuove Competenze_Fase III' => ['price' => 0.0, 'supplier' => null, 'expiration_months' => 24],
             'FNC_ Fondo Nuove Competenze_Fase IV' => ['price' => 0.0, 'supplier' => null, 'expiration_months' => 0],
             'Accordo Sindacale' => ['price' => 300.0, 'supplier' => null, 'expiration_months' => 0],
         ],
