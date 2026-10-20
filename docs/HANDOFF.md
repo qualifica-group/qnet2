@@ -97,7 +97,24 @@
   dell'albero: test org-chart aggiornati, REQUIREMENT CHANGED). Guide in-app IT+EN e manuale Claude Docs aggiornati.
   Vitest org-chart/help/i18n 428/428, `tsc -b --force` e ESLint puliti.
 
-## Spec 0283 D-7 — Ruolo "Risorse Umane" esteso a Formazione e Competenze — VERDE, NON COMMITTATO (2026-10-20)
+## Traduzioni moduli HR 0284/0286 — VERDE, NON COMMITTATO (2026-10-20)
+
+- Audit chiavi i18n (codice FE + label inviate dal backend per colonne/filtri/azioni) di Corsi, Formazione, Catalogo
+  competenze, Competenze: IT/EN allineati, tre difetti corretti.
+- `staff-course-screens.tsx`: `courses.detail.loadError` -> `staffCourses.detail.loadError`, `labelKey`
+  `navigation.courses` -> `navigation.staffCourses` (entrambe inesistenti: si vedeva la chiave grezza).
+- Griglia Formazione, colonna Esito: senza `badges` ne' renderer la cella era vuota e il filtro mostrava
+  `passed`/`failed`. Ora `StaffTrainingsTableDefinition::enumKeyFor('outcome')` = `staff_training_outcome` (filtro
+  tradotto) e renderer `outcome` = `StaffTrainingOutcomeBadge` nel Registro. Etichette spostate da
+  `staffTrainings.outcome.*` a `enums.staff_training_outcome.*` (unica fonte per griglia, filtro, dettaglio, form).
+- Test nuovi: `staff-course-screens.test.tsx`, `staff-training-register.test.tsx`, Pest "outcome column carries its
+  enum key". Aggiornato solo il percorso chiave in `staff-training-detail-sheet.test.tsx` (stessa etichetta).
+- Verifica: vitest 87 file/688 test (moduli HR, i18n, help, data-table), Pest StaffTrainings 33/33, Pint, ESLint,
+  `tsc -b --force` puliti. Manuale: nessun impatto (le guide descrivevano gia' l'Esito).
+- Segnalato, NON corretto (trasversale): i messaggi 422 del server mostrano l'attributo grezzo ("Il campo name e' gia'
+  stato utilizzato") perche' `lang/it/validation.php` non ha `attributes`; vale per tutti i moduli.
+
+## Spec 0283 D-7 — Ruolo "Risorse Umane" esteso a Formazione e Competenze — VERDE, COMMITTATO f5353666 (2026-10-20)
 
 - Decisione utente: l'ufficio del personale (Castaldo, Iorio, Sorrentino) apre anche i moduli HR nati dopo 0283.
   `HrOfficeRoleCatalogue::MODULES` + `staff-courses`, `staff-trainings`, `skills`, `user-skills` (24 permessi, tutti).

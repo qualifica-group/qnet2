@@ -102,6 +102,15 @@ class StaffTrainingsTableDefinition extends AbstractTableDefinition
     }
 
     /**
+     * The `outcome` values are localized on the frontend from its own i18n
+     * resources (`enums.staff_training_outcome.<value>`), filter included.
+     */
+    protected function enumKeyFor(string $columnId, User $actor): ?string
+    {
+        return $columnId === 'outcome' ? 'staff_training_outcome' : null;
+    }
+
+    /**
      * @return array<int, array{columnId: string, direction: string}>
      */
     public function defaultSort(): array

@@ -61,7 +61,7 @@ describe('StaffTrainingDetailSheet', () => {
 
     expect(await screen.findByText('Anna Rossi')).toBeInTheDocument()
     expect(screen.getByText('Sicurezza generale')).toBeInTheDocument()
-    expect(screen.getByText(label('staffTrainings.outcome.passed'))).toBeInTheDocument()
+    expect(screen.getByText(label('enums.staff_training_outcome.passed'))).toBeInTheDocument()
     expect(screen.getByText('10/03/2031')).toBeInTheDocument()
     expect(screen.getByText('60 mesi')).toBeInTheDocument()
     expect(screen.getByText('Aula A')).toBeInTheDocument()

@@ -97,3 +97,11 @@ it('0284 AC-003: the grid row carries the contract columns, the attachment flag 
         ->and($rows[0]['has_attachment'])->toBeFalse()
         ->and($filtered)->toBe([]);
 });
+
+it('0284: the outcome column carries its enum key, so the grid and its filter show translated values', function () {
+    Sanctum::actingAs(trainingUserWith(['viewAny']));
+
+    $outcome = collect($this->getJson('/api/tables/staff-trainings/columns')->assertOk()->json('data.columns'))->firstWhere('id', 'outcome');
+
+    expect($outcome['enumKey'] ?? null)->toBe('staff_training_outcome');
+});

@@ -13,7 +13,7 @@ export function StaffTrainingOutcomeBadge({ outcome }: { outcome: StaffTrainingO
   return (
     <Badge variant={outcome === 'passed' ? 'default' : 'destructive'}>
       <Icon aria-hidden="true" />
-      {t(`staffTrainings.outcome.${outcome}`)}
+      {t(`enums.staff_training_outcome.${outcome}`)}
     </Badge>
   )
 }

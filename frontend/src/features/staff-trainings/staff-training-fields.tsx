@@ -104,7 +104,7 @@ export function StaffTrainingFields({ selectedUser, selectedCourse }: StaffTrain
                 <SelectContent>
                   {STAFF_TRAINING_OUTCOMES.map((outcome) => (
                     <SelectItem key={outcome} value={outcome}>
-                      {t(`staffTrainings.outcome.${outcome}`)}
+                      {t(`enums.staff_training_outcome.${outcome}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -5,7 +5,6 @@
 
 export const staffTrainings = {
   forbidden: 'You do not have permission to view training.',
-  outcome: { passed: 'Passed', failed: 'Failed' },
   page: {
     register: 'Record training',
     viewsLabel: 'Training view',

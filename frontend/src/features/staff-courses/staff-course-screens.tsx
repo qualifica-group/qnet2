@@ -25,7 +25,7 @@ export function StaffCourseDetailScreen({ id, onChanged }: ModuleDetailScreenPro
     return (
       <DetailError
         error={error}
-        message={t('courses.detail.loadError')}
+        message={t('staffCourses.detail.loadError')}
         retryLabel={t('common.retry')}
         onRetry={() => refetch()}
       />
@@ -60,7 +60,7 @@ export const moduleScreen: ModuleRegistryEntry = {
   domain: STAFF_COURSES_DOMAIN,
   basePath: `/${STAFF_COURSES_DOMAIN}`,
   defaultMode: OPEN_MODE_MODAL,
-  labelKey: 'navigation.courses',
+  labelKey: 'navigation.staffCourses',
   DetailScreen: StaffCourseDetailScreen,
   FormScreen: StaffCourseFormScreen,
   // The detail IS the edit form: no edit route, no Edit button.
