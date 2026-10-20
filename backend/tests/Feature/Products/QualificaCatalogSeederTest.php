@@ -14,10 +14,12 @@ use App\Models\User;
 use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategoryService;
 use App\Services\UserService;
+use Database\Seeders\QualificaCatalog\AccreditationProductCatalogue;
 use Database\Seeders\QualificaCatalog\CatalogProducts;
 use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\DilCourseCatalogue;
 use Database\Seeders\QualificaCatalog\ECampusCourseCatalogue;
+use Database\Seeders\QualificaCatalog\EducationProductCatalogue;
 use Database\Seeders\QualificaCatalog\GdprProductCatalogue;
 use Database\Seeders\QualificaCatalog\SafetyProductCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
@@ -39,7 +41,7 @@ uses(RefreshDatabase::class);
  * directive 2026-10-01, the 90 e-Campus degree fees plus the 2 services
  * sold once for the whole branch (user directive 2026-10-08).
  */
-const TOTAL_SEEDED_PRODUCTS = 636; // REQUIREMENT CHANGED: +18 SOA and +127 Sicurezza products (2026-10-15), +33 Gare, +16 GDPR and +47 Finanza Agevolata products (2026-10-20).
+const TOTAL_SEEDED_PRODUCTS = 657; // REQUIREMENT CHANGED: +18 SOA and +127 Sicurezza products (2026-10-15), +33 Gare, +16 GDPR, +47 Finanza Agevolata, +2 Autofinanziato - Campania, +18 Istruzione and +1 Accreditamenti products (2026-10-20).
 
 /**
  * One scenario instead of one test per property: the catalogue seeder costs
@@ -63,6 +65,8 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
 
     $selectable = ProductCategory::query()->where('is_selectable', true)->pluck('name')->sort()->values()->all();
     expect($selectable)->toBe([
+        // REQUIREMENT CHANGED: the Accreditamenti line, prefixed with its branch (user directive 2026-10-20).
+        'Accreditamenti - PARTNERSHIP/SEDI',
         // The APL apprenticeships (user directives 2026-10-05).
         'Apprendistato',
         'Autofinanziato - Campania', 'Autofinanziato - Lazio',
@@ -86,6 +90,8 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
         'Gare - ANAC', 'Gare - Albo Fornitori', 'Gare - Albo Gestori Ambientali', 'Gare - Avvalimenti',
         'Gare - Consorzio Grade', 'Gare - Corso preparazione gare', 'Gare - Gare', 'Gare - Giornale Telematico',
         'Gare - Mepa', 'Gare - Progetto Tecnico', 'Gare - RTI/ATI', 'Gare - WHITE LIST',
+        // REQUIREMENT CHANGED: the Istruzione lines, prefixed with their branch (user directive 2026-10-20).
+        'Istruzione - Consulenza Scuola', 'Istruzione - Conto Termico 3.0', 'Istruzione - ISTRUZIONE', 'Istruzione - PNRR',
         'Orientamento specialistico',
         // The Consulenza leaf (user directive 2026-09-28).
         'Presa Appuntamenti',
@@ -341,7 +347,9 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
             + array_sum(array_map(count(...), SafetyProductCatalogue::PRODUCTS))
             + array_sum(array_map(count(...), TenderProductCatalogue::PRODUCTS))
             + array_sum(array_map(count(...), GdprProductCatalogue::PRODUCTS))
-            + array_sum(array_map(count(...), SubsidisedFinanceProductCatalogue::PRODUCTS)));
+            + array_sum(array_map(count(...), SubsidisedFinanceProductCatalogue::PRODUCTS))
+            + array_sum(array_map(count(...), EducationProductCatalogue::PRODUCTS))
+            + array_sum(array_map(count(...), AccreditationProductCatalogue::PRODUCTS)));
 });
 
 it('promotes "APL" out of "Consulenza" on an installation seeded while it hung there', function (): void {

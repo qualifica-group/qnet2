@@ -10,12 +10,8 @@ use App\Models\QuoteWorkflow;
 use App\Models\VatRate;
 use App\Services\ProductCategoryService;
 use App\Services\QuoteWorkflowService;
-use Database\Seeders\QualificaCatalog\GdprCatalogue;
-use Database\Seeders\QualificaCatalog\SafetyCatalogue;
+use Database\Seeders\QualificaCatalog\BranchCatalogues;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
-use Database\Seeders\QualificaCatalog\SoaCatalogue;
-use Database\Seeders\QualificaCatalog\SubsidisedFinanceCatalogue;
-use Database\Seeders\QualificaCatalog\TenderCatalogue;
 use Database\Seeders\QualificaCatalog\WorkflowStatusCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -89,7 +85,8 @@ it('seeds the "Autofinanziato" branch, its list prices and its attributes correc
     // Never duplicated per site (was: 'files each course once per region, never once per site, idempotently')
     // The Sicilia sheet lists its six courses for each of nine sites, the
     // Lazio one its single course for three: one product each all the same.
-    expect(selfFundedProductsOf('Autofinanziato - Campania'))->toHaveCount(10)
+    // REQUIREMENT CHANGED: two more Campania products (user directive 2026-10-20).
+    expect(selfFundedProductsOf('Autofinanziato - Campania'))->toHaveCount(12)
         ->and(selfFundedProductsOf('Autofinanziato - Lazio'))
         ->toBe(['Tecnico del comportamento Aba - Analisi comportamentale applicata'])
         ->and(selfFundedProductsOf('Autofinanziato - Lombardia'))
@@ -107,20 +104,21 @@ it('seeds the "Autofinanziato" branch, its list prices and its attributes correc
     $rate = VatRate::query()->where('rate', SelfFundedCourseCatalogue::VAT_RATE)->sole();
 
     $plusVat = Product::query()
-        ->whereIn('name', ['EIPASS', 'PEKIT Expert', 'Tecnico del comportamento Aba - Analisi comportamentale applicata'])
+        ->whereIn('name', ['EIPASS', 'PEKIT Expert', 'Tecnico del comportamento Aba - Analisi comportamentale applicata', 'Traduzione Asseverata del Titolo'])
         ->get();
 
     expect($rate->name)->toBe(SelfFundedCourseCatalogue::VAT_RATE_NAME)
-        ->and($plusVat)->toHaveCount(3)
+        ->and($plusVat)->toHaveCount(4)
         ->and($plusVat->pluck('vat_rate_id')->unique()->all())->toBe([$rate->id])
         ->and($plusVat->mapWithKeys(fn (Product $product): array => [$product->name => (float) $product->price])->all())
         ->toEqualCanonicalizing([
             'EIPASS' => 230.0,
             'PEKIT Expert' => 150.0,
             'Tecnico del comportamento Aba - Analisi comportamentale applicata' => 650.0,
+            'Traduzione Asseverata del Titolo' => 100.0,
         ])
         // REQUIREMENT CHANGED: the SOA products carry the 22% rate too (2026-10-15).
-        ->and(Product::query()->whereNotNull('vat_rate_id')->whereHas('category', fn ($query) => $query->whereNotIn('name', [...SoaCatalogue::TARGET_CATEGORIES, ...SafetyCatalogue::TARGET_CATEGORIES, ...TenderCatalogue::TARGET_CATEGORIES, ...GdprCatalogue::TARGET_CATEGORIES, ...SubsidisedFinanceCatalogue::TARGET_CATEGORIES]))->count())->toBe(3);
+        ->and(Product::query()->whereNotNull('vat_rate_id')->whereHas('category', fn ($query) => $query->whereNotIn('name', BranchCatalogues::TARGET_CATEGORIES))->count())->toBe(4);
 
     // "Modalità di svolgimento" scoped to the branch (was: 'assigns the "Modalità di svolgimento" enum to the Autofinanziato subtree only')
     $deliveryMode = Attribute::query()->where('code', 'delivery_mode')->get();

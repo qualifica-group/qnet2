@@ -10,6 +10,7 @@ use Database\Seeders\Concerns\SeedsCategoryAttributes;
 use Database\Seeders\QualificaCatalog\AplInternshipAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\AplPracticeCatalogue;
 use Database\Seeders\QualificaCatalog\ApprenticeshipAttributeCatalogue;
+use Database\Seeders\QualificaCatalog\BranchCatalogues;
 use Database\Seeders\QualificaCatalog\CatalogCategoryRenames;
 use Database\Seeders\QualificaCatalog\CatalogPickLists;
 use Database\Seeders\QualificaCatalog\CatalogProducts;
@@ -79,16 +80,10 @@ use Illuminate\Database\Seeder;
  *     "SOA" and "No categoria", created and linked by
  *     QualificaBusinessFunctionLinkSeeder (spec 0023, user directive
  *     2026-10-14);
- *   - the "SOA" root (user directive 2026-10-15, QualificaCatalog\SoaCatalogue):
- *     its two subcategories, offer fields, products and suppliers here, its
- *     Commessa set in QualificaSoaWorkOrderSeeder;
- *   - the "Sicurezza" root (user directive 2026-10-15, QualificaCatalog\SafetyCatalogue):
- *     its five subcategories, offer fields, products and suppliers, no Commessa set;
- *   - the "Gare" root (user directive 2026-10-20, QualificaCatalog\TenderCatalogue):
- *     its twelve subcategories, offer fields and products, no Commessa set;
- *   - the "GDPR" root (user directive 2026-10-20, QualificaCatalog\GdprCatalogue):
- *     its two subcategories, offer fields and products, no Commessa set; so the
- *     "Finanza Agevolata" root (QualificaCatalog\SubsidisedFinanceCatalogue) too.
+ *   - the branches with their own product list ("SOA", "Sicurezza", "Gare",
+ *     "GDPR", "Finanza Agevolata", "Istruzione", "Accreditamenti",
+ *     QualificaCatalog\BranchCatalogues): their subcategories, offer fields
+ *     (none on "Istruzione" and "Accreditamenti"), products and suppliers.
  *
  * Deliberately separate from QualificaTemplateSeeder, which provisions
  * STRUCTURE ONLY (the custom field definitions) and creates no domain row.
@@ -170,12 +165,8 @@ class QualificaCatalogSeeder extends Seeder
         // The holding place of the legacy products imported without a category
         // (user decision 2026-10-12): a container, to reclassify them from.
         ProductsSource::UNCATEGORIZED_CATEGORY => [],
-        // A branch of its own (user directive 2026-10-15).
-        SoaCatalogue::ROOT => SoaCatalogue::SUBCATEGORIES,
-        SafetyCatalogue::ROOT => SafetyCatalogue::SUBCATEGORIES,
-        TenderCatalogue::ROOT => TenderCatalogue::SUBCATEGORIES,
-        GdprCatalogue::ROOT => GdprCatalogue::SUBCATEGORIES,
-        SubsidisedFinanceCatalogue::ROOT => SubsidisedFinanceCatalogue::SUBCATEGORIES,
+        // The branches with their own product list, each a root of its own.
+        ...BranchCatalogues::TREE,
     ];
 
     /**
@@ -213,11 +204,7 @@ class QualificaCatalogSeeder extends Seeder
         AplInternshipAttributeCatalogue::CATEGORY,
         ApprenticeshipAttributeCatalogue::CATEGORY,
         ECampusCourseCatalogue::CATEGORY,
-        ...SoaCatalogue::TARGET_CATEGORIES,
-        ...SafetyCatalogue::TARGET_CATEGORIES,
-        ...TenderCatalogue::TARGET_CATEGORIES,
-        ...GdprCatalogue::TARGET_CATEGORIES,
-        ...SubsidisedFinanceCatalogue::TARGET_CATEGORIES,
+        ...BranchCatalogues::TARGET_CATEGORIES,
     ];
 
     /**

@@ -65,6 +65,9 @@ final class SelfFundedCourseCatalogue
             ['name' => 'EIPASS', 'price' => 230.0, 'plus_vat' => true],
             ['name' => 'PEKIT Expert', 'price' => 150.0, 'plus_vat' => true],
             ['name' => 'Aggiornamento ASO', 'price' => 130.0, 'plus_vat' => false],
+            // User directive 2026-10-20.
+            ['name' => 'Traduzione Asseverata del Titolo', 'price' => 100.0, 'plus_vat' => true],
+            ['name' => 'Aggiornamento Eipass 7 moduli da user a standard', 'price' => 150.0, 'plus_vat' => false],
         ],
         'Autofinanziato - Lazio' => [
             ['name' => 'Tecnico del comportamento Aba - Analisi comportamentale applicata', 'price' => 650.0, 'plus_vat' => true],

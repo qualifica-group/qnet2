@@ -11,14 +11,18 @@ use App\Models\ProductTypology;
 use App\Models\Registry;
 use App\Services\ProductService;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 /**
  * The products of a catalogue branch that comes with its own list — "SOA"
  * (SoaCatalogue::PRODUCTS), "Sicurezza" (SafetyProductCatalogue::PRODUCTS),
- * "Gare", "GDPR" and "Finanza Agevolata" — seeded by CatalogProducts. Each one gets, besides its
+ * "Gare", "GDPR", "Finanza Agevolata", "Istruzione" and "Accreditamenti" — seeded by CatalogProducts. Each one gets, besides its
  * price (0 when the list gives none), its description (when the list gives
  * one) and the 22% VAT rate:
  *
+ *   - the list's CODE when its "Codice" column is filled, the generated
+ *     "PRD-" one otherwise (user directive 2026-10-20), written on creation
+ *     only; a code is unique, so one another product holds fails the seed;
  *   - the TYPOLOGY of its category (the branch's TYPOLOGIES, by code);
  *   - its SUPPLIER, when a supplier registry of that name exists — usually
  *     brought by the legacy import, AFTER the first seed;
@@ -43,7 +47,7 @@ final class BranchProducts
     ) {}
 
     /**
-     * @param  array<string, array<string, array{description?: string, price?: float, supplier: string|null, expiration_months: int|null}>>  $products  category name => product name => its spec
+     * @param  array<string, array<string, array{code?: string, description?: string, price?: float, supplier: string|null, expiration_months: int|null}>>  $products  category name => product name => its spec
      * @param  array<string, string>  $typologies  category name => typology code
      */
     public function seed(array $products, array $typologies, int $vatRateId): void
@@ -59,7 +63,7 @@ final class BranchProducts
                 $supplierId = $spec['supplier'] === null ? null : $this->supplierId($spec['supplier']);
 
                 // Step 2: the product, created or with its blanks filled.
-                $product = $this->upsert($category, [$name, $spec['description'] ?? null], [$vatRateId, $spec['price'] ?? 0.0], [$typologyId, $defaultTypologyId], $supplierId);
+                $product = $this->upsert($category, [$name, $spec['description'] ?? null, $spec['code'] ?? null], [$vatRateId, $spec['price'] ?? 0.0], [$typologyId, $defaultTypologyId], $supplierId);
 
                 // Step 3: its "Mesi scadenza", when the list gives one.
                 if ($spec['expiration_months'] !== null) {
@@ -70,20 +74,24 @@ final class BranchProducts
     }
 
     /**
-     * @param  array{0: string, 1: string|null}  $identity  the product name, then its description
+     * @param  array{0: string, 1: string|null, 2: string|null}  $identity  the product name, its description, then the list's code
      * @param  array{0: int, 1: float}  $pricing  the VAT rate id, then the list price
      * @param  array{0: int, 1: int}  $typologyIds  the category's typology, then the default one
      */
     private function upsert(ProductCategory $category, array $identity, array $pricing, array $typologyIds, ?int $supplierId): Product
     {
-        [$name, $description] = $identity;
+        [$name, $description, $code] = $identity;
         [$vatRateId, $price] = $pricing;
         [$typologyId, $defaultTypologyId] = $typologyIds;
         $existing = Product::query()->where('name', $name)->where('category_id', $category->id)->first();
 
         if ($existing === null) {
+            $this->assertCodeIsFree($code, $name);
+
             return $this->products->create(new CreateProductData(
                 name: $name,
+                // Null falls back to the generated "PRD-" code.
+                code: $code,
                 description: $description,
                 // Cost is filled in later through the CRUD modules.
                 cost: 0.0,
@@ -105,6 +113,17 @@ final class BranchProducts
         ], static fn (int|string|null $value): bool => $value !== null))->save();
 
         return $existing;
+    }
+
+    /**
+     * The unique index would reject a taken code anyway; failing here names the
+     * list row, so the operator knows which code to fix.
+     */
+    private function assertCodeIsFree(?string $code, string $name): void
+    {
+        if ($code !== null && Product::query()->where('code', $code)->exists()) {
+            throw new RuntimeException(sprintf('Product code "%s" of "%s" is already used by another product.', $code, $name));
+        }
     }
 
     /**

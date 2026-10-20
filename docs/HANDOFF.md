@@ -3,6 +3,42 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Catalogo Autofinanziato - Campania: +2 prodotti — VERDE, NON COMMITTATO (2026-10-20)
+
+- `SelfFundedCourseCatalogue::COURSES['Autofinanziato - Campania']`: "Traduzione Asseverata del Titolo" (100, IVA 22%) e
+  "Aggiornamento Eipass 7 moduli da user a standard" (150, senza IVA). Ente/SERVICE/unita' di default da `ProductService`.
+- REQUIREMENT CHANGED nei conteggi: `QualificaSelfFundedCatalogueTest` (Campania 12, "+ iva" 4),
+  `TOTAL_SEEDED_PRODUCTS` 638, `QualificaProductionDataSeederTest` 648. Manuale: nessun impatto (dati di catalogo).
+
+## Catalogo: ramo "Istruzione" — VERDE, NON COMMITTATO (2026-10-20)
+
+- Lista "ISTRUZIONE(Foglio1).csv" (CP1252, decodificato). Come Sicurezza/GDPR ma SENZA campi flessibili (decisione utente):
+  `QualificaCatalog\EducationCatalogue` (radice "Istruzione", funzione "Istruzione" dell'organigramma, regole Consulenza,
+  tipologia Consulenza) + `EducationProductCatalogue` (18 prodotti, prezzo 0, IVA 22%, Mesi scadenza 0, descrizioni di
+  DM88 e CONTO TERMICO 3.0). Linee: "Istruzione - ISTRUZIONE" (il prodotto che il legacy mette sulla radice, come
+  "Finanza Agevolata - FINANZA AGEVOLATA"), "Istruzione - PNRR", "Istruzione - Consulenza Scuola", "Istruzione - Conto Termico 3.0".
+- Wiring: `QualificaCatalogSeeder` (CATALOG, SELECTABLE_SUBCATEGORIES; 497 righe, a ridosso del limite 500),
+  `CatalogProducts`, `CatalogRootRules`, `QualificaBusinessFunctionLinkSeeder`. Nessun layout Offerta.
+- Test: nuovo `QualificaEducationCatalogueTest`; REQUIREMENT CHANGED: `TOTAL_SEEDED_PRODUCTS` 656, produzione 666,
+  categorie selezionabili, funzioni collegate, esclusione IVA in `QualificaSelfFundedCatalogueTest`. 796/796 verdi, Pint pulito.
+- Manuale: nessun impatto (dati di catalogo; le guide citano Istruzione solo per la migrazione legacy).
+
+## Catalogo: ramo "Accreditamenti" + codice di listino — VERDE, NON COMMITTATO (2026-10-20)
+
+- Lista "ACCREDITAMENTI_PARTNERSHIP SEDI.xlsx": 1 prodotto "partnerships-sedi" (codice GOL), legacy sulla radice
+  "PARTNERSHIP/SEDI-", gruppo ACCREDITAMENTI. `AccreditationCatalogue` (radice "Accreditamenti", funzione
+  "Accreditamenti" dell'organigramma, regole e tipologia Consulenza, NESSUN campo flessibile) con la linea
+  "Accreditamenti - PARTNERSHIP/SEDI"; `AccreditationProductCatalogue` (prezzo 0, IVA 22%, Mesi scadenza 0).
+- Split (QualificaCatalogSeeder era a 497/500): nuovo `QualificaCatalog\BranchCatalogues` (TREE + TARGET_CATEGORIES dei
+  rami con listino, nell'ordine di creazione delle radici); il seeder ne fa lo spread (ora 480 righe).
+- Regola codice (decisione utente): `BranchProducts` usa `code` della riga se presente (solo in creazione), altrimenti
+  PRD- generato; codice gia' usato da un altro prodotto -> RuntimeException che nomina la riga. Il legacy NON invia
+  `code` all'import (`ProductMigrationController`), quindi nessuna collisione con i prodotti importati; nel legacy i
+  codici non sono univoci (ISO x359, SIC x123): le liste precedenti restano senza codice.
+- Test: nuovo `QualificaAccreditationCatalogueTest` (anche codice gia' preso); REQUIREMENT CHANGED: totale 657,
+  produzione 667, selezionabili, funzioni collegate; `QualificaSelfFundedCatalogueTest` usa `BranchCatalogues::TARGET_CATEGORIES`.
+  798/798 verdi, Pint pulito. Manuale: nessun impatto.
+
 ## Commessa: Responsabile facoltativo (spec 0096 D-12, 0189 G-27) — VERDE, COMMITTATO qnet-2 (2026-10-20; legacy da committare)
 
 - Richiesta utente: responsabile non obbligatorio sulla commessa, anche in migrazione; la migrazione fallisce se un id

@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0288 — Sezioni condizionali nel layout attributi ("campi flessibili"): una sezione del layout compare
+  solo quando un attributo booleano (checkbox/switch) dello stesso layout e' attivo.
+  Estende il blob di spec 0062 (`attribute_layouts.layout`) con un campo opzionale per sezione.
+-->
+<spec id="0288-attribute-layout-conditional-sections" status="approved" owner="utente" date="2026-10-20">
+
+  <goal>
+    Chi configura il layout attributi di una categoria puo' legare una sezione a un attributo booleano: nei form e
+    nei dettagli di Prodotto, Offerta, Commessa e Gestione Richieste la sezione compare al suo posto solo quando
+    quel checkbox/toggle e' attivo; spento, la sezione sparisce, i suoi valori si svuotano al salvataggio e i suoi
+    obbligatori non bloccano.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-20: "nei campi flessibili, se clicco un checkbox oppure toggle apre una sezione (altra
+    sezione di campi flessibili)". Decisioni utente 2026-10-20: (1) solo il sistema Attributi, non i Campi
+    personalizzati; (2) la sezione condizionale e' una normale sezione al suo posto, non annidata sotto il toggle;
+    (3) spegnendo il toggle i valori della sezione nascosta si svuotano al salvataggio; (4) gli obbligatori della
+    sezione nascosta non sono obbligatori, in frontend e server-side.
+
+    Fatti verificati nel codice:
+    - Blob layout (spec 0062): `sections[] { id, title, description, variant, collapsible, default_collapsed,
+      columns, sort_order, rows[] { id, items[] { attribute_code, width } } }`. Tipi FE in
+      `features/attributes/attribute-layout-types.ts`, schema Zod in `attribute-layout-schema.ts`.
+    - Scrittura: `PUT /api/product-categories/{productCategory}/attribute-layouts` (`AttributeLayoutController`,
+      authz `update` sulla categoria) -> `UpdateAttributeLayoutRequest` (solo `layout` array) ->
+      `AttributeLayoutService::upsert()` -> `AttributeLayoutValidator` (shape + allow-list codici, errori
+      `attribute_layout`) -> `normalizeSection()` che RICOSTRUISCE la sezione chiave per chiave (una chiave nuova
+      va aggiunta li', altrimenti si perde).
+    - `AttributeLayoutCopier::prune()` (duplicazione categoria) toglie gli item non ammessi e ri-salva via upsert.
+    - Lettura: `AttributeLayoutService::resolveWithFallback()` (fallback di modalita' e di categoria, spec 0115);
+      merge multi-categoria `App\RequestManagement\AttributeLayoutMerger` (spread della sezione: le chiavi in piu'
+      passano gia').
+    - Valori: `attribute_values` {code => value} su products/quotes/work_orders. Pipeline unica
+      `App\RequestManagement\AttributeValueValidator` (required verificato SOLO sui codici inviati, PATCH sparso)
+      + `AttributeValueNormalizer`, usata da `ProductService::applyAttributeValues()`,
+      `QuoteAttributeValueWriter::apply()` (Offerte, Gestione Richieste create/update con il set di
+      `RequestAttributeResolver`), `WorkOrderAttributeValueWriter::apply()`.
+    - Layout per superficie (verificato): Prodotto create `form_mode=create` (`use-product-form.ts`), dettaglio/modifica
+      `ProductResource.attribute_layout` = View; Offerta create `formContext(..., Create)`, dettaglio con modifica in
+      linea `QuoteResource.attribute_view_layout` = View; Commessa create Create, dettaglio `WorkOrderResource` = View;
+      Gestione Richieste create Create, pannello di lavoro `RequestManagementResource` = Edit.
+    - FE: `AttributeLayoutRenderer` (form, configuratore anteprima), `AttributeLayoutView` (dettagli, anche con
+      modifica in linea via `renderField`), sezioni risolte da `resolveLayoutSections()`. Gli obbligatori FE sono
+      nei superRefine di `quote-schema.ts`, `work-order-schema.ts`, `product-schema.ts`,
+      `request-create-schema.ts`, `request-work-schema.ts`. Configuratore: `layout-configurator/
+      attribute-layout-section-editor.tsx` (+ `layout-configurator-tree.ts`, `use-layout-configurator-actions.ts`),
+      i18n `i18n/locales/{it,en}-attribute-layout.ts`.
+    - Attributo booleano = `type: 'boolean'` (display `checkbox` o `switch`, `config.display`).
+  </context>
+
+  <decisions>
+    <decision id="D-1">Il campo e' sulla SEZIONE: `visible_when: { attribute_code: string } | null`. `null` (o chiave
+      assente nei blob gia' salvati) = sezione sempre visibile. Solo condizione "attributo booleano attivo": nessun
+      operatore, nessun valore atteso.</decision>
+    <decision id="D-2">Regole di configurazione (server autoritativo, FE le rispecchia): l'attributo di controllo
+      (a) e' posizionato in questo stesso layout, (b) e' di tipo `boolean`, (c) non sta nella sezione che controlla,
+      (d) sta in una sezione senza condizione (niente catene). Violazione -> 422 chiave `attribute_layout`, come gli
+      altri errori di layout.</decision>
+    <decision id="D-3">Valutazione (identica BE/FE): una sezione con `visible_when` e' visibile se e solo se il valore
+      dell'attributo di controllo e' `true` E la sezione che lo contiene e' visibile; valore `false`/`null`/assente
+      o attributo non presente nel layout = nascosta. La regola "sezione contenitore visibile" serve solo ai layout
+      MERGIATI di piu' categorie (Offerta/Commessa/Richiesta), dove una catena puo' nascere dal merge; un ciclo
+      = nascoste. La sezione sintetica "Altre informazioni" non ha condizione.</decision>
+    <decision id="D-4">Al salvataggio, server-side, dopo il merge sparso: ogni codice di una sezione nascosta con
+      valore non nullo diventa `null` (decisione utente 3); finisce nel diff `attribute_values` dell'audit come oggi.
+      In validazione i codici delle sezioni nascoste (calcolate su valori persistiti + inviati) sono `nullable`
+      anche se `is_required` (decisione utente 4); i controlli di tipo restano.</decision>
+    <decision id="D-5">Il server valuta le condizioni sullo STESSO layout che la superficie di scrittura mostra
+      (contesto: "Layout per superficie"): store di Prodotto, Offerta, Commessa e Richiesta -> `FormMode::Create`;
+      update di Prodotto, Offerta e Commessa -> `FormMode::View`; update di Gestione Richieste -> `FormMode::Edit`.
+      Nessun layout configurato -> nessuna condizione, comportamento di oggi.</decision>
+    <decision id="D-6">Classe condivisa nuova `App\RequestManagement\AttributeSectionVisibility` (accanto a
+      validator/normalizer della pipeline valori), metodo pubblico
+      `hiddenCodes(?array $layout, array $values): array` (codici delle sezioni nascoste).
+      `AttributeValueValidator::validate()` riceve un terzo parametro `array $hiddenCodes = []`. Specchio FE:
+      `features/attributes/attribute-section-visibility.ts` con `hiddenAttributeCodes(layout, values): Set&lt;string&gt;`
+      e `isSectionVisible(...)`, usato da renderer, vista dettaglio e schemi dei form.</decision>
+    <decision id="D-7">Configuratore: nell'editor della sezione un Select "Visibile solo se attivo" con "Sempre
+      visibile" + gli attributi booleani ammessi da D-2 (nome attributo). Una sezione che controlla altre sezioni non
+      puo' diventare condizionale (Select disabilitato con testo d'aiuto). Se l'attributo di controllo esce dal
+      layout o viene spostato nella sezione che controlla, la condizione si azzera da sola. Nel configuratore e
+      nell'anteprima la sezione condizionale mostra un'indicazione "Visibile se: nome attributo".</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Contratto blob: `visible_when` su sezione (validazione D-2, normalizzazione, copia categoria che
+        azzera la condizione se l'attributo di controllo viene potato).</item>
+      <item>Pipeline valori D-3..D-6 su Prodotto, Offerta, Commessa, Gestione Richieste (create e update, compresa
+        la modifica in linea dal dettaglio).</item>
+      <item>FE: tipi + Zod del blob, helper di visibilita', `AttributeLayoutRenderer` (visibilita' live sul valore
+        del toggle), `AttributeLayoutView` (dettagli), obbligatori dei 5 schemi di form, configuratore D-7.</item>
+      <item>i18n IT/EN; guide in-app IT/EN (`product-categories` + riga in `quotes`, `work-orders`, `products`);
+        manuale Claude Docs; HANDOFF.</item>
+    </in>
+    <out>
+      <item>Campi personalizzati (spec 0021): nessun cambio.</item>
+      <item>Condizioni su attributi non booleani (scelta/valore), condizione invertita ("visibile se spento"),
+        condizioni su singolo campo, combinazioni AND/OR, catene configurate a mano.</item>
+      <item>Migrazione legacy (`LegacyAttributeValueApplier`, `AttributeLayoutsSource`): i layout importati non hanno
+        condizioni, i valori importati non vengono svuotati.</item>
+      <item>Colonne attributo nelle griglie/report (`AttributeColumnBuilder`) e layout documento/PDF: mostrano i
+        valori come oggi.</item>
+      <item>Pulizia retroattiva dei record gia' salvati: lo svuotamento avviene solo al prossimo salvataggio.</item>
+      <item>Nuovi endpoint, permessi o migrazioni DB: il blob e' JSON, nessuna colonna nuova.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="PUT" path="/api/product-categories/{productCategory}/attribute-layouts">
+      <request>
+        Invariato (`context`, `form_mode`, `layout`) salvo la sezione:
+        `layout.sections.*.visible_when`: `null` | `{ "attribute_code": string (max 191) }` — opzionale, assente = null.
+      </request>
+      <response status="200">
+        Envelope e shape di oggi; ogni sezione restituita (e persistita) porta SEMPRE `visible_when`
+        (`null` o l'oggetto), anche se non inviato.
+      </response>
+      <errors>
+        403 senza permesso `update` sulla categoria (invariato).
+        422 shape: `layout.sections.N.visible_when` / `layout.sections.N.visible_when.attribute_code`.
+        422 regole D-2: chiave `attribute_layout` con messaggio che nomina il codice.
+      </errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/product-categories/{productCategory}/attribute-layouts">
+      <response status="200">Stessa shape; i blob salvati prima di questa spec possono non avere la chiave
+        (= null). Idem `attribute_layout` / `attribute_view_layout` nei Resource di Prodotto, Offerta, Commessa,
+        Richiesta e nei `formContext` di create: il merge conserva `visible_when` della sezione.</response>
+    </endpoint>
+    <endpoint method="POST|PUT|PATCH" path="/api/products, /api/quotes, /api/work-orders, /api/request-management (store/update)">
+      <request>`attribute_values` invariato.</request>
+      <response status="200|201">Invariato; i codici delle sezioni nascoste risultano `null` in
+        `attribute_values`.</response>
+      <errors>422 `attribute_values.&lt;code&gt;` per obbligatorio vuoto SOLO se la sezione del codice e' visibile;
+        controlli di tipo invariati.</errors>
+    </endpoint>
+    <typescript>
+      export interface LayoutSectionCondition { attribute_code: string }
+      LayoutSection += `visible_when?: LayoutSectionCondition | null`
+    </typescript>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un layout con una sezione `visible_when: {attribute_code: &lt;booleano posizionato in
+      un'altra sezione&gt;}`, quando lo salvo, allora 200 e il GET restituisce la condizione; una sezione senza la
+      chiave torna con `visible_when: null` (Pest).</criterion>
+    <criterion id="AC-002">Quando `visible_when.attribute_code` e' un codice non posizionato nel layout, un attributo
+      non booleano, un attributo della sezione stessa o di una sezione condizionale, allora 422 `attribute_layout`;
+      shape errata (es. stringa al posto dell'oggetto) -> 422 sul path della sezione (Pest).</criterion>
+    <criterion id="AC-003">Duplicando una categoria, la condizione resta se l'attributo di controllo sopravvive alla
+      potatura, diventa `null` se viene potato (la copia non fallisce) (Pest).</criterion>
+    <criterion id="AC-004">Il layout mergiato di un'Offerta e di una Richiesta conserva `visible_when` delle sezioni
+      (Pest).</criterion>
+    <criterion id="AC-005">`AttributeSectionVisibility::hiddenCodes`: nascosta con valore false/null/assente o
+      controllo non nel layout, visibile con true, catena da merge nascosta se il contenitore e' nascosto, ciclo
+      nascosto, layout null -> nessun codice (Pest unit).</criterion>
+    <criterion id="AC-006">Per Prodotto, Offerta, Commessa e Richiesta (store e update): toggle false e un attributo
+      obbligatorio della sezione condizionale inviato vuoto -> salvataggio riuscito, nessun 422; i valori dei codici
+      di quella sezione risultano `null` (Pest).</criterion>
+    <criterion id="AC-007">Stesso scenario con toggle true -> 422 `attribute_values.&lt;code&gt;` come oggi (Pest,
+      regressione).</criterion>
+    <criterion id="AC-008">Su un record con la sezione compilata, un PATCH con il solo `{ toggle: false }` (modifica in
+      linea) svuota i codici della sezione e l'audit registra il cambio di `attribute_values` (Pest).</criterion>
+    <criterion id="AC-009">`AttributeLayoutRenderer`: con toggle spento la sezione condizionale non e' renderizzata;
+      accendendolo compare nella sua posizione (ordine sezioni invariato), spegnendolo sparisce (Vitest).</criterion>
+    <criterion id="AC-010">`AttributeLayoutView`: la sezione condizionale non compare quando il valore di controllo non
+      e' true, compare quando e' true (Vitest).</criterion>
+    <criterion id="AC-011">Schemi di Offerta, Commessa, Prodotto, Richiesta (create e pannello): un obbligatorio vuoto in
+      sezione nascosta non da' errore; in sezione visibile si' (Vitest).</criterion>
+    <criterion id="AC-012">Configuratore: il Select elenca solo gli attributi ammessi da D-2; la scelta finisce nel
+      blob salvato; una sezione che controlla altre ha il Select disabilitato; rimuovere dal layout l'attributo di
+      controllo (o spostarlo nella sezione controllata) azzera la condizione; l'anteprima applica la visibilita'
+      (Vitest).</criterion>
+    <criterion id="AC-013">Schema Zod del blob: accetta `visible_when` null, oggetto o assente; rifiuta un oggetto senza
+      `attribute_code` (Vitest).</criterion>
+    <criterion id="AC-014">Guide IT/EN aggiornate con stessi id di sezione, `help-content-parity.test.ts` verde; manuale
+      Claude Docs aggiornato o sezioni segnalate; Pint, ESLint e `tsc -b --force` puliti; suite mirate verdi.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Nessuna migrazione DB.</item>
+    <item>Authz invariata: la scrittura del layout resta dietro `authorize('update', $productCategory)`; le scritture
+      dei valori dietro le policy dei rispettivi moduli.</item>
+    <item>Il server e' autoritativo (D-4/D-5): il FE nasconde e salta gli obbligatori, ma lo svuotamento e il
+      rilassamento degli obbligatori avvengono nella pipeline valori, mai solo nel client.</item>
+    <item>Una sola implementazione per lato della regola di visibilita' (D-6): niente copie nei writer o negli
+      schemi.</item>
+    <item>File sotto 500 righe (`ProductService.php` 369, `attribute-layout-section-editor.tsx` 223: se il Select fa
+      superare 300 righe, estrarlo in un componente del configuratore).</item>
+    <item>UI compatta (ui-design.md §2): Select `size="sm"`/`text-xs` come gli altri controlli dell'editor sezione;
+      indicazione condizione come testo `text-xs text-muted-foreground` con icona lucide `size-3.5`.</item>
+  </constraints>
+
+  <plan>
+    <microtask id="MT-1" owner="backend" lane="A (parallelo a MT-2, MT-3)" depends="spec approvata">
+      Contratto blob: `AttributeLayoutValidator` (shape + regole D-2), `AttributeLayoutService::normalizeSection`,
+      `AttributeLayoutCopier::prune` (azzera condizione potata). Test: AC-001..AC-004.
+    </microtask>
+    <microtask id="MT-2" owner="backend" lane="B (parallelo a MT-1, MT-3)" depends="spec approvata">
+      Pipeline valori: nuova `AttributeSectionVisibility`, `AttributeValueValidator` (+`$hiddenCodes`),
+      `ProductService`, `QuoteAttributeValueWriter`, `WorkOrderAttributeValueWriter` e i loro chiamanti
+      (`QuoteService`, servizio Commesse, `RequestManagementService`, `RequestCreationService`) per passare il layout
+      di D-5. Test: AC-005..AC-008.
+    </microtask>
+    <microtask id="MT-3" owner="frontend" lane="C (parallelo a MT-1, MT-2; gate per MT-4/MT-5)" depends="spec approvata">
+      `attribute-layout-types.ts`, `attribute-layout-schema.ts`, nuovo `attribute-section-visibility.ts`,
+      `attribute-layout-renderer.tsx` (useWatch su `attribute_values`), `attribute-layout-view.tsx`. Test: AC-009,
+      AC-010, AC-013.
+    </microtask>
+    <microtask id="MT-4" owner="frontend" lane="D (dopo MT-3, parallelo a MT-5)" depends="MT-3">
+      Obbligatori: `quote-schema.ts`, `work-order-schema.ts`, `product-schema.ts`, `request-create-schema.ts`,
+      `request-work-schema.ts` + gli hook che li costruiscono, per passare il layout. Test: AC-011.
+    </microtask>
+    <microtask id="MT-5" owner="frontend" lane="E (dopo MT-3, parallelo a MT-4)" depends="MT-3">
+      Configuratore D-7: `attribute-layout-section-editor.tsx` (eventuale componente estratto),
+      `layout-configurator-tree.ts`, `use-layout-configurator-actions.ts`, `i18n/locales/{it,en}-attribute-layout.ts`.
+      Test: AC-012.
+    </microtask>
+    <microtask id="MT-6" owner="lead" lane="F (dopo MT-1..MT-5)" depends="MT-1..MT-5">
+      Guide in-app IT/EN, manuale Claude Docs, `docs/HANDOFF.md`. Test: AC-014 (parity).
+    </microtask>
+    <microtask id="MT-7" owner="verifier" lane="gate finale" depends="MT-1..MT-6">
+      Pest mirati (ProductCategories, Products, Quotes, WorkOrders, RequestManagement), Vitest mirati, Pint, ESLint,
+      `tsc -b --force`; AC-001..AC-014 uno per uno.
+    </microtask>
+  </plan>
+
+</spec>

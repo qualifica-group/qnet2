@@ -6,7 +6,9 @@ use App\Migrations\Sources\ProductsSource;
 use App\Models\BusinessFunction;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
+use Database\Seeders\QualificaCatalog\AccreditationCatalogue;
 use Database\Seeders\QualificaCatalog\BusinessFunctionCatalogue;
+use Database\Seeders\QualificaCatalog\EducationCatalogue;
 use Database\Seeders\QualificaCatalog\GdprCatalogue;
 use Database\Seeders\QualificaCatalog\SafetyCatalogue;
 use Database\Seeders\QualificaCatalog\SoaCatalogue;
@@ -35,6 +37,8 @@ use Illuminate\Support\Str;
  *     directive 2026-10-20);
  *   - "Finanza Agevolata", linked to the function of the same name (user
  *     directive 2026-10-20);
+ *   - "Istruzione" and "Accreditamenti", each linked to the organisation
+ *     chart's function of the same name (user directives 2026-10-20);
  *   - "No categoria", the holding root of the legacy products imported without
  *     a category (user decision 2026-10-12): linked to "No funzione aziendale",
  *     so an offer line on one of those products can still extend its
@@ -73,6 +77,8 @@ class QualificaBusinessFunctionLinkSeeder extends Seeder
         TenderCatalogue::ROOT => TenderCatalogue::BUSINESS_FUNCTION,
         GdprCatalogue::ROOT => GdprCatalogue::BUSINESS_FUNCTION,
         SubsidisedFinanceCatalogue::ROOT => SubsidisedFinanceCatalogue::BUSINESS_FUNCTION,
+        EducationCatalogue::ROOT => EducationCatalogue::BUSINESS_FUNCTION,
+        AccreditationCatalogue::ROOT => AccreditationCatalogue::BUSINESS_FUNCTION,
         ProductsSource::UNCATEGORIZED_CATEGORY => self::UNCATEGORIZED_FUNCTION,
     ];
 
