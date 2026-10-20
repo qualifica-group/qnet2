@@ -58,8 +58,9 @@ it('assigns the root, so the whole Formazione branch inherits the function', fun
     // (CategoryHierarchy::effectiveBusinessFunction), they do not carry a row.
     // "APL", "Presa Appuntamenti", "No categoria" and "SOA" (REQUIREMENT
     // CHANGED, 2026-10-15) carry their own: they are outside the Formazione branch.
+    // So do "Sicurezza", "Gare", "GDPR" and "Finanza Agevolata" (REQUIREMENT CHANGED, 2026-10-20).
     expect(ProductCategory::query()->whereNotNull('business_function_id')->orderBy('id')->pluck('name')->all())
-        ->toBe(['Formazione', 'Presa Appuntamenti', 'APL', 'No categoria', 'SOA', 'Sicurezza'])
+        ->toBe(['Formazione', 'Presa Appuntamenti', 'APL', 'No categoria', 'SOA', 'Sicurezza', 'Gare', 'GDPR', 'Finanza Agevolata'])
         ->and($formazione()->businessFunction->name)->toBe('Formazione');
 });
 

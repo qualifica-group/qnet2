@@ -7,8 +7,11 @@ use App\Models\BusinessFunction;
 use App\Models\ProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Database\Seeders\QualificaCatalog\BusinessFunctionCatalogue;
+use Database\Seeders\QualificaCatalog\GdprCatalogue;
 use Database\Seeders\QualificaCatalog\SafetyCatalogue;
 use Database\Seeders\QualificaCatalog\SoaCatalogue;
+use Database\Seeders\QualificaCatalog\SubsidisedFinanceCatalogue;
+use Database\Seeders\QualificaCatalog\TenderCatalogue;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -27,6 +30,11 @@ use Illuminate\Support\Str;
  *     the "SOA" function the legacy import already brings (adopted by name);
  *   - "Sicurezza", likewise, linked to the "Sicurezza" function (the legacy
  *     "SICUREZZA", adopted by name without case);
+ *   - "Gare", likewise, linked to the "Gare" function (user directive 2026-10-20);
+ *   - "GDPR", linked to the organisation chart's "Privacy" function (user
+ *     directive 2026-10-20);
+ *   - "Finanza Agevolata", linked to the function of the same name (user
+ *     directive 2026-10-20);
  *   - "No categoria", the holding root of the legacy products imported without
  *     a category (user decision 2026-10-12): linked to "No funzione aziendale",
  *     so an offer line on one of those products can still extend its
@@ -62,6 +70,9 @@ class QualificaBusinessFunctionLinkSeeder extends Seeder
         'Presa Appuntamenti' => 'Consulenza',
         SoaCatalogue::ROOT => SoaCatalogue::BUSINESS_FUNCTION,
         SafetyCatalogue::ROOT => SafetyCatalogue::BUSINESS_FUNCTION,
+        TenderCatalogue::ROOT => TenderCatalogue::BUSINESS_FUNCTION,
+        GdprCatalogue::ROOT => GdprCatalogue::BUSINESS_FUNCTION,
+        SubsidisedFinanceCatalogue::ROOT => SubsidisedFinanceCatalogue::BUSINESS_FUNCTION,
         ProductsSource::UNCATEGORIZED_CATEGORY => self::UNCATEGORIZED_FUNCTION,
     ];
 

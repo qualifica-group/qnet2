@@ -15,8 +15,11 @@ use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ContactProcessingAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\CourseDataAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ECampusAttributeCatalogue;
+use Database\Seeders\QualificaCatalog\GdprCatalogue;
 use Database\Seeders\QualificaCatalog\SafetyCatalogue;
 use Database\Seeders\QualificaCatalog\SoaCatalogue;
+use Database\Seeders\QualificaCatalog\SubsidisedFinanceCatalogue;
+use Database\Seeders\QualificaCatalog\TenderCatalogue;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Seeder;
 
@@ -78,8 +81,9 @@ class QualificaQuoteLayoutSeeder extends Seeder
     /**
      * Category name => the form composed for it INSTEAD of SECTIONS: the APL
      * practices, each cut off the APL root (AplPracticeCatalogue::FORMS says
-     * why each keeps a form of its own), and the "SOA" and "Sicurezza" roots,
-     * whose subcategories inherit their form (spec 0115).
+     * why each keeps a form of its own), the "SOA" and "Sicurezza" roots,
+     * whose subcategories inherit their form (spec 0115) like the "GDPR"
+     * and "Finanza Agevolata" ones', and the "Gare" lines, each with the documents it asks for.
      *
      * @var array<string, list<array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string}}>>
      */
@@ -87,6 +91,9 @@ class QualificaQuoteLayoutSeeder extends Seeder
         ...AplPracticeCatalogue::FORMS,
         SoaCatalogue::ROOT => SoaCatalogue::QUOTE_SECTIONS,
         SafetyCatalogue::ROOT => SafetyCatalogue::QUOTE_SECTIONS,
+        ...TenderCatalogue::QUOTE_FORMS,
+        GdprCatalogue::ROOT => GdprCatalogue::QUOTE_SECTIONS,
+        SubsidisedFinanceCatalogue::ROOT => SubsidisedFinanceCatalogue::QUOTE_SECTIONS,
     ];
 
     /**

@@ -61,7 +61,7 @@ it('composes structure, catalogue and operators in one run, with a super-admin a
         ->and(CustomFieldDefinition::query()->where('entity_type', 'products')->count())->toBe(2)
         ->and(Source::query()->where('name', 'Passaparola')->count())->toBe(1)
         ->and(ProductCategory::query()->where('name', 'GOL - Molise')->count())->toBe(1)
-        ->and(Product::query()->count())->toBe(550)
+        ->and(Product::query()->count())->toBe(646) // REQUIREMENT CHANGED: +33 Gare, +16 GDPR and +47 Finanza Agevolata products (2026-10-20).
         // Before the legacy import: its products are filed by typology NAME.
         ->and(ProductTypology::query()->orderBy('name')->pluck('name')->all())->toBe(['Consulenza', 'Ente'])
         ->and(User::query()->where('email', 'ciro.cacciapuoti@qualificagroup.com')->exists())->toBeTrue()
@@ -117,7 +117,7 @@ it('seeds no fabricated row on the first run, and duplicates nothing on a re-run
     test()->seed(QualificaProductionDataSeeder::class);
 
     expect(Source::query()->count())->toBe(10)
-        ->and(Product::query()->count())->toBe(550)
+        ->and(Product::query()->count())->toBe(646) // REQUIREMENT CHANGED: +33 Gare, +16 GDPR and +47 Finanza Agevolata products (2026-10-20).
         // Before the legacy import: its products are filed by typology NAME.
         ->and(ProductTypology::query()->orderBy('name')->pluck('name')->all())->toBe(['Consulenza', 'Ente'])
         ->and(ProductCategory::query()->where('name', 'Formazione')->count())->toBe(1)

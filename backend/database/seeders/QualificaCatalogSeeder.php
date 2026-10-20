@@ -21,10 +21,13 @@ use Database\Seeders\QualificaCatalog\CourseDataAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ECampusAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ECampusCourseCatalogue;
 use Database\Seeders\QualificaCatalog\ECampusTreeFlattening;
+use Database\Seeders\QualificaCatalog\GdprCatalogue;
 use Database\Seeders\QualificaCatalog\ReportColumnsCatalogue;
 use Database\Seeders\QualificaCatalog\SafetyCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
 use Database\Seeders\QualificaCatalog\SoaCatalogue;
+use Database\Seeders\QualificaCatalog\SubsidisedFinanceCatalogue;
+use Database\Seeders\QualificaCatalog\TenderCatalogue;
 use Illuminate\Database\Seeder;
 
 /**
@@ -80,7 +83,12 @@ use Illuminate\Database\Seeder;
  *     its two subcategories, offer fields, products and suppliers here, its
  *     Commessa set in QualificaSoaWorkOrderSeeder;
  *   - the "Sicurezza" root (user directive 2026-10-15, QualificaCatalog\SafetyCatalogue):
- *     its five subcategories, offer fields, products and suppliers, no Commessa set.
+ *     its five subcategories, offer fields, products and suppliers, no Commessa set;
+ *   - the "Gare" root (user directive 2026-10-20, QualificaCatalog\TenderCatalogue):
+ *     its twelve subcategories, offer fields and products, no Commessa set;
+ *   - the "GDPR" root (user directive 2026-10-20, QualificaCatalog\GdprCatalogue):
+ *     its two subcategories, offer fields and products, no Commessa set; so the
+ *     "Finanza Agevolata" root (QualificaCatalog\SubsidisedFinanceCatalogue) too.
  *
  * Deliberately separate from QualificaTemplateSeeder, which provisions
  * STRUCTURE ONLY (the custom field definitions) and creates no domain row.
@@ -165,6 +173,9 @@ class QualificaCatalogSeeder extends Seeder
         // A branch of its own (user directive 2026-10-15).
         SoaCatalogue::ROOT => SoaCatalogue::SUBCATEGORIES,
         SafetyCatalogue::ROOT => SafetyCatalogue::SUBCATEGORIES,
+        TenderCatalogue::ROOT => TenderCatalogue::SUBCATEGORIES,
+        GdprCatalogue::ROOT => GdprCatalogue::SUBCATEGORIES,
+        SubsidisedFinanceCatalogue::ROOT => SubsidisedFinanceCatalogue::SUBCATEGORIES,
     ];
 
     /**
@@ -204,6 +215,9 @@ class QualificaCatalogSeeder extends Seeder
         ECampusCourseCatalogue::CATEGORY,
         ...SoaCatalogue::TARGET_CATEGORIES,
         ...SafetyCatalogue::TARGET_CATEGORIES,
+        ...TenderCatalogue::TARGET_CATEGORIES,
+        ...GdprCatalogue::TARGET_CATEGORIES,
+        ...SubsidisedFinanceCatalogue::TARGET_CATEGORIES,
     ];
 
     /**
@@ -252,6 +266,9 @@ class QualificaCatalogSeeder extends Seeder
         ...AplPracticeCatalogue::QUOTE_ATTRIBUTES,
         SoaCatalogue::ROOT => SoaCatalogue::QUOTE_ATTRIBUTES,
         SafetyCatalogue::ROOT => SafetyCatalogue::QUOTE_ATTRIBUTES,
+        ...TenderCatalogue::QUOTE_ATTRIBUTES,
+        GdprCatalogue::ROOT => GdprCatalogue::QUOTE_ATTRIBUTES,
+        SubsidisedFinanceCatalogue::ROOT => SubsidisedFinanceCatalogue::QUOTE_ATTRIBUTES,
     ];
 
     /**

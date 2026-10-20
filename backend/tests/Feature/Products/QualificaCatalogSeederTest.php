@@ -18,9 +18,12 @@ use Database\Seeders\QualificaCatalog\CatalogProducts;
 use Database\Seeders\QualificaCatalog\ClassroomAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\DilCourseCatalogue;
 use Database\Seeders\QualificaCatalog\ECampusCourseCatalogue;
+use Database\Seeders\QualificaCatalog\GdprProductCatalogue;
 use Database\Seeders\QualificaCatalog\SafetyProductCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
 use Database\Seeders\QualificaCatalog\SoaCatalogue;
+use Database\Seeders\QualificaCatalog\SubsidisedFinanceProductCatalogue;
+use Database\Seeders\QualificaCatalog\TenderProductCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -36,7 +39,7 @@ uses(RefreshDatabase::class);
  * directive 2026-10-01, the 90 e-Campus degree fees plus the 2 services
  * sold once for the whole branch (user directive 2026-10-08).
  */
-const TOTAL_SEEDED_PRODUCTS = 540; // REQUIREMENT CHANGED: +18 SOA and +127 Sicurezza products (2026-10-15).
+const TOTAL_SEEDED_PRODUCTS = 636; // REQUIREMENT CHANGED: +18 SOA and +127 Sicurezza products (2026-10-15), +33 Gare, +16 GDPR and +47 Finanza Agevolata products (2026-10-20).
 
 /**
  * One scenario instead of one test per property: the catalogue seeder costs
@@ -68,9 +71,21 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
         // The e-Campus leaf, every degree fee on it (user directive 2026-10-02).
         'Corsi E-Campus',
         'DIL - Lombardia',
+        // REQUIREMENT CHANGED: the Finanza Agevolata lines, prefixed with their branch (user directive 2026-10-20).
+        'Finanza Agevolata - AUT C.NORD', 'Finanza Agevolata - Decreto Turismo', 'Finanza Agevolata - FINANZA AGEVOLATA',
+        'Finanza Agevolata - FNC', 'Finanza Agevolata - FONDI', 'Finanza Agevolata - FORMAZIONE CONTINUA',
+        'Finanza Agevolata - FRC', 'Finanza Agevolata - FUNT', 'Finanza Agevolata - INCENTIVI ASSUNZIONI',
+        'Finanza Agevolata - IPERAMMORTAMENTO', 'Finanza Agevolata - ISI INAIL', 'Finanza Agevolata - Industria 4.0',
+        'Finanza Agevolata - RESTO AL SUD',
+        // REQUIREMENT CHANGED: the GDPR lines, prefixed with their branch (user directive 2026-10-20).
+        'GDPR - GDPR', 'GDPR - Nomina DPO',
         'GOL - Abruzzo', 'GOL - Basilicata', 'GOL - Calabria', 'GOL - Campania',
         'GOL - Lazio', 'GOL - Lombardia', 'GOL - Molise', 'GOL - Puglia',
         'GOL - Sicilia', 'GOL - Umbria',
+        // REQUIREMENT CHANGED: the Gare targets, prefixed with their branch (user directive 2026-10-20).
+        'Gare - ANAC', 'Gare - Albo Fornitori', 'Gare - Albo Gestori Ambientali', 'Gare - Avvalimenti',
+        'Gare - Consorzio Grade', 'Gare - Corso preparazione gare', 'Gare - Gare', 'Gare - Giornale Telematico',
+        'Gare - Mepa', 'Gare - Progetto Tecnico', 'Gare - RTI/ATI', 'Gare - WHITE LIST',
         'Orientamento specialistico',
         // The Consulenza leaf (user directive 2026-09-28).
         'Presa Appuntamenti',
@@ -323,7 +338,10 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
             + $eCampusProducts
             + count(ECampusCourseCatalogue::SINGLE_PRODUCTS)
             + array_sum(array_map(count(...), SoaCatalogue::PRODUCTS))
-            + array_sum(array_map(count(...), SafetyProductCatalogue::PRODUCTS)));
+            + array_sum(array_map(count(...), SafetyProductCatalogue::PRODUCTS))
+            + array_sum(array_map(count(...), TenderProductCatalogue::PRODUCTS))
+            + array_sum(array_map(count(...), GdprProductCatalogue::PRODUCTS))
+            + array_sum(array_map(count(...), SubsidisedFinanceProductCatalogue::PRODUCTS)));
 });
 
 it('promotes "APL" out of "Consulenza" on an installation seeded while it hung there', function (): void {

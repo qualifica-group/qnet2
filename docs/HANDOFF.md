@@ -3,6 +3,70 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## CATALOGO: MACROCATEGORIA FINANZA AGEVOLATA — VERDE, COMMITTATO (2026-10-20)
+
+- Fonte: "Gestione richieste finanza Agevolata.docx" + "FINANZA AGEVOLATAù.xlsx" (47 prodotti, nessuna riga gialla).
+  Stesso schema di GDPR: `QualificaCatalog/SubsidisedFinanceCatalogue` + `SubsidisedFinanceProductCatalogue` (generato).
+- Radice "Finanza Agevolata" -> funzione "Finanza Agevolata" (organigramma). 13 sottocategorie "Finanza Agevolata -
+  <linea>" (linee del docx, deduplicate, nomi verbatim: AUT C.NORD, Decreto Turismo, FINANZA AGEVOLATA, FNC, FONDI,
+  FORMAZIONE CONTINUA, FRC, FUNT, INCENTIVI ASSUNZIONI, Industria 4.0, IPERAMMORTAMENTO, ISI INAIL, RESTO AL SUD).
+  Regole Consulenza, `consultancy`, IVA 22% (anche "Supporto alla presentazione bando", senza aliquota nell'xlsx),
+  mesi 0, descrizione solo su "Consulenza ISI Inail - IV fase".
+- Campi Offerta sulla radice, form "Finanza Agevolata": `subsidised_finance_requested_measure` (text, "campo libero"),
+  `subsidised_finance_checklist` (boolean, "Check-list da allegare"), `subsidised_finance_notes` (textarea).
+- Test: nuovo `Products/QualificaSubsidisedFinanceCatalogueTest` (3); REQUIREMENT CHANGED: prodotti 589->636,
+  produzione 599->646, layout offerta 24->25, +13 selezionabili, funzione nei link. Suite completa (flag link-only a
+  false) 11930 verdi, 1 rosso estraneo (PDF). Pint pulito.
+- `QualificaCatalogSeeder.php` ora a 493 righe: lo split e' OBBLIGATORIO prima di un altro ramo.
+- Manuale: nessun impatto (dati di seed).
+
+## CATALOGO: MACROCATEGORIA GDPR — VERDE, COMMITTATO (2026-10-20)
+
+- Fonte: "gestione richieste gdpr.docx" + "SERVIZI GDPR.xlsx". Richiesta utente: "fai la stessa cosa" di Gare. Qui il
+  giallo e' nell'xlsx: riga prodotto "GDPR_" (categoria PROGETTI-) esclusa; le due note gialle ("CATEGORIA MADRE GDPR",
+  "SOTTOCATEGORIA GDPR E DPO") = struttura, non prodotti.
+- `QualificaCatalog/GdprCatalogue` + `GdprProductCatalogue` (generato dall'xlsx, 16 prodotti: 7 GDPR, 9 DPO). Radice
+  "GDPR" -> funzione "Privacy" dell'organigramma (non esiste una funzione "GDPR"); sottocategorie "GDPR - GDPR" e
+  "GDPR - Nomina DPO" (nomi del docx; l'xlsx chiama la seconda "DPO"). Regole Consulenza, `consultancy`, IVA 22%,
+  mesi 0/12/24 dall'xlsx, nessun set Commessa.
+- Campi Offerta sulla RADICE (ereditati da entrambe, form "GDPR" in `OWN_FORMS`): `gdpr_employee_count` (integer),
+  `gdpr_business_activity` (textarea), `gdpr_video_surveillance` (boolean), `gdpr_video_surveillance_sites` (text,
+  "campo libero"), `gdpr_checklist` (boolean, "spunta"), `gdpr_notes` (textarea).
+- `BranchProducts`: nuova chiave opzionale `description` (DPO 1-3 anno ce l'hanno): scritta alla creazione, riempita
+  al re-run solo se vuota.
+- Test: nuovo `Products/QualificaGdprCatalogueTest` (4); REQUIREMENT CHANGED: prodotti 573->589, produzione 583->599,
+  layout offerta 23->24, +2 selezionabili, "GDPR" nei link funzione. Suite completa (flag link-only a false) 11927
+  verdi, 1 rosso estraneo (PDF senza LibreOffice). Pint pulito.
+- Attenzione: `QualificaCatalogSeeder.php` a 488 righe (hard limit 500): il prossimo ramo richiede uno split
+  (es. estrarre CATALOG/SELECTABLE/QUOTE_ATTRIBUTES in una classe `QualificaCatalog/*`).
+- Manuale: nessun impatto (dati di seed).
+
+## CATALOGO: MACROCATEGORIA GARE — VERDE, COMMITTATO (2026-10-20)
+
+- Fonte: "GESTIONE RICHIESTE SETTORE GARE.docx" (linee di prodotto + documenti per linea) + "SERVIZI GARE.xlsx"
+  (33 prodotti). Richiesta utente: nuova categoria nel seed di produzione, campi flessibili e prodotti; "quelli
+  segnati in giallo non devi crearli" = le voci del docx evidenziate in giallo (sezioni di testo libero: scadenza,
+  categorie merceologiche, N° dipendenti, CCNL, fatturato, termine e urgenza, email, telefono...) NON create.
+  Nessuna riga dell'xlsx e' gialla: tutti i 33 prodotti seminati.
+- Come "Sicurezza": radice "Gare" (funzione "Gare" di `BusinessFunctionCatalogue`), regole Consulenza, stati di
+  default, tipologia `consultancy`, IVA 22%, "Mesi scadenza" 0, nessun fornitore, nessun set Commessa. 12
+  sottocategorie selezionabili "Gare - <linea>" (prefisso come Sicurezza; nomi del docx: Mepa, WHITE LIST, ...;
+  "Gare - Gare" per la linea "Gare"). Il menu a tendina ordina gia' per nome.
+- Campi Offerta = i documenti "(DA ALLEGARE)", boolean `tender_*` (12 codici), assegnati SULLE SOTTOCATEGORIE che
+  li chiedono: Avvalimenti/Gare/Progetto Tecnico (7 documenti di gara), Mepa/Albo Fornitori/ANAC (6 di iscrizione),
+  WHITE LIST (3), Giornale Telematico (visura), Corso preparazione gare (visura/documento d'identita'). RTI/ATI,
+  Consorzio Grade, Albo Gestori Ambientali: nessun campo. "Visura" e "Visura camerale aggiornata" = un solo codice.
+  Form: una sezione "Documenti da allegare" per categoria (`QualificaQuoteLayoutSeeder::OWN_FORMS`).
+- File: nuovi `QualificaCatalog/TenderCatalogue.php`, `TenderProductCatalogue.php` (generato dall'xlsx); agganci in
+  `QualificaCatalogSeeder`, `CatalogProducts` step 7, `CatalogRootRules`, `QualificaBusinessFunctionLinkSeeder`,
+  `QualificaQuoteLayoutSeeder`.
+- Test: nuovo `Products/QualificaTenderCatalogueTest` (3); REQUIREMENT CHANGED: prodotti catalogo 540->573, produzione
+  550->583, layout offerta 14->23, +12 selezionabili, "Gare" nei link funzione. Products 232/232, Seeding 180/180,
+  Pint pulito. Suite completa: 14 rossi estranei (Migration utenti per `EXTERNAL_MIGRATION_USERS_LINK_ONLY=true` nel
+  `.env` locale -> verdi 435/435 col flag a false; PDF senza LibreOffice; `CampaignCrudTest` flaky, verde da solo).
+- Da fare: rieseguire `QualificaProductionDataSeeder` (o `QualificaCatalogSeeder`) su locale/staging/prod.
+  Manuale: nessun impatto (dati di seed).
+
 ## Spec 0285 — Migrazione utenti in modalita' "solo abbinamento" — VERDE, NON COMMITTATO (2026-10-19)
 
 - Spec `docs/specs/0285-users-migration-link-only.xml` (D-1..D-4, AC-001..AC-007).

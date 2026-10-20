@@ -39,7 +39,8 @@ use App\Services\ProductCategories\SingleQuotePerOpportunityInheritance;
  * in the Contratti module. It
  * kept the column defaults (Consulenza's values) from 2026-09-07 until then.
  *
- * "SOA" and "Sicurezza" are worked like "Consulenza" (user decisions 2026-10-15).
+ * "SOA" and "Sicurezza" are worked like "Consulenza" (user decisions 2026-10-15),
+ * and so are "Gare", "GDPR" and "Finanza Agevolata" (user directives 2026-10-20).
  *
  * "Formazione" alone also allows the multi-offer work order (spec 0267, user
  * decision 2026-10-15). The key is declared on that root only, so the other
@@ -105,6 +106,9 @@ final class CatalogRootRules
         'Consulenza' => self::CONSULTING_RULES,
         SoaCatalogue::ROOT => self::CONSULTING_RULES,
         SafetyCatalogue::ROOT => self::CONSULTING_RULES,
+        TenderCatalogue::ROOT => self::CONSULTING_RULES,
+        GdprCatalogue::ROOT => self::CONSULTING_RULES,
+        SubsidisedFinanceCatalogue::ROOT => self::CONSULTING_RULES,
     ];
 
     /**
