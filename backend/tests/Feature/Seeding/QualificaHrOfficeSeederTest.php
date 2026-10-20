@@ -55,6 +55,23 @@ it('0283 AC-001: grants the HR office its modules, delete included, but not impe
     }
 });
 
+it('0283 AC-011: grants the HR office the training and skills modules too', function () {
+    $this->seed(QualificaRoleSeeder::class);
+    $role = Role::findByName(HrOfficeRoleCatalogue::ROLE);
+
+    foreach (['staff-courses', 'skills'] as $resource) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
+            expect($role->hasPermissionTo("{$resource}.{$ability}"))->toBeTrue("{$resource}.{$ability}");
+        }
+    }
+
+    foreach (['staff-trainings', 'user-skills'] as $resource) {
+        foreach (['viewAny', 'viewTeam', 'viewAll', 'manage'] as $ability) {
+            expect($role->hasPermissionTo("{$resource}.{$ability}"))->toBeTrue("{$resource}.{$ability}");
+        }
+    }
+});
+
 it('0283 AC-002: hides the contractual data from every mansione and grants it to the HR office and admin', function () {
     $this->seed(QualificaRoleSeeder::class);
     $this->seed(QualificaRoleSeeder::class);

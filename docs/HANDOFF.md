@@ -33,6 +33,16 @@
   dell'albero: test org-chart aggiornati, REQUIREMENT CHANGED). Guide in-app IT+EN e manuale Claude Docs aggiornati.
   Vitest org-chart/help/i18n 428/428, `tsc -b --force` e ESLint puliti.
 
+## Spec 0283 D-7 — Ruolo "Risorse Umane" esteso a Formazione e Competenze — VERDE, NON COMMITTATO (2026-10-20)
+
+- Decisione utente: l'ufficio del personale (Castaldo, Iorio, Sorrentino) apre anche i moduli HR nati dopo 0283.
+  `HrOfficeRoleCatalogue::MODULES` + `staff-courses`, `staff-trainings`, `skills`, `user-skills` (24 permessi, tutti).
+  Spec 0283 D-7 + AC-011; test `0283 AC-011` in `QualificaHrOfficeSeederTest`. Pest Seeding 180/180, Pint pulito.
+- Guida in-app users IT/EN (elenco moduli del ruolo), help vitest 148/148. Manuale Claude Docs NON aggiornato: il doc
+  non e' condiviso con l'account di questa sessione (sezione Utenti, blocco "Chi vede i dati contrattuali").
+- DB locale: permessi dati al ruolo via `givePermissionTo` (additivo, nessun re-sync degli altri ruoli). In produzione:
+  `php artisan db:seed --class=QualificaRoleSeeder` (risincronizza tutti i ruoli Qualifica).
+
 ## Spec 0283 — Ruolo "Risorse Umane" + dati contrattuali dietro la matrice dei campi — VERDE, COMMITTATO ee81ddac (2026-10-19)
 
 - Spec `docs/specs/0283-hr-office-role-and-sensitive-user-fields.xml` (D-1..D-6, AC-001..AC-010).

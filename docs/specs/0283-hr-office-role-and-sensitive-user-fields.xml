@@ -38,6 +38,9 @@
         automaticamente e senza permesso (comportamento attuale, spec 0278, necessario perche' i superiori diretti
         sono gli approvatori); `absence-requests.manageAll` vede tutto (HR e admin); il super-admin tutto. Nessun
         cambio di codice sulle assenze.
+    D-7 (utente, 2026-10-20) Il ruolo riceve anche i moduli HR nati dopo: Corsi e Formazione (spec 0284,
+        `staff-courses`, `staff-trainings`) e Catalogo competenze e Competenze (spec 0286, `skills`, `user-skills`),
+        completi come gli altri (cancellazione e vista di tutti comprese).
   </context>
 
   <scope>
@@ -94,6 +97,7 @@
     <criterion id="AC-008">Un salvataggio della scheda con `employment` privo di hired_at/terminated_at/durate lascia i valori salvati; con null li svuota.</criterion>
     <criterion id="AC-009">(FE) Senza i campi visibili le sezioni Rapporto contrattuale e Storico contrattuale non compaiono; con `employment.contracts` in sola lettura lo storico e' visibile senza "Aggiungi"/cestino; il payload di aggiornamento non contiene date e durate non modificate.</criterion>
     <criterion id="AC-010">Guida in-app users IT ed EN aggiornata con la stessa sezione; parity test verde.</criterion>
+    <criterion id="AC-011">Dopo `QualificaRoleSeeder` il ruolo `risorse-umane` ha tutti i permessi di staff-courses, staff-trainings, skills e user-skills (D-7).</criterion>
   </acceptance_criteria>
 
   <constraints>

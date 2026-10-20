@@ -19,7 +19,8 @@ final class HrOfficeRoleCatalogue
     public const string FUNCTION = BusinessFunctionCatalogue::HUMAN_RESOURCES;
 
     /**
-     * The HR modules, every ability included, delete too (D-1).
+     * The HR modules, every ability included, delete too (D-1), plus the
+     * training and skills modules of specs 0284/0286 (D-7).
      *
      * @var array<int, string>
      */
@@ -32,6 +33,10 @@ final class HrOfficeRoleCatalogue
         'org-chart',
         'absence-requests',
         'absence-types',
+        'staff-courses',
+        'staff-trainings',
+        'skills',
+        'user-skills',
     ];
 
     /**
