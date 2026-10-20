@@ -45,7 +45,8 @@ use Throwable;
  *
  * Link-only mode (`migrations.users_link_only`, spec 0285): for an installation
  * whose accounts come from its own seeder, a matched user only gets its
- * `old_id`, an unmatched one is skipped, and nothing else is written.
+ * `old_id` and nothing else is written on it; an unmatched one is created
+ * as in the full import, but always disabled.
  */
 class UsersSource extends AbstractMigrationSource
 {
@@ -67,6 +68,15 @@ class UsersSource extends AbstractMigrationSource
      * malformed/plaintext value is rejected rather than stored as-is.
      */
     private const string BCRYPT_PATTERN = '/^\$2[aby]\$\d{2}\$.{53}$/';
+
+    /**
+     * Legacy ids of the users link-only mode created in the current run: the
+     * only ones the relinking pass may touch, a matched user keeps nothing but
+     * its `old_id` (spec 0285 D-3).
+     *
+     * @var array<int|string, true>
+     */
+    private array $createdInLinkOnly = [];
 
     public function __construct(
         ExternalApiClient $client,
@@ -184,7 +194,7 @@ class UsersSource extends AbstractMigrationSource
         }
 
         if ($this->linkOnly()) {
-            return $this->linkRow($externalId, $record);
+            return $this->linkRow($context, $externalId, $record);
         }
 
         if ($this->existsByOldId(User::class, $externalId)) {
@@ -192,19 +202,33 @@ class UsersSource extends AbstractMigrationSource
         }
 
         [$email, $firstName, $lastName] = $this->identity($record);
-        $externalHash = (string) ($record['password'] ?? '');
-
         $existing = $this->matcher->match($email, $firstName, $lastName);
 
         if ($existing !== null) {
             return $this->adopt($existing, $externalId, $record);
         }
 
+        return $this->create($context, $externalId, $record);
+    }
+
+    /**
+     * A legacy user no qnet account matched becomes a new account through
+     * UserService::create(), with the legacy bcrypt hash as its password.
+     * `$disabled` overrides the legacy state of the account, never the
+     * "[OLD] " mark, which still follows it.
+     *
+     * @param  array<string, mixed>  $record
+     * @param  array<int, string>  $warnings
+     */
+    private function create(MigrationImportContext $context, int|string $externalId, array $record, array $warnings = [], bool $disabled = false): MigrationRowOutcome
+    {
+        [$email, $firstName, $lastName] = $this->identity($record);
+        $externalHash = (string) ($record['password'] ?? '');
+
         if (! preg_match(self::BCRYPT_PATTERN, $externalHash)) {
             throw new RuntimeException('password must already be a valid bcrypt hash.');
         }
 
-        $warnings = [];
         $isActive = $this->resolveActive($record);
 
         [$roleNames, $roleWarnings] = $this->resolveRoleNames($this->externalRoleIds($record));
@@ -220,7 +244,7 @@ class UsersSource extends AbstractMigrationSource
                 email: $email,
                 locale: self::DEFAULT_LOCALE,
                 password: Str::password(24),
-                is_active: $isActive,
+                is_active: $isActive && ! $disabled,
                 roles: $roleNames === [] ? null : $roleNames,
             ),
             new ProfileData(
@@ -264,13 +288,14 @@ class UsersSource extends AbstractMigrationSource
     }
 
     /**
-     * Link-only mode (spec 0285 D-3): the matched qnet user gets the `old_id`
-     * and nothing else; an unmatched record creates no account. A matcher
-     * conflict still throws, so the row fails as in the full import.
+     * Link-only mode (spec 0285 D-3/D-6): the matched qnet user gets the
+     * `old_id` and nothing else; an unmatched record is created as in the full
+     * import, disabled: the installation's own accounts are the ones in use.
+     * A matcher conflict still throws, so the row fails as in the full import.
      *
      * @param  array<string, mixed>  $record
      */
-    private function linkRow(int|string $externalId, array $record): MigrationRowOutcome
+    private function linkRow(MigrationImportContext $context, int|string $externalId, array $record): MigrationRowOutcome
     {
         if ($this->existsByOldId(User::class, $externalId)) {
             return MigrationRowOutcome::skipped();
@@ -280,7 +305,10 @@ class UsersSource extends AbstractMigrationSource
         $existing = $this->matcher->match($email, $firstName, $lastName);
 
         if ($existing === null) {
-            return MigrationRowOutcome::skipped(["No qnet user matches {$email}: not created (link-only mode)."]);
+            $outcome = $this->create($context, $externalId, $record, ["No qnet user matches {$email}: created disabled from the legacy record (link-only mode)."], disabled: true);
+            $this->createdInLinkOnly[$externalId] = true;
+
+            return $outcome;
         }
 
         $existing->old_id = $externalId;
@@ -330,16 +358,24 @@ class UsersSource extends AbstractMigrationSource
      * (notably the self-referential `reports_to_id`) still unresolved because
      * the referenced user was processed later in the SAME run. Each relink is
      * isolated in its own transaction so a single failure never aborts the
-     * pass; only successful relinks are appended to the run report. Nothing
-     * to relink in link-only mode, which writes no employment reference.
+     * pass; only successful relinks are appended to the run report. In
+     * link-only mode only the users created by this run are relinked.
      */
     protected function afterImport(MigrationImportContext $context): void
     {
-        if ($this->linkOnly()) {
+        if (! $this->linkOnly()) {
+            $this->eachRecord(fn (array $record): mixed => $this->relinkRow($context, $record));
+
             return;
         }
 
-        $this->eachRecord(fn (array $record): mixed => $this->relinkRow($context, $record));
+        if ($this->createdInLinkOnly !== []) {
+            $this->eachRecord(fn (array $record): mixed => isset($this->createdInLinkOnly[$this->externalId($record)])
+                ? $this->relinkRow($context, $record)
+                : null);
+        }
+
+        $this->createdInLinkOnly = [];
     }
 
     /**

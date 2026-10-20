@@ -3,6 +3,26 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0285 D-3 — solo abbinamento CREA i non abbinati — VERDE, NON COMMITTATO (2026-10-20)
+
+- Chiarimento utente: "se esiste abbina solo l'id, se non esiste lo crea da import". REQUIREMENT CHANGED su D-3/AC-003,
+  D-4 superata. `UsersSource::linkRow()`: non abbinato -> `create()` (estratto dal percorso dell'import completo:
+  password legacy, "[OLD] " se attivo, impiego, ruoli), avviso "No qnet user matches {email}: created disabled from the legacy
+  record (link-only mode)." D-6: creati SEMPRE disattivati (regola qnet-2, decisione utente: il legacy manda il suo
+  `is_active` invariato; "[OLD] " segue lo stato legacy). `afterImport()` in link-only ricollega SOLO gli utenti creati nell'esecuzione
+  (`$createdInLinkOnly`); gli abbinati restano col solo `old_id` (AC-004 invariato).
+- Motivo: report migrazione 20/10 (run 25-27), 5.905 commesse fallite per utenti non creati (127 contabilita@,
+  444 offerte@, 61 ex dipendenti). Dopo questo cambio: rilanciare users -> opportunities -> quotes -> work-orders.
+- Test: `UsersSourceAdoptionTest` (AC-003 riscritto + relink created/matched). Pest Migration 437/437 con
+  `EXTERNAL_MIGRATION_USERS_LINK_ONLY=false`; Unit/Migrations 20/20; Pint pulito; help vitest 148/148; tsc pulito.
+- ATTENZIONE test: il `.env` locale ha `EXTERNAL_MIGRATION_USERS_LINK_ONLY=true` e `phpunit.xml` non lo fissa ->
+  5 test che presuppongono il default falliscono in locale (gia' prima di questa modifica). Da decidere: pin in
+  `phpunit.xml` (file protetto dall'hook config-protection).
+- Guida `migrations` IT/EN aggiornata. Manuale Claude Docs: ancora `access` deny -> paragrafo "solo abbinamento"
+  della sezione Migrazioni da aggiornare a mano.
+- Analisi scarti migrazione (in chat, non implementata): clienti cancellati = doppioni per P.IVA (10/17), 41 offerte
+  orfane ricostruibili con lo stesso id opportunita', righe service_id=0 = voci reali (684), servizio 126 -> 934.
+
 ## UI HR ALLINEATA (spec 0287) — VERDE, COMMITTATO (2026-10-20)
 
 - Spec `docs/specs/0287-hr-ui-alignment.xml`. Richiesta utente: allineare Assenze, Formazione, Competenze a Gestione

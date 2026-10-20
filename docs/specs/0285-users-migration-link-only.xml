@@ -3,8 +3,9 @@
 
   <goal>
     La sorgente di migrazione `users` ha una modalita' "solo abbinamento", scelta per installazione: abbina gli
-    utenti legacy a quelli gia' presenti in qnet-2 scrivendo soltanto `old_id`, senza creare account ne' toccare
-    altri dati. L'import completo resta il comportamento predefinito.
+    utenti legacy a quelli gia' presenti in qnet-2 scrivendo soltanto `old_id`, senza toccare altri dati; un utente
+    legacy che non abbina nessuno viene creato come nell'import completo. L'import completo resta il comportamento
+    predefinito.
   </goal>
 
   <context>
@@ -24,23 +25,31 @@
     D-3 In modalita' solo abbinamento:
         - `old_id` gia' presente -> riga saltata, nessuna scrittura;
         - utente abbinato -> si scrive solo `old_id` (niente impiego, ruoli, password, anagrafica, campi custom);
-        - nessun utente abbinato -> riga saltata con avviso, nessun account creato;
+        - nessun utente abbinato -> account creato come nell'import completo (anagrafica, impiego, password
+          legacy, "[OLD] " se attivo), con avviso. REQUIREMENT CHANGED 2026-10-20 (chiarimento utente: "se
+          esiste abbina solo l'id, se non esiste lo crea da import"); prima la riga era saltata e il report di
+          migrazione del 20/10 contava 5.905 commesse fallite per utenti non creati;
         - conflitti del matcher (email gia' collegata ad altro id, omonimi) -> riga fallita come oggi;
-        - nessun secondo passaggio di ricollegamento.
-    D-4 Conseguenza accettata: i riferimenti agli utenti legacy non abbinati restano vuoti, con avviso, nelle
-        sorgenti successive.
+        - secondo passaggio di ricollegamento solo per gli utenti creati nell'esecuzione, mai su quelli abbinati.
+    D-4 (superata 2026-10-20) Dopo la sorgente `users` ogni utente legacy esiste in qnet-2, abbinato o creato.
 
     Decisione utente 2026-10-19 (estensione):
     D-5 Con la modalita' attiva la sorgente `business-function-members` ("Funzioni aziendali — collega
         responsabile e operatori") non e' abilitata: su Qualifica responsabili e operatori delle funzioni li
         provvede il seeder, il legacy li sovrascriverebbe. Resta nell'elenco, ma non si importa ne' da sola ne'
         con "Importa tutto". Il contratto `MigrationSource` espone `isAvailable()` (default true).
+
+    Decisione utente 2026-10-20:
+    D-6 In modalita' solo abbinamento un utente creato (D-3) e' sempre disattivato, anche se attivo nel legacy:
+        gli account in uso sono quelli dell'installazione. Regola di qnet-2, non del legacy, che continua a
+        mandare il proprio stato `is_active`; il marcatore "[OLD] " segue ancora lo stato legacy. L'import
+        completo resta invariato.
   </context>
 
   <scope>
     <in>
       <item>`config/migrations.php` (`users_link_only`), `.env.example`.</item>
-      <item>`UsersSource`: ramo di solo abbinamento in `processRow()`, `afterImport()` senza effetto in quella modalita'.</item>
+      <item>`UsersSource`: ramo di solo abbinamento in `processRow()`, non abbinato -> stessa creazione dell'import completo; `afterImport()` ristretto agli utenti creati nell'esecuzione.</item>
       <item>Test Pest in `UsersSourceAdoptionTest`.</item>
       <item>D-5: `MigrationSource::isAvailable()`, `BusinessFunctionMembersSource`, `MigrationService::start`,
         `MigrationPlanService` (sorgente non disponibile mai inclusa), campo `available` in `GET /migrations` e nel
@@ -58,7 +67,7 @@
     <config>`migrations.users_link_only` bool, da `EXTERNAL_MIGRATION_USERS_LINK_ONLY`, default false.</config>
     <report>
       Abbinato: esito "created" con il messaggio "Existing user {email} linked to this legacy record (link-only mode)."
-      Non abbinato: esito "skipped" con il messaggio "No qnet user matches {email}: not created (link-only mode)."
+      Non abbinato: esito "created" con il messaggio "No qnet user matches {email}: created disabled from the legacy record (link-only mode)."
     </report>
     <endpoint>Nessun endpoint nuovo; contratto del legacy invariato.</endpoint>
     <endpoint>D-5: `GET /migrations` -> ogni `sources[]` ha in piu' `available: bool`. `GET|PUT /migrations/plan` ->
@@ -70,7 +79,7 @@
   <acceptance_criteria>
     <criterion id="AC-001">Con `users_link_only` attivo, un utente qnet con la stessa email riceve `old_id`; password, ruoli, nome e impiego (anche se vuoto) restano invariati; nessun account creato.</criterion>
     <criterion id="AC-002">Con `users_link_only` attivo, l'abbinamento per nome e cognome scrive solo `old_id` e lascia l'email di qnet.</criterion>
-    <criterion id="AC-003">Con `users_link_only` attivo, un record legacy che non abbina nessuno non crea account: riga saltata con l'avviso del contratto.</criterion>
+    <criterion id="AC-003">Con `users_link_only` attivo, un record legacy che non abbina nessuno crea l'account come l'import completo (old_id, password legacy, "[OLD] " se attivo nel legacy, impiego) ma sempre disattivato (D-6), con l'avviso del contratto; il secondo passaggio ricollega il responsabile degli utenti creati e non completa l'impiego di quelli abbinati (REQUIREMENT CHANGED 2026-10-20).</criterion>
     <criterion id="AC-004">Con `users_link_only` attivo, un re-import di un utente gia' collegato non completa i campi di impiego vuoti.</criterion>
     <criterion id="AC-005">Con `users_link_only` attivo, i conflitti del matcher fanno fallire la riga come nell'import completo.</criterion>
     <criterion id="AC-006">Con `users_link_only` spento (default) i test esistenti dell'import completo restano verdi senza modifiche.</criterion>
