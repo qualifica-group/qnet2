@@ -56,6 +56,15 @@ beforeEach(() => {
 })
 
 describe('AbsenceRequestDetailSheet', () => {
+  it('heads the record with the absence type and lays the data out in sections (spec 0287)', async () => {
+    renderDetail(buildRequest())
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Ferie' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 3, name: label('absences.requests.detail.sections.request') })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 3, name: label('absences.requests.detail.sections.approval') })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 3, name: label('absences.requests.detail.sections.attachment') })).toBeInTheDocument()
+  })
+
   it('shows the data, the approvers and the status of the request', async () => {
     renderDetail(buildRequest({ note: 'Mare' }))
 

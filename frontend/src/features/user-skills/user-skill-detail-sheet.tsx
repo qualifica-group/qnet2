@@ -2,9 +2,12 @@ import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useConfirm } from '@/components/confirm-dialog-context'
+import { DetailLoading, DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordBody } from '@/components/detail/record-body'
+import { RecordCanvas, RecordCardHeader } from '@/components/detail/record-panel'
 import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetToolbar } from '@/components/ui/sheet'
+import { SkillLevelBadge } from '@/features/skills/skill-level-badge'
 import { UserSkillDetailBody } from '@/features/user-skills/user-skill-detail-body'
 import { useUserSkillDetail } from '@/features/user-skills/use-user-skill-detail'
 import { useUserSkillRemove } from '@/features/user-skills/use-user-skill-remove'
@@ -31,7 +34,7 @@ function DetailContent({ userSkillId, onClose, onEdit, refreshGrid }: DetailCont
   const remove = useUserSkillRemove(userSkillId, refreshGrid, onClose)
 
   if (isPending) {
-    return <Skeleton className="m-4 h-40" />
+    return <DetailLoading />
   }
   if (!userSkill) {
     const missing = axios.isAxiosError(error) && error.response?.status === NOT_FOUND_STATUS
@@ -56,32 +59,52 @@ function DetailContent({ userSkillId, onClose, onEdit, refreshGrid }: DetailCont
   }
 
   return (
-    <div className="flex-1 space-y-4 overflow-y-auto px-4 pb-4">
-      {userSkill.can_edit ? (
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={() => onEdit(userSkill)}>
-            <Pencil aria-hidden="true" />
-            {t('userSkills.actions.edit')}
-          </Button>
-          <Button type="button" size="sm" variant="outline" disabled={remove.isPending} onClick={() => void confirmDelete()}>
-            <Trash2 aria-hidden="true" />
-            {t('userSkills.actions.delete')}
-          </Button>
-        </div>
-      ) : null}
-      <UserSkillDetailBody userSkill={userSkill} />
-    </div>
+    <RecordCanvas>
+      <RecordBody
+        header={
+          <RecordCardHeader
+            media={<DetailMonogram name={userSkill.user.name} />}
+            title={userSkill.skill.name}
+            subtitle={userSkill.user.name}
+            badges={<SkillLevelBadge level={userSkill.level} />}
+            actions={
+              userSkill.can_edit ? (
+                <div className="flex flex-wrap items-center justify-end gap-1.5">
+                  <Button type="button" size="sm" variant="outline" onClick={() => onEdit(userSkill)}>
+                    <Pencil aria-hidden="true" />
+                    {t('userSkills.actions.edit')}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={remove.isPending}
+                    onClick={() => void confirmDelete()}
+                  >
+                    <Trash2 aria-hidden="true" />
+                    {t('userSkills.actions.delete')}
+                  </Button>
+                </div>
+              ) : undefined
+            }
+          />
+        }
+      >
+        <UserSkillDetailBody userSkill={userSkill} />
+      </RecordBody>
+    </RecordCanvas>
   )
 }
 
-/** Detail Sheet of a person skill (grid row click or a row of the "Copertura" tab). */
+/** Detail Sheet of a person skill on the record kit (spec 0287), opened by a grid row or a row of the "Copertura" tab. */
 export function UserSkillDetailSheet({ userSkillId, onClose, onEdit, refreshGrid }: UserSkillDetailSheetProps) {
   const { t } = useTranslation()
 
   return (
     <Sheet open={userSkillId !== null} onOpenChange={(open) => (open ? undefined : onClose())}>
-      <SheetContent className="gap-0 p-0" storageKey="sheet-width:user-skills-detail">
-        <SheetHeader>
+      <SheetContent className="gap-0" showCloseButton={false} storageKey="sheet-width:user-skills-detail">
+        <SheetToolbar closeLabel={t('common.close')} />
+        <SheetHeader className="sr-only">
           <SheetTitle>{t('userSkills.detail.title')}</SheetTitle>
           <SheetDescription>{t('userSkills.detail.description')}</SheetDescription>
         </SheetHeader>

@@ -30,7 +30,7 @@ function renderSheet(training?: ReturnType<typeof buildTraining>) {
 
 /** Anchored: a required label also renders a trailing "*". */
 const labelPattern = (key: string) => new RegExp(`^${label(key)}\\s*\\*?$`)
-const save = () => fireEvent.click(screen.getByRole('button', { name: label('staffTrainings.form.save') }))
+const save = () => fireEvent.click(screen.getAllByRole('button', { name: label('staffTrainings.form.save') })[0])
 
 beforeAll(async () => {
   await i18n.changeLanguage('it')
@@ -43,6 +43,13 @@ beforeEach(() => {
 })
 
 describe('StaffTrainingSheet', () => {
+  it('groups the fields in record sections (spec 0287)', () => {
+    renderSheet()
+
+    expect(screen.getByRole('heading', { level: 3, name: label('staffTrainings.form.sections.personCourse') })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 3, name: label('staffTrainings.form.sections.outcome') })).toBeInTheDocument()
+  })
+
   it('shows the required errors with the accessible triad and sends nothing', async () => {
     renderSheet()
     save()
@@ -95,7 +102,7 @@ describe('StaffTrainingSheet', () => {
     updateMock.mockResolvedValue(buildTraining())
     renderSheet(buildTraining({ notes: 'Prima' }))
 
-    expect(await screen.findByText(label('staffTrainings.form.editTitle'))).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: label('staffTrainings.form.editTitle') })).toBeInTheDocument()
     expect(screen.getByLabelText(label('staffTrainings.form.notes'))).toHaveValue('Prima')
     save()
 

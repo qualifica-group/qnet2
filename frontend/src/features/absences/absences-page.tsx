@@ -31,7 +31,8 @@ function parseRequestId(value: string | null): number | null {
  * Absences page (spec 0278): the actor's balances, the requests grid with its
  * scope tabs, the create/edit-draft Sheet and the detail Sheet (also opened by
  * `?request={id}`). Gated by `absence-requests.viewAny`. The "Calendario" view
- * (spec 0279) shows up with any of the three calendar permissions.
+ * (spec 0279) shows up with any of the three calendar permissions; the view switch sits in the
+ * page header, so only the scope tabs stay above the grid (spec 0287 D-5).
  */
 export default function AbsencesPage() {
   const { t } = useTranslation()
@@ -67,25 +68,27 @@ export default function AbsencesPage() {
       permission="absence-requests.viewAny"
       fallback={<p className="text-sm text-muted-foreground">{t('absences.forbidden')}</p>}
     >
-      <div className="flex flex-1 flex-col gap-3">
+      <div className="flex flex-1 flex-col gap-4">
         <PageHeader
           actions={
-            <Can permission="absence-requests.create">
-              <Button type="button" onClick={openCreate}>
-                <Plus aria-hidden="true" />
-                {t('absences.page.newRequest')}
-              </Button>
-            </Can>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {canSeeCalendar ? (
+                <FilterTabs
+                  aria-label={t('absences.page.viewsLabel')}
+                  value={view}
+                  options={PAGE_VIEWS.map((value) => ({ value, label: t(`absences.page.views.${value}`) }))}
+                  onValueChange={setView}
+                />
+              ) : null}
+              <Can permission="absence-requests.create">
+                <Button type="button" onClick={openCreate}>
+                  <Plus aria-hidden="true" />
+                  {t('absences.page.newRequest')}
+                </Button>
+              </Can>
+            </div>
           }
         />
-        {canSeeCalendar ? (
-          <FilterTabs
-            aria-label={t('absences.page.viewsLabel')}
-            value={view}
-            options={PAGE_VIEWS.map((value) => ({ value, label: t(`absences.page.views.${value}`) }))}
-            onValueChange={setView}
-          />
-        ) : null}
         {canSeeCalendar && view === 'calendar' ? (
           <AbsenceCalendar onOpen={openDetail} />
         ) : (

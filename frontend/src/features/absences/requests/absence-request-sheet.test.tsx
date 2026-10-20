@@ -60,6 +60,13 @@ beforeEach(() => {
 })
 
 describe('AbsenceRequestSheet', () => {
+  it('groups the fields in record sections (spec 0287)', async () => {
+    renderSheet()
+
+    expect(await screen.findByRole('heading', { level: 3, name: label('absences.requests.form.sections.absence') })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 3, name: label('absences.requests.form.sections.notes') })).toBeInTheDocument()
+  })
+
   it('says why the type select is empty when no active type exists', async () => {
     typeOptionsMock.mockResolvedValue([])
     renderSheet()
@@ -76,7 +83,7 @@ describe('AbsenceRequestSheet', () => {
 
   it('shows the required errors with the accessible triad and sends nothing', async () => {
     renderSheet()
-    fireEvent.click(await screen.findByRole('button', { name: label('absences.requests.form.send') }))
+    fireEvent.click((await screen.findAllByRole('button', { name: label('absences.requests.form.send') }))[0])
 
     const typeError = await screen.findByText(label('absences.requests.form.typeRequired'))
     expect(typeError).toHaveAttribute('role', 'alert')
@@ -95,7 +102,7 @@ describe('AbsenceRequestSheet', () => {
     fireEvent.change(screen.getByLabelText(label('absences.requests.form.note')), { target: { value: 'Mare' } })
     expect(await screen.findByText(label('absences.requests.form.fullDayDuration'))).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: label('absences.requests.form.saveDraft') }))
+    fireEvent.click(screen.getAllByRole('button', { name: label('absences.requests.form.saveDraft') })[0])
 
     await waitFor(() =>
       expect(createMock).toHaveBeenCalledWith({
@@ -125,7 +132,7 @@ describe('AbsenceRequestSheet', () => {
 
     const file = new File(['x'], 'certificato.pdf', { type: 'application/pdf' })
     fireEvent.change(screen.getByLabelText(label('absences.requests.form.attachment')), { target: { files: [file] } })
-    fireEvent.click(screen.getByRole('button', { name: label('absences.requests.form.send') }))
+    fireEvent.click(screen.getAllByRole('button', { name: label('absences.requests.form.send') })[0])
 
     await waitFor(() =>
       expect(createMock).toHaveBeenCalledWith({
@@ -155,7 +162,7 @@ describe('AbsenceRequestSheet', () => {
     await pickType('Ferie')
     fireEvent.change(dateField('absences.requests.form.startsOn'), { target: { value: '2026-11-02' } })
     fireEvent.change(dateField('absences.requests.form.endsOn'), { target: { value: '2026-11-04' } })
-    fireEvent.click(screen.getByRole('button', { name: label('absences.requests.form.send') }))
+    fireEvent.click(screen.getAllByRole('button', { name: label('absences.requests.form.send') })[0])
 
     const alert = await screen.findByText('La richiesta si sovrappone a un\'altra.')
     expect(alert).toHaveAttribute('role', 'alert')
@@ -171,8 +178,8 @@ describe('AbsenceRequestSheet', () => {
     submitMock.mockResolvedValue(buildRequest())
     renderSheet(draft)
 
-    expect(await screen.findByText(label('absences.requests.form.editTitle'))).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: label('absences.requests.form.send') }))
+    expect(await screen.findByRole('dialog', { name: label('absences.requests.form.editTitle') })).toBeInTheDocument()
+    fireEvent.click(screen.getAllByRole('button', { name: label('absences.requests.form.send') })[0])
 
     await waitFor(() => expect(updateMock).toHaveBeenCalledWith(5, expect.objectContaining({ starts_on: '2026-11-02' })))
     await waitFor(() => expect(submitMock).toHaveBeenCalledWith(5))

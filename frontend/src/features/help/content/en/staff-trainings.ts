@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **Training** page gathers the internal courses done by each person and shows which courses required by their job roles are valid, expiring, expired or missing. It has two tabs: **Register** and **Status**.',
+          text: 'The **Training** page gathers the internal courses done by each person and shows which courses required by their job roles are valid, expiring, expired or missing. It has two tabs, **Register** and **Status**, at the top right next to the **Record training** button.',
         },
       ],
     },
@@ -41,14 +41,14 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The list of the trainings you can see, with person, course, completion date, expiry, outcome and whether a certificate is attached. Click a row to open its detail.',
+          text: 'The list of the trainings you can see, with person, course, completion date, expiry, outcome and whether a certificate is attached. Click a row to open its detail: at the top the course, the person, the outcome and, with the Manage permission, **Edit** and **Delete**; below, the **Training** (completion date, expiry, validity), **Record** (who recorded it and the notes) and **Certificate** sections.',
         },
         {
           type: 'steps',
           items: [
             'Click **Record training** (shown with the Manage permission).',
-            'Choose the person and the course, enter the completion date (it cannot be in the future) and the outcome.',
-            'Add any notes and save: the expiry is computed and you find it in the detail.',
+            'In the **Person and course** section choose the person and the course; in the **Outcome** section enter the completion date (it cannot be in the future), the outcome and any notes.',
+            'Press **Save**, at the top right or at the bottom of the form: the expiry is computed and you find it in the detail.',
             'From the detail you can upload the certificate (PDF, JPG or PNG), replace it or remove it.',
           ],
         },

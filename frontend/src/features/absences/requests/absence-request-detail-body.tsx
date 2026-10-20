@@ -1,70 +1,60 @@
-import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { CalendarDays, Paperclip, UserCheck } from 'lucide-react'
+import { RecordField, RecordFieldList, RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
 import { formatAbsenceDuration, formatAbsencePeriod } from '@/features/absences/requests/absence-request-format'
 import { AbsenceRequestAttachment } from '@/features/absences/requests/absence-request-attachment'
-import { AbsenceRequestStatusBadge } from '@/features/absences/requests/absence-request-status-badge'
 import type { AbsenceRequestActions } from '@/features/absences/requests/use-absence-request-actions'
 import type { AbsenceRequest } from '@/features/absences/types'
 import { formatDateTime } from '@/lib/formatting/date-display'
-
-interface FieldProps {
-  label: string
-  children: ReactNode
-}
-
-function Field({ label, children }: FieldProps) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="break-words text-sm">{children}</dd>
-    </div>
-  )
-}
 
 interface AbsenceRequestDetailBodyProps {
   request: AbsenceRequest
   actions: AbsenceRequestActions
 }
 
-/** Read-only data of a request: who, what, when, state, approvers, decision and attachment. */
+/**
+ * Read-only data of a request in record sections (spec 0287 D-2): the request itself, its approval
+ * and the attachment. Person, type and status live in the identity band above.
+ */
 export function AbsenceRequestDetailBody({ request, actions }: AbsenceRequestDetailBodyProps) {
   const { t } = useTranslation()
   const prefix = 'absences.requests.detail'
 
   return (
-    <dl className="grid gap-3 sm:grid-cols-2">
-      <Field label={t(`${prefix}.person`)}>{request.user.name}</Field>
-      <Field label={t(`${prefix}.type`)}>{request.absence_type.name}</Field>
-      <Field label={t(`${prefix}.status`)}>
-        <AbsenceRequestStatusBadge status={request.status} />
-      </Field>
-      <Field label={t(`${prefix}.period`)}>
-        {formatAbsencePeriod(request)} ({t(request.is_full_day ? `${prefix}.fullDay` : `${prefix}.hourly`)})
-      </Field>
-      <Field label={t(`${prefix}.duration`)}>{formatAbsenceDuration(request, t)}</Field>
-      {request.submitted_at ? <Field label={t(`${prefix}.submittedAt`)}>{formatDateTime(request.submitted_at)}</Field> : null}
-      <Field label={t(`${prefix}.approvers`)}>
-        {request.approvers.length > 0
-          ? request.approvers.map((approver) => approver.name).join(', ')
-          : t(`${prefix}.noApprovers`)}
-      </Field>
-      {request.decided_by ? <Field label={t(`${prefix}.decidedBy`)}>{request.decided_by.name}</Field> : null}
-      {request.decided_at ? <Field label={t(`${prefix}.decidedAt`)}>{formatDateTime(request.decided_at)}</Field> : null}
-      {request.rejection_reason ? (
-        <div className="sm:col-span-2">
-          <Field label={t(`${prefix}.rejectionReason`)}>{request.rejection_reason}</Field>
-        </div>
-      ) : null}
-      {request.note ? (
-        <div className="sm:col-span-2">
-          <Field label={t(`${prefix}.note`)}>{request.note}</Field>
-        </div>
-      ) : null}
-      <div className="sm:col-span-2">
-        <Field label={t(`${prefix}.attachment`)}>
-          <AbsenceRequestAttachment request={request} actions={actions} />
-        </Field>
-      </div>
-    </dl>
+    <RecordSectionsGrid>
+      <RecordSection title={t(`${prefix}.sections.request`)} icon={<CalendarDays />}>
+        <RecordFieldList>
+          <RecordField label={t(`${prefix}.period`)}>
+            {formatAbsencePeriod(request)} ({t(request.is_full_day ? `${prefix}.fullDay` : `${prefix}.hourly`)})
+          </RecordField>
+          <RecordField label={t(`${prefix}.duration`)}>{formatAbsenceDuration(request, t)}</RecordField>
+          {request.submitted_at ? (
+            <RecordField label={t(`${prefix}.submittedAt`)}>{formatDateTime(request.submitted_at)}</RecordField>
+          ) : null}
+          {request.note ? <RecordField label={t(`${prefix}.note`)}>{request.note}</RecordField> : null}
+        </RecordFieldList>
+      </RecordSection>
+      <RecordSection title={t(`${prefix}.sections.approval`)} icon={<UserCheck />}>
+        <RecordFieldList>
+          <RecordField label={t(`${prefix}.approvers`)}>
+            {request.approvers.length > 0
+              ? request.approvers.map((approver) => approver.name).join(', ')
+              : t(`${prefix}.noApprovers`)}
+          </RecordField>
+          {request.decided_by ? (
+            <RecordField label={t(`${prefix}.decidedBy`)}>{request.decided_by.name}</RecordField>
+          ) : null}
+          {request.decided_at ? (
+            <RecordField label={t(`${prefix}.decidedAt`)}>{formatDateTime(request.decided_at)}</RecordField>
+          ) : null}
+          {request.rejection_reason ? (
+            <RecordField label={t(`${prefix}.rejectionReason`)}>{request.rejection_reason}</RecordField>
+          ) : null}
+        </RecordFieldList>
+      </RecordSection>
+      <RecordSection title={t(`${prefix}.sections.attachment`)} icon={<Paperclip />} full>
+        <AbsenceRequestAttachment request={request} actions={actions} />
+      </RecordSection>
+    </RecordSectionsGrid>
   )
 }

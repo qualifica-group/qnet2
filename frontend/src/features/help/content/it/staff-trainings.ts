@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La pagina **Formazione** raccoglie i corsi interni fatti da ogni persona e mostra quali corsi richiesti dalle sue mansioni sono validi, in scadenza, scaduti o mancanti. Ha due schede: **Registro** e **Situazione**.',
+          text: 'La pagina **Formazione** raccoglie i corsi interni fatti da ogni persona e mostra quali corsi richiesti dalle sue mansioni sono validi, in scadenza, scaduti o mancanti. Ha due schede, **Registro** e **Situazione**, in alto a destra accanto al pulsante **Registra formazione**.',
         },
       ],
     },
@@ -41,14 +41,14 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'L’elenco delle formazioni che puoi vedere, con persona, corso, data di completamento, scadenza, esito e presenza dell’attestato. Fai clic su una riga per aprirne il dettaglio.',
+          text: 'L’elenco delle formazioni che puoi vedere, con persona, corso, data di completamento, scadenza, esito e presenza dell’attestato. Fai clic su una riga per aprirne il dettaglio: in alto il corso, la persona, l’esito e, con il permesso Gestire, **Modifica** ed **Elimina**; sotto le sezioni **Formazione** (data di completamento, scadenza, validità), **Registrazione** (chi l’ha registrata e le note) e **Attestato**.',
         },
         {
           type: 'steps',
           items: [
             'Fai clic su **Registra formazione** (visibile con il permesso Gestire).',
-            'Scegli la persona e il corso, indica la data di completamento (non può essere futura) e l’esito.',
-            'Aggiungi eventuali note e salva: la scadenza viene calcolata e la trovi nel dettaglio.',
+            'Nella sezione **Persona e corso** scegli la persona e il corso; nella sezione **Esito** indica la data di completamento (non può essere futura), l’esito ed eventuali note.',
+            'Premi **Salva**, in alto a destra o in fondo al modulo: la scadenza viene calcolata e la trovi nel dettaglio.',
             'Dal dettaglio puoi caricare l’attestato (PDF, JPG o PNG), sostituirlo o rimuoverlo.',
           ],
         },

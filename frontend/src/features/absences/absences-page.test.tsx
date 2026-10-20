@@ -65,7 +65,7 @@ describe('AbsencesPage', () => {
     render(<AbsencesPage />, { wrapper: absenceWrapper() })
 
     fireEvent.click(screen.getByRole('button', { name: label('absences.page.newRequest') }))
-    expect(await screen.findByText(label('absences.requests.form.createTitle'))).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: label('absences.requests.form.createTitle') })).toBeInTheDocument()
   })
 
   it('opens the detail from the `?request=` deep link of the notifications', async () => {

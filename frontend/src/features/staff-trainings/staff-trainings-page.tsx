@@ -42,22 +42,24 @@ export default function StaffTrainingsPage() {
       permission="staff-trainings.viewAny"
       fallback={<p className="text-sm text-muted-foreground">{t('staffTrainings.forbidden')}</p>}
     >
-      <div className="flex flex-1 flex-col gap-3">
+      <div className="flex flex-1 flex-col gap-4">
         <PageHeader
           actions={
-            <Can permission="staff-trainings.manage">
-              <Button type="button" onClick={openCreate}>
-                <Plus aria-hidden="true" />
-                {t('staffTrainings.page.register')}
-              </Button>
-            </Can>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <FilterTabs<StaffTrainingView>
+                aria-label={t('staffTrainings.page.viewsLabel')}
+                value={view}
+                options={STAFF_TRAINING_VIEWS.map((value) => ({ value, label: t(`staffTrainings.page.views.${value}`) }))}
+                onValueChange={setView}
+              />
+              <Can permission="staff-trainings.manage">
+                <Button type="button" onClick={openCreate}>
+                  <Plus aria-hidden="true" />
+                  {t('staffTrainings.page.register')}
+                </Button>
+              </Can>
+            </div>
           }
-        />
-        <FilterTabs<StaffTrainingView>
-          aria-label={t('staffTrainings.page.viewsLabel')}
-          value={view}
-          options={STAFF_TRAINING_VIEWS.map((value) => ({ value, label: t(`staffTrainings.page.views.${value}`) }))}
-          onValueChange={setView}
         />
         {view === 'register' ? (
           <StaffTrainingRegister tableRef={tableRef} onOpen={setOpenedId} />

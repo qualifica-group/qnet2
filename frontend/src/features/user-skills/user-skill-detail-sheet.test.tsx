@@ -37,6 +37,13 @@ beforeEach(() => {
 })
 
 describe('UserSkillDetailSheet', () => {
+  it('heads the record with the skill and lays the data out in a section (spec 0287)', async () => {
+    renderDetail(buildUserSkill())
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Inglese' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 3, name: label('userSkills.detail.sections.assessment') })).toBeInTheDocument()
+  })
+
   it('shows data and the level with its number and name', async () => {
     renderDetail(buildUserSkill({ notes: 'Certificato B2' }))
 

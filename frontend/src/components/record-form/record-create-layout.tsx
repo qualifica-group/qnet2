@@ -28,6 +28,8 @@ interface RecordCreateLayoutProps {
   children: ReactNode
   /** Side column (e.g. a live preview); absent = full-width form. */
   side?: ReactNode
+  /** Extra action(s) right before Save, in the header and at the foot alike (e.g. "Salva bozza"). */
+  extraActions?: ReactNode
 }
 
 /**
@@ -49,6 +51,7 @@ export function RecordCreateLayout({
   labels,
   children,
   side,
+  extraActions,
 }: RecordCreateLayoutProps) {
   return (
     // `display: contents`: the native `<form>` only scopes the HTML submit
@@ -66,6 +69,7 @@ export function RecordCreateLayout({
                   <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>
                     {labels.cancel}
                   </Button>
+                  {extraActions}
                   <Button type="submit" form={formId} disabled={isSubmitting}>
                     {isSubmitting ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
                     {isSubmitting ? labels.saving : labels.save}
@@ -91,6 +95,7 @@ export function RecordCreateLayout({
             submitLabel={labels.save}
             submittingLabel={labels.saving}
             cancel={{ label: labels.cancel, onCancel }}
+            leadingActions={extraActions}
           />
         </RecordFormBody>
       </RecordCanvas>

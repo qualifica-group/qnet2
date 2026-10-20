@@ -29,7 +29,7 @@ export function UserSkillCoverage({ onOpen }: UserSkillCoverageProps) {
   const coverage = query.data
 
   return (
-    <section className="flex flex-col gap-3" aria-label={t('userSkills.coverage.caption')}>
+    <section className="flex flex-col gap-4" aria-label={t('userSkills.coverage.caption')}>
       <FilterTabs<StatusTab>
         aria-label={t('userSkills.coverage.statusFilter')}
         value={status ?? ALL_STATUSES}

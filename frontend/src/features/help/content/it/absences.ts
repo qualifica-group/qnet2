@@ -38,10 +38,9 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Premi "Nuova richiesta".',
-            'Scegli il **Tipo** di assenza e indica se è a **giornata intera** o **a ore** (le ore valgono per un solo giorno).',
-            'Indica **Dal** e **Al** (per le ore, un solo giorno) e, se serve, una **Nota**.',
-            'Se vuoi, allega un file (pdf, jpg o png), per esempio un certificato.',
-            'Premi **Salva bozza** per continuare dopo, oppure **Invia** per mandarla al responsabile.',
+            'Nella sezione **Assenza** scegli il **Tipo** e indica se è a **giornata intera** o **a ore** (le ore valgono per un solo giorno), poi **Dal** e **Al** (per le ore, un solo giorno).',
+            'Nella sezione **Note e allegato** aggiungi, se serve, una **Nota** e un file (pdf, jpg o png), per esempio un certificato.',
+            'Premi **Salva bozza** per continuare dopo, oppure **Invia** per mandarla al responsabile. I pulsanti sono in alto a destra e ripetuti in fondo al modulo.',
           ],
         },
         {
@@ -51,6 +50,29 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'Per le giornate intere la durata si calcola quando invii la richiesta: si contano i soli giorni lavorativi (weekend e festività esclusi) e si moltiplicano per il tuo orario giornaliero. Non puoi sovrapporre due richieste ancora attive.',
+        },
+      ],
+    },
+    {
+      id: 'detail',
+      title: 'Il dettaglio',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Fai clic su una richiesta per aprirne il dettaglio. In alto trovi il tipo di assenza, la persona, lo stato e, a destra, solo i pulsanti delle azioni che puoi fare (Modifica, Invia, Approva, Rifiuta, Annulla, Elimina).',
+        },
+        {
+          type: 'table',
+          headers: ['Sezione', 'Cosa contiene'],
+          rows: [
+            ['Richiesta', 'Periodo, durata, data di invio e nota.'],
+            ['Approvazione', 'Approvatori, chi ha deciso e quando, motivo del rifiuto.'],
+            ['Allegato', 'Il file allegato, da scaricare, caricare o togliere.'],
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Chi può approvare o rifiutare vede sotto anche i saldi della persona.',
         },
       ],
     },
@@ -149,7 +171,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La vista **Calendario**, accanto a **Richieste**, mostra mese per mese chi è assente: una riga per persona, una colonna per giorno. Weekend e festivi sono evidenziati, i festivi hanno il numero in rosso.',
+          text: 'La vista **Calendario** si sceglie in alto a destra, accanto a **Richieste** e al pulsante "Nuova richiesta": mostra mese per mese chi è assente: una riga per persona, una colonna per giorno. Weekend e festivi sono evidenziati, i festivi hanno il numero in rosso.',
         },
         {
           type: 'table',

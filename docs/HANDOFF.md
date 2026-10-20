@@ -3,6 +3,49 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## UI HR ALLINEATA (spec 0287) — VERDE, NON COMMITTATO (2026-10-20)
+
+- Spec `docs/specs/0287-hr-ui-alignment.xml`. Richiesta utente: allineare Assenze, Formazione, Competenze a Gestione
+  Richieste/Contabilita', "anche le intestazioni" -> stessi componenti di Contabilita' (modello: Liquidazioni).
+- Dettagli (Sheet): `SheetToolbar` + `SheetHeader` sr-only + `RecordCanvas` > `RecordBody` > `RecordCardHeader`
+  (monogramma persona, titolo = tipo assenza / corso / competenza, sottotitolo = persona, badge stato/esito/livello,
+  azioni nello slot `actions` con `flex flex-wrap justify-end gap-1.5`) + `RecordSectionsGrid`/`RecordSection`.
+  Ogni valore compare una volta (i test cercano testi unici). Errori 404 invariati (stessi messaggi, non `DetailError`).
+- Form (Sheet): `RecordCreateLayout` come le rettifiche provvigioni; campi aperti in `RecordSection`.
+  `RecordCreateLayout` ha il nuovo slot `extraActions` (prima di Salva, in alto e in fondo): usato da Assenze per
+  "Salva bozza"; il submit del form = "Invia".
+- Pagine: il selettore di vista (`FilterTabs`) e' nelle azioni di `PageHeader` dentro
+  `flex flex-wrap items-center justify-end gap-2`; `gap-4` tra intestazione, tab e contenuto.
+- i18n: `*.detail.sections`, `*.form.sections` in it/en-absences, -staff-trainings, -user-skills.
+- REQUIREMENT CHANGED nei test: pulsanti Salva/Invia/Salva bozza duplicati (alto + fondo) -> `getAllByRole(...)[0]`;
+  titolo del form -> `findByRole('dialog', { name })`. Nuovi test su intestazione e sezioni.
+- Guide IT/EN aggiornate (absences: nuova sezione `detail`; staff-trainings, user-skills, general). Manuale Claude Docs:
+  NON accessibile da questo account (`access` deny) -> da aggiornare a mano (vedi riepilogo in chat).
+- Verifica: Vitest intera suite 8908/8908, `tsc -b --force` 0 errori, ESLint pulito. Non verificato a vista nel browser.
+
+## BREADCRUMB: HOME SENZA, /management-control RAGGIUNGIBILE — VERDE, NON COMMITTATO (2026-10-20)
+
+- Richiesta utente: breadcrumb di `/management-control/income-statement` gestite bene, in home tolte.
+- `/management-control` non era una rotta: la crumb "Controllo di gestione" portava al nulla. Aggiunta la rotta
+  `management-control` -> `Navigate` a `/management-control/income-statement` (stesso schema di `/dev`).
+- Home: `DashboardScreen` non monta piu' `PageHeader` (era solo la breadcrumb). Guida `general` IT/EN: "tranne la home".
+- REQUIREMENT CHANGED: `management-control-routes.test.tsx` elenca anche `management-control`; nuovo test "nessuna
+  breadcrumb in home" in `dashboard-screen.test.tsx`.
+
+## ASSENZE: TRADUZIONI GRIGLIA RICHIESTE — VERDE, NON COMMITTATO (2026-10-20)
+
+- Bug: in `/absences` le intestazioni della griglia richieste mostravano le chiavi grezze (`absenceRequests.columns.*`
+  non esisteva nei locale) e la colonna Stato mostrava "—" (colonna `badge` senza `badges`) con valori grezzi nel filtro.
+- Backend: `AbstractAbsenceRequestsTableDefinition` label prefix `absences.requests` (-> `absences.requests.columns.<id>`),
+  `badgesFor('status')` da `AbsenceRequestStatus::options()`, `enumKeyFor('status')` = `absence_request_status`;
+  `AbsenceRequestStatus` ha `#[Color]` (draft slate, submitted amber, approved green, rejected red, cancelled gray).
+- Frontend: `absences.requests.columns` in en/it-absences.ts; `enums.absence_request_status` = `absences.status`
+  (stessa fonte, import in en/it-enums.ts). Test `features/absences/absences-i18n.test.ts`.
+- Verifica: Pest `AbsenceRequests`/`Absences`/`AbsenceCalendar`/`AbsenceBalances` 92/92 (incluso il nuovo test colonne);
+  Vitest absences-i18n + i18n 237/237, `src/features/absences` 52/52 (dopo l'adeguamento dei test della spec 0287);
+  `tsc -b --force` 0 errori; Pint/ESLint puliti.
+- Manuale: nessun impatto (le guide non descrivono le colonne della griglia).
+
 ## UI: TAB DI HR/CONTABILITA' ALLINEATI A GESTIONE RICHIESTE — VERDE, COMMITTATO (2026-10-20)
 
 - Richiesta utente: le strisce di tab di HR/Contabilita' avevano un altro stile; il riferimento e' Gestione Richieste

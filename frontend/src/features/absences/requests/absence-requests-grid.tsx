@@ -23,7 +23,7 @@ export function AbsenceRequestsGrid({ tableRef, onOpen }: AbsenceRequestsGridPro
   const handleAction: RowActionHandler = useCallback((_action, row) => onOpen(Number(row.id)), [onOpen])
 
   return (
-    <div className="flex flex-1 flex-col gap-3">
+    <div className="flex flex-1 flex-col gap-4">
       <FilterTabs<AbsenceScope>
         aria-label={t('absences.page.tabsLabel')}
         value={scope}

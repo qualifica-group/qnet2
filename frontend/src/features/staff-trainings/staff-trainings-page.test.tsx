@@ -72,7 +72,7 @@ describe('StaffTrainingsPage', () => {
     render(<StaffTrainingsPage />, { wrapper: trainingWrapper() })
 
     fireEvent.click(screen.getByRole('button', { name: label('staffTrainings.page.register') }))
-    expect(await screen.findByText(label('staffTrainings.form.createTitle'), { selector: '[data-slot="sheet-title"], h2' })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: label('staffTrainings.form.createTitle') })).toBeInTheDocument()
   })
 
   it('opens the detail from a register row', async () => {

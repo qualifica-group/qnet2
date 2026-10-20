@@ -74,3 +74,15 @@ it('AC-010: rows carry the contract columns, and relation columns sort and filte
         ->assertJsonPath('items.0.status', 'submitted')
         ->assertJsonPath('items.0.decided_by_name', null);
 });
+
+it('localizes the grid columns: labels under absences.requests and status badges through the enum key', function () {
+    Sanctum::actingAs(absenceUserWith());
+
+    $columns = collect($this->getJson('/api/tables/absence-requests/columns')->assertOk()->json('data.columns'));
+    $status = $columns->firstWhere('id', 'status');
+
+    expect($columns->firstWhere('id', 'user_name')['label'])->toBe('absences.requests.columns.user_name')
+        ->and($status['enumKey'])->toBe('absence_request_status')
+        ->and(collect($status['badges'])->pluck('value')->all())->toBe(['draft', 'submitted', 'approved', 'rejected', 'cancelled'])
+        ->and(collect($status['badges'])->pluck('color')->filter()->count())->toBe(5);
+});

@@ -1,10 +1,14 @@
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
+import { Gauge } from 'lucide-react'
+import { DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordCreateLayout } from '@/components/record-form/record-create-layout'
 import { Form } from '@/components/ui/form'
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetToolbar } from '@/components/ui/sheet'
 import { UserSkillFields } from '@/features/user-skills/user-skill-fields'
 import { useUserSkillForm } from '@/features/user-skills/use-user-skill-form'
 import type { UserSkill } from '@/features/user-skills/types'
+
+const FORM_ID = 'user-skill-form'
 
 interface UserSkillFormProps {
   userSkill?: UserSkill
@@ -17,24 +21,30 @@ function UserSkillForm({ userSkill, refreshGrid, onSaved, onClose }: UserSkillFo
   const { t } = useTranslation()
   const { form, isSubmitting, submit } = useUserSkillForm({ userSkill, refreshGrid, onSaved })
 
+  const title = t(userSkill ? 'userSkills.form.editTitle' : 'userSkills.form.createTitle')
+
   return (
     <Form {...form}>
-      <form onSubmit={(event) => void submit(event)} noValidate className="flex min-h-0 flex-1 flex-col">
-        <div className="flex-1 space-y-3 overflow-y-auto px-4 pb-4">
-          <UserSkillFields
-            selectedUser={userSkill ? { id: userSkill.user.id, label: userSkill.user.name } : undefined}
-            selectedSkill={userSkill ? { id: userSkill.skill.id, label: userSkill.skill.name } : undefined}
-          />
-        </div>
-        <SheetFooter className="border-t bg-surface sm:flex-row sm:justify-end">
-          <Button type="button" variant="outline" onClick={onClose}>
-            {t('userSkills.form.cancel')}
-          </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {t(isSubmitting ? 'userSkills.form.saving' : 'userSkills.form.save')}
-          </Button>
-        </SheetFooter>
-      </form>
+      <RecordCreateLayout
+        formId={FORM_ID}
+        onSubmit={(event) => void submit(event)}
+        title={title}
+        subtitle={t('userSkills.form.description')}
+        media={<DetailMonogram name={title} icon={<Gauge />} />}
+        isSubmitting={isSubmitting}
+        serverError={null}
+        onCancel={onClose}
+        labels={{
+          save: t('userSkills.form.save'),
+          saving: t('userSkills.form.saving'),
+          cancel: t('userSkills.form.cancel'),
+        }}
+      >
+        <UserSkillFields
+          selectedUser={userSkill ? { id: userSkill.user.id, label: userSkill.user.name } : undefined}
+          selectedSkill={userSkill ? { id: userSkill.skill.id, label: userSkill.skill.name } : undefined}
+        />
+      </RecordCreateLayout>
     </Form>
   )
 }
@@ -50,8 +60,9 @@ export function UserSkillSheet({ open, onOpenChange, userSkill, refreshGrid, onS
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="gap-0 p-0" storageKey="sheet-width:user-skills-form">
-        <SheetHeader>
+      <SheetContent className="gap-0" showCloseButton={false} storageKey="sheet-width:user-skills-form">
+        <SheetToolbar closeLabel={t('common.close')} />
+        <SheetHeader className="sr-only">
           <SheetTitle>{t(userSkill ? 'userSkills.form.editTitle' : 'userSkills.form.createTitle')}</SheetTitle>
           <SheetDescription>{t('userSkills.form.description')}</SheetDescription>
         </SheetHeader>

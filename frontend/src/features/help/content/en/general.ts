@@ -41,7 +41,7 @@ const guide: HelpGuide = {
             ['Name and avatar', 'Opens the user menu with **Settings** and **Sign out**.'],
           ],
         },
-        { type: 'paragraph', text: 'Below the header, every page shows the navigation path; to its right is the button to create a new record. If **New version available** appears, press **Update now**.' },
+        { type: 'paragraph', text: 'Below the header, every page except the home shows the navigation path; to its right is the button to create a new record. If **New version available** appears, press **Update now**.' },
       ],
     },
     {

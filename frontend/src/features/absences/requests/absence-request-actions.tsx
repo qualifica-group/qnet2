@@ -13,12 +13,16 @@ interface AbsenceRequestActionsBarProps {
   onEdit: (request: AbsenceRequest) => void
 }
 
-/** Workflow buttons, each shown only when the server grants it in `request.can` (the UI hides, the backend authorizes). */
+/**
+ * Workflow buttons of the record header, each shown only when the server grants it in
+ * `request.can` (the UI hides, the backend authorizes). Nothing at all when none is granted.
+ */
 export function AbsenceRequestActionsBar({ request, actions, onEdit }: AbsenceRequestActionsBarProps) {
   const { t } = useTranslation()
   const confirm = useConfirm()
   const [rejecting, setRejecting] = useState(false)
   const { can } = request
+  const hasActions = can.update || can.submit || can.approve || can.reject || can.cancel || can.delete
 
   const confirmThen = async (kind: 'delete' | 'cancel', run: () => void) => {
     const confirmed = await confirm({
@@ -37,8 +41,12 @@ export function AbsenceRequestActionsBar({ request, actions, onEdit }: AbsenceRe
     }
   }
 
+  if (!hasActions) {
+    return null
+  }
+
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap items-center justify-end gap-1.5">
       {can.update ? (
         <Button type="button" size="sm" variant="outline" onClick={() => onEdit(request)}>
           <Pencil aria-hidden="true" />

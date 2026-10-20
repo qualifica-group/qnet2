@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Auth;
  */
 abstract class AbstractAbsenceRequestsTableDefinition extends AbstractTableDefinition
 {
-    private const string LABELS = 'absenceRequests';
+    private const string LABELS = 'absences.requests';
 
     /** Relation columns: id => [relation, column], filtered by a text "contains". */
     private const array TEXT_RELATIONS = [
@@ -108,6 +108,21 @@ abstract class AbstractAbsenceRequestsTableDefinition extends AbstractTableDefin
         return [
             ['key' => 'view', 'label' => 'actions.view', 'icon' => 'eye', 'type' => 'link', 'confirm' => false, 'permission' => 'absence-requests.viewAny'],
         ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>|null
+     */
+    protected function badgesFor(string $columnId, User $actor): ?array
+    {
+        return $columnId === 'status'
+            ? array_map(static fn ($meta): array => $meta->toArray(), AbsenceRequestStatus::options())
+            : null;
+    }
+
+    protected function enumKeyFor(string $columnId, User $actor): ?string
+    {
+        return $columnId === 'status' ? 'absence_request_status' : null;
     }
 
     /**

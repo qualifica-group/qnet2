@@ -26,7 +26,7 @@ function renderSheet(userSkill?: ReturnType<typeof buildUserSkill>) {
 
 /** Anchored: a required label also renders a trailing "*". */
 const labelPattern = (key: string) => new RegExp(`^${label(key)}\\s*\\*?$`)
-const save = () => fireEvent.click(screen.getByRole('button', { name: label('userSkills.form.save') }))
+const save = () => fireEvent.click(screen.getAllByRole('button', { name: label('userSkills.form.save') })[0])
 
 async function pickLevel(level: number) {
   fireEvent.keyDown(screen.getByRole('combobox', { name: labelPattern('userSkills.form.level') }), { key: 'ArrowDown' })
@@ -44,6 +44,13 @@ beforeEach(() => {
 })
 
 describe('UserSkillSheet', () => {
+  it('groups the fields in record sections (spec 0287)', () => {
+    renderSheet()
+
+    expect(screen.getByRole('heading', { level: 3, name: label('userSkills.form.sections.personSkill') })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 3, name: label('userSkills.form.sections.assessment') })).toBeInTheDocument()
+  })
+
   it('shows the required errors with the accessible triad and sends nothing', async () => {
     renderSheet()
     save()
@@ -94,7 +101,7 @@ describe('UserSkillSheet', () => {
     updateMock.mockResolvedValue(buildUserSkill())
     renderSheet(buildUserSkill({ notes: 'Prima' }))
 
-    expect(await screen.findByText(label('userSkills.form.editTitle'))).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: label('userSkills.form.editTitle') })).toBeInTheDocument()
     expect(screen.getByLabelText(label('userSkills.form.notes'))).toHaveValue('Prima')
     save()
 

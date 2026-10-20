@@ -38,10 +38,23 @@ export const absences = {
     error: 'Unable to load the calendar.',
   },
   requests: {
+    /** Headers of the three request grids (backend label prefix `absences.requests.columns`). */
+    columns: {
+      user_name: 'Person',
+      absence_type_name: 'Type',
+      status: 'Status',
+      starts_on: 'From',
+      ends_on: 'To',
+      is_full_day: 'Full day',
+      minutes: 'Duration (min)',
+      submitted_at: 'Submitted on',
+      decided_by_name: 'Decided by',
+    },
     form: {
       createTitle: 'New absence request',
       editTitle: 'Edit draft',
       description: 'Pick the type and the period. You can save a draft or send it to your manager right away.',
+      sections: { absence: 'Absence', notes: 'Notes and attachment' },
       type: 'Absence type',
       typePlaceholder: 'Select the type',
       typeRequired: 'Select the absence type.',
@@ -101,6 +114,7 @@ export const absences = {
       replace: 'Replace attachment',
       loadError: 'Unable to load the request.',
       notFound: 'Request not found or not visible.',
+      sections: { request: 'Request', approval: 'Approval', attachment: 'Attachment' },
       close: 'Close',
     },
     actions: {

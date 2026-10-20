@@ -13,10 +13,6 @@ import type { ModuleStats } from '@/features/stats/types'
  * the "every gate closed" case.
  */
 
-vi.mock('@/components/page-header', () => ({
-  PageHeader: () => <div />,
-}))
-
 let grantedPermissions: string[] = []
 vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({
@@ -77,6 +73,12 @@ function renderScreen() {
 }
 
 describe('DashboardScreen (AC-011)', () => {
+  it('shows no breadcrumb on the home', () => {
+    renderScreen()
+
+    expect(screen.queryByRole('navigation', { name: 'breadcrumb' })).not.toBeInTheDocument()
+  })
+
   it('shows the empty state and issues no request when every gate is closed', async () => {
     renderScreen()
 

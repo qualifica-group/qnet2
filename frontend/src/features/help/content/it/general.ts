@@ -41,7 +41,7 @@ const guide: HelpGuide = {
             ['Nome e avatar', 'Apre il menu utente con **Impostazioni** ed **Esci**.'],
           ],
         },
-        { type: 'paragraph', text: 'Sotto l’intestazione ogni pagina mostra il percorso di navigazione; alla sua destra c’è il pulsante per creare un nuovo record. Se compare **Nuova versione disponibile**, premi **Aggiorna ora**.' },
+        { type: 'paragraph', text: 'Sotto l’intestazione ogni pagina, tranne la home, mostra il percorso di navigazione; alla sua destra c’è il pulsante per creare un nuovo record. Se compare **Nuova versione disponibile**, premi **Aggiorna ora**.' },
       ],
     },
     {

@@ -38,10 +38,9 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Press "New request".',
-            'Choose the absence **Type** and whether it is **full day** or **by hours** (hours apply to a single day).',
-            'Enter **From** and **To** (for hours, a single day) and, if needed, a **Note**.',
-            'If you like, attach a file (pdf, jpg or png), for example a certificate.',
-            'Press **Save draft** to continue later, or **Submit** to send it to your manager.',
+            'In the **Absence** section choose the **Type** and whether it is **full day** or **by hours** (hours apply to a single day), then **From** and **To** (for hours, a single day).',
+            'In the **Notes and attachment** section add, if needed, a **Note** and a file (pdf, jpg or png), for example a certificate.',
+            'Press **Save draft** to continue later, or **Send** to send it to your manager. The buttons are at the top right and repeated at the bottom of the form.',
           ],
         },
         {
@@ -51,6 +50,29 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'For full days the duration is calculated when you submit: only working days are counted (weekends and holidays excluded) and multiplied by your daily hours. You cannot overlap two requests that are still active.',
+        },
+      ],
+    },
+    {
+      id: 'detail',
+      title: 'The detail',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Click a request to open its detail. At the top you find the absence type, the person, the status and, on the right, only the buttons of the actions you can take (Edit, Send, Approve, Reject, Cancel, Delete).',
+        },
+        {
+          type: 'table',
+          headers: ['Section', 'What it holds'],
+          rows: [
+            ['Request', 'Period, duration, sending date and note.'],
+            ['Approval', 'Approvers, who decided and when, rejection reason.'],
+            ['Attachment', 'The attached file, to download, upload or remove.'],
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Whoever can approve or reject also sees the person’s balances below.',
         },
       ],
     },
@@ -149,7 +171,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **Calendar** view, next to **Requests**, shows month by month who is absent: one row per person, one column per day. Weekends and holidays are highlighted, holidays have their number in red.',
+          text: 'The **Calendar** view is picked at the top right, next to **Requests** and the "New request" button: it shows month by month who is absent: one row per person, one column per day. Weekends and holidays are highlighted, holidays have their number in red.',
         },
         {
           type: 'table',

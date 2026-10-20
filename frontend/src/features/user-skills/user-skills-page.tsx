@@ -48,22 +48,24 @@ export default function UserSkillsPage() {
       permission="user-skills.viewAny"
       fallback={<p className="text-sm text-muted-foreground">{t('userSkills.forbidden')}</p>}
     >
-      <div className="flex flex-1 flex-col gap-3">
+      <div className="flex flex-1 flex-col gap-4">
         <PageHeader
           actions={
-            canWrite ? (
-              <Button type="button" onClick={openCreate}>
-                <Plus aria-hidden="true" />
-                {t('userSkills.page.assign')}
-              </Button>
-            ) : null
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <FilterTabs<UserSkillView>
+                aria-label={t('userSkills.page.viewsLabel')}
+                value={view}
+                options={USER_SKILL_VIEWS.map((value) => ({ value, label: t(`userSkills.page.views.${value}`) }))}
+                onValueChange={setView}
+              />
+              {canWrite ? (
+                <Button type="button" onClick={openCreate}>
+                  <Plus aria-hidden="true" />
+                  {t('userSkills.page.assign')}
+                </Button>
+              ) : null}
+            </div>
           }
-        />
-        <FilterTabs<UserSkillView>
-          aria-label={t('userSkills.page.viewsLabel')}
-          value={view}
-          options={USER_SKILL_VIEWS.map((value) => ({ value, label: t(`userSkills.page.views.${value}`) }))}
-          onValueChange={setView}
         />
         {view === 'people' ? (
           <UserSkillsGrid tableRef={tableRef} onOpen={setOpenedId} />

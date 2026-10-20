@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useFormContext } from 'react-hook-form'
+import { GraduationCap, UserRound } from 'lucide-react'
+import { RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
 import { AsyncPaginatedSelect, type AsyncPaginatedSelectLabels } from '@/components/ui/async-paginated-select'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
@@ -19,7 +21,7 @@ interface StaffTrainingFieldsProps {
   selectedCourse?: ForSelectItem
 }
 
-/** Person, course, completion day, outcome and notes: the fields of the training form. */
+/** The training form in two record sections (spec 0287 D-4): person and course, then day, outcome and notes. */
 export function StaffTrainingFields({ selectedUser, selectedCourse }: StaffTrainingFieldsProps) {
   const { t } = useTranslation()
   const { control } = useFormContext<StaffTrainingFormValues>()
@@ -35,55 +37,23 @@ export function StaffTrainingFields({ selectedUser, selectedCourse }: StaffTrain
   })
 
   return (
-    <div className="space-y-3">
-      <FormField
-        control={control}
-        name="user_id"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel required>{t('staffTrainings.form.user')}</FormLabel>
-            <FormControl>
-              <AsyncPaginatedSelect
-                resource={USERS_RESOURCE}
-                value={field.value}
-                onChange={field.onChange}
-                selectedItem={selectedUser}
-                labels={pickerLabels('user')}
-                showAvatar
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={control}
-        name="staff_course_id"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel required>{t('staffTrainings.form.course')}</FormLabel>
-            <FormControl>
-              <AsyncPaginatedSelect
-                resource={STAFF_COURSES_RESOURCE}
-                value={field.value}
-                onChange={field.onChange}
-                selectedItem={selectedCourse}
-                labels={pickerLabels('course')}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <div className="grid gap-3 sm:grid-cols-2">
+    <RecordSectionsGrid>
+      <RecordSection title={t('staffTrainings.form.sections.personCourse')} icon={<UserRound />}>
         <FormField
           control={control}
-          name="completed_on"
+          name="user_id"
           render={({ field }) => (
             <FormItem>
-              <FormLabel required>{t('staffTrainings.form.completedOn')}</FormLabel>
+              <FormLabel required>{t('staffTrainings.form.user')}</FormLabel>
               <FormControl>
-                <Input type="date" max={dayOf(new Date())} {...field} />
+                <AsyncPaginatedSelect
+                  resource={USERS_RESOURCE}
+                  value={field.value}
+                  onChange={field.onChange}
+                  selectedItem={selectedUser}
+                  labels={pickerLabels('user')}
+                  showAvatar
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -91,42 +61,78 @@ export function StaffTrainingFields({ selectedUser, selectedCourse }: StaffTrain
         />
         <FormField
           control={control}
-          name="outcome"
+          name="staff_course_id"
           render={({ field }) => (
             <FormItem>
-              <FormLabel required>{t('staffTrainings.form.outcome')}</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <FormControl>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {STAFF_TRAINING_OUTCOMES.map((outcome) => (
-                    <SelectItem key={outcome} value={outcome}>
-                      {t(`enums.staff_training_outcome.${outcome}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormLabel required>{t('staffTrainings.form.course')}</FormLabel>
+              <FormControl>
+                <AsyncPaginatedSelect
+                  resource={STAFF_COURSES_RESOURCE}
+                  value={field.value}
+                  onChange={field.onChange}
+                  selectedItem={selectedCourse}
+                  labels={pickerLabels('course')}
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-      </div>
-      <FormField
-        control={control}
-        name="notes"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{t('staffTrainings.form.notes')}</FormLabel>
-            <FormControl>
-              <Textarea rows={3} {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-    </div>
+      </RecordSection>
+      <RecordSection title={t('staffTrainings.form.sections.outcome')} icon={<GraduationCap />}>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <FormField
+            control={control}
+            name="completed_on"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel required>{t('staffTrainings.form.completedOn')}</FormLabel>
+                <FormControl>
+                  <Input type="date" max={dayOf(new Date())} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name="outcome"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel required>{t('staffTrainings.form.outcome')}</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {STAFF_TRAINING_OUTCOMES.map((outcome) => (
+                      <SelectItem key={outcome} value={outcome}>
+                        {t(`enums.staff_training_outcome.${outcome}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <FormField
+          control={control}
+          name="notes"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('staffTrainings.form.notes')}</FormLabel>
+              <FormControl>
+                <Textarea rows={3} {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </RecordSection>
+    </RecordSectionsGrid>
   )
 }

@@ -71,7 +71,7 @@ describe('UserSkillsPage', () => {
     render(<UserSkillsPage />, { wrapper: userSkillWrapper() })
 
     fireEvent.click(screen.getByRole('button', { name: label('userSkills.page.assign') }))
-    expect(await screen.findByText(label('userSkills.form.createTitle'), { selector: '[data-slot="sheet-title"], h2' })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: label('userSkills.form.createTitle') })).toBeInTheDocument()
   })
 
   it('switches to the coverage tab', () => {

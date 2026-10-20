@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **Skills** page records each person’s skills with a level and shows whether those required by their job roles are covered. It has two tabs: **People** and **Coverage**. Skills are defined in the **Skills catalogue**, under Configuration.',
+          text: 'The **Skills** page records each person’s skills with a level and shows whether those required by their job roles are covered. It has two tabs, **People** and **Coverage**, at the top right next to the **Assign skill** button. Skills are defined in the **Skills catalogue**, under Configuration.',
         },
         {
           type: 'note',
@@ -65,14 +65,14 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The list of the skills you can see, with person, skill, category, level and assessment date. Click a row to open its detail.',
+          text: 'The list of the skills you can see, with person, skill, category, level and assessment date. Click a row to open its detail: at the top the skill, the person, the level and, if you can write for that person, **Edit** and **Delete**; below, the **Assessment** section (category, date, who assessed it, notes).',
         },
         {
           type: 'steps',
           items: [
             'Click **Assign skill** (shown with Manage or View team).',
-            'Choose the person and the skill, the level and the assessment date (it cannot be in the future).',
-            'Add any notes and save.',
+            'In the **Person and skill** section choose the person and the skill; in the **Assessment** section the level, the assessment date (it cannot be in the future) and any notes.',
+            'Press **Save**, at the top right or at the bottom of the form.',
           ],
         },
         {

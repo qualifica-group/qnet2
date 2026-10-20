@@ -56,6 +56,15 @@ beforeEach(() => {
 })
 
 describe('StaffTrainingDetailSheet', () => {
+  it('heads the record with the course and lays the data out in sections (spec 0287)', async () => {
+    renderDetail(buildTraining())
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Sicurezza generale' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 3, name: label('staffTrainings.detail.sections.training') })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 3, name: label('staffTrainings.detail.sections.record') })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 3, name: label('staffTrainings.detail.sections.certificate') })).toBeInTheDocument()
+  })
+
   it('shows data, outcome with text and the computed expiry', async () => {
     renderDetail(buildTraining({ notes: 'Aula A' }))
 

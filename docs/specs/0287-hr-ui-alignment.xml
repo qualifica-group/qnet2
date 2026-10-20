@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0287 — Allineamento grafico delle pagine HR (Assenze, Formazione, Competenze) al resto dell'app:
+  dettaglio sul kit record, form a sezioni, selettore di vista nell'intestazione, spaziatura. Solo frontend.
+  Segue il commit 8ff47ffb (tab di HR/Contabilita' allineati a Gestione Richieste).
+-->
+<spec id="0287-hr-ui-alignment" status="approved" owner="utente" date="2026-10-20">
+
+  <goal>
+    Le pagine HR si leggono come Gestione Richieste e Contabilita': il dettaglio di un record ha l'intestazione con
+    il nome del record, lo stato e le azioni, e i dati in sezioni; i form di inserimento sono divisi in sezioni;
+    sotto l'intestazione della pagina c'e' una sola barra di tab; stessa spaziatura verticale.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-20: "allinea" le grafiche di HR a quelle di Gestione Richieste e Contabilita'; proposta
+    in 4 punti accettata ("ok fai una spec e procedi").
+    Fatti verificati: Fatture, Liquidazioni provvigioni, Ordini, RDA e il catalogo Corsi (HR) mostrano il dettaglio con
+    `RecordCanvas` + `RecordBody` + `RecordCardHeader` + `RecordSection`/`RecordFieldList` (`components/detail/`), in
+    Sheet con `SheetToolbar` e `SheetHeader` sr-only (modello: `commission-settlement-detail-sheet.tsx`). I dettagli
+    di Assenze (`absence-request-detail-sheet.tsx`), Formazione (`staff-training-detail-sheet.tsx`) e Competenze
+    (`user-skill-detail-sheet.tsx`) usano un `SheetHeader` generico e un `dl` piatto a due colonne.
+    Il form di Gestione Richieste raggruppa i campi con `FormSection` (`components/form-section.tsx`); i form HR sono
+    campi in colonna. Le Progetti mettono il selettore di vista nelle azioni di `PageHeader`.
+    Le pagine HR hanno `gap-3`, Gestione Richieste/Contabilita'/Acquisti `gap-4`.
+  </context>
+
+  <decisions>
+    <decision id="D-1">Dettaglio HR sul kit record, nel Sheet come le Liquidazioni: `SheetToolbar` (chiudi) +
+      `SheetHeader` sr-only con i titoli di oggi, poi `RecordCanvas` > `RecordBody` (senza tab di collaborazione).
+      Intestazione: monogramma con le iniziali della persona; titolo = tipo di assenza / corso / competenza;
+      sottotitolo = persona; badge = stato / esito / livello; azioni (i pulsanti di oggi, stessi gate) nello slot
+      `actions` di `RecordCardHeader`, in alto a destra, `size="sm"`, come le Liquidazioni (direttiva utente
+      2026-10-20: "anche le intestazioni devono essere allineate"). Ogni valore compare una sola volta (persona e
+      titolo non si ripetono nelle sezioni).</decision>
+    <decision id="D-2">Sezioni del dettaglio. Assenze: "Richiesta" (periodo, durata, inviata il, nota),
+      "Approvazione" (approvatori, decisa da, decisa il, motivo del rifiuto), "Allegato". Sotto la card, per chi puo'
+      approvare o rifiutare, i saldi della persona come oggi. Formazione: "Formazione" (completata il, scadenza,
+      validita'), "Registrazione" (registrata da, note), "Attestato". Competenze: "Valutazione" (categoria,
+      valutata il, valutata da, note).</decision>
+    <decision id="D-3">Caricamento con `DetailLoading`; errore di caricamento invariato (stessi messaggi
+      notFound/loadError, `role="alert"`).</decision>
+    <decision id="D-4">Form HR sul kit record di creazione, come le rettifiche provvigioni: `RecordCreateLayout`
+      nel Sheet (`SheetToolbar` + `SheetHeader` sr-only), intestazione con monogramma, titolo di oggi, descrizione e
+      Annulla/Salva in alto a destra, ripetuti in fondo; campi aperti in `RecordSection`. Assenze: "Salva bozza" prima
+      di "Invia" con il nuovo slot `extraActions` di `RecordCreateLayout`; sezioni "Assenza" (tipo, saldo, giornata
+      intera, date o durata) e "Note e allegato". Formazione: "Persona e corso" ed "Esito" (data, esito, note).
+      Competenze: "Persona e competenza" e "Valutazione" (livello, data, note). Validazione, payload e allegato
+      invariati.</decision>
+    <decision id="D-5">La scelta della vista (Assenze: Richieste/Calendario, solo con i permessi del calendario;
+      Formazione: Registro/Situazione; Competenze: Persone/Copertura) passa nelle azioni di `PageHeader`, prima del
+      pulsante di creazione, come `FilterTabs` larga quanto il contenuto. Sotto resta una sola barra di tab.
+      Ruolo `tab` e `aria-selected` invariati.</decision>
+    <decision id="D-6">Spaziatura `gap-4` tra intestazione, barra di tab e contenuto nelle tre pagine (come Gestione
+      Richieste).</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Dettagli D-1..D-3 dei tre moduli; form D-4; pagine D-5/D-6.</item>
+      <item>i18n IT/EN dei titoli di sezione nuovi.</item>
+      <item>Guide in-app IT/EN `absences`, `staff-trainings`, `user-skills` dove descrivono dettaglio, form o viste;
+        manuale Claude Docs, stesse parti.</item>
+    </in>
+    <out>
+      <item>Backend, API, permessi, logica dei form e delle azioni: invariati.</item>
+      <item>Calendario assenze, card dei saldi, tabelle Situazione/Copertura, griglie.</item>
+      <item>Tab di collaborazione (note, documenti, attivita') sui record HR.</item>
+      <item>Gestione Richieste, Contabilita', Acquisti.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <item>Nessun cambio di contratto: stessi endpoint e stesse shape di `AbsenceRequest`, `StaffTraining`, `UserSkill`.</item>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">I tre dettagli mostrano titolo del record, persona, badge e le sole azioni concesse di
+      oggi; i dati nelle sezioni di D-2; ogni valore una volta sola; errore 404 col messaggio di oggi (Vitest).</criterion>
+    <criterion id="AC-002">I tre form mostrano le sezioni di D-4 con titolo; validazione, salvataggio e allegato
+      invariati (Vitest).</criterion>
+    <criterion id="AC-003">Il selettore di vista sta nell'intestazione della pagina, seleziona la vista come oggi;
+      Assenze senza permessi del calendario non lo mostra (Vitest).</criterion>
+    <criterion id="AC-004">Nessuno scroll orizzontale a 375 px: le azioni dell'intestazione della pagina vanno a
+      capo; target dei pulsanti >= 24 px. L'intestazione del dettaglio e' quella condivisa di Contabilita' (azioni
+      non a capo, come oggi in tutti i moduli).</criterion>
+    <criterion id="AC-005">Guide IT/EN aggiornate, parity test verde; manuale aggiornato o sezioni segnalate;
+      ESLint e `tsc -b --force` puliti.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; solo componenti esistenti (`components/detail`, `RecordCreateLayout`, `FilterTabs`).</item>
+    <item>Scala di superfici (ui-design.md §1-bis): card su `bg-surface` (RecordCanvas), come Contabilita'.</item>
+  </constraints>
+
+</spec>

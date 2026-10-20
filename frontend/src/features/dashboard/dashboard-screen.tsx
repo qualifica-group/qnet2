@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Building2, FileText, Target, UserPlus } from 'lucide-react'
-import { PageHeader } from '@/components/page-header'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { DashboardModuleStatsSection } from '@/features/dashboard/dashboard-module-stats-section'
 import { DashboardTasksSection } from '@/features/dashboard/dashboard-tasks-section'
@@ -37,9 +36,8 @@ export function DashboardScreen() {
   const hasAnyBlock = canTasks || canTimeEntries || statsBlocks.some((block) => block.visible)
 
   return (
+    // No `PageHeader`: the home shows no breadcrumb (user directive 2026-10-20).
     <div className="flex flex-1 flex-col gap-6">
-      <PageHeader />
-
       {!isLoadingAbilities && !hasAnyBlock ? (
         <div className="flex flex-col items-center gap-1 rounded-lg border border-dashed bg-card px-4 py-10 text-center">
           <p className="text-sm font-medium">{t('dashboard.empty.title')}</p>

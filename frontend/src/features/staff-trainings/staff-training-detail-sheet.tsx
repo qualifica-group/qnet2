@@ -2,11 +2,14 @@ import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useConfirm } from '@/components/confirm-dialog-context'
+import { DetailLoading, DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordBody } from '@/components/detail/record-body'
+import { RecordCanvas, RecordCardHeader } from '@/components/detail/record-panel'
 import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetToolbar } from '@/components/ui/sheet'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { StaffTrainingDetailBody } from '@/features/staff-trainings/staff-training-detail-body'
+import { StaffTrainingOutcomeBadge } from '@/features/staff-trainings/staff-training-outcome-badge'
 import { useStaffTrainingActions } from '@/features/staff-trainings/use-staff-training-actions'
 import { useStaffTrainingDetail } from '@/features/staff-trainings/use-staff-training-detail'
 import type { StaffTraining } from '@/features/staff-trainings/types'
@@ -35,7 +38,7 @@ function DetailContent({ trainingId, onClose, onEdit, refreshGrid }: DetailConte
   const actions = useStaffTrainingActions(trainingId, refreshGrid, onClose)
 
   if (isPending) {
-    return <Skeleton className="m-4 h-40" />
+    return <DetailLoading />
   }
   if (!training) {
     const missing = axios.isAxiosError(error) && error.response?.status === NOT_FOUND_STATUS
@@ -60,38 +63,52 @@ function DetailContent({ trainingId, onClose, onEdit, refreshGrid }: DetailConte
   }
 
   return (
-    <div className="flex-1 space-y-4 overflow-y-auto px-4 pb-4">
-      {canManage ? (
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={() => onEdit(training)}>
-            <Pencil aria-hidden="true" />
-            {t('staffTrainings.actions.edit')}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={actions.remove.isPending}
-            onClick={() => void confirmDelete()}
-          >
-            <Trash2 aria-hidden="true" />
-            {t('staffTrainings.actions.delete')}
-          </Button>
-        </div>
-      ) : null}
-      <StaffTrainingDetailBody training={training} actions={actions} canManage={canManage} />
-    </div>
+    <RecordCanvas>
+      <RecordBody
+        header={
+          <RecordCardHeader
+            media={<DetailMonogram name={training.user.name} />}
+            title={training.course.name}
+            subtitle={training.user.name}
+            badges={<StaffTrainingOutcomeBadge outcome={training.outcome} />}
+            actions={
+              canManage ? (
+                <div className="flex flex-wrap items-center justify-end gap-1.5">
+                  <Button type="button" size="sm" variant="outline" onClick={() => onEdit(training)}>
+                    <Pencil aria-hidden="true" />
+                    {t('staffTrainings.actions.edit')}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={actions.remove.isPending}
+                    onClick={() => void confirmDelete()}
+                  >
+                    <Trash2 aria-hidden="true" />
+                    {t('staffTrainings.actions.delete')}
+                  </Button>
+                </div>
+              ) : undefined
+            }
+          />
+        }
+      >
+        <StaffTrainingDetailBody training={training} actions={actions} canManage={canManage} />
+      </RecordBody>
+    </RecordCanvas>
   )
 }
 
-/** Detail Sheet of a training (grid row click or a row of the "Situazione" tab). */
+/** Detail Sheet of a training on the record kit (spec 0287), opened by a grid row or a row of the "Situazione" tab. */
 export function StaffTrainingDetailSheet({ trainingId, onClose, onEdit, refreshGrid }: StaffTrainingDetailSheetProps) {
   const { t } = useTranslation()
 
   return (
     <Sheet open={trainingId !== null} onOpenChange={(open) => (open ? undefined : onClose())}>
-      <SheetContent className="gap-0 p-0" storageKey="sheet-width:staff-trainings-detail">
-        <SheetHeader>
+      <SheetContent className="gap-0" showCloseButton={false} storageKey="sheet-width:staff-trainings-detail">
+        <SheetToolbar closeLabel={t('common.close')} />
+        <SheetHeader className="sr-only">
           <SheetTitle>{t('staffTrainings.detail.title')}</SheetTitle>
           <SheetDescription>{t('staffTrainings.detail.description')}</SheetDescription>
         </SheetHeader>

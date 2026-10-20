@@ -4,6 +4,7 @@ import { MANAGEMENT_CONTROL_ROUTES } from '@/routes/management-control-routes'
 describe('MANAGEMENT_CONTROL_ROUTES', () => {
   it('AC-001 exposes the seven pages of the module under management-control/', () => {
     expect(MANAGEMENT_CONTROL_ROUTES.map((route) => route.path)).toEqual([
+      'management-control',
       'management-control/income-statement',
       'management-control/exposure',
       'management-control/cash-flow',

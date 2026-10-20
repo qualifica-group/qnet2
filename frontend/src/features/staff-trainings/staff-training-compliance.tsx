@@ -29,7 +29,7 @@ export function StaffTrainingCompliance({ onOpen }: StaffTrainingComplianceProps
   const compliance = query.data
 
   return (
-    <section className="flex flex-col gap-3" aria-label={t('staffTrainings.compliance.caption')}>
+    <section className="flex flex-col gap-4" aria-label={t('staffTrainings.compliance.caption')}>
       <FilterTabs<StatusTab>
         aria-label={t('staffTrainings.compliance.statusFilter')}
         value={status ?? ALL_STATUSES}

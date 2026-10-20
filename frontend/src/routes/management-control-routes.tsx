@@ -1,4 +1,4 @@
-import type { RouteObject } from 'react-router-dom'
+import { Navigate, type RouteObject } from 'react-router-dom'
 import { lazyRoute } from '@/routes/lazy-route'
 
 // Management control section (specs 0268-0272), split out of router.tsx to keep it under the file-size limit
@@ -12,6 +12,8 @@ const AccountsPage = lazyRoute(() => import('@/pages/management-control-accounts
 const AgentsPage = lazyRoute(() => import('@/pages/management-control-agents-page'))
 
 export const MANAGEMENT_CONTROL_ROUTES: RouteObject[] = [
+  // Breadcrumb target of `/management-control/*`: the section has no page of its own (as `/dev`).
+  { path: 'management-control', element: <Navigate to="/management-control/income-statement" replace /> },
   { path: 'management-control/income-statement', element: <IncomeStatementPage /> },
   { path: 'management-control/exposure', element: <ExposurePage /> },
   { path: 'management-control/cash-flow', element: <CashFlowPage /> },

@@ -1,5 +1,6 @@
 import { customFields } from './it-custom-fields'
 import { costTypes } from './it-cost-types'
+import { absences } from './it-absences'
 
 /**
  * Localized labels for backend domain enums. Keyed by the snake_case enum key
@@ -145,6 +146,8 @@ export const enums = {
     medium: 'Media',
     large: 'Grande',
   },
+  // Stato di una richiesta di assenza (spec 0278): badge delle griglie richieste, stesse etichette di `absences.status`.
+  absence_request_status: absences.status,
   // Stato di una richiesta di modifica campo (spec 0078).
   field_change_request_status: {
     pending: 'In attesa',

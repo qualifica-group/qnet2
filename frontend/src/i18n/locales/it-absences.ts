@@ -38,10 +38,23 @@ export const absences = {
     error: 'Impossibile caricare il calendario.',
   },
   requests: {
+    /** Headers of the three request grids (backend label prefix `absences.requests.columns`). */
+    columns: {
+      user_name: 'Persona',
+      absence_type_name: 'Tipo',
+      status: 'Stato',
+      starts_on: 'Dal',
+      ends_on: 'Al',
+      is_full_day: 'Giornata intera',
+      minutes: 'Durata (min)',
+      submitted_at: 'Inviata il',
+      decided_by_name: 'Deciso da',
+    },
     form: {
       createTitle: 'Nuova richiesta di assenza',
       editTitle: 'Modifica bozza',
       description: 'Scegli il tipo e il periodo. Puoi salvare una bozza o inviarla subito al responsabile.',
+      sections: { absence: 'Assenza', notes: 'Note e allegato' },
       type: 'Tipo di assenza',
       typePlaceholder: 'Seleziona il tipo',
       typeRequired: 'Seleziona il tipo di assenza.',
@@ -101,6 +114,7 @@ export const absences = {
       replace: 'Sostituisci allegato',
       loadError: 'Impossibile caricare la richiesta.',
       notFound: 'Richiesta non trovata o non visibile.',
+      sections: { request: 'Richiesta', approval: 'Approvazione', attachment: 'Allegato' },
       close: 'Chiudi',
     },
     actions: {

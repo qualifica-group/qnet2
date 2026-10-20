@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La pagina **Competenze** registra le competenze di ogni persona con un livello e mostra se quelle richieste dalle sue mansioni sono coperte. Ha due schede: **Persone** e **Copertura**. Le competenze si definiscono nel **Catalogo competenze**, in Configurazione.',
+          text: 'La pagina **Competenze** registra le competenze di ogni persona con un livello e mostra se quelle richieste dalle sue mansioni sono coperte. Ha due schede, **Persone** e **Copertura**, in alto a destra accanto al pulsante **Assegna competenza**. Le competenze si definiscono nel **Catalogo competenze**, in Configurazione.',
         },
         {
           type: 'note',
@@ -65,14 +65,14 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'L’elenco delle competenze che puoi vedere, con persona, competenza, categoria, livello e data di valutazione. Fai clic su una riga per aprire il dettaglio.',
+          text: 'L’elenco delle competenze che puoi vedere, con persona, competenza, categoria, livello e data di valutazione. Fai clic su una riga per aprire il dettaglio: in alto la competenza, la persona, il livello e, se puoi scrivere su quella persona, **Modifica** ed **Elimina**; sotto la sezione **Valutazione** (categoria, data, chi l’ha valutata, note).',
         },
         {
           type: 'steps',
           items: [
             'Fai clic su **Assegna competenza** (visibile con Gestire o Visualizza team).',
-            'Scegli la persona e la competenza, il livello e la data di valutazione (non può essere futura).',
-            'Aggiungi eventuali note e salva.',
+            'Nella sezione **Persona e competenza** scegli la persona e la competenza; nella sezione **Valutazione** il livello, la data di valutazione (non può essere futura) ed eventuali note.',
+            'Premi **Salva**, in alto a destra o in fondo al modulo.',
           ],
         },
         {

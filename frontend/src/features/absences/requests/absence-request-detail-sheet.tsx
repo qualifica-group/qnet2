@@ -1,10 +1,13 @@
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { Skeleton } from '@/components/ui/skeleton'
+import { DetailLoading, DetailMonogram } from '@/components/detail/detail-panel'
+import { RecordBody } from '@/components/detail/record-body'
+import { RecordCanvas, RecordCardHeader } from '@/components/detail/record-panel'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetToolbar } from '@/components/ui/sheet'
 import { AbsenceBalancesCard } from '@/features/absences/balances/absence-balances-card'
 import { AbsenceRequestActionsBar } from '@/features/absences/requests/absence-request-actions'
 import { AbsenceRequestDetailBody } from '@/features/absences/requests/absence-request-detail-body'
+import { AbsenceRequestStatusBadge } from '@/features/absences/requests/absence-request-status-badge'
 import { useAbsenceRequestActions } from '@/features/absences/requests/use-absence-request-actions'
 import { useAbsenceRequestDetail } from '@/features/absences/requests/use-absence-request-detail'
 import type { AbsenceRequest } from '@/features/absences/types'
@@ -29,7 +32,7 @@ function DetailContent({ requestId, onClose, onEdit, refreshGrid }: DetailConten
   const actions = useAbsenceRequestActions(requestId, refreshGrid, onClose)
 
   if (isPending) {
-    return <Skeleton className="m-4 h-40" />
+    return <DetailLoading />
   }
   if (!request) {
     const missing = axios.isAxiosError(error) && error.response?.status === NOT_FOUND_STATUS
@@ -41,22 +44,34 @@ function DetailContent({ requestId, onClose, onEdit, refreshGrid }: DetailConten
   }
 
   return (
-    <div className="flex-1 space-y-4 overflow-y-auto px-4 pb-4">
-      <AbsenceRequestActionsBar request={request} actions={actions} onEdit={onEdit} />
-      <AbsenceRequestDetailBody request={request} actions={actions} />
+    <RecordCanvas>
+      <RecordBody
+        header={
+          <RecordCardHeader
+            media={<DetailMonogram name={request.user.name} />}
+            title={request.absence_type.name}
+            subtitle={request.user.name}
+            badges={<AbsenceRequestStatusBadge status={request.status} />}
+            actions={<AbsenceRequestActionsBar request={request} actions={actions} onEdit={onEdit} />}
+          />
+        }
+      >
+        <AbsenceRequestDetailBody request={request} actions={actions} />
+      </RecordBody>
       {request.can.approve || request.can.reject ? <AbsenceBalancesCard userId={request.user.id} /> : null}
-    </div>
+    </RecordCanvas>
   )
 }
 
-/** Detail Sheet of a request (grid row click or the `?request={id}` deep link of the notifications). */
+/** Detail Sheet of a request on the record kit (spec 0287), opened by a grid row or the `?request={id}` deep link. */
 export function AbsenceRequestDetailSheet({ requestId, onClose, onEdit, refreshGrid }: AbsenceRequestDetailSheetProps) {
   const { t } = useTranslation()
 
   return (
     <Sheet open={requestId !== null} onOpenChange={(open) => (open ? undefined : onClose())}>
-      <SheetContent className="gap-0 p-0" storageKey="sheet-width:absence-requests-detail">
-        <SheetHeader>
+      <SheetContent className="gap-0" showCloseButton={false} storageKey="sheet-width:absence-requests-detail">
+        <SheetToolbar closeLabel={t('absences.requests.detail.close')} />
+        <SheetHeader className="sr-only">
           <SheetTitle>{t('absences.requests.detail.title')}</SheetTitle>
           <SheetDescription>{t('absences.requests.detail.description')}</SheetDescription>
         </SheetHeader>
