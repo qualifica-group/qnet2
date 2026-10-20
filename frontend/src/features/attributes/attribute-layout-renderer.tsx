@@ -1,13 +1,16 @@
 import { useMemo } from 'react'
-import type { Control } from 'react-hook-form'
+import { useWatch, type Control, type FieldPath } from 'react-hook-form'
+import type { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
 import { AttributeLayoutField } from '@/features/attributes/attribute-layout-field'
 import { AttributeLayoutSection } from '@/features/attributes/attribute-layout-section'
+import { hiddenSectionIds } from '@/features/attributes/attribute-section-visibility'
 import { resolveLayoutSections } from '@/features/attributes/attribute-layout-sections'
 import type {
   AttributeLayoutFormShape,
   LayoutBlob,
   LayoutFormMode,
+  LayoutSection,
 } from '@/features/attributes/attribute-layout-types'
 import type { EffectiveAttribute } from '@/features/product-categories/types'
 
@@ -35,10 +38,26 @@ interface AttributeLayoutRendererProps<TFieldValues extends AttributeLayoutFormS
   disabled?: boolean
   /** Editable=false but not disabled. Forced `true` when `mode === 'view'`. Default `false`. */
   readOnly?: boolean
+  /** Shows "Visible if: <attribute>" on visible conditional sections (configurator preview). Default `false`. */
+  showConditionHints?: boolean
 }
 
 function buildAttributesByCode(attributes: EffectiveAttribute[]): Map<string, EffectiveAttribute> {
   return new Map(attributes.map((attribute) => [attribute.code, attribute]))
+}
+
+const EMPTY_VALUES: Record<string, unknown> = {}
+
+function conditionHint(
+  section: LayoutSection,
+  attributesByCode: ReadonlyMap<string, EffectiveAttribute>,
+  t: TFunction,
+): string | null {
+  const code = section.visible_when?.attribute_code
+  if (!code) {
+    return null
+  }
+  return t('attributes.layout.visibleWhen', { name: attributesByCode.get(code)?.name ?? code })
 }
 
 export function AttributeLayoutRenderer<TFieldValues extends AttributeLayoutFormShape>({
@@ -48,10 +67,15 @@ export function AttributeLayoutRenderer<TFieldValues extends AttributeLayoutForm
   mode,
   disabled = false,
   readOnly = false,
+  showConditionHints = false,
 }: AttributeLayoutRendererProps<TFieldValues>) {
   const { t } = useTranslation()
   const effectiveReadOnly = readOnly || mode === 'view'
   const attributesByCode = useMemo(() => buildAttributesByCode(attributes), [attributes])
+  // Live values: a conditional section appears/disappears as its toggle changes
+  const values = useWatch({ control, name: 'attribute_values' as FieldPath<TFieldValues> }) as
+    | Record<string, unknown>
+    | undefined
 
   // Step 1: no persisted layout -> flat fallback (AC-007 regression contract)
   if (!layout || layout.sections.length === 0) {
@@ -74,7 +98,10 @@ export function AttributeLayoutRenderer<TFieldValues extends AttributeLayoutForm
 
   // Step 2: configured sections, sorted, then a synthetic trailing section for whatever is left unplaced
   const otherInformationTitle = t('attributes.layout.otherInformation', { defaultValue: 'Altre informazioni' })
-  const sections = resolveLayoutSections(layout, attributes, otherInformationTitle)
+  const hiddenIds = hiddenSectionIds(layout, values ?? EMPTY_VALUES)
+  const sections = resolveLayoutSections(layout, attributes, otherInformationTitle).filter(
+    (section) => !hiddenIds.has(section.id),
+  )
 
   return (
     <div className="flex flex-col gap-4">
@@ -86,6 +113,7 @@ export function AttributeLayoutRenderer<TFieldValues extends AttributeLayoutForm
           control={control}
           disabled={disabled}
           readOnly={effectiveReadOnly}
+          conditionHint={showConditionHints ? conditionHint(section, attributesByCode, t) : null}
         />
       ))}
     </div>

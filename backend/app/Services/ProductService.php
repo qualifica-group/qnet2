@@ -13,6 +13,7 @@ use App\Models\ProductTypology;
 use App\Models\UnitOfMeasure;
 use App\Products\ProductAttributeResolver;
 use App\RequestManagement\ApplicableAttribute;
+use App\RequestManagement\AttributeSectionVisibility;
 use App\RequestManagement\AttributeValueNormalizer;
 use App\RequestManagement\AttributeValueValidator;
 use App\Services\Concerns\GeneratesSequentialCode;
@@ -83,6 +84,7 @@ class ProductService
         private readonly AttributeValueValidator $attributeValueValidator,
         private readonly AttributeValueNormalizer $attributeValueNormalizer,
         private readonly AttributeLayoutService $attributeLayoutService,
+        private readonly AttributeSectionVisibility $attributeSectionVisibility,
     ) {}
 
     /**
@@ -137,7 +139,7 @@ class ProductService
             }
 
             if ($data->hasAttributeValues()) {
-                $this->applyAttributeValues($product, $data->attributeValues);
+                $this->applyAttributeValues($product, $data->attributeValues, FormMode::Create);
             }
 
             // `code` is deliberately absent from Product's #[Fillable] (spec
@@ -179,7 +181,7 @@ class ProductService
         $product->fill($attributes);
 
         if ($data->hasAttributeValues()) {
-            $this->applyAttributeValues($product, $data->attributeValues);
+            $this->applyAttributeValues($product, $data->attributeValues, FormMode::View);
         }
 
         // Spec 0088, D-4: a submitted null resets to the default unit — the
@@ -236,20 +238,21 @@ class ProductService
 
     /**
      * The product's category's configured layout for the detail shape (spec
-     * 0062 revised): FormMode::View with cross-mode fallback, so a single
+     * 0062 revised): View by default, with cross-mode fallback, so a single
      * saved layout (typically authored under `create`) also drives the
-     * read-only detail. Null when the product has no category or the category
+     * read-only detail; the create write passes Create (spec 0288, D-5) to
+     * evaluate the layout the create form shows. Null when the product has no category or the category
      * has no PRODUCT-context layout in any mode (flat fallback, AC-007).
      *
      * @return array{sections: array<int, array<string, mixed>>}|null
      */
-    public function attributeLayout(Product $product): ?array
+    public function attributeLayout(Product $product, FormMode $formMode = FormMode::View): ?array
     {
         if ($product->category === null) {
             return null;
         }
 
-        return $this->attributeLayoutService->resolveWithFallback($product->category, AttributeContext::Product, FormMode::View);
+        return $this->attributeLayoutService->resolveWithFallback($product->category, AttributeContext::Product, $formMode);
     }
 
     /**
@@ -260,16 +263,22 @@ class ProductService
      * current value). $product is NOT saved here — the caller (create/update)
      * saves once, alongside its other native-field changes.
      *
+     * Conditional sections (spec 0288): the layout of the writing surface
+     * ($formMode, D-5) decides which codes are hidden, so their required
+     * flag is relaxed and their values emptied.
+     *
      * @param  array<string, mixed>  $submitted
      */
-    private function applyAttributeValues(Product $product, array $submitted): void
+    private function applyAttributeValues(Product $product, array $submitted, FormMode $formMode): void
     {
-        $applicable = $this->attributeResolver->resolve($product);
-        $validated = $this->attributeValueValidator->validate($applicable, $submitted);
-        $normalized = $this->attributeValueNormalizer->normalize($applicable, $validated);
-
+        $layout = $this->attributeLayout($product, $formMode);
         $current = $product->attribute_values ?? [];
-        $merged = array_merge($current, $normalized);
+        $hidden = $this->attributeSectionVisibility->hiddenCodes($layout, array_merge($current, $submitted));
+
+        $applicable = $this->attributeResolver->resolve($product);
+        $validated = $this->attributeValueValidator->validate($applicable, $submitted, $hidden);
+        $normalized = $this->attributeValueNormalizer->normalize($applicable, $validated);
+        $merged = $this->attributeSectionVisibility->mergeAndClear($layout, $current, $normalized);
 
         // `attribute_values` is NOT in Product::$fillable (mass-assignment
         // guard, same discipline as Opportunity.attribute_values): forceFill

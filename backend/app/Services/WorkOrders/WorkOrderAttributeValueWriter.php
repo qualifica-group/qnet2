@@ -6,6 +6,7 @@ namespace App\Services\WorkOrders;
 
 use App\Models\WorkOrder;
 use App\RequestManagement\ApplicableAttribute;
+use App\RequestManagement\AttributeSectionVisibility;
 use App\RequestManagement\AttributeValueNormalizer;
 use App\RequestManagement\AttributeValueValidator;
 use App\WorkOrders\WorkOrderAttributeResolver;
@@ -35,6 +36,7 @@ final class WorkOrderAttributeValueWriter
         private readonly WorkOrderAttributeResolver $attributeResolver,
         private readonly AttributeValueValidator $validator,
         private readonly AttributeValueNormalizer $normalizer,
+        private readonly AttributeSectionVisibility $visibility,
     ) {}
 
     /**
@@ -47,18 +49,23 @@ final class WorkOrderAttributeValueWriter
      * @param  array<string, mixed>  $changed
      * @param  array<string, mixed>  $old
      * @param  Collection<int, ApplicableAttribute>|null  $applicable  the set to validate against; `null` = the work order's own quote-line set
+     * @param  array<string, mixed>|null  $layout  the layout the writing surface shows (spec 0288, D-5), whose hidden conditional sections relax `is_required` and are emptied; `null` = no conditions (e.g. the legacy migration)
      *
      * @throws ValidationException a submitted code is not applicable, has the wrong type, or a required one is empty
      */
-    public function apply(WorkOrder $workOrder, array $submitted, array &$changed, array &$old, ?Collection $applicable = null): void
+    public function apply(WorkOrder $workOrder, array $submitted, array &$changed, array &$old, ?Collection $applicable = null, ?array $layout = null): void
     {
-        $applicable ??= $this->attributeResolver->resolve($workOrder);
-        $validated = $this->validator->validate($applicable, $submitted);
-        $normalized = $this->normalizer->normalize($applicable, $validated);
-
+        // Step 1: sections hidden by the state the record will have once the payload lands
         $current = $workOrder->attribute_values ?? [];
-        $merged = array_merge($current, $normalized);
+        $hidden = $this->visibility->hiddenCodes($layout, array_merge($current, $submitted));
 
+        // Step 2: validate (hidden codes not required), normalize, merge sparsely and empty the hidden sections
+        $applicable ??= $this->attributeResolver->resolve($workOrder);
+        $validated = $this->validator->validate($applicable, $submitted, $hidden);
+        $normalized = $this->normalizer->normalize($applicable, $validated);
+        $merged = $this->visibility->mergeAndClear($layout, $current, $normalized);
+
+        // Step 3: report the diff only when something actually changed
         if ($merged === $current) {
             return;
         }

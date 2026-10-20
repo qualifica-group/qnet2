@@ -34,7 +34,10 @@ use Illuminate\Validation\ValidationException;
  *    value is empty/null (Laravel's native `required` semantics);
  *  - an applicable code simply ABSENT from the payload is never checked here
  *    — sparse PATCH semantics (spec 0049 data_contract): an unset key keeps
- *    whatever is already persisted, already validated when it was written.
+ *    whatever is already persisted, already validated when it was written;
+ *  - a code in `$hiddenCodes` (a conditional section currently hidden, spec
+ *    0288 D-4) is never required, nested table cells included; its type
+ *    rules still apply.
  */
 final class AttributeValueValidator
 {
@@ -43,11 +46,12 @@ final class AttributeValueValidator
     /**
      * @param  Collection<int, ApplicableAttribute>  $applicableAttributes
      * @param  array<string, mixed>  $values  submitted {code => value}
+     * @param  array<int, string>  $hiddenCodes  codes of hidden conditional sections, exempt from `is_required`
      * @return array<string, mixed> the same map, once every key has passed
      *
      * @throws ValidationException
      */
-    public function validate(Collection $applicableAttributes, array $values): array
+    public function validate(Collection $applicableAttributes, array $values, array $hiddenCodes = []): array
     {
         $indexed = $applicableAttributes->keyBy('code');
 
@@ -55,7 +59,7 @@ final class AttributeValueValidator
         $this->assertKnownCodes($indexed, $values);
 
         // Step 2: per-type + required rules for the (now known) submitted codes
-        ValidatorFacade::make(['attribute_values' => $values], $this->rules($indexed, $values))->validate();
+        ValidatorFacade::make(['attribute_values' => $values], $this->rules($indexed, $values, $hiddenCodes))->validate();
 
         return $values;
     }
@@ -84,9 +88,10 @@ final class AttributeValueValidator
     /**
      * @param  Collection<string, ApplicableAttribute>  $indexed
      * @param  array<string, mixed>  $values
+     * @param  array<int, string>  $hiddenCodes
      * @return array<string, array<int, mixed>>
      */
-    private function rules(Collection $indexed, array $values): array
+    private function rules(Collection $indexed, array $values, array $hiddenCodes): array
     {
         $rules = [];
 
@@ -94,13 +99,15 @@ final class AttributeValueValidator
             /** @var ApplicableAttribute $attribute */
             $attribute = $indexed->get($code);
 
+            $isRequired = $attribute->isRequired && ! in_array($code, $hiddenCodes, true);
+
             $rules["attribute_values.{$code}"] = [
-                $attribute->isRequired ? 'required' : 'nullable',
+                $isRequired ? 'required' : 'nullable',
                 ...$this->typeRules($attribute),
             ];
 
             if ($attribute->type === 'table') {
-                $rules = [...$rules, ...$this->nestedTableRules($attribute)];
+                $rules = [...$rules, ...$this->nestedTableRules($attribute, $isRequired)];
             }
         }
 
@@ -113,11 +120,11 @@ final class AttributeValueValidator
      *
      * @return array<string, array<int, mixed>>
      */
-    private function nestedTableRules(ApplicableAttribute $attribute): array
+    private function nestedTableRules(ApplicableAttribute $attribute, bool $isRequired): array
     {
         $nested = [];
 
-        foreach (TableFieldSchema::fromConfig($attribute->config, $attribute->isRequired)->rules() as $key => $rules) {
+        foreach (TableFieldSchema::fromConfig($attribute->config, $isRequired)->rules() as $key => $rules) {
             $nested["attribute_values.{$attribute->code}.{$key}"] = $rules;
         }
 

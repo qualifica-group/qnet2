@@ -272,6 +272,9 @@ final class AttributeLayoutService
             'default_collapsed' => (bool) $section['default_collapsed'],
             'columns' => (int) $section['columns'],
             'sort_order' => (int) $section['sort_order'],
+            'visible_when' => isset($section['visible_when']['attribute_code'])
+                ? ['attribute_code' => (string) $section['visible_when']['attribute_code']]
+                : null,
             'rows' => array_values(array_map($this->normalizeRow(...), $section['rows'])),
         ];
     }

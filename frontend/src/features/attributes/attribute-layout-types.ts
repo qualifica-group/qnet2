@@ -39,6 +39,14 @@ export interface LayoutRow {
   items: LayoutItem[]
 }
 
+/**
+ * Spec 0288: a section shows only while the boolean attribute `attribute_code`
+ * (placed in another, unconditional section of the same layout) is `true`.
+ */
+export interface LayoutSectionCondition {
+  attribute_code: string
+}
+
 /** A titled, optionally collapsible group of rows. */
 export interface LayoutSection {
   id: string
@@ -50,6 +58,8 @@ export interface LayoutSection {
   columns: LayoutColumns
   sort_order: number
   rows: LayoutRow[]
+  /** Absent in blobs saved before spec 0288: same as `null` (always visible). */
+  visible_when?: LayoutSectionCondition | null
 }
 
 /** The full persisted blob for one (product_category, context, form_mode). */

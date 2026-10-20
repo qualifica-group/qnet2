@@ -60,6 +60,8 @@ export const attributes = {
     // (spec 0062) generates at runtime for effective attributes not placed in
     // any section of the configured layout — never persisted.
     otherInformation: 'Other information',
+    // Hint on a conditional section (spec 0288): the boolean attribute that shows it.
+    visibleWhen: 'Visible if: {{name}}',
   },
 }
 

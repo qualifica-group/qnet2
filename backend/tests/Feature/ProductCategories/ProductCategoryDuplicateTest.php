@@ -54,6 +54,7 @@ function duplicateLayoutBlob(array $rowsOfCodes): array
             'default_collapsed' => false,
             'columns' => 2,
             'sort_order' => 0,
+            'visible_when' => null,
             'rows' => array_map(
                 static fn (array $codes, int $index): array => [
                     'id' => "row-{$index}",

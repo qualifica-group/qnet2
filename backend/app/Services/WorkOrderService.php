@@ -8,6 +8,7 @@ use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\DataObjects\WorkOrders\CreateWorkOrderData;
 use App\DataObjects\WorkOrders\UpdateWorkOrderData;
+use App\Enums\FormMode;
 use App\Models\TaskTemplate;
 use App\Models\User;
 use App\Models\WorkOrder;
@@ -20,6 +21,7 @@ use App\Services\WorkOrders\WorkOrderTitleWriter;
 use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use App\Support\ManagerPositions;
 use App\Support\PositionalPivotSync;
+use App\WorkOrders\WorkOrderAttributeResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -84,6 +86,7 @@ class WorkOrderService
     public function __construct(
         private readonly WorkOrderLineWriter $lineWriter,
         private readonly WorkOrderAttributeValueWriter $attributeValueWriter,
+        private readonly WorkOrderAttributeResolver $attributeResolver,
         private readonly WorkOrderTaskGenerator $taskGenerator,
         private readonly WorkOrderTaskForceCloser $taskForceCloser,
         private readonly WorkOrderTitleWriter $titleWriter,
@@ -225,7 +228,13 @@ class WorkOrderService
             if ($data->attributeValues !== null) {
                 $changed = [];
                 $old = [];
-                $this->attributeValueWriter->apply($workOrder, $data->attributeValues, $changed, $old);
+                $this->attributeValueWriter->apply(
+                    $workOrder,
+                    $data->attributeValues,
+                    $changed,
+                    $old,
+                    layout: $this->attributeResolver->layout($workOrder, FormMode::Create),
+                );
                 $workOrder->save();
             }
 
@@ -304,7 +313,13 @@ class WorkOrderService
             if ($data->attributeValues !== null) {
                 $changed = [];
                 $old = [];
-                $this->attributeValueWriter->apply($workOrder, $data->attributeValues, $changed, $old);
+                $this->attributeValueWriter->apply(
+                    $workOrder,
+                    $data->attributeValues,
+                    $changed,
+                    $old,
+                    layout: $this->attributeResolver->layout($workOrder, FormMode::View),
+                );
                 $workOrder->save();
             }
 

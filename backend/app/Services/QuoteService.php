@@ -7,11 +7,13 @@ namespace App\Services;
 use App\DataObjects\Quotes\CreateQuoteData;
 use App\DataObjects\Quotes\UpdateQuoteData;
 use App\Enums\DocumentLayoutModule;
+use App\Enums\FormMode;
 use App\Models\DocumentLayout;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Quotes\QuoteAttributeResolver;
 use App\Services\Commissions\QuoteLineCommissionWriter;
 use App\Services\Concerns\GeneratesSequentialCode;
 use App\Services\Contracts\ContractLifecycleManager;
@@ -123,6 +125,7 @@ class QuoteService
         private readonly QuoteWorkflowStatusAssigner $workflowStatusAssigner,
         private readonly QuoteStatusChangeLogger $statusChangeLogger,
         private readonly QuoteAttributeValueWriter $attributeValueWriter,
+        private readonly QuoteAttributeResolver $attributeResolver,
         private readonly RewardAssignmentWriter $rewardAssignmentWriter,
         private readonly QuoteManagerWriter $managerWriter,
         private readonly QuoteManagerInheritance $managerInheritance,
@@ -205,7 +208,13 @@ class QuoteService
             if ($data->attributeValues !== null) {
                 $changed = [];
                 $old = [];
-                $this->attributeValueWriter->apply($quote, $data->attributeValues, $changed, $old);
+                $this->attributeValueWriter->apply(
+                    $quote,
+                    $data->attributeValues,
+                    $changed,
+                    $old,
+                    layout: $this->attributeResolver->layout($quote, FormMode::Create),
+                );
                 $quote->save();
             }
 
@@ -315,7 +324,13 @@ class QuoteService
             if ($data->attributeValues !== null) {
                 $changed = [];
                 $old = [];
-                $this->attributeValueWriter->apply($quote, $data->attributeValues, $changed, $old);
+                $this->attributeValueWriter->apply(
+                    $quote,
+                    $data->attributeValues,
+                    $changed,
+                    $old,
+                    layout: $this->attributeResolver->layout($quote, FormMode::View),
+                );
                 $quote->save();
             }
 

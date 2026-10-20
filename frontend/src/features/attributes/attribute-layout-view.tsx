@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Rows3 } from 'lucide-react'
 import { RecordField, RecordFieldList } from '@/components/detail/record-panel'
 import { cn } from '@/lib/utils'
+import { hiddenSectionIds } from '@/features/attributes/attribute-section-visibility'
 import { resolveLayoutSections } from '@/features/attributes/attribute-layout-sections'
 import type {
   LayoutBlob,
@@ -152,7 +153,9 @@ export function AttributeLayoutView({
   // Step 2: the form's sections with what each places, minus those with nothing to show
   const attributesByCode = new Map(attributes.map((attribute) => [attribute.code, attribute]))
   const otherInformationTitle = t('attributes.layout.otherInformation', { defaultValue: 'Altre informazioni' })
+  const hiddenIds = hiddenSectionIds(layout, values)
   const sections = resolveLayoutSections(layout, attributes, otherInformationTitle)
+    .filter((section) => !hiddenIds.has(section.id))
     .map((section) => ({ section, items: placedAttributes(section, attributesByCode) }))
     .filter(({ items }) => items.length > 0)
 

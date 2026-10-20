@@ -7,6 +7,7 @@ namespace App\Services\RequestManagement;
 use App\DataObjects\PersonalData\CreatePersonalData;
 use App\DataObjects\Users\AddressInput;
 use App\DataObjects\Users\ContactInput;
+use App\Enums\FormMode;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\User;
@@ -257,6 +258,7 @@ final class RequestManagementService
                     $changed,
                     $old,
                     $this->attributeResolver->resolve($quote),
+                    $this->attributeResolver->layout($quote, FormMode::Edit),
                 );
             }
 

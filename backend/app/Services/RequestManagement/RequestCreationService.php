@@ -9,6 +9,7 @@ use App\DataObjects\Quotes\CreateQuoteData;
 use App\DataObjects\Registries\CreateRegistryData;
 use App\DataObjects\RequestManagement\CreateRequestData;
 use App\Enums\CategoryManagementMode;
+use App\Enums\FormMode;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\Registry;
@@ -260,6 +261,7 @@ final class RequestCreationService
             $changed,
             $old,
             $this->attributeResolver->resolve($quote),
+            $this->attributeResolver->layout($quote, FormMode::Create),
         );
 
         $quote->save();

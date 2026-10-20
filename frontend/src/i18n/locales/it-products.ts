@@ -60,6 +60,8 @@ export const attributes = {
     // da `AttributeLayoutRenderer` (spec 0062) per gli attributi effettivi
     // non piazzati in nessuna sezione del layout configurato — mai persistita.
     otherInformation: 'Altre informazioni',
+    // Hint on a conditional section (spec 0288): the boolean attribute that shows it.
+    visibleWhen: 'Visibile se: {{name}}',
   },
 }
 

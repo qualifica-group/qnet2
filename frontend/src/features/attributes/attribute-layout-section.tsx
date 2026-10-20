@@ -1,4 +1,5 @@
 import type { Control } from 'react-hook-form'
+import { Eye } from 'lucide-react'
 import { ConfigSection } from '@/components/ui/config-section'
 import { cn } from '@/lib/utils'
 import { AttributeLayoutField } from '@/features/attributes/attribute-layout-field'
@@ -12,6 +13,8 @@ interface AttributeLayoutSectionProps<TFieldValues extends AttributeLayoutFormSh
   control: Control<TFieldValues>
   disabled: boolean
   readOnly: boolean
+  /** "Visible if: ..." line for a conditional section (configurator preview); `null` = none. */
+  conditionHint?: string | null
 }
 
 /**
@@ -28,6 +31,7 @@ export function AttributeLayoutSection<TFieldValues extends AttributeLayoutFormS
   control,
   disabled,
   readOnly,
+  conditionHint = null,
 }: AttributeLayoutSectionProps<TFieldValues>) {
   return (
     <ConfigSection
@@ -39,6 +43,12 @@ export function AttributeLayoutSection<TFieldValues extends AttributeLayoutFormS
     >
       {/* `@container`: the row grids collapse on THIS panel's width, not the viewport (attribute-layout-grid.ts). */}
       <div className="@container flex flex-col gap-3">
+        {conditionHint ? (
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Eye className="size-3.5 shrink-0" aria-hidden="true" />
+            {conditionHint}
+          </p>
+        ) : null}
         {section.rows.map((row) => (
           <div key={row.id} className={cn('grid', LAYOUT_GRID_GAP_CLASS, gridColsClass(section.columns))}>
             {row.items.map((item) => {

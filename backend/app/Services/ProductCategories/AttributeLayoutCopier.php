@@ -13,8 +13,9 @@ use App\Models\ProductCategory;
  * another category — the row action "duplicate". The copy may be saved with
  * a different parent or attribute set than its source, so each blob is first
  * pruned to the target's effective attributes for that context (items gone,
- * then rows and sections left empty); a layout pruned to nothing is simply
- * not copied. What remains still goes through AttributeLayoutService::upsert,
+ * then rows and sections left empty; a section condition whose controlling
+ * attribute did not survive is cleared, spec 0288); a layout pruned to
+ * nothing is simply not copied. What remains still goes through AttributeLayoutService::upsert,
  * the same validation and normalization as a layout authored by hand.
  * Inherited layouts are not copied: the target inherits them on its own.
  */
@@ -78,6 +79,34 @@ final class AttributeLayoutCopier
             }
         }
 
-        return ['sections' => $sections];
+        return ['sections' => $this->clearOrphanConditions($sections)];
+    }
+
+    /**
+     * A condition pointing at a pruned (or pruned-away section's) attribute
+     * would fail the validation of the copy; the section stays, unconditional.
+     *
+     * @param  array<int, array<string, mixed>>  $sections
+     * @return array<int, array<string, mixed>>
+     */
+    private function clearOrphanConditions(array $sections): array
+    {
+        $placed = [];
+
+        foreach ($sections as $section) {
+            foreach ($section['rows'] as $row) {
+                foreach ($row['items'] as $item) {
+                    $placed[$item['attribute_code']] = true;
+                }
+            }
+        }
+
+        return array_map(static function (array $section) use ($placed): array {
+            $controlCode = $section['visible_when']['attribute_code'] ?? null;
+
+            return $controlCode !== null && ! isset($placed[$controlCode])
+                ? [...$section, 'visible_when' => null]
+                : $section;
+        }, $sections);
     }
 }

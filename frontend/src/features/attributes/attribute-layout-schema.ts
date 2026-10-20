@@ -31,6 +31,10 @@ export const layoutRowSchema = z.object({
   items: z.array(layoutItemSchema),
 })
 
+export const layoutSectionConditionSchema = z.object({
+  attribute_code: z.string().min(1),
+})
+
 export const layoutSectionSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1).max(TITLE_MAX_LENGTH),
@@ -41,6 +45,7 @@ export const layoutSectionSchema = z.object({
   columns: layoutColumnsSchema,
   sort_order: z.number().int().nonnegative(),
   rows: z.array(layoutRowSchema),
+  visible_when: layoutSectionConditionSchema.nullable().optional(),
 })
 
 /** Every `attribute_code` in the blob must appear at most once (spec `layout-contract` semantics). */

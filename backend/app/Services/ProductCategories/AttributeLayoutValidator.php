@@ -8,6 +8,7 @@ use App\Enums\AttributeContext;
 use App\Enums\LayoutItemWidth;
 use App\Enums\LayoutSectionVariant;
 use App\Models\ProductCategory;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator as ValidatorFacade;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -26,11 +27,15 @@ use Illuminate\Validation\ValidationException;
  * Two failure classes, two error shapes:
  *  - shape/enum/limit violations -> Laravel's own dotted paths
  *    (`layout.sections.0.variant`, ...);
- *  - unknown `attribute_code` / duplicate `attribute_code` -> both keyed
+ *  - unknown `attribute_code` / duplicate `attribute_code` / an invalid
+ *    section condition (`visible_when`, spec 0288 D-2) -> all keyed
  *    `attribute_layout` (data_contract: "422 code sconosciuto -> attribute_layout").
  */
 final class AttributeLayoutValidator
 {
+    /** The only attribute type a section condition can read (spec 0288 D-1). */
+    private const string CONDITION_ATTRIBUTE_TYPE = 'boolean';
+
     public function __construct(private readonly CategoryHierarchy $hierarchy) {}
 
     /**
@@ -51,9 +56,15 @@ final class AttributeLayoutValidator
         // Step 1: shape (enums, limits, required structure)
         $this->assertShape($layout);
 
+        $effective = $this->hierarchy->effectiveAttributes($category, $context);
+
         // Step 2: allow-list + no-duplicate-code, against the category's
         // EFFECTIVE attributes for this context
-        $this->assertCodes($category, $context, $layout);
+        $this->assertCodes($context, $layout, $effective);
+
+        // Step 3: section conditions (spec 0288 D-2), which read the types of
+        // the same effective attributes
+        $this->assertConditions($layout, $effective);
     }
 
     /**
@@ -81,6 +92,8 @@ final class AttributeLayoutValidator
             'layout.sections.*.default_collapsed' => ['required', 'boolean'],
             'layout.sections.*.columns' => ['required', 'integer', Rule::in([1, 2, 3, 4])],
             'layout.sections.*.sort_order' => ['required', 'integer'],
+            'layout.sections.*.visible_when' => ['nullable', 'array'],
+            'layout.sections.*.visible_when.attribute_code' => ['required_with:layout.sections.*.visible_when', 'string', 'max:191'],
             'layout.sections.*.rows' => ['required', 'array'],
             'layout.sections.*.rows.*.id' => ['required', 'string', 'max:191'],
             'layout.sections.*.rows.*.items' => ['required', 'array', 'min:1'],
@@ -91,12 +104,13 @@ final class AttributeLayoutValidator
 
     /**
      * @param  array<string, mixed>  $layout
+     * @param  Collection<int, array<string, mixed>>  $effective
      *
      * @throws ValidationException
      */
-    private function assertCodes(ProductCategory $category, AttributeContext $context, array $layout): void
+    private function assertCodes(AttributeContext $context, array $layout, Collection $effective): void
     {
-        $allowedCodes = $this->hierarchy->effectiveAttributes($category, $context)->pluck('code')->all();
+        $allowedCodes = $effective->pluck('code')->all();
         $seen = [];
 
         foreach ($this->eachItem($layout) as $code) {
@@ -113,6 +127,50 @@ final class AttributeLayoutValidator
             }
 
             $seen[$code] = true;
+        }
+    }
+
+    /**
+     * Each controlling attribute must be placed in this layout, be a boolean,
+     * sit outside the section it controls and inside an unconditional one
+     * (no chains): a condition chain could never be evaluated without a
+     * cycle guard, and the editor only offers what passes these rules.
+     *
+     * @param  array<string, mixed>  $layout
+     * @param  Collection<int, array<string, mixed>>  $effective
+     *
+     * @throws ValidationException
+     */
+    private function assertConditions(array $layout, Collection $effective): void
+    {
+        $sectionByCode = [];
+
+        foreach ($layout['sections'] as $index => $section) {
+            foreach ($this->eachItem(['sections' => [$section]]) as $code) {
+                $sectionByCode[$code] = $index;
+            }
+        }
+
+        $typeByCode = $effective->pluck('type', 'code');
+
+        foreach ($layout['sections'] as $index => $section) {
+            $controlCode = $section['visible_when']['attribute_code'] ?? null;
+
+            if ($controlCode === null) {
+                continue;
+            }
+
+            $message = match (true) {
+                ! isset($sectionByCode[$controlCode]) => "The \"{$controlCode}\" attribute controls a section but is not placed in the layout.",
+                $typeByCode->get($controlCode) !== self::CONDITION_ATTRIBUTE_TYPE => "The \"{$controlCode}\" attribute controls a section but is not a boolean attribute.",
+                $sectionByCode[$controlCode] === $index => "The \"{$controlCode}\" attribute cannot control the section it is placed in.",
+                ($layout['sections'][$sectionByCode[$controlCode]]['visible_when'] ?? null) !== null => "The \"{$controlCode}\" attribute sits in a conditional section and cannot control another section.",
+                default => null,
+            };
+
+            if ($message !== null) {
+                throw ValidationException::withMessages(['attribute_layout' => [$message]]);
+            }
         }
     }
 
