@@ -34,13 +34,6 @@ return [
             'permission' => 'job-activities.view',
         ],
         [
-            'key' => 'collective-agreements',
-            'label' => 'navigation.collectiveAgreements',
-            'icon' => 'file-text',
-            'route' => '/collective-agreements',
-            'permission' => 'collective-agreements.view',
-        ],
-        [
             'key' => 'contract-types',
             'label' => 'navigation.contractTypes',
             'icon' => 'clipboard-list',

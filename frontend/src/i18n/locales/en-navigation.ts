@@ -90,7 +90,6 @@ export const navigation = {
   purchaseRequestLines: 'RDA line management',
   purchaseOrders: 'ODA',
   costTypes: 'Cost types',
-  collectiveAgreements: 'Collective agreements',
   jobRoles: 'Job roles',
   jobActivities: 'Activities',
   absences: 'Absences',

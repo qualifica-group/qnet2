@@ -25,7 +25,6 @@ class EmploymentContractFactory extends Factory
             'starts_on' => fake()->unique()->dateTimeBetween('-10 years', '-1 day')->format('Y-m-d'),
             'relationship_type' => RelationshipTypeEnum::Employee->value,
             'company_id' => null,
-            'collective_agreement_level_id' => null,
             'salary_amount' => null,
             'salary_period' => null,
             'change_reason' => null,

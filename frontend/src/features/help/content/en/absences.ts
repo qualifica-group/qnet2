@@ -13,6 +13,14 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'It is under **Absences** in the menu. Here you request an absence, follow the outcome and check how many hours you have left for each type.',
         },
+        {
+          type: 'list',
+          items: [
+            'Like the Time tracking, Absences is open to **every user**: everyone sees their own absences.',
+            'A **manager** also sees the absences of the people who report to them, also indirectly.',
+            'Only those with the permission see **everyone’s** absences: HR and the administrators.',
+          ],
+        },
       ],
     },
     {
@@ -206,6 +214,10 @@ const guide: HelpGuide = {
             ['Calendar: own and team', 'You and the people who report to you, also indirectly.'],
             ['Calendar: everyone', 'Every active person.'],
           ],
+        },
+        {
+          type: 'paragraph',
+          text: 'Every role already has the **own and team** calendar: someone nobody reports to sees only themselves. The **everyone** calendar belongs to HR and the administrators.',
         },
         {
           type: 'list',

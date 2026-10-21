@@ -59,8 +59,7 @@ class UserService
         'employment.productLines.businessFunction',
         'employment.productLines.productCategory',
         // Spec 0272: the contract history, so EmploymentResource derives the
-        // condition in force (and its CCNL level label) without a query per row.
-        'employment.contracts.collectiveAgreementLevel.agreement',
+        // condition in force without a query per row.
         'employment.contracts.contractType',
     ];
 

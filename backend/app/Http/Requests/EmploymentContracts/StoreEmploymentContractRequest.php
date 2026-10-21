@@ -73,7 +73,6 @@ class StoreEmploymentContractRequest extends FormRequest
             ],
             'contract_expires_on' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:starts_on'],
             'company_id' => ['nullable', 'integer', 'exists:companies,id'],
-            'collective_agreement_level_id' => ['nullable', 'integer', 'exists:collective_agreement_levels,id'],
             'salary_amount' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
             'salary_period' => ['nullable', 'required_with:salary_amount', Rule::enum(SalaryPeriodEnum::class)],
             'change_reason' => ['nullable', 'string', 'max:'.self::CHANGE_REASON_MAX],

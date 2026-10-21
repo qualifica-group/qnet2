@@ -46,7 +46,6 @@ function ContractRow({
       ? t('users.detail.employment.contractHistory.expiresOn', { date: formatDate(contract.contract_expires_on) })
       : null,
     contract.company?.label ?? null,
-    contract.collective_agreement_level?.label ?? null,
     hasSalary ? `${contract.salary_amount} / ${t(`users.detail.employment.contractHistory.periods.${contract.salary_period}`)}` : null,
   ].filter((part): part is string => part !== null)
 

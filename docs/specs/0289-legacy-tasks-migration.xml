@@ -82,7 +82,7 @@
         `task_observers` + `observer`, e toglie dagli osservatori creatore, richiedente e assegnatari.
         AGGIORNAMENTO 2026-10-21 (decisione utente): il legacy (LegacyTaskPeople) sostituisce in ogni ruolo l'utente
         cancellato fisicamente da `users` con il segnaposto "Utente legacy" (`LegacyPlaceholderUser::ID` 999999999,
-        spec 0013 emendamento sexies), prima di unire e togliere i doppioni: 56 task. qnet-2 invariato.
+        spec 0013 emendamento sexies), prima di unire e togliere i doppioni: 52 task. qnet-2 invariato.
     D-9 Collegamenti: commessa legacy presente ma non migrata -> riga fallita. Anagrafica, referente, opportunita'
         non migrati -> null con warning. Con commessa: anagrafica = quella legacy se tra i clienti della commessa,
         altrimenti quella della commessa, con warning. Referente non dell'anagrafica -> null con warning. Il legacy

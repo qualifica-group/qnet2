@@ -29,7 +29,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'working_time',
     'contract_expires_on',
     'company_id',
-    'collective_agreement_level_id',
     'salary_amount',
     'salary_period',
     'change_reason',
@@ -92,13 +91,5 @@ class EmploymentContract extends BaseModel
     public function contractType(): BelongsTo
     {
         return $this->belongsTo(ContractType::class);
-    }
-
-    /**
-     * @return BelongsTo<CollectiveAgreementLevel, $this>
-     */
-    public function collectiveAgreementLevel(): BelongsTo
-    {
-        return $this->belongsTo(CollectiveAgreementLevel::class);
     }
 }

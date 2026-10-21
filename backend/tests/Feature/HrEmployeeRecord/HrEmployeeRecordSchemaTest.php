@@ -2,8 +2,6 @@
 
 use App\Enums\RelationshipTypeEnum;
 use App\Enums\SalaryPeriodEnum;
-use App\Models\CollectiveAgreement;
-use App\Models\CollectiveAgreementLevel;
 use App\Models\Company;
 use App\Models\Contact;
 use App\Models\EmploymentContract;
@@ -19,19 +17,6 @@ uses(RefreshDatabase::class);
 
 const BACKFILL_MIGRATION = '2026_10_21_100500_backfill_employment_contracts_from_profiles';
 const DROP_QUALIFICATION_MIGRATION = '2026_10_21_100600_drop_qualification_type_from_employment_profiles_table';
-
-it('orders the levels of an agreement and links them to contracts', function () {
-    $agreement = CollectiveAgreement::factory()->create();
-    $second = CollectiveAgreementLevel::factory()->for($agreement, 'agreement')->create(['code' => 'B', 'sort_order' => 2]);
-    $first = CollectiveAgreementLevel::factory()->for($agreement, 'agreement')->create(['code' => 'A', 'sort_order' => 1]);
-    $contract = EmploymentContract::factory()->create(['collective_agreement_level_id' => $first->id]);
-
-    expect($agreement->levels->pluck('code')->all())->toBe(['A', 'B'])
-        ->and($first->agreement->is($agreement))->toBeTrue()
-        ->and($first->contracts->pluck('id')->all())->toBe([$contract->id])
-        ->and($contract->collectiveAgreementLevel->is($first))->toBeTrue()
-        ->and($second->contracts)->toHaveCount(0);
-});
 
 it('casts the contract attributes and lists contracts latest first', function () {
     $profile = EmploymentProfile::factory()->create();
@@ -49,41 +34,28 @@ it('casts the contract attributes and lists contracts latest first', function ()
         ->and($fresh->profile->is($profile))->toBeTrue();
 });
 
-it('enforces unique names, level codes per agreement and start dates per profile', function () {
-    CollectiveAgreement::factory()->create(['name' => 'Commercio']);
-    $agreement = CollectiveAgreement::factory()->create();
-    CollectiveAgreementLevel::factory()->for($agreement, 'agreement')->create(['code' => 'Q1']);
+// REQUIREMENT CHANGED (spec 0293): the CCNL catalogue and its level codes are gone.
+it('enforces unique start dates per profile', function () {
     $profile = EmploymentProfile::factory()->create();
     EmploymentContract::factory()->for($profile, 'profile')->create(['starts_on' => '2022-05-01']);
 
-    expect(fn () => CollectiveAgreement::factory()->create(['name' => 'Commercio']))->toThrow(QueryException::class)
-        ->and(fn () => CollectiveAgreementLevel::factory()->for($agreement, 'agreement')->create(['code' => 'Q1']))->toThrow(QueryException::class)
-        ->and(CollectiveAgreementLevel::factory()->create(['code' => 'Q1']))->toBeInstanceOf(CollectiveAgreementLevel::class)
-        ->and(fn () => EmploymentContract::factory()->for($profile, 'profile')->create(['starts_on' => '2022-05-01']))->toThrow(QueryException::class);
+    expect(fn () => EmploymentContract::factory()->for($profile, 'profile')->create(['starts_on' => '2022-05-01']))->toThrow(QueryException::class);
 });
 
-it('restricts deleting a level or a company referenced by a contract', function () {
-    $level = CollectiveAgreementLevel::factory()->create();
+// REQUIREMENT CHANGED (spec 0293): no CCNL level references a contract any more.
+it('restricts deleting a company referenced by a contract', function () {
     $company = Company::factory()->create();
-    EmploymentContract::factory()->create([
-        'collective_agreement_level_id' => $level->id,
-        'company_id' => $company->id,
-    ]);
+    EmploymentContract::factory()->create(['company_id' => $company->id]);
 
-    expect(fn () => $level->delete())->toThrow(QueryException::class)
-        ->and(fn () => $company->delete())->toThrow(QueryException::class);
+    expect(fn () => $company->delete())->toThrow(QueryException::class);
 });
 
-it('cascades levels with their agreement and contracts with their profile', function () {
-    $agreement = CollectiveAgreement::factory()->create();
-    CollectiveAgreementLevel::factory()->for($agreement, 'agreement')->create();
+it('cascades contracts with their profile', function () {
     $contract = EmploymentContract::factory()->create();
 
-    $agreement->delete();
     $contract->profile->delete();
 
-    expect(CollectiveAgreementLevel::count())->toBe(0)
-        ->and(EmploymentContract::count())->toBe(0);
+    expect(EmploymentContract::count())->toBe(0);
 });
 
 // REQUIREMENT CHANGED (spec 0272 rev.3): the holder joins the IBAN outside the activity log.
@@ -122,10 +94,10 @@ it('defaults the contact work flag to false and casts it', function () {
         ->and($work->fresh()->is_work)->toBeTrue();
 });
 
-it('registers the morph aliases of the new models', function () {
-    expect(Relation::getMorphedModel('collective_agreement'))->toBe(CollectiveAgreement::class)
-        ->and(Relation::getMorphedModel('collective_agreement_level'))->toBe(CollectiveAgreementLevel::class)
-        ->and(Relation::getMorphedModel('employment_contract'))->toBe(EmploymentContract::class);
+// REQUIREMENT CHANGED (spec 0293): the CCNL aliases are gone.
+it('registers the morph alias of the contract model', function () {
+    expect(Relation::getMorphedModel('employment_contract'))->toBe(EmploymentContract::class)
+        ->and(Relation::getMorphedModel('collective_agreement'))->toBeNull();
 });
 
 it('backfills a first condition from the profile and removes it on rollback (AC-010)', function () {

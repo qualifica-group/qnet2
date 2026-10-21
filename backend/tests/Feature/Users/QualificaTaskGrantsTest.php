@@ -60,13 +60,13 @@ it('lists a commercial only the tasks they take part in', function () {
 });
 
 // User directive 2026-09-24: the staff outside the mansionario sees Task and
-// Segnatempo, nothing else.
-it('shows the base role only the dashboard, tasks and time entries', function () {
+// Segnatempo, nothing else; spec 0292 adds the Assenze (REQUIREMENT CHANGED).
+it('shows the base role only the dashboard, tasks, time entries and absences', function () {
     $this->seed(QualificaStaffSeeder::class);
 
     $staff = User::role(OperatorRoleCatalogue::BASE_ROLE)->firstOrFail();
 
-    expect(visibleRoutes($staff))->toBe(['/dashboard', '/tasks', '/time-entries'])
+    expect(visibleRoutes($staff))->toBe(['/dashboard', '/tasks', '/time-entries', '/absences'])
         ->and($staff->can('request-management.viewAny'))->toBeFalse()
         ->and($staff->can('leads.viewAny'))->toBeFalse()
         ->and($staff->can('users.view'))->toBeFalse();

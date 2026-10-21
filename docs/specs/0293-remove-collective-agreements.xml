@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0293-remove-collective-agreements" status="approved" owner="utente" date="2026-10-21">
+
+  <goal>
+    Il modulo CCNL (catalogo dei contratti collettivi e dei loro livelli, spec 0272 D-3) non serve piu': si toglie
+    tutto, dal database ai campi ai collegamenti. Le condizioni dello storico contrattuale non hanno piu' il campo
+    "CCNL e livello".
+  </goal>
+
+  <context>
+    <!-- Fatti verificati nel repo il 2026-10-21. -->
+    <fact>Schema: `collective_agreements` (name unique, code) e `collective_agreement_levels` (FK cascade,
+      code, description, sort_order), migrazione `2026_10_21_100100_create_collective_agreements_tables.php`;
+      `employment_contracts.collective_agreement_level_id` nullable RESTRICT (indice
+      `employment_contracts_level_foreign`), migrazione `2026_10_21_100200_create_employment_contracts_table.php`.</fact>
+    <fact>Collegamenti: `EmploymentContract::collectiveAgreementLevel()`, `StoreEmploymentContractRequest`,
+      `EmploymentContractResource`, `EmploymentResource::currentContract()` (`collective_agreement_level`),
+      `EmploymentContractService`/`UserService` (eager loading), morph map in `AppServiceProvider`
+      (`collective_agreement`, `collective_agreement_level`), config `authorization`, `tables`, `activity-log`,
+      `navigation/configuration` (`collective-agreements`), rotte `routes/api/collective-agreements.php`
+      incluse da `hr.php`, ruolo `risorse-umane` (`HrOfficeRoleCatalogue::MODULES`).</fact>
+    <fact>Seed di produzione: `QualificaHrCatalogSeeder` crea il CCNL "Pianta Organica"
+      (`CollectiveAgreementCatalogue`) e assegna a ogni persona di `OrgChartRoster` il suo livello sulla
+      condizione vigente.</fact>
+    <fact>Stato salvato per dominio: `permissions` (`collective-agreements.*`, pivot in cascade),
+      `role_field_permissions.resource`, `user_table_preferences.domain`, `table_filter_views.domain`,
+      `activity_log.subject_type`.</fact>
+  </context>
+
+  <decisions>
+    - D-1 (decisione utente 2026-10-21) Rimozione completa del modulo, dati compresi: nessuna conservazione o
+      conversione del livello delle condizioni esistenti.
+    - D-2 Una nuova migrazione elimina colonna e tabelle e ripulisce lo stato salvato per dominio (permessi,
+      permessi di campo, preferenze e viste di griglia, activity log del catalogo). Le migrazioni di creazione
+      restano (gia' committate). Il `down` ricrea la struttura vuota.
+    - D-3 Le voci di activity log delle condizioni contrattuali che citano `collective_agreement_level_id`
+      restano come storico.
+    - D-4 `OrgChartRoster` perde il livello di ogni persona; ruoli ed email restano.
+    - D-5 Restano le occorrenze della parola "CCNL" che non sono il modulo: motivo "Rinnovo CCNL 2026" dei dati
+      demo del controllo di gestione e descrizione della mansione "Gestione normativa e compliance del lavoro".
+    - D-6 Le spec storiche (0271-0291) non si riscrivono: questa spec le supera per il CCNL.
+  </decisions>
+
+  <data_contract>
+    <change>Rimossi: `GET|POST /api/collective-agreements`, `GET|PATCH|DELETE /api/collective-agreements/{id}`,
+      `GET /api/collective-agreement-levels/for-select`, la tabella SSRM `collective-agreements`, i permessi
+      `collective-agreements.*`.</change>
+    <change>Condizioni contrattuali: `collective_agreement_level_id` non e' piu' accettato in scrittura (campo
+      ignorato come ogni chiave sconosciuta); `collective_agreement_level` esce dalla risposta di
+      `GET /api/users/{user}/employment-contracts` e da `employment.current_contract` della scheda utente.</change>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dopo la migrazione non esistono le tabelle `collective_agreements`,
+      `collective_agreement_levels` ne' la colonna `employment_contracts.collective_agreement_level_id`; i
+      permessi `collective-agreements.*` e lo stato salvato del dominio sono cancellati (Pest).</criterion>
+    <criterion id="AC-002">Le rotte del modulo rispondono 404; il registro tabellare e il catalogo dei campi non
+      contengono `collective-agreements` (Pest).</criterion>
+    <criterion id="AC-003">Creazione e lettura delle condizioni contrattuali funzionano senza il livello, e la
+      risposta non contiene `collective_agreement_level` (Pest).</criterion>
+    <criterion id="AC-004">Il seed di produzione HR gira senza creare CCNL ne' livelli (Pest).</criterion>
+    <criterion id="AC-005">Frontend: niente pagina, rotta, menu ne' guida `collective-agreements`; dialog e
+      storico contrattuale senza "CCNL e livello" (Vitest, tsc).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Manuale: guida in-app `collective-agreements` IT+EN eliminata con la chiave in `HELP_GUIDE_KEYS`;
+      guida `users` IT+EN aggiornata; manuale Claude Docs aggiornato.</item>
+    <item>Dopo il deploy: `php artisan migrate`.</item>
+  </constraints>
+</spec>

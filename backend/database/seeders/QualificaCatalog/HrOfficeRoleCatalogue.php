@@ -26,7 +26,6 @@ final class HrOfficeRoleCatalogue
      */
     public const array MODULES = [
         'users',
-        'collective-agreements',
         'job-roles',
         'job-activities',
         'business-functions',

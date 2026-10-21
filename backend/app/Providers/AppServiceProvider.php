@@ -20,8 +20,6 @@ use App\Models\Attribute;
 use App\Models\AttributeLayout;
 use App\Models\BusinessFunction;
 use App\Models\Campaign;
-use App\Models\CollectiveAgreement;
-use App\Models\CollectiveAgreementLevel;
 use App\Models\CommissionAccrual;
 use App\Models\CommissionConfiguration;
 use App\Models\CommissionSettlement;
@@ -246,8 +244,6 @@ class AppServiceProvider extends ServiceProvider
             'cost_type' => CostType::class,
             'job_role' => JobRole::class,
             'job_activity' => JobActivity::class,
-            'collective_agreement' => CollectiveAgreement::class,
-            'collective_agreement_level' => CollectiveAgreementLevel::class,
             'employment_contract' => EmploymentContract::class,
             // spec 0290: contract types catalogue.
             'contract_type' => ContractType::class,

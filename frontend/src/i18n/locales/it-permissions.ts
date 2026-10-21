@@ -155,7 +155,6 @@ export const permissions = {
     'purchase-requests': 'Richieste di acquisto (RDA)',
     'purchase-orders': 'Ordini di acquisto (ODA)',
     'cost-types': 'Tipi di costo',
-    'collective-agreements': 'CCNL',
     'contract-types': 'Tipologie contrattuali',
     'job-roles': 'Mansioni',
     'job-activities': 'Attività',

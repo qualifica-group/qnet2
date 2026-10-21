@@ -1,8 +1,6 @@
 <?php
 
 use App\Enums\RelationshipTypeEnum;
-use App\Models\CollectiveAgreement;
-use App\Models\CollectiveAgreementLevel;
 use App\Models\Company;
 use App\Models\Contact;
 use App\Models\EmploymentContract;
@@ -208,20 +206,18 @@ it('0272 AC-009: a new employment block on create ignores relationship_type and 
     ]);
 });
 
-it('0272 D-2: the record exposes the condition in force with its CCNL level label', function () {
+// REQUIREMENT CHANGED (spec 0293 AC-003): the condition in force carries no CCNL level.
+it('0272 D-2: the record exposes the condition in force, without a CCNL level', function () {
     $actor = hrUserActor(['view']);
     $target = User::factory()->withEmployment()->create();
-    $agreement = CollectiveAgreement::factory()->create(['name' => 'CCNL Commercio']);
-    $level = CollectiveAgreementLevel::factory()->for($agreement, 'agreement')->create(['code' => 'Q2']);
-    EmploymentContract::factory()->for($target->employment, 'profile')->create(['starts_on' => today()->subYear()->toDateString(), 'collective_agreement_level_id' => null]);
-    EmploymentContract::factory()->for($target->employment, 'profile')->create(['starts_on' => today()->subMonth()->toDateString(), 'collective_agreement_level_id' => $level->id]);
-    EmploymentContract::factory()->for($target->employment, 'profile')->create(['starts_on' => today()->addMonth()->toDateString(), 'collective_agreement_level_id' => null]);
+    EmploymentContract::factory()->for($target->employment, 'profile')->create(['starts_on' => today()->subYear()->toDateString()]);
+    EmploymentContract::factory()->for($target->employment, 'profile')->create(['starts_on' => today()->subMonth()->toDateString()]);
+    EmploymentContract::factory()->for($target->employment, 'profile')->create(['starts_on' => today()->addMonth()->toDateString()]);
     Sanctum::actingAs($actor);
 
     $this->getJson("/api/users/{$target->id}")->assertOk()
         ->assertJsonPath('data.employment.current_contract.starts_on', today()->subMonth()->toDateString())
-        ->assertJsonPath('data.employment.current_contract.collective_agreement_level.id', $level->id)
-        ->assertJsonPath('data.employment.current_contract.collective_agreement_level.label', 'CCNL Commercio – Q2');
+        ->assertJsonMissingPath('data.employment.current_contract.collective_agreement_level');
 });
 
 it('0272 D-2: current_contract is null without any condition in force', function () {

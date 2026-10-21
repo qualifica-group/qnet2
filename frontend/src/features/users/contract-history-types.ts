@@ -26,7 +26,6 @@ export interface EmploymentContract {
   /** `Y-m-d`; informative only, it never closes the condition (spec 0291 D-4). */
   contract_expires_on: string | null
   company: { id: number; label: string } | null
-  collective_agreement_level: { id: number; label: string } | null
   /** `salary_*` travel only with `users.manageCompensation`. */
   salary_amount?: string | null
   salary_period?: SalaryPeriod | null
@@ -44,7 +43,6 @@ export interface CreateEmploymentContractPayload {
   working_time: WorkingTime | null
   contract_expires_on: string | null
   company_id: number | null
-  collective_agreement_level_id: number | null
   salary_amount?: number | null
   salary_period?: SalaryPeriod | null
   change_reason: string | null

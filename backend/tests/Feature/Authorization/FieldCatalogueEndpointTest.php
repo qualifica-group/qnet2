@@ -89,8 +89,6 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         'cost-types',
         // spec 0271 (REQUIREMENT CHANGED): the HR org structure catalogues are registered in the generic registry.
         'job-roles', 'job-activities',
-        // spec 0272 (REQUIREMENT CHANGED): collective agreements (CCNL) join the generic registry.
-        'collective-agreements',
         // spec 0247 `purchase-request-priorities` (PurchaseRequestPrioritiesAuthorization: the RDA priority lookup).
         'purchase-request-priorities',
         // spec 0248 `purchase-order-statuses` and `purchase-request-line-statuses` (presentation catalogues of the ODA and RDA line statuses).

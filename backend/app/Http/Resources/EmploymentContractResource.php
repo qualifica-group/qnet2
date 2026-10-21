@@ -8,8 +8,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * One contractual condition (spec 0272). Expects the `ends_on`/`is_current`
- * attributes set by EmploymentContractService::history() and the `company`, `contractType`
- * and `collectiveAgreementLevel.agreement` relations loaded. `salary_*` are
+ * attributes set by EmploymentContractService::history() and the `company` and
+ * `contractType` relations loaded. `salary_*` are
  * emitted only with `users.manageCompensation` (D-5): the model hides them, so
  * they appear here and nowhere else.
  *
@@ -25,7 +25,6 @@ class EmploymentContractResource extends JsonResource
     public function toArray(Request $request): array
     {
         $canSeeCompensation = (bool) $request->user()?->can(self::COMPENSATION_PERMISSION);
-        $level = $this->collectiveAgreementLevel;
 
         return [
             'id' => $this->id,
@@ -36,9 +35,6 @@ class EmploymentContractResource extends JsonResource
             'company' => $this->company === null
                 ? null
                 : ['id' => $this->company->id, 'label' => $this->company->denomination],
-            'collective_agreement_level' => $level === null
-                ? null
-                : ['id' => $level->id, 'label' => "{$level->agreement->name} – {$level->code}"],
             'contract_type' => $this->contractType === null
                 ? null
                 : ['id' => $this->contractType->id, 'name' => $this->contractType->name],

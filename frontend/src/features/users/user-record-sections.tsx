@@ -177,7 +177,6 @@ export function UserContractRecordSection({ values }: { values: UserRecordValues
   const showContract = field(CONTRACTS_FIELD).visible
   const contractType = values.current_contract?.contract_type ?? null
   const workingTime = values.current_contract?.working_time ?? null
-  const level = values.current_contract?.collective_agreement_level ?? null
 
   return (
     <RecordSection title={t('users.form.sections.contract.title')} icon={<FileSignature />}>
@@ -208,9 +207,6 @@ export function UserContractRecordSection({ values }: { values: UserRecordValues
             </RecordField>
             <RecordField label={t('users.detail.employment.contractExpiresOn')}>
               {formatDate(values.current_contract?.contract_expires_on ?? null) || <DetailEmpty />}
-            </RecordField>
-            <RecordField label={t('users.detail.employment.collectiveAgreementLevel')}>
-              {level ? level.label : <DetailEmpty />}
             </RecordField>
             <RecordField label={t('users.detail.employment.contractStartsOn')}>
               {formatDate(values.current_contract?.starts_on ?? null) || <DetailEmpty />}

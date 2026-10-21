@@ -203,8 +203,9 @@ it('checks the role matrix permissions and visible routes for every mansione', f
 
     // was: 'leaves the marketing menu with the marketing-leads group, tasks and time entries only'
     // `/dashboard` carries no permission: public to every authenticated user.
-    // `/tasks` and `/time-entries` are every role's (user directive 2026-09-24).
-    expect(visibleRoutes($marketing))->toBe(['/dashboard', '/projects', '/campaigns', '/leads', '/imports', '/pipeline-statuses', '/tasks', '/time-entries']);
+    // `/tasks` and `/time-entries` are every role's (user directive 2026-09-24),
+    // `/absences` too since spec 0292 (REQUIREMENT CHANGED).
+    expect(visibleRoutes($marketing))->toBe(['/dashboard', '/projects', '/campaigns', '/leads', '/imports', '/pipeline-statuses', '/tasks', '/time-entries', '/absences']);
 
     // was: 'shows the supervisor menu exactly the modules of its mansione'
     $supervisorRoutes = visibleRoutes($supervisor);
@@ -227,10 +228,11 @@ it('checks the role matrix permissions and visible routes for every mansione', f
     // is gated on (config/navigation/opportunities.php). The role keeps
     // `.create`, which carries no menu entry. `/enrollee-management` joined
     // with the user directive 2026-09-18 (read-only, own enrollees only);
-    // `/tasks` and `/time-entries` with the user directive 2026-09-24.
+    // `/tasks` and `/time-entries` with the user directive 2026-09-24,
+    // `/absences` with spec 0292 (REQUIREMENT CHANGED).
     $commercialRoutes = visibleRoutes(User::query()->where('email', 'biagio.fusco@qualificagroup.it')->firstOrFail());
 
-    expect($commercialRoutes)->toBe(['/dashboard', '/request-management', '/enrollee-management', '/tasks', '/time-entries']);
+    expect($commercialRoutes)->toBe(['/dashboard', '/request-management', '/enrollee-management', '/tasks', '/time-entries', '/absences']);
 });
 
 /**

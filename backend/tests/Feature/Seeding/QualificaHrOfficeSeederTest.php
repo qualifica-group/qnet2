@@ -39,7 +39,7 @@ it('0283 AC-001: grants the HR office its modules, delete included, but not impe
     $this->seed(QualificaRoleSeeder::class);
     $role = Role::findByName(HrOfficeRoleCatalogue::ROLE);
 
-    foreach (['users', 'collective-agreements', 'job-roles', 'job-activities', 'business-functions', 'absence-types'] as $resource) {
+    foreach (['users', 'job-roles', 'job-activities', 'business-functions', 'absence-types'] as $resource) {
         foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
             expect($role->hasPermissionTo("{$resource}.{$ability}"))->toBeTrue("{$resource}.{$ability}");
         }

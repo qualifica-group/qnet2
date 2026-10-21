@@ -39,7 +39,6 @@ export interface CurrentContract {
   working_time: WorkingTime | null
   /** `Y-m-d`; informative only (spec 0291 D-4). */
   contract_expires_on: string | null
-  collective_agreement_level: { id: number; label: string } | null
 }
 
 /** A `{id, name}` function reference (spec 0275 contract), unlike the `{id, label}` employment refs. */
@@ -90,7 +89,7 @@ export interface EmploymentDetail {
   /** Funzioni aziendali di appartenenza (spec 0275): same data as the function's "Utenti associati"; [] when none. */
   business_function_ids: number[]
   company_id?: number | null
-  /** The condition in force today (spec 0272 D-2): CCNL level and its start; null when the history is empty. */
+  /** The condition in force today (spec 0272 D-2) and its start; null when the history is empty. */
   current_contract?: CurrentContract | null
   /** Payment account (spec 0272 D-6): present only with `users.manageCompensation`. */
   iban?: string | null

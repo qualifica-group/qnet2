@@ -28,7 +28,7 @@ class EmploymentContractService
     public function history(EmploymentProfile $profile): Collection
     {
         $contracts = $profile->contracts()
-            ->with(['company', 'contractType', 'collectiveAgreementLevel.agreement'])
+            ->with(['company', 'contractType'])
             ->get();
 
         $today = today()->toDateString();

@@ -23,7 +23,6 @@ export function buildContractConditionSchema(t: TFunction) {
       working_time: z.enum(WORKING_TIMES).nullable(),
       contract_expires_on: z.string(),
       company_id: z.number().nullable(),
-      collective_agreement_level_id: z.number().nullable(),
       salary_amount: z.string(),
       salary_period: z.enum(SALARY_PERIODS).nullable(),
       change_reason: z.string().max(MAX_REASON_LENGTH),
@@ -63,7 +62,6 @@ export function toContractPayload(
     working_time: values.working_time,
     contract_expires_on: values.contract_expires_on || null,
     company_id: values.company_id,
-    collective_agreement_level_id: values.collective_agreement_level_id,
     ...(canManageCompensation && amount !== ''
       ? { salary_amount: Number(amount), salary_period: values.salary_period }
       : {}),

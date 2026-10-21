@@ -152,7 +152,6 @@ export const permissions = {
     'purchase-requests': 'Purchase requests (RDA)',
     'purchase-orders': 'Purchase orders (ODA)',
     'cost-types': 'Cost types',
-    'collective-agreements': 'Collective agreements',
     'contract-types': 'Contract types',
     'job-roles': 'Job roles',
     'job-activities': 'Activities',

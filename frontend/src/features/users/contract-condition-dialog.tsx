@@ -17,7 +17,6 @@ import {
   toContractPayload,
   type ContractConditionFormValues,
 } from '@/features/users/contract-history-schema'
-import { COLLECTIVE_AGREEMENT_LEVELS_FOR_SELECT_RESOURCE } from '@/features/collective-agreements/for-select-api'
 import { SALARY_PERIODS } from '@/features/users/contract-history-types'
 import { useCreateEmploymentContract } from '@/features/users/use-contract-history'
 import { RELATIONSHIP_TYPES, WORKING_TIMES, type WorkingTime } from '@/features/users/types'
@@ -32,7 +31,6 @@ const DEFAULT_VALUES: ContractConditionFormValues = {
   working_time: null,
   contract_expires_on: '',
   company_id: null,
-  collective_agreement_level_id: null,
   salary_amount: '',
   salary_period: null,
   change_reason: '',
@@ -46,7 +44,6 @@ const SERVER_ERROR_FIELDS = [
   'working_time',
   'contract_expires_on',
   'company_id',
-  'collective_agreement_level_id',
   'salary_amount',
   'salary_period',
   'change_reason',
@@ -215,20 +212,6 @@ export function ContractConditionDialog({ userId, open, onOpenChange, canManageC
               placeholder={f('companyPlaceholder')}
               emptyLabel={f('companyEmpty')}
               errorLabel={f('companyError')}
-              clearLabel={t('common.clear')}
-              retryLabel={t('common.retry')}
-            />
-            <RelationSelectField
-              control={form.control}
-              name="collective_agreement_level_id"
-              metaKey="employment_contract.collective_agreement_level_id"
-              label={f('level')}
-              resource={COLLECTIVE_AGREEMENT_LEVELS_FOR_SELECT_RESOURCE}
-              searchPlaceholder={f('levelSearch')}
-              selected={null}
-              placeholder={f('levelPlaceholder')}
-              emptyLabel={f('levelEmpty')}
-              errorLabel={f('levelError')}
               clearLabel={t('common.clear')}
               retryLabel={t('common.retry')}
             />

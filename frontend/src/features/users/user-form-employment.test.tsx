@@ -266,7 +266,7 @@ describe('UserDetailView — contractual data behind the field matrix (spec 0283
     expect(screen.getByText(i18n.t('users.form.sections.contract.title'))).toBeInTheDocument()
     expect(screen.getByText('Employee')).toBeInTheDocument()
     expect(screen.queryByText('Acme Srl')).not.toBeInTheDocument()
-    expect(screen.queryByText(i18n.t('users.detail.employment.collectiveAgreementLevel'))).not.toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('users.detail.employment.contractType'))).not.toBeInTheDocument()
     expect(screen.queryByText(i18n.t('users.form.sections.contractHistory.title'))).not.toBeInTheDocument()
   })
 })

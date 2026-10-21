@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0292-hr-absences-for-every-role" status="approved" owner="utente" date="2026-10-21">
+
+  <goal>
+    Le assenze (ferie, permessi e gli altri tipi) sono un modulo di tutti, come il Segnatempo: ogni mansione apre
+    Assenze, chiede le proprie assenze e le vede nelle Richieste e nel Calendario. Un responsabile vede anche quelle
+    delle persone che gli rispondono (anche indirettamente); vede tutto solo chi ha il permesso (ufficio del personale,
+    admin).
+  </goal>
+
+  <context>
+    <!-- Fatti verificati nel repo il 2026-10-21, dopo il commit 94d32ee2 (spec 0291). -->
+    <fact>Richiesta utente 2026-10-21: "assenze per permessi e ferie come segnatempo devono essere visibili a tutti.
+      Se uno e' responsabile vedra' le proprie assenze e quelle dei suoi sottoposti, mentre c'e' chi puo' vedere tutto
+      tramite permesso".</fact>
+    <fact>Segnatempo: `OperatorRoleCatalogue::OWN_TIME_ENTRIES` e' in `EVERY_ROLE_BLOCKS` (ogni mansione, piu' il
+      ruolo `risorse-umane`), tutto `time-entries.*` tranne `manageAll|viewAll|exportMonthly`. La vista squadra
+      (proprie + discendenti) e' automatica, "tutti" e' `viewAll`.</fact>
+    <fact>Assenze (spec 0278/0279): `AbsenceRequestVisibility` = proprie + discendenti attivi
+      (`TimeEntrySubordinateResolver`) + approvatore + `absence-requests.manageAll`. Calendario
+      `AbsenceCalendarScope`: `calendarAll` (attivi) > `calendarTeam` (attore + discendenti) > `calendarOwn`.
+      Permessi `absence-requests.viewAny|create|manageAll|calendarOwn|calendarTeam|calendarAll`. Oggi li hanno solo
+      `admin` (tutto il catalogo), `risorse-umane` (modulo intero) e super-admin: le mansioni non vedono il menu.</fact>
+    <fact>`GET /api/absence-types/for-select` e `GET /api/business-functions/for-select` non hanno gate oltre
+      `auth:sanctum`; l'allegato della richiesta passa da `/api/absence-requests/{id}/attachment` (visibilita' della
+      richiesta), non dai permessi `attachments.*`.</fact>
+
+    <decision id="D-1">"Visibili a tutti" = il modulo Assenze e' di ogni mansione (non: ognuno vede le assenze di
+      tutti). Nuovo blocco `OWN_ABSENCES` in `EVERY_ROLE_BLOCKS`: tutto `absence-requests.*` tranne `manageAll` e
+      `calendarAll`, cioe' viewAny, create, calendarOwn, calendarTeam.</decision>
+    <decision id="D-2">Responsabile: nessun permesso nuovo. Con `calendarTeam` il calendario mostra l'attore e i suoi
+      discendenti; chi non ha sottoposti vede solo se stesso (chiude la D-1 aperta della spec 0279). Le Richieste
+      restano sulla visibilita' 0278 (proprie + discendenti + approvatore).</decision>
+    <decision id="D-3">"Tutto tramite permesso" = `absence-requests.manageAll` (Richieste e saldi di tutti) e
+      `absence-requests.calendarAll` (calendario di tutti). Restano a `risorse-umane` e `admin`, assegnabili dal form
+      Ruoli. Supera la D-6 della spec 0283 ("le mansioni non ricevono i permessi del calendario").</decision>
+    <decision id="D-4">Descrizione del ruolo base: "Operatore base (Task, Segnatempo e Assenze)".</decision>
+  </context>
+
+  <scope>
+    <in>
+      <item>`OperatorRoleCatalogue`: `ABSENCE_MODULE`, `OWN_ABSENCES`, `OWN_ABSENCES_DENIED_ABILITIES`,
+        `EVERY_ROLE_BLOCKS`, descrizione del ruolo base.</item>
+      <item>`QualificaRoleSeeder::blockGrants()`: ramo `OWN_ABSENCES`.</item>
+      <item>Test: `QualificaTaskGrantsTest` (assenze di ogni mansione, rotte del ruolo base) e
+        `QualificaRoleMatrixTest` (rotte visibili: + `/absences`, REQUIREMENT CHANGED).</item>
+      <item>Manuale: guida in-app `absences` IT+EN (chi accede, chi vede cosa); manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Codice di visibilita', policy, endpoint, frontend: invariati.</item>
+      <item>Gestione Tipi di assenza (`absence-types.*`): resta a `risorse-umane`/`admin`.</item>
+      <item>Applicazione ai DB gia' installati: rieseguire `QualificaRoleSeeder` (operazione manuale).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Nessun endpoint cambia: cambiano solo i permessi seminati sui ruoli. -->
+    <endpoint method="GET" path="/api/navigation" change="modifica">
+      <response status="200">Per ogni mansione: + voce `/absences` subito dopo `/time-entries`.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dopo `QualificaRoleSeeder` ogni ruolo di `OperatorRoleCatalogue::ROLES` ha
+      `absence-requests.viewAny|create|calendarOwn|calendarTeam` e NON ha `manageAll|calendarAll`; `/absences` e'
+      tra le sue rotte visibili, dopo `/time-entries`.</criterion>
+    <criterion id="AC-002">Il ruolo base vede `/dashboard`, `/tasks`, `/time-entries`, `/absences` e nient'altro.</criterion>
+    <criterion id="AC-003">Un responsabile con ruolo base: il calendario ha scope `team` e mostra lui e i suoi
+      discendenti, non un collega fuori squadra; una persona senza sottoposti vede solo se stessa; la griglia
+      Richieste non restituisce la richiesta del collega fuori squadra.</criterion>
+    <criterion id="AC-004">`risorse-umane` mantiene `manageAll` e `calendarAll` (calendario scope `all`).</criterion>
+    <criterion id="AC-005">Manuale: guida in-app `absences` IT+EN aggiornata, parity test verde; manuale Claude Docs
+      aggiornato.</criterion>
+  </acceptance_criteria>
+</spec>

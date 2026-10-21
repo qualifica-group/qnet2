@@ -9,7 +9,6 @@ use App\Tables\ApiClientsTableDefinition;
 use App\Tables\AttributesTableDefinition;
 use App\Tables\BusinessFunctionsTableDefinition;
 use App\Tables\CampaignsTableDefinition;
-use App\Tables\CollectiveAgreementsTableDefinition;
 use App\Tables\CommissionAccrualsTableDefinition;
 use App\Tables\CommissionConfigurationsTableDefinition;
 use App\Tables\CommissionSettlementRunsTableDefinition;
@@ -127,8 +126,6 @@ return [
         // spec 0286: skills catalogue and user skills register.
         'skills' => SkillsTableDefinition::class,
         'user-skills' => UserSkillsTableDefinition::class,
-        // spec 0272: collective agreements (CCNL) with their levels.
-        'collective-agreements' => CollectiveAgreementsTableDefinition::class,
         'companies' => CompaniesTableDefinition::class,
         'commission-configurations' => CommissionConfigurationsTableDefinition::class,
         'company-sites' => CompanySitesTableDefinition::class,

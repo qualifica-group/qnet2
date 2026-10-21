@@ -60,7 +60,7 @@ function withPayment(overrides: Partial<UserDetailWithPermissions> = {}) {
       relationship_type: 'self_employed',
       company: { id: 5, label: 'Acme Srl' },
       company_id: 5,
-      current_contract: { starts_on: '2026-03-01', contract_type: { id: 2, name: 'Apprenticeship' }, working_time: 'part_time', contract_expires_on: '2026-12-31', collective_agreement_level: { id: 3, label: 'Commercio - Q1' } },
+      current_contract: { starts_on: '2026-03-01', contract_type: { id: 2, name: 'Apprenticeship' }, working_time: 'part_time', contract_expires_on: '2026-12-31' },
       iban: 'IT60X0542811101000000123456',
       iban_holder: 'Ada Lovelace',
       hourly_cost: 14.45,
@@ -87,12 +87,13 @@ beforeEach(() => {
 })
 
 describe('UserDetailView — contract condition in force (spec 0272 D-2)', () => {
-  it('shows relationship type, company, CCNL level and start as read-only rows', async () => {
+  // REQUIREMENT CHANGED (spec 0293): the CCNL level row is gone.
+  it('shows relationship type, company, contract data and start as read-only rows', async () => {
     await renderDetail(withPayment())
 
     expect(screen.getByText('Contract type')).toBeInTheDocument()
     expect(screen.getByText('Apprenticeship')).toBeInTheDocument()
-    expect(screen.getByText('Commercio - Q1')).toBeInTheDocument()
+    expect(screen.queryByText('Collective agreement and level')).not.toBeInTheDocument()
     expect(screen.getByText('01/03/2026')).toBeInTheDocument()
     expect(screen.getByText('Working time')).toBeInTheDocument()
     expect(screen.getByText('Part time')).toBeInTheDocument()
@@ -108,7 +109,7 @@ describe('UserDetailView — contract condition in force (spec 0272 D-2)', () =>
       withPayment({
         employment: employmentFixture({
           relationship_type: 'self_employed',
-          current_contract: { starts_on: '2026-03-01', contract_type: null, working_time: null, contract_expires_on: null, collective_agreement_level: null },
+          current_contract: { starts_on: '2026-03-01', contract_type: null, working_time: null, contract_expires_on: null },
         }),
       }),
     )

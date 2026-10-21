@@ -46,7 +46,6 @@ const LATEST: EmploymentContract = {
   working_time: 'part_time',
   contract_expires_on: '2026-12-31',
   company: { id: 5, label: 'Acme Srl' },
-  collective_agreement_level: { id: 3, label: 'Commercio - Q1' },
   salary_amount: '2500.00',
   salary_period: 'monthly',
   change_reason: 'Promotion',
@@ -61,7 +60,6 @@ const OLDER: EmploymentContract = {
   contract_type: null,
   working_time: null,
   contract_expires_on: null,
-  collective_agreement_level: null,
   salary_amount: undefined,
   salary_period: undefined,
   change_reason: null,
@@ -95,12 +93,12 @@ beforeEach(() => {
 })
 
 describe('UserContractHistorySection — list', () => {
-  it('lists the conditions with period, current badge, level and salary only when present', async () => {
+  // REQUIREMENT CHANGED (spec 0293): no CCNL level in the details.
+  it('lists the conditions with period, current badge and salary only when present', async () => {
     renderSection()
 
     expect(await screen.findByText(/From .* to ongoing/)).toBeInTheDocument()
     expect(screen.getByText('Current')).toBeInTheDocument()
-    expect(screen.getByText(/Commercio - Q1/)).toBeInTheDocument()
     expect(screen.getByText(/Employee · Apprenticeship · Part time · Expires 31\/12\/2026 · Acme Srl/)).toBeInTheDocument()
     expect(screen.getByText(/2500.00 \/ month/)).toBeInTheDocument()
     expect(screen.getAllByText(/Acme Srl/)).toHaveLength(2)
@@ -155,19 +153,18 @@ describe('UserContractHistorySection — new condition', () => {
       working_time: 'full_time',
       contract_expires_on: null,
       company_id: null,
-      collective_agreement_level_id: null,
       change_reason: null,
     })
   })
 
-  it('sends salary with users.manageCompensation, picks the level, and refreshes the list AND the user detail', async () => {
+  // REQUIREMENT CHANGED (spec 0293): no CCNL level to pick.
+  it('sends salary with users.manageCompensation, without a CCNL level, and refreshes the list AND the user detail', async () => {
     granted = ['users.update', 'users.manageCompensation']
     createMock.mockResolvedValue(LATEST)
     const { dialog, invalidate } = await openDialog()
 
-    expect(within(dialog).getByTestId('resource-Collective agreement and level')).toHaveTextContent('collective-agreement-levels')
+    expect(within(dialog).queryByTestId('resource-Collective agreement and level')).not.toBeInTheDocument()
     fireEvent.change(within(dialog).getByLabelText(/Start date/), { target: { value: '2026-06-01' } })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'pick-Collective agreement and level' }))
     fireEvent.click(within(dialog).getByRole('button', { name: 'pick-Contract type' }))
     await pickWorkingTime(dialog, 'Full time')
     fireEvent.change(within(dialog).getByLabelText('Salary'), { target: { value: '3000' } })
@@ -181,8 +178,8 @@ describe('UserContractHistorySection — new condition', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
+    expect(createMock.mock.calls[0][1]).not.toHaveProperty('collective_agreement_level_id')
     expect(createMock.mock.calls[0][1]).toMatchObject({
-      collective_agreement_level_id: 1,
       salary_amount: 3000,
       salary_period: 'monthly',
     })
@@ -346,7 +343,6 @@ describe('toContractPayload', () => {
     working_time: null,
     contract_expires_on: '',
     company_id: 2,
-    collective_agreement_level_id: null,
     salary_amount: '12.5',
     salary_period: 'hourly' as const,
     change_reason: '  new deal ',

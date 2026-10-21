@@ -13,6 +13,14 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'Si trova alla voce **Assenze** del menu. Qui chiedi un’assenza, segui l’esito e controlli quante ore ti restano per ogni tipo.',
         },
+        {
+          type: 'list',
+          items: [
+            'Come il Segnatempo, Assenze è aperto a **tutti gli utenti**: ognuno vede le proprie assenze.',
+            'Chi è **responsabile** vede anche le assenze delle persone che gli rispondono, anche indirettamente.',
+            'Le assenze di **tutti** le vede solo chi ha il permesso: l’ufficio del personale e gli amministratori.',
+          ],
+        },
       ],
     },
     {
@@ -206,6 +214,10 @@ const guide: HelpGuide = {
             ['Calendario: proprie e della squadra', 'Te e le persone che ti rispondono, anche indirettamente.'],
             ['Calendario: di tutti', 'Tutte le persone attive.'],
           ],
+        },
+        {
+          type: 'paragraph',
+          text: 'Ogni ruolo ha già il calendario **proprie e della squadra**: chi non ha persone che gli rispondono vede solo se stesso. Il calendario **di tutti** è dell’ufficio del personale e degli amministratori.',
         },
         {
           type: 'list',

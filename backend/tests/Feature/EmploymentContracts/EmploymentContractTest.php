@@ -1,7 +1,5 @@
 <?php
 
-use App\Models\CollectiveAgreement;
-use App\Models\CollectiveAgreementLevel;
 use App\Models\Company;
 use App\Models\ContractType;
 use App\Models\EmploymentContract;
@@ -84,20 +82,17 @@ it('0272 AC-005 the list is ordered by start desc with derived ends_on and is_cu
         ->and($response->json('data.*.is_current'))->toBe([false, true, false]);
 });
 
-it('0272 AC-005 exposes the company and the collective agreement level references', function () {
+// REQUIREMENT CHANGED (spec 0293 AC-003): the CCNL level left the contract.
+it('0272 AC-005 exposes the company reference and no CCNL level', function () {
     Sanctum::actingAs(contractsActor(['users.view']));
     $profile = contractsProfile();
     $company = Company::factory()->create();
-    $agreement = CollectiveAgreement::factory()->create(['name' => 'Commercio']);
-    $level = CollectiveAgreementLevel::factory()->create(['collective_agreement_id' => $agreement->id, 'code' => 'Q1']);
-    EmploymentContract::factory()->create([
-        'employment_profile_id' => $profile->id, 'company_id' => $company->id, 'collective_agreement_level_id' => $level->id,
-    ]);
+    EmploymentContract::factory()->create(['employment_profile_id' => $profile->id, 'company_id' => $company->id]);
 
     $this->getJson("/api/users/{$profile->user_id}/employment-contracts")
         ->assertOk()
         ->assertJsonPath('data.0.company', ['id' => $company->id, 'label' => $company->denomination])
-        ->assertJsonPath('data.0.collective_agreement_level', ['id' => $level->id, 'label' => 'Commercio – Q1']);
+        ->assertJsonMissingPath('data.0.collective_agreement_level');
 });
 
 it('0272 AC-006 a duplicated start date is 422, for the same person only', function () {
@@ -180,7 +175,6 @@ it('0272 validates the store payload', function () {
     $this->postJson($url, [])->assertStatus(422)->assertJsonValidationErrors(['starts_on', 'relationship_type']);
     $this->postJson($url, contractPayload(['relationship_type' => 'bogus']))->assertStatus(422)->assertJsonValidationErrors('relationship_type');
     $this->postJson($url, contractPayload(['company_id' => 999999]))->assertStatus(422)->assertJsonValidationErrors('company_id');
-    $this->postJson($url, contractPayload(['collective_agreement_level_id' => 999999]))->assertStatus(422)->assertJsonValidationErrors('collective_agreement_level_id');
     $this->postJson($url, contractPayload(['salary_amount' => 100]))->assertStatus(422)->assertJsonValidationErrors('salary_period');
     $this->postJson($url, contractPayload(['salary_amount' => -1, 'salary_period' => 'yearly']))->assertStatus(422)->assertJsonValidationErrors('salary_amount');
     $this->postJson($url, contractPayload(['salary_amount' => 1, 'salary_period' => 'weekly']))->assertStatus(422)->assertJsonValidationErrors('salary_period');

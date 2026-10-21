@@ -29,7 +29,7 @@ const guide: HelpGuide = {
       title: 'Com’è fatta l’interfaccia',
       blocks: [
         { type: 'paragraph', text: 'La schermata ha tre zone: il menu laterale a sinistra, l’intestazione in alto e l’area di lavoro al centro.' },
-        { type: 'paragraph', text: 'Il **menu laterale** contiene la **Dashboard** e le aree di lavoro: **Marketing e Lead**, **Opportunità e Commesse**, **Task**, **Segnatempo**, **Anagrafiche**, **Prodotti**, **Premi e Incentivi**, **Configurazione** e **Amministrazione**. Clicca il nome di un gruppo per aprirlo o chiuderlo. In fondo trovi **Impostazioni**.' },
+        { type: 'paragraph', text: 'Il **menu laterale** contiene la **Dashboard** e le aree di lavoro: **Marketing e Lead**, **Opportunità e Commesse**, **Task**, **Segnatempo**, **Assenze**, **Anagrafiche**, **Prodotti**, **Premi e Incentivi**, **Configurazione** e **Amministrazione**. Clicca il nome di un gruppo per aprirlo o chiuderlo. In fondo trovi **Impostazioni**.' },
         { type: 'list', items: ['Premi il pulsante rotondo con la freccia sul bordo del menu (**Apri/chiudi sidebar**).', 'Oppure usa **Ctrl+B** (su Mac **Cmd+B**).'] },
         { type: 'paragraph', text: 'A menu chiuso restano solo le icone; passandoci sopra col mouse compare il nome. Trascina il bordo del menu per allargarlo; un doppio clic lo riporta alla larghezza iniziale.' },
         {

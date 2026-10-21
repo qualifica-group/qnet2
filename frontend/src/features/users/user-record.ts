@@ -55,7 +55,7 @@ export interface UserRecordValues {
   reports_to: EmploymentRelationRef[]
   relationship_type: RelationshipType | null
   company: EmploymentRelationRef | null
-  /** The condition in force (spec 0272 D-2), read-only: its CCNL level and start. */
+  /** The condition in force (spec 0272 D-2), read-only, with its start. */
   current_contract: CurrentContract | null
   /** Payment account (spec 0272 D-6); null also when the actor may not see it. */
   iban: string | null

@@ -121,11 +121,11 @@ final class OperatorRoleCatalogue
     /**
      * The blocks every mansione holds on top of its own (user directive
      * 2026-09-24: "tutti gli utenti abilitati a task e segnatempo, task
-     * propri non tutti i task").
+     * propri non tutti i task"; the Assenze joined with spec 0292).
      *
      * @var array<int, string>
      */
-    public const array EVERY_ROLE_BLOCKS = [self::OWN_TASKS, self::OWN_TIME_ENTRIES];
+    public const array EVERY_ROLE_BLOCKS = [self::OWN_TASKS, self::OWN_TIME_ENTRIES, OwnAbsencesCatalogue::BLOCK];
 
     public const string REQUEST_MODULE = 'request-management';
 
@@ -187,10 +187,10 @@ final class OperatorRoleCatalogue
             'description' => 'Supervisore didattica',
             'blocks' => [self::OWN_REQUESTS, self::SITE_REQUESTS, self::ENROLLEES_READ, self::SITE_ENROLLEES],
         ],
-        // User directive 2026-09-24: the staff sees only Task and Segnatempo,
-        // i.e. EVERY_ROLE_BLOCKS and nothing of its own.
+        // User directive 2026-09-24: the staff sees only Task, Segnatempo and
+        // (spec 0292) Assenze, i.e. EVERY_ROLE_BLOCKS and nothing of its own.
         self::BASE_ROLE => [
-            'description' => 'Operatore base (Task e Segnatempo)',
+            'description' => 'Operatore base (Task, Segnatempo e Assenze)',
             'blocks' => [],
         ],
     ];

@@ -5,7 +5,6 @@ use App\Models\AgentFiscalProfile;
 use App\Models\Attribute;
 use App\Models\BusinessFunction;
 use App\Models\Campaign;
-use App\Models\CollectiveAgreement;
 use App\Models\CommissionConfiguration;
 use App\Models\CommissionSettlement;
 use App\Models\Company;
@@ -132,10 +131,6 @@ return [
         ],
         'user-skills' => [
             'model' => UserSkill::class,
-        ],
-        // spec 0272: collective agreements (CCNL).
-        'collective-agreements' => [
-            'model' => CollectiveAgreement::class,
         ],
         'campaigns' => [
             'model' => Campaign::class,

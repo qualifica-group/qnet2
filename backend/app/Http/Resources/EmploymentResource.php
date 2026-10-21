@@ -196,9 +196,9 @@ class EmploymentResource extends JsonResource
     }
 
     /**
-     * The condition in force today (spec 0272 D-2): its start, CCNL level, contract type (spec 0290), working time and expiry (spec 0291).
+     * The condition in force today (spec 0272 D-2): its start, contract type (spec 0290), working time and expiry (spec 0291).
      *
-     * @return array{starts_on: string, collective_agreement_level: array{id: int, label: string}|null, contract_type: array{id: int, name: string}|null, working_time: WorkingTimeEnum|null, contract_expires_on: string|null}|null
+     * @return array{starts_on: string, contract_type: array{id: int, name: string}|null, working_time: WorkingTimeEnum|null, contract_expires_on: string|null}|null
      */
     private function currentContract(): ?array
     {
@@ -208,14 +208,8 @@ class EmploymentResource extends JsonResource
             return null;
         }
 
-        $level = $contract->collectiveAgreementLevel;
-
         return [
             'starts_on' => $contract->starts_on->toDateString(),
-            'collective_agreement_level' => $level === null ? null : [
-                'id' => $level->id,
-                'label' => "{$level->agreement->name} – {$level->code}",
-            ],
             'contract_type' => $this->summarizeByName($contract->contractType),
             'working_time' => $contract->working_time,
             'contract_expires_on' => $contract->contract_expires_on?->toDateString(),

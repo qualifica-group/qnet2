@@ -7,6 +7,7 @@ use App\Models\User;
 use App\RequestManagement\RequestModule;
 use Database\Seeders\QualificaCatalog\HrOfficeRoleCatalogue as HrOffice;
 use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue as Catalogue;
+use Database\Seeders\QualificaCatalog\OwnAbsencesCatalogue as OwnAbsences;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Artisan;
@@ -93,7 +94,7 @@ class QualificaRoleSeeder extends Seeder
 
     /**
      * The HR modules in full but the denied abilities, the extra grants, and
-     * the Task and Segnatempo every mansione holds.
+     * the Task, Segnatempo and Assenze every mansione holds.
      *
      * @param  Collection<int, string>  $catalogue
      * @return Collection<int, string>
@@ -169,6 +170,7 @@ class QualificaRoleSeeder extends Seeder
                 || in_array($permission, Catalogue::COLLABORATION_PERMISSIONS, true),
             Catalogue::OWN_TIME_ENTRIES => $resource === Catalogue::TIME_ENTRY_MODULE
                 && ! in_array($ability, Catalogue::OWN_TIME_ENTRIES_DENIED_ABILITIES, true),
+            OwnAbsences::BLOCK => in_array($permission, OwnAbsences::PERMISSIONS, true),
         };
     }
 

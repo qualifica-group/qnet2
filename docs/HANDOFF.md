@@ -3,6 +3,47 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Rimozione del modulo CCNL (spec 0293) — VERDE, NON COMMITTATO (2026-10-21)
+
+- Decisione utente: via il modulo CCNL con dati, campi e collegamenti. Migrazione
+  `2026_10_30_100000_drop_collective_agreements`: drop di `employment_contracts.collective_agreement_level_id`
+  (FK per colonne su SQLite, per nome `employment_contracts_level_foreign` su MySQL), di
+  `collective_agreement_levels` e `collective_agreements`; cancella permessi `collective-agreements.*`,
+  `role_field_permissions`, `user_table_preferences`, `user_table_filters`, `table_filter_views` del dominio e
+  l'activity log dei due morph. `down` ricrea solo la struttura vuota. Dopo il deploy: `php artisan migrate`.
+- Backend eliminato: model, controller, request, resource, DTO, service, policy, authorization, table definition,
+  factory, rotte, lang, `CollectiveAgreementCatalogue`. Tolti: morph map, config authorization/tables/activity-log/
+  navigation, `HrOfficeRoleCatalogue::MODULES`, livello da request/resource/model/service delle condizioni e da
+  `EmploymentResource::currentContract()`. `QualificaHrCatalogSeeder` non crea più il CCNL e non assegna livelli
+  (`ensureCondition()` crea solo la prima condizione); `OrgChartRoster` senza `level`.
+- Restano di proposito (D-5): "Rinnovo CCNL 2026" nei dati demo del controllo di gestione e la descrizione della
+  mansione di compliance. Le migrazioni di creazione restano (già committate).
+- Frontend eliminato: `features/collective-agreements`, pagina, rotta, breadcrumb, i18n, permessi, menu, guida
+  in-app (`HELP_GUIDE_KEYS` 95). Scheda utente e dialog "Nuova condizione" senza "CCNL e livello".
+- Test: `CollectiveAgreementsRemovalTest` (AC-001/002), test CCNL adattati (REQUIREMENT CHANGED). Manuale:
+  guida `users` IT+EN e manuale Claude Docs (ruolo Risorse Umane) aggiornati.
+
+## Assenze aperte a ogni mansione (spec 0292) — VERDE, NON COMMITTATO (2026-10-21)
+
+- Richiesta utente: assenze "come segnatempo visibili a tutti"; il responsabile vede proprie + sottoposti, "tutto"
+  solo con permesso. Spec `docs/specs/0292-hr-absences-for-every-role.xml` (D-1..D-4, AC-001..005 verdi).
+- Solo seed: nuovo blocco `QualificaCatalog/OwnAbsencesCatalogue` (`BLOCK` + allow-list `PERMISSIONS` =
+  `absence-requests.viewAny|create|calendarOwn|calendarTeam`) in `OperatorRoleCatalogue::EVERY_ROLE_BLOCKS` (file a
+  parte: il catalogo era a 494 righe), ramo in `QualificaRoleSeeder::blockGrants()`. `manageAll`/`calendarAll`
+  restano a `risorse-umane`/`admin`. Ruolo base: "Operatore base (Task, Segnatempo e Assenze)". Visibilita'
+  (`AbsenceRequestVisibility`, `AbsenceCalendarScope`), endpoint e FE invariati.
+- Supera 0283 D-6 (le mansioni non ricevevano il calendario) e chiude 0279 D-1 (senza squadra = solo se stesso).
+- Produzione: `QualificaProductionDataSeeder` -> Operator/Staff seeder -> `QualificaRoleSeeder`; su DB gia'
+  installato rieseguire `php artisan db:seed --class=QualificaRoleSeeder`.
+- Test: nuovo `tests/Feature/Users/QualificaAbsenceGrantsTest.php` (3); REQUIREMENT CHANGED rotte visibili
+  (+ `/absences`) in `QualificaTaskGrantsTest`, `QualificaRoleMatrixTest`. Users 268, Seeding 183, Absences 7,
+  AbsenceCalendar 15, AbsenceRequests 66, AbsenceBalances 10, AbsenceTypes 7, Authorization 109, TimeEntries 136
+  verdi; Pint pulito; Vitest help+absences 203/203, ESLint, `tsc -b --force` 0.
+- Manuale: guide in-app `absences` (overview + calendario) e `general` (Assenze nel menu) IT/EN; Claude Docs
+  (Assenze: chi vede cosa, calendario). PDF derivato da rigenerare.
+- NB: in parallelo un'altra sessione lavora sulla spec 0293 (rimozione CCNL) e tocca `HrOfficeRoleCatalogue`,
+  `QualificaRoleSeeder` e i test HR: committare le due modifiche separatamente.
+
 ## Assenze: copia delle notifiche all'ufficio del personale — VERDE (2026-10-21)
 
 - Spec 0278 D-14: ogni passaggio di una richiesta (invio, approvazione, rifiuto, annullamento, approvazione
@@ -95,7 +136,7 @@
   (con il `.env` locale restano le 7 note).
 - Da fare in ambiente: rilanciare `users` (crea il segnaposto), poi `work-orders` e `tasks` (riprendono le fallite).
 - Task (spec 0289 D-8, richiesta utente): `LegacyTaskPeople` sostituisce l'utente cancellato in ogni ruolo (creatore,
-  richiedente, assegnatari, osservatori) prima di unire/togliere doppioni; 56 task coinvolti. Test qnet-2
+  richiedente, assegnatari, osservatori) prima di unire/togliere doppioni; 52 task (scansione completa: 0 id cancellati rimasti). Test qnet-2
   `TasksSourceImportTest` "AC-005 imports a task whose deleted legacy users...". Migration 464/464.
 - Manuale: nessun impatto.
 
