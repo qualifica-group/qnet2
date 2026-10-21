@@ -49,3 +49,16 @@ describe('userColumnRenderers.employment_status', () => {
     expect(screen.getByText('—')).toBeInTheDocument()
   })
 })
+
+/** Spec 0291 AC-009: the grid's contract expiry arrives as an ISO datetime, like `hired_at`, and reads as a date. */
+describe('userColumnRenderers.contract_expires_on', () => {
+  it('formats the ISO value as a date', () => {
+    renderCell('contract_expires_on', '2027-03-01T00:00:00.000000Z')
+    expect(screen.getByText('01/03/2027')).toBeInTheDocument()
+  })
+
+  it('renders an em dash when there is no expiry', () => {
+    renderCell('contract_expires_on', null)
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
+})

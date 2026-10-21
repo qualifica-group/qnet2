@@ -60,7 +60,7 @@ function withPayment(overrides: Partial<UserDetailWithPermissions> = {}) {
       relationship_type: 'self_employed',
       company: { id: 5, label: 'Acme Srl' },
       company_id: 5,
-      current_contract: { starts_on: '2026-03-01', contract_type: { id: 2, name: 'Apprenticeship' }, collective_agreement_level: { id: 3, label: 'Commercio - Q1' } },
+      current_contract: { starts_on: '2026-03-01', contract_type: { id: 2, name: 'Apprenticeship' }, working_time: 'part_time', contract_expires_on: '2026-12-31', collective_agreement_level: { id: 3, label: 'Commercio - Q1' } },
       iban: 'IT60X0542811101000000123456',
       iban_holder: 'Ada Lovelace',
       hourly_cost: 14.45,
@@ -94,6 +94,10 @@ describe('UserDetailView — contract condition in force (spec 0272 D-2)', () =>
     expect(screen.getByText('Apprenticeship')).toBeInTheDocument()
     expect(screen.getByText('Commercio - Q1')).toBeInTheDocument()
     expect(screen.getByText('01/03/2026')).toBeInTheDocument()
+    expect(screen.getByText('Working time')).toBeInTheDocument()
+    expect(screen.getByText('Part time')).toBeInTheDocument()
+    expect(screen.getByText('Contract expiry')).toBeInTheDocument()
+    expect(screen.getByText('31/12/2026')).toBeInTheDocument()
     expect(screen.getByText('Acme Srl')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit Relationship type' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit Company' })).not.toBeInTheDocument()
@@ -104,12 +108,14 @@ describe('UserDetailView — contract condition in force (spec 0272 D-2)', () =>
       withPayment({
         employment: employmentFixture({
           relationship_type: 'self_employed',
-          current_contract: { starts_on: '2026-03-01', contract_type: null, collective_agreement_level: null },
+          current_contract: { starts_on: '2026-03-01', contract_type: null, working_time: null, contract_expires_on: null, collective_agreement_level: null },
         }),
       }),
     )
     expect(screen.getByText('Contract type')).toBeInTheDocument()
     expect(screen.queryByText('Apprenticeship')).not.toBeInTheDocument()
+    expect(screen.getByText('Working time')).toBeInTheDocument()
+    expect(screen.queryByText('Part time')).not.toBeInTheDocument()
   })
 
   it('hides the contract type row when employment.contracts is hidden', async () => {
@@ -117,6 +123,9 @@ describe('UserDetailView — contract condition in force (spec 0272 D-2)', () =>
 
     expect(screen.queryByText('Contract type')).not.toBeInTheDocument()
     expect(screen.queryByText('Apprenticeship')).not.toBeInTheDocument()
+    expect(screen.queryByText('Working time')).not.toBeInTheDocument()
+    expect(screen.queryByText('Contract expiry')).not.toBeInTheDocument()
+    expect(screen.queryByText('Part time')).not.toBeInTheDocument()
   })
 
   it('explains under the termination date that the person is deactivated', async () => {

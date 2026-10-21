@@ -12,6 +12,8 @@ use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
 
+// REQUIREMENT CHANGED (spec 0291 D-3): an employee condition now needs a working time, so the
+// employee payloads below carry `working_time`; the contract type rules are unchanged.
 beforeEach(fn () => Carbon::setTestNow('2026-10-16 10:00:00'));
 afterEach(fn () => Carbon::setTestNow());
 
@@ -64,7 +66,7 @@ it('0290 AC-006 the condition returns its contract type on creation and in the l
     $url = contractTypeUrl($profile);
 
     $this->postJson($url, ['starts_on' => '2025-01-01', 'relationship_type' => 'self_employed'])->assertCreated();
-    $this->postJson($url, ['starts_on' => '2026-01-01', 'relationship_type' => 'employee', 'contract_type_id' => $type->id])
+    $this->postJson($url, ['starts_on' => '2026-01-01', 'relationship_type' => 'employee', 'contract_type_id' => $type->id, 'working_time' => 'full_time'])
         ->assertCreated()
         ->assertJsonPath('data.contract_type', ['id' => $type->id, 'name' => 'Apprendistato']);
 
@@ -78,7 +80,7 @@ it('0290 AC-007 a past start copies the type on the profile and the user record'
     $profile = contractTypeProfile();
     $type = ContractType::factory()->create(['name' => 'Tirocinio']);
 
-    $this->postJson(contractTypeUrl($profile), ['starts_on' => '2026-01-01', 'relationship_type' => 'employee', 'contract_type_id' => $type->id])
+    $this->postJson(contractTypeUrl($profile), ['starts_on' => '2026-01-01', 'relationship_type' => 'employee', 'contract_type_id' => $type->id, 'working_time' => 'full_time'])
         ->assertCreated();
 
     expect($profile->fresh()->contract_type_id)->toBe($type->id);
@@ -94,8 +96,8 @@ it('0290 AC-007 a future start leaves the copy untouched until the daily sync re
     $new = ContractType::factory()->create();
     $url = contractTypeUrl($profile);
 
-    $this->postJson($url, ['starts_on' => '2026-01-01', 'relationship_type' => 'employee', 'contract_type_id' => $old->id])->assertCreated();
-    $this->postJson($url, ['starts_on' => '2026-12-01', 'relationship_type' => 'employee', 'contract_type_id' => $new->id])->assertCreated();
+    $this->postJson($url, ['starts_on' => '2026-01-01', 'relationship_type' => 'employee', 'contract_type_id' => $old->id, 'working_time' => 'full_time'])->assertCreated();
+    $this->postJson($url, ['starts_on' => '2026-12-01', 'relationship_type' => 'employee', 'contract_type_id' => $new->id, 'working_time' => 'full_time'])->assertCreated();
 
     expect($profile->fresh()->contract_type_id)->toBe($old->id);
 
@@ -114,8 +116,8 @@ it('0290 AC-007 deleting the latest condition restores the previous type, then n
     $second = ContractType::factory()->create();
     $url = contractTypeUrl($profile);
 
-    $firstId = $this->postJson($url, ['starts_on' => '2025-01-01', 'relationship_type' => 'employee', 'contract_type_id' => $first->id])->json('data.id');
-    $secondId = $this->postJson($url, ['starts_on' => '2026-01-01', 'relationship_type' => 'employee', 'contract_type_id' => $second->id])->json('data.id');
+    $firstId = $this->postJson($url, ['starts_on' => '2025-01-01', 'relationship_type' => 'employee', 'contract_type_id' => $first->id, 'working_time' => 'full_time'])->json('data.id');
+    $secondId = $this->postJson($url, ['starts_on' => '2026-01-01', 'relationship_type' => 'employee', 'contract_type_id' => $second->id, 'working_time' => 'full_time'])->json('data.id');
     expect($profile->fresh()->contract_type_id)->toBe($second->id);
 
     $this->deleteJson("{$url}/{$secondId}")->assertNoContent();

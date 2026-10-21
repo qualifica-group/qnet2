@@ -44,7 +44,7 @@ function contractsProfile(): EmploymentProfile
 function contractPayload(array $overrides = []): array
 {
     // Spec 0290 D-3: an employee condition needs an active contract type.
-    return array_merge(['starts_on' => '2026-01-01', 'relationship_type' => 'employee', 'contract_type_id' => ContractType::factory()->create()->id], $overrides);
+    return array_merge(['starts_on' => '2026-01-01', 'relationship_type' => 'employee', 'working_time' => 'full_time', 'contract_type_id' => ContractType::factory()->create()->id], $overrides);
 }
 
 beforeEach(fn () => Carbon::setTestNow('2026-10-16 10:00:00'));

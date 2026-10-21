@@ -7,7 +7,8 @@ use Illuminate\Database\Seeder;
 
 /**
  * The client's contract type catalogue (spec 0290 D-2). Idempotent on `name`;
- * any other type is left untouched.
+ * any other type is left untouched. The internship is a relationship type,
+ * not a contract type, so it is no longer seeded (spec 0291 D-2).
  */
 class QualificaContractTypeSeeder extends Seeder
 {
@@ -18,7 +19,6 @@ class QualificaContractTypeSeeder extends Seeder
         ['name' => 'Tempo determinato', 'sort_order' => 1],
         ['name' => 'Tempo indeterminato', 'sort_order' => 2],
         ['name' => 'Apprendistato', 'sort_order' => 3],
-        ['name' => 'Tirocinio', 'sort_order' => 4],
     ];
 
     public function run(): void

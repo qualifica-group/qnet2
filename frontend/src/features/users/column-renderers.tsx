@@ -107,5 +107,6 @@ export const userColumnRenderers: TableRendererMap = {
   reports_to: (params) => <UserStackCell {...params} />,
   hired_at: (params) => <DateCell {...params} />,
   terminated_at: (params) => <DateCell {...params} />,
+  contract_expires_on: (params) => <DateCell {...params} />,
   employment_status: (params) => <EmploymentStatusCell {...params} />,
 }

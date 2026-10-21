@@ -3,6 +3,7 @@
 namespace App\Tables\Users;
 
 use App\Enums\RelationshipTypeEnum;
+use App\Enums\WorkingTimeEnum;
 use App\Models\EmploymentProfile;
 use App\Models\User;
 use App\Services\Table\FilterApplier;
@@ -14,9 +15,9 @@ use Illuminate\Support\Facades\DB;
 /**
  * The employment-derived grid columns on the `users` table (spec 0015):
  * company and contract_type (related NAME; the contract type is the current
- * one copied on the profile, spec 0290), relationship_type (enum), employment_status
+ * one copied on the profile, spec 0290), relationship_type and working_time (enums, spec 0291), employment_status
  * (employed/terminated, spec 0272, UserEmploymentStatusColumn),
- * hired_at/terminated_at (dates), business_function
+ * hired_at/terminated_at/contract_expires_on (dates; the last is the current condition's expiry, spec 0291), business_function
  * (AGGREGATED over the membership pivot, delegated to
  * UserBusinessFunctionColumn), managed_business_functions (the functions the
  * person manages, spec 0276, UserManagedBusinessFunctionsColumn), operational_site (formatted address line,
@@ -57,9 +58,9 @@ class UserEmploymentColumns
         'contract_type' => ['table' => 'contract_types', 'nameColumn' => 'name', 'relation' => 'employment.contractType', 'fk' => 'contract_type_id'],
     ];
 
-    private const array ENUM_COLUMNS = ['relationship_type'];
+    private const array ENUM_COLUMNS = ['relationship_type', 'working_time'];
 
-    private const array DATE_COLUMNS = ['hired_at', 'terminated_at'];
+    private const array DATE_COLUMNS = ['hired_at', 'terminated_at', 'contract_expires_on'];
 
     public function __construct(
         private readonly FilterApplier $filterApplier,
@@ -99,6 +100,8 @@ class UserEmploymentColumns
             'contract_type' => $employment?->contractType?->name,
             'operational_site' => $this->operationalSiteColumn->label($employment),
             'relationship_type' => $employment?->relationship_type?->value,
+            'working_time' => $employment?->working_time?->value,
+            'contract_expires_on' => $employment?->contract_expires_on,
             'employment_status' => $this->statusColumn->label($employment),
             'managed_business_functions' => $this->managedFunctionsColumn->label($user),
             'reports_to' => $this->reportsToColumn->managers($employment),
@@ -295,8 +298,8 @@ class UserEmploymentColumns
     /**
      * Excel-like distinct values (spec 0004/0005) for the columns that have
      * one (business_function/managed_business_functions/reports_to/job_roles
-     * [aggregated], company/contract_type/relationship_type/employment_status). `operational_site`/
-     * `hired_at`/`terminated_at` declare `hasFilterValues:false`
+     * [aggregated], company/contract_type/relationship_type/working_time/employment_status). `operational_site`/
+     * `hired_at`/`terminated_at`/`contract_expires_on` declare `hasFilterValues:false`
      * (UserColumnCatalog), so TableService never calls this method for them.
      *
      * @param  Builder<User>  $query
@@ -326,6 +329,10 @@ class UserEmploymentColumns
 
         if ($columnId === 'relationship_type') {
             return $this->distinctEnumValues(RelationshipTypeEnum::values(), $search, $limit);
+        }
+
+        if ($columnId === 'working_time') {
+            return $this->distinctEnumValues(WorkingTimeEnum::values(), $search, $limit);
         }
 
         if ($columnId === 'employment_status') {

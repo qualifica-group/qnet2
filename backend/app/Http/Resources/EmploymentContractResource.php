@@ -42,6 +42,8 @@ class EmploymentContractResource extends JsonResource
             'contract_type' => $this->contractType === null
                 ? null
                 : ['id' => $this->contractType->id, 'name' => $this->contractType->name],
+            'working_time' => $this->working_time,
+            'contract_expires_on' => $this->contract_expires_on?->toDateString(),
             $this->mergeWhen($canSeeCompensation, fn (): array => [
                 'salary_amount' => $this->salary_amount,
                 'salary_period' => $this->salary_period,

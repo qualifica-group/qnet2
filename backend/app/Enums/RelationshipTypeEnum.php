@@ -23,6 +23,9 @@ enum RelationshipTypeEnum: string
     #[Label('Self-employed')]
     case SelfEmployed = 'self_employed';
 
+    #[Label('Intern')]
+    case Intern = 'intern';
+
     #[Label('Other')]
     case Other = 'other';
 

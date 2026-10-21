@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\DB;
  * Append-only history of a person's contractual conditions (spec 0272 D-1).
  *
  * The condition in force (latest `starts_on` not after today) is mirrored on
- * `employment_profiles.relationship_type`/`company_id`/`contract_type_id` (D-2, spec 0290 D-4): this service and
+ * `employment_profiles.relationship_type`/`company_id`/`contract_type_id`/`working_time`/`contract_expires_on`
+ * (D-2, spec 0290 D-4, spec 0291 D-5): this service and
  * the daily job (`employment:daily-sync`) are the ONLY writers of that copy.
  */
 class EmploymentContractService
@@ -93,6 +94,8 @@ class EmploymentContractService
             'relationship_type' => $current?->relationship_type,
             'company_id' => $current?->company_id,
             'contract_type_id' => $current?->contract_type_id,
+            'working_time' => $current?->working_time,
+            'contract_expires_on' => $current?->contract_expires_on,
         ]);
     }
 

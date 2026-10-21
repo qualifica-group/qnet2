@@ -114,7 +114,13 @@ export const enums = {
   relationship_type: {
     employee: 'Employee',
     self_employed: 'Self-employed',
+    intern: 'Intern',
     other: 'Other',
+  },
+  // Working time of a contract condition (spec 0291).
+  working_time: {
+    full_time: 'Full time',
+    part_time: 'Part time',
   },
   employment_status: {
     employed: 'Employed',

@@ -3,7 +3,7 @@ import type { HelpGuide } from '../../types'
 const guide: HelpGuide = {
   key: 'contract-types',
   title: 'Tipologie contrattuali',
-  summary: 'L’elenco delle tipologie contrattuali che si scelgono nelle condizioni dello storico contrattuale (tempo determinato, tempo indeterminato, apprendistato, tirocinio...).',
+  summary: 'L’elenco delle tipologie contrattuali che si scelgono nelle condizioni dello storico contrattuale (tempo determinato, tempo indeterminato, apprendistato...).',
   sections: [
     {
       id: 'overview',
@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'L’elenco parte con **Tempo determinato**, **Tempo indeterminato**, **Apprendistato** e **Tirocinio**; puoi aggiungerne altre.',
+          text: 'L’elenco parte con **Tempo determinato**, **Tempo indeterminato** e **Apprendistato**; puoi aggiungerne altre. Il tirocinio non è una tipologia ma un **Tipo di rapporto** (Tirocinante): se nell’elenco c’è ancora **Tirocinio**, eliminala o disattivala.',
         },
       ],
     },

@@ -4,6 +4,7 @@ namespace App\Tables\Users;
 
 use App\Enums\LocaleEnum;
 use App\Enums\RelationshipTypeEnum;
+use App\Enums\WorkingTimeEnum;
 
 /**
  * Declarative column/filter/action catalogue for the `users` domain.
@@ -249,6 +250,26 @@ final class UserColumnCatalog
                 'filterType' => 'set',
             ],
             [
+                'id' => 'working_time',
+                'label' => 'users.columns.working_time',
+                'type' => 'enum',
+                'visible' => false,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
+                'options' => WorkingTimeEnum::values(),
+            ],
+            [
+                'id' => 'contract_expires_on',
+                'label' => 'users.columns.contract_expires_on',
+                'type' => 'date',
+                'visible' => false,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'date',
+                'hasFilterValues' => false,
+            ],
+            [
                 'id' => 'employment_status',
                 'label' => 'users.columns.employment_status',
                 'type' => 'enum',
@@ -337,6 +358,8 @@ final class UserColumnCatalog
             ['columnId' => 'operational_site', 'type' => 'text'],
             ['columnId' => 'relationship_type', 'type' => 'set', 'options' => RelationshipTypeEnum::values()],
             ['columnId' => 'contract_type', 'type' => 'set'],
+            ['columnId' => 'working_time', 'type' => 'set', 'options' => WorkingTimeEnum::values()],
+            ['columnId' => 'contract_expires_on', 'type' => 'date'],
             ['columnId' => 'employment_status', 'type' => 'set', 'options' => UserEmploymentStatusColumn::VALUES],
             ['columnId' => 'managed_business_functions', 'type' => 'set'],
             ['columnId' => 'reports_to', 'type' => 'set'],

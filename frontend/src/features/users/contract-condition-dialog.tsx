@@ -20,12 +20,17 @@ import {
 import { COLLECTIVE_AGREEMENT_LEVELS_FOR_SELECT_RESOURCE } from '@/features/collective-agreements/for-select-api'
 import { SALARY_PERIODS } from '@/features/users/contract-history-types'
 import { useCreateEmploymentContract } from '@/features/users/use-contract-history'
-import { RELATIONSHIP_TYPES } from '@/features/users/types'
+import { RELATIONSHIP_TYPES, WORKING_TIMES, type WorkingTime } from '@/features/users/types'
+
+/** Select value standing for "no working time": Radix items cannot carry an empty string. */
+const NO_WORKING_TIME = 'none'
 
 const DEFAULT_VALUES: ContractConditionFormValues = {
   starts_on: '',
   relationship_type: 'employee',
   contract_type_id: null,
+  working_time: null,
+  contract_expires_on: '',
   company_id: null,
   collective_agreement_level_id: null,
   salary_amount: '',
@@ -38,6 +43,8 @@ const SERVER_ERROR_FIELDS = [
   'starts_on',
   'relationship_type',
   'contract_type_id',
+  'working_time',
+  'contract_expires_on',
   'company_id',
   'collective_agreement_level_id',
   'salary_amount',
@@ -154,6 +161,49 @@ export function ContractConditionDialog({ userId, open, onOpenChange, canManageC
               retryLabel={t('common.retry')}
               required={relationshipType === 'employee'}
             />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="working_time"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel required={relationshipType === 'employee'}>{f('workingTime')}</FormLabel>
+                    <Select
+                      value={field.value ?? NO_WORKING_TIME}
+                      onValueChange={(value) => field.onChange(value === NO_WORKING_TIME ? null : (value as WorkingTime))}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder={f('workingTimePlaceholder')} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={NO_WORKING_TIME}>{f('workingTimeNone')}</SelectItem>
+                        {WORKING_TIMES.map((time) => (
+                          <SelectItem key={time} value={time}>
+                            {t(`enums.working_time.${time}`)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="contract_expires_on"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{f('contractExpiresOn')}</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <RelationSelectField
               control={form.control}
               name="company_id"

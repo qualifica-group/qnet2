@@ -98,7 +98,7 @@ it('exposes the 9 employment columns with english ids, sortable/filterable, and 
     expect($columns['relationship_type']['enumKey'])->toBe('relationship_type')
         ->and($columns['employment_status']['enumKey'])->toBe('employment_status')
         ->and($columns['employment_status']['options'])->toBe(['employed', 'terminated'])
-        ->and($columns['relationship_type']['options'])->toBe(['employee', 'self_employed', 'other'])
+        ->and($columns['relationship_type']['options'])->toBe(['employee', 'self_employed', 'intern', 'other']) // REQUIREMENT CHANGED (spec 0291 D-1)
         ->and($columns['operational_site']['hasFilterValues'])->toBeFalse()
         ->and($columns['hired_at']['hasFilterValues'])->toBeFalse();
 });
@@ -384,5 +384,5 @@ it('values: relationship_type distinct values are the enum catalogue', function 
 
     // The catalogue, preceded by the blank entry ("(Vuoti)") for the users
     // carrying no employment profile.
-    expect($response->json('data.values'))->toBe([null, 'employee', 'self_employed', 'other']);
+    expect($response->json('data.values'))->toBe([null, 'employee', 'self_employed', 'intern', 'other']); // REQUIREMENT CHANGED (spec 0291 D-1)
 });

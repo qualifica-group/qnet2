@@ -113,7 +113,13 @@ export const enums = {
   relationship_type: {
     employee: 'Dipendente',
     self_employed: 'Partita IVA',
+    intern: 'Tirocinante',
     other: 'Altro',
+  },
+  // Working time of a contract condition (spec 0291).
+  working_time: {
+    full_time: 'Full time',
+    part_time: 'Part time',
   },
   employment_status: {
     employed: 'In forza',

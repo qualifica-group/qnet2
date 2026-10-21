@@ -55,7 +55,7 @@ use Illuminate\Database\Seeder;
  *                                    of row, same reasoning.
  *      QualificaContractTypeSeeder — the contract type catalogue (Tempo
  *                                    determinato, Tempo indeterminato,
- *                                    Apprendistato, Tirocinio, spec 0290).
+ *                                    Apprendistato, spec 0290/0291).
  *                                    Same kind of row, same reasoning.
  *   4. TestUsersSeeder             — the named super-admin account.
  *      WorkOrderPaymentStatusSeeder — the legacy payment statuses of a

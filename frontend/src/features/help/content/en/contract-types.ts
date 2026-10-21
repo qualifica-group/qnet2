@@ -3,7 +3,7 @@ import type { HelpGuide } from '../../types'
 const guide: HelpGuide = {
   key: 'contract-types',
   title: 'Contract types',
-  summary: 'The list of contract types chosen in the conditions of the contract history (fixed-term, permanent, apprenticeship, internship...).',
+  summary: 'The list of contract types chosen in the conditions of the contract history (fixed-term, permanent, apprenticeship...).',
   sections: [
     {
       id: 'overview',
@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'The list starts with **Tempo determinato** (fixed-term), **Tempo indeterminato** (permanent), **Apprendistato** (apprenticeship) and **Tirocinio** (internship); you can add more.',
+          text: 'The list starts with **Tempo determinato** (fixed-term), **Tempo indeterminato** (permanent) and **Apprendistato** (apprenticeship); you can add more. An internship is not a contract type but a **Relationship type** (Intern): if **Tirocinio** is still in the list, delete or deactivate it.',
         },
       ],
     },

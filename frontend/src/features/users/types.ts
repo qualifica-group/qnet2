@@ -25,13 +25,20 @@ export interface UserRole {
 }
 
 /** Employment relationship with the organization (spec 0015). */
-export const RELATIONSHIP_TYPES = ['employee', 'self_employed', 'other'] as const
+export const RELATIONSHIP_TYPES = ['employee', 'self_employed', 'intern', 'other'] as const
 export type RelationshipType = (typeof RELATIONSHIP_TYPES)[number]
+
+/** Working time of a contract condition (spec 0291 D-3). */
+export const WORKING_TIMES = ['full_time', 'part_time'] as const
+export type WorkingTime = (typeof WORKING_TIMES)[number]
 
 /** The condition in force, as summarised on the employment profile (spec 0272). */
 export interface CurrentContract {
   starts_on: string
   contract_type: NamedRef | null
+  working_time: WorkingTime | null
+  /** `Y-m-d`; informative only (spec 0291 D-4). */
+  contract_expires_on: string | null
   collective_agreement_level: { id: number; label: string } | null
 }
 

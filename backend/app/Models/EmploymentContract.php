@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\RelationshipTypeEnum;
 use App\Enums\SalaryPeriodEnum;
+use App\Enums\WorkingTimeEnum;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\EmploymentContractFactory;
@@ -25,6 +26,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'starts_on',
     'relationship_type',
     'contract_type_id',
+    'working_time',
+    'contract_expires_on',
     'company_id',
     'collective_agreement_level_id',
     'salary_amount',
@@ -47,6 +50,8 @@ class EmploymentContract extends BaseModel
         return [
             'starts_on' => 'date:Y-m-d',
             'relationship_type' => RelationshipTypeEnum::class,
+            'working_time' => WorkingTimeEnum::class,
+            'contract_expires_on' => 'date:Y-m-d',
             'salary_amount' => 'decimal:2',
             'salary_period' => SalaryPeriodEnum::class,
         ];

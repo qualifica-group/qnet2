@@ -1,4 +1,4 @@
-import type { RelationshipType } from '@/features/users/types'
+import type { RelationshipType, WorkingTime } from '@/features/users/types'
 
 /** Salary periodicity of a contract condition (spec 0272 D-4). */
 export const SALARY_PERIODS = ['monthly', 'yearly', 'hourly'] as const
@@ -22,6 +22,9 @@ export interface EmploymentContract {
   is_current: boolean
   relationship_type: RelationshipType | null
   contract_type: { id: number; name: string } | null
+  working_time: WorkingTime | null
+  /** `Y-m-d`; informative only, it never closes the condition (spec 0291 D-4). */
+  contract_expires_on: string | null
   company: { id: number; label: string } | null
   collective_agreement_level: { id: number; label: string } | null
   /** `salary_*` travel only with `users.manageCompensation`. */
@@ -37,6 +40,9 @@ export interface CreateEmploymentContractPayload {
   relationship_type: RelationshipType
   /** Required by the server when the relationship is `employee` (spec 0290 D-3). */
   contract_type_id: number | null
+  /** Required by the server when the relationship is `employee` (spec 0291 D-3). */
+  working_time: WorkingTime | null
+  contract_expires_on: string | null
   company_id: number | null
   collective_agreement_level_id: number | null
   salary_amount?: number | null

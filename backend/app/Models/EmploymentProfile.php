@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\RelationshipTypeEnum;
+use App\Enums\WorkingTimeEnum;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\EmploymentProfileFactory;
@@ -34,6 +35,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'is_assignable',
     'relationship_type',
     'contract_type_id',
+    'working_time',
+    'contract_expires_on',
     'company_id',
     'iban',
     'iban_holder',
@@ -65,6 +68,8 @@ class EmploymentProfile extends BaseModel
             'covers_all_product_categories' => 'boolean',
             'is_assignable' => 'boolean',
             'relationship_type' => RelationshipTypeEnum::class,
+            'working_time' => WorkingTimeEnum::class,
+            'contract_expires_on' => 'date:Y-m-d',
             'iban' => 'encrypted',
             'hired_at' => 'date:Y-m-d',
             'terminated_at' => 'date:Y-m-d',

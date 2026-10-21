@@ -43,6 +43,8 @@ const LATEST: EmploymentContract = {
   is_current: true,
   relationship_type: 'employee',
   contract_type: { id: 2, name: 'Apprenticeship' },
+  working_time: 'part_time',
+  contract_expires_on: '2026-12-31',
   company: { id: 5, label: 'Acme Srl' },
   collective_agreement_level: { id: 3, label: 'Commercio - Q1' },
   salary_amount: '2500.00',
@@ -57,6 +59,8 @@ const OLDER: EmploymentContract = {
   ends_on: '2026-02-28',
   is_current: false,
   contract_type: null,
+  working_time: null,
+  contract_expires_on: null,
   collective_agreement_level: null,
   salary_amount: undefined,
   salary_period: undefined,
@@ -97,7 +101,7 @@ describe('UserContractHistorySection — list', () => {
     expect(await screen.findByText(/From .* to ongoing/)).toBeInTheDocument()
     expect(screen.getByText('Current')).toBeInTheDocument()
     expect(screen.getByText(/Commercio - Q1/)).toBeInTheDocument()
-    expect(screen.getByText(/Employee · Apprenticeship · Acme Srl/)).toBeInTheDocument()
+    expect(screen.getByText(/Employee · Apprenticeship · Part time · Expires 31\/12\/2026 · Acme Srl/)).toBeInTheDocument()
     expect(screen.getByText(/2500.00 \/ month/)).toBeInTheDocument()
     expect(screen.getAllByText(/Acme Srl/)).toHaveLength(2)
     expect(screen.getByText('Reason: Promotion')).toBeInTheDocument()
@@ -119,6 +123,11 @@ describe('UserContractHistorySection — list', () => {
   })
 })
 
+async function pickWorkingTime(dialog: HTMLElement, option: string) {
+  fireEvent.click(within(dialog).getByRole('combobox', { name: /Working time/ }))
+  fireEvent.click(await screen.findByRole('option', { name: option }))
+}
+
 describe('UserContractHistorySection — new condition', () => {
   async function openDialog() {
     const invalidate = renderSection()
@@ -135,6 +144,7 @@ describe('UserContractHistorySection — new condition', () => {
     expect(within(dialog).queryByLabelText('Salary')).not.toBeInTheDocument()
     fireEvent.change(within(dialog).getByLabelText(/Start date/), { target: { value: '2026-06-01' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'pick-Contract type' }))
+    await pickWorkingTime(dialog, 'Full time')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
@@ -142,6 +152,8 @@ describe('UserContractHistorySection — new condition', () => {
       starts_on: '2026-06-01',
       relationship_type: 'employee',
       contract_type_id: 1,
+      working_time: 'full_time',
+      contract_expires_on: null,
       company_id: null,
       collective_agreement_level_id: null,
       change_reason: null,
@@ -157,6 +169,7 @@ describe('UserContractHistorySection — new condition', () => {
     fireEvent.change(within(dialog).getByLabelText(/Start date/), { target: { value: '2026-06-01' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'pick-Collective agreement and level' }))
     fireEvent.click(within(dialog).getByRole('button', { name: 'pick-Contract type' }))
+    await pickWorkingTime(dialog, 'Full time')
     fireEvent.change(within(dialog).getByLabelText('Salary'), { target: { value: '3000' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
 
@@ -187,6 +200,7 @@ describe('UserContractHistorySection — new condition', () => {
 
     fireEvent.change(within(dialog).getByLabelText(/Start date/), { target: { value: '2026-03-01' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'pick-Contract type' }))
+    await pickWorkingTime(dialog, 'Full time')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
 
     expect(await within(dialog).findByText('This start date is already used.')).toBeInTheDocument()
@@ -212,6 +226,62 @@ describe('UserContractHistorySection — new condition', () => {
     expect(createMock.mock.calls[0][1]).toMatchObject({ relationship_type: 'self_employed', contract_type_id: null })
   })
 
+  it('offers the four relationship types and blocks an Employee without working time (spec 0291 AC-008)', async () => {
+    granted = ['users.update']
+    createMock.mockResolvedValue(LATEST)
+    const { dialog } = await openDialog()
+
+    fireEvent.click(within(dialog).getByRole('combobox', { name: /Relationship type/ }))
+    expect((await screen.findAllByRole('option')).map((option) => option.textContent)).toEqual(['Employee', 'Self-employed', 'Intern', 'Other'])
+    fireEvent.click(screen.getByRole('option', { name: 'Employee' }))
+
+    fireEvent.change(within(dialog).getByLabelText(/Start date/), { target: { value: '2026-06-01' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'pick-Contract type' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+    expect(await within(dialog).findByText('Select the working time.')).toBeInTheDocument()
+    expect(createMock).not.toHaveBeenCalled()
+  })
+
+  it('lets an Intern go without contract type and working time, and blocks an expiry before the start', async () => {
+    granted = ['users.update']
+    createMock.mockResolvedValue(LATEST)
+    const { dialog } = await openDialog()
+
+    fireEvent.click(within(dialog).getByRole('combobox', { name: /Relationship type/ }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Intern' }))
+    fireEvent.change(within(dialog).getByLabelText(/Start date/), { target: { value: '2026-06-01' } })
+    fireEvent.change(within(dialog).getByLabelText('Contract expiry'), { target: { value: '2026-05-31' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+    expect(await within(dialog).findByText('The expiry cannot be before the start date.')).toBeInTheDocument()
+    expect(createMock).not.toHaveBeenCalled()
+
+    fireEvent.change(within(dialog).getByLabelText('Contract expiry'), { target: { value: '2026-12-31' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
+    expect(createMock.mock.calls[0][1]).toMatchObject({
+      relationship_type: 'intern',
+      contract_type_id: null,
+      working_time: null,
+      contract_expires_on: '2026-12-31',
+    })
+  })
+
+  it('shows a working time 422 under the field', async () => {
+    granted = ['users.update']
+    createMock.mockRejectedValue(failure(422, { working_time: ['The working time is required.'] }))
+    const { dialog } = await openDialog()
+
+    fireEvent.change(within(dialog).getByLabelText(/Start date/), { target: { value: '2026-06-01' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'pick-Contract type' }))
+    await pickWorkingTime(dialog, 'Part time')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+    expect(await within(dialog).findByText('The working time is required.')).toBeInTheDocument()
+  })
+
   it('shows a contract type 422 under the field', async () => {
     granted = ['users.update']
     createMock.mockRejectedValue(failure(422, { contract_type_id: ['The contract type is required.'] }))
@@ -219,6 +289,7 @@ describe('UserContractHistorySection — new condition', () => {
 
     fireEvent.change(within(dialog).getByLabelText(/Start date/), { target: { value: '2026-06-01' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'pick-Contract type' }))
+    await pickWorkingTime(dialog, 'Full time')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
 
     expect(await within(dialog).findByText('The contract type is required.')).toBeInTheDocument()
@@ -231,6 +302,7 @@ describe('UserContractHistorySection — new condition', () => {
 
     fireEvent.change(within(dialog).getByLabelText(/Start date/), { target: { value: '2026-06-01' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'pick-Contract type' }))
+    await pickWorkingTime(dialog, 'Full time')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(toastError).toHaveBeenCalledWith('You do not have permission for this action.'))
@@ -271,6 +343,8 @@ describe('toContractPayload', () => {
     starts_on: '2026-06-01',
     relationship_type: 'self_employed' as const,
     contract_type_id: 4,
+    working_time: null,
+    contract_expires_on: '',
     company_id: 2,
     collective_agreement_level_id: null,
     salary_amount: '12.5',

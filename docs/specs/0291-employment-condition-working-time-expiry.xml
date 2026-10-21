@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0291-employment-condition-working-time-expiry" status="approved" owner="utente" date="2026-10-21">
+
+  <goal>
+    Il tipo di rapporto offre Dipendente, Partita IVA, Tirocinante e Altro; ogni condizione dello storico contrattuale
+    indica anche l'orario (Full time / Part time) e, se c'e', la scadenza contrattuale. Orario e scadenza vigenti
+    compaiono nel Rapporto contrattuale della scheda e come colonne filtrabili della griglia Utenti, accanto a tipo di
+    rapporto e tipologia contrattuale.
+  </goal>
+
+  <context>
+    <!-- Fatti verificati nel repo il 2026-10-21, dopo il commit adcce78f (spec 0290). -->
+    <fact>`App\Enums\RelationshipTypeEnum`: employee (default), self_employed, other. Label IT in
+      `frontend/src/i18n/locales/it-enums.ts` `relationship_type`: Dipendente, Partita IVA, Altro (gia' "Partita IVA").
+      FE `RELATIONSHIP_TYPES` in `features/users/types.ts` (usato da schema e dialog). Backend: cast su
+      `EmploymentContract`/`EmploymentProfile`, `Rule::enum` in `StoreEmploymentContractRequest`, opzioni della colonna
+      set in `UserColumnCatalog` (`RelationshipTypeEnum::values()`), import legacy `MapsExternalUserRecord`
+      (`tryFrom`, invariato).</fact>
+    <fact>Storico (spec 0272/0290): `employment_contracts` (starts_on, relationship_type, contract_type_id,
+      company_id, collective_agreement_level_id, salary_*, change_reason). `ends_on` NON e' una colonna: e' derivato
+      in `EmploymentContractService::history()` (giorno prima della condizione successiva). La condizione vigente e'
+      copiata su `employment_profiles` (relationship_type, company_id, contract_type_id) SOLO da `syncCurrent()`.</fact>
+    <fact>Griglia Utenti: `UserEmploymentColumns` (388 righe) con `ENUM_COLUMNS` (`relationship_type`) e `DATE_COLUMNS`
+      (`hired_at`, `terminated_at`) che usano l'id colonna come colonna di `employment_profiles`; `UserColumnCatalog`
+      (391 righe) con l'ordine delle colonne (relationship_type, contract_type, employment_status, ...);
+      `UserSensitiveColumns::FIELD_BY_COLUMN` lega `contract_type` a `employment.contracts`.</fact>
+    <fact>Scheda: `UserContractRecordSection` ("Rapporto contrattuale", sola lettura da `current_contract`) mostra
+      tipo di rapporto, societa', tipologia contrattuale, CCNL/livello, decorrenza. `EmploymentResource::currentContract()`
+      emette `current_contract` gated da `employment.contracts`.</fact>
+    <fact>`QualificaContractTypeSeeder`: Tempo determinato, Tempo indeterminato, Apprendistato, Tirocinio (1-4),
+      updateOrCreate sul nome. La guida in-app `contract-types` IT/EN elenca i quattro valori.</fact>
+    <fact>Ultima migrazione: `2026_10_28_100100_add_contract_type_id_to_employment_tables.php`. Test di rollback a
+      step fisso: PurchaseOrderMigrationTest (74), QuoteWorkflowMigrationTest (225), SupplierCommissionDirectionTest (89).</fact>
+
+    <decision id="D-1">Tipo di rapporto (utente 2026-10-21): Dipendente, Partita IVA, Tirocinante, Altro, in
+      quest'ordine. Nuovo case `RelationshipTypeEnum::Intern = 'intern'` tra SelfEmployed e Other (label IT
+      "Tirocinante", EN "Intern"). Nessun valore esistente cambia.</decision>
+    <decision id="D-2">Tirocinio (utente): il tirocinio e' solo un tipo di rapporto. `QualificaContractTypeSeeder` non
+      crea piu' "Tirocinio" (restano 3 tipologie, ordine 1-3). Il seeder non cancella nulla: dove "Tirocinio" e' gia'
+      stato caricato si elimina o disattiva dalla pagina Tipologie contrattuali. La tipologia resta obbligatoria solo
+      per Dipendente (invariato da 0290 D-3), quindi facoltativa per Tirocinante.</decision>
+    <decision id="D-3">Orario (utente): nuova colonna `working_time` (enum `WorkingTimeEnum`: full_time "Full time",
+      part_time "Part time") su `employment_contracts` e copia su `employment_profiles`. Obbligatoria quando
+      relationship_type = employee, facoltativa per gli altri. Nessuna percentuale o ore di part time. Le condizioni
+      esistenti restano senza orario (nullable, nessun backfill).</decision>
+    <decision id="D-4">Scadenza contrattuale (utente): nuova colonna `contract_expires_on` (date, nullable) su
+      `employment_contracts` e copia su `employment_profiles`. Facoltativa per ogni tipo di rapporto; se presente deve
+      essere uguale o successiva a `starts_on`. Solo informativa: non chiude la condizione, non cessa l'utente, nessun
+      avviso. Stesso nome su entrambe le tabelle per non confonderla con il `ends_on` derivato.</decision>
+    <decision id="D-5">Copia e griglia (utente): `syncCurrent()` copia anche `working_time` e `contract_expires_on`.
+      Colonne `working_time` (set enum, enumKey `working_time`) e `contract_expires_on` (date, solo condizioni come
+      `hired_at`) nella griglia Utenti e nell'export, nascoste di default, legate a `employment.contracts` in
+      `UserSensitiveColumns`. Non scrivibili da `PUT /api/users`.</decision>
+    <decision id="D-6">"Stessa sezione" (utente: "spostale anche nella stessa sezione"), interpretazione approvata
+      dall'utente il 2026-10-21: orario e scadenza stanno insieme a tipo di rapporto e tipologia contrattuale, cioe' (a) nella
+      griglia subito dopo `contract_type` (ordine: relationship_type, contract_type, working_time, contract_expires_on);
+      (b) nella scheda nella sezione "Rapporto contrattuale", dopo "Tipologia contrattuale"; (c) nel dialog "Nuova
+      condizione" accanto alla tipologia. Le date di assunzione e cessazione restano dove sono.</decision>
+    <decision id="D-7">Permessi di campo: orario e scadenza fanno parte della condizione e seguono
+      `employment.contracts` (nessun nuovo campo).</decision>
+  </context>
+
+  <scope>
+    <in>
+      <item>Enum: case `Intern` in `RelationshipTypeEnum`; nuovo `WorkingTimeEnum` (HasMeta, Label).</item>
+      <item>Migrazione `2026_10_29_100000_add_working_time_and_expiry_to_employment_tables`: `working_time` string
+        nullable e `contract_expires_on` date nullable su `employment_contracts` (dopo contract_type_id) e
+        `employment_profiles`. Reversibile. Test di rollback a step fisso +1 (REQUIREMENT CHANGED).</item>
+      <item>Model (fillable, cast enum/date), `StoreEmploymentContractRequest` (D-3, D-4), `syncCurrent()` (D-5),
+        `EmploymentContractResource` e `EmploymentResource::currentContract()`.</item>
+      <item>Seeder D-2 e relativo test (REQUIREMENT CHANGED).</item>
+      <item>Griglia: colonne D-5 in `UserEmploymentColumns`, `UserColumnCatalog`, `UserSensitiveColumns`.</item>
+      <item>FE: `RELATIONSHIP_TYPES` + label `intern`; `WORKING_TIMES` e label enum `working_time`; tipi, schema
+        (orario obbligatorio se Dipendente, scadenza >= decorrenza), dialog, riga dello storico, Rapporto
+        contrattuale, label colonne `users.columns.working_time`/`contract_expires_on`; IT+EN.</item>
+      <item>Manuale: guide in-app `users` e `contract-types` IT+EN; manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Percentuale o ore del part time; legame con `standard_daily_minutes`.</item>
+      <item>Effetti automatici della scadenza (chiusura condizione, cessazione, notifiche, avvisi di rinnovo);
+        scadenza obbligatoria per il tempo determinato.</item>
+      <item>Cancellazione automatica di "Tirocinio" dai DB in cui e' gia' stato caricato; conversione di condizioni
+        esistenti in Tirocinante.</item>
+      <item>Import dal legacy di orario/scadenza/tirocinante; modifiche al QNet legacy.</item>
+      <item>Modifica di una condizione esistente (resta append-only).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope { success, message, data }. -->
+    <endpoint method="GET|POST" path="/api/users/{user}/employment-contracts" change="modifica">
+      <request>POST: relationship_type: + "intern"; + working_time: "full_time"|"part_time"|null —
+        required_if relationship_type = employee; + contract_expires_on: "Y-m-d"|null — date, after_or_equal:starts_on.</request>
+      <response status="200|201">ogni condizione: + working_time: string|null, + contract_expires_on: "Y-m-d"|null.</response>
+      <errors>422 su `working_time` (mancante con employee o valore non ammesso), su `contract_expires_on` (non data o
+        prima della decorrenza), su `relationship_type` con valore non ammesso.</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST|PUT|PATCH" path="/api/users[/{user}]" change="modifica">
+      <request>Invariata: `employment.working_time`/`employment.contract_expires_on` non accettati (ignorati).</request>
+      <response status="200|201">employment.current_contract: + working_time: string|null, + contract_expires_on:
+        "Y-m-d"|null (stesso gate `employment.contracts`). relationship_type puo' valere "intern".</response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tables/users" change="modifica">
+      <response status="200">relationship_type: opzioni + "intern". + colonna `working_time` (set: full_time,
+        part_time + blank, enumKey working_time) e `contract_expires_on` (date, condizioni), ordinabili e filtrabili,
+        subito dopo `contract_type`; assenti da colonne, filtri, righe ed export senza `employment.contracts`.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">POST condizione con relationship_type "intern" senza tipologia, orario e scadenza = 201 e
+      `relationship_type: "intern"`; con un valore non ammesso = 422.</criterion>
+    <criterion id="AC-002">POST condizione employee senza working_time = 422 su `working_time`; con working_time
+      "part_time" = 201 e lo restituisce; self_employed senza orario = 201; working_time "half" = 422.</criterion>
+    <criterion id="AC-003">contract_expires_on prima di starts_on = 422; uguale o successiva = 201 e restituita come
+      "Y-m-d"; assente = null.</criterion>
+    <criterion id="AC-004">Condizione vigente: `employment_profiles.working_time`/`contract_expires_on` e
+      `current_contract.working_time`/`contract_expires_on` della scheda la riflettono; decorrenza futura: la copia
+      cambia solo con `employment:daily-sync` alla data; cancellando l'ultima la copia torna alla precedente (o null).
+      `PUT /api/users` con quei campi non modifica la copia.</criterion>
+    <criterion id="AC-005">`QualificaContractTypeSeeder` crea 3 tipologie (Tempo determinato, Tempo indeterminato,
+      Apprendistato, ordine 1-3) e non crea "Tirocinio"; un "Tirocinio" gia' presente non viene toccato.</criterion>
+    <criterion id="AC-006">Griglia: `working_time` mostra il valore vigente, filtro set per valore e blank, ordinamento;
+      `contract_expires_on` filtro data e ordinamento; le due colonne seguono `contract_type` nel catalogo colonne;
+      il filtro di relationship_type accetta "intern"; un attore con `employment.contracts` nascosto non vede le due
+      colonne ne' i valori nelle righe.</criterion>
+    <criterion id="AC-007">Migrazione: up aggiunge le colonne, rollback le rimuove senza errori (test a step fisso
+      aggiornati); provata anche su MySQL locale.</criterion>
+    <criterion id="AC-008">FE dialog "Nuova condizione": il tipo di rapporto offre Dipendente, Partita IVA,
+      Tirocinante, Altro; select Orario (Full time / Part time) e data Scadenza contrattuale accanto alla tipologia;
+      con Dipendente e orario vuoto l'invio e' bloccato; scadenza prima della decorrenza bloccata; il payload contiene
+      `working_time` e `contract_expires_on` (Vitest).</criterion>
+    <criterion id="AC-009">FE: la riga dello storico mostra orario e scadenza nei dettagli; il Rapporto contrattuale
+      mostra "Orario" e "Scadenza contrattuale" dopo "Tipologia contrattuale" (vuoti se assenti), solo con
+      `employment.contracts` visibile; le colonne della griglia hanno label IT/EN (Vitest).</criterion>
+    <criterion id="AC-010">Manuale: guide in-app `users` (tipo di rapporto, orario, scadenza, colonne) e
+      `contract-types` (tre valori iniziali) IT+EN aggiornate, parity test verde; manuale Claude Docs aggiornato.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Identificatori in inglese; testi UI IT+EN via i18n.</item>
+    <item>`syncCurrent()` resta l'unico scrittore della copia sul profilo.</item>
+    <item>`UserEmploymentColumns` e `UserColumnCatalog` restano sotto 500 righe (aggiunte minime: ENUM_COLUMNS,
+      DATE_COLUMNS, due voci di catalogo e filtro).</item>
+    <item>Test eseguiti: Pest mirati + `composer test`, Vitest, `npx tsc -b --force`, Pint, ESLint.</item>
+  </constraints>
+
+</spec>

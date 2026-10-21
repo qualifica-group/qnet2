@@ -176,6 +176,7 @@ export function UserContractRecordSection({ values }: { values: UserRecordValues
   const { field } = useResourcePermissions()
   const showContract = field(CONTRACTS_FIELD).visible
   const contractType = values.current_contract?.contract_type ?? null
+  const workingTime = values.current_contract?.working_time ?? null
   const level = values.current_contract?.collective_agreement_level ?? null
 
   return (
@@ -201,6 +202,12 @@ export function UserContractRecordSection({ values }: { values: UserRecordValues
           <>
             <RecordField label={t('users.detail.employment.contractType')}>
               {contractType ? contractType.name : <DetailEmpty />}
+            </RecordField>
+            <RecordField label={t('users.detail.employment.workingTime')}>
+              {workingTime ? t(`enums.working_time.${workingTime}`) : <DetailEmpty />}
+            </RecordField>
+            <RecordField label={t('users.detail.employment.contractExpiresOn')}>
+              {formatDate(values.current_contract?.contract_expires_on ?? null) || <DetailEmpty />}
             </RecordField>
             <RecordField label={t('users.detail.employment.collectiveAgreementLevel')}>
               {level ? level.label : <DetailEmpty />}

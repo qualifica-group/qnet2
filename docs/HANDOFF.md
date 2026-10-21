@@ -14,7 +14,32 @@
 - Test: `QualificaECampusCatalogueTest` (nuovo caso backfill), `QualificaSelfFundedCatalogueTest` (conteggio IVA
   esclude Corsi E-Campus, REQUIREMENT CHANGED). `tests/Feature/Products` 252 verdi.
 
-## Tipologia contrattuale sugli utenti (spec 0290) — VERDE, NON COMMITTATO (2026-10-21)
+## Tirocinante, orario e scadenza contrattuale nello storico (spec 0291) — VERDE, NON COMMITTATO (2026-10-21)
+
+- Spec `docs/specs/0291-employment-condition-working-time-expiry.xml` (approved, AC-001..010 verdi).
+- `RelationshipTypeEnum::Intern = 'intern'` (Dipendente, Partita IVA, Tirocinante, Altro). Nuovo `WorkingTimeEnum`
+  (full_time, part_time). Migrazione `2026_10_29_100000_add_working_time_and_expiry_to_employment_tables`:
+  `working_time` e `contract_expires_on` (date) su `employment_contracts` e copia su `employment_profiles`.
+  Stesso nome su entrambe: `contract_expires_on` NON e' il `ends_on` derivato della history.
+- Regole: `working_time` required_if employee + Rule::enum; `contract_expires_on` date_format:Y-m-d,
+  after_or_equal:starts_on, facoltativa e solo informativa (non chiude, non cessa, nessun avviso). Copia solo da
+  `syncCurrent()`; `PUT users` la ignora. Nessun backfill.
+- `QualificaContractTypeSeeder`: 3 tipologie (Tirocinio tolta: il tirocinio e' il tipo di rapporto). Non cancella:
+  dove "Tirocinio" e' gia' caricato va eliminato o disattivato a mano.
+- Griglia: colonne `working_time` (set enum, enumKey `working_time`) e `contract_expires_on` (date, `DateCell` in
+  `features/users/column-renderers.tsx`) subito dopo `contract_type`, legate a `employment.contracts`.
+- FE: `RELATIONSHIP_TYPES` con `intern`, `WORKING_TIMES`; dialog (Orario + Scadenza accanto alla tipologia),
+  storico, Rapporto contrattuale; i18n IT+EN. Guide `users`/`contract-types` IT+EN e manuale Claude Docs (rev 331).
+- Test REQUIREMENT CHANGED: rollback step fisso +1 (PurchaseOrderMigration 75, QuoteWorkflowMigration 226,
+  SupplierCommissionDirection 90), ContractTypeSeederTest (3 valori), payload employee con working_time in
+  EmploymentContractTest/EmploymentContractTypeTest, TablePreferencesTest, UserEmploymentColumnsTest (intern),
+  fixture FE di user-contract-history/user-payment-and-contract.
+- Verifica: composer test 12087 ok (rossi solo Migration da `.env` LINK_ONLY e QuoteDocumentPdfTest), Vitest 8971
+  + renderer, tsc -b, ESLint, Pint puliti; migrate/rollback/migrate su MySQL locale ok.
+- Da fare in ambiente: `php artisan migrate`; eliminare/disattivare "Tirocinio" se gia' seminato.
+- Segnalati, non fatti: `contract-condition-dialog.tsx` 302 righe (soglia soft 300).
+
+## Tipologia contrattuale sugli utenti (spec 0290) — COMMITTATO adcce78f (2026-10-21)
 
 - Spec `docs/specs/0290-user-contract-type.xml` (approved, AC-001..014 verdi; AC-009 rev.2: i valori del filtro
   sono i nomi in uso nelle righe visibili + blank, come Società, non l'intero catalogo).

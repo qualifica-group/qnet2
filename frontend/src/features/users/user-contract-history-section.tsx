@@ -41,6 +41,10 @@ function ContractRow({
   const details = [
     contract.relationship_type ? t(`enums.relationship_type.${contract.relationship_type}`) : null,
     contract.contract_type?.name ?? null,
+    contract.working_time ? t(`enums.working_time.${contract.working_time}`) : null,
+    contract.contract_expires_on
+      ? t('users.detail.employment.contractHistory.expiresOn', { date: formatDate(contract.contract_expires_on) })
+      : null,
     contract.company?.label ?? null,
     contract.collective_agreement_level?.label ?? null,
     hasSalary ? `${contract.salary_amount} / ${t(`users.detail.employment.contractHistory.periods.${contract.salary_period}`)}` : null,

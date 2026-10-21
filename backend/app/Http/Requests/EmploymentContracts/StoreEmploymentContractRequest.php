@@ -5,6 +5,7 @@ namespace App\Http\Requests\EmploymentContracts;
 use App\Authorization\UsersAuthorization;
 use App\Enums\RelationshipTypeEnum;
 use App\Enums\SalaryPeriodEnum;
+use App\Enums\WorkingTimeEnum;
 use App\Models\ContractType;
 use App\Models\EmploymentContract;
 use App\Models\User;
@@ -15,7 +16,8 @@ use Illuminate\Validation\Rule;
 
 /**
  * Validates POST /api/users/{user}/employment-contracts (spec 0272 D-1/D-4/D-5;
- * spec 0290 D-3: the contract type is required for employees, active only).
+ * spec 0290 D-3: the contract type is required for employees, active only;
+ * spec 0291 D-3/D-4: working time required for employees, optional expiry not before the start).
  * Authorization: `users.update` on the target user and the
  * `employment.contracts` field editable in the actor's matrix (spec 0283), and
  * compensation fields (`salary_*`) additionally need `users.manageCompensation`
@@ -64,6 +66,12 @@ class StoreEmploymentContractRequest extends FormRequest
                 'integer',
                 Rule::exists(ContractType::class, 'id')->where('is_active', true),
             ],
+            'working_time' => [
+                'nullable',
+                'required_if:relationship_type,'.RelationshipTypeEnum::Employee->value,
+                Rule::enum(WorkingTimeEnum::class),
+            ],
+            'contract_expires_on' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:starts_on'],
             'company_id' => ['nullable', 'integer', 'exists:companies,id'],
             'collective_agreement_level_id' => ['nullable', 'integer', 'exists:collective_agreement_levels,id'],
             'salary_amount' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],

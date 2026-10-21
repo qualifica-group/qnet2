@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
-import { RELATIONSHIP_TYPES, type RelationshipType } from '@/features/users/types'
+import { RELATIONSHIP_TYPES, WORKING_TIMES, type RelationshipType } from '@/features/users/types'
 import { SALARY_PERIODS, type CreateEmploymentContractPayload } from '@/features/users/contract-history-types'
 
 /** Relationship type that makes the contract type mandatory (spec 0290 D-3). */
@@ -20,6 +20,8 @@ export function buildContractConditionSchema(t: TFunction) {
       starts_on: z.string().min(1, t('users.detail.employment.contractHistory.form.startsOnRequired')),
       relationship_type: z.enum(RELATIONSHIP_TYPES),
       contract_type_id: z.number().nullable(),
+      working_time: z.enum(WORKING_TIMES).nullable(),
+      contract_expires_on: z.string(),
       company_id: z.number().nullable(),
       collective_agreement_level_id: z.number().nullable(),
       salary_amount: z.string(),
@@ -29,6 +31,12 @@ export function buildContractConditionSchema(t: TFunction) {
     .superRefine((values, ctx) => {
       if (values.relationship_type === EMPLOYEE_RELATIONSHIP && values.contract_type_id === null) {
         ctx.addIssue({ code: 'custom', path: ['contract_type_id'], message: t('users.detail.employment.contractHistory.form.contractTypeRequired') })
+      }
+      if (values.relationship_type === EMPLOYEE_RELATIONSHIP && values.working_time === null) {
+        ctx.addIssue({ code: 'custom', path: ['working_time'], message: t('users.detail.employment.contractHistory.form.workingTimeRequired') })
+      }
+      if (values.contract_expires_on !== '' && values.starts_on !== '' && values.contract_expires_on < values.starts_on) {
+        ctx.addIssue({ code: 'custom', path: ['contract_expires_on'], message: t('users.detail.employment.contractHistory.form.contractExpiresOnBeforeStart') })
       }
       const amount = values.salary_amount.trim()
       if (amount !== '' && !(Number(amount) >= 0)) {
@@ -52,6 +60,8 @@ export function toContractPayload(
     starts_on: values.starts_on,
     relationship_type: values.relationship_type,
     contract_type_id: values.contract_type_id,
+    working_time: values.working_time,
+    contract_expires_on: values.contract_expires_on || null,
     company_id: values.company_id,
     collective_agreement_level_id: values.collective_agreement_level_id,
     ...(canManageCompensation && amount !== ''
