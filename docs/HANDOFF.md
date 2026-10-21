@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Richieste proforma Ente = provvigione fornitore (spec 0288) — VERDE, NON COMMITTATO (2026-10-21)
+## Richieste proforma Ente = provvigione fornitore (spec 0288) — VERDE, COMMITTATO 3debb288 (2026-10-21)
 
 - Spec `docs/specs/0288-institution-proforma-supplier-commission.xml` (D-1..D-7, AC-001..AC-013). Supera 0194 D-2
   e, per le sole richieste Ente, 0267 D-6.
@@ -32,7 +32,7 @@
   composer (`@no_additional_args`), usare `php -d memory_limit=1G vendor/bin/pest --parallel "--passthru-php=-d memory_limit=1G"`.
 - Manuale Claude Docs: accesso negato -> da aggiornare a mano le sezioni "Richieste proforma" (Ente = provvigione,
   raggruppamento per fornitore/societa') e "Fatture attive" (righe disponibili filtrate, colonna Provvigione).
-- Prossimo: commit su richiesta dell'utente.
+- Prossimo: aggiornare a mano il manuale Claude Docs (sezioni sopra).
 
 ## UI HR ALLINEATA (spec 0287) — VERDE, COMMITTATO (2026-10-20)
 
