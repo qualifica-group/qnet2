@@ -11,7 +11,7 @@ use App\Enums\LayoutSectionVariant;
  * attestations bought from a certifying body, one product per body and
  * service) and "SOA - Consulenza" (the yearly consultancy). Pure data, read by
  * QualificaCatalogSeeder (tree and offer fields), QualificaQuoteLayoutSeeder
- * (offer form), QualificaSoaWorkOrderSeeder (Commessa fields and form),
+ * (offer form), QualificaBranchWorkOrderSeeder (Commessa fields and form),
  * CatalogProducts and BranchProducts (products, suppliers, typologies and "Mesi scadenza"),
  * CatalogRootRules and QualificaBusinessFunctionLinkSeeder.
  *

@@ -52,6 +52,8 @@ const QUOTE_LAYOUT_OWN_CATEGORIES = [
     'Gare - Giornale Telematico', 'Gare - Mepa', 'Gare - Progetto Tecnico', 'Gare - WHITE LIST',
     // REQUIREMENT CHANGED: the GDPR and Finanza Agevolata roots, their own form (user directives 2026-10-20).
     'GDPR', 'Finanza Agevolata',
+    // REQUIREMENT CHANGED: the ISO root, its own form with the norm-group blocks (user directive 2026-10-21).
+    'ISO',
 ];
 
 /**

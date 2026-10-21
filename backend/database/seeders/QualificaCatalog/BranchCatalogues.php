@@ -5,9 +5,10 @@ namespace Database\Seeders\QualificaCatalog;
 /**
  * The catalogue branches that come with their own product list, each a root
  * of its own whose subcategories are all classification targets: "SOA"
- * (user directive 2026-10-15, its Commessa set in QualificaSoaWorkOrderSeeder),
+ * (user directive 2026-10-15, its Commessa set in QualificaBranchWorkOrderSeeder),
  * "Sicurezza" (2026-10-15), "Gare", "GDPR", "Finanza Agevolata" and
- * "Istruzione" (2026-10-20), "Accreditamenti" (2026-10-20). Split out of
+ * "Istruzione" (2026-10-20), "Accreditamenti" (2026-10-20), "ISO" (2026-10-21,
+ * its Commessa set in QualificaBranchWorkOrderSeeder too). Split out of
  * QualificaCatalogSeeder (which reached its size limit, engineering.md §6):
  * the seeder reads the tree and the targets from here, in this order, which
  * is the order the roots are created in.
@@ -30,6 +31,7 @@ final class BranchCatalogues
         SubsidisedFinanceCatalogue::ROOT => SubsidisedFinanceCatalogue::SUBCATEGORIES,
         EducationCatalogue::ROOT => EducationCatalogue::SUBCATEGORIES,
         AccreditationCatalogue::ROOT => AccreditationCatalogue::SUBCATEGORIES,
+        IsoCatalogue::ROOT => IsoCatalogue::SUBCATEGORIES,
     ];
 
     /**
@@ -45,5 +47,6 @@ final class BranchCatalogues
         ...SubsidisedFinanceCatalogue::TARGET_CATEGORIES,
         ...EducationCatalogue::TARGET_CATEGORIES,
         ...AccreditationCatalogue::TARGET_CATEGORIES,
+        ...IsoCatalogue::TARGET_CATEGORIES,
     ];
 }

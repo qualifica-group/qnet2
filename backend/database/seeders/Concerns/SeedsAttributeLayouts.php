@@ -49,15 +49,18 @@ trait SeedsAttributeLayouts
      * variant, two columns, every item half wide. With it: the section's own
      * variant, columns and description, and items widened to FILL their row
      * (a field alone on its row spans it whole). Opt-in, so the blobs already
-     * seeded compose exactly as before.
+     * seeded compose exactly as before. The style's `visible_when` names the
+     * yes/no attribute that opens the section (spec 0288).
      *
      * @param  list<list<string>>  $rows  attribute codes, one inner list per rendered row
-     * @param  array{variant: LayoutSectionVariant, columns: int, description: string}|null  $style
+     * @param  array{variant: LayoutSectionVariant, columns: int, description: string, visible_when?: string}|null  $style
      * @return array<string, mixed>
      */
     protected function layoutSection(string $id, string $title, array $rows, int $sortOrder, ?array $style = null): array
     {
-        return [
+        $condition = isset($style['visible_when']) ? ['visible_when' => ['attribute_code' => $style['visible_when']]] : [];
+
+        return $condition + [
             'id' => $id,
             'title' => $title,
             'description' => $style['description'] ?? null,

@@ -16,6 +16,7 @@ use Database\Seeders\QualificaCatalog\ContactProcessingAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\CourseDataAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ECampusAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\GdprCatalogue;
+use Database\Seeders\QualificaCatalog\IsoCatalogue;
 use Database\Seeders\QualificaCatalog\SafetyCatalogue;
 use Database\Seeders\QualificaCatalog\SoaCatalogue;
 use Database\Seeders\QualificaCatalog\SubsidisedFinanceCatalogue;
@@ -82,10 +83,10 @@ class QualificaQuoteLayoutSeeder extends Seeder
      * Category name => the form composed for it INSTEAD of SECTIONS: the APL
      * practices, each cut off the APL root (AplPracticeCatalogue::FORMS says
      * why each keeps a form of its own), the "SOA" and "Sicurezza" roots,
-     * whose subcategories inherit their form (spec 0115) like the "GDPR"
-     * and "Finanza Agevolata" ones', and the "Gare" lines, each with the documents it asks for.
+     * whose subcategories inherit their form (spec 0115) like the "GDPR",
+     * "Finanza Agevolata" and "ISO" ones', and the "Gare" lines, each with the documents it asks for.
      *
-     * @var array<string, list<array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string}}>>
+     * @var array<string, list<array{0: string, 1: string, 2: list<list<string>>, 3: array{variant: LayoutSectionVariant, columns: int, description: string, visible_when?: string}}>>
      */
     private const array OWN_FORMS = [
         ...AplPracticeCatalogue::FORMS,
@@ -94,6 +95,7 @@ class QualificaQuoteLayoutSeeder extends Seeder
         ...TenderCatalogue::QUOTE_FORMS,
         GdprCatalogue::ROOT => GdprCatalogue::QUOTE_SECTIONS,
         SubsidisedFinanceCatalogue::ROOT => SubsidisedFinanceCatalogue::QUOTE_SECTIONS,
+        IsoCatalogue::ROOT => IsoCatalogue::QUOTE_SECTIONS,
     ];
 
     /**
@@ -363,7 +365,7 @@ class QualificaQuoteLayoutSeeder extends Seeder
     }
 
     /**
-     * @param  list<array{0: string, 1: string, 2: list<list<string>>, 3?: array{variant: LayoutSectionVariant, columns: int, description: string}}>  $definitions
+     * @param  list<array{0: string, 1: string, 2: list<list<string>>, 3?: array{variant: LayoutSectionVariant, columns: int, description: string, visible_when?: string}}>  $definitions
      * @param  list<string>  $effective
      * @return list<array<string, mixed>>
      */

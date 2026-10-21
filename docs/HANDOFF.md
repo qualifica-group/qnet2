@@ -3,6 +3,29 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Ramo catalogo "ISO" (campi Offerta + Commessa dal legacy) — VERDE, COMMITTATO (2026-10-21)
+
+- Decisioni utente 2026-10-21: radice `ISO` (contenitore, funzione aziendale "ISO", regole Consulenza) + unica
+  sottocategoria selezionabile `ISO - Certificazione`; nessun prodotto. Codici nuovi `iso_*` (i codici legacy
+  `grp*`/`check_*` restano sulle categorie `[OLD]`). Le 19 caselle norma del legacy -> UNA casella per gruppo
+  (`iso_group_general/food/energy/anti_bribery/road_safety/gender_equality`), ognuna apre il suo blocco via
+  `visible_when` (spec 0288: una sola condizione booleana, niente "almeno uno"). "Altro" e "Allegati" non portati.
+- Dati: `QualificaCatalog/IsoCatalogue` (albero, campi e form Offerta, 10 sezioni di cui 6 condizionate),
+  `QualificaCatalog/IsoWorkOrderCatalogue` (Commessa: Dettagli lavorazioni, Focus lavorazione ISO, Verifiche ispettive
+  + Data verifica effettiva; niente "Stato Lavorazione", come SOA). Wiring: `BranchCatalogues`, `QualificaCatalogSeeder`
+  (CATALOG_QUOTE_ATTRIBUTES, 482 righe), `QualificaQuoteLayoutSeeder::OWN_FORMS`, `CatalogRootRules`,
+  `QualificaBusinessFunctionLinkSeeder`.
+- `QualificaSoaWorkOrderSeeder` RINOMINATO `QualificaBranchWorkOrderSeeder` (mappa `BRANCHES` SOA + ISO, stessa logica).
+  `SeedsAttributeLayouts::layoutSection`: lo style accetta `visible_when` (codice) -> scrive la condizione solo se c'e'.
+- Test: nuovo `QualificaIsoCatalogueTest` (4). REQUIREMENT CHANGED: `QualificaCatalogSeederTest` (+`ISO - Certificazione`),
+  `QualificaQuoteLayoutSeederTest` (+`ISO` in OWN_CATEGORIES), `QualificaContactProcessingSeederTest` (layout Offerta 26,
+  Commessa 9), `QualificaBusinessFunctionLinkSeederTest` (+`ISO`). Pest Products 247/247, Seeding 184/184,
+  ProductCategories/CustomFields/Report verdi; Pint pulito. Manuale: nessun impatto (dati di catalogo).
+- ATTENZIONE test Migration: 7 rossi in locale (`UsersSource*`, `MigrationSourceAvailability`, `MigrationPlanEndpoints`)
+  perche' il `.env` locale ha `EXTERNAL_MIGRATION_USERS_LINK_ONLY=true` e `phpunit.xml` non lo sovrascrive; i test
+  assumono il default `false`. Non legati a questo ramo.
+- Seed lanciato sul DB locale (radice ISO id 273, `ISO - Certificazione` id 274). Da fare: staging/prod.
+
 ## Spec 0289: migrazione legacy dei task — VERDE, COMMITTATO (qnet-2 e legacy) (2026-10-21)
 
 - Spec `docs/specs/0289-legacy-tasks-migration.xml` (D-1..D-11, AC-001..AC-016). Decisioni utente: tutti i 421.862

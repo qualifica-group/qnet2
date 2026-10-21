@@ -90,6 +90,8 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
         'Gare - ANAC', 'Gare - Albo Fornitori', 'Gare - Albo Gestori Ambientali', 'Gare - Avvalimenti',
         'Gare - Consorzio Grade', 'Gare - Corso preparazione gare', 'Gare - Gare', 'Gare - Giornale Telematico',
         'Gare - Mepa', 'Gare - Progetto Tecnico', 'Gare - RTI/ATI', 'Gare - WHITE LIST',
+        // REQUIREMENT CHANGED: the ISO line, prefixed with its branch (user directive 2026-10-21).
+        'ISO - Certificazione',
         // REQUIREMENT CHANGED: the Istruzione lines, prefixed with their branch (user directive 2026-10-20).
         'Istruzione - Consulenza Scuola', 'Istruzione - Conto Termico 3.0', 'Istruzione - ISTRUZIONE', 'Istruzione - PNRR',
         'Orientamento specialistico',

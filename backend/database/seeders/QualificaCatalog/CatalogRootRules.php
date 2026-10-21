@@ -112,6 +112,7 @@ final class CatalogRootRules
         SubsidisedFinanceCatalogue::ROOT => self::CONSULTING_RULES,
         EducationCatalogue::ROOT => self::CONSULTING_RULES,
         AccreditationCatalogue::ROOT => self::CONSULTING_RULES,
+        IsoCatalogue::ROOT => self::CONSULTING_RULES,
     ];
 
     /**

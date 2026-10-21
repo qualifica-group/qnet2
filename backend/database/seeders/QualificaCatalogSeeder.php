@@ -23,6 +23,7 @@ use Database\Seeders\QualificaCatalog\ECampusAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ECampusCourseCatalogue;
 use Database\Seeders\QualificaCatalog\ECampusTreeFlattening;
 use Database\Seeders\QualificaCatalog\GdprCatalogue;
+use Database\Seeders\QualificaCatalog\IsoCatalogue;
 use Database\Seeders\QualificaCatalog\ReportColumnsCatalogue;
 use Database\Seeders\QualificaCatalog\SafetyCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
@@ -256,6 +257,7 @@ class QualificaCatalogSeeder extends Seeder
         ...TenderCatalogue::QUOTE_ATTRIBUTES,
         GdprCatalogue::ROOT => GdprCatalogue::QUOTE_ATTRIBUTES,
         SubsidisedFinanceCatalogue::ROOT => SubsidisedFinanceCatalogue::QUOTE_ATTRIBUTES,
+        IsoCatalogue::ROOT => IsoCatalogue::QUOTE_ATTRIBUTES,
     ];
 
     /**
@@ -287,8 +289,8 @@ class QualificaCatalogSeeder extends Seeder
         // one), which resolves the same categories of step 2 and adopts the
         // q-crm rows when they are there.
         $this->call(QualificaContactProcessingSeeder::class);
-        // ...and the SOA branch's own Commessa set and form.
-        $this->call(QualificaSoaWorkOrderSeeder::class);
+        // ...and the SOA and ISO branches' own Commessa sets and forms.
+        $this->call(QualificaBranchWorkOrderSeeder::class);
 
         // Step 4-ter: the offer FORM, after every `quote` assignment above —
         // it composes one section per catalogue and AttributeLayoutService

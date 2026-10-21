@@ -10,6 +10,7 @@ use Database\Seeders\QualificaCatalog\AccreditationCatalogue;
 use Database\Seeders\QualificaCatalog\BusinessFunctionCatalogue;
 use Database\Seeders\QualificaCatalog\EducationCatalogue;
 use Database\Seeders\QualificaCatalog\GdprCatalogue;
+use Database\Seeders\QualificaCatalog\IsoCatalogue;
 use Database\Seeders\QualificaCatalog\SafetyCatalogue;
 use Database\Seeders\QualificaCatalog\SoaCatalogue;
 use Database\Seeders\QualificaCatalog\SubsidisedFinanceCatalogue;
@@ -79,6 +80,7 @@ class QualificaBusinessFunctionLinkSeeder extends Seeder
         SubsidisedFinanceCatalogue::ROOT => SubsidisedFinanceCatalogue::BUSINESS_FUNCTION,
         EducationCatalogue::ROOT => EducationCatalogue::BUSINESS_FUNCTION,
         AccreditationCatalogue::ROOT => AccreditationCatalogue::BUSINESS_FUNCTION,
+        IsoCatalogue::ROOT => IsoCatalogue::BUSINESS_FUNCTION,
         ProductsSource::UNCATEGORIZED_CATEGORY => self::UNCATEGORIZED_FUNCTION,
     ];
 
