@@ -22,9 +22,8 @@ function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[]) {
     title: z.string().max(TITLE_MAX_LENGTH, t('workOrders.form.titleMax')),
     type: z.enum(['processing', 'project'], { message: t('workOrders.form.typeRequired') }),
     start_date: z.string().min(1, t('workOrders.form.startDateRequired')),
-    // "Responsabili" (spec 0096): at least one, mirroring the backend's own
-    // `supervisor_ids` required|array|min:1.
-    supervisor_ids: z.array(z.number()).min(1, t('workOrders.form.supervisorsRequired')),
+    // "Responsabili" (spec 0096): optional (user decision 2026-10-20).
+    supervisor_ids: z.array(z.number()),
     // "Partecipanti": ordered, gap-aware slots — `null` is an empty slot, so
     // the array is NOT filtered before validating its length.
     participant_slots: z

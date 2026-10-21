@@ -57,7 +57,7 @@ const guide: HelpGuide = {
           items: [
             'Seleziona una o più righe libere a sinistra e premi **Nuovo gruppo**: compare il Gruppo 1 e le righe mostrano il badge **G1**.',
             'Per aggiungere altre righe a un gruppo, selezionale e usa **Aggiungi a gruppo**. Una riga sta in un solo gruppo: se è già in un altro, viene **spostata**.',
-            'In ogni gruppo compila **Tipo**, **Data inizio**, **Responsabili** (almeno uno) e, se serve, il **Modello di Task**. Con il pulsante cestino elimini un gruppo e ne liberi le righe.',
+            'In ogni gruppo compila **Tipo**, **Data inizio** e, se servono, i **Responsabili** (facoltativi) e il **Modello di Task**. Con il pulsante cestino elimini un gruppo e ne liberi le righe.',
             'Premi **Crea N commesse**.',
           ],
         },
@@ -95,7 +95,7 @@ const guide: HelpGuide = {
             'Premi l\'azione **Programma commessa unica** (serve il permesso di programmare).',
             'Nella finestra le righe sono raggruppate per contratto. Sono selezionabili solo le **righe di ricavo** di un ramo con l\'impostazione attiva e **non ancora in una commessa**; le altre restano visibili ma disattivate.',
             'Scegli le righe: devono essere tutte dello **stesso ramo** e provenire da **almeno due offerte** diverse.',
-            'Compila i campi comuni: **Titolo** (facoltativo), **Tipo**, **Data inizio**, **Responsabili** (almeno uno) e, se serve, il **Modello di Task**.',
+            'Compila i campi comuni: **Titolo** (facoltativo), **Tipo**, **Data inizio**, **Responsabili** (facoltativi) e, se serve, il **Modello di Task**.',
             'Premi il pulsante di conferma: viene creata **una commessa** e si apre subito.',
           ],
         },

@@ -18,7 +18,7 @@ export type ProgramFieldsPrefix = 'common' | `groups.${number}`
 interface ContractProgramSharedFieldsProps {
   control: Control<ContractProgramFormValues>
   prefix: ProgramFieldsPrefix
-  /** Group fields are mandatory (start date, supervisors); the common defaults are not. */
+  /** Group fields are mandatory (type, start date); the common defaults are not. */
   required: boolean
 }
 
@@ -104,7 +104,7 @@ export function ContractProgramSharedFields({ control, prefix, required }: Contr
         name={`${prefix}.supervisor_ids`}
         render={({ field }) => (
           <FormItem>
-            <FormLabel required={required}>{t('workOrders.form.supervisors')}</FormLabel>
+            <FormLabel>{t('workOrders.form.supervisors')}</FormLabel>
             <FormControl>
               <AsyncPaginatedMultiSelect
                 resource={USERS_FOR_SELECT_RESOURCE}

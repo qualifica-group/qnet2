@@ -102,20 +102,16 @@ it('AC-005: deleting the work order cascades both user pivots away', function ()
 // create — AC-020..023, AC-027
 // ---------------------------------------------------------------------------
 
-it('AC-020: POST /api/work-orders without start_date or without a responsabile is 422', function () {
+// REQUIREMENT CHANGED (user decision 2026-10-20): the Responsabili are optional.
+it('AC-020: POST /api/work-orders without start_date is 422; responsabili are optional but must exist', function () {
     $actor = workOrderTeamActor(['create']);
     $quote = Quote::factory()->create();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/work-orders', ['quote_id' => $quote->id, 'title' => 'No dates', 'type' => 'processing'])
         ->assertStatus(422)
-        ->assertJsonValidationErrors(['start_date', 'supervisor_ids']);
-
-    // An EMPTY array is not "at least one responsabile" either.
-    $this->postJson('/api/work-orders', [
-        'quote_id' => $quote->id, 'title' => 'Empty supervisors', 'type' => 'processing',
-        'start_date' => '2026-09-10', 'supervisor_ids' => [],
-    ])->assertStatus(422)->assertJsonValidationErrors('supervisor_ids');
+        ->assertJsonValidationErrors('start_date')
+        ->assertJsonMissingValidationErrors('supervisor_ids');
 
     $this->postJson('/api/work-orders', [
         'quote_id' => $quote->id, 'title' => 'Unknown supervisor', 'type' => 'processing',
@@ -237,16 +233,19 @@ it('AC-024: PATCH full-replaces each user relation only when its own key is subm
         ->and($workOrder->fresh()->supervisors->pluck('id')->all())->toBe([$supervisor->id]);
 });
 
-it('AC-025: PATCH cannot null the start date nor empty the responsabili', function () {
-    $actor = workOrderTeamActor(['update']);
+// REQUIREMENT CHANGED (user decision 2026-10-20): the responsabili may be emptied.
+it('AC-025: PATCH cannot null the start date but may empty the responsabili', function () {
+    $actor = workOrderTeamActor(['update', 'view']);
     $workOrder = WorkOrder::factory()->create();
+    $workOrder->supervisors()->sync([User::factory()->create()->id]);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/work-orders/{$workOrder->id}", ['start_date' => null])
         ->assertStatus(422)->assertJsonValidationErrors('start_date');
 
-    $this->patchJson("/api/work-orders/{$workOrder->id}", ['supervisor_ids' => []])
-        ->assertStatus(422)->assertJsonValidationErrors('supervisor_ids');
+    $this->patchJson("/api/work-orders/{$workOrder->id}", ['supervisor_ids' => []])->assertOk();
+
+    expect($workOrder->fresh()->supervisors)->toBeEmpty();
 });
 
 it('AC-026: start_date and responsabili are editable after create, unlike code/quote_id', function () {
@@ -297,7 +296,8 @@ it('AC-030/031: the detail exposes start_date, responsabili and the ordered part
 // field permissions — AC-040, AC-041
 // ---------------------------------------------------------------------------
 
-it('AC-040: the three new fields are required/editable for a writer and readonly for a reader', function () {
+// REQUIREMENT CHANGED (user decision 2026-10-20): supervisor_ids is no longer required.
+it('AC-040: the three new fields are editable for a writer (only start_date required) and readonly for a reader', function () {
     $writer = workOrderTeamActor(['viewAny', 'create']);
     Sanctum::actingAs($writer);
 
@@ -306,7 +306,7 @@ it('AC-040: the three new fields are required/editable for a writer and readonly
     expect($fields['start_date']['editable'])->toBeTrue()
         ->and($fields['start_date']['required'])->toBeTrue()
         ->and($fields['supervisor_ids']['editable'])->toBeTrue()
-        ->and($fields['supervisor_ids']['required'])->toBeTrue()
+        ->and($fields['supervisor_ids']['required'])->toBeFalse()
         ->and($fields['participant_slots']['editable'])->toBeTrue()
         ->and($fields['participant_slots']['required'])->toBeFalse();
 

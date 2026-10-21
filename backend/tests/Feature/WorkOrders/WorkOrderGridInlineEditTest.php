@@ -56,12 +56,16 @@ it('applies the form rules: a title over the form maximum is refused', function 
     expect($workOrder->fresh()->title)->toBe('Originale');
 });
 
-it('refuses clearing the mandatory supervisors and an unknown type', function () {
+// REQUIREMENT CHANGED (user decision 2026-10-20): the supervisors may be cleared.
+it('clears the supervisors and refuses an unknown type', function () {
     Sanctum::actingAs(workOrderUserWith(['viewAny', 'update']));
     $workOrder = WorkOrder::factory()->create();
+    $workOrder->supervisors()->sync([User::factory()->create()->id]);
 
-    patchWorkOrderCell($workOrder, 'supervisors', [])->assertUnprocessable();
+    patchWorkOrderCell($workOrder, 'supervisors', [])->assertOk();
     patchWorkOrderCell($workOrder, 'type', 'unknown')->assertUnprocessable();
+
+    expect($workOrder->fresh()->supervisors)->toBeEmpty();
 });
 
 it('keeps force-closing a row action, never a cell', function () {

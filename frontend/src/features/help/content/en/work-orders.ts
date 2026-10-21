@@ -42,7 +42,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Clicking an editable cell (Title, Work order type, Callback date, Start date, Supervisors) edits it **directly in the list**, with the **same rules as the detail**: for example the Title, the Start date and at least one Supervisor are mandatory; an invalid value is refused and the cell goes back to its previous value.",
+          text: "Clicking an editable cell (Title, Work order type, Callback date, Start date, Supervisors) edits it **directly in the list**, with the **same rules as the detail**: for example the Title and the Start date are mandatory, while the Supervisors can all be removed; an invalid value is refused and the cell goes back to its previous value.",
         },
         {
           type: 'note',

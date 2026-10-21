@@ -336,7 +336,8 @@ describe('ContractProgramDialog - save (AC-024, AC-025, AC-026)', () => {
     expect(screen.getByRole('region', { name: 'Group 1' })).toBeInTheDocument()
   })
 
-  it('blocks the request when a group misses date, supervisors or lines (AC-026)', async () => {
+  // REQUIREMENT CHANGED (user decision 2026-10-20): the Responsabili are optional.
+  it('blocks the request when a group misses date or lines (AC-026)', async () => {
     renderDialog()
     await screen.findByText('Consulenza')
     click('New group')
@@ -345,7 +346,6 @@ describe('ContractProgramDialog - save (AC-024, AC-025, AC-026)', () => {
     click('Create 1 work order')
 
     expect(await screen.findByText('The start date is required.')).toBeInTheDocument()
-    expect(screen.getByText('Pick at least one supervisor.')).toBeInTheDocument()
     expect(screen.getByText('Select at least one line.')).toBeInTheDocument()
     expect(group(1).getByRole('img', { name: 'This group has errors' })).toBeInTheDocument()
     expect(createContractWorkOrdersBatch).not.toHaveBeenCalled()

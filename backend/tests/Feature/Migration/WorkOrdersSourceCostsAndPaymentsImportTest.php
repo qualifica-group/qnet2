@@ -171,16 +171,24 @@ it('fails the work order when a cost has no usable migrated product', function (
     'no cost product' => [['id' => 'd', 'product_source' => 'vehicles_unknown', 'product_id' => 1], 'Cost d has no cost product; the work order is not imported.'],
 ]);
 
-// G-27 (user decision 2026-10-14): the legacy replaces a deleted supervisor or
-// participant with an account manager; one still not migrated fails the row.
+// G-27 (REQUIREMENT CHANGED, user decision 2026-10-20): the legacy sends its
+// supervisors and participants as they are, deleted users included; one not
+// migrated fails the row, a work order without any is imported.
 it('fails a work order whose supervisor or participant is not migrated', function (string $field, string $role) {
     $run = runLegacyWorkOrdersImport([legacyWorkOrderRecord([$field => [69]])]);
 
     expect($run->failed_rows)->toBe(1)
         ->and(WorkOrder::query()->count())->toBe(0)
         ->and(collect($run->report)->firstWhere('level', 'error')['message'])
-        ->toBe("Failed to import the record: {$role} (legacy user id 69) not migrated and the offer has no account manager to replace it; the work order is not imported.");
+        ->toBe("Failed to import the record: {$role} (legacy user id 69) not migrated; the work order is not imported.");
 })->with([
     'supervisor' => ['supervisor_user_ids', 'Supervisor'],
     'participant' => ['participant_user_ids', 'Participant'],
 ]);
+
+it('imports a work order without supervisors', function () {
+    $run = runLegacyWorkOrdersImport([legacyWorkOrderRecord(['supervisor_user_ids' => []])]);
+
+    expect($run->failed_rows)->toBe(0)
+        ->and(WorkOrder::query()->sole()->supervisors)->toBeEmpty();
+});

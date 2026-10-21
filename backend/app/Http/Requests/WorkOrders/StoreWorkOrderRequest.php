@@ -57,11 +57,11 @@ class StoreWorkOrderRequest extends FormRequest
             'quote_id' => ['required', 'integer', 'exists:quotes,id'],
             'title' => ['nullable', 'string', 'max:'.self::TITLE_MAX],
             'type' => ['required', 'string', Rule::in(WorkOrderType::values())],
-            // Spec 0096, D-1: `start_date` is NOT NULL and a commessa always
-            // has at least one Responsabile — required here and in the
-            // Contract's "Programma" dialog alike.
+            // Spec 0096, D-1: `start_date` is NOT NULL — required here and in
+            // the Contract's "Programma" dialog alike. The Responsabili are
+            // optional (user decision 2026-10-20).
             'start_date' => ['required', 'date'],
-            'supervisor_ids' => ['required', 'array', 'min:1'],
+            'supervisor_ids' => ['sometimes', 'array'],
             'supervisor_ids.*' => ['integer', Rule::exists('users', 'id')],
             'callback_date' => ['sometimes', 'nullable', 'date'],
             'description' => ['sometimes', 'nullable', 'string'],

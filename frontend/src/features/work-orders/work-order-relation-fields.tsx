@@ -79,7 +79,7 @@ interface SupervisorsFieldProps extends FieldProps {
   selected: RelationFieldRef[]
 }
 
-/** "Responsabili" (spec 0096): several, at least one. */
+/** "Responsabili" (spec 0096): several, optional. */
 export function WorkOrderSupervisorsField({ control, selected }: SupervisorsFieldProps) {
   const { t } = useTranslation()
   return (

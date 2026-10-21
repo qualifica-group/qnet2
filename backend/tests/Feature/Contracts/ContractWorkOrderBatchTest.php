@@ -178,7 +178,7 @@ it('AC-006: field validation reports the right groups.{i}.field key', function (
     $this->postJson($url, ['groups' => $many])->assertUnprocessable()->assertJsonValidationErrors('groups');
 
     $this->postJson($url, ['groups' => [
-        batchProgramGroup($lines, ['supervisor_ids' => []]),
+        batchProgramGroup($lines, ['supervisor_ids' => [999999]]),
         batchProgramGroup($lines, ['type' => 'nope']),
         (function () use ($lines) {
             $group = batchProgramGroup($lines);
@@ -188,10 +188,23 @@ it('AC-006: field validation reports the right groups.{i}.field key', function (
         })(),
         batchProgramGroup($lines, ['title' => str_repeat('x', 192)]),
     ]])->assertUnprocessable()->assertJsonValidationErrors([
-        'groups.0.supervisor_ids', 'groups.1.type', 'groups.2.start_date', 'groups.3.title',
+        'groups.0.supervisor_ids.0', 'groups.1.type', 'groups.2.start_date', 'groups.3.title',
     ]);
 
     expect(WorkOrder::count())->toBe(0);
+});
+
+// REQUIREMENT CHANGED (user decision 2026-10-20): the responsabili are optional.
+it('creates a commessa from a group without responsabili', function () {
+    $contract = batchProgramContract();
+    $lines = batchProgramLines($contract, 1);
+    $group = batchProgramGroup($lines);
+    unset($group['supervisor_ids']);
+    Sanctum::actingAs(batchProgramActor());
+
+    $this->postJson("/api/contracts/{$contract->id}/work-orders/batch", ['groups' => [$group]])->assertCreated();
+
+    expect(WorkOrder::query()->sole()->supervisors)->toBeEmpty();
 });
 
 it('AC-007: 403 without contracts.program and 403 on a non-programmable contract, nothing created; 404 on unknown contract', function () {

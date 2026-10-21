@@ -37,7 +37,7 @@ class GenerateContractWorkOrdersBatchRequest extends FormRequest
             'groups.*.title' => ['nullable', 'string', 'max:'.self::TITLE_MAX],
             'groups.*.type' => ['required', 'string', Rule::in(WorkOrderType::values())],
             'groups.*.start_date' => ['required', 'date'],
-            'groups.*.supervisor_ids' => ['required', 'array', 'min:1'],
+            'groups.*.supervisor_ids' => ['sometimes', 'array'],
             'groups.*.supervisor_ids.*' => ['integer', Rule::exists('users', 'id')],
             'groups.*.task_template_id' => ['nullable', 'integer', Rule::exists('task_templates', 'id')->where('is_active', true)],
             'groups.*.quote_line_ids' => ['required', 'array', 'min:1'],

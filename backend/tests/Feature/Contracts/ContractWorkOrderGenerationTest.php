@@ -210,21 +210,30 @@ it('403 without contracts.program, 403 when the contract is not ClosedWon, 404 o
 // spec 0096 — data inizio + Responsabili in the "Programma" dialog (D-5)
 // ---------------------------------------------------------------------------
 
-it('AC-010: generating without start_date or without a responsabile is 422 and creates nothing', function () {
+it('AC-010: generating without start_date is 422 and creates nothing', function () {
+    $contract = generationContract();
+    $line = QuoteLine::factory()->create(['quote_id' => $contract->quote_id]);
+    Sanctum::actingAs(workOrderGenerationActorWith(['contracts.program']));
+
+    $this->postJson("/api/contracts/{$contract->id}/work-orders", [
+        'title' => 'Senza data', 'type' => 'processing', 'quote_line_ids' => [$line->id],
+    ])->assertStatus(422)->assertJsonValidationErrors('start_date')->assertJsonMissingValidationErrors('supervisor_ids');
+
+    expect(WorkOrder::count())->toBe(0);
+});
+
+// REQUIREMENT CHANGED (user decision 2026-10-20): the responsabili are optional.
+it('AC-010: a commessa is generated without any responsabile', function () {
     $contract = generationContract();
     $line = QuoteLine::factory()->create(['quote_id' => $contract->quote_id]);
     Sanctum::actingAs(workOrderGenerationActorWith(['contracts.program']));
 
     $this->postJson("/api/contracts/{$contract->id}/work-orders", [
         'title' => 'Senza responsabile', 'type' => 'processing', 'quote_line_ids' => [$line->id],
-    ])->assertStatus(422)->assertJsonValidationErrors(['start_date', 'supervisor_ids']);
-
-    $this->postJson("/api/contracts/{$contract->id}/work-orders", [
-        'title' => 'Responsabili vuoti', 'type' => 'processing', 'quote_line_ids' => [$line->id],
         'start_date' => '2026-09-10', 'supervisor_ids' => [],
-    ])->assertStatus(422)->assertJsonValidationErrors('supervisor_ids');
+    ])->assertCreated();
 
-    expect(WorkOrder::count())->toBe(0);
+    expect(WorkOrder::query()->sole()->supervisors)->toBeEmpty();
 });
 
 it('AC-011: an unknown supervisor id is 422', function () {

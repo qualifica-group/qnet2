@@ -117,7 +117,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "A template is picked with the **Schedule** action on the contract, when generating the Commessa: QNet creates the template's tasks and assigns them to the owners. You find them in the Commessa's Task section. The created tasks get the default type, priority and importance (set under **Task Types**, **Task Priorities** and **Task Importances**); you can change them on each task.",
+          text: "A template is picked with the **Schedule** action on the contract, when generating the Commessa: QNet creates the template's tasks and assigns them to the owners (without owners the tasks stay unassigned). You find them in the Commessa's Task section. The created tasks get the default type, priority and importance (set under **Task Types**, **Task Priorities** and **Task Importances**); you can change them on each task.",
         },
       ],
     },

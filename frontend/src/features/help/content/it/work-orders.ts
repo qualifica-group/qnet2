@@ -42,7 +42,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Un clic su una cella modificabile (Titolo, Tipo commessa, Data richiamo, Data inizio, Responsabili) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: per esempio il Titolo, la Data inizio e almeno un Responsabile sono obbligatori; un valore non valido viene rifiutato e la cella torna al valore di prima.",
+          text: "Un clic su una cella modificabile (Titolo, Tipo commessa, Data richiamo, Data inizio, Responsabili) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: per esempio il Titolo e la Data inizio sono obbligatori, mentre i Responsabili si possono anche togliere tutti; un valore non valido viene rifiutato e la cella torna al valore di prima.",
         },
         {
           type: 'note',
