@@ -3,6 +3,35 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0289: migrazione legacy dei task — VERDE, COMMITTATO (qnet-2 e legacy) (2026-10-21)
+
+- Spec `docs/specs/0289-legacy-tasks-migration.xml` (D-1..D-11, AC-001..AC-016). Decisioni utente: tutti i 421.862
+  task; satelliti = assegnatari, osservatori, ricorrenze attive (note, documenti, ore timesheet FUORI); creatore con
+  catena nel legacy, null -> attore della migrazione con warning; flag privato `open` ignorato (is_private false).
+- Legacy (`../qnet`): `Api/V2/TaskMigrationController` + route `GET /api/v2/migration/tasks`
+  (`routes/apiV2.php`), helper `app/Support/Migration/LegacyTaskStatus|LegacyTaskPeople|LegacyTaskRecurrence`.
+  Riferimenti a record inesistenti nel legacy -> null con warning. Pagina da 100 in ~0,4 s (4.219 pagine).
+  `php artisan route:list` nel legacy e' rotto da prima (`Class "App\Http\Controllers\email"`).
+- qnet-2: migrazione `2026_10_27_100000_add_old_id_to_tasks_table`; sorgente `tasks` (`TasksSource`) con
+  `Support/LegacyTaskLinks` (padre, commessa, fase per nome solo sulle radici, anagrafica/referente via i guard del
+  modulo Task), `LegacyTaskClassifier` (stato per system_key/nome, fallback `TaskInitialStatusResolver`; lookup per
+  nome con default), `LegacyTaskLookups` (cache per esecuzione), `LegacyTaskRecurrenceWriter` (serie sul capostipite
+  con `generated_until` legacy; occorrenze agganciate via `recurrence_source_id`, mai doppione di `end_date`).
+  Scrittura diretta del model (NON `TaskService::create`), senza log ne' notifiche. Utente o commessa non migrati ->
+  riga fallita. `MigrationOrder` fase 12 `['tasks']`; dipendenze required users + work-orders.
+- REQUIREMENT CHANGED: `MigrationRegistryTest` 29 -> 30, `MigrationDependenciesTest` (ultima fase), contatori rollback
+  SupplierCommissionDirectionTest 87, QuoteWorkflowMigrationTest 223, PurchaseOrderMigrationTest 72; `TaskSchemaTest`
+  colonne + `old_id`. Helper test condiviso `tests/Helpers/TaskMigrationHelpers.php` (require in `tests/Pest.php`).
+- Verifica: Pest completo 12046/12054, 7 rossi estranei (4 seeder catalogo Qualifica toccati da un'altra sessione in
+  corso, IsoCatalogue; 3 QuoteDocumentPdfTest senza LibreOffice). Pint pulito sui file toccati, ESLint ok,
+  `tsc -b --force` 0, Vitest completo 8947/8947. Frontend: etichette/requisiti `tasks` IT/EN, frase task in
+  `work-orders`, guida `migrations`.
+- Manuale Claude Docs: intro Migrazioni + paragrafo "La sorgente Task" dopo "Modelli di task". DA AGGIORNARE (fuori
+  scope): il paragrafo "solo abbinamento" dice ancora che gli utenti non riconosciuti non vengono creati.
+- Rischio cutover (fuori scope): finche' il legacy genera occorrenze e lo scheduler qnet-2 gira, la stessa data puo'
+  nascere in entrambi.
+- Prossimo passo: run reale `/migrations` -> Task dopo Commesse; leggere il report (fallimenti per commesse non migrate).
+
 ## Spec 0288: sezioni condizionali nel layout attributi — VERDE, PARZIALMENTE COMMITTATO (2026-10-20)
 
 - Contratto: sezione del blob layout + `visible_when: { attribute_code } | null` (chiave assente nei blob vecchi = null;

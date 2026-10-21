@@ -48,6 +48,8 @@ it('AC-003: tasks carries every column of the data_contract', function () {
         'is_blocked', 'requires_closure_feedback', 'requires_validation', 'closure_feedback',
         // Spec 0154: is_private (D-2), lead_id (D-4).
         'is_private', 'lead_id',
+        // Spec 0289 (REQUIREMENT CHANGED): the external-migration anchor.
+        'old_id',
         'created_at', 'updated_at',
     ];
 

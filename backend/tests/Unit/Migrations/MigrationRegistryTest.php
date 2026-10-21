@@ -26,6 +26,7 @@ use App\Migrations\Sources\RolesSource;
 use App\Migrations\Sources\SectorsSource;
 use App\Migrations\Sources\SourcesSource;
 use App\Migrations\Sources\TagsSource;
+use App\Migrations\Sources\TasksSource;
 use App\Migrations\Sources\TaskTemplatesSource;
 use App\Migrations\Sources\UsersSource;
 use App\Migrations\Sources\VatRatesSource;
@@ -81,6 +82,7 @@ it('config/migrations.php registers every source (spec 0013 Increment 2)', funct
         'opportunities' => OpportunitiesSource::class,
         'quotes' => QuotesSource::class,
         'work-orders' => WorkOrdersSource::class,
+        'tasks' => TasksSource::class,
         'product-suppliers' => ProductSuppliersSource::class,
         'commission-configurations' => CommissionConfigurationsSource::class,
     ]);
@@ -89,13 +91,13 @@ it('config/migrations.php registers every source (spec 0013 Increment 2)', funct
 it('all() resolves every registered source', function () {
     $sources = app(MigrationRegistry::class)->all();
 
-    expect($sources)->toHaveCount(29)
+    expect($sources)->toHaveCount(30)
         ->and(array_map(fn ($source) => $source->key(), $sources))->toBe([
             'roles', 'users', 'business-functions', 'companies', 'company-sites', 'operational-sites',
             'business-function-members', 'referent-types', 'referents',
             'sources', 'tags', 'sectors', 'task-templates', 'vat-rates', 'payment-methods', 'attributes', 'product-categories',
             'product-category-attributes', 'attribute-layouts', 'products', 'cost-products', 'email-templates', 'document-bundles',
-            'registries', 'opportunities', 'quotes', 'work-orders',
+            'registries', 'opportunities', 'quotes', 'work-orders', 'tasks',
             'product-suppliers', 'commission-configurations',
         ]);
 });

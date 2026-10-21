@@ -41,6 +41,7 @@ export const migrations = {
     opportunities: 'Opportunities',
     quotes: 'Quotes',
     'work-orders': 'Work orders',
+    tasks: 'Tasks',
     'product-suppliers': 'Products — link suppliers',
     'commission-configurations': 'Commission configurations',
   },

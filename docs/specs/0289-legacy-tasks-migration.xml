@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0289-legacy-tasks-migration" status="approved" owner="nicola" date="2026-10-21">
+
+  <goal>
+    Il modulo Migrazioni importa i task del QNet legacy (radici e sotto-task, con assegnatari, osservatori,
+    collegamenti a anagrafica, referente, opportunita', commessa e fase, e le ricorrenze attive) tramite un nuovo
+    endpoint legacy `GET /api/v2/migration/tasks` e una nuova sorgente qnet-2 `tasks`, idempotente per `old_id`,
+    senza notifiche ne' log di attivita'.
+  </goal>
+
+  <context>
+    Verificato sul codice e sui dati reali il 2026-10-21.
+
+    qnet-2:
+    - Tabella `tasks` (2026_09_04_100500 + 2026_09_22_110300 + 2026_09_24_100200 + 2026_09_24_110100): nessun
+      `old_id`. `creator_id` NOT NULL, `task_status_id` NOT NULL, `title` 191. Pivot `task_assignee`, `task_watcher`.
+      Model `App\Models\Task` (`creator_id`, `task_recurrence_id`, `stage_position`, `subtask_position` fuori da
+      #[Fillable]).
+    - `TaskService::create()` NON e' il percorso di scrittura della migrazione: impone creatore = attore, stato
+      derivato, guard sulle date del padre, sulla fase chiusa (409), sul blocco del padre e sulla disgiunzione degli
+      osservatori, e notifica. Molti stati legacy (task chiusi, fasi chiuse, date fuori range) verrebbero rifiutati.
+      La sorgente scrive il model direttamente, come `LegacyWorkOrderStageWriter`, dentro la transazione per riga di
+      `AbstractMigrationSource` e senza log (`activity()->withoutLogs`).
+    - Stati: `task_statuses` con `system_key` (enum `TaskStatusSystemKey`: open, in_progress, assigned,
+      closed_positive, closed_negative) e righe ordinarie identificate solo dal nome (catalogo
+      `QualificaCatalog\TaskTaxonomyCatalogue`: "In preanalisi", "Preanalisi da validare", "Preanalisi validata",
+      "In attesa controparte", "Interrotto", "Esecuzione da validare"). Lookup `task_types`, `task_categories`,
+      `task_priorities`, `task_importances` senza chiave: solo nome. `TaskDefaultLookupResolver` da' i default di
+      tipo/priorita'/importanza; `TaskInitialStatusResolver::resolveForCreate()` deriva open/assigned.
+    - Fasi commessa: `work_order_stages` arrivano dalla sorgente `work-orders` (spec 0189 G-22) unite per titolo e
+      senza id legacy: l'aggancio del task alla fase e' per (commessa, nome).
+    - Ricorrenze: `task_recurrences` (regola) + `tasks.task_recurrence_id`; UNIQUE(task_recurrence_id, end_date);
+      capostipite = task piu' vecchio per id della serie, con `end_date` obbligatoria; lo scheduler
+      `tasks:generate-recurrences` (01:00) genera da `generated_until` (o dalla `end_date` del capostipite) fino a
+      oggi e conta i task della serie per `after_count`. `TaskRecurrenceData` (frequency, interval, weekdays,
+      month_day, month_mode, ordinal, ordinal_weekday, year_month, workdays_only, ends, ends_on, occurrence_count).
+    - Motore migrazioni: `AbstractMigrationSource`, trait `MapsLegacyOperationalRecord` (`remapLegacyId(s)`,
+      `finalizeLegacyRecord`, `legacyTimestamp`, `legacyPreviewCells`), `MigrationDependency`, `MigrationOrder`,
+      `config/migrations.php`. Descrizione HTML ripulita con `App\RichText\RichTextSanitizer::sanitize()`.
+
+    Legacy (`/Users/Repository/qnet`):
+    - `tasks` (421.862 righe, nessun soft delete): `parent_id` (0 = radice; 294 orfani, 1 figlio con id minore del
+      padre), `subtask_sort_order`, `cloned_task_id` (occorrenza di una ricorrenza), `customer_id` (-> companies =
+      registries), `contact_id`, `opportunity_id`, `order_id`, `ordermilestone_id` (-> `ordermilestones.title`),
+      `typetask` (T/I/C/K/E/V/A), `tipologia` (-> `tasks_tipologia.nome`), `priority` 1-5, `importance` 1-4,
+      `status` 1 aperto / 2 completato, `stato_intermedio` (-> `tasks_stato_intermedio`), `assigned_to`, `observer`,
+      `assigned_by` (richiedente), `system_creator` (vuoto su 407.768), `datatask`, `datataskend`, `timetask`,
+      `timetaskend`, `all_day`, `endtask`, `estimated_time` (minuti) / `hours_estimed` + `minutes_estimed`,
+      `contestata` (bloccato), `feedback_required`, `feedback`, `is_validation_required`, `position`.
+    - Pivot `task_assigneds` (77.631) e `task_observers` (15.058). Ricorrenze `task_reminders` 1:1 col task
+      (232 attive: day/week/month/custom, end no/date/iterations, `frequency_day_type` workday,
+      `last_created_task_time`); le occorrenze gia' generate sono task con `cloned_task_id` = task origine.
+    - Endpoint migrazione: `routes/apiV2.php`, gruppo `migration` (auth:api + v2.access); controller con un solo
+      `index()` (search, offset, limit 1-100), `paginatedResponse()`, helper `app/Support/Migration/`
+      (`MigrationFieldFormatter`, `LegacyReferenceLookup`).
+
+    Decisioni utente 2026-10-21:
+    D-1 Perimetro: tutti i task legacy (aperti e completati, generati da modello o no, con o senza commessa).
+    D-2 Satelliti: assegnatari, osservatori e ricorrenze attive. Note, documenti e ore timesheet fuori scope.
+    D-3 Creatore: il legacy manda `creator_user_id` con la catena `system_creator` -> `assigned_by` -> autore
+        della voce activity_log "created" del task -> primo assegnatario. Se resta null, qnet-2 usa l'utente che
+        lancia la migrazione, con warning.
+    D-4 Flag `open` (privato) ignorato: ogni task migrato ha `is_private` = false.
+
+    Decisioni proposte e approvate dall'utente 2026-10-21:
+    D-5 Divisione legacy/qnet-2 (backend.md §9). Legacy: nomi di tipo/categoria/priorita'/importanza, stato
+        semantico, pulizia dell'albero, catena del creatore, unione e disgiunzione delle persone, stima unica,
+        date/orari normalizzati, regola di ricorrenza gia' nel vocabolario qnet-2, coerenza commessa/opportunita'.
+        qnet-2: lookup `old_id`, risoluzione dei nomi, regole proprie (stato derivato, referente dell'anagrafica,
+        anagrafica della commessa, fase solo sulle radici, vincoli della serie ricorrente), sanitizzazione HTML,
+        troncamenti, scrittura silenziosa.
+    D-6 Stato (legacy): `status` 2 -> `closed_positive`; `status` 1 con stato intermedio: system_key '1' ->
+        `open`, '2' -> `assigned`, '5' -> `in_progress`, '4' "Esecuzione validata" -> `closed_positive` (276 task
+        aperti con stato validato); gli altri stati intermedi -> `status_name` col loro nome; nessuno stato
+        intermedio -> nessuno stato (qnet-2 deriva). qnet-2: system_key -> riga protetta; altrimenti nome (trim,
+        senza distinzione maiuscole); nessuno o non trovato -> `TaskInitialStatusResolver::resolveForCreate()`
+        (warning solo se un nome era stato mandato).
+    D-7 Albero (legacy): ordine per id; un `parent_id` inesistente o con id maggiore del figlio -> radice con
+        warning. qnet-2: padre non migrato -> radice con warning (mai fallimento).
+    D-8 Persone: utente non migrato (creatore, richiedente, assegnatario, osservatore) -> riga fallita con il motivo,
+        come per le commesse (G-27 spec 0189). Il legacy unisce `task_assigneds` + `assigned_to` e
+        `task_observers` + `observer`, e toglie dagli osservatori creatore, richiedente e assegnatari.
+    D-9 Collegamenti: commessa legacy presente ma non migrata -> riga fallita. Anagrafica, referente, opportunita'
+        non migrati -> null con warning. Con commessa: anagrafica = quella legacy se tra i clienti della commessa,
+        altrimenti quella della commessa, con warning. Referente non dell'anagrafica -> null con warning. Il legacy
+        non manda l'opportunita' quando c'e' la commessa (esclusive in qnet-2, 23 casi). Fase: solo sulle radici,
+        per nome tra le fasi della commessa; non trovata -> null con warning.
+    D-10 Ricorrenze: il legacy manda `recurrence` sul task origine (solo `task_reminders.active` = 1) gia' tradotta
+        (day -> daily, week -> weekly + weekdays ISO, month fixed -> monthly month_day, month dynamic -> monthly
+        ordinal, custom day N -> daily interval N, workday -> workdays_only, end no/date/iterations ->
+        never/on_date/after_count, `generated_until` = data di `last_created_task_time`); regola non traducibile ->
+        null con warning. Sulle occorrenze manda `recurrence_source_id` (= `cloned_task_id` quando l'origine ha una
+        ricorrenza attiva). qnet-2: valori fuori enum o capostipite senza `end_date` -> nessuna serie, con warning;
+        occorrenza agganciata alla serie del suo origine; origine senza serie o `end_date` gia' presente nella serie
+        -> task importato senza serie, con warning.
+    D-11 Fase di `MigrationOrder`: nuova fase dopo `work-orders` con `tasks`. Dipendenze: required `users`,
+        required `work-orders`; optional `registries`, `referents`, `opportunities`.
+  </context>
+
+  <scope>
+    <in>
+      <item>qnet-2 migrazione `2026_10_27_100000_add_old_id_to_tasks_table` (`old_id` unsigned bigint nullable
+        unique, reversibile).</item>
+      <item>qnet-2 `App\Migrations\Sources\TasksSource` (orchestrazione) + `App\Migrations\Support\LegacyTaskLookups`
+        (nomi -> id con cache per esecuzione: stati, tipi, categorie, priorita', importanze, fasi della commessa) +
+        `App\Migrations\Support\LegacyTaskRecurrenceWriter` (serie e aggancio occorrenze).</item>
+      <item>Registrazione in `config/migrations.php` e in `MigrationOrder` (D-11).</item>
+      <item>Test Pest: `tests/Feature/Migration/TasksSourceImportTest.php`, `TasksSourceRecurrenceImportTest.php`;
+        dataset di `OldIdSchemaTest` (+ `tasks`); `MigrationRegistryTest` (+ `tasks`, conteggio 29 -> 30:
+        REQUIREMENT CHANGED).</item>
+      <item>Frontend: etichetta `tasks` in `it-migrations.ts`/`en-migrations.ts`, testo requisiti in
+        `it-migration-requirements.ts`/`en-migration-requirements.ts` (parity test).</item>
+      <item>Guida in-app `migrations` IT/EN; manuale Claude Docs, sezione Migrazioni; testo requisiti di
+        `work-orders` ("Note, documenti e task non vengono importati" -> i task arrivano dalla sorgente Task).</item>
+      <item>Legacy: `app/Http/Controllers/Api/V2/TaskMigrationController.php`, route
+        `GET /api/v2/migration/tasks`, helper `app/Support/Migration/LegacyTaskStatus.php` (D-6),
+        `LegacyTaskPeople.php` (D-3, D-8), `LegacyTaskRecurrence.php` (D-10).</item>
+    </in>
+    <out>
+      <item>Note dei task (activity_log legacy), documenti `task_documents` e file, ore `working_activity_intervals`
+        (D-2).</item>
+      <item>Flag privato `open` (D-4), sede `site_id` (indirizzi migrati senza id), lead (non migrati), bacheche
+        `board_id`/`board_group_id`, campi interventi/spazi (`area_id`, `id_spazio`, `operation_*`, ...),
+        `evidenze`, `perc_completamento`/`actual_time` (in qnet-2 sono proiezioni).</item>
+      <item>Ricorrenze non attive.</item>
+      <item>Aggiornamento di task gia' migrati al re-import (idempotenza = salto per `old_id`, come le altre sorgenti).</item>
+      <item>Coordinamento del cutover: finche' il legacy genera occorrenze e lo scheduler qnet-2 e' attivo, la stessa
+        data puo' nascere in entrambi (rischio segnalato, non gestito qui).</item>
+      <item>Test automatici nel repo legacy (nessuna infrastruttura): verifica con tinker sul DB locale.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="(legacy) /api/v2/migration/tasks">
+      <request>
+        Query: `search` ?string max 255 (sul titolo), `offset` int >= 0 (default 0), `limit` int 1-100 (default 50).
+        Ordine `tasks.id` crescente. Auth: gruppo `auth:api` + `v2.access` esistente.
+        (2026-10-21, M1) `work_order_id`, `registry_id`, `referent_id`, `opportunity_id` che puntano a un record
+        inesistente nel legacy escono null con warning (riferimento interno al legacy, §9). `interval` mensile
+        puo' valere 12/13; 199 task hanno `start_date` > `end_date` e arrivano cosi' (qnet-2 non li ripara).
+      </request>
+      <response status="200">
+        { items: [Task], export_link: null, pagination: { total:int, offset:int, limit:int, total_pages:int } }
+
+        Task = {
+          id: int,
+          parent_id: ?int,                    (D-7, gia' ripulito)
+          subtask_position: int,              (subtask_sort_order)
+          title: string,                      (trim; vuoto -> "Task {id}" con warning)
+          description: ?string,               (HTML legacy, vuoto -> null)
+          type_name: ?string,                 (T Attività, I Riunione, C Chiamata, K Ticket, E Email, V Visita, A Altro)
+          category_name: ?string,             (tasks_tipologia.nome)
+          priority_name: ?string,             (1 Bassa, 2 Media, 3 Alta, 4 Urgente, 5 Critica)
+          importance_name: ?string,           (1 Bassa, 2 Media, 3 Alta, 4 Massima)
+          status_system_key: ?"open"|"assigned"|"in_progress"|"closed_positive"|"closed_negative",
+          status_name: ?string,               (solo senza status_system_key, D-6)
+          registry_id: ?int,                  (customer_id, fallback cliente della commessa)
+          referent_id: ?int,
+          opportunity_id: ?int,               (null quando work_order_id e' valorizzato)
+          work_order_id: ?int,
+          work_order_stage_name: ?string,     (trim di ordermilestones.title, solo radici)
+          stage_position: int,                (position)
+          creator_user_id: ?int,              (D-3)
+          requester_user_id: ?int,            (assigned_by)
+          assignee_user_ids: int[],           (distinti, D-8)
+          watcher_user_ids: int[],            (distinti, disgiunti dai precedenti, D-8)
+          start_date: ?"Y-m-d", end_date: ?"Y-m-d",
+          completion_date: ?"Y-m-d",          (solo chiusi: endtask, fallback updated_at)
+          start_time: ?"H:i", end_time: ?"H:i",  (null se all_day)
+          estimated_minutes: ?int,            (estimated_time, fallback ore*60+minuti, null se 0/assenti)
+          is_blocked: bool,                   (contestata = 1)
+          requires_closure_feedback: bool, requires_validation: bool,
+          closure_feedback: ?string,
+          recurrence: null | { frequency: "daily"|"weekly"|"monthly"|"yearly"|"custom", interval: int,
+            weekdays: ?int[], month_day: ?int, month_mode: ?"fixed"|"ordinal", ordinal: ?int,
+            ordinal_weekday: ?int, year_month: ?int, workdays_only: bool,
+            ends: "never"|"on_date"|"after_count", ends_on: ?"Y-m-d", occurrence_count: ?int,
+            generated_until: ?"Y-m-d" },     (D-10)
+          recurrence_source_id: ?int,         (D-10)
+          warnings: string[],
+          created_at: ?datetime, updated_at: ?datetime
+        }
+      </response>
+      <errors>401/403 come gli altri endpoint del gruppo; 422 su parametri di paginazione invalidi.</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST" path="(qnet-2) /api/migrations/tasks/... (endpoint esistenti del modulo)">
+      <request>Nessun endpoint nuovo: la sorgente `tasks` si aggiunge al registro (preview, import, piano, import
+        massivo).</request>
+      <response status="200">Shape invariata. `GET /migrations` elenca `tasks` con le dipendenze di D-11.</response>
+      <errors>Invariati (super-admin; 404 sorgente sconosciuta).</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un record legacy completo, quando si importa, allora nasce un Task con `old_id`,
+      titolo, descrizione sanitizzata, tipo/categoria/priorita'/importanza risolti per nome, date, orari, stima,
+      flag, feedback, `created_at`/`updated_at` legacy, `is_private` false, e nessuna voce activity_log ne'
+      notifica.</criterion>
+    <criterion id="AC-002">Dato un record gia' importato (stesso `old_id`), quando si re-importa, allora la riga e'
+      saltata e niente cambia.</criterion>
+    <criterion id="AC-003">Dato `status_system_key`, allora lo stato e' la riga protetta di quella chiave; dato
+      `status_name` esistente (anche con maiuscole/spazi diversi), allora e' quella riga; dato un nome sconosciuto
+      o nessuno stato, allora lo stato e' quello di `TaskInitialStatusResolver` (assigned con assegnatari, open
+      senza), con warning solo per il nome sconosciuto.</criterion>
+    <criterion id="AC-004">Dato un nome di tipo/priorita'/importanza sconosciuto, allora si usa il default di
+      `TaskDefaultLookupResolver` con warning; categoria sconosciuta -> null con warning.</criterion>
+    <criterion id="AC-005">Dato `creator_user_id` null, allora il creatore e' l'attore della migrazione, con
+      warning; dato un creatore, richiedente, assegnatario o osservatore non migrato, allora la riga fallisce col
+      motivo e non resta nessun Task.</criterion>
+    <criterion id="AC-006">Assegnatari e osservatori finiscono nelle pivot `task_assignee`/`task_watcher`.</criterion>
+    <criterion id="AC-007">Dato un sotto-task col padre gia' importato, allora `parent_task_id` punta al padre e
+      `subtask_position` e' quella legacy; padre non importato -> radice con warning.</criterion>
+    <criterion id="AC-008">Dato `work_order_id` non migrato, allora la riga fallisce col motivo. Dato
+      `work_order_id` migrato, allora il Task e' sulla commessa e l'anagrafica e' quella legacy se tra i clienti
+      della commessa, altrimenti quella della commessa con warning.</criterion>
+    <criterion id="AC-009">Dato `work_order_stage_name` presente tra le fasi della commessa, allora la radice e' in
+      quella fase con `stage_position` legacy; nome assente -> nessuna fase con warning; su un sotto-task il nome
+      e' ignorato.</criterion>
+    <criterion id="AC-010">Anagrafica, referente o opportunita' non migrati -> null con warning; referente di
+      un'altra anagrafica -> null con warning.</criterion>
+    <criterion id="AC-011">Titolo oltre 191 caratteri -> troncato con warning; i warning del record legacy sono
+      copiati nel report.</criterion>
+    <criterion id="AC-012">Dato un task origine con `recurrence` valida ed `end_date`, allora nasce una
+      `task_recurrences` con la regola e `generated_until` legacy e il Task vi e' agganciato; regola invalida o
+      `end_date` assente -> nessuna serie, con warning.</criterion>
+    <criterion id="AC-013">Data un'occorrenza con `recurrence_source_id` di un origine con serie, allora il Task e'
+      agganciato alla stessa serie; origine senza serie o stessa `end_date` gia' nella serie -> Task importato
+      senza serie, con warning (mai violazione della UNIQUE).</criterion>
+    <criterion id="AC-014">`tasks` e' registrata: `MigrationRegistryTest` (30 sorgenti), dipendenze di D-11,
+      fase dopo `work-orders` (`MigrationDependenciesTest` verde), `OldIdSchemaTest` copre `tasks`; la migrazione
+      `old_id` fa rollback pulito.</criterion>
+    <criterion id="AC-015">Frontend: etichetta e testo requisiti di `tasks` in IT/EN; parity test requisiti e
+      guida help verdi; `tsc -b --force` pulito.</criterion>
+    <criterion id="AC-016">Legacy: `php artisan route:list --path=migration/tasks` mostra la route; via tinker su
+      DB locale una pagina rispetta la shape, D-6 (conteggi per stato coerenti), D-7 (0 figli prima del padre),
+      D-3 (nessun `creator_user_id` null dove esiste un assegnatario), D-10 (232 record con `recurrence` o
+      warning); `php -l` pulito.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza (backend, frontend, legacy).
+    - backend.md §9: nessun parser/fallback in qnet-2 per compensare il legacy; le fixture dei test rispecchiano
+      la shape sopra.
+    - Scrittura diretta del model nella transazione per riga, `activity()->withoutLogs`, nessuna notifica,
+      nessun `TaskService::create()`.
+    - Prestazioni: lookup per nome in cache per esecuzione; nessun N+1 nel legacy (un `whereIn` per tabella per
+      pagina).
+    - File entro 300 righe (500 hard). Legacy: route nel gruppo esistente, nessuna modifica alle modifiche locali
+      dell'utente; git di entrambi i repo soggetto a CLAUDE.md §3.6.
+    - Test qnet-2 mirati: `XDEBUG_MODE=off ./vendor/bin/pest tests/Feature/Migration tests/Unit/Migrations` con
+      `EXTERNAL_MIGRATION_USERS_LINK_ONLY=false`. Mai `migrate*`/`db:*` sul DB di sviluppo.
+  </constraints>
+
+</spec>

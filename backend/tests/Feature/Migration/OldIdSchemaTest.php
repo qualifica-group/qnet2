@@ -15,6 +15,7 @@ use App\Models\Role;
 use App\Models\Sector;
 use App\Models\Source;
 use App\Models\Tag;
+use App\Models\Task;
 use App\Models\TaskTemplate;
 use App\Models\User;
 use App\Models\WorkOrder;
@@ -42,6 +43,7 @@ dataset('old_id_tables', [
     'tags' => ['tags'],
     'sectors' => ['sectors'],
     'task_templates' => ['task_templates'],
+    'tasks' => ['tasks'],
     'registries' => ['registries'],
     'opportunities' => ['opportunities'],
     'quotes' => ['quotes'],
@@ -69,6 +71,7 @@ function oldIdFactoryFor(string $table): Factory
         'tags' => Tag::factory(),
         'sectors' => Sector::factory(),
         'task_templates' => TaskTemplate::factory(),
+        'tasks' => Task::factory(),
         'registries' => Registry::factory(),
         'opportunities' => Opportunity::factory(),
         'quotes' => Quote::factory(),

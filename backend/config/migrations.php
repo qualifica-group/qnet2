@@ -25,6 +25,7 @@ use App\Migrations\Sources\RolesSource;
 use App\Migrations\Sources\SectorsSource;
 use App\Migrations\Sources\SourcesSource;
 use App\Migrations\Sources\TagsSource;
+use App\Migrations\Sources\TasksSource;
 use App\Migrations\Sources\TaskTemplatesSource;
 use App\Migrations\Sources\UsersSource;
 use App\Migrations\Sources\VatRatesSource;
@@ -111,6 +112,8 @@ return [
         'opportunities' => OpportunitiesSource::class,
         'quotes' => QuotesSource::class,
         'work-orders' => WorkOrdersSource::class,
+        // spec 0289: the legacy tasks, needing users and the migrated work orders.
+        'tasks' => TasksSource::class,
         // spec 0203: the product supplier link and the legacy commission rules,
         // both needing the migrated registries.
         'product-suppliers' => ProductSuppliersSource::class,

@@ -34,6 +34,8 @@ it('phaseOf gives the 1-based phase, or null for a source outside the order', fu
     expect(MigrationOrder::phaseOf('roles'))->toBe(1)
         ->and(MigrationOrder::phaseOf('users'))->toBe(2)
         ->and(MigrationOrder::phaseOf('registries'))->toBe(7)
-        ->and(MigrationOrder::phaseOf('work-orders'))->toBe(count(MigrationOrder::phases()))
+        ->and(MigrationOrder::phaseOf('work-orders'))->toBe(11)
+        // REQUIREMENT CHANGED (spec 0289): `tasks` is the new last phase, after `work-orders`.
+        ->and(MigrationOrder::phaseOf('tasks'))->toBe(count(MigrationOrder::phases()))
         ->and(MigrationOrder::phaseOf('unknown-source'))->toBeNull();
 });
