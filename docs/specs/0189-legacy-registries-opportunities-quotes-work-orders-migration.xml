@@ -116,7 +116,11 @@
       `responsabile_services` / `partecipant_services` cosi' come sono, cancellati compresi (LegacyWorkOrderPeople
       rimosso); qnet-2 fallisce la commessa se un responsabile o partecipante non e' migrato, e importa quella senza
       responsabili. Al 2026-10-20 su 16.351 commesse: 3.839 senza responsabili (importate), 115 con almeno un utente
-      cancellato nel legacy (fallite col motivo).
+      cancellato nel legacy (fallite col motivo). AGGIORNAMENTO 2026-10-21 (decisione utente, W3): il legacy
+      sostituisce ogni utente cancellato fisicamente da `users` (47, 69, 96, 117) con il segnaposto "Utente legacy"
+      (`LegacyPlaceholderUser::ID` 999999999, mandato dall'endpoint `users`, spec 0013 emendamento sexies), senza
+      doppioni e prima del limite di 12 partecipanti: le 115 commesse vengono importate. qnet-2 non cambia: il
+      controllo "utente non migrato" resta e scatta solo se il segnaposto non e' stato importato.
       G-28 blocco geografico (decisione utente 2026-10-15): in TUTTI gli endpoint con indirizzo (registries e i loro
       addresses, referents, users, companies, company-sites, operational-sites) `country` e' il codice ISO 3166-1
       alpha-2 (legacy LegacyNation, mappa per id dei 249 `nations` concordata con l'utente; qnet-2 cerca per `iso2`,
@@ -386,8 +390,9 @@
         stato_pagamento:?int, accordo_pagamento:?string, insoluti:bool (riga `orderisos` della commessa, spec 0201
           D-14),
         quote_line_ids:int[] (orderservices.quotation_service esistenti; fallback per service_id sull'offerta),
-        supervisor_user_ids:int[] (responsabile_services.id_utente distinti, cancellati compresi; [] ammesso, G-27),
-        participant_user_ids:int[] (partecipant_services.id_utente distinti, ordine di inserimento, max 12),
+        supervisor_user_ids:int[] (responsabile_services.id_utente distinti, cancellato -> 999999999; [] ammesso, G-27),
+        participant_user_ids:int[] (partecipant_services.id_utente distinti, cancellato -> 999999999, ordine di
+          inserimento, max 12),
         attribute_values:{codice:valore} (G-20, G-21; {} se nessuno),
         stages:[{ name:string, closed_at:?datetime, closed_by_user_id:?int }] (G-22, in ordine),
         costs:[{ id:string (come cost_lines), product_source, product_id:?int, quote_line_id:?int (riga legacy della

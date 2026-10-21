@@ -399,6 +399,13 @@
       risolti, in aggiunta, e mantiene il suo nome. `QualificaProductionDataSeeder` non ripete piu' il
       collegamento dopo l'import. "No categoria" resta una radice a parte.
     </amendment>
+    <amendment date="2026-10-21" title="sexies - Utenti: il segnaposto &quot;Utente legacy&quot;">
+      Decisione utente (W3 del run 2026-10-20): senza termine di ricerca l'endpoint legacy `users` chiude la lista con
+      un record in piu', "Utente legacy" (`LegacyPlaceholderUser`: id riservato 999999999, email
+      `utente.legacy@qualificagroup.invalid`, password bcrypt casuale, non attivo, senza ruoli ne' altri campi),
+      contato in `pagination.total`. Prende il posto degli utenti cancellati fisicamente dal legacy nelle commesse
+      (spec 0189 G-27) e nei task (spec 0289 D-8). qnet-2 lo importa come ogni altro utente: inattivo, quindi senza "[OLD] ".
+    </amendment>
   </amendments>
 
 </spec>

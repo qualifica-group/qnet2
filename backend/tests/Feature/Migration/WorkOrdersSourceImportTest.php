@@ -3,6 +3,7 @@
 use App\Enums\CommissionType;
 use App\Enums\MigrationStatus;
 use App\Enums\WorkOrderType;
+use App\Models\MigrationRun;
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\QuoteLineCommission;
@@ -12,6 +13,8 @@ use App\Models\WorkOrder;
 use App\Models\WorkOrderStage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
@@ -140,4 +143,37 @@ it('fails the row when the parent quote is not migrated', function () {
         ->and(WorkOrder::query()->count())->toBe(0)
         ->and(collect($run->report)->firstWhere('level', 'error')['message'])
         ->toContain('Unresolved quote_id (legacy id 999)');
+});
+
+it('imports a work order whose deleted legacy user the legacy sends as the "Utente legacy" stand-in', function () {
+    // The legacy users endpoint ends with this record; deleted supervisors and
+    // participants of a commessa arrive as its id (decision 2026-10-21, G-27).
+    $actor = migrationsSuperAdminActor();
+    Http::fake([fakeMigrationsBaseUrl().'/users*' => Http::response([
+        'items' => [[
+            'id' => 999999999,
+            'email' => 'utente.legacy@qualificagroup.invalid',
+            'password' => Hash::make('stand-in'),
+            'first_name' => 'Utente',
+            'last_name' => 'legacy',
+            'is_active' => false,
+            'roles' => [],
+        ]],
+        'pagination' => ['total' => 1],
+    ])]);
+    runMigrationJobFor(MigrationRun::factory()->create(['user_id' => $actor->id, 'source' => 'users']));
+    $standIn = User::query()->where('old_id', 999999999)->sole();
+
+    $run = runLegacyWorkOrdersImport([legacyWorkOrderRecord([
+        'supervisor_user_ids' => [999999999],
+        'participant_user_ids' => [999999999],
+    ])], $actor);
+    $workOrder = WorkOrder::query()->where('old_id', 17)->sole();
+
+    expect($standIn->is_active)->toBeFalse()
+        ->and($standIn->personalData?->first_name)->toBe('Utente')
+        ->and($standIn->personalData?->last_name)->toBe('legacy')
+        ->and($run->created_rows)->toBe(1)
+        ->and($workOrder->supervisors()->pluck('users.id')->all())->toBe([$standIn->id])
+        ->and($workOrder->participants()->pluck('users.id')->all())->toBe([$standIn->id]);
 });

@@ -3,6 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Migrazione commesse W3 e task: utenti cancellati -> "Utente legacy" — VERDE, NON COMMITTATO (2026-10-21)
+
+- Problema W3 del run 2026-10-20 (`~/Downloads/righe-fallite-migrazione-2026-10-20.xlsx`): 112 commesse fallite per
+  responsabile/partecipante cancellato fisicamente dal legacy (utenti 69 e 47; nel DB anche 96 e 117: 115 commesse).
+- Decisione utente: un utente "Utente legacy" a cui vanno quelle commesse. Logica SOLO nel legacy (backend.md §9):
+  `../qnet/app/Support/Migration/LegacyPlaceholderUser.php` (ID 999999999, record, `replaceDeleted()`);
+  `UserMigrationController` lo accoda all'ultima pagina senza ricerca (total +1); `WorkOrderMigrationController`
+  sostituisce gli id assenti da `users` (dedup prima del max 12 partecipanti). Verificato via tinker sui dati reali
+  (commesse 61/76/119 -> 999999999; pagina utenti offset 399 = solo il segnaposto, total 400) + `php -l`.
+- qnet-2: nessun codice. Test `WorkOrdersSourceImportTest` "imports a work order whose deleted legacy user...":
+  il segnaposto nasce inattivo "Utente legacy" (senza [OLD]) e diventa responsabile/partecipante. Spec 0013
+  emendamento sexies, spec 0189 G-27 aggiornata. Migration 463/463 con `EXTERNAL_MIGRATION_USERS_LINK_ONLY=false`
+  (con il `.env` locale restano le 7 note).
+- Da fare in ambiente: rilanciare `users` (crea il segnaposto), poi `work-orders` e `tasks` (riprendono le fallite).
+- Task (spec 0289 D-8, richiesta utente): `LegacyTaskPeople` sostituisce l'utente cancellato in ogni ruolo (creatore,
+  richiedente, assegnatari, osservatori) prima di unire/togliere doppioni; 56 task coinvolti. Test qnet-2
+  `TasksSourceImportTest` "AC-005 imports a task whose deleted legacy users...". Migration 464/464.
+- Manuale: nessun impatto.
+
 ## Ramo "ISO": sottocategorie e listino prodotti dal PDF "iso" — VERDE, COMMITTATO (2026-10-21)
 
 - Fonte: `~/Downloads/iso.pdf` (export Excel del listino servizi legacy, 323 righe; il CSV precedente era sbagliato,

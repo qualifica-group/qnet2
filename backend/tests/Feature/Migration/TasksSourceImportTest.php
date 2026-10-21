@@ -197,6 +197,24 @@ it('AC-005 fails the row, leaving no task, when a person is not migrated', funct
     'watcher' => ['watcher_user_ids', [999], 'Watcher'],
 ]);
 
+it('AC-005 imports a task whose deleted legacy users arrive as the "Utente legacy" stand-in', function () {
+    // The legacy sends 999999999 (LegacyPlaceholderUser) for every deleted user, in any role (decision 2026-10-21).
+    $standIn = User::factory()->create(['old_id' => 999999999]);
+
+    $run = runLegacyTasksImport([legacyTaskRecord([
+        'creator_user_id' => 999999999,
+        'requester_user_id' => 999999999,
+        'assignee_user_ids' => [999999999],
+    ])]);
+
+    $task = Task::query()->where('old_id', 500)->sole();
+
+    expect($run->created_rows)->toBe(1)
+        ->and($task->creator_id)->toBe($standIn->id)
+        ->and($task->requester_id)->toBe($standIn->id)
+        ->and($task->assignees()->pluck('users.id')->all())->toBe([$standIn->id]);
+});
+
 it('AC-006 syncs assignees and watchers into their pivots', function () {
     $first = User::factory()->create(['old_id' => 71]);
     $second = User::factory()->create(['old_id' => 72]);
