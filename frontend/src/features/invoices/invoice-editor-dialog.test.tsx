@@ -54,6 +54,7 @@ const DRAFT: InvoiceDraft = {
       net_amount: '200.00',
       vat_amount: '44.00',
       total_amount: '244.00',
+      commission: null,
     },
     {
       quote_line_id: 12,
@@ -65,6 +66,7 @@ const DRAFT: InvoiceDraft = {
       net_amount: '50.50',
       vat_amount: '11.11',
       total_amount: '61.61',
+      commission: null,
     },
   ],
   bank_accounts: [],

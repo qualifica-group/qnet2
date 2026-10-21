@@ -71,7 +71,7 @@ class InvoiceService
             $this->assertNotInvoiced($locked);
 
             // Step 2: validate and compute everything before touching the sequence
-            $prepared = $this->prepare($data, $locked->work_order_id, $locked->quote_id, null);
+            $prepared = $this->prepare($data, $locked, $locked->work_order_id, $locked->quote_id, null);
 
             // Step 3: allocate the number and persist header, lines, schedule
             $invoice = Invoice::query()->create($prepared['header'] + [
@@ -112,7 +112,7 @@ class InvoiceService
             // Step 2: validate and compute; with collections plan the rebalancing first
             $collected = $this->schedule->hasCollections($locked);
             $collected && $this->schedule->assertFrozenFields($locked, $data);
-            $prepared = $this->prepare($data, $locked->work_order_id, $locked->quote_id, $locked->id, ! $collected);
+            $prepared = $this->prepare($data, $locked->proformaRequest, $locked->work_order_id, $locked->quote_id, $locked->id, ! $collected);
             $plan = $collected ? $this->schedule->plan($locked, $prepared['header']['total_amount']) : null;
 
             // Step 3: replace header, lines and schedule
@@ -213,10 +213,10 @@ class InvoiceService
      * @param  array<string, mixed>  $data
      * @return array{header: array<string, mixed>, lines: array<int, array<string, mixed>>, installments: array<int, array<string, mixed>>}
      */
-    private function prepare(array $data, ?int $workOrderId, ?int $quoteId, ?int $ignoreInvoiceId, bool $withSchedule = true): array
+    private function prepare(array $data, ?ProformaRequest $request, ?int $workOrderId, ?int $quoteId, ?int $ignoreInvoiceId, bool $withSchedule = true): array
     {
         $this->assertBankBelongsToCompany($data);
-        $this->lineGuard->assert($data['lines'], $workOrderId, $quoteId, $ignoreInvoiceId);
+        $this->lineGuard->assert($data['lines'], $request, $workOrderId, $quoteId, $ignoreInvoiceId);
 
         $computed = $this->amounts->compute($data['lines'], $this->amounts->vatRates(array_column($data['lines'], 'vat_rate_id')));
 

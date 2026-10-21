@@ -3,6 +3,37 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Richieste proforma Ente = provvigione fornitore (spec 0288) — VERDE, NON COMMITTATO (2026-10-21)
+
+- Spec `docs/specs/0288-institution-proforma-supplier-commission.xml` (D-1..D-7, AC-001..AC-013). Supera 0194 D-2
+  e, per le sole richieste Ente, 0267 D-6.
+- `ProformaRequestService::buildDrafts()`: Consulenza una per offerta (invariato); Ente una per
+  (`product.supplier_id`, `quote.company_id`) sull'intera commessa, `quote_id` = offerta con code piu' basso
+  (ordinamento naturale), da cui societa' e metodo di pagamento. Nessuna migrazione.
+- Nuovo `App\Services\Invoices\ProformaRequestBillableLines` (`available()` per la bozza, `ids()` per il guard):
+  unica fonte delle righe di una richiesta (Ente: offerte della stessa societa' + stesso fornitore, null = null).
+- `InvoiceLineGuard::assert($lines, ?ProformaRequest, $workOrderId, $quoteId, $ignoreInvoiceId)`: con richiesta usa
+  `ids()` e rifiuta 422 `invoices.line_not_in_request` (create e update via `InvoiceService::prepare()`); senza
+  richiesta comportamento invariato.
+- Nuovo `SupplierCommissionCalculator::forLine(QuoteLine, DateTimeImmutable)` -> DTO
+  `App\DataObjects\Invoices\SupplierCommission` (type, value, baseAmount, amount): `CommissionRuleResolver` ruolo
+  SUPPLIER alla data di oggi, base = `quote_lines.net_amount` (prezzo di vendita, NON margine), riusa
+  `CommissionCalculator`; ignora `supplier_commission_enabled` e `quote_line_commissions`; nessuna regola = 0.
+- `InvoiceDraftBuilder`: righe Ente = quantita' 1, prezzo = provvigione, IVA della riga ricalcolata con
+  `LineAmountCalculator`; nuovo campo `available_lines[].commission` ({type, value, base_amount} | null).
+- Frontend: `AvailableLineCommission` in `features/invoices/types.ts`; colonna Provvigione + badge
+  "Nessuna regola provvigionale" in `invoice-editor-available-lines.tsx` (solo se qualche riga ha commission);
+  i18n `invoiceEditor.available.commission.*` + `columns.commission` IT/EN.
+- Guide IT/EN: `proforma-requests` (nuova sezione `institution-commission`, how-created, multi-quote, issue),
+  `invoices` (righe disponibili).
+- Verifica: Pest Invoices+ProformaRequests+ManagementControl 267/267; suite completa 11947/11973 con rossi solo
+  estranei (QuoteDocumentPdfTest senza LibreOffice, test migrazione utenti col flag 0285 nel `.env`); Pint ok;
+  Vitest invoices+help 191/191; `tsc -b --force` EXIT 0; ESLint ok. Nota: `composer test` fallisce su questo
+  composer (`@no_additional_args`), usare `php -d memory_limit=1G vendor/bin/pest --parallel "--passthru-php=-d memory_limit=1G"`.
+- Manuale Claude Docs: accesso negato -> da aggiornare a mano le sezioni "Richieste proforma" (Ente = provvigione,
+  raggruppamento per fornitore/societa') e "Fatture attive" (righe disponibili filtrate, colonna Provvigione).
+- Prossimo: commit su richiesta dell'utente.
+
 ## UI HR ALLINEATA (spec 0287) — VERDE, COMMITTATO (2026-10-20)
 
 - Spec `docs/specs/0287-hr-ui-alignment.xml`. Richiesta utente: allineare Assenze, Formazione, Competenze a Gestione

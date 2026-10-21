@@ -45,12 +45,18 @@ export const invoiceEditor = {
     addLine: 'Add line: {{description}}',
     addAll: 'Add all',
     added: 'Added',
+    commission: {
+      percentage: '{{value}} % of {{base}}',
+      fixedAmount: 'Fixed amount',
+      missing: 'No commission rule',
+    },
     columns: {
       description: 'Description',
       quantity: 'Quantity',
       unit_price: 'Price',
       vat_rate: 'VAT',
       total_amount: 'Total',
+      commission: 'Commission',
       actions: 'Actions',
     },
   },

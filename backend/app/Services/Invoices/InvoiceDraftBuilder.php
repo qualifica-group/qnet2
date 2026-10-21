@@ -6,13 +6,12 @@ namespace App\Services\Invoices;
 
 use App\Enums\FinancialAccountType;
 use App\Enums\ProformaRequestKind;
-use App\Enums\QuoteLineType;
 use App\Models\FinancialAccount;
-use App\Models\InvoiceLine;
 use App\Models\ProformaRequest;
 use App\Models\QuoteLine;
 use App\Models\Registry;
-use Illuminate\Support\Collection;
+use App\Support\Amounts\LineAmountCalculator;
+use DateTimeImmutable;
 
 /**
  * Read model of the issue modal (spec 0194, D-8/D-9): the lines the work order
@@ -20,6 +19,15 @@ use Illuminate\Support\Collection;
  */
 final class InvoiceDraftBuilder
 {
+    /** Same quantity precision as the invoice lines (InvoiceAmountCalculator). */
+    private const int QUANTITY_SCALE = 2;
+
+    public function __construct(
+        private readonly ProformaRequestBillableLines $billableLines,
+        private readonly SupplierCommissionCalculator $commissions,
+        private readonly LineAmountCalculator $amounts,
+    ) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -36,7 +44,8 @@ final class InvoiceDraftBuilder
             ->orderBy('name')->orderBy('id')
             ->get(['id', 'name', 'iban', 'company_id']);
 
-        // Step 3: defaults, then the whole payload
+        // Step 3: defaults, then the whole payload; commissions resolve at today's rules (spec 0288, D-4)
+        $referenceDate = new DateTimeImmutable('today');
         $company = $quote->company;
         $companyBanks = $banks->where('company_id', $company?->id);
         $paymentMethod = $request->paymentMethod ?? $quote->paymentMethod;
@@ -54,7 +63,8 @@ final class InvoiceDraftBuilder
                 'notes' => null,
                 'layout' => null,
             ],
-            'available_lines' => $this->availableLines($request)->map(fn (QuoteLine $line): array => $this->line($line))->values()->all(),
+            'available_lines' => $this->billableLines->available($request)
+                ->map(fn (QuoteLine $line): array => $this->line($line, $request->kind, $referenceDate))->values()->all(),
             'bank_accounts' => $banks->map(fn (FinancialAccount $bank): array => $this->bank($bank) + ['company_id' => $bank->company_id])->values()->all(),
         ];
     }
@@ -69,41 +79,35 @@ final class InvoiceDraftBuilder
     }
 
     /**
-     * Lines whose product typology feeds this request kind (spec 0247, D-6).
+     * Consultancy lines bill the sale amounts; institution lines bill the
+     * supplier commission on them, as one unit (spec 0288, D-4).
      *
-     * @return Collection<int, QuoteLine>
-     */
-    private function availableLines(ProformaRequest $request): Collection
-    {
-        return $request->workOrder->quoteLines()
-            ->where('quote_lines.quote_id', $request->quote_id)
-            ->where('line_type', QuoteLineType::Revenue->value)
-            ->whereNotIn('quote_lines.id', InvoiceLine::query()->whereNotNull('quote_line_id')->select('quote_line_id'))
-            ->with('product:id,name,supplier_id,product_typology_id,vat_rate_id', 'product.productTypology:id,proforma_kind', 'product.vatRate:id,name,rate', 'vatRate:id,name,rate')
-            ->get()
-            ->filter(fn (QuoteLine $line): bool => $line->product?->productTypology?->proforma_kind === $request->kind)
-            ->filter(fn (QuoteLine $line): bool => $request->kind === ProformaRequestKind::Consultancy
-                || $line->product->supplier_id === $request->supplier_id);
-    }
-
-    /**
      * @return array<string, mixed>
      */
-    private function line(QuoteLine $line): array
+    private function line(QuoteLine $line, ProformaRequestKind $kind, DateTimeImmutable $referenceDate): array
     {
         // A quote line may carry no VAT rate: fall back to the product's default.
         $vatRate = $line->vatRate ?? $line->product->vatRate;
+        $commission = $kind === ProformaRequestKind::Institution ? $this->commissions->forLine($line, $referenceDate) : null;
+        $amounts = $commission === null
+            ? ['quantity' => $line->quantity, 'unit_price' => $line->unit_price, 'net' => $line->net_amount, 'vat' => $line->vat_amount, 'total' => $line->total_amount]
+            : $this->amounts->line('1', $commission->amount, $vatRate?->rate === null ? null : (string) $vatRate->rate, self::QUANTITY_SCALE);
 
         return [
             'quote_line_id' => $line->id,
             'product' => ['id' => $line->product->id, 'name' => $line->product->name],
             'description' => $line->additional_description ?? $line->product->name,
-            'quantity' => $line->quantity,
-            'unit_price' => $line->unit_price,
+            'quantity' => $amounts['quantity'],
+            'unit_price' => $amounts['unit_price'],
             'vat_rate' => $vatRate === null ? null : ['id' => $vatRate->id, 'name' => $vatRate->name, 'rate' => $vatRate->rate],
-            'net_amount' => $line->net_amount,
-            'vat_amount' => $line->vat_amount,
-            'total_amount' => $line->total_amount,
+            'net_amount' => $amounts['net'],
+            'vat_amount' => $amounts['vat'],
+            'total_amount' => $amounts['total'],
+            'commission' => $commission === null ? null : [
+                'type' => $commission->type,
+                'value' => $commission->value,
+                'base_amount' => $commission->baseAmount,
+            ],
         ];
     }
 

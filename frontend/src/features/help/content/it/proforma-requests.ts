@@ -25,7 +25,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Le richieste non si creano da questo elenco: si inviano dal pulsante **€** dell\'elenco **Commesse** (vedi la guida Commesse). Una commessa genera le richieste **una sola volta**: se ne ha già una (da evadere o evasa) non se ne possono inviare altre. Per ogni commessa il sistema genera **una richiesta** per le righe di tipo **Consulenza** e **una richiesta per ciascun fornitore** delle righe di tipo **Ente**.',
+          text: 'Le richieste non si creano da questo elenco: si inviano dal pulsante **€** dell\'elenco **Commesse** (vedi la guida Commesse). Una commessa genera le richieste **una sola volta**: se ne ha già una (da evadere o evasa) non se ne possono inviare altre. Per ogni commessa il sistema genera **una richiesta** per le righe di tipo **Consulenza** e **una richiesta per ciascun fornitore** delle righe di tipo **Ente**. La richiesta Ente non fattura all\'ente il prezzo di vendita ma la **provvigione** che ci spetta (vedi **Richieste Ente e provvigioni**).',
         },
         {
           type: 'table',
@@ -47,15 +47,35 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Su una commessa **multi-offerta** le richieste sono generate **per ogni offerta** (e, come sempre, per tipo e per fornitore): nessuna richiesta mescola righe di offerte diverse.',
+          text: 'Su una commessa **multi-offerta** le richieste **Consulenza** sono generate **per ogni offerta**. Le richieste **Ente** sono una per ogni **fornitore** e per ogni **società emittente**: se lo stesso ente compare in più offerte della stessa società nasce una sola richiesta; se le offerte sono di società diverse, una richiesta per società.',
         },
         {
           type: 'list',
           items: [
-            'Ogni richiesta riporta la propria **offerta**.',
+            'Ogni richiesta riporta la propria **offerta**. Per una richiesta Ente che raccoglie più offerte è l\'offerta con il **codice più basso**.',
             'Cliente, azienda emittente e modalità di pagamento della fattura vengono presi dall\'**offerta della richiesta**, quindi ogni cliente riceve il proprio proforma.',
           ],
         },
+      ],
+    },
+    {
+      id: 'institution-commission',
+      title: 'Richieste Ente e provvigioni',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Nella richiesta **Ente** ogni servizio viene proposto con l\'importo della **provvigione del fornitore**, calcolata dalle regole del ruolo **Fornitore** del **Configuratore Commissioni** (le "% provvigioni" dell\'ente), valide alla data di emissione. La regola si cerca prima sul servizio, poi sulla sua categoria e sulle categorie superiori.',
+        },
+        {
+          type: 'table',
+          headers: ['Regola', 'Importo proposto'],
+          rows: [
+            ['**Percentuale**', 'Imponibile di vendita della riga (prezzo × quantità) × percentuale. Esempio: 2 × 500 € al 10 % = 100 €.'],
+            ['**Importo fisso**', 'L\'importo della regola, una volta per riga, qualunque sia la quantità.'],
+            ['**Nessuna regola**', '0 €, con l\'avviso **Nessuna regola provvigionale**: aggiungi la regola nel Configuratore Commissioni o correggi il prezzo a mano.'],
+          ],
+        },
+        { type: 'paragraph', text: 'Il servizio entra nel proforma con quantità 1 e prezzo uguale alla provvigione; l\'IVA è quella della riga d\'offerta. Il prezzo resta modificabile. La richiesta **Consulenza** fattura invece i prezzi di vendita.' },
       ],
     },
     {
@@ -66,7 +86,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Sulla riga della richiesta **Da evadere** premi l’azione **Emetti proforma** (serve il permesso di creazione fatture).',
-            'Nella finestra controlla l’intestazione, aggiungi le righe dalle **Righe disponibili** della commessa (**Aggiungi** o **Aggiungi tutte**) e verifica le scadenze e i totali.',
+            'Nella finestra controlla l’intestazione, aggiungi le righe dalle **Righe disponibili** della commessa (**Aggiungi** o **Aggiungi tutte**) e verifica le scadenze e i totali. Le righe disponibili sono solo quelle della richiesta: Consulenza o Ente, e per l’Ente solo quelle del suo fornitore.',
             'Premi **Emetti**: il proforma riceve il numero N/AAAA della società emittente e la richiesta passa a **Evasa**.',
           ],
         },
