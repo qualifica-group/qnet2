@@ -61,6 +61,7 @@ class UserService
         // Spec 0272: the contract history, so EmploymentResource derives the
         // condition in force (and its CCNL level label) without a query per row.
         'employment.contracts.collectiveAgreementLevel.agreement',
+        'employment.contracts.contractType',
     ];
 
     public function __construct(

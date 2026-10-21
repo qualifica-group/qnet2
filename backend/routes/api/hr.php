@@ -20,6 +20,7 @@ require __DIR__.'/collective-agreements.php';
 require __DIR__.'/employment-contracts.php';
 require __DIR__.'/org-chart.php';
 require __DIR__.'/absence-types.php';
+require __DIR__.'/contract-types.php';
 require __DIR__.'/absence-requests.php';
 require __DIR__.'/absence-balances.php';
 require __DIR__.'/absence-calendar.php';

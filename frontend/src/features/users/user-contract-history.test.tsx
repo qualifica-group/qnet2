@@ -42,6 +42,7 @@ const LATEST: EmploymentContract = {
   ends_on: null,
   is_current: true,
   relationship_type: 'employee',
+  contract_type: { id: 2, name: 'Apprenticeship' },
   company: { id: 5, label: 'Acme Srl' },
   collective_agreement_level: { id: 3, label: 'Commercio - Q1' },
   salary_amount: '2500.00',
@@ -55,6 +56,7 @@ const OLDER: EmploymentContract = {
   starts_on: '2025-01-01',
   ends_on: '2026-02-28',
   is_current: false,
+  contract_type: null,
   collective_agreement_level: null,
   salary_amount: undefined,
   salary_period: undefined,
@@ -95,6 +97,7 @@ describe('UserContractHistorySection — list', () => {
     expect(await screen.findByText(/From .* to ongoing/)).toBeInTheDocument()
     expect(screen.getByText('Current')).toBeInTheDocument()
     expect(screen.getByText(/Commercio - Q1/)).toBeInTheDocument()
+    expect(screen.getByText(/Employee · Apprenticeship · Acme Srl/)).toBeInTheDocument()
     expect(screen.getByText(/2500.00 \/ month/)).toBeInTheDocument()
     expect(screen.getAllByText(/Acme Srl/)).toHaveLength(2)
     expect(screen.getByText('Reason: Promotion')).toBeInTheDocument()
@@ -131,12 +134,14 @@ describe('UserContractHistorySection — new condition', () => {
 
     expect(within(dialog).queryByLabelText('Salary')).not.toBeInTheDocument()
     fireEvent.change(within(dialog).getByLabelText(/Start date/), { target: { value: '2026-06-01' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'pick-Contract type' }))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
     expect(createMock.mock.calls[0][1]).toEqual({
       starts_on: '2026-06-01',
       relationship_type: 'employee',
+      contract_type_id: 1,
       company_id: null,
       collective_agreement_level_id: null,
       change_reason: null,
@@ -151,6 +156,7 @@ describe('UserContractHistorySection — new condition', () => {
     expect(within(dialog).getByTestId('resource-Collective agreement and level')).toHaveTextContent('collective-agreement-levels')
     fireEvent.change(within(dialog).getByLabelText(/Start date/), { target: { value: '2026-06-01' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'pick-Collective agreement and level' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'pick-Contract type' }))
     fireEvent.change(within(dialog).getByLabelText('Salary'), { target: { value: '3000' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
 
@@ -180,9 +186,42 @@ describe('UserContractHistorySection — new condition', () => {
     const { dialog } = await openDialog()
 
     fireEvent.change(within(dialog).getByLabelText(/Start date/), { target: { value: '2026-03-01' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'pick-Contract type' }))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
 
     expect(await within(dialog).findByText('This start date is already used.')).toBeInTheDocument()
+  })
+
+  it('blocks an Employee condition without a contract type, then lets a Self-employed one go without (AC-012)', async () => {
+    granted = ['users.update']
+    createMock.mockResolvedValue(LATEST)
+    const { dialog } = await openDialog()
+
+    expect(within(dialog).getByTestId('resource-Contract type')).toHaveTextContent('contract-types')
+    fireEvent.change(within(dialog).getByLabelText(/Start date/), { target: { value: '2026-06-01' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+    expect(await within(dialog).findByText('Select the contract type.')).toBeInTheDocument()
+    expect(createMock).not.toHaveBeenCalled()
+
+    fireEvent.click(within(dialog).getByRole('combobox', { name: /Relationship type/ }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Self-employed' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
+    expect(createMock.mock.calls[0][1]).toMatchObject({ relationship_type: 'self_employed', contract_type_id: null })
+  })
+
+  it('shows a contract type 422 under the field', async () => {
+    granted = ['users.update']
+    createMock.mockRejectedValue(failure(422, { contract_type_id: ['The contract type is required.'] }))
+    const { dialog } = await openDialog()
+
+    fireEvent.change(within(dialog).getByLabelText(/Start date/), { target: { value: '2026-06-01' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'pick-Contract type' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+    expect(await within(dialog).findByText('The contract type is required.')).toBeInTheDocument()
   })
 
   it('tells a 403 with the permission message', async () => {
@@ -191,6 +230,7 @@ describe('UserContractHistorySection — new condition', () => {
     const { dialog } = await openDialog()
 
     fireEvent.change(within(dialog).getByLabelText(/Start date/), { target: { value: '2026-06-01' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'pick-Contract type' }))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(toastError).toHaveBeenCalledWith('You do not have permission for this action.'))
@@ -230,6 +270,7 @@ describe('toContractPayload', () => {
   const values = {
     starts_on: '2026-06-01',
     relationship_type: 'self_employed' as const,
+    contract_type_id: 4,
     company_id: 2,
     collective_agreement_level_id: null,
     salary_amount: '12.5',
@@ -238,7 +279,7 @@ describe('toContractPayload', () => {
   }
 
   it('keeps the salary only for an actor who can manage it', () => {
-    expect(toContractPayload(values, true)).toMatchObject({ salary_amount: 12.5, salary_period: 'hourly', change_reason: 'new deal' })
+    expect(toContractPayload(values, true)).toMatchObject({ contract_type_id: 4, salary_amount: 12.5, salary_period: 'hourly', change_reason: 'new deal' })
     expect(toContractPayload(values, false)).not.toHaveProperty('salary_amount')
   })
 })

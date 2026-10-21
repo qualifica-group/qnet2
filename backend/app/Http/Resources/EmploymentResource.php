@@ -195,9 +195,9 @@ class EmploymentResource extends JsonResource
     }
 
     /**
-     * The condition in force today (spec 0272 D-2): its start and CCNL level.
+     * The condition in force today (spec 0272 D-2): its start, CCNL level and contract type (spec 0290).
      *
-     * @return array{starts_on: string, collective_agreement_level: array{id: int, label: string}|null}|null
+     * @return array{starts_on: string, collective_agreement_level: array{id: int, label: string}|null, contract_type: array{id: int, name: string}|null}|null
      */
     private function currentContract(): ?array
     {
@@ -215,6 +215,7 @@ class EmploymentResource extends JsonResource
                 'id' => $level->id,
                 'label' => "{$level->agreement->name} – {$level->code}",
             ],
+            'contract_type' => $this->summarizeByName($contract->contractType),
         ];
     }
 

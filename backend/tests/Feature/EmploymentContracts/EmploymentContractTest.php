@@ -3,6 +3,7 @@
 use App\Models\CollectiveAgreement;
 use App\Models\CollectiveAgreementLevel;
 use App\Models\Company;
+use App\Models\ContractType;
 use App\Models\EmploymentContract;
 use App\Models\EmploymentProfile;
 use App\Models\User;
@@ -42,7 +43,8 @@ function contractsProfile(): EmploymentProfile
  */
 function contractPayload(array $overrides = []): array
 {
-    return array_merge(['starts_on' => '2026-01-01', 'relationship_type' => 'employee'], $overrides);
+    // Spec 0290 D-3: an employee condition needs an active contract type.
+    return array_merge(['starts_on' => '2026-01-01', 'relationship_type' => 'employee', 'contract_type_id' => ContractType::factory()->create()->id], $overrides);
 }
 
 beforeEach(fn () => Carbon::setTestNow('2026-10-16 10:00:00'));

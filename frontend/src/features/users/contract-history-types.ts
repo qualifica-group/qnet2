@@ -21,6 +21,7 @@ export interface EmploymentContract {
   ends_on: string | null
   is_current: boolean
   relationship_type: RelationshipType | null
+  contract_type: { id: number; name: string } | null
   company: { id: number; label: string } | null
   collective_agreement_level: { id: number; label: string } | null
   /** `salary_*` travel only with `users.manageCompensation`. */
@@ -34,6 +35,8 @@ export interface EmploymentContract {
 export interface CreateEmploymentContractPayload {
   starts_on: string
   relationship_type: RelationshipType
+  /** Required by the server when the relationship is `employee` (spec 0290 D-3). */
+  contract_type_id: number | null
   company_id: number | null
   collective_agreement_level_id: number | null
   salary_amount?: number | null

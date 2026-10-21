@@ -122,6 +122,8 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         // spec 0284 (REQUIREMENT CHANGED): staff courses join the generic registry; staff trainings has no
         // field and is registered so its permissions are role-assignable.
         'staff-courses', 'staff-trainings',
+        // spec 0290 (REQUIREMENT CHANGED): the contract types catalogue joins the generic registry.
+        'contract-types',
         // spec 0286 (REQUIREMENT CHANGED): skills join the generic registry; user-skills has no field and is
         // registered so its permissions are role-assignable.
         'skills', 'user-skills',

@@ -12,6 +12,7 @@ use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\Contract;
 use App\Models\ContractStatus;
+use App\Models\ContractType;
 use App\Models\CostType;
 use App\Models\CustomFieldDefinition;
 use App\Models\DocumentBundle;
@@ -113,6 +114,10 @@ return [
         // spec 0278: absence types catalogue.
         'absence-types' => [
             'model' => AbsenceType::class,
+        ],
+        // spec 0290: contract types catalogue.
+        'contract-types' => [
+            'model' => ContractType::class,
         ],
         // spec 0284: staff courses catalogue and staff trainings register.
         'staff-courses' => [

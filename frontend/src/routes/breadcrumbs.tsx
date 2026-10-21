@@ -52,6 +52,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'org-chart': 'navigation.orgChart',
   absences: 'navigation.absences',
   'absence-types': 'navigation.absenceTypes',
+  'contract-types': 'navigation.contractTypes',
   'staff-trainings': 'navigation.staffTrainings',
   'staff-courses': 'navigation.staffCourses',
   'user-skills': 'navigation.userSkills',

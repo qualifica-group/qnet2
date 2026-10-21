@@ -240,6 +240,15 @@ final class UserColumnCatalog
                 'options' => RelationshipTypeEnum::values(),
             ],
             [
+                'id' => 'contract_type',
+                'label' => 'users.columns.contract_type',
+                'type' => 'text',
+                'visible' => false,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
+            ],
+            [
                 'id' => 'employment_status',
                 'label' => 'users.columns.employment_status',
                 'type' => 'enum',
@@ -327,6 +336,7 @@ final class UserColumnCatalog
             ['columnId' => 'company', 'type' => 'set'],
             ['columnId' => 'operational_site', 'type' => 'text'],
             ['columnId' => 'relationship_type', 'type' => 'set', 'options' => RelationshipTypeEnum::values()],
+            ['columnId' => 'contract_type', 'type' => 'set'],
             ['columnId' => 'employment_status', 'type' => 'set', 'options' => UserEmploymentStatusColumn::VALUES],
             ['columnId' => 'managed_business_functions', 'type' => 'set'],
             ['columnId' => 'reports_to', 'type' => 'set'],

@@ -5,6 +5,7 @@ namespace App\Http\Requests\EmploymentContracts;
 use App\Authorization\UsersAuthorization;
 use App\Enums\RelationshipTypeEnum;
 use App\Enums\SalaryPeriodEnum;
+use App\Models\ContractType;
 use App\Models\EmploymentContract;
 use App\Models\User;
 use Closure;
@@ -13,7 +14,8 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Validates POST /api/users/{user}/employment-contracts (spec 0272 D-1/D-4/D-5).
+ * Validates POST /api/users/{user}/employment-contracts (spec 0272 D-1/D-4/D-5;
+ * spec 0290 D-3: the contract type is required for employees, active only).
  * Authorization: `users.update` on the target user and the
  * `employment.contracts` field editable in the actor's matrix (spec 0283), and
  * compensation fields (`salary_*`) additionally need `users.manageCompensation`
@@ -56,6 +58,12 @@ class StoreEmploymentContractRequest extends FormRequest
                 $this->uniqueForProfile(...),
             ],
             'relationship_type' => ['required', Rule::enum(RelationshipTypeEnum::class)],
+            'contract_type_id' => [
+                'nullable',
+                'required_if:relationship_type,'.RelationshipTypeEnum::Employee->value,
+                'integer',
+                Rule::exists(ContractType::class, 'id')->where('is_active', true),
+            ],
             'company_id' => ['nullable', 'integer', 'exists:companies,id'],
             'collective_agreement_level_id' => ['nullable', 'integer', 'exists:collective_agreement_levels,id'],
             'salary_amount' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],

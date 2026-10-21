@@ -3,6 +3,35 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Tipologia contrattuale sugli utenti (spec 0290) — VERDE, NON COMMITTATO (2026-10-21)
+
+- Spec `docs/specs/0290-user-contract-type.xml` (approved, AC-001..014 verdi; AC-009 rev.2: i valori del filtro
+  sono i nomi in uso nelle righe visibili + blank, come Società, non l'intero catalogo).
+- Catalogo `contract_types` (name unique 100, is_active, sort_order) con CRUD come i tipi di assenza: model
+  `ContractType` (morph `contract_type`), `ContractTypePolicy`, `ContractTypesAuthorization` (`contract-types.*`),
+  `ContractTypeService` (delete 409 se in uso), `ContractTypesTableDefinition`, for-select ADR 0011
+  (`/api/contract-types/for-select`), rotte in `routes/api/contract-types.php` incluse da `hr.php`, menu
+  Configurazione (icona `clipboard-list`). Seeder `QualificaContractTypeSeeder` (Tempo indeterminato/determinato,
+  Apprendistato, Tirocinio, ordine 1-4) in `QualificaProductionDataSeeder`; ruolo HR con `contract-types.*`.
+- Storico (spec 0272): `employment_contracts.contract_type_id` e copia `employment_profiles.contract_type_id`
+  (FK restrictOnDelete). Scritta SOLO da `EmploymentContractService::syncCurrent()`. `StoreEmploymentContractRequest`:
+  `required_if:relationship_type,employee` + exists su tipologie attive. Nessun backfill: condizioni vecchie senza
+  tipologia. Import/seeder HR non la impostano. `PUT users` la ignora.
+- Contratto: `EmploymentContractResource.contract_type {id,name}|null`; `EmploymentResource.current_contract.contract_type`.
+  Griglia Utenti: colonna set `contract_type` (nascosta di default) legata a `UsersAuthorization::CONTRACTS_FIELD`.
+- FE: `features/contract-types/*` (`contractTypeKeys`, `CONTRACT_TYPES_FOR_SELECT_RESOURCE`), rotta `/contract-types`,
+  dialog condizione con campo obbligatorio se Dipendente, storico e scheda mostrano la tipologia;
+  label `users.columns.contract_type`. Guide in-app `contract-types` it/en nuove (96 chiavi), `users` it/en aggiornate;
+  manuale Claude Docs aggiornato (rev 327).
+- Test REQUIREMENT CHANGED: rollback a step fisso +2 (PurchaseOrderMigration 74, QuoteWorkflowMigration 225,
+  SupplierCommissionDirection 89), FieldCatalogueEndpoint, TablePreferences, `EmploymentContractTest::contractPayload()`,
+  `user-contract-history`/`user-payment-and-contract` test, `help-guide-keys.test.ts`.
+- Verifica: `composer test` 12073 ok; rossi solo i 7 Migration noti (`.env` LINK_ONLY=true, con false 464/464) e
+  `QuoteDocumentPdfTest` (manca LibreOffice). Vitest 8968/8968, tsc -b, ESLint, Pint puliti; migrate/rollback/migrate
+  su MySQL locale ok.
+- Da fare in ambiente: `php artisan migrate`, poi `db:seed --class=QualificaContractTypeSeeder` (o il production
+  seeder) e il sync dei permessi del ruolo HR.
+
 ## Migrazione commesse W3 e task: utenti cancellati -> "Utente legacy" — VERDE, NON COMMITTATO (2026-10-21)
 
 - Problema W3 del run 2026-10-20 (`~/Downloads/righe-fallite-migrazione-2026-10-20.xlsx`): 112 commesse fallite per

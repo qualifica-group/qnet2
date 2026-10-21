@@ -33,6 +33,7 @@ final class HrOfficeRoleCatalogue
         'org-chart',
         'absence-requests',
         'absence-types',
+        'contract-types',
         'staff-courses',
         'staff-trainings',
         'skills',

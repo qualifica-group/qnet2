@@ -53,6 +53,10 @@ use Illuminate\Database\Seeder;
  *      QualificaAbsenceTypeSeeder  — the absence type catalogue (Ferie,
  *                                    Permesso, Malattia, spec 0278). Same kind
  *                                    of row, same reasoning.
+ *      QualificaContractTypeSeeder — the contract type catalogue (Tempo
+ *                                    determinato, Tempo indeterminato,
+ *                                    Apprendistato, Tirocinio, spec 0290).
+ *                                    Same kind of row, same reasoning.
  *   4. TestUsersSeeder             — the named super-admin account.
  *      WorkOrderPaymentStatusSeeder — the legacy payment statuses of a
  *                                    commessa line.
@@ -128,6 +132,7 @@ class QualificaProductionDataSeeder extends Seeder
         $this->call(QualificaTaskTaxonomySeeder::class);
         $this->call(QualificaSectorSeeder::class);
         $this->call(QualificaAbsenceTypeSeeder::class);
+        $this->call(QualificaContractTypeSeeder::class);
         $this->call(TestUsersSeeder::class);
         $this->call(WorkOrderPaymentStatusSeeder::class);
         $this->call(QualificaLegacyImportSeeder::class);

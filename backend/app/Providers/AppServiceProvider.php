@@ -31,6 +31,7 @@ use App\Models\CompanySite;
 use App\Models\Contact;
 use App\Models\Contract;
 use App\Models\ContractStatus;
+use App\Models\ContractType;
 use App\Models\CostType;
 use App\Models\CustomFieldDefinition;
 use App\Models\CustomFieldOption;
@@ -248,6 +249,8 @@ class AppServiceProvider extends ServiceProvider
             'collective_agreement' => CollectiveAgreement::class,
             'collective_agreement_level' => CollectiveAgreementLevel::class,
             'employment_contract' => EmploymentContract::class,
+            // spec 0290: contract types catalogue.
+            'contract_type' => ContractType::class,
             // spec 0278: HR absences.
             'absence_type' => AbsenceType::class,
             'absence_request' => AbsenceRequest::class,

@@ -96,6 +96,7 @@ export const navigation = {
   jobActivities: 'Attività',
   absences: 'Assenze',
   absenceTypes: 'Tipi di assenza',
+  contractTypes: 'Tipologie contrattuali',
   staffTrainings: 'Formazione',
   staffCourses: 'Corsi',
   userSkills: 'Competenze',

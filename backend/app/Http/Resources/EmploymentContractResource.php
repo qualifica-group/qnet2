@@ -8,8 +8,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * One contractual condition (spec 0272). Expects the `ends_on`/`is_current`
- * attributes set by EmploymentContractService::history() and the `company` and
- * `collectiveAgreementLevel.agreement` relations loaded. `salary_*` are
+ * attributes set by EmploymentContractService::history() and the `company`, `contractType`
+ * and `collectiveAgreementLevel.agreement` relations loaded. `salary_*` are
  * emitted only with `users.manageCompensation` (D-5): the model hides them, so
  * they appear here and nowhere else.
  *
@@ -39,6 +39,9 @@ class EmploymentContractResource extends JsonResource
             'collective_agreement_level' => $level === null
                 ? null
                 : ['id' => $level->id, 'label' => "{$level->agreement->name} – {$level->code}"],
+            'contract_type' => $this->contractType === null
+                ? null
+                : ['id' => $this->contractType->id, 'name' => $this->contractType->name],
             $this->mergeWhen($canSeeCompensation, fn (): array => [
                 'salary_amount' => $this->salary_amount,
                 'salary_period' => $this->salary_period,

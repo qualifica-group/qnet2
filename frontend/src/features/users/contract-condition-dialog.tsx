@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { CONTRACT_TYPES_FOR_SELECT_RESOURCE } from '@/features/contract-types/for-select-api'
 import { COMPANIES_FOR_SELECT_RESOURCE } from '@/features/companies/for-select-api'
 import { classifyContractError } from '@/features/users/contract-history-errors'
 import {
@@ -24,6 +25,7 @@ import { RELATIONSHIP_TYPES } from '@/features/users/types'
 const DEFAULT_VALUES: ContractConditionFormValues = {
   starts_on: '',
   relationship_type: 'employee',
+  contract_type_id: null,
   company_id: null,
   collective_agreement_level_id: null,
   salary_amount: '',
@@ -35,6 +37,7 @@ const DEFAULT_VALUES: ContractConditionFormValues = {
 const SERVER_ERROR_FIELDS = [
   'starts_on',
   'relationship_type',
+  'contract_type_id',
   'company_id',
   'collective_agreement_level_id',
   'salary_amount',
@@ -55,6 +58,8 @@ export function ContractConditionDialog({ userId, open, onOpenChange, canManageC
   const create = useCreateEmploymentContract(userId)
   const schema = useMemo(() => buildContractConditionSchema(t), [t])
   const form = useForm<ContractConditionFormValues>({ resolver: zodResolver(schema), defaultValues: DEFAULT_VALUES })
+
+  const relationshipType = useWatch({ control: form.control, name: 'relationship_type' })
 
   const close = (next: boolean) => {
     if (!next) {
@@ -133,6 +138,21 @@ export function ContractConditionDialog({ userId, open, onOpenChange, canManageC
                   <FormMessage />
                 </FormItem>
               )}
+            />
+            <RelationSelectField
+              control={form.control}
+              name="contract_type_id"
+              metaKey="employment_contract.contract_type_id"
+              label={f('contractType')}
+              resource={CONTRACT_TYPES_FOR_SELECT_RESOURCE}
+              searchPlaceholder={f('contractTypeSearch')}
+              selected={null}
+              placeholder={f('contractTypePlaceholder')}
+              emptyLabel={f('contractTypeEmpty')}
+              errorLabel={f('contractTypeError')}
+              clearLabel={t('common.clear')}
+              retryLabel={t('common.retry')}
+              required={relationshipType === 'employee'}
             />
             <RelationSelectField
               control={form.control}

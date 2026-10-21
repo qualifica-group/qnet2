@@ -41,6 +41,13 @@ return [
             'permission' => 'collective-agreements.view',
         ],
         [
+            'key' => 'contract-types',
+            'label' => 'navigation.contractTypes',
+            'icon' => 'clipboard-list',
+            'route' => '/contract-types',
+            'permission' => 'contract-types.view',
+        ],
+        [
             'key' => 'absence-types',
             'label' => 'navigation.absenceTypes',
             'icon' => 'calendar-cog',

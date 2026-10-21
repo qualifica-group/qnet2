@@ -23,6 +23,7 @@ final class UserSensitiveColumns
     private const array FIELD_BY_COLUMN = [
         'company' => 'employment.company_id',
         'relationship_type' => 'employment.relationship_type',
+        'contract_type' => UsersAuthorization::CONTRACTS_FIELD,
         'hired_at' => 'employment.hired_at',
         'terminated_at' => 'employment.terminated_at',
         'employment_status' => 'employment.terminated_at',

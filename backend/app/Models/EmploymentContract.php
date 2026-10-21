@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'employment_profile_id',
     'starts_on',
     'relationship_type',
+    'contract_type_id',
     'company_id',
     'collective_agreement_level_id',
     'salary_amount',
@@ -78,6 +79,14 @@ class EmploymentContract extends BaseModel
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    /**
+     * @return BelongsTo<ContractType, $this>
+     */
+    public function contractType(): BelongsTo
+    {
+        return $this->belongsTo(ContractType::class);
     }
 
     /**

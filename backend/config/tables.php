@@ -18,6 +18,7 @@ use App\Tables\CompaniesTableDefinition;
 use App\Tables\CompanySitesTableDefinition;
 use App\Tables\ContractsTableDefinition;
 use App\Tables\ContractStatusesTableDefinition;
+use App\Tables\ContractTypesTableDefinition;
 use App\Tables\CostTypesTableDefinition;
 use App\Tables\CustomFieldsTableDefinition;
 use App\Tables\DocumentBundlesTableDefinition;
@@ -114,6 +115,8 @@ return [
         'job-activities' => JobActivitiesTableDefinition::class,
         // spec 0278: absence types catalogue.
         'absence-types' => AbsenceTypesTableDefinition::class,
+        // spec 0290: contract types catalogue.
+        'contract-types' => ContractTypesTableDefinition::class,
         // spec 0278: absence requests, one domain per tab (mine / to approve / all).
         'absence-requests' => AbsenceRequestsTableDefinition::class,
         'absence-requests-to-approve' => AbsenceRequestsToApproveTableDefinition::class,

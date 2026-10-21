@@ -33,6 +33,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'covers_all_product_categories',
     'is_assignable',
     'relationship_type',
+    'contract_type_id',
     'company_id',
     'iban',
     'iban_holder',
@@ -93,6 +94,17 @@ class EmploymentProfile extends BaseModel
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    /**
+     * Copy of the contract type of the condition in force (spec 0290 D-4),
+     * written only by EmploymentContractService::syncCurrent().
+     *
+     * @return BelongsTo<ContractType, $this>
+     */
+    public function contractType(): BelongsTo
+    {
+        return $this->belongsTo(ContractType::class);
     }
 
     /**

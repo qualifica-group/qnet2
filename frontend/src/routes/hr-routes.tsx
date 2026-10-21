@@ -9,6 +9,7 @@ const JobRolesPage = lazyRoute(() => import('@/pages/job-roles-page'))
 const JobActivitiesPage = lazyRoute(() => import('@/pages/job-activities-page'))
 const AbsencesPage = lazyRoute(() => import('@/features/absences/absences-page'))
 const AbsenceTypesPage = lazyRoute(() => import('@/features/absence-types/absence-types-page'))
+const ContractTypesPage = lazyRoute(() => import('@/features/contract-types/contract-types-page'))
 const StaffTrainingsPage = lazyRoute(() => import('@/features/staff-trainings/staff-trainings-page'))
 const StaffCoursesPage = lazyRoute(() => import('@/features/staff-courses/staff-courses-page'))
 const UserSkillsPage = lazyRoute(() => import('@/features/user-skills/user-skills-page'))
@@ -22,6 +23,7 @@ export const HR_ROUTES: RouteObject[] = [
   { path: 'org-chart', element: <OrgChartPage /> },
   { path: 'absences', element: <AbsencesPage /> },
   { path: 'absence-types', element: <AbsenceTypesPage /> },
+  { path: 'contract-types', element: <ContractTypesPage /> },
   { path: 'staff-trainings', element: <StaffTrainingsPage /> },
   { path: 'staff-courses', element: <StaffCoursesPage /> },
   { path: 'user-skills', element: <UserSkillsPage /> },

@@ -104,6 +104,7 @@ class UsersTableDefinition extends AbstractTableDefinition
                 UserBusinessFunctionColumn::RELATION_PATH,
                 UserManagedBusinessFunctionsColumn::RELATION_PATH,
                 'employment.company',
+                'employment.contractType',
                 'employment.reportsTo',
                 UserJobRolesColumn::RELATION_PATH,
                 // Spec 0103 D-7: the CELL always shows the PHYSICAL site only

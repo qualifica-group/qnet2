@@ -1,7 +1,10 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
-import { RELATIONSHIP_TYPES } from '@/features/users/types'
+import { RELATIONSHIP_TYPES, type RelationshipType } from '@/features/users/types'
 import { SALARY_PERIODS, type CreateEmploymentContractPayload } from '@/features/users/contract-history-types'
+
+/** Relationship type that makes the contract type mandatory (spec 0290 D-3). */
+const EMPLOYEE_RELATIONSHIP: RelationshipType = 'employee'
 
 /** Column bound (spec 0272): `change_reason` max length. */
 const MAX_REASON_LENGTH = 255
@@ -16,6 +19,7 @@ export function buildContractConditionSchema(t: TFunction) {
     .object({
       starts_on: z.string().min(1, t('users.detail.employment.contractHistory.form.startsOnRequired')),
       relationship_type: z.enum(RELATIONSHIP_TYPES),
+      contract_type_id: z.number().nullable(),
       company_id: z.number().nullable(),
       collective_agreement_level_id: z.number().nullable(),
       salary_amount: z.string(),
@@ -23,6 +27,9 @@ export function buildContractConditionSchema(t: TFunction) {
       change_reason: z.string().max(MAX_REASON_LENGTH),
     })
     .superRefine((values, ctx) => {
+      if (values.relationship_type === EMPLOYEE_RELATIONSHIP && values.contract_type_id === null) {
+        ctx.addIssue({ code: 'custom', path: ['contract_type_id'], message: t('users.detail.employment.contractHistory.form.contractTypeRequired') })
+      }
       const amount = values.salary_amount.trim()
       if (amount !== '' && !(Number(amount) >= 0)) {
         ctx.addIssue({ code: 'custom', path: ['salary_amount'], message: t('users.detail.employment.contractHistory.form.salaryInvalid') })
@@ -44,6 +51,7 @@ export function toContractPayload(
   return {
     starts_on: values.starts_on,
     relationship_type: values.relationship_type,
+    contract_type_id: values.contract_type_id,
     company_id: values.company_id,
     collective_agreement_level_id: values.collective_agreement_level_id,
     ...(canManageCompensation && amount !== ''

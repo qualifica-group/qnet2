@@ -175,6 +175,7 @@ export function UserContractRecordSection({ values }: { values: UserRecordValues
   const { t } = useTranslation()
   const { field } = useResourcePermissions()
   const showContract = field(CONTRACTS_FIELD).visible
+  const contractType = values.current_contract?.contract_type ?? null
   const level = values.current_contract?.collective_agreement_level ?? null
 
   return (
@@ -198,6 +199,9 @@ export function UserContractRecordSection({ values }: { values: UserRecordValues
         ) : null}
         {showContract ? (
           <>
+            <RecordField label={t('users.detail.employment.contractType')}>
+              {contractType ? contractType.name : <DetailEmpty />}
+            </RecordField>
             <RecordField label={t('users.detail.employment.collectiveAgreementLevel')}>
               {level ? level.label : <DetailEmpty />}
             </RecordField>

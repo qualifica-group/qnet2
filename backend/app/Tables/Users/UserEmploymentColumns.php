@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The employment-derived grid columns on the `users` table (spec 0015):
- * company (related NAME), relationship_type (enum), employment_status
+ * company and contract_type (related NAME; the contract type is the current
+ * one copied on the profile, spec 0290), relationship_type (enum), employment_status
  * (employed/terminated, spec 0272, UserEmploymentStatusColumn),
  * hired_at/terminated_at (dates), business_function
  * (AGGREGATED over the membership pivot, delegated to
@@ -53,6 +54,7 @@ class UserEmploymentColumns
      */
     private const array RELATED_NAME_COLUMNS = [
         'company' => ['table' => 'companies', 'nameColumn' => 'denomination', 'relation' => 'employment.company', 'fk' => 'company_id'],
+        'contract_type' => ['table' => 'contract_types', 'nameColumn' => 'name', 'relation' => 'employment.contractType', 'fk' => 'contract_type_id'],
     ];
 
     private const array ENUM_COLUMNS = ['relationship_type'];
@@ -94,6 +96,7 @@ class UserEmploymentColumns
         return [
             'business_function' => $this->businessFunctionColumn->label($user),
             'company' => $employment?->company?->denomination,
+            'contract_type' => $employment?->contractType?->name,
             'operational_site' => $this->operationalSiteColumn->label($employment),
             'relationship_type' => $employment?->relationship_type?->value,
             'employment_status' => $this->statusColumn->label($employment),
@@ -292,7 +295,7 @@ class UserEmploymentColumns
     /**
      * Excel-like distinct values (spec 0004/0005) for the columns that have
      * one (business_function/managed_business_functions/reports_to/job_roles
-     * [aggregated], company/relationship_type/employment_status). `operational_site`/
+     * [aggregated], company/contract_type/relationship_type/employment_status). `operational_site`/
      * `hired_at`/`terminated_at` declare `hasFilterValues:false`
      * (UserColumnCatalog), so TableService never calls this method for them.
      *

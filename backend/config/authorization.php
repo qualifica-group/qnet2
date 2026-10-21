@@ -15,6 +15,7 @@ use App\Authorization\CompaniesAuthorization;
 use App\Authorization\CompanySitesAuthorization;
 use App\Authorization\ContractsAuthorization;
 use App\Authorization\ContractStatusesAuthorization;
+use App\Authorization\ContractTypesAuthorization;
 use App\Authorization\CostTypesAuthorization;
 use App\Authorization\CustomFieldsAuthorization;
 use App\Authorization\DocumentBundlesAuthorization;
@@ -151,6 +152,8 @@ return [
         'org-chart' => OrgChartAuthorization::class,
         // spec 0278: HR absence types catalogue and absence requests.
         'absence-types' => AbsenceTypesAuthorization::class,
+        // spec 0290: contract types catalogue.
+        'contract-types' => ContractTypesAuthorization::class,
         'absence-requests' => AbsenceRequestsAuthorization::class,
         // spec 0284: HR staff courses catalogue and staff trainings register.
         'staff-courses' => StaffCoursesAuthorization::class,

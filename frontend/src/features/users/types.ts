@@ -31,6 +31,7 @@ export type RelationshipType = (typeof RELATIONSHIP_TYPES)[number]
 /** The condition in force, as summarised on the employment profile (spec 0272). */
 export interface CurrentContract {
   starts_on: string
+  contract_type: NamedRef | null
   collective_agreement_level: { id: number; label: string } | null
 }
 

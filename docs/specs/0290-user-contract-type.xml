@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0290-user-contract-type" status="approved" owner="utente" date="2026-10-21">
+
+  <goal>
+    Ogni condizione dello storico contrattuale di un utente indica la tipologia contrattuale (tempo determinato,
+    tempo indeterminato, apprendistato, tirocinio...) scelta da un catalogo gestito sotto Configurazione come il
+    CCNL; la tipologia vigente compare nel Rapporto contrattuale della scheda e come colonna filtrabile della
+    griglia Utenti.
+  </goal>
+
+  <context>
+    <!-- Fatti verificati nel repo il 2026-10-21. -->
+    <fact>Storico contrattuale (spec 0272): tabella `employment_contracts` (model `EmploymentContract`,
+      append-only, unique profilo+starts_on), service `EmploymentContractService` (history/create/delete/
+      syncCurrent/upsertInitial), request `StoreEmploymentContractRequest`, `EmploymentContractResource`,
+      controller `EmploymentContracts/EmploymentContractController`. La condizione vigente e' copiata su
+      `employment_profiles.relationship_type`/`company_id` SOLO da `syncCurrent()` (service + job giornaliero
+      `employment:daily-sync`, `EmploymentDailySync`).</fact>
+    <fact>Scheda utente: `EmploymentResource::currentContract()` emette `current_contract: { starts_on,
+      collective_agreement_level }`, gated dal campo `employment.contracts` (`UsersAuthorization::CONTRACTS_FIELD`).
+      FE: `UserContractRecordSection` ("Rapporto contrattuale", sola lettura) in `user-record-sections.tsx`,
+      `UserContractHistorySection` (`user-contract-history-section.tsx`), dialog `contract-condition-dialog.tsx`
+      con `RelationSelectField`, schema/payload in `contract-history-schema.ts`, tipi in `contract-history-types.ts`
+      e `users/types.ts`.</fact>
+    <fact>Catalogo gemello per struttura: tipi di assenza (spec 0278) — tabella `absence_types` (name unique 100,
+      is_active, sort_order), `AbsenceTypeController`/`AbsenceTypeService` (delete 409 se usato),
+      `AbsenceTypePolicy` (BasePolicy), `AbsenceTypesAuthorization`, `AbsenceTypesTableDefinition`
+      (config/tables.php), config/authorization.php, config/activity-log.php, menu config/navigation/configuration.php
+      (`absence-types`, permesso `absence-types.view`), feature FE `features/absence-types/*`, seeder
+      `QualificaAbsenceTypeSeeder` (step di `QualificaProductionDataSeeder`, updateOrCreate sul nome), ruolo
+      Risorse Umane `QualificaCatalog/HrOfficeRoleCatalogue::MODULES`.</fact>
+    <fact>For-select standard (ADR 0011) per i cataloghi a nome: `Shared\NamedCatalogForSelectRequest` +
+      `paginatedResponse` (es. `CollectiveAgreementLevelForSelectController`); FE `fetchForSelect`/`useForSelect`
+      e `RelationSelectField` con `resource` + `metaKey`.</fact>
+    <fact>Griglia utenti: `Tables/Users/UserEmploymentColumns` (385 righe) gestisce le colonne "related name"
+      via `RELATED_NAME_COLUMNS` (oggi `company`); `UserColumnCatalog` (381 righe) dichiara colonne e filtri;
+      `UserSensitiveColumns::FIELD_BY_COLUMN` lega ogni colonna contrattuale al suo campo (nascosta, fuori da
+      filtri/sort/export senza il campo visibile).</fact>
+    <fact>Legacy QNet: nessun campo tipologia contrattuale sugli utenti: niente da importare.</fact>
+    <fact>Ultima migrazione: `2026_10_27_100000_add_old_id_to_tasks_table.php`.</fact>
+
+    <decision id="D-1">Catalogo (utente 2026-10-21): CRUD completo come il CCNL, voce "Tipologie contrattuali" sotto
+      Configurazione, permessi `contract-types.*` (view/create/update/delete/viewActivity). Campi: nome (unico, max
+      100), attiva, ordine. Una tipologia usata da almeno una condizione non si cancella (409): si disattiva. Una
+      tipologia disattivata non compare nel for-select ma resta sulle condizioni che la usano.</decision>
+    <decision id="D-2">Valori iniziali: Tempo determinato, Tempo indeterminato, Apprendistato, Tirocinio (ordine
+      1-4), da `QualificaContractTypeSeeder` (step di `QualificaProductionDataSeeder`, updateOrCreate sul nome,
+      idempotente), come i tipi di assenza. Il ruolo Risorse Umane riceve il modulo `contract-types`.</decision>
+    <decision id="D-3">Obbligo (utente): nella creazione di una condizione via `POST /api/users/{user}/employment-contracts`
+      `contract_type_id` e' obbligatorio quando `relationship_type = employee`, facoltativo per gli altri tipi di
+      rapporto. Deve essere una tipologia attiva. Le condizioni esistenti restano senza tipologia (colonna
+      nullable, nessun backfill). L'import utenti (`upsertInitial`) e il seeder HR non la impostano.</decision>
+    <decision id="D-4">Griglia (utente): la tipologia vigente e' copiata su `employment_profiles.contract_type_id`
+      da `syncCurrent()` (quindi da service e job giornaliero) come relationship_type/company_id; colonna set
+      `contract_type` (nomi del catalogo, blank incluso) nella griglia Utenti e nell'export, legata al campo
+      `employment.contracts` in `UserSensitiveColumns`. La copia non e' scrivibile da `PUT /api/users`.</decision>
+    <decision id="D-5">Permessi di campo: la tipologia fa parte della condizione, quindi segue il campo esistente
+      `employment.contracts` (nessun nuovo campo in `UsersAuthorization`).</decision>
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazioni: `contract_types` (id, name string 100 unique, is_active bool default true, sort_order uint
+        default 0, timestamps); `employment_contracts.contract_type_id` e `employment_profiles.contract_type_id`
+        (nullable, FK restrictOnDelete, nomi indice &lt; 64 caratteri). Reversibili.</item>
+      <item>Catalogo: model `ContractType` (LogsModelActivity, factory), Policy, Authorization, Service, FormRequest
+        store/update, Resource, Controller CRUD, for-select, TableDefinition, registrazioni config, menu, activity
+        log, seeder D-2, ruolo HR.</item>
+      <item>Condizioni: request (D-3), model/relazione, service (create + syncCurrent copia D-4), resource,
+        `current_contract.contract_type` nella scheda utente.</item>
+      <item>Griglia utenti: colonna `contract_type` (D-4) con filtro set e distinct values.</item>
+      <item>FE: feature `contract-types` (lista, dettaglio, form) con route e breadcrumb; dialog "Nuova condizione"
+        con select Tipologia contrattuale (obbligatoria se Dipendente); riga dello storico e Rapporto contrattuale
+        con la tipologia; i18n IT+EN; label permessi.</item>
+      <item>Manuale: nuova guida in-app `contract-types` IT+EN + `HELP_GUIDE_KEYS`; guida `users` IT+EN aggiornata
+        (Rapporto contrattuale, Storico contrattuale, colonne griglia); manuale Claude Docs "Manuale Utente QNet"
+        aggiornato (connettore disponibile).</item>
+    </in>
+    <out>
+      <item>Backfill della tipologia sulle condizioni esistenti; import dal legacy; modifiche al QNet legacy.</item>
+      <item>Regole di dominio legate alla tipologia: data di fine obbligatoria per il tempo determinato, scadenze,
+        avvisi di rinnovo, durata massima di apprendistato/tirocinio.</item>
+      <item>Modifica di una condizione esistente (resta append-only: si cancella l'ultima e se ne crea una nuova).</item>
+      <item>Legame tra tipologia e CCNL/livello o tipo di rapporto oltre all'obbligo D-3.</item>
+      <item>Campi extra sul catalogo (codice, descrizione) e for-select che includa le tipologie disattivate nella ricerca.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope { success, message, data }; liste via /api/tables/{domain}. -->
+    <shared id="ref">tipologia: { id: int, name: string }.</shared>
+
+    <endpoint method="GET|POST|PUT|PATCH|DELETE" path="/api/contract-types[/{contractType}]">
+      <request>store: { name: string required max:100 unico, is_active?: boolean (default true), sort_order?: int
+        min:0 (default 0) }; update: stessi campi (name unico escluso se stesso).</request>
+      <response status="200|201">data: { id, name, is_active, sort_order, created_at, updated_at } + blocco
+        `permissions` (come absence-types).</response>
+      <errors>403 senza `contract-types.*`; 404; 422 (nome mancante/duplicato/troppo lungo); 409 delete di una
+        tipologia usata da una condizione; 204 delete riuscito.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/contract-types/for-select">
+      <request>Parametri for-select standard (search, ids[], offset, limit). Solo auth (ADR 0011).</request>
+      <response status="200">items: [{ id, label }] con label = name; solo tipologie attive, ordinate per
+        sort_order poi name; `ids[]` risolve anche le disattivate (idratazione).</response>
+      <errors>401 senza login.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tables/contract-types">
+      <response status="200">Colonne: name, is_active, sort_order.</response>
+      <errors>403 senza `contract-types.view`.</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST" path="/api/users/{user}/employment-contracts" change="modifica">
+      <request>POST: + contract_type_id: int|null — exists su contract_types con is_active = true;
+        required_if relationship_type = employee.</request>
+      <response status="200|201">ogni condizione: + contract_type: ref|null.</response>
+      <errors>422 su `contract_type_id` se mancante con relationship_type employee, inesistente o disattivata.</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST|PUT|PATCH" path="/api/users[/{user}]" change="modifica">
+      <request>Invariata: `employment.contract_type_id` non e' accettato (ignorato).</request>
+      <response status="200|201">employment.current_contract: + contract_type: ref|null (stesso gate
+        `employment.contracts`).</response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tables/users" change="modifica">
+      <response status="200">+ colonna `contract_type` (set: nomi del catalogo + blank), ordinabile e filtrabile;
+        assente da colonne, filtri, righe ed export per chi non vede il campo `employment.contracts`.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Con `contract-types.create` creare "Stagionale" risponde 201 con is_active true e
+      sort_order 0; nome duplicato = 422; update del nome e della disattivazione = 200.</criterion>
+    <criterion id="AC-002">Cancellare una tipologia usata da una condizione = 409 e la riga resta; una libera si
+      cancella con 204.</criterion>
+    <criterion id="AC-003">Senza `contract-types.*` show/store/update/destroy e `/api/tables/contract-types`
+      rispondono 403; il for-select risponde a qualunque autenticato (401 senza login), elenca solo le attive in
+      ordine sort_order e con `ids[]` restituisce anche una disattivata.</criterion>
+    <criterion id="AC-004">`QualificaContractTypeSeeder` crea le 4 tipologie (ordine 1-4); un secondo run non
+      duplica; il ruolo Risorse Umane ottiene i permessi `contract-types.*`.</criterion>
+    <criterion id="AC-005">POST condizione con relationship_type employee senza contract_type_id = 422 su
+      `contract_type_id`; con self_employed senza tipologia = 201; con una tipologia disattivata o inesistente = 422.</criterion>
+    <criterion id="AC-006">Una condizione creata con tipologia la restituisce come `contract_type: { id, name }` nella
+      risposta 201 e nella lista; una senza tipologia ha `contract_type: null`.</criterion>
+    <criterion id="AC-007">Condizione con decorrenza passata: `employment_profiles.contract_type_id` = quella
+      tipologia e `current_contract.contract_type` nella scheda utente; con decorrenza futura la copia non cambia
+      finche' `employment:daily-sync` non gira alla data; cancellare l'ultima riporta la copia alla precedente (o null).</criterion>
+    <criterion id="AC-008">`PUT /api/users/{user}` con `employment.contract_type_id` non modifica la copia.</criterion>
+    <criterion id="AC-009">Griglia utenti: colonna `contract_type` mostra il nome vigente, il filtro set per nome (e
+      blank) restituisce solo gli utenti attesi, distinct values elenca i nomi in uso nelle righe visibili + blank
+      ([revised] rev.2: come la colonna Societa', non l'intero catalogo); un attore con
+      `employment.contracts` nascosto non vede colonna, filtro, valore nelle righe ne' nell'export.</criterion>
+    <criterion id="AC-010">Migrazioni: up crea tabella e colonne, rollback le rimuove senza errori (test a step
+      fisso aggiornati); provate anche su MySQL locale.</criterion>
+    <criterion id="AC-011">FE catalogo: lista, dettaglio e form (nome obbligatorio, attiva, ordine) sotto
+      Configurazione → "Tipologie contrattuali", visibile solo con `contract-types.view` (Vitest).</criterion>
+    <criterion id="AC-012">FE dialog "Nuova condizione": select "Tipologia contrattuale"; con Tipo di rapporto
+      Dipendente e tipologia vuota l'invio e' bloccato con il messaggio di campo obbligatorio; con Autonomo parte
+      senza; il payload contiene `contract_type_id` (Vitest).</criterion>
+    <criterion id="AC-013">FE: la riga dello storico mostra il nome della tipologia nei dettagli e il Rapporto
+      contrattuale mostra "Tipologia contrattuale" della condizione vigente (vuoto se assente), solo con
+      `employment.contracts` visibile (Vitest).</criterion>
+    <criterion id="AC-014">Manuale: guida in-app `contract-types` IT+EN creata e chiave in `HELP_GUIDE_KEYS`, guida
+      `users` IT+EN aggiornata, parity test verde; manuale Claude Docs aggiornato.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Identificatori in inglese; valori del catalogo e testi UI in IT+EN via i18n.</item>
+    <item>FormRequest + Policy su ogni endpoint, Resource, $fillable, eager loading di `contractType` nella history e
+      nella scheda (niente lazy loading); filtri/sort della griglia da allow-list, nessun raw da input.</item>
+    <item>`syncCurrent()` resta l'unico scrittore della copia sul profilo (D-4).</item>
+    <item>Nessun file oltre 500 righe; `UserEmploymentColumns` e `UserColumnCatalog` restano sotto 500 (sopra 300
+      gia' oggi: aggiunte minime, nessuno split salvo superamento).</item>
+    <item>Test eseguiti: Pest mirati + `composer test` (COMPOSER_PROCESS_TIMEOUT=0), Vitest, `npx tsc -b --force`,
+      Pint, ESLint.</item>
+  </constraints>
+
+</spec>

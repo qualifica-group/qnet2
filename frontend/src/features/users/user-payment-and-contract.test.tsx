@@ -60,7 +60,7 @@ function withPayment(overrides: Partial<UserDetailWithPermissions> = {}) {
       relationship_type: 'self_employed',
       company: { id: 5, label: 'Acme Srl' },
       company_id: 5,
-      current_contract: { starts_on: '2026-03-01', collective_agreement_level: { id: 3, label: 'Commercio - Q1' } },
+      current_contract: { starts_on: '2026-03-01', contract_type: { id: 2, name: 'Apprenticeship' }, collective_agreement_level: { id: 3, label: 'Commercio - Q1' } },
       iban: 'IT60X0542811101000000123456',
       iban_holder: 'Ada Lovelace',
       hourly_cost: 14.45,
@@ -90,11 +90,33 @@ describe('UserDetailView — contract condition in force (spec 0272 D-2)', () =>
   it('shows relationship type, company, CCNL level and start as read-only rows', async () => {
     await renderDetail(withPayment())
 
+    expect(screen.getByText('Contract type')).toBeInTheDocument()
+    expect(screen.getByText('Apprenticeship')).toBeInTheDocument()
     expect(screen.getByText('Commercio - Q1')).toBeInTheDocument()
     expect(screen.getByText('01/03/2026')).toBeInTheDocument()
     expect(screen.getByText('Acme Srl')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit Relationship type' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit Company' })).not.toBeInTheDocument()
+  })
+
+  it('shows the contract type empty when the condition has none, and hides it without employment.contracts (AC-013)', async () => {
+    await renderDetail(
+      withPayment({
+        employment: employmentFixture({
+          relationship_type: 'self_employed',
+          current_contract: { starts_on: '2026-03-01', contract_type: null, collective_agreement_level: null },
+        }),
+      }),
+    )
+    expect(screen.getByText('Contract type')).toBeInTheDocument()
+    expect(screen.queryByText('Apprenticeship')).not.toBeInTheDocument()
+  })
+
+  it('hides the contract type row when employment.contracts is hidden', async () => {
+    await renderDetail(withPayment({ permissions: permissionsFor({ 'employment.contracts': HIDDEN }) }))
+
+    expect(screen.queryByText('Contract type')).not.toBeInTheDocument()
+    expect(screen.queryByText('Apprenticeship')).not.toBeInTheDocument()
   })
 
   it('explains under the termination date that the person is deactivated', async () => {

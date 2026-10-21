@@ -40,6 +40,7 @@ function ContractRow({
   const hasSalary = contract.salary_amount != null && contract.salary_period != null
   const details = [
     contract.relationship_type ? t(`enums.relationship_type.${contract.relationship_type}`) : null,
+    contract.contract_type?.name ?? null,
     contract.company?.label ?? null,
     contract.collective_agreement_level?.label ?? null,
     hasSalary ? `${contract.salary_amount} / ${t(`users.detail.employment.contractHistory.periods.${contract.salary_period}`)}` : null,
