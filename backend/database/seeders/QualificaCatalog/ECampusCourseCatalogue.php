@@ -18,7 +18,8 @@ namespace Database\Seeders\QualificaCatalog;
  * before the colon. The course code leads the name ("[LM-56] Scienze
  * dell'Economia", user directive 2026-10-08): an installation still holding
  * the trailing-code names is renamed on re-seed (ECampusProducts). No fee is
- * quoted "+ iva", so no product carries a VAT rate.
+ * quoted "+ iva", so no course product carries a VAT rate; only the tutoring
+ * does (PLUS_VAT_SINGLE_PRODUCTS).
  *
  * The sheet's "Corsi di laurea Magistrali a ciclo unico" (Giurisprudenza
  * [LMG/01]) quotes no fee, so it is deliberately not transcribed.
@@ -52,6 +53,14 @@ final class ECampusCourseCatalogue
         'TESI' => 300.0,
         'ASSISTENZA E TUTORAGGIO' => 500.0,
     ];
+
+    /**
+     * The SINGLE_PRODUCTS sold "+ iva", at the 22% rate (user directive
+     * 2026-10-21).
+     *
+     * @var list<string>
+     */
+    public const array PLUS_VAT_SINGLE_PRODUCTS = ['ASSISTENZA E TUTORAGGIO'];
 
     /**
      * Degree level => its fees (product suffix => price) and its courses

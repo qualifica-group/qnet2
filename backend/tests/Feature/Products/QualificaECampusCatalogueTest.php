@@ -12,11 +12,13 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\QuoteWorkflow;
 use App\Models\QuoteWorkflowStatus;
+use App\Models\VatRate;
 use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Database\Seeders\Concerns\SeedsAttributeLayouts;
 use Database\Seeders\QualificaCatalog\ECampusAttributeCatalogue;
 use Database\Seeders\QualificaCatalog\ECampusCourseCatalogue;
+use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
 use Database\Seeders\QualificaCatalog\WorkflowStatusCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -99,11 +101,14 @@ it('seeds every e-Campus degree fee directly on "Corsi E-Campus", idempotently',
 
     // 15 bachelor courses x 4 fees + 10 master courses x 3 fees, each named
     // code first and priced at its fee, plus the thesis and the tutoring sold
-    // once for the whole branch (user directive 2026-10-08).
+    // once for the whole branch (user directive 2026-10-08). Only the tutoring
+    // is quoted "+ iva" (user directive 2026-10-21).
     expect($products)->toHaveCount(92)
         ->and($products->every(fn (Product $product): bool => $product->product_type === ProductType::Service
-            && (float) $product->cost === 0.0
-            && $product->vat_rate_id === null))->toBeTrue()
+            && (float) $product->cost === 0.0))->toBeTrue()
+        ->and($products->whereNotNull('vat_rate_id')->pluck('name')->all())->toBe(ECampusCourseCatalogue::PLUS_VAT_SINGLE_PRODUCTS)
+        ->and((float) VatRate::query()->whereKey($products->firstWhere('name', 'ASSISTENZA E TUTORAGGIO')->vat_rate_id)->value('rate'))
+        ->toBe(SelfFundedCourseCatalogue::VAT_RATE)
         ->and(array_slice(eCampusProductsOf($branch), 0, 4))->toBe([
             '[L-7] Ingegneria Civile e Ambientale 1°ANNO' => 2856.0,
             '[L-7] Ingegneria Civile e Ambientale 2°ANNO' => 2856.0,
@@ -117,6 +122,31 @@ it('seeds every e-Campus degree fee directly on "Corsi E-Campus", idempotently',
             'TESI' => 300.0,
             'ASSISTENZA E TUTORAGGIO' => 500.0,
         ]);
+});
+
+it('gives the already seeded tutoring the 22% VAT rate, keeping one chosen by hand', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    // An earlier revision seeded the tutoring with no rate; an operator gave
+    // the thesis one of their own.
+    $tutoring = Product::query()->where('name', 'ASSISTENZA E TUTORAGGIO')->sole();
+    $tutoring->update(['vat_rate_id' => null]);
+    $ownRate = VatRate::factory()->create(['rate' => 10.0]);
+    $thesis = Product::query()->where('name', 'TESI')->sole();
+    $thesis->update(['vat_rate_id' => $ownRate->id]);
+
+    test()->seed(QualificaCatalogSeeder::class);
+
+    expect((float) $tutoring->fresh()->vatRate->rate)->toBe(SelfFundedCourseCatalogue::VAT_RATE)
+        ->and($thesis->fresh()->vat_rate_id)->toBe($ownRate->id)
+        ->and(Product::query()->where('name', 'ASSISTENZA E TUTORAGGIO')->count())->toBe(1);
+
+    // A rate the operator picked for the tutoring survives the re-run.
+    $tutoring->update(['vat_rate_id' => $ownRate->id]);
+
+    test()->seed(QualificaCatalogSeeder::class);
+
+    expect($tutoring->fresh()->vat_rate_id)->toBe($ownRate->id);
 });
 
 it('folds the retired degree and area nodes onto "Corsi E-Campus" with their products and lines', function (): void {

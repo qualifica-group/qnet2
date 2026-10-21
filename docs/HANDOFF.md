@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## IVA 22% sul tutoraggio e-Campus — VERDE (2026-10-21)
+
+- Seed di produzione: "ASSISTENZA E TUTORAGGIO" (Corsi E-Campus, `products/397` locale) ora con l'aliquota 22%
+  (`ECampusCourseCatalogue::PLUS_VAT_SINGLE_PRODUCTS`, risolta da `CatalogProducts::plusVatRate()`). TESI e i corsi
+  restano senza IVA.
+- `CatalogProducts::seedProduct()` su un prodotto già presente riempie ora anche un `vat_rate_id` vuoto (come la
+  descrizione, `fillBlanks()`): un'aliquota scelta a mano resta. Per applicarla in produzione: rieseguire il seed
+  del catalogo (`QualificaCatalogSeeder`, incluso in `QualificaProductionDataSeeder`).
+- Test: `QualificaECampusCatalogueTest` (nuovo caso backfill), `QualificaSelfFundedCatalogueTest` (conteggio IVA
+  esclude Corsi E-Campus, REQUIREMENT CHANGED). `tests/Feature/Products` 252 verdi.
+
 ## Tipologia contrattuale sugli utenti (spec 0290) — VERDE, NON COMMITTATO (2026-10-21)
 
 - Spec `docs/specs/0290-user-contract-type.xml` (approved, AC-001..014 verdi; AC-009 rev.2: i valori del filtro

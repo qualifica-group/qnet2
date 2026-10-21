@@ -28,7 +28,8 @@ use App\Services\ProductService;
  *   - the e-Campus degrees (ECampusCourseCatalogue): one product per fee of
  *     the degree level, "<course> <fee>", on "Corsi E-Campus", at the fee,
  *     described by the course's subject area, plus the services sold once
- *     for the whole branch (ECampusCourseCatalogue::SINGLE_PRODUCTS);
+ *     for the whole branch (ECampusCourseCatalogue::SINGLE_PRODUCTS), the
+ *     ones quoted "+ iva" at the 22% VAT rate;
  *   - the SOA, "Sicurezza", "Gare", "GDPR", "Finanza Agevolata",
  *     "Istruzione", "Accreditamenti" and "ISO" lists (SoaCatalogue,
  *     SafetyProductCatalogue, TenderProductCatalogue, GdprProductCatalogue,
@@ -129,9 +130,12 @@ final class CatalogProducts
     private function seedECampusSingleProducts(): void
     {
         $category = $this->category(ECampusCourseCatalogue::CATEGORY);
+        $vatRateId = $this->plusVatRate()->id;
 
         foreach (ECampusCourseCatalogue::SINGLE_PRODUCTS as $name => $price) {
-            $this->seedProduct($category, $name, $price);
+            $plusVat = in_array($name, ECampusCourseCatalogue::PLUS_VAT_SINGLE_PRODUCTS, true);
+
+            $this->seedProduct($category, $name, $price, $plusVat ? $vatRateId : null);
         }
     }
 
@@ -248,17 +252,15 @@ final class CatalogProducts
         // Natural key (name, category) — scoped to the category because the
         // SAME course runs in several regions. An already-seeded product is
         // left untouched, so a manual edit survives the re-run — save an
-        // EMPTY description, which takes the catalogue's (an earlier revision
-        // seeded none).
+        // EMPTY description or VAT rate, which takes the catalogue's (an
+        // earlier revision seeded none).
         $existing = Product::query()
             ->where('name', $name)
             ->where('category_id', $category->id)
             ->first();
 
         if ($existing !== null) {
-            if ($description !== null && blank($existing->description)) {
-                $existing->update(['description' => $description]);
-            }
+            $this->fillBlanks($existing, $description, $vatRateId);
 
             return;
         }
@@ -273,5 +275,17 @@ final class CatalogProducts
             productType: ProductType::Service,
             vatRateId: $vatRateId,
         ));
+    }
+
+    private function fillBlanks(Product $product, ?string $description, ?int $vatRateId): void
+    {
+        $blanks = array_filter([
+            'description' => $description !== null && blank($product->description) ? $description : null,
+            'vat_rate_id' => $product->vat_rate_id === null ? $vatRateId : null,
+        ], fn (string|int|null $value): bool => $value !== null);
+
+        if ($blanks !== []) {
+            $product->update($blanks);
+        }
     }
 }
