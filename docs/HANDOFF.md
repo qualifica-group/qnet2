@@ -3,6 +3,33 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Ramo "ISO": sottocategorie e listino prodotti dal PDF "iso" — VERDE, COMMITTATO (2026-10-21)
+
+- Fonte: `~/Downloads/iso.pdf` (export Excel del listino servizi legacy, 323 righe; il CSV precedente era sbagliato,
+  parola dell'utente). Ricostruito dalle coordinate delle parole (`pdftotext -bbox`), 8 righe con testo fuori colonna
+  corrette sul legacy (`services`). Esclusa la riga 1338 "ISO_" (radice PROGETTI-). 322 prodotti, 89 sottocategorie.
+- SOSTITUISCE `ISO - Certificazione` (tolta dal catalogo; sul DB locale eliminata, era vuota): ogni "Categoria" del
+  listino -> `ISO - <Categoria>`, selezionabile, eredita campi e form dalla radice. Pulizia (decisioni 2026-10-21):
+  Ecovadis/ECOVADIS, Emas/EMAS -> EMAS, Sa8000/SA8000 -> SA8000 uniti; `90001+11034` -> `9001+11034`; `ENTE_ISO 9001`
+  -> `Ente 9001` (idem gli altri ENTE_); `ISO` -> `Servizi generali`; `STANDARD MULTIPLI` -> `Standard multipli`.
+- Dati: `QualificaCatalog/IsoSubcategories` (SUBCATEGORIES, TARGET_CATEGORIES, `typologies()`: Ente -> `institution`,
+  resto `consultancy`), `IsoProductCatalogue` (norme numeriche + costanti `IQI`, `NO_VAT_RATE`),
+  `IsoNamedStandardProductCatalogue`, `IsoMultiStandardProductCatalogue`. Cablati in `BranchCatalogues` e
+  `CatalogProducts` step 7.
+- `BranchProducts`: chiave opzionale `vat_rate` {name, rate} per riga (match sul NOME, `firstOrCreate`, la riga piu'
+  vecchia vince): 9 prodotti "Nessuna" (Marcatura CE, GACP, 11381). Fornitore IQI (18 prodotti Ente) collegato solo
+  se esiste l'anagrafica fornitore "IQI" (in locale non c'e').
+- Correzioni al listino: terzo anno `IQI_14_3`, `22+22005_3`, `PAS 24000_3`; i 6 servizi 45001 "Ampliamento scopo" e
+  "Transizione" (codice "45001" ripetuto) e la riga senza codice -> PRD-; "27017+27018" terzo anno titolato "3°Anno";
+  i due "mantenimento della Certificazione Bio" con "_2° Anno"/"_3° Anno". Non portati (nessun campo prodotto):
+  Cartella (sempre SI), Voce di costo (ISO_Costo, 3 righe), Voce di ricavo (1 riga).
+- Test: `QualificaIsoCatalogueTest` 8 (4 nuovi sui prodotti). REQUIREMENT CHANGED: `QualificaCatalogSeederTest`
+  (979 prodotti, somma per listino, selezionabili + `IsoSubcategories::TARGET_CATEGORIES`),
+  `QualificaProductionDataSeederTest` (989), `QualificaSelfFundedCatalogueTest` (conta solo le aliquote 22%).
+  Pest Products 251/251, Seeding 184/184, ProductCategories 357, CustomFields 138, Report 167, WorkOrders 325 verdi;
+  Quotes 373/376: i 3 rossi sono `QuoteDocumentPdfTest` (LibreOffice locale, `DocumentConversionException`), non legati.
+  Pint pulito. Manuale: nessun impatto (dati di catalogo). Seed lanciato sul locale (89 sottocategorie, 322 prodotti).
+
 ## Ramo catalogo "ISO" (campi Offerta + Commessa dal legacy) — VERDE, COMMITTATO (2026-10-21)
 
 - Decisioni utente 2026-10-21: radice `ISO` (contenitore, funzione aziendale "ISO", regole Consulenza) + unica

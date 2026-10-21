@@ -6,11 +6,11 @@ use App\Enums\LayoutSectionVariant;
 
 /**
  * The "ISO" branch of the catalogue (user directive 2026-10-21): a root of
- * its own, linked to the "ISO" business function, with one classification
- * target, "ISO - Certificazione", which inherits the root's fields and forms.
- * No product is seeded: they are added from the catalogue. Pure data, read by
- * QualificaCatalogSeeder (tree and offer fields), QualificaQuoteLayoutSeeder
- * (offer form), QualificaBranchWorkOrderSeeder (Commessa fields and form, in
+ * its own, linked to the "ISO" business function, whose subcategories
+ * (IsoSubcategories, one per line of the "iso" service list) inherit the
+ * root's fields and forms. Pure data, read by QualificaCatalogSeeder (offer
+ * fields), QualificaQuoteLayoutSeeder (offer form),
+ * QualificaBranchWorkOrderSeeder (Commessa fields and form, in
  * IsoWorkOrderCatalogue), CatalogRootRules and QualificaBusinessFunctionLinkSeeder.
  *
  * The offer fields are the legacy "Informazioni Preliminari Iso" of the
@@ -32,22 +32,6 @@ final class IsoCatalogue
     public const string ROOT = 'ISO';
 
     public const string BUSINESS_FUNCTION = 'ISO';
-
-    public const string CERTIFICATION_CATEGORY = 'ISO - Certificazione';
-
-    /**
-     * The root's subcategory, for QualificaCatalogSeeder::CATALOG...
-     *
-     * @var array<string, list<string>>
-     */
-    public const array SUBCATEGORIES = [self::CERTIFICATION_CATEGORY => []];
-
-    /**
-     * ...a classification target, never a container (spec 0074).
-     *
-     * @var list<string>
-     */
-    public const array TARGET_CATEGORIES = [self::CERTIFICATION_CATEGORY];
 
     private const array CHECKBOX = ['display' => 'checkbox'];
 

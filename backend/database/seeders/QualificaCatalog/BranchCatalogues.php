@@ -31,7 +31,7 @@ final class BranchCatalogues
         SubsidisedFinanceCatalogue::ROOT => SubsidisedFinanceCatalogue::SUBCATEGORIES,
         EducationCatalogue::ROOT => EducationCatalogue::SUBCATEGORIES,
         AccreditationCatalogue::ROOT => AccreditationCatalogue::SUBCATEGORIES,
-        IsoCatalogue::ROOT => IsoCatalogue::SUBCATEGORIES,
+        IsoCatalogue::ROOT => IsoSubcategories::SUBCATEGORIES,
     ];
 
     /**
@@ -47,6 +47,6 @@ final class BranchCatalogues
         ...SubsidisedFinanceCatalogue::TARGET_CATEGORIES,
         ...EducationCatalogue::TARGET_CATEGORIES,
         ...AccreditationCatalogue::TARGET_CATEGORIES,
-        ...IsoCatalogue::TARGET_CATEGORIES,
+        ...IsoSubcategories::TARGET_CATEGORIES,
     ];
 }

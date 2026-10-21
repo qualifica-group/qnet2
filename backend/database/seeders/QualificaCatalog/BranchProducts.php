@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductTypology;
 use App\Models\Registry;
+use App\Models\VatRate;
 use App\Services\ProductService;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -16,9 +17,10 @@ use RuntimeException;
 /**
  * The products of a catalogue branch that comes with its own list — "SOA"
  * (SoaCatalogue::PRODUCTS), "Sicurezza" (SafetyProductCatalogue::PRODUCTS),
- * "Gare", "GDPR", "Finanza Agevolata", "Istruzione" and "Accreditamenti" — seeded by CatalogProducts. Each one gets, besides its
+ * "Gare", "GDPR", "Finanza Agevolata", "Istruzione", "Accreditamenti" and "ISO" — seeded by CatalogProducts. Each one gets, besides its
  * price (0 when the list gives none), its description (when the list gives
- * one) and the 22% VAT rate:
+ * one) and the 22% VAT rate, or the one its row names (`vat_rate`, matched
+ * on its name and created when missing, ISO list 2026-10-21):
  *
  *   - the list's CODE when its "Codice" column is filled, the generated
  *     "PRD-" one otherwise (user directive 2026-10-20), written on creation
@@ -47,7 +49,7 @@ final class BranchProducts
     ) {}
 
     /**
-     * @param  array<string, array<string, array{code?: string, description?: string, price?: float, supplier: string|null, expiration_months: int|null}>>  $products  category name => product name => its spec
+     * @param  array<string, array<string, array{code?: string, description?: string, price?: float, supplier: string|null, expiration_months: int|null, vat_rate?: array{name: string, rate: float}}>>  $products  category name => product name => its spec
      * @param  array<string, string>  $typologies  category name => typology code
      */
     public function seed(array $products, array $typologies, int $vatRateId): void
@@ -61,9 +63,10 @@ final class BranchProducts
 
             foreach ($categoryProducts as $name => $spec) {
                 $supplierId = $spec['supplier'] === null ? null : $this->supplierId($spec['supplier']);
+                $rowVatRateId = isset($spec['vat_rate']) ? $this->vatRateId($spec['vat_rate']) : $vatRateId;
 
                 // Step 2: the product, created or with its blanks filled.
-                $product = $this->upsert($category, [$name, $spec['description'] ?? null, $spec['code'] ?? null], [$vatRateId, $spec['price'] ?? 0.0], [$typologyId, $defaultTypologyId], $supplierId);
+                $product = $this->upsert($category, [$name, $spec['description'] ?? null, $spec['code'] ?? null], [$rowVatRateId, $spec['price'] ?? 0.0], [$typologyId, $defaultTypologyId], $supplierId);
 
                 // Step 3: its "Mesi scadenza", when the list gives one.
                 if ($spec['expiration_months'] !== null) {
@@ -138,6 +141,18 @@ final class BranchProducts
         $this->customFields->write($product, (string) $product->customFieldEntityType(), [
             self::EXPIRATION_MONTHS_FIELD => $months,
         ]);
+    }
+
+    /**
+     * Matched on the name, not the rate: several rates share 0% ("Nessuna",
+     * "IVA al 0%", the EU ones), and the list names which one it means. The
+     * name is not unique either: the oldest row wins.
+     *
+     * @param  array{name: string, rate: float}  $vatRate
+     */
+    private function vatRateId(array $vatRate): int
+    {
+        return VatRate::query()->orderBy('id')->firstOrCreate(['name' => $vatRate['name']], ['rate' => $vatRate['rate']])->id;
     }
 
     /**

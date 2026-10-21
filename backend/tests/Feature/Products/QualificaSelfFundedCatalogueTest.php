@@ -169,7 +169,9 @@ it('reuses a 22% VAT rate an operator already created, whatever its name', funct
 
     test()->seed(QualificaCatalogSeeder::class);
 
-    expect(VatRate::query()->count())->toBe(1)
+    // REQUIREMENT CHANGED (ISO list, 2026-10-21): the catalogue also brings the
+    // list's "Nessuna" rate, so only the 22% ones are counted.
+    expect(VatRate::query()->where('rate', 22.0)->count())->toBe(1)
         ->and(Product::query()->where('name', 'EIPASS')->value('vat_rate_id'))->toBe($existing->id);
 });
 

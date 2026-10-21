@@ -30,11 +30,12 @@ use App\Services\ProductService;
  *     described by the course's subject area, plus the services sold once
  *     for the whole branch (ECampusCourseCatalogue::SINGLE_PRODUCTS);
  *   - the SOA, "Sicurezza", "Gare", "GDPR", "Finanza Agevolata",
- *     "Istruzione" and "Accreditamenti" lists (SoaCatalogue,
+ *     "Istruzione", "Accreditamenti" and "ISO" lists (SoaCatalogue,
  *     SafetyProductCatalogue, TenderProductCatalogue, GdprProductCatalogue,
  *     SubsidisedFinanceProductCatalogue, EducationProductCatalogue,
- *     AccreditationProductCatalogue),
- *     delegated to BranchProducts with the 22% VAT rate resolved here.
+ *     AccreditationProductCatalogue, IsoProductCatalogue and its siblings),
+ *     delegated to BranchProducts with the 22% VAT rate resolved here, unless
+ *     a row names its own.
  *
  * NO ATTRIBUTE VALUE IS WRITTEN (user directive 2026-09-08). The duration and
  * the delivery mode used to be seeded here, onto the product; they moved to
@@ -107,6 +108,9 @@ final class CatalogProducts
         $this->branchProducts->seed(SubsidisedFinanceProductCatalogue::PRODUCTS, SubsidisedFinanceCatalogue::TYPOLOGIES, $vatRateId);
         $this->branchProducts->seed(EducationProductCatalogue::PRODUCTS, EducationCatalogue::TYPOLOGIES, $vatRateId);
         $this->branchProducts->seed(AccreditationProductCatalogue::PRODUCTS, AccreditationCatalogue::TYPOLOGIES, $vatRateId);
+        $this->branchProducts->seed(IsoProductCatalogue::PRODUCTS, IsoSubcategories::typologies(), $vatRateId);
+        $this->branchProducts->seed(IsoNamedStandardProductCatalogue::PRODUCTS, IsoSubcategories::typologies(), $vatRateId);
+        $this->branchProducts->seed(IsoMultiStandardProductCatalogue::PRODUCTS, IsoSubcategories::typologies(), $vatRateId);
     }
 
     private function seedECampusCourses(): void
