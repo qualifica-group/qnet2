@@ -15,20 +15,21 @@ return [
         'submitted' => [
             'title' => 'Richiesta di assenza da approvare',
             'approver' => ':person ha inviato una richiesta di assenza (:type, :period).',
-            'office_title' => 'Nuova richiesta di assenza',
-            'office' => ':person ha inviato una richiesta di assenza (:type, :period): la decisione spetta al responsabile.',
+            'office' => ':person ha inviato una richiesta di assenza (:type, :period).',
         ],
         'approved' => [
             'title' => 'Richiesta di assenza approvata',
             'person' => 'La tua richiesta di assenza (:type, :period) e\' stata approvata da :actor.',
             'automatic_person' => 'La tua richiesta di assenza (:type, :period) e\' stata registrata: questo tipo non richiede approvazione.',
             'automatic_approver' => ':person ha registrato un\'assenza (:type, :period) che non richiede approvazione.',
+            'approver' => 'La richiesta di assenza di :person (:type, :period) e\' stata approvata da :actor.',
             'office' => 'La richiesta di assenza di :person (:type, :period) e\' stata approvata da :actor.',
             'automatic_office' => ':person ha registrato un\'assenza (:type, :period) che non richiede approvazione.',
         ],
         'rejected' => [
             'title' => 'Richiesta di assenza rifiutata',
             'person' => 'La tua richiesta di assenza (:type, :period) e\' stata rifiutata da :actor.',
+            'approver' => 'La richiesta di assenza di :person (:type, :period) e\' stata rifiutata da :actor.',
             'office' => 'La richiesta di assenza di :person (:type, :period) e\' stata rifiutata da :actor.',
         ],
         'cancelled' => [

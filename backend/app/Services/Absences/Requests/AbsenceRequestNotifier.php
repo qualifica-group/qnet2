@@ -15,7 +15,7 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 /**
  * Who hears about each step of an absence request (spec 0278, notifications
  * block). The actor is never notified. The HR office (active holders of
- * `absence-requests.manageAll`) gets a copy of every step, without deciding.
+ * `absence-requests.manageAll`) gets a copy of every step; it may decide too (D-15).
  * Delivery is deferred until the outermost transaction commits, so a
  * rolled-back step notifies nobody. Expects the relations loaded by
  * AbsenceRequestService::RELATIONS.
@@ -34,14 +34,15 @@ final class AbsenceRequestNotifier
         $this->dispatch($request, $actor, AbsenceRequestNotification::EVENT_SUBMITTED, $request->approvers);
     }
 
+    /** Decided: the person, and the other approvers, who may not be the ones who decided (D-15). */
     public function approved(AbsenceRequest $request, User $actor): void
     {
-        $this->dispatch($request, $actor, AbsenceRequestNotification::EVENT_APPROVED, collect([$request->user]));
+        $this->dispatch($request, $actor, AbsenceRequestNotification::EVENT_APPROVED, $this->personAndApprovers($request));
     }
 
     public function rejected(AbsenceRequest $request, User $actor): void
     {
-        $this->dispatch($request, $actor, AbsenceRequestNotification::EVENT_REJECTED, collect([$request->user]), reason: $request->rejection_reason);
+        $this->dispatch($request, $actor, AbsenceRequestNotification::EVENT_REJECTED, $this->personAndApprovers($request), reason: $request->rejection_reason);
     }
 
     /** The person hears when someone else cancels; approvers when the request had been filed. */

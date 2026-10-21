@@ -32,7 +32,7 @@ const guide: HelpGuide = {
           headers: ['Scheda', 'Cosa mostra'],
           rows: [
             ['Le mie', 'Le tue richieste.'],
-            ['Da approvare', 'Le richieste inviate di cui sei tu a decidere.'],
+            ['Da approvare', 'Le richieste inviate di cui sei tu a decidere. L’ufficio del personale vede tutte quelle inviate, tranne le proprie.'],
             ['Tutte', 'Le richieste della tua squadra e le tue. L’ufficio del personale vede quelle di tutti.'],
           ],
         },
@@ -118,6 +118,10 @@ const guide: HelpGuide = {
           ],
         },
         {
+          type: 'paragraph',
+          text: 'Oltre al responsabile, l’**ufficio del personale** può approvare o rifiutare qualunque richiesta inviata, tranne le proprie.',
+        },
+        {
           type: 'note',
           text: 'Nessuno approva le proprie richieste.',
         },
@@ -149,14 +153,14 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             '**Invio**: gli approvatori della richiesta.',
-            '**Approvazione o rifiuto**: chi ha chiesto l’assenza (con il motivo, se rifiutata).',
+            '**Approvazione o rifiuto**: chi ha chiesto l’assenza (con il motivo, se rifiutata) e gli altri approvatori.',
             '**Annullamento**: chi ha chiesto l’assenza e gli approvatori.',
             '**Tipo senza approvazione**: chi ha chiesto l’assenza e gli approvatori.',
           ],
         },
         {
           type: 'note',
-          text: 'L’ufficio del personale riceve una copia di ogni passaggio per conoscenza: la decisione resta al responsabile.',
+          text: 'L’ufficio del personale riceve una copia di ogni passaggio. Se a decidere non è il responsabile, il responsabile riceve l’esito.',
         },
       ],
     },

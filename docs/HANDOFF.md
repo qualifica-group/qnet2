@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Assenze: anche l'ufficio del personale approva (spec 0278 D-15) — VERDE (2026-10-21)
+
+- Decisione utente: chi ha `absence-requests.manageAll` (ruolo `risorse-umane`) approva o rifiuta qualunque
+  richiesta submitted, oltre agli approvatori fissati all'invio; mai la propria (D-7). Supera D-2 e la frase
+  "la copia non dà diritto di decidere" di D-14.
+- Regola unica `AbsenceRequestVisibility::canDecide()`, usata da `AbsenceRequestCapabilities` (`can.approve|reject`),
+  `AbsenceRequestTransitions::decide()` (403) e `AbsenceRequestsToApproveTableDefinition` (per manageAll: tutte le
+  submitted tranne le proprie).
+- Notifiche: approvazione e rifiuto vanno a persona + approvatori (autore escluso), così il responsabile sa l'esito
+  quando decide l'HR; chiavi `approved.approver`/`rejected.approver`; tolto `submitted.office_title` (la copia HR
+  dell'invio ha il titolo "da approvare").
+- Test: `AbsenceRequestWorkflowTest` (AC-006 REQUIREMENT CHANGED + HR decide), `AbsenceRequestTablesTest` (HR "Da
+  approvare"), `AbsenceRequestNotificationTest` (copia HR rev., esito al responsabile); Absence* 95 verdi. Guida
+  `absences` IT+EN e manuale Claude Docs aggiornati.
+
 ## Rimozione del modulo CCNL (spec 0293) — VERDE, NON COMMITTATO (2026-10-21)
 
 - Decisione utente: via il modulo CCNL con dati, campi e collegamenti. Migrazione

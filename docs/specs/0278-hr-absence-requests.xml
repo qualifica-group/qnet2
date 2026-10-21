@@ -38,7 +38,7 @@
       spettanza annua; si matura a ratei mensili di 1/12; il residuo dell'anno precedente passa all'anno nuovo con
       un comando automatico.
     - D-2 Un solo livello di approvazione: il responsabile diretto. L'ufficio del personale vede tutto, imposta le
-      spettanze e annulla, ma NON approva (salvo D-7, ultimo ripiego). Stati: draft, submitted, approved, rejected,
+      spettanze e annulla, ma NON approva (salvo D-7, ultimo ripiego). Superata da D-15: ora approva anche lui. Stati: draft, submitted, approved, rejected,
       cancelled (lo stato "approvata dal responsabile" del documento di prodotto non serve).
     - D-3 Un'assenza approvata riduce il target del segnatempo del giorno.
     - D-4 Due spec: questa (0278) e il calendario della squadra (0279).
@@ -225,7 +225,13 @@
       `absence-requests.manageAll`, diretto o via ruolo; il solo super-admin non conta) riceve una copia di ogni
       passaggio per conoscenza, con frase propria (`office`, titolo `office_title` per l'invio). Una sola notifica
       per destinatario: chi e' gia' approvatore o persona non riceve la copia; mai all'autore ne' alla persona
-      della richiesta. La copia non da' il diritto di decidere (D-2).
+      della richiesta.
+      D-15 (decisione utente 2026-10-21, supera D-2 sul punto): oltre agli approvatori fissati all'invio decide
+      anche chi ha `absence-requests.manageAll`, su qualunque richiesta submitted tranne la propria
+      (`AbsenceRequestVisibility::canDecide()`, usata da `can.approve|reject`, dalle transizioni e dalla griglia
+      "Da approvare", che per l'ufficio del personale elenca tutte le submitted tranne le proprie). Approvazione e
+      rifiuto avvisano la persona e gli approvatori (esclusi come sempre l'autore), cosi' il responsabile sa
+      l'esito quando decide l'ufficio del personale; la copia HR dell'invio ha il titolo "da approvare".
     </notifications>
 
     <permissions>
@@ -247,15 +253,17 @@
     <criterion id="AC-005">Approvatori all'invio: superiori attivi; senza superiori, responsabili attivi delle
       funzioni di appartenenza diversi dalla persona; senza nessuno, titolari manageAll; nessun titolare = 422.
       La persona non e' mai tra i propri approvatori (Pest).</criterion>
-    <criterion id="AC-006">Approva/rifiuta: solo un approvatore, solo da submitted (409 altrimenti), rifiuto senza
-      motivo 422; `decided_by`/`decided_at` valorizzati; manageAll non tra gli approvatori = 403 (Pest).</criterion>
+    <criterion id="AC-006">Approva/rifiuta: solo un approvatore o un titolare manageAll (D-15), mai la persona sulla
+      propria (403), solo da submitted (409 altrimenti), rifiuto senza motivo 422; `decided_by`/`decided_at`
+      valorizzati (Pest).</criterion>
     <criterion id="AC-007">Tipo senza approvazione: l'invio porta direttamente ad approved e notifica gli
       approvatori (Pest).</criterion>
     <criterion id="AC-008">Annullamento secondo D-9: persona su submitted ok, su approved futura ok, su approved
       iniziata 403; manageAll su approved iniziata ok; rejected/cancelled 409 (Pest).</criterion>
     <criterion id="AC-009">Modifica e cancellazione solo in draft (409 altrimenti); un estraneo riceve 404 su
       show/patch/delete/azioni (Pest).</criterion>
-    <criterion id="AC-010">Griglia: "mine" solo proprie; "to_approve" solo submitted in cui l'attore approva;
+    <criterion id="AC-010">Griglia: "mine" solo proprie; "to_approve" solo submitted in cui l'attore approva (con
+      manageAll tutte le submitted tranne le proprie, D-15);
       "all" discendenti + proprie, tutte con manageAll; senza viewAny 403 (Pest).</criterion>
     <criterion id="AC-011">Notifiche: ogni passaggio invia la notifica ai destinatari del contratto e mai
       all'autore dell'azione; mail saltata senza indirizzo; copia all'ufficio del personale (D-14) una sola

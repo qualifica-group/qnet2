@@ -32,6 +32,16 @@ final class AbsenceRequestVisibility
         return (int) $request->user_id === (int) $actor->id || $this->canManageAll($actor);
     }
 
+    /** Who decides (spec 0278 D-15): the snapshotted approvers or the HR office, never the person on their own request. */
+    public function canDecide(User $actor, AbsenceRequest $request): bool
+    {
+        if ((int) $request->user_id === (int) $actor->id) {
+            return false;
+        }
+
+        return $this->isApprover($actor, $request) || $this->canManageAll($actor);
+    }
+
     public function isApprover(User $actor, AbsenceRequest $request): bool
     {
         return $request->relationLoaded('approvers')

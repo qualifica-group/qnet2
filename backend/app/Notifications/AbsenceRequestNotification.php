@@ -58,7 +58,7 @@ class AbsenceRequestNotification extends Notification implements ShouldQueue
     public function toArray(object $notifiable): array
     {
         return (new NotificationData(
-            title: $this->title(),
+            title: __("absence_requests.notification.{$this->event}.title"),
             message: $this->message($notifiable),
             level: $this->event === self::EVENT_REJECTED ? NotificationLevelEnum::Warning : NotificationLevelEnum::Info,
             actionUrl: $this->pathFor($notifiable),
@@ -68,7 +68,7 @@ class AbsenceRequestNotification extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         $mail = (new MailMessage)
-            ->subject($this->title())
+            ->subject(__("absence_requests.notification.{$this->event}.title"))
             ->greeting(__('Hello :name', ['name' => $notifiable->name]))
             ->line($this->message($notifiable));
 
@@ -85,14 +85,6 @@ class AbsenceRequestNotification extends Notification implements ShouldQueue
     {
         /** @var User $notifiable */
         return $notifiable->can('absence-requests.viewAny') ? "/absences?request={$this->requestId}" : null;
-    }
-
-    /** The HR office does not approve: its copy of a submission is not titled "to approve". */
-    private function title(): string
-    {
-        $key = $this->copy && $this->event === self::EVENT_SUBMITTED ? 'office_title' : 'title';
-
-        return __("absence_requests.notification.{$this->event}.{$key}");
     }
 
     private function message(object $notifiable): string

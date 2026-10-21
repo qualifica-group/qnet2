@@ -65,9 +65,9 @@ final class AbsenceRequestTransitions
     private function decide(AbsenceRequest $request, User $actor, AbsenceRequestStatus $to, ?string $reason): AbsenceRequest
     {
         return DB::transaction(function () use ($request, $actor, $to, $reason): AbsenceRequest {
-            // Step 1: lock, then only an approver snapshotted at submission decides (403)
+            // Step 1: lock, then only an approver snapshotted at submission or the HR office decides (403)
             $request = $this->locked($request);
-            abort_unless($this->visibility->isApprover($actor, $request), 403, 'This action is unauthorized.');
+            abort_unless($this->visibility->canDecide($actor, $request), 403, 'This action is unauthorized.');
 
             // Step 2: only a submitted request can be decided (409)
             abort_unless($request->status === AbsenceRequestStatus::Submitted, 409, __('absence_requests.not_submitted'));

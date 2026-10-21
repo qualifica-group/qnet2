@@ -158,7 +158,8 @@ it('AC-011: HR filing an automatic absence on behalf notifies the person and the
         ->and(absenceNotifiedTo($hr))->toBeFalse();
 });
 
-it('AC-011: the HR office gets a copy of a submission, not titled as one to approve', function () {
+// REQUIREMENT CHANGED (spec 0278 D-15): the HR office may decide, so its copy reads as one to approve.
+it('AC-011: the HR office gets a copy of a submission, to approve like the manager', function () {
     $manager = absenceUserWith();
     $person = absenceUserWith();
     absenceProfile($person, $manager);
@@ -172,7 +173,7 @@ it('AC-011: the HR office gets a copy of a submission, not titled as one to appr
         $payload = $notification->toArray($hr);
 
         return $channels === ['database', 'mail']
-            && $payload['title'] === __('absence_requests.notification.submitted.office_title')
+            && $payload['title'] === __('absence_requests.notification.submitted.title')
             && str_contains($payload['message'], $person->name)
             && str_starts_with((string) $payload['action_url'], '/absences?request=');
     });
@@ -248,4 +249,20 @@ it('AC-011: no copy to an inactive HR user, to a super-admin outside HR, or to a
     Notification::assertSentToTimes($hrPerson, AbsenceRequestNotification::class, 1);
     $expected = __('absence_requests.notification.approved.person', ['type' => $request->absenceType->name, 'period' => '2026-12-14', 'actor' => $manager->name]);
     Notification::assertSentTo($hrPerson, AbsenceRequestNotification::class, fn ($notification) => $notification->toArray($hrPerson)['message'] === $expected);
+});
+
+it('AC-011: an HR decision tells the person and the manager, who did not decide (D-15)', function () {
+    $manager = absenceUserWith();
+    $person = absenceUserWith();
+    $hr = absenceUserWith(['viewAny', 'manageAll']);
+    $request = absenceSubmitted($person, $manager);
+    Sanctum::actingAs($hr);
+
+    $this->postJson("/api/absence-requests/{$request->id}/reject", ['rejection_reason' => 'Busy period'])->assertOk();
+
+    $expected = __('absence_requests.notification.rejected.approver', ['person' => $person->name, 'type' => $request->absenceType->name, 'period' => '2026-12-14', 'actor' => $hr->name])
+        .' '.__('absence_requests.notification.reason', ['reason' => 'Busy period']);
+    Notification::assertSentTo($manager, AbsenceRequestNotification::class, fn ($notification) => $notification->toArray($manager)['message'] === $expected);
+    expect(absenceNotifiedTo($person))->toBeTrue()
+        ->and(absenceNotifiedTo($hr))->toBeFalse();
 });

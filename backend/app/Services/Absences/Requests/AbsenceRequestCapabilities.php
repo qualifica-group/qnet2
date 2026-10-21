@@ -23,7 +23,7 @@ final class AbsenceRequestCapabilities
     public function for(User $actor, AbsenceRequest $request): array
     {
         $editable = $request->status === AbsenceRequestStatus::Draft && $this->visibility->isOwnerOrManager($actor, $request);
-        $decidable = $request->status === AbsenceRequestStatus::Submitted && $this->visibility->isApprover($actor, $request);
+        $decidable = $request->status === AbsenceRequestStatus::Submitted && $this->visibility->canDecide($actor, $request);
 
         return [
             'update' => $editable,

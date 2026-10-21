@@ -32,7 +32,7 @@ const guide: HelpGuide = {
           headers: ['Tab', 'What it shows'],
           rows: [
             ['Mine', 'Your own requests.'],
-            ['To approve', 'Submitted requests that you are the one to decide.'],
+            ['To approve', 'Submitted requests that you are the one to decide. HR sees every submitted request except its own.'],
             ['All', 'The requests of your team and your own. HR sees everyone’s.'],
           ],
         },
@@ -118,6 +118,10 @@ const guide: HelpGuide = {
           ],
         },
         {
+          type: 'paragraph',
+          text: 'Besides the manager, **HR** can approve or reject any submitted request except its own.',
+        },
+        {
           type: 'note',
           text: 'Nobody approves their own requests.',
         },
@@ -149,14 +153,14 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             '**Submission**: the approvers of the request.',
-            '**Approval or rejection**: the person who asked for the absence (with the reason, if rejected).',
+            '**Approval or rejection**: the person who asked for the absence (with the reason, if rejected) and the other approvers.',
             '**Cancellation**: the person who asked for the absence and the approvers.',
             '**Type needing no approval**: the person who asked for the absence and the approvers.',
           ],
         },
         {
           type: 'note',
-          text: 'The HR office gets a copy of every step for information: the decision stays with the manager.',
+          text: 'HR gets a copy of every step. If someone other than the manager decides, the manager is told the outcome.',
         },
       ],
     },

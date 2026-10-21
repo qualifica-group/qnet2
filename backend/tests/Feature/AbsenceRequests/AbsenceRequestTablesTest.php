@@ -30,6 +30,16 @@ it('AC-010: "to approve" lists only submitted requests where the actor is an app
     expect(absenceGridIds('absence-requests-to-approve'))->toBe([$toDecide->id]);
 });
 
+it('AC-010 (D-15): "to approve" lists every submitted request but its own for manageAll', function () {
+    $hr = absenceUserWith(['viewAny', 'create', 'manageAll']);
+    $other = absenceSubmitted(absenceUserWith(), absenceUserWith());
+    absenceSubmitted(absenceUserWith(), absenceUserWith(), ['status' => 'approved']);
+    absenceSubmitted($hr, absenceUserWith());
+    Sanctum::actingAs($hr);
+
+    expect(absenceGridIds('absence-requests-to-approve'))->toBe([$other->id]);
+});
+
 it('AC-010: "all" lists the descendants and the own requests, everything for manageAll', function () {
     $actor = absenceUserWith();
     $subordinate = absenceUserWith();

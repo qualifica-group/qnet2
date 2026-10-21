@@ -49,20 +49,40 @@ it('AC-006: only a submitted request can be decided (409)', function (string $st
     $this->postJson("/api/absence-requests/{$request->id}/reject", ['rejection_reason' => 'x'])->assertStatus(409);
 })->with(['approved', 'rejected', 'cancelled']);
 
-it('AC-006: a manageAll holder not among the approvers, and the person themselves, get 403', function () {
+// REQUIREMENT CHANGED (spec 0278 D-15): the HR office decides too, never on its own request.
+it('AC-006: the person, even with manageAll, and a viewer who is neither approver nor HR get 403', function () {
     $manager = absenceUserWith();
     $person = absenceUserWith(['viewAny', 'create', 'manageAll']);
-    $hr = absenceUserWith(['viewAny', 'manageAll']);
+    $outsider = absenceUserWith();
     $request = absenceSubmitted($person, $manager);
 
-    foreach ([$hr, $person] as $actor) {
+    foreach ([$person, $outsider] as $actor) {
         Sanctum::actingAs($actor);
-        $this->postJson("/api/absence-requests/{$request->id}/approve")->assertForbidden();
-        $this->postJson("/api/absence-requests/{$request->id}/reject", ['rejection_reason' => 'x'])->assertForbidden();
+        $this->postJson("/api/absence-requests/{$request->id}/approve")->assertStatus($actor->is($person) ? 403 : 404);
+        $this->postJson("/api/absence-requests/{$request->id}/reject", ['rejection_reason' => 'x'])->assertStatus($actor->is($person) ? 403 : 404);
     }
 
     expect($request->fresh()->status)->toBe(AbsenceRequestStatus::Submitted);
 });
+
+it('AC-006 (D-15): a manageAll holder not among the approvers decides, and the detail offers it', function (string $action, array $payload, string $status) {
+    $manager = absenceUserWith();
+    $hr = absenceUserWith(['viewAny', 'manageAll']);
+    $request = absenceSubmitted(absenceUserWith(), $manager);
+    Sanctum::actingAs($hr);
+
+    $this->getJson("/api/absence-requests/{$request->id}")->assertOk()
+        ->assertJsonPath('data.can.approve', true)
+        ->assertJsonPath('data.can.reject', true);
+
+    $this->postJson("/api/absence-requests/{$request->id}/{$action}", $payload)
+        ->assertOk()
+        ->assertJsonPath('data.status', $status)
+        ->assertJsonPath('data.decided_by.id', $hr->id);
+})->with([
+    'approve' => ['approve', [], 'approved'],
+    'reject' => ['reject', ['rejection_reason' => 'Busy period'], 'rejected'],
+]);
 
 it('AC-008: cancellation follows D-9', function (string $actorKind, string $state, string $startsOn, int $expected) {
     $manager = absenceUserWith();
