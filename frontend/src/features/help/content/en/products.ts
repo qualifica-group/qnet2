@@ -190,6 +190,7 @@ const guide: HelpGuide = {
             'Once the category is chosen, its fields appear, including those inherited from higher categories, each as a row to open.',
             'The category can group them into several sections; ungrouped ones end up in Other information.',
             'Attributes marked as Required on the category must always be filled in.',
+            'A section can appear only when a yes/no field is on: with the field off the section disappears, its required fields are not needed and its values are cleared on save.',
           ],
         },
         {

@@ -7,6 +7,8 @@ import {
   buildAttributeValuesSchema,
   type TypedAttributeValuesSchema,
 } from '@/features/request-management/attribute-values-schema'
+import { hiddenAttributeCodes } from '@/features/attributes/attribute-section-visibility'
+import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import { isPristineLineRow } from '@/features/quotes/quote-line-values'
 import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
@@ -285,8 +287,16 @@ function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[]) {
 }
 
 /** I `code` applicabili marcati `is_required`: gli unici che una refine impone. */
-function requiredAttributeCodes(attributes: ApplicableAttributeSummary[]): string[] {
-  return attributes.filter((attribute) => attribute.is_required).map((attribute) => attribute.code)
+function requiredAttributeCodes(
+  attributes: ApplicableAttributeSummary[],
+  layout: LayoutBlob | null,
+  values: Record<string, unknown>,
+): string[] {
+  // A required attribute in a hidden conditional section does not apply (spec 0288 D-4).
+  const hidden = hiddenAttributeCodes(layout, values)
+  return attributes
+    .filter((attribute) => attribute.is_required && !hidden.has(attribute.code))
+    .map((attribute) => attribute.code)
 }
 
 /** Un'issue "campo obbligatorio" per ogni `code` required rimasto vuoto. */
@@ -317,9 +327,18 @@ function hasSubmittableLine(lines: QuoteLineFormValues[]): boolean {
   return lines.some((line) => !isPristineLineRow(line))
 }
 
-export function buildCreateQuoteSchema(t: TFunction, attributes: ApplicableAttributeSummary[] = []) {
+export function buildCreateQuoteSchema(
+  t: TFunction,
+  attributes: ApplicableAttributeSummary[] = [],
+  layout: LayoutBlob | null = null,
+) {
   return z.object(baseFields(t, attributes)).superRefine((values, ctx) => {
-    addMissingRequiredAttributes(values.attribute_values, requiredAttributeCodes(attributes), t, ctx)
+    addMissingRequiredAttributes(
+      values.attribute_values,
+      requiredAttributeCodes(attributes, layout, values.attribute_values),
+      t,
+      ctx,
+    )
 
     // Spec 0102 AC-001/002/040/041: creation always requires at least one
     // REVENUE line. The seeded `EMPTY_LINE_ROW` the create form opens on
@@ -361,9 +380,15 @@ export function buildUpdateQuoteSchema(
   originalStatusId: number | null,
   originalHasOfferLines: boolean,
   attributes: ApplicableAttributeSummary[] = [],
+  layout: LayoutBlob | null = null,
 ) {
   return z.object(baseFields(t, attributes)).superRefine((values, ctx) => {
-    addMissingRequiredAttributes(values.attribute_values, requiredAttributeCodes(attributes), t, ctx)
+    addMissingRequiredAttributes(
+      values.attribute_values,
+      requiredAttributeCodes(attributes, layout, values.attribute_values),
+      t,
+      ctx,
+    )
 
     if (originalHasOfferLines && !hasSubmittableLine(values.offer_lines)) {
       ctx.addIssue({

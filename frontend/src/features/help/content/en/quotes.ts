@@ -41,7 +41,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'The **Additional information** appears as soon as an offer row has a product that requires it. Leaving without saving (Cancel, closing the panel, a link) asks for confirmation.',
+          text: 'The **Additional information** appears as soon as an offer row has a product that requires it. Some sections appear only when a yes/no field is on: with the field off the section disappears, its required fields are not needed and its values are cleared on save. Leaving without saving (Cancel, closing the panel, a link) asks for confirmation.',
         },
         {
           type: 'note',

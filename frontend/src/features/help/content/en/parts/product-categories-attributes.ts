@@ -59,6 +59,7 @@ export const attributeSections: HelpSection[] = [
             'Choose the Context: Product, Offer or Work Order.',
             'Choose the Form mode: All modes, Create, Edit or View.',
             'Click Add section and fill in Title (required), Description, Appearance (Standard, Highlighted, Informative, Secondary), Columns (1 to 4), Collapsible and Closed by default.',
+            'If the section should appear only when a yes/no field is on, choose that field in Visible only if active; with Always visible the section always appears.',
             'Click Add row inside the section.',
             'Drag a field from Unplaced attributes into the row.',
             'For each field choose the Width: Full, Two thirds, Half, One third or One quarter.',
@@ -77,6 +78,17 @@ export const attributeSections: HelpSection[] = [
         {
           type: 'note',
           text: "If Inherit from parent is off for a context, the category does not inherit that context's layout either.",
+        },
+        {
+          type: 'table',
+          headers: ['Conditional section', 'What happens'],
+          rows: [
+            ['Which field opens it', 'A yes/no attribute (checkbox or switch) placed in another section of the layout, which is not conditional itself. A section other sections depend on cannot be conditional.'],
+            ['In the form', 'With the field off the section is hidden; switching it on shows the section in its place. In a record detail it appears only when the field is on.'],
+            ['Required fields', 'They apply only while the section is visible.'],
+            ['On save', 'If the field is off, the values of the section are cleared.'],
+            ['In the editor', 'If you remove the field from the layout or move it into the section it opens, the section goes back to Always visible. In the live Preview switch the field on to see the section, marked "Visible if: …".'],
+          ],
         },
         {
           type: 'tip',

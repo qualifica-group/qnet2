@@ -152,6 +152,12 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
   // Lo schema vero, ricostruito ogni volta che il set applicabile cambia, cosi'
   // RHF valida SEMPRE contro i campi realmente a schermo (obbligatorieta'
   // inclusa). Senza questo swap la refine sui `is_required` resterebbe inerte.
+  // The layout the screen renders decides which sections (hence which required
+  // attributes) are hidden (spec 0288 D-4): the detail's view layout in edit,
+  // the live context layout in create.
+  const renderedLayout =
+    mode.type === 'edit' ? (mode.quote.attribute_view_layout ?? null) : attributeContext.attribute_layout
+
   const schema = useMemo(
     () =>
       isEdit
@@ -161,9 +167,18 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
             originalStatusId,
             originalHasOfferLines,
             attributeContext.applicable_attributes,
+            renderedLayout,
           )
-        : buildCreateQuoteSchema(t, attributeContext.applicable_attributes),
-    [isEdit, t, workflowStatuses, originalStatusId, originalHasOfferLines, attributeContext.applicable_attributes],
+        : buildCreateQuoteSchema(t, attributeContext.applicable_attributes, renderedLayout),
+    [
+      isEdit,
+      t,
+      workflowStatuses,
+      originalStatusId,
+      originalHasOfferLines,
+      attributeContext.applicable_attributes,
+      renderedLayout,
+    ],
   )
 
   useEffect(() => {

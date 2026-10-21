@@ -161,9 +161,9 @@ export function useWorkOrderForm({ mode, onSuccess, initialCode }: UseWorkOrderF
   const schema = useMemo(
     () =>
       isEdit
-        ? buildUpdateWorkOrderSchema(t, attributeContext.applicable_attributes)
-        : buildCreateWorkOrderSchema(t, attributeContext.applicable_attributes),
-    [isEdit, t, attributeContext.applicable_attributes],
+        ? buildUpdateWorkOrderSchema(t, attributeContext.applicable_attributes, attributeContext.attribute_layout)
+        : buildCreateWorkOrderSchema(t, attributeContext.applicable_attributes, attributeContext.attribute_layout),
+    [isEdit, t, attributeContext.applicable_attributes, attributeContext.attribute_layout],
   )
 
   useEffect(() => {

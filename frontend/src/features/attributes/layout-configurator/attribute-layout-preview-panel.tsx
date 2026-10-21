@@ -19,9 +19,10 @@ interface AttributeLayoutPreviewPanelProps {
  * Live preview (spec 0062 AC-011): renders the SAME `AttributeLayoutRenderer`
  * the runtime Product form/detail and Opportunity work-panel use, fed
  * directly by the configurator's in-editing `blob` — no debounce, no extra
- * state, every keystroke/drag re-renders it. Read-only: a throwaway local
+ * state, every keystroke/drag re-renders it. A throwaway local
  * `useForm` supplies the `control` the renderer requires; nothing here is
- * ever submitted.
+ * ever submitted. Controls stay editable so a boolean toggle can reveal the
+ * conditional sections (spec 0288).
  *
  * Hosted inside the category edit form's `bg-card` FormSection (ui-design.md
  * §1-bis rung 3): the `--muted` tint sets the preview apart from the card as
@@ -47,7 +48,7 @@ export function AttributeLayoutPreviewPanel({ blob, attributes, mode }: Attribut
             attributes={attributes}
             control={form.control}
             mode={mode}
-            readOnly
+            showConditionHints
           />
         </form>
       </Form>

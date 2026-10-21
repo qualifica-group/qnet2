@@ -190,6 +190,7 @@ const guide: HelpGuide = {
             'Scelta la categoria compaiono i suoi campi, compresi quelli ereditati dalle categorie superiori, ciascuno come una riga da aprire.',
             'La categoria può raggrupparli in più sezioni; quelli fuori gruppo finiscono in Altre informazioni.',
             'Gli attributi indicati come Obbligatorio nella categoria vanno compilati per forza.',
+            'Una sezione può comparire solo quando un campo sì/no è attivo: spento il campo, la sezione sparisce, i suoi obbligatori non servono e al salvataggio i suoi valori vengono svuotati.',
           ],
         },
         {

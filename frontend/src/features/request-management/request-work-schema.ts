@@ -1,5 +1,7 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
+import { hiddenAttributeCodes } from '@/features/attributes/attribute-section-visibility'
+import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import { buildContactSchema } from '@/features/personal-data/contact-schema'
 import { buildPersonalDataSchema } from '@/features/personal-data/personal-data-schema'
@@ -198,6 +200,7 @@ export function buildRequestWorkSchema(
   attributes: ApplicableAttribute[],
   statuses: QuoteWorkflowStatusRef[],
   t: TFunction,
+  layout: LayoutBlob | null = null,
 ) {
   const codes = attributes.map((attribute) => attribute.code)
   const requiredCodes = attributes.filter((attribute) => attribute.is_required).map((attribute) => attribute.code)
@@ -270,8 +273,10 @@ export function buildRequestWorkSchema(
       // codes only: mirroring it unconditionally would make a legacy request
       // missing a required attribute unsavable for any unrelated edit.
       if (attributeValuesChanged(values.attribute_values, original.attribute_values, codes)) {
+        // A required attribute in a hidden conditional section does not apply (spec 0288 D-4).
+        const hidden = hiddenAttributeCodes(layout, values.attribute_values)
         for (const code of requiredCodes) {
-          if (isEmptyCustomFieldValue(values.attribute_values[code])) {
+          if (!hidden.has(code) && isEmptyCustomFieldValue(values.attribute_values[code])) {
             ctx.addIssue({
               code: 'custom',
               path: ['attribute_values', code],

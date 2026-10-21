@@ -424,7 +424,7 @@ const guide: HelpGuide = {
             ['"Questo prodotto appartiene a una categoria non attiva."', 'Scelto un prodotto di un ramo non attivo.', 'Scegli un altro prodotto o riattiva la categoria.'],
             ['"Questa opportunità è gestita su una singola categoria prodotto…"', 'Ramo in modalità Singola.', 'Usa una sola riga o passa la radice a Multipla.'],
             ['"La categoria prodotto di questa opportunità ammette una sola offerta: ne esiste già una."', 'Offerta unica per opportunità attiva.', "Modifica l'offerta esistente."],
-            ['"Il layout non è valido…"', 'Sezione senza titolo o campo posizionato due volte.', 'Correggi e salva di nuovo.'],
+            ['"Il layout non è valido…"', 'Sezione senza titolo, campo posizionato due volte o sezione legata a un campo non ammesso.', 'Correggi e salva di nuovo.'],
           ],
         },
       ],

@@ -169,8 +169,8 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
   const { context, isLoading: isContextLoading } = useRequestFormContext(productLines)
 
   const schema = useMemo(
-    () => buildRequestCreateSchema(t, context.applicable_attributes),
-    [t, context.applicable_attributes],
+    () => buildRequestCreateSchema(t, context.applicable_attributes, context.attribute_layout),
+    [t, context.applicable_attributes, context.attribute_layout],
   )
 
   useEffect(() => {

@@ -8,6 +8,10 @@ import '@/features/attributes/layout-configurator/i18n'
 import { AttributeLayoutPalette } from '@/features/attributes/layout-configurator/attribute-layout-palette'
 import { AttributeLayoutPreviewPanel } from '@/features/attributes/layout-configurator/attribute-layout-preview-panel'
 import { AttributeLayoutSectionEditor } from '@/features/attributes/layout-configurator/attribute-layout-section-editor'
+import {
+  allowedConditionAttributes,
+  controlsOtherSections,
+} from '@/features/attributes/layout-configurator/layout-configurator-conditions'
 import { unplacedAttributes } from '@/features/attributes/layout-configurator/layout-configurator-tree'
 import { useLayoutConfiguratorActions } from '@/features/attributes/layout-configurator/use-layout-configurator-actions'
 import type { LayoutBlob, LayoutFormMode } from '@/features/attributes/attribute-layout-types'
@@ -59,6 +63,8 @@ export function AttributeLayoutConfigurator({
                 key={section.id}
                 section={section}
                 attributesByCode={attributesByCode}
+                conditionOptions={allowedConditionAttributes(blob, section.id, attributes)}
+                controlsOthers={controlsOtherSections(blob, section.id)}
                 isFirst={index === 0}
                 isLast={index === blob.sections.length - 1}
                 disabled={disabled}

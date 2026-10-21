@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { AttributeLayoutSectionCondition } from '@/features/attributes/layout-configurator/attribute-layout-section-condition'
 import { AttributeLayoutRowEditor } from '@/features/attributes/layout-configurator/attribute-layout-row-editor'
 import type { LayoutConfiguratorActions } from '@/features/attributes/layout-configurator/use-layout-configurator-actions'
 import {
@@ -20,6 +21,8 @@ import type { EffectiveAttribute } from '@/features/product-categories/types'
 interface AttributeLayoutSectionEditorProps {
   section: LayoutSection
   attributesByCode: ReadonlyMap<string, EffectiveAttribute>
+  conditionOptions: EffectiveAttribute[]
+  controlsOthers: boolean
   isFirst: boolean
   isLast: boolean
   disabled: boolean
@@ -43,6 +46,8 @@ const TITLE_MAX_LENGTH = 191
 export function AttributeLayoutSectionEditor({
   section,
   attributesByCode,
+  conditionOptions,
+  controlsOthers,
   isFirst,
   isLast,
   disabled,
@@ -188,6 +193,13 @@ export function AttributeLayoutSectionEditor({
           </Label>
         </div>
 
+        <AttributeLayoutSectionCondition
+          section={section}
+          options={conditionOptions}
+          controlsOthers={controlsOthers}
+          disabled={disabled}
+          onChange={(visibleWhen) => actions.updateSection(section.id, { visible_when: visibleWhen })}
+        />
       </div>
 
       <div className="flex flex-col gap-2">

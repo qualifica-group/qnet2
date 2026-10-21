@@ -3,6 +3,33 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0288: sezioni condizionali nel layout attributi — VERDE, PARZIALMENTE COMMITTATO (2026-10-20)
+
+- Contratto: sezione del blob layout + `visible_when: { attribute_code } | null` (chiave assente nei blob vecchi = null;
+  `AttributeLayoutService::normalizeSection` la scrive sempre). Regole D-2 in `AttributeLayoutValidator::assertConditions`
+  (booleano, posizionato, fuori dalla sezione, in sezione non condizionale; 422 `attribute_layout`).
+  `AttributeLayoutCopier` azzera la condizione se il controllo viene potato.
+- Regola unica per lato (D-6): BE `App\RequestManagement\AttributeSectionVisibility` (`hiddenCodes`, `mergeAndClear`),
+  FE `features/attributes/attribute-section-visibility.ts` (`hiddenAttributeCodes`, `hiddenSectionIds`, `isSectionVisible`).
+  `AttributeValueValidator::validate(..., $hiddenCodes)` rilassa gli obbligatori; i writer svuotano a null i codici nascosti
+  prima del confronto `$merged === $current`. Layout per superficie (D-5): store Create; update Prodotto/Offerta/Commessa
+  View; update Richiesta Edit. La migrazione legacy passa layout null (nessuna condizione).
+- FE: renderer (useWatch) e vista dettaglio nascondono le sezioni; i 5 schemi form saltano gli obbligatori nascosti
+  (parametro `layout` in coda); configuratore con Select "Visibile solo se attivo" (`attribute-layout-section-condition.tsx`,
+  `layout-configurator-conditions.ts`); anteprima interattiva con "Visibile se: ...".
+- Seeder: `SeedsAttributeLayouts::composesAs/inheritedRendersSame` trattano `visible_when` assente come null
+  (senza, i seeder Qualifica non riconoscevano piu' i propri layout). REQUIREMENT CHANGED: fixture
+  `duplicateLayoutBlob` in `ProductCategoryDuplicateTest` con `visible_when => null`.
+- Test: `AttributeLayoutConditionalSectionTest`, `ConditionalSectionValuesTest`, `AttributeSectionVisibilityTest`, Vitest
+  dei 5 schemi + configuratore + renderer. Suite BE 12018/12030: rossi preesistenti Migration x7 (falliscono sul baseline
+  912d634e), PDF x3 (LibreOffice assente), `DemoOpportunitySeederTest` flaky (verde da solo). Vitest completo verde.
+- Commit: `1a513c78` e `1b6906b6` (fatti fuori dal flusso) contengono parte del lavoro; il resto e' nel working tree.
+- Guide in-app IT/EN aggiornate (`product-categories` parti layout, `products`, `quotes`, `work-orders`). Manuale Claude
+  Docs NON aggiornato (documento non accessibile da questa sessione): sezioni "Categorie Prodotto > Layout attributi",
+  "Prodotti > Sezione Attributi", "Offerte > Informazioni aggiuntive", "Commesse > Informazioni aggiuntive".
+- Da verificare: nessun test distingue le modalita' Create/View/Edit del layout (D-5); lieve differenza BE/FE per un codice
+  posizionato in due sezioni (BE nasconde solo se assente da sezioni visibili). Prossimo: commit del resto, su richiesta.
+
 ## Catalogo Autofinanziato - Campania: +2 prodotti — VERDE, NON COMMITTATO (2026-10-20)
 
 - `SelfFundedCourseCatalogue::COURSES['Autofinanziato - Campania']`: "Traduzione Asseverata del Titolo" (100, IVA 22%) e

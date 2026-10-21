@@ -424,7 +424,7 @@ const guide: HelpGuide = {
             ['"This product belongs to an inactive category."', 'A product from an inactive branch was chosen.', 'Choose another product or reactivate the category.'],
             ['"This opportunity is managed on a single product category…"', 'Branch in Single mode.', 'Use a single row or switch the root to Multiple.'],
             ['"This opportunity\'s product category allows only one offer: one already exists."', 'Single offer per opportunity is on.', 'Edit the existing offer.'],
-            ['"The layout is not valid…"', 'A section without a title or a field placed twice.', 'Fix it and save again.'],
+            ['"The layout is not valid…"', 'A section without a title, a field placed twice or a section tied to a field that is not allowed.', 'Fix it and save again.'],
           ],
         },
       ],

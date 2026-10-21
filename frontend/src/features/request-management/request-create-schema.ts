@@ -7,6 +7,8 @@ import {
   buildAttributeValuesSchema,
   type TypedAttributeValuesSchema,
 } from '@/features/request-management/attribute-values-schema'
+import { hiddenAttributeCodes } from '@/features/attributes/attribute-section-visibility'
+import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import { attributeValuesFilled } from '@/features/request-management/request-create-payload'
 import type { ApplicableAttribute } from '@/features/request-management/types'
 
@@ -58,7 +60,11 @@ function buildProductLinesSchema(t: TFunction) {
  * categories change — exactly as the work panel rebuilds its own from the
  * loaded panel.
  */
-export function buildRequestCreateSchema(t: TFunction, attributes: ApplicableAttribute[] = []) {
+export function buildRequestCreateSchema(
+  t: TFunction,
+  attributes: ApplicableAttribute[] = [],
+  layout: LayoutBlob | null = null,
+) {
   const codes = attributes.map((attribute) => attribute.code)
   const requiredCodes = attributes.filter((attribute) => attribute.is_required).map((attribute) => attribute.code)
 
@@ -124,8 +130,10 @@ export function buildRequestCreateSchema(t: TFunction, attributes: ApplicableAtt
       return
     }
 
+    // A required attribute in a hidden conditional section does not apply (spec 0288 D-4).
+    const hidden = hiddenAttributeCodes(layout, values.attribute_values)
     for (const code of requiredCodes) {
-      if (isEmptyCustomFieldValue(values.attribute_values[code])) {
+      if (!hidden.has(code) && isEmptyCustomFieldValue(values.attribute_values[code])) {
         ctx.addIssue({
           code: 'custom',
           path: ['attribute_values', code],

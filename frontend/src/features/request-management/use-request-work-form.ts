@@ -144,10 +144,12 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions, onSav
         panel.applicable_attributes,
         panel.quote_workflow_statuses,
         t,
+        panel.attribute_layout,
       ),
     [
       panel.product_lines,
       panel.applicable_attributes,
+      panel.attribute_layout,
       panel.attribute_values,
       panel.quote_workflow_status_id,
       panel.quote_workflow_statuses,

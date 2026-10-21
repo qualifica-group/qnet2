@@ -112,7 +112,8 @@ trait SeedsAttributeLayouts
     ): bool {
         [$inherited] = $layouts->resolveInheritedForScope($category, $context, LayoutFormScope::All);
 
-        return $inherited !== null && $inherited == ['sections' => $sections];
+        return $inherited !== null
+            && self::withConditionKey($inherited['sections']) == self::withConditionKey($sections);
     }
 
     /**
@@ -135,12 +136,26 @@ trait SeedsAttributeLayouts
 
                 return $section;
             },
-            $sections,
+            self::withConditionKey($sections),
         );
 
         return array_keys($blob) === ['sections']
             && is_array($blob['sections'])
             && $withoutRowIds($blob['sections']) == $withoutRowIds($sections);
+    }
+
+    /**
+     * Every saved section carries `visible_when` (spec 0288, null when
+     * unconditional) while the seeders compose sections without it: an absent
+     * key counts as null, so a blob written before or after that spec still
+     * matches its composition.
+     *
+     * @param  list<array<string, mixed>>  $sections
+     * @return list<array<string, mixed>>
+     */
+    private static function withConditionKey(array $sections): array
+    {
+        return array_map(static fn (array $section): array => $section + ['visible_when' => null], $sections);
     }
 
     /**

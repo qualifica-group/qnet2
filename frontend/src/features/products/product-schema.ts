@@ -6,6 +6,8 @@ import {
 } from '@/features/custom-fields/build-custom-fields-schema'
 import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
+import { hiddenAttributeCodes } from '@/features/attributes/attribute-section-visibility'
+import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { EffectiveAttribute } from '@/features/product-categories/types'
 import { buildAttributeEnumSchema } from '@/features/request-management/attribute-values-schema'
 import { productPricingVisibility } from '@/features/products/product-pricing-visibility'
@@ -103,7 +105,7 @@ function buildAttributeScalarSchema(attribute: EffectiveAttribute, t: TFunction)
 }
 
 /** Builds the dynamic `attribute_values` shape, one key per PRODUCT-context effective attribute. */
-function buildAttributeValuesSchema(attributes: EffectiveAttribute[], t: TFunction) {
+function buildAttributeValuesSchema(attributes: EffectiveAttribute[], t: TFunction, layout: LayoutBlob | null) {
   const shape: Record<string, z.ZodTypeAny> = {}
   for (const attribute of attributes) {
     shape[attribute.code] = buildAttributeScalarSchema(attribute, t)
@@ -112,8 +114,10 @@ function buildAttributeValuesSchema(attributes: EffectiveAttribute[], t: TFuncti
   const requiredCodes = attributes.filter((attribute) => attribute.is_required).map((attribute) => attribute.code)
 
   return z.object(shape).superRefine((values, ctx) => {
+    // A required attribute in a hidden conditional section does not apply (spec 0288 D-4).
+    const hidden = hiddenAttributeCodes(layout, values)
     for (const code of requiredCodes) {
-      if (isEmptyCustomFieldValue((values as Record<string, unknown>)[code])) {
+      if (!hidden.has(code) && isEmptyCustomFieldValue((values as Record<string, unknown>)[code])) {
         ctx.addIssue({ code: 'custom', path: [code], message: t('customFields.validation.required') })
       }
     }
@@ -136,12 +140,13 @@ export function buildCreateProductSchema(
   t: TFunction,
   customFieldsSchema: CustomFieldsSchema,
   productAttributes: EffectiveAttribute[],
+  layout: LayoutBlob | null = null,
 ) {
   return withRequiredValueRules(
     z.object({
       ...baseFields(t),
       custom_fields: asCustomFieldsField(customFieldsSchema),
-      attribute_values: buildAttributeValuesSchema(productAttributes, t) as unknown as TypedAttributeValuesSchema,
+      attribute_values: buildAttributeValuesSchema(productAttributes, t, layout) as unknown as TypedAttributeValuesSchema,
     }),
     t,
   )
@@ -151,8 +156,9 @@ export function buildUpdateProductSchema(
   t: TFunction,
   customFieldsSchema: CustomFieldsSchema,
   productAttributes: EffectiveAttribute[],
+  layout: LayoutBlob | null = null,
 ) {
-  return buildCreateProductSchema(t, customFieldsSchema, productAttributes)
+  return buildCreateProductSchema(t, customFieldsSchema, productAttributes, layout)
 }
 
 export type CreateProductFormValues = z.infer<ReturnType<typeof buildCreateProductSchema>>

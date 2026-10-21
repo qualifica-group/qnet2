@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { LayoutBlob, LayoutSection } from '@/features/attributes/attribute-layout-types'
 import i18n from '@/i18n'
 import {
   buildRequestWorkSchema,
@@ -394,5 +395,69 @@ describe('buildRequestWorkSchema — fiscal identity required for a positive clo
     )
 
     expect(schema.safeParse(closing({ client_identity: card({ vat_number: '01234567897' }) })).success).toBe(true)
+  })
+})
+
+// Spec 0288 AC-011: a required attribute in a hidden conditional section does not apply.
+function layoutSection(id: string, code: string, visibleWhen: string | null): LayoutSection {
+  return {
+    id,
+    title: id,
+    description: null,
+    variant: 'default',
+    collapsible: false,
+    default_collapsed: false,
+    columns: 1,
+    sort_order: 0,
+    rows: [{ id: `${id}-row`, items: [{ attribute_code: code, width: 'full' }] }],
+    visible_when: visibleWhen ? { attribute_code: visibleWhen } : null,
+  }
+}
+
+const CONDITIONAL_LAYOUT: LayoutBlob = {
+  sections: [layoutSection('main', 'has_site', null), layoutSection('extra', 'site_access', 'has_site')],
+}
+
+function conditionalAttribute(code: string, type: string, isRequired: boolean) {
+  return {
+    id: 1,
+    code,
+    name: code,
+    type,
+    description: null,
+    help_text: null,
+    placeholder: null,
+    icon: null,
+    config: null,
+    relation_target: null,
+    is_required: isRequired,
+    sort_order: 0,
+    options: [],
+  }
+}
+
+const CONDITIONAL_ATTRIBUTES = [
+  conditionalAttribute('has_site', 'boolean', false),
+  conditionalAttribute('site_access', 'text', true),
+]
+
+function hasRequiredIssue(result: { success: boolean; error?: { issues: { path: PropertyKey[] }[] } }): boolean {
+  return (
+    !result.success && (result.error?.issues ?? []).some((issue) => issue.path.join('.') === 'attribute_values.site_access')
+  )
+}
+
+describe('buildRequestWorkSchema - conditional sections (spec 0288 AC-011)', () => {
+  it('work panel: a hidden section skips the required attribute, a visible one enforces it', () => {
+    const schema = buildRequestWorkSchema(
+      original({ attribute_values: { has_site: null, site_access: null } }),
+      CONDITIONAL_ATTRIBUTES,
+      [],
+      i18n.t,
+      CONDITIONAL_LAYOUT,
+    )
+
+    expect(hasRequiredIssue(schema.safeParse(values({ attribute_values: { has_site: false, site_access: null } })))).toBe(false)
+    expect(hasRequiredIssue(schema.safeParse(values({ attribute_values: { has_site: true, site_access: null } })))).toBe(true)
   })
 })

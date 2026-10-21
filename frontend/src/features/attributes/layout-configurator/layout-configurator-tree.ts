@@ -5,6 +5,7 @@ import type {
   LayoutItemWidth,
   LayoutSection,
 } from '@/features/attributes/attribute-layout-types'
+import { clearBrokenConditions } from '@/features/attributes/layout-configurator/layout-configurator-conditions'
 import type { EffectiveAttribute } from '@/features/product-categories/types'
 
 /**
@@ -18,7 +19,7 @@ import type { EffectiveAttribute } from '@/features/product-categories/types'
 
 /** Fields a caller may patch on a section — everything but its identity/rows/order. */
 export type SectionPatch = Partial<
-  Pick<LayoutSection, 'title' | 'description' | 'variant' | 'collapsible' | 'default_collapsed' | 'columns'>
+  Pick<LayoutSection, 'title' | 'description' | 'variant' | 'collapsible' | 'default_collapsed' | 'columns' | 'visible_when'>
 >
 
 /** Where a dragged/removed attribute lands: back in the unplaced palette, or into a specific row. */
@@ -171,13 +172,15 @@ function defaultWidthForColumns(columns: LayoutColumns): LayoutItemWidth {
 export function placeAttribute(blob: LayoutBlob, attributeCode: string, target: DropTarget): LayoutBlob {
   const { blob: withoutItem, removed } = removeAttribute(blob, attributeCode)
   if (target.type === 'palette') {
-    return withoutItem
+    return clearBrokenConditions(withoutItem)
   }
   // A moved item keeps its width; a brand-new placement from the palette tiles
   // to the target section's column count (removed === undefined).
   const targetColumns = withoutItem.sections.find((section) => section.id === target.sectionId)?.columns ?? 1
   const width: LayoutItemWidth = removed?.width ?? defaultWidthForColumns(targetColumns)
-  return insertIntoRow(withoutItem, target.sectionId, target.rowId, { attribute_code: attributeCode, width }, target.beforeCode)
+  const placed = insertIntoRow(withoutItem, target.sectionId, target.rowId, { attribute_code: attributeCode, width }, target.beforeCode)
+  // A condition whose control left the layout or landed in its own section is no longer valid (spec 0288 D-7)
+  return clearBrokenConditions(placed)
 }
 
 /** Updates a placed item's width in place (AC-009: "cambio larghezza item aggiorna lo span"). */
@@ -214,7 +217,9 @@ export function addSection(blob: LayoutBlob): LayoutBlob {
 
 /** Removes a section; any items it held simply cease to exist in the blob (they return to the palette). */
 export function removeSection(blob: LayoutBlob, sectionId: string): LayoutBlob {
-  return { sections: reindexSortOrder(blob.sections.filter((section) => section.id !== sectionId)) }
+  return clearBrokenConditions({
+    sections: reindexSortOrder(blob.sections.filter((section) => section.id !== sectionId)),
+  })
 }
 
 export function updateSection(blob: LayoutBlob, sectionId: string, patch: SectionPatch): LayoutBlob {
@@ -238,10 +243,12 @@ export function addRow(blob: LayoutBlob, sectionId: string): LayoutBlob {
 
 /** Removes a row; its items (if any) simply cease to exist in the blob (they return to the palette). */
 export function removeRow(blob: LayoutBlob, sectionId: string, rowId: string): LayoutBlob {
-  return mapSection(blob, sectionId, (section) => ({
-    ...section,
-    rows: section.rows.filter((row) => row.id !== rowId),
-  }))
+  return clearBrokenConditions(
+    mapSection(blob, sectionId, (section) => ({
+      ...section,
+      rows: section.rows.filter((row) => row.id !== rowId),
+    })),
+  )
 }
 
 export function moveRow(blob: LayoutBlob, sectionId: string, rowId: string, direction: 'up' | 'down'): LayoutBlob {

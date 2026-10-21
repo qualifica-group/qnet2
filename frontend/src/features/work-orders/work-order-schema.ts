@@ -6,6 +6,8 @@ import {
   type TypedAttributeValuesSchema,
 } from '@/features/request-management/attribute-values-schema'
 import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
+import { hiddenAttributeCodes } from '@/features/attributes/attribute-section-visibility'
+import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { ApplicableAttributeSummary } from '@/features/work-orders/types'
 
 /** Backend `code` column limit (`string(32)`), mirrors the quote/project pattern (D-1). */
@@ -50,8 +52,16 @@ function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[]) {
 }
 
 /** I `code` applicabili marcati `is_required`: gli unici che una refine impone. */
-function requiredAttributeCodes(attributes: ApplicableAttributeSummary[]): string[] {
-  return attributes.filter((attribute) => attribute.is_required).map((attribute) => attribute.code)
+function requiredAttributeCodes(
+  attributes: ApplicableAttributeSummary[],
+  layout: LayoutBlob | null,
+  values: Record<string, unknown>,
+): string[] {
+  // A required attribute in a hidden conditional section does not apply (spec 0288 D-4).
+  const hidden = hiddenAttributeCodes(layout, values)
+  return attributes
+    .filter((attribute) => attribute.is_required && !hidden.has(attribute.code))
+    .map((attribute) => attribute.code)
 }
 
 /** Un'issue "campo obbligatorio" per ogni `code` required rimasto vuoto. */
@@ -79,7 +89,11 @@ function addMissingRequiredAttributes(
  * silently falling back to server generation. `quote_id` is required: every
  * work order is created inside exactly one offer's perimeter (D-5).
  */
-export function buildCreateWorkOrderSchema(t: TFunction, attributes: ApplicableAttributeSummary[] = []) {
+export function buildCreateWorkOrderSchema(
+  t: TFunction,
+  attributes: ApplicableAttributeSummary[] = [],
+  layout: LayoutBlob | null = null,
+) {
   return z
     .object({
       ...baseFields(t, attributes),
@@ -96,7 +110,12 @@ export function buildCreateWorkOrderSchema(t: TFunction, attributes: ApplicableA
           message: t('workOrders.form.quoteRequired'),
         })
       }
-      addMissingRequiredAttributes(values.attribute_values, requiredAttributeCodes(attributes), t, ctx)
+      addMissingRequiredAttributes(
+        values.attribute_values,
+        requiredAttributeCodes(attributes, layout, values.attribute_values),
+        t,
+        ctx,
+      )
     })
 }
 
@@ -105,9 +124,18 @@ export function buildCreateWorkOrderSchema(t: TFunction, attributes: ApplicableA
  * `quote_id` stay in the shape (the form still displays them) but render
  * read-only, enforced by field permissions (D-1/D-5), never by this schema.
  */
-export function buildUpdateWorkOrderSchema(t: TFunction, attributes: ApplicableAttributeSummary[] = []) {
+export function buildUpdateWorkOrderSchema(
+  t: TFunction,
+  attributes: ApplicableAttributeSummary[] = [],
+  layout: LayoutBlob | null = null,
+) {
   return z.object(baseFields(t, attributes)).superRefine((values, ctx) => {
-    addMissingRequiredAttributes(values.attribute_values, requiredAttributeCodes(attributes), t, ctx)
+    addMissingRequiredAttributes(
+      values.attribute_values,
+      requiredAttributeCodes(attributes, layout, values.attribute_values),
+      t,
+      ctx,
+    )
   })
 }
 

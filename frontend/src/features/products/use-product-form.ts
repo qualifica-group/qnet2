@@ -131,12 +131,17 @@ export function useProductForm({ mode, initialCode }: UseProductFormArgs) {
     mode.type === 'edit' ? { type: 'edit', customFields: mode.product.custom_fields } : { type: 'create' },
   )
 
+  // The layout the form renders decides which sections are hidden, hence which
+  // required attributes do not apply (spec 0288 D-4).
+  const renderedLayout =
+    mode.type === 'edit' ? (mode.product.attribute_layout ?? null) : (productLayoutQuery.data ?? null)
+
   const schema = useMemo(
     () =>
       isEdit
-        ? buildUpdateProductSchema(t, customFields.schema, productAttributes)
-        : buildCreateProductSchema(t, customFields.schema, productAttributes),
-    [isEdit, t, customFields.schema, productAttributes],
+        ? buildUpdateProductSchema(t, customFields.schema, productAttributes, renderedLayout)
+        : buildCreateProductSchema(t, customFields.schema, productAttributes, renderedLayout),
+    [isEdit, t, customFields.schema, productAttributes, renderedLayout],
   )
 
   const defaultValues = useMemo<ProductFormValues>(

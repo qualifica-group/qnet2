@@ -59,6 +59,7 @@ export const attributeSections: HelpSection[] = [
             'Scegli il Contesto: Prodotto, Offerta o Commessa.',
             'Scegli la Modalità form: Tutte le modalità, Creazione, Modifica o Visualizzazione.',
             'Clicca Aggiungi sezione e compila Titolo (obbligatorio), Descrizione, Aspetto (Standard, In evidenza, Informativo, Secondario), Colonne (da 1 a 4), Collassabile e Chiusa di default.',
+            'Se la sezione deve comparire solo quando un campo sì/no è attivo, scegli quel campo in Visibile solo se attivo; con Sempre visibile la sezione compare sempre.',
             'Clicca Aggiungi riga dentro la sezione.',
             'Trascina un campo da Attributi non posizionati nella riga.',
             'Per ogni campo scegli la Larghezza: Intera, Due terzi, Metà, Un terzo o Un quarto.',
@@ -77,6 +78,17 @@ export const attributeSections: HelpSection[] = [
         {
           type: 'note',
           text: 'Se Eredita dal padre è spento in un contesto, la categoria non eredita neanche il layout di quel contesto.',
+        },
+        {
+          type: 'table',
+          headers: ['Sezione condizionata', 'Cosa succede'],
+          rows: [
+            ['Quale campo la apre', 'Un attributo sì/no (casella o interruttore) posizionato in un\'altra sezione del layout, che a sua volta non è condizionata. Una sezione da cui dipendono altre sezioni non può essere condizionata.'],
+            ['Nella scheda', 'Con il campo spento la sezione non compare; accendendolo compare al suo posto. Nel dettaglio di un record compare solo se il campo è attivo.'],
+            ['Campi obbligatori', 'Valgono solo quando la sezione è visibile.'],
+            ['Al salvataggio', 'Se il campo è spento, i valori della sezione vengono svuotati.'],
+            ['Nell\'editor', 'Se togli il campo dal layout o lo sposti nella sezione che apre, la sezione torna Sempre visibile. Nell\'Anteprima live accendi il campo per vedere la sezione, con l\'indicazione "Visibile se: …".'],
+          ],
         },
         {
           type: 'tip',
