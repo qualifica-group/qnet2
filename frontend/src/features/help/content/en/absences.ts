@@ -137,6 +137,19 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'At every step (submission, approval, rejection, cancellation) the people involved get an in-app notification and an email. Whoever performs the action receives nothing.',
         },
+        {
+          type: 'list',
+          items: [
+            '**Submission**: the approvers of the request.',
+            '**Approval or rejection**: the person who asked for the absence (with the reason, if rejected).',
+            '**Cancellation**: the person who asked for the absence and the approvers.',
+            '**Type needing no approval**: the person who asked for the absence and the approvers.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'The HR office gets a copy of every step for information: the decision stays with the manager.',
+        },
       ],
     },
     {

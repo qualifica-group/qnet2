@@ -8,6 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
@@ -155,4 +156,96 @@ it('AC-011: HR filing an automatic absence on behalf notifies the person and the
     expect(absenceNotifiedTo($person))->toBeTrue()
         ->and(absenceNotifiedTo($manager))->toBeTrue()
         ->and(absenceNotifiedTo($hr))->toBeFalse();
+});
+
+it('AC-011: the HR office gets a copy of a submission, not titled as one to approve', function () {
+    $manager = absenceUserWith();
+    $person = absenceUserWith();
+    absenceProfile($person, $manager);
+    $hr = absenceUserWith(['viewAny', 'manageAll']);
+    Sanctum::actingAs($person);
+
+    $this->postJson('/api/absence-requests', absencePayload(['submit' => true]))->assertCreated();
+
+    Notification::assertSentToTimes($hr, AbsenceRequestNotification::class, 1);
+    Notification::assertSentTo($hr, AbsenceRequestNotification::class, function ($notification, $channels) use ($hr, $person) {
+        $payload = $notification->toArray($hr);
+
+        return $channels === ['database', 'mail']
+            && $payload['title'] === __('absence_requests.notification.submitted.office_title')
+            && str_contains($payload['message'], $person->name)
+            && str_starts_with((string) $payload['action_url'], '/absences?request=');
+    });
+    Notification::assertSentTo($manager, AbsenceRequestNotification::class, fn ($notification) => $notification->toArray($manager)['title'] === __('absence_requests.notification.submitted.title'));
+});
+
+it('AC-011: the HR office gets a copy of the decision, with the rejection reason', function (string $action, array $payload, string $event) {
+    $manager = absenceUserWith();
+    $person = absenceUserWith();
+    $hr = absenceUserWith(['viewAny', 'manageAll']);
+    $request = absenceSubmitted($person, $manager);
+    Sanctum::actingAs($manager);
+
+    $this->postJson("/api/absence-requests/{$request->id}/{$action}", $payload)->assertOk();
+
+    Notification::assertSentTo($hr, AbsenceRequestNotification::class, function ($notification) use ($hr, $manager, $payload, $event) {
+        $message = $notification->toArray($hr)['message'];
+
+        return $notification->toArray($hr)['title'] === __("absence_requests.notification.{$event}.title")
+            && str_contains($message, $manager->name)
+            && str_contains($message, $payload['rejection_reason'] ?? '');
+    });
+    expect(absenceNotifiedTo($manager))->toBeFalse();
+})->with([
+    'approve' => ['approve', [], 'approved'],
+    'reject' => ['reject', ['rejection_reason' => 'Busy period'], 'rejected'],
+]);
+
+it('AC-011: the HR office gets a copy of a cancellation and of an automatic absence', function () {
+    $manager = absenceUserWith();
+    $person = absenceUserWith();
+    absenceProfile($person, $manager);
+    $hr = absenceUserWith(['viewAny', 'manageAll']);
+    Sanctum::actingAs($person);
+
+    $this->postJson('/api/absence-requests', absencePayload([
+        'absence_type_id' => AbsenceType::factory()->withoutApproval()->create()->id,
+        'submit' => true,
+    ]))->assertCreated();
+    $request = absenceSubmitted($person, $manager, ['starts_on' => '2026-12-21', 'ends_on' => '2026-12-21']);
+    $this->postJson("/api/absence-requests/{$request->id}/cancel")->assertOk();
+
+    Notification::assertSentToTimes($hr, AbsenceRequestNotification::class, 2);
+});
+
+it('AC-011: an HR approver (last resort) is notified once, as the approver', function () {
+    $person = absenceUserWith();
+    absenceProfile($person);
+    $hr = absenceUserWith(['viewAny', 'manageAll']);
+    Sanctum::actingAs($person);
+
+    $this->postJson('/api/absence-requests', absencePayload(['submit' => true]))->assertCreated();
+
+    Notification::assertSentToTimes($hr, AbsenceRequestNotification::class, 1);
+    Notification::assertSentTo($hr, AbsenceRequestNotification::class, fn ($notification) => $notification->toArray($hr)['title'] === __('absence_requests.notification.submitted.title'));
+});
+
+it('AC-011: no copy to an inactive HR user, to a super-admin outside HR, or to an HR person on their own request', function () {
+    Role::query()->firstOrCreate(['name' => 'super-admin']);
+    $superAdmin = User::factory()->create();
+    $superAdmin->assignRole('super-admin');
+    $inactiveHr = absenceUserWith(['viewAny', 'manageAll']);
+    $inactiveHr->forceFill(['is_active' => false])->save();
+    $manager = absenceUserWith();
+    $hrPerson = absenceUserWith(['viewAny', 'create', 'manageAll']);
+    $request = absenceSubmitted($hrPerson, $manager);
+    Sanctum::actingAs($manager);
+
+    $this->postJson("/api/absence-requests/{$request->id}/approve")->assertOk();
+
+    expect(absenceNotifiedTo($superAdmin))->toBeFalse()
+        ->and(absenceNotifiedTo($inactiveHr))->toBeFalse();
+    Notification::assertSentToTimes($hrPerson, AbsenceRequestNotification::class, 1);
+    $expected = __('absence_requests.notification.approved.person', ['type' => $request->absenceType->name, 'period' => '2026-12-14', 'actor' => $manager->name]);
+    Notification::assertSentTo($hrPerson, AbsenceRequestNotification::class, fn ($notification) => $notification->toArray($hrPerson)['message'] === $expected);
 });

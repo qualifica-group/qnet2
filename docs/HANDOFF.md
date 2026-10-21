@@ -3,6 +3,18 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Assenze: copia delle notifiche all'ufficio del personale — VERDE (2026-10-21)
+
+- Spec 0278 D-14: ogni passaggio di una richiesta (invio, approvazione, rifiuto, annullamento, approvazione
+  automatica) va anche, per conoscenza, agli utenti attivi titolari di `absence-requests.manageAll` (ruolo
+  `risorse-umane`); il solo super-admin non la riceve. Nessun doppione (chi è già approvatore o persona riceve
+  solo la propria frase), mai all'autore né alla persona della richiesta. La copia non dà diritto di decidere.
+- `AbsenceRequestNotifier::dispatch()` (Step 1 destinatari + copie, Step 2 consegna afterCommit),
+  `hrOfficeIds()`; `AbsenceRequestNotification` nuovo parametro `copy` -> audience `office`, titolo
+  `submitted.office_title`. Chiavi `office`/`automatic_office`/`office_title` in `lang/{it,en}/absence_requests.php`.
+- Test: `AbsenceRequestNotificationTest` (5 casi nuovi); Absence* 91 verdi. Guida in app `absences` sezione
+  `notifications` (IT+EN) aggiornata, help 149 verdi, tsc pulito.
+
 ## IVA 22% sul tutoraggio e-Campus — VERDE (2026-10-21)
 
 - Seed di produzione: "ASSISTENZA E TUTORAGGIO" (Corsi E-Campus, `products/397` locale) ora con l'aliquota 22%

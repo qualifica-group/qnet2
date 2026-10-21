@@ -14,8 +14,8 @@ use Illuminate\Notifications\Notification;
 
 /**
  * One notification for every step of an absence request (spec 0278): the event
- * (submitted | approved | rejected | cancelled) and the audience (the person
- * or an approver) only pick a sentence. Facts are precomputed by
+ * (submitted | approved | rejected | cancelled) and the audience (the person,
+ * an approver, or the HR office in copy) only pick a sentence. Facts are precomputed by
  * AbsenceRequestNotifier; the link is resolved per recipient (no button for
  * someone who cannot open the page). Mail is skipped without an address.
  */
@@ -41,6 +41,7 @@ class AbsenceRequestNotification extends Notification implements ShouldQueue
         private readonly string $actorName,
         private readonly bool $automatic = false,
         private readonly ?string $reason = null,
+        private readonly bool $copy = false,
     ) {}
 
     /**
@@ -57,7 +58,7 @@ class AbsenceRequestNotification extends Notification implements ShouldQueue
     public function toArray(object $notifiable): array
     {
         return (new NotificationData(
-            title: __("absence_requests.notification.{$this->event}.title"),
+            title: $this->title(),
             message: $this->message($notifiable),
             level: $this->event === self::EVENT_REJECTED ? NotificationLevelEnum::Warning : NotificationLevelEnum::Info,
             actionUrl: $this->pathFor($notifiable),
@@ -67,7 +68,7 @@ class AbsenceRequestNotification extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         $mail = (new MailMessage)
-            ->subject(__("absence_requests.notification.{$this->event}.title"))
+            ->subject($this->title())
             ->greeting(__('Hello :name', ['name' => $notifiable->name]))
             ->line($this->message($notifiable));
 
@@ -86,9 +87,21 @@ class AbsenceRequestNotification extends Notification implements ShouldQueue
         return $notifiable->can('absence-requests.viewAny') ? "/absences?request={$this->requestId}" : null;
     }
 
+    /** The HR office does not approve: its copy of a submission is not titled "to approve". */
+    private function title(): string
+    {
+        $key = $this->copy && $this->event === self::EVENT_SUBMITTED ? 'office_title' : 'title';
+
+        return __("absence_requests.notification.{$this->event}.{$key}");
+    }
+
     private function message(object $notifiable): string
     {
-        $audience = (int) $notifiable->id === $this->personId ? 'person' : 'approver';
+        $audience = match (true) {
+            $this->copy => 'office',
+            (int) $notifiable->id === $this->personId => 'person',
+            default => 'approver',
+        };
         $key = $this->event === self::EVENT_APPROVED && $this->automatic
             ? "absence_requests.notification.approved.automatic_{$audience}"
             : "absence_requests.notification.{$this->event}.{$audience}";

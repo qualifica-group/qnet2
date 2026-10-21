@@ -221,6 +221,11 @@
       `/absences?request={id}`): submitted -> approvatori; approved (anche automatica, D-8) -> persona, e approvatori
       se automatica; rejected -> persona (con motivo); cancelled -> persona se annulla un altro, approvatori se la
       richiesta era submitted o approved. Nessuna notifica a chi compie l'azione.
+      D-14 (decisione utente 2026-10-21): l'ufficio del personale (utenti attivi titolari del permesso
+      `absence-requests.manageAll`, diretto o via ruolo; il solo super-admin non conta) riceve una copia di ogni
+      passaggio per conoscenza, con frase propria (`office`, titolo `office_title` per l'invio). Una sola notifica
+      per destinatario: chi e' gia' approvatore o persona non riceve la copia; mai all'autore ne' alla persona
+      della richiesta. La copia non da' il diritto di decidere (D-2).
     </notifications>
 
     <permissions>
@@ -253,7 +258,8 @@
     <criterion id="AC-010">Griglia: "mine" solo proprie; "to_approve" solo submitted in cui l'attore approva;
       "all" discendenti + proprie, tutte con manageAll; senza viewAny 403 (Pest).</criterion>
     <criterion id="AC-011">Notifiche: ogni passaggio invia la notifica ai destinatari del contratto e mai
-      all'autore dell'azione; mail saltata senza indirizzo (Pest, Notification::fake).</criterion>
+      all'autore dell'azione; mail saltata senza indirizzo; copia all'ufficio del personale (D-14) una sola
+      volta, mai a inattivi o al solo super-admin (Pest, Notification::fake).</criterion>
     <criterion id="AC-012">Saldi: spettanza 9600 min (160 h), assunto il 10/03, a ottobre: mesi maturati 8
       (marzo incluso, >= 15 giorni), maturato 6400; con 960 approvati e 480 inviati: used 960, pending 480,
       residual = riporto + 6400 - 960. Assunto il 20/03: marzo non matura (Pest).</criterion>

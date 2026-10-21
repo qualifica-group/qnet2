@@ -10,12 +10,15 @@ use App\Models\User;
 use App\Notifications\AbsenceRequestNotification;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 /**
  * Who hears about each step of an absence request (spec 0278, notifications
- * block). The actor is never notified. Delivery is deferred until the outermost
- * transaction commits, so a rolled-back step notifies nobody. Expects the
- * relations loaded by AbsenceRequestService::RELATIONS.
+ * block). The actor is never notified. The HR office (active holders of
+ * `absence-requests.manageAll`) gets a copy of every step, without deciding.
+ * Delivery is deferred until the outermost transaction commits, so a
+ * rolled-back step notifies nobody. Expects the relations loaded by
+ * AbsenceRequestService::RELATIONS.
  */
 final class AbsenceRequestNotifier
 {
@@ -66,7 +69,15 @@ final class AbsenceRequestNotifier
      */
     private function dispatch(AbsenceRequest $request, User $actor, string $event, Collection $recipients, bool $automatic = false, ?string $reason = null): void
     {
-        $notification = new AbsenceRequestNotification(
+        // Step 1: the recipients of the contract, then the HR office in copy (once, never the actor or the person)
+        $ids = $recipients->pluck('id')->unique()->reject(fn (int $id): bool => $id === $actor->id)->values();
+        $copyIds = $this->hrOfficeIds()
+            ->diff($ids)
+            ->reject(fn (int $id): bool => in_array($id, [$actor->id, $request->user->id], true))
+            ->values();
+
+        // Step 2: one sentence per audience, delivered after the outermost commit
+        $notification = fn (bool $copy): AbsenceRequestNotification => new AbsenceRequestNotification(
             $event,
             $request->id,
             $request->user->id,
@@ -76,11 +87,41 @@ final class AbsenceRequestNotifier
             $actor->name,
             $automatic,
             $reason,
+            $copy,
         );
-        $ids = $recipients->pluck('id')->unique()->reject(fn (int $id): bool => $id === $actor->id)->values();
+
+        DB::afterCommit(function () use ($ids, $copyIds, $notification): void {
+            $this->notify($ids, $notification(false));
+            $this->notify($copyIds, $notification(true));
+        });
+    }
+
+    /**
+     * Holders of the stored permission only: a super-admin passes `Gate::before`
+     * without being part of the HR office.
+     *
+     * @return Collection<int, int>
+     */
+    private function hrOfficeIds(): Collection
+    {
+        try {
+            return User::permission(AbsenceApproverResolver::MANAGE_ALL_PERMISSION)->where('users.is_active', true)->pluck('users.id');
+        } catch (PermissionDoesNotExist) {
+            return collect();
+        }
+    }
+
+    /**
+     * @param  Collection<int, int>  $ids
+     */
+    private function notify(Collection $ids, AbsenceRequestNotification $notification): void
+    {
+        if ($ids->isEmpty()) {
+            return;
+        }
 
         // The loaded relations are partial (id, name): reload the recipients so email and locale are there.
-        DB::afterCommit(fn () => User::query()->whereKey($ids)->get()->each(fn (User $user) => $user->notify($notification)));
+        User::query()->whereKey($ids)->get()->each(fn (User $user) => $user->notify($notification));
     }
 
     private function period(AbsenceRequest $request): string

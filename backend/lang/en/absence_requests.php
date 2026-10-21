@@ -15,21 +15,27 @@ return [
         'submitted' => [
             'title' => 'Absence request to approve',
             'approver' => ':person submitted an absence request (:type, :period).',
+            'office_title' => 'New absence request',
+            'office' => ':person submitted an absence request (:type, :period): the decision is up to the manager.',
         ],
         'approved' => [
             'title' => 'Absence request approved',
             'person' => 'Your absence request (:type, :period) was approved by :actor.',
             'automatic_person' => 'Your absence request (:type, :period) was recorded: this type needs no approval.',
             'automatic_approver' => ':person recorded an absence (:type, :period) that needs no approval.',
+            'office' => 'The absence request of :person (:type, :period) was approved by :actor.',
+            'automatic_office' => ':person recorded an absence (:type, :period) that needs no approval.',
         ],
         'rejected' => [
             'title' => 'Absence request rejected',
             'person' => 'Your absence request (:type, :period) was rejected by :actor.',
+            'office' => 'The absence request of :person (:type, :period) was rejected by :actor.',
         ],
         'cancelled' => [
             'title' => 'Absence request cancelled',
             'person' => ':actor cancelled your absence request (:type, :period).',
             'approver' => ':actor cancelled the absence request of :person (:type, :period).',
+            'office' => ':actor cancelled the absence request of :person (:type, :period).',
         ],
         'reason' => 'Reason: :reason',
     ],

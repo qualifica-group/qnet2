@@ -137,6 +137,19 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: 'A ogni passaggio (invio, approvazione, rifiuto, annullamento) le persone coinvolte ricevono una notifica nell’app e una email. Chi compie l’azione non riceve nulla.',
         },
+        {
+          type: 'list',
+          items: [
+            '**Invio**: gli approvatori della richiesta.',
+            '**Approvazione o rifiuto**: chi ha chiesto l’assenza (con il motivo, se rifiutata).',
+            '**Annullamento**: chi ha chiesto l’assenza e gli approvatori.',
+            '**Tipo senza approvazione**: chi ha chiesto l’assenza e gli approvatori.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'L’ufficio del personale riceve una copia di ogni passaggio per conoscenza: la decisione resta al responsabile.',
+        },
       ],
     },
     {
