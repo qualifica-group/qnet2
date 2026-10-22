@@ -3,6 +3,63 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Righe d'offerta legacy senza servizio -> prodotto [OLD] (spec 0305) — VERDE, NON COMMITTATA (2026-10-22)
+
+- Spec `docs/specs/0305-legacy-quote-lines-without-service.xml` (approvata, D-1..D-9). Caso guida commessa 270 ->
+  offerta 238 (righe 74624/74625/74626 "... UNI ISO 11381:2017 _ 1°/2°/3° Anno", `service_id` 0).
+- Legacy (`../qnet`, non committato): nuovo `App\Support\Migration\LegacyFreeLineProducts` (titolo normalizzato:
+  trim, spazi ridotti, minuscole; `key` = id minimo su TUTTA `quotationservices`, `name` = "[OLD] " + titolo; 339
+  titoli). `QuoteMigrationController::mapLine()`: riga senza servizio -> `product_id` null + `free_product {key,name}`
+  + `description` null; righe con servizio invariate. Modifiche utente a `AppServiceProvider.php`/`config/database.php`
+  non toccate.
+- qnet-2: `Migrations/Support/LegacyFreeLineProduct` (`OLD_SOURCE` 'quotationservices'; trova/crea il prodotto in
+  "No categoria", prezzo e IVA della prima riga, nome troncato a 191, avviso "Line N: product '...' created from the
+  line title."; key o name mancanti -> offerta fallita), `Migrations/Support/UncategorizedProductCategory` (estratta da
+  `ProductsSource`, che la usa; messaggio se manca il seed: "The 'No categoria' category does not exist; run
+  QualificaCatalogSeeder first."). `MapsLegacyQuoteLines::legacyOfferLine()` usa `free_product`; `QuotesSource`
+  inietta `LegacyFreeLineProduct`.
+- Fuori scope (decisione utente D-5): righe con servizio cancellato (offerta fallita "not migrated"), opportunita'
+  non migrate.
+- Test: nuovo `QuotesSourceFreeLineProductTest` (7). Pest `tests/Feature/Migration` 584/584 con
+  `EXTERNAL_MIGRATION_USERS_LINK_ONLY=false` (le solite 7 note col `.env` locale). Pint pulito. Help vitest 149/149,
+  tsc -b --force 0, eslint pulito.
+- Rilancio locale (run 39/40): offerte fallite 801 -> 379 (422 create: 124 opportunita' non migrata, 255 servizio
+  cancellato, 0 "has no product"), commesse fallite 394 -> 354 (40 create, tutte "Unresolved quote_id"). 323 prodotti
+  [OLD] creati. QUO-0238 e COM-0270 presenti.
+- Manuale: guida `migrations` IT/EN (nota "No categoria") e manuale Claude Docs (stesso paragrafo) aggiornati.
+- Prossimo: rilanciare proforma/fatture attive se si vogliono le righe collegate alle nuove offerte; decidere se
+  servono i 56 servizi cancellati.
+
+## Assenze spec 0304 — CONSEGNA 2 VERDE, COMMITTATA (2026-10-22)
+
+- Consegna 2 (B6, B7, B8, F2, F6, F7, F8, F9) + guide in-app e manuale: con questa la spec 0304 e' completa (la
+  "consegna 3" prevista, solo guide, e' stata assorbita qui per §4-bis).
+- Saldi (B6): spettanza effettiva = allowance.annual_minutes ?? default_annual_days x giornaliere ?? 0, `source`
+  allowance|default|none; `AbsenceBalanceBuilder::compose()` senza query, riusato da `AbsenceBalanceOverviewBuilder`
+  (query costanti); `AbsenceAllowanceBulkWriter` (per persona, activity log); `Exports/AbsenceBalances/
+  AbsenceBalanceOverviewExporter`; rotte `absence-balances/overview`, `overview/export?format=csv|xlsx`,
+  `absence-allowances/bulk` (tutte manageAll). Riporto: anche chi ha solo il default (riga con annual_minutes null).
+- Chiusure (B7): `CompanyClosureService` (409 se iniziata e non ricorrente), `CollectiveLeaveGenerator`
+  (`regenerate()`/`purge()`, insert in blocco: niente activity log per richiesta generata, solo sulla chiusura),
+  `CompanyClosure::appliesToSiteIds()`/`isStarted()` usati anche da `PersonWorkCalendar` (`siteIdsByUser()` pubblico);
+  Policy con abilities standard, `CompanyClosuresTableDefinition`, menu Configurazione `/company-closures`
+  (`calendar-x`), permessi al ruolo `risorse-umane` (`HrOfficeRoleCatalogue::MODULES`), activity-log config.
+  Limite 31 giorni INCLUSIVI (FE allineato). REQUIREMENT CHANGED: `FieldCatalogueEndpointTest` (+company-closures).
+- Calendario/segnatempo (B8): `closed_days`, `color`, `day_part` nel calendario; `TimeEntryAbsenceResolver::resolve()`
+  riceve `PersonNonWorkingDays`; DaySummary `closure: {name}|null`, chiusura = is_non_working_day true, target 0.
+- Frontend: tessere saldi (`balances/balance-tile.tsx`, tolto `balance-row.tsx`), vista "Saldi" per manageAll
+  (`balance-overview/**`), catalogo tipi con modalita'/preavviso/colore/default, nuovo `features/company-closures/**`
+  (rotta in `routes/hr-routes.tsx`, i18n `*-company-closures.ts`, guida + HELP_GUIDE_KEYS 96), calendario (colori,
+  mezze giornate, chiusure, riga Assenti, clic su giorno libero -> `AbsenceRequestSheet prefill`), blocco Assenze
+  in dashboard, nome della chiusura sulla card del Segnatempo.
+- Verifica: composer test 12303/12314 (solo i noti ambientali: 7 Migration con LINK_ONLY=true -> 584/584 con false,
+  3 QuoteDocumentPdf senza LibreOffice); vitest 9044/9045 (flaky noto purchase-invoice-editor-withholdings, da solo
+  verde); tsc 0; Pint pulito. 375 px verificato dal codice (contenitori con overflow-x-auto), non visivamente.
+- Manuale: guide in-app absences, absence-types, company-closures (nuova), time-entries, dashboard IT/EN; Claude
+  Docs (Assenze, Tipi di assenza, Chiusure aziendali, Segnatempo, ruolo Risorse Umane, Dashboard). PDF da rigenerare.
+- Dopo il deploy: `php artisan migrate`, `permissions:sync`, `db:seed --class=QualificaRoleSeeder` (chiusure a
+  risorse-umane), `db:seed --class=QualificaAbsenceTypeSeeder` (modalita' e colori dei tipi).
+
 ## Assenze al livello dei migliori HR (spec 0304) — CONSEGNA 1/3 VERDE, COMMITTATA (2026-10-22)
 
 - Spec `docs/specs/0304-hr-absences-overhaul.xml` (approvata; D-1..D-18). Consegna 1 = chi chiede e chi approva

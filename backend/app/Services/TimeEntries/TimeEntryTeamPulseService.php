@@ -10,6 +10,8 @@ use App\DataObjects\TimeEntries\TimeEntryTeamMemberData;
 use App\Models\BusinessFunction;
 use App\Models\TimeEntry;
 use App\Models\User;
+use App\Services\Absences\Calendar\PersonNonWorkingDays;
+use App\Services\Absences\Calendar\PersonWorkCalendar;
 use Illuminate\Support\Collection;
 
 /**
@@ -26,7 +28,7 @@ use Illuminate\Support\Collection;
  * authorizes/queries ONE selected user at a time, which is exactly the shape
  * that would turn this endpoint into N query pairs for N members. This
  * composes the same lower-level collaborators (`TimeEntrySubordinateResolver`,
- * `TimeEntryPeriodResolver`, `WorkCalendar`, `DailyTargetResolver`,
+ * `TimeEntryPeriodResolver`, `PersonWorkCalendar`, `DailyTargetResolver`,
  * `TimeEntryClusterCalculator`) instead, batched over the whole member set.
  */
 final class TimeEntryTeamPulseService
@@ -34,7 +36,7 @@ final class TimeEntryTeamPulseService
     public function __construct(
         private readonly TimeEntrySubordinateResolver $subordinates,
         private readonly TimeEntryPeriodResolver $periodResolver,
-        private readonly WorkCalendar $calendar,
+        private readonly PersonWorkCalendar $personCalendar,
         private readonly DailyTargetResolver $targetResolver,
         private readonly TimeEntryAbsenceResolver $absenceResolver,
         private readonly TimeEntryClusterCalculator $clusterCalculator,
@@ -48,11 +50,11 @@ final class TimeEntryTeamPulseService
         // Step 1: WHO — authorize and resolve the member set (D-8, D-10).
         [$memberIds, $isFullList] = $this->resolveMemberIds($actor);
 
-        // Step 2: the period's working dates, shared by every member (D-11:
-        // pulse runs on the period's working days alone, IGNORA daily
-        // statuses/is_active).
+        // Step 2: the period and, for every member, the closures that make a
+        // day non-working for them (D-11: pulse runs on the member's working
+        // days alone, IGNORA daily statuses/is_active; spec 0304 D-14).
         $period = $this->periodResolver->resolve($filter);
-        $workingDates = $this->workingDates($period);
+        $nonWorking = $this->personCalendar->load($memberIds, $period->dateFrom, $period->dateTo);
 
         // Step 3: batch-load members + their org data + their entries — a
         // FIXED number of queries regardless of how many members there are.
@@ -63,6 +65,7 @@ final class TimeEntryTeamPulseService
             $members->mapWithKeys(fn (User $member): array => [$member->id => $this->targetResolver->resolve($member->employment)])->all(),
             $period->dateFrom,
             $period->dateTo,
+            $nonWorking,
         );
 
         // Step 4: one TimeEntryTeamMemberData per member, pure in-memory
@@ -70,7 +73,7 @@ final class TimeEntryTeamPulseService
         $items = $members
             ->map(fn (User $member): TimeEntryTeamMemberData => $this->buildMember(
                 $member,
-                $workingDates,
+                $this->workingDates($period, $member->id, $nonWorking),
                 $entriesByUserId->get($member->id, collect()),
                 $businessFunctionsByUserId->get($member->id, []),
                 $absences,
@@ -100,11 +103,11 @@ final class TimeEntryTeamPulseService
     /**
      * @return list<string>
      */
-    private function workingDates(TimeEntryPeriod $period): array
+    private function workingDates(TimeEntryPeriod $period, int $userId, PersonNonWorkingDays $nonWorking): array
     {
         return array_values(array_filter(
             $period->dates(),
-            fn (string $date): bool => ! $this->calendar->isNonWorkingDay($date),
+            static fn (string $date): bool => ! $nonWorking->isNonWorkingDay($userId, $date),
         ));
     }
 

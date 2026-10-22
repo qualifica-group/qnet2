@@ -26,6 +26,7 @@ final class AbsenceCalendarBuilder
 
     public function __construct(
         private readonly WorkCalendar $calendar,
+        private readonly PersonWorkCalendar $personCalendar,
         private readonly TimeEntrySubordinateResolver $subordinates,
         private readonly AbsenceRequestVisibility $visibility,
     ) {}
@@ -41,10 +42,12 @@ final class AbsenceCalendarBuilder
         // Step 2: their approved and pending requests touching the period
         $requests = $this->requests($people->modelKeys(), $from, $to)->groupBy('user_id');
 
-        // Step 3: one entry per working day of each request
+        // Step 3: the closures of each person, then one entry per working day
+        // of the person for each request
+        $nonWorking = $this->personCalendar->load($people->modelKeys(), $from, $to);
         $canOpen = $this->visibility->viewChecker($actor);
         $days = $this->days($from, $to);
-        $workingDates = array_column(array_filter($days, static fn (array $day): bool => ! $day['is_non_working_day']), 'date');
+        $nationalWorkingDates = array_column(array_filter($days, static fn (array $day): bool => ! $day['is_non_working_day']), 'date');
 
         return [
             'scope' => $scope->value,
@@ -52,7 +55,12 @@ final class AbsenceCalendarBuilder
             'people' => $people->map(fn (User $person): array => [
                 'id' => $person->id,
                 'name' => $person->name,
-                'absences' => $this->absenceDays($requests->get($person->id, collect()), $workingDates, $canOpen),
+                'closed_days' => $nonWorking->closedDays($person->id),
+                'absences' => $this->absenceDays(
+                    $requests->get($person->id, collect()),
+                    array_values(array_filter($nationalWorkingDates, static fn (string $date): bool => ! $nonWorking->isNonWorkingDay($person->id, $date))),
+                    $canOpen,
+                ),
             ])->values()->all(),
         ];
     }
@@ -88,7 +96,7 @@ final class AbsenceCalendarBuilder
             ->whereIn('status', self::SHOWN_STATUSES)
             ->where('starts_on', '<=', $to)
             ->where('ends_on', '>=', $from)
-            ->with(['absenceType:id,name', 'approvers:id'])
+            ->with(['absenceType:id,name,color', 'approvers:id'])
             ->orderBy('starts_on')
             ->get();
     }
@@ -113,10 +121,10 @@ final class AbsenceCalendarBuilder
     }
 
     /**
-     * Weekends and holidays inside a request are skipped, as in its duration (spec 0278 D-6).
+     * Weekends, holidays and the person's closures inside a request are skipped, as in its duration (spec 0278 D-6, 0304 D-14).
      *
      * @param  Collection<int, AbsenceRequest>  $requests
-     * @param  list<string>  $workingDates
+     * @param  list<string>  $workingDates  the working days of the person
      * @param  callable(AbsenceRequest): bool  $canOpen
      * @return list<array<string, mixed>>
      */
@@ -139,6 +147,8 @@ final class AbsenceCalendarBuilder
                     'date' => $date,
                     'status' => $request->status->value,
                     'absence_type_name' => $request->absenceType->name,
+                    'color' => $request->absenceType->color,
+                    'day_part' => $request->day_part?->value,
                     'is_full_day' => $request->is_full_day,
                     'minutes' => $request->is_full_day ? null : $request->minutes,
                     'can_open' => $openable,

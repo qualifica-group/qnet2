@@ -9,7 +9,7 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'Cosa trovi',
       blocks: [
-        { type: 'paragraph', text: 'La **Dashboard** si apre subito dopo aver premuto **Accedi**. È divisa in blocchi, dall’alto verso il basso: **Attività da completare** (con le statistiche dei Task), **Segnatempo**, e le statistiche di **Opportunità**, **Offerte**, **Lead** e **Anagrafiche**.' },
+        { type: 'paragraph', text: 'La **Dashboard** si apre subito dopo aver premuto **Accedi**. È divisa in blocchi, dall’alto verso il basso: **Attività da completare** (con le statistiche dei Task), **Segnatempo**, **Assenze** e le statistiche di **Opportunità**, **Offerte**, **Lead** e **Anagrafiche**.' },
         { type: 'note', text: 'Vedi solo i blocchi dei moduli per cui hai il permesso. Se non ne hai nessuno, la pagina mostra “Nessun contenuto disponibile”.' },
       ],
     },
@@ -40,6 +40,13 @@ const guide: HelpGuide = {
       title: 'Segnatempo',
       blocks: [
         { type: 'paragraph', text: 'Mostra il riepilogo del tuo segnatempo e il polso operativo, come nella pagina **Segnatempo**. Scegli il periodo con **Giornaliero** (preimpostato), **Settimanale**, **Mensile** o **Annuale**.' },
+      ],
+    },
+    {
+      id: 'absences',
+      title: 'Assenze',
+      blocks: [
+        { type: 'paragraph', text: 'Mostra quante richieste di assenza tocca a te decidere (**Da approvare**, con il link alla pagina), chi è **assente oggi** tra le persone che vedi nel calendario (con il tipo e fino a quando) e **Le mie prossime assenze**. Vedi la guida **Assenze**.' },
       ],
     },
     {

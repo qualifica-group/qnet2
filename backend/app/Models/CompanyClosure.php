@@ -39,6 +39,24 @@ class CompanyClosure extends BaseModel
     }
 
     /**
+     * The one applicability rule (spec 0304 D-13): valid for all sites, or for at least one of the
+     * given site ids of a person (a person without sites only gets the all-sites closures).
+     * Needs `operationalSites` loaded.
+     *
+     * @param  array<int, int>  $siteIds
+     */
+    public function appliesToSiteIds(array $siteIds): bool
+    {
+        return $this->applies_to_all_sites || array_intersect($siteIds, $this->operationalSites->modelKeys()) !== [];
+    }
+
+    /** A closure whose first day is today or past is started: it can no longer be edited (D-15). */
+    public function isStarted(): bool
+    {
+        return $this->starts_on->format('Y-m-d') <= today()->format('Y-m-d');
+    }
+
+    /**
      * @return BelongsTo<AbsenceType, $this>
      */
     public function absenceType(): BelongsTo

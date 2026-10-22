@@ -7,6 +7,7 @@ import {
   CalendarClock,
   CalendarCog,
   CalendarOff,
+  CalendarX,
   Building2,
   Circle,
   ClipboardList,
@@ -142,6 +143,8 @@ const iconMap: Record<string, LucideIcon> = {
   // Spec 0278: "Assenze" and "Tipi di assenza".
   'calendar-off': CalendarOff,
   'calendar-cog': CalendarCog,
+  // Spec 0304: "Chiusure aziendali".
+  'calendar-x': CalendarX,
   // Spec 0284: "Formazione" and "Corsi".
   'graduation-cap': GraduationCap,
   library: Library,

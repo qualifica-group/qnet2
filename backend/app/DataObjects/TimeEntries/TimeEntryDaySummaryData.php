@@ -19,6 +19,7 @@ final readonly class TimeEntryDaySummaryData
     /**
      * @param  Collection<int, TimeEntry>  $entries
      * @param  list<DayAbsenceData>  $absences  approved absences covering the day (spec 0278)
+     * @param  array{name: string}|null  $closure  the holiday closure that makes the day non-working for the person (spec 0304)
      */
     public function __construct(
         public string $date,
@@ -33,5 +34,6 @@ final readonly class TimeEntryDaySummaryData
         public ?string $dayNote,
         public Collection $entries,
         public array $absences = [],
+        public ?array $closure = null,
     ) {}
 }

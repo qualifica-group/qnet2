@@ -8,9 +8,11 @@ import { FilterTabs } from '@/components/ui/filter-tabs'
 import { Can } from '@/features/auth/can'
 import { useAbilities } from '@/features/auth/use-abilities'
 import type { TableViewHandle } from '@/features/table/table-view'
+import { BalanceOverview } from '@/features/absences/balance-overview/balance-overview'
 import { AbsenceBalancesCard } from '@/features/absences/balances/absence-balances-card'
 import { AbsenceCalendar } from '@/features/absences/calendar/absence-calendar'
 import { AbsenceRequestDetailSheet } from '@/features/absences/requests/absence-request-detail-sheet'
+import type { AbsenceRequestPrefill } from '@/features/absences/requests/absence-request-payload'
 import { AbsenceRequestSheet } from '@/features/absences/requests/absence-request-sheet'
 import { AbsenceRequestsGrid } from '@/features/absences/requests/absence-requests-grid'
 import { useAbsenceScope } from '@/features/absences/requests/use-absence-scope'
@@ -20,7 +22,8 @@ import { ABSENCE_CALENDAR_PERMISSIONS, type AbsenceRequest } from '@/features/ab
 /** Query parameter of the notifications' `action_url` (`/absences?request={id}`). */
 const REQUEST_PARAM = 'request'
 
-const PAGE_VIEWS = ['requests', 'calendar'] as const
+const MANAGE_ALL = 'absence-requests.manageAll'
+const PAGE_VIEWS = ['requests', 'calendar', 'balances'] as const
 type PageView = (typeof PAGE_VIEWS)[number]
 
 /** Positive integer id from the URL, or null for anything else. */
@@ -42,10 +45,16 @@ export default function AbsencesPage() {
   const tableRef = useRef<TableViewHandle>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<AbsenceRequest | undefined>(undefined)
+  const [prefill, setPrefill] = useState<AbsenceRequestPrefill | undefined>(undefined)
   const [view, setView] = useState<PageView>('requests')
   const { can } = useAbilities()
   const { scope, selectScope, toApproveCount } = useAbsenceScope()
   const canSeeCalendar = ABSENCE_CALENDAR_PERMISSIONS.some((permission) => can(permission))
+  const canSeeBalances = can(MANAGE_ALL)
+  const availableViews = PAGE_VIEWS.filter(
+    (value) => value === 'requests' || (value === 'calendar' ? canSeeCalendar : canSeeBalances),
+  )
+  const activeView = availableViews.includes(view) ? view : 'requests'
 
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
   const openedId = parseRequestId(searchParams.get(REQUEST_PARAM))
@@ -56,13 +65,15 @@ export default function AbsencesPage() {
   )
   const closeDetail = useCallback(() => setSearchParams({}, { replace: true }), [setSearchParams])
 
-  const openCreate = () => {
+  const openCreate = (startingValues?: AbsenceRequestPrefill) => {
     setEditing(undefined)
+    setPrefill(startingValues)
     setFormOpen(true)
   }
   const openEdit = (request: AbsenceRequest) => {
     closeDetail()
     setEditing(request)
+    setPrefill(undefined)
     setFormOpen(true)
   }
 
@@ -75,16 +86,16 @@ export default function AbsencesPage() {
         <PageHeader
           actions={
             <div className="flex flex-wrap items-center justify-end gap-2">
-              {canSeeCalendar ? (
+              {availableViews.length > 1 ? (
                 <FilterTabs
                   aria-label={t('absences.page.viewsLabel')}
-                  value={view}
-                  options={PAGE_VIEWS.map((value) => ({ value, label: t(`absences.page.views.${value}`) }))}
+                  value={activeView}
+                  options={availableViews.map((value) => ({ value, label: t(`absences.page.views.${value}`) }))}
                   onValueChange={setView}
                 />
               ) : null}
               <Can permission="absence-requests.create">
-                <Button type="button" onClick={openCreate}>
+                <Button type="button" onClick={() => openCreate()}>
                   <Plus aria-hidden="true" />
                   {t('absences.page.newRequest')}
                 </Button>
@@ -92,9 +103,9 @@ export default function AbsencesPage() {
             </div>
           }
         />
-        {canSeeCalendar && view === 'calendar' ? (
-          <AbsenceCalendar onOpen={openDetail} />
-        ) : (
+        {activeView === 'calendar' ? <AbsenceCalendar onOpen={openDetail} onCreate={(startsOn, person) => openCreate({ startsOn, person })} /> : null}
+        {activeView === 'balances' ? <BalanceOverview /> : null}
+        {activeView === 'requests' ? (
           <>
             <AbsenceSummaryPanel onOpen={openDetail} onGoToApprove={() => selectScope('to_approve')} />
             <AbsenceBalancesCard />
@@ -106,7 +117,7 @@ export default function AbsencesPage() {
               toApproveCount={toApproveCount}
             />
           </>
-        )}
+        ) : null}
       </div>
 
       <AbsenceRequestDetailSheet
@@ -119,6 +130,7 @@ export default function AbsencesPage() {
         open={formOpen}
         onOpenChange={setFormOpen}
         request={editing}
+        prefill={prefill}
         refreshGrid={refreshGrid}
         onSaved={() => setFormOpen(false)}
       />

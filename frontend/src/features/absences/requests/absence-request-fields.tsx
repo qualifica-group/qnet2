@@ -33,6 +33,8 @@ interface AbsenceRequestFieldsProps {
   preview: AbsenceRequestPreview
   /** Editing a draft: the person is fixed, so it is not asked. */
   isEdit: boolean
+  /** Person already picked when the form opens (calendar row of somebody else), to label the select. */
+  prefilledPerson?: { id: number; name: string } | null
   /** The file input, owned by the form (the file is not a form value): shown in the notes section. */
   attachment: ReactNode
 }
@@ -41,7 +43,15 @@ interface AbsenceRequestFieldsProps {
  * The request form in two sections (spec 0287 D-4): the absence (person, type, mode, dates or hourly duration,
  * live preview), then the note and the attachment.
  */
-export function AbsenceRequestFields({ types, typesError, typesEmpty, preview, isEdit, attachment }: AbsenceRequestFieldsProps) {
+export function AbsenceRequestFields({
+  types,
+  typesError,
+  typesEmpty,
+  preview,
+  isEdit,
+  prefilledPerson,
+  attachment,
+}: AbsenceRequestFieldsProps) {
   const { t } = useTranslation()
   const { can } = useAbilities()
   const { control, getValues, setValue } = useFormContext<AbsenceRequestFormValues>()
@@ -59,7 +69,7 @@ export function AbsenceRequestFields({ types, typesError, typesEmpty, preview, i
   return (
     <RecordSectionsGrid>
       <RecordSection title={t('absences.requests.form.sections.absence')} icon={<CalendarDays />}>
-        {!isEdit && can(MANAGE_ALL) ? <AbsenceRequestPersonField /> : null}
+        {!isEdit && can(MANAGE_ALL) ? <AbsenceRequestPersonField selectedPerson={prefilledPerson ?? null} /> : null}
         <FormField
           control={control}
           name="absence_type_id"

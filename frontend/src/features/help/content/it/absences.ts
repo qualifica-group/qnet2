@@ -182,6 +182,7 @@ const guide: HelpGuide = {
             'Puoi annullare una richiesta **inviata** o **approvata** che non è ancora iniziata.',
             'L’ufficio del personale può annullare una richiesta inviata o approvata in qualsiasi momento.',
             'Le **bozze** si modificano e si eliminano; le altre richieste no.',
+            'Le **ferie collettive** create da una chiusura aziendale (segno "Ferie collettive") non si annullano da soli: solo l’ufficio del personale può toglierle a una persona.',
           ],
         },
       ],
@@ -205,7 +206,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'L’ufficio del personale riceve una copia di ogni passaggio. Se a decidere non è il responsabile, il responsabile riceve l’esito.',
+          text: 'L’ufficio del personale riceve una copia di ogni passaggio. Se a decidere non è il responsabile, il responsabile riceve l’esito. Le ferie collettive create da una chiusura non mandano notifiche.',
         },
       ],
     },
@@ -215,23 +216,41 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'I saldi sono in ore, per tipo di assenza e per anno, e solo per i tipi che scalano un saldo.',
+          text: 'Ogni tipo che scala un saldo ha una tessera con il **residuo** in giorni e ore e una barra di quanto hai goduto rispetto al maturato. I conti sono per anno: l’anno si sceglie in alto.',
         },
         {
           type: 'table',
           headers: ['Voce', 'Significato'],
           rows: [
-            ['Spettanza', 'Le ore annue a cui hai diritto.'],
+            ['Spettanza', 'Quanto ti spetta nell’anno. Se l’ufficio del personale non l’ha impostata per te, vale la spettanza di default del tipo, in giorni, moltiplicata per il tuo orario giornaliero (la tessera lo dice).'],
             ['Riporto', 'Il residuo dell’anno precedente.'],
-            ['Maturato', 'Le ore maturate finora: 1/12 della spettanza per ogni mese; un mese conta se sei in forza almeno 15 giorni.'],
-            ['Goduto', 'Le ore delle richieste approvate.'],
-            ['In attesa', 'Le ore delle richieste inviate, non ancora decise.'],
+            ['Maturato', 'Quanto hai maturato finora: 1/12 della spettanza per ogni mese; un mese conta se sei in forza almeno 15 giorni.'],
+            ['Goduto', 'Le richieste approvate.'],
+            ['In attesa', 'Le richieste inviate, non ancora decise.'],
             ['Residuo', 'Riporto + Maturato − Goduto.'],
           ],
         },
         {
           type: 'note',
-          text: 'Il residuo può andare sotto zero: decide il responsabile se approvare. Il 1 gennaio il residuo passa in automatico all’anno nuovo. Solo l’ufficio del personale imposta spettanze e riporto.',
+          text: 'Il residuo può andare sotto zero: decide il responsabile se approvare. Il 1 gennaio il residuo passa in automatico all’anno nuovo. Solo l’ufficio del personale imposta spettanze e riporto, in giorni o in ore, oppure riporta la persona alla spettanza di default del tipo.',
+        },
+      ],
+    },
+    {
+      id: 'staff-balances',
+      title: 'I saldi di tutti (ufficio del personale)',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Chi gestisce le assenze di tutti ha in alto la vista **Saldi**: una tabella con una riga per persona e una colonna per tipo, con il residuo in giorni e ore. Passando sopra una cella leggi spettanza, maturato, goduto e in attesa.',
+        },
+        {
+          type: 'list',
+          items: [
+            'Filtra per anno, funzione aziendale, sede operativa o nome.',
+            'Seleziona le persone e premi **Imposta spettanza**: scegli tipo e giorni (convertiti con l’orario di ognuno, così il part-time ne ha in proporzione) oppure il ritorno al default del tipo. Il riporto non cambia.',
+            'Con **Esporta CSV** o **Esporta XLSX** scarichi il file con una riga per persona e tipo.',
+          ],
         },
       ],
     },
@@ -241,14 +260,16 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La vista **Calendario** si sceglie in alto a destra, accanto a **Richieste** e al pulsante "Nuova richiesta": mostra mese per mese chi è assente: una riga per persona, una colonna per giorno. Weekend e festivi sono evidenziati, i festivi hanno il numero in rosso.',
+          text: 'La vista **Calendario** si sceglie in alto a destra, accanto a **Richieste**: mostra mese per mese chi è assente, una riga per persona e una colonna per giorno. Weekend e festivi sono evidenziati, i festivi hanno il numero in rosso; i giorni di **chiusura aziendale** della sede di ogni persona sono segnati sulla sua riga.',
         },
         {
           type: 'table',
           headers: ['Simbolo', 'Significato'],
           rows: [
-            ['Riquadro pieno con la spunta', 'Assenza approvata.'],
+            ['Riquadro pieno con la spunta', 'Assenza approvata, nel colore del suo tipo.'],
             ['Riquadro tratteggiato con l’orologio', 'Richiesta inviata, in attesa di decisione.'],
+            ['Mezzo riquadro', 'Mezza giornata: a sinistra la mattina, a destra il pomeriggio.'],
+            ['Riga Assenti', 'In fondo, quante persone sono assenti ogni giorno.'],
           ],
         },
         {
@@ -274,6 +295,7 @@ const guide: HelpGuide = {
             'Con le frecce passi al mese precedente o successivo; "Mese corrente" ti riporta a oggi.',
             'Se vedi più persone, puoi filtrarle per funzione aziendale.',
             'Passando sopra un riquadro leggi tipo, durata e stato. Se puoi già vedere quella richiesta nelle Richieste, un clic ne apre il dettaglio.',
+            'Un clic su un giorno lavorativo libero della tua riga apre la nuova richiesta con quella data. L’ufficio del personale può farlo su ogni riga: la richiesta è già intestata a quella persona.',
           ],
         },
         {

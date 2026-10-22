@@ -105,7 +105,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Approved absences (see the **Absences** guide) change the day\'s target: with a full-day absence the target is zero; with an absence by hours the target is reduced by those hours. The day card shows the absence type and hours.',
+          text: 'Approved absences (see the **Absences** guide) change the day\'s target: with a full-day absence the target is zero; with a half day or an absence by hours the target is reduced by those hours. The day card shows the absence type and hours.',
+        },
+        {
+          type: 'paragraph',
+          text: 'A **company closure** day of your site (for example the patron saint, see the **Company closures** guide) counts as a holiday: the target is zero and the day card shows "Company closure" with its name. Collective leave instead is an approved absence and works as above.',
         },
         {
           type: 'note',

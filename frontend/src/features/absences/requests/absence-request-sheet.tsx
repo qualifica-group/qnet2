@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetToolbar } from '@/components/ui/sheet'
 import { AbsenceRequestFields } from '@/features/absences/requests/absence-request-fields'
+import type { AbsenceRequestPrefill } from '@/features/absences/requests/absence-request-payload'
 import { useAbsenceRequestForm } from '@/features/absences/requests/use-absence-request-form'
 import { useAbsenceTypeOptions } from '@/features/absences/requests/use-absence-type-options'
 import type { AbsenceRequest } from '@/features/absences/types'
@@ -18,16 +19,18 @@ const FORM_ID = 'absence-request-form'
 
 interface AbsenceRequestFormProps {
   request?: AbsenceRequest
+  prefill?: AbsenceRequestPrefill
   refreshGrid?: () => void
   onSaved: (saved: AbsenceRequest) => void
   onClose: () => void
 }
 
-function AbsenceRequestForm({ request, refreshGrid, onSaved, onClose }: AbsenceRequestFormProps) {
+function AbsenceRequestForm({ request, prefill, refreshGrid, onSaved, onClose }: AbsenceRequestFormProps) {
   const { t } = useTranslation()
   const types = useAbsenceTypeOptions()
   const { form, preview, file, setFile, isSubmitting, saveDraft, send } = useAbsenceRequestForm({
     request,
+    prefill,
     refreshGrid,
     onSaved,
   })
@@ -62,6 +65,7 @@ function AbsenceRequestForm({ request, refreshGrid, onSaved, onClose }: AbsenceR
           typesEmpty={types.isSuccess && types.data.length === 0}
           preview={preview}
           isEdit={request !== undefined}
+          prefilledPerson={prefill?.person}
           attachment={
             <div className="grid gap-1.5">
               <Label htmlFor={ATTACHMENT_INPUT_ID}>{t('absences.requests.form.attachment')}</Label>
@@ -91,7 +95,7 @@ interface AbsenceRequestSheetProps extends Omit<AbsenceRequestFormProps, 'onClos
 }
 
 /** Right-hand Sheet creating a request or editing a draft (spec 0278 AC-018), on the record create kit (spec 0287). */
-export function AbsenceRequestSheet({ open, onOpenChange, request, refreshGrid, onSaved }: AbsenceRequestSheetProps) {
+export function AbsenceRequestSheet({ open, onOpenChange, request, prefill, refreshGrid, onSaved }: AbsenceRequestSheetProps) {
   const { t } = useTranslation()
 
   return (
@@ -102,10 +106,11 @@ export function AbsenceRequestSheet({ open, onOpenChange, request, refreshGrid, 
           <SheetTitle>{t(request ? 'absences.requests.form.editTitle' : 'absences.requests.form.createTitle')}</SheetTitle>
           <SheetDescription>{t('absences.requests.form.description')}</SheetDescription>
         </SheetHeader>
-        {/* Keyed by request so each opening starts from fresh form state */}
+        {/* Keyed by request (or calendar cell) so each opening starts from fresh form state */}
         <AbsenceRequestForm
-          key={request?.id ?? 'new'}
+          key={request?.id ?? (prefill ? `new-${prefill.startsOn}-${prefill.person?.id ?? 'self'}` : 'new')}
           request={request}
+          prefill={prefill}
           refreshGrid={refreshGrid}
           onSaved={onSaved}
           onClose={() => onOpenChange(false)}

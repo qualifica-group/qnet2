@@ -6,8 +6,13 @@ import { useSelectLabels } from '@/features/absences/balances/use-select-labels'
 import type { AbsenceRequestFormValues } from '@/features/absences/requests/absence-request-schema'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 
+interface AbsenceRequestPersonFieldProps {
+  /** Person already set when the form opens, so the trigger shows a name before the options load. */
+  selectedPerson: { id: number; name: string } | null
+}
+
 /** Person the request is for: who holds `absence-requests.manageAll` may ask on behalf of somebody else. */
-export function AbsenceRequestPersonField() {
+export function AbsenceRequestPersonField({ selectedPerson }: AbsenceRequestPersonFieldProps) {
   const { t } = useTranslation()
   const { control } = useFormContext<AbsenceRequestFormValues>()
   const labels = {
@@ -31,6 +36,7 @@ export function AbsenceRequestPersonField() {
               resource={USERS_FOR_SELECT_RESOURCE}
               value={field.value}
               onChange={field.onChange}
+              selectedItem={selectedPerson ? { id: selectedPerson.id, label: selectedPerson.name } : null}
               labels={labels}
               showAvatar
             />

@@ -47,6 +47,7 @@ function daySummary(overrides: Partial<DaySummary> = {}): DaySummary {
     status: 'under_target',
     day_note: null,
     absences: [],
+    closure: null,
     entries: [],
     ...overrides,
   }

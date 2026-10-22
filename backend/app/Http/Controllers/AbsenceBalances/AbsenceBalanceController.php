@@ -4,6 +4,7 @@ namespace App\Http\Controllers\AbsenceBalances;
 
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\AbsenceBalances\AbsenceBalanceIndexRequest;
+use App\Models\EmploymentProfile;
 use App\Models\User;
 use App\Services\Absences\Balances\AbsenceBalanceBuilder;
 use App\Services\TimeEntries\TimeEntrySubordinateResolver;
@@ -37,6 +38,7 @@ class AbsenceBalanceController extends BaseApiController
             return $this->ok([
                 'user' => ['id' => $person->id, 'name' => $person->name],
                 'year' => $year,
+                'daily_minutes' => $this->balances->dailyMinutes(EmploymentProfile::query()->where('user_id', $person->id)->first()),
                 'balances' => $this->balances->forUser($person, $year),
             ]);
         } catch (Throwable $exception) {

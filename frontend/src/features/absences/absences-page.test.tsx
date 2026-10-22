@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import i18n from '@/i18n'
 import AbsencesPage from '@/features/absences/absences-page'
 import { absenceWrapper, buildRequest } from '@/features/absences/requests/absence-request-fixtures'
@@ -30,11 +30,25 @@ vi.mock('@/features/absences/requests/absence-requests-grid', () => ({
     </div>
   ),
 }))
+vi.mock('@/features/absences/balance-overview/balance-overview', () => ({
+  BalanceOverview: () => <section aria-label="overview" />,
+}))
 vi.mock('@/features/absences/calendar/absence-calendar', () => ({
-  AbsenceCalendar: ({ onOpen }: { onOpen: (id: number) => void }) => (
-    <button type="button" onClick={() => onOpen(5)}>
-      calendar-open-5
-    </button>
+  AbsenceCalendar: ({
+    onOpen,
+    onCreate,
+  }: {
+    onOpen: (id: number) => void
+    onCreate: (date: string, person: { id: number; name: string } | null) => void
+  }) => (
+    <>
+      <button type="button" onClick={() => onOpen(5)}>
+        calendar-open-5
+      </button>
+      <button type="button" onClick={() => onCreate('2026-11-05', null)}>
+        calendar-create-own
+      </button>
+    </>
   ),
 }))
 const summaryMock = vi.fn()
@@ -111,6 +125,18 @@ describe('AbsencesPage', () => {
     expect(await screen.findByText('Anna Rossi')).toBeInTheDocument()
   })
 
+  it('spec 0304: a free day of the calendar opens the create form on that day', async () => {
+    permissions.add('absence-requests.calendarOwn')
+    permissions.add('absence-requests.create')
+    render(<AbsencesPage />, { wrapper: absenceWrapper() })
+
+    fireEvent.click(screen.getByRole('tab', { name: label('absences.page.views.calendar') }))
+    fireEvent.click(screen.getByRole('button', { name: 'calendar-create-own' }))
+
+    const dialog = await screen.findByRole('dialog', { name: label('absences.requests.form.createTitle') })
+    expect(within(dialog).getAllByDisplayValue('2026-11-05')).toHaveLength(2)
+  })
+
   it('spec 0304: opens on "To approve" with the counter when the summary has requests to decide', async () => {
     summaryMock.mockResolvedValue({ to_approve_count: 3, my_pending_count: 0, daily_minutes: 480, my_upcoming: [], absent_today: [] })
     render(<AbsencesPage />, { wrapper: absenceWrapper() })
@@ -133,5 +159,19 @@ describe('AbsencesPage', () => {
     expect(await screen.findByText(label('absences.summary.upcomingEmpty'))).toBeInTheDocument()
     expect(screen.getByText('scope:mine count:0')).toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('spec 0304: the Balances view is for manageAll only and replaces the requests view', () => {
+    render(<AbsencesPage />, { wrapper: absenceWrapper() })
+    expect(screen.queryByRole('tab', { name: label('absences.page.views.balances') })).not.toBeInTheDocument()
+  })
+
+  it('spec 0304: manageAll opens the staff balances overview from the Balances view', () => {
+    permissions.add('absence-requests.manageAll')
+    render(<AbsencesPage />, { wrapper: absenceWrapper() })
+
+    fireEvent.click(screen.getByRole('tab', { name: label('absences.page.views.balances') }))
+    expect(screen.getByRole('region', { name: 'overview' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'balances' })).not.toBeInTheDocument()
   })
 })

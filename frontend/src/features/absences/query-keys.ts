@@ -1,4 +1,5 @@
 import type {
+  AbsenceBalanceOverviewParams,
   AbsenceBalancesParams,
   AbsenceCalendarParams,
   PreviewAbsenceRequestPayload,
@@ -10,6 +11,7 @@ export const absenceKeys = {
   detail: (id: number) => ['absences', 'detail', id] as const,
   balances: (params: AbsenceBalancesParams = {}) => ['absences', 'balances', params] as const,
   balancesAll: ['absences', 'balances'] as const,
+  balanceOverview: (params: AbsenceBalanceOverviewParams) => ['absences', 'balances', 'overview', params] as const,
   typeOptions: ['absences', 'type-options'] as const,
   calendar: (params: AbsenceCalendarParams) => ['absences', 'calendar', params] as const,
   calendarAll: ['absences', 'calendar'] as const,

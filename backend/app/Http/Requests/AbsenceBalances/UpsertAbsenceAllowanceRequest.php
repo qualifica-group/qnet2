@@ -7,7 +7,8 @@ use Illuminate\Validation\Rule;
 
 /**
  * PUT /api/absence-allowances (spec 0278 D-1): HR office only. The type must
- * be one that deducts a balance.
+ * be one that deducts a balance; a null `annual_minutes` means the type default
+ * (spec 0304 D-12).
  */
 class UpsertAbsenceAllowanceRequest extends FormRequest
 {
@@ -27,7 +28,7 @@ class UpsertAbsenceAllowanceRequest extends FormRequest
             'user_id' => ['required', 'integer', 'exists:users,id'],
             'absence_type_id' => ['required', 'integer', Rule::exists('absence_types', 'id')->where('deducts_balance', true)],
             'year' => ['required', 'integer', 'min:2000', 'max:2100'],
-            'annual_minutes' => ['required', 'integer', 'min:0', 'max:'.self::MAX_MINUTES],
+            'annual_minutes' => ['present', 'nullable', 'integer', 'min:0', 'max:'.self::MAX_MINUTES],
             'carried_over_minutes' => ['required', 'integer', 'min:-'.self::MAX_MINUTES, 'max:'.self::MAX_MINUTES],
         ];
     }

@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import { NavMain } from '@/components/nav-main'
@@ -24,10 +24,10 @@ const ITEMS: NavigationItem[] = [
   { key: 'dashboard', label: 'navigation.dashboard', icon: null, route: '/dashboard', type: 'item', children: [] },
 ]
 
-function renderNav(badges?: Parameters<typeof NavMain>[0]['badges']) {
+function renderNav(badges?: Parameters<typeof NavMain>[0]['badges'], open = true) {
   return render(
     <MemoryRouter>
-      <SidebarProvider>
+      <SidebarProvider defaultOpen={open}>
         <NavMain items={ITEMS} badges={badges} />
       </SidebarProvider>
     </MemoryRouter>,
@@ -44,6 +44,14 @@ describe('NavMain badges (spec 0304 AC-020)', () => {
 
     expect(screen.getByLabelText('3 richieste da approvare')).toHaveTextContent('3')
     expect(screen.getAllByLabelText(/da approvare/)).toHaveLength(1)
+  })
+
+  it('keeps the count readable with the sidebar collapsed, in the entry tooltip', async () => {
+    renderNav({ absences: { count: 3, label: '3', ariaLabel: '3 richieste da approvare' } }, false)
+
+    fireEvent.focus(screen.getByRole('link', { name: /Assenze/ }))
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Assenze (3)')
   })
 
   it('shows nothing when the entry has no badge', () => {

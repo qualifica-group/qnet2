@@ -9,7 +9,7 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'What you find',
       blocks: [
-        { type: 'paragraph', text: 'The **Dashboard** opens right after you press **Sign in**. It is split into blocks, top to bottom: **Activities to complete** (with the Task statistics), **Time tracking**, and the statistics of **Opportunities**, **Quotes**, **Leads** and **Registries**.' },
+        { type: 'paragraph', text: 'The **Dashboard** opens right after you press **Sign in**. It is split into blocks, top to bottom: **Activities to complete** (with the Task statistics), **Time tracking**, **Absences** and the statistics of **Opportunities**, **Quotes**, **Leads** and **Registries**.' },
         { type: 'note', text: 'You only see the blocks of the modules you have permission for. If you have none, the page shows “No content available”.' },
       ],
     },
@@ -40,6 +40,13 @@ const guide: HelpGuide = {
       title: 'Time tracking',
       blocks: [
         { type: 'paragraph', text: 'Shows your time entries overview and operational pulse, as on the **Time entries** page. Pick the period with **Daily** (preset), **Weekly**, **Monthly** or **Yearly**.' },
+      ],
+    },
+    {
+      id: 'absences',
+      title: 'Absences',
+      blocks: [
+        { type: 'paragraph', text: 'Shows how many absence requests you have to decide (**To approve**, with the link to the page), who is **absent today** among the people you see in the calendar (with the type and until when) and **My upcoming absences**. See the **Absences** guide.' },
       ],
     },
     {

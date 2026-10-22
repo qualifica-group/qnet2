@@ -36,6 +36,7 @@ class TimeEntryDaySummaryResource extends JsonResource
             'utilization_percentage' => $day->utilizationPercentage,
             'status' => $day->status->value,
             'day_note' => $day->dayNote,
+            'closure' => $day->closure,
             'entries' => TimeEntryResource::collection($day->entries),
             'absences' => array_map(static fn (DayAbsenceData $absence): array => [
                 'id' => $absence->id,

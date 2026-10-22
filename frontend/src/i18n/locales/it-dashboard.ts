@@ -36,6 +36,18 @@ export const dashboard = {
   timeEntriesSection: {
     title: 'Segnatempo',
   },
+  absencesSection: {
+    title: 'Assenze',
+    toApprove: 'Da approvare',
+    toApproveLink: 'Vai alle richieste da approvare',
+    toApproveEmpty: 'Nessuna richiesta da approvare.',
+    absentToday: 'Assenti oggi',
+    absentTodayEmpty: "Nessuno e' assente oggi.",
+    until: 'fino al {{date}}',
+    myUpcoming: 'Le mie prossime assenze',
+    myUpcomingEmpty: 'Nessuna assenza in programma.',
+    error: 'Impossibile caricare le assenze.',
+  },
   moduleSections: {
     opportunities: 'Opportunità',
     quotes: 'Offerte',

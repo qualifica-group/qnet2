@@ -182,6 +182,7 @@ const guide: HelpGuide = {
             'You can cancel a **submitted** or **approved** request that has not started yet.',
             'HR can cancel a submitted or approved request at any time.',
             '**Drafts** can be edited and deleted; other requests cannot.',
+            '**Collective leave** created by a company closure ("Collective leave" mark) cannot be cancelled by the person: only HR can remove it for someone.',
           ],
         },
       ],
@@ -192,7 +193,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'At every step (submission, approval, rejection, cancellation) the people involved get an in-app notification and an email. Whoever performs the action receives nothing.',
+          text: 'At every step (submission, approval, rejection, cancellation) the people involved receive an in-app notification and an email. Whoever takes the action receives nothing.',
         },
         {
           type: 'list',
@@ -200,12 +201,12 @@ const guide: HelpGuide = {
             '**Submission**: the approvers of the request.',
             '**Approval or rejection**: the person who asked for the absence (with the reason, if rejected) and the other approvers.',
             '**Cancellation**: the person who asked for the absence and the approvers.',
-            '**Type needing no approval**: the person who asked for the absence and the approvers.',
+            '**Type without approval**: the person who asked for the absence and the approvers.',
           ],
         },
         {
           type: 'note',
-          text: 'HR gets a copy of every step. If someone other than the manager decides, the manager is told the outcome.',
+          text: 'HR receives a copy of every step. When someone other than the manager decides, the manager receives the outcome. Collective leave created by a closure sends no notifications.',
         },
       ],
     },
@@ -215,23 +216,41 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Balances are in hours, per absence type and year, and only for types that draw on a balance.',
+          text: 'Every type that draws on a balance has a tile with the **remaining** balance in days and hours and a bar of what you took against what you accrued. Figures are per year: pick the year at the top.',
         },
         {
           type: 'table',
           headers: ['Item', 'Meaning'],
           rows: [
-            ['Entitlement', 'The annual hours you are entitled to.'],
+            ['Entitlement', 'What you are entitled to in the year. If HR did not set it for you, the type’s default entitlement applies, in days, times your daily hours (the tile says so).'],
             ['Carried over', 'The remainder from the previous year.'],
-            ['Accrued', 'Hours earned so far: 1/12 of the entitlement per month; a month counts if you are employed for at least 15 days.'],
-            ['Taken', 'The hours of approved requests.'],
-            ['Pending', 'The hours of submitted requests not yet decided.'],
+            ['Accrued', 'What you earned so far: 1/12 of the entitlement per month; a month counts if you are employed for at least 15 days.'],
+            ['Taken', 'Approved requests.'],
+            ['Pending', 'Submitted requests not yet decided.'],
             ['Remaining', 'Carried over + Accrued − Taken.'],
           ],
         },
         {
           type: 'note',
-          text: 'The remainder can go below zero: your manager decides whether to approve. On 1 January the remainder moves to the new year automatically. Only HR sets entitlements and carry-over.',
+          text: 'The remainder can go below zero: your manager decides whether to approve. On 1 January the remainder moves to the new year automatically. Only HR sets entitlements and carry-over, in days or hours, or brings a person back to the type’s default entitlement.',
+        },
+      ],
+    },
+    {
+      id: 'staff-balances',
+      title: 'Everyone’s balances (HR)',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Whoever manages everyone’s absences has the **Balances** view at the top: a table with one row per person and one column per type, with the remainder in days and hours. Hovering a cell shows entitlement, accrued, taken and pending.',
+        },
+        {
+          type: 'list',
+          items: [
+            'Filter by year, business function, operational site or name.',
+            'Select people and press **Set allowance**: choose the type and the days (converted with each person’s daily hours, so part-timers get their share) or the return to the type’s default. Carry-over does not change.',
+            'With **Export CSV** or **Export XLSX** you download the file with one row per person and type.',
+          ],
         },
       ],
     },
@@ -241,14 +260,16 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **Calendar** view is picked at the top right, next to **Requests** and the "New request" button: it shows month by month who is absent: one row per person, one column per day. Weekends and holidays are highlighted, holidays have their number in red.',
+          text: 'The **Calendar** view is picked at the top right, next to **Requests**: it shows month by month who is absent, one row per person and one column per day. Weekends and holidays are highlighted, holidays have their number in red; the **company closure** days of each person’s site are marked on their row.',
         },
         {
           type: 'table',
           headers: ['Symbol', 'Meaning'],
           rows: [
-            ['Filled box with a check', 'Approved absence.'],
+            ['Filled box with a check', 'Approved absence, in the colour of its type.'],
             ['Dashed box with a clock', 'Submitted request, waiting for a decision.'],
+            ['Half box', 'Half day: morning on the left, afternoon on the right.'],
+            ['Absent row', 'At the bottom, how many people are absent each day.'],
           ],
         },
         {
@@ -274,6 +295,7 @@ const guide: HelpGuide = {
             'The arrows move to the previous or next month; "Current month" brings you back to today.',
             'When you see more people, you can filter them by business function.',
             'Hovering a box shows type, duration and status. If you can already see that request under Requests, a click opens its detail.',
+            'A click on a free working day of your row opens a new request on that date. HR can do it on every row: the request is already made out to that person.',
           ],
         },
         {

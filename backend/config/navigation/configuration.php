@@ -48,6 +48,13 @@ return [
             'permission' => 'absence-types.view',
         ],
         [
+            'key' => 'company-closures',
+            'label' => 'navigation.companyClosures',
+            'icon' => 'calendar-x',
+            'route' => '/company-closures',
+            'permission' => 'company-closures.view',
+        ],
+        [
             'key' => 'staff-courses',
             'label' => 'navigation.staffCourses',
             'icon' => 'library',

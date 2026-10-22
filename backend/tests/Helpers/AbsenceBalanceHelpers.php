@@ -36,3 +36,22 @@ if (! function_exists('grantAbsencePermissions')) {
         return $user->givePermissionTo($permissions);
     }
 }
+
+if (! function_exists('balanceDailyPerson')) {
+    /**
+     * A user with a profile working the given minutes per day, no break
+     * (spec 0304 D-12 default allowance in days).
+     */
+    function balanceDailyPerson(int $dailyMinutes, ?string $name = null): User
+    {
+        $user = User::factory()->create($name === null ? [] : ['name' => $name]);
+        EmploymentProfile::factory()->for($user)->create([
+            'hired_at' => '2020-01-01',
+            'terminated_at' => null,
+            'standard_daily_minutes' => $dailyMinutes,
+            'break_daily_minutes' => 0,
+        ]);
+
+        return $user;
+    }
+}

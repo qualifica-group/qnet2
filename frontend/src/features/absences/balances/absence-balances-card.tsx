@@ -11,20 +11,20 @@ import { useAbilities } from '@/features/auth/use-abilities'
 import { useSelectLabels } from '@/features/absences/balances/use-select-labels'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import { AllowanceDialog } from '@/features/absences/balances/allowance-dialog'
-import { BalanceRow } from '@/features/absences/balances/balance-row'
+import { balanceYearOptions } from '@/features/absences/balances/balance-format'
+import { BalanceTile } from '@/features/absences/balances/balance-tile'
 import { useAbsenceBalances } from '@/features/absences/balances/use-absence-balances'
 import type { AbsenceBalanceRow } from '@/features/absences/types'
 
 const MANAGE_ALL = 'absence-requests.manageAll'
 const FORBIDDEN_STATUS = 403
-const YEAR_OFFSETS = [-1, 0, 1] as const
 
 interface AbsenceBalancesCardProps {
   /** Fixed person; omitted, the actor's own balances (with a person picker for who may manage all). */
   userId?: number
 }
 
-/** Yearly balances per absence type, with allowance editing for who holds `absence-requests.manageAll`. */
+/** Yearly balance tiles per absence type, with allowance editing for who holds `absence-requests.manageAll`. */
 export function AbsenceBalancesCard({ userId }: AbsenceBalancesCardProps) {
   const { t } = useTranslation()
   const { can } = useAbilities()
@@ -42,10 +42,6 @@ export function AbsenceBalancesCard({ userId }: AbsenceBalancesCardProps) {
     return null
   }
 
-  const yearOptions = YEAR_OFFSETS.map((offset) => ({
-    value: String(currentYear + offset),
-    label: String(currentYear + offset),
-  }))
   const balances = query.data
 
   return (
@@ -59,7 +55,7 @@ export function AbsenceBalancesCard({ userId }: AbsenceBalancesCardProps) {
         <SegmentedControl
           aria-label={t('absences.balances.year')}
           value={String(year)}
-          options={yearOptions}
+          options={balanceYearOptions(currentYear)}
           onValueChange={(value) => setYear(Number(value))}
           className="sm:w-60"
         />
@@ -89,9 +85,14 @@ export function AbsenceBalancesCard({ userId }: AbsenceBalancesCardProps) {
           <p className="text-sm text-muted-foreground">{t('absences.balances.empty')}</p>
         ) : null}
         {balances && balances.balances.length > 0 ? (
-          <ul className="flex flex-col gap-2">
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {balances.balances.map((row) => (
-              <BalanceRow key={row.absence_type.id} row={row} onEdit={canManage ? setEditing : undefined} />
+              <BalanceTile
+                key={row.absence_type.id}
+                row={row}
+                dailyMinutes={balances.daily_minutes}
+                onEdit={canManage ? setEditing : undefined}
+              />
             ))}
           </ul>
         ) : null}
@@ -101,6 +102,7 @@ export function AbsenceBalancesCard({ userId }: AbsenceBalancesCardProps) {
           row={editing}
           userId={balances.user.id}
           year={balances.year}
+          dailyMinutes={balances.daily_minutes}
           onOpenChange={(open) => {
             if (!open) {
               setEditing(null)

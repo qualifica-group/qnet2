@@ -64,6 +64,7 @@ export const timeEntries = {
   },
   dayCard: {
     absenceFullDay: 'giornata intera',
+    closure: 'Chiusura aziendale: {{name}}',
     expand: 'Espandi',
     collapse: 'Comprimi',
     utilization: 'Utilizzo',

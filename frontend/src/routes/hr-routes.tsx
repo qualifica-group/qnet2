@@ -1,13 +1,14 @@
 import type { RouteObject } from 'react-router-dom'
 import { lazyRoute } from '@/routes/lazy-route'
 
-// HR section (job roles 0271, org chart 0273, absences 0278, staff training 0284, skills 0286),
+// HR section (job roles 0271, org chart 0273, absences 0278, company closures 0304, staff training 0284, skills 0286),
 // split out of router.tsx to keep it under the file-size limit
 // (engineering.md §6). Permission gates live inside each page (`<Can>`).
 const JobRolesPage = lazyRoute(() => import('@/pages/job-roles-page'))
 const JobActivitiesPage = lazyRoute(() => import('@/pages/job-activities-page'))
 const AbsencesPage = lazyRoute(() => import('@/features/absences/absences-page'))
 const AbsenceTypesPage = lazyRoute(() => import('@/features/absence-types/absence-types-page'))
+const CompanyClosuresPage = lazyRoute(() => import('@/features/company-closures/company-closures-page'))
 const ContractTypesPage = lazyRoute(() => import('@/features/contract-types/contract-types-page'))
 const StaffTrainingsPage = lazyRoute(() => import('@/features/staff-trainings/staff-trainings-page'))
 const StaffCoursesPage = lazyRoute(() => import('@/features/staff-courses/staff-courses-page'))
@@ -21,6 +22,7 @@ export const HR_ROUTES: RouteObject[] = [
   { path: 'org-chart', element: <OrgChartPage /> },
   { path: 'absences', element: <AbsencesPage /> },
   { path: 'absence-types', element: <AbsenceTypesPage /> },
+  { path: 'company-closures', element: <CompanyClosuresPage /> },
   { path: 'contract-types', element: <ContractTypesPage /> },
   { path: 'staff-trainings', element: <StaffTrainingsPage /> },
   { path: 'staff-courses', element: <StaffCoursesPage /> },

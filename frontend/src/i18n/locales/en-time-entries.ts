@@ -64,6 +64,7 @@ export const timeEntries = {
   },
   dayCard: {
     absenceFullDay: 'full day',
+    closure: 'Company closure: {{name}}',
     expand: 'Expand',
     collapse: 'Collapse',
     utilization: 'Utilization',

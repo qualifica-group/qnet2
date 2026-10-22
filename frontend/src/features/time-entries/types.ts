@@ -100,6 +100,8 @@ export interface DaySummary {
   status: DailyStatus
   day_note: string | null
   absences: DayAbsence[]
+  /** Company closure of the person's site that day (spec 0304 D-14): target 0, like a holiday. */
+  closure: { name: string } | null
   /** Ordered `start_time` asc (null last), then `id` asc. */
   entries: TimeEntry[]
 }

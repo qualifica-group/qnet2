@@ -26,7 +26,7 @@ it('0278 AC-012: accrues 8 months for a March 10th hire and sums used and pendin
         ->assertOk()
         ->assertJsonPath('data.user.id', $person->id)
         ->assertJsonPath('data.year', 2026)
-        ->assertJsonPath('data.balances.0.absence_type', ['id' => $type->id, 'name' => 'Ferie'])
+        ->assertJsonPath('data.balances.0.absence_type', ['id' => $type->id, 'name' => 'Ferie', 'color' => 'slate'])
         ->assertJsonPath('data.balances.0.annual_minutes', 9600)
         ->assertJsonPath('data.balances.0.carried_over_minutes', 120)
         ->assertJsonPath('data.balances.0.accrued_minutes', 6400)

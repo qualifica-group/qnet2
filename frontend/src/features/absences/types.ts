@@ -271,6 +271,54 @@ export interface AllowancePayload {
   carried_over_minutes: number
 }
 
+export const BALANCE_OVERVIEW_PER_PAGE = 25
+export const BALANCE_EXPORT_FORMATS = ['csv', 'xlsx'] as const
+export type BalanceExportFormat = (typeof BALANCE_EXPORT_FORMATS)[number]
+
+/** GET /absence-balances/overview query (`absence-requests.manageAll`); the export takes the same without paging. */
+export interface AbsenceBalanceOverviewFilters {
+  year: number
+  business_function_id?: number
+  operational_site_id?: number
+  search?: string
+}
+
+export interface AbsenceBalanceOverviewParams extends AbsenceBalanceOverviewFilters {
+  page: number
+  per_page: number
+}
+
+export interface AbsenceBalanceOverviewPerson {
+  user: AbsenceUserRef
+  daily_minutes: number
+  balances: AbsenceBalanceRow[]
+}
+
+export interface AbsenceBalanceOverview {
+  year: number
+  types: { id: number; name: string; color: AbsenceTypeColor }[]
+  people: AbsenceBalanceOverviewPerson[]
+}
+
+export interface AbsenceBalanceOverviewMeta {
+  current_page: number
+  last_page: number
+  total: number
+}
+
+export interface AbsenceBalanceOverviewPage {
+  data: AbsenceBalanceOverview
+  meta: AbsenceBalanceOverviewMeta
+}
+
+/** PUT /absence-allowances/bulk body: days per person (times each person's daily hours); null = type default. */
+export interface BulkAllowancePayload {
+  absence_type_id: number
+  year: number
+  user_ids: number[]
+  annual_days: number | null
+}
+
 /** Calendar of spec 0279: the three permission levels, any of them opens the tab. */
 export const ABSENCE_CALENDAR_PERMISSIONS = [
   'absence-requests.calendarOwn',

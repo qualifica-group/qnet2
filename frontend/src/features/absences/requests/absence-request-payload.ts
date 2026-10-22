@@ -23,6 +23,21 @@ export const EMPTY_ABSENCE_FORM: AbsenceRequestFormValues = {
   note: '',
 }
 
+/** A new request opened from the calendar: the clicked day and, for the HR office, the clicked person. */
+export interface AbsenceRequestPrefill {
+  startsOn: string
+  person: { id: number; name: string } | null
+}
+
+export function prefilledAbsenceForm(prefill: AbsenceRequestPrefill): AbsenceRequestFormValues {
+  return {
+    ...EMPTY_ABSENCE_FORM,
+    user_id: prefill.person?.id ?? null,
+    starts_on: prefill.startsOn,
+    ends_on: prefill.startsOn,
+  }
+}
+
 const MODE_FLAG: Record<AbsenceMode, keyof Pick<AbsenceTypeOption, 'allows_full_day' | 'allows_half_day' | 'allows_hourly'>> = {
   full_day: 'allows_full_day',
   half_day: 'allows_half_day',

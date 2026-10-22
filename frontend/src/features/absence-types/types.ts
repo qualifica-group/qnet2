@@ -1,5 +1,5 @@
 import type { ResourcePermissions } from '@/features/authorization/types'
-import type { AbsenceType } from '@/features/absences/types'
+import type { AbsenceType, AbsenceTypeColor } from '@/features/absences/types'
 
 export type { AbsenceType, AbsenceTypeOption } from '@/features/absences/types'
 
@@ -18,6 +18,12 @@ export interface AbsenceTypePayload {
   requires_approval: boolean
   is_active?: boolean
   sort_order?: number
+  allows_full_day: boolean
+  allows_half_day: boolean
+  allows_hourly: boolean
+  min_notice_days: number | null
+  color: AbsenceTypeColor
+  default_annual_days: number | null
 }
 
 export type UpdateAbsenceTypePayload = Partial<AbsenceTypePayload>

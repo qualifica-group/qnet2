@@ -88,7 +88,7 @@ export const absences = {
     tabsLabel: 'Requests list',
     tabs: { mine: 'Mine', to_approve: 'To approve', all: 'All' },
     viewsLabel: 'Absences view',
-    views: { requests: 'Requests', calendar: 'Calendar' },
+    views: { requests: 'Requests', calendar: 'Calendar', balances: 'Balances' },
   },
   calendar: {
     caption: 'Absence calendar',
@@ -97,6 +97,9 @@ export const absences = {
     next: 'Next month',
     currentMonth: 'Current month',
     holiday: 'Holiday',
+    absentRow: 'Absent',
+    createFor: 'Request absence: {{person}}, {{date}}',
+    closure: 'Company closure',
     nonWorkingDay: 'Weekend or holiday',
     fullDay: 'full day',
     functionFilter: 'Business function',

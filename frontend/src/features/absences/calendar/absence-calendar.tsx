@@ -1,20 +1,23 @@
 import { useTranslation } from 'react-i18next'
-import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
+import { CalendarDays, CalendarOff, ChevronLeft, ChevronRight } from 'lucide-react'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
 import { AbsenceCalendarGrid } from '@/features/absences/calendar/absence-calendar-grid'
-import { CALENDAR_STATUS_CLASS, CALENDAR_STATUS_ICON } from '@/features/absences/calendar/calendar-status'
+import { CALENDAR_STATUS_ICON } from '@/features/absences/calendar/calendar-status'
+import { useAbilities } from '@/features/auth/use-abilities'
+import { useAuth } from '@/features/auth/use-auth'
 import { dayOf, formatMonthLabel, monthOf } from '@/features/absences/calendar/calendar-month'
 import { useAbsenceCalendar } from '@/features/absences/calendar/use-absence-calendar'
-import { cn } from '@/lib/utils'
 
 const NAV_BUTTON_CLASS = 'h-8 rounded-sm px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground'
 const LEGEND_STATUSES = ['approved', 'submitted'] as const
 
 interface AbsenceCalendarProps {
   onOpen: (requestId: number) => void
+  /** Click on an empty working day: `userId` is null for the actor's own row. Without it cells are not clickable. */
+  onCreate?: (date: string, person: { id: number; name: string } | null) => void
 }
 
 /**
@@ -22,12 +25,19 @@ interface AbsenceCalendarProps {
  * function filter (when the actor sees more than themselves), the grid and
  * its legend.
  */
-export function AbsenceCalendar({ onOpen }: AbsenceCalendarProps) {
+export function AbsenceCalendar({ onOpen, onCreate }: AbsenceCalendarProps) {
   const { t, i18n } = useTranslation()
   const { month, showPrevious, showNext, showCurrent, businessFunctionId, setBusinessFunctionId, query } =
     useAbsenceCalendar()
+  const { user } = useAuth()
+  const { can } = useAbilities()
   const now = new Date()
   const calendar = query.data
+  const canManageAll = can('absence-requests.manageAll')
+  const canCreateOwn = can('absence-requests.create')
+  const isOwn = (personId: number) => personId === user?.id
+  const canCreateFor = (personId: number) => onCreate !== undefined && (isOwn(personId) ? canCreateOwn : canManageAll)
+  const createFor = (date: string, person: { id: number; name: string }) => onCreate?.(date, isOwn(person.id) ? null : person)
 
   return (
     <section className="flex flex-col gap-3" aria-label={t('absences.calendar.caption')}>
@@ -80,13 +90,15 @@ export function AbsenceCalendar({ onOpen }: AbsenceCalendarProps) {
           const Icon = CALENDAR_STATUS_ICON[status]
           return (
             <li key={status} className="inline-flex items-center gap-1.5">
-              <span className={cn('flex size-5 items-center justify-center rounded-sm', CALENDAR_STATUS_CLASS[status])}>
-                <Icon className="size-3" aria-hidden="true" />
-              </span>
+              <Icon className="size-3.5" aria-hidden="true" />
               {t(`absences.status.${status}`)}
             </li>
           )
         })}
+        <li className="inline-flex items-center gap-1.5">
+          <CalendarOff className="size-3.5" aria-hidden="true" />
+          {t('absences.calendar.closure')}
+        </li>
         <li className="inline-flex items-center gap-1.5">
           <span className="size-5 rounded-sm border border-border bg-muted/40" aria-hidden="true" />
           {t('absences.calendar.nonWorkingDay')}
@@ -99,7 +111,13 @@ export function AbsenceCalendar({ onOpen }: AbsenceCalendarProps) {
         </p>
       ) : calendar ? (
         calendar.people.length > 0 ? (
-          <AbsenceCalendarGrid calendar={calendar} today={dayOf(now)} onOpen={onOpen} />
+          <AbsenceCalendarGrid
+            calendar={calendar}
+            today={dayOf(now)}
+            onOpen={onOpen}
+            canCreateFor={canCreateFor}
+            onCreate={createFor}
+          />
         ) : (
           <p className="text-sm text-muted-foreground">{t('absences.calendar.empty')}</p>
         )

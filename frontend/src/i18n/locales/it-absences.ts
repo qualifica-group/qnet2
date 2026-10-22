@@ -88,7 +88,7 @@ export const absences = {
     tabsLabel: 'Elenco richieste',
     tabs: { mine: 'Le mie', to_approve: 'Da approvare', all: 'Tutte' },
     viewsLabel: 'Vista assenze',
-    views: { requests: 'Richieste', calendar: 'Calendario' },
+    views: { requests: 'Richieste', calendar: 'Calendario', balances: 'Saldi' },
   },
   calendar: {
     caption: 'Calendario delle assenze',
@@ -97,6 +97,9 @@ export const absences = {
     next: 'Mese successivo',
     currentMonth: 'Mese corrente',
     holiday: 'Festivo',
+    absentRow: 'Assenti',
+    createFor: 'Richiedi assenza: {{person}}, {{date}}',
+    closure: 'Chiusura aziendale',
     nonWorkingDay: 'Weekend o festivo',
     fullDay: 'giornata intera',
     functionFilter: 'Funzione aziendale',

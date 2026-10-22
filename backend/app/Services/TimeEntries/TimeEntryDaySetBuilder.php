@@ -10,6 +10,7 @@ use App\DataObjects\TimeEntries\TimeEntryFilterData;
 use App\Models\TimeEntry;
 use App\Models\TimeEntryDayNote;
 use App\Models\User;
+use App\Services\Absences\Calendar\PersonWorkCalendar;
 use Illuminate\Support\Collection;
 
 /**
@@ -29,6 +30,7 @@ final class TimeEntryDaySetBuilder
         private readonly TimeEntryDayBuilder $dayBuilder,
         private readonly DailyTargetResolver $targetResolver,
         private readonly TimeEntryAbsenceResolver $absenceResolver,
+        private readonly PersonWorkCalendar $personCalendar,
     ) {}
 
     public function build(TimeEntryFilterData $filter, User $actor): TimeEntryDaySet
@@ -45,9 +47,10 @@ final class TimeEntryDaySetBuilder
         $entries = $this->queryEntries($selectedUser, $period->dateFrom, $period->dateTo, $filter);
         $notesByDate = $this->queryNotesByDate($selectedUser, $period->dateFrom, $period->dateTo);
 
-        // Step 4: approved absences (spec 0278, D-3) — one more query, which
-        // lowers the day target.
-        $absences = $this->absenceResolver->resolve([$selectedUser->id => $baseTargetMinutes], $period->dateFrom, $period->dateTo);
+        // Step 4: the person's closures (spec 0304 D-14), then the approved
+        // absences (spec 0278, D-3), which lower the day target.
+        $nonWorking = $this->personCalendar->load([$selectedUser->id], $period->dateFrom, $period->dateTo);
+        $absences = $this->absenceResolver->resolve([$selectedUser->id => $baseTargetMinutes], $period->dateFrom, $period->dateTo, $nonWorking);
 
         // Step 5: one DaySummary per date, entries already F-filtered.
         $days = $this->dayBuilder->build(
@@ -55,6 +58,8 @@ final class TimeEntryDaySetBuilder
             $entries,
             $notesByDate,
             $baseTargetMinutes,
+            $nonWorking,
+            $selectedUser->id,
             $this->absencesByDate($absences, $selectedUser->id, $period->dates()),
         );
 

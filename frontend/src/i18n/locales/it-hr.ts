@@ -6,6 +6,7 @@
 import { absenceTypes } from './it-absence-types'
 import { absenceBalances } from './it-absence-balances'
 import { absences } from './it-absences'
+import { companyClosures } from './it-company-closures'
 import { contractTypes } from './it-contract-types'
 import { jobActivities } from './it-job-activities'
 import { jobRoles } from './it-job-roles'
@@ -18,6 +19,7 @@ import { userSkills } from './it-user-skills'
 export const hr = {
   absences: { ...absences, balances: absenceBalances },
   absenceTypes,
+  companyClosures,
   contractTypes,
   jobActivities,
   jobRoles,

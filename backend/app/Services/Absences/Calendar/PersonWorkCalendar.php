@@ -37,14 +37,14 @@ final class PersonWorkCalendar
         }
 
         // Step 2: the sites of each person, then the closed days per person
-        $sitesByUser = $this->sitesByUser($userIds);
+        $sitesByUser = $this->siteIdsByUser($userIds);
         $byUser = [];
 
         foreach ($userIds as $userId) {
             $userSites = $sitesByUser[$userId] ?? [];
 
             foreach ($closures as $closure) {
-                if (! $closure->applies_to_all_sites && array_intersect($userSites, $closure->operationalSites->modelKeys()) === []) {
+                if (! $closure->appliesToSiteIds($userSites)) {
                     continue;
                 }
 
@@ -75,7 +75,7 @@ final class PersonWorkCalendar
      * @param  array<int, int>  $userIds
      * @return array<int, array<int, int>> user id => operational site ids
      */
-    private function sitesByUser(array $userIds): array
+    public function siteIdsByUser(array $userIds): array
     {
         $map = [];
 

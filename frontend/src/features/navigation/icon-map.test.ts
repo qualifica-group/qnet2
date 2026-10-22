@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BookOpen, CalendarCog, CalendarOff, Circle, CreditCard, Files, GraduationCap, LayoutTemplate, Library, ListChecks, Plug, Shapes, Sparkles } from 'lucide-react'
+import { BookOpen, CalendarCog, CalendarOff, CalendarX, Circle, CreditCard, Files, GraduationCap, LayoutTemplate, Library, ListChecks, Plug, Shapes, Sparkles } from 'lucide-react'
 import { resolveIcon } from '@/features/navigation/icon-map'
 
 /**
@@ -68,6 +68,11 @@ describe('resolveIcon — absences navigation icons (spec 0278)', () => {
   it('resolves "calendar-off" and "calendar-cog" to their Lucide components', () => {
     expect(resolveIcon('calendar-off')).toBe(CalendarOff)
     expect(resolveIcon('calendar-cog')).toBe(CalendarCog)
+  })
+
+  it('resolves "calendar-x" (spec 0304 "Chiusure aziendali") to CalendarX, not the Circle fallback', () => {
+    expect(resolveIcon('calendar-x')).toBe(CalendarX)
+    expect(resolveIcon('calendar-x')).not.toBe(Circle)
   })
 })
 

@@ -35,6 +35,9 @@ vi.mock('@/features/time-entries/api', () => ({
   fetchTimeEntriesPulse: (...args: unknown[]) => fetchTimeEntriesPulseMock(...args),
 }))
 
+const getAbsenceSummaryMock = vi.fn()
+vi.mock('@/features/absences/api', () => ({ getAbsenceSummary: () => getAbsenceSummaryMock() }))
+
 const fetchModuleStatsMock = vi.fn<(domain: string) => Promise<ModuleStats>>()
 vi.mock('@/features/stats/api', () => ({
   moduleStatsQueryKey: (domain: string) => ['stats', domain],
@@ -59,6 +62,13 @@ beforeEach(() => {
   fetchTimeEntriesOverviewMock.mockReset().mockResolvedValue({})
   fetchTimeEntriesPulseMock.mockReset().mockResolvedValue({})
   fetchModuleStatsMock.mockReset().mockResolvedValue({ widgets: [] })
+  getAbsenceSummaryMock.mockReset().mockResolvedValue({
+    to_approve_count: 0,
+    my_pending_count: 0,
+    daily_minutes: 480,
+    my_upcoming: [],
+    absent_today: [],
+  })
 })
 
 function renderScreen() {
@@ -132,5 +142,20 @@ describe('DashboardScreen (AC-011)', () => {
     expect(fetchModuleStatsMock).toHaveBeenCalledWith('quotes')
     expect(fetchModuleStatsMock).toHaveBeenCalledWith('leads')
     expect(fetchModuleStatsMock).toHaveBeenCalledWith('registries')
+  })
+
+  it('mounts the Absences block only with absence-requests.viewAny', async () => {
+    renderScreen()
+    expect(await screen.findByText('No content available')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Absences' })).not.toBeInTheDocument()
+    expect(getAbsenceSummaryMock).not.toHaveBeenCalled()
+  })
+
+  it('shows the Absences block when absence-requests.viewAny is granted', async () => {
+    grantedPermissions = ['absence-requests.viewAny']
+    renderScreen()
+
+    expect(await screen.findByRole('heading', { name: 'Absences' })).toBeInTheDocument()
+    expect(getAbsenceSummaryMock).toHaveBeenCalledTimes(1)
   })
 })

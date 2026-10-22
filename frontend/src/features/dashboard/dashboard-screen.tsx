@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Building2, FileText, Target, UserPlus } from 'lucide-react'
 import { useAbilities } from '@/features/auth/use-abilities'
+import { DashboardAbsencesSection } from '@/features/dashboard/dashboard-absences-section'
 import { DashboardModuleStatsSection } from '@/features/dashboard/dashboard-module-stats-section'
 import { DashboardTasksSection } from '@/features/dashboard/dashboard-tasks-section'
 import { DashboardTimeEntriesSection } from '@/features/dashboard/dashboard-time-entries-section'
@@ -32,8 +33,9 @@ export function DashboardScreen() {
 
   const canTasks = can('tasks.viewAny')
   const canTimeEntries = can('time-entries.viewAny')
+  const canAbsences = can('absence-requests.viewAny')
   const statsBlocks = MODULE_STATS_BLOCKS.map((block) => ({ ...block, visible: can(`${block.domain}.viewAny`) }))
-  const hasAnyBlock = canTasks || canTimeEntries || statsBlocks.some((block) => block.visible)
+  const hasAnyBlock = canTasks || canTimeEntries || canAbsences || statsBlocks.some((block) => block.visible)
 
   return (
     // No `PageHeader`: the home shows no breadcrumb (user directive 2026-10-20).
@@ -47,6 +49,7 @@ export function DashboardScreen() {
 
       {canTasks ? <DashboardTasksSection /> : null}
       {canTimeEntries ? <DashboardTimeEntriesSection /> : null}
+      {canAbsences ? <DashboardAbsencesSection /> : null}
 
       {statsBlocks.map((block) =>
         block.visible ? (

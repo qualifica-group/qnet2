@@ -20,6 +20,12 @@ const SERVER_ERROR_FIELDS: Path<AbsenceTypeFormValues>[] = [
   'requires_approval',
   'is_active',
   'sort_order',
+  'allows_full_day',
+  'allows_half_day',
+  'allows_hourly',
+  'min_notice_days',
+  'color',
+  'default_annual_days',
 ]
 
 const CREATE_DEFAULTS: AbsenceTypeFormValues = {
@@ -28,6 +34,12 @@ const CREATE_DEFAULTS: AbsenceTypeFormValues = {
   requires_approval: true,
   is_active: true,
   sort_order: 0,
+  allows_full_day: true,
+  allows_half_day: true,
+  allows_hourly: true,
+  min_notice_days: null,
+  color: 'slate',
+  default_annual_days: null,
 }
 
 interface UseAbsenceTypeFormArgs {
@@ -51,8 +63,20 @@ export function useAbsenceTypeForm({ mode, onSuccess }: UseAbsenceTypeFormArgs) 
 
   const defaultValues = useMemo<AbsenceTypeFormValues>(() => {
     if (mode.type === 'edit') {
-      const { name, deducts_balance, requires_approval, is_active, sort_order } = mode.absenceType
-      return { name, deducts_balance, requires_approval, is_active, sort_order }
+      const a = mode.absenceType
+      return {
+        name: a.name,
+        deducts_balance: a.deducts_balance,
+        requires_approval: a.requires_approval,
+        is_active: a.is_active,
+        sort_order: a.sort_order,
+        allows_full_day: a.allows_full_day,
+        allows_half_day: a.allows_half_day,
+        allows_hourly: a.allows_hourly,
+        min_notice_days: a.min_notice_days,
+        color: a.color,
+        default_annual_days: a.default_annual_days,
+      }
     }
     return CREATE_DEFAULTS
   }, [mode])

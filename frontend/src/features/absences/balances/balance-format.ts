@@ -22,3 +22,20 @@ export function hoursTextToMinutes(value: string): number {
 export function minutesToHoursText(minutes: number): string {
   return String(Math.round((minutes / MINUTES_PER_HOUR) * 100) / 100)
 }
+
+/** Decimal days text -> whole minutes of the person's working day (`2.5` with `480` -> `1200`). */
+export function daysTextToMinutes(value: string, dailyMinutes: number): number {
+  return Math.round(Number(value.trim().replace(',', '.')) * dailyMinutes)
+}
+
+/** Whole minutes -> decimal days text for the form fields (`1200` with `480` -> `2.5`). */
+export function minutesToDaysText(minutes: number, dailyMinutes: number): string {
+  return String(Math.round((minutes / dailyMinutes) * 100) / 100)
+}
+
+const YEAR_OFFSETS = [-1, 0, 1] as const
+
+/** Previous, current and next year, as options of the year switch. */
+export function balanceYearOptions(currentYear: number): { value: string; label: string }[] {
+  return YEAR_OFFSETS.map((offset) => ({ value: String(currentYear + offset), label: String(currentYear + offset) }))
+}

@@ -2,6 +2,9 @@ import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
 import { filenameFromContentDisposition, normalizeBlobError } from '@/lib/download'
 import type {
+  AbsenceBalanceOverviewFilters,
+  AbsenceBalanceOverviewPage,
+  AbsenceBalanceOverviewParams,
   AbsenceBalanceRow,
   AbsenceBalances,
   AbsenceBalancesParams,
@@ -14,6 +17,8 @@ import type {
   AbsenceSummary,
   AbsenceTypeOption,
   AllowancePayload,
+  BalanceExportFormat,
+  BulkAllowancePayload,
   CreateAbsenceRequestPayload,
   PreviewAbsenceRequestPayload,
   RejectAbsenceRequestPayload,
@@ -95,6 +100,39 @@ export async function fetchAbsenceBalances(params: AbsenceBalancesParams = {}): 
 export async function saveAbsenceAllowance(payload: AllowancePayload): Promise<AbsenceBalanceRow> {
   const { data } = await apiClient.put<ApiResponse<AbsenceBalanceRow>>('/absence-allowances', payload)
   return data.data
+}
+
+/** People x types balances for the HR office (`absence-requests.manageAll`), paginated. */
+export async function fetchAbsenceBalanceOverview(
+  params: AbsenceBalanceOverviewParams,
+): Promise<AbsenceBalanceOverviewPage> {
+  const { data } = await apiClient.get<AbsenceBalanceOverviewPage>('/absence-balances/overview', { params })
+  return { data: data.data, meta: data.meta }
+}
+
+/** Sets (or resets to the type default) the allowance of many people at once; answers how many rows changed. */
+export async function bulkSaveAbsenceAllowances(payload: BulkAllowancePayload): Promise<{ updated: number }> {
+  const { data } = await apiClient.put<ApiResponse<{ updated: number }>>('/absence-allowances/bulk', payload)
+  return data.data
+}
+
+/** Same filters as the overview, without paging; the server streams a CSV or XLSX file. */
+export async function exportAbsenceBalanceOverview(
+  filters: AbsenceBalanceOverviewFilters,
+  format: BalanceExportFormat,
+): Promise<AbsenceAttachmentFile> {
+  try {
+    const response = await apiClient.get<Blob>('/absence-balances/overview/export', {
+      params: { ...filters, format },
+      responseType: 'blob',
+    })
+    return {
+      blob: response.data,
+      filename: filenameFromContentDisposition(response.headers['content-disposition']),
+    }
+  } catch (error) {
+    throw await normalizeBlobError(error)
+  }
 }
 
 /** Active types for the request form (authentication only). */

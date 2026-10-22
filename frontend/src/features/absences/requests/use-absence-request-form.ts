@@ -13,7 +13,9 @@ import {
 import {
   EMPTY_ABSENCE_FORM,
   absenceFormValues,
+  prefilledAbsenceForm,
   toAbsencePayload,
+  type AbsenceRequestPrefill,
   toCreatePayload,
 } from '@/features/absences/requests/absence-request-payload'
 import {
@@ -38,6 +40,8 @@ const SERVER_ERROR_FIELDS = [
 interface UseAbsenceRequestFormArgs {
   /** The draft being edited; omitted for a new request. */
   request?: AbsenceRequest
+  /** Starting values of a new request (ignored when editing a draft). */
+  prefill?: AbsenceRequestPrefill
   refreshGrid?: () => void
   onSaved: (saved: AbsenceRequest) => void
 }
@@ -47,7 +51,7 @@ interface UseAbsenceRequestFormArgs {
  * create/update + optional submit + optional attachment sequence and the 422
  * mapping. "Salva bozza" and "Invia" share one orchestration (`persist`).
  */
-export function useAbsenceRequestForm({ request, refreshGrid, onSaved }: UseAbsenceRequestFormArgs) {
+export function useAbsenceRequestForm({ request, prefill, refreshGrid, onSaved }: UseAbsenceRequestFormArgs) {
   const { t } = useTranslation()
   const refresh = useAbsenceRefresh(refreshGrid)
   const [file, setFile] = useState<File | null>(null)
@@ -56,7 +60,7 @@ export function useAbsenceRequestForm({ request, refreshGrid, onSaved }: UseAbse
   const schema = useMemo(() => buildAbsenceRequestSchema(t), [t])
   const form = useForm<AbsenceRequestFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: request ? absenceFormValues(request) : EMPTY_ABSENCE_FORM,
+    defaultValues: request ? absenceFormValues(request) : prefill ? prefilledAbsenceForm(prefill) : EMPTY_ABSENCE_FORM,
   })
 
   function writeRequest(values: AbsenceRequestFormValues, send: boolean): Promise<AbsenceRequest> | null {

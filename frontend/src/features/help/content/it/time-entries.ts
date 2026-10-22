@@ -105,7 +105,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Le assenze approvate (vedi la guida **Assenze**) cambiano il target del giorno: con un’assenza a giornata intera il target è zero; con un’assenza a ore il target si riduce di quelle ore. La card del giorno mostra il tipo di assenza e le ore.',
+          text: 'Le assenze approvate (vedi la guida **Assenze**) cambiano il target del giorno: con un’assenza a giornata intera il target è zero; con una mezza giornata o un’assenza a ore il target si riduce di quelle ore. La card del giorno mostra il tipo di assenza e le ore.',
+        },
+        {
+          type: 'paragraph',
+          text: 'Un giorno di **chiusura aziendale** della tua sede (per esempio il santo patrono, vedi la guida **Chiusure aziendali**) vale come un festivo: il target è zero e la card del giorno mostra "Chiusura aziendale" con il nome. Le ferie collettive invece sono assenze approvate e funzionano come sopra.',
         },
         {
           type: 'note',

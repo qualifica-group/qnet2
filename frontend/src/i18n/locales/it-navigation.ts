@@ -95,6 +95,7 @@ export const navigation = {
   jobActivities: 'Attività',
   absences: 'Assenze',
   absenceTypes: 'Tipi di assenza',
+  companyClosures: 'Chiusure aziendali',
   contractTypes: 'Tipologie contrattuali',
   staffTrainings: 'Formazione',
   staffCourses: 'Corsi',

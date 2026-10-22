@@ -14,6 +14,7 @@ use App\Tables\CommissionConfigurationsTableDefinition;
 use App\Tables\CommissionSettlementRunsTableDefinition;
 use App\Tables\CommissionSettlementsTableDefinition;
 use App\Tables\CompaniesTableDefinition;
+use App\Tables\CompanyClosuresTableDefinition;
 use App\Tables\CompanySitesTableDefinition;
 use App\Tables\ContractsTableDefinition;
 use App\Tables\ContractStatusesTableDefinition;
@@ -114,6 +115,8 @@ return [
         'job-activities' => JobActivitiesTableDefinition::class,
         // spec 0278: absence types catalogue.
         'absence-types' => AbsenceTypesTableDefinition::class,
+        // spec 0304: company closures catalogue.
+        'company-closures' => CompanyClosuresTableDefinition::class,
         // spec 0290: contract types catalogue.
         'contract-types' => ContractTypesTableDefinition::class,
         // spec 0278: absence requests, one domain per tab (mine / to approve / all).

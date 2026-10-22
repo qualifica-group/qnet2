@@ -12,43 +12,64 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
+import { Form } from '@/components/ui/form'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { buildAllowanceSchema, type AllowanceFormValues } from '@/features/absences/balances/allowance-schema'
-import { hoursTextToMinutes, minutesToHoursText } from '@/features/absences/balances/balance-format'
+import { AllowanceFormFields } from '@/features/absences/balances/allowance-form-fields'
+import {
+  daysTextToMinutes,
+  hoursTextToMinutes,
+  minutesToDaysText,
+  minutesToHoursText,
+} from '@/features/absences/balances/balance-format'
 import { useSaveAllowance } from '@/features/absences/balances/use-save-allowance'
 import type { AbsenceBalanceRow } from '@/features/absences/types'
 
 /** Server field names mapped onto the hour-based form fields. */
-const SERVER_FIELD_MAP = { annual_minutes: 'annual_hours', carried_over_minutes: 'carried_hours' } as const
+const SERVER_FIELD_MAP = { annual_minutes: 'annual_value', carried_over_minutes: 'carried_hours' } as const
 
 interface AllowanceDialogProps {
   row: AbsenceBalanceRow | null
   userId: number
   year: number
+  /** Working-day length of the person: days convert through it. */
+  dailyMinutes: number
   onOpenChange: (open: boolean) => void
 }
 
-function toFormValues(row: AbsenceBalanceRow | null): AllowanceFormValues {
+function toFormValues(row: AbsenceBalanceRow | null, dailyMinutes: number): AllowanceFormValues {
+  const annualMinutes = row?.annual_minutes ?? 0
+  const inDays = dailyMinutes > 0
+
   return {
-    annual_hours: minutesToHoursText(row?.annual_minutes ?? 0),
+    use_default: row?.source === 'default',
+    unit: inDays ? 'days' : 'hours',
+    annual_value: inDays ? minutesToDaysText(annualMinutes, dailyMinutes) : minutesToHoursText(annualMinutes),
     carried_hours: minutesToHoursText(row?.carried_over_minutes ?? 0),
   }
 }
 
-/** "Modifica spettanza": annual allowance and carry-over of one person/type/year, typed in decimal hours. */
-export function AllowanceDialog({ row, userId, year, onOpenChange }: AllowanceDialogProps) {
+function toAnnualMinutes(values: AllowanceFormValues, dailyMinutes: number): number | null {
+  if (values.use_default) {
+    return null
+  }
+  return values.unit === 'days'
+    ? daysTextToMinutes(values.annual_value, dailyMinutes)
+    : hoursTextToMinutes(values.annual_value)
+}
+
+/** "Modifica spettanza": annual allowance (days or hours, or the type default) and carry-over of one person/type/year. */
+export function AllowanceDialog({ row, userId, year, dailyMinutes, onOpenChange }: AllowanceDialogProps) {
   const { t } = useTranslation()
   const form = useForm<AllowanceFormValues>({
     resolver: zodResolver(buildAllowanceSchema(t)),
-    defaultValues: toFormValues(row),
+    defaultValues: toFormValues(row, dailyMinutes),
   })
   const mutation = useSaveAllowance()
 
   useEffect(() => {
-    form.reset(toFormValues(row))
-  }, [row, form])
+    form.reset(toFormValues(row, dailyMinutes))
+  }, [row, dailyMinutes, form])
 
   function onSubmit(values: AllowanceFormValues) {
     if (!row) {
@@ -59,7 +80,7 @@ export function AllowanceDialog({ row, userId, year, onOpenChange }: AllowanceDi
         user_id: userId,
         absence_type_id: row.absence_type.id,
         year,
-        annual_minutes: hoursTextToMinutes(values.annual_hours),
+        annual_minutes: toAnnualMinutes(values, dailyMinutes),
         carried_over_minutes: hoursTextToMinutes(values.carried_hours),
       },
       {
@@ -74,7 +95,7 @@ export function AllowanceDialog({ row, userId, year, onOpenChange }: AllowanceDi
             for (const [serverField, formField] of Object.entries(SERVER_FIELD_MAP)) {
               const message = errors?.errors?.[serverField]?.[0]
               if (message) {
-                form.setError(formField as keyof AllowanceFormValues, { message })
+                form.setError(formField, { message })
               }
             }
           } else {
@@ -94,32 +115,7 @@ export function AllowanceDialog({ row, userId, year, onOpenChange }: AllowanceDi
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-3" noValidate>
-            <FormField
-              control={form.control}
-              name="annual_hours"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('absences.balances.form.annual')}</FormLabel>
-                  <FormControl>
-                    <Input {...field} inputMode="decimal" autoComplete="off" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="carried_hours"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('absences.balances.form.carried')}</FormLabel>
-                  <FormControl>
-                    <Input {...field} inputMode="decimal" autoComplete="off" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <AllowanceFormFields form={form} canUseDays={dailyMinutes > 0} />
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
                 {t('common.cancel')}

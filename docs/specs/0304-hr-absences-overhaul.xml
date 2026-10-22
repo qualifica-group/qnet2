@@ -84,7 +84,9 @@
       dall'autore, approvatori vuoti, nessuna notifica individuale). Salta chi nel periodo ha gia' una richiesta
       submitted/approved o non ha giorni lavorativi, e lo riporta nella risposta. Modifica o cancellazione solo se
       la chiusura non e' iniziata (409 altrimenti): le richieste generate si cancellano e si rigenerano. La persona
-      non annulla una richiesta generata; l'ufficio del personale si' (esenta quella persona).
+      non annulla una richiesta generata; l'ufficio del personale si' (esenta quella persona). [revised in build 2026-10-22] Le richieste generate si
+      inseriscono in blocco: l'activity log resta sulla chiusura, non su ogni richiesta generata. Il limite di 31
+      giorni conta il primo e l'ultimo giorno.
     - D-16 "Colleghi assenti": persone attive diverse dalla persona che condividono con lei almeno una funzione
       aziendale o almeno un superiore diretto, con richieste approved/submitted nel periodo, ristrette a chi
       l'ATTORE vede nel calendario (0279): chi ha solo calendarOwn non vede nessuno. Massimo 50 voci.

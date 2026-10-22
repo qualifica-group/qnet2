@@ -35,6 +35,18 @@ export const dashboard = {
   timeEntriesSection: {
     title: 'Time tracking',
   },
+  absencesSection: {
+    title: 'Absences',
+    toApprove: 'To approve',
+    toApproveLink: 'Go to the requests to approve',
+    toApproveEmpty: 'No requests to approve.',
+    absentToday: 'Absent today',
+    absentTodayEmpty: 'Nobody is absent today.',
+    until: 'until {{date}}',
+    myUpcoming: 'My upcoming absences',
+    myUpcomingEmpty: 'No absences scheduled.',
+    error: 'Unable to load the absences.',
+  },
   moduleSections: {
     opportunities: 'Opportunities',
     quotes: 'Quotes',

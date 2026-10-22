@@ -11,6 +11,7 @@ use App\Authorization\CommissionAccrualsAuthorization;
 use App\Authorization\CommissionConfigurationsAuthorization;
 use App\Authorization\CommissionSettlementsAuthorization;
 use App\Authorization\CompaniesAuthorization;
+use App\Authorization\CompanyClosuresAuthorization;
 use App\Authorization\CompanySitesAuthorization;
 use App\Authorization\ContractsAuthorization;
 use App\Authorization\ContractStatusesAuthorization;
@@ -149,6 +150,8 @@ return [
         'org-chart' => OrgChartAuthorization::class,
         // spec 0278: HR absence types catalogue and absence requests.
         'absence-types' => AbsenceTypesAuthorization::class,
+        // spec 0304: company closures catalogue.
+        'company-closures' => CompanyClosuresAuthorization::class,
         // spec 0290: contract types catalogue.
         'contract-types' => ContractTypesAuthorization::class,
         'absence-requests' => AbsenceRequestsAuthorization::class,

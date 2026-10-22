@@ -70,14 +70,26 @@ describe('AbsenceBalancesCard', () => {
     fetchBalancesMock.mockResolvedValue(BALANCES)
   })
 
-  it('renders a row per type with hours and flags a negative residual', async () => {
+  it('renders a tile per type with days + hours, the accrued bar and flags a negative residual', async () => {
     renderCard()
 
     expect(await screen.findByText('Ferie')).toBeInTheDocument()
-    expect(screen.getByText('160h 00m')).toBeInTheDocument()
-    expect(screen.getByText('7h 30m')).toBeInTheDocument()
-    expect(screen.getByText('-1h 30m')).toBeInTheDocument()
+    expect(screen.getByText('8 g 7 h 20 min')).toBeInTheDocument()
+    expect(screen.getByText('20 g')).toBeInTheDocument()
     expect(screen.getByText('Residuo negativo')).toBeInTheDocument()
+    expect(screen.getByText('-1 h 30 min')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'Goduto 1 g 2 h su 10 g 3 h 20 min maturati' })).toBeInTheDocument()
+  })
+
+  it('notes when the allowance comes from the type default', async () => {
+    fetchBalancesMock.mockResolvedValue({
+      ...BALANCES,
+      balances: [{ ...BALANCES.balances[0], source: 'default' }, BALANCES.balances[1]],
+    })
+    renderCard()
+
+    await screen.findByText('Ferie')
+    expect(screen.getAllByText('Spettanza da default del tipo')).toHaveLength(1)
   })
 
   it('shows the empty state when no type deducts a balance', async () => {
@@ -102,17 +114,15 @@ describe('AbsenceBalancesCard', () => {
     expect(screen.queryByRole('button', { name: /Modifica spettanza/ })).not.toBeInTheDocument()
   })
 
-  it('saves the allowance converting hours to minutes', async () => {
+  it('saves the allowance converting days to minutes with the daily hours of the person', async () => {
     canMock.mockImplementation((permission) => permission === 'absence-requests.manageAll')
     saveAllowanceMock.mockResolvedValue(BALANCES.balances[0])
     renderCard()
 
     fireEvent.click(await screen.findByRole('button', { name: 'Modifica spettanza Ferie' }))
     const dialog = await screen.findByRole('dialog')
-    const annual = within(dialog).getByLabelText('Spettanza annua (ore)')
-    const carried = within(dialog).getByLabelText('Riporto (ore, anche negativo)')
-    fireEvent.change(annual, { target: { value: '160' } })
-    fireEvent.change(carried, { target: { value: '-7.5' } })
+    fireEvent.change(within(dialog).getByLabelText('Spettanza annua (giorni)'), { target: { value: '22.5' } })
+    fireEvent.change(within(dialog).getByLabelText('Riporto (ore, anche negativo)'), { target: { value: '-7.5' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Salva' }))
 
     await waitFor(() =>
@@ -120,10 +130,36 @@ describe('AbsenceBalancesCard', () => {
         user_id: 7,
         absence_type_id: 1,
         year: BALANCES.year,
-        annual_minutes: 9600,
+        annual_minutes: 10800,
         carried_over_minutes: -450,
       }),
     )
+  })
+
+  it('sends hours when the unit is hours', async () => {
+    canMock.mockImplementation((permission) => permission === 'absence-requests.manageAll')
+    saveAllowanceMock.mockResolvedValue(BALANCES.balances[0])
+    renderCard()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Modifica spettanza Ferie' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'Ore' }))
+    fireEvent.change(within(dialog).getByLabelText('Spettanza annua (ore)'), { target: { value: '160' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Salva' }))
+    await waitFor(() => expect(saveAllowanceMock).toHaveBeenCalledWith(expect.objectContaining({ annual_minutes: 9600 })))
+  })
+
+  it('sends null with "use the type default"', async () => {
+    canMock.mockImplementation((permission) => permission === 'absence-requests.manageAll')
+    saveAllowanceMock.mockResolvedValue(BALANCES.balances[0])
+    renderCard()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Modifica spettanza Ferie' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Usa il default del tipo' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Salva' }))
+
+    await waitFor(() => expect(saveAllowanceMock).toHaveBeenCalledWith(expect.objectContaining({ annual_minutes: null })))
   })
 
   it('wires a 422 onto the field with the accessible error triad', async () => {
@@ -138,6 +174,6 @@ describe('AbsenceBalancesCard', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Salva' }))
 
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('Valore non valido dal server')
-    expect(within(dialog).getByLabelText('Spettanza annua (ore)')).toHaveAttribute('aria-invalid', 'true')
+    expect(within(dialog).getByLabelText('Spettanza annua (giorni)')).toHaveAttribute('aria-invalid', 'true')
   })
 })

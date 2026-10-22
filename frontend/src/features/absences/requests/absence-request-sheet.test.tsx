@@ -220,6 +220,31 @@ describe('AbsenceRequestSheet', () => {
     await waitFor(() => expect(createMock).toHaveBeenCalledWith(expect.objectContaining({ user_id: 9, submit: false })))
   })
 
+  it('opens from a calendar cell with the day and the person already filled (spec 0304 AC-023)', async () => {
+    canMock.mockImplementation((permission) => permission === 'absence-requests.manageAll')
+    createMock.mockResolvedValue(buildRequest({ status: 'draft' }))
+    render(
+      <AbsenceRequestSheet
+        open
+        onOpenChange={vi.fn()}
+        prefill={{ startsOn: '2026-11-05', person: { id: 7, name: 'Anna Neri' } }}
+        onSaved={onSaved}
+      />,
+      { wrapper: absenceWrapper() },
+    )
+    await pickType('Ferie')
+    expect(dateField('absences.requests.form.startsOn')).toHaveValue('2026-11-05')
+    expect(dateField('absences.requests.form.endsOn')).toHaveValue('2026-11-05')
+
+    fireEvent.click(screen.getAllByRole('button', { name: label('absences.requests.form.saveDraft') })[0])
+
+    await waitFor(() =>
+      expect(createMock).toHaveBeenCalledWith(
+        expect.objectContaining({ user_id: 7, starts_on: '2026-11-05', ends_on: '2026-11-05', submit: false }),
+      ),
+    )
+  })
+
   it('does not ask for the person when editing a draft', async () => {
     canMock.mockReturnValue(true)
     renderSheet(buildRequest({ status: 'draft', minutes: null }))

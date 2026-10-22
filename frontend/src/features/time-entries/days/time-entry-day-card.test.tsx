@@ -35,6 +35,7 @@ function daySummary(overrides: Partial<DaySummary> = {}): DaySummary {
     status: 'under_target',
     day_note: null,
     absences: [],
+    closure: null,
     entries: [],
     ...overrides,
   }
@@ -153,5 +154,30 @@ describe('TimeEntryDayCard (AC-035)', () => {
     )
 
     expect(screen.getByText('Permit - 2h 00m')).toBeInTheDocument()
+  })
+
+  it('shows the company closure of the day by name (spec 0304 AC-017)', () => {
+    const Wrapper = wrapper()
+    render(
+      <Wrapper>
+        <TimeEntryDayCard
+          canWrite
+          day={daySummary({
+            status: 'no_target',
+            target_minutes: 0,
+            total_minutes: 0,
+            is_non_working_day: true,
+            closure: { name: 'Patron saint' },
+          })}
+          isExpanded={false}
+          isToday={false}
+          onCreateForDate={vi.fn()}
+          onEditEntry={vi.fn()}
+          onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    )
+
+    expect(screen.getByText('Company closure: Patron saint')).toBeInTheDocument()
   })
 })
