@@ -14,19 +14,21 @@ import {
   EMPTY_ABSENCE_FORM,
   absenceFormValues,
   toAbsencePayload,
+  toCreatePayload,
 } from '@/features/absences/requests/absence-request-payload'
 import {
   buildAbsenceRequestSchema,
   type AbsenceRequestFormValues,
 } from '@/features/absences/requests/absence-request-schema'
 import { fieldError, serverMessage } from '@/features/absences/requests/absence-server-errors'
+import { useAbsenceRequestPreview } from '@/features/absences/requests/use-absence-request-preview'
 import { useAbsenceRefresh } from '@/features/absences/requests/use-absence-refresh'
 import type { AbsenceRequest } from '@/features/absences/types'
 
-/** Server-side field names mapped onto the form for 422 handling (the person's own `user_id` is never sent). */
+/** Server-side field names mapped onto the form for 422 handling (`is_full_day` is the mode, `user_id` has its own toast). */
 const SERVER_ERROR_FIELDS = [
   'absence_type_id',
-  'is_full_day',
+  'day_part',
   'starts_on',
   'ends_on',
   'requested_minutes',
@@ -57,15 +59,22 @@ export function useAbsenceRequestForm({ request, refreshGrid, onSaved }: UseAbse
     defaultValues: request ? absenceFormValues(request) : EMPTY_ABSENCE_FORM,
   })
 
+  function writeRequest(values: AbsenceRequestFormValues, send: boolean): Promise<AbsenceRequest> | null {
+    if (request) {
+      const payload = toAbsencePayload(values)
+      return payload === null ? null : updateAbsenceRequest(request.id, payload)
+    }
+    const payload = toCreatePayload(values, send)
+    return payload === null ? null : createAbsenceRequest(payload)
+  }
+
   async function save(values: AbsenceRequestFormValues, send: boolean): Promise<AbsenceRequest | null> {
-    const payload = toAbsencePayload(values)
-    if (payload === null) {
+    // Step 1: create (the server submits in the same call) or update the draft
+    const written = writeRequest(values, send)
+    if (written === null) {
       return null
     }
-    // Step 1: create (the server submits in the same call) or update the draft
-    let saved = request
-      ? await updateAbsenceRequest(request.id, payload)
-      : await createAbsenceRequest({ ...payload, submit: send })
+    let saved = await written
     // Step 2: an edited draft is sent with its own action
     if (request && send) {
       saved = await submitAbsenceRequest(request.id)
@@ -92,6 +101,10 @@ export function useAbsenceRequestForm({ request, refreshGrid, onSaved }: UseAbse
       }
     } catch (error) {
       const handled = applyServerValidationErrors(error, form.setError, [...SERVER_ERROR_FIELDS])
+      const modeError = fieldError(error, 'is_full_day')
+      if (modeError !== null) {
+        form.setError('mode', { message: modeError })
+      }
       // `user_id` (no approver for the person) has no input: it goes to a toast
       const unmapped = fieldError(error, 'user_id')
       if (unmapped !== null) {
@@ -107,5 +120,7 @@ export function useAbsenceRequestForm({ request, refreshGrid, onSaved }: UseAbse
   const saveDraft = form.handleSubmit((values) => persist(values, false))
   const send = form.handleSubmit((values) => persist(values, true))
 
-  return { form, file, setFile, isSubmitting, saveDraft, send }
+  const preview = useAbsenceRequestPreview(form, request?.id ?? null)
+
+  return { form, preview, file, setFile, isSubmitting, saveDraft, send }
 }

@@ -1,11 +1,12 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import i18n from '@/i18n'
 import { AbsenceRequestDetailSheet } from '@/features/absences/requests/absence-request-detail-sheet'
-import { absenceWrapper, buildRequest, httpError } from '@/features/absences/requests/absence-request-fixtures'
+import { absenceWrapper, buildInsight, buildRequest, httpError } from '@/features/absences/requests/absence-request-fixtures'
 import type { AbsenceRequest } from '@/features/absences/types'
 
 const fetchMock = vi.fn()
+const insightMock = vi.fn()
 const approveMock = vi.fn()
 const rejectMock = vi.fn()
 const cancelMock = vi.fn()
@@ -14,6 +15,7 @@ const deleteMock = vi.fn()
 const downloadMock = vi.fn()
 vi.mock('@/features/absences/api', () => ({
   fetchAbsenceRequest: (id: number) => fetchMock(id),
+  getAbsenceRequestInsight: (id: number) => insightMock(id),
   approveAbsenceRequest: (id: number) => approveMock(id),
   rejectAbsenceRequest: (id: number, payload: unknown) => rejectMock(id, payload),
   cancelAbsenceRequest: (id: number) => cancelMock(id),
@@ -22,10 +24,6 @@ vi.mock('@/features/absences/api', () => ({
   downloadAbsenceAttachment: (id: number) => downloadMock(id),
   uploadAbsenceAttachment: vi.fn(),
   deleteAbsenceAttachment: vi.fn(),
-}))
-
-vi.mock('@/features/absences/balances/absence-balances-card', () => ({
-  AbsenceBalancesCard: ({ userId }: { userId?: number }) => <div role="region" aria-label={`balances-${userId}`} />,
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
@@ -50,7 +48,7 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
-  ;[fetchMock, approveMock, rejectMock, cancelMock, submitMock, deleteMock, downloadMock, onClose, onEdit, refreshGrid].forEach(
+  ;[fetchMock, insightMock, approveMock, rejectMock, cancelMock, submitMock, deleteMock, downloadMock, onClose, onEdit, refreshGrid].forEach(
     (mock) => mock.mockReset(),
   )
 })
@@ -72,7 +70,7 @@ describe('AbsenceRequestDetailSheet', () => {
     expect(screen.getByText('Bruno Neri')).toBeInTheDocument()
     expect(screen.getByText('Mare')).toBeInTheDocument()
     expect(screen.getByText(label('absences.status.submitted'))).toBeInTheDocument()
-    expect(screen.getByText('24h 00m')).toBeInTheDocument()
+    expect(screen.getByText('3 g')).toBeInTheDocument()
   })
 
   it('shows no action when the server grants none', async () => {
@@ -82,7 +80,8 @@ describe('AbsenceRequestDetailSheet', () => {
     for (const key of ['edit', 'delete', 'submit', 'approve', 'reject', 'cancel']) {
       expect(action(key)).not.toBeInTheDocument()
     }
-    expect(screen.queryByRole('region', { name: 'balances-7' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: label('absences.insight.contextTitle') })).not.toBeInTheDocument()
+    expect(insightMock).not.toHaveBeenCalled()
   })
 
   it('shows exactly the actions of `can` for a draft', async () => {
@@ -96,11 +95,12 @@ describe('AbsenceRequestDetailSheet', () => {
     expect(screen.getByLabelText(label('absences.requests.detail.upload'))).toBeInTheDocument()
   })
 
-  it('approves and refreshes the grid, with the balances of the person for the approver', async () => {
+  it('approves and refreshes the grid, with the decision context for the approver', async () => {
     approveMock.mockResolvedValue(buildRequest({ status: 'approved' }))
+    insightMock.mockResolvedValue(buildInsight())
     renderDetail(buildRequest({ can: { ...buildRequest().can, approve: true, reject: true } }))
 
-    expect(await screen.findByRole('region', { name: 'balances-7' })).toBeInTheDocument()
+    expect(await screen.findByRole('region', { name: label('absences.insight.contextTitle') })).toBeInTheDocument()
     fireEvent.click(action('approve')!)
 
     await waitFor(() => expect(approveMock).toHaveBeenCalledWith(5))
@@ -172,5 +172,45 @@ describe('AbsenceRequestDetailSheet', () => {
     render(<AbsenceRequestDetailSheet requestId={99} onClose={onClose} onEdit={onEdit} />, { wrapper: absenceWrapper() })
 
     expect(await screen.findByText(label('absences.requests.detail.notFound'))).toBeInTheDocument()
+  })
+
+  it('shows the decision context with the colleagues and the balance after to who decides', async () => {
+    insightMock.mockResolvedValue(
+      buildInsight({
+        colleagues_absent: [
+          {
+            user: { id: 8, name: 'Carla Verdi' },
+            request_id: 4,
+            status: 'approved',
+            starts_on: '2026-11-02',
+            ends_on: '2026-11-02',
+            absence_type_name: 'Permesso',
+            color: 'amber',
+            is_full_day: true,
+            day_part: null,
+          },
+        ],
+      }),
+    )
+    renderDetail(buildRequest({ can: { ...buildRequest().can, approve: true, reject: true } }))
+
+    const context = await screen.findByRole('region', { name: label('absences.insight.contextTitle') })
+    expect(await within(context).findByText(/Carla Verdi: Permesso/)).toBeInTheDocument()
+    expect(within(context).getByText(label('absences.insight.balanceAfter')).nextSibling).toHaveTextContent('7 g')
+    expect(insightMock).toHaveBeenCalledWith(5)
+  })
+
+  it('flags a short notice and a collective leave in the header', async () => {
+    renderDetail(buildRequest({ is_short_notice: true, company_closure: { id: 3, name: 'Chiusura agosto' } }))
+
+    expect(await screen.findByText(label('absences.badges.shortNotice'))).toBeInTheDocument()
+    expect(screen.getByText(label('absences.badges.collectiveLeave'))).toHaveAttribute('title', 'Ferie collettive: Chiusura agosto')
+  })
+
+  it('shows the part of the day of a half day and the duration in days and hours', async () => {
+    renderDetail(buildRequest({ is_full_day: false, day_part: 'afternoon', starts_on: '2026-11-02', ends_on: '2026-11-02', minutes: 600 }))
+
+    expect(await screen.findByText(/Mezza giornata - Pomeriggio/)).toBeInTheDocument()
+    expect(screen.getByText('1 g 2 h')).toBeInTheDocument()
   })
 })

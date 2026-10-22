@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\DataObjects\Absences;
 
+use App\Enums\AbsenceDayPart;
+
 /**
  * Validated write payload of an absence request (POST/PATCH /api/absence-requests).
- * `requestedMinutes` is only meaningful for an hourly request.
+ * `requestedMinutes` is only meaningful for an hourly request: a half day
+ * (`dayPart`) gets its minutes from the server (spec 0304 D-8).
  */
 final readonly class AbsenceRequestData
 {
@@ -17,6 +20,7 @@ final readonly class AbsenceRequestData
         public string $endsOn,
         public ?int $requestedMinutes,
         public ?string $note,
+        public ?AbsenceDayPart $dayPart = null,
     ) {}
 
     /**
@@ -25,14 +29,16 @@ final readonly class AbsenceRequestData
     public static function fromValidated(array $data): self
     {
         $isFullDay = (bool) $data['is_full_day'];
+        $dayPart = ! $isFullDay && ! empty($data['day_part']) ? AbsenceDayPart::from($data['day_part']) : null;
 
         return new self(
             absenceTypeId: (int) $data['absence_type_id'],
             isFullDay: $isFullDay,
             startsOn: (string) $data['starts_on'],
             endsOn: $isFullDay ? (string) $data['ends_on'] : (string) $data['starts_on'],
-            requestedMinutes: $isFullDay || ! isset($data['requested_minutes']) ? null : (int) $data['requested_minutes'],
+            requestedMinutes: $isFullDay || $dayPart !== null || ! isset($data['requested_minutes']) ? null : (int) $data['requested_minutes'],
             note: isset($data['note']) && $data['note'] !== '' ? (string) $data['note'] : null,
+            dayPart: $dayPart,
         );
     }
 
@@ -47,6 +53,7 @@ final readonly class AbsenceRequestData
             'starts_on' => $this->startsOn,
             'ends_on' => $this->endsOn,
             'requested_minutes' => $this->requestedMinutes,
+            'day_part' => $this->dayPart,
             'note' => $this->note,
         ];
     }

@@ -2,10 +2,12 @@
 
 namespace App\Tables\AbsenceRequests;
 
+use App\Enums\AbsenceDayPart;
 use App\Enums\AbsenceRequestStatus;
 use App\Models\AbsenceRequest;
 use App\Models\User;
 use App\Services\Absences\Requests\AbsenceRequestVisibility;
+use App\Services\TimeEntries\DailyTargetResolver;
 use App\Tables\AbstractTableDefinition;
 use App\Tables\PurchaseRequests\PurchaseRequestColumnCatalog as Catalog;
 use App\Tables\PurchaseRequests\PurchaseRequestDerivedQuery as Derived;
@@ -37,7 +39,10 @@ abstract class AbstractAbsenceRequestsTableDefinition extends AbstractTableDefin
         'decided_by_name' => ['users', 'absence_requests.decided_by', 'name'],
     ];
 
-    public function __construct(protected readonly AbsenceRequestVisibility $visibility) {}
+    public function __construct(
+        protected readonly AbsenceRequestVisibility $visibility,
+        private readonly DailyTargetResolver $dailyTarget,
+    ) {}
 
     /**
      * The grid's own narrowing, applied on top of the visibility scope.
@@ -65,7 +70,23 @@ abstract class AbstractAbsenceRequestsTableDefinition extends AbstractTableDefin
         /** @var User $actor */
         $actor = Auth::user();
 
-        $query = AbsenceRequest::query()->with(['user:id,name', 'absenceType:id,name', 'decidedBy:id,name']);
+        return $this->visibleQuery($actor)->with([
+            'user:id,name',
+            'user.employment:id,user_id,standard_daily_minutes,break_daily_minutes',
+            'absenceType:id,name',
+            'decidedBy:id,name',
+        ]);
+    }
+
+    /**
+     * The rows of this grid for an actor, without eager loads: visibility scope plus the grid's own
+     * narrowing. The summary counts through it, so a counter always equals the grid.
+     *
+     * @return Builder<AbsenceRequest>
+     */
+    public function visibleQuery(User $actor): Builder
+    {
+        $query = AbsenceRequest::query();
         $this->visibility->scopeToActor($query, $actor);
         $this->applyScope($query, $actor);
 
@@ -86,6 +107,8 @@ abstract class AbstractAbsenceRequestsTableDefinition extends AbstractTableDefin
             $column('starts_on', 'date', filter: 'date'),
             $column('ends_on', 'date', filter: 'date'),
             $column('is_full_day', 'boolean', filter: 'boolean'),
+            $column('day_part', 'text', filter: 'set', options: AbsenceDayPart::values()),
+            $column('is_short_notice', 'boolean', filter: 'boolean'),
             $column('minutes', 'number', filter: 'number'),
             $column('submitted_at', 'date', filter: 'date'),
             $column('decided_by_name', 'text', filter: 'text'),
@@ -155,7 +178,10 @@ abstract class AbstractAbsenceRequestsTableDefinition extends AbstractTableDefin
             'starts_on' => $row->starts_on->format('Y-m-d'),
             'ends_on' => $row->ends_on->format('Y-m-d'),
             'is_full_day' => $row->is_full_day,
+            'day_part' => $row->day_part?->value,
+            'is_short_notice' => $row->is_short_notice,
             'minutes' => $row->minutes,
+            'daily_minutes' => $this->dailyTarget->resolve($row->user->employment),
             'submitted_at' => $row->submitted_at?->toIso8601String(),
             'decided_by_name' => $row->decidedBy?->name,
         ];
@@ -209,6 +235,7 @@ abstract class AbstractAbsenceRequestsTableDefinition extends AbstractTableDefin
     {
         return match (true) {
             $columnId === 'status' => AbsenceRequestStatus::values(),
+            $columnId === 'day_part' => AbsenceDayPart::values(),
             isset(self::TEXT_RELATIONS[$columnId]) => Derived::distinctRelated($query, self::TEXT_RELATIONS[$columnId], $search, $limit),
             default => null,
         };

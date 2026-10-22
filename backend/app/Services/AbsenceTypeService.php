@@ -52,12 +52,17 @@ class AbsenceTypeService
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->get(['id', 'name', 'deducts_balance', 'requires_approval'])
+            ->get(['id', 'name', 'deducts_balance', 'requires_approval', 'allows_full_day', 'allows_half_day', 'allows_hourly', 'min_notice_days', 'color'])
             ->map(static fn (AbsenceType $type): array => [
                 'id' => $type->id,
                 'name' => $type->name,
                 'deducts_balance' => $type->deducts_balance,
                 'requires_approval' => $type->requires_approval,
+                'allows_full_day' => $type->allows_full_day,
+                'allows_half_day' => $type->allows_half_day,
+                'allows_hourly' => $type->allows_hourly,
+                'min_notice_days' => $type->min_notice_days,
+                'color' => $type->color,
             ]);
     }
 }

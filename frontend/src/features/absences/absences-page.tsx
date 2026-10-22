@@ -13,6 +13,8 @@ import { AbsenceCalendar } from '@/features/absences/calendar/absence-calendar'
 import { AbsenceRequestDetailSheet } from '@/features/absences/requests/absence-request-detail-sheet'
 import { AbsenceRequestSheet } from '@/features/absences/requests/absence-request-sheet'
 import { AbsenceRequestsGrid } from '@/features/absences/requests/absence-requests-grid'
+import { useAbsenceScope } from '@/features/absences/requests/use-absence-scope'
+import { AbsenceSummaryPanel } from '@/features/absences/summary/absence-summary-panel'
 import { ABSENCE_CALENDAR_PERMISSIONS, type AbsenceRequest } from '@/features/absences/types'
 
 /** Query parameter of the notifications' `action_url` (`/absences?request={id}`). */
@@ -29,7 +31,7 @@ function parseRequestId(value: string | null): number | null {
 
 /**
  * Absences page (spec 0278): the actor's balances, the requests grid with its
- * scope tabs, the create/edit-draft Sheet and the detail Sheet (also opened by
+ * scope tabs and personal summary, the create/edit-draft Sheet and the detail Sheet (also opened by
  * `?request={id}`). Gated by `absence-requests.viewAny`. The "Calendario" view
  * (spec 0279) shows up with any of the three calendar permissions; the view switch sits in the
  * page header, so only the scope tabs stay above the grid (spec 0287 D-5).
@@ -42,6 +44,7 @@ export default function AbsencesPage() {
   const [editing, setEditing] = useState<AbsenceRequest | undefined>(undefined)
   const [view, setView] = useState<PageView>('requests')
   const { can } = useAbilities()
+  const { scope, selectScope, toApproveCount } = useAbsenceScope()
   const canSeeCalendar = ABSENCE_CALENDAR_PERMISSIONS.some((permission) => can(permission))
 
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -93,8 +96,15 @@ export default function AbsencesPage() {
           <AbsenceCalendar onOpen={openDetail} />
         ) : (
           <>
+            <AbsenceSummaryPanel onOpen={openDetail} onGoToApprove={() => selectScope('to_approve')} />
             <AbsenceBalancesCard />
-            <AbsenceRequestsGrid tableRef={tableRef} onOpen={openDetail} />
+            <AbsenceRequestsGrid
+              tableRef={tableRef}
+              onOpen={openDetail}
+              scope={scope}
+              onScopeChange={selectScope}
+              toApproveCount={toApproveCount}
+            />
           </>
         )}
       </div>

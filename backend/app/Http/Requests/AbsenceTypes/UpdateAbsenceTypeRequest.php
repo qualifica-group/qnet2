@@ -30,6 +30,11 @@ class UpdateAbsenceTypeRequest extends StoreAbsenceTypeRequest
         return $this->absenceType();
     }
 
+    protected function currentType(): ?AbsenceType
+    {
+        return $this->absenceType();
+    }
+
     private function absenceType(): AbsenceType
     {
         /** @var AbsenceType $absenceType */

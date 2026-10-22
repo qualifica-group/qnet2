@@ -23,6 +23,10 @@ class AbsenceTypeFactory extends Factory
             'requires_approval' => true,
             'is_active' => true,
             'sort_order' => 0,
+            'allows_full_day' => true,
+            'allows_half_day' => true,
+            'allows_hourly' => true,
+            'color' => 'slate',
         ];
     }
 

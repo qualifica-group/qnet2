@@ -14,6 +14,8 @@ const GRID_COLUMNS = [
   'minutes',
   'submitted_at',
   'decided_by_name',
+  'day_part',
+  'is_short_notice',
 ] as const
 
 describe.each([

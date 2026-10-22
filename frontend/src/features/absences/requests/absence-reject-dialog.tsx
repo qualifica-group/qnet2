@@ -24,10 +24,13 @@ interface AbsenceRejectDialogProps {
   /** Rejects with the reason; a 422 rejection is wired to the field here. */
   onReject: (reason: string) => Promise<unknown>
   isPending: boolean
+  /** Overrides for the multiple rejection (one reason for many requests). */
+  title?: string
+  description?: string
 }
 
 /** Reject dialog: the reason is mandatory (client Zod rule, server 422 shown on the same field). */
-export function AbsenceRejectDialog({ open, onOpenChange, onReject, isPending }: AbsenceRejectDialogProps) {
+export function AbsenceRejectDialog({ open, onOpenChange, onReject, isPending, title, description }: AbsenceRejectDialogProps) {
   const { t } = useTranslation()
   const schema = useMemo(() => buildRejectSchema(t), [t])
   const form = useForm<RejectFormValues>({ resolver: zodResolver(schema), defaultValues: { rejection_reason: '' } })
@@ -47,8 +50,8 @@ export function AbsenceRejectDialog({ open, onOpenChange, onReject, isPending }:
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('absences.requests.reject.title')}</DialogTitle>
-          <DialogDescription>{t('absences.requests.reject.description')}</DialogDescription>
+          <DialogTitle>{title ?? t('absences.requests.reject.title')}</DialogTitle>
+          <DialogDescription>{description ?? t('absences.requests.reject.description')}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={(event) => void submit(event)} noValidate className="space-y-3">

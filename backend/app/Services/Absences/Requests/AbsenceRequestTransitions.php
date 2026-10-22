@@ -43,8 +43,12 @@ final class AbsenceRequestTransitions
             // Step 2: only a submitted or approved request can be cancelled (409)
             abort_unless($this->capabilities->isCancellableStatus($request), 409, __('absence_requests.not_cancellable'));
 
-            // Step 3: the person cannot cancel an approved request already started (403)
-            abort_unless($this->capabilities->canCancel($actor, $request), 403, __('absence_requests.already_started'));
+            // Step 3: the person cannot cancel a closure-generated request or an approved one already started (403)
+            abort_unless(
+                $this->capabilities->canCancel($actor, $request),
+                403,
+                $request->company_closure_id !== null ? __('absence_requests.generated_by_closure') : __('absence_requests.already_started'),
+            );
 
             // Step 4: cancel
             $previousStatus = $request->status;

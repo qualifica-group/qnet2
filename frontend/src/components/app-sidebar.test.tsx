@@ -39,6 +39,10 @@ vi.mock('@/features/navigation/use-navigation', () => ({
   useNavigation: () => ({ data: [], isPending: false, isError: false }),
 }))
 
+vi.mock('@/features/absences/use-absence-menu-badge', () => ({
+  useAbsenceMenuBadge: () => null,
+}))
+
 const useUnreadBadgeMock = vi.fn()
 vi.mock('@/features/notifications/use-unread-badge', () => ({
   useUnreadBadge: () => useUnreadBadgeMock(),

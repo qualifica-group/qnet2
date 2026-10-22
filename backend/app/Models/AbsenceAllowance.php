@@ -11,7 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Yearly allowance in minutes for a person and a balance-deducting absence
- * type (spec 0278 D-1). Carry-over may be negative (D-11).
+ * type (spec 0278 D-1). Carry-over may be negative (D-11); a null `annual_minutes`
+ * means the default of the type (spec 0304 D-12).
  */
 #[Fillable(['user_id', 'absence_type_id', 'year', 'annual_minutes', 'carried_over_minutes'])]
 class AbsenceAllowance extends BaseModel

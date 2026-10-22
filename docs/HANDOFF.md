@@ -3,6 +3,37 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Assenze al livello dei migliori HR (spec 0304) — CONSEGNA 1/3 VERDE, COMMITTATA (2026-10-22)
+
+- Spec `docs/specs/0304-hr-absences-overhaul.xml` (approvata; D-1..D-18). Consegna 1 = chi chiede e chi approva
+  (B1-B5, F1, F3-F5). Restano: consegna 2 (B6 saldi default/massa/panoramica/riporto, B7 chiusure aziendali CRUD +
+  ferie collettive, B8 calendario + segnatempo con chiusure, F2 catalogo tipi, F6 tessere saldi + panoramica HR,
+  F7 chiusure, F8 calendario, F9 dashboard), consegna 3 (guide absence-types/company-closures/time-entries/general).
+- Schema completo gia' migrato (B1): `2026_10_31_100600` company_closures + pivot `company_closure_operational_site`,
+  `100700` tipi (allows_full_day/half_day/hourly, min_notice_days, color, default_annual_days), `100800` richieste
+  (day_part, is_short_notice, company_closure_id restrict), `100900` `absence_allowances.annual_minutes` nullable.
+  Enum `AbsenceDayPart`, `CompanyClosureKind`; model `CompanyClosure` (morph `company_closure`; activity-log config e
+  permessi `company-closures.*` ancora da fare in B7). Contatori rollback +4 in SupplierCommissionDirection,
+  QuoteWorkflowMigration, PurchaseOrderMigration (REQUIREMENT CHANGED).
+- Backend: `Services/Absences/Calendar/PersonWorkCalendar::load()` -> `PersonNonWorkingDays` (unico punto per i giorni
+  non lavorativi per persona, chiusure holiday per sede; `WorkCalendar` invariato, B8 dovra' usarlo in segnatempo e
+  calendario); `Requests/AbsenceNoticeRule::isShort()`; mezza giornata = requested_minutes intdiv(giornaliere, 2);
+  `Insight/{AbsenceInsightBuilder, AbsenceColleaguesResolver, AbsenceSummaryBuilder}`,
+  `Requests/AbsenceRequestBulkDecision`, `Calendar/AbsenceCalendarPeople::visibleUserIds()`;
+  `AbstractAbsenceRequestsTableDefinition::visibleQuery()` condivisa con il summary. Rotte nuove in
+  `routes/api/absence-requests.php`: preview, bulk-decision, `absences/summary`, `{id}/insight`.
+  residual_after: approved = residuo, altrimenti residuo - minutes (spec revised in build).
+- Frontend: `absence-duration-format.ts` (`formatAbsenceMinutes`), `absence-type-color.ts` (`absenceTypeDotClass`,
+  unica mappa colori dei tipi), `requests/absence-insight-panel.tsx` (variant preview|context), form con modalita'
+  (`mode` full_day|half_day|hours) e Persona (manageAll), `summary/*`, azioni riga + bulk sulla scheda Da approvare,
+  `FilterTabOption.count`, badge menu via `nav-main.tsx` (`badges`). Rimosso `absence-request-balance-hint.tsx`.
+- Verifica (verifier indipendente): composer test 12259/12270 (10 falliti ambientali: 7 Migration con
+  `EXTERNAL_MIGRATION_USERS_LINK_ONLY=true` nel .env, 577/577 con false; 3 QuoteDocumentPdf senza LibreOffice);
+  vitest 9000/9000; tsc -b --force 0; Pint pulito; eslint pulito sui file della consegna. AC-001..009, 018, 019,
+  021, 022 e AC-020 (parte riepilogo/schede/badge) PASS.
+- Manuale: guida in-app `absences` IT/EN (nuove sezioni `summary`, `quick-approval`; tabs, new-request, detail),
+  manuale Claude Docs (Assenze). PDF derivato da rigenerare.
+
 ## Intestazioni dei moduli allineate — VERDE, COMMITTATO (2026-10-22)
 
 - Standard unico: `PageHeader` = solo breadcrumb + azioni (come `/opportunities`); il titolo della pagina sta gia'

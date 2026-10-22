@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AbsenceDayPart;
 use App\Enums\AbsenceRequestStatus;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\HasAttachments;
@@ -20,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 #[Fillable([
     'user_id', 'absence_type_id', 'created_by', 'status', 'is_full_day', 'starts_on', 'ends_on',
     'minutes', 'requested_minutes', 'note', 'rejection_reason', 'decided_by', 'decided_at',
-    'submitted_at', 'cancelled_by', 'cancelled_at',
+    'submitted_at', 'cancelled_by', 'cancelled_at', 'day_part', 'is_short_notice', 'company_closure_id',
 ])]
 class AbsenceRequest extends BaseModel
 {
@@ -35,6 +36,8 @@ class AbsenceRequest extends BaseModel
         return [
             'status' => AbsenceRequestStatus::class,
             'is_full_day' => 'boolean',
+            'day_part' => AbsenceDayPart::class,
+            'is_short_notice' => 'boolean',
             'starts_on' => 'date:Y-m-d',
             'ends_on' => 'date:Y-m-d',
             'minutes' => 'integer',
@@ -59,6 +62,14 @@ class AbsenceRequest extends BaseModel
     public function absenceType(): BelongsTo
     {
         return $this->belongsTo(AbsenceType::class);
+    }
+
+    /**
+     * @return BelongsTo<CompanyClosure, $this>
+     */
+    public function companyClosure(): BelongsTo
+    {
+        return $this->belongsTo(CompanyClosure::class);
     }
 
     /**

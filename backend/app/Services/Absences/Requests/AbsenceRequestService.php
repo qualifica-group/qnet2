@@ -21,7 +21,9 @@ final class AbsenceRequestService
     /** Relations the AbsenceRequestResource reads (lazy loading is forbidden). */
     public const array RELATIONS = [
         'user:id,name',
-        'absenceType:id,name,deducts_balance,requires_approval',
+        'user.employment:id,user_id,standard_daily_minutes,break_daily_minutes',
+        'absenceType:id,name,deducts_balance,requires_approval,color',
+        'companyClosure:id,name',
         'approvers:id,name',
         'decidedBy:id,name',
         'attachments',
@@ -29,6 +31,7 @@ final class AbsenceRequestService
 
     public function __construct(
         private readonly AbsenceDurationCalculator $duration,
+        private readonly AbsenceNoticeRule $notice,
         private readonly AbsenceOverlapGuard $overlap,
         private readonly AbsenceApproverResolver $approvers,
         private readonly AbsenceRequestVisibility $visibility,
@@ -48,10 +51,11 @@ final class AbsenceRequestService
 
             // Step 2: persist the draft
             $request = AbsenceRequest::query()->create([
-                ...$data->toAttributes(),
+                ...$this->attributes($data, $person->id),
                 'user_id' => $person->id,
                 'created_by' => $actor->id,
                 'status' => AbsenceRequestStatus::Draft,
+                'is_short_notice' => false,
             ]);
 
             // Step 3: file it straight away when asked
@@ -64,7 +68,7 @@ final class AbsenceRequestService
         $this->assertDraftEditable($request, $actor);
         $this->assertSchedule($request->user_id, $data, $request->id);
 
-        $request->update($data->toAttributes());
+        $request->update($this->attributes($data, $request->user_id));
 
         return $this->detail($request);
     }
@@ -85,6 +89,7 @@ final class AbsenceRequestService
 
             // Step 2: freeze the duration and re-check the overlap
             $minutes = $this->frozenMinutes($request);
+            $type = AbsenceType::query()->findOrFail($request->absence_type_id);
 
             // Step 3: snapshot the approvers (none = 422)
             $approvers = $this->approvers->resolve(User::query()->findOrFail($request->user_id));
@@ -94,10 +99,12 @@ final class AbsenceRequestService
             }
 
             // Step 4: submitted, or approved at once when the type needs no approval (D-8)
-            $autoApproved = ! AbsenceType::query()->findOrFail($request->absence_type_id)->requires_approval;
+            $autoApproved = ! $type->requires_approval;
             $request->update([
                 'status' => $autoApproved ? AbsenceRequestStatus::Approved : AbsenceRequestStatus::Submitted,
                 'minutes' => $minutes,
+                'requested_minutes' => $request->day_part === null ? $request->requested_minutes : $minutes,
+                'is_short_notice' => $this->notice->isShort($type, $request->starts_on->format('Y-m-d'), (int) $request->created_by !== (int) $request->user_id),
                 'submitted_at' => now(),
                 'decided_at' => $autoApproved ? now() : null,
             ]);
@@ -116,15 +123,31 @@ final class AbsenceRequestService
         $startsOn = $request->starts_on->format('Y-m-d');
         $endsOn = $request->ends_on->format('Y-m-d');
 
-        $minutes = $this->duration->minutes($request->user_id, $request->is_full_day, $startsOn, $endsOn, $request->requested_minutes);
+        $minutes = $this->duration->minutes($request->user_id, $request->is_full_day, $startsOn, $endsOn, $request->requested_minutes, $request->day_part);
         $this->overlap->assertFree($request->user_id, $startsOn, $endsOn, $request->id);
 
         return $minutes;
     }
 
+    /**
+     * Write attributes of a draft: a half day stores the minutes computed by the server (D-8).
+     *
+     * @return array<string, mixed>
+     */
+    private function attributes(AbsenceRequestData $data, int $userId): array
+    {
+        $attributes = $data->toAttributes();
+
+        if ($data->dayPart !== null) {
+            $attributes['requested_minutes'] = $this->duration->halfDayMinutes($this->duration->dailyMinutes($userId));
+        }
+
+        return $attributes;
+    }
+
     private function assertSchedule(int $userId, AbsenceRequestData $data, ?int $ignoreRequestId = null): void
     {
-        $this->duration->minutes($userId, $data->isFullDay, $data->startsOn, $data->endsOn, $data->requestedMinutes);
+        $this->duration->minutes($userId, $data->isFullDay, $data->startsOn, $data->endsOn, $data->requestedMinutes, $data->dayPart);
         $this->overlap->assertFree($userId, $data->startsOn, $data->endsOn, $ignoreRequestId);
     }
 

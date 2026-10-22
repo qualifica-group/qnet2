@@ -1,0 +1,378 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0304 — Assenze al livello dei migliori HR: esperienza di chi chiede, di chi approva e dell'ufficio del
+  personale, calendario, regole dei tipi, mezze giornate, chiusure aziendali per sede. Estende 0278/0279/0292
+  senza cambiarne le regole di visibilita'.
+-->
+<spec id="0304-hr-absences-overhaul" status="approved" owner="utente" date="2026-10-22">
+
+  <goal>
+    Chi chiede vede prima di inviare quanti giorni e ore usa, quanto saldo gli resta, se e' fuori preavviso e chi
+    della squadra e' gia' assente; chi approva decide in pochi clic, anche in blocco, con il contesto della squadra
+    davanti; l'ufficio del personale inserisce per conto di altri, vede i saldi di tutti, imposta le spettanze di
+    default e in massa e gestisce le chiusure aziendali per sede. Saldi e durate si leggono in giorni e ore.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-22: "come i migliori CRM, usato da chi approva e gestisce ma anche da chi le richiede".
+    Base: spec 0278 (richieste, saldi, notifiche, D-1..D-15), 0279 (calendario, permessi calendarOwn|Team|All),
+    0292 (assenze per ogni mansione). Le regole di visibilita' restano quelle: `AbsenceRequestVisibility` per le
+    richieste, `AbsenceCalendarScope` per chi si vede nel calendario.
+
+    Fatti verificati nel repo:
+    - Tabelle: `absence_types` (name, deducts_balance, requires_approval, is_active, sort_order),
+      `absence_requests` (user_id, absence_type_id, created_by, status, is_full_day, starts_on, ends_on, minutes,
+      requested_minutes, note, rejection_reason, decided_by/at, submitted_at, cancelled_by/at),
+      `absence_request_approver`, `absence_allowances` (annual_minutes default 0, carried_over_minutes).
+    - Servizi: `Services/Absences/Requests/{AbsenceDurationCalculator, AbsenceOverlapGuard, AbsenceRequestService,
+      AbsenceRequestTransitions, AbsenceRequestCapabilities, AbsenceRequestVisibility, AbsenceApproverResolver,
+      AbsenceRequestNotifier}`, `Balances/{AbsenceAccrualCalculator, AbsenceBalanceBuilder, AbsenceCarryOverService}`,
+      `Calendar/{AbsenceCalendarBuilder, AbsenceCalendarScope}`. Griglie `Tables/AbsenceRequests/*`.
+    - Calendario lavorativo: `Services/TimeEntries/WorkCalendar` (puro, senza DB: weekend, 10 festivi fissi, Pasqua,
+      Pasquetta), usato anche da `TimeEntryDayBuilder`, `TimeEntryTeamPulseService`, `TimeEntryAbsenceResolver`,
+      `TimeEntryExportFormatter`, `DailyTargetResolver`, `TaskRecurrenceCalculator`.
+    - Il segnatempo legge le assenze approvate da `TimeEntryAbsenceResolver`: a ore usa `requested_minutes`.
+    - Sedi: `OperationalSite`, pivot `employment_profile_operational_site` (`EmploymentProfile::operationalSites()`).
+      Funzioni: pivot `business_function_user`. Superiori: `employment_profile_manager`.
+    - `POST /api/absence-requests` accetta gia' `user_id` per `manageAll`, ma il form non ha il campo.
+    - Frontend: `TableView` ha `renderers`, `isRowSelectable`, `getBulkActions`; `FilterTabs`; `app-sidebar.tsx`
+      ha gia' un `SidebarMenuBadge` (non letti delle notifiche, `useUnreadBadge`); dashboard a sezioni
+      (`features/dashboard/dashboard-screen.tsx`). Nessuna libreria di date picker: si restano gli input data nativi.
+    - Export: `ExportWriterFactory` (csv/xlsx, openspout). Colori dei badge: slate, gray, amber, blue, emerald,
+      green, red, violet (attributo `#[Color]`).
+
+    Decisioni utente 2026-10-22:
+    - D-1 Ambito: chi chiede, chi approva, ufficio del personale, calendario, tutto in questa spec.
+    - D-2 Mezze giornate mattina/pomeriggio come terza modalita' (oltre a giornata intera e a ore).
+    - D-3 Saldi e durate mostrati in giorni + ore (es. "12 g 4 h") con le ore giornaliere della persona; in database
+      tutto resta in minuti (0278 D-1 invariata).
+    - D-4 Regole del tipo: preavviso minimo, modalita' ammesse, chiusure aziendali. Niente allegato obbligatorio.
+    - D-5 Chiusura aziendale: ogni chiusura sceglie se vale "come un festivo" (non scala nulla, target 0 nel
+      segnatempo) o "ferie collettive" (crea assenze approvate del tipo scelto, che scalano il saldo).
+    - D-6 Chiusure per sede: tutte le sedi o sedi scelte; il santo patrono e' una chiusura ricorrente ogni anno.
+    - D-7 Preavviso: non blocca. Chi chiede vede l'avviso, la richiesta resta marcata "fuori preavviso".
+
+    Decisioni proposte (da validare con la spec):
+    - D-8 Mezza giornata: un solo giorno lavorativo, `is_full_day=false` + `day_part` = morning|afternoon;
+      `requested_minutes` lo calcola il server = floor(ore giornaliere / 2) cosi' segnatempo, saldi e calendario
+      la leggono come una richiesta a ore senza modifiche. Il client non manda `requested_minutes` per la mezza
+      giornata (ignorato se presente).
+    - D-9 Modalita' ammesse: `allows_full_day`, `allows_half_day`, `allows_hourly` sul tipo (almeno una vera, 422
+      altrimenti); una richiesta in una modalita' non ammessa = 422 su `is_full_day`. Default di migrazione: tutte
+      vere (nessun cambio per i dati esistenti).
+    - D-10 Preavviso: `min_notice_days` (null = nessun preavviso) sul tipo. All'invio si fissa
+      `is_short_notice` = (starts_on - data di invio, in giorni di calendario) &lt; min_notice_days. Non cambia piu',
+      come `minutes`. Le richieste inserite dall'ufficio del personale per conto d'altri non sono mai fuori
+      preavviso.
+    - D-11 Colore del tipo (`color`, palette `#[Color]`, default slate) usato in calendario, tessere dei saldi e
+      prossime assenze.
+    - D-12 Spettanza di default del tipo in GIORNI (`default_annual_days`, decimale, solo per tipi che scalano):
+      la spettanza annua di una persona = la sua spettanza impostata, altrimenti default x ore giornaliere della
+      persona (proporzionale al part-time). `absence_allowances.annual_minutes` diventa nullable: null = "usa il
+      default del tipo". Il riporto annuale (0278 D-11) considera anche chi ha solo il default: crea la riga con
+      `annual_minutes` null e il residuo come riporto.
+    - D-13 Chiusure aziendali: catalogo `company_closures` in Configurazione (permessi `company-closures.*`,
+      assegnati al ruolo `risorse-umane`). Campi: nome, dal, al, tipo (holiday | collective_leave), tipo di
+      assenza (solo collective_leave, tipo attivo), tutte le sedi o sedi scelte, ricorrente ogni anno (solo
+      holiday, solo un giorno: santo patrono). Una chiusura vale per una persona se vale per tutte le sedi o per
+      almeno una delle sue sedi operative; chi non ha sedi riceve solo quelle di tutte le sedi.
+    - D-14 Chiusura holiday: per le persone a cui vale, il giorno e' non lavorativo come un festivo: escluso dalla
+      durata delle richieste, segnato nel calendario, target 0 nel segnatempo (giorno, team pulse, export).
+      Il ricalcolo delle richieste gia' inviate non avviene (la durata e' fissata all'invio, 0278 D-6).
+    - D-15 Chiusura collective_leave: alla creazione genera per ogni persona attiva con profilo d'impiego a cui
+      vale una richiesta `approved` a giornata intera sulle date della chiusura (`company_closure_id`, decisa
+      dall'autore, approvatori vuoti, nessuna notifica individuale). Salta chi nel periodo ha gia' una richiesta
+      submitted/approved o non ha giorni lavorativi, e lo riporta nella risposta. Modifica o cancellazione solo se
+      la chiusura non e' iniziata (409 altrimenti): le richieste generate si cancellano e si rigenerano. La persona
+      non annulla una richiesta generata; l'ufficio del personale si' (esenta quella persona).
+    - D-16 "Colleghi assenti": persone attive diverse dalla persona che condividono con lei almeno una funzione
+      aziendale o almeno un superiore diretto, con richieste approved/submitted nel periodo, ristrette a chi
+      l'ATTORE vede nel calendario (0279): chi ha solo calendarOwn non vede nessuno. Massimo 50 voci.
+    - D-17 Approvazione multipla: stesso servizio delle transizioni, voce per voce (autorizzazione e stato
+      controllati su ognuna); le voci che falliscono non bloccano le altre e tornano con il motivo.
+    - D-18 Pagina Assenze, vista Richieste: riepilogo personale in alto (tessere dei saldi in giorni + ore con
+      barra goduto/maturato, prossime assenze, richieste in attesa); schede con contatore; se l'attore ha
+      richieste da approvare la pagina si apre su "Da approvare". Il menu mostra il numero da approvare sulla voce
+      Assenze; la dashboard ha un blocco Assenze (da approvare, assenti oggi, mie prossime).
+  </context>
+
+  <scope>
+    <in>
+      <item>Tipi di assenza: modalita' ammesse, preavviso minimo, colore, spettanza di default in giorni (form e
+        griglia del catalogo).</item>
+      <item>Richieste: mezza giornata, fuori preavviso, collegamento alla chiusura, `daily_minutes` della persona.</item>
+      <item>Anteprima della richiesta prima dell'invio e contesto della decisione nel dettaglio (stessa shape).</item>
+      <item>Form: persona (solo manageAll), tre modalita' secondo il tipo, anteprima live con giorni non lavorativi,
+        saldo dopo, preavviso, sovrapposizioni proprie, colleghi assenti.</item>
+      <item>Approvazione e rifiuto dalla riga della griglia "Da approvare" e in blocco (selezione multipla).</item>
+      <item>Riepilogo assenze (contatori, prossime, assenti oggi): pagina, badge del menu, blocco dashboard.</item>
+      <item>Ufficio del personale: panoramica saldi di tutti (filtri, export csv/xlsx), spettanze in massa.</item>
+      <item>Chiusure aziendali per sede (catalogo, ricorrenza, ferie collettive generate) e loro effetto su durata,
+        calendario e segnatempo.</item>
+      <item>Calendario: colore del tipo, mezza giornata, chiusure per persona, riga "assenti per giorno", clic su un
+        giorno vuoto apre il form compilato (per se stessi; con manageAll anche per la persona della riga).</item>
+      <item>Formato giorni + ore ovunque (saldi, durate, griglie, notifiche restano in ore come oggi).</item>
+      <item>Seed di produzione dei tipi con modalita' e colori; permessi delle chiusure al ruolo risorse-umane.</item>
+      <item>Guide in-app IT/EN `absences`, `absence-types`, nuova `company-closures` (HELP_GUIDE_KEYS +1),
+        `time-entries` (chiusure), `general`; manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Allegato obbligatorio per tipo (escluso dall'utente, D-4).</item>
+      <item>Secondo livello di approvazione, deleghe e sostituti dell'approvatore, promemoria/escalation.</item>
+      <item>Richiesta di annullamento di un'assenza approvata gia' iniziata da parte della persona (resta 0278 D-9).</item>
+      <item>Modifica di una richiesta inviata (si annulla e si rifa', come oggi).</item>
+      <item>Trascinamento nel calendario, vista settimanale/annuale, export iCal.</item>
+      <item>Ricalcolo delle richieste gia' inviate quando cambiano chiusure o ore giornaliere.</item>
+      <item>Effetto delle chiusure sulla ricorrenza dei task (`TaskRecurrenceCalculator` resta sul solo
+        `WorkCalendar`).</item>
+      <item>Notifiche individuali delle ferie collettive; testi delle notifiche in giorni (restano in ore).</item>
+      <item>Export paghe, costo del lavoro, importer dal legacy.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope { success, message, data }. Minuti interi, date Y-m-d. Campi nuovi marcati [new]. -->
+
+    <model name="AbsenceType">
+      { id, name, deducts_balance, requires_approval, is_active, sort_order,
+        allows_full_day: bool [new], allows_half_day: bool [new], allows_hourly: bool [new],
+        min_notice_days: int|null [new] (0..365), color: "slate"|"gray"|"amber"|"blue"|"emerald"|"green"|"red"|"violet" [new],
+        default_annual_days: number|null [new] (0..366, 2 decimali, solo se deducts_balance; altrimenti 422),
+        created_at, updated_at }
+      for-select: [{ id, name, deducts_balance, requires_approval, allows_full_day, allows_half_day, allows_hourly,
+        min_notice_days, color }]
+    </model>
+
+    <model name="AbsenceRequest">
+      Shape 0278 piu':
+      { day_part: "morning"|"afternoon"|null [new],
+        is_short_notice: bool [new] (false finche' draft),
+        company_closure: { id, name }|null [new],
+        daily_minutes: int [new] (ore giornaliere attuali della persona, per il formato giorni + ore),
+        absence_type: { id, name, deducts_balance, requires_approval, color [new] } }
+    </model>
+
+    <model name="AbsenceRequestInsight">
+      { person: { id, name }, daily_minutes: int,
+        working_days: int,          // giorni lavorativi coperti (mezza giornata e a ore: 1)
+        minutes: int,
+        non_working_days: [{ date, reason: "weekend"|"holiday"|"closure", name: string|null }],  // dentro il periodo
+        balance: { year: int, residual_minutes: int, residual_after_minutes: int }|null,  // null se il tipo non scala
+        notice: { min_notice_days: int|null, is_short_notice: bool },
+        overlaps: [{ request_id, status, starts_on, ends_on, absence_type_name }],   // proprie submitted/approved
+        colleagues_absent: [{ user: { id, name }, request_id, status: "approved"|"submitted", starts_on, ends_on,
+          absence_type_name, color, is_full_day, day_part }] }   // D-16
+      Per una richiesta gia' inviata `minutes` e `is_short_notice` sono quelli fissati; `residual_after_minutes` =
+      residuo attuale se gia' approvata (gia' contata nel goduto), residuo - minutes per bozza, in attesa e anteprima
+      (le submitted stanno in `pending_minutes`, non nel residuo). [revised in build 2026-10-22]
+    </model>
+
+    <endpoint method="POST" path="/api/absence-requests/preview">
+      <request>Stessi campi di POST /api/absence-requests (0278) + `day_part` + `request_id` (int|null: bozza in
+        modifica, esclusa dalle sovrapposizioni). Niente scrittura.</request>
+      <response status="200">data: AbsenceRequestInsight</response>
+      <errors>403 senza `absence-requests.create` o `user_id` altrui senza manageAll; 422 come POST (campi mancanti,
+        nessun giorno lavorativo, minuti fuori range, modalita' non ammessa). Le sovrapposizioni NON sono 422 qui:
+        tornano in `overlaps`.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/absence-requests/{absenceRequest}/insight">
+      <response status="200">data: AbsenceRequestInsight della richiesta, colleghi secondo la visibilita' dell'attore</response>
+      <errors>404 se non visibile (0278).</errors>
+    </endpoint>
+
+    <endpoint method="POST|PATCH" path="/api/absence-requests[/{absenceRequest}] (esistenti)">
+      <request>+ `day_part`: "morning"|"afternoon"|null (ammesso solo con is_full_day=false; con day_part,
+        ends_on = starts_on e requested_minutes ignorato). Modalita' non ammessa dal tipo = 422 su `is_full_day`.</request>
+      <response status="200|201">data: AbsenceRequest</response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/absence-requests/bulk-decision">
+      <request>{ action: "approve"|"reject" required, ids: int[] required 1..100 distinct,
+        rejection_reason: string required se reject, max 1000 }</request>
+      <response status="200">data: { decided: int[], failed: [{ id: int, message: string }] } — failed per non
+        visibile ("not found"), non autorizzato, non submitted.</response>
+      <errors>403 senza `absence-requests.viewAny`; 422 validazione.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/absences/summary">
+      <response status="200">data: { to_approve_count: int, my_pending_count: int, daily_minutes: int,
+        my_upcoming: [{ request_id, absence_type: { id, name, color }, status: "approved"|"submitted", starts_on,
+          ends_on, is_full_day, day_part, minutes }] (max 5, ends_on >= oggi, per starts_on),
+        absent_today: [{ user: { id, name }, request_id, absence_type_name, color, is_full_day, day_part, ends_on }]
+          (solo approved, persone visibili nel calendario dell'attore, vuoto senza permessi del calendario; max 50) }</response>
+      <errors>403 senza `absence-requests.viewAny`.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/absence-balances (esistente)">
+      <response status="200">+ `daily_minutes` della persona; ogni riga + `absence_type.color` e
+        `source`: "allowance"|"default"|"none".</response>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/absence-allowances (esistente)">
+      <request>`annual_minutes` diventa nullable (null = default del tipo).</request>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/absence-balances/overview">
+      <request>{ year: int (default corrente), business_function_id: int|null, operational_site_id: int|null,
+        search: string|null max 100, page: int, per_page: int 1..100 (default 25) }</request>
+      <response status="200">data: { year, types: [{ id, name, color }],
+        people: [{ user: { id, name }, daily_minutes, balances: [ riga saldo 0278 + source ] }] },
+        meta: { current_page, last_page, total }. Persone attive con profilo d'impiego, per nome.</response>
+      <errors>403 senza `absence-requests.manageAll`; 422 filtri.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/absence-balances/overview/export">
+      <request>Stessi filtri (senza paging) + format: "csv"|"xlsx".</request>
+      <response status="200">File: una riga per persona x tipo (persona, tipo, spettanza, riporto, maturato, goduto,
+        in attesa, residuo; ore decimali e giorni).</response>
+      <errors>403 senza manageAll.</errors>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/absence-allowances/bulk">
+      <request>{ absence_type_id: int required (tipo che scala), year: int required 2000..2100,
+        user_ids: int[] required 1..500 distinct (utenti esistenti),
+        annual_days: number|null required (0..366; null = torna al default del tipo) }</request>
+      <response status="200">data: { updated: int } — spettanza = annual_days x ore giornaliere di ogni persona;
+        il riporto esistente non cambia.</response>
+      <errors>403 senza manageAll; 422 validazione o tipo che non scala.</errors>
+    </endpoint>
+
+    <model name="CompanyClosure">
+      { id, name: string max 100, starts_on, ends_on, kind: "holiday"|"collective_leave",
+        absence_type: { id, name }|null, applies_to_all_sites: bool,
+        operational_sites: [{ id, name }], repeats_yearly: bool, is_started: bool,
+        generated_requests_count: int, created_at, updated_at }
+    </model>
+
+    <endpoint method="GET|POST|PUT|DELETE" path="/api/company-closures[/{companyClosure}] + griglia /api/tables/company-closures">
+      <request>POST/PUT: { name required, starts_on required, ends_on required >= starts_on (max 31 giorni),
+        kind required, absence_type_id required se collective_leave (tipo attivo) altrimenti prohibited,
+        applies_to_all_sites: bool required, operational_site_ids: int[] required se non tutte le sedi (min 1),
+        repeats_yearly: bool (solo holiday e starts_on = ends_on) }</request>
+      <response status="200|201">data: CompanyClosure + per collective_leave `generation: { created: int,
+        skipped: [{ user: { id, name }, reason: "overlap"|"no_working_day" }] }`. DELETE 204.</response>
+      <errors>403 senza `company-closures.view|create|update|delete`; 409 PUT/DELETE di una chiusura iniziata
+        (ricorrenti: sempre modificabili, valgono dal salvataggio in poi); 422 validazione.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/absences/calendar (esistente)">
+      <response status="200">Ogni assenza + `color`, `day_part`; ogni persona + `closed_days: [{ date, name }]`
+        (chiusure holiday che le valgono nel periodo; i festivi nazionali restano in `days`).</response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tables/{absence-requests|...-to-approve|...-all}/rows (esistenti)">
+      <response status="200">Righe + `day_part`, `is_short_notice`, `daily_minutes`. Azioni di riga sulla
+        scheda "Da approvare": `approve`, `reject` (tipo action) oltre a `view`, secondo `canDecide`.</response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/time-entries (DaySummary, esistente)">
+      <response status="200">Un giorno di chiusura holiday della persona: target_minutes 0, status no_target,
+        `closure: { name }|null` [new]. Stessa regola nel team pulse e nell'export.</response>
+    </endpoint>
+
+    <permissions>
+      Nuovi: `company-closures.view|create|update|delete` (Policy `abilities()`, `permissions:sync`), dati al ruolo
+      `risorse-umane` nel seed. Tutto il resto riusa `absence-requests.viewAny|create|manageAll` e i permessi del
+      calendario di 0279.
+    </permissions>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Tipi: i nuovi campi si salvano e si leggono; nessuna modalita' ammessa = 422;
+      default_annual_days su tipo che non scala = 422; for-select espone modalita', preavviso e colore; i tipi
+      esistenti dopo la migrazione hanno tutte le modalita' ammesse e colore slate (Pest).</criterion>
+    <criterion id="AC-002">Mezza giornata: mattina su un giorno lavorativo con 480 min giornalieri salva
+      requested_minutes 240 e all'invio minutes 240; su weekend 422; con ends_on diverso 422; tipo senza
+      allows_half_day 422; giornata intera su tipo senza allows_full_day 422; a ore su tipo senza allows_hourly
+      422 (Pest).</criterion>
+    <criterion id="AC-003">Preavviso: tipo con min_notice_days 7, invio il 2026-10-22 per il 2026-10-25 ->
+      is_short_notice true; per il 2026-11-02 false; tipo senza preavviso sempre false; inserita da manageAll per
+      un altro sempre false; il valore non cambia se poi cambia il tipo (Pest).</criterion>
+    <criterion id="AC-004">Anteprima: lun-ven con un festivo -> working_days 4, minutes 4 x giornaliere,
+      non_working_days con reason e nome; balance.residual_after = residuo - minutes; overlaps elenca una propria
+      approved sovrapposta senza 422; request_id esclude la bozza stessa; nessuna riga scritta (Pest).</criterion>
+    <criterion id="AC-005">Colleghi assenti: un collega della stessa funzione assente nel periodo compare per un
+      attore con calendarAll o per il responsabile che lo ha tra i discendenti; non compare per un attore con solo
+      calendarOwn; la persona stessa non compare mai; rifiutate, annullate e bozze escluse (Pest).</criterion>
+    <criterion id="AC-006">Insight di una richiesta: 404 a un estraneo; per l'approvatore restituisce minutes e
+      is_short_notice fissati e i colleghi secondo la sua visibilita' (Pest).</criterion>
+    <criterion id="AC-007">Decisione multipla: 3 richieste di cui una non visibile e una gia' approvata -> decided
+      [1 id], failed 2 con motivo; reject senza motivo 422; oltre 100 id 422; ogni decisa notifica come la
+      decisione singola e lascia l'activity log (Pest).</criterion>
+    <criterion id="AC-008">Griglia "Da approvare": le righe hanno le azioni approve e reject solo per chi puo'
+      decidere; righe con day_part, is_short_notice, daily_minutes (Pest).</criterion>
+    <criterion id="AC-009">Riepilogo: to_approve_count coincide con le righe della griglia "Da approvare";
+      my_upcoming max 5 ordinate; absent_today solo approved di oggi e solo persone visibili nel calendario,
+      vuoto con solo calendarOwn salvo se stessi; 403 senza viewAny (Pest).</criterion>
+    <criterion id="AC-010">Saldi con default: tipo con default 26 giorni, persona 480 min/giorno senza spettanza
+      -> annual 12480, source default; part-time 240 -> 6240; con spettanza impostata source allowance; PUT
+      allowance con annual_minutes null torna al default (Pest).</criterion>
+    <criterion id="AC-011">Spettanze in massa: 3 persone con ore giornaliere diverse e annual_days 20 -> annual
+      = 20 x giornaliere di ognuna, riporto invariato; null riporta al default; 403 senza manageAll; tipo che non
+      scala 422 (Pest).</criterion>
+    <criterion id="AC-012">Riporto: chi ha solo il default nel 2026 riceve nel 2027 una riga con annual_minutes
+      null e riporto = residuo 2026; rieseguito non duplica (Pest, aggiorna AC-014 di 0278 come REQUIREMENT
+      CHANGED se cambia la fixture).</criterion>
+    <criterion id="AC-013">Panoramica saldi: solo manageAll (403 altrimenti); filtri funzione, sede, ricerca;
+      paginazione; export csv e xlsx con una riga per persona x tipo; numero di query costante al crescere delle
+      persone (Pest).</criterion>
+    <criterion id="AC-014">Chiusure CRUD: permessi company-closures (403), validazione (absence_type solo per
+      collective_leave, sedi se non tutte, ricorrente solo holiday di un giorno, max 31 giorni); PUT/DELETE di una
+      chiusura iniziata 409 salvo ricorrente (Pest).</criterion>
+    <criterion id="AC-015">Chiusura holiday della sede A: una richiesta di ferie lun-ven di una persona della sede
+      A che include la chiusura conta 4 giorni, una persona della sede B 5; ricorrente il 2026-12-07 vale anche il
+      2027-12-07; il calendario mostra il giorno in closed_days solo alla persona della sede A (Pest).</criterion>
+    <criterion id="AC-016">Ferie collettive: creazione genera richieste approved per le persone attive con profilo
+      a cui vale, con company_closure_id; chi ha gia' un'assenza sovrapposta e' in skipped; i saldi delle persone
+      scendono; modifica prima dell'inizio rigenera (nessun doppione), cancellazione le elimina; la persona non
+      puo' annullare la propria generata (403), manageAll si' (Pest).</criterion>
+    <criterion id="AC-017">Segnatempo: un giorno di chiusura holiday della persona ha target 0, status no_target e
+      closure.name; una persona di un'altra sede non cambia; team pulse ed export coerenti (Pest).</criterion>
+    <criterion id="AC-018">Formato giorni + ore: 600 min con 480 giornalieri -> "1 g 2 h"; 480 -> "1 g"; 90 ->
+      "1 h 30 min"; negativo con segno; IT/EN (Vitest, utility pura).</criterion>
+    <criterion id="AC-019">Form: con manageAll compare il campo Persona; la modalita' mostra solo quelle ammesse
+      dal tipo (segmented: Giornata intera / Mezza giornata / A ore) e torna valida al cambio tipo; l'anteprima si
+      aggiorna (debounce) con giorni, ore, saldo dopo, giorni non lavorativi, avviso fuori preavviso, blocco
+      sovrapposizioni propria, colleghi assenti; errori 422 dell'anteprima mostrati sul campo con la triade aria
+      (Vitest).</criterion>
+    <criterion id="AC-020">Pagina: riepilogo con tessere saldi (giorni + ore, barra goduto/maturato, colore del
+      tipo), prossime assenze e richieste in attesa; schede con contatore; apertura su "Da approvare" se
+      to_approve_count > 0; badge numerico sulla voce Assenze del menu (anche a menu compresso) (Vitest).</criterion>
+    <criterion id="AC-021">Approvazione rapida: dalla riga "Da approvare" approva con conferma e rifiuta con il
+      dialog del motivo; selezione multipla con azioni "Approva selezionate" / "Rifiuta selezionate" (motivo
+      unico), toast con decise e fallite; griglia e contatori aggiornati (Vitest).</criterion>
+    <criterion id="AC-022">Dettaglio per chi decide: sezione Contesto con saldo dopo, fuori preavviso, colleghi
+      assenti nel periodo; badge "Fuori preavviso" e "Ferie collettive" nell'intestazione (Vitest).</criterion>
+    <criterion id="AC-023">Calendario: celle colorate per tipo con stato distinto anche senza colore (icona),
+      mezza giornata mostrata come meta' cella con mattina/pomeriggio nel nome accessibile, giorni di chiusura per
+      persona, riga "assenti" con il conteggio per giorno, clic su un giorno lavorativo vuoto apre il form con la
+      data (e la persona per manageAll) (Vitest).</criterion>
+    <criterion id="AC-024">Ufficio del personale: pagina panoramica saldi con filtri, export, selezione persone e
+      dialog "Imposta spettanza" in giorni; catalogo Chiusure aziendali in Configurazione con griglia, form (sedi,
+      tipo, ricorrenza) e riepilogo della generazione (Vitest).</criterion>
+    <criterion id="AC-025">Dashboard: blocco Assenze visibile con viewAny (da approvare con link, assenti oggi,
+      mie prossime) (Vitest).</criterion>
+    <criterion id="AC-026">Nessuno scroll orizzontale della pagina a 375 px (griglie e calendario scorrono nel
+      proprio contenitore); guide IT/EN aggiornate con gli stessi id, HELP_GUIDE_KEYS +1, parity test; ESLint,
+      Pint, `tsc -b --force` puliti; suite Absence*, AbsenceCalendar, TimeEntries, CompanyClosures verdi.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza (niente date picker: input data nativi + anteprima).</item>
+    <item>Visibilita' unica: `AbsenceRequestVisibility` per le richieste, `AbsenceCalendarScope` per persone e
+      colleghi; nessun endpoint nuovo allarga cio' che un attore vede.</item>
+    <item>Calcolo dei giorni lavorativi in un solo punto per persona (WorkCalendar + chiusure holiday della persona),
+      riusato da durata, anteprima, calendario e segnatempo; `WorkCalendar` resta puro e invariato.</item>
+    <item>Durata e preavviso fissati all'invio; la mezza giornata passa da `requested_minutes` per non toccare i
+      consumatori esistenti.</item>
+    <item>Generazione delle ferie collettive in transazione, idempotente sulla chiusura; numero di query costante
+      per persona dove possibile (insert in blocco).</item>
+    <item>Migrazioni reversibili, nessuna modifica a migrazioni committate; aggiornare i contatori
+      `migrate:rollback --step` dei test a step fisso.</item>
+    <item>Niente throttle; file sotto 300/500 righe (le pagine Assenze vanno divise per sezione).</item>
+    <item>Dopo il deploy: `php artisan migrate`, `permissions:sync`, `db:seed --class=QualificaRoleSeeder` (permessi
+      chiusure a risorse-umane) e il seed dei tipi aggiornato.</item>
+  </constraints>
+
+</spec>

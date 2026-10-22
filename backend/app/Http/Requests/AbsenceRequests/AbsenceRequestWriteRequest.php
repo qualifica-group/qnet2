@@ -3,10 +3,12 @@
 namespace App\Http\Requests\AbsenceRequests;
 
 use App\DataObjects\Absences\AbsenceRequestData;
+use App\Enums\AbsenceDayPart;
 use App\Models\AbsenceRequest;
 use App\Models\AbsenceType;
 use App\Models\User;
 use App\Services\Absences\Requests\AbsenceRequestVisibility;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -46,7 +48,8 @@ class AbsenceRequestWriteRequest extends FormRequest
             'is_full_day' => ['required', 'boolean'],
             'starts_on' => ['required', 'date_format:Y-m-d'],
             'ends_on' => ['required', 'date_format:Y-m-d', 'after_or_equal:starts_on'],
-            'requested_minutes' => [Rule::requiredIf(! $this->boolean('is_full_day')), 'nullable', 'integer', 'min:1'],
+            'day_part' => ['nullable', Rule::in(AbsenceDayPart::values()), Rule::prohibitedIf($this->boolean('is_full_day'))],
+            'requested_minutes' => [Rule::requiredIf(! $this->boolean('is_full_day') && ! $this->filled('day_part')), 'nullable', 'integer', 'min:1'],
             'note' => ['nullable', 'string', 'max:'.self::NOTE_MAX_LENGTH],
         ];
 
@@ -60,6 +63,31 @@ class AbsenceRequestWriteRequest extends FormRequest
         }
 
         return $rules;
+    }
+
+    /** A mode the type does not allow is a 422 on `is_full_day` (spec 0304 D-9). */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            $type = AbsenceType::query()->find($this->input('absence_type_id'));
+
+            if ($type !== null && ! $this->modeAllowedBy($type)) {
+                $validator->errors()->add('is_full_day', __('absence_requests.mode_not_allowed'));
+            }
+        });
+    }
+
+    private function modeAllowedBy(AbsenceType $type): bool
+    {
+        return match (true) {
+            $this->boolean('is_full_day') => $type->allows_full_day,
+            $this->filled('day_part') => $type->allows_half_day,
+            default => $type->allows_hourly,
+        };
     }
 
     public function toData(): AbsenceRequestData

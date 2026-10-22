@@ -26,7 +26,7 @@ interface AbsenceRequestFormProps {
 function AbsenceRequestForm({ request, refreshGrid, onSaved, onClose }: AbsenceRequestFormProps) {
   const { t } = useTranslation()
   const types = useAbsenceTypeOptions()
-  const { form, file, setFile, isSubmitting, saveDraft, send } = useAbsenceRequestForm({
+  const { form, preview, file, setFile, isSubmitting, saveDraft, send } = useAbsenceRequestForm({
     request,
     refreshGrid,
     onSaved,
@@ -60,6 +60,8 @@ function AbsenceRequestForm({ request, refreshGrid, onSaved, onClose }: AbsenceR
           types={types.data ?? []}
           typesError={types.isError}
           typesEmpty={types.isSuccess && types.data.length === 0}
+          preview={preview}
+          isEdit={request !== undefined}
           attachment={
             <div className="grid gap-1.5">
               <Label htmlFor={ATTACHMENT_INPUT_ID}>{t('absences.requests.form.attachment')}</Label>

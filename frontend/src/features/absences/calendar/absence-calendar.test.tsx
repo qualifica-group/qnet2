@@ -25,12 +25,13 @@ function buildCalendar(overrides: Partial<AbsenceCalendarData> = {}): AbsenceCal
       {
         id: 1,
         name: 'Anna Rossi',
+        closed_days: [],
         absences: [
-          { request_id: 10, date: '2026-12-07', status: 'approved', absence_type_name: 'Ferie', is_full_day: true, minutes: null, can_open: true },
-          { request_id: 11, date: '2026-12-09', status: 'submitted', absence_type_name: 'Permesso', is_full_day: false, minutes: 120, can_open: false },
+          { request_id: 10, date: '2026-12-07', status: 'approved', absence_type_name: 'Ferie', is_full_day: true, day_part: null, color: 'slate', minutes: null, can_open: true },
+          { request_id: 11, date: '2026-12-09', status: 'submitted', absence_type_name: 'Permesso', is_full_day: false, day_part: null, color: 'slate', minutes: 120, can_open: false },
         ],
       },
-      { id: 2, name: 'Bruno Bianchi', absences: [] },
+      { id: 2, name: 'Bruno Bianchi', closed_days: [], absences: [] },
     ],
     ...overrides,
   }

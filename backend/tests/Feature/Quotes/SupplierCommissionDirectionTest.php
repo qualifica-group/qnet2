@@ -272,7 +272,7 @@ it('AC-002: the migrations are reversible', function () {
     // five settlement document migrations, spec 0267's three multi-quote migrations and spec 0271's four HR org
     // structure migrations, spec 0272's 7 employee record migrations, the hourly cost migration and spec 0277's
     // two hourly cost removal migrations and spec 0278's four absence migrations and spec 0280's business function active flag and spec 0284's two staff training migrations (REQUIREMENT CHANGED) and spec 0286's three skill migrations (REQUIREMENT CHANGED) and spec 0289's tasks old_id migration (REQUIREMENT CHANGED) and spec 0290's two contract type migrations (REQUIREMENT CHANGED) and spec 0291's working time migration (REQUIREMENT CHANGED) and spec 0293's CCNL removal migration (REQUIREMENT CHANGED)).
-    expect(Artisan::call('migrate:rollback', ['--step' => 97]))->toBe(0);
+    expect(Artisan::call('migrate:rollback', ['--step' => 101]))->toBe(0);
     expect(Schema::hasColumn('quote_lines', 'supplier_commission_direction'))->toBeFalse()
         ->and(Schema::hasColumn('product_typologies', 'supplier_commission_enabled'))->toBeFalse();
 });

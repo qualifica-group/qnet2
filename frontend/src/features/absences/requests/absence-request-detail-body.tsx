@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
 import { CalendarDays, Paperclip, UserCheck } from 'lucide-react'
 import { RecordField, RecordFieldList, RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
@@ -6,6 +7,14 @@ import { AbsenceRequestAttachment } from '@/features/absences/requests/absence-r
 import type { AbsenceRequestActions } from '@/features/absences/requests/use-absence-request-actions'
 import type { AbsenceRequest } from '@/features/absences/types'
 import { formatDateTime } from '@/lib/formatting/date-display'
+
+function modeLabel(request: AbsenceRequest, t: TFunction): string {
+  if (request.is_full_day) return t('absences.requests.detail.fullDay')
+  if (request.day_part) {
+    return `${t('absences.requests.detail.halfDay')} - ${t(`absences.requests.form.dayParts.${request.day_part}`)}`
+  }
+  return t('absences.requests.detail.hourly')
+}
 
 interface AbsenceRequestDetailBodyProps {
   request: AbsenceRequest
@@ -25,7 +34,7 @@ export function AbsenceRequestDetailBody({ request, actions }: AbsenceRequestDet
       <RecordSection title={t(`${prefix}.sections.request`)} icon={<CalendarDays />}>
         <RecordFieldList>
           <RecordField label={t(`${prefix}.period`)}>
-            {formatAbsencePeriod(request)} ({t(request.is_full_day ? `${prefix}.fullDay` : `${prefix}.hourly`)})
+            {formatAbsencePeriod(request)} ({modeLabel(request, t)})
           </RecordField>
           <RecordField label={t(`${prefix}.duration`)}>{formatAbsenceDuration(request, t)}</RecordField>
           {request.submitted_at ? (

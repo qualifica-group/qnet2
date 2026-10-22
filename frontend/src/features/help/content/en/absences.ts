@@ -3,7 +3,7 @@ import type { HelpGuide } from '../../types'
 const guide: HelpGuide = {
   key: 'absences',
   title: 'Absences',
-  summary: 'Request leave, time off and other absences; your manager approves them and you see your balances in hours.',
+  summary: 'Request leave, time off and other absences seeing duration and balance straight away; your manager approves them, also in bulk, with the team in view.',
   sections: [
     {
       id: 'overview',
@@ -24,6 +24,24 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'summary',
+      title: 'The summary',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'At the top of the **Requests** view you find **My summary**: your **upcoming absences** (a click opens the detail) and how many **pending requests** are waiting for a decision.',
+        },
+        {
+          type: 'paragraph',
+          text: 'If there are requests you have to decide, the notice "You have N requests to approve" appears with a button to go there, and the **Absences** menu item shows the same number (also with the menu collapsed).',
+        },
+        {
+          type: 'note',
+          text: 'Durations and balances read in **days and hours** (for example "1 d 2 h"), based on your daily hours.',
+        },
+      ],
+    },
+    {
       id: 'tabs',
       title: 'The tabs',
       blocks: [
@@ -32,9 +50,13 @@ const guide: HelpGuide = {
           headers: ['Tab', 'What it shows'],
           rows: [
             ['Mine', 'Your own requests.'],
-            ['To approve', 'Submitted requests that you are the one to decide. HR sees every submitted request except its own.'],
+            ['To approve', 'Submitted requests that you are the one to decide, with their number next to the name. HR sees every submitted request except its own.'],
             ['All', 'The requests of your team and your own. HR sees everyone’s.'],
           ],
+        },
+        {
+          type: 'tip',
+          text: 'If you have requests to approve, the page opens straight on the **To approve** tab.',
         },
       ],
     },
@@ -46,18 +68,26 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Press "New request".',
-            'In the **Absence** section choose the **Type** and whether it is **full day** or **by hours** (hours apply to a single day), then **From** and **To** (for hours, a single day).',
+            'In the **Absence** section choose the **Type**, then the mode: **Full day** (with **From** and **To**), **Half day** (one day, **Morning** or **Afternoon**) or **Hourly** (one day, with the duration). You only see the modes the type allows.',
+            'Check the **preview** below the dates (see below).',
             'In the **Notes and attachment** section add, if needed, a **Note** and a file (pdf, jpg or png), for example a certificate.',
             'Press **Save draft** to continue later, or **Send** to send it to your manager. The buttons are at the top right and repeated at the bottom of the form.',
           ],
         },
         {
-          type: 'paragraph',
-          text: 'The form shows the remaining balance of the chosen type and, for hourly requests, how many hours you would have left after it. The balance never blocks submitting: your manager decides.',
+          type: 'table',
+          headers: ['In the preview', 'What it tells you'],
+          rows: [
+            ['Working days and duration', 'What the request is worth, in days and hours. Weekends, holidays and company closures are excluded and listed with the reason.'],
+            ['Current balance and after', 'What you have left of the chosen type today and after this request. The balance never blocks submitting: your manager decides.'],
+            ['Short notice', 'The type asks for a minimum notice and the request comes later than that. You can still send it: your manager sees it flagged.'],
+            ['Overlaps', 'You already have an active absence on those dates: change the period, otherwise sending fails.'],
+            ['Colleagues away', 'Colleagues of your function or with your same manager already away on those dates, among those you can see in the calendar.'],
+          ],
         },
         {
           type: 'note',
-          text: 'For full days the duration is calculated when you submit: only working days are counted (weekends and holidays excluded) and multiplied by your daily hours. You cannot overlap two requests that are still active.',
+          text: 'A half day is worth half of your daily hours. HR can enter a request **on behalf** of another person by choosing them in the **Person** field.',
         },
       ],
     },
@@ -67,20 +97,35 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Click a request to open its detail. At the top you find the absence type, the person, the status and, on the right, only the buttons of the actions you can take (Edit, Send, Approve, Reject, Cancel, Delete).',
+          text: 'Click a request to open its detail. At the top you find the absence type (with its colour), the person, the status, the **Short notice** and **Collective leave** marks when they apply and, on the right, only the buttons of the actions you can take (Edit, Send, Approve, Reject, Cancel, Delete).',
         },
         {
           type: 'table',
           headers: ['Section', 'What it holds'],
           rows: [
-            ['Request', 'Period, duration, sending date and note.'],
+            ['Request', 'Period (full day, half day with morning or afternoon, hourly), duration in days and hours, sending date and note.'],
             ['Approval', 'Approvers, who decided and when, rejection reason.'],
+            ['Context', 'Only for whoever can approve or reject: the person’s balance before and after the request, notice and colleagues already away in the same period.'],
             ['Attachment', 'The attached file, to download, upload or remove.'],
+          ],
+        },
+      ],
+    },
+    {
+      id: 'quick-approval',
+      title: 'Approving quickly',
+      blocks: [
+        {
+          type: 'list',
+          items: [
+            'In the **To approve** tab every row has the **Approve** (with confirmation) and **Reject** (asks for the reason) buttons: no need to open the detail.',
+            'To decide several requests at once select them with the checkboxes and use **Approve selected** or **Reject selected** (one reason for all).',
+            'At the end a message tells how many requests were decided and which were not, with the reason (for example already decided by someone else).',
           ],
         },
         {
           type: 'note',
-          text: 'Whoever can approve or reject also sees the person’s balances below.',
+          text: 'Every decision, single or multiple, sends the same notifications and stays in the history.',
         },
       ],
     },

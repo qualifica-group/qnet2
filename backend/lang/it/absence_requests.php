@@ -10,6 +10,9 @@ return [
     'not_submitted' => 'Solo una richiesta inviata puo\' essere decisa.',
     'not_cancellable' => 'Solo una richiesta inviata o approvata puo\' essere annullata.',
     'already_started' => 'Una richiesta approvata gia\' iniziata puo\' essere annullata solo dall\'ufficio del personale.',
+    'bulk_not_found' => 'Richiesta non trovata.',
+    'mode_not_allowed' => 'La modalità scelta non è ammessa per questo tipo di assenza.',
+    'generated_by_closure' => 'Questa richiesta è stata generata da una chiusura aziendale: solo l\'ufficio del personale può annullarla.',
 
     'notification' => [
         'submitted' => [

@@ -21,10 +21,13 @@ vi.mock('@/features/absences/balances/absence-balances-card', () => ({
   AbsenceBalancesCard: () => <section aria-label="balances" />,
 }))
 vi.mock('@/features/absences/requests/absence-requests-grid', () => ({
-  AbsenceRequestsGrid: ({ onOpen }: { onOpen: (id: number) => void }) => (
-    <button type="button" onClick={() => onOpen(5)}>
-      open-5
-    </button>
+  AbsenceRequestsGrid: ({ onOpen, scope, toApproveCount }: { onOpen: (id: number) => void; scope: string; toApproveCount: number }) => (
+    <div>
+      <p>{`scope:${scope} count:${toApproveCount}`}</p>
+      <button type="button" onClick={() => onOpen(5)}>
+        open-5
+      </button>
+    </div>
   ),
 }))
 vi.mock('@/features/absences/calendar/absence-calendar', () => ({
@@ -34,7 +37,9 @@ vi.mock('@/features/absences/calendar/absence-calendar', () => ({
     </button>
   ),
 }))
+const summaryMock = vi.fn()
 vi.mock('@/features/absences/api', () => ({
+  getAbsenceSummary: () => summaryMock(),
   fetchAbsenceRequest: () => Promise.resolve(buildRequest()),
   fetchAbsenceTypeOptions: () => Promise.resolve([]),
   fetchAbsenceBalances: vi.fn(),
@@ -49,6 +54,7 @@ beforeAll(async () => {
 beforeEach(() => {
   permissions.clear()
   permissions.add('absence-requests.viewAny')
+  summaryMock.mockResolvedValue({ to_approve_count: 0, my_pending_count: 0, daily_minutes: 480, my_upcoming: [], absent_today: [] })
 })
 
 describe('AbsencesPage', () => {
@@ -103,5 +109,29 @@ describe('AbsencesPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'calendar-open-5' }))
     expect(await screen.findByText('Anna Rossi')).toBeInTheDocument()
+  })
+
+  it('spec 0304: opens on "To approve" with the counter when the summary has requests to decide', async () => {
+    summaryMock.mockResolvedValue({ to_approve_count: 3, my_pending_count: 0, daily_minutes: 480, my_upcoming: [], absent_today: [] })
+    render(<AbsencesPage />, { wrapper: absenceWrapper() })
+
+    expect(await screen.findByText('scope:to_approve count:3')).toBeInTheDocument()
+  })
+
+  it('spec 0304: the banner button moves the grid to "To approve"', async () => {
+    summaryMock.mockResolvedValue({ to_approve_count: 2, my_pending_count: 0, daily_minutes: 480, my_upcoming: [], absent_today: [] })
+    render(<AbsencesPage />, { wrapper: absenceWrapper() })
+
+    // The first resolution already lands on the tab; the banner button keeps it there
+    fireEvent.click(await screen.findByRole('button', { name: label('absences.summary.toApproveLink') }))
+    expect(screen.getByText('scope:to_approve count:2')).toBeInTheDocument()
+  })
+
+  it('spec 0304: stays on "Mine" with nothing to approve and shows no banner', async () => {
+    render(<AbsencesPage />, { wrapper: absenceWrapper() })
+
+    expect(await screen.findByText(label('absences.summary.upcomingEmpty'))).toBeInTheDocument()
+    expect(screen.getByText('scope:mine count:0')).toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })

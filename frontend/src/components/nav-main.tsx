@@ -12,6 +12,7 @@ import {
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuAction,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
@@ -35,7 +36,24 @@ const NAV_HEADING_CLASS = 'font-medium uppercase tracking-wide'
 // carried by background and colour, so weight is reserved for the hierarchy.
 const NAV_LEAF_CLASS = 'font-normal data-[active=true]:font-normal'
 
-export function NavMain({ items }: { items: NavigationItem[] }) {
+// Red pill like the bell's destructive Badge. The peer-* overrides are needed
+// because the primitive recolors its text on hover/active of the menu button.
+export const NAV_BADGE_CLASS =
+  'rounded-full bg-destructive text-white peer-hover/menu-button:text-white peer-data-[active=true]/menu-button:text-white'
+
+/** Count pill of a menu entry; the count is also folded into the tooltip, the only text shown once the sidebar collapses. */
+export interface NavBadge {
+  count: number
+  /** Compact text ("7", "99+"). */
+  label: string
+  /** Accessible label with the EXACT count. */
+  ariaLabel: string
+}
+
+/** Badges by navigation item key; an absent or null entry shows nothing. */
+export type NavBadges = Record<string, NavBadge | null | undefined>
+
+export function NavMain({ items, badges }: { items: NavigationItem[]; badges?: NavBadges }) {
   const topLevel = items.filter((item) => item.type !== 'section')
   const sections = items.filter((item) => item.type === 'section')
 
@@ -45,14 +63,14 @@ export function NavMain({ items }: { items: NavigationItem[] }) {
         <SidebarGroup>
           <SidebarMenu>
             {topLevel.map((item) => (
-              <NavNode key={item.key} item={item} />
+              <NavNode key={item.key} item={item} badge={badges?.[item.key]} />
             ))}
           </SidebarMenu>
         </SidebarGroup>
       )}
 
       {sections.map((section) => (
-        <NavSection key={section.key} section={section} />
+        <NavSection key={section.key} section={section} badges={badges} />
       ))}
     </>
   )
@@ -61,7 +79,7 @@ export function NavMain({ items }: { items: NavigationItem[] }) {
 // A section is a static labeled group: its children render as flat siblings.
 // A child that is itself a parent (has children) is rendered collapsible by
 // NavNode, so both behaviors coexist under the same section.
-function NavSection({ section }: { section: NavigationItem }) {
+function NavSection({ section, badges }: { section: NavigationItem; badges?: NavBadges }) {
   const { t } = useTranslation()
 
   return (
@@ -69,14 +87,14 @@ function NavSection({ section }: { section: NavigationItem }) {
       <SidebarGroupLabel className={NAV_HEADING_CLASS}>{t(section.label)}</SidebarGroupLabel>
       <SidebarMenu>
         {section.children.map((child) => (
-          <NavNode key={child.key} item={child} />
+          <NavNode key={child.key} item={child} badge={badges?.[child.key]} />
         ))}
       </SidebarMenu>
     </SidebarGroup>
   )
 }
 
-function NavNode({ item }: { item: NavigationItem }) {
+function NavNode({ item, badge }: { item: NavigationItem; badge?: NavBadge | null }) {
   const { t } = useTranslation()
   const location = useLocation()
   const icon = createElement(resolveIcon(item.icon))
@@ -122,12 +140,23 @@ function NavNode({ item }: { item: NavigationItem }) {
 
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild tooltip={label} size="sm" isActive={isActive(item, location.pathname)} className={cn(NAV_ITEM_CLASS, NAV_LEAF_CLASS)}>
+      <SidebarMenuButton
+        asChild
+        tooltip={badge ? `${label} (${badge.count})` : label}
+        size="sm"
+        isActive={isActive(item, location.pathname)}
+        className={cn(NAV_ITEM_CLASS, NAV_LEAF_CLASS)}
+      >
         <NavLink to={item.route}>
           {icon}
           <span>{label}</span>
         </NavLink>
       </SidebarMenuButton>
+      {badge ? (
+        <SidebarMenuBadge aria-label={badge.ariaLabel} className={NAV_BADGE_CLASS}>
+          {badge.label}
+        </SidebarMenuBadge>
+      ) : null}
     </SidebarMenuItem>
   )
 }

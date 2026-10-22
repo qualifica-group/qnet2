@@ -16,6 +16,8 @@ const TAB_CLASS = cn(
 export interface FilterTabOption<T extends string> {
   value: T
   label: string
+  /** Shown as a small pill after the label when positive. */
+  count?: number
 }
 
 interface FilterTabsProps<T extends string> {
@@ -54,6 +56,11 @@ export function FilterTabs<T extends string>({
             className={TAB_CLASS}
           >
             {option.label}
+            {option.count !== undefined && option.count > 0 ? (
+              <span className="ml-1.5 rounded-full bg-destructive px-1.5 text-[0.65rem] leading-4 font-semibold text-white">
+                {option.count}
+              </span>
+            ) : null}
           </button>
         )
       })}

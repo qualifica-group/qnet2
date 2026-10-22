@@ -13,12 +13,23 @@ use Illuminate\Database\Seeder;
 class QualificaAbsenceTypeSeeder extends Seeder
 {
     /**
-     * @var array<int, array{name: string, deducts_balance: bool, requires_approval: bool, sort_order: int}>
+     * Notice and default allowance are left out on purpose: the HR office sets them (spec 0304).
+     *
+     * @var array<int, array<string, bool|int|string>>
      */
     private const TYPES = [
-        ['name' => 'Ferie', 'deducts_balance' => true, 'requires_approval' => true, 'sort_order' => 1],
-        ['name' => 'Permesso', 'deducts_balance' => true, 'requires_approval' => true, 'sort_order' => 2],
-        ['name' => 'Malattia', 'deducts_balance' => false, 'requires_approval' => false, 'sort_order' => 3],
+        [
+            'name' => 'Ferie', 'deducts_balance' => true, 'requires_approval' => true, 'sort_order' => 1,
+            'allows_full_day' => true, 'allows_half_day' => true, 'allows_hourly' => false, 'color' => 'blue',
+        ],
+        [
+            'name' => 'Permesso', 'deducts_balance' => true, 'requires_approval' => true, 'sort_order' => 2,
+            'allows_full_day' => false, 'allows_half_day' => true, 'allows_hourly' => true, 'color' => 'violet',
+        ],
+        [
+            'name' => 'Malattia', 'deducts_balance' => false, 'requires_approval' => false, 'sort_order' => 3,
+            'allows_full_day' => true, 'allows_half_day' => true, 'allows_hourly' => false, 'color' => 'amber',
+        ],
     ];
 
     public function run(): void

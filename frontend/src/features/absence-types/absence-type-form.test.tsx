@@ -42,6 +42,12 @@ const CREATED: AbsenceType = {
   requires_approval: true,
   is_active: true,
   sort_order: 0,
+  allows_full_day: true,
+  allows_half_day: true,
+  allows_hourly: true,
+  min_notice_days: null,
+  color: 'slate',
+  default_annual_days: null,
   created_at: '2026-10-19T08:00:00Z',
   updated_at: '2026-10-19T08:00:00Z',
 }

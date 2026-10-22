@@ -5,12 +5,17 @@ import type {
   AbsenceBalanceRow,
   AbsenceBalances,
   AbsenceBalancesParams,
+  AbsenceBulkDecisionPayload,
+  AbsenceBulkDecisionResult,
   AbsenceCalendar,
   AbsenceCalendarParams,
   AbsenceRequest,
+  AbsenceRequestInsight,
+  AbsenceSummary,
   AbsenceTypeOption,
   AllowancePayload,
   CreateAbsenceRequestPayload,
+  PreviewAbsenceRequestPayload,
   RejectAbsenceRequestPayload,
   UpdateAbsenceRequestPayload,
 } from '@/features/absences/types'
@@ -101,5 +106,31 @@ export async function fetchAbsenceTypeOptions(): Promise<AbsenceTypeOption[]> {
 /** Who is absent day by day among the people the actor's calendar permission reveals (spec 0279). */
 export async function fetchAbsenceCalendar(params: AbsenceCalendarParams): Promise<AbsenceCalendar> {
   const { data } = await apiClient.get<ApiResponse<AbsenceCalendar>>('/absences/calendar', { params })
+  return data.data
+}
+
+/** Dry run of a request: days, minutes, balance after, notice, overlaps and absent colleagues. Writes nothing. */
+export async function previewAbsenceRequest(payload: PreviewAbsenceRequestPayload): Promise<AbsenceRequestInsight> {
+  const { data } = await apiClient.post<ApiResponse<AbsenceRequestInsight>>(`${REQUESTS}/preview`, payload)
+  return data.data
+}
+
+/** Decision context of an existing request, colleagues according to the actor's visibility. */
+export async function getAbsenceRequestInsight(id: number): Promise<AbsenceRequestInsight> {
+  const { data } = await apiClient.get<ApiResponse<AbsenceRequestInsight>>(`${REQUESTS}/${id}/insight`)
+  return data.data
+}
+
+/** Approves or rejects many requests; the ones that fail come back with the reason. */
+export async function bulkDecideAbsenceRequests(
+  payload: AbsenceBulkDecisionPayload,
+): Promise<AbsenceBulkDecisionResult> {
+  const { data } = await apiClient.post<ApiResponse<AbsenceBulkDecisionResult>>(`${REQUESTS}/bulk-decision`, payload)
+  return data.data
+}
+
+/** Counters, next absences and who is out today (page summary, menu badge, dashboard). */
+export async function getAbsenceSummary(): Promise<AbsenceSummary> {
+  const { data } = await apiClient.get<ApiResponse<AbsenceSummary>>('/absences/summary')
   return data.data
 }

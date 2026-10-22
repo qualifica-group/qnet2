@@ -15,18 +15,15 @@ import {
   SidebarMenuSkeleton,
   SidebarRail,
 } from '@/components/ui/sidebar'
-import { NavMain, NAV_ITEM_CLASS } from '@/components/nav-main'
+import { NavMain, NAV_BADGE_CLASS, NAV_ITEM_CLASS } from '@/components/nav-main'
 import { useNavigation } from '@/features/navigation/use-navigation'
 import { useAuth } from '@/features/auth/use-auth'
+import { useAbsenceMenuBadge } from '@/features/absences/use-absence-menu-badge'
 import { useUnreadBadge } from '@/features/notifications/use-unread-badge'
 import { env } from '@/config/env'
 
 const NOTIFICATIONS_ROUTE = '/notifications'
 const SETTINGS_ROUTE = '/settings'
-// Red pill like the bell's destructive Badge. The peer-* overrides are needed
-// because the primitive recolors its text on hover/active of the menu button.
-const UNREAD_BADGE_CLASS =
-  'rounded-full bg-destructive text-white peer-hover/menu-button:text-white peer-data-[active=true]/menu-button:text-white'
 
 export function AppSidebar() {
   const { t } = useTranslation()
@@ -34,6 +31,7 @@ export function AppSidebar() {
   const { logout } = useAuth()
   const navigation = useNavigation()
   const unreadBadge = useUnreadBadge()
+  const absencesBadge = useAbsenceMenuBadge()
 
   // The visible `SidebarMenuBadge` hides itself when the sidebar collapses to
   // icons (design-system default, `group-data-[collapsible=icon]:hidden`) to
@@ -81,7 +79,7 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {navigation.data && <NavMain items={navigation.data} />}
+        {navigation.data && <NavMain items={navigation.data} badges={{ absences: absencesBadge }} />}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">
@@ -105,7 +103,7 @@ export function AppSidebar() {
             {unreadBadge.label ? (
               <SidebarMenuBadge
                 aria-label={unreadBadge.ariaLabel}
-                className={UNREAD_BADGE_CLASS}
+                className={NAV_BADGE_CLASS}
               >
                 {unreadBadge.label}
               </SidebarMenuBadge>

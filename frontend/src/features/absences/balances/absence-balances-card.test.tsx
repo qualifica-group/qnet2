@@ -25,9 +25,11 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
 const BALANCES: AbsenceBalances = {
   user: { id: 7, name: 'Anna Rossi' },
   year: new Date().getFullYear(),
+  daily_minutes: 480,
   balances: [
     {
-      absence_type: { id: 1, name: 'Ferie' },
+      absence_type: { id: 1, name: 'Ferie', color: 'slate' },
+      source: 'allowance',
       annual_minutes: 9600,
       carried_over_minutes: 450,
       accrued_minutes: 5000,
@@ -36,7 +38,8 @@ const BALANCES: AbsenceBalances = {
       residual_minutes: 4280,
     },
     {
-      absence_type: { id: 2, name: 'Permessi' },
+      absence_type: { id: 2, name: 'Permessi', color: 'slate' },
+      source: 'allowance',
       annual_minutes: 0,
       carried_over_minutes: 0,
       accrued_minutes: 0,

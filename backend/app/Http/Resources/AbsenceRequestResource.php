@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\AbsenceRequest;
 use App\Models\Attachment;
 use App\Services\Absences\Requests\AbsenceRequestCapabilities;
+use App\Services\TimeEntries\DailyTargetResolver;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -29,9 +30,14 @@ class AbsenceRequestResource extends JsonResource
                 'name' => $this->absenceType->name,
                 'deducts_balance' => (bool) $this->absenceType->deducts_balance,
                 'requires_approval' => (bool) $this->absenceType->requires_approval,
+                'color' => $this->absenceType->color,
             ],
             'status' => $this->status->value,
             'is_full_day' => $this->is_full_day,
+            'day_part' => $this->day_part?->value,
+            'is_short_notice' => $this->is_short_notice,
+            'company_closure' => $this->companyClosure === null ? null : ['id' => $this->companyClosure->id, 'name' => $this->companyClosure->name],
+            'daily_minutes' => app(DailyTargetResolver::class)->resolve($this->user->employment),
             'starts_on' => $this->starts_on->format('Y-m-d'),
             'ends_on' => $this->ends_on->format('Y-m-d'),
             'minutes' => $this->minutes,

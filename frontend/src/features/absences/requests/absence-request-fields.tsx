@@ -5,7 +5,6 @@ import { CalendarDays, Paperclip } from 'lucide-react'
 import { RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
 import {
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -13,34 +12,54 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { AbsenceBalanceHint } from '@/features/absences/requests/absence-request-balance-hint'
+import { AbsenceInsightPanel } from '@/features/absences/requests/absence-insight-panel'
+import { AbsenceRequestModeField } from '@/features/absences/requests/absence-request-mode-field'
+import { AbsenceRequestPersonField } from '@/features/absences/requests/absence-request-person-field'
+import { allowedAbsenceModes } from '@/features/absences/requests/absence-request-payload'
 import type { AbsenceRequestFormValues } from '@/features/absences/requests/absence-request-schema'
+import type { AbsenceRequestPreview } from '@/features/absences/requests/use-absence-request-preview'
 import type { AbsenceTypeOption } from '@/features/absences/types'
+import { useAbilities } from '@/features/auth/use-abilities'
+
+const MANAGE_ALL = 'absence-requests.manageAll'
 
 interface AbsenceRequestFieldsProps {
   types: AbsenceTypeOption[]
   typesError: boolean
   /** Loaded with no active type: the select would open empty without telling why. */
   typesEmpty: boolean
+  /** Live preview of the request, shown under the dates (see `useAbsenceRequestPreview`). */
+  preview: AbsenceRequestPreview
+  /** Editing a draft: the person is fixed, so it is not asked. */
+  isEdit: boolean
   /** The file input, owned by the form (the file is not a form value): shown in the notes section. */
   attachment: ReactNode
 }
 
 /**
- * The request form in two sections (spec 0287 D-4): the absence (type, balance, full-day switch,
- * dates or hourly duration), then the note and the attachment.
+ * The request form in two sections (spec 0287 D-4): the absence (person, type, mode, dates or hourly duration,
+ * live preview), then the note and the attachment.
  */
-export function AbsenceRequestFields({ types, typesError, typesEmpty, attachment }: AbsenceRequestFieldsProps) {
+export function AbsenceRequestFields({ types, typesError, typesEmpty, preview, isEdit, attachment }: AbsenceRequestFieldsProps) {
   const { t } = useTranslation()
-  const { control } = useFormContext<AbsenceRequestFormValues>()
-  const [typeId, isFullDay] = useWatch({ control, name: ['absence_type_id', 'is_full_day'] })
+  const { can } = useAbilities()
+  const { control, getValues, setValue } = useFormContext<AbsenceRequestFormValues>()
+  const [typeId, mode] = useWatch({ control, name: ['absence_type_id', 'mode'] })
   const pickedType = types.find((type) => type.id === typeId)
+
+  // A type that does not admit the current mode moves the form to the first one it admits
+  function pickType(id: number) {
+    const allowed = allowedAbsenceModes(types.find((type) => type.id === id))
+    if (allowed.length > 0 && !allowed.includes(getValues('mode'))) {
+      setValue('mode', allowed[0])
+    }
+  }
 
   return (
     <RecordSectionsGrid>
       <RecordSection title={t('absences.requests.form.sections.absence')} icon={<CalendarDays />}>
+        {!isEdit && can(MANAGE_ALL) ? <AbsenceRequestPersonField /> : null}
         <FormField
           control={control}
           name="absence_type_id"
@@ -49,7 +68,10 @@ export function AbsenceRequestFields({ types, typesError, typesEmpty, attachment
               <FormLabel required>{t('absences.requests.form.type')}</FormLabel>
               <Select
                 value={field.value === null ? '' : String(field.value)}
-                onValueChange={(value) => field.onChange(Number(value))}
+                onValueChange={(value) => {
+                  field.onChange(Number(value))
+                  pickType(Number(value))
+                }}
               >
                 <FormControl>
                   <SelectTrigger className="w-full">
@@ -76,23 +98,7 @@ export function AbsenceRequestFields({ types, typesError, typesEmpty, attachment
             </FormItem>
           )}
         />
-        {pickedType ? <AbsenceBalanceHint type={pickedType} /> : null}
-
-        <FormField
-          control={control}
-          name="is_full_day"
-          render={({ field }) => (
-            <FormItem>
-              <div className="flex items-center justify-between gap-3">
-                <FormLabel>{t('absences.requests.form.fullDay')}</FormLabel>
-                <FormControl>
-                  <Switch checked={field.value} onCheckedChange={field.onChange} />
-                </FormControl>
-              </div>
-              <FormDescription className="text-xs">{t('absences.requests.form.fullDayHint')}</FormDescription>
-            </FormItem>
-          )}
-        />
+        <AbsenceRequestModeField pickedType={pickedType} />
 
         <div className="grid gap-3 sm:grid-cols-2">
           <FormField
@@ -101,7 +107,7 @@ export function AbsenceRequestFields({ types, typesError, typesEmpty, attachment
             render={({ field }) => (
               <FormItem>
                 <FormLabel required>
-                  {isFullDay ? t('absences.requests.form.startsOn') : t('absences.requests.form.date')}
+                  {mode === 'full_day' ? t('absences.requests.form.startsOn') : t('absences.requests.form.date')}
                 </FormLabel>
                 <FormControl>
                   <Input type="date" {...field} />
@@ -110,7 +116,7 @@ export function AbsenceRequestFields({ types, typesError, typesEmpty, attachment
               </FormItem>
             )}
           />
-          {isFullDay ? (
+          {mode === 'full_day' ? (
             <FormField
               control={control}
               name="ends_on"
@@ -124,7 +130,7 @@ export function AbsenceRequestFields({ types, typesError, typesEmpty, attachment
                 </FormItem>
               )}
             />
-          ) : (
+          ) : mode === 'hours' ? (
             <FormField
               control={control}
               name="requested_minutes"
@@ -138,8 +144,9 @@ export function AbsenceRequestFields({ types, typesError, typesEmpty, attachment
                 </FormItem>
               )}
             />
-          )}
+          ) : null}
         </div>
+        <AbsenceInsightPanel {...preview} variant="preview" />
       </RecordSection>
 
       <RecordSection title={t('absences.requests.form.sections.notes')} icon={<Paperclip />}>

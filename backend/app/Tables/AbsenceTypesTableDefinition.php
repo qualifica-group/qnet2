@@ -54,6 +54,19 @@ class AbsenceTypesTableDefinition extends AbstractTableDefinition
             $this->booleanColumn('deducts_balance'),
             $this->booleanColumn('requires_approval'),
             $this->booleanColumn('is_active'),
+            $this->booleanColumn('allows_full_day'),
+            $this->booleanColumn('allows_half_day'),
+            $this->booleanColumn('allows_hourly'),
+            $this->numberColumn('min_notice_days'),
+            [
+                'id' => 'color',
+                'label' => self::LABELS.'.color',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => false,
+                'filterable' => false,
+            ],
+            $this->numberColumn('default_annual_days'),
             [
                 'id' => 'sort_order',
                 'label' => self::LABELS.'.sort_order',
@@ -62,6 +75,21 @@ class AbsenceTypesTableDefinition extends AbstractTableDefinition
                 'sortable' => true,
                 'filterable' => false,
             ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function numberColumn(string $id): array
+    {
+        return [
+            'id' => $id,
+            'label' => self::LABELS.".{$id}",
+            'type' => 'number',
+            'visible' => true,
+            'sortable' => true,
+            'filterable' => false,
         ];
     }
 
@@ -125,6 +153,12 @@ class AbsenceTypesTableDefinition extends AbstractTableDefinition
             'requires_approval' => $row->requires_approval,
             'is_active' => $row->is_active,
             'sort_order' => $row->sort_order,
+            'allows_full_day' => $row->allows_full_day,
+            'allows_half_day' => $row->allows_half_day,
+            'allows_hourly' => $row->allows_hourly,
+            'min_notice_days' => $row->min_notice_days,
+            'color' => $row->color,
+            'default_annual_days' => $row->default_annual_days === null ? null : (float) $row->default_annual_days,
             'abilities' => [
                 'update' => Gate::forUser($actor)->allows('update', $row),
                 'delete' => Gate::forUser($actor)->allows('delete', $row),

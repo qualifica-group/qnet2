@@ -25,6 +25,7 @@ use App\Models\CommissionConfiguration;
 use App\Models\CommissionSettlement;
 use App\Models\CommissionSettlementRun;
 use App\Models\Company;
+use App\Models\CompanyClosure;
 use App\Models\CompanySite;
 use App\Models\Contact;
 use App\Models\Contract;
@@ -251,6 +252,8 @@ class AppServiceProvider extends ServiceProvider
             'absence_type' => AbsenceType::class,
             'absence_request' => AbsenceRequest::class,
             'absence_allowance' => AbsenceAllowance::class,
+            // spec 0304: company closures.
+            'company_closure' => CompanyClosure::class,
             // spec 0284: HR staff training.
             'staff_course' => StaffCourse::class,
             'staff_training' => StaffTraining::class,
