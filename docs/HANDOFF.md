@@ -24,7 +24,7 @@
   i18n, manuale.
 - Fuori scope: scadenze degli ODA non fatturati (489), stato "Validata da pagare", allegati (spec 0295).
 
-## Ruolo Back Office Commerciale nel production seed (spec 0299) — VERDE, NON COMMITTATO (2026-10-22)
+## Ruolo Back Office Commerciale nel production seed (spec 0299) — VERDE, COMMITTATO (2026-10-22)
 
 - Richiesta utente: Lidia Russo, Deborah Farina, Caterina Maduni, Alessia Luongo, Lia Palladino abilitate a
   Anagrafiche, Opportunita', Offerte, Commesse "tutto". D-2: Anagrafiche = solo `registries` + `referents`.
