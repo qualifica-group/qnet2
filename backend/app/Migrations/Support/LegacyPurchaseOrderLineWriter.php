@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Migrations\Support;
 
+use App\Migrations\Support\Concerns\BuildsLegacyDocumentLines;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderLine;
 use App\Models\PurchaseOrderReceipt;
@@ -12,7 +13,6 @@ use App\Models\VatRate;
 use App\Models\WorkOrder;
 use App\Services\PurchaseOrders\PurchaseOrderAmountCalculator;
 use App\Services\PurchaseOrders\PurchaseRequestLineLinker;
-use RuntimeException;
 
 /**
  * Writes the lines of a freshly imported legacy ODA (spec 0296) with qnet-2
@@ -23,7 +23,7 @@ use RuntimeException;
  */
 final class LegacyPurchaseOrderLineWriter
 {
-    private const int DESCRIPTION_MAX = 500;
+    use BuildsLegacyDocumentLines;
 
     public const string RECEIPT_NOTE = 'Ricezione generata dalla migrazione';
 
@@ -89,7 +89,7 @@ final class LegacyPurchaseOrderLineWriter
 
         $line = new PurchaseOrderLine([
             'position' => (int) ($legacyLine['position'] ?? 0),
-            'description' => $this->description($legacyLine['description'] ?? null, $lineId, $warnings),
+            'description' => $this->lineDescription($legacyLine['description'] ?? null, "Line {$lineId}", $warnings),
             'cost_type_id' => $this->costTypes->idFor($legacyLine['cost_type_name'] ?? null, "Line {$lineId}"),
             'quantity' => $amounts['quantity'],
             'unit_price' => $amounts['unit_price'],
@@ -127,26 +127,6 @@ final class LegacyPurchaseOrderLineWriter
     }
 
     /**
-     * @param  array<int, string>  $warnings
-     */
-    private function description(mixed $legacyDescription, int|string $lineId, array &$warnings): string
-    {
-        $description = trim((string) ($legacyDescription ?? ''));
-
-        if ($description === '') {
-            throw new RuntimeException("Line {$lineId}: description is required.");
-        }
-
-        if (mb_strlen($description) > self::DESCRIPTION_MAX) {
-            $warnings[] = "Line {$lineId}: description truncated to ".self::DESCRIPTION_MAX.' characters.';
-
-            return mb_substr($description, 0, self::DESCRIPTION_MAX);
-        }
-
-        return $description;
-    }
-
-    /**
      * @param  array<int, mixed>  $legacyLines
      * @return array<int, string> vat_rate_id => rate
      */
@@ -156,24 +136,5 @@ final class LegacyPurchaseOrderLineWriter
 
         return VatRate::query()->whereIn('old_id', $legacyIds)->pluck('rate', 'id')
             ->map(fn (mixed $rate): string => (string) $rate)->all();
-    }
-
-    /**
-     * @param  class-string<PurchaseRequestLine|VatRate|WorkOrder>  $targetClass
-     * @param  array<int, string>  $warnings
-     */
-    private function optionalOldId(string $targetClass, mixed $legacyId, string $label, array &$warnings): ?int
-    {
-        if ($legacyId === null || $legacyId === '') {
-            return null;
-        }
-
-        $id = $targetClass::query()->where('old_id', $legacyId)->value('id');
-
-        if ($id === null) {
-            $warnings[] = "{$label} (legacy id {$legacyId}) not migrated, left empty.";
-        }
-
-        return $id;
     }
 }

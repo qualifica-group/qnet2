@@ -7,6 +7,7 @@ use App\Models\CompanySite;
 use App\Models\FinancialAccount;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
+use App\Models\ProformaRequest;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderLine;
@@ -62,6 +63,7 @@ dataset('old_id_tables', [
     'purchase_order_lines' => ['purchase_order_lines'],
     'financial_accounts' => ['financial_accounts'],
     'purchase_invoices' => ['purchase_invoices'],
+    'proforma_requests' => ['proforma_requests'],
 ]);
 
 /**
@@ -96,6 +98,7 @@ function oldIdFactoryFor(string $table): Factory
         'purchase_order_lines' => PurchaseOrderLine::factory(),
         'financial_accounts' => FinancialAccount::factory(),
         'purchase_invoices' => PurchaseInvoice::factory(),
+        'proforma_requests' => ProformaRequest::factory(),
     };
 }
 

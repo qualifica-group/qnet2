@@ -11,6 +11,7 @@ use App\Migrations\Sources\CostProductsSource;
 use App\Migrations\Sources\DocumentBundlesSource;
 use App\Migrations\Sources\EmailTemplatesSource;
 use App\Migrations\Sources\FinancialAccountsSource;
+use App\Migrations\Sources\InvoicesSource;
 use App\Migrations\Sources\OperationalSitesSource;
 use App\Migrations\Sources\OpportunitiesSource;
 use App\Migrations\Sources\PaymentMethodsSource;
@@ -18,6 +19,7 @@ use App\Migrations\Sources\ProductCategoriesSource;
 use App\Migrations\Sources\ProductCategoryAttributesSource;
 use App\Migrations\Sources\ProductsSource;
 use App\Migrations\Sources\ProductSuppliersSource;
+use App\Migrations\Sources\ProformaRequestsSource;
 use App\Migrations\Sources\PurchaseInvoicesSource;
 use App\Migrations\Sources\PurchaseOrdersSource;
 use App\Migrations\Sources\PurchaseRequestsSource;
@@ -130,6 +132,10 @@ return [
         'financial-accounts' => FinancialAccountsSource::class,
         // spec 0298: the legacy supplier invoices, billing the migrated ODA.
         'purchase-invoices' => PurchaseInvoicesSource::class,
+        // spec 0300: the legacy proforma requests, before the active invoices.
+        'proforma-requests' => ProformaRequestsSource::class,
+        // spec 0301: the legacy customer and institution proformas.
+        'invoices' => InvoicesSource::class,
     ],
 
 ];

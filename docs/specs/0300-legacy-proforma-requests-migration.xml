@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0300-legacy-proforma-requests-migration" status="approved" owner="nicola" date="2026-10-22">
+
+  <goal>
+    Il modulo Migrazioni importa le richieste di emissione proforma del QNet legacy (`orderrequestproformas`) come
+    `proforma_requests` di qnet-2 tramite un nuovo endpoint legacy `GET /api/v2/migration/proforma-requests` e una
+    nuova sorgente qnet-2 `proforma-requests`, idempotente per `old_id`. Precede le fatture attive (spec 0301), che
+    si collegano alla loro richiesta.
+  </goal>
+
+  <context>
+    Verificato sul codice e sui dati reali il 2026-10-22 (decisione utente: richieste prima delle fatture, sorgente
+    propria).
+
+    Legacy: `orderrequestproformas` (10.432): `order_id` (91 su commesse inesistenti), `folder` 1 consulenza (8.775),
+    2 ente (1.654, 34 senza fornitore), null (3), `supplier_id` (solo enti), `status_request` 1 evasa (10.416) / 0
+    da evadere (16), `note`, `assigned_to`, `assigned_by` (nessun utente orfano), `created_at`/`updated_at`.
+
+    qnet-2 (spec 0193): `proforma_requests` `work_order_id` e `quote_id` NOT NULL, `kind` consultancy|institution,
+    `supplier_id`, `payment_method_id` (snapshot della modalita' dell'offerta, D-9 della 0193), `status`
+    pending|issued, `issued_at`, `note` NOT NULL, `assigned_to`/`assigned_by` NOT NULL; nessun `old_id`.
+
+    Decisioni proposte (backend.md section 9):
+    D-1 Legacy: kind da `folder` (1 consultancy, 2 institution; null -> institution se c'e' il fornitore, altrimenti
+        consultancy, con warning); offerta = `orders.quotation_id`; commessa orfana -> null con warning; nota vuota
+        -> "Richiesta emissione Proforma: Commessa #{order_id}"; stato 1 -> issued con `issued_at` = `updated_at`,
+        0 -> pending.
+    D-2 qnet-2: commessa, offerta, assegnatario o richiedente non migrati -> riga fallita; fornitore non migrato ->
+        null con warning; `payment_method_id` = modalita' dell'offerta (regola qnet-2); scrittura diretta del model,
+        senza log ne' notifiche; timestamp legacy.
+    D-3 `old_id` su `proforma_requests`. `MigrationOrder`: nuova fase dopo `work-orders` accanto a `tasks`
+        (dipende solo da commesse, offerte, utenti, anagrafiche). Dipendenze: required `users`, `quotes`,
+        `work-orders`; optional `registries`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Legacy: `ProformaRequestMigrationController`, route `GET /api/v2/migration/proforma-requests`.</item>
+      <item>qnet-2: migrazione `add_old_id_to_proforma_requests_table`, `ProformaRequestsSource`, config, ordine,
+        test, i18n, guida, manuale.</item>
+    </in>
+    <out>
+      <item>Note CRM sulle richieste (spec 0295). Aggiornamento delle richieste gia' migrate.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="(legacy) /api/v2/migration/proforma-requests">
+      <request>Query `search` (sulla nota), `offset`, `limit` 1-100. Ordine id.</request>
+      <response status="200">
+        { items: [ProformaRequest], export_link: null, pagination }
+        ProformaRequest = { id: int, work_order_id: ?int, quote_id: ?int, kind: "consultancy"|"institution",
+          supplier_id: ?int, status: "pending"|"issued", issued_at: ?datetime, note: string,
+          assigned_to_user_id: int, assigned_by_user_id: int, warnings: string[],
+          created_at: ?datetime, updated_at: ?datetime }
+      </response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Un record completo nasce con `old_id`, commessa, offerta, tipo, fornitore, pagamento
+      dell'offerta, stato, data di evasione, nota, persone e timestamp legacy, senza log.</criterion>
+    <criterion id="AC-002">Re-import -> saltato.</criterion>
+    <criterion id="AC-003">Commessa, offerta, assegnatario o richiedente mancanti o non migrati -> riga fallita.</criterion>
+    <criterion id="AC-004">Fornitore non migrato -> null con warning.</criterion>
+    <criterion id="AC-005">Registro: `proforma-requests` nella fase di `tasks`, con le dipendenze di D-3.</criterion>
+  </acceptance_criteria>
+</spec>

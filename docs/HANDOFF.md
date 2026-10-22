@@ -3,6 +3,28 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Migrazione richieste proforma e fatture attive dal legacy (spec 0300, 0301) — VERDE, COMMITTATO (2026-10-22)
+
+- Decisioni utente: incassi dalle scadenze legacy (stato 3 incassata, 2 parziale `cashed`); totale <= 0 -> riga
+  fallita (214 proforma + 26 ente); proforma ente nella stessa sorgente, intestate all'ente, numerate da qnet-2;
+  richieste proforma migrate prima, sorgente propria, documento collegato alla richiesta.
+- Legacy (committato su develop): `ProformaRequestMigrationController` (`/migration/proforma-requests`, 10.432: 91 su
+  commesse inesistenti) e `InvoiceMigrationController` (`/migration/invoices`, 10.560 = 9.319 `proformas` + 1.241
+  `proforma_ente`, prima tutte le proformas poi le ente) con `Support/Migration/LegacyCustomerProformas`,
+  `LegacyInstitutionProformas`, `LegacyInvoiceLookups` (banca -> conto per IBAN, societa' dell'offerta, massimo
+  dell'anno, scadenza -> rata con incasso), `LegacyProformaRequestMatcher` (abbinamento cronologico per commessa,
+  ente: commessa + fornitore; 8.905 abbinati, nessun doppione). 1.419 documenti con banca 6/8 senza conto legacy.
+- qnet-2: migrazioni `2026_10_31_100400_add_old_id_to_proforma_requests_table`, `2026_10_31_100500_add_old_id_to_invoices_table`
+  (`old_source` + `old_id`, unico sulla coppia: id sovrapposti tra le due tabelle). `ProformaRequestsSource` (fase 12
+  con tasks), `InvoicesSource` (fase 16), `Support/LegacyInvoiceWriter`, `Support/LegacyDocumentNumberer` (numerazione
+  condivisa, ora usata anche da `PurchaseOrdersSource`), `Support/Concerns/BuildsLegacyDocumentLines` (descrizione,
+  old_id facoltativo, scadenza che assorbe la differenza: usato dai writer di ODA, fatture passive e attive).
+- Test: `ProformaRequestsSourceImportTest` 9/9, `InvoicesSourceImportTest` 12/12; suite estesa 1261/1261 (flag
+  `EXTERNAL_MIGRATION_USERS_LINK_ONLY=false`). REQUIREMENT CHANGED: registry 36, ultima fase, rollback +2 (82/97/233).
+  `invoices` non e' nel dataset di OldIdSchemaTest (unico sulla coppia, come i prodotti). Vitest 180/180, ESLint, tsc ok.
+  Guida IT/EN (sezione `active-invoices`), i18n, manuale.
+- Fuori scope: incassi non legati a scadenze (sorgente Incassi), conti delle banche 6/8/10/11, provvigioni, allegati.
+
 ## Migrazione fatture passive dal legacy (spec 0298) — VERDE, COMMITTATO (2026-10-22)
 
 - Decisioni utente: D-1 una fattura per (fornitore, numero, anno, societa'): 315 FTP -> 262 documenti (13 multipli,

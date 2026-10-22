@@ -47,6 +47,8 @@ export const migrations = {
     'purchase-orders': 'Ordini di acquisto (ODA)',
     'financial-accounts': 'Conti finanziari',
     'purchase-invoices': 'Fatture passive',
+    'proforma-requests': 'Richieste proforma',
+    invoices: 'Fatture attive',
   },
   state: {
     notMigrated: 'Non migrata',

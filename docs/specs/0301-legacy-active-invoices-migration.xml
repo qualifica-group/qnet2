@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0301-legacy-active-invoices-migration" status="approved" owner="nicola" date="2026-10-22">
+
+  <goal>
+    Il modulo Migrazioni importa le proforma/fatture attive del QNet legacy (proforma clienti `proformas` e proforma
+    ente `proforma_ente`) come `invoices` di qnet-2, con righe, scadenze, incassi e collegamento alla richiesta
+    proforma (spec 0300), tramite un nuovo endpoint legacy `GET /api/v2/migration/invoices` e una nuova sorgente
+    qnet-2 `invoices`, idempotente per (`old_source`, `old_id`), senza notifiche ne' log di attivita'.
+  </goal>
+
+  <context>
+    Verificato sul codice e sui dati reali il 2026-10-22.
+
+    Legacy (`/Users/Repository/qnet`):
+    - `proformas` (9.319): `progressive` (unico globale, crescente: 2024 1941-2883, 2025 2884-6947, 2026 6948-12804),
+      `date_proforma`, `quotation_id`, `order_id`, `customer_id` (companies), `bank_id` (`company_banks`: 1, 6, 5, 8,
+      0), `payment_id`, `note`, `internal_note`, `pf_internal_number`/`date_pf_internal_number` (numero e data della
+      fattura esterna: 474 valorizzati, 241 a "0"), `scostamento`, `tag` (sempre null), `stato`. Societa' = societa'
+      della business unit dell'offerta (9.312 su 9.319). 214 a totale &lt;= 0.
+    - `proformaservices` (15.590): `service_id` (-> `services` = prodotti qnet-2 con `old_source` services),
+      `description` (14.080 null: nome del servizio), `quantity`, `price`, `rate` (-> `rates`, 2 null). La riga
+      d'offerta e' la `quotationservices` della stessa offerta e dello stesso servizio.
+    - `schedules` (10.137, `document_type` PFR, `document_number` = `progressive`): `expiration_date`, `amount`,
+      `payment_type`, `status` 1 aperta / 3 incassata (2.898, con `collection_date`) / 2 parziale (1), `cashed`,
+      `performed_id`.
+    - `proforma_ente` (1.241): nessun numero (`numero` "0"), nessuna data documento (`date_inserimento`), nessuna
+      riga (solo imponibile/iva/totale; IVA 22% su 1.211), `commessa_id`, `quotation_id`, `customer_id`,
+      `supplier_id` (l'ente intestatario), `bank_id` 1, `payment_id`. Scadenze `schedule_ente` (1.177, nessuna
+      incassata). 26 a totale &lt;= 0.
+    - Creatore: causer dell'activity_log "created" di `App\Models\Proforma` (11.030), altrimenti `performed_id`
+      della scadenza; per le proforma ente `performed_id` di `schedule_ente`.
+    - Conti: `company_banks` -> `amministrazione_contis` per IBAN (1->13, 4->14, 5->17, 7->20, 9->19); 6, 8, 10, 11
+      senza conto legacy.
+
+    qnet-2 (spec 0194): `invoices` `type` proforma|invoice, `company_id`, `number`+`year` unici per societa'
+    (`invoice_number_sequences`), `document_date`, `proforma_request_id` UNICO, `work_order_id`, `quote_id`,
+    `customer_registry_id`, `payment_method_id` NOT NULL, `financial_account_id`, importi, `external_number` 30,
+    `external_date`, `notes`, `internal_note`, `deviation`, `created_by`; nessun `old_id`. `invoice_lines`
+    (`vat_rate_id` NOT NULL, quantita' 2 decimali), `invoice_installments` (`collected_amount`, `collected_at`).
+    `InvoiceAmountCalculator::compute()`, `InvoiceInstallmentPlanner`; totale &lt;= 0 rifiutato; creare un
+    documento da una richiesta la rende `issued`.
+
+    Decisioni utente 2026-10-22:
+    D-1 Incassi dalle scadenze: stato 3 -> rata incassata per intero alla `collection_date`; stato 2 -> incassato
+        `cashed`. La futura sorgente Incassi coprira' solo le registrazioni non legate a una scadenza.
+    D-2 Totale &lt;= 0 -> riga fallita col motivo.
+    D-3 Proforma ente nella stessa sorgente, intestate all'ente; numero assegnato da qnet-2 (primo libero dopo il
+        massimo dell'anno, legacy e qnet-2).
+    D-4 Richieste proforma migrate prima (spec 0300); il documento si collega alla sua richiesta.
+
+    Decisioni proposte (backend.md section 9):
+    D-5 Legacy: prima tutte le `proformas` (per id), poi tutte le `proforma_ente` (per id), `source` sul record.
+        Numero = `progressive`, ente null; `year_max_number` = massimo `progressive` della societa' nell'anno.
+        Tipo invoice quando `pf_internal_number` e' valorizzato e diverso da "0". Conto = `amministrazione_contis`
+        con lo stesso IBAN della banca (senza conto -> null con warning). Righe: descrizione = `description` ?? nome
+        del servizio; riga d'offerta solo se unica per (offerta, servizio); aliquota null -> quella del servizio.
+        Ente: una riga "Quota ente - Commessa #N" con quantita' 1, prezzo = imponibile, aliquota = quella con la
+        percentuale di iva/imponibile (non trovata -> null con warning). Abbinamento richiesta-documento per
+        commessa (ente: commessa + fornitore), in ordine cronologico: ogni documento prende la richiesta libera
+        piu' recente creata prima di lui. Creatore come sopra, altrimenti `LegacyPlaceholderUser::ID`.
+    D-6 qnet-2: `old_source` (`proformas` | `proforma_ente`) + `old_id`, unico sulla coppia (D-7); societa',
+        cliente, pagamento, creatore non migrati -> riga fallita; aliquota assente o non migrata -> riga fallita;
+        commessa, offerta, conto, prodotto, riga d'offerta, richiesta non migrati -> null con warning; richiesta
+        gia' collegata a un altro documento -> null con warning; richiesta collegata ancora pending -> issued;
+        numero gia' usato (o assente) -> primo libero dopo max(year_max_number, massimo qnet-2, contatore), con
+        warning e "Numero legacy N" nelle note se c'era; il contatore sale al numero importato; scadenze legacy in
+        ordine di data, ultima che assorbe la differenza dal totale (warning), nessuna -> planner.
+    D-7 Nuova migrazione `add_old_id_to_invoices_table` (`old_source` 32 + `old_id`, unique coppia).
+    D-8 Numerazione condivisa con gli ODA: `Support\LegacyDocumentNumberer` (stessa regola della spec 0296 D-2).
+    D-9 `MigrationOrder`: nuova fase dopo `purchase-invoices`. Dipendenze: required `users`, `companies`,
+        `registries`, `payment-methods`, `vat-rates`; optional `work-orders`, `quotes`, `products`,
+        `financial-accounts`, `proforma-requests`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Legacy: `InvoiceMigrationController`, `Support/Migration/LegacyActiveInvoiceDocuments` (proforma +
+        ente), `Support/Migration/LegacyProformaRequestMatcher`, route `GET /api/v2/migration/invoices`.</item>
+      <item>qnet-2: migrazione D-7, `InvoicesSource`, `Support\LegacyInvoiceWriter`, `Support\LegacyDocumentNumberer`
+        (anche in `PurchaseOrdersSource`), config, ordine, test, i18n, guida, manuale.</item>
+    </in>
+    <out>
+      <item>Registrazioni di incasso non legate a scadenze (sorgente Incassi), distinte bancarie.</item>
+      <item>Conti delle banche 6, 8, 10, 11 (non in `amministrazione_contis`), layout, tag, allegati (spec 0295),
+        provvigioni.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="(legacy) /api/v2/migration/invoices">
+      <request>Query `offset`, `limit` 1-100. Ordine: proformas per id, poi proforma_ente per id.</request>
+      <response status="200">
+        { items: [Invoice], export_link: null, pagination }
+        Invoice = {
+          id: int, source: "proformas"|"proforma_ente",
+          type: "proforma"|"invoice", number: ?int, year_max_number: int,
+          document_date: "Y-m-d", company_id: ?int, customer_id: ?int,
+          work_order_id: ?int, quote_id: ?int, payment_method_id: ?int, financial_account_id: ?int,
+          proforma_request_id: ?int, external_number: ?string, external_date: ?"Y-m-d",
+          notes: ?string, internal_note: ?string, deviation: ?number, creator_user_id: int,
+          lines: [{ product_id: ?int, quote_line_id: ?int, description: string, quantity: number,
+                    unit_price: number, vat_rate_id: ?int }],
+          installments: [{ due_date: "Y-m-d", amount: number, payment_method_code: ?string,
+                           collected_amount: ?number, collected_at: ?"Y-m-d" }],
+          warnings: string[], created_at: ?datetime, updated_at: ?datetime
+        }
+      </response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Un documento completo nasce con `old_source`/`old_id`, tipo, numero legacy, anno, data,
+      societa', cliente, commessa, offerta, pagamento, conto, richiesta (resa issued), numero/data esterni, note,
+      scostamento, creatore, timestamp; righe con prodotto, riga d'offerta, importi qnet-2; nessun log.</criterion>
+    <criterion id="AC-002">Re-import -> saltato; una proforma ente e una proforma con lo stesso id legacy convivono.</criterion>
+    <criterion id="AC-003">Societa', cliente, pagamento o creatore non migrati, aliquota mancante, totale &lt;= 0 ->
+      riga fallita col motivo.</criterion>
+    <criterion id="AC-004">Numero assente o gia' usato -> primo libero dopo il massimo (legacy e qnet-2), warning;
+      contatore aggiornato.</criterion>
+    <criterion id="AC-005">Scadenze con incassi legacy; somma diversa -> ultima corretta; nessuna -> piano.</criterion>
+    <criterion id="AC-006">Richiesta gia' collegata a un altro documento -> null con warning.</criterion>
+    <criterion id="AC-007">Registro: `invoices` nella fase dopo `purchase-invoices` con le dipendenze di D-9.</criterion>
+  </acceptance_criteria>
+</spec>

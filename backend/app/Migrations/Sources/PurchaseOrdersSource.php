@@ -12,6 +12,7 @@ use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Sources\Concerns\MapsLegacyOperationalRecord;
 use App\Migrations\Sources\Concerns\RequiresLegacyAnchors;
 use App\Migrations\Support\ExternalApiClient;
+use App\Migrations\Support\LegacyDocumentNumberer;
 use App\Migrations\Support\LegacyPurchaseOrderLineWriter;
 use App\Models\OperationalSite;
 use App\Models\PaymentMethod;
@@ -49,6 +50,7 @@ class PurchaseOrdersSource extends AbstractMigrationSource
     public function __construct(
         ExternalApiClient $client,
         private readonly LegacyPurchaseOrderLineWriter $lineWriter,
+        private readonly LegacyDocumentNumberer $numberer,
     ) {
         parent::__construct($client);
     }
@@ -193,28 +195,15 @@ class PurchaseOrdersSource extends AbstractMigrationSource
     private function number(int $companyId, int $year, array $record, ?string $notes, array &$warnings): array
     {
         $legacyNumber = (int) ($record['number'] ?? 0);
-        $taken = PurchaseOrder::query()->where('company_id', $companyId)->where('year', $year);
-        $number = $legacyNumber;
+        $assigned = $this->numberer->number(PurchaseOrder::class, PurchaseOrderNumberSequence::class, $companyId, $year, $legacyNumber, (int) ($record['year_max_number'] ?? 0));
 
-        if ($legacyNumber < 1 || (clone $taken)->where('number', $legacyNumber)->exists()) {
-            $number = max((int) ($record['year_max_number'] ?? 0), (int) (clone $taken)->max('number'), $this->sequenceNumber($companyId, $year)) + 1;
+        if ($assigned['reassigned']) {
             $reference = "Numero legacy {$legacyNumber}".(filled($record['protocol'] ?? null) ? " (protocollo {$record['protocol']})" : '');
             $notes = $notes === null ? $reference : "{$notes}\n\n{$reference}";
-            $warnings[] = "Number {$legacyNumber}/{$year} already used: the order takes {$number}/{$year}.";
+            $warnings[] = "Number {$legacyNumber}/{$year} already used: the order takes {$assigned['number']}/{$year}.";
         }
 
-        $sequence = PurchaseOrderNumberSequence::query()->firstOrCreate(['company_id' => $companyId, 'year' => $year], ['last_number' => 0]);
-
-        if ($sequence->last_number < $number) {
-            $sequence->update(['last_number' => $number]);
-        }
-
-        return ['number' => $number, 'general_notes' => $notes];
-    }
-
-    private function sequenceNumber(int $companyId, int $year): int
-    {
-        return (int) PurchaseOrderNumberSequence::query()->where('company_id', $companyId)->where('year', $year)->value('last_number');
+        return ['number' => $assigned['number'], 'general_notes' => $notes];
     }
 
     /**

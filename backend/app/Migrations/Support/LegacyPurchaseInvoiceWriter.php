@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Migrations\Support;
 
+use App\Migrations\Support\Concerns\BuildsLegacyDocumentLines;
 use App\Models\PaymentMethod;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseOrderLine;
@@ -24,7 +25,7 @@ use RuntimeException;
  */
 final class LegacyPurchaseInvoiceWriter
 {
-    private const int DESCRIPTION_MAX = 500;
+    use BuildsLegacyDocumentLines;
 
     public function __construct(
         private readonly PurchaseInvoiceAmountCalculator $amounts,
@@ -54,7 +55,7 @@ final class LegacyPurchaseInvoiceWriter
 
             $lines[] = [
                 'purchase_order_line_id' => $orderLine->id,
-                'description' => $this->description($legacyLine['description'] ?? null, $legacyId, $warnings),
+                'description' => $this->lineDescription($legacyLine['description'] ?? null, "Line {$legacyId}", $warnings),
                 'quantity' => $legacyLine['quantity'] ?? 0,
                 'unit_price' => $legacyLine['unit_price'] ?? 0,
                 'vat_rate_id' => $this->optionalOldId(VatRate::class, $legacyLine['vat_rate_id'] ?? null, "Line {$legacyId}: VAT rate", $warnings),
@@ -94,29 +95,18 @@ final class LegacyPurchaseInvoiceWriter
     private function legacy(array $legacyInstallments, string $total, array &$warnings): array
     {
         $installments = [];
-        $sum = '0.00';
 
         foreach (array_values($legacyInstallments) as $index => $legacyInstallment) {
             $legacyInstallment = (array) $legacyInstallment;
-            $amount = number_format((float) ($legacyInstallment['amount'] ?? 0), 2, '.', '');
-            $sum = bcadd($sum, $amount, 2);
             $installments[] = [
                 'sequence' => $index + 1,
                 'due_date' => (string) ($legacyInstallment['due_date'] ?? ''),
-                'amount' => $amount,
+                'amount' => number_format((float) ($legacyInstallment['amount'] ?? 0), 2, '.', ''),
                 'payment_method_code' => $legacyInstallment['payment_method_code'] ?? null,
             ];
         }
 
-        $difference = bcsub($total, $sum, 2);
-
-        if (bccomp($difference, '0', 2) !== 0) {
-            $last = array_key_last($installments);
-            $installments[$last]['amount'] = bcadd($installments[$last]['amount'], $difference, 2);
-            $warnings[] = "The legacy installments sum to {$sum}, the invoice total is {$total}: the last installment absorbs the difference.";
-        }
-
-        return $installments;
+        return $this->absorbDifference($installments, $total, 'invoice', $warnings);
     }
 
     /**
@@ -134,44 +124,5 @@ final class LegacyPurchaseInvoiceWriter
             (string) $invoice->vat_amount,
             (string) $invoice->total_amount,
         );
-    }
-
-    /**
-     * @param  array<int, string>  $warnings
-     */
-    private function description(mixed $legacyDescription, int|string $lineId, array &$warnings): string
-    {
-        $description = trim((string) ($legacyDescription ?? ''));
-
-        if ($description === '') {
-            throw new RuntimeException("Line {$lineId}: description is required.");
-        }
-
-        if (mb_strlen($description) > self::DESCRIPTION_MAX) {
-            $warnings[] = "Line {$lineId}: description truncated to ".self::DESCRIPTION_MAX.' characters.';
-
-            return mb_substr($description, 0, self::DESCRIPTION_MAX);
-        }
-
-        return $description;
-    }
-
-    /**
-     * @param  class-string<VatRate|WorkOrder>  $targetClass
-     * @param  array<int, string>  $warnings
-     */
-    private function optionalOldId(string $targetClass, mixed $legacyId, string $label, array &$warnings): ?int
-    {
-        if ($legacyId === null || $legacyId === '') {
-            return null;
-        }
-
-        $id = $targetClass::query()->where('old_id', $legacyId)->value('id');
-
-        if ($id === null) {
-            $warnings[] = "{$label} (legacy id {$legacyId}) not migrated, left empty.";
-        }
-
-        return $id;
     }
 }

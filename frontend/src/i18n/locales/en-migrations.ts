@@ -48,6 +48,8 @@ export const migrations = {
     'purchase-orders': 'Purchase orders',
     'financial-accounts': 'Financial accounts',
     'purchase-invoices': 'Purchase invoices',
+    'proforma-requests': 'Proforma requests',
+    invoices: 'Invoices',
   },
   state: {
     notMigrated: 'Not migrated',
