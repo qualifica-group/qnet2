@@ -106,6 +106,12 @@ final class MigrationOrder
         // business functions (phases 1-3) and the commessa (phase 11), and
         // optionally the customer/supplier registries and the VAT rates.
         ['purchase-requests'],
+
+        // Phase 14 — spec 0296: the legacy ODA (open ones and those turned into
+        // supplier invoices). They need the supplier registries and the
+        // company sites, and link the RDA lines of phase 13 and the work
+        // orders of phase 11 when migrated.
+        ['purchase-orders'],
     ];
 
     /**

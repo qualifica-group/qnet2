@@ -6,6 +6,8 @@ use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
+use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderLine;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestLine;
 use App\Models\Quote;
@@ -54,6 +56,8 @@ dataset('old_id_tables', [
     'commission_configurations' => ['commission_configurations'],
     'purchase_requests' => ['purchase_requests'],
     'purchase_request_lines' => ['purchase_request_lines'],
+    'purchase_orders' => ['purchase_orders'],
+    'purchase_order_lines' => ['purchase_order_lines'],
 ]);
 
 /**
@@ -84,6 +88,8 @@ function oldIdFactoryFor(string $table): Factory
         'commission_configurations' => CommissionConfiguration::factory(),
         'purchase_requests' => PurchaseRequest::factory(),
         'purchase_request_lines' => PurchaseRequestLine::factory(),
+        'purchase_orders' => PurchaseOrder::factory(),
+        'purchase_order_lines' => PurchaseOrderLine::factory(),
     };
 }
 

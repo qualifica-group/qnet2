@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0296-legacy-purchase-orders-migration" status="approved" owner="nicola" date="2026-10-22">
+
+  <goal>
+    Il modulo Migrazioni importa gli ODA (ordini di acquisto) del QNet legacy con le righe, il collegamento alle righe
+    RDA gia' migrate e il ricevimento degli ODA evasi, tramite un nuovo endpoint legacy
+    `GET /api/v2/migration/purchase-orders` e una nuova sorgente qnet-2 `purchase-orders`, idempotente per `old_id`,
+    senza notifiche ne' log di attivita'. Segue le RDA (spec 0294) e precede le fatture passive.
+  </goal>
+
+  <context>
+    Verificato sul codice e sui dati reali il 2026-10-22.
+
+    Legacy (`/Users/Repository/qnet`):
+    - `proformfora_heads` (805) contiene ODA e fatture passive: `type` Proforma (490, ODA) / Fattura (315, FTP:
+      `is_frozen` 1, convertite da ODA con "Converti in FTP" o nate dirette, non distinguibili; 242 collegate a righe
+      RDA). Campi: `numero` (per azienda e anno, 46 gruppi doppi su 219 documenti), `numprotinterno`, `date_proforma`,
+      `descrizione`, `note_generali`, `customer_id` = FORNITORE (companies, 1 con 0), `supplier_id` = CLIENTE
+      (companies, opzionale), `company_id` = azienda = `company_profiles` (sede aziendale; la societa' e'
+      `company_profiles.societa_aziendale_id`), `sede_operativa_id` (667 null), `payment_id` (-> `payments`),
+      `stato_oda` 1-7 (Bozza, In validazione, Approvato, Inviato al fornitore, Parzialmente evaso, Evaso, Annullato;
+      usati 1, 3, 5, 6), `tipo_oda` (Collaboratori, Fitti, Utenze, Altro; 39 null, default Altro),
+      `fruitore_interno`, `estrema_urgenza` (9), `settori_ea_specifica` (339), pivot settori EA vuota, `tag` (12),
+      `commessa_id` di testata sempre null. Nessun autore: il creatore e' il `causer` della voce activity_log
+      "created" delle righe (`App\Models\Proformfora`).
+    - `proformforas` (1.457): `ph_id`, `note` (testo della riga), `qta` int (27 a 0 o meno), `importo` (prezzo),
+      `rate_id`, `commessa_id` (339 null), `rda_detail_id` (1.113; 66 righe RDA citate da piu' righe ODA, copie
+      mensili), `center_id` (31, sottoconto), budget/consuntivo (FTP).
+    - `proformfora_head_orders` (656), `proformfora_head_rda_details` (1.235): ridondanti rispetto alle righe.
+      `schedule_suppliers` (scadenze), `proformfora_head_documents` (338), `oda_merge_logs` (0).
+
+    qnet-2:
+    - `purchase_orders` (spec 0210): `number`+`year` unici per `company_id`, `supplier_id` (registry) e
+      `company_site_id` NOT NULL, `operational_site_id`, `payment_method_id`, `customer_id`, `work_order_id`,
+      `is_internal_user`, `sector_notes` 500, `general_notes`, `description` 255, `status` (enum
+      `PurchaseOrderStatus`, 1:1 col legacy), totali calcolati, `created_by` NOT NULL. Contatore
+      `purchase_order_number_sequences` (`PurchaseOrderNumberAllocator`, solo in avanti).
+    - `purchase_order_lines`: `description` 500, `cost_type_id` NOT NULL (`cost_types`: Collaboratori, Fitti,
+      Utenze, Altro = `tipo_oda` legacy), `quantity`, `unit_price`, `vat_rate_id`, importi, `work_order_id`,
+      `purchase_request_line_id` UNIQUE, `received_quantity`. Ricevimenti `purchase_order_receipts` +
+      `_lines`: stati evaso/parzialmente evaso derivati dai ricevimenti (spec 0254); precedente
+      `2026_10_18_100200_backfill_receipts_of_fulfilled_purchase_orders` (un ricevimento completo per gli evasi,
+      nessuno per i parziali).
+    - `PurchaseRequestLineLinker::link()` scrive `oda_reference` (codice ODA) sulle righe RDA collegate.
+    - `PurchaseOrderService::create()` non e' il percorso della migrazione (numero allocato, attore, notifiche):
+      scrittura diretta dei model come le RDA (spec 0294).
+
+    Decisioni utente 2026-10-22:
+    D-1 Perimetro: tutti gli 805 documenti (ODA e FTP) arrivano come ODA; la futura sorgente fatture passive creera'
+        la fattura delle FTP collegandola a questi ODA (ordine RDA -> ODA -> fatture passive).
+    D-2 Numerazione: numero legacy; se (societa', anno) lo ha gia', primo numero libero dopo il massimo tra
+        quello legacy dell'anno (`year_max_number`, inviato dal legacy) e quello gia' in qnet-2, con warning e
+        "Numero legacy N (protocollo P)" accodato alle note generali. Il contatore qnet-2 non scende mai sotto il
+        numero piu' alto importato.
+
+    Decisioni proposte (backend.md section 9):
+    D-3 Legacy: fornitore = `customer_id`, cliente = `supplier_id`; sede aziendale = `company_id`, societa' = quella
+        della sede; stato semantico; creatore = causer della prima voce "created" delle righe, altrimenti
+        `LegacyPlaceholderUser::ID`; tipologia di costo di ogni riga = `tipo_oda` ?? "Altro"; descrizione riga =
+        `note` ?? descrizione di testata; "Estrema urgenza." accodata alle note generali; riga RDA collegata solo
+        alla PRIMA riga ODA (per id) che la cita, le altre null con warning; riferimenti orfani null con warning;
+        `year_max_number` per (societa', anno di `date_proforma`).
+    D-4 qnet-2: lookup `old_id`; fornitore, societa', sede aziendale o creatore non migrati -> riga fallita; sede
+        aziendale di un'altra societa' -> riga fallita; tipologia di costo per nome, sconosciuta -> riga fallita;
+        cliente, sede operativa, pagamento, aliquota, commessa, riga RDA non migrati -> null con warning; riga RDA
+        gia' collegata a un altro ODA -> null con warning; commessa di testata = quella condivisa da tutte le righe
+        (come `PurchaseOrderFromRequestLinesService`), altrimenti null; importi con `LineAmountCalculator`;
+        troncamenti descrizione 255/500 e `sector_notes` 500 con warning; `oda_reference` sulle righe RDA collegate
+        via `PurchaseRequestLineLinker::link()`.
+    D-5 Ricevimenti: ODA evaso -> un ricevimento con tutte le quantita' (data = `updated_at` legacy, nota
+        "Ricezione generata dalla migrazione", autore = creatore) e `received_quantity` = quantita'; parzialmente
+        evaso -> stato tenuto, nessun ricevimento, warning (come il backfill spec 0254).
+    D-6 `old_id` su `purchase_orders` e `purchase_order_lines` (id `proformforas`): servira' alle fatture passive.
+    D-7 `MigrationOrder`: nuova fase dopo `purchase-requests` con `purchase-orders`. Dipendenze: required `users`,
+        `companies`, `company-sites`, `registries`; optional `operational-sites`, `payment-methods`, `vat-rates`,
+        `work-orders`, `purchase-requests`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Legacy: `app/Http/Controllers/Api/V2/PurchaseOrderMigrationController.php`, helper
+        `app/Support/Migration/LegacyPurchaseOrderLines.php`, route `GET /api/v2/migration/purchase-orders`.</item>
+      <item>qnet-2: migrazione `add_old_id_to_purchase_orders_tables`; `App\Migrations\Sources\PurchaseOrdersSource`;
+        `App\Migrations\Support\LegacyPurchaseOrderLineWriter` (righe, importi, ricevimento); concern
+        `App\Migrations\Sources\Concerns\RequiresLegacyAnchors` (riferimenti obbligatori e coerenza societa'/sede,
+        condiviso con `PurchaseRequestsSource`).</item>
+      <item>Registrazione in `config/migrations.php` e `MigrationOrder` (D-7).</item>
+      <item>Test Pest `PurchaseOrdersSourceImportTest` + helper `PurchaseOrderMigrationHelpers`; `OldIdSchemaTest`,
+        `MigrationRegistryTest` (31 -> 32), `MigrationDependenciesTest`, rollback a step fisso +1 (REQUIREMENT
+        CHANGED).</item>
+      <item>Frontend: etichetta e testo requisiti `purchase-orders` IT/EN; guida in-app `migrations` IT/EN; manuale
+        Claude Docs.</item>
+    </in>
+    <out>
+      <item>Dati di fattura delle FTP (numero/data fattura, budget/consuntivo, stato fattura) e scadenze
+        `schedule_suppliers`: con la sorgente fatture passive.</item>
+      <item>Allegati `proformfora_head_documents` (spec 0295).</item>
+      <item>`center_id` (sottoconto), `tag`, `rda_numero`/`rda_data` di testata (il collegamento RDA viaggia sulle
+        righe), pivot commesse di testata, gruppi di copie mensili (`copy_group_id`), log di unificazione (vuoti).</item>
+      <item>Aggiornamento di ODA gia' migrati al re-import (salto per `old_id`).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="(legacy) /api/v2/migration/purchase-orders">
+      <request>
+        Query: `search` ?string max 255 (sulla descrizione), `offset` int >= 0, `limit` int 1-100 (default 50).
+        Ordine `proformfora_heads.id` crescente. Auth: gruppo `auth:api` + `v2.access`.
+      </request>
+      <response status="200">
+        { items: [PurchaseOrder], export_link: null, pagination: { total, offset, limit, total_pages } }
+        PurchaseOrder = {
+          id: int,
+          number: int, year_max_number: int,  (numero; massimo legacy della societa' nell'anno, D-2)
+          protocol: ?string,                  (numprotinterno)
+          order_date: "Y-m-d",
+          description: string,
+          general_notes: ?string,             (note_generali + "Estrema urgenza.")
+          supplier_id: ?int,                  (customer_id)
+          customer_id: ?int,                  (supplier_id)
+          company_id: ?int, company_site_id: ?int,
+          operational_site_id: ?int, payment_method_id: ?int,
+          is_internal_user: bool, sector_notes: ?string,
+          status: "draft"|"in_validation"|"approved"|"sent_to_supplier"|"partially_fulfilled"|"fulfilled"|"cancelled",
+          creator_user_id: int,
+          lines: [{ id: int, position: int, description: string, cost_type_name: string,
+                    quantity: number, unit_price: number, vat_rate_id: ?int, work_order_id: ?int,
+                    purchase_request_line_id: ?int }],
+          warnings: string[],
+          created_at: ?datetime, updated_at: ?datetime
+        }
+      </response>
+      <errors>401/403 come gli altri endpoint del gruppo; 422 su parametri invalidi.</errors>
+    </endpoint>
+    <endpoint method="GET|POST" path="(qnet-2) /api/migrations/purchase-orders/... (endpoint esistenti)">
+      <request>Nessun endpoint nuovo.</request>
+      <response status="200">Shape invariata; `GET /migrations` elenca `purchase-orders` con le dipendenze di D-7.</response>
+      <errors>Invariati.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un record completo, quando si importa, allora nasce un PurchaseOrder con `old_id`,
+      numero legacy, anno della data, data, descrizione, note, fornitore, cliente, societa', sedi, pagamento, flag,
+      note settori, stato, creatore, timestamp legacy, e righe con `old_id`, tipologia di costo per nome,
+      quantita', prezzo, aliquota, commessa, riga RDA; importi e totali di qnet-2; nessun log ne' notifica.</criterion>
+    <criterion id="AC-002">Re-import dello stesso `old_id` -> saltato.</criterion>
+    <criterion id="AC-003">Fornitore, societa', sede aziendale o creatore non migrati, sede di un'altra societa', o
+      tipologia di costo sconosciuta -> riga fallita col motivo, nessun ODA.</criterion>
+    <criterion id="AC-004">Cliente, sede operativa, pagamento, aliquota, commessa o riga RDA non migrati -> null con
+      warning; riga RDA gia' collegata a un altro ODA -> null con warning.</criterion>
+    <criterion id="AC-005">Numero gia' usato da (societa', anno) -> max(year_max_number, massimo qnet-2) + 1, warning e
+      nota "Numero legacy N (protocollo P)"; il contatore e' almeno al numero piu' alto importato.</criterion>
+    <criterion id="AC-006">La riga RDA collegata riceve `oda_reference` = codice dell'ODA; la commessa di testata e'
+      quella comune a tutte le righe, altrimenti null.</criterion>
+    <criterion id="AC-007">ODA evaso -> un ricevimento con tutte le quantita' e `received_quantity` = quantita';
+      parzialmente evaso -> nessun ricevimento, con warning.</criterion>
+    <criterion id="AC-008">Troncamenti con warning; warning legacy copiati nel report.</criterion>
+    <criterion id="AC-009">Registro: `purchase-orders` nella fase dopo `purchase-requests` con le dipendenze di D-7.</criterion>
+  </acceptance_criteria>
+
+  <tests>
+    <item>`tests/Feature/Migration/PurchaseOrdersSourceImportTest.php`: AC-001..AC-009.</item>
+    <item>Legacy: tinker sul DB locale (conteggi, D-2, D-3) + `php -l`.</item>
+  </tests>
+</spec>

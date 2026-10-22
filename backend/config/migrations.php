@@ -17,6 +17,7 @@ use App\Migrations\Sources\ProductCategoriesSource;
 use App\Migrations\Sources\ProductCategoryAttributesSource;
 use App\Migrations\Sources\ProductsSource;
 use App\Migrations\Sources\ProductSuppliersSource;
+use App\Migrations\Sources\PurchaseOrdersSource;
 use App\Migrations\Sources\PurchaseRequestsSource;
 use App\Migrations\Sources\QuotesSource;
 use App\Migrations\Sources\ReferentsSource;
@@ -121,6 +122,8 @@ return [
         'commission-configurations' => CommissionConfigurationsSource::class,
         // spec 0294: the legacy RDA, first source of the accounting part.
         'purchase-requests' => PurchaseRequestsSource::class,
+        // spec 0296: the legacy ODA, after the RDA their lines link to.
+        'purchase-orders' => PurchaseOrdersSource::class,
     ],
 
 ];

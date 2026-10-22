@@ -3,6 +3,28 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Migrazione ODA dal legacy (spec 0296) — VERDE, COMMITTATO (2026-10-22)
+
+- Decisioni utente: D-1 tutti gli 805 `proformfora_heads` (490 ODA "Proforma" + 315 FTP "Fattura") arrivano come ODA;
+  ordine RDA -> ODA -> fatture passive (la fattura si collega all'ODA). D-2 numero legacy; doppio per (societa', anno)
+  -> max(year_max_number legacy, max qnet-2, contatore) + 1, warning e "Numero legacy N (protocollo P)" nelle note;
+  il contatore `purchase_order_number_sequences` sale al numero piu' alto importato.
+- Legacy (committato su develop): `PurchaseOrderMigrationController`, `Support/Migration/LegacyPurchaseOrderLines`, route
+  `GET /api/v2/migration/purchase-orders`. Mapping: legacy `customer_id` = FORNITORE, `supplier_id` = CLIENTE,
+  `company_id` = company_profile (sede aziendale), societa' dal profilo; tipologia di costo = `tipo_oda` ?? Altro;
+  creatore = causer activity_log "created" delle righe `Proformfora` (fallback Utente legacy). Tinker: 805 ODA,
+  1.384 righe, 1.022 link RDA, 91 warning (80 righe RDA gia' collegate a una riga ODA precedente, 11 orfane),
+  1 ODA senza fornitore (fallira').
+- qnet-2: migrazione `2026_10_31_100100_add_old_id_to_purchase_orders_tables` (old_id testata e righe, per le future
+  fatture passive), `PurchaseOrdersSource`, `LegacyPurchaseOrderLineWriter` (importi via PurchaseOrderAmountCalculator,
+  `oda_reference` RDA via PurchaseRequestLineLinker, ricevimento completo degli evasi come il backfill spec 0254),
+  concern `RequiresLegacyAnchors` estratto e usato anche da `PurchaseRequestsSource` (ora 270 righe). Fase 14.
+- Test: `PurchaseOrdersSourceImportTest` 16/16; suite Migration+PurchaseOrders+PurchaseRequests+rollback 940/940 (con
+  `EXTERNAL_MIGRATION_USERS_LINK_ONLY=false`, vedi sotto). REQUIREMENT CHANGED: registry 32, ultima fase, rollback +1
+  (78/93/229). Vitest 180/180, ESLint, tsc ok. Guida `migrations` IT/EN (sezione `purchase-orders`), i18n, manuale.
+- Prossimi passi: fatture passive (dati FTP: numero/data fattura, budget/consuntivo, `schedule_suppliers`) collegate
+  agli ODA per `old_id`; allegati in spec 0295.
+
 ## Migrazione RDA dal legacy (spec 0294) — VERDE, COMMITTATO (2026-10-22)
 
 - Richiesta utente: iniziare la contabilita' in /migrations con le RDA. Decisioni D-1..D-4: societa'/sede mancanti

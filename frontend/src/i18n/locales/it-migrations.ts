@@ -44,6 +44,7 @@ export const migrations = {
     'product-suppliers': 'Prodotti — collega fornitori',
     'commission-configurations': 'Configuratore commissioni',
     'purchase-requests': 'Richieste di acquisto (RDA)',
+    'purchase-orders': 'Ordini di acquisto (ODA)',
   },
   state: {
     notMigrated: 'Non migrata',

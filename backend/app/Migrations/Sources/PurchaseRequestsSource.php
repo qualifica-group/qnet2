@@ -11,11 +11,10 @@ use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Sources\Concerns\MapsLegacyOperationalRecord;
+use App\Migrations\Sources\Concerns\RequiresLegacyAnchors;
 use App\Migrations\Support\ExternalApiClient;
 use App\Migrations\Support\LegacyPurchaseRequestLineWriter;
 use App\Models\BusinessFunction;
-use App\Models\Company;
-use App\Models\CompanySite;
 use App\Models\OperationalSite;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestLineStatusLog;
@@ -23,7 +22,6 @@ use App\Models\PurchaseRequestPriority;
 use App\Models\Registry;
 use App\Models\User;
 use App\Models\WorkOrder;
-use Illuminate\Database\Eloquent\Model;
 use RuntimeException;
 
 /**
@@ -41,7 +39,7 @@ use RuntimeException;
  */
 class PurchaseRequestsSource extends AbstractMigrationSource
 {
-    use MapsLegacyOperationalRecord;
+    use MapsLegacyOperationalRecord, RequiresLegacyAnchors;
 
     private const int SUBJECT_MAX = 255;
 
@@ -150,7 +148,7 @@ class PurchaseRequestsSource extends AbstractMigrationSource
         // Step 2: the header, quietly, with the legacy creator.
         $purchaseRequest = new PurchaseRequest([
             ...$anchors,
-            'subject' => $this->subject($record['subject'] ?? null, $warnings),
+            'subject' => $this->cappedText($this->requiredText($record['subject'] ?? null, 'subject'), self::SUBJECT_MAX, 'Subject', $warnings),
             'requested_at' => $this->requiredText($record['requested_at'] ?? null, 'requested_at'),
             'purchase_request_priority_id' => $this->priorityId($record['priority_name'] ?? null, $warnings),
             'customer_id' => $this->remapLegacyId(Registry::class, $record['customer_id'] ?? null, 'customer_id', $warnings),
@@ -161,7 +159,7 @@ class PurchaseRequestsSource extends AbstractMigrationSource
             'special_conditions' => $this->blankToNull($record['special_conditions'] ?? null),
         ]);
         $purchaseRequest->forceFill([
-            'created_by' => $this->requiredUserId($record['creator_user_id'] ?? null, 'Creator'),
+            'created_by' => $this->requiredOldId(User::class, $record['creator_user_id'] ?? null, 'Creator'),
             'status' => PurchaseRequestStatus::Open,
         ])->saveQuietly();
 
@@ -182,20 +180,12 @@ class PurchaseRequestsSource extends AbstractMigrationSource
      */
     private function anchors(array $record): array
     {
-        $companyId = $this->requiredOldId(Company::class, $record['company_id'] ?? null, 'Company');
-        $companySiteId = $this->requiredOldId(CompanySite::class, $record['company_site_id'] ?? null, 'Company site');
-
-        if ((int) CompanySite::query()->whereKey($companySiteId)->value('company_id') !== $companyId) {
-            throw new RuntimeException('Company site (legacy id '.$record['company_site_id'].') does not belong to the company; the purchase request is not imported.');
-        }
-
         $workOrderId = $record['work_order_id'] ?? null;
 
         return [
-            'requester_id' => $this->requiredUserId($record['requester_user_id'] ?? null, 'Requester'),
-            'function_manager_id' => $this->requiredUserId($record['function_manager_user_id'] ?? null, 'Function manager'),
-            'company_id' => $companyId,
-            'company_site_id' => $companySiteId,
+            ...$this->companyAndSite($record),
+            'requester_id' => $this->requiredOldId(User::class, $record['requester_user_id'] ?? null, 'Requester'),
+            'function_manager_id' => $this->requiredOldId(User::class, $record['function_manager_user_id'] ?? null, 'Function manager'),
             'operational_site_id' => $this->requiredOldId(OperationalSite::class, $record['operational_site_id'] ?? null, 'Operational site'),
             'business_function_id' => $this->requiredOldId(BusinessFunction::class, $record['business_function_id'] ?? null, 'Business function'),
             'work_order_id' => $workOrderId === null ? null : $this->requiredOldId(WorkOrder::class, $workOrderId, 'Work order'),
@@ -275,56 +265,5 @@ class PurchaseRequestsSource extends AbstractMigrationSource
             'byName' => $priorities->mapWithKeys(fn (PurchaseRequestPriority $priority): array => [mb_strtolower(trim($priority->name)) => $priority->id])->all(),
             'default' => $priorities->first()?->id,
         ];
-    }
-
-    /**
-     * @param  array<int, string>  $warnings
-     */
-    private function subject(mixed $legacySubject, array &$warnings): string
-    {
-        $subject = $this->requiredText($legacySubject, 'subject');
-
-        if (mb_strlen($subject) > self::SUBJECT_MAX) {
-            $warnings[] = 'Subject truncated to '.self::SUBJECT_MAX.' characters.';
-
-            return mb_substr($subject, 0, self::SUBJECT_MAX);
-        }
-
-        return $subject;
-    }
-
-    /**
-     * @throws RuntimeException when the legacy sends no user or one not migrated
-     */
-    private function requiredUserId(mixed $legacyUserId, string $role): int
-    {
-        return $this->requiredOldId(User::class, $legacyUserId, $role);
-    }
-
-    /**
-     * @param  class-string<Model>  $targetClass
-     *
-     * @throws RuntimeException when the reference is missing or not migrated
-     */
-    private function requiredOldId(string $targetClass, mixed $legacyId, string $label): int
-    {
-        if ($legacyId === null || $legacyId === '') {
-            throw new RuntimeException("{$label} is required; the purchase request is not imported.");
-        }
-
-        return $this->resolveOldId($targetClass, $legacyId)
-            ?? throw new RuntimeException("{$label} (legacy id {$legacyId}) not migrated; the purchase request is not imported.");
-    }
-
-    private function requiredText(mixed $value, string $field): string
-    {
-        return $this->blankToNull($value) ?? throw new RuntimeException("{$field} is required.");
-    }
-
-    private function blankToNull(mixed $value): ?string
-    {
-        $value = trim((string) ($value ?? ''));
-
-        return $value === '' ? null : $value;
     }
 }
