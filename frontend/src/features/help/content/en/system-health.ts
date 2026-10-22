@@ -12,7 +12,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The page is under **Develop › System health** and is reserved to the **super-admin** role: for other users the menu entry does not appear. At the top you see the **overall result** and the time of the last check; below, the **Online users** card and one card per subsystem.',
+          text: 'The page is under **Develop › System health** and is reserved to the **super-admin** role: for other users the menu entry does not appear. At the top you see the **overall result** and the time of the last check; below, the **Online users** card, one card per subsystem and the **Versions** card.',
         },
       ],
     },
@@ -46,6 +46,7 @@ const guide: HelpGuide = {
             '**Email**: mailer and transport configured and sending credentials present. No test email is sent.',
             '**Queue**: queue connection, pending jobs and failed jobs. Failed jobs or too many pending jobs make the status Degraded.',
             '**Security**: debug mode, environment, HTTPS, token expiration, CORS, application key, email secrets and activity log.',
+            '**Versions**: versions of PHP, Laravel and the database server (backend) and of TypeScript and React (frontend, as of the running build). They are informational only and do not affect the overall status.',
           ],
         },
       ],

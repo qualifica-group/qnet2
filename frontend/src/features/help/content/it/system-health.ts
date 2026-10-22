@@ -12,7 +12,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La pagina si trova in **Develop › Stato del sistema** ed è riservata al ruolo **super-admin**: per gli altri utenti la voce di menu non compare. In alto vedi l\'**esito complessivo** e l\'ora dell\'ultima verifica; sotto, la card **Utenti online** e una card per ogni sottosistema.',
+          text: 'La pagina si trova in **Develop › Stato del sistema** ed è riservata al ruolo **super-admin**: per gli altri utenti la voce di menu non compare. In alto vedi l\'**esito complessivo** e l\'ora dell\'ultima verifica; sotto, la card **Utenti online**, una card per ogni sottosistema e la card **Versioni**.',
         },
       ],
     },
@@ -46,6 +46,7 @@ const guide: HelpGuide = {
             '**Email**: mailer e transport configurati e presenza delle credenziali di invio. Non viene inviata nessuna email di prova.',
             '**Code**: connessione della coda, job in attesa e job falliti. Job falliti o troppi job in attesa rendono lo stato Degradato.',
             '**Sicurezza**: modalità debug, ambiente, HTTPS, scadenza dei token, CORS, chiave dell\'applicazione, segreti email e registro attività.',
+            '**Versioni**: versioni di PHP, Laravel e del server database (backend) e di TypeScript e React (frontend, riferite al build in uso). Sono solo informative e non influiscono sull\'esito.',
           ],
         },
       ],

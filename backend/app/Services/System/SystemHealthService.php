@@ -16,7 +16,8 @@ use Throwable;
 
 /**
  * Aggregates the live health of the critical subsystems (database, email,
- * queue, security hardening) and the online users for the System Health page (spec 0187).
+ * queue, security hardening), the online users and the runtime versions for
+ * the System Health page (spec 0187).
  * A single checker failing never fails the endpoint: it degrades that
  * check's status to "down" instead.
  *
@@ -33,12 +34,13 @@ final readonly class SystemHealthService
         QueueHealthCheck $queue,
         SecurityHealthCheck $security,
         private OnlineUsersService $onlineUsers,
+        private RuntimeVersionsService $runtimeVersions,
     ) {
         $this->checks = [$database, $email, $queue, $security];
     }
 
     /**
-     * @return array{overall:string, checked_at:string, online:array, checks:array}
+     * @return array{overall:string, checked_at:string, online:array, versions:array, checks:array}
      */
     public function handle(): array
     {
@@ -51,11 +53,12 @@ final readonly class SystemHealthService
             $results,
         ));
 
-        // Step 3: add the online users and serialize enums to their wire values for the API contract.
+        // Step 3: add the online users and the runtime versions, and serialize enums to their wire values for the API contract.
         return [
             'overall' => $overall->value,
             'checked_at' => now()->toIso8601String(),
             'online' => $this->onlineUsers->handle(),
+            'versions' => $this->runtimeVersions->handle(),
             'checks' => array_map(fn (array $result): array => $this->serialize($result), $results),
         ];
     }

@@ -8,6 +8,7 @@ import { HealthCheckCard } from '@/features/system-health/health-check-card'
 import { HealthStatusIndicator } from '@/features/system-health/health-status-indicator'
 import { OnlineUsersCard } from '@/features/system-health/online-users-card'
 import { useSystemHealth } from '@/features/system-health/use-system-health'
+import { VersionsCard } from '@/features/system-health/versions-card'
 
 const CHECK_CARD_COUNT = 4
 const SKELETON_KEYS = Array.from({ length: CHECK_CARD_COUNT }, (_, index) => index)
@@ -65,6 +66,7 @@ export default function SystemHealthPage() {
               <HealthCheckCard key={check.key} check={check} />
             ))}
           </div>
+          <VersionsCard backend={data.versions} />
         </>
       )}
     </div>

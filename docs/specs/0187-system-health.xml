@@ -98,6 +98,9 @@
                 }
               ]                                // ordinati per last_seen_at desc
             },
+            "versions": [                      // rev. 2026-10-22, solo informativo
+              { "key": "php|laravel|database", "value": "string | null" }
+            ],
             "checks": [
               {
                 "key": "database|email|queue|security",
@@ -124,6 +127,9 @@
             failed > 0 -> degraded; pending oltre soglia config -> degraded; connessione `sync` -> degraded.
           - check.status = peggiore tra i propri details (+ eventuale errore live).
           - overall = peggiore tra i 4 check (gli utenti online non influiscono sull'esito).
+          - versions (rev. 2026-10-22): php = PHP_VERSION, laravel = app()->version(),
+            database = "<driver title> <server version>" (es. "MySQL 8.0.36"), null se il DB non risponde.
+            Non influiscono sull'esito. TypeScript e React li aggiunge il frontend dal proprio build.
         -->
       </response>
       <errors>
@@ -152,6 +158,9 @@
     <criterion id="AC-014">Il bottone "Ricontrolla" invoca il refetch; la query ha refetchInterval = 30000.</criterion>
     <criterion id="AC-015">L'hook heartbeat invia POST /presence/heartbeat al mount e poi ogni 60000 ms; si ferma all'unmount.</criterion>
     <criterion id="AC-016">help-content-parity resta verde con la nuova guida system-health it/en.</criterion>
+    <!-- rev. 2026-10-22: versioni di linguaggi e framework (richiesta utente) -->
+    <criterion id="AC-017">Dato un super-admin, data.versions ha le key php, laravel, database nell'ordine; php = PHP_VERSION, laravel = app()->version(), database inizia col driver title della connessione.</criterion>
+    <criterion id="AC-018">La pagina mostra la card "Versioni" con il gruppo Backend (valori del payload, "non disponibile" se null) e il gruppo Frontend con TypeScript e React del build in uso.</criterion>
   </acceptance_criteria>
 
   <constraints>

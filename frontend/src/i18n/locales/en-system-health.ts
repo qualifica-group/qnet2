@@ -23,6 +23,19 @@ export const systemHealth = {
     empty: 'No users online.',
     impersonating: 'impersonating {{name}}',
   },
+  versions: {
+    title: 'Versions',
+    backend: 'Backend',
+    frontend: 'Frontend (running build)',
+    unavailable: 'unavailable',
+    items: {
+      php: 'PHP',
+      laravel: 'Laravel',
+      database: 'Database',
+      typescript: 'TypeScript',
+      react: 'React',
+    },
+  },
   subsystems: {
     database: 'Database',
     email: 'Email',

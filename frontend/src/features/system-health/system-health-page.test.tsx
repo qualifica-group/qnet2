@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ReactNode } from 'react'
+import { version as reactVersion, type ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -46,6 +46,11 @@ const payload: SystemHealthData = {
       { id: 2, name: 'Luca Bianchi', email: 'luca@example.test', last_seen_at: NOW, impersonating: null },
     ],
   },
+  versions: [
+    { key: 'php', value: '8.4.12' },
+    { key: 'laravel', value: '13.8.0' },
+    { key: 'database', value: null },
+  ],
   checks: [
     { key: 'database', status: 'ok', latency_ms: 4, message: null, details: [detail('connection', 'mysql'), detail('name', 'qnet')] },
     { key: 'email', status: 'ok', latency_ms: null, message: null, details: [detail('mailer', 'microsoft-graph')] },
@@ -83,6 +88,19 @@ describe('SystemHealthPage', () => {
     // Status is conveyed as text, not by colour only.
     expect(screen.getAllByText('Down').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Degraded').length).toBeGreaterThan(0)
+  })
+
+  it('lists the backend versions and the frontend build versions (AC-018)', async () => {
+    render(<SystemHealthPage />, { wrapper })
+
+    expect(await screen.findByRole('heading', { name: 'Versions' })).toBeInTheDocument()
+    expect(screen.getByText('PHP')).toBeInTheDocument()
+    expect(screen.getByText('8.4.12')).toBeInTheDocument()
+    expect(screen.getByText('13.8.0')).toBeInTheDocument()
+    expect(screen.getByText('unavailable')).toBeInTheDocument()
+    expect(screen.getByText('TypeScript')).toBeInTheDocument()
+    expect(screen.getByText('React')).toBeInTheDocument()
+    expect(screen.getByText(reactVersion)).toBeInTheDocument()
   })
 
   it('shows the empty state when nobody is online', async () => {

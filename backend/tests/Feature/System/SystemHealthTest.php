@@ -38,6 +38,18 @@ it('returns the four checks for a super-admin', function () {
         ->and($response->json('data'))->toHaveKeys(['overall', 'checked_at', 'online']);
 });
 
+// AC-017
+it('exposes the php, laravel and database server versions', function () {
+    Sanctum::actingAs(healthSuperAdmin());
+
+    $versions = collect($this->getJson('/api/system-health')->assertOk()->json('data.versions'));
+
+    expect($versions->pluck('key')->all())->toBe(['php', 'laravel', 'database'])
+        ->and($versions->firstWhere('key', 'php')['value'])->toBe(PHP_VERSION)
+        ->and($versions->firstWhere('key', 'laravel')['value'])->toBe(app()->version())
+        ->and($versions->firstWhere('key', 'database')['value'])->toStartWith(DB::connection()->getDriverTitle().' ');
+});
+
 // AC-002
 it('rejects non super-admins with 403', function () {
     Sanctum::actingAs(User::factory()->create());

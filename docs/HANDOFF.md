@@ -3,6 +3,19 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Stato del sistema: card "Versioni" (spec 0187 rev. 2026-10-22, AC-017/018) — VERDE, COMMITTATO (2026-10-22)
+
+- Richiesta utente: mostrare in Stato del sistema la versione di PHP e degli altri linguaggi usati.
+- Backend: `RuntimeVersionsService` -> `data.versions` = `[{key, value}]` con key `php` (PHP_VERSION), `laravel`
+  (`app()->version()`), `database` ("<driver title> <server version>", null se il DB non risponde). Solo informativo,
+  non entra nell'`overall`.
+- Frontend: `versions-card.tsx` (gruppi Backend / Frontend) dopo le card check; `frontend-versions.ts` aggiunge
+  TypeScript (`typescript/package.json`) e React (`version` di `react`), fissati al build: nel bundle finisce solo la
+  stringa di versione, nel chunk lazy della pagina. i18n `versions.*` it/en.
+- Guida `system-health` IT+EN e manuale Claude Docs (tabella "Cosa controlla" + frase introduttiva) aggiornati.
+- Verifiche: Pest SystemHealthTest 15/15, Pint ok; Vitest help + system-health 158/158, ESLint ok, `tsc -b --force` ok,
+  `vite build` ok.
+
 ## Task senza creatore -> "Utente legacy" (spec 0289 D-3 aggiornata) — VERDE, COMMITTATO (2026-10-22)
 
 - Decisione utente: il run `tasks` #47 aveva intestato 24.111 task (senza creatore, richiedente ne' assegnatari nel

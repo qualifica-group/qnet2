@@ -37,9 +37,16 @@ export interface OnlineUsers {
   users: OnlineUser[]
 }
 
+/** Server runtime version (`php` | `laravel` | `database`); null when unreadable. */
+export interface RuntimeVersion {
+  key: string
+  value: string | null
+}
+
 export interface SystemHealthData {
   overall: HealthStatus
   checked_at: string
   online: OnlineUsers
+  versions: RuntimeVersion[]
   checks: HealthCheck[]
 }
