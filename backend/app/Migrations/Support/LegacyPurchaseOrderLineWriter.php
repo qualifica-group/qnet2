@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Migrations\Support;
 
-use App\Models\CostType;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderLine;
 use App\Models\PurchaseOrderReceipt;
@@ -28,12 +27,10 @@ final class LegacyPurchaseOrderLineWriter
 
     public const string RECEIPT_NOTE = 'Ricezione generata dalla migrazione';
 
-    /** @var array<string, int>|null */
-    private ?array $costTypeIds = null;
-
     public function __construct(
         private readonly PurchaseOrderAmountCalculator $amounts,
         private readonly PurchaseRequestLineLinker $linker,
+        private readonly LegacyCostTypeLookup $costTypes,
     ) {}
 
     /**
@@ -93,7 +90,7 @@ final class LegacyPurchaseOrderLineWriter
         $line = new PurchaseOrderLine([
             'position' => (int) ($legacyLine['position'] ?? 0),
             'description' => $this->description($legacyLine['description'] ?? null, $lineId, $warnings),
-            'cost_type_id' => $this->costTypeId($legacyLine['cost_type_name'] ?? null, $lineId),
+            'cost_type_id' => $this->costTypes->idFor($legacyLine['cost_type_name'] ?? null, "Line {$lineId}"),
             'quantity' => $amounts['quantity'],
             'unit_price' => $amounts['unit_price'],
             'vat_rate_id' => $vatRateId,
@@ -127,20 +124,6 @@ final class LegacyPurchaseOrderLineWriter
         }
 
         return $id;
-    }
-
-    /**
-     * @throws RuntimeException when the cost type does not exist
-     */
-    private function costTypeId(mixed $name, int|string $lineId): int
-    {
-        $this->costTypeIds ??= CostType::query()->get(['id', 'name'])
-            ->mapWithKeys(fn (CostType $costType): array => [mb_strtolower(trim($costType->name)) => $costType->id])
-            ->all();
-        $name = trim((string) ($name ?? ''));
-
-        return $this->costTypeIds[mb_strtolower($name)]
-            ?? throw new RuntimeException("Line {$lineId}: cost type '{$name}' not found; the record is not imported.");
     }
 
     /**

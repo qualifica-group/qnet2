@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0298-legacy-purchase-invoices-migration" status="approved" owner="nicola" date="2026-10-22">
+
+  <goal>
+    Il modulo Migrazioni importa le fatture passive (FTP) del QNet legacy come `purchase_invoices` di tipo fattura,
+    collegate agli ODA gia' migrati (spec 0296), con righe, scadenze e pagamento, tramite un nuovo endpoint legacy
+    `GET /api/v2/migration/purchase-invoices` e una nuova sorgente qnet-2 `purchase-invoices`, idempotente per
+    `old_id`, senza notifiche ne' log di attivita'. Chiude il ciclo RDA -> ODA -> fattura passiva.
+  </goal>
+
+  <context>
+    Verificato sul codice e sui dati reali il 2026-10-22.
+
+    Legacy (`/Users/Repository/qnet`):
+    - Una FTP e' lo stesso record del suo ODA (`proformfora_heads` `type` "Fattura", `is_frozen` 1, 315): numero
+      fornitore `fattura_numero` (a volte con spazi/tab iniziali), `fattura_data` (1 null), `stato_fattura` (null 18,
+      1 "Validata da pagare" 283, 2 "Pagata" 14), budget di testata e riga (= importi dell'ODA al congelamento;
+      17 FTP / 23 righe hanno importi fatturati diversi dal budget), `consuntivo_*` di riga (= importi fatturati).
+    - Una fattura fornitore che fattura piu' ODA e' spezzata su piu' FTP con lo stesso numero: 315 FTP -> 259 gruppi
+      (fornitore, numero, anno); 15 gruppi multipli (71 FTP, es. la fattura 189 su 35 ODA); 3 gruppi con societa'
+      diverse, 4 con pagamento diverso, 1 con data diversa, 1 con stato pagata misto; 29 gruppi a totale 0,00.
+    - Scadenze `schedule_suppliers` (808, una per documento, 315 sulle FTP): `expiration_date`, `amount`,
+      `payment_type` (MP01, MP05...), `status` sempre 1 (da pagare), nessuna data di pagamento: i pagamenti fornitori
+      non sono registrati nel legacy.
+
+    qnet-2:
+    - `purchase_invoices` (spec 0211/0250): `document_type` proforma/invoice, `document_number` 30,
+      `document_date`, `document_year` (derivato in `saving`), unico (fornitore, numero, anno) per le fatture,
+      `company_id`, `supplier_id`, `payment_method_id` NOT NULL, `financial_account_id`, `cost_type_id`,
+      `company_site_id`, `operational_site_id`, `work_order_id`, importi, `created_by`; nessun `old_id`.
+      `purchase_invoice_lines` (`purchase_order_line_id` unico, `cost_type_id` NOT NULL), pivot
+      `purchase_invoice_purchase_order`, `purchase_invoice_installments` (`payment_method_code`, `paid_amount`,
+      `paid_at`). `PurchaseInvoiceAmountCalculator::compute()` (IVA per aliquota), totale <= 0 rifiutato,
+      `PurchaseInvoiceInstallmentPlanner`.
+    - Una fattura riceve cio' che fattura (spec 0254 D-12, `PurchaseOrderInvoiceReceiptService::receive()`): un
+      ricevimento collegato alla fattura, stato ODA derivato, righe RDA ricevute; rifiuta un ODA non ricevibile
+      (bozza, in validazione).
+
+    Decisioni utente 2026-10-22:
+    D-1 Una fattura qnet-2 per (fornitore, numero, anno, societa'): le FTP dello stesso gruppo diventano un solo
+        documento con le righe e gli ODA di tutte. Due societa' con lo stesso numero dello stesso fornitore ->
+        il secondo documento fallisce per numero gia' usato (dato da correggere nel legacy).
+    D-2 La fattura riceve le quantita' fatturate come in qnet-2, anche su un ODA in bozza: l'ODA diventa evaso.
+    D-3 Stato "Pagata" -> ogni scadenza pagata per intero, `paid_at` = ultimo aggiornamento legacy, nessun conto,
+        con warning.
+    D-4 Totale <= 0 -> riga fallita col motivo (regola qnet-2); l'ODA resta senza fattura.
+
+    Decisioni proposte (backend.md section 9):
+    D-5 Legacy: raggruppamento (D-1) per fornitore, `TRIM(fattura_numero)`, anno di `fattura_data` ?? `date_proforma`
+        e societa' della sede; id = FTP con id minore; data = la minore del gruppo, ripiego `date_proforma` con
+        warning; pagamento, sede e tipo ODA della prima FTP, valori diversi con warning; pagata solo se tutte le
+        FTP sono pagate (misto -> da pagare con warning); creatore come l'ODA (spec 0296); righe con prezzo
+        `consuntivo_importo` ?? `importo`; scadenze di tutte le FTP. Riferimenti orfani null con warning.
+    D-6 qnet-2: `old_id` (id FTP minore); fornitore, societa', sede aziendale, pagamento, creatore, ODA o riga ODA
+        non migrati -> riga fallita; numero gia' usato dal fornitore nell'anno -> riga fallita; importi con
+        `PurchaseInvoiceAmountCalculator`; scadenze legacy in ordine di data, sequenza 1..n, la somma diversa dal
+        totale -> l'ultima assorbe la differenza con warning, nessuna scadenza -> planner; ricevimento con
+        `PurchaseOrderInvoiceReceiptService::receive()` (nuovo parametro `requireReceivable`, false solo qui, D-2).
+    D-7 Correzione spec 0296 (D-8 della 0296): l'ODA di una FTP porta il prezzo del budget (`budget_importo`),
+        la fattura quello fatturato.
+    D-8 `MigrationOrder`: nuova fase dopo `purchase-orders`. Dipendenze: required `users`, `companies`,
+        `company-sites`, `registries`, `payment-methods`, `purchase-orders`; optional `operational-sites`,
+        `vat-rates`, `work-orders`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Legacy: `app/Http/Controllers/Api/V2/PurchaseInvoiceMigrationController.php`,
+        `app/Support/Migration/LegacyPurchaseInvoiceGroups.php`, route `GET /api/v2/migration/purchase-invoices`;
+        `LegacyPurchaseOrderLines` (D-7).</item>
+      <item>qnet-2: migrazione `add_old_id_to_purchase_invoices_table`; `PurchaseInvoicesSource`;
+        `Support\LegacyPurchaseInvoiceWriter` (righe, scadenze, pagamento); `Support\LegacyCostTypeLookup` (condiviso
+        con `LegacyPurchaseOrderLineWriter`); `PurchaseOrderInvoiceReceiptService::receive()` + `requireReceivable`.</item>
+      <item>Registrazione in config e `MigrationOrder`; test `PurchaseInvoicesSourceImportTest`; OldIdSchema, registry
+        (33 -> 34), dipendenze, rollback +1 (REQUIREMENT CHANGED).</item>
+      <item>Frontend: etichetta e requisiti `purchase-invoices` IT/EN; guida `migrations` IT/EN; manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Scadenze degli ODA non fatturati (489): in qnet-2 le scadenze nascono con la fattura.</item>
+      <item>Stato "Validata da pagare" / "Da validare" (qnet-2 non ha validazione), scostamento budget/consuntivo
+        (deriva dagli importi di ODA e fattura), ritenuta ed ENASARCO (assenti nel legacy), allegati (spec 0295).</item>
+      <item>Proforma fornitore (`document_type` proforma): il legacy non ne ha.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="(legacy) /api/v2/migration/purchase-invoices">
+      <request>Query: `search` ?string max 255 (sul numero), `offset` int >= 0, `limit` int 1-100. Un item per gruppo
+        (D-1), ordine per id minore. Auth: gruppo `auth:api` + `v2.access`.</request>
+      <response status="200">
+        { items: [PurchaseInvoice], export_link: null, pagination: { total, offset, limit, total_pages } }
+        PurchaseInvoice = {
+          id: int,                            (FTP con id minore del gruppo)
+          purchase_order_ids: int[],          (id FTP del gruppo = old_id degli ODA)
+          document_number: string, document_date: "Y-m-d",
+          supplier_id: ?int, company_id: ?int, company_site_id: ?int, operational_site_id: ?int,
+          payment_method_id: ?int, cost_type_name: string,
+          is_paid: bool, paid_at: ?"Y-m-d",
+          creator_user_id: int,
+          lines: [{ purchase_order_line_id: int, description: string, cost_type_name: string,
+                    quantity: number, unit_price: number, vat_rate_id: ?int, work_order_id: ?int }],
+          installments: [{ due_date: "Y-m-d", amount: number, payment_method_code: ?string }],
+          warnings: string[],
+          created_at: ?datetime, updated_at: ?datetime
+        }
+      </response>
+      <errors>401/403 come gli altri endpoint del gruppo; 422 su parametri invalidi.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Un gruppo completo nasce come una fattura con `old_id`, numero, data, anno, fornitore,
+      societa', sedi, pagamento, tipo di costo, creatore, timestamp legacy, righe collegate alle righe ODA, pivot
+      con tutti gli ODA del gruppo, importi qnet-2; nessun log ne' notifica.</criterion>
+    <criterion id="AC-002">Re-import -> saltato.</criterion>
+    <criterion id="AC-003">Fornitore, societa', sede, pagamento, creatore, ODA o riga ODA non migrati, sede di
+      un'altra societa', numero gia' usato dal fornitore nell'anno, tipo di costo sconosciuto o totale &lt;= 0 ->
+      riga fallita col motivo, nessuna fattura.</criterion>
+    <criterion id="AC-004">Scadenze legacy in ordine di data con codice di pagamento; somma diversa dal totale ->
+      ultima corretta con warning; nessuna scadenza -> piano della modalita' di pagamento.</criterion>
+    <criterion id="AC-005">`is_paid` -> ogni scadenza pagata per intero alla data `paid_at`, con warning.</criterion>
+    <criterion id="AC-006">La fattura riceve le quantita' fatturate anche su un ODA in bozza (ricevimento collegato,
+      ODA evaso); su un ODA gia' ricevuto non crea ricevimenti.</criterion>
+    <criterion id="AC-007">`receive()` senza il nuovo parametro continua a rifiutare un ODA non ricevibile.</criterion>
+    <criterion id="AC-008">Registro: `purchase-invoices` nella fase dopo `purchase-orders` con le dipendenze di D-8.</criterion>
+  </acceptance_criteria>
+
+  <tests>
+    <item>`tests/Feature/Migration/PurchaseInvoicesSourceImportTest.php`: AC-001..AC-008.</item>
+    <item>Legacy: tinker sul DB locale + `php -l`.</item>
+  </tests>
+</spec>

@@ -31,10 +31,11 @@ final class PurchaseOrderInvoiceReceiptService
 
     /**
      * @param  bool  $errorOnLine  422 key: the first document row of the order (`lines.N.purchase_order_line_id`) or `document_number`
+     * @param  bool  $requireReceivable  false only for the legacy import (spec 0298, D-2): an invoiced draft order is received too
      *
      * @throws ValidationException when an order that needs a receipt is not receivable
      */
-    public function receive(PurchaseInvoice $document, User $actor, bool $errorOnLine): void
+    public function receive(PurchaseInvoice $document, User $actor, bool $errorOnLine, bool $requireReceivable = true): void
     {
         // Step 1: the order lines the document bills, grouped by order
         $rows = $document->lines()->orderBy('id')->get(['id', 'purchase_order_line_id']);
@@ -53,14 +54,14 @@ final class PurchaseOrderInvoiceReceiptService
 
         foreach ($orders as $order) {
             $billed = $rows->filter(fn ($row): bool => $orderOf->get($row->purchase_order_line_id) === $order->id);
-            $this->receiveOrder($order, $document, $billed, $actor, $errorOnLine);
+            $this->receiveOrder($order, $document, $billed, $actor, $errorOnLine, $requireReceivable);
         }
     }
 
     /**
      * @param  Collection<int, PurchaseInvoiceLine>  $billed  document rows on this order, with their index
      */
-    private function receiveOrder(PurchaseOrder $order, PurchaseInvoice $document, Collection $billed, User $actor, bool $errorOnLine): void
+    private function receiveOrder(PurchaseOrder $order, PurchaseInvoice $document, Collection $billed, User $actor, bool $errorOnLine, bool $requireReceivable): void
     {
         // Step 1: figures under lock, quantities still to receive on the billed lines
         $before = $this->synchronizer->lockedBalances($order);
@@ -71,7 +72,7 @@ final class PurchaseOrderInvoiceReceiptService
         }
 
         // Step 2: only an order that can take deliveries may need one
-        if (! $order->status->isReceivable()) {
+        if ($requireReceivable && ! $order->status->isReceivable()) {
             $key = $errorOnLine ? "lines.{$billed->keys()->first()}.purchase_order_line_id" : 'document_number';
 
             throw ValidationException::withMessages([$key => [__('purchase_invoices.order_not_receivable')]]);

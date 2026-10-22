@@ -18,6 +18,7 @@ use App\Migrations\Sources\ProductCategoriesSource;
 use App\Migrations\Sources\ProductCategoryAttributesSource;
 use App\Migrations\Sources\ProductsSource;
 use App\Migrations\Sources\ProductSuppliersSource;
+use App\Migrations\Sources\PurchaseInvoicesSource;
 use App\Migrations\Sources\PurchaseOrdersSource;
 use App\Migrations\Sources\PurchaseRequestsSource;
 use App\Migrations\Sources\QuotesSource;
@@ -127,6 +128,8 @@ return [
         'purchase-orders' => PurchaseOrdersSource::class,
         // spec 0297: the legacy bank accounts and cash boxes.
         'financial-accounts' => FinancialAccountsSource::class,
+        // spec 0298: the legacy supplier invoices, billing the migrated ODA.
+        'purchase-invoices' => PurchaseInvoicesSource::class,
     ],
 
 ];

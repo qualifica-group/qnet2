@@ -113,6 +113,11 @@ final class MigrationOrder
         // company sites, and link the RDA lines of phase 13 and the work
         // orders of phase 11 when migrated.
         ['purchase-orders'],
+
+        // Phase 15 — spec 0298: the legacy supplier invoices. Each bills the
+        // orders of phase 14 migrated from the same legacy records, and its
+        // lines their order lines.
+        ['purchase-invoices'],
     ];
 
     /**

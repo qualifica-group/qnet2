@@ -3,6 +3,27 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Migrazione fatture passive dal legacy (spec 0298) — VERDE, COMMITTATO (2026-10-22)
+
+- Decisioni utente: D-1 una fattura per (fornitore, numero, anno, societa'): 315 FTP -> 262 documenti (13 multipli,
+  es. fattura 189 su 35 ODA); D-2 la fattura riceve cio' che fattura anche su ODA in bozza (ODA evaso); D-3 "Pagata"
+  -> scadenze pagate per intero alla data dell'ultimo aggiornamento legacy, senza conto; D-4 totale <= 0 -> riga
+  fallita (30 documenti attesi).
+- Legacy (committato su develop): `PurchaseInvoiceMigrationController`, `Support/Migration/LegacyPurchaseInvoiceGroups`
+  (raggruppamento in PHP: TRIM MySQL non toglie i tab dei numeri), route `GET /api/v2/migration/purchase-invoices`.
+  Correzione ODA (spec 0296 D-8): `LegacyPurchaseOrderLines` manda il `budget_importo` sulle righe delle FTP, la
+  fattura il `consuntivo_importo`.
+- qnet-2: migrazione `2026_10_31_100300_add_old_id_to_purchase_invoices_table`, `PurchaseInvoicesSource`,
+  `Support/LegacyPurchaseInvoiceWriter` (righe via PurchaseInvoiceAmountCalculator, scadenze legacy con ultima che
+  assorbe la differenza, planner se assenti, pagato), `Support/LegacyCostTypeLookup` (condiviso con il writer ODA),
+  `PurchaseOrderInvoiceReceiptService::receive()` + parametro `requireReceivable` (default true; false solo dalla
+  migrazione). Fase 15.
+- Test: `PurchaseInvoicesSourceImportTest` 17/17; suite Migration+PurchaseInvoices+PurchaseOrders+PurchaseRequests+
+  installments+rollback 1136/1136 (flag `EXTERNAL_MIGRATION_USERS_LINK_ONLY=false`). REQUIREMENT CHANGED: registry 34,
+  ultima fase, rollback +1 (80/95/231). Vitest 180/180, ESLint, tsc ok. Guida IT/EN (sezione `purchase-invoices`),
+  i18n, manuale.
+- Fuori scope: scadenze degli ODA non fatturati (489), stato "Validata da pagare", allegati (spec 0295).
+
 ## Migrazione conti finanziari dal legacy (spec 0297) — VERDE, COMMITTATO (2026-10-22)
 
 - Richiesta utente: migrare `/financial-accounts` in /migrations, anche nel legacy.

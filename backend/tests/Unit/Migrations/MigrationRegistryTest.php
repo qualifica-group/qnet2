@@ -19,6 +19,7 @@ use App\Migrations\Sources\ProductCategoriesSource;
 use App\Migrations\Sources\ProductCategoryAttributesSource;
 use App\Migrations\Sources\ProductsSource;
 use App\Migrations\Sources\ProductSuppliersSource;
+use App\Migrations\Sources\PurchaseInvoicesSource;
 use App\Migrations\Sources\PurchaseOrdersSource;
 use App\Migrations\Sources\PurchaseRequestsSource;
 use App\Migrations\Sources\QuotesSource;
@@ -91,19 +92,20 @@ it('config/migrations.php registers every source (spec 0013 Increment 2)', funct
         'purchase-requests' => PurchaseRequestsSource::class,
         'purchase-orders' => PurchaseOrdersSource::class,
         'financial-accounts' => FinancialAccountsSource::class,
+        'purchase-invoices' => PurchaseInvoicesSource::class,
     ]);
 });
 
 it('all() resolves every registered source', function () {
     $sources = app(MigrationRegistry::class)->all();
 
-    expect($sources)->toHaveCount(33)
+    expect($sources)->toHaveCount(34)
         ->and(array_map(fn ($source) => $source->key(), $sources))->toBe([
             'roles', 'users', 'business-functions', 'companies', 'company-sites', 'operational-sites',
             'business-function-members', 'referent-types', 'referents',
             'sources', 'tags', 'sectors', 'task-templates', 'vat-rates', 'payment-methods', 'attributes', 'product-categories',
             'product-category-attributes', 'attribute-layouts', 'products', 'cost-products', 'email-templates', 'document-bundles',
             'registries', 'opportunities', 'quotes', 'work-orders', 'tasks',
-            'product-suppliers', 'commission-configurations', 'purchase-requests', 'purchase-orders', 'financial-accounts',
+            'product-suppliers', 'commission-configurations', 'purchase-requests', 'purchase-orders', 'financial-accounts', 'purchase-invoices',
         ]);
 });

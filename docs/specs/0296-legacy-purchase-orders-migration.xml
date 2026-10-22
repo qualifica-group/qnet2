@@ -71,6 +71,8 @@
         "Ricezione generata dalla migrazione", autore = creatore) e `received_quantity` = quantita'; parzialmente
         evaso -> stato tenuto, nessun ricevimento, warning (come il backfill spec 0254).
     D-6 `old_id` su `purchase_orders` e `purchase_order_lines` (id `proformforas`): servira' alle fatture passive.
+    D-8 (AGGIORNAMENTO 2026-10-22, spec 0298 D-7) L'ODA di una FTP porta il prezzo del budget (`budget_importo`,
+        importi dell'ordine al congelamento); la fattura passiva porta quello fatturato (`consuntivo_importo`).
     D-7 `MigrationOrder`: nuova fase dopo `purchase-requests` con `purchase-orders`. Dipendenze: required `users`,
         `companies`, `company-sites`, `registries`; optional `operational-sites`, `payment-methods`, `vat-rates`,
         `work-orders`, `purchase-requests`.
