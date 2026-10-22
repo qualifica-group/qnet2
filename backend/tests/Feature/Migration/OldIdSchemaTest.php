@@ -6,6 +6,8 @@ use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
+use App\Models\PurchaseRequest;
+use App\Models\PurchaseRequestLine;
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\Referent;
@@ -50,6 +52,8 @@ dataset('old_id_tables', [
     'quote_lines' => ['quote_lines'],
     'work_orders' => ['work_orders'],
     'commission_configurations' => ['commission_configurations'],
+    'purchase_requests' => ['purchase_requests'],
+    'purchase_request_lines' => ['purchase_request_lines'],
 ]);
 
 /**
@@ -78,6 +82,8 @@ function oldIdFactoryFor(string $table): Factory
         'quote_lines' => QuoteLine::factory(),
         'work_orders' => WorkOrder::factory(),
         'commission_configurations' => CommissionConfiguration::factory(),
+        'purchase_requests' => PurchaseRequest::factory(),
+        'purchase_request_lines' => PurchaseRequestLine::factory(),
     };
 }
 

@@ -100,6 +100,12 @@ final class MigrationOrder
         // the commessa and its stages (phase 11), and optionally registries,
         // referents and opportunities (phases 7, 9).
         ['tasks'],
+
+        // Phase 13 — spec 0294, start of the accounting part: the legacy RDA.
+        // They link users, companies, company sites, operational sites and
+        // business functions (phases 1-3) and the commessa (phase 11), and
+        // optionally the customer/supplier registries and the VAT rates.
+        ['purchase-requests'],
     ];
 
     /**

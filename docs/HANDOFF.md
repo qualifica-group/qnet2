@@ -3,6 +3,30 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Migrazione RDA dal legacy (spec 0294) — VERDE, COMMITTATO (2026-10-22)
+
+- Richiesta utente: iniziare la contabilita' in /migrations con le RDA. Decisioni D-1..D-4: societa'/sede mancanti
+  ricavate dalla business unit dell'offerta della commessa (vince la sede); RDA aperta con tutte le righe terminali
+  chiusa all'import (autore/data dell'ultimo log, motivo null); storico stati importato; allegati e note di tutti i
+  moduli in spec separata `0295-legacy-attachments-and-notes-migration` (draft).
+- Legacy (committato su develop; modifiche utente su AppServiceProvider/config/database
+  non toccate): `PurchaseRequestMigrationController`, `Support/Migration/LegacyPurchaseRequestLines`, route
+  `GET /api/v2/migration/purchase-requests`. Tinker: 623 RDA, 1.370 righe, 1.434 log, nessun ancoraggio null,
+  6 warning (5 societa' sostituite dalla sede D-1, 1 fornitore orfano).
+- qnet-2: migrazione `2026_10_31_100000_add_old_id_to_purchase_requests_tables` (old_id su testata e righe, D-7 per la
+  futura sorgente ODA), `PurchaseRequestsSource` (330 righe, sopra il soft limit), `LegacyPurchaseRequestLineWriter`,
+  config + `MigrationOrder` fase 13. Unita' per `code`: `package`/`cubic_metre`/`set` non esistono nel seed (161 righe
+  "conf" restano senza unita' se non si crea prima il codice `package`).
+- Test: `PurchaseRequestsSourceImportTest` 19/19; REQUIREMENT CHANGED: MigrationRegistryTest (31), MigrationDependenciesTest
+  (ultima fase), rollback +1 (PurchaseOrderMigration 77, SupplierCommissionDirection 92, QuoteWorkflowMigration 228).
+  Le 7 rosse di Migration (Plan/SourceAvailability/UsersSource*) dipendono dal `.env` locale
+  `EXTERNAL_MIGRATION_USERS_LINK_ONLY=true`: verdi con la variabile a false. Vitest help+migrations 180/180, ESLint, tsc ok.
+- Guida `migrations` IT/EN (sezione `purchase-requests`), i18n sorgente + requisiti, manuale Claude Docs (paragrafo dopo Task).
+- Prossimi passi: `php artisan migrate` sul DB locale (migrazione pending); nel DB locale `qnet2` le commesse non sono
+  ancora migrate (run quotes #29 in processing), quindi l'import RDA va lanciato dopo Offerte e Commesse. Poi sorgente ODA.
+- Fuori scope segnalato: testo requisiti `tasks` IT/EN dice ancora "un creatore mancante diventa l'utente che lancia la
+  migrazione" (superato da spec 0289 D-3 aggiornata).
+
 ## Stato del sistema: card "Versioni" (spec 0187 rev. 2026-10-22, AC-017/018) — VERDE, COMMITTATO (2026-10-22)
 
 - Richiesta utente: mostrare in Stato del sistema la versione di PHP e degli altri linguaggi usati.

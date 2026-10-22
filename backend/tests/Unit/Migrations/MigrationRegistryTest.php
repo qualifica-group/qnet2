@@ -18,6 +18,7 @@ use App\Migrations\Sources\ProductCategoriesSource;
 use App\Migrations\Sources\ProductCategoryAttributesSource;
 use App\Migrations\Sources\ProductsSource;
 use App\Migrations\Sources\ProductSuppliersSource;
+use App\Migrations\Sources\PurchaseRequestsSource;
 use App\Migrations\Sources\QuotesSource;
 use App\Migrations\Sources\ReferentsSource;
 use App\Migrations\Sources\ReferentTypesSource;
@@ -85,19 +86,20 @@ it('config/migrations.php registers every source (spec 0013 Increment 2)', funct
         'tasks' => TasksSource::class,
         'product-suppliers' => ProductSuppliersSource::class,
         'commission-configurations' => CommissionConfigurationsSource::class,
+        'purchase-requests' => PurchaseRequestsSource::class,
     ]);
 });
 
 it('all() resolves every registered source', function () {
     $sources = app(MigrationRegistry::class)->all();
 
-    expect($sources)->toHaveCount(30)
+    expect($sources)->toHaveCount(31)
         ->and(array_map(fn ($source) => $source->key(), $sources))->toBe([
             'roles', 'users', 'business-functions', 'companies', 'company-sites', 'operational-sites',
             'business-function-members', 'referent-types', 'referents',
             'sources', 'tags', 'sectors', 'task-templates', 'vat-rates', 'payment-methods', 'attributes', 'product-categories',
             'product-category-attributes', 'attribute-layouts', 'products', 'cost-products', 'email-templates', 'document-bundles',
             'registries', 'opportunities', 'quotes', 'work-orders', 'tasks',
-            'product-suppliers', 'commission-configurations',
+            'product-suppliers', 'commission-configurations', 'purchase-requests',
         ]);
 });

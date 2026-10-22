@@ -17,6 +17,7 @@ use App\Migrations\Sources\ProductCategoriesSource;
 use App\Migrations\Sources\ProductCategoryAttributesSource;
 use App\Migrations\Sources\ProductsSource;
 use App\Migrations\Sources\ProductSuppliersSource;
+use App\Migrations\Sources\PurchaseRequestsSource;
 use App\Migrations\Sources\QuotesSource;
 use App\Migrations\Sources\ReferentsSource;
 use App\Migrations\Sources\ReferentTypesSource;
@@ -118,6 +119,8 @@ return [
         // both needing the migrated registries.
         'product-suppliers' => ProductSuppliersSource::class,
         'commission-configurations' => CommissionConfigurationsSource::class,
+        // spec 0294: the legacy RDA, first source of the accounting part.
+        'purchase-requests' => PurchaseRequestsSource::class,
     ],
 
 ];

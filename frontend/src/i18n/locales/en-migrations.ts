@@ -44,6 +44,7 @@ export const migrations = {
     tasks: 'Tasks',
     'product-suppliers': 'Products — link suppliers',
     'commission-configurations': 'Commission configurations',
+    'purchase-requests': 'Purchase requests',
   },
   state: {
     notMigrated: 'Not migrated',

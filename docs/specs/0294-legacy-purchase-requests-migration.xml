@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0294-legacy-purchase-requests-migration" status="approved" owner="nicola" date="2026-10-22">
+
+  <goal>
+    Il modulo Migrazioni importa le RDA (richieste di acquisto) del QNet legacy, con righe e storico dei cambi di
+    stato delle righe, tramite un nuovo endpoint legacy `GET /api/v2/migration/purchase-requests` e una nuova sorgente
+    qnet-2 `purchase-requests`, idempotente per `old_id`, senza notifiche ne' log di attivita'. E' la prima sorgente
+    della parte contabilita' (seguiranno ODA e fatture passive).
+  </goal>
+
+  <context>
+    Verificato sul codice e sui dati reali il 2026-10-22.
+
+    Legacy (`/Users/Repository/qnet`):
+    - `rda` (623): `order_id` (sempre valorizzato, nessun orfano), `company_id` cliente (370 null, sempre ricavabile
+      da `orders.customer_id`), `supplier_id` fornitore di testata (8), `societa_azienda_id` (132 null),
+      `company_profile_id` (140 null, tutti ricavabili da `quotations.business_unit` dell'offerta della commessa),
+      `sede_id`, `gruppo_di_lavoro_id` (5 su funzioni accorpate), `responsabile_id`, `richiedente_id`, `created_by`
+      (474 null), `data_richiesta`, `oggetto`, `termini_consegna`, `piano_approvvigionamenti`,
+      `prescrizioni_tecniche_normative`, `condizioni_particolari`, `note`, `note_controller` (3), `priority` 1-5
+      (`RdaPriorityEnum` Bassa/Media/Alta/Urgente/Critica), `status_head` 0 aperta / 1 chiusa, `chiuso_da_id`,
+      `data_chiusura`, `motivazione_chiusura`, `responsabile_acquisti_id` (23), `cfo_id` (0).
+    - `rda_detail` (1.372, 2 orfane): `description`, `unit` 1-10 (`RdaDetail::UNITS`, 520 null, 161 "conf"),
+      `quantity` int, `price`, `rate_id` (-> `rates`, 895 null), `motivations` (272), `motivazione_responsabile` (6),
+      `approvato_da_responsabile_id` (1.303) / `approvato_da_cfo_id` (4) con le date, `status` 1-6
+      (Da approvare, Approvato, Ordinato, Ricevuto, Rifiutato, Stand by), `product_id` (sempre null).
+    - `rda_detail_logs` (1.460, 26 orfani): `user_id` (mai null), `ruolo`, `status_from`, `status_to`, `motivazione`,
+      `bulk_group_id` (uuid), `created_at`.
+    - `rda_document` (328: 233 di testata, 95 di riga): fuori scope (D-4).
+    - 293 RDA aperte hanno tutte le righe in Ricevuto/Rifiutato/Stand by; 3 RDA chiuse hanno righe non terminali.
+
+    qnet-2:
+    - `purchase_requests` / `purchase_request_lines` / `purchase_request_line_status_logs` (spec 0208): nessun
+      `old_id`. Testata: `subject`, `requested_at`, `purchase_request_priority_id`, `requester_id`,
+      `function_manager_id`, `company_id`, `company_site_id`, `operational_site_id`, `business_function_id`,
+      `created_by` NOT NULL; `customer_id`, `work_order_id` nullable; `status` open/closed, `closed_by`, `closed_at`,
+      `close_reason`; totali calcolati. Riga: `description` 500, `supplier_id`, `unit_of_measure_id`,
+      `quantity` decimal(12,3), `unit_price`, `vat_rate_id`, importi calcolati con `LineAmountCalculator`,
+      `status` (enum `PurchaseRequestLineStatus`), `approved_by`/`approved_at`. Log: `user_id` NOT NULL.
+    - Regola di dominio (D-7 spec 0208): una RDA con tutte le righe terminali (received, on_hold, rejected) si chiude
+      da sola; `PurchaseRequestClosureService::closeIfComplete` scrive `closed_by` = attore, motivo null.
+    - `PurchaseRequestService::create()` non e' il percorso della migrazione: forza `created_by` = attore, righe
+      tutte in attesa di approvazione, notifica il responsabile. La sorgente scrive i model direttamente, nella
+      transazione per riga, senza log ne' notifiche (come `TasksSource`).
+    - Unita' di misura per `code` (`UnitOfMeasureSeeder`: unit, kilogram, gram, litre, metre, square_metre, hour,
+      day); priorita' `purchase_request_priorities` per nome (Bassa, Media, Alta, Urgente, Critica, default Media).
+
+    Decisioni utente 2026-10-22:
+    D-1 Societa'/sede aziendale mancanti: il legacy ricava la sede aziendale dalla business unit dell'offerta della
+        commessa e la societa' dalla sede. Se la RDA ha gia' la societa' e la sede ricavata e' di un'altra societa',
+        vince la sede (societa' della sede), con warning.
+    D-2 RDA aperta con tutte le righe terminali: chiusa all'import (regola qnet-2), con `closed_by` = autore e
+        `closed_at` = data dell'ultimo cambio di stato importato della RDA (ripiego `updated_at` legacy, autore
+        null), motivo null come la chiusura automatica nativa, e un warning nel report.
+    D-3 Storico dei cambi di stato delle righe: importato.
+    D-4 Allegati (e note) di tutti i moduli: in una spec separata, `0295-legacy-attachments-and-notes-migration`.
+
+    Decisioni proposte (backend.md section 9):
+    D-5 Legacy: cliente = `company_id` ?? cliente della commessa; creatore = `created_by` ?? richiedente; funzione =
+        `LegacyBusinessFunctions::referenceId()`; priorita' come nome; `note_controller` accodata alle note
+        ("Note controller: ..."); unita' nel `code` qnet-2 (pz unit, kg kilogram, m metre, lt litre, mq square_metre,
+        mc cubic_metre, set set, conf package, h hour, gg day); stato riga semantico; approvatore = CFO ?? responsabile
+        con la sua data; fornitore di testata su ogni riga; `motivations` -> `reason`; riferimenti orfani null con
+        warning; righe e log ordinati per id. `responsabile_acquisti_id`, `cfo_id`, `motivazione_responsabile`,
+        `purchased`/`quantities_purchased` non inviati.
+    D-6 qnet-2: lookup `old_id`; richiedente, responsabile, creatore, societa', sede aziendale, sede operativa,
+        funzione o commessa non migrati -> riga fallita col motivo; sede aziendale di un'altra societa' -> riga
+        fallita; cliente, fornitore, aliquota IVA, prodotto, chiuso-da e approvatore non migrati -> null con
+        warning; priorita' sconosciuta -> default con warning; unita' non nel catalogo -> null con warning (creare
+        prima in Unita' di misura, ad esempio `package` e `cubic_metre`, per tenerle); importi e totali ricalcolati
+        con `LineAmountCalculator`; log con utente non migrato o stato non valido scartato con warning; stato riga
+        non valido -> riga fallita; troncamenti oggetto 255 e descrizione 500 con warning.
+    D-7 `old_id` anche su `purchase_request_lines` (id `rda_detail`): servira' alla futura sorgente ODA per
+        collegare `purchase_order_lines` alle righe RDA. Finche' gli ODA non sono migrati le righe ordinate/ricevute
+        restano senza ODA collegato (`oda_reference` null).
+    D-8 `MigrationOrder`: nuova fase dopo `tasks` con `purchase-requests` (inizio della contabilita').
+        Dipendenze: required `users`, `companies`, `company-sites`, `operational-sites`, `business-functions`,
+        `work-orders`; optional `registries`, `vat-rates`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Legacy: `app/Http/Controllers/Api/V2/PurchaseRequestMigrationController.php`, helper
+        `app/Support/Migration/LegacyPurchaseRequestLines.php` (righe + log), route
+        `GET /api/v2/migration/purchase-requests`.</item>
+      <item>qnet-2: migrazione `add_old_id_to_purchase_requests_tables` (`old_id` unique nullable su
+        `purchase_requests` e `purchase_request_lines`, reversibile).</item>
+      <item>qnet-2: `App\Migrations\Sources\PurchaseRequestsSource` (orchestrazione, testata, chiusura) +
+        `App\Migrations\Support\LegacyPurchaseRequestLineWriter` (righe, importi, log).</item>
+      <item>Registrazione in `config/migrations.php` e `MigrationOrder` (D-8).</item>
+      <item>Test Pest `tests/Feature/Migration/PurchaseRequestsSourceImportTest.php` + helper
+        `tests/Helpers/PurchaseRequestMigrationHelpers.php`; `OldIdSchemaTest` (+2 tabelle);
+        `MigrationRegistryTest` (30 -> 31, REQUIREMENT CHANGED); rollback a step fisso +1
+        (PurchaseOrderMigrationTest, SupplierCommissionDirectionTest, QuoteWorkflowMigrationTest, REQUIREMENT CHANGED).</item>
+      <item>Frontend: etichetta e testo requisiti `purchase-requests` IT/EN.</item>
+      <item>Guida in-app `migrations` IT/EN; manuale Claude Docs, sezione Migrazioni.</item>
+    </in>
+    <out>
+      <item>Allegati `rda_document` e note (D-4, spec 0295).</item>
+      <item>Collegamento righe RDA -> ODA (`proformfora_head_rda_details`, `proformforas.rda_detail_id`): con la
+        futura sorgente ODA (D-7).</item>
+      <item>Responsabile acquisti e CFO di testata, motivazione del responsabile sulla riga, quantita'/importi
+        acquistati (in qnet-2 vengono dagli ODA).</item>
+      <item>Aggiornamento di RDA gia' migrate al re-import (salto per `old_id`).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="(legacy) /api/v2/migration/purchase-requests">
+      <request>
+        Query: `search` ?string max 255 (sull'oggetto), `offset` int >= 0 (default 0), `limit` int 1-100 (default 50).
+        Ordine `rda.id` crescente. Auth: gruppo `auth:api` + `v2.access` esistente.
+      </request>
+      <response status="200">
+        { items: [PurchaseRequest], export_link: null, pagination: { total, offset, limit, total_pages } }
+        PurchaseRequest = {
+          id: int,
+          subject: string,                    (oggetto, trim)
+          requested_at: "Y-m-d",
+          priority_name: ?string,             (Bassa, Media, Alta, Urgente, Critica)
+          requester_user_id: int,             (richiedente_id)
+          function_manager_user_id: int,      (responsabile_id)
+          creator_user_id: int,               (created_by ?? richiedente_id)
+          customer_id: ?int,                  (company_id ?? orders.customer_id, D-5)
+          work_order_id: ?int,                (order_id)
+          company_id: ?int,                   (societa_azienda_id, D-1)
+          company_site_id: ?int,              (company_profile_id ?? quotations.business_unit, D-1)
+          operational_site_id: ?int,          (sede_id)
+          business_function_id: ?int,         (LegacyBusinessFunctions::referenceId)
+          notes: ?string,                     (note + "Note controller: " note_controller)
+          delivery_terms: ?string, procurement_plan: ?string,
+          technical_requirements: ?string, special_conditions: ?string,
+          is_closed: bool,                    (status_head = 1)
+          closed_by_user_id: ?int, closed_at: ?datetime, close_reason: ?string,
+          lines: [{
+            id: int,
+            position: int,                    (1..n per id)
+            product_id: ?int,
+            description: string,
+            supplier_id: ?int,                (rda.supplier_id)
+            unit_of_measure_code: ?string,    (D-5)
+            quantity: number, unit_price: number,
+            vat_rate_id: ?int,                (rate_id)
+            reason: ?string,                  (motivations)
+            status: "pending_approval"|"approved"|"ordered"|"received"|"rejected"|"on_hold",
+            approved_by_user_id: ?int, approved_at: ?datetime,
+            status_logs: [{ user_id: int, from_status: ?status, to_status: status, reason: ?string,
+                            bulk_group_id: ?uuid, created_at: datetime }],
+            created_at: ?datetime, updated_at: ?datetime
+          }],
+          warnings: string[],
+          created_at: ?datetime, updated_at: ?datetime
+        }
+      </response>
+      <errors>401/403 come gli altri endpoint del gruppo; 422 su parametri di paginazione invalidi.</errors>
+    </endpoint>
+    <endpoint method="GET|POST" path="(qnet-2) /api/migrations/purchase-requests/... (endpoint esistenti)">
+      <request>Nessun endpoint nuovo: la sorgente si aggiunge al registro (preview, import, piano, import massivo).</request>
+      <response status="200">Shape invariata. `GET /migrations` elenca `purchase-requests` con le dipendenze di D-8.</response>
+      <errors>Invariati (super-admin; 404 sorgente sconosciuta).</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un record legacy completo, quando si importa, allora nasce una PurchaseRequest con
+      `old_id`, oggetto, data, priorita' per nome, persone, societa', sedi, funzione, commessa, cliente, testi,
+      `created_by` legacy, `created_at`/`updated_at` legacy, e righe con `old_id`, posizione, descrizione,
+      fornitore, unita' per codice, quantita', prezzo, aliquota, motivo, stato, approvatore; importi e totali
+      calcolati da qnet-2; nessuna voce activity_log ne' notifica.</criterion>
+    <criterion id="AC-002">Dato un record gia' importato, quando si re-importa, allora e' saltato e niente cambia.</criterion>
+    <criterion id="AC-003">Dato un richiedente, responsabile, creatore, societa', sede aziendale, sede operativa,
+      funzione o commessa non migrati, oppure una sede aziendale di un'altra societa', allora la riga fallisce col
+      motivo e non resta nessuna RDA.</criterion>
+    <criterion id="AC-004">Dato cliente, fornitore, aliquota, prodotto, approvatore o chiuso-da non migrati, allora
+      restano null con warning; priorita' sconosciuta -> default con warning; unita' sconosciuta -> null con warning.</criterion>
+    <criterion id="AC-005">I log di stato della riga arrivano con utente, stati, motivo, gruppo e data legacy; un log
+      con utente non migrato o stato non valido e' scartato con warning; uno stato di riga non valido fa fallire la
+      RDA.</criterion>
+    <criterion id="AC-006">Dato `is_closed` true, allora la RDA e' chiusa con chiuso-da, data e motivo legacy, anche
+      con righe non terminali.</criterion>
+    <criterion id="AC-007">Data una RDA aperta con tutte le righe terminali, allora e' chiusa con autore e data
+      dell'ultimo log importato (senza log: data `updated_at`, autore null), motivo null e warning; con almeno una
+      riga non terminale resta aperta.</criterion>
+    <criterion id="AC-008">Oggetto oltre 255 e descrizione oltre 500 troncati con warning; i warning del record legacy
+      sono copiati nel report.</criterion>
+    <criterion id="AC-009">Il registro elenca `purchase-requests` nella fase dopo `tasks` con le dipendenze di D-8.</criterion>
+  </acceptance_criteria>
+
+  <tests>
+    <item>`tests/Feature/Migration/PurchaseRequestsSourceImportTest.php`: AC-001..AC-008.</item>
+    <item>`tests/Unit/Migrations/MigrationRegistryTest.php`, `MigrationDependenciesTest`: AC-009.</item>
+    <item>Legacy: verifica con tinker sul DB locale (conteggi, casi D-1, D-5) + `php -l`.</item>
+  </tests>
+</spec>

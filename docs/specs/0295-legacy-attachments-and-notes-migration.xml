@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0295-legacy-attachments-and-notes-migration" status="draft" owner="nicola" date="2026-10-22">
+
+  <goal>
+    Importare dal QNet legacy gli allegati e le note di ogni modulo che li prevede, in un passaggio unico e
+    trasversale, dopo che i record di ciascun modulo sono gia' migrati (decisione utente 2026-10-22).
+  </goal>
+
+  <context>
+    Spec contenitore, da completare (analisi, contratto, criteri) quando si avvia il lavoro. Raccoglie i satelliti
+    esclusi dalle singole sorgenti di migrazione. Il meccanismo di copia file esiste gia' per i pacchetti
+    documentali (`DocumentBundlesSource`: contenuto base64 inviato dal legacy, scritto sul disco allegati).
+
+    Voci raccolte finora:
+    - RDA (spec 0294 D-4): `rda_document`, 328 file, 233 di testata (`rda_id`, `rda_detail_id` null) e 95 di riga
+      (`rda_detail_id`); campi `document` (path sullo storage legacy), `name`, `title`. In qnet-2 `PurchaseRequest`
+      e `PurchaseRequestLine` usano `HasAttachments`; entrambe hanno `old_id` (spec 0294 D-7).
+    - Commesse (spec 0189): note e documenti esclusi.
+    - Task (spec 0289 D-2): note (activity_log legacy) e documenti `task_documents` esclusi.
+  </context>
+
+  <scope>
+    <in>
+      <item>Da definire: un elenco per modulo (tabella legacy, record qnet-2 di destinazione, file e note).</item>
+    </in>
+    <out>
+      <item>Da definire.</item>
+    </out>
+  </scope>
+</spec>

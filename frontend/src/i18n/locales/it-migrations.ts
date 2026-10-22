@@ -43,6 +43,7 @@ export const migrations = {
     tasks: 'Task',
     'product-suppliers': 'Prodotti — collega fornitori',
     'commission-configurations': 'Configuratore commissioni',
+    'purchase-requests': 'Richieste di acquisto (RDA)',
   },
   state: {
     notMigrated: 'Non migrata',
