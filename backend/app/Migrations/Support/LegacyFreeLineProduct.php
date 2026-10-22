@@ -9,8 +9,9 @@ use App\Services\ProductService;
 use RuntimeException;
 
 /**
- * The product of a legacy offer line without a service (spec 0305, D-7). The
- * legacy sends `free_product` {key, name}, one key per line title: the
+ * The product of a legacy offer line whose service is missing or deleted
+ * (spec 0305, D-7). The legacy sends `free_product` {key, name}, one key per
+ * line title (per deleted service for an untitled line): the
  * product is found on (old_source quotationservices, old_id key) or created
  * once under "No categoria" with the price and VAT of the line that first
  * sells it, so every line with the same title shares it.

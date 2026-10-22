@@ -37,8 +37,11 @@
     D-2 Nome con il prefisso "[OLD] " come gli altri prodotti migrati.
     D-3 Prodotto nuovo, nessun abbinamento al listino ISO di QNet: l'importante e' che faccia parte dello storico [OLD].
     D-4 Anche le righe di sconto (prezzo negativo o zero) ricevono il loro prodotto [OLD].
-    D-5 Righe con servizio cancellato: "quelli non puoi" -> restano FUORI scope, l'offerta continua a fallire con
-        "product (legacy service id N) not migrated". (Confermato dall'utente in approvazione.)
+    D-5 [rev. 2, 2026-10-22] Righe con servizio cancellato (311 righe, 56 servizi, 264 offerte legacy): stessa
+        soluzione (decisione utente "5 ok", poi opzione B). La rev. 1 le lasciava fuori per un'interpretazione sbagliata
+        di "quelli non puoi". Una riga con titolo usa il prodotto del suo titolo (D-6); una riga senza titolo (174 righe,
+        53 servizi) usa un prodotto per servizio cancellato, `name` "[OLD] Servizio cancellato (id {service_id})",
+        rinominabile a mano.
 
     Decisioni proposte:
     D-6 Contratto (legacy decide, qnet-2 scrive, `backend.md §9`): per ogni riga con `service_id` 0/nullo il legacy
@@ -47,7 +50,13 @@
         minuscole); `name` = "[OLD] " + titolo della riga `key` (trim, spazi ridotti, maiuscole originali). La chiave e'
         calcolata sull'intera tabella, non sulla pagina, quindi e' stabile tra pagine e rilanci. Per quelle righe
         `description` e' null (il titolo e' gia' il nome del prodotto: non si ripete nell'offerta). Le righe con
-        servizio non cambiano.
+        servizio non cambiano. [rev. 2] Lo stesso vale per le righe di un servizio cancellato (`services` senza la riga):
+        le chiavi per titolo si calcolano PRIMA sulle righe senza servizio e solo dopo su quelle dei servizi cancellati,
+        cosi' i prodotti gia' creati dalla rev. 1 mantengono la loro chiave; `key` di una riga senza titolo = id minimo
+        tra le righe senza titolo dello stesso servizio cancellato (stesso spazio di id delle righe, nessuna collisione).
+        [rev. 3, richiesta utente 2026-10-22] `description` e' testo ricco: il titolo e' il suo testo semplice (fine
+        blocco e `br` -> spazio, tag tolti, entita' decodificate, `&amp;nbsp;` -> spazio) prima di confrontare e comporre
+        `name`. Nessun nome inviato contiene tag o entita'.
     D-7 qnet-2: con `free_product` la riga usa il prodotto (`old_source` = 'quotationservices', `old_id` = `key`);
         se non esiste lo crea con `ProductService::create()`: nome = `name` (troncato a 191), tipo `ProductType::default()
         ?? Service`, usages di default (Sellable), categoria "No categoria", prezzo e aliquota IVA della riga che lo
@@ -58,7 +67,8 @@
         `App\Migrations\Support\UncategorizedProductCategory`, usata da `ProductsSource` e dalle righe d'offerta: nessuna
         logica duplicata. L'avviso resta lo stesso per i prodotti; per le righe d'offerta e' quello di D-7.
     D-9 Legacy: il calcolo di `free_product` sta in un nuovo helper `App\Support\Migration\LegacyFreeLineProducts`
-        (una query sulle sole righe senza servizio, `id` + `description`, per richiesta), cosi' il controller non cresce.
+        (una query sulle righe senza servizio e una su quelle dei servizi cancellati, per richiesta: mappa id riga ->
+        `free_product`), cosi' il controller non cresce. qnet-2 invariato: il contratto non cambia.
   </context>
 
   <scope>
@@ -72,7 +82,6 @@
       <item>Rilancio locale di `quotes` e `work-orders` con conteggio prima/dopo.</item>
     </in>
     <out>
-      <item>Righe con servizio cancellato (311 righe, 56 servizi, 252 offerte): D-5.</item>
       <item>Offerte fallite per opportunita' non migrata (124).</item>
       <item>Abbinamento automatico ai prodotti del listino ISO o di altri rami (D-3).</item>
       <item>Righe di fatture attive/proforma e configurazioni provvigionali che puntano a `service_id` 0: restano come
@@ -86,7 +95,7 @@
     <endpoint method="GET" path="(legacy) /api/v2/migrations/quotes">
       <request>Invariata (`search`, `offset`).</request>
       <response status="200">
-        Item `lines[]` di una riga SENZA servizio:
+        Item `lines[]` di una riga SENZA servizio o di un servizio CANCELLATO (rev. 2):
         { id: int, product_id: null, free_product: { key: int, name: string }, description: null,
           quantity: decimal, unit_price: decimal, vat_rate_id: int|null, commissions: [...] }
         Item `lines[]` di una riga CON servizio: invariato, `free_product` assente.
@@ -119,6 +128,14 @@
     <criterion id="AC-008">(operativo, DB locale) Dopo il rilancio di `quotes` e poi `work-orders`, nessuna offerta fallisce
       con "has no product", l'offerta QUO-0238 e la commessa COM-0270 esistono, i prodotti creati sono al massimo 352;
       conteggio fallite prima/dopo riportato in HANDOFF.</criterion>
+    <criterion id="AC-009">[rev. 2] (legacy, tinker) Una riga di un servizio cancellato con titolo esce con `product_id`
+      null e `free_product` del suo titolo; una senza titolo con `name` "[OLD] Servizio cancellato (id N)" e la stessa
+      `key` per tutte le righe senza titolo dello stesso servizio; le chiavi delle righe con `service_id` 0 restano
+      quelle della rev. 1. Dopo il rilancio locale di `quotes` nessuna offerta fallisce con "product (legacy service id N)
+      not migrated".</criterion>
+    <criterion id="AC-010">[rev. 3] (legacy, tinker) Nessun `free_product.name` contiene tag HTML, entita' o spazi non
+      separabili; (DB locale) i prodotti 'quotationservices' gia' creati hanno lo stesso nome pulito, e i prodotti che
+      dopo la pulizia hanno lo stesso titolo sono uniti sulla chiave piu' bassa.</criterion>
   </acceptance_criteria>
 
   <constraints>

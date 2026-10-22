@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Righe d'offerta legacy senza servizio -> prodotto [OLD] (spec 0305) — VERDE, NON COMMITTATA (2026-10-22)
+## Righe d'offerta legacy senza servizio -> prodotto [OLD] (spec 0305) — REV. 1 COMMITTATA (4ba5395f, legacy 1df9e60b), REV. 2 VERDE NON COMMITTATA (2026-10-22)
 
 - Spec `docs/specs/0305-legacy-quote-lines-without-service.xml` (approvata, D-1..D-9). Caso guida commessa 270 ->
   offerta 238 (righe 74624/74625/74626 "... UNI ISO 11381:2017 _ 1°/2°/3° Anno", `service_id` 0).
@@ -18,17 +18,30 @@
   `ProductsSource`, che la usa; messaggio se manca il seed: "The 'No categoria' category does not exist; run
   QualificaCatalogSeeder first."). `MapsLegacyQuoteLines::legacyOfferLine()` usa `free_product`; `QuotesSource`
   inietta `LegacyFreeLineProduct`.
-- Fuori scope (decisione utente D-5): righe con servizio cancellato (offerta fallita "not migrated"), opportunita'
-  non migrate.
+- REV. 2 (D-5 corretta, opzione B dell'utente): anche le righe di un servizio cancellato (311 righe, 56 servizi) hanno
+  `free_product` e `product_id` null. Con titolo -> prodotto del titolo; senza titolo (174 righe, 53 servizi) -> un
+  prodotto per servizio "[OLD] Servizio cancellato (id N)", key = id minimo delle sue righe senza titolo. Le chiavi
+  per titolo si calcolano PRIMA sulle righe con `service_id` 0 (verificato: 0 chiavi cambiate su 653), poi sui servizi
+  cancellati. Solo legacy (`LegacyFreeLineProducts` riscritto: mappa id riga -> free_product) + docblock/guide in
+  qnet-2: contratto invariato. Fuori scope: opportunita' non migrate.
+- REV. 3 (richiesta utente: niente `<p>`/`<h2>` nei nomi): `LegacyFreeLineProducts::title()` riduce la descrizione
+  (testo ricco) a testo semplice (fine blocco/`br` -> spazio, `strip_tags`, entita' decodificate, nbsp -> spazio).
+  Chiavi: 523 su 964 righe; si unisce solo "OG1/IV_950634975C" (righe 7995 e 11494). DB locale corretto una tantum
+  via tinker (query builder, niente activity log) dalla mappa calcolata dal legacy: 119 prodotti rinominati, prodotto
+  2866 (key 11494) unito in 2864 (1 riga d'offerta spostata, nessun altro riferimento) e cancellato; 514 prodotti,
+  0 tag/entita'/nbsp, 0 nomi doppi. "GROSSETO.In" (riga 7992) e' cosi' nel testo legacy.
 - Test: nuovo `QuotesSourceFreeLineProductTest` (7). Pest `tests/Feature/Migration` 584/584 con
   `EXTERNAL_MIGRATION_USERS_LINK_ONLY=false` (le solite 7 note col `.env` locale). Pint pulito. Help vitest 149/149,
   tsc -b --force 0, eslint pulito.
 - Rilancio locale (run 39/40): offerte fallite 801 -> 379 (422 create: 124 opportunita' non migrata, 255 servizio
   cancellato, 0 "has no product"), commesse fallite 394 -> 354 (40 create, tutte "Unresolved quote_id"). 323 prodotti
-  [OLD] creati. QUO-0238 e COM-0270 presenti.
+  [OLD] creati. QUO-0238 e COM-0270 presenti. Rev. 2 (run 42/44): offerte fallite 379 -> 124 (tutte opportunita'
+  non migrata), commesse fallite 354 -> 137 (tutte "Unresolved quote_id"); prodotti [OLD] da righe 515, di cui 51
+  "Servizio cancellato". Nel frattempo qualcuno ha lanciato anche opportunities (run 41) e tasks (run 43).
 - Manuale: guida `migrations` IT/EN (nota "No categoria") e manuale Claude Docs (stesso paragrafo) aggiornati.
-- Prossimo: rilanciare proforma/fatture attive se si vogliono le righe collegate alle nuove offerte; decidere se
-  servono i 56 servizi cancellati.
+- Prossimo: rilanciare tasks, proforma/fatture attive se si vogliono i record collegati alle nuove offerte/commesse;
+  le 124 offerte restano ferme sulle opportunita' non migrate (run 41 opportunities: 31 fallite per anagrafica non
+  migrata, 2 senza cliente; il legame con le 124 non e' verificato).
 
 ## Assenze spec 0304 — CONSEGNA 2 VERDE, COMMITTATA (2026-10-22)
 

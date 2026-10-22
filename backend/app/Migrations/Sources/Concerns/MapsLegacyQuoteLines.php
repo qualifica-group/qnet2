@@ -24,7 +24,7 @@ use RuntimeException;
  * Legacy offer lines (`quotationservices`) to REVENUE QuoteLineData (spec
  * 0189, G-8/G-9). The product is resolved on (old_source = services, old_id),
  * never on `old_id` alone: the cost products share the same id space. A line
- * without a service carries `free_product` instead and is sold as the [OLD]
+ * whose service is missing or deleted carries `free_product` instead and is sold as the [OLD]
  * product of its title (LegacyFreeLineProduct, spec 0305). A line
  * that cannot be imported (no product, product not migrated or not sellable,
  * a commission with an unknown role, type or recipient) fails the whole offer
