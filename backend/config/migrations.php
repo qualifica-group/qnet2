@@ -4,6 +4,7 @@ use App\Migrations\Sources\AttributeLayoutsSource;
 use App\Migrations\Sources\AttributesSource;
 use App\Migrations\Sources\BusinessFunctionMembersSource;
 use App\Migrations\Sources\BusinessFunctionsSource;
+use App\Migrations\Sources\CollectionsSource;
 use App\Migrations\Sources\CommissionConfigurationsSource;
 use App\Migrations\Sources\CompaniesSource;
 use App\Migrations\Sources\CompanySitesSource;
@@ -136,6 +137,8 @@ return [
         'proforma-requests' => ProformaRequestsSource::class,
         // spec 0301: the legacy customer and institution proformas.
         'invoices' => InvoicesSource::class,
+        // spec 0302: every legacy collection, recorded where still missing.
+        'collections' => CollectionsSource::class,
     ],
 
 ];

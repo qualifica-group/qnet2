@@ -124,6 +124,10 @@ final class MigrationOrder
         // institution proformas). They link the proforma requests of phase 12,
         // the work orders and quotes, the products and the financial accounts.
         ['invoices'],
+
+        // Phase 17 — spec 0302: the legacy collections, recorded on the
+        // installments of the phase 16 documents where still missing.
+        ['collections'],
     ];
 
     /**

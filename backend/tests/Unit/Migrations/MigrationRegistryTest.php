@@ -5,6 +5,7 @@ use App\Migrations\Sources\AttributeLayoutsSource;
 use App\Migrations\Sources\AttributesSource;
 use App\Migrations\Sources\BusinessFunctionMembersSource;
 use App\Migrations\Sources\BusinessFunctionsSource;
+use App\Migrations\Sources\CollectionsSource;
 use App\Migrations\Sources\CommissionConfigurationsSource;
 use App\Migrations\Sources\CompaniesSource;
 use App\Migrations\Sources\CompanySitesSource;
@@ -97,19 +98,20 @@ it('config/migrations.php registers every source (spec 0013 Increment 2)', funct
         'purchase-invoices' => PurchaseInvoicesSource::class,
         'proforma-requests' => ProformaRequestsSource::class,
         'invoices' => InvoicesSource::class,
+        'collections' => CollectionsSource::class,
     ]);
 });
 
 it('all() resolves every registered source', function () {
     $sources = app(MigrationRegistry::class)->all();
 
-    expect($sources)->toHaveCount(36)
+    expect($sources)->toHaveCount(37)
         ->and(array_map(fn ($source) => $source->key(), $sources))->toBe([
             'roles', 'users', 'business-functions', 'companies', 'company-sites', 'operational-sites',
             'business-function-members', 'referent-types', 'referents',
             'sources', 'tags', 'sectors', 'task-templates', 'vat-rates', 'payment-methods', 'attributes', 'product-categories',
             'product-category-attributes', 'attribute-layouts', 'products', 'cost-products', 'email-templates', 'document-bundles',
             'registries', 'opportunities', 'quotes', 'work-orders', 'tasks',
-            'product-suppliers', 'commission-configurations', 'purchase-requests', 'purchase-orders', 'financial-accounts', 'purchase-invoices', 'proforma-requests', 'invoices',
+            'product-suppliers', 'commission-configurations', 'purchase-requests', 'purchase-orders', 'financial-accounts', 'purchase-invoices', 'proforma-requests', 'invoices', 'collections',
         ]);
 });

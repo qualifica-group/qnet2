@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0302-legacy-collections-migration" status="approved" owner="nicola" date="2026-10-22">
+
+  <goal>
+    Il modulo Migrazioni porta TUTTE le registrazioni di incasso del QNet legacy, senza filtri: ogni registrazione
+    arriva tramite un nuovo endpoint legacy `GET /api/v2/migration/collections` alla nuova sorgente qnet-2
+    `collections`, che registra sulle rate delle fatture attive gli incassi non ancora riportati, salta quelli gia'
+    presenti e fa fallire con il motivo quelli che non si possono attribuire.
+  </goal>
+
+  <context>
+    Verificato sul codice e sui dati reali il 2026-10-22. Decisione utente 2026-10-22: "quello che non riesci a
+    importare genera errore, come per le opportunita'; non filtrare nulla dal legacy".
+
+    Legacy: `amministrazione_incassis` (2.760 testate, 10 senza registrazione), `amministrazione_incassi_registraziones`
+    (2.750: `datareg`, `importo`, `descrizione`, `company_id`), `amministrazione_incassi_registrazione_movimentis`
+    (2.906: `air_id` = registrazione, `proforma_id`, `importo`; 13 su proforma cancellate). 2.718 registrazioni hanno
+    movimenti e scadenze collegate (`schedules.air_id`), 20 solo movimenti, 12 nessun documento (47.448,68 euro).
+    435 movimenti puntano a proforma con la scadenza legacy ancora aperta: incassi non riportati sulla scadenza.
+
+    qnet-2: le Fatture attive (spec 0301 D-1) portano gia' gli incassi delle scadenze legacy. Un incasso esiste solo
+    sulla rata (`invoice_installments.collected_amount/at`); `InvoiceCollectionService::record()` registra un incasso
+    pieno o parziale (residuo su una nuova rata) e matura le provvigioni (`CommissionAccrualSynchronizer`). Non esiste
+    un registro di incassi non attribuiti.
+
+    Decisioni proposte:
+    D-1 Legacy: un item per registrazione (per id), poi un item per ogni testata senza registrazione (`kind`
+        empty_header); per ogni movimento la proforma (cancellata -> null con warning) e il totale incassato di quella
+        proforma su tutti i movimenti legacy (`document_collected_total`).
+    D-2 qnet-2, per registrazione: nessun movimento -> riga fallita ("nessun documento collegato", con la
+        descrizione); movimento su proforma cancellata o non importata -> riga fallita; altrimenti per ogni movimento
+        la parte mancante = min(importo, totale legacy della proforma - incassato in qnet-2, residuo del documento),
+        registrata sulle rate aperte in ordine con `InvoiceCollectionService::record()` (parziale: residuo su una nuova
+        rata con la stessa scadenza) alla data della registrazione; nulla di mancante -> riga saltata. Idempotente:
+        al re-import tutto risulta gia' incassato.
+    D-3 Nessuna colonna nuova: la sorgente non crea record propri. `MigrationOrder`: fase dopo `invoices`; dipendenza
+        required `invoices`. Il conto della registrazione non e' importato (la rata non ha conto).
+  </context>
+
+  <scope>
+    <in>
+      <item>Legacy: `CollectionMigrationController`, route `GET /api/v2/migration/collections`.</item>
+      <item>qnet-2: `CollectionsSource`, config, ordine, test, i18n, guida, manuale.</item>
+    </in>
+    <out>
+      <item>Registro di incassi non attribuiti (modulo nuovo): le 12 registrazioni senza documento falliscono col
+        motivo.</item>
+      <item>Distinte bancarie, conto dell'incasso.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="(legacy) /api/v2/migration/collections">
+      <request>Query `offset`, `limit` 1-100.</request>
+      <response status="200">
+        { items: [Collection], export_link: null, pagination }
+        Collection = { id: int, kind: "registration"|"empty_header", collected_at: ?"Y-m-d", amount: ?number,
+          description: ?string, customer_id: ?int,
+          movements: [{ proforma_id: ?int, amount: number, document_collected_total: number }],
+          warnings: string[], created_at: ?datetime, updated_at: ?datetime }
+      </response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Un movimento su una fattura importata senza incasso registra l'incasso sulla rata, alla data
+      della registrazione; un incasso parziale lascia il residuo su una nuova rata.</criterion>
+    <criterion id="AC-002">Un movimento gia' riflesso (incassato qnet-2 >= totale legacy della proforma) -> riga
+      saltata, nessuna scrittura; re-import -> saltata.</criterion>
+    <criterion id="AC-003">Registrazione senza movimenti, testata vuota, proforma cancellata o non importata -> riga
+      fallita col motivo.</criterion>
+    <criterion id="AC-004">Un incasso legacy oltre il residuo del documento e' limitato al residuo, con warning.</criterion>
+    <criterion id="AC-005">Registro: `collections` nella fase dopo `invoices`, dipendenza required `invoices`.</criterion>
+  </acceptance_criteria>
+</spec>

@@ -49,6 +49,7 @@ export const migrations = {
     'purchase-invoices': 'Fatture passive',
     'proforma-requests': 'Richieste proforma',
     invoices: 'Fatture attive',
+    collections: 'Incassi',
   },
   state: {
     notMigrated: 'Non migrata',

@@ -3,16 +3,26 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Migrazione: conti delle banche societarie + analisi incassi (spec 0297 D-5, 0301 D-10) — VERDE, COMMITTATO (2026-10-22)
+## Migrazione: conti delle banche societarie (spec 0297 D-5, 0301 D-10) + incassi (spec 0302) — VERDE, COMMITTATO (2026-10-22)
 
 - Legacy: nuovo `Support/Migration/LegacyCompanyBankAccounts` (banca -> conto per IBAN, altrimenti id riservato
   1.000.000 + id banca). `/financial-accounts` manda anche le banche 6, 8, 10, 11 di `company_banks` senza conto (13
   conti in totale); `/invoices` (`LegacyInvoiceLookups`) le collega: restano senza conto solo i 1.286 documenti con
   `bank_id` 0. qnet-2: nessuna modifica di codice; testi requisiti, guida IT/EN, manuale aggiornati.
-- Incassi non legati a scadenze: NIENTE da importare. 20 movimenti (15 proforma) hanno gia' la scadenza incassata
-  (importarli raddoppierebbe); 12 registrazioni (47.448,68 euro, es. reg. 3599 "DD N. 134 DEL 30/05/2025" 40.307,28)
-  non hanno documento e non si abbinano ne' per numero ne' per cliente+importo. qnet-2 non ha incassi non attribuiti:
-  servirebbe un modulo nuovo. Proposto all'utente un Excel per l'attribuzione manuale (in attesa di risposta).
+- Incassi (spec 0302, decisione utente "quello che non si importa genera errore, non filtrare nulla"): nuova sorgente
+  `collections` (fase 17) + legacy `CollectionMigrationController` (`/migration/collections`, 2.760 item = 2.750
+  registrazioni + 10 testate vuote, tutti i 2.906 movimenti con il totale incassato della proforma). qnet-2
+  `CollectionsSource`: registra sulle rate aperte solo la parte che manca (min(movimento, totale legacy - incassato,
+  residuo)) via `InvoiceCollectionService::record()` (parziale -> residuo su nuova rata, matura le provvigioni),
+  salta il gia' riflesso, fa fallire col motivo le 22 senza documento e i movimenti su proforma cancellate (13) o
+  non importate. Test `CollectionsSourceImportTest` 10/10, suite Migration+Invoices+InvoiceInstallments+Commission*
+  1000/1000. Registry 37. Le 12 registrazioni senza documento ora compaiono come righe fallite.
+- ATTENZIONE provvigioni: le Fatture attive scrivono gli incassi delle scadenze direttamente (senza
+  CommissionAccrualSynchronizer), quindi quegli incassi non maturano provvigioni; quelli della sorgente Incassi si'.
+  Da decidere al punto provvigioni.
+- Ancora esclusi in silenzio dagli endpoint legacy (da decidere con l'utente): 2 righe RDA senza RDA, 26 log senza
+  riga, 73 righe ODA senza testata, 4 scadenze fornitori orfane, 83 scadenze clienti senza proforma; per scelta: 489
+  scadenze di ODA non fatturati.
 - Ricordare prima di importare: i conti vanno importati PRIMA delle fatture attive (il re-import salta i documenti).
 
 ## Migrazione richieste proforma e fatture attive dal legacy (spec 0300, 0301) — VERDE, COMMITTATO (2026-10-22)
