@@ -13,6 +13,7 @@ use App\Migrations\Sources\Concerns\MapsLegacyQuoteCostLines;
 use App\Migrations\Sources\Concerns\MapsLegacyQuoteLines;
 use App\Migrations\Support\ExternalApiClient;
 use App\Migrations\Support\LegacyAttributeValueApplier;
+use App\Migrations\Support\LegacyFreeLineProduct;
 use App\Migrations\Support\LegacyQuoteState;
 use App\Migrations\Support\LegacyQuoteStatusApplier;
 use App\Models\CompanySite;
@@ -31,8 +32,9 @@ use RuntimeException;
 /**
  * `quotes` migration source (spec 0189): the legacy `quotations` with their
  * `quotationservices` lines, created through QuoteService::create() under
- * the code `QUO-{legacy id}` (G-5), then tagged with `old_id` and the legacy
- * timestamps. The parent opportunity (`opportunities.old_id`) is mandatory:
+ * the code `QUO-{legacy id}` (G-5), lines without a service sold as the
+ * [OLD] product of their title (spec 0305), then tagged with `old_id` and
+ * the legacy timestamps. The parent opportunity (`opportunities.old_id`) is mandatory:
  * unresolved, the row fails.
  *
  * Nobody is notified (G-2): the service receives an empty manager set, the
@@ -65,6 +67,7 @@ class QuotesSource extends AbstractMigrationSource
         private readonly QuoteManagerSyncMode $managerSyncMode,
         private readonly LegacyQuoteStatusApplier $statusApplier,
         private readonly LegacyAttributeValueApplier $attributeValueApplier,
+        private readonly LegacyFreeLineProduct $freeLineProduct,
     ) {
         parent::__construct($client);
     }

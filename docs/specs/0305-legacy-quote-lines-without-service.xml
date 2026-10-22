@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0305-legacy-quote-lines-without-service" status="approved" owner="nicola" date="2026-10-22">
+
+  <goal>
+    Un'offerta legacy con righe senza servizio (`quotationservices.service_id` 0 o nullo) non fallisce piu': ogni riga
+    riceve un prodotto [OLD] che porta il titolo della riga, creato una sola volta per titolo, e l'offerta si importa
+    con le sue righe. A cascata si importano le commesse e i documenti che dipendono da quelle offerte (caso guida:
+    commessa 270 -> offerta 238, righe 74624/74625/74626 "ISO _ Prezzo Approssimativo Ente da Voi Scelto* _ UNI  ISO
+    11381:2017 _ 1°/2°/3° Anno").
+  </goal>
+
+  <context>
+    Stato verificato il 2026-10-22 (migration run locali 29 `quotes` e 30 `work-orders`, DB legacy):
+    - 801 offerte fallite: 425 "Line N has no product", 252 "product (legacy service id N) not migrated", 124 opportunita'
+      non migrata. La commessa 270 fallisce per "Unresolved quote_id (legacy id 238)"; l'offerta 238 per "Line 74624 has
+      no product".
+    - Legacy: 653 righe `quotationservices` con `service_id` 0/nullo in 435 offerte, TUTTE con `description` valorizzata,
+      352 titoli distinti, lunghezza massima 214. 43 hanno prezzo &lt;= 0 (es. "Sconto a Lei riservato" -300).
+    - Legacy: 311 righe puntano a 56 servizi cancellati fisicamente (`services` senza `deleted_at`): titolo del servizio
+      non recuperabile, 174 di quelle righe senza `description`.
+    - Legacy `QuoteMigrationController::mapLine()` invia `product_id` = `Field::id($line->service_id)` e `description`;
+      il file e' a 322 righe (sopra la soglia di 300). Prefisso "[OLD] " in `App\Support\Migration\LegacyNameMark::PREFIX`.
+    - qnet-2 `MapsLegacyQuoteLines::sellableServiceProductId()` risolve su (`old_source` = `ProductsSource::OLD_SOURCE`
+      'services', `old_id`) e lancia RuntimeException se il prodotto manca (decisione 2026-10-14: niente si scarta in
+      silenzio). `legacyOfferLine()` mette `description` in `additionalDescription`.
+    - `products`: unique (`old_source` string(32), `old_id`); `ProductService::create(CreateProductData)` assegna codice
+      PRD- sequenziale, unita' e tipologia di default, usages di default Sellable. Nome max 191
+      (`MapsExternalProductRecord::NAME_MAX_LENGTH`).
+    - `ProductsSource::uncategorizedCategory()` (privato) trova "No categoria" (`UNCATEGORIZED_CATEGORY`), la rende non
+      attiva al primo uso e aggiunge un avviso; la categoria ha la funzione aziendale "No funzione aziendale" che permette
+      l'import delle offerte (guida migrazioni).
+    - `QuoteLineWriter` non vincola il segno di `unit_price`: le righe di sconto con prezzo negativo si scrivono.
+    - `WorkOrdersSource` ritrova le righe tramite `quote_lines.old_id` (`tagLegacyLines`): nessuna modifica alle commesse.
+
+    Decisioni utente 2026-10-22:
+    D-1 Il prodotto creato va nella categoria "No categoria" (non attiva), come i servizi legacy senza categoria.
+    D-2 Nome con il prefisso "[OLD] " come gli altri prodotti migrati.
+    D-3 Prodotto nuovo, nessun abbinamento al listino ISO di QNet: l'importante e' che faccia parte dello storico [OLD].
+    D-4 Anche le righe di sconto (prezzo negativo o zero) ricevono il loro prodotto [OLD].
+    D-5 Righe con servizio cancellato: "quelli non puoi" -> restano FUORI scope, l'offerta continua a fallire con
+        "product (legacy service id N) not migrated". (Confermato dall'utente in approvazione.)
+
+    Decisioni proposte:
+    D-6 Contratto (legacy decide, qnet-2 scrive, `backend.md §9`): per ogni riga con `service_id` 0/nullo il legacy
+        invia `product_id: null` e `free_product: { key, name }`. `key` = id della riga `quotationservices` con id
+        minimo tra TUTTE le righe senza servizio dello stesso titolo normalizzato (trim, spazi multipli ridotti a uno,
+        minuscole); `name` = "[OLD] " + titolo della riga `key` (trim, spazi ridotti, maiuscole originali). La chiave e'
+        calcolata sull'intera tabella, non sulla pagina, quindi e' stabile tra pagine e rilanci. Per quelle righe
+        `description` e' null (il titolo e' gia' il nome del prodotto: non si ripete nell'offerta). Le righe con
+        servizio non cambiano.
+    D-7 qnet-2: con `free_product` la riga usa il prodotto (`old_source` = 'quotationservices', `old_id` = `key`);
+        se non esiste lo crea con `ProductService::create()`: nome = `name` (troncato a 191), tipo `ProductType::default()
+        ?? Service`, usages di default (Sellable), categoria "No categoria", prezzo e aliquota IVA della riga che lo
+        crea, descrizione nulla. Ogni riga che lo crea aggiunge l'avviso "Line {id}: product '{name}' created from the
+        line title."; una riga che lo riusa non aggiunge avvisi. Senza `free_product`, `product_id` 0/nullo fallisce
+        come oggi ("Line N has no product").
+    D-8 La ricerca di "No categoria" (con disattivazione e avviso) esce da `ProductsSource` in un'unita' condivisa
+        `App\Migrations\Support\UncategorizedProductCategory`, usata da `ProductsSource` e dalle righe d'offerta: nessuna
+        logica duplicata. L'avviso resta lo stesso per i prodotti; per le righe d'offerta e' quello di D-7.
+    D-9 Legacy: il calcolo di `free_product` sta in un nuovo helper `App\Support\Migration\LegacyFreeLineProducts`
+        (una query sulle sole righe senza servizio, `id` + `description`, per richiesta), cosi' il controller non cresce.
+  </context>
+
+  <scope>
+    <in>
+      <item>Legacy: `LegacyFreeLineProducts` (nuovo), `QuoteMigrationController::mapLine()` + docblock dell'endpoint.</item>
+      <item>qnet-2: `MapsLegacyQuoteLines` (risoluzione `free_product`), `Support/UncategorizedProductCategory` (nuovo),
+        `ProductsSource` (usa l'unita' condivisa), docblock di `QuotesSource`.</item>
+      <item>Test Pest in `tests/Feature/Migration/QuotesSourceImportTest.php` (nuovi casi) e verifica che
+        `ProductsSourceImportTest` resti verde.</item>
+      <item>Guida in-app `migrations` IT/EN (sezione offerte) e manuale Claude Docs.</item>
+      <item>Rilancio locale di `quotes` e `work-orders` con conteggio prima/dopo.</item>
+    </in>
+    <out>
+      <item>Righe con servizio cancellato (311 righe, 56 servizi, 252 offerte): D-5.</item>
+      <item>Offerte fallite per opportunita' non migrata (124).</item>
+      <item>Abbinamento automatico ai prodotti del listino ISO o di altri rami (D-3).</item>
+      <item>Righe di fatture attive/proforma e configurazioni provvigionali che puntano a `service_id` 0: restano come
+        oggi (prodotto vuoto con avviso).</item>
+      <item>Costi legacy legati a righe senza servizio: comportamento invariato (`offer_line_id` null -> costo generico).</item>
+      <item>Riclassificazione dei prodotti creati: si fa a mano da "No categoria".</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="(legacy) /api/v2/migrations/quotes">
+      <request>Invariata (`search`, `offset`).</request>
+      <response status="200">
+        Item `lines[]` di una riga SENZA servizio:
+        { id: int, product_id: null, free_product: { key: int, name: string }, description: null,
+          quantity: decimal, unit_price: decimal, vat_rate_id: int|null, commissions: [...] }
+        Item `lines[]` di una riga CON servizio: invariato, `free_product` assente.
+      </response>
+      <errors>Invariati.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un record offerta con una riga `{product_id: null, free_product: {key: 901, name:
+      "[OLD] Titolo"}}` e nessun prodotto (quotationservices, 901), quando si importa, allora l'offerta e' creata, la riga
+      punta a un nuovo prodotto "[OLD] Titolo" con `old_source` 'quotationservices', `old_id` 901, categoria "No categoria"
+      non attiva, prezzo e IVA della riga, e il report contiene l'avviso "Line 901: product '[OLD] Titolo' created from
+      the line title.".</criterion>
+    <criterion id="AC-002">Dato due righe (anche di offerte diverse, anche in run successivi) con lo stesso `free_product.key`,
+      quando si importano, allora esiste un solo prodotto con quella chiave e entrambe le righe lo usano.</criterion>
+    <criterion id="AC-003">Dato una riga `free_product` con `unit_price` -300, quando si importa, allora la riga e' scritta
+      con prezzo -300 sul suo prodotto [OLD] e l'offerta e' creata.</criterion>
+    <criterion id="AC-004">Dato una riga con `product_id` 0 e senza `free_product`, quando si importa, allora l'offerta
+      fallisce con "Line N has no product; the quote is not imported." (caso esistente invariato).</criterion>
+    <criterion id="AC-005">Dato un `free_product.name` piu' lungo di 191 caratteri, quando si importa, allora il prodotto
+      ha il nome troncato a 191.</criterion>
+    <criterion id="AC-006">Dato l'import prodotti con un servizio senza categoria, quando si importa, allora il
+      comportamento e' quello attuale (categoria "No categoria" disattivata, stesso avviso): `ProductsSourceImportTest`
+      verde senza modifiche.</criterion>
+    <criterion id="AC-007">(legacy, tinker) L'endpoint offerte per l'offerta 238 restituisce le righe 74624/74625/74626 con
+      `product_id` null, `description` null, `free_product.key` uguale all'id minimo delle righe senza servizio con lo
+      stesso titolo normalizzato, `name` "[OLD] ISO _ Prezzo Approssimativo Ente da Voi Scelto* _ UNI ISO 11381:2017 _
+      1° Anno" (e 2°/3°); le righe con servizio sono invariate; `php -l` pulito.</criterion>
+    <criterion id="AC-008">(operativo, DB locale) Dopo il rilancio di `quotes` e poi `work-orders`, nessuna offerta fallisce
+      con "has no product", l'offerta QUO-0238 e la commessa COM-0270 esistono, i prodotti creati sono al massimo 352;
+      conteggio fallite prima/dopo riportato in HANDOFF.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Nessuna migrazione di schema (colonne esistenti).</item>
+    <item>`backend.md §9`: normalizzazione, deduplica e composizione del nome solo nel legacy; qnet-2 fa solo lookup,
+      creazione idempotente e limiti di colonna.</item>
+    <item>Import senza notifiche ne' activity log come il resto della sorgente.</item>
+    <item>Legacy senza test API: verifica con `XDEBUG_MODE=off php artisan tinker --execute='...'` + `php -l`; non toccare
+      modifiche locali dell'utente nel legacy; nessun commit senza ordine (CLAUDE.md §3.6).</item>
+    <item>Pest mirato (`XDEBUG_MODE=off ./vendor/bin/pest tests/Feature/Migration`), Pint pulito.</item>
+  </constraints>
+
+</spec>

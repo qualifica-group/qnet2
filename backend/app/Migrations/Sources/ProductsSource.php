@@ -10,6 +10,7 @@ use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Sources\Concerns\MapsExternalProductRecord;
 use App\Migrations\Support\ExternalApiClient;
+use App\Migrations\Support\UncategorizedProductCategory;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductTypology;
@@ -62,14 +63,14 @@ class ProductsSource extends AbstractMigrationSource
     /**
      * The category a legacy product WITHOUT a category is filed under, seeded
      * by QualificaCatalogSeeder (user decision 2026-10-12): a holding place to
-     * reclassify from, instead of a failed row. Made NOT active on first use,
-     * like the rest of the migrated catalogue (user directive 2026-10-13).
+     * reclassify from, instead of a failed row (UncategorizedProductCategory).
      */
     public const string UNCATEGORIZED_CATEGORY = 'No categoria';
 
     public function __construct(
         ExternalApiClient $client,
         private readonly ProductService $service,
+        private readonly UncategorizedProductCategory $uncategorized,
     ) {
         parent::__construct($client);
     }
@@ -208,20 +209,10 @@ class ProductsSource extends AbstractMigrationSource
      */
     private function uncategorizedCategory(array &$warnings): int
     {
-        $category = ProductCategory::query()->where('name', self::UNCATEGORIZED_CATEGORY)->first();
-
-        if ($category === null) {
-            throw new RuntimeException("category_id is missing and the '".self::UNCATEGORIZED_CATEGORY."' category does not exist; run QualificaCatalogSeeder first.");
-        }
-
-        // Per-model update, so the activity log records it.
-        if ($category->is_active) {
-            $category->update(['is_active' => false]);
-        }
-
+        $id = $this->uncategorized->id();
         $warnings[] = "No category in the legacy record; filed under '".self::UNCATEGORIZED_CATEGORY."'.";
 
-        return $category->id;
+        return $id;
     }
 
     /**

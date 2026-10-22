@@ -24,6 +24,8 @@ use RuntimeException;
  * Legacy offer lines (`quotationservices`) to REVENUE QuoteLineData (spec
  * 0189, G-8/G-9). The product is resolved on (old_source = services, old_id),
  * never on `old_id` alone: the cost products share the same id space. A line
+ * without a service carries `free_product` instead and is sold as the [OLD]
+ * product of its title (LegacyFreeLineProduct, spec 0305). A line
  * that cannot be imported (no product, product not migrated or not sellable,
  * a commission with an unknown role, type or recipient) fails the whole offer
  * with the reason (user decision 2026-10-14: nothing is dropped silently).
@@ -105,15 +107,19 @@ trait MapsLegacyQuoteLines
     private function legacyOfferLine(array $externalLine, int $sortOrder, array &$warnings): QuoteLineData
     {
         $lineRef = $externalLine['id'] ?? '?';
-        $productId = $this->sellableServiceProductId($externalLine['product_id'] ?? null, $lineRef);
+        $unitPrice = (float) ($externalLine['unit_price'] ?? 0);
+        $vatRateId = $this->remapLegacyId(VatRate::class, $externalLine['vat_rate_id'] ?? null, "line {$lineRef} vat_rate_id", $warnings);
+        $productId = isset($externalLine['free_product'])
+            ? $this->freeLineProduct->id((array) $externalLine['free_product'], $unitPrice, $vatRateId, $lineRef, $warnings)
+            : $this->sellableServiceProductId($externalLine['product_id'] ?? null, $lineRef);
 
         $description = trim((string) ($externalLine['description'] ?? ''));
 
         return new QuoteLineData(
             productId: $productId,
             quantity: (float) ($externalLine['quantity'] ?? 0),
-            unitPrice: (float) ($externalLine['unit_price'] ?? 0),
-            vatRateId: $this->remapLegacyId(VatRate::class, $externalLine['vat_rate_id'] ?? null, "line {$lineRef} vat_rate_id", $warnings),
+            unitPrice: $unitPrice,
+            vatRateId: $vatRateId,
             sortOrder: $sortOrder,
             commissions: $this->legacyCommissions($externalLine['commissions'] ?? [], $lineRef, $warnings),
             additionalDescription: $description !== '' ? $description : null,
