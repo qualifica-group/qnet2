@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Role;
 use App\Models\User;
 use App\RequestManagement\RequestModule;
+use Database\Seeders\QualificaCatalog\CommercialBackOfficeRoleCatalogue as BackOffice;
 use Database\Seeders\QualificaCatalog\HrOfficeRoleCatalogue as HrOffice;
 use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue as Catalogue;
 use Database\Seeders\QualificaCatalog\OwnAbsencesCatalogue as OwnAbsences;
@@ -24,7 +25,8 @@ use Spatie\Permission\PermissionRegistrar;
  *
  * Next to them the HR office role (HrOfficeRoleCatalogue, spec 0283), and the
  * per-field matrix keeping the user record's contractual data to that role and
- * to `admin`.
+ * to `admin`; and the commercial back office role (CommercialBackOfficeRoleCatalogue,
+ * spec 0299).
  *
  * Self-sufficient by design: it re-runs `permissions:sync` first, so a role can
  * never end up silently empty because the catalogue had not been bootstrapped.
@@ -64,6 +66,11 @@ class QualificaRoleSeeder extends Seeder
         // Step 4b: the HR office (spec 0283), held on top of a mansione.
         $hrOffice = $this->syncRole(HrOffice::ROLE, HrOffice::DESCRIPTION, $this->hrOfficePermissions($catalogue));
         $this->syncFieldPermissions($hrOffice, readonlyFields: HrOffice::READONLY_FIELDS, grantedFields: HrOffice::SENSITIVE_FIELDS);
+
+        // Step 4c: the commercial back office (spec 0299), held on top of a
+        // mansione. No field rows: the mansione's hidden rows keep applying.
+        $backOffice = $this->syncRole(BackOffice::ROLE, BackOffice::DESCRIPTION, $this->backOfficePermissions($catalogue));
+        $this->syncFieldPermissions($backOffice);
 
         // Step 5: drop the roles the Italian names replaced. A model delete, so
         // spatie detaches their permissions and memberships and the field
@@ -110,6 +117,20 @@ class QualificaRoleSeeder extends Seeder
             $permissions->merge($this->permissionsOf(Catalogue::EVERY_ROLE_BLOCKS, $catalogue))->unique()->values(),
             $catalogue,
         );
+    }
+
+    /**
+     * The back-office modules in full and the read-only support resources.
+     * Task, Segnatempo and Assenze come from the mansione it is held on top of.
+     *
+     * @param  Collection<int, string>  $catalogue
+     * @return Collection<int, string>
+     */
+    private function backOfficePermissions(Collection $catalogue): Collection
+    {
+        return $catalogue->filter(fn (string $permission): bool => in_array(Str::beforeLast($permission, '.'), BackOffice::MODULES, true)
+            || $this->isSelectOnlyGrant(Str::beforeLast($permission, '.'), Str::afterLast($permission, '.'), BackOffice::SELECT_ONLY_RESOURCES))
+            ->values();
     }
 
     /**

@@ -75,6 +75,9 @@ use Illuminate\Database\Seeder;
  *      QualificaHrOfficeSeeder     — the "Risorse Umane" role (spec 0283),
  *                                    added to the people of the HR function
  *                                    on top of the role of step 6 or 7.
+ *      QualificaCommercialBackOfficeSeeder — the "Back Office Commerciale"
+ *                                    role (spec 0299), added the same way to
+ *                                    five listed people of the staff.
  *   8. QualificaReportsToSeeder    — who each operator reports to ("Risponde
  *                                    a", spec 0166), from the mansionario's
  *                                    supervision sheet.
@@ -138,6 +141,7 @@ class QualificaProductionDataSeeder extends Seeder
         $this->call(QualificaOperatorSeeder::class);
         $this->call(QualificaStaffSeeder::class);
         $this->call(QualificaHrOfficeSeeder::class);
+        $this->call(QualificaCommercialBackOfficeSeeder::class);
         $this->call(QualificaReportsToSeeder::class);
         $this->call(QualificaHrCatalogSeeder::class);
     }

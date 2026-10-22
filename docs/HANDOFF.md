@@ -24,6 +24,22 @@
   i18n, manuale.
 - Fuori scope: scadenze degli ODA non fatturati (489), stato "Validata da pagare", allegati (spec 0295).
 
+## Ruolo Back Office Commerciale nel production seed (spec 0299) — VERDE, NON COMMITTATO (2026-10-22)
+
+- Richiesta utente: Lidia Russo, Deborah Farina, Caterina Maduni, Alessia Luongo, Lia Palladino abilitate a
+  Anagrafiche, Opportunita', Offerte, Commesse "tutto". D-2: Anagrafiche = solo `registries` + `referents`.
+- Solo seed: `QualificaCatalog/CommercialBackOfficeRoleCatalogue` (ruolo `back-office-commerciale`, `MODULES`
+  completi `registries|referents|opportunities|quotes|work-orders`, `SELECT_ONLY_RESOURCES` viewAny
+  `product-categories` (albero) + `operational-sites` (tetto Sede dell'Opportunita'), `USERS` per email);
+  step 4c di `QualificaRoleSeeder` (nessuna riga di matrice campi); nuovo `QualificaCommercialBackOfficeSeeder`
+  (ruolo AGGIUNTO sopra quello base dello StaffRoster), step dopo `QualificaHrOfficeSeeder` nel production seeder.
+  Martina Mosca (Supervisor Back Office Commerciale) NON e' nella lista: fuori per scelta dell'elenco utente.
+- Su DB installato: `php artisan db:seed --class=QualificaCommercialBackOfficeSeeder`.
+- Test: nuovo `tests/Feature/Seeding/QualificaCommercialBackOfficeSeederTest.php` (4); Seeding 187, Users 268,
+  Authorization 109 + gli altri file che usano QualificaRoleSeeder verdi; Pint pulito. Guida `users` IT/EN
+  (elenco ruoli senza dati contrattuali), Vitest help 148/148, ESLint, `tsc -b --force` 0; manuale Claude Docs
+  (stessa frase). PDF derivato da rigenerare.
+
 ## Migrazione conti finanziari dal legacy (spec 0297) — VERDE, COMMITTATO (2026-10-22)
 
 - Richiesta utente: migrare `/financial-accounts` in /migrations, anche nel legacy.

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0299-commercial-back-office-role" status="approved" owner="nicola" date="2026-10-22">
+
+  <goal>
+    Nel seed di produzione cinque persone del back office commerciale (Lidia Russo, Deborah Farina, Caterina Maduni,
+    Alessia Luongo, Lia Palladino) ricevono un ruolo "Back Office Commerciale" con Anagrafiche, Referenti,
+    Opportunita', Offerte e Commesse completi.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-10-22:
+    D-1 Ruolo `back-office-commerciale` ("Back Office Commerciale"), assegnato IN AGGIUNTA al ruolo che la persona ha
+        gia' (oggi il ruolo base di `StaffRoster`: Task, Segnatempo e Assenze restano). Le persone sono elencate per
+        email, non derivate dalla Pianta Organica: la funzione "Commerciale" e la mansione "Back Office Commerciale"
+        contengono anche altre persone (es. Martina Mosca, Supervisor Back Office Commerciale) che restano fuori.
+    D-2 "Anagrafiche - tutto" = solo le voci Anagrafiche (`registries`) e Referenti (`referents`); Tipi referente,
+        Societa', Sedi societa' e Sedi operative restano fuori dal menu. "Tutto" = ogni ability del modulo
+        (vedere, creare, modificare, eliminare, importare, esportare, attivita', documenti e, sulle Commesse,
+        `viewAll`, costi, fatture, pagamenti, dati contrattuali, email).
+    D-3 Moduli completi: `registries`, `referents`, `opportunities`, `quotes`, `work-orders`. Il Configuratore Stati
+        Offerta, i Contratti e Gestione Richieste non fanno parte della richiesta.
+    D-4 Sola lettura di supporto (`viewAny`, voce di menu nascosta perche' gated su `.view`):
+        `product-categories` (albero categorie di Opportunita' e Offerte) e `operational-sites` (tetto di campo
+        della Sede operativa dell'Opportunita'). Le tendine `for-select` non servono: sono aperte a ogni utente
+        autenticato (ADR 0011, emendamento 2026-07-31).
+    D-5 Nessuna riga nella matrice dei permessi di campo: i dati contrattuali dell'utente restano nascosti dalle
+        righe del ruolo base (spec 0283 D-3).
+  </context>
+
+  <scope>
+    <in>
+      <item>Nuovo `QualificaCatalog/CommercialBackOfficeRoleCatalogue` (ruolo, moduli, sola lettura, email).</item>
+      <item>`QualificaRoleSeeder`: step che sincronizza il ruolo.</item>
+      <item>Nuovo `QualificaCommercialBackOfficeSeeder` (assegnazione), chiamato da `QualificaProductionDataSeeder`
+        dopo `QualificaHrOfficeSeeder`.</item>
+    </in>
+    <out>
+      <item>Codice applicativo, endpoint, frontend: invariati.</item>
+      <item>Guide in-app: il ruolo e' un dato di seed, i moduli e le loro guide non cambiano.</item>
+    </out>
+  </scope>
+
+  <acceptance>
+    <criterion id="AC-001">Il ruolo ha ogni permesso di `registries`, `referents`, `opportunities`, `quotes`,
+      `work-orders`, piu' `product-categories.viewAny` e `operational-sites.viewAny`, e nient'altro di quei
+      moduli di supporto (`.view`, scritture) ne' di Tipi referente, Societa', Configuratore Stati Offerta.</criterion>
+    <criterion id="AC-002">Il seeder aggiunge il ruolo alle cinque persone con un account, sopra il ruolo che hanno;
+      un'email senza account viene saltata con un warning; rieseguito converge.</criterion>
+    <criterion id="AC-003">Con il ruolo base + il nuovo ruolo la navigazione mostra Anagrafiche, Referenti,
+      Opportunita', Offerte e Commesse, e non Tipi referente, Societa', Sedi operative, Configuratore Stati
+      Offerta, Contratti, Gestione Richieste.</criterion>
+  </acceptance>
+
+  <rollout>
+    Su un DB gia' installato: `php artisan db:seed --class=QualificaCommercialBackOfficeSeeder` (risemina anche i
+    ruoli).
+  </rollout>
+</spec>
