@@ -60,6 +60,10 @@
     D-3 Creatore: il legacy manda `creator_user_id` con la catena `system_creator` -> `assigned_by` -> autore
         della voce activity_log "created" del task -> primo assegnatario. Se resta null, qnet-2 usa l'utente che
         lancia la migrazione, con warning.
+        AGGIORNAMENTO 2026-10-22 (decisione utente, run #47: 24.111 task finiti all'attore): se la catena non trova
+        nessuno, il legacy (LegacyTaskPeople) manda il segnaposto "Utente legacy" (`LegacyPlaceholderUser::ID`
+        999999999), quindi `creator_user_id` non e' mai null. qnet-2 toglie il ripiego sull'attore: un
+        `creator_user_id` null fa fallire la riga col motivo (validazione difensiva, backend.md section 9).
     D-4 Flag `open` (privato) ignorato: ogni task migrato ha `is_private` = false.
 
     Decisioni proposte e approvate dall'utente 2026-10-21:
@@ -163,7 +167,7 @@
           work_order_id: ?int,
           work_order_stage_name: ?string,     (trim di ordermilestones.title, solo radici)
           stage_position: int,                (position)
-          creator_user_id: ?int,              (D-3)
+          creator_user_id: int,               (D-3, segnaposto 999999999 se la catena e' vuota)
           requester_user_id: ?int,            (assigned_by)
           assignee_user_ids: int[],           (distinti, D-8)
           watcher_user_ids: int[],            (distinti, disgiunti dai precedenti, D-8)
@@ -208,8 +212,8 @@
       senza), con warning solo per il nome sconosciuto.</criterion>
     <criterion id="AC-004">Dato un nome di tipo/priorita'/importanza sconosciuto, allora si usa il default di
       `TaskDefaultLookupResolver` con warning; categoria sconosciuta -> null con warning.</criterion>
-    <criterion id="AC-005">Dato `creator_user_id` null, allora il creatore e' l'attore della migrazione, con
-      warning; dato un creatore, richiedente, assegnatario o osservatore non migrato, allora la riga fallisce col
+    <criterion id="AC-005">Dato `creator_user_id` null, allora la riga fallisce col motivo (D-3 aggiornata
+      2026-10-22, il legacy manda sempre un creatore); dato un creatore, richiedente, assegnatario o osservatore non migrato, allora la riga fallisce col
       motivo e non resta nessun Task.</criterion>
     <criterion id="AC-006">Assegnatari e osservatori finiscono nelle pivot `task_assignee`/`task_watcher`.</criterion>
     <criterion id="AC-007">Dato un sotto-task col padre gia' importato, allora `parent_task_id` punta al padre e

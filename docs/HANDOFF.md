@@ -3,6 +3,19 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Task senza creatore -> "Utente legacy" (spec 0289 D-3 aggiornata) — VERDE, COMMITTATO (2026-10-22)
+
+- Decisione utente: il run `tasks` #47 aveva intestato 24.111 task (senza creatore, richiedente ne' assegnatari nel
+  legacy) all'utente che lanciava la migrazione (Demo User). Ora vanno al segnaposto "Utente legacy" (999999999).
+- Legacy: `LegacyTaskPeople::forTask()` chiude la catena del creatore con `LegacyPlaceholderUser::ID`, quindi
+  `creator_user_id` non e' mai null (verificato in tinker su 84774, 85287, 87976...; `php -l` ok).
+- qnet-2: `TasksSource` toglie il ripiego sull'attore (backend.md section 9): `creator_user_id` null -> riga fallita
+  "No creator in the legacy; the task is not imported."; `importRecord` non riceve piu' il context.
+  Test AC-005 REQUIREMENT CHANGED. Migration 464/464 con `EXTERNAL_MIGRATION_USERS_LINK_ONLY=false`.
+- Guida `migrations` IT+EN e manuale Claude Docs aggiornati.
+- Da fare in ambiente: il segnaposto non esiste ancora nel DB locale -> rilanciare `users`, poi rifare `tasks`
+  (i task gia' importati vengono saltati: i 24.111 restano a Demo User finche' non si cancellano e reimportano).
+
 ## Assenze: anche l'ufficio del personale approva (spec 0278 D-15) — VERDE (2026-10-21)
 
 - Decisione utente: chi ha `absence-requests.manageAll` (ruolo `risorse-umane`) approva o rifiuta qualunque

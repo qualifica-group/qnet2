@@ -128,18 +128,18 @@ class TasksSource extends AbstractMigrationSource
             return MigrationRowOutcome::skipped();
         }
 
-        return activity()->withoutLogs(fn (): MigrationRowOutcome => $this->importRecord($context, $externalId, $record));
+        return activity()->withoutLogs(fn (): MigrationRowOutcome => $this->importRecord($externalId, $record));
     }
 
     /**
      * @param  array<string, mixed>  $record
      */
-    private function importRecord(MigrationImportContext $context, int|string $externalId, array $record): MigrationRowOutcome
+    private function importRecord(int|string $externalId, array $record): MigrationRowOutcome
     {
         $warnings = array_map('strval', (array) ($record['warnings'] ?? []));
 
-        // Step 1: the people; any not migrated fails the row (D-8), no creator falls back to the actor (D-3).
-        $creatorId = $this->creatorId($context, $record['creator_user_id'] ?? null, $warnings);
+        // Step 1: the people; any not migrated, or no creator, fails the row (D-3, D-8).
+        $creatorId = $this->creatorId($record['creator_user_id'] ?? null);
         $requesterId = $this->requiredUserId($record['requester_user_id'] ?? null, 'Requester');
         $assigneeIds = $this->requiredUserIds($record['assignee_user_ids'] ?? [], 'Assignee');
         $watcherIds = $this->requiredUserIds($record['watcher_user_ids'] ?? [], 'Watcher');
@@ -187,19 +187,12 @@ class TasksSource extends AbstractMigrationSource
     }
 
     /**
-     * @param  array<int, string>  $warnings
+     * @throws RuntimeException when the legacy sends no creator or one not migrated
      */
-    private function creatorId(MigrationImportContext $context, mixed $legacyUserId, array &$warnings): int
+    private function creatorId(mixed $legacyUserId): int
     {
-        $userId = $this->requiredUserId($legacyUserId, 'Creator');
-
-        if ($userId !== null) {
-            return $userId;
-        }
-
-        $warnings[] = 'No creator in the legacy; the user running the migration was used.';
-
-        return $context->actor->id;
+        return $this->requiredUserId($legacyUserId, 'Creator')
+            ?? throw new RuntimeException('No creator in the legacy; the task is not imported.');
     }
 
     /**

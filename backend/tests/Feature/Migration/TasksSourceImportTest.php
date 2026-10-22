@@ -169,13 +169,14 @@ it('AC-004 falls back to the defaults for unknown lookups and leaves an unknown 
         ]);
 });
 
-it('AC-005 uses the actor as creator with a warning when the legacy sends none', function () {
-    $actor = migrationsSuperAdminActor();
+// REQUIREMENT CHANGED (user decision 2026-10-22): the legacy always sends a creator, the "Utente legacy"
+// stand-in when its chain finds none; qnet-2 no longer falls back to the actor.
+it('AC-005 fails the row when the legacy sends no creator', function () {
+    $run = runLegacyTasksImport([legacyTaskRecord(['creator_user_id' => null])]);
 
-    $run = runLegacyTasksImport([legacyTaskRecord(['creator_user_id' => null])], $actor);
-
-    expect(Task::query()->where('old_id', 500)->value('creator_id'))->toBe($actor->id)
-        ->and(legacyTaskWarnings($run))->toBe(['No creator in the legacy; the user running the migration was used.']);
+    expect($run->failed_rows)->toBe(1)
+        ->and(Task::query()->count())->toBe(0)
+        ->and(legacyTaskErrors($run)[0])->toContain('No creator in the legacy; the task is not imported.');
 });
 
 it('AC-005 fails the row, leaving no task, when a person is not migrated', function (string $field, mixed $value, string $role) {
