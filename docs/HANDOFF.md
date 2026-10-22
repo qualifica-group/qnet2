@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Migrazione conti finanziari dal legacy (spec 0297) — VERDE, COMMITTATO (2026-10-22)
+
+- Richiesta utente: migrare `/financial-accounts` in /migrations, anche nel legacy.
+- Legacy (committato su develop): `FinancialAccountMigrationController`, route `GET /api/v2/migration/financial-accounts`.
+  Sorgente `amministrazione_contis` (9: 8 "conto" -> bank_account, 1 "cassa" -> cash; nessuna carta). Societa' =
+  business unit di `company_banks` con lo stesso IBAN, altrimenti denominazione contenuta nel nome (7 su 9 trovate).
+  IBAN segnaposto ("xyz", Transitoria Iniziale) -> null con warning. Numero carta/CVV/password mai inviati.
+- qnet-2: migrazione `2026_10_31_100200_add_old_id_to_financial_accounts_table`, `FinancialAccountsSource` (via
+  `FinancialAccountService::create`, `ValidIban`, adozione per IBAN di un conto creato a mano). Fase 2, optional
+  `companies`. `old_id` servira' a fatture attive (`invoices.financial_account_id`) e rate passive.
+- Test: `FinancialAccountsSourceImportTest` 8/8; suite Migration+FinancialAccounts+rollback 614/614 (flag
+  `EXTERNAL_MIGRATION_USERS_LINK_ONLY=false`). REQUIREMENT CHANGED: registry 33, rollback +1 (79/94/230).
+  Vitest 180/180, ESLint, tsc ok. Guida `migrations` IT/EN (nota nella sezione contabilita'), i18n, manuale.
+
 ## Migrazione ODA dal legacy (spec 0296) — VERDE, COMMITTATO (2026-10-22)
 
 - Decisioni utente: D-1 tutti gli 805 `proformfora_heads` (490 ODA "Proforma" + 315 FTP "Fattura") arrivano come ODA;

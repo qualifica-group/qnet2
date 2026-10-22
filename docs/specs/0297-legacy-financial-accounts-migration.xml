@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0297-legacy-financial-accounts-migration" status="approved" owner="nicola" date="2026-10-22">
+
+  <goal>
+    Il modulo Migrazioni importa i conti finanziari del QNet legacy (conti bancari e cassa, pagina
+    `/financial-accounts` di qnet-2) tramite un nuovo endpoint legacy `GET /api/v2/migration/financial-accounts` e una
+    nuova sorgente qnet-2 `financial-accounts`, idempotente per `old_id`. E' l'ancora che incassi, fatture attive e
+    rate delle fatture passive useranno per collegare il conto.
+  </goal>
+
+  <context>
+    Verificato sul codice e sui dati reali il 2026-10-22 (richiesta utente: "migrazione di /financial-accounts in
+    /migrations anche in legacy").
+
+    Legacy (`/Users/Repository/qnet`):
+    - `amministrazione_contis` (9, model `AmministrazioneConti`): `name`, `iban` (senza spazi; "Transitoria
+      Iniziale" ha il segnaposto "xyz"), `cc` (numero conto), `address`, `zip`, `city`, `province_id` (tutti vuoti),
+      `note`, `type` ("conto" 8, "cassa" 1; nessuna carta), campi carta `circuit`, `card_holder`, `card_number`,
+      `card_expiry`, `card_ccv`, `card_password`, `type_card`, `conto_id` (tutti vuoti). Nessun legame con la
+      societa': 5 conti si riconoscono per IBAN in `company_banks` (-> business unit -> societa'), 2 dal nome
+      (contiene la denominazione della societa'), Cassa e Transitoria nessuna.
+    - Usato da `amministrazione_incassis.conto_id` (2.721 incassi) e `bank_slip.conto`.
+
+    qnet-2:
+    - `financial_accounts` (spec 0189): `type` (bank_account, card, cash), `name`, `company_id` nullable, `iban`
+      UNIQUE nullable, `account_number`, indirizzo, campi carta (`card_number` cifrato), `notes`; nessun `old_id`.
+      `FinancialAccountService::create(CreateFinancialAccountData)` scrive i campi del tipo
+      (`FinancialAccountType::fields()`), nessuna notifica. `ValidIban` (normalize/isValid).
+    - Referenziato da `invoices.financial_account_id` e `purchase_invoice_installments.financial_account_id`.
+
+    Decisioni proposte (backend.md section 9):
+    D-1 Legacy: "conto" -> bank_account, "cassa" -> cash; ogni altro tipo (carte: nessuna oggi) -> `type` null con
+        warning. IBAN e numero conto normalizzati (trim, IBAN maiuscolo senza spazi); un IBAN che non comincia con
+        due lettere e due cifre (segnaposto) -> null con warning. Societa': IBAN uguale a un `company_banks` -> la
+        societa' della sua business unit; altrimenti la societa' la cui denominazione e' contenuta nel nome (la piu'
+        lunga); altrimenti null. Indirizzo e CAP inviati, citta'/provincia no (vuoti nel legacy). Numero di carta,
+        CVV e password non vengono MAI inviati.
+    D-2 qnet-2: tipo fuori enum -> riga fallita; scrittura via `FinancialAccountService::create()` senza activity log;
+        IBAN non valido per `ValidIban` -> null con warning; societa' non migrata -> null con warning; un conto
+        qnet-2 con lo stesso IBAN e senza `old_id` (creato a mano) e' ADOTTATO (prende l'`old_id`, nient'altro
+        cambia), con warning.
+    D-3 `old_id` su `financial_accounts` (nuova migrazione).
+    D-4 `MigrationOrder`: fase 2 (accanto a users), dipendenza optional `companies`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Legacy: `app/Http/Controllers/Api/V2/FinancialAccountMigrationController.php`, route
+        `GET /api/v2/migration/financial-accounts`.</item>
+      <item>qnet-2: migrazione `add_old_id_to_financial_accounts_table`; `App\Migrations\Sources\FinancialAccountsSource`;
+        registrazione in `config/migrations.php` e `MigrationOrder` (D-4).</item>
+      <item>Test `FinancialAccountsSourceImportTest`; `OldIdSchemaTest`, `MigrationRegistryTest` (32 -> 33),
+        rollback a step fisso +1 (REQUIREMENT CHANGED).</item>
+      <item>Frontend: etichetta e requisiti `financial-accounts` IT/EN; guida `migrations` IT/EN; manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Carte (nessuna nel legacy) e loro dati sensibili; citta'/provincia dell'indirizzo.</item>
+      <item>Incassi `amministrazione_incassis`, distinte `bank_slip`: con le sorgenti di incassi/fatture.</item>
+      <item>Aggiornamento di conti gia' migrati (salto per `old_id`).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="(legacy) /api/v2/migration/financial-accounts">
+      <request>Query: `search` ?string max 255 (sul nome), `offset` int >= 0, `limit` int 1-100. Ordine id.
+        Auth: gruppo `auth:api` + `v2.access`.</request>
+      <response status="200">
+        { items: [FinancialAccount], export_link: null, pagination: { total, offset, limit, total_pages } }
+        FinancialAccount = {
+          id: int,
+          type: ?"bank_account"|"cash",       (D-1)
+          name: string,
+          company_id: ?int,                   (societa_aziendali, D-1)
+          iban: ?string, account_number: ?string,
+          address_line: ?string, postal_code: ?string,
+          notes: ?string,
+          warnings: string[],
+          created_at: ?datetime, updated_at: ?datetime
+        }
+      </response>
+      <errors>401/403 come gli altri endpoint del gruppo; 422 su parametri invalidi.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Un conto bancario completo nasce con `old_id`, tipo, nome, societa', IBAN, numero conto,
+      indirizzo, note e timestamp legacy, senza voci activity_log.</criterion>
+    <criterion id="AC-002">Una cassa nasce con tipo cash, senza campi bancari.</criterion>
+    <criterion id="AC-003">Re-import dello stesso `old_id` -> saltato.</criterion>
+    <criterion id="AC-004">Tipo mancante o fuori enum -> riga fallita col motivo.</criterion>
+    <criterion id="AC-005">IBAN non valido -> null con warning; societa' non migrata -> null con warning.</criterion>
+    <criterion id="AC-006">Un conto qnet-2 con lo stesso IBAN e senza `old_id` e' adottato (nessun duplicato), con
+      warning.</criterion>
+    <criterion id="AC-007">Il registro elenca `financial-accounts` in fase 2 con dipendenza optional `companies`.</criterion>
+  </acceptance_criteria>
+
+  <tests>
+    <item>`tests/Feature/Migration/FinancialAccountsSourceImportTest.php`: AC-001..AC-007.</item>
+    <item>Legacy: tinker sul DB locale + `php -l`.</item>
+  </tests>
+</spec>

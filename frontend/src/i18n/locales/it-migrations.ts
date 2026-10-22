@@ -45,6 +45,7 @@ export const migrations = {
     'commission-configurations': 'Configuratore commissioni',
     'purchase-requests': 'Richieste di acquisto (RDA)',
     'purchase-orders': 'Ordini di acquisto (ODA)',
+    'financial-accounts': 'Conti finanziari',
   },
   state: {
     notMigrated: 'Non migrata',

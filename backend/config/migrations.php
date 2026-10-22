@@ -10,6 +10,7 @@ use App\Migrations\Sources\CompanySitesSource;
 use App\Migrations\Sources\CostProductsSource;
 use App\Migrations\Sources\DocumentBundlesSource;
 use App\Migrations\Sources\EmailTemplatesSource;
+use App\Migrations\Sources\FinancialAccountsSource;
 use App\Migrations\Sources\OperationalSitesSource;
 use App\Migrations\Sources\OpportunitiesSource;
 use App\Migrations\Sources\PaymentMethodsSource;
@@ -124,6 +125,8 @@ return [
         'purchase-requests' => PurchaseRequestsSource::class,
         // spec 0296: the legacy ODA, after the RDA their lines link to.
         'purchase-orders' => PurchaseOrdersSource::class,
+        // spec 0297: the legacy bank accounts and cash boxes.
+        'financial-accounts' => FinancialAccountsSource::class,
     ],
 
 ];

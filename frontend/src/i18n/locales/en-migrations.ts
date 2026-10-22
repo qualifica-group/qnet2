@@ -46,6 +46,7 @@ export const migrations = {
     'commission-configurations': 'Commission configurations',
     'purchase-requests': 'Purchase requests',
     'purchase-orders': 'Purchase orders',
+    'financial-accounts': 'Financial accounts',
   },
   state: {
     notMigrated: 'Not migrated',
