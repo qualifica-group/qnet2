@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0303-legacy-orphan-records-as-failed-rows" status="approved" owner="nicola" date="2026-10-22">
+
+  <goal>
+    Nessun record del QNet legacy viene escluso in silenzio dalle migrazioni contabili: i record che non hanno dove
+    essere importati (righe o scadenze il cui documento non esiste piu', scadenze di ODA non fatturati) arrivano
+    dagli endpoint legacy con un motivo e compaiono nel report di qnet-2 come righe fallite.
+  </goal>
+
+  <context>
+    Decisione utente 2026-10-22: "quello che non riesci a importare genera errore, come per le opportunita'; non
+    filtrare nulla dal legacy". Verificato sui dati reali il 2026-10-22: 2 righe RDA senza RDA e 26 cambi di stato
+    senza riga (`/purchase-requests`), 73 righe ODA senza ODA (`/purchase-orders`), 4 scadenze fornitori senza
+    documento e 489 scadenze di ODA non fatturati (`/purchase-invoices`), 83 scadenze clienti senza proforma
+    (`/invoices`). Le registrazioni di incasso senza documento erano gia' righe fallite (spec 0302).
+
+    Decisioni proposte:
+    D-1 Legacy: `App\Support\Migration\LegacyOrphanRows` accoda gli orfani DOPO i record dell'endpoint (paginazione
+        unica, totale = record + orfani; non quando si filtra con `search`): item `{ id: "{tabella}:{id}",
+        orphan_reason: string, warnings: [] }`, motivo in italiano con i dati utili (descrizione, importo, data, id
+        del documento mancante).
+    D-2 qnet-2: `AbstractMigrationSource::importRow()` fa fallire ogni item con `orphan_reason` con quel motivo, per
+        qualunque sorgente, e lo riporta sotto il suo `id`. Nessuna modifica alle singole sorgenti.
+  </context>
+
+  <scope>
+    <in>
+      <item>Legacy: `LegacyOrphanRows`; `PurchaseRequestMigrationController`, `PurchaseOrderMigrationController`,
+        `PurchaseInvoiceMigrationController`, `InvoiceMigrationController` (`orphans()`).</item>
+      <item>qnet-2: `AbstractMigrationSource` (`assertNotOrphan`), test `LegacyOrphanRowsTest`, guida, manuale.</item>
+    </in>
+    <out>
+      <item>Endpoint non contabili (task, commesse, offerte...): da valutare a parte.</item>
+    </out>
+  </scope>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Un item con `orphan_reason` fallisce con quel motivo sotto il suo id; gli altri record della
+      pagina si importano.</criterion>
+    <criterion id="AC-002">Gli endpoint legacy restituiscono tutti i record piu' gli orfani, con id unici e totale
+      coerente.</criterion>
+  </acceptance_criteria>
+</spec>

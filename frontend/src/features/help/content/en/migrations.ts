@@ -124,6 +124,7 @@ const guide: HelpGuide = {
         ] },
         { type: 'paragraph', text: 'The **Collections** source runs after **Invoices** and brings every legacy collection, unfiltered. Those already on the due dates are skipped; the missing ones are recorded on the open installments, on the registration date, and accrue the commissions (a partial collection leaves the residual on a new installment). A collection without a linked document, or on a document deleted or not imported, fails with the reason; a collection beyond the document residual is limited to the residual, with a warning.' },
         { type: 'note', text: 'No notifications are sent and no activity log entries are written. Attachments, tags and the account of the collection are not imported.' },
+        { type: 'note', text: 'In the accounting sources no legacy record is dropped silently: lines, status changes and due dates whose document no longer exists in the legacy system, and the due dates of orders never invoiced, appear among the failed rows with the reason, after the documents.' },
       ],
     },
     {

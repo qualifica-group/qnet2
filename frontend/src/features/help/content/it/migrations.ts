@@ -124,6 +124,7 @@ const guide: HelpGuide = {
         ] },
         { type: 'paragraph', text: 'La sorgente **Incassi** si importa dopo **Fatture attive** e porta tutte le registrazioni di incasso del legacy, senza filtri. Quelle già riportate sulle scadenze vengono saltate; quelle che mancano vengono registrate sulle rate aperte, alla data della registrazione, e maturano le provvigioni (un incasso parziale lascia il residuo su una nuova rata). Una registrazione senza documento collegato, o su un documento cancellato o non importato, fallisce con il motivo; un incasso oltre il residuo del documento viene limitato al residuo, con un avviso.' },
         { type: 'note', text: 'Non partono notifiche e non vengono scritte voci nel registro attività. Allegati, tag e conto dell’incasso non vengono importati.' },
+        { type: 'note', text: 'Nelle sorgenti contabili nessun record legacy viene scartato in silenzio: righe, cambi di stato e scadenze il cui documento non esiste più nel legacy, e le scadenze degli ODA non fatturati, compaiono tra le righe fallite con il motivo, dopo i documenti.' },
       ],
     },
     {

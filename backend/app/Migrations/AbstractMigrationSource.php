@@ -7,6 +7,7 @@ use App\Migrations\Support\ExternalApiClient;
 use App\Models\MigrationRun;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -345,9 +346,12 @@ abstract class AbstractMigrationSource implements MigrationSource
     private function importRow(MigrationImportContext $context, array $record): void
     {
         $run = $context->run;
-        $externalId = $this->externalId($record);
+        // An orphan is reported under the legacy id it comes with (spec 0303).
+        $externalId = isset($record['orphan_reason']) ? ($record['id'] ?? null) : $this->externalId($record);
 
         try {
+            $this->assertNotOrphan($record);
+
             $outcome = DB::transaction(function () use ($context, $record): MigrationRowOutcome {
                 $outcome = $this->processRow($context, $record);
 
@@ -373,6 +377,23 @@ abstract class AbstractMigrationSource implements MigrationSource
         }
 
         $run->increment('total_rows');
+    }
+
+    /**
+     * A record the legacy sends only so it is not dropped silently (spec 0303):
+     * an orphan with no parent to import into fails with the legacy reason.
+     *
+     * @param  array<string, mixed>  $record
+     *
+     * @throws RuntimeException carrying the legacy reason
+     */
+    private function assertNotOrphan(array $record): void
+    {
+        $reason = trim((string) ($record['orphan_reason'] ?? ''));
+
+        if ($reason !== '') {
+            throw new RuntimeException($reason);
+        }
     }
 
     /**

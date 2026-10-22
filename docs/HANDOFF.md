@@ -20,9 +20,14 @@
 - ATTENZIONE provvigioni: le Fatture attive scrivono gli incassi delle scadenze direttamente (senza
   CommissionAccrualSynchronizer), quindi quegli incassi non maturano provvigioni; quelli della sorgente Incassi si'.
   Da decidere al punto provvigioni.
-- Ancora esclusi in silenzio dagli endpoint legacy (da decidere con l'utente): 2 righe RDA senza RDA, 26 log senza
-  riga, 73 righe ODA senza testata, 4 scadenze fornitori orfane, 83 scadenze clienti senza proforma; per scelta: 489
-  scadenze di ODA non fatturati.
+- Orfani come righe fallite (spec 0303, decisione utente): legacy `Support/Migration/LegacyOrphanRows` accoda dopo i
+  record di `/purchase-requests` (28), `/purchase-orders` (73), `/purchase-invoices` (493 = 4 orfane + 489 scadenze di
+  ODA non fatturati), `/invoices` (83) item `{id "tabella:id", orphan_reason}`; qnet-2 `AbstractMigrationSource::
+  assertNotOrphan()` li fa fallire col motivo sotto il loro id (test `LegacyOrphanRowsTest`). COMMITTATO.
+- Provvigioni (punto 3): nessun codice. `php artisan commissions:sync-accruals` ricostruisce il maturato delle fatture
+  incassate ed e' schedulato ogni notte SENZA --settled-before: dopo l'import maturerebbe ~2.900 incassi storici come da
+  liquidare. Lanciare una volta `--settled-before=AAAA-MM-GG` subito dopo Incassi. DATA DA CHIEDERE ALL'UTENTE (ultima
+  liquidazione legacy o cutover). Legacy `commissions`: 179.784,55 euro su 917 righe, non importato (qnet-2 ricalcola).
 - Ricordare prima di importare: i conti vanno importati PRIMA delle fatture attive (il re-import salta i documenti).
 
 ## Migrazione richieste proforma e fatture attive dal legacy (spec 0300, 0301) — VERDE, COMMITTATO (2026-10-22)
