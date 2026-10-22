@@ -1,6 +1,5 @@
 /** Controllo di gestione, andamento mensile (spec 0270). */
 export const trend = {
-  title: 'Andamento mensile',
   loading: 'Caricamento dell’andamento mensile',
   error: 'Impossibile caricare l’andamento mensile.',
   empty: 'Nessun fatturato o costo nel periodo scelto con questi filtri.',

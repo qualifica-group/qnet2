@@ -21,7 +21,7 @@ export default function ManagementControlAccountsPage() {
       fallback={<p className="text-sm text-muted-foreground">{t('managementControl.forbidden')}</p>}
     >
       <div className="flex flex-1 flex-col gap-4">
-        <PageHeader title={t('managementControl.accounts.title')} />
+        <PageHeader />
         <AccountsFiltersBar filters={filters} onChange={setFilters} />
         <AccountsPanel filters={filters} />
       </div>

@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Intestazioni dei moduli allineate — VERDE, COMMITTATO (2026-10-22)
+
+- Standard unico: `PageHeader` = solo breadcrumb + azioni (come `/opportunities`); il titolo della pagina sta gia'
+  nella barra in alto (`AppPageTitle`). Rimosse le prop `title`/`subtitle` da `components/page-header.tsx`, cosi'
+  nessuna pagina puo' piu' reintrodurle.
+- Allineate: System health, API e integrazioni, le 7 pagine del Controllo di gestione, Partitario, Impostazioni
+  (prima `h1` text-2xl proprio; ora `PageHeader`, contenuto resta centrato `max-w-5xl`). Rimosse le chiavi i18n
+  orfane IT/EN (`systemHealth.title/subtitle`, `apiIntegrations.title/subtitle`, `ledger.title`,
+  `settings.title/subtitle`, `managementControl.title` + `title` di accounts/agents/billing/cashFlow/trend/exposure).
+- Verifica: vitest mirato 113 file / 883 test verdi, eslint pulito; `tsc -b` con errori SOLO nei test delle assenze
+  (lavoro spec 0304 in corso in un'altra sessione, non toccato). Manuale: nessun impatto (guida `general` gia'
+  descrive breadcrumb + pulsante su ogni pagina tranne la home).
+- Fuori scope segnalato: `components/page-placeholder.tsx` non e' usato da nessuno (codice morto).
+
 ## Migrazione: conti delle banche societarie (spec 0297 D-5, 0301 D-10) + incassi (spec 0302) — VERDE, COMMITTATO (2026-10-22)
 
 - Legacy: nuovo `Support/Migration/LegacyCompanyBankAccounts` (banca -> conto per IBAN, altrimenti id riservato

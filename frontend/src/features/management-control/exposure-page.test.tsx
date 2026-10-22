@@ -18,7 +18,7 @@ vi.mock('@/features/auth/use-abilities', () => ({
 }))
 
 vi.mock('@/components/page-header', () => ({
-  PageHeader: ({ title }: { title?: string }) => <h1>{title}</h1>,
+  PageHeader: () => null,
 }))
 
 // recharts has no layout in jsdom: the chart is covered by its own test, here only its props matter.

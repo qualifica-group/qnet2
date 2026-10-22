@@ -21,7 +21,7 @@ export default function ManagementControlTrendPage() {
       fallback={<p className="text-sm text-muted-foreground">{t('managementControl.forbidden')}</p>}
     >
       <div className="flex flex-1 flex-col gap-4">
-        <PageHeader title={t('managementControl.trend.title')} />
+        <PageHeader />
         <TrendFiltersBar filters={filters} onChange={setFilters} />
         <TrendPanel filters={filters} />
       </div>

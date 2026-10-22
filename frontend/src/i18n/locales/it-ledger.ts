@@ -1,6 +1,5 @@
 /** Partitario clienti/fornitori (spec 0266). */
 export const ledger = {
-  title: 'Partitario',
   forbidden: 'Non hai il permesso di visualizzare il partitario.',
   loading: 'Caricamento del partitario in corso',
   error: 'Impossibile caricare il partitario.',

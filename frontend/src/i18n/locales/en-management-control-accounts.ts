@@ -1,6 +1,5 @@
 /** Management control, accounts (spec 0271). */
 export const accounts = {
-  title: 'Accounts',
   loading: 'Loading accounts',
   error: 'Unable to load accounts.',
   empty: 'No collection and no payment in the chosen period with these filters.',

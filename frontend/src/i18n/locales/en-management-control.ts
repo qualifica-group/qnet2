@@ -6,7 +6,6 @@ import { trend } from './en-management-control-trend'
 
 /** Management control, income statement (spec 0268). */
 export const managementControl = {
-  title: 'Income statement',
   forbidden: 'You do not have permission to view management control.',
   loading: 'Loading the income statement',
   error: 'Unable to load the income statement.',
@@ -96,7 +95,6 @@ export const managementControl = {
     natures: { direct: 'Direct', indirect: 'Indirect', general: 'General' },
   },
   exposure: {
-    title: 'Schedule and exposure',
     loading: 'Loading the schedule',
     error: 'Unable to load the schedule.',
     empty: 'No schedule, commitment or invoiced data with these filters.',

@@ -21,7 +21,7 @@ export default function ManagementControlCashFlowPage() {
       fallback={<p className="text-sm text-muted-foreground">{t('managementControl.forbidden')}</p>}
     >
       <div className="flex flex-1 flex-col gap-4">
-        <PageHeader title={t('managementControl.cashFlow.title')} />
+        <PageHeader />
         <CashFlowFiltersBar filters={filters} onChange={setFilters} />
         <CashFlowPanel filters={filters} />
       </div>

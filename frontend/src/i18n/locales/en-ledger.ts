@@ -1,6 +1,5 @@
 /** Customer/supplier ledger (spec 0266). */
 export const ledger = {
-  title: 'Ledger',
   forbidden: 'You do not have permission to view the ledger.',
   loading: 'Loading the ledger',
   error: 'Unable to load the ledger.',

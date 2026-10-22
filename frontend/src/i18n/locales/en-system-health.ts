@@ -1,7 +1,5 @@
 /** English translations (namespace `systemHealth`, spec 0187): "System health" page. */
 export const systemHealth = {
-  title: 'System health',
-  subtitle: 'Live status of the critical subsystems and online users.',
   refresh: 'Recheck',
   checkedAt: 'Checked at {{time}}',
   loadError: 'Unable to load the system status.',

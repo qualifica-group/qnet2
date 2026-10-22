@@ -1,6 +1,5 @@
 /** Controllo di gestione, conti (spec 0271). */
 export const accounts = {
-  title: 'Conti',
   loading: 'Caricamento dei conti',
   error: 'Impossibile caricare i conti.',
   empty: 'Nessun incasso e nessun pagamento nel periodo scelto con questi filtri.',

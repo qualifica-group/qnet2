@@ -1,7 +1,5 @@
 /** English translations (`apiIntegrations.*`, specs 0209 and 0210): API clients admin page and documentation tab. */
 export const apiIntegrations = {
-  title: 'API & integrations',
-  subtitle: 'Manage the keys of external systems and consult the API documentation.',
   forbidden: 'You do not have permission to view API integrations.',
   docsLink: 'API documentation',
   clients: {

@@ -1,6 +1,5 @@
 /** Management control, monthly trend (spec 0270). */
 export const trend = {
-  title: 'Monthly trend',
   loading: 'Loading the monthly trend',
   error: 'Unable to load the monthly trend.',
   empty: 'No revenue or costs in the selected period with these filters.',

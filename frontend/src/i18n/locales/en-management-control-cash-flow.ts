@@ -1,6 +1,5 @@
 /** Management control, cash flow forecast (spec 0270). */
 export const cashFlow = {
-  title: 'Cash flow forecast',
   loading: 'Loading the cash flow',
   error: 'Unable to load the cash flow.',
   empty: 'No open installments or commitments with these filters.',

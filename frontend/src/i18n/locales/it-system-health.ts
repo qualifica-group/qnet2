@@ -1,7 +1,5 @@
 /** Traduzioni italiane (namespace `systemHealth`, spec 0187): pagina "Stato del sistema". */
 export const systemHealth = {
-  title: 'Stato del sistema',
-  subtitle: 'Stato live dei sottosistemi critici e utenti online.',
   refresh: 'Ricontrolla',
   checkedAt: 'Verificato alle {{time}}',
   loadError: 'Impossibile caricare lo stato del sistema.',

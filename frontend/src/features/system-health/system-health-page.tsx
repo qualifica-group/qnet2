@@ -24,7 +24,7 @@ export default function SystemHealthPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      <PageHeader title={t('title')} subtitle={t('subtitle')} />
+      <PageHeader />
 
       <Card className="gap-1 p-3">
         <div className="flex flex-wrap items-center justify-between gap-3">

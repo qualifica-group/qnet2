@@ -36,7 +36,7 @@ export default function LedgerPage() {
   return (
     <Can permission="ledger.view" fallback={<p className="text-sm text-muted-foreground">{t('ledger.forbidden')}</p>}>
       <div className="flex flex-1 flex-col gap-4">
-        <PageHeader title={t('ledger.title')} />
+        <PageHeader />
         <div className="flex max-w-md flex-col gap-1">
           <Label className="text-xs text-muted-foreground">{t('ledger.page.registryLabel')}</Label>
           <AsyncPaginatedSelect

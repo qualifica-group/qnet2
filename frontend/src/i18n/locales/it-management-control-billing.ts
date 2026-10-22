@@ -1,6 +1,5 @@
 /** Controllo di gestione, fatturazione (spec 0271). */
 export const billing = {
-  title: 'Fatturazione',
   loading: 'Caricamento della fatturazione',
   error: 'Impossibile caricare la fatturazione.',
   empty: 'Nessuna commessa aperta e nessuna proforma nel periodo con questi filtri.',

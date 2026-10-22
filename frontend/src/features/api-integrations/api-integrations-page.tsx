@@ -24,8 +24,6 @@ export default function ApiIntegrationsPage() {
     >
       <div className="flex min-w-0 flex-1 flex-col gap-4">
         <PageHeader
-          title={t('apiIntegrations.title')}
-          subtitle={t('apiIntegrations.subtitle')}
           actions={
             <Button asChild size="sm" variant="secondary">
               <Link to={API_DOCS_PATH}>

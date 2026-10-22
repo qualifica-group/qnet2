@@ -21,7 +21,7 @@ export default function ManagementControlIncomeStatementPage() {
       fallback={<p className="text-sm text-muted-foreground">{t('managementControl.forbidden')}</p>}
     >
       <div className="flex flex-1 flex-col gap-4">
-        <PageHeader title={t('managementControl.title')} />
+        <PageHeader />
         <IncomeStatementFiltersBar filters={filters} onChange={setFilters} />
         <IncomeStatementPanel filters={filters} />
       </div>

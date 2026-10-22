@@ -1,6 +1,5 @@
 /** Controllo di gestione, agenti (spec 0272). */
 export const agents = {
-  title: 'Agenti',
   loading: 'Caricamento degli agenti',
   error: 'Impossibile caricare gli agenti.',
   empty: 'Nessuna provvigione maturata, in estratto conto o pagata nel periodo scelto con questi filtri.',

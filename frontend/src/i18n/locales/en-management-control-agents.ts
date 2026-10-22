@@ -1,6 +1,5 @@
 /** Management control, agents (spec 0272). */
 export const agents = {
-  title: 'Agents',
   loading: 'Loading the agents',
   error: 'Unable to load the agents.',
   empty: 'No commission accrued, in a statement or paid in the selected period with these filters.',

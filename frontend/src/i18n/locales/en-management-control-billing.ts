@@ -1,6 +1,5 @@
 /** Management control, billing (spec 0271). */
 export const billing = {
-  title: 'Billing',
   loading: 'Loading billing',
   error: 'Unable to load billing.',
   empty: 'No open work orders and no proforma in the period with these filters.',

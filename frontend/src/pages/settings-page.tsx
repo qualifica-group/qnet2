@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Cog, Lock, UserRound, type LucideIcon } from 'lucide-react'
+import { PageHeader } from '@/components/page-header'
 import {
   Card,
   CardContent,
@@ -81,15 +82,10 @@ export default function SettingsPage() {
     SECTIONS.find((section) => section.id === activeSection) ?? SECTIONS[0]
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {t('settings.title')}
-        </h1>
-        <p className="text-sm text-muted-foreground">{t('settings.subtitle')}</p>
-      </header>
+    <div className="flex flex-1 flex-col gap-4">
+      <PageHeader />
 
-      <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
+      <div className="mx-auto grid w-full max-w-5xl gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
         <aside className="flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
           {user && (
             <Card className="items-center gap-3 py-5 text-center">

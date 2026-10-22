@@ -11,7 +11,7 @@ vi.mock('@/api/client', () => ({ apiClient: { get: vi.fn() } }))
 vi.mock('@/features/auth/use-abilities', () => ({
   useAbilities: () => ({ can: () => true, hasRole: () => false, roles: [], isLoading: false }),
 }))
-vi.mock('@/components/page-header', () => ({ PageHeader: ({ title }: { title?: string }) => <h1>{title}</h1> }))
+vi.mock('@/components/page-header', () => ({ PageHeader: () => null }))
 
 const getMock = vi.mocked(apiClient.get)
 

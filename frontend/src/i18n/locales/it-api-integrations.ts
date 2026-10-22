@@ -1,7 +1,5 @@
 /** Traduzioni italiane (`apiIntegrations.*`, spec 0209 e 0210): pagina client API e tab documentazione. */
 export const apiIntegrations = {
-  title: 'API e integrazioni',
-  subtitle: 'Gestisci le chiavi dei sistemi esterni e consulta la documentazione delle API.',
   forbidden: 'Non hai i permessi per vedere API e integrazioni.',
   docsLink: 'Documentazione API',
   clients: {

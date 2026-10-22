@@ -1,6 +1,5 @@
 /** Controllo di gestione, cash flow previsionale (spec 0270). */
 export const cashFlow = {
-  title: 'Cash flow previsionale',
   loading: 'Caricamento del cash flow',
   error: 'Impossibile caricare il cash flow.',
   empty: 'Nessuna rata aperta o impegno con questi filtri.',

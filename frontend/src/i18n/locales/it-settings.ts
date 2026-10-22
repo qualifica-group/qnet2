@@ -4,8 +4,6 @@
  * size limits (see `.claude/rules/engineering.md` §6).
  */
 export const settings = {
-  title: 'Impostazioni',
-  subtitle: 'Gestisci le preferenze del tuo account.',
   sectionNavLabel: 'Sezioni impostazioni',
   avatarTitle: 'Avatar',
   avatarSubtitle: "Carica un'immagine del profilo mostrata in tutta l'app.",

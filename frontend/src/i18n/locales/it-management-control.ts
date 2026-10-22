@@ -6,7 +6,6 @@ import { trend } from './it-management-control-trend'
 
 /** Controllo di gestione, conto economico (spec 0268). */
 export const managementControl = {
-  title: 'Conto economico',
   forbidden: 'Non hai il permesso di vedere il controllo di gestione.',
   loading: 'Caricamento del conto economico',
   error: 'Impossibile caricare il conto economico.',
@@ -96,7 +95,6 @@ export const managementControl = {
     natures: { direct: 'Diretto', indirect: 'Indiretto', general: 'Generale' },
   },
   exposure: {
-    title: 'Scadenzario ed esposizione',
     loading: 'Caricamento dello scadenzario',
     error: 'Impossibile caricare lo scadenzario.',
     empty: 'Nessun dato di scadenzario, impegni o fatturato con questi filtri.',
