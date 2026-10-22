@@ -3,6 +3,18 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Migrazione: conti delle banche societarie + analisi incassi (spec 0297 D-5, 0301 D-10) — VERDE, COMMITTATO (2026-10-22)
+
+- Legacy: nuovo `Support/Migration/LegacyCompanyBankAccounts` (banca -> conto per IBAN, altrimenti id riservato
+  1.000.000 + id banca). `/financial-accounts` manda anche le banche 6, 8, 10, 11 di `company_banks` senza conto (13
+  conti in totale); `/invoices` (`LegacyInvoiceLookups`) le collega: restano senza conto solo i 1.286 documenti con
+  `bank_id` 0. qnet-2: nessuna modifica di codice; testi requisiti, guida IT/EN, manuale aggiornati.
+- Incassi non legati a scadenze: NIENTE da importare. 20 movimenti (15 proforma) hanno gia' la scadenza incassata
+  (importarli raddoppierebbe); 12 registrazioni (47.448,68 euro, es. reg. 3599 "DD N. 134 DEL 30/05/2025" 40.307,28)
+  non hanno documento e non si abbinano ne' per numero ne' per cliente+importo. qnet-2 non ha incassi non attribuiti:
+  servirebbe un modulo nuovo. Proposto all'utente un Excel per l'attribuzione manuale (in attesa di risposta).
+- Ricordare prima di importare: i conti vanno importati PRIMA delle fatture attive (il re-import salta i documenti).
+
 ## Migrazione richieste proforma e fatture attive dal legacy (spec 0300, 0301) — VERDE, COMMITTATO (2026-10-22)
 
 - Decisioni utente: incassi dalle scadenze legacy (stato 3 incassata, 2 parziale `cashed`); totale <= 0 -> riga

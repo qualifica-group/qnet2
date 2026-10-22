@@ -41,6 +41,11 @@
         cambia), con warning.
     D-3 `old_id` su `financial_accounts` (nuova migrazione).
     D-4 `MigrationOrder`: fase 2 (accanto a users), dipendenza optional `companies`.
+    D-5 (AGGIORNAMENTO 2026-10-22, decisione utente) Il legacy manda anche le banche delle business unit
+        (`company_banks`) che non hanno un conto con lo stesso IBAN in `amministrazione_contis` (6, 8, 10, 11): conto
+        bancario della societa' della business unit, nome "{banca} - {societa'}", id riservato 1.000.000 + id banca
+        (`LegacyCompanyBankAccounts::ID_OFFSET`) per non collidere con gli id dei conti. Contratto e sorgente qnet-2
+        invariati (`created_at`/`updated_at` null).
   </context>
 
   <scope>

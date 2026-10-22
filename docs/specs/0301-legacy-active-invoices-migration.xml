@@ -67,6 +67,9 @@
         ordine di data, ultima che assorbe la differenza dal totale (warning), nessuna -> planner.
     D-7 Nuova migrazione `add_old_id_to_invoices_table` (`old_source` 32 + `old_id`, unique coppia).
     D-8 Numerazione condivisa con gli ODA: `Support\LegacyDocumentNumberer` (stessa regola della spec 0296 D-2).
+    D-10 (AGGIORNAMENTO 2026-10-22) Conto = `LegacyCompanyBankAccounts::accountIdsByBank()`: il conto con lo stesso
+        IBAN, altrimenti il conto della banca (id 1.000.000 + id banca, spec 0297 D-5). Restano senza conto solo i
+        documenti senza banca nel legacy (`bank_id` 0, 1.286).
     D-9 `MigrationOrder`: nuova fase dopo `purchase-invoices`. Dipendenze: required `users`, `companies`,
         `registries`, `payment-methods`, `vat-rates`; optional `work-orders`, `quotes`, `products`,
         `financial-accounts`, `proforma-requests`.
