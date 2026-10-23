@@ -30,6 +30,9 @@
 - Non verificato: lock e colonna generata su MySQL reale; responsive nel browser.
 - Segnalati, fuori scope: etichetta "Utilizzo in offerta" ora contiene anche "Uso interno"; `products.columns.code`
   senza traduzione (preesistente); questo file pesa ~800 KB (oltre il limite di 50 KB, va archiviato).
+- Menu spostato (decisione utente 2026-10-23, COMMITTATO): Dotazioni e' figlia di `products-group` in
+  `config/navigation/products.php` dopo `products`, icona `boxes`; `config/navigation/stock.php` rimosso. Chi ha solo
+  `gestione-dotazioni` vede Prodotti con la sola voce Dotazioni (test in `StockAuthorizationTest`).
 - Prossimo: fase 2 (matricole, verbale di consegna, avviso a fine contratto), fase 3 (carico da ricevimenti OdA).
 
 

@@ -253,8 +253,11 @@
     </product_changes>
 
     <navigation>
-      `config/navigation/stock.php`: key `stock`, label `navigation.stock`, icon `package`, route `/stock`,
-      permission `stock.viewAny`; inserita dopo `user-skills`.
+      Voce figlia del gruppo `products-group` (`config/navigation/products.php`), subito dopo `products`: key
+      `stock`, label `navigation.stock`, icon `boxes`, route `/stock`, permission `stock.viewAny`.
+      [revised 2026-10-23, decisione utente: "dotazioni mettili in prodotti"; prima voce di primo livello dopo
+      `user-skills`]. Il gruppo non ha permesso proprio: chi ha solo `stock.viewAny` vede Prodotti con la sola
+      voce Dotazioni.
     </navigation>
 
     <i18n_keys>

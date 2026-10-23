@@ -17,6 +17,15 @@ return [
             'route' => '/products',
             'permission' => 'products.view',
         ],
+        // Dotazioni (spec 0307, user decision 2026-10-23): stock of the
+        // physical goods for internal use, under the catalogue they come from.
+        [
+            'key' => 'stock',
+            'label' => 'navigation.stock',
+            'icon' => 'boxes',
+            'route' => '/stock',
+            'permission' => 'stock.viewAny',
+        ],
         [
             'key' => 'product-categories',
             'label' => 'navigation.productCategories',

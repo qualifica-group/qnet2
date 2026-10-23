@@ -29,7 +29,7 @@ const guide: HelpGuide = {
       title: 'How the interface is laid out',
       blocks: [
         { type: 'paragraph', text: 'The screen has three areas: the side menu on the left, the header at the top and the work area in the center.' },
-        { type: 'paragraph', text: 'The **side menu** contains the **Dashboard** and the work areas: **Marketing & Leads**, **Opportunities & Contracts**, **Tasks**, **Time tracking**, **Absences**, **Registries**, **Products**, **Rewards & Incentives**, **Configuration** and **Administration**. Click a group name to open or close it. **Settings** is at the bottom. Some entries, such as **Equipment** (physical goods for internal use), only appear if you have the permission.' },
+        { type: 'paragraph', text: 'The **side menu** contains the **Dashboard** and the work areas: **Marketing & Leads**, **Opportunities & Contracts**, **Tasks**, **Time tracking**, **Absences**, **Registries**, **Products**, **Rewards & Incentives**, **Configuration** and **Administration**. Click a group name to open or close it. **Settings** is at the bottom. Some entries, such as **Equipment** in the **Products** group (physical goods for internal use), only appear if you have the permission.' },
         { type: 'list', items: ['Press the round button with the arrow on the edge of the menu (**Toggle sidebar**).', 'Or use **Ctrl+B** (Mac **Cmd+B**).'] },
         { type: 'paragraph', text: 'When the menu is collapsed only the icons remain; hover over one to see its name. Drag the edge of the menu to widen it; double-click to restore the original width.' },
         {

@@ -3,6 +3,7 @@
 use App\Authorization\AssignablePermissionCatalogue;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\NavigationService;
 use Database\Seeders\QualificaCatalog\HrOfficeRoleCatalogue;
 use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue;
 use Database\Seeders\QualificaCatalog\StockKeeperRoleCatalogue;
@@ -74,4 +75,16 @@ it('0307 AC-015: the Dotazioni menu entry shows only with stock.viewAny', functi
     Sanctum::actingAs($keeper);
 
     expect(visibleRoutes($keeper))->toContain('/stock');
+});
+
+it('0307 AC-015: Dotazioni sits in the Prodotti group, alone for a keeper without catalogue rights', function () {
+    $this->seed(QualificaRoleSeeder::class);
+
+    $keeper = User::factory()->create();
+    $keeper->assignRole(StockKeeperRoleCatalogue::ROLE);
+
+    $productsGroup = collect(app(NavigationService::class)->for($keeper))->firstWhere('key', 'products-group');
+
+    expect($productsGroup)->not->toBeNull()
+        ->and(collect($productsGroup['children'])->pluck('key')->all())->toBe(['stock']);
 });
