@@ -33,6 +33,9 @@
 - Menu spostato (decisione utente 2026-10-23, COMMITTATO): Dotazioni e' figlia di `products-group` in
   `config/navigation/products.php` dopo `products`, icona `boxes`; `config/navigation/stock.php` rimosso. Chi ha solo
   `gestione-dotazioni` vede Prodotti con la sola voce Dotazioni (test in `StockAuthorizationTest`).
+- Azioni di riga Giacenze allo standard (richiesta utente 2026-10-23, COMMITTATO): tolto `inlineAllActions` da
+  `stock-balances-grid.tsx`, quindi oltre 3 azioni le altre vanno nei tre puntini (`INLINE_ACTION_LIMIT`); ordine dal
+  catalogo backend assign|return|transfer|unload|adjust|history. Test `stock-balances-grid.test.tsx`.
 - Prossimo: fase 2 (matricole, verbale di consegna, avviso a fine contratto), fase 3 (carico da ricevimenti OdA).
 
 

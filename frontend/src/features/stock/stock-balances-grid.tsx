@@ -24,7 +24,6 @@ export function StockBalancesGrid({ tableRef, onAction }: StockBalancesGridProps
       onAction={onAction}
       decorateRow={decorateRow}
       iconMap={STOCK_ACTION_ICONS}
-      inlineAllActions
     />
   )
 }
