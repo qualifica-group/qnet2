@@ -61,6 +61,7 @@ final class CommissionRuleResolver
                 value: $configuration->value,
                 internalNote: $configuration->internal_note,
                 origin: $this->originOf($configuration),
+                supplierDirection: $role === CommissionRecipientRole::Supplier ? $configuration->supplier_commission_direction : null,
             );
         }
 

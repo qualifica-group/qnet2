@@ -36,6 +36,7 @@ require_once __DIR__.'/Helpers/TaskHelpers.php';
 require_once __DIR__.'/Helpers/TaskConfigHelpers.php';
 require_once __DIR__.'/Helpers/ProductHelpers.php';
 require_once __DIR__.'/Helpers/QuoteHelpers.php';
+require_once __DIR__.'/Helpers/CommissionRecalculationHelpers.php';
 require_once __DIR__.'/Helpers/ProjectHelpers.php';
 require_once __DIR__.'/Helpers/RoleAbilityHelpers.php';
 require_once __DIR__.'/Helpers/PaymentMethodHelpers.php';

@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next'
-import type { HintContent } from '@/features/work-order-contract-data/calculation-hint'
+import type { HintContent } from '@/components/calculation-hint'
 import { money, plainNumber } from '@/features/work-order-contract-data/contract-data-format'
 import type {
   ContractDataLine,

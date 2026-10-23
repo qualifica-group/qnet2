@@ -116,6 +116,7 @@ class StoreQuoteRequest extends FormRequest
             $this->enforceFieldPermissions($validator);
             $this->enforceCommissionFieldPermissions($validator, null);
             $this->enforceCommissionRecipients($validator, null);
+            $this->enforceSupplierCommissionDirection($validator);
             $this->enforceCompanySiteBelongsToCompany($validator, null);
             $this->enforceQuoteLayout($validator, null);
             $this->requireOfferLineOnCreate($validator);

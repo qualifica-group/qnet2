@@ -4,8 +4,13 @@ import { useQuery } from '@tanstack/react-query'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import type { FieldPermission } from '@/features/authorization/types'
-import type { CommissionRole } from '@/features/commission-configurations/types'
-import { calculateCommissionAmount, calculateCommissionBaseNet, roundCommission } from './commission-calculator'
+import type { CommissionRole, SupplierCommissionDirection } from '@/features/commission-configurations/types'
+import {
+  calculateCommissionAmount,
+  calculateCommissionBaseNet,
+  effectiveSupplierDirection,
+  roundCommission,
+} from './commission-calculator'
 import {
   fetchQuoteCommissionDefaults,
   fetchQuoteCommissionRecipients,
@@ -21,6 +26,9 @@ import type {
 
 const LOOKUP_STALE_TIME_MS = 60_000
 
+const isManualSupplier = (item: QuoteLineCommissionInput) =>
+  item.recipient_role === 'SUPPLIER' && item.origin === 'MANUAL_OVERRIDE'
+
 export interface QuoteCommissionsDraftInput {
   open: boolean
   disabled: boolean
@@ -29,6 +37,8 @@ export interface QuoteCommissionsDraftInput {
   unitPrice: number | null
   allocatedCostNet?: number
   commissions: QuoteLineCommissionInput[]
+  /** Spec 0306: the line's snapshot, i.e. the direction of its automatic Supplier commission. */
+  supplierCommissionDirection?: SupplierCommissionDirection | null
   commissionContext?: QuoteCommissionContext
 }
 
@@ -38,6 +48,8 @@ export interface QuoteCommissionFieldPermissions {
   type: FieldPermission
   value: FieldPermission
   note: FieldPermission
+  /** Spec 0306 D-8: the manual Supplier direction is governed by the commission type permission. */
+  direction: FieldPermission
 }
 
 /**
@@ -53,6 +65,7 @@ export function useQuoteCommissionsDraft(input: QuoteCommissionsDraftInput) {
   const { field: fieldPermission } = useResourcePermissions()
   const confirm = useConfirm()
   const [draft, setDraft] = useState(input.commissions)
+  const [rowDirection, setRowDirection] = useState(input.supplierCommissionDirection ?? null)
 
   // Step 1: the base every PERCENTAGE commission applies to (spec 0145
   // D-1/D-2) — the SAME rule as the live summary, never negative.
@@ -68,6 +81,7 @@ export function useQuoteCommissionsDraft(input: QuoteCommissionsDraftInput) {
     type: fieldPermission('commission_type'),
     value: fieldPermission('commission_value'),
     note: fieldPermission('commission_internal_note'),
+    direction: fieldPermission('commission_type'),
   }
 
   // Step 3: the locked recipients and the rules' own commissions. Both
@@ -109,9 +123,12 @@ export function useQuoteCommissionsDraft(input: QuoteCommissionsDraftInput) {
   // Step 4: draft mutations. Any hand edit turns the row into an override.
   const patch = (role: CommissionRole, next: Partial<QuoteLineCommissionInput>) =>
     setDraft((current) =>
-      current.map((item) =>
-        item.recipient_role === role ? { ...item, ...next, origin: 'MANUAL_OVERRIDE' as const } : item,
-      ),
+      current.map((item) => {
+        if (item.recipient_role !== role) return item
+        // Spec 0306 D-3: an automatic Supplier commission turning manual keeps the direction it had.
+        const inherited = role === 'SUPPLIER' && item.origin !== 'MANUAL_OVERRIDE' ? { supplier_commission_direction: rowDirection } : {}
+        return { ...item, ...inherited, ...next, origin: 'MANUAL_OVERRIDE' as const }
+      }),
     )
   const add = (role: CommissionRole, recipient: QuoteCommissionRecipient) =>
     setDraft((current) => [...current, {
@@ -124,9 +141,13 @@ export function useQuoteCommissionsDraft(input: QuoteCommissionsDraftInput) {
       internal_note: null,
       origin: 'MANUAL_OVERRIDE',
       commission_configuration_id: null,
+      ...(role === 'SUPPLIER' ? { supplier_commission_direction: null } : {}),
     }])
   /** Drops the override: the role goes back to the rules' own commission, keeping its persisted id and note. */
-  const applySystemDefault = (systemDefault: QuoteLineCommission) =>
+  const applySystemDefault = (systemDefault: QuoteLineCommission) => {
+    if (systemDefault.recipient_role === 'SUPPLIER' && defaultsQuery.data) {
+      setRowDirection(defaultsQuery.data.supplier_commission_direction)
+    }
     setDraft((current) => {
       const existing = current.find((item) => item.recipient_role === systemDefault.recipient_role)
       const next: QuoteLineCommissionInput = {
@@ -143,6 +164,7 @@ export function useQuoteCommissionsDraft(input: QuoteCommissionsDraftInput) {
       }
       return existing ? current.map((item) => (item === existing ? next : item)) : [...current, next]
     })
+  }
   const remove = async (role: CommissionRole) => {
     if (byRole.get(role)?.id !== undefined) {
       const accepted = await confirm({
@@ -162,6 +184,11 @@ export function useQuoteCommissionsDraft(input: QuoteCommissionsDraftInput) {
   const canSave =
     draft.every((item) => item.recipient_id > 0)
     && (recipientsPending || draft.every((item) => recipientFor(item.recipient_role) !== null))
+    && draft.every((item) => !isManualSupplier(item) || item.supplier_commission_direction)
+
+  // Step 6: what the line carries once saved: the manual Supplier commission's
+  // own direction, else the snapshot (the rule's, as of the last applied default).
+  const savedDirection = effectiveSupplierDirection(draft, rowDirection)
 
   return {
     draft,
@@ -173,6 +200,8 @@ export function useQuoteCommissionsDraft(input: QuoteCommissionsDraftInput) {
     amountOf,
     canMutate,
     canSave,
+    rowDirection,
+    savedDirection,
     fields,
     recipientsPending,
     recipientFor,

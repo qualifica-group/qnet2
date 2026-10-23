@@ -3,7 +3,6 @@
 namespace App\DataObjects\ProductTypologies;
 
 use App\Enums\ProformaRequestKind;
-use App\Enums\SupplierCommissionDirection;
 
 /**
  * Validated payload for a partial (PATCH) product typology update
@@ -26,8 +25,6 @@ final readonly class UpdateProductTypologyData
         public bool $descriptionSubmitted = false,
         public ?string $color = null,
         public ?bool $supplierCommissionEnabled = null,
-        public ?SupplierCommissionDirection $supplierCommissionDirection = null,
-        public bool $supplierCommissionDirectionSubmitted = false,
         public ?ProformaRequestKind $proformaKind = null,
         public bool $proformaKindSubmitted = false,
     ) {}
@@ -45,10 +42,6 @@ final readonly class UpdateProductTypologyData
             descriptionSubmitted: array_key_exists('description', $data),
             color: array_key_exists('color', $data) ? (string) $data['color'] : null,
             supplierCommissionEnabled: array_key_exists('supplier_commission_enabled', $data) ? (bool) $data['supplier_commission_enabled'] : null,
-            supplierCommissionDirection: isset($data['supplier_commission_direction'])
-                ? SupplierCommissionDirection::from($data['supplier_commission_direction'])
-                : null,
-            supplierCommissionDirectionSubmitted: array_key_exists('supplier_commission_direction', $data),
             proformaKind: isset($data['proforma_kind']) ? ProformaRequestKind::from($data['proforma_kind']) : null,
             proformaKindSubmitted: array_key_exists('proforma_kind', $data),
         );
@@ -78,10 +71,6 @@ final readonly class UpdateProductTypologyData
 
         if ($this->supplierCommissionEnabled !== null) {
             $attributes['supplier_commission_enabled'] = $this->supplierCommissionEnabled;
-        }
-
-        if ($this->supplierCommissionDirectionSubmitted) {
-            $attributes['supplier_commission_direction'] = $this->supplierCommissionDirection;
         }
 
         if ($this->proformaKindSubmitted) {

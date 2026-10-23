@@ -150,6 +150,50 @@ describe('CommissionConfigurationForm create (spec 0241 AC-004)', () => {
     expect(screen.queryByRole('combobox', { name: /^Recipient type/ })).not.toBeInTheDocument()
   })
 
+  it('asks for the direction only with the Supplier role and sends it (spec 0306 AC-010)', async () => {
+    createMock.mockResolvedValue(configurationFixture())
+    renderForm()
+
+    openRow('Recipient')
+    expect(screen.queryByRole('combobox', { name: /^Supplier commission direction/ })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('combobox', { name: /^Recipient role/ }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Supplier' }))
+    expect(screen.getByRole('combobox', { name: /^Supplier commission direction/ })).toBeInTheDocument()
+    applyRow()
+
+    save()
+    expect(await screen.findByText('The direction is required for a Supplier rule.')).toBeInTheDocument()
+    expect(createMock).not.toHaveBeenCalled()
+  })
+
+  it('drops the direction and sends null when the role leaves Supplier (spec 0306 AC-010)', async () => {
+    createMock.mockResolvedValue(configurationFixture())
+    renderForm()
+
+    openRow('Recipient')
+    fireEvent.click(screen.getByRole('combobox', { name: /^Recipient role/ }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Supplier' }))
+    fireEvent.click(screen.getByRole('combobox', { name: /^Supplier commission direction/ }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Received' }))
+    fireEvent.click(screen.getByRole('combobox', { name: /^Recipient role/ }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Reporter' }))
+    expect(screen.queryByRole('combobox', { name: /^Supplier commission direction/ })).not.toBeInTheDocument()
+    applyRow()
+
+    openRow('Configuration name')
+    fireEvent.change(screen.getByLabelText(/^Configuration name/), { target: { value: 'Rule' } })
+    applyRow()
+    openRow('Application scope')
+    fireEvent.click(screen.getByRole('button', { name: 'pick product_category_id' }))
+    applyRow()
+    save()
+
+    await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({ recipient_role: 'REPORTER', supplier_commission_direction: null }),
+    )
+  })
+
   it('Cancel leaves the form through onCancel', () => {
     const onCancel = vi.fn()
     renderForm({ onCancel })

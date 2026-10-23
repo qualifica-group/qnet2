@@ -1,3 +1,4 @@
+import type { SupplierCommissionDirection } from '@/features/commission-configurations/types'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteLine, QuoteLineInput } from '@/features/quotes/types'
 
@@ -10,6 +11,19 @@ import type { QuoteLine, QuoteLineInput } from '@/features/quotes/types'
  */
 export function lineClientKey(id: number): string {
   return `line-${id}`
+}
+
+/**
+ * Spec 0306 D-3: only a MANUAL Supplier commission carries a direction on the
+ * wire (an automatic one follows its rule). Shared by the projections of both
+ * sides of `sameLines`, so their JSON stays identical.
+ */
+function manualSupplierDirection(
+  role: string,
+  origin: string,
+  direction: SupplierCommissionDirection | null | undefined,
+): { supplier_commission_direction?: SupplierCommissionDirection | null } {
+  return role === 'SUPPLIER' && origin === 'MANUAL_OVERRIDE' ? { supplier_commission_direction: direction ?? null } : {}
 }
 
 /**
@@ -62,6 +76,8 @@ export function linesToFormValues(lines: QuoteLine[], withCommissions = true): Q
             commissions: (line.commissions ?? []).map((commission) => ({
               ...commission,
               value: Number(commission.value),
+              // Spec 0306: a saved manual Supplier commission's direction is the line's snapshot.
+              ...manualSupplierDirection(commission.recipient_role, commission.origin, line.supplier_commission_direction),
             })),
           }
         : {}),
@@ -135,6 +151,7 @@ export function toLineInputs(
           internal_note: commission.internal_note,
           origin: commission.origin,
           commission_configuration_id: commission.commission_configuration_id,
+          ...manualSupplierDirection(commission.recipient_role, commission.origin, commission.supplier_commission_direction),
         })) }
       : {}),
   }))
@@ -232,6 +249,7 @@ export function originalLineInputs(lines: QuoteLine[], withCommissions = true): 
               internal_note: commission.internal_note,
               origin: commission.origin,
               commission_configuration_id: commission.commission_configuration_id,
+              ...manualSupplierDirection(commission.recipient_role, commission.origin, line.supplier_commission_direction),
             })),
           }
         : {}),

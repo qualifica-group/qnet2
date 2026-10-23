@@ -6,7 +6,9 @@ namespace App\Http\Requests\Concerns;
 
 use App\Authorization\AuthorizationRegistry;
 use App\Enums\CommissionOrigin;
+use App\Enums\CommissionRecipientRole;
 use App\Models\Product;
+use App\Models\QuoteLine;
 use App\Models\QuoteLineCommission;
 use App\Models\User;
 use App\Services\Commissions\CommissionRecipientResolver;
@@ -58,6 +60,7 @@ trait ValidatesQuoteLineCommissions
                     $commission->quote_line_id,
                     $commission->recipient_role->value,
                 ));
+        $snapshots = $this->supplierDirectionSnapshots($quote);
 
         foreach ((array) $this->input('offer_lines', []) as $lineIndex => $line) {
             if (! is_array($line) || ! array_key_exists('commissions', $line)) {
@@ -65,7 +68,7 @@ trait ValidatesQuoteLineCommissions
             }
 
             if (! ($permissions['commissions']->editable ?? false)) {
-                if ($this->commissionCollectionChanged($line, $existing)) {
+                if ($this->commissionCollectionChanged($line, $existing, $snapshots)) {
                     $validator->errors()->add("offer_lines.{$lineIndex}.commissions", 'field not editable');
                 }
 
@@ -85,6 +88,17 @@ trait ValidatesQuoteLineCommissions
                     ? $existing->get($this->commissionKey((int) $line['id'], (string) $commission['recipient_role']))
                     : null;
 
+                // Spec 0306, D-8: the direction of a manual Supplier commission
+                // follows the `commission_type` permission; it is compared with
+                // the line snapshot, so the FE resending it unchanged is no edit.
+                if ($this->supplierDirectionChanged($line, $commission, $snapshots)
+                    && ! ($permissions['commission_type']->editable ?? false)) {
+                    $validator->errors()->add(
+                        "offer_lines.{$lineIndex}.commissions.{$commissionIndex}.supplier_commission_direction",
+                        'field not editable',
+                    );
+                }
+
                 foreach ($fieldMap as $inputField => $permissionField) {
                     if (array_key_exists($inputField, $commission)
                         && ! ($permissions[$permissionField]->editable ?? false)
@@ -97,6 +111,52 @@ trait ValidatesQuoteLineCommissions
                 }
             }
         }
+    }
+
+    /**
+     * Spec 0306, D-3: a manual Supplier commission must say its direction.
+     * An automatic one takes the rule's, any other role has none.
+     */
+    protected function enforceSupplierCommissionDirection(Validator $validator): void
+    {
+        foreach ((array) $this->input('offer_lines', []) as $lineIndex => $line) {
+            foreach ((array) data_get($line, 'commissions', []) as $commissionIndex => $commission) {
+                if ($this->isManualSupplier($commission) && data_get($commission, 'supplier_commission_direction') === null) {
+                    $validator->errors()->add(
+                        "offer_lines.{$lineIndex}.commissions.{$commissionIndex}.supplier_commission_direction",
+                        __('commission_configurations.direction_required'),
+                    );
+                }
+            }
+        }
+    }
+
+    private function isManualSupplier(mixed $commission): bool
+    {
+        return data_get($commission, 'recipient_role') === CommissionRecipientRole::Supplier->value
+            && data_get($commission, 'origin') === CommissionOrigin::ManualOverride->value;
+    }
+
+    /** @return array<int, string|null> the frozen direction of each persisted line of the quote */
+    private function supplierDirectionSnapshots(?Model $quote): array
+    {
+        return $quote === null
+            ? []
+            : QuoteLine::query()->where('quote_id', $quote->getKey())->get()
+                ->mapWithKeys(fn (QuoteLine $line): array => [$line->id => $line->supplier_commission_direction?->value])
+                ->all();
+    }
+
+    /** @param array<int, string|null> $snapshots */
+    private function supplierDirectionChanged(array $line, mixed $commission, array $snapshots): bool
+    {
+        if (! $this->isManualSupplier($commission) || ! array_key_exists('supplier_commission_direction', (array) $commission)) {
+            return false;
+        }
+
+        $persisted = isset($line['id']) ? ($snapshots[(int) $line['id']] ?? null) : null;
+
+        return $persisted !== $commission['supplier_commission_direction'];
     }
 
     /**
@@ -178,7 +238,8 @@ trait ValidatesQuoteLineCommissions
         return $submitted === null ? null : (int) $submitted;
     }
 
-    private function commissionCollectionChanged(array $line, Collection $existing): bool
+    /** @param array<int, string|null> $snapshots */
+    private function commissionCollectionChanged(array $line, Collection $existing, array $snapshots): bool
     {
         $lineId = isset($line['id']) ? (int) $line['id'] : null;
         $current = $lineId === null
@@ -194,12 +255,15 @@ trait ValidatesQuoteLineCommissions
                     'internal_note' => $commission->internal_note,
                     'origin' => $commission->origin->value,
                     'commission_configuration_id' => $commission->commission_configuration_id,
+                    'supplier_commission_direction' => $commission->recipient_role === CommissionRecipientRole::Supplier && $commission->origin === CommissionOrigin::ManualOverride
+                        ? ($snapshots[$lineId] ?? null)
+                        : null,
                 ])
                 ->sortBy('recipient_role')
                 ->values()
                 ->all();
         $submitted = collect((array) ($line['commissions'] ?? []))
-            ->map(static fn (mixed $commission): array => [
+            ->map(fn (mixed $commission): array => [
                 'recipient_role' => (string) data_get($commission, 'recipient_role'),
                 'recipient_type' => data_get($commission, 'recipient_type'),
                 'recipient_id' => data_get($commission, 'recipient_id') === null
@@ -214,6 +278,9 @@ trait ValidatesQuoteLineCommissions
                 'commission_configuration_id' => data_get($commission, 'commission_configuration_id') === null
                     ? null
                     : (int) data_get($commission, 'commission_configuration_id'),
+                'supplier_commission_direction' => $this->isManualSupplier($commission)
+                    ? data_get($commission, 'supplier_commission_direction')
+                    : null,
             ])
             ->sortBy('recipient_role')
             ->values()

@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0306-supplier-commission-direction-on-rules" status="approved" owner="nicola" date="2026-10-23">
+
+  <goal>
+    Il verso della commissione Fornitore (RICEVUTA = incassata da noi, e' il ricavo della riga; PAGATA = costo verso il
+    fornitore) si sceglie sulla REGOLA di commissione del configuratore, non piu' sulla tipologia prodotto. La tipologia
+    conserva solo l'interruttore "Calcolo commissione Fornitore" si'/no. Una commissione Fornitore inserita a mano
+    nell'offerta ha il proprio verso, scelto nel dialog commissioni.
+  </goal>
+
+  <context>
+    Oggi (verificato 2026-10-23, spec 0202):
+    - `product_typologies.supplier_commission_enabled` (bool) + `product_typologies.supplier_commission_direction`
+      (enum `SupplierCommissionDirection` RECEIVED|PAID, nullable). Modulo Tipologie: `StoreProductTypologyRequest`,
+      `UpdateProductTypologyRequest`, `Create/UpdateProductTypologyData`, `ProductTypologyService`,
+      `ProductTypologyResource`, `ProductTypologiesAuthorization`, `ProductTypologyColumnCatalog` (colonna + filtro set
+      `supplier_commission_direction`), `ProductTypologiesTableDefinition` (badge), `ProductTypologyFactory`,
+      `ProductTypologySeeder`; FE `features/product-typologies/` (`supplier-commission-fields.tsx`,
+      `supplier-commission-direction-cell.tsx`, schema, payload, rows, column-renderers).
+    - `Services/Quotes/SupplierCommissionDirectionResolver`: legge il verso dalla tipologia del prodotto. Usato da
+      `QuoteLineWriter` (snapshot `quote_lines.supplier_commission_direction` solo a creazione riga REVENUE o cambio
+      prodotto) e da `QuoteCommissionDefaultsController` (anteprima, chiave `supplier_commission_direction`).
+    - `QuoteCommissionInitializer::initialize($data, ?SupplierCommissionDirection)`: con verso null salta la regola
+      Fornitore (0202 D-6). `QuoteLineCommissionWriter::sync()`: con snapshot null cancella la commissione Fornitore;
+      `persistDraft()` crea/rigenera le automatiche; `recalculateAndInitializeMissing()` NON riapplica le regole alle
+      commissioni gia' salvate (tipo/valore congelati); manual override (`CommissionOrigin::ManualOverride`) salvato
+      con i valori inviati. Una sola commissione per ruolo per riga (`updateOrCreate` su `recipient_role`).
+    - Consumatori dello snapshot di riga (NON cambiano): `QuoteTotalsCalculator` (margine D-8 di 0202),
+      `WorkOrders/LineEffectiveRevenue`, `WorkOrderContractDataBuilder` (warning `missing_supplier_commission` per
+      RECEIVED senza commissione), `ManagementControl/WorkOrderFigureSources`, `Migrations/Support/QuoteLineDuplicator`;
+      FE `commission-calculator.ts`, `quote-totals`, `quote-product-margins-calc.ts`, `work-order-contract-data/`.
+    - Regole: `commission_configurations` (model `CommissionConfiguration`, `CommissionConfigurationRules`,
+      `Create/UpdateCommissionConfigurationData`, `CommissionConfigurationService`, `CommissionConfigurationResource`,
+      `CommissionConfigurationsAuthorization` campi, `CommissionConfigurationColumnCatalog` /
+      `CommissionConfigurationAdvancedFilterCatalog`, `CommissionConfigurationFactory`, `DemoCommissionShowcaseSeeder`).
+      `CommissionRuleResolver` produce `ResolvedCommissionRule` (5 gradini 0089 + rami categoria 0223). FE
+      `features/commission-configurations/` (form create, dettaglio inline-editable 0241, tabella SSRM).
+    - Migrazione legacy: `Migrations/Sources/CommissionConfigurationsSource` (regole, legacy
+      `Api/V2/CommissionConfigurationMigrationController::mapRule()`); le commissioni delle righe d'offerta legacy
+      arrivano come manual override da `MapsLegacyQuoteLines::legacyCommission()` (legacy `QuoteMigrationController`).
+      Il legacy non ha alcun concetto di verso.
+    - DB sviluppo: 2 tipologie (Ente, Consulenza) entrambe enabled + PAID; 17 regole Fornitore, tutte
+      PRODUCT_CATEGORY e migrate dal legacy (la regola "[OLD] Ente_Iso" copre 235 prodotti Ente e 6 Consulenza);
+      righe REVENUE: 47.484 PAID, 8.868 RECEIVED (snapshot storici, non si toccano).
+
+    Decisioni utente 2026-10-23, vincolanti:
+    D-1 — Il verso sta sulla regola con ruolo Fornitore: `commission_configurations.supplier_commission_direction`
+          (enum `SupplierCommissionDirection`, nullable). Obbligatorio con `recipient_role` = SUPPLIER; per gli altri
+          ruoli e' sempre null (inviato viene forzato a null, come l'interruttore spento della tipologia in 0202).
+    D-2 — La tipologia conserva `supplier_commission_enabled` (spento = la commissione Fornitore non nasce anche con
+          una regola, 0202 D-6 invariata). La colonna `product_typologies.supplier_commission_direction` si elimina,
+          con tutto il codice che la usa (form, dettaglio, colonna, filtro, resource, request, DTO, factory, seeder).
+    D-3 — Commissione Fornitore manuale (dialog commissioni dell'offerta): il verso si sceglie li' (Ricevuta/Pagata),
+          obbligatorio; quando la commissione nasce da una regola, il dialog mostra il verso della regola.
+    D-4 — [rev. 2, utente 2026-10-23] Regole Fornitore gia' presenti in qnet-2: PAGATA (backfill in migrazione). Dalla
+          migrazione legacy il verso lo decide il legacy (backend.md §9) dal `folder` dei servizi, come il legacy calcola
+          il ricavo in commessa (`App\Traits\CalcolaProvvigioneTrait::calcolaRicavoServizio`: folder 2 = Ente, ricavo =
+          sola provvigione Fornitore): regola su un servizio -> RECEIVED se il servizio ha folder 2, altrimenti PAID;
+          regola su una categoria -> RECEIVED se la categoria contiene almeno un servizio con folder 2, altrimenti PAID
+          (categoria mista come "Ente_Iso" = RECEIVED; categoria senza servizi = PAID). Commissione Fornitore di una riga
+          d'offerta legacy -> RECEIVED se il servizio della riga ha folder 2, altrimenti PAID. Rev. 1 ("tutte PAID") si
+          basava sull'ipotesi errata che il legacy non avesse un verso.
+    D-5 — Nessun ricalcolo retroattivo: lo snapshot delle righe esistenti non cambia; ricavi, IVA, documenti invariati.
+
+    Decisioni proposte, da validare con l'approvazione:
+    D-6 — Lo snapshot resta su `quote_lines.supplier_commission_direction`, unica fonte per tutti i consumatori
+          (nessun consumatore cambia). Significato: null = calcolo disattivato dalla tipologia; valorizzato = verso
+          della commissione Fornitore della riga. Si scrive cosi':
+          a) `QuoteLineWriter`, alla creazione della riga REVENUE o al cambio prodotto: tipologia spenta -> null;
+             tipologia accesa -> resta il valore attuale se non null, altrimenti PAID (verso neutro finche' non c'e' una
+             commissione: ricavo = imponibile). Su ogni altro salvataggio non cambia (0202 D-3).
+          b) `QuoteLineCommissionWriter`, quando persiste una commissione Fornitore AUTOMATICA nuova o rigenerata
+             (`persistDraft`): snapshot = verso della regola applicata.
+          c) Quando salva una commissione Fornitore MANUALE: snapshot = verso inviato (D-3).
+          d) Commissione Fornitore gia' salvata e solo ricalcolata, o rimossa: snapshot invariato (come tipo/valore,
+             una modifica successiva della regola non tocca le offerte salvate; RECEIVED senza commissione continua a
+             produrre il warning `missing_supplier_commission` in commessa).
+    D-7 — `SupplierCommissionDirectionResolver` diventa il lettore del solo interruttore della tipologia (rinominato
+          `SupplierCommissionEnablement`, metodo `enabledForProducts(array $productIds): array<int,bool>`).
+          `QuoteCommissionInitializer::initialize()` riceve `bool $supplierEnabled` al posto del verso;
+          `ResolvedCommissionRule` e `AppliedCommissionDraft` portano `?SupplierCommissionDirection
+          $supplierDirection` (valorizzato solo per il ruolo Fornitore).
+    D-8 — Il verso manuale e' governato dal permesso di campo `commission_type` dell'offerta (nessun nuovo permesso di
+          campo quote): chi non puo' modificare il tipo non puo' modificare il verso.
+    D-9 — Nel configuratore il verso ha un proprio permesso di campo `supplier_commission_direction` in
+          `CommissionConfigurationsAuthorization` (sezione "Calcolo", vicino a Tipo commissione).
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione: colonna `commission_configurations.supplier_commission_direction` + backfill PAID sulle regole SUPPLIER (D-1, D-4); drop di `product_typologies.supplier_commission_direction` (D-2). Entrambe reversibili (down: ricrea la colonna tipologia con PAID dove enabled).</item>
+      <item>Configuratore commissioni BE: request (obbligatorio con SUPPLIER, forzato null altrimenti, anche in PATCH quando cambia il ruolo), DTO, service, resource, authorization (campo), column catalog + filtro set, factory, demo seeder.</item>
+      <item>Configuratore commissioni FE: campo Verso nel form (visibile e obbligatorio solo con ruolo Fornitore), riga inline nel dettaglio, colonna con badge in tabella, schema Zod, payload, i18n IT/EN.</item>
+      <item>Tipologie prodotto BE+FE: rimozione del verso (resta l'interruttore), colonna/filtro/badge/dettaglio/form, i18n.</item>
+      <item>Offerta BE: D-6, D-7, D-8 (initializer, writer, line writer, commission-defaults, validazione `offer_lines[].commissions[]`).</item>
+      <item>Offerta FE: dialog commissioni con scelta del verso sulla riga Fornitore manuale; anteprima margine che usa il verso della commissione Fornitore (nuova o modificata) prima del salvataggio.</item>
+      <item>Migrazione legacy: legacy invia `supplier_commission_direction` (D-4 rev. 2, dal folder dei servizi) sulle regole Fornitore e sulle commissioni Fornitore delle righe d'offerta; qnet-2 lo legge con `tryFrom` (mancante/invalido -> regola o offerta fallita con messaggio, come oggi per `commission_type`). Fixture dei test aggiornate (REQUIREMENT CHANGED).</item>
+      <item>Guide in-app IT/EN: `commission-configurations`, `product-typologies`, `quotes`; manuale Claude Docs (sezioni Tipologie prodotto, Configuratore commissioni, Offerte/commissioni).</item>
+      <item>Test Pest e Vitest per ogni AC.</item>
+    </in>
+    <out>
+      <item>Ricalcolo di snapshot, commissioni o `margin_net` di offerte gia' salvate (D-5).</item>
+      <item>Verso per Commerciale, Segnalatore, Supervisore (restano pagati).</item>
+      <item>Modifiche a `QuoteTotalsCalculator`, `LineEffectiveRevenue`, `WorkOrderContractDataBuilder`, `WorkOrderFigureSources`, maturazioni e liquidazioni (leggono lo snapshot di riga, invariato).</item>
+      <item>Regola di risoluzione delle regole (gradini 0089, rami 0223): il verso non partecipa alla scelta della regola.</item>
+      <item>Destinatario Fornitore diverso da `products.supplier_id`.</item>
+      <item>Riparazione nel legacy di righe storiche RECEIVED/PAID: si migrano con PAID come deciso in D-4.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET|POST|PUT|PATCH" path="/api/commission-configurations[/{id}]">
+      <request>store/update: `supplier_commission_direction`?: "RECEIVED"|"PAID"|null. Obbligatorio quando il ruolo
+        risultante (inviato o salvato) e' SUPPLIER e il valore salvato e' null; con ruolo diverso da SUPPLIER viene
+        salvato null qualunque cosa arrivi. Un PATCH che porta il ruolo da SUPPLIER ad altro azzera il verso.</request>
+      <response status="200">Resource regola + `supplier_commission_direction: "RECEIVED"|"PAID"|null` (soggetto al
+        permesso di campo omonimo). Tabella SSRM: colonna `supplier_commission_direction` (badge, colori dell'enum) e
+        filtro set con lo stesso id.</response>
+      <errors>422 verso mancante con ruolo SUPPLIER o valore non ammesso (messaggio i18n
+        `commission_configurations.direction_required`); 403 come oggi.</errors>
+    </endpoint>
+    <endpoint method="GET|POST|PUT|PATCH" path="/api/product-typologies[/{id}]">
+      <request>`supplier_commission_direction` NON e' piu' accettato (ignorato se inviato da un client vecchio).</request>
+      <response status="200">Resource tipologia SENZA `supplier_commission_direction`; resta
+        `supplier_commission_enabled: bool`. Tabella: colonna e filtro `supplier_commission_direction` rimossi.</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/quotes/commission-defaults (endpoint esistente)">
+      <response status="200">`commissions[]` invariato; `supplier_commission_direction`: verso della regola Fornitore
+        risolta quando esiste una commissione Fornitore in `commissions[]`; "PAID" con tipologia accesa e nessuna
+        regola Fornitore applicabile; null con tipologia spenta.</response>
+    </endpoint>
+    <endpoint method="POST|PUT|PATCH" path="/api/quotes[/{id}] (payload offer_lines)">
+      <request>`offer_lines[].commissions[]`: l'elemento con `role` "SUPPLIER" e `origin` "MANUAL_OVERRIDE" porta
+        `supplier_commission_direction`: "RECEIVED"|"PAID" (obbligatorio). Con origin automatica il campo e' ignorato
+        (vale la regola). Sugli altri ruoli e' ignorato.</request>
+      <response status="200">Invariata: `offer_lines[].supplier_commission_direction` (QuoteLineResource) riflette
+        D-6.</response>
+      <errors>422 `offer_lines.N.commissions.M.supplier_commission_direction` mancante/non ammesso su Fornitore
+        manuale; 422 "field not editable" se cambia senza permesso `commission_type` (D-8).</errors>
+    </endpoint>
+    <endpoint method="GET" path="legacy ../qnet /api/v2/migration/commission-configurations e righe d'offerta">
+      <response status="200">Regola con `role` fornitore: `supplier_commission_direction` "RECEIVED"|"PAID" secondo D-4
+        (rev. 2). Commissione di riga con ruolo fornitore: "RECEIVED" se il servizio della riga ha `folder` = 2, altrimenti
+        "PAID". Altri ruoli: chiave assente.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Configuratore: crea regola SUPPLIER senza verso -> 422; con PAID -> salvata e restituita con PAID; regola COMMERCIAL inviata con RECEIVED -> salvata con null.</criterion>
+    <criterion id="AC-002">Configuratore PATCH: regola SUPPLIER portata a COMMERCIAL -> verso null; regola COMMERCIAL portata a SUPPLIER senza verso -> 422, con verso -> salvato. Utente senza permesso di campo `supplier_commission_direction` non lo vede nella resource.</criterion>
+    <criterion id="AC-003">Tabella regole: colonna `supplier_commission_direction` con badge e filtro set funzionante (filtra RECEIVED).</criterion>
+    <criterion id="AC-004">Migrazione: dopo `migrate` tutte le regole SUPPLIER esistenti hanno PAID, le altre null; `product_typologies` non ha piu' la colonna verso; nessuno snapshot `quote_lines` ne' importo commissione cambiato; `migrate:rollback` ripristina la colonna tipologia (PAID dove enabled).</criterion>
+    <criterion id="AC-005">Tipologie: resource, form, dettaglio e tabella non espongono piu' il verso; l'interruttore resta e, spento, impedisce la commissione Fornitore anche con regola attiva (0202 AC-004 ancora verde).</criterion>
+    <criterion id="AC-006">Nuova riga d'offerta, tipologia accesa, regola Fornitore RECEIVED applicabile -> commissione Fornitore automatica creata e snapshot riga RECEIVED; con regola PAID -> PAID; senza regola -> nessuna commissione e snapshot PAID; tipologia spenta -> snapshot null e nessuna commissione.</criterion>
+    <criterion id="AC-007">Riga salvata con commissione Fornitore automatica RECEIVED: la regola viene poi cambiata in PAID; un nuovo salvataggio dell'offerta senza rigenerare lascia snapshot RECEIVED e la commissione invariata (D-5/D-6d); con rigenerazione delle commissioni lo snapshot diventa PAID.</criterion>
+    <criterion id="AC-008">Commissione Fornitore manuale con verso RECEIVED -> snapshot riga RECEIVED e margine offerta calcolato con ricavo = commissione (formula 0202 D-8); manuale senza verso -> 422; manuale con verso modificato senza permesso `commission_type` -> 422 "field not editable".</criterion>
+    <criterion id="AC-009">Endpoint commission-defaults: `supplier_commission_direction` = verso della regola Fornitore risolta; PAID con tipologia accesa e nessuna regola; null con tipologia spenta.</criterion>
+    <criterion id="AC-010">FE configuratore: il campo Verso compare ed e' obbligatorio solo con ruolo Fornitore (form create e dettaglio inline); cambiando ruolo da Fornitore ad altro il campo sparisce e il payload invia null.</criterion>
+    <criterion id="AC-011">FE dialog commissioni offerta: la riga Fornitore mostra il verso; da automatica il verso e' quello della regola (sola lettura); passando a manuale si sceglie Ricevuta/Pagata ed e' obbligatorio; l'anteprima del margine e "Margine per prodotto" usano il verso scelto e coincidono col server per i casi di AC-008.</criterion>
+    <criterion id="AC-012">Migrazione legacy: regola fornitore con `supplier_commission_direction` "RECEIVED" o "PAID" -> regola con quel verso; il legacy manda RECEIVED per le regole su servizi o categorie Ente (folder 2) e PAID per le altre (D-4 rev. 2); regola fornitore senza il campo -> riga fallita con messaggio; commissione fornitore di riga d'offerta con "PAID" -> snapshot riga PAID; senza il campo -> offerta fallita con messaggio. Endpoint legacy verificati con tinker sui dati reali.</criterion>
+    <criterion id="AC-013">Guide in-app IT/EN aggiornate (`commission-configurations`, `product-typologies`, `quotes`), parity verde; manuale Claude Docs aggiornato nelle sezioni indicate.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; migrazioni nuove e reversibili; nessuna migrazione esistente modificata.</item>
+    <item>Riuso dell'enum `SupplierCommissionDirection` (docblock aggiornato: ora vive sulla regola); label i18n gia' in `commission_configurations.directions`.</item>
+    <item>Calcolo autorevole server-side; il FE replica solo l'anteprima con la stessa formula (AC-011).</item>
+    <item>Authz server-side invariata (policy esistenti) + permessi di campo D-8/D-9.</item>
+    <item>Zero dead code: eliminare `SupplierCommissionDirectionResolver` (sostituito da D-7), i componenti FE del verso sulla tipologia e le chiavi i18n non piu' usate.</item>
+    <item>File &lt;= 300 righe; identificatori in inglese.</item>
+    <item>Legacy: non toccare `AppServiceProvider.php`/`config/database.php` modificati dall'utente; git legacy soggetto a CLAUDE.md §3.6.</item>
+  </constraints>
+
+  <tasks>
+    <task id="T-01" lane="backend" depends="">Migrazione regole (colonna + backfill PAID), modulo configuratore BE (request, DTO, service, resource, authorization, catalog/filtro, factory, demo seeder), chiavi lang `commission_configurations.*` (anche quella usata da T-03). AC-001..AC-004 (parte regole).</task>
+    <task id="T-02" lane="backend" depends="">Migrazione drop verso tipologia + modulo tipologie BE: rimozione verso (request, DTO, service, resource, authorization, catalog, table definition, factory, seeder). AC-004 (parte tipologie), AC-005.</task>
+    <task id="T-03" lane="backend" depends="T-01,T-02">Offerta BE: `SupplierCommissionEnablement` (sostituisce `SupplierCommissionDirectionResolver`), `ResolvedCommissionRule`/`AppliedCommissionDraft`/`QuoteLineCommissionData`, initializer, `QuoteLineCommissionWriter`, `QuoteLineWriter`, commission-defaults, validazione e permesso campo commissioni. AC-006..AC-009.</task>
+    <task id="T-04" lane="backend+legacy" depends="T-01,T-03">Legacy `CommissionConfigurationMigrationController` + `QuoteMigrationController`; qnet-2 `CommissionConfigurationsSource`, `MapsLegacyQuoteLines`; fixture. AC-012.</task>
+    <task id="T-05" lane="frontend" depends="contratto">Configuratore FE (form, dettaglio inline, tabella, schema, payload, i18n). AC-010.</task>
+    <task id="T-06" lane="frontend" depends="contratto">Tipologie FE: rimozione verso. AC-005 (FE).</task>
+    <task id="T-07" lane="frontend" depends="contratto">Offerta FE: dialog commissioni, anteprima margine, tipi/schema. AC-011.</task>
+    <task id="T-08" lane="docs" depends="T-05,T-06,T-07">Guide in-app IT/EN + manuale Claude Docs. AC-013.</task>
+    <task id="T-09" lane="verifier" depends="T-01..T-08">Suite Pest mirata + Vitest + tsc -b + lint; coerenza AC-011 server vs anteprima; migrate/rollback su copia DB.</task>
+  </tasks>
+
+  <risks>
+    <r id="R-1">Produzione con tipologia Ente oggi RECEIVED: dopo il rilascio le nuove righe Ente nascono PAID finche' le regole Fornitore non vengono corrette a mano (D-4). Va comunicato prima del deploy.</r>
+    <r id="R-2">Snapshot e commissione divergenti se un canale salva una commissione Fornitore senza passare dal writer: mitigazione, un solo punto di scrittura (D-6 b/c) e test per canale (form, inline, Gestione Richieste, conversione Lead, migrazione).</r>
+    <r id="R-3">Client vecchi che inviano ancora il verso alla tipologia: il campo e' ignorato, non errore.</r>
+  </risks>
+
+</spec>

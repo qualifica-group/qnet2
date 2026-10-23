@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Authorization;
 
+use App\Models\Quote;
 use App\Models\User;
+use App\Services\Commissions\CommissionRecalculationImpact;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -39,8 +41,10 @@ use Illuminate\Database\Eloquent\Model;
  */
 class QuotesAuthorization extends AbstractResourceAuthorization
 {
-    public function __construct(FieldPermissionRepository $fieldPermissionRepository)
-    {
+    public function __construct(
+        FieldPermissionRepository $fieldPermissionRepository,
+        private readonly CommissionRecalculationImpact $recalculationImpact,
+    ) {
         parent::__construct($fieldPermissionRepository);
     }
 
@@ -91,7 +95,7 @@ class QuotesAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity', 'generate_document'];
+        return ['delete', 'export', 'import', 'view_activity', 'generate_document', 'recalculate_commissions'];
     }
 
     /**
@@ -148,6 +152,12 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             // spec 0070: `.docx` generation is a read (record-level), gated
             // by `quotes.view` like `view_activity` above, never `update`.
             'generate_document' => $model !== null && $actor->can('quotes.view'),
+            // Spec 0308, D-3/D-4: realigning commissions is a write on the
+            // `commissions` field and never applies to a closed quote.
+            'recalculate_commissions' => $model instanceof Quote
+                && $this->actorMayWrite($actor, $model)
+                && $this->fieldPermissions($actor, $model)['commissions']->editable
+                && ! $this->recalculationImpact->isClosed($model),
         ];
     }
 }

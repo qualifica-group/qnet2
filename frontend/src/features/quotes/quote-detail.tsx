@@ -11,7 +11,7 @@ import { ResourcePermissionsProvider } from '@/features/authorization/permission
 import { NotesSection } from '@/features/notes/notes-section'
 import { QuoteDetailHeader, QuoteDetailStats } from '@/features/quotes/quote-detail-header'
 import { QuoteDetailLines } from '@/features/quotes/quote-detail-lines'
-import { QuoteDetailSections } from '@/features/quotes/quote-detail-sections'
+import { QuoteDetailAttributes, QuoteDetailSections } from '@/features/quotes/quote-detail-sections'
 import { useQuoteInlineEdit } from '@/features/quotes/use-quote-inline-edit'
 import { REQUEST_MANAGEMENT_DOMAIN } from '@/features/request-management/types'
 import { useRegistryDocumentsTab } from '@/features/registries/use-registry-documents-tab'
@@ -121,7 +121,7 @@ function QuoteDetailContent({ quote, onChanged }: QuoteDetailViewProps) {
         collaborationTabs={collaborationTabs}
         header={
           <>
-            <QuoteDetailHeader quote={quote} />
+            <QuoteDetailHeader quote={quote} onChanged={onChanged} />
             <QuoteDetailStats quote={quote} />
           </>
         }
@@ -130,6 +130,7 @@ function QuoteDetailContent({ quote, onChanged }: QuoteDetailViewProps) {
         <Form {...editor.form}>
           <QuoteDetailSections quote={quote} editor={editor} />
           <QuoteDetailLines quote={quote} editor={editor} />
+          <QuoteDetailAttributes quote={quote} editor={editor} />
         </Form>
       </RecordBody>
 

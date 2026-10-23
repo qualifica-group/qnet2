@@ -7,6 +7,7 @@ import {
   COMMISSION_SCOPES,
   COMMISSION_STATUSES,
   COMMISSION_TYPES,
+  SUPPLIER_COMMISSION_DIRECTIONS,
 } from './types'
 
 export function buildCommissionConfigurationSchema(t: TFunction) {
@@ -21,6 +22,7 @@ export function buildCommissionConfigurationSchema(t: TFunction) {
       recipient_type: z.enum(COMMISSION_RECIPIENT_TYPES),
       recipient_id: z.number().nullable(),
       commission_type: z.enum(COMMISSION_TYPES),
+      supplier_commission_direction: z.enum(SUPPLIER_COMMISSION_DIRECTIONS).nullable(),
       value: z
         .number(t('commissionConfigurations.form.errors.valueInvalid'))
         .min(0, t('commissionConfigurations.form.errors.valueInvalid')),
@@ -52,6 +54,13 @@ export function buildCommissionConfigurationSchema(t: TFunction) {
           code: 'custom',
           path: ['recipient_id'],
           message: t('commissionConfigurations.form.errors.recipientRequired'),
+        })
+      }
+      if (values.recipient_role === 'SUPPLIER' && values.supplier_commission_direction === null) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['supplier_commission_direction'],
+          message: t('commissionConfigurations.form.errors.directionRequired'),
         })
       }
       if (values.valid_until && values.valid_until < values.valid_from) {

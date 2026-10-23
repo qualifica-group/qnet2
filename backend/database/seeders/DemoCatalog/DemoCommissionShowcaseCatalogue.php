@@ -4,6 +4,7 @@ namespace Database\Seeders\DemoCatalog;
 
 use App\Enums\CommissionRecipientRole as Role;
 use App\Enums\CommissionType as Type;
+use App\Enums\SupplierCommissionDirection as Direction;
 
 /**
  * Pure data of DemoCommissionShowcaseSeeder: one commessa per commission case,
@@ -48,26 +49,26 @@ final class DemoCommissionShowcaseCatalogue
      * rule on the training product exists on purpose: its typology has the
      * calculation switched off, so it must NOT produce a commission (spec 0202 D-6).
      *
-     * @var array<string, list<array{0: Role, 1: Type, 2: string}>>
+     * @var array<string, list<array{0: Role, 1: Type, 2: string, 3?: Direction}>>
      */
     public const array RULES = [
         'Demo showcase - Consulenza' => [
             [Role::Commercial, Type::Percentage, '5'],
             [Role::Reporter, Type::Percentage, '3'],
-            [Role::Supplier, Type::Percentage, '10'],
+            [Role::Supplier, Type::Percentage, '10', Direction::Paid],
         ],
         'Demo showcase - Ente percentuale' => [
-            [Role::Supplier, Type::Percentage, '20'],
+            [Role::Supplier, Type::Percentage, '20', Direction::Received],
             [Role::Commercial, Type::Percentage, '5'],
         ],
         'Demo showcase - Ente fissa' => [
-            [Role::Supplier, Type::FixedAmount, '300'],
+            [Role::Supplier, Type::FixedAmount, '300', Direction::Received],
         ],
         'Demo showcase - Ente senza fornitore' => [
-            [Role::Supplier, Type::Percentage, '20'],
+            [Role::Supplier, Type::Percentage, '20', Direction::Received],
         ],
         'Demo showcase - Formazione' => [
-            [Role::Supplier, Type::Percentage, '10'],
+            [Role::Supplier, Type::Percentage, '10', Direction::Paid],
             [Role::Supervisor, Type::FixedAmount, '50'],
         ],
     ];

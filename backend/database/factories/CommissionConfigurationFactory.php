@@ -6,6 +6,7 @@ use App\Enums\CommissionApplicationScope;
 use App\Enums\CommissionConfigurationStatus;
 use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
+use App\Enums\SupplierCommissionDirection;
 use App\Models\CommissionConfiguration;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -25,6 +26,10 @@ class CommissionConfigurationFactory extends Factory
             'product_category_id' => null,
             'product_id' => Product::factory(),
             'commission_type' => CommissionType::Percentage,
+            // Spec 0306 D-1: a Supplier rule always carries a direction.
+            'supplier_commission_direction' => static fn (array $attributes): ?SupplierCommissionDirection => in_array($attributes['recipient_role'], [CommissionRecipientRole::Supplier, CommissionRecipientRole::Supplier->value], true)
+                ? SupplierCommissionDirection::Paid
+                : null,
             'value' => 5,
             'priority' => 0,
             'valid_from' => now()->startOfDay(),

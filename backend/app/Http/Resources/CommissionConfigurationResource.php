@@ -40,6 +40,7 @@ class CommissionConfigurationResource extends JsonResource
             'recipient_id' => $this->recipient_id,
             'recipient' => $this->recipient === null ? null : ['id' => $this->recipient->id, 'name' => $this->recipient->name],
             'commission_type' => $this->commission_type->value,
+            'supplier_commission_direction' => $this->supplier_commission_direction?->value,
             'value' => $this->value,
             'priority' => $this->priority,
             'valid_from' => $this->valid_from?->format('Y-m-d'),

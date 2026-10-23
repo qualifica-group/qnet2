@@ -10,6 +10,7 @@ use App\DataObjects\Commissions\QuoteCommissionDefaultsData;
 use App\DataObjects\Quotes\QuoteLineCommissionData;
 use App\Enums\CommissionOrigin;
 use App\Enums\CommissionRecipientRole;
+use App\Enums\SupplierCommissionDirection;
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\Referent;
@@ -105,6 +106,11 @@ final class QuoteLineCommissionWriter
                     'origin' => CommissionOrigin::ManualOverride,
                 ],
             );
+
+            // Spec 0306, D-6c: a manual Supplier commission carries its own direction.
+            if ($commission->role === CommissionRecipientRole::Supplier) {
+                $this->freezeSupplierDirection($line, $commission->supplierDirection);
+            }
         }
 
         $line->commissions()->whereNotIn('recipient_role', $keptRoles)->delete();
@@ -205,7 +211,11 @@ final class QuoteLineCommissionWriter
         }
     }
 
-    private function persistDraft(QuoteLine $line, mixed $draft): void
+    /**
+     * Spec 0306, D-6b: an automatic Supplier commission written to the line
+     * (new or regenerated) freezes the direction of the rule that produced it.
+     */
+    private function persistDraft(QuoteLine $line, AppliedCommissionDraft $draft): void
     {
         $line->commissions()->updateOrCreate(
             ['recipient_role' => $draft->role],
@@ -220,6 +230,17 @@ final class QuoteLineCommissionWriter
                 'origin' => $draft->origin,
             ],
         );
+
+        if ($draft->role === CommissionRecipientRole::Supplier) {
+            $this->freezeSupplierDirection($line, $draft->supplierDirection);
+        }
+    }
+
+    private function freezeSupplierDirection(QuoteLine $line, ?SupplierCommissionDirection $direction): void
+    {
+        if ($direction !== null && $line->supplier_commission_direction !== $direction) {
+            $line->update(['supplier_commission_direction' => $direction]);
+        }
     }
 
     /** @return array<int, AppliedCommissionDraft> */
@@ -237,7 +258,7 @@ final class QuoteLineCommissionWriter
             reporterId: null,
             supervisorId: null,
             referenceDate: new DateTimeImmutable,
-        ), $line->supplier_commission_direction);
+        ), $line->supplier_commission_direction !== null);
     }
 
     private function validatedRecipient(QuoteLineCommissionData $commission): Model

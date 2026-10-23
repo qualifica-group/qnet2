@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import { COMMISSION_ROLES, COMMISSION_TYPES } from '@/features/commission-configurations/types'
-import { SUPPLIER_COMMISSION_DIRECTIONS } from '@/features/product-typologies/types'
+import { SUPPLIER_COMMISSION_DIRECTIONS } from '@/features/commission-configurations/types'
 import { MAX_MANAGER_SLOTS } from '@/components/form/manager-slots-limits'
 import {
   buildAttributeValuesSchema,
@@ -141,6 +141,7 @@ export function quoteLineRowSchema(t: TFunction) {
         internal_note: z.string().max(5000).nullable(),
         origin: z.enum(['PRODUCT', 'PRODUCT_CATEGORY', 'RECIPIENT', 'MANUAL_OVERRIDE']),
         commission_configuration_id: z.number().nullable(),
+        supplier_commission_direction: z.enum(SUPPLIER_COMMISSION_DIRECTIONS).nullable().optional(),
       })).optional(),
     })
     .superRefine((row, ctx) => {
@@ -151,6 +152,21 @@ export function quoteLineRowSchema(t: TFunction) {
       if (isPristineLineRow(row)) {
         return
       }
+
+      // Spec 0306 D-3: a manual Supplier commission must say which way it goes.
+      row.commissions?.forEach((commission, index) => {
+        if (
+          commission.recipient_role === 'SUPPLIER'
+          && commission.origin === 'MANUAL_OVERRIDE'
+          && !commission.supplier_commission_direction
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['commissions', index, 'supplier_commission_direction'],
+            message: t('quotes.form.commissions.direction.required'),
+          })
+        }
+      })
 
       if (row.product_id === null) {
         ctx.addIssue({

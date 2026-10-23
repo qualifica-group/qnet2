@@ -67,17 +67,6 @@ final class ProductTypologyColumnCatalog
                 'filterType' => 'boolean',
             ],
             [
-                // Badge driven by SupplierCommissionDirection (form_enums key
-                // `supplier_commission_direction`).
-                'id' => 'supplier_commission_direction',
-                'label' => 'productTypologies.columns.supplier_commission_direction',
-                'type' => 'badge',
-                'visible' => true,
-                'sortable' => true,
-                'filterable' => true,
-                'filterType' => 'set',
-            ],
-            [
                 'id' => 'created_at',
                 'label' => 'productTypologies.columns.created_at',
                 'type' => 'datetime',
@@ -108,7 +97,6 @@ final class ProductTypologyColumnCatalog
             ['columnId' => 'code', 'type' => 'text'],
             ['columnId' => 'description', 'type' => 'text'],
             ['columnId' => 'supplier_commission_enabled', 'type' => 'boolean'],
-            ['columnId' => 'supplier_commission_direction', 'type' => 'set'],
             ['columnId' => 'created_at', 'type' => 'date'],
             ['columnId' => 'updated_at', 'type' => 'date'],
         ];

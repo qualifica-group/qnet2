@@ -468,7 +468,7 @@ class QuoteService
      * so they are written via forceFill(), mirroring OpportunityService's own
      * `name` assignment.
      */
-    private function persistAggregates(Quote $quote): void
+    public function persistAggregates(Quote $quote): void
     {
         $totals = $this->totalsCalculator->aggregates($quote);
 

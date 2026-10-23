@@ -194,3 +194,47 @@ describe('lineClientKey', () => {
     expect(lineClientKey(9)).not.toBe(lineClientKey(10))
   })
 })
+
+/** Spec 0306 D-3/AC-008: a saved manual Supplier commission is re-sent with the line's snapshot direction. */
+describe('manual Supplier commission direction on the wire (spec 0306)', () => {
+  const savedCommission = (origin: 'MANUAL_OVERRIDE' | 'PRODUCT_CATEGORY') => ({
+    id: 5,
+    recipient_role: 'SUPPLIER' as const,
+    recipient_type: 'registry' as const,
+    recipient_id: 7,
+    commission_type: 'PERCENTAGE' as const,
+    value: '10.0000',
+    calculated_amount: '10.00',
+    internal_note: null,
+    origin,
+    commission_configuration_id: null,
+  })
+
+  it('hydrates a saved manual Supplier commission with the snapshot and re-sends it', () => {
+    const line = quoteLineFixture({ id: 1, supplier_commission_direction: 'RECEIVED', commissions: [savedCommission('MANUAL_OVERRIDE')] })
+
+    const [row] = linesToFormValues([line])
+    const [wire] = toLineInputs([row])
+
+    expect(row.commissions?.[0].supplier_commission_direction).toBe('RECEIVED')
+    expect(wire.commissions?.[0]).toMatchObject({ recipient_role: 'SUPPLIER', supplier_commission_direction: 'RECEIVED' })
+  })
+
+  it('never sends a direction on an automatic Supplier commission', () => {
+    const line = quoteLineFixture({ id: 1, supplier_commission_direction: 'PAID', commissions: [savedCommission('PRODUCT_CATEGORY')] })
+
+    const [wire] = toLineInputs(linesToFormValues([line]))
+
+    expect(wire.commissions?.[0]).not.toHaveProperty('supplier_commission_direction')
+  })
+
+  it('is unchanged against the baseline until the direction changes', () => {
+    const line = quoteLineFixture({ id: 1, supplier_commission_direction: 'RECEIVED', commissions: [savedCommission('MANUAL_OVERRIDE')] })
+    const baseline = originalLineInputs([line])
+    const [row] = linesToFormValues([line])
+
+    expect(sameLines(toLineInputs([row]), baseline)).toBe(true)
+    const changed = { ...row, commissions: row.commissions?.map((c) => ({ ...c, supplier_commission_direction: 'PAID' as const })) }
+    expect(sameLines(toLineInputs([changed]), baseline)).toBe(false)
+  })
+})

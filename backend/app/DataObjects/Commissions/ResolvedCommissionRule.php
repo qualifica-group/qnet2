@@ -7,6 +7,7 @@ namespace App\DataObjects\Commissions;
 use App\Enums\CommissionOrigin;
 use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
+use App\Enums\SupplierCommissionDirection;
 
 final readonly class ResolvedCommissionRule
 {
@@ -17,5 +18,6 @@ final readonly class ResolvedCommissionRule
         public string $value,
         public ?string $internalNote,
         public CommissionOrigin $origin,
+        public ?SupplierCommissionDirection $supplierDirection = null,
     ) {}
 }

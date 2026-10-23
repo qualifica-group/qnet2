@@ -32,4 +32,11 @@ return [
     'role_without_recipient' => 'No recipient is selected on the quote for this role, so it cannot be commissioned.',
     'invalid_quote_line_id' => 'A submitted quote line does not belong to this quote or line type.',
     'recipient_role_changed' => 'The role changed recipient type: provide the new recipient or clear it.',
+    'direction_required' => 'Choose the direction of the Supplier commission (received or paid).',
+    // Spec 0308, D-7.
+    'recalculation_queued' => 'Quote recalculation started.',
+    'recalculation' => [
+        'title' => 'Commission recalculation completed',
+        'message' => ':updated quotes updated, :failed not updated.',
+    ],
 ];

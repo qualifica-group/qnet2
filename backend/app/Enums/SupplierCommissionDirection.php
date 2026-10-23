@@ -7,11 +7,11 @@ use App\Enums\Attributes\Label;
 use App\Enums\Concerns\HasMeta;
 
 /**
- * Direction of the Supplier commission of a product typology (spec 0202,
- * D-2/D-7): RECEIVED = collected by us (it IS the line's revenue), PAID = a
- * cost towards the supplier. Frozen onto the REVENUE quote line at creation
- * (`quote_lines.supplier_commission_direction`); null means the Supplier
- * commission is not calculated at all.
+ * Direction of a Supplier commission (spec 0306, D-1): RECEIVED = collected by
+ * us (it IS the line's revenue), PAID = a cost towards the supplier. Chosen on
+ * the SUPPLIER commission rule (or on a manual Supplier commission of an offer)
+ * and frozen onto the REVENUE quote line (`quote_lines.supplier_commission_direction`);
+ * null on the line means the typology switches the Supplier commission off.
  */
 enum SupplierCommissionDirection: string
 {

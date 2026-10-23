@@ -72,6 +72,7 @@ describe('useCommissionConfigurationForm', () => {
       recipient_type: 'referent',
       recipient_id: 42,
       commission_type: 'FIXED_AMOUNT',
+      supplier_commission_direction: 'PAID',
       value: 10,
       priority: 2,
       valid_from: '2026-07-29',
@@ -82,6 +83,7 @@ describe('useCommissionConfigurationForm', () => {
     expect(createCommissionConfiguration).toHaveBeenCalledWith(expect.objectContaining({
       product_category_id: 8,
       product_id: null,
+      supplier_commission_direction: null,
       recipient_id: 42,
       valid_until: null,
       internal_note: null,

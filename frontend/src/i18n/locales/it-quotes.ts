@@ -41,8 +41,40 @@ export const quotes = {
     supervisor: 'Supervisore',
     createdRange: 'Creato il',
   },
+  calculationHints: {
+    baseRule: 'Base di calcolo = imponibile della riga − costi imputati alla riga (mai sotto zero).',
+    baseFormula: '{{net}} − {{costs}} = {{base}}',
+    percentageFormula: '{{rate}}% × {{base}} = {{amount}}',
+    savedAmount: 'Importo salvato: {{amount}} (calcolato quando la riga è stata salvata; i costi imputati sono cambiati dopo).',
+    fixedAmount: "Importo fisso: {{amount}}. Non dipende dall'imponibile né dai costi.",
+    rowTotalTitle: 'Totale provvigioni della riga {{n}}',
+    rowTotalRule: 'Somma delle provvigioni della riga, di tutti i ruoli.',
+    roleTotalTitle: 'Totale {{role}}',
+    roleTotalRule: 'Somma delle provvigioni di questo ruolo su tutte le righe.',
+    grandTotalTitle: 'Totale provvigioni',
+    grandTotalRule: 'Somma dei totali di Commerciale, Segnalatore, Supervisore e Fornitore.',
+    lineNetRevenue: 'Imponibile della riga (quantità × prezzo unitario): {{amount}}.',
+    receivedRevenue: 'Commissione Fornitore ricevuta: {{amount}}. È il nostro ricavo su questa riga.',
+    receivedRevenueNet: "L'imponibile della riga ({{net}}) non è nostro ricavo: su quello si calcola la commissione.",
+    imputedCosts: 'Somma delle righe della scheda Costi associate a questa riga: {{amount}}.',
+    genericCosts: 'Somma delle righe della scheda Costi non associate a nessuna riga prodotto: {{amount}}. Si tolgono dal Margine atteso, non da una riga.',
+    rowCommissions: 'Somma delle provvigioni della riga: {{amount}}.',
+    paidSupplierIncluded: 'Comprende la commissione Fornitore pagata: {{amount}}.',
+    paidCommissionsOnly: 'Solo le provvigioni che paghiamo: {{amount}}. La commissione Fornitore ricevuta è nel ricavo, non qui.',
+    marginRule: 'Margine = ricavo − costi − provvigioni.',
+    marginFormula: '{{revenue}} − {{costs}} − {{commissions}} = {{margin}}',
+  },
   detail: {
     additionalInformation: 'Informazioni aggiuntive',
+    commissionDetails: {
+      title: 'Dettaglio provvigioni per prodotto',
+      total: 'Totale',
+      directionHintLabel: 'Cosa significa {{direction}}',
+      directionHints: {
+        RECEIVED: "Ricevuta: la commissione la incassiamo noi dal fornitore (per esempio l'ente). È il ricavo della riga: il margine è questa commissione meno costi e altre commissioni.",
+        PAID: 'Pagata: la commissione la paghiamo noi al fornitore. È un costo della riga: il margine è imponibile meno costi, altre commissioni e questa commissione.',
+      },
+    },
     loadError: "Impossibile caricare l'offerta. Riprova.",
     opportunity: 'Opportunità',
     workflowStatus: 'Stato',
@@ -87,6 +119,21 @@ export const quotes = {
    * Editor "catalogo + righe" condiviso da Offerte (schede Prodotti e Costi)
    * e Gestione Richieste/Iscritti (spec 0268, 0269).
    */
+  recalculateCommissions: {
+    button: 'Ricalcola commissioni',
+    title: 'Ricalcola commissioni',
+    description: "Riallinea le commissioni dell'offerta alle regole attuali del Configuratore Commissioni.",
+    summary: "{{lines}} righe, {{commissions}} commissioni, di cui {{manual}} modificate a mano. Il margine dell'offerta verrà ricalcolato.",
+    choiceLabel: 'Come trattare le commissioni modificate a mano',
+    keepManual_one: 'Aggiorna solo le commissioni da regola, tieni la {{count}} manuale',
+    keepManual_other: 'Aggiorna solo le commissioni da regola, tieni le {{count}} manuali',
+    regenerateAll_one: 'Rigenera tutte dalle regole, anche la {{count}} manuale',
+    regenerateAll_other: 'Rigenera tutte dalle regole, anche le {{count}} manuali',
+    confirm: 'Ricalcola',
+    done: 'Commissioni ricalcolate.',
+    error: 'Impossibile ricalcolare le commissioni.',
+    impactError: "Impossibile leggere l'impatto del ricalcolo.",
+  },
   lineEditor: {
     catalog: {
       title: 'Catalogo prodotti',
@@ -261,6 +308,8 @@ export const quotes = {
       roles: { commercial: 'Commerciale', reporter: 'Segnalatore', supervisor: 'Supervisore', supplier: 'Fornitore' },
       showAdvanced: 'Mostra dati avanzati',
       hideAdvanced: 'Nascondi dati avanzati',
+      showCommissionDetails: 'Mostra dettaglio provvigioni',
+      hideCommissionDetails: 'Nascondi dettaglio provvigioni',
       productMargins: {
         title: 'Margine per prodotto',
         genericCosts: 'Costi generici',
@@ -329,6 +378,12 @@ export const quotes = {
       regenerateTitle: 'Sostituire le commissioni della riga?',
       regenerateDescription: 'Il cambio prodotto sostituisce sia le commissioni automatiche sia le modifiche manuali della riga.',
       regenerateConfirm: 'Sostituisci commissioni',
+      direction: {
+        label: 'Verso',
+        required: 'Scegli il verso della commissione Fornitore: Ricevuta o Pagata.',
+        ruleHint: 'Stabilito dalla regola del Configuratore Commissioni (Ricevuta: incassata da noi, è il ricavo della riga; Pagata: costo verso il fornitore).',
+        manualHint: 'Ricevuta: incassata da noi, è il ricavo della riga. Pagata: costo verso il fornitore.',
+      },
       roles: { COMMERCIAL: 'Commerciale', REPORTER: 'Segnalatore', SUPERVISOR: 'Supervisore', SUPPLIER: 'Fornitore' },
       originRule: 'Regola:',
       originHints: {

@@ -38,6 +38,7 @@ const payload: CommissionConfigurationPayload = {
   product_category_id: null,
   product_id: 3,
   commission_type: 'PERCENTAGE',
+  supplier_commission_direction: null,
   value: 5,
   priority: 1,
   valid_from: '2026-07-29',

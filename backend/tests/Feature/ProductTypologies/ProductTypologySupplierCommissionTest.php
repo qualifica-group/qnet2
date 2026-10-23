@@ -1,15 +1,16 @@
 <?php
 
-use App\Enums\SupplierCommissionDirection;
 use App\Models\ProductTypology;
 use App\Models\User;
 use Database\Seeders\ProductTypologySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
 /**
- * Supplier commission settings of a typology (spec 0202, AC-001/AC-002).
+ * Supplier commission switch of a typology (spec 0202; REQUIREMENT CHANGED by spec 0306: the direction moved to the
+ * commission rule, the typology keeps only the switch).
  */
 uses(RefreshDatabase::class);
 
@@ -25,65 +26,45 @@ function supplierDirectionActor(): User
     return $user;
 }
 
-it('AC-001: enabled without a direction is a 422', function () {
-    Sanctum::actingAs(supplierDirectionActor());
-
-    $this->postJson('/api/product-typologies', ['name' => 'Formazione', 'code' => 'training', 'color' => 'gray', 'supplier_commission_enabled' => true])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors('supplier_commission_direction');
-
-    $this->postJson('/api/product-typologies', ['name' => 'Formazione', 'code' => 'training', 'color' => 'gray', 'supplier_commission_enabled' => true, 'supplier_commission_direction' => 'BOTH'])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors('supplier_commission_direction');
-});
-
-it('AC-001: a new typology is born disabled and a direction is stored only with the switch on', function () {
+it('AC-005: a new typology is born disabled, the switch is stored and the direction is no longer part of the resource', function () {
     Sanctum::actingAs(supplierDirectionActor());
 
     $this->postJson('/api/product-typologies', ['name' => 'Formazione', 'code' => 'training', 'color' => 'gray'])
         ->assertCreated()
         ->assertJsonPath('data.supplier_commission_enabled', false)
-        ->assertJsonPath('data.supplier_commission_direction', null);
+        ->assertJsonMissingPath('data.supplier_commission_direction');
 
-    $this->postJson('/api/product-typologies', ['name' => 'Altro', 'code' => 'other', 'color' => 'gray', 'supplier_commission_enabled' => false, 'supplier_commission_direction' => 'PAID'])
-        ->assertCreated()
-        ->assertJsonPath('data.supplier_commission_enabled', false)
-        ->assertJsonPath('data.supplier_commission_direction', null);
-
+    // Spec 0306 R-3: a stale client still sending the direction is ignored, not rejected.
     $this->postJson('/api/product-typologies', ['name' => 'Ricevuta', 'code' => 'received', 'color' => 'gray', 'supplier_commission_enabled' => true, 'supplier_commission_direction' => 'RECEIVED'])
         ->assertCreated()
         ->assertJsonPath('data.supplier_commission_enabled', true)
-        ->assertJsonPath('data.supplier_commission_direction', 'RECEIVED');
+        ->assertJsonMissingPath('data.supplier_commission_direction');
+
+    expect(Schema::hasColumn('product_typologies', 'supplier_commission_direction'))->toBeFalse();
 });
 
-it('AC-001: update toggles the switch and switching off clears the direction; show and table expose both fields', function () {
+it('AC-005: update toggles the switch; show and table expose the switch but not the direction', function () {
     Sanctum::actingAs(supplierDirectionActor());
-    $typology = ProductTypology::factory()->supplierCommission(SupplierCommissionDirection::Paid)->create();
+    $typology = ProductTypology::factory()->supplierCommission()->create();
 
     $this->getJson("/api/product-typologies/{$typology->id}")
         ->assertOk()
         ->assertJsonPath('data.supplier_commission_enabled', true)
-        ->assertJsonPath('data.supplier_commission_direction', 'PAID');
+        ->assertJsonMissingPath('data.supplier_commission_direction');
 
-    $this->patchJson("/api/product-typologies/{$typology->id}", ['supplier_commission_enabled' => true, 'supplier_commission_direction' => 'RECEIVED'])
-        ->assertOk()->assertJsonPath('data.supplier_commission_direction', 'RECEIVED');
-
-    $this->patchJson("/api/product-typologies/{$typology->id}", ['supplier_commission_enabled' => true, 'supplier_commission_direction' => null])
-        ->assertUnprocessable();
-
-    $this->patchJson("/api/product-typologies/{$typology->id}", ['supplier_commission_enabled' => false])
+    $this->patchJson("/api/product-typologies/{$typology->id}", ['supplier_commission_enabled' => false, 'supplier_commission_direction' => 'PAID'])
         ->assertOk()
         ->assertJsonPath('data.supplier_commission_enabled', false)
-        ->assertJsonPath('data.supplier_commission_direction', null);
+        ->assertJsonMissingPath('data.supplier_commission_direction');
 
     $columns = collect($this->getJson('/api/tables/product-typologies/columns')->assertOk()->json('data.columns'))->pluck('id');
-    expect($columns)->toContain('supplier_commission_enabled', 'supplier_commission_direction');
+    expect($columns)->toContain('supplier_commission_enabled')->not->toContain('supplier_commission_direction');
 
     $row = $this->postJson('/api/tables/product-typologies/rows', ['startRow' => 0, 'endRow' => 25])->assertOk()->json('items.0');
-    expect($row)->toHaveKeys(['supplier_commission_enabled', 'supplier_commission_direction']);
+    expect($row)->toHaveKey('supplier_commission_enabled')->not->toHaveKey('supplier_commission_direction');
 });
 
-it('AC-001: a role without update permission cannot change the Supplier commission fields', function () {
+it('AC-005: a role without update permission cannot change the Supplier commission fields', function () {
     $user = User::factory()->create();
     foreach (['viewAny', 'view'] as $ability) {
         Permission::findOrCreate("product-typologies.{$ability}");
@@ -96,11 +77,10 @@ it('AC-001: a role without update permission cannot change the Supplier commissi
         ->assertForbidden();
 });
 
-it('AC-002: the seeder creates institution as RECEIVED and consultancy as PAID, idempotently', function () {
+it('AC-005: the seeder creates institution and consultancy with the switch on, idempotently', function () {
     $this->seed(ProductTypologySeeder::class);
     $this->seed(ProductTypologySeeder::class);
 
-    expect(ProductTypology::where('code', 'consultancy')->sole()->supplier_commission_direction)->toBe(SupplierCommissionDirection::Paid)
-        ->and(ProductTypology::where('code', 'institution')->sole()->supplier_commission_direction)->toBe(SupplierCommissionDirection::Received)
+    expect(ProductTypology::where('code', 'consultancy')->sole()->supplier_commission_enabled)->toBeTrue()
         ->and(ProductTypology::where('code', 'institution')->sole()->supplier_commission_enabled)->toBeTrue();
 });

@@ -4,8 +4,15 @@ import { useForm } from 'react-hook-form'
 import i18n from '@/i18n'
 import { apiClient } from '@/api/client'
 import { QuoteLiveSummary, QuoteSummary, totalsFromPersistedSummary } from '@/features/quotes/quote-summary'
+import { quoteLineFixture } from '@/features/quotes/quote-fixtures'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteSummary as QuoteSummaryData } from '@/features/quotes/types'
+
+/** No record is viewable here: recipients render as plain names (their links are covered by `quote-commission-recipient.test.tsx`). */
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false }),
+}))
+
 
 /**
  * Spec 0065 AC-071: the live summary recomputes on every quantity/price edit,
@@ -171,6 +178,51 @@ describe('QuoteSummary block order (spec 0145 D-8/AC-009)', () => {
   it('updates the margin hint to reflect the commissions subtraction (D-8)', () => {
     render(<QuoteSummary totals={{ revenue: { net: 0, vat: 0, gross: 0 }, cost: { net: 0, vat: 0, gross: 0 }, margin: { net: 0 } }} />)
     expect(screen.getByText('Net revenue minus net cost minus commissions.')).toBeInTheDocument()
+  })
+})
+
+describe('QuoteSummary commission details (user directive 2026-10-23)', () => {
+  const TOTALS = { revenue: { net: 100, vat: 0, gross: 100 }, cost: { net: 0, vat: 0, gross: 0 }, margin: { net: 60 } }
+  const LINES = [
+    quoteLineFixture({
+      id: 1,
+      commissions: [
+        {
+          id: 1,
+          recipient_role: 'COMMERCIAL',
+          recipient_type: 'referent',
+          recipient_id: 1,
+          recipient: { id: 1, name: 'Luigi Cirillo' },
+          commission_type: 'PERCENTAGE',
+          value: '40.0000',
+          calculated_amount: '40.00',
+          internal_note: null,
+          origin: 'MANUAL_OVERRIDE',
+          commission_configuration_id: null,
+        },
+      ],
+    }),
+  ]
+
+  it('keeps the commission details collapsed under their own toggle, like the advanced data', () => {
+    render(<QuoteSummary totals={TOTALS} commissionDetails={{ offerLines: LINES, costLines: [] }} />)
+
+    const toggle = screen.getByRole('button', { name: 'Show commission details' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('table', { name: 'Commission details per product' })).not.toBeInTheDocument()
+
+    fireEvent.click(toggle)
+
+    expect(screen.getByRole('button', { name: 'Hide commission details' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('table', { name: 'Commission details per product' })).toBeInTheDocument()
+  })
+
+  it('has no toggle without the commissions permission or without commissions on the rows', () => {
+    const { rerender } = render(<QuoteSummary totals={TOTALS} commissionDetails={{ offerLines: LINES, costLines: [] }} showProductMargins={false} />)
+    expect(screen.queryByRole('button', { name: 'Show commission details' })).not.toBeInTheDocument()
+
+    rerender(<QuoteSummary totals={TOTALS} commissionDetails={{ offerLines: [quoteLineFixture({ commissions: [] })], costLines: [] }} />)
+    expect(screen.queryByRole('button', { name: 'Show commission details' })).not.toBeInTheDocument()
   })
 })
 

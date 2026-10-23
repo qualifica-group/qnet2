@@ -1,6 +1,9 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse, ApiResponseWithPermissions } from '@/api/types'
-import type { SupplierCommissionDirection } from '@/features/product-typologies/types'
+import type {
+  CommissionRecalculationMode,
+  SupplierCommissionDirection,
+} from '@/features/commission-configurations/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type {
   CreateQuotePayload,
@@ -161,4 +164,35 @@ export async function fetchQuoteCommissionRecipients(
     payload,
   )
   return data.data
+}
+
+/** What a commission recalculation of one quote would touch (spec 0308). */
+export interface QuoteCommissionRecalculationImpact {
+  lines_count: number
+  commissions_count: number
+  manual_commissions_count: number
+  closed: boolean
+}
+
+export function quoteCommissionRecalculationQueryKey(id: number) {
+  return ['quotes', 'commission-recalculation', id] as const
+}
+
+export async function fetchQuoteCommissionRecalculation(id: number): Promise<QuoteCommissionRecalculationImpact> {
+  const { data } = await apiClient.get<ApiResponse<QuoteCommissionRecalculationImpact>>(
+    `/quotes/${id}/commission-recalculation`,
+  )
+  return data.data
+}
+
+/** Synchronous recalculation (spec 0308 D-5); answers with the refreshed detail, permissions included. */
+export async function recalculateQuoteCommissions(
+  id: number,
+  mode: CommissionRecalculationMode,
+): Promise<QuoteDetailWithPermissions> {
+  const { data } = await apiClient.post<ApiResponseWithPermissions<QuoteDetail, ResourcePermissions>>(
+    `/quotes/${id}/recalculate-commissions`,
+    { mode },
+  )
+  return { ...data.data, permissions: data.permissions }
 }

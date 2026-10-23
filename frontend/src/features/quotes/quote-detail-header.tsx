@@ -4,6 +4,7 @@ import { DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
 import { Button } from '@/components/ui/button'
 import { WorkflowStatusBadge } from '@/features/quote-workflows/workflow-status-badge'
+import { QuoteRecalculateCommissions } from '@/features/quotes/quote-recalculate-commissions'
 import { formatQuoteAmount } from '@/features/quotes/quote-summary'
 import { useQuoteDocument } from '@/features/quotes/use-quote-document'
 import { cn } from '@/lib/utils'
@@ -20,6 +21,8 @@ const COMMISSION_ROLES = ['commercial', 'reporter', 'supervisor', 'supplier'] as
 
 interface QuoteDetailHeaderProps {
   quote: QuoteDetailWithPermissions
+  /** Called after a commission recalculation, so the host refreshes whatever lists the offer. */
+  onChanged?: () => void
 }
 
 /**
@@ -28,7 +31,7 @@ interface QuoteDetailHeaderProps {
  * other CRM record surface in this app puts them. There is no Edit button:
  * the record edits in place, field by field (spec 0197).
  */
-export function QuoteDetailHeader({ quote }: QuoteDetailHeaderProps) {
+export function QuoteDetailHeader({ quote, onChanged }: QuoteDetailHeaderProps) {
   const { t } = useTranslation()
   const { generate: generateDocument, isGenerating } = useQuoteDocument()
   const canGenerateDocument = quote.permissions.actions.generate_document
@@ -53,18 +56,23 @@ export function QuoteDetailHeader({ quote }: QuoteDetailHeaderProps) {
         />
       }
       actions={
-        canGenerateDocument ? (
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => void generateDocument(quote.id, quote.code)}
-            disabled={generatingThisQuote}
-          >
-            <Download aria-hidden="true" />
-            {generatingThisQuote ? t('quotes.detail.generatingDocument') : t('actions.generatePdf')}
-          </Button>
-        ) : null
+        <>
+          {quote.permissions.actions.recalculate_commissions ? (
+            <QuoteRecalculateCommissions quoteId={quote.id} onChanged={onChanged} />
+          ) : null}
+          {canGenerateDocument ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => void generateDocument(quote.id, quote.code)}
+              disabled={generatingThisQuote}
+            >
+              <Download aria-hidden="true" />
+              {generatingThisQuote ? t('quotes.detail.generatingDocument') : t('actions.generatePdf')}
+            </Button>
+          ) : null}
+        </>
       }
     />
   )

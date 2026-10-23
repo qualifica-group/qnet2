@@ -29,6 +29,7 @@ class StoreCommissionConfigurationRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
             $this->validateRecipient($validator, null);
+            $this->validateSupplierDirection($validator, null);
         });
     }
 

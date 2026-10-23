@@ -1,4 +1,4 @@
-import { Info } from 'lucide-react'
+import { Info, type LucideIcon } from 'lucide-react'
 import {
   Tooltip,
   TooltipContent,
@@ -12,6 +12,8 @@ interface FieldHintProps {
   text: string
   /** Accessible name of the trigger button (e.g. "More info about Pattern"). */
   label: string
+  /** The glyph of the trigger: the info "i" by default, a "?" where the text answers a question. */
+  icon?: LucideIcon
   className?: string
 }
 
@@ -22,7 +24,7 @@ interface FieldHintProps {
  * helper instead; this is for the secondary/advanced ones. Keyboard reachable
  * and screen-reader labelled.
  */
-export function FieldHint({ text, label, className }: FieldHintProps) {
+export function FieldHint({ text, label, icon: Icon = Info, className }: FieldHintProps) {
   return (
     <TooltipProvider>
       <Tooltip>
@@ -35,7 +37,7 @@ export function FieldHint({ text, label, className }: FieldHintProps) {
               className,
             )}
           >
-            <Info className="size-3.5" aria-hidden="true" />
+            <Icon className="size-3.5" aria-hidden="true" />
           </button>
         </TooltipTrigger>
         <TooltipContent variant="light" className="max-w-64 text-pretty">

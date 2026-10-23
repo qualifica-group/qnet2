@@ -41,7 +41,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Le **Informazioni aggiuntive** compaiono appena una riga offerta ha un prodotto che le prevede. Alcune sezioni compaiono solo quando un campo sì/no è attivo: spento il campo, la sezione sparisce, i suoi obbligatori non servono e al salvataggio i suoi valori vengono svuotati. Uscendo senza salvare (Annulla, chiusura del pannello, un link) ti viene chiesta conferma.",
+          text: "Le **Informazioni aggiuntive** compaiono, sotto le righe **Offerta** e **Costi**, appena una riga offerta ha un prodotto che le prevede. Alcune sezioni compaiono solo quando un campo sì/no è attivo: spento il campo, la sezione sparisce, i suoi obbligatori non servono e al salvataggio i suoi valori vengono svuotati. Uscendo senza salvare (Annulla, chiusura del pannello, un link) ti viene chiesta conferma.",
         },
         {
           type: 'note',
@@ -90,6 +90,10 @@ const guide: HelpGuide = {
             "Cambiando la **Società** la **Società sede** viene svuotata nello stesso salvataggio.",
           ],
         },
+        {
+          type: 'paragraph',
+          text: "Il pulsante **Ricalcola commissioni**, in alto a destra accanto al PDF, riallinea le commissioni dell'offerta alle regole attuali del Configuratore Commissioni (per esempio dopo aver cambiato il verso di una regola Fornitore). Il riepilogo indica quante righe, commissioni e commissioni cambiate a mano sono coinvolte; devi scegliere una risposta, nessuna è preselezionata: **Aggiorna solo le commissioni da regola** (quelle cambiate a mano restano, con l'importo ricalcolato) oppure **Rigenera tutte dalle regole** (anche quelle cambiate a mano vengono sostituite). Si rilegge anche l'interruttore **Calcolo commissione Fornitore** della tipologia del prodotto; margine e riepilogo si aggiornano subito. Il pulsante compare solo se puoi modificare le commissioni e l'offerta non è chiusa.",
+        },
       ],
     },
     {
@@ -135,7 +139,8 @@ const guide: HelpGuide = {
             'Per cambiare il prodotto di una riga, rimuovila e scegli il nuovo prodotto dal catalogo.',
             'La scheda **Costi** mostra tutto il catalogo dei prodotti di costo, senza filtro per categoria, e lo stesso prodotto si può aggiungere più volte.',
             '**Descrizione aggiuntiva** aggiunge un testo alla riga, stampabile nel preventivo.',
-            "Le **Commissioni** di ogni riga si possono aprire e modificare solo per quella riga. Il popup mostra in alto imponibile della riga, costi imputati, base di calcolo e totale commissioni; per ogni ruolo un'etichetta indica l'origine della commissione (**Regola: Prodotto**, **Regola: Categoria** o **Regola personale** se viene da una regola del Configuratore, **Modifica manuale** se è stata cambiata a mano; passando sopra l'etichetta compare la spiegazione). In modifica, ogni ruolo mostra anche il **Calcolo di sistema** (quanto prevede il Configuratore Commissioni): se hai cambiato il valore a mano puoi tenerlo oppure tornare al calcolo con **Applica calcolo di sistema**.",
+            "Le **Commissioni** di ogni riga si possono aprire e modificare solo per quella riga. Il popup mostra in alto imponibile della riga, costi imputati, base di calcolo e totale commissioni; per ogni ruolo un'etichetta indica l'origine della commissione (**Regola: Prodotto**, **Regola: Categoria** o **Regola personale** se viene da una regola del Configuratore, **Modifica manuale** se è stata cambiata a mano; passando sopra l'etichetta compare la spiegazione). In modifica, ogni ruolo mostra anche il **Calcolo di sistema** (quanto prevede il Configuratore Commissioni): se hai cambiato il valore a mano puoi tenerlo oppure tornare al calcolo con **Applica calcolo di sistema**. La riga **Fornitore** mostra anche il **Verso**: se la commissione viene da una regola è quello della regola; se la modifichi a mano scegli tu **Ricevuta** (è il ricavo della riga) o **Pagata** (costo verso il fornitore), e il margine si aggiorna di conseguenza.",
+            "Nel riepilogo, sotto le card, **Mostra dettaglio provvigioni** apre (e **Nascondi dettaglio provvigioni** richiude) il blocco **Dettaglio provvigioni per prodotto** dell'offerta salvata, che elenca ogni riga con commissioni: per **Commerciale**, **Segnalatore**, **Supervisore** e **Fornitore** il destinatario, la percentuale (o l'importo fisso) e l'importo; per il Fornitore anche il verso (**Ricevuta** o **Pagata**), con un (?) che spiega cosa significa. Il nome del destinatario porta alla sua scheda: passando sopra un utente compare la sua scheda profilo, passando sopra un referente o un'anagrafica compare il collegamento alla scheda, che si apre anche cliccando il nome (se hai il permesso di vederla). Passando sopra un importo compare il calcolo: per una percentuale la base (imponibile meno costi imputati alla riga) e la percentuale applicata, per i totali la somma. L'ultima riga e l'ultima colonna danno i totali. È visibile solo a chi può vedere le commissioni.",
             'Ogni riga di costo ha un **Prodotto associato**: scegli "Nessuno (costo generico)" oppure una riga del tab Prodotti, per imputare quel costo a quella vendita. Eliminando la riga prodotto associata, il costo torna automaticamente "Nessuno".',
             'Al massimo 200 righe per scheda.',
           ],
@@ -146,7 +151,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Il riepilogo mostra, in quest\'ordine, **Ricavi attesi**, **Costi attesi**, il **Riepilogo Commissioni** e il **Margine atteso** (somma dei margini delle righe meno i costi generici: una riga con commissione Fornitore **ricevuta** ha come ricavo la sola commissione, le altre sono imponibile meno costi e commissioni pagate; i **Ricavi attesi** non cambiano), oltre al **Riepilogo per Tipologia Prodotto**. Le commissioni a percentuale si calcolano sul margine della riga prodotto (ricavo netto meno i costi imputati a quella riga, mai sotto zero): il **Margine per prodotto** mostra ricavo, costo imputato, commissioni e margine di ogni riga prodotto (sulle righe con commissione ricevuta compare "ricavo = commissione ricevuta"), più una riga "Costi generici" per i costi non associati. Il blocco si apre con **Mostra dati avanzati**, sotto le card del riepilogo, ed è visibile solo a chi può vedere le commissioni.',
+          text: 'Il riepilogo mostra, in quest\'ordine, **Ricavi attesi**, **Costi attesi**, il **Riepilogo Commissioni** e il **Margine atteso** (somma dei margini delle righe meno i costi generici: una riga con commissione Fornitore **ricevuta** ha come ricavo la sola commissione, le altre sono imponibile meno costi e commissioni pagate; i **Ricavi attesi** non cambiano), oltre al **Riepilogo per Tipologia Prodotto**. Le commissioni a percentuale si calcolano sul margine della riga prodotto (ricavo netto meno i costi imputati a quella riga, mai sotto zero): il **Margine per prodotto** mostra ricavo, costo imputato, commissioni e margine di ogni riga prodotto, così che ricavo meno costo meno commissioni dia il margine (sulle righe con commissione Fornitore ricevuta compare "ricavo = commissione ricevuta": il ricavo è la commissione ricevuta e le commissioni sono solo quelle pagate), più una riga "Costi generici" per i costi non associati. Passando sopra il nome del prodotto compare il nome intero; ogni importo è sottolineato a tratti e, passandoci sopra o toccandolo, mostra il calcolo (per esempio 3.200,00 − 0,00 − 3.200,00 = 0,00). Il blocco si apre con **Mostra dati avanzati**, sotto le card del riepilogo, ed è visibile solo a chi può vedere le commissioni.',
         },
         {
           type: 'warning',

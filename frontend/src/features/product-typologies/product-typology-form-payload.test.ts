@@ -12,7 +12,6 @@ const formValues: ProductTypologyFormValues = {
   description: 'Mass unit',
   color: 'blue',
   supplier_commission_enabled: false,
-  supplier_commission_direction: null,
   proforma_kind: null,
 }
 
@@ -26,8 +25,7 @@ function original(
     description: 'Mass unit',
     color: 'blue',
     supplier_commission_enabled: false,
-    supplier_commission_direction: null,
-    proforma_kind: null,
+      proforma_kind: null,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
     permissions: {
@@ -47,8 +45,7 @@ describe('buildCreatePayload (spec 0099)', () => {
       description: 'Mass unit',
       color: 'blue',
       supplier_commission_enabled: false,
-      supplier_commission_direction: null,
-      proforma_kind: null,
+          proforma_kind: null,
     })
   })
 })
@@ -81,40 +78,12 @@ describe('buildUpdatePayload (spec 0099, D-1)', () => {
     expect(payload).not.toHaveProperty('code')
   })
 
-  it('sends enabled and direction when the commission is switched on', () => {
-    expect(
-      buildUpdatePayload(
-        { ...formValues, supplier_commission_enabled: true, supplier_commission_direction: 'PAID' },
-        original(),
-      ),
-    ).toEqual({ supplier_commission_enabled: true, supplier_commission_direction: 'PAID' })
+  it('sends only the switch when the commission is switched on', () => {
+    expect(buildUpdatePayload({ ...formValues, supplier_commission_enabled: true }, original())).toEqual({
+      supplier_commission_enabled: true,
+    })
   })
 
-  it('sends a null direction when the commission is switched off, even with a stale form direction', () => {
-    const enabledOriginal = original({
-      supplier_commission_enabled: true,
-      supplier_commission_direction: 'RECEIVED',
-    })
-    expect(
-      buildUpdatePayload(
-        { ...formValues, supplier_commission_enabled: false, supplier_commission_direction: 'RECEIVED' },
-        enabledOriginal,
-      ),
-    ).toEqual({ supplier_commission_enabled: false, supplier_commission_direction: null })
-  })
-
-  it('sends only the direction when just the direction changes', () => {
-    const enabledOriginal = original({
-      supplier_commission_enabled: true,
-      supplier_commission_direction: 'RECEIVED',
-    })
-    expect(
-      buildUpdatePayload(
-        { ...formValues, supplier_commission_enabled: true, supplier_commission_direction: 'PAID' },
-        enabledOriginal,
-      ),
-    ).toEqual({ supplier_commission_direction: 'PAID' })
-  })
   it('sends the proforma kind only when it changed (spec 0247)', () => {
     expect(buildUpdatePayload({ ...formValues, proforma_kind: 'institution' }, original())).toEqual({ proforma_kind: 'institution' })
     expect(buildUpdatePayload({ ...formValues, proforma_kind: null }, original({ proforma_kind: 'consultancy' }))).toEqual({

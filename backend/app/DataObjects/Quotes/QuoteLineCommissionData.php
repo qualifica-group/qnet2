@@ -7,6 +7,7 @@ namespace App\DataObjects\Quotes;
 use App\Enums\CommissionOrigin;
 use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
+use App\Enums\SupplierCommissionDirection;
 
 final readonly class QuoteLineCommissionData
 {
@@ -20,6 +21,7 @@ final readonly class QuoteLineCommissionData
         public ?string $internalNote,
         public CommissionOrigin $origin,
         public ?int $configurationId,
+        public ?SupplierCommissionDirection $supplierDirection = null,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -35,6 +37,7 @@ final readonly class QuoteLineCommissionData
             internalNote: $data['internal_note'] ?? null,
             origin: CommissionOrigin::from($data['origin']),
             configurationId: isset($data['commission_configuration_id']) ? (int) $data['commission_configuration_id'] : null,
+            supplierDirection: isset($data['supplier_commission_direction']) ? SupplierCommissionDirection::from($data['supplier_commission_direction']) : null,
         );
     }
 }

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
-import { CalculationHint } from '@/features/work-order-contract-data/calculation-hint'
+import { CalculationHint } from '@/components/calculation-hint'
 import { money } from '@/features/work-order-contract-data/contract-data-format'
 import { totalsHint, type TotalsHintKind } from '@/features/work-order-contract-data/contract-data-formulas'
 import type { ContractDataTotals as Totals } from '@/features/work-order-contract-data/types'

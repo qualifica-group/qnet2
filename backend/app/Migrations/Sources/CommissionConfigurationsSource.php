@@ -7,6 +7,7 @@ use App\Enums\CommissionApplicationScope;
 use App\Enums\CommissionConfigurationStatus;
 use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
+use App\Enums\SupplierCommissionDirection;
 use App\Migrations\AbstractMigrationSource;
 use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
@@ -184,6 +185,7 @@ class CommissionConfigurationsSource extends AbstractMigrationSource
             validUntil: null,
             status: CommissionConfigurationStatus::Active,
             internalNote: $this->blankToNull($record['note'] ?? null),
+            supplierCommissionDirection: $this->resolveDirection($role, $record['supplier_commission_direction'] ?? null),
         ));
 
         $configuration->old_id = $externalId;
@@ -197,6 +199,21 @@ class CommissionConfigurationsSource extends AbstractMigrationSource
         $role = is_string($legacyRole) ? (self::ROLES[$legacyRole] ?? null) : null;
 
         return $role ?? throw new RuntimeException('The legacy rule has no commission role; it cannot be migrated.');
+    }
+
+    /**
+     * The direction the legacy sends already decoded (spec 0306, D-4) for a
+     * supplier rule; any other role carries none. Missing or unknown on a
+     * supplier rule fails the row: qnet-2 never guesses it.
+     */
+    private function resolveDirection(CommissionRecipientRole $role, mixed $legacyDirection): ?SupplierCommissionDirection
+    {
+        if ($role !== CommissionRecipientRole::Supplier) {
+            return null;
+        }
+
+        return (is_string($legacyDirection) ? SupplierCommissionDirection::tryFrom($legacyDirection) : null)
+            ?? throw new RuntimeException('The legacy supplier rule has no valid commission direction; it cannot be migrated.');
     }
 
     /**

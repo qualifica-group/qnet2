@@ -154,6 +154,34 @@ describe('Margin per product (AC-006)', () => {
     expect(round2(summary.rows.reduce((sum, row) => sum + row.margin, 0) - summary.genericCostNet)).toBe(EXPECTED_MARGIN)
   })
 
+  it('shows a RECEIVED row with the received commission as revenue and only the paid commissions (user directive 2026-10-23)', () => {
+    const summary = computeProductMargins(
+      productLinesFromPersistedOfferLines([
+        quoteLineFixture({
+          id: 1,
+          net_amount: '2000.00',
+          supplier_commission_direction: 'RECEIVED',
+          commissions: [persistedCommission(SUPPLIER_COMMISSION, '200.00'), persistedCommission(OTHER_COMMISSION, '50.00')],
+        }),
+        quoteLineFixture({
+          id: 2,
+          net_amount: '1000.00',
+          supplier_commission_direction: 'PAID',
+          commissions: [persistedCommission(SUPPLIER_COMMISSION, '90.00')],
+        }),
+      ]),
+      costLinesFromPersistedCostLines([quoteLineFixture({ id: 3, net_amount: '100.00', offer_line_id: 2 })]),
+    )
+
+    expect(summary.rows.map(({ revenueNet, costNet, commissionsNet, margin }) => ({ revenueNet, costNet, commissionsNet, margin }))).toEqual([
+      { revenueNet: 200, costNet: 0, commissionsNet: 50, margin: 150 },
+      { revenueNet: 1000, costNet: 100, commissionsNet: 90, margin: 810 },
+    ])
+    for (const row of summary.rows) {
+      expect(round2(row.revenueNet - row.costNet - row.commissionsNet)).toBe(row.margin)
+    }
+  })
+
   it('keeps the legacy margin for a row without direction', () => {
     const summary = computeProductMargins(
       productLinesFromPersistedOfferLines([
@@ -162,5 +190,33 @@ describe('Margin per product (AC-006)', () => {
       [],
     )
     expect(summary.rows[0].margin).toBe(950)
+  })
+})
+
+describe('manual Supplier commission direction (spec 0306 AC-011, AC-008)', () => {
+  const manual = (direction: 'RECEIVED' | 'PAID' | null) => ({
+    ...SUPPLIER_COMMISSION,
+    supplier_commission_direction: direction,
+  })
+
+  it('uses the direction of the manual Supplier commission over the row snapshot', () => {
+    // Same numbers as the RECEIVED / PAID rows of 0202 AC-005, the direction coming from the manual commission.
+    const rows: QuoteLineFormValues[] = [
+      { ...FORM_OFFER_LINES[0], supplier_commission_direction: 'PAID', commissions: [manual('RECEIVED'), OTHER_COMMISSION] },
+      { ...FORM_OFFER_LINES[1], supplier_commission_direction: 'RECEIVED', commissions: [manual('PAID')] },
+    ]
+
+    const summary = computeProductMargins(productLinesFromFormOfferLines(rows, FORM_COST_LINES, () => 'P'), costLinesFromFormCostLines(FORM_COST_LINES))
+
+    expect(summary.rows.map((row) => row.margin)).toEqual([150, 810])
+    expect(summary.rows.map((row) => row.supplierCommissionDirection)).toEqual(['RECEIVED', 'PAID'])
+    expect(round2(calculateMarginBeforeCosts(rows, FORM_COST_LINES) - 130)).toBe(EXPECTED_MARGIN)
+  })
+
+  it('falls back to the row snapshot for an automatic Supplier commission', () => {
+    const auto = { ...SUPPLIER_COMMISSION, origin: 'PRODUCT_CATEGORY' as const, supplier_commission_direction: 'PAID' as const }
+    const rows: QuoteLineFormValues[] = [{ ...FORM_OFFER_LINES[0], commissions: [auto, OTHER_COMMISSION] }]
+
+    expect(calculateMarginBeforeCosts(rows, [])).toBe(200 - 50)
   })
 })

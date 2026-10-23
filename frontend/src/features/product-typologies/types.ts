@@ -9,15 +9,6 @@
 
 import type { ResourcePermissions } from '@/features/authorization/types'
 
-/** Direction of the Supplier commission (spec 0202 D-2): earned by us or paid to the supplier. */
-export type SupplierCommissionDirection = 'RECEIVED' | 'PAID'
-
-/** Ordered options for the direction picker. */
-export const SUPPLIER_COMMISSION_DIRECTIONS: readonly SupplierCommissionDirection[] = [
-  'RECEIVED',
-  'PAID',
-]
-
 /**
  * Which proforma request the lines of this typology feed (spec 0247 D-6);
  * null = never billed through a proforma request. Mirrors the backend
@@ -40,10 +31,8 @@ export interface ProductTypologyDetail {
   description: string | null
   /** Badge colour token (`BADGE_COLOR_TOKENS`), required (spec 0204 D-3). */
   color: string
-  /** Whether the Supplier commission is calculated for lines of this typology (spec 0202). */
+  /** Whether the Supplier commission is calculated for lines of this typology (spec 0202; the direction moved to the commission rule, spec 0306 D-2). */
   supplier_commission_enabled: boolean
-  /** Required when enabled, null when disabled (spec 0202 D-7). */
-  supplier_commission_direction: SupplierCommissionDirection | null
   /** Proforma request the lines of this typology feed, null = none (spec 0247 D-6). */
   proforma_kind: ProformaKind | null
   created_at: string
@@ -67,7 +56,6 @@ export interface CreateProductTypologyPayload {
   description?: string | null
   color: string
   supplier_commission_enabled: boolean
-  supplier_commission_direction: SupplierCommissionDirection | null
   proforma_kind: ProformaKind | null
 }
 

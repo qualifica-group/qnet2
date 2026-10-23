@@ -4,7 +4,7 @@
  * only formats them, every figure is computed server-side.
  */
 
-import type { SupplierCommissionDirection } from '@/features/product-typologies/types'
+import type { SupplierCommissionDirection } from '@/features/commission-configurations/types'
 
 export type ContractCommissionType = 'PERCENTAGE' | 'FIXED_AMOUNT'
 

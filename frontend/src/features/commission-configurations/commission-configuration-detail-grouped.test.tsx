@@ -95,6 +95,7 @@ describe('CommissionConfigurationDetailView grouped rows', () => {
 
     openRow(RECIPIENT)
     pickOption(/^Recipient role/, 'Supplier')
+    pickOption(/^Supplier commission direction/, 'Paid')
     saveRow()
 
     await waitFor(() =>
@@ -102,6 +103,44 @@ describe('CommissionConfigurationDetailView grouped rows', () => {
         recipient_role: 'SUPPLIER',
         recipient_type: 'registry',
         recipient_id: null,
+        supplier_commission_direction: 'PAID',
+      }),
+    )
+  })
+
+  it('a role switched to Supplier is not saved without a direction, the row says why (spec 0306 AC-010)', async () => {
+    renderDetail()
+
+    openRow(RECIPIENT)
+    pickOption(/^Recipient role/, 'Supplier')
+    saveRow()
+
+    expect((await screen.findAllByText('The direction is required for a Supplier rule.')).length).toBeGreaterThan(0)
+    expect(updateMock).not.toHaveBeenCalled()
+  })
+
+  it('a Supplier rule shows its direction row and clears it when the role leaves Supplier (spec 0306 AC-010)', async () => {
+    updateMock.mockResolvedValue(configurationFixture())
+    renderDetail(
+      configurationFixture({
+        recipient_role: 'SUPPLIER',
+        recipient_type: 'registry',
+        supplier_commission_direction: 'RECEIVED',
+      }),
+    )
+
+    expect(screen.getByText('Supplier commission direction')).toBeInTheDocument()
+    expect(screen.getByText('Received')).toBeInTheDocument()
+    openRow(RECIPIENT)
+    pickOption(/^Recipient role/, 'Reporter')
+    saveRow()
+
+    await waitFor(() =>
+      expect(updateMock).toHaveBeenCalledWith(1, {
+        recipient_role: 'REPORTER',
+        recipient_type: 'referent',
+        recipient_id: null,
+        supplier_commission_direction: null,
       }),
     )
   })

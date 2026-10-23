@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\Quotes\QuoteCommissionDefaultsController;
+use App\Http\Controllers\Quotes\QuoteCommissionRecalculationController;
 use App\Http\Controllers\Quotes\QuoteCommissionRecipientsController;
 use App\Http\Controllers\Quotes\QuoteController;
 use App\Http\Controllers\Quotes\QuoteDocumentController;
 use App\Http\Controllers\Quotes\QuoteForSelectController;
+use App\Http\Controllers\Quotes\RecalculateQuoteCommissionsController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -46,3 +48,8 @@ Route::delete('quotes/{quote}', [QuoteController::class, 'destroy']);
 // synchronously and streamed back, never persisted. POST (not GET): it
 // produces an artifact, mirroring `POST /api/exports/{domain}`.
 Route::post('quotes/{quote}/document', QuoteDocumentController::class);
+
+// Spec 0308: explicit realignment of an open quote's commissions to the
+// current rules (impact counts for the dialog, then the recalculation).
+Route::get('quotes/{quote}/commission-recalculation', QuoteCommissionRecalculationController::class);
+Route::post('quotes/{quote}/recalculate-commissions', RecalculateQuoteCommissionsController::class);

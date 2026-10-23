@@ -7,6 +7,7 @@ namespace App\DataObjects\Commissions;
 use App\Enums\CommissionOrigin;
 use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
+use App\Enums\SupplierCommissionDirection;
 
 final readonly class AppliedCommissionDraft
 {
@@ -19,6 +20,7 @@ final readonly class AppliedCommissionDraft
         public ?string $internalNote,
         public CommissionOrigin $origin,
         public ?int $configurationId,
+        public ?SupplierCommissionDirection $supplierDirection = null,
     ) {}
 
     /** @return array<string, mixed> */

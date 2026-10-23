@@ -202,7 +202,8 @@ function OfferLinesBody({
             commissionContext={commissionContext}
             allocatedCostNet={row.client_key ? (allocatedCostNetMap.get(row.client_key) ?? 0) : 0}
             disabled={disabled || !canEditCommissions}
-            onSave={(next) => patchRow(index, { commissions: next })}
+            onSave={(next, direction) =>
+              patchRow(index, { commissions: next, supplier_commission_direction: direction })}
           />
         ) : undefined,
         footer: (

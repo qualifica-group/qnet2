@@ -6,6 +6,7 @@ use App\Enums\CommissionApplicationScope;
 use App\Enums\CommissionConfigurationStatus;
 use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
+use App\Enums\SupplierCommissionDirection;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\CommissionConfigurationFactory;
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 #[Fillable([
     'name', 'recipient_role', 'application_scope', 'product_category_id',
-    'product_id', 'recipient_type', 'recipient_id', 'commission_type', 'value',
+    'product_id', 'recipient_type', 'recipient_id', 'commission_type', 'supplier_commission_direction', 'value',
     'priority', 'valid_from', 'valid_until', 'status', 'internal_note',
 ])]
 class CommissionConfiguration extends BaseModel
@@ -31,6 +32,7 @@ class CommissionConfiguration extends BaseModel
             'recipient_role' => CommissionRecipientRole::class,
             'application_scope' => CommissionApplicationScope::class,
             'commission_type' => CommissionType::class,
+            'supplier_commission_direction' => SupplierCommissionDirection::class,
             'value' => 'decimal:4',
             'priority' => 'integer',
             'valid_from' => 'date',

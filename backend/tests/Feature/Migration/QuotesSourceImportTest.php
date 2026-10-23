@@ -52,7 +52,7 @@ it('creates the quote with remapped roles, lines, VAT, commissions and legacy an
             'id' => 900, 'product_id' => 10, 'description' => 'Extra notes', 'quantity' => 2, 'unit_price' => 50, 'vat_rate_id' => 3,
             'commissions' => [
                 ['role' => 'commercial', 'recipient_id' => 31, 'commission_type' => 'PERCENTAGE', 'value' => 10],
-                ['role' => 'supplier', 'recipient_id' => 34, 'commission_type' => 'FIXED_AMOUNT', 'value' => 15],
+                ['role' => 'supplier', 'recipient_id' => 34, 'commission_type' => 'FIXED_AMOUNT', 'value' => 15, 'supplier_commission_direction' => 'PAID'],
             ],
         ]],
     ])]);
@@ -83,7 +83,23 @@ it('creates the quote with remapped roles, lines, VAT, commissions and legacy an
         ->and($commissions[CommissionRecipientRole::Commercial->value]->commission_type)->toBe(CommissionType::Percentage)
         ->and($commissions[CommissionRecipientRole::Commercial->value]->recipient_id)->toBe($commercial->id)
         ->and($commissions[CommissionRecipientRole::Supplier->value]->commission_type)->toBe(CommissionType::FixedAmount)
-        ->and($commissions[CommissionRecipientRole::Supplier->value]->recipient_id)->toBe($supplier->id);
+        ->and($commissions[CommissionRecipientRole::Supplier->value]->recipient_id)->toBe($supplier->id)
+        ->and($line->fresh()->supplier_commission_direction?->value)->toBe('PAID');
+});
+
+it('freezes the RECEIVED direction the legacy sends for a supplier commission of an Ente line', function () {
+    legacyQuoteServiceProduct(10);
+    Registry::factory()->create(['old_id' => 34]);
+
+    runLegacyQuotesImport([legacyQuoteRecord([
+        'lines' => [[
+            'id' => 900, 'product_id' => 10, 'quantity' => 1, 'unit_price' => 100,
+            'commissions' => [['role' => 'supplier', 'recipient_id' => 34, 'commission_type' => 'PERCENTAGE', 'value' => 20, 'supplier_commission_direction' => 'RECEIVED']],
+        ]],
+    ])]);
+
+    $line = QuoteLine::query()->where('quote_id', Quote::query()->where('old_id', 42)->value('id'))->sole();
+    expect($line->supplier_commission_direction?->value)->toBe('RECEIVED');
 });
 
 it('falls back to a sequential code with a warning when QUO-{id} is taken', function () {
@@ -134,6 +150,10 @@ it('fails the quote when one of its lines cannot be imported', function (array $
     'commission recipient not migrated' => [
         ['lines' => [['id' => 900, 'product_id' => 10, 'quantity' => 1, 'unit_price' => 10, 'commissions' => [['role' => 'supervisor', 'recipient_id' => 555, 'commission_type' => 'PERCENTAGE', 'value' => 5]]]]],
         'Line 900: supervisor commission recipient (legacy id 555) not migrated; the quote is not imported.',
+    ],
+    'supplier commission without direction' => [
+        ['lines' => [['id' => 900, 'product_id' => 10, 'quantity' => 1, 'unit_price' => 10, 'commissions' => [['role' => 'supplier', 'recipient_id' => 34, 'commission_type' => 'PERCENTAGE', 'value' => 5]]]]],
+        'Line 900: supplier commission without a valid direction; the quote is not imported.',
     ],
     'cost product not migrated' => [
         ['cost_lines' => [['id' => 'quotationemployees:20', 'product_source' => 'user_levels', 'product_id' => 2, 'quantity' => 1, 'unit_price' => 20, 'offer_line_id' => 900]]],

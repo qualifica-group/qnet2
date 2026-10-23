@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0308-quote-commission-recalculation" status="approved" owner="utente" date="2026-10-23">
+
+  <goal>
+    Permettere di riallineare alle regole attuali del Configuratore Commissioni le commissioni delle offerte non chiuse:
+    (1) dopo il salvataggio di una regola, scegliendo se aggiornare anche le offerte che la usano;
+    (2) da un bottone "Ricalcola commissioni" sull'offerta. In entrambi i casi l'utente risponde a una domanda a
+    risposta controllata (scelta obbligata tra opzioni esplicite), non a una semplice conferma.
+  </goal>
+
+  <context>
+    Caso reale (2026-10-23): QUO-104725 (quote 28020), regola 533 "Legacy - Fornitore - Perry Johnson" portata da
+    RECEIVED a PAID; le righe Ente restano RECEIVED per la spec 0306 D-5 (nessun ricalcolo retroattivo) e il margine
+    resta 3.600 invece di 7.160.
+
+    Decisioni utente 2026-10-23, vincolanti:
+    D-1 — Domanda a risposta controllata = scelta obbligata: il dialog mostra quante offerte/righe/commissioni manuali
+          tocca e le opzioni esplicite, NESSUNA preselezionata; il pulsante di conferma resta disabilitato finche' non
+          si sceglie. Nessuna parola da digitare.
+    D-2 — Le commissioni manuali (origin MANUAL_OVERRIDE): lo sceglie l'utente fra le opzioni del dialog,
+          `KEEP_MANUAL` (aggiorna solo le commissioni da regola, tieni le manuali) o `REGENERATE_ALL` (rigenera tutto
+          dalle regole, anche le manuali).
+    D-3 — Si ricalcolano SOLO le offerte non chiuse: stato con `quote_workflow_statuses.group` in
+          `open`/`pending`/`validated`. Le chiuse (`closed_won`, `closed_lost`) non si toccano mai (contratti, storico,
+          maturati provvigioni spec 0212 su `quote_line_commissions`).
+    D-4 — Il bottone sull'offerta lo usa chi puo' modificare l'offerta con il campo `commissions` modificabile
+          (stessa ceiling di `QuotesAuthorization::fieldPermissionCeiling`).
+
+    Decisioni proposte, da validare con l'approvazione:
+    D-5 — Ricalcolo di una riga REVENUE (servizio unico, usato da entrambi i canali), in ordine:
+          a) snapshot del verso dalla tipologia attuale (`SupplierCommissionEnablement`): interruttore spento ->
+             `supplier_commission_direction` null e commissione Fornitore cancellata (0202 D-6); acceso e snapshot null
+             -> `PAID`, sovrascritto al punto b dal verso della regola se la commissione Fornitore e' automatica;
+          b) `KEEP_MANUAL`: ogni commissione non manuale diventa il default attuale del suo ruolo
+             (`QuoteCommissionInitializer`, data di riferimento oggi) oppure si cancella se nessuna regola si applica;
+             le manuali restano (destinatario, tipo, valore, verso) e ricalcolano solo l'importo sulla base;
+             i ruoli senza commissione ricevono il default se esiste. `REGENERATE_ALL`:
+             `QuoteLineCommissionWriter::sync($line, null, regenerate: true)`;
+          c) a livello offerta `recalculateQuoteMargins()` e le 5 aggregate di testata (`margin_net` ecc.).
+          Il destinatario segue i ruoli attuali dell'offerta (come oggi).
+    D-6 — Propagazione dalla regola: dopo un PATCH riuscito di una regola che cambia un campo diverso da `name`, il
+          frontend chiede l'impatto; se `quotes_count` > 0 e `can_apply` mostra il dialog controllato con tre opzioni:
+          `NONE` "Solo le nuove righe d'offerta", `KEEP_MANUAL`, `REGENERATE_ALL`. La regola e' gia' salvata in ogni
+          caso. Il dialog non si chiude senza scegliere (niente X, Esc non chiude); `NONE` non chiama il server.
+          Righe toccate: righe REVENUE di offerte non chiuse con almeno una commissione `commission_configuration_id`
+          = la regola e `origin` != MANUAL_OVERRIDE; con `KEEP_MANUAL`/`REGENERATE_ALL` l'intera riga si ricalcola
+          (D-5). Una riga che con la regola modificata comincerebbe a corrispondere (nuovo ambito) non e' toccata:
+          per quella c'e' il bottone sull'offerta.
+    D-7 — La propagazione gira in coda (`RecalculateCommissionConfigurationQuotesJob`, `$tries = 1`, timeout da
+          `config('commission_recalculation.job_timeout')`): ogni offerta nella sua transazione, un'offerta che
+          fallisce si salta e si conta; alla fine `GenericNotification` all'autore ("Ricalcolo commissioni completato:
+          N offerte aggiornate, K non aggiornate", `action_url` alla regola). In locale (`QUEUE_CONNECTION=sync`)
+          gira subito. Il bottone sull'offerta e' sincrono.
+    D-8 — Permessi propagazione: `update` sulla regola (CommissionConfigurationPolicy) E permesso `quotes.update`;
+          senza `quotes.update` l'impatto risponde `can_apply: false` e il frontend non mostra il dialog.
+    D-9 — Supera la 0306 D-5 SOLO per queste due azioni esplicite: senza una scelta dell'utente nessuna offerta
+          esistente cambia (cambiare una regola o una tipologia continua a valere solo per le righe nuove).
+    D-10 — Storico: ogni commissione cambiata registra la sua voce di attivita' (`QuoteLineCommission` usa gia'
+          `LogsModelActivity`); nessuna tabella nuova.
+
+    Codice esistente da riusare (verificato): `App\Services\Commissions\QuoteLineCommissionWriter` (`sync`,
+    `recalculateQuoteMargins`, `persistDraft` privato), `QuoteCommissionInitializer::initialize($data, $supplierEnabled)`,
+    `QuoteLineCommissionBaseResolver`, `App\Services\Quotes\SupplierCommissionEnablement`, `QuoteService` (aggregate
+    private `persistAggregates`), `App\Enums\WorkflowStatusGroup`, `App\Enums\CommissionOrigin`,
+    `App\Notifications\GenericNotification`, `App\Authorization\QuotesAuthorization::actions()` (oggi
+    delete/export/import/view_activity/generate_document), route `routes/api/quotes.php`,
+    `routes/api/commission-configurations.php`. Frontend: `features/commission-configurations/commission-configuration-detail.tsx`
+    (salvataggio inline per riga, `onSuccess`), `features/quotes/quote-detail-header.tsx` (azioni in alto a destra),
+    `components/ui/dialog`, `components/ui/alert-dialog`. `components/ui/radio-group` NON esiste: si crea
+    (shadcn new-york) sul pacchetto `radix-ui` gia' installato (`RadioGroup` primitive), nessuna dipendenza nuova.
+  </context>
+
+  <scope>
+    <in>
+      <item>Servizio di ricalcolo commissioni di un'offerta non chiusa con modalita' KEEP_MANUAL / REGENERATE_ALL (D-5).</item>
+      <item>Endpoint impatto + ricalcolo sull'offerta; azione `recalculate_commissions` nei permessi dell'offerta.</item>
+      <item>Endpoint impatto + propagazione in coda dalla regola, notifica a fine lavoro (D-6/D-7/D-8).</item>
+      <item>Componente condiviso di dialog a scelta obbligata; bottone "Ricalcola commissioni" nel dettaglio offerta;
+            dialog dopo il salvataggio di una regola.</item>
+      <item>Guide in-app IT/EN (commission-configurations, quotes) e manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Offerte chiuse (closed_won / closed_lost), commesse, maturati e liquidazioni provvigioni.</item>
+      <item>Ricalcolo automatico silenzioso al cambio di una regola o di una tipologia (resta 0306 D-5).</item>
+      <item>Propagazione alla creazione o cancellazione di una regola, o al cambio di una tipologia prodotto.</item>
+      <item>Righe che solo dopo la modifica corrisponderebbero alla regola (D-6, ultima frase).</item>
+      <item>Ricalcolo in massa da tabella offerte (piu' offerte selezionate).</item>
+      <item>Base di calcolo per regola (punto 2 aperto), prezzi, IVA, documenti dell'offerta.</item>
+      <item>Legacy: nessuna modifica.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/quotes/{quote}/commission-recalculation">
+      <request>route model binding `quote`.</request>
+      <response status="200">
+        { success, message, data: { lines_count: int, commissions_count: int, manual_commissions_count: int,
+          closed: bool } } — righe REVENUE con prodotto, commissioni attuali, di cui manuali; `closed` = D-3.
+      </response>
+      <errors>403 senza `quotes.view`.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/quotes/{quote}/recalculate-commissions">
+      <request>{ mode: "KEEP_MANUAL" | "REGENERATE_ALL" } (enum `App\Enums\CommissionRecalculationMode`).</request>
+      <response status="200">
+        { success, message, data: dettaglio offerta identico a GET /api/quotes/{quote} (stesso Resource e permissions) }
+      </response>
+      <errors>
+        403 senza update sull'offerta o con campo `commissions` non modificabile;
+        422 `mode` assente/non valido; 422 offerta chiusa, messaggio `quotes.commission_recalculation.closed`.
+      </errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/commission-configurations/{commissionConfiguration}/quote-impact">
+      <response status="200">
+        { success, message, data: { quotes_count: int, lines_count: int, manual_commissions_count: int,
+          can_apply: bool } } — D-6 (solo offerte non chiuse); `manual_commissions_count` = manuali sulle righe toccate;
+        `can_apply` = D-8.
+      </response>
+      <errors>403 senza `view` sulla regola.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/commission-configurations/{commissionConfiguration}/recalculate-quotes">
+      <request>{ mode: "KEEP_MANUAL" | "REGENERATE_ALL" }</request>
+      <response status="202">
+        { success, message: "commission_configurations.recalculation_queued", data: { quotes_count: int } }
+      </response>
+      <errors>403 senza `update` sulla regola o senza `quotes.update`; 422 `mode` non valido.</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/quotes/{quote}">
+      <response status="200">`permissions.actions.recalculate_commissions: bool` in piu' (D-4 e offerta non chiusa).</response>
+    </endpoint>
+    <notification>
+      GenericNotification { title: "Ricalcolo commissioni completato", message: "N offerte aggiornate, K non
+      aggiornate.", level: success|warning (warning se K > 0), action_url: "/commission-configurations/{id}" }.
+    </notification>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato QUO-like con riga RECEIVED la cui commissione Fornitore viene dalla regola R ora PAID,
+      quando POST recalculate-commissions mode KEEP_MANUAL, allora la riga ha `supplier_commission_direction` PAID,
+      la commissione Fornitore ha valore/tipo/configurazione di R, e `margin_net` dell'offerta segue la formula PAID.</criterion>
+    <criterion id="AC-002">Dato una riga con commissione Commerciale MANUAL_OVERRIDE, quando KEEP_MANUAL, allora la
+      manuale resta (tipo, valore, destinatario) con importo ricalcolato sulla base; con REGENERATE_ALL viene sostituita
+      dal default della regola (o cancellata se nessuna regola si applica).</criterion>
+    <criterion id="AC-003">Dato una commissione da regola la cui regola non si applica piu' (sospesa/scaduta), quando
+      KEEP_MANUAL, allora la commissione e' cancellata; un ruolo senza commissione con regola applicabile la riceve.</criterion>
+    <criterion id="AC-004">Dato la tipologia del prodotto con interruttore Fornitore spento, quando si ricalcola, allora
+      lo snapshot diventa null e la commissione Fornitore (anche manuale) e' cancellata; acceso con snapshot null ->
+      PAID o il verso della regola applicata.</criterion>
+    <criterion id="AC-005">Dato un'offerta in stato closed_won o closed_lost, quando POST recalculate-commissions, allora
+      422 `quotes.commission_recalculation.closed` e nessuna riga/commissione cambia; `permissions.actions.recalculate_commissions` e' false.</criterion>
+    <criterion id="AC-006">Dato un utente senza update sull'offerta o con campo `commissions` non modificabile, quando
+      POST recalculate-commissions, allora 403; `mode` non valido -> 422.</criterion>
+    <criterion id="AC-007">GET commission-recalculation restituisce lines_count, commissions_count,
+      manual_commissions_count e closed coerenti con i dati.</criterion>
+    <criterion id="AC-008">Dato la regola R usata da offerte aperte, in attesa, validate e chiuse, quando GET quote-impact,
+      allora i conteggi includono solo le non chiuse e solo le righe con commissione non manuale di R; `can_apply` false
+      senza `quotes.update`.</criterion>
+    <criterion id="AC-009">Quando POST recalculate-quotes con KEEP_MANUAL, allora 202 con quotes_count, il job ricalcola
+      solo quelle offerte (D-5), le chiuse restano identiche, e l'autore riceve la GenericNotification con N e K.</criterion>
+    <criterion id="AC-010">Dato un'offerta che durante il job fallisce, allora le altre sono aggiornate, quella resta
+      invariata (transazione per offerta) e K = 1 nella notifica con level warning.</criterion>
+    <criterion id="AC-011">Senza `update` sulla regola o senza `quotes.update`, POST recalculate-quotes -> 403 e nessun job.</criterion>
+    <criterion id="AC-012">FE: il dialog a scelta obbligata mostra i conteggi e le opzioni senza selezione; il pulsante di
+      conferma e' disabilitato finche' non si sceglie; accessibile da tastiera (radiogroup con etichetta).</criterion>
+    <criterion id="AC-013">FE regola: dopo un salvataggio inline di un campo diverso da `name`, se quote-impact ha
+      quotes_count > 0 e can_apply, compare il dialog con NONE/KEEP_MANUAL/REGENERATE_ALL, non chiudibile senza scelta;
+      NONE non chiama il server; le altre chiamano recalculate-quotes e mostrano un toast "ricalcolo avviato".</criterion>
+    <criterion id="AC-014">FE offerta: il bottone "Ricalcola commissioni" compare solo con
+      `permissions.actions.recalculate_commissions`; apre il dialog con KEEP_MANUAL/REGENERATE_ALL e Annulla; alla
+      conferma l'offerta mostrata si aggiorna con i dati della risposta (commissioni, margine, riepilogo).</criterion>
+    <criterion id="AC-015">Guide IT/EN aggiornate con gli stessi id di sezione (parity test verde) e manuale Claude Docs.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Laravel: FormRequest per i POST, authorize server-side su ogni endpoint, envelope di
+          progetto, nessun model raw. React: TanStack Query (useQuery per gli impatti, useMutation per i ricalcoli),
+          i18n IT/EN, componenti di `components/ui`.</item>
+    <item>Nessun comando distruttivo sul DB di sviluppo `qnet2` (migrate:fresh/rollback/refresh, db:wipe, db:seed):
+          i test girano su sqlite in memoria.</item>
+    <item>Nessuna migrazione richiesta (stessa forma dei dati). Config nuova `config/commission_recalculation.php`
+          (job_timeout, default 1800, sotto `queue.connections.database.retry_after`).</item>
+    <item>File sotto 300 righe: il servizio di ricalcolo e' una classe nuova
+          (`App\Services\Commissions\QuoteCommissionRecalculator`), non un'estensione di QuoteLineCommissionWriter oltre
+          un metodo pubblico minimo per riusare `persistDraft`/`freezeSupplierDirection`.</item>
+    <item>Nessun commit senza ordine esplicito dell'utente (CLAUDE.md §3.6).</item>
+  </constraints>
+
+  <tasks>
+    <task id="T-01" owner="backend" lane="sequenziale" depends="">Enum `CommissionRecalculationMode`, servizio
+      `QuoteCommissionRecalculator` (D-5) con metodo per offerta, test unit/feature AC-001..AC-004.
+      Write: app/Enums, app/Services/Commissions, tests/Feature/Quotes/Commissions*.</task>
+    <task id="T-02" owner="backend" lane="sequenziale" depends="T-01">Endpoint offerta (controller, FormRequest, route,
+      azione `recalculate_commissions` in QuotesAuthorization), messaggi lang IT/EN, test AC-005..AC-007.</task>
+    <task id="T-03" owner="backend" lane="sequenziale dopo T-02 (stesso owner)" depends="T-01">Endpoint regola (impatto, propagazione), job,
+      config, notifica, test AC-008..AC-011.</task>
+    <task id="T-04" owner="ui-design" lane="parallelo" depends="">`components/ui/radio-group.tsx` (radix-ui) e
+      componente condiviso `components/controlled-choice-dialog.tsx` + test AC-012.</task>
+    <task id="T-05" owner="frontend" lane="sequenziale" depends="T-04">Offerta: api, hook, bottone in
+      quote-detail-header, aggiornamento cache, i18n, test AC-014.</task>
+    <task id="T-06" owner="frontend" lane="parallelo con T-05 (write surface disgiunta)" depends="T-04">Regola: impatto dopo salvataggio, dialog, mutation,
+      toast, i18n, test AC-013.</task>
+    <task id="T-07" owner="lead" lane="gated" depends="T-05,T-06">Guide in-app IT/EN e manuale Claude Docs (AC-015).</task>
+    <task id="T-08" owner="verifier" lane="gated" depends="T-02,T-03,T-05,T-06,T-07">Suite Pest mirata + completa,
+      Vitest completo, tsc -b --force, lint, AC 1:1.</task>
+  </tasks>
+
+</spec>

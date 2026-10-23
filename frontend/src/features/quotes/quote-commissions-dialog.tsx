@@ -3,7 +3,7 @@ import { HandCoins } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import type { CommissionRole } from '@/features/commission-configurations/types'
+import type { CommissionRole, SupplierCommissionDirection } from '@/features/commission-configurations/types'
 import { formatQuoteAmount } from './quote-summary'
 import { QuoteCommissionRoleRow, QuoteCommissionRowsHeader } from './quote-commission-role-row'
 import { useQuoteCommissionsDraft } from './use-quote-commissions-draft'
@@ -28,10 +28,12 @@ interface Props {
    */
   allocatedCostNet?: number
   commissions: QuoteLineCommissionInput[]
+  /** Spec 0306: the line's snapshot, the direction of its automatic Supplier commission. */
+  supplierCommissionDirection?: SupplierCommissionDirection | null
   disabled: boolean
   /** The other half: the quote's live role selections. Omitted only where the caller has none (cost lines never reach here). */
   commissionContext?: QuoteCommissionContext
-  onSave: (commissions: QuoteLineCommissionInput[]) => void
+  onSave: (commissions: QuoteLineCommissionInput[], supplierCommissionDirection: SupplierCommissionDirection | null) => void
 }
 
 interface BaseFigureProps {
@@ -106,7 +108,7 @@ export function QuoteCommissionsDialog(props: Props) {
               size="sm"
               disabled={!commissions.canSave}
               onClick={() => {
-                props.onSave(commissions.draft)
+                props.onSave(commissions.draft, commissions.savedDirection)
                 props.onOpenChange(false)
               }}
             >

@@ -5,7 +5,7 @@ import { GeneralNotesCallout } from '@/components/record-form/general-notes-call
 import { RecordField, RecordFieldList, RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
 import { ProductLinesReadOnlyList } from '@/features/product-lines/product-lines-read-only-list'
 import { RewardChipsSection } from '@/features/rewards/reward-chips-section'
-import { QuoteAttributesSection } from '@/features/quotes/quote-attributes-section'
+import { QuoteAttributesBand, QuoteAttributesSection } from '@/features/quotes/quote-attributes-section'
 import { QuoteCompanySection, QuoteDocumentSection } from '@/features/quotes/quote-record-company'
 import { QuoteIdentitySection, QuoteInternalNotesRow } from '@/features/quotes/quote-record-identity'
 import { QuoteContactsSection, QuoteTeamSection } from '@/features/quotes/quote-record-people'
@@ -52,9 +52,9 @@ interface QuoteDetailSectionsProps {
  * editable in place (spec 0197, the Commesse model): the internal notes
  * callout first and the Opportunita''s inherited general notes below it, then
  * the offer's data (status included), the inherited
- * context, contacts, buoni, team, company and sites, document and payment,
- * and the collected Attribute values — each Attribute a row of its own. The
- * offer and cost rows are the record card's closing band (`QuoteDetailLines`).
+ * context, contacts, buoni, team, company and sites, document and payment.
+ * The offer and cost rows follow (`QuoteDetailLines`), then the collected
+ * Attribute values (`QuoteDetailAttributes`).
  */
 export function QuoteDetailSections({ quote, editor }: QuoteDetailSectionsProps) {
   const { t } = useTranslation()
@@ -125,15 +125,25 @@ export function QuoteDetailSections({ quote, editor }: QuoteDetailSectionsProps)
       />
 
       <QuoteDocumentSection layout={quote.layout} paymentMethod={quote.payment_method} form={form} inline={inline} />
+    </RecordSectionsGrid>
+  )
+}
 
+/** The collected Attribute values, each a row of its own: the band after the offer rows (`QuoteAttributesBand`). */
+export function QuoteDetailAttributes({ quote, editor }: QuoteDetailSectionsProps) {
+  if (quote.applicable_attributes.length === 0) {
+    return null
+  }
+
+  return (
+    <QuoteAttributesBand>
       <QuoteAttributesSection
         attributes={quote.applicable_attributes}
         layout={quote.attribute_view_layout ?? null}
         values={quote.attribute_values}
-        inline={inline}
-        control={control}
-        className={FULL_WIDTH_SECTION_CLASS}
+        inline={editor.inline}
+        control={editor.form.control}
       />
-    </RecordSectionsGrid>
+    </QuoteAttributesBand>
   )
 }

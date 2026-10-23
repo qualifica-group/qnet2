@@ -17,10 +17,69 @@
 - Verifica: Vitest quotes+contracts+help 71 file/724 test verdi, `tsc -b --force` pulito, ESLint pulito. Guide in-app
   IT/EN (`quotes.ts`, sezione righe) e manuale Claude Docs aggiornati. Verifica visiva su /quotes/28020 da fare a mano.
   Committato in `f27f63f8` (solo questi file; la spec 0306 resta nel working tree).
-- Seguito: la matita delle righe Offerta/Costi sta nell'intestazione del riquadro, accanto a
+- Seguito (NON COMMITTATO): la matita delle righe Offerta/Costi sta nell'intestazione del riquadro, accanto a
   "Righe dell'offerta (n)", non piu' fuori. `RecordInlineField` accetta `children` come funzione
   `(editAction) => ReactNode` (il chiamante colloca la matita; `null` se non modificabile, altri usi invariati);
   `QuoteLineEditorFrame` e `QuoteLinesReadOnlyList` hanno lo slot `headerAction`.
+
+## Ricalcolo commissioni delle offerte non chiuse (spec 0308) — VERDE, COMMITTATO (2026-10-23)
+
+- Agent team (backend-0308, frontend-0308, ui-design-0308, verifier-0308). Verifier: AC-001..AC-014 PASS; AC-015
+  (guide IT/EN commission-configurations + quotes, manuale Claude Docs rev 383) fatto dal lead, parity 150/150.
+- Backend: enum `CommissionRecalculationMode` (KEEP_MANUAL, REGENERATE_ALL); `QuoteCommissionRecalculator` (D-5:
+  snapshot verso dalla tipologia, KEEP_MANUAL = `QuoteLineCommissionWriter::sync()` con le commissioni salvate,
+  REGENERATE_ALL = sync regenerate, poi margini + `QuoteService::persistAggregates()` ora pubblico; rilegge la quote con
+  `lockForUpdate` e salta le chiuse); `CommissionRecalculationImpact`; `RecalculateCommissionConfigurationQuotesJob`
+  (tries 1, `config/commission_recalculation.php` job_timeout 1800, GenericNotification N aggiornate / K no);
+  azione `recalculate_commissions` in `QuotesAuthorization`. Endpoint: GET/POST `quotes/{quote}/commission-recalculation`
+  | `recalculate-commissions`, GET/POST `commission-configurations/{id}/quote-impact` | `recalculate-quotes` (202).
+  Test: `tests/Feature/Quotes/QuoteCommissionRecalculationTest.php`,
+  `tests/Feature/CommissionConfigurations/CommissionConfigurationQuoteRecalculationTest.php`,
+  helper `tests/Helpers/CommissionRecalculationHelpers.php`.
+- Frontend: `components/ui/radio-group.tsx`, `components/controlled-choice-dialog.tsx` (props `pending`,
+  `pendingLabel`, `onOpenChange`, `dismissible`, nessuna preselezione); offerta `quote-recalculate-commissions.tsx` +
+  `use-quote-commission-recalculation.ts` (bottone in `quote-detail-header`, `onChanged` passato da `quote-detail.tsx`);
+  regola `commission-configuration-propagation-dialog.tsx` + `use-commission-configuration-propagation.ts` (dopo il
+  salvataggio di un campo diverso da `name`).
+- Suite complete: Pest 12375/12386 (10 rossi preesistenti: 7 users-migration per `EXTERNAL_MIGRATION_USERS_LINK_ONLY=true`,
+  3 QuoteDocumentPdfTest senza LibreOffice), Vitest 9152/9152, tsc -b pulito, Pint pulito.
+- Note: nei POST `mode` invalido -> 422 anche senza permesso (validazione prima dell'authz, come nel resto). Sullo
+  stesso repo lavora in parallelo un'altra sessione (es. spec 0307): al commit includere solo i file di 0306/0308.
+
+## Verso commissione Fornitore sulle regole (spec 0306) + dettaglio offerta — VERDE, COMMITTATO (2026-10-23; legacy committato a parte)
+
+- Spec 0306 (backend + frontend + legacy `LegacySupplierDirection`): implementata; suite complete verdi insieme alla 0308
+  (Pest 12375/12386 con i 10 rossi preesistenti, Vitest 9152/9152); mappatura AC 1:1 della 0306 non rifatta. Decisioni aperte: base di calcolo per regola (sol. 2), regole legacy mai
+  applicate (5 Fornitore senza destinatario + categoria padre 69) importate come Sospese o attive (sol. 3).
+- Controllo QUO-104043 (27343) e QUO-104725 (28020) contro il legacy: dati fedeli. Su 104725 il commerciale del
+  2 anno Ente ha `agent_perc` 40 e `agent_cost` 0 nel legacy: l'export manda la % (domanda aperta all'utente).
+- Dettaglio offerta (frontend): "Informazioni aggiuntive" spostate DOPO le righe Offerta/Costi in dettaglio e creazione
+  (`QuoteAttributesBand`, `QuoteDetailAttributes`, `QuoteCreateAttributes`); "Margine per prodotto": tooltip col nome
+  intero (`quote-truncated-label.tsx`) e, sulle righe RECEIVED, ricavo = commissione ricevuta e commissioni = solo
+  pagate (margine invariato, ora le colonne si sommano); nuovo blocco "Dettaglio provvigioni per prodotto"
+  (`quote-commission-details.tsx`, come il legacy "Dettaglio Provvigioni per Servizio" + Fornitore e verso) nel
+  riepilogo del dettaglio, chiuso dietro "Mostra dettaglio provvigioni" come i dati avanzati (`QuoteSummaryDisclosure`,
+  prop `commissionLines` di `QuoteSummary`, solo offerta salvata e permesso `commissions`). Cella per ruolo: nome
+  (`TruncatedLabel`, tooltip col nome intero), % o "Importo fisso" a sinistra e importo a destra, per il Fornitore badge
+  Ricevuta/Pagata + (?) (`FieldHint` ha ora la prop opzionale `icon`, default Info). Vitest quotes+help+components
+  1124/1124, tsc -b pulito, eslint pulito. Guide IT/EN + manuale Claude Docs (rev 374) aggiornati.
+- Calcolo su ogni importo (come le commesse): `CalculationHint` spostato da `features/work-order-contract-data/` a
+  `components/calculation-hint.tsx` (import delle commesse aggiornati). Formule in `quote-calculation-hints.ts`:
+  provvigione % = base (imponibile − costi imputati, min 0) × %, con "Importo salvato" se differisce; importo fisso;
+  totali riga/ruolo/generale come somme; Margine per prodotto: ricavo (imponibile o commissione ricevuta), costi
+  imputati, commissioni, margine = ricavo − costi − commissioni. `ProductMarginRow` ha ora `lineNet` e
+  `supplierCommissionNet`; `QuoteSummary.commissionDetails = { offerLines, costLines }`. Vitest quotes+commesse+
+  components+help 1426/1426, tsc pulito. Lint: unico errore preesistente in `features/quotes/column-renderers.tsx`
+  (react-refresh, file non modificato). Manuale Claude Docs rev 376.
+- Destinatari nel Dettaglio provvigioni (`quote-commission-recipient.tsx`): `user` -> `UserProfileHoverCard`;
+  `referent`/`registry` -> `RecordLink` (domini `referents`/`registries`) + HoverCard con tipo e link; senza permesso
+  `<domain>.view` nome semplice. I test di dettaglio/riepilogo mockano `useAbilities` (can false). Vitest quotes 417/417,
+  components+help+commesse 763/763 (help 150/150), tsc pulito. Manuale rev 380.
+- Legacy: `MigrationFieldFormatter::plainText()` (tag tolti, entita' decodificate, una riga per blocco, `- ` per le
+  voci di elenco) usato per `lines[].description` in `QuoteMigrationController`. Dati gia' importati su qnet2 dev:
+  4065 `quote_lines.additional_description` ripuliti con la stessa regola (update mirato chiesto dall'utente).
+  `task_template_items.description` ha ancora 382 valori HTML: da valutare (forse rich text voluto).
+- NB: questo file e' ~800 KB, ben oltre i 50 KB: va archiviato in `docs/handoff-archive/`.
 
 ## Dotazioni (spec 0307, fase 1) — VERDE, COMMITTATO (2026-10-23)
 
@@ -56,7 +115,6 @@
   `stock-balances-grid.tsx`, quindi oltre 3 azioni le altre vanno nei tre puntini (`INLINE_ACTION_LIMIT`); ordine dal
   catalogo backend assign|return|transfer|unload|adjust|history. Test `stock-balances-grid.test.tsx`.
 - Prossimo: fase 2 (matricole, verbale di consegna, avviso a fine contratto), fase 3 (carico da ricevimenti OdA).
-
 
 ## Migrazioni bloccate "in corso" in produzione — VERDE, NON COMMITTATO (2026-10-23)
 

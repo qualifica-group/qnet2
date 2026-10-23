@@ -33,7 +33,6 @@ const SERVER_ERROR_FIELDS = [
   'description',
   'color',
   'supplier_commission_enabled',
-  'supplier_commission_direction',
   'proforma_kind',
 ] as const
 
@@ -74,7 +73,6 @@ export function useProductTypologyForm({ mode, onSuccess }: UseProductTypologyFo
         description: mode.productTypology.description,
         color: mode.productTypology.color,
         supplier_commission_enabled: mode.productTypology.supplier_commission_enabled,
-        supplier_commission_direction: mode.productTypology.supplier_commission_direction,
         proforma_kind: mode.productTypology.proforma_kind,
       }
     }
@@ -84,7 +82,6 @@ export function useProductTypologyForm({ mode, onSuccess }: UseProductTypologyFo
       description: null,
       color: DEFAULT_COLOR,
       supplier_commission_enabled: false,
-      supplier_commission_direction: null,
       proforma_kind: null,
     }
   }, [mode])

@@ -20,8 +20,9 @@ import {
   calculateCommissionAmount,
   calculateCommissionBaseNet,
   calculateLineMarginBeforeCosts,
+  effectiveSupplierDirection,
 } from '@/features/quotes/commission-calculator'
-import type { SupplierCommissionDirection } from '@/features/product-typologies/types'
+import type { SupplierCommissionDirection } from '@/features/commission-configurations/types'
 import { isPristineLineRow, lineClientKey } from '@/features/quotes/quote-line-values'
 import { round2 } from '@/features/quotes/quote-totals'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
@@ -66,6 +67,10 @@ export interface ProductMarginRow {
   commissionsNet: number
   supplierCommissionDirection: SupplierCommissionDirection | null
   margin: number
+  /** The row's net amount, which `revenueNet` replaces on a received row: the calculation hints quote it. */
+  lineNet: number
+  /** The Supplier part of the row's commissions (0 when it has none). */
+  supplierCommissionNet: number
 }
 
 export interface ProductMarginsSummary {
@@ -98,23 +103,29 @@ export function computeProductMargins(
   const rows = productLines.map((line) => {
     const costNet = costNetByKey.get(line.key) ?? 0
     const supplierCommissionNet = line.supplierCommissionNet ?? 0
+    const otherCommissionsNet = round2(line.commissionsNet - supplierCommissionNet)
+    // A received Supplier commission is the row's revenue, not an expense: the
+    // columns show it that way so revenue - cost - commissions reads as the margin.
+    const received = line.supplierCommissionDirection === 'RECEIVED'
     return {
       key: line.key,
       productName: line.productName,
       rowNumber: line.rowNumber,
-      revenueNet: line.net,
+      revenueNet: received ? supplierCommissionNet : line.net,
       costNet,
-      commissionsNet: line.commissionsNet,
+      commissionsNet: received ? otherCommissionsNet : line.commissionsNet,
       supplierCommissionDirection: line.supplierCommissionDirection ?? null,
       // Spec 0202 D-8: the row's margin by its frozen Supplier commission direction.
       margin: round2(
         calculateLineMarginBeforeCosts(
           line.net,
           supplierCommissionNet,
-          round2(line.commissionsNet - supplierCommissionNet),
+          otherCommissionsNet,
           line.supplierCommissionDirection,
         ) - costNet,
       ),
+      lineNet: line.net,
+      supplierCommissionNet,
     }
   })
 
@@ -158,7 +169,9 @@ export function productLinesFromFormOfferLines(
       net,
       commissionsNet,
       supplierCommissionNet,
-      supplierCommissionDirection: row.commissions ? row.supplier_commission_direction ?? null : null,
+      supplierCommissionDirection: row.commissions
+        ? effectiveSupplierDirection(row.commissions, row.supplier_commission_direction)
+        : null,
     })
     return lines
   }, [])

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { TriangleAlert } from 'lucide-react'
-import { CalculationHint } from '@/features/work-order-contract-data/calculation-hint'
+import { CalculationHint } from '@/components/calculation-hint'
 import type { ContractDataWarning } from '@/features/work-order-contract-data/types'
 
 const WARNING_KEYS: Record<ContractDataWarning, string> = {

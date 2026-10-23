@@ -410,3 +410,39 @@ describe('quote schemas - conditional sections (spec 0288 AC-011)', () => {
     expect(hasRequiredIssue(schema.safeParse(baseValues({ attribute_values: { has_site: true, site_access: null } })))).toBe(true)
   })
 })
+
+describe('manual Supplier commission direction (spec 0306 D-3)', () => {
+  const supplier = (overrides: Record<string, unknown>) => ({
+    recipient_role: 'SUPPLIER',
+    recipient_type: 'registry',
+    recipient_id: 7,
+    commission_type: 'PERCENTAGE',
+    value: 10,
+    internal_note: null,
+    origin: 'MANUAL_OVERRIDE',
+    commission_configuration_id: null,
+    ...overrides,
+  })
+
+  it('refuses a manual Supplier commission without a direction, on that commission', () => {
+    const result = buildCreateQuoteSchema(i18n.t).safeParse(
+      baseValues({ offer_lines: [validLine({ commissions: [supplier({})] })] }),
+    )
+
+    expect(result.success).toBe(false)
+    expect(result.error?.issues.map((issue) => issue.path.join('.'))).toContain(
+      'offer_lines.0.commissions.0.supplier_commission_direction',
+    )
+  })
+
+  it('accepts it with a direction, and an automatic one without', () => {
+    const schema = buildCreateQuoteSchema(i18n.t)
+
+    expect(
+      schema.safeParse(baseValues({ offer_lines: [validLine({ commissions: [supplier({ supplier_commission_direction: 'RECEIVED' })] })] })).success,
+    ).toBe(true)
+    expect(
+      schema.safeParse(baseValues({ offer_lines: [validLine({ commissions: [supplier({ origin: 'PRODUCT_CATEGORY' })] })] })).success,
+    ).toBe(true)
+  })
+})

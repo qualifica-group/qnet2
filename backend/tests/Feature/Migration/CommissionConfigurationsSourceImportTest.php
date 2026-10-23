@@ -54,12 +54,20 @@ function runLegacyCommissionRulesImport(array $records): MigrationRun
  */
 function legacyCommissionRule(array $overrides = []): array
 {
-    return [
+    $rule = [
         'id' => 13, 'role' => 'supplier', 'recipient_kind' => 'company', 'recipient_id' => 15269,
         'category_id' => 70, 'product_id' => null, 'commission_type' => 'PERCENTAGE', 'value' => 10,
+        'supplier_commission_direction' => 'PAID',
         'note' => 'Regola storica', 'created_at' => '2023-08-04 11:49:21',
         ...$overrides,
     ];
+
+    // REQUIREMENT CHANGED (spec 0306, D-4): the legacy sends the direction on supplier rules only.
+    if ($rule['role'] !== 'supplier') {
+        unset($rule['supplier_commission_direction']);
+    }
+
+    return $rule;
 }
 
 /** @return array{registry: Registry, referent: Referent, category: ProductCategory} */
@@ -89,6 +97,7 @@ it('AC-002: a supplier rule on a category becomes an active percentage rule for 
         ->and($rule->application_scope)->toBe(CommissionApplicationScope::ProductCategory)
         ->and($rule->product_category_id)->toBe($category->id)
         ->and($rule->commission_type)->toBe(CommissionType::Percentage)
+        ->and($rule->supplier_commission_direction)->toBe(SupplierCommissionDirection::Paid)
         ->and($rule->value)->toBe('10.0000')
         ->and($rule->status)->toBe(CommissionConfigurationStatus::Active)
         ->and($rule->valid_from->toDateString())->toBe('2023-08-04')
@@ -96,6 +105,18 @@ it('AC-002: a supplier rule on a category becomes an active percentage rule for 
         ->and($rule->internal_note)->toBe('Regola storica')
         ->and($rule->name)->toBe('Legacy - '.CommissionRecipientRole::Supplier->label().' - Ente Alfa - Formazione')
         ->and(DB::table('activity_log')->where('subject_type', 'commission_configuration')->count())->toBe(0);
+});
+
+it('AC-012: the legacy direction of a supplier rule is stored as sent, RECEIVED or PAID', function () {
+    migratedCommissionRuleTargets();
+
+    runLegacyCommissionRulesImport([
+        legacyCommissionRule(['id' => 1, 'supplier_commission_direction' => 'RECEIVED']),
+        legacyCommissionRule(['id' => 2, 'supplier_commission_direction' => 'PAID']),
+    ]);
+
+    expect(CommissionConfiguration::where('old_id', 1)->sole()->supplier_commission_direction)->toBe(SupplierCommissionDirection::Received)
+        ->and(CommissionConfiguration::where('old_id', 2)->sole()->supplier_commission_direction)->toBe(SupplierCommissionDirection::Paid);
 });
 
 it('AC-003: a commercial rule on a contact maps to the referent, a rule on a service to the PRODUCT scope', function () {
@@ -152,6 +173,8 @@ it('AC-004: unimportable rules fail with a readable message and create nothing',
     'no destination' => [['category_id' => null, 'product_id' => null], 'neither a category nor a product'],
     'no value' => [['commission_type' => 'FIXED_AMOUNT', 'value' => null], 'no commission type or no positive value'],
     'no type' => [['commission_type' => null], 'no commission type or no positive value'],
+    'supplier rule without direction' => [['supplier_commission_direction' => null], 'no valid commission direction'],
+    'supplier rule with an unknown direction' => [['supplier_commission_direction' => 'BOTH'], 'no valid commission direction'],
 ]);
 
 it('spec 0223 AC-009: a rule on a container category is imported, it covers the whole branch', function () {
@@ -172,6 +195,7 @@ it('imports a rule without recipient as an active role-wide rule (user decision 
 
     $rule = CommissionConfiguration::sole();
     expect($run->created_rows)->toBe(1)
+        ->and($rule->supplier_commission_direction)->toBeNull()
         ->and($rule->recipient_type)->toBeNull()
         ->and($rule->recipient_id)->toBeNull()
         ->and($rule->status)->toBe(CommissionConfigurationStatus::Active)
@@ -215,7 +239,7 @@ it('AC-008: after the import a new offer line of a supplier product in the cover
     $product = Product::factory()->create([
         'category_id' => $category->id,
         'supplier_id' => $registry->id,
-        'product_typology_id' => ProductTypology::factory()->supplierCommission(SupplierCommissionDirection::Paid)->create()->id,
+        'product_typology_id' => ProductTypology::factory()->supplierCommission()->create()->id,
     ]);
     runLegacyCommissionRulesImport([legacyCommissionRule(['value' => 12.5])]);
 
@@ -237,5 +261,6 @@ it('AC-008: after the import a new offer line of a supplier product in the cover
     $commission = collect($response->json('data.offer_lines.0.commissions'))->firstWhere('recipient_role', 'SUPPLIER');
     expect($commission)->not->toBeNull()
         ->and($commission['commission_type'])->toBe('PERCENTAGE')
-        ->and((float) $commission['value'])->toBe(12.5);
+        ->and((float) $commission['value'])->toBe(12.5)
+        ->and($response->json('data.offer_lines.0.supplier_commission_direction'))->toBe('PAID');
 });

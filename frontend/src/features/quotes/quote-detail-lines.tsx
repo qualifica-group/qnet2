@@ -60,6 +60,7 @@ function PersistedLinesSummary({ quote }: { quote: QuoteDetailWithPermissions })
       typologyBuckets={typologyBucketsFromPersistedSummary(quote.summary)}
       productMargins={productMargins}
       showProductMargins={showCommissions}
+      commissionDetails={{ offerLines: quote.offer_lines, costLines: quote.cost_lines }}
     />
   )
 }

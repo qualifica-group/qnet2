@@ -7,11 +7,15 @@ export const COMMISSION_STATUSES = ['ACTIVE', 'SUSPENDED'] as const
 /** Morph alias enforced by `Relation::enforceMorphMap()` (spec 0089 D-1) — the only valid `recipient_type` values. */
 export const COMMISSION_RECIPIENT_TYPES = ['referent', 'user', 'registry'] as const
 
+/** Direction of the Supplier commission (spec 0306 D-1): earned by us (RECEIVED) or paid to the supplier (PAID). */
+export const SUPPLIER_COMMISSION_DIRECTIONS = ['RECEIVED', 'PAID'] as const
+
 export type CommissionRole = (typeof COMMISSION_ROLES)[number]
 export type CommissionScope = (typeof COMMISSION_SCOPES)[number]
 export type CommissionType = (typeof COMMISSION_TYPES)[number]
 export type CommissionStatus = (typeof COMMISSION_STATUSES)[number]
 export type CommissionRecipientType = (typeof COMMISSION_RECIPIENT_TYPES)[number]
+export type SupplierCommissionDirection = (typeof SUPPLIER_COMMISSION_DIRECTIONS)[number]
 
 /**
  * Recipient types admitted for each role (spec 0090 D-4, emenda 0089 D-7),
@@ -63,6 +67,8 @@ export interface CommissionConfigurationDetail {
   recipient_id?: number | null
   recipient?: CommissionRelationRef | null
   commission_type: CommissionType
+  /** Set only on a SUPPLIER rule; omitted when not visible for field permission (spec 0306 D-9). */
+  supplier_commission_direction?: SupplierCommissionDirection | null
   value: string
   priority: number
   valid_from: string
@@ -93,6 +99,8 @@ export interface CommissionConfigurationPayload {
   /** Optional (D-1): a role rule never sends it. */
   recipient_id?: number | null
   commission_type: CommissionType
+  /** Mandatory with a SUPPLIER role, always null for the other roles (spec 0306 D-1). */
+  supplier_commission_direction: SupplierCommissionDirection | null
   value: number
   priority: number
   valid_from: string
@@ -112,3 +120,14 @@ export const COMMISSION_CREATE_REGISTRY_PARAM = 'registry_id'
 export type CommissionConfigurationFormMode =
   | { type: 'create'; supplierRegistryId?: number | null }
   | { type: 'edit'; configuration: CommissionConfigurationDetailWithPermissions }
+
+/** How a recalculation treats the commissions changed by hand (spec 0308 D-2). */
+export type CommissionRecalculationMode = 'KEEP_MANUAL' | 'REGENERATE_ALL'
+
+/** What a saved rule would touch on the quotes that use it (spec 0308 D-6). */
+export interface CommissionConfigurationQuoteImpact {
+  quotes_count: number
+  lines_count: number
+  manual_commissions_count: number
+  can_apply: boolean
+}

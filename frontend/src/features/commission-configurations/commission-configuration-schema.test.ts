@@ -11,6 +11,7 @@ const valid = {
   recipient_type: 'referent' as const,
   recipient_id: null,
   commission_type: 'PERCENTAGE' as const,
+  supplier_commission_direction: null,
   value: 5,
   priority: 10,
   valid_from: '2026-07-29',
@@ -92,5 +93,16 @@ describe('commission configuration schema', () => {
     if (!result.success) {
       expect(result.error.issues.some((issue) => issue.path.join('.') === 'recipient_type')).toBe(true)
     }
+  })
+
+  it('requires the direction for a SUPPLIER rule only (spec 0306 D-1)', () => {
+    const schema = buildCommissionConfigurationSchema(t)
+    const supplier = { ...valid, recipient_role: 'SUPPLIER' as const, recipient_type: 'registry' as const }
+
+    const refused = schema.safeParse(supplier)
+    expect(refused.success).toBe(false)
+    expect(refused.error?.issues.some((issue) => issue.path.join('.') === 'supplier_commission_direction')).toBe(true)
+    expect(schema.safeParse({ ...supplier, supplier_commission_direction: 'RECEIVED' }).success).toBe(true)
+    expect(schema.safeParse(valid).success).toBe(true)
   })
 })

@@ -7,6 +7,7 @@ use App\Enums\CommissionApplicationScope;
 use App\Enums\CommissionConfigurationStatus;
 use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
+use App\Enums\SupplierCommissionDirection;
 use App\Models\CommissionConfiguration;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -34,6 +35,7 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
         'priority' => 'priority',
         'status' => 'status',
         'recipient' => 'recipient_id',
+        'supplier_commission_direction' => 'supplier_commission_direction',
     ];
 
     /** Every morph alias a rule's recipient may carry (spec 0089 D-1). */
@@ -114,6 +116,7 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
             'application_scope' => CommissionApplicationScope::class,
             'commission_type' => CommissionType::class,
             'status' => CommissionConfigurationStatus::class,
+            'supplier_commission_direction' => SupplierCommissionDirection::class,
             default => null,
         };
 
@@ -122,6 +125,11 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
         }
 
         return array_map(static fn ($meta): array => $meta->toArray(), $enum::options());
+    }
+
+    protected function enumKeyFor(string $columnId, User $actor): ?string
+    {
+        return $columnId === 'supplier_commission_direction' ? 'supplier_commission_direction' : null;
     }
 
     public function mapRow(User $actor, Model $row): array
@@ -140,6 +148,7 @@ class CommissionConfigurationsTableDefinition extends AbstractTableDefinition
             'status' => $row->status->value,
             'updated_at' => $row->updated_at,
             'recipient' => $row->recipient?->name,
+            'supplier_commission_direction' => $row->supplier_commission_direction?->value,
         ];
 
         foreach (self::COLUMN_FIELDS as $column => $field) {

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { HandCoins } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import type { SupplierCommissionDirection } from '@/features/commission-configurations/types'
 import { QuoteCommissionsDialog } from '@/features/quotes/quote-commissions-dialog'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteCommissionContext } from '@/features/quotes/types'
@@ -15,7 +16,10 @@ interface QuoteLineCommissionsActionProps {
   /** Spec 0145 (D-1): this row's imputed-cost net, the base of the commissions. */
   allocatedCostNet: number
   disabled: boolean
-  onSave: (commissions: NonNullable<QuoteLineFormValues['commissions']>) => void
+  onSave: (
+    commissions: NonNullable<QuoteLineFormValues['commissions']>,
+    supplierCommissionDirection: SupplierCommissionDirection | null,
+  ) => void
 }
 
 /**
@@ -59,6 +63,7 @@ export function QuoteLineCommissionsAction({
           unitPrice={row.unit_price}
           allocatedCostNet={allocatedCostNet}
           commissions={row.commissions ?? []}
+          supplierCommissionDirection={row.supplier_commission_direction ?? null}
           disabled={disabled}
           onSave={onSave}
         />

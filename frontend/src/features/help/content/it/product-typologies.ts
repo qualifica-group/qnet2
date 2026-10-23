@@ -27,8 +27,7 @@ const guide: HelpGuide = {
             ['Codice', 'Un codice univoco.'],
             ['Colore', 'Obbligatorio (di partenza **grigio**). È il colore del badge con cui la tipologia compare ovunque: tabella prodotti, scheda prodotto, righe e riepilogo per tipologia dell\'offerta, Dati contrattuali della commessa.'],
             ['Descrizione', 'Testo libero facoltativo.'],
-            ['Calcolo commissione Fornitore', 'Interruttore: se attivo, sulle nuove righe d\'offerta di questa tipologia si calcola la commissione Fornitore.'],
-            ['Verso', 'Visibile e obbligatorio solo con l\'interruttore attivo. **Ricevuta**: la commissione è il ricavo della riga e l\'imponibile passa al fornitore. **Pagata**: è un costo verso il fornitore.'],
+            ['Calcolo commissione Fornitore', 'Interruttore: se attivo, sulle nuove righe d\'offerta di questa tipologia si calcola la commissione Fornitore. Il verso (Ricevuta o Pagata) si sceglie sulla regola Fornitore del **Configuratore Commissioni**.'],
             ['Tipo richiesta proforma', 'Nella sezione **Fatturazione**. Decide in quale richiesta proforma confluiscono le righe dei prodotti di questa tipologia: **Consulenza**, **Ente** oppure **Nessuna**.'],
           ],
         },
@@ -40,7 +39,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Con l\'interruttore spento la commissione Fornitore non viene creata sulle righe di questa tipologia, anche se esiste una regola. Il margine della riga dipende dal verso: **Ricevuta** = commissione Fornitore meno costi e altre commissioni; **Pagata** = imponibile meno costi, altre commissioni e commissione Fornitore; **disattivato** = imponibile meno costi e altre commissioni.',
+          text: 'Con l\'interruttore spento la commissione Fornitore non viene creata sulle righe di questa tipologia, anche se esiste una regola. Con l\'interruttore attivo il verso arriva dalla regola Fornitore applicata (o da quello scelto a mano nel popup Commissioni dell\'offerta) e il margine della riga dipende da lui: **Ricevuta** = commissione Fornitore meno costi e altre commissioni; **Pagata** = imponibile meno costi, altre commissioni e commissione Fornitore; **disattivato** = imponibile meno costi e altre commissioni.',
         },
         {
           type: 'warning',
@@ -72,7 +71,7 @@ const guide: HelpGuide = {
             'Premi **Nuova tipologia prodotto**.',
             'Si apre la scheda con le righe chiuse: per ogni riga premi la matita (o il valore), compila e premi **Fatto**; **Ripristina** riporta la riga com\'era. Poi premi **Salva**.',
             'Per modificare non c\'è un modulo a parte: apri la scheda con **Visualizza**, premi la matita sulla riga, cambia il valore e premi **Salva** (si salva solo quella riga); **Annulla** o Esc lasciano la riga com\'era.',
-            'Il **Codice** si inserisce solo alla creazione. **Calcolo commissione Fornitore** e **Verso** sono una riga sola: si aprono, si salvano e si annullano insieme.',
+            'Il **Codice** si inserisce solo alla creazione.',
           ],
         },
       ],

@@ -29,6 +29,7 @@ class CommissionConfigurationsAuthorization extends AbstractResourceAuthorizatio
             new FieldDefinition('product_id', 'select'),
             new FieldDefinition('recipient_id', 'select'),
             new FieldDefinition('commission_type', 'select', mandatory: true),
+            new FieldDefinition('supplier_commission_direction', 'select'),
             new FieldDefinition('value', 'number', mandatory: true),
             new FieldDefinition('priority', 'number', mandatory: true),
             new FieldDefinition('valid_from', 'date', mandatory: true),

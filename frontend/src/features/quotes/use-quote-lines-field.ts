@@ -1,4 +1,4 @@
-import type { SupplierCommissionDirection } from '@/features/product-typologies/types'
+import type { SupplierCommissionDirection } from '@/features/commission-configurations/types'
 import { isPristineLineRow } from '@/features/quotes/quote-line-values'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteProductForSelectItem } from '@/features/quotes/quote-product-select'

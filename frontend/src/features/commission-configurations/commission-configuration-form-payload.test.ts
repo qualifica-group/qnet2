@@ -78,4 +78,28 @@ describe('commission configuration form payload', () => {
       ),
     ).toEqual({ application_scope: 'PRODUCT_CATEGORY', product_category_id: 8, product_id: null, valid_until: null })
   })
+
+  it('sends the direction of a SUPPLIER rule and null for any other role (spec 0306 D-1)', () => {
+    const values = { ...toFormValues(saved), supplier_commission_direction: 'RECEIVED' as const }
+
+    expect(buildCreatePayload({ ...values, recipient_role: 'SUPPLIER' })).toMatchObject({
+      supplier_commission_direction: 'RECEIVED',
+    })
+    expect(buildCreatePayload({ ...values, recipient_role: 'COMMERCIAL' })).toMatchObject({
+      supplier_commission_direction: null,
+    })
+  })
+
+  it('clears the direction when a SUPPLIER rule becomes another role, and sends it when it becomes SUPPLIER', () => {
+    const supplier = toFormValues({ ...saved, recipient_role: 'SUPPLIER', supplier_commission_direction: 'PAID' })
+    expect(buildUpdatePayload({ ...supplier, recipient_role: 'REPORTER' }, supplier)).toEqual({
+      recipient_role: 'REPORTER',
+      supplier_commission_direction: null,
+    })
+
+    const commercial = toFormValues(saved)
+    expect(
+      buildUpdatePayload({ ...commercial, recipient_role: 'SUPPLIER', supplier_commission_direction: 'PAID' }, commercial),
+    ).toEqual({ recipient_role: 'SUPPLIER', supplier_commission_direction: 'PAID' })
+  })
 })

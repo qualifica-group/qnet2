@@ -1,11 +1,10 @@
 import { useFormContext, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { ColorInlineRow, TextInlineRow } from '@/components/record-form/inline-rows'
+import { ColorInlineRow, SwitchInlineRow, TextInlineRow } from '@/components/record-form/inline-rows'
 import { RecordInlineField, type InlineEdit } from '@/components/record-form/record-inline-field'
 import { FormControl } from '@/components/ui/form'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MetaField } from '@/features/authorization/MetaField'
-import { SupplierCommissionFields } from '@/features/product-typologies/supplier-commission-fields'
 import { PROFORMA_KINDS, type ProformaKind } from '@/features/product-typologies/types'
 import type { ProductTypologyFormValues } from '@/features/product-typologies/use-product-typology-form'
 
@@ -40,40 +39,17 @@ export function ProductTypologyIdentityRows({
   )
 }
 
-/**
- * The supplier commission is ONE row: the switch and the direction only make
- * sense together (the direction is mandatory while the switch is on), so they
- * open, save and cancel as a unit.
- */
+/** Whether the Supplier commission is calculated for this typology; the direction lives on the rule (spec 0306 D-2). */
 export function ProductTypologyCommissionRow({ inline, canEdit }: ProductTypologyRowsProps) {
   const { t } = useTranslation()
-  const form = useFormContext<ProductTypologyFormValues>()
-  const directionError = form.formState.errors.supplier_commission_direction?.message
-  const [enabled, direction] = useWatch({
-    control: form.control,
-    name: ['supplier_commission_enabled', 'supplier_commission_direction'],
-  })
 
   return (
-    <RecordInlineField
-      field="supplier_commission_enabled"
+    <SwitchInlineRow<ProductTypologyFormValues>
+      name="supplier_commission_enabled"
       label={t('productTypologies.form.supplierCommissionEnabled')}
       inline={inline}
       canEdit={canEdit}
-      editor={<SupplierCommissionFields form={form} />}
-    >
-      {enabled
-        ? [t('common.yes'), direction ? t(`productTypologies.supplierCommissionDirection.${direction}`) : null]
-            .filter(Boolean)
-            .join(' · ')
-        : t('common.no')}
-      {/* The refused rule sits on the direction, which a closed row does not render: say it here. */}
-      {directionError ? (
-        <p role="alert" className="mt-1 text-xs font-medium text-destructive">
-          {directionError}
-        </p>
-      ) : null}
-    </RecordInlineField>
+    />
   )
 }
 

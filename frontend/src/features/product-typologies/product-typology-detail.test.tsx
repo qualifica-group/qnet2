@@ -43,7 +43,6 @@ function productTypology(
     description: 'Mass unit',
     color: 'blue',
     supplier_commission_enabled: false,
-    supplier_commission_direction: null,
     proforma_kind: null,
     created_at: '2026-01-01T09:00:00Z',
     updated_at: '2026-02-15T14:30:00Z',
@@ -185,81 +184,33 @@ describe('ProductTypologyDetailView — in-place editing', () => {
   })
 })
 
-describe('ProductTypologyDetailView — supplier commission row (spec 0202)', () => {
-  it('shows "No" and no direction when disabled', () => {
+describe('ProductTypologyDetailView — supplier commission row (spec 0306 D-2)', () => {
+  it('shows "No" when disabled', () => {
     render(<ProductTypologyDetailView productTypology={productTypology()} />)
 
     expect(screen.getByText('Supplier commission calculation')).toBeInTheDocument()
     expect(screen.getByText('No')).toBeInTheDocument()
+  })
+
+  it('shows "Yes" with no direction when enabled: the direction lives on the commission rule', () => {
+    render(<ProductTypologyDetailView productTypology={productTypology({ supplier_commission_enabled: true })} />)
+
+    expect(screen.getByText('Yes')).toBeInTheDocument()
     expect(screen.queryByText(/Received|Paid/)).not.toBeInTheDocument()
   })
 
-  it('shows the switch and the direction together in one closed value when enabled', () => {
-    render(
-      <ProductTypologyDetailView
-        productTypology={productTypology({
-          supplier_commission_enabled: true,
-          supplier_commission_direction: 'RECEIVED',
-        })}
-      />,
-    )
-
-    expect(screen.getByText('Yes · Received')).toBeInTheDocument()
-  })
-
-  it('saves the switch and its direction as one row', async () => {
+  it('saves the switch alone, with no direction in the payload', async () => {
     updateProductTypologyMock.mockResolvedValue(productTypology())
     render(<ProductTypologyDetailView productTypology={productTypology()} />)
 
     fireEvent.click(pencilOf('productTypologies.form.supplierCommissionEnabled') as HTMLElement)
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('switch', { name: /Supplier commission calculation/ }))
-    fireEvent.click(await screen.findByRole('combobox', { name: /Direction/ }))
-    fireEvent.click(await screen.findByRole('option', { name: 'Paid' }))
     saveRow()
 
     await waitFor(() =>
-      expect(updateProductTypologyMock).toHaveBeenCalledWith(4, {
-        supplier_commission_enabled: true,
-        supplier_commission_direction: 'PAID',
-      }),
+      expect(updateProductTypologyMock).toHaveBeenCalledWith(4, { supplier_commission_enabled: true }),
     )
-  })
-
-  it('sends a null direction after switching the commission off', async () => {
-    updateProductTypologyMock.mockResolvedValue(productTypology())
-    render(
-      <ProductTypologyDetailView
-        productTypology={productTypology({
-          supplier_commission_enabled: true,
-          supplier_commission_direction: 'PAID',
-        })}
-      />,
-    )
-
-    fireEvent.click(pencilOf('productTypologies.form.supplierCommissionEnabled') as HTMLElement)
-    fireEvent.click(screen.getByRole('switch', { name: /Supplier commission calculation/ }))
-    saveRow()
-
-    await waitFor(() =>
-      expect(updateProductTypologyMock).toHaveBeenCalledWith(4, {
-        supplier_commission_enabled: false,
-        supplier_commission_direction: null,
-      }),
-    )
-  })
-
-  it('does not save an enabled commission without a direction', async () => {
-    render(<ProductTypologyDetailView productTypology={productTypology()} />)
-
-    fireEvent.click(pencilOf('productTypologies.form.supplierCommissionEnabled') as HTMLElement)
-    fireEvent.click(screen.getByRole('switch', { name: /Supplier commission calculation/ }))
-    saveRow()
-
-    expect(
-      await screen.findByText('The direction is required when the Supplier commission is enabled.'),
-    ).toBeInTheDocument()
-    expect(updateProductTypologyMock).not.toHaveBeenCalled()
   })
 })
 

@@ -8,7 +8,7 @@ export function SupplierCommissionDirectionCell({ value }: { value: unknown }) {
   }
   return (
     <div className="flex h-full items-center">
-      <Badge variant="secondary">{t(`productTypologies.supplierCommissionDirection.${value}`)}</Badge>
+      <Badge variant="secondary">{t(`commissionConfigurations.options.supplier_commission_direction.${value}`)}</Badge>
     </div>
   )
 }

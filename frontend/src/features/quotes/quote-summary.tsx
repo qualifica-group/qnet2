@@ -1,11 +1,10 @@
 /* eslint-disable react-refresh/only-export-components -- small formatting/mapping helpers (`formatQuoteAmount`/`totalsFromPersistedSummary`) shared by the row editor and the read-only detail view, colocated with the summary component they feed */
-import { useId, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Control } from 'react-hook-form'
-import { ChevronDown, HandCoins, Shapes, TrendingDown, TrendingUp, Wallet, type LucideIcon } from 'lucide-react'
+import { HandCoins, Shapes, TrendingDown, TrendingUp, Wallet, type LucideIcon } from 'lucide-react'
 import i18n from '@/i18n'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 import { round2, type QuoteAmountAggregate, type QuoteTotalsSummary } from '@/features/quotes/quote-totals'
 import {
   computeProductMargins,
@@ -14,9 +13,11 @@ import {
   type ProductMarginsSummary,
 } from '@/features/quotes/quote-product-margins-calc'
 import { QuoteProductMargins } from '@/features/quotes/quote-product-margins'
+import { QuoteCommissionDetails } from '@/features/quotes/quote-commission-details'
+import { QuoteSummaryDisclosure } from '@/features/quotes/quote-summary-disclosure'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
-import type { QuoteSummary as QuoteSummaryData, QuoteTypologyTotal } from '@/features/quotes/types'
+import type { QuoteLine, QuoteSummary as QuoteSummaryData, QuoteTypologyTotal } from '@/features/quotes/types'
 import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
 import type { ProductTypologyForSelectItem } from '@/features/product-typologies/for-select-api'
 import { useQuoteLiveTotals } from '@/features/quotes/use-quote-live-totals'
@@ -155,6 +156,8 @@ interface QuoteSummaryProps {
   productMargins?: ProductMarginsSummary
   /** The `commissions` field permission: denied, the breakdown and its toggle are hidden (user decision 2026-09-22). */
   showProductMargins?: boolean
+  /** The saved rows behind the "Dettaglio provvigioni" toggle (detail only: the live form has no persisted amounts). */
+  commissionDetails?: { offerLines: QuoteLine[]; costLines: QuoteLine[] }
 }
 
 /**
@@ -163,7 +166,8 @@ interface QuoteSummaryProps {
  * IN THIS ORDER — the margin sits right after the commissions it nets out
  * (D-3), never clamped to zero (AC-043). The "Margine per prodotto" table is
  * advanced data: collapsed under a toggle so the cards stay the headline
- * (user directive 2026-10-07). Pure render — every number is
+ * (user directive 2026-10-07); so is the saved quote's "Dettaglio
+ * provvigioni per prodotto" (2026-10-23). Pure render — every number is
  * precomputed by the caller (`QuoteLiveSummary` for the live form preview,
  * `totalsFromPersistedSummary` for the read-only detail).
  */
@@ -173,12 +177,15 @@ export function QuoteSummary({
   typologyBuckets = EMPTY_TYPOLOGY_BUCKETS,
   productMargins,
   showProductMargins = true,
+  commissionDetails,
 }: QuoteSummaryProps) {
   const { t } = useTranslation()
-  const advancedId = useId()
-  const [advancedOpen, setAdvancedOpen] = useState(false)
   const marginNegative = totals.margin.net < 0
   const hasAdvanced = productMargins !== undefined && showProductMargins && productMargins.rows.length > 0
+  const hasCommissionDetails =
+    commissionDetails !== undefined &&
+    showProductMargins &&
+    commissionDetails.offerLines.some((line) => (line.commissions ?? []).length > 0)
 
   return (
     <div className="rounded-lg border bg-surface p-3">
@@ -230,24 +237,23 @@ export function QuoteSummary({
         </div>
         <QuoteTypologyBlock buckets={typologyBuckets} />
       </div>
-      {hasAdvanced ? (
+      {hasAdvanced || hasCommissionDetails ? (
         <div className="mt-3 flex flex-col gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            aria-expanded={advancedOpen}
-            aria-controls={advancedId}
-            onClick={() => setAdvancedOpen((open) => !open)}
-            className="h-7 self-start bg-card text-xs"
-          >
-            <ChevronDown aria-hidden="true" className={cn('size-3.5 transition-transform', advancedOpen && 'rotate-180')} />
-            {t(advancedOpen ? 'quotes.form.summary.hideAdvanced' : 'quotes.form.summary.showAdvanced')}
-          </Button>
-          {advancedOpen ? (
-            <div id={advancedId}>
+          {hasAdvanced ? (
+            <QuoteSummaryDisclosure
+              showLabel={t('quotes.form.summary.showAdvanced')}
+              hideLabel={t('quotes.form.summary.hideAdvanced')}
+            >
               <QuoteProductMargins rows={productMargins.rows} genericCostNet={productMargins.genericCostNet} />
-            </div>
+            </QuoteSummaryDisclosure>
+          ) : null}
+          {hasCommissionDetails ? (
+            <QuoteSummaryDisclosure
+              showLabel={t('quotes.form.summary.showCommissionDetails')}
+              hideLabel={t('quotes.form.summary.hideCommissionDetails')}
+            >
+              <QuoteCommissionDetails lines={commissionDetails.offerLines} costLines={commissionDetails.costLines} />
+            </QuoteSummaryDisclosure>
           ) : null}
         </div>
       ) : null}

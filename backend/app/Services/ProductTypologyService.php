@@ -31,12 +31,6 @@ class ProductTypologyService
         // persists a custom-fields-only edit. A clean save runs no UPDATE query.
         $productTypology->fill($attributes);
 
-        // Spec 0202 D-7: a disabled switch (submitted now or already stored)
-        // never keeps a direction.
-        if (! $productTypology->supplier_commission_enabled) {
-            $productTypology->supplier_commission_direction = null;
-        }
-
         $productTypology->save();
 
         return $productTypology->fresh();

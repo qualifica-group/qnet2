@@ -9,7 +9,6 @@ use App\DataObjects\Commissions\CommissionCalculationInput;
 use App\DataObjects\Commissions\CommissionResolutionContext;
 use App\DataObjects\Commissions\QuoteCommissionDefaultsData;
 use App\Enums\CommissionRecipientRole;
-use App\Enums\SupplierCommissionDirection;
 use App\Models\Product;
 use App\Models\Quote;
 
@@ -22,13 +21,13 @@ final class QuoteCommissionInitializer
     ) {}
 
     /**
-     * $supplierDirection (spec 0202, D-6/D-12): the line's frozen direction for
-     * a persisted row, the product typology's current one for a preview. Null
-     * = the Supplier commission is not calculated, even with an active rule.
+     * $supplierEnabled (spec 0202, D-6; spec 0306, D-7): whether the product
+     * typology calculates the Supplier commission. False = it is not created,
+     * even with an active rule.
      *
      * @return array<int, AppliedCommissionDraft>
      */
-    public function initialize(QuoteCommissionDefaultsData $data, ?SupplierCommissionDirection $supplierDirection): array
+    public function initialize(QuoteCommissionDefaultsData $data, bool $supplierEnabled): array
     {
         $quote = $data->quoteId === null ? null : Quote::findOrFail($data->quoteId);
         $product = Product::query()->with('category')->findOrFail($data->productId);
@@ -53,7 +52,7 @@ final class QuoteCommissionInitializer
         $drafts = [];
 
         foreach ($rules as $rule) {
-            if ($rule->role === CommissionRecipientRole::Supplier && $supplierDirection === null) {
+            if ($rule->role === CommissionRecipientRole::Supplier && ! $supplierEnabled) {
                 continue;
             }
 
@@ -81,6 +80,7 @@ final class QuoteCommissionInitializer
                 internalNote: $rule->internalNote,
                 origin: $rule->origin,
                 configurationId: $rule->configurationId,
+                supplierDirection: $rule->supplierDirection,
             );
         }
 

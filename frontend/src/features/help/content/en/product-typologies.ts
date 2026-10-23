@@ -27,8 +27,7 @@ const guide: HelpGuide = {
             ['Code', 'A unique code.'],
             ['Color', 'Required (starts as **gray**). It is the badge color the typology shows everywhere: products table, product record, offer lines and per-typology summary, work order Contract data.'],
             ['Description', 'Optional free text.'],
-            ['Supplier commission calculation', 'Switch: when on, the Supplier commission is calculated on the new offer lines of this typology.'],
-            ['Direction', 'Shown and required only while the switch is on. **Received**: the commission is the line revenue and the taxable amount goes to the supplier. **Paid**: it is a cost towards the supplier.'],
+            ['Supplier commission calculation', 'Switch: when on, the Supplier commission is calculated on the new offer lines of this typology. The direction (Received or Paid) is chosen on the Supplier rule of the **Commission Configurator**.'],
             ['Proforma request type', 'In the **Billing** section. Decides which proforma request the product lines of this typology go into: **Consultancy**, **Institution** or **None**.'],
           ],
         },
@@ -40,7 +39,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'With the switch off the Supplier commission is not created on the lines of this typology, even if a rule exists. The line margin depends on the direction: **Received** = Supplier commission minus costs and other commissions; **Paid** = net amount minus costs, other commissions and the Supplier commission; **disabled** = net amount minus costs and other commissions.',
+          text: 'With the switch off the Supplier commission is not created on the lines of this typology, even if a rule exists. With the switch on, the direction comes from the applied Supplier rule (or from the one chosen by hand in the offer Commissions popup) and the line margin depends on it: **Received** = Supplier commission minus costs and other commissions; **Paid** = net amount minus costs, other commissions and the Supplier commission; **disabled** = net amount minus costs and other commissions.',
         },
         {
           type: 'warning',
@@ -72,7 +71,7 @@ const guide: HelpGuide = {
             'Press **New product typology**.',
             'The record opens with its rows closed: on each row press the pencil (or the value), fill it in and press **Done**; **Revert** puts the row back as it was. Then press **Save**.',
             'There is no separate edit form: open the record with **View**, press the pencil on the row, change the value and press **Save** (only that row is saved); **Cancel** or Esc leave the row as it was.',
-            'The **Code** is entered only at creation. **Supplier commission calculation** and **Direction** are a single row: they open, save and cancel together.',
+            'The **Code** is entered only at creation.',
           ],
         },
       ],

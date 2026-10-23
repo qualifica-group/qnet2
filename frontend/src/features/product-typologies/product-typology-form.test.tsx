@@ -47,7 +47,6 @@ function productTypology(): ProductTypologyDetailWithPermissions {
     description: null,
     color: 'gray',
     supplier_commission_enabled: false,
-    supplier_commission_direction: null,
     proforma_kind: null,
     created_at: null as unknown as string,
     updated_at: null as unknown as string,
@@ -135,30 +134,18 @@ describe('ProductTypologyForm — create (spec 0099)', () => {
       description: null,
       color: 'gray',
       supplier_commission_enabled: false,
-      supplier_commission_direction: null,
-      proforma_kind: null,
+        proforma_kind: null,
     })
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(productTypology()))
   })
 })
 
-describe('ProductTypologyForm — supplier commission (spec 0202)', () => {
-  it('hides the direction until the switch is on and requires it then', async () => {
+describe('ProductTypologyForm — supplier commission (spec 0306 D-2)', () => {
+  it('has only the switch: no direction picker, the direction lives on the commission rule', async () => {
     render(<ProductTypologyForm onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper: wrapper() })
 
     openRow('productTypologies.form.supplierCommissionEnabled')
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('switch', { name: /Supplier commission calculation/ }))
-    expect(await screen.findByRole('combobox', { name: /Direction/ })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.apply') }))
-
-    fillNameAndCode('Ente', 'ente')
-    save()
-
-    // The closed row carries the direction's message: the editor is gone.
-    expect(
-      await screen.findByText('The direction is required when the Supplier commission is enabled.'),
-    ).toBeInTheDocument()
-    expect(createProductTypologyMock).not.toHaveBeenCalled()
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   })
 })

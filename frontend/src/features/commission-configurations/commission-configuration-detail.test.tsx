@@ -72,7 +72,7 @@ describe('CommissionConfigurationDetailView read-only content', () => {
   it('does not expose hidden fields or render their empty sections', () => {
     const hidden = Object.fromEntries(
       [
-        'name', 'recipient_role', 'application_scope', 'product_id', 'product_category_id', 'recipient_id', 'commission_type',
+        'name', 'recipient_role', 'application_scope', 'product_id', 'product_category_id', 'recipient_id', 'commission_type', 'supplier_commission_direction',
         'value', 'priority', 'status', 'valid_from', 'valid_until', 'internal_note', 'updated_at',
       ].map((field) => [field, HIDDEN]),
     )

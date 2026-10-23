@@ -14,6 +14,7 @@ import { CommissionConfigurationValidityRow } from './commission-configuration-v
 import {
   COMMISSION_STATUSES,
   COMMISSION_TYPES,
+  SUPPLIER_COMMISSION_DIRECTIONS,
   type CommissionConfigurationRefs,
 } from './types'
 
@@ -31,8 +32,25 @@ const SCOPE_SECTION_FIELDS = [
   'product_category_id',
   'product_id',
 ] as const
-const CALCULATION_SECTION_FIELDS = ['commission_type', 'value', 'priority', 'status'] as const
+const CALCULATION_SECTION_FIELDS = ['commission_type', 'supplier_commission_direction', 'value', 'priority', 'status'] as const
 const VALIDITY_SECTION_FIELDS = ['valid_from', 'valid_until', 'internal_note'] as const
+
+/** The Supplier commission's direction (spec 0306): a SUPPLIER rule only, so the row exists only for that role. */
+function SupplierDirectionRow({ inline, canEdit }: Pick<CommissionConfigurationSectionsProps, 'inline' | 'canEdit'>) {
+  const { t } = useTranslation()
+  const { control } = useFormContext<CommissionConfigurationFormValues>()
+  const role = useWatch({ control, name: 'recipient_role' })
+
+  return role === 'SUPPLIER' ? (
+    <OptionInlineRow
+      name="supplier_commission_direction"
+      options={SUPPLIER_COMMISSION_DIRECTIONS}
+      inline={inline}
+      canEdit={canEdit}
+      hint={t('commissionConfigurations.form.hints.supplierCommissionDirection')}
+    />
+  ) : null
+}
 
 /** `value` carries the unit of the commission type: a percentage or a fixed amount in euro. */
 function CommissionValueRow({ inline, canEdit }: Pick<CommissionConfigurationSectionsProps, 'inline' | 'canEdit'>) {
@@ -84,6 +102,7 @@ export function CommissionConfigurationSections({ inline, canEdit, refs }: Commi
         <RecordSection title={t('commissionConfigurations.detail.calculation')} icon={<CircleDollarSign />}>
           <RecordFieldList>
             <OptionInlineRow name="commission_type" options={COMMISSION_TYPES} inline={inline} canEdit={canEdit} />
+            <SupplierDirectionRow inline={inline} canEdit={canEdit} />
             <CommissionValueRow inline={inline} canEdit={canEdit} />
             <NumberInlineRow<CommissionConfigurationFormValues>
               name="priority"

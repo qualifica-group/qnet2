@@ -20,7 +20,6 @@ export const productTypologies = {
     color: 'Color',
     description: 'Description',
     supplier_commission_enabled: 'Supplier commission',
-    supplier_commission_direction: 'Commission direction',
     created_at: 'Created at',
     updated_at: 'Updated at',
   },
@@ -57,9 +56,6 @@ export const productTypologies = {
     colorMax: 'The color can be at most 32 characters.',
     descriptionMax: 'Description may contain at most 500 characters.',
     supplierCommissionEnabled: "Supplier commission calculation",
-    supplierCommissionDirection: "Direction",
-    supplierCommissionDirectionPlaceholder: "Select the direction",
-    supplierCommissionDirectionRequired: "The direction is required when the Supplier commission is enabled.",
     proformaKind: 'Proforma request type',
     genericError: 'Something went wrong. Please retry.',
     deleteError: 'Unable to delete the product typology. Please retry.',
@@ -87,15 +83,9 @@ export const productTypologies = {
       },
     },
     hints: {
-      supplierCommissionDirection:
-        "Received: the commission is the line revenue, the taxable amount goes to the supplier. Paid: it is a cost towards the supplier.",
       proformaKind:
         'Decides which proforma request the product lines of this typology go into. None: the lines are not billed through a proforma request.',
     },
-  },
-  supplierCommissionDirection: {
-    RECEIVED: "Received",
-    PAID: "Paid",
   },
   proformaKind: {
     none: 'None',

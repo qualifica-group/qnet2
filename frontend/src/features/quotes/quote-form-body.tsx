@@ -5,7 +5,7 @@ import { RecordCanvas, RecordCard } from '@/components/detail/record-panel'
 import { RecordFormActions } from '@/components/record-form/record-form-actions'
 import { useDraftInlineEdit } from '@/components/record-form/use-draft-inline-edit'
 import { QuoteCreateLines } from '@/features/quotes/quote-create-lines'
-import { QuoteCreateSections } from '@/features/quotes/quote-create-sections'
+import { QuoteCreateAttributes, QuoteCreateSections } from '@/features/quotes/quote-create-sections'
 import { QuoteFormHeader } from '@/features/quotes/quote-form-header'
 import { useQuoteCreateDefaults } from '@/features/quotes/use-quote-create-defaults'
 import { useQuoteForm } from '@/features/quotes/use-quote-form'
@@ -53,6 +53,7 @@ export function QuoteFormBody({ mode, onSuccess, onCancel, initialCode }: QuoteF
               <QuoteFormHeader quoteForm={quoteForm} formId={QUOTE_FORM_ID} onCancel={onCancel} />
               <QuoteCreateSections quoteForm={quoteForm} draft={draft} defaults={defaults} />
               <QuoteCreateLines quoteForm={quoteForm} />
+              <QuoteCreateAttributes quoteForm={quoteForm} draft={draft} />
             </RecordCard>
 
             {/* The same actions the identity band carries, repeated where the

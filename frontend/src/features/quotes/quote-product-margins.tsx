@@ -2,6 +2,9 @@ import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Calculator } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { CalculationHint } from '@/components/calculation-hint'
+import { costHint, commissionsHint, marginHint, revenueHint } from '@/features/quotes/quote-calculation-hints'
+import { TruncatedLabel } from '@/features/quotes/quote-truncated-label'
 import { formatQuoteAmount } from '@/features/quotes/quote-summary'
 import type { ProductMarginRow } from '@/features/quotes/quote-product-margins-calc'
 
@@ -20,6 +23,8 @@ interface QuoteProductMarginsProps {
 /**
  * "Margine per prodotto" block (spec 0144 D-6/AC-015, spec 0145 D-9): compact
  * table, one row per OFFER product plus a closing "Costi generici" row.
+ * A row with a received Supplier commission shows that commission as its
+ * revenue and only the paid commissions as commissions (spec 0202 D-8).
  * Hidden entirely when the offer has no product row yet — a quote with only
  * costs has nothing to attribute them to — or when the viewer may not see
  * commissions.
@@ -63,35 +68,48 @@ export function QuoteProductMargins({ rows, genericCostNet, showCommissions = tr
             {rows.map((row) => (
               <tr key={row.key} className="border-b last:border-b-0">
                 <td className="max-w-0 py-1">
-                  <div className="truncate">
-                    {t('quotes.form.costsTab.associatedProductOption', {
+                  <TruncatedLabel
+                    label={t('quotes.form.costsTab.associatedProductOption', {
                       product: row.productName ?? t('quotes.form.commissions.productFallback'),
                       n: row.rowNumber,
                     })}
-                  </div>
+                  />
                   {row.supplierCommissionDirection === 'RECEIVED' ? (
                     <div className="truncate text-[11px] text-muted-foreground">
                       {t('quotes.form.summary.productMargins.receivedRevenueNote')}
                     </div>
                   ) : null}
                 </td>
-                <td className="py-1 text-right tabular-nums">{formatQuoteAmount(row.revenueNet)}</td>
-                <td className="py-1 text-right tabular-nums">{formatQuoteAmount(row.costNet)}</td>
-                <td className="py-1 text-right tabular-nums">{formatQuoteAmount(row.commissionsNet)}</td>
+                <td className="py-1 text-right tabular-nums">
+                  <CalculationHint {...revenueHint(row, t)}>{formatQuoteAmount(row.revenueNet)}</CalculationHint>
+                </td>
+                <td className="py-1 text-right tabular-nums">
+                  <CalculationHint {...costHint(row, t)}>{formatQuoteAmount(row.costNet)}</CalculationHint>
+                </td>
+                <td className="py-1 text-right tabular-nums">
+                  <CalculationHint {...commissionsHint(row, t)}>{formatQuoteAmount(row.commissionsNet)}</CalculationHint>
+                </td>
                 <td
                   className={cn(
                     'py-1 text-right font-medium tabular-nums',
                     row.margin < 0 ? 'text-destructive' : undefined,
                   )}
                 >
-                  {formatQuoteAmount(row.margin)}
+                  <CalculationHint {...marginHint(row, t)}>{formatQuoteAmount(row.margin)}</CalculationHint>
                 </td>
               </tr>
             ))}
             <tr>
               <td className="py-1 font-medium">{t('quotes.form.summary.productMargins.genericCosts')}</td>
               <td className="py-1 text-right text-muted-foreground">—</td>
-              <td className="py-1 text-right tabular-nums">{formatQuoteAmount(genericCostNet)}</td>
+              <td className="py-1 text-right tabular-nums">
+                <CalculationHint
+                  title={t('quotes.form.summary.productMargins.genericCosts')}
+                  lines={[t('quotes.calculationHints.genericCosts', { amount: formatQuoteAmount(genericCostNet) })]}
+                >
+                  {formatQuoteAmount(genericCostNet)}
+                </CalculationHint>
+              </td>
               <td className="py-1 text-right text-muted-foreground">—</td>
               <td className="py-1 text-right text-muted-foreground">—</td>
             </tr>

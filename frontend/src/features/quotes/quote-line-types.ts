@@ -15,7 +15,7 @@
 
 import type { FieldError } from 'react-hook-form'
 import type { CommissionRole, CommissionType } from '@/features/commission-configurations/types'
-import type { SupplierCommissionDirection } from '@/features/product-typologies/types'
+import type { SupplierCommissionDirection } from '@/features/commission-configurations/types'
 
 export type QuoteCommissionOrigin =
   | 'PRODUCT'
@@ -78,6 +78,13 @@ export type QuoteLineCommissionInput = Omit<
   'calculated_amount' | 'recipient' | 'value'
 > & { value: number }
   & { recipient?: QuoteRelationRef | null }
+  & {
+    /**
+     * Spec 0306 D-3: direction of a MANUAL Supplier commission, chosen in the
+     * dialog (an automatic one follows its rule, the line's snapshot).
+     */
+    supplier_commission_direction?: SupplierCommissionDirection | null
+  }
 
 /** Minimal category/business-function projection hydrating a quote line's product (spec 0065 D-7). */
 export interface QuoteLineCategoryRef {

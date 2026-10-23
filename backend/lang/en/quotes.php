@@ -15,4 +15,8 @@ return [
     // Spec 0144, D-4/D-5: a cost line's product-line allocation.
     'cost_line_offer_line_id_invalid' => 'The selected product line does not belong to this offer.',
     'cost_line_offer_line_index_invalid' => 'The selected product line was not found among the submitted rows.',
+    // Spec 0308, D-3.
+    'commission_recalculation' => [
+        'closed' => 'The commissions of a closed quote cannot be recalculated.',
+    ],
 ];

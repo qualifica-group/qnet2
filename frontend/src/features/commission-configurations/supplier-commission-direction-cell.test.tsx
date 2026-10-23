@@ -1,13 +1,13 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import i18n from '@/i18n'
-import { SupplierCommissionDirectionCell } from '@/features/product-typologies/supplier-commission-direction-cell'
+import { SupplierCommissionDirectionCell } from './supplier-commission-direction-cell'
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
-describe('SupplierCommissionDirectionCell (spec 0202)', () => {
+describe('SupplierCommissionDirectionCell (spec 0306)', () => {
   it.each([
     ['RECEIVED', 'Received'],
     ['PAID', 'Paid'],

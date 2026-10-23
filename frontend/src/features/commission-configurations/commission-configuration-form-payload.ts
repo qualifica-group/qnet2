@@ -20,6 +20,7 @@ export function createDefaults(supplierRegistryId: number | null | undefined): C
     recipient_type: COMMISSION_ROLE_ALLOWED_RECIPIENT_TYPES[role][0],
     recipient_id: supplierRegistryId ?? null,
     commission_type: 'PERCENTAGE',
+    supplier_commission_direction: null,
     value: 0,
     priority: 0,
     valid_from: new Date().toISOString().slice(0, 10),
@@ -43,6 +44,7 @@ export function toFormValues(configuration: CommissionConfigurationDetail): Comm
       configuration.recipient_type ?? COMMISSION_ROLE_ALLOWED_RECIPIENT_TYPES[configuration.recipient_role][0],
     recipient_id: configuration.recipient_id ?? null,
     commission_type: configuration.commission_type,
+    supplier_commission_direction: configuration.supplier_commission_direction ?? null,
     value: Number(configuration.value),
     priority: configuration.priority,
     valid_from: configuration.valid_from,
@@ -62,6 +64,9 @@ export function buildCreatePayload(values: CommissionConfigurationFormValues): C
     // sent as-is, whichever scope is active.
     recipient_type: values.recipient_type,
     recipient_id: values.recipient_id,
+    // The direction exists only on a SUPPLIER rule (spec 0306 D-1): any other role sends null.
+    supplier_commission_direction:
+      values.recipient_role === 'SUPPLIER' ? values.supplier_commission_direction : null,
     valid_until: values.valid_until || null,
     internal_note: values.internal_note || null,
   }

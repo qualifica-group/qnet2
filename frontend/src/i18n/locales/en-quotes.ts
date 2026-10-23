@@ -41,8 +41,40 @@ export const quotes = {
     supervisor: 'Supervisor',
     createdRange: 'Created at',
   },
+  calculationHints: {
+    baseRule: 'Calculation base = row net amount − costs imputed to the row (never below zero).',
+    baseFormula: '{{net}} − {{costs}} = {{base}}',
+    percentageFormula: '{{rate}}% × {{base}} = {{amount}}',
+    savedAmount: 'Saved amount: {{amount}} (calculated when the row was saved; the imputed costs changed afterwards).',
+    fixedAmount: 'Fixed amount: {{amount}}. It does not depend on the net amount or the costs.',
+    rowTotalTitle: 'Commission total of row {{n}}',
+    rowTotalRule: "Sum of the row's commissions, all roles.",
+    roleTotalTitle: '{{role}} total',
+    roleTotalRule: "Sum of this role's commissions over all rows.",
+    grandTotalTitle: 'Commission total',
+    grandTotalRule: 'Sum of the Commercial, Reporter, Supervisor and Supplier totals.',
+    lineNetRevenue: 'Row net amount (quantity × unit price): {{amount}}.',
+    receivedRevenue: 'Received Supplier commission: {{amount}}. It is our revenue on this row.',
+    receivedRevenueNet: 'The row net amount ({{net}}) is not our revenue: the commission is calculated on it.',
+    imputedCosts: 'Sum of the Costs tab rows associated with this row: {{amount}}.',
+    genericCosts: 'Sum of the Costs tab rows not associated with any product row: {{amount}}. They come off the Expected margin, not off a row.',
+    rowCommissions: "Sum of the row's commissions: {{amount}}.",
+    paidSupplierIncluded: 'It includes the paid Supplier commission: {{amount}}.',
+    paidCommissionsOnly: 'Only the commissions we pay: {{amount}}. The received Supplier commission is in the revenue, not here.',
+    marginRule: 'Margin = revenue − costs − commissions.',
+    marginFormula: '{{revenue}} − {{costs}} − {{commissions}} = {{margin}}',
+  },
   detail: {
     additionalInformation: 'Additional information',
+    commissionDetails: {
+      title: 'Commission details per product',
+      total: 'Total',
+      directionHintLabel: 'What {{direction}} means',
+      directionHints: {
+        RECEIVED: 'Received: we collect the commission from the supplier (for example the institution). It is the row revenue: the margin is this commission minus costs and other commissions.',
+        PAID: 'Paid: we pay the commission to the supplier. It is a row cost: the margin is the net amount minus costs, other commissions and this commission.',
+      },
+    },
     loadError: 'Unable to load the quote. Please try again.',
     opportunity: 'Opportunity',
     workflowStatus: 'Status',
@@ -87,6 +119,21 @@ export const quotes = {
    * The "catalogue + rows" editor shared by Quotes (Products and Costs tabs)
    * and Request/Enrollee Management (spec 0268, 0269).
    */
+  recalculateCommissions: {
+    button: 'Recalculate commissions',
+    title: 'Recalculate commissions',
+    description: "Realigns the quote's commissions to the current Commission Configurator rules.",
+    summary: "{{lines}} lines, {{commissions}} commissions, {{manual}} of them edited by hand. The quote's margin will be recalculated.",
+    choiceLabel: 'How to treat the commissions edited by hand',
+    keepManual_one: 'Update only the rule-based commissions, keep the {{count}} manual one',
+    keepManual_other: 'Update only the rule-based commissions, keep the {{count}} manual ones',
+    regenerateAll_one: 'Regenerate all from the rules, including the {{count}} manual one',
+    regenerateAll_other: 'Regenerate all from the rules, including the {{count}} manual ones',
+    confirm: 'Recalculate',
+    done: 'Commissions recalculated.',
+    error: 'Unable to recalculate the commissions.',
+    impactError: 'Unable to read the impact of the recalculation.',
+  },
   lineEditor: {
     catalog: {
       title: 'Product catalogue',
@@ -261,6 +308,8 @@ export const quotes = {
       roles: { commercial: 'Commercial', reporter: 'Reporter', supervisor: 'Supervisor', supplier: 'Supplier' },
       showAdvanced: 'Show advanced data',
       hideAdvanced: 'Hide advanced data',
+      showCommissionDetails: 'Show commission details',
+      hideCommissionDetails: 'Hide commission details',
       productMargins: {
         title: 'Margin per product',
         genericCosts: 'Generic costs',
@@ -329,6 +378,12 @@ export const quotes = {
       regenerateTitle: 'Replace line commissions?',
       regenerateDescription: 'Changing the product replaces both automatic commissions and manual overrides on this line.',
       regenerateConfirm: 'Replace commissions',
+      direction: {
+        label: 'Direction',
+        required: 'Choose the Supplier commission direction: Received or Paid.',
+        ruleHint: 'Set by the Commission Configurator rule (Received: collected by us, it is the line revenue; Paid: a cost towards the supplier).',
+        manualHint: 'Received: collected by us, it is the line revenue. Paid: a cost towards the supplier.',
+      },
       roles: { COMMERCIAL: 'Commercial', REPORTER: 'Reporter', SUPERVISOR: 'Supervisor', SUPPLIER: 'Supplier' },
       originRule: 'Rule:',
       originHints: {

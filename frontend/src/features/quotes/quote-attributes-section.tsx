@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ClipboardList } from 'lucide-react'
 import type { Control } from 'react-hook-form'
@@ -30,7 +30,6 @@ interface QuoteAttributesSectionProps {
   values: Record<string, unknown>
   inline: InlineEdit
   control: Control<QuoteFormValues>
-  className?: string
 }
 
 /**
@@ -51,7 +50,6 @@ export function QuoteAttributesSection({
   values,
   inline,
   control,
-  className,
 }: QuoteAttributesSectionProps) {
   const { t } = useTranslation()
   const effectiveAttributes = useEffectiveAttributes(attributes)
@@ -83,10 +81,20 @@ export function QuoteAttributesSection({
   }
 
   return (
-    <RecordSection title={t('quotes.detail.additionalInformation')} icon={<ClipboardList />} className={className}>
+    <RecordSection title={t('quotes.detail.additionalInformation')} icon={<ClipboardList />}>
       <AttributeLayoutView layout={layout} attributes={attributes} values={values} renderField={renderField} />
     </RecordSection>
   )
+}
+
+/**
+ * The record card's band right after the offer and cost rows (user directive
+ * 2026-10-23: the offer rows come before the flexible fields), on both the
+ * detail and the create form. The caller renders it only when there is
+ * something to show, so an empty band never leaves a bare rule.
+ */
+export function QuoteAttributesBand({ children }: { children: ReactNode }) {
+  return <div className="flex min-w-0 flex-col gap-3 border-t p-4">{children}</div>
 }
 
 interface QuoteNewAttributesFieldsProps {

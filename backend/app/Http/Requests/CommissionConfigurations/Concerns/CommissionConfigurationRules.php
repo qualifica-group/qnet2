@@ -9,6 +9,7 @@ use App\Enums\CommissionApplicationScope;
 use App\Enums\CommissionConfigurationStatus;
 use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
+use App\Enums\SupplierCommissionDirection;
 use App\Models\CommissionConfiguration;
 use App\Models\User;
 use App\Rules\ActiveCategoryProduct;
@@ -62,6 +63,7 @@ trait CommissionConfigurationRules
                 Rule::requiredIf(fn () => $this->exists('recipient_type') && $this->input('recipient_type') !== null),
             ],
             'commission_type' => [...$required, Rule::enum(CommissionType::class)],
+            'supplier_commission_direction' => ['nullable', Rule::enum(SupplierCommissionDirection::class)],
             'value' => [...$required, 'numeric', 'min:0', 'decimal:0,4', 'max:99999999999.9999'],
             'priority' => [...$required, 'integer', 'min:0'],
             'valid_from' => [...$required, 'date_format:Y-m-d'],
@@ -69,6 +71,27 @@ trait CommissionConfigurationRules
             'status' => [...$required, Rule::enum(CommissionConfigurationStatus::class)],
             'internal_note' => ['nullable', 'string', 'max:5000'],
         ];
+    }
+
+    /**
+     * Spec 0306 D-1: a SUPPLIER rule (submitted or persisted role) needs a
+     * direction (submitted or persisted); any other role ignores it.
+     */
+    protected function validateSupplierDirection(Validator $validator, ?CommissionConfiguration $model): void
+    {
+        $role = $this->input('recipient_role', $model?->recipient_role->value);
+
+        if ($role !== CommissionRecipientRole::Supplier->value) {
+            return;
+        }
+
+        $direction = $this->exists('supplier_commission_direction')
+            ? $this->input('supplier_commission_direction')
+            : $model?->supplier_commission_direction?->value;
+
+        if ($direction === null) {
+            $validator->errors()->add('supplier_commission_direction', __('commission_configurations.direction_required'));
+        }
     }
 
     /**

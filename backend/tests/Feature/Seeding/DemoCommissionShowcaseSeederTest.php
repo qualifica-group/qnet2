@@ -79,11 +79,13 @@ it('creates one commessa per case, with the commission figures computed by the r
         ->and($fixed['supplier_commission']['amount'])->toBe('300.00')
         ->and($fixed['effective_revenue'])->toBe('300.00');
 
-    // 4. RECEIVED without supplier: no Supplier commission, warning.
+    // 4. RECEIVED rule but no supplier on the product (REQUIREMENT CHANGED, spec 0306 D-6): no Supplier
+    // commission is created, so the line keeps the neutral PAID snapshot instead of a RECEIVED one without commission.
     $missing = showcaseContractData('Ente - fornitore mancante')['lines'][0];
     expect($missing['supplier_commission'])->toBeNull()
-        ->and($missing['effective_revenue'])->toBe('0.00')
-        ->and($missing['warnings'])->toContain('missing_supplier_commission');
+        ->and($missing['supplier_commission_direction'])->toBe('PAID')
+        ->and($missing['effective_revenue'])->toBe('2000.00')
+        ->and($missing['warnings'])->not->toContain('missing_supplier_commission');
 
     // 5. Typology without Supplier calculation: the rule exists but nothing is created.
     $noCalc = showcaseContractData('Tipologia senza calcolo Fornitore')['lines'][0];

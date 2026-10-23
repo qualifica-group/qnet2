@@ -25,12 +25,17 @@ final readonly class UpdateCommissionConfigurationData
      */
     public static function fromValidated(array $data, CommissionConfiguration $configuration): self
     {
+        // Spec 0306 D-1: a rule that is (or becomes) non-SUPPLIER keeps no direction.
+        $role = isset($data['recipient_role'])
+            ? CommissionRecipientRole::from($data['recipient_role'])
+            : $configuration->recipient_role;
+
+        if ($role !== CommissionRecipientRole::Supplier && (isset($data['recipient_role']) || array_key_exists('supplier_commission_direction', $data))) {
+            $data['supplier_commission_direction'] = null;
+        }
+
         if (array_key_exists('recipient_id', $data)) {
             $recipientId = $data['recipient_id'] === null ? null : (int) $data['recipient_id'];
-            $role = isset($data['recipient_role'])
-                ? CommissionRecipientRole::from($data['recipient_role'])
-                : $configuration->recipient_role;
-
             $data['recipient_id'] = $recipientId;
             $data['recipient_type'] = $recipientId === null ? null : ($data['recipient_type'] ?? $role->recipientType());
         }

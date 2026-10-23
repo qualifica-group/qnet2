@@ -7,6 +7,7 @@ namespace App\Services\Quotes;
 use App\DataObjects\Quotes\QuoteLineData;
 use App\Enums\ProductUsage;
 use App\Enums\QuoteLineType;
+use App\Enums\SupplierCommissionDirection;
 use App\Models\Product;
 use App\Models\Quote;
 use App\Models\QuoteLine;
@@ -21,7 +22,7 @@ final class QuoteLineWriter
         private readonly QuoteTotalsCalculator $calculator,
         private readonly QuoteLineCommissionWriter $commissionWriter,
         private readonly CostLineAllocationResolver $allocationResolver,
-        private readonly SupplierCommissionDirectionResolver $directionResolver,
+        private readonly SupplierCommissionEnablement $enablement,
     ) {}
 
     /**
@@ -54,8 +55,8 @@ final class QuoteLineWriter
 
         $rates = $this->resolveVatRates($lines);
         $units = $this->resolveProductUnits($lines);
-        $directions = $type === QuoteLineType::Revenue
-            ? $this->directionResolver->forProducts(array_map(static fn (QuoteLineData $line): int => $line->productId, $lines))
+        $supplierEnabled = $type === QuoteLineType::Revenue
+            ? $this->enablement->enabledForProducts(array_map(static fn (QuoteLineData $line): int => $line->productId, $lines))
             : [];
         // Spec 0144, D-2/D-4: only a COST row ever carries an allocation — a
         // REVENUE row's own `offer_line_id` is always NULL, so resolving it
@@ -89,12 +90,14 @@ final class QuoteLineWriter
                 // unit on the very next unrelated edit, erasing the freeze
                 // (bug found by the verifier, fixed 2026-09-01).
                 'unit_of_measure_id' => $isNew || $productChanged ? ($units[$data->productId] ?? null) : $line->unit_of_measure_id,
-                // Spec 0202, D-3/D-7: same freeze rule as the unit above — the
-                // Supplier commission direction is written ONLY when the REVENUE
-                // row is created or its product changes. A COST row never has one.
+                // Spec 0202, D-3 + spec 0306, D-6a: same freeze rule as the unit
+                // above — written ONLY when the REVENUE row is created or its
+                // product changes (null = typology switched off). The real
+                // direction then comes from the commission writer. A COST row
+                // never has one.
                 'supplier_commission_direction' => $type === QuoteLineType::Cost
                     ? null
-                    : ($isNew || $productChanged ? ($directions[$data->productId] ?? null) : $line->supplier_commission_direction),
+                    : ($isNew || $productChanged ? $this->initialDirection($supplierEnabled[$data->productId] ?? false, $line->supplier_commission_direction) : $line->supplier_commission_direction),
                 'additional_description' => $data->hasAdditionalDescription ? $data->additionalDescription : $line->additional_description,
                 'net_amount' => $amounts['net'],
                 'vat_amount' => $amounts['vat'],
@@ -120,6 +123,12 @@ final class QuoteLineWriter
         $quote->unsetRelations();
 
         return $saved;
+    }
+
+    /** Neutral PAID (revenue = taxable amount) until a Supplier commission sets the real direction. */
+    private function initialDirection(bool $supplierEnabled, ?SupplierCommissionDirection $current): ?SupplierCommissionDirection
+    {
+        return $supplierEnabled ? ($current ?? SupplierCommissionDirection::Paid) : null;
     }
 
     /**

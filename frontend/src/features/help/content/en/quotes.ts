@@ -41,7 +41,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'The **Additional information** appears as soon as an offer row has a product that requires it. Some sections appear only when a yes/no field is on: with the field off the section disappears, its required fields are not needed and its values are cleared on save. Leaving without saving (Cancel, closing the panel, a link) asks for confirmation.',
+          text: 'The **Additional information** appears, below the **Offer** and **Costs** rows, as soon as an offer row has a product that requires it. Some sections appear only when a yes/no field is on: with the field off the section disappears, its required fields are not needed and its values are cleared on save. Leaving without saving (Cancel, closing the panel, a link) asks for confirmation.',
         },
         {
           type: 'note',
@@ -90,6 +90,10 @@ const guide: HelpGuide = {
             'Changing the **Company** clears the **Company site** in the same save.',
           ],
         },
+        {
+          type: 'paragraph',
+          text: "The **Recalculate commissions** button, top right next to the PDF, realigns the quote's commissions to the current rules of the Commission Configurator (for example after changing the direction of a Supplier rule). The summary shows how many rows, commissions and commissions changed by hand are involved; you must pick an answer, none is preselected: **Update only the rule-based commissions** (those changed by hand are kept, with their amount recalculated) or **Regenerate all from the rules** (those changed by hand are replaced too). The **Supplier commission calculation** switch of the product typology is read again too; margin and summary update at once. The button appears only if you may edit commissions and the quote is not closed.",
+        },
       ],
     },
     {
@@ -135,7 +139,8 @@ const guide: HelpGuide = {
             'To change the product of a row, remove the row and pick the new product from the catalogue.',
             'The **Costs** tab shows the whole catalogue of cost products, with no category filter, and the same product can be added more than once.',
             '**Additional description** adds text to the row, printable on the quote document.',
-            "Each row's **Commissions** can only be opened and changed for that row. The popup shows the line net, imputed costs, calculation base and total commissions at the top; each role carries a label with the commission's origin (**Rule: Product**, **Rule: Category** or **Personal rule** when it comes from a Configurator rule, **Manual override** when it was changed by hand; hovering the label explains it). While editing, every role also shows the **System calculation** (what the Commission Configurator grants): if you changed the value by hand you can keep it or go back to the calculation with **Apply system calculation**.",
+            "Each row's **Commissions** can only be opened and changed for that row. The popup shows the line net, imputed costs, calculation base and total commissions at the top; each role carries a label with the commission's origin (**Rule: Product**, **Rule: Category** or **Personal rule** when it comes from a Configurator rule, **Manual override** when it was changed by hand; hovering the label explains it). While editing, every role also shows the **System calculation** (what the Commission Configurator grants): if you changed the value by hand you can keep it or go back to the calculation with **Apply system calculation**. The **Supplier** row also shows the **Direction**: when the commission comes from a rule it is the rule's; when you change it by hand you choose **Received** (it is the line revenue) or **Paid** (a cost towards the supplier), and the margin updates accordingly.",
+            'In the summary, under the cards, **Show commission details** opens (and **Hide commission details** closes) the **Commission details per product** block of the saved quote, which lists every row with commissions: for **Commercial**, **Reporter**, **Supervisor** and **Supplier** the recipient, the percentage (or fixed amount) and the amount; for the Supplier also the direction (**Received** or **Paid**), with a (?) explaining what it means. The name of the recipient leads to their record: hovering a user shows their profile card, hovering a referent or a registry shows the link to its record, which also opens by clicking the name (if you may view it). Hovering an amount shows its calculation: for a percentage the base (net amount minus the costs imputed to the row) and the rate applied, for the totals the sum. The last row and column give the totals. It is visible only to users who can see commissions.',
             'Every cost row has an **Associated product**: pick "None (generic cost)" or a row from the Products tab to attribute that cost to that sale. Deleting the associated product row sends the cost back to "None" automatically.',
             'At most 200 rows per tab.',
           ],
@@ -146,7 +151,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'The summary shows, in this order, **Expected revenue**, **Expected cost**, the **Commission Summary** and the **Expected margin** (sum of the line margins minus generic costs: a line with a **received** Supplier commission has the commission alone as revenue, the others are net amount minus costs and paid commissions; **Expected revenue** does not change), plus the **Product Typology Summary**. Percentage commissions are calculated on the product row\'s own margin (its net revenue minus the costs imputed to it, never below zero): the **Margin per product** block shows revenue, imputed cost, commissions and margin for each product row (lines with a received commission carry the note "revenue = received commission"), plus a "Generic costs" row for unattributed costs. The block opens with **Show advanced data**, under the summary cards, and is visible only to users who can see commissions.',
+          text: 'The summary shows, in this order, **Expected revenue**, **Expected cost**, the **Commission Summary** and the **Expected margin** (sum of the line margins minus generic costs: a line with a **received** Supplier commission has the commission alone as revenue, the others are net amount minus costs and paid commissions; **Expected revenue** does not change), plus the **Product Typology Summary**. Percentage commissions are calculated on the product row\'s own margin (its net revenue minus the costs imputed to it, never below zero): the **Margin per product** block shows revenue, imputed cost, commissions and margin for each product row, so that revenue minus cost minus commissions gives the margin (lines with a received Supplier commission carry the note "revenue = received commission": the revenue is the received commission and the commissions are only the paid ones), plus a "Generic costs" row for unattributed costs. Hovering the product name shows it in full; every amount is underlined with dashes and, hovered or tapped, shows its calculation (for example 3,200.00 − 0.00 − 3,200.00 = 0.00). The block opens with **Show advanced data**, under the summary cards, and is visible only to users who can see commissions.',
         },
         {
           type: 'warning',

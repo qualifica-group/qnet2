@@ -3,6 +3,7 @@ import i18n from '@/i18n'
 import { DateTimeCell } from '@/features/table/cell-renderers'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import { Badge } from '@/components/ui/badge'
+import { SupplierCommissionDirectionCell } from './supplier-commission-direction-cell'
 
 function EnumCell({
   field,
@@ -46,6 +47,7 @@ export const commissionConfigurationColumnRenderers: TableRendererMap = {
   recipient_role: ({ value }) => <EnumCell field="recipient_role" value={value} />,
   application_scope: ({ value }) => <EnumCell field="application_scope" value={value} />,
   commission_type: ({ value }) => <EnumCell field="commission_type" value={value} />,
+  supplier_commission_direction: ({ value }) => <SupplierCommissionDirectionCell value={value} />,
   status: ({ value }) => <EnumCell field="status" value={value} status />,
   recipient: ({ value }) => <RecipientCell value={value} />,
   value: ({ value, data }) => (

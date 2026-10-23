@@ -9,9 +9,11 @@ import { Form } from '@/components/ui/form'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { formatDateTime } from '@/features/table/cell-renderers'
+import { CommissionConfigurationPropagationDialog } from './commission-configuration-propagation-dialog'
 import { CommissionConfigurationSections } from './commission-configuration-rows'
 import type { CommissionConfigurationFormValues } from './commission-configuration-schema'
 import { useCommissionConfigurationForm } from './use-commission-configuration-form'
+import { useCommissionConfigurationPropagation } from './use-commission-configuration-propagation'
 import type {
   CommissionConfigurationDetailWithPermissions,
   CommissionConfigurationFormMode,
@@ -45,11 +47,14 @@ function CommissionConfigurationDetailContent({ configuration, onChanged }: Comm
   const editing = useInlineEditingField()
   // Stable per saved record: the form re-syncs its values on a new one.
   const mode = useMemo<CommissionConfigurationFormMode>(() => ({ type: 'edit', configuration }), [configuration])
+  const propagation = useCommissionConfigurationPropagation(configuration.id)
   const { form, onSubmit, serverError, clearServerError } = useCommissionConfigurationForm({
     mode,
     onSuccess: () => {
+      const savedField = editing.editingField
       editing.close()
       onChanged?.()
+      void propagation.checkImpact(savedField)
     },
   })
   const inline = useRecordInlineEdit<CommissionConfigurationFormValues>({
@@ -101,6 +106,12 @@ function CommissionConfigurationDetailContent({ configuration, onChanged }: Comm
           </span>
         </RecordMeta>
       ) : null}
+
+      <CommissionConfigurationPropagationDialog
+        impact={propagation.impact}
+        isPending={propagation.isPending}
+        onAnswer={propagation.answer}
+      />
     </RecordCanvas>
   )
 }

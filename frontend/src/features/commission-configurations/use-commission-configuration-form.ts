@@ -32,6 +32,7 @@ const SERVER_ERROR_FIELDS = [
   'recipient_type',
   'recipient_id',
   'commission_type',
+  'supplier_commission_direction',
   'value',
   'priority',
   'valid_from',

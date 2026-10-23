@@ -32,4 +32,11 @@ return [
     'role_without_recipient' => 'Nessun destinatario è selezionato sull\'offerta per questo ruolo, quindi non è commissionabile.',
     'invalid_quote_line_id' => 'Una riga inviata non appartiene a questo preventivo o al tipo di riga.',
     'recipient_role_changed' => 'Il ruolo è cambiato di tipo destinatario: indica il nuovo destinatario o rimuovilo.',
+    'direction_required' => 'Indica il verso della commissione Fornitore (ricevuta o pagata).',
+    // Spec 0308, D-7.
+    'recalculation_queued' => 'Ricalcolo delle offerte avviato.',
+    'recalculation' => [
+        'title' => 'Ricalcolo commissioni completato',
+        'message' => ':updated offerte aggiornate, :failed non aggiornate.',
+    ],
 ];

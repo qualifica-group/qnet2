@@ -3,7 +3,6 @@
 namespace App\DataObjects\ProductTypologies;
 
 use App\Enums\ProformaRequestKind;
-use App\Enums\SupplierCommissionDirection;
 
 /**
  * Validated payload for creating a product typology
@@ -22,7 +21,6 @@ final readonly class CreateProductTypologyData
         public ?string $description,
         public string $color,
         public bool $supplierCommissionEnabled = false,
-        public ?SupplierCommissionDirection $supplierCommissionDirection = null,
         public ?ProformaRequestKind $proformaKind = null,
     ) {}
 
@@ -33,18 +31,12 @@ final readonly class CreateProductTypologyData
      */
     public static function fromValidated(array $data): self
     {
-        $enabled = (bool) ($data['supplier_commission_enabled'] ?? false);
-
         return new self(
             name: (string) $data['name'],
             code: (string) $data['code'],
             description: array_key_exists('description', $data) ? $data['description'] : null,
             color: (string) $data['color'],
-            supplierCommissionEnabled: $enabled,
-            // Spec 0202 D-7: a disabled switch always stores a null direction.
-            supplierCommissionDirection: $enabled && isset($data['supplier_commission_direction'])
-                ? SupplierCommissionDirection::from($data['supplier_commission_direction'])
-                : null,
+            supplierCommissionEnabled: (bool) ($data['supplier_commission_enabled'] ?? false),
             proformaKind: isset($data['proforma_kind']) ? ProformaRequestKind::from($data['proforma_kind']) : null,
         );
     }
@@ -60,7 +52,6 @@ final readonly class CreateProductTypologyData
             'description' => $this->description,
             'color' => $this->color,
             'supplier_commission_enabled' => $this->supplierCommissionEnabled,
-            'supplier_commission_direction' => $this->supplierCommissionDirection,
             'proforma_kind' => $this->proformaKind,
         ];
     }

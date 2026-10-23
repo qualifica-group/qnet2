@@ -11,6 +11,7 @@ import { useRelationLabels } from './use-relation-labels'
 import {
   COMMISSION_ROLE_ALLOWED_RECIPIENT_TYPES,
   COMMISSION_ROLES,
+  SUPPLIER_COMMISSION_DIRECTIONS,
   type CommissionRelationRef,
   type CommissionRecipientType,
   type CommissionRole,
@@ -54,6 +55,10 @@ export function CommissionConfigurationRecipientRow({
   // admitted by the new role: a still-valid pick (a referent kept across
   // COMMERCIAL -> SUPERVISOR, spec 0090 D-9) survives the role change.
   const handleRoleChange = (next: string) => {
+    // The direction belongs to SUPPLIER rules only (spec 0306 D-1).
+    if (next !== 'SUPPLIER') {
+      setValue('supplier_commission_direction', null, { shouldDirty: true, shouldValidate: true })
+    }
     const allowedForNextRole = COMMISSION_ROLE_ALLOWED_RECIPIENT_TYPES[next as CommissionRole]
     if (!allowedForNextRole.includes(getValues('recipient_type'))) {
       setValue('recipient_type', allowedForNextRole[0], { shouldDirty: true, shouldValidate: true })
@@ -78,6 +83,13 @@ export function CommissionConfigurationRecipientRow({
                 options={allowedRecipientTypes}
                 metaKey="recipient_id"
                 onValueChange={() => setValue('recipient_id', null, { shouldDirty: true, shouldValidate: true })}
+              />
+            ) : null}
+            {role === 'SUPPLIER' ? (
+              <OptionSelect
+                name="supplier_commission_direction"
+                options={SUPPLIER_COMMISSION_DIRECTIONS}
+                hint={t('commissionConfigurations.form.hints.supplierCommissionDirection')}
               />
             ) : null}
             <CommissionConfigurationRecipientField

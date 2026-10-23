@@ -61,7 +61,12 @@ function ReadOnlyCommissions({ line, position, allocatedCostNet }: ReadOnlyCommi
             internal_note: commission.internal_note,
             origin: commission.origin,
             commission_configuration_id: commission.commission_configuration_id,
+            supplier_commission_direction:
+              commission.recipient_role === 'SUPPLIER' && commission.origin === 'MANUAL_OVERRIDE'
+                ? (line.supplier_commission_direction ?? null)
+                : undefined,
           }))}
+          supplierCommissionDirection={line.supplier_commission_direction ?? null}
           disabled
           onSave={() => undefined}
         />

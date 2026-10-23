@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea'
 import type { CommissionRole, CommissionType } from '@/features/commission-configurations/types'
 import { formatQuoteAmount } from './quote-summary'
 import { QuoteCommissionSystemDefault } from './quote-commission-system-default'
+import { QuoteCommissionDirection } from './quote-commission-direction'
 import { QuoteCommissionOriginBadge } from './quote-commission-origin-badge'
 import type { QuoteCommissionsDraft } from './use-quote-commissions-draft'
 
@@ -210,6 +211,10 @@ export function QuoteCommissionRoleRow({ role, commissions, disabled }: QuoteCom
           </div>
         )}
       </div>
+
+      {commission && role === 'SUPPLIER' ? (
+        <QuoteCommissionDirection commission={commission} commissions={commissions} disabled={disabled} />
+      ) : null}
 
       {commission && unavailable ? (
         <p role="alert" className="text-xs text-destructive md:pl-[2.625rem]">

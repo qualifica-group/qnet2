@@ -22,6 +22,8 @@ final class CommissionConfigurationColumnCatalog
             // Not sortable: the value is resolved across three different
             // recipient tables, with no single column to order by.
             self::column('recipient', 'text', filterType: 'set', sortable: false),
+            // Spec 0306: appended LAST for the same reason (persisted layouts).
+            self::column('supplier_commission_direction', 'badge'),
         ];
     }
 

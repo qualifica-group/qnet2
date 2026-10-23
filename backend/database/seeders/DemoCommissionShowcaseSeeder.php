@@ -231,7 +231,8 @@ class DemoCommissionShowcaseSeeder extends Seeder
     private function ensureRules(array $products): void
     {
         foreach (Catalogue::RULES as $productName => $rules) {
-            foreach ($rules as [$role, $type, $value]) {
+            foreach ($rules as $rule) {
+                [$role, $type, $value] = $rule;
                 $name = sprintf('Demo showcase - %s - %s', $role->value, $productName);
 
                 if (CommissionConfiguration::query()->where('name', $name)->exists()) {
@@ -253,6 +254,7 @@ class DemoCommissionShowcaseSeeder extends Seeder
                     validUntil: null,
                     status: CommissionConfigurationStatus::Active,
                     internalNote: null,
+                    supplierCommissionDirection: $rule[3] ?? null,
                 ));
             }
         }

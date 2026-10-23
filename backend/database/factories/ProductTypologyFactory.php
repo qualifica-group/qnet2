@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Enums\SupplierCommissionDirection;
 use App\Models\ProductTypology;
 use App\Support\BadgeTokens;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -32,12 +31,9 @@ class ProductTypologyFactory extends Factory
         ];
     }
 
-    /** Supplier commission switched on with the given direction (spec 0202, D-7). */
-    public function supplierCommission(SupplierCommissionDirection $direction = SupplierCommissionDirection::Paid): static
+    /** Supplier commission calculation switched on (spec 0202, D-6; the direction lives on the rule, spec 0306). */
+    public function supplierCommission(): static
     {
-        return $this->state(fn (): array => [
-            'supplier_commission_enabled' => true,
-            'supplier_commission_direction' => $direction,
-        ]);
+        return $this->state(fn (): array => ['supplier_commission_enabled' => true]);
     }
 }

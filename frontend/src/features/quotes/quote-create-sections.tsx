@@ -3,7 +3,7 @@ import { useWatch } from 'react-hook-form'
 import { Loader2, SlidersHorizontal } from 'lucide-react'
 import { RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
 import type { InlineEdit } from '@/components/record-form/record-inline-field'
-import { QuoteAttributesSection } from '@/features/quotes/quote-attributes-section'
+import { QuoteAttributesBand, QuoteAttributesSection } from '@/features/quotes/quote-attributes-section'
 import { QuoteCompanySection, QuoteDocumentSection } from '@/features/quotes/quote-record-company'
 import { QuoteIdentitySection, QuoteInternalNotesRow } from '@/features/quotes/quote-record-identity'
 import { QuoteContactsSection, QuoteTeamSection } from '@/features/quotes/quote-record-people'
@@ -18,6 +18,8 @@ const FULL_WIDTH_SECTION_CLASS = '@2xl:col-span-2'
 
 /** A new Offerta starts with no buono (directive 2026-08-31): nothing persisted seeds the chips. */
 const NO_REWARDS: RewardAssignmentRef[] = []
+
+const EMPTY_ATTRIBUTE_VALUES: Record<string, unknown> = {}
 
 interface QuoteCreateSectionsProps {
   quoteForm: QuoteFormState
@@ -36,8 +38,7 @@ interface QuoteCreateSectionsProps {
  * prefills roles, sede and G.A.
  */
 export function QuoteCreateSections({ quoteForm, draft, defaults }: QuoteCreateSectionsProps) {
-  const { t } = useTranslation()
-  const { form, attributeContext, attributesLoading, hasPickedProduct } = quoteForm
+  const { form } = quoteForm
   const refs = useQuoteDraftLabels(form.control, {
     inheritedMeta: defaults.inheritedMeta,
     opportunity: defaults.forcedOpportunity,
@@ -101,14 +102,34 @@ export function QuoteCreateSections({ quoteForm, draft, defaults }: QuoteCreateS
       />
 
       <QuoteDocumentSection layout={refs.layout} paymentMethod={refs.paymentMethod} form={form} inline={draft} />
+    </RecordSectionsGrid>
+  )
+}
 
-      {/* Spec 0084 D-5: nothing to show until a line carries a product. */}
-      {hasPickedProduct && attributesLoading ? (
-        <RecordSection
-          title={t('quotes.detail.additionalInformation')}
-          icon={<SlidersHorizontal />}
-          className={FULL_WIDTH_SECTION_CLASS}
-        >
+interface QuoteCreateAttributesProps {
+  quoteForm: QuoteFormState
+  draft: InlineEdit
+}
+
+/**
+ * The draft's Attribute values, after the offer rows like on the detail
+ * (`QuoteAttributesBand`). Spec 0084 D-5: nothing to show until a line
+ * carries a product; a loading line while its Attributes resolve.
+ */
+export function QuoteCreateAttributes({ quoteForm, draft }: QuoteCreateAttributesProps) {
+  const { t } = useTranslation()
+  const { form, attributeContext, attributesLoading, hasPickedProduct } = quoteForm
+  const attributeValues = useWatch({ control: form.control, name: 'attribute_values' })
+  const loading = hasPickedProduct && attributesLoading
+
+  if (!loading && attributeContext.applicable_attributes.length === 0) {
+    return null
+  }
+
+  return (
+    <QuoteAttributesBand>
+      {loading ? (
+        <RecordSection title={t('quotes.detail.additionalInformation')} icon={<SlidersHorizontal />}>
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
             {t('common.loading')}
@@ -118,12 +139,11 @@ export function QuoteCreateSections({ quoteForm, draft, defaults }: QuoteCreateS
         <QuoteAttributesSection
           attributes={attributeContext.applicable_attributes}
           layout={attributeContext.attribute_layout}
-          values={values.attribute_values ?? {}}
+          values={attributeValues ?? EMPTY_ATTRIBUTE_VALUES}
           inline={draft}
           control={form.control}
-          className={FULL_WIDTH_SECTION_CLASS}
         />
       )}
-    </RecordSectionsGrid>
+    </QuoteAttributesBand>
   )
 }

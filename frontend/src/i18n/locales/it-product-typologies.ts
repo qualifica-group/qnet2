@@ -22,7 +22,6 @@ export const productTypologies = {
     color: 'Colore',
     description: 'Descrizione',
     supplier_commission_enabled: 'Commissione Fornitore',
-    supplier_commission_direction: 'Verso commissione',
     created_at: 'Creato il',
     updated_at: 'Aggiornato il',
   },
@@ -59,9 +58,6 @@ export const productTypologies = {
     colorMax: 'Il colore può contenere al massimo 32 caratteri.',
     descriptionMax: 'La descrizione può contenere al massimo 500 caratteri.',
     supplierCommissionEnabled: "Calcolo commissione Fornitore",
-    supplierCommissionDirection: "Verso",
-    supplierCommissionDirectionPlaceholder: "Seleziona il verso",
-    supplierCommissionDirectionRequired: "Il verso è obbligatorio quando la commissione Fornitore è attiva.",
     proformaKind: 'Tipo richiesta proforma',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare la tipologia prodotto. Riprova.',
@@ -89,15 +85,9 @@ export const productTypologies = {
       },
     },
     hints: {
-      supplierCommissionDirection:
-        "Ricevuta: la commissione è il ricavo della riga, l'imponibile passa al fornitore. Pagata: è un costo verso il fornitore.",
       proformaKind:
         'Decide in quale richiesta proforma confluiscono le righe dei prodotti di questa tipologia. Nessuna: le righe non si fatturano tramite richiesta proforma.',
     },
-  },
-  supplierCommissionDirection: {
-    RECEIVED: "Ricevuta",
-    PAID: "Pagata",
   },
   proformaKind: {
     none: 'Nessuna',

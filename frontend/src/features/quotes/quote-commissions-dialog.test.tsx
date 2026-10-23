@@ -137,7 +137,7 @@ describe('QuoteCommissionsDialog', () => {
         recipient: { id: 9, name: 'Mario Rossi' },
         value: 10,
       }),
-    ])
+    ], null)
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
@@ -480,7 +480,7 @@ describe('QuoteCommissionsDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save commissions' }))
     expect(onSave).toHaveBeenCalledWith([
       expect.objectContaining({ id: 70, value: 5, origin: 'PRODUCT', commission_configuration_id: 3, internal_note: 'kept' }),
-    ])
+    ], null)
   })
 
   it('applies the system calculation to a role that has no commission yet', async () => {
@@ -527,5 +527,105 @@ describe('QuoteCommissionsDialog', () => {
     )
 
     expect(fetchQuoteCommissionDefaults).not.toHaveBeenCalled()
+  })
+})
+
+/** Spec 0306 (AC-011): the direction of the Supplier commission lives on the dialog's Supplier row. */
+describe('QuoteCommissionsDialog Supplier direction (spec 0306)', () => {
+  const SUPPLIER_AUTO = {
+    id: 80,
+    recipient_role: 'SUPPLIER' as const,
+    recipient_type: 'registry' as const,
+    recipient_id: 13,
+    commission_type: 'PERCENTAGE' as const,
+    value: 10,
+    internal_note: null,
+    origin: 'PRODUCT_CATEGORY' as const,
+    commission_configuration_id: 5,
+  }
+
+  function renderSupplierDialog(props: Partial<React.ComponentProps<typeof QuoteCommissionsDialog>>) {
+    return renderDialog(
+      <QuoteCommissionsDialog
+        open
+        onOpenChange={vi.fn()}
+        lineNumber={1}
+        productName="Router"
+        productId={4}
+        commissionContext={COMMISSION_CONTEXT}
+        quantity={2}
+        unitPrice={100}
+        commissions={[]}
+        supplierCommissionDirection="PAID"
+        disabled={false}
+        onSave={vi.fn()}
+        {...props}
+      />,
+    )
+  }
+
+  it('shows the rule direction of an automatic Supplier commission, read only', () => {
+    renderSupplierDialog({ commissions: [SUPPLIER_AUTO], supplierCommissionDirection: 'RECEIVED' })
+
+    expect(screen.getByText('Received')).toBeInTheDocument()
+    expect(screen.queryByRole('radiogroup', { name: 'Direction' })).not.toBeInTheDocument()
+  })
+
+  it('makes the direction mandatory on a manual Supplier commission and saves the chosen one', async () => {
+    const onSave = vi.fn()
+    renderSupplierDialog({ onSave })
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Add manual commission' })[3]).toBeEnabled())
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add manual commission' })[3])
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Choose the Supplier commission direction')
+    expect(screen.getByRole('button', { name: 'Save commissions' })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Received' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Save commissions' }))
+
+    expect(onSave).toHaveBeenCalledWith(
+      [expect.objectContaining({ recipient_role: 'SUPPLIER', origin: 'MANUAL_OVERRIDE', supplier_commission_direction: 'RECEIVED' })],
+      'RECEIVED',
+    )
+  })
+
+  it('turning an automatic Supplier commission manual keeps its direction and lets it change', () => {
+    const onSave = vi.fn()
+    renderSupplierDialog({ commissions: [SUPPLIER_AUTO], supplierCommissionDirection: 'RECEIVED', onSave })
+
+    fireEvent.change(screen.getByLabelText('Value'), { target: { value: '12' } })
+    expect(screen.getByRole('radio', { name: 'Received' })).toBeChecked()
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Paid' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save commissions' }))
+
+    expect(onSave).toHaveBeenCalledWith(
+      [expect.objectContaining({ origin: 'MANUAL_OVERRIDE', value: 12, supplier_commission_direction: 'PAID' })],
+      'PAID',
+    )
+  })
+
+  it('does not let the direction change without the commission type permission (D-8)', () => {
+    renderDialog(
+      <QuoteCommissionsDialog
+        open
+        onOpenChange={vi.fn()}
+        lineNumber={1}
+        productName="Router"
+        productId={4}
+        commissionContext={COMMISSION_CONTEXT}
+        quantity={2}
+        unitPrice={100}
+        commissions={[{ ...SUPPLIER_AUTO, origin: 'MANUAL_OVERRIDE', supplier_commission_direction: 'PAID' }]}
+        disabled={false}
+        onSave={vi.fn()}
+      />,
+      { ...permissions, fields: { ...permissions.fields, commission_type: { ...editable, editable: false, readonly: true } } },
+    )
+
+    expect(screen.getByText('Paid')).toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'Received' })).not.toBeInTheDocument()
   })
 })

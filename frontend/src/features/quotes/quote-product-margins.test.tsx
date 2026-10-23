@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import i18n from '@/i18n'
 import {
   computeProductMargins,
@@ -33,7 +33,7 @@ describe('computeProductMargins', () => {
 
     const { rows, genericCostNet } = computeProductMargins(productLines, costLines)
 
-    expect(rows).toEqual([{ key: 'a', productName: 'Widget', rowNumber: 1, revenueNet: 100, costNet: 30, commissionsNet: 0, supplierCommissionDirection: null, margin: 70 }])
+    expect(rows).toEqual([{ key: 'a', productName: 'Widget', rowNumber: 1, revenueNet: 100, costNet: 30, commissionsNet: 0, supplierCommissionDirection: null, margin: 70, lineNet: 100, supplierCommissionNet: 0 }])
     expect(genericCostNet).toBe(0)
   })
 
@@ -260,8 +260,8 @@ describe('QuoteProductMargins (component)', () => {
     render(
       <QuoteProductMargins
         rows={[
-          { key: 'a', productName: 'Widget', rowNumber: 1, revenueNet: 100, costNet: 30, commissionsNet: 0, supplierCommissionDirection: null, margin: 70 },
-          { key: 'b', productName: 'Gadget', rowNumber: 2, revenueNet: 20, costNet: 35, commissionsNet: 0, supplierCommissionDirection: null, margin: -15 },
+          { key: 'a', productName: 'Widget', rowNumber: 1, revenueNet: 100, costNet: 30, commissionsNet: 0, supplierCommissionDirection: null, margin: 70, lineNet: 100, supplierCommissionNet: 0 },
+          { key: 'b', productName: 'Gadget', rowNumber: 2, revenueNet: 20, costNet: 35, commissionsNet: 0, supplierCommissionDirection: null, margin: -15, lineNet: 20, supplierCommissionNet: 0 },
         ]}
         genericCostNet={12}
       />,
@@ -270,15 +270,29 @@ describe('QuoteProductMargins (component)', () => {
     expect(screen.getByText('Margin per product')).toBeInTheDocument()
     expect(screen.getByText('Widget (row 1)')).toBeInTheDocument()
     expect(screen.getByText('Gadget (row 2)')).toBeInTheDocument()
-    expect(screen.getByText('-15.00')).toHaveClass('text-destructive')
+    expect(screen.getByText('-15.00').closest('td')).toHaveClass('text-destructive')
     expect(screen.getByText('Generic costs')).toBeInTheDocument()
     expect(screen.getByText('12.00')).toBeInTheDocument()
+  })
+
+  it('spells out the full product label in a tooltip (user directive 2026-10-23)', async () => {
+    const longName = 'ISO - Consultancy for the 9001 + 14001 + 45001 management system update - 1st year'
+    render(
+      <QuoteProductMargins
+        rows={[{ key: 'a', productName: longName, rowNumber: 1, revenueNet: 10, costNet: 0, commissionsNet: 0, supplierCommissionDirection: null, margin: 10, lineNet: 10, supplierCommissionNet: 0 }]}
+        genericCostNet={0}
+      />,
+    )
+
+    fireEvent.focus(screen.getByText(`${longName} (row 1)`))
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(`${longName} (row 1)`)
   })
 
   it('falls back to a generic product label when the name could not be resolved', () => {
     render(
       <QuoteProductMargins
-        rows={[{ key: 'a', productName: null, rowNumber: 1, revenueNet: 10, costNet: 0, commissionsNet: 0, supplierCommissionDirection: null, margin: 10 }]}
+        rows={[{ key: 'a', productName: null, rowNumber: 1, revenueNet: 10, costNet: 0, commissionsNet: 0, supplierCommissionDirection: null, margin: 10, lineNet: 10, supplierCommissionNet: 0 }]}
         genericCostNet={0}
       />,
     )
@@ -289,7 +303,7 @@ describe('QuoteProductMargins (component)', () => {
   it('shows the Commissions column and value by default', () => {
     render(
       <QuoteProductMargins
-        rows={[{ key: 'a', productName: 'Widget', rowNumber: 1, revenueNet: 100, costNet: 30, commissionsNet: 7, supplierCommissionDirection: null, margin: 63 }]}
+        rows={[{ key: 'a', productName: 'Widget', rowNumber: 1, revenueNet: 100, costNet: 30, commissionsNet: 7, supplierCommissionDirection: null, margin: 63, lineNet: 100, supplierCommissionNet: 0 }]}
         genericCostNet={0}
       />,
     )
@@ -302,7 +316,7 @@ describe('QuoteProductMargins (component)', () => {
   it('renders nothing when showCommissions is false (no commissions permission)', () => {
     const { container } = render(
       <QuoteProductMargins
-        rows={[{ key: 'a', productName: 'Widget', rowNumber: 1, revenueNet: 100, costNet: 30, commissionsNet: 7, supplierCommissionDirection: null, margin: 63 }]}
+        rows={[{ key: 'a', productName: 'Widget', rowNumber: 1, revenueNet: 100, costNet: 30, commissionsNet: 7, supplierCommissionDirection: null, margin: 63, lineNet: 100, supplierCommissionNet: 0 }]}
         genericCostNet={0}
         showCommissions={false}
       />,
@@ -311,13 +325,43 @@ describe('QuoteProductMargins (component)', () => {
   })
 })
 
+describe('QuoteProductMargins - calculation hints (user directive 2026-10-23)', () => {
+  it('explains the revenue of a received row: the commission, not the net amount', async () => {
+    render(
+      <QuoteProductMargins
+        rows={[{ key: 'a', productName: 'Ente', rowNumber: 1, revenueNet: 200, costNet: 0, commissionsNet: 50, supplierCommissionDirection: 'RECEIVED', margin: 150, lineNet: 2000, supplierCommissionNet: 200 }]}
+        genericCostNet={0}
+      />,
+    )
+    const hover = (element: HTMLElement) => fireEvent.pointerEnter(element, { pointerType: 'mouse' })
+    const revenue = screen.getByRole('button', { name: '200.00' })
+
+    hover(revenue)
+    expect(await screen.findByText('Received Supplier commission: 200.00. It is our revenue on this row.')).toBeInTheDocument()
+    expect(screen.getByText('The row net amount (2,000.00) is not our revenue: the commission is calculated on it.')).toBeInTheDocument()
+  })
+
+  it('explains the margin as revenue minus costs minus commissions', async () => {
+    render(
+      <QuoteProductMargins
+        rows={[{ key: 'a', productName: 'Ente', rowNumber: 1, revenueNet: 200, costNet: 0, commissionsNet: 50, supplierCommissionDirection: 'RECEIVED', margin: 150, lineNet: 2000, supplierCommissionNet: 200 }]}
+        genericCostNet={0}
+      />,
+    )
+
+    fireEvent.pointerEnter(screen.getByRole('button', { name: '150.00' }), { pointerType: 'mouse' })
+
+    expect(await screen.findByText('200.00 − 0.00 − 50.00 = 150.00')).toBeInTheDocument()
+  })
+})
+
 describe('QuoteProductMargins - RECEIVED rows (spec 0202 D-13, AC-010)', () => {
   it('notes that the revenue of a RECEIVED row is the received commission', () => {
     render(
       <QuoteProductMargins
         rows={[
-          { key: 'a', productName: 'Ente', rowNumber: 1, revenueNet: 2000, costNet: 0, commissionsNet: 250, supplierCommissionDirection: 'RECEIVED', margin: 150 },
-          { key: 'b', productName: 'Corso', rowNumber: 2, revenueNet: 1000, costNet: 100, commissionsNet: 90, supplierCommissionDirection: 'PAID', margin: 810 },
+          { key: 'a', productName: 'Ente', rowNumber: 1, revenueNet: 2000, costNet: 0, commissionsNet: 250, supplierCommissionDirection: 'RECEIVED', margin: 150, lineNet: 2000, supplierCommissionNet: 200 },
+          { key: 'b', productName: 'Corso', rowNumber: 2, revenueNet: 1000, costNet: 100, commissionsNet: 90, supplierCommissionDirection: 'PAID', margin: 810, lineNet: 1000, supplierCommissionNet: 90 },
         ]}
         genericCostNet={30}
       />,

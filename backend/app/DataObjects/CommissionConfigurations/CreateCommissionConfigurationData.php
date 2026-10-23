@@ -8,6 +8,7 @@ use App\Enums\CommissionApplicationScope;
 use App\Enums\CommissionConfigurationStatus;
 use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
+use App\Enums\SupplierCommissionDirection;
 
 final readonly class CreateCommissionConfigurationData
 {
@@ -26,6 +27,7 @@ final readonly class CreateCommissionConfigurationData
         public ?string $validUntil,
         public CommissionConfigurationStatus $status,
         public ?string $internalNote,
+        public ?SupplierCommissionDirection $supplierCommissionDirection = null,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -53,6 +55,10 @@ final readonly class CreateCommissionConfigurationData
             validUntil: $data['valid_until'] ?? null,
             status: CommissionConfigurationStatus::from($data['status']),
             internalNote: $data['internal_note'] ?? null,
+            // Spec 0306 D-1: only a SUPPLIER rule carries a direction.
+            supplierCommissionDirection: $recipientRole === CommissionRecipientRole::Supplier && isset($data['supplier_commission_direction'])
+                ? SupplierCommissionDirection::from($data['supplier_commission_direction'])
+                : null,
         );
     }
 
@@ -68,6 +74,7 @@ final readonly class CreateCommissionConfigurationData
             'recipient_type' => $this->recipientType,
             'recipient_id' => $this->recipientId,
             'commission_type' => $this->commissionType,
+            'supplier_commission_direction' => $this->supplierCommissionDirection,
             'value' => $this->value,
             'priority' => $this->priority,
             'valid_from' => $this->validFrom,

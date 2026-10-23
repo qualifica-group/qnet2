@@ -58,6 +58,7 @@ class UpdateCommissionConfigurationRequest extends FormRequest
 
             $this->guardRecipientRoleChange($validator, $model);
             $this->validateRecipient($validator, $model);
+            $this->validateSupplierDirection($validator, $model);
         });
     }
 

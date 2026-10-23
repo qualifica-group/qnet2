@@ -7,6 +7,7 @@ namespace App\Quotes;
 use App\Enums\CommissionOrigin;
 use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
+use App\Enums\SupplierCommissionDirection;
 use App\Rules\ActiveCategoryProduct;
 use Illuminate\Validation\Rule;
 
@@ -91,6 +92,10 @@ final class QuoteLineRules
             "{$field}.*.commissions.*.recipient_type" => ['required', Rule::in(['referent', 'user', 'registry'])],
             "{$field}.*.commissions.*.recipient_id" => ['required', 'integer'],
             "{$field}.*.commissions.*.commission_type" => ['required', Rule::enum(CommissionType::class)],
+            // Spec 0306, D-3: required only on a manual Supplier commission
+            // (ValidatesQuoteLineCommissions::enforceSupplierCommissionDirection);
+            // ignored otherwise.
+            "{$field}.*.commissions.*.supplier_commission_direction" => ['nullable', Rule::enum(SupplierCommissionDirection::class)],
             "{$field}.*.commissions.*.value" => ['required', 'numeric', 'min:0', 'decimal:0,4'],
             "{$field}.*.commissions.*.calculated_amount" => ['prohibited'],
             "{$field}.*.commissions.*.internal_note" => ['nullable', 'string', 'max:5000'],

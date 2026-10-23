@@ -9,6 +9,7 @@ use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
 use App\Enums\ProductUsage;
 use App\Enums\QuoteLineType;
+use App\Enums\SupplierCommissionDirection;
 use App\Migrations\Sources\ProductsSource;
 use App\Migrations\Sources\QuotesSource;
 use App\Models\Product;
@@ -186,6 +187,19 @@ trait MapsLegacyQuoteLines
         }
 
         [$role, $recipientClass] = self::LEGACY_COMMISSION_ROLES[$legacyRole];
+
+        // The legacy sends the direction of a supplier commission already decoded
+        // (spec 0306, D-4); qnet-2 never guesses it.
+        $direction = null;
+
+        if ($role === CommissionRecipientRole::Supplier) {
+            $direction = SupplierCommissionDirection::tryFrom((string) ($externalCommission['supplier_commission_direction'] ?? ''));
+
+            if ($direction === null) {
+                throw new RuntimeException("Line {$lineRef}: supplier commission without a valid direction; the quote is not imported.");
+            }
+        }
+
         $recipientId = $this->remapLegacyId($recipientClass, $externalCommission['recipient_id'] ?? null, "line {$lineRef} {$legacyRole} commission recipient", $warnings);
 
         if ($recipientId === null) {
@@ -202,6 +216,7 @@ trait MapsLegacyQuoteLines
             internalNote: null,
             origin: CommissionOrigin::ManualOverride,
             configurationId: null,
+            supplierDirection: $direction,
         );
     }
 }

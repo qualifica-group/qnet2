@@ -1,4 +1,4 @@
-import type { SupplierCommissionDirection } from '@/features/product-typologies/types'
+import type { SupplierCommissionDirection } from '@/features/commission-configurations/types'
 import type { CommissionRole, CommissionType } from '@/features/commission-configurations/types'
 
 export function roundCommission(value: number): number {
@@ -73,6 +73,25 @@ export function calculateLineMarginBeforeCosts(
   return roundCommission(net - otherCommissions - (direction === 'PAID' ? supplierCommission : 0))
 }
 
+/**
+ * Spec 0306 D-3/D-6: the direction a row's margin uses. A manual Supplier
+ * commission carries its own; otherwise the row's snapshot (the rule's
+ * direction on an automatic commission, or the typology-enabled default).
+ */
+export function effectiveSupplierDirection(
+  commissions: ReadonlyArray<{
+    recipient_role: CommissionRole
+    origin?: string
+    supplier_commission_direction?: SupplierCommissionDirection | null
+  }>,
+  rowDirection: SupplierCommissionDirection | null | undefined,
+): SupplierCommissionDirection | null {
+  const manual = commissions.find(
+    (commission) => commission.recipient_role === 'SUPPLIER' && commission.origin === 'MANUAL_OVERRIDE',
+  )
+  return manual?.supplier_commission_direction ?? rowDirection ?? null
+}
+
 type CommissionableLine = {
   quantity: number | null
   unit_price: number | null
@@ -80,7 +99,13 @@ type CommissionableLine = {
   client_key?: string | null
   /** Spec 0202 D-12: frozen on a saved row, taken from the defaults response on a new one. */
   supplier_commission_direction?: SupplierCommissionDirection | null
-  commissions?: Array<{ recipient_role: CommissionRole; commission_type: CommissionType; value: number }>
+  commissions?: Array<{
+    recipient_role: CommissionRole
+    commission_type: CommissionType
+    value: number
+    origin?: string
+    supplier_commission_direction?: SupplierCommissionDirection | null
+  }>
 }
 
 type CostLineInput = { offer_line_key?: string | null; quantity: number | null; unit_price: number | null }
@@ -125,7 +150,7 @@ export function calculateMarginBeforeCosts(lines: CommissionableLine[], costLine
   const costNetByKey = allocatedCostNetByOfferLineKey(costLines)
   return lines.reduce((sum, line) => {
     const { net, perRole } = lineCommissionAmounts(line, costNetByKey)
-    const direction = line.commissions ? line.supplier_commission_direction : null
+    const direction = line.commissions ? effectiveSupplierDirection(line.commissions, line.supplier_commission_direction) : null
     const others = roundCommission(perRole.commercial + perRole.reporter + perRole.supervisor)
     return roundCommission(sum + calculateLineMarginBeforeCosts(net, perRole.supplier, others, direction))
   }, 0)
