@@ -267,6 +267,13 @@ describe('QuoteDetailView — in-place editing (spec 0197)', () => {
     expect(rowValue('Payment method')).toBe('Bonifico 30gg')
   })
 
+  it('puts the offer rows pencil in the rows frame header, beside its title', () => {
+    renderDetail(quote())
+
+    const frame = screen.getByRole('region', { name: i18n.t('quotes.lineEditor.rows.titleRevenue') })
+    expect(within(frame).getByRole('button', { name: i18n.t('common.inlineEdit.edit', { field: 'Offer rows' }) })).toBeInTheDocument()
+  })
+
   it('swaps the offer rows for their grid and the summary for the live one (AC-005)', () => {
     renderDetail(quote())
 

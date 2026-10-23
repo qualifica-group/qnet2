@@ -16,6 +16,11 @@
   mandava gia'). Test `quote-lines-read-only.test.tsx` aggiornato (REQUIREMENT CHANGED: niente piu' tabella).
 - Verifica: Vitest quotes+contracts+help 71 file/724 test verdi, `tsc -b --force` pulito, ESLint pulito. Guide in-app
   IT/EN (`quotes.ts`, sezione righe) e manuale Claude Docs aggiornati. Verifica visiva su /quotes/28020 da fare a mano.
+  Committato in `f27f63f8` (solo questi file; la spec 0306 resta nel working tree).
+- Seguito: la matita delle righe Offerta/Costi sta nell'intestazione del riquadro, accanto a
+  "Righe dell'offerta (n)", non piu' fuori. `RecordInlineField` accetta `children` come funzione
+  `(editAction) => ReactNode` (il chiamante colloca la matita; `null` se non modificabile, altri usi invariati);
+  `QuoteLineEditorFrame` e `QuoteLinesReadOnlyList` hanno lo slot `headerAction`.
 
 ## Dotazioni (spec 0307, fase 1) — VERDE, COMMITTATO (2026-10-23)
 

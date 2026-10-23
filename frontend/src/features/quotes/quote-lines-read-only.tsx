@@ -172,6 +172,8 @@ export interface QuoteLinesReadOnlyListProps {
   offerLineLabelsById?: Record<number, string>
   /** Spec 0145 (D-1), revenue variant only: `offer line id -> imputed cost net` built by the caller from this SAME offer's persisted cost rows, feeds the commissions dialog's base (D-1/D-2). */
   allocatedCostNetById?: Record<number, number>
+  /** Beside the frame's title: the detail's edit pencil. */
+  headerAction?: ReactNode
 }
 
 /**
@@ -186,6 +188,7 @@ export function QuoteLinesReadOnlyList({
   variant = 'revenue',
   offerLineLabelsById,
   allocatedCostNetById,
+  headerAction,
 }: QuoteLinesReadOnlyListProps) {
   const { t } = useTranslation()
   const genericCostLabel = t('quotes.form.costsTab.associatedProductGeneric')
@@ -200,6 +203,7 @@ export function QuoteLinesReadOnlyList({
         totalLabel: t(variant === 'revenue' ? 'quotes.lineEditor.rows.totalRevenue' : 'quotes.lineEditor.rows.totalCost'),
       }}
       catalog={null}
+      headerAction={headerAction}
     >
       {lines.map((line, index) => (
         <ReadOnlyLine

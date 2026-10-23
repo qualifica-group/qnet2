@@ -22,6 +22,8 @@ interface QuoteLineEditorFrameProps {
   catalog: ReactNode | null
   /** The row cards (`<li>` items). */
   children: ReactNode
+  /** Beside the title, at the header's end (the detail's edit pencil). */
+  headerAction?: ReactNode
 }
 
 /**
@@ -31,17 +33,29 @@ interface QuoteLineEditorFrameProps {
  * vertical side by side, horizontal once the container is too narrow and they
  * stack (rows first). The row cards stay one rung above it (`bg-card`).
  */
-export function QuoteLineEditorFrame({ title, count, emptyText, totals, catalog, children }: QuoteLineEditorFrameProps) {
+export function QuoteLineEditorFrame({
+  title,
+  count,
+  emptyText,
+  totals,
+  catalog,
+  children,
+  headerAction,
+}: QuoteLineEditorFrameProps) {
   const { t } = useTranslation()
 
   return (
     <div className="@container">
       <div className={cn('grid rounded-lg border bg-surface', catalog !== null && '@3xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]')}>
         <section aria-label={title} className="flex min-w-0 flex-col @3xl:order-2">
-          <p className="border-b p-3 text-sm font-semibold">
-            {title}
-            <span className="ml-1.5 font-normal text-muted-foreground">({count})</span>
-          </p>
+          <div className="flex items-center gap-2 border-b p-3">
+            <p className="min-w-0 flex-1 text-sm font-semibold">
+              {title}
+              <span className="ml-1.5 font-normal text-muted-foreground">({count})</span>
+            </p>
+            {/* Pulled into the title's line height: the header keeps its size with or without it. */}
+            {headerAction ? <div className="-my-0.5 shrink-0">{headerAction}</div> : null}
+          </div>
 
           {count === 0 ? (
             <p className="m-2 rounded-lg border border-dashed bg-card px-3 py-6 text-center text-xs text-muted-foreground">

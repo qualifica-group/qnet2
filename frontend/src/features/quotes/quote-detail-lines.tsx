@@ -75,8 +75,8 @@ interface QuoteDetailLinesProps {
  * the two line sets behind a tab strip, then the summary, outside any
  * `TabsContent` so it stays visible on both tabs.
  *
- * Each set is ONE in-place row across the band (spec 0197 D-4): its pencil
- * swaps the read-only list for the very grid the create form uses, Save
+ * Each set is ONE in-place row across the band (spec 0197 D-4): its pencil,
+ * in the rows frame's own header, swaps the read-only list for the very grid the create form uses, Save
  * PATCHes that set alone (a full replace, D-8). While a grid is open the
  * summary is the live one of the rows being typed; the revenue grid also
  * carries the Attributes its new products bring in.
@@ -142,11 +142,14 @@ export function QuoteDetailLines({ quote, editor }: QuoteDetailLinesProps) {
               />
             }
           >
-            <QuoteLinesReadOnlyList
-              lines={quote.offer_lines}
-              showCommissions={showCommissions}
-              allocatedCostNetById={allocatedCostNetByOfferId}
-            />
+            {(editAction) => (
+              <QuoteLinesReadOnlyList
+                lines={quote.offer_lines}
+                showCommissions={showCommissions}
+                allocatedCostNetById={allocatedCostNetByOfferId}
+                headerAction={editAction}
+              />
+            )}
           </RecordInlineField>
         </TabsContent>
         <TabsContent value={COSTS_TAB}>
@@ -157,7 +160,14 @@ export function QuoteDetailLines({ quote, editor }: QuoteDetailLinesProps) {
             inline={inline}
             editor={<QuoteCostLinesEditor quoteForm={editor} knownLines={quote.cost_lines} />}
           >
-            <QuoteLinesReadOnlyList lines={quote.cost_lines} variant="cost" offerLineLabelsById={offerLineLabelsById} />
+            {(editAction) => (
+              <QuoteLinesReadOnlyList
+                lines={quote.cost_lines}
+                variant="cost"
+                offerLineLabelsById={offerLineLabelsById}
+                headerAction={editAction}
+              />
+            )}
           </RecordInlineField>
         </TabsContent>
         {editingLines ? <QuoteLinesLiveSummary quoteForm={editor} /> : <PersistedLinesSummary quote={quote} />}

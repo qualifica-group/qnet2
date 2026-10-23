@@ -109,8 +109,12 @@ interface RecordInlineFieldProps {
   layout?: RecordInlineFieldLayout
   /** On the row's outer box, open or closed (e.g. a column span inside a grid). */
   className?: string
-  /** The persisted value, as the read-only detail always rendered it. */
-  children: ReactNode
+  /**
+   * The persisted value, as the read-only detail always rendered it. A
+   * function places the pencil itself (e.g. in the value's own header) and
+   * receives `null` when the row offers no edit.
+   */
+  children: ReactNode | ((editAction: ReactNode) => ReactNode)
 }
 
 /**
@@ -224,31 +228,37 @@ export function RecordInlineField({
     inline.start(field)
   }
 
+  const editAction = editable ? (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className={cn(
+        'size-6 shrink-0 text-muted-foreground',
+        'pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 focus-visible:opacity-100',
+      )}
+      aria-label={t('common.inlineEdit.edit', { field: label })}
+      disabled={inline.isSaving}
+      onClick={() => inline.start(field)}
+    >
+      <Pencil className="size-3.5" aria-hidden="true" />
+    </Button>
+  ) : null
+  const placesOwnAction = typeof children === 'function'
+  const value = placesOwnAction ? children(editAction) : children
+
   return (
     <FieldFrame layout={layout} label={label} icon={icon} className={className}>
       {editable ? (
-        <div className="group flex min-w-0 items-start gap-1.5">
+        <div className={cn('group min-w-0', !placesOwnAction && 'flex items-start gap-1.5')}>
           {/* Mouse shortcut only: the pencil is the keyboard/screen-reader path. */}
           <div className="min-w-0 flex-1 cursor-pointer" onClick={handleValueClick}>
-            {children}
+            {value}
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className={cn(
-              'size-6 shrink-0 text-muted-foreground',
-              'pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 focus-visible:opacity-100',
-            )}
-            aria-label={t('common.inlineEdit.edit', { field: label })}
-            disabled={inline.isSaving}
-            onClick={() => inline.start(field)}
-          >
-            <Pencil className="size-3.5" aria-hidden="true" />
-          </Button>
+          {placesOwnAction ? null : editAction}
         </div>
       ) : (
-        children
+        value
       )}
       {closedError ? (
         <p role="alert" className="mt-1 text-xs font-medium text-destructive">
