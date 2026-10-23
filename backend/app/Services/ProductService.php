@@ -10,6 +10,7 @@ use App\Enums\AttributeContext;
 use App\Enums\FormMode;
 use App\Models\Product;
 use App\Models\ProductTypology;
+use App\Models\StockMovement;
 use App\Models\UnitOfMeasure;
 use App\Products\ProductAttributeResolver;
 use App\RequestManagement\ApplicableAttribute;
@@ -200,6 +201,8 @@ class ProductService
 
     public function delete(Product $product): void
     {
+        abort_if(StockMovement::query()->where('product_id', $product->id)->exists(), 409, __('stock.product_has_movements'));
+
         $product->delete();
     }
 

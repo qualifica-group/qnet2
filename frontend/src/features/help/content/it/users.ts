@@ -89,6 +89,11 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'equipment',
+      title: 'Dotazioni',
+      blocks: [{ type: 'paragraph', text: 'Se hai il permesso **Visualizza elenco** sulle Dotazioni, la scheda di un utente già salvato mostra la sezione **Dotazioni** con i beni fisici che ha in carico (prodotto, sede, quantità). Con il permesso **Gestire** ogni riga ha **Restituisci**: dopo conferma registra la restituzione dell’intera quantità alla sede. Senza il permesso la sezione non compare.' }],
+    },
+    {
       id: 'payment',
       title: 'Pagamento e dati retributivi',
       blocks: [

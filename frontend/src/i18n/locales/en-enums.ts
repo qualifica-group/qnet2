@@ -134,11 +134,26 @@ export const enums = {
   // Product classification (spec 0017).
   product_type: {
     SERVICE: 'Service',
+    PHYSICAL: 'Physical good',
   },
   // Product usage inside an offer (spec 0142).
   product_usage: {
     SALE: 'Sellable',
     COST: 'Usable as cost',
+    INTERNAL: 'Internal use',
+  },
+  // Stock movement type and stock row status (spec 0307).
+  stock_movement_type: {
+    LOAD: 'Load',
+    UNLOAD: 'Unload',
+    TRANSFER: 'Transfer',
+    ASSIGN: 'Assignment',
+    RETURN: 'Return',
+    ADJUSTMENT: 'Adjustment',
+  },
+  stock_holder: {
+    FREE: 'Free',
+    ASSIGNED: 'Assigned',
   },
   // Registry convention status (spec 0020).
   agreement_status: {

@@ -100,6 +100,7 @@ export const navigation = {
   staffCourses: 'Courses',
   userSkills: 'Skills',
   skills: 'Skills catalogue',
+  stock: 'Equipment',
   orgChart: 'Org chart',
   purchaseRequestPriorities: 'RDA priorities',
   purchaseOrderStatuses: 'ODA statuses',

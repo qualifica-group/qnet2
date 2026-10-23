@@ -14,6 +14,7 @@ import { orgChart } from './it-org-chart'
 import { staffCourses } from './it-staff-courses'
 import { staffTrainings } from './it-staff-trainings'
 import { skills } from './it-skills'
+import { stock } from './it-stock'
 import { userSkills } from './it-user-skills'
 
 export const hr = {
@@ -28,4 +29,5 @@ export const hr = {
   staffTrainings,
   skills,
   userSkills,
+  stock,
 }

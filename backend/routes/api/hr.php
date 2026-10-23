@@ -28,3 +28,4 @@ require __DIR__.'/staff-courses.php';
 require __DIR__.'/staff-trainings.php';
 require __DIR__.'/skills.php';
 require __DIR__.'/user-skills.php';
+require __DIR__.'/stock.php';

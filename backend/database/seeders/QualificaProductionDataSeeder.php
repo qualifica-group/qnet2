@@ -78,6 +78,8 @@ use Illuminate\Database\Seeder;
  *      QualificaCommercialBackOfficeSeeder — the "Back Office Commerciale"
  *                                    role (spec 0299), added the same way to
  *                                    five listed people of the staff.
+ *      QualificaStockKeeperSeeder  — the "Gestione Dotazioni" role (spec
+ *                                    0307), added to one listed person.
  *   8. QualificaReportsToSeeder    — who each operator reports to ("Risponde
  *                                    a", spec 0166), from the mansionario's
  *                                    supervision sheet.
@@ -151,6 +153,7 @@ class QualificaProductionDataSeeder extends Seeder
         $this->call(QualificaStaffSeeder::class);
         $this->call(QualificaHrOfficeSeeder::class);
         $this->call(QualificaCommercialBackOfficeSeeder::class);
+        $this->call(QualificaStockKeeperSeeder::class);
         $this->call(QualificaReportsToSeeder::class);
         $this->call(QualificaHrCatalogSeeder::class);
         $this->callWith(QualificaLegacyImportSeeder::class, ['sources' => QualificaLegacyImportSeeder::USER_SOURCES]);

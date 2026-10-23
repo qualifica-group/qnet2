@@ -1,10 +1,13 @@
 import { useTranslation } from 'react-i18next'
 import { RecordSectionsGrid } from '@/components/detail/record-panel'
+import { useAbilities } from '@/features/auth/use-abilities'
 import { CustomFieldRecordSections } from '@/features/custom-fields/custom-field-record-sections'
 import { PersonalDataIdentityRecordSection } from '@/features/personal-data/personal-data-identity-record-section'
 import { useAssignmentFieldsVisibility, useUserSectionVisibility } from '@/features/users/user-assignment'
 import { UserAssignmentRecordSection } from '@/features/users/user-assignment-record-section'
 import { UserContractHistorySection } from '@/features/users/user-contract-history-section'
+import { StockUserSection } from '@/features/stock/stock-user-section'
+import { STOCK_VIEW_PERMISSION } from '@/features/stock/types'
 import { usePaymentVisible } from '@/features/users/use-payment-visible'
 import { UserPaymentRecordSection } from '@/features/users/user-payment-section'
 import { UserAvatarField } from '@/features/users/user-avatar-field'
@@ -39,6 +42,7 @@ export function UserDetailSections({ user, editor, onChanged }: UserDetailSectio
   const visibility = useUserSectionVisibility()
   const assignmentFields = useAssignmentFieldsVisibility()
   const paymentVisible = usePaymentVisible()
+  const { can } = useAbilities()
   const sectionProps = { values: persistedUserValues(user), form, inline }
 
   return (
@@ -57,6 +61,7 @@ export function UserDetailSections({ user, editor, onChanged }: UserDetailSectio
       {visibility.contractHistory ? <UserContractHistorySection userId={user.id} /> : null}
       {visibility.contractData ? <UserContractDataRecordSection {...sectionProps} /> : null}
       {paymentVisible ? <UserPaymentRecordSection {...sectionProps} /> : null}
+      {can(STOCK_VIEW_PERMISSION) ? <StockUserSection userId={user.id} /> : null}
       <CustomFieldRecordSections resource="users" values={sectionProps.values.custom_fields} inline={inline} control={form.control} />
     </RecordSectionsGrid>
   )

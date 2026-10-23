@@ -381,6 +381,7 @@ export const products = {
     product_type: 'Tipo',
     usages: 'Utilizzo in offerta',
     business_function: 'Funzione aziendale',
+    stock_quantity: 'Giacenza',
     created_at: 'Creato il',
   },
   bulkCostType: {
@@ -424,6 +425,7 @@ export const products = {
     productType: 'Tipo',
     usages: 'Utilizzo in offerta',
     usagesRequired: 'Seleziona almeno un utilizzo.',
+    usagesInternalNeedsPhysical: 'L’uso interno è ammesso solo per un bene fisico.',
     category: 'Categoria',
     categoryPlaceholder: 'Seleziona una categoria…',
     categorySearch: 'Cerca categorie…',

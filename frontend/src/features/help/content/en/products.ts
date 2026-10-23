@@ -84,8 +84,8 @@ const guide: HelpGuide = {
             ['Typology', 'Chosen from the Product Typologies list.'],
             ['Cost type', 'Optional. The product’s default cost type (for example Collaboratori or Fitti), meant for products Usable as cost: it is proposed on purchase order lines, passive invoice lines and work order costs when you pick the product. It also shows as a colored badge in the grid (filterable by name).'],
             ['Unit of measure', 'For example hours or pieces.'],
-            ['Type', 'Today the only value is Service.'],
-            ['Offer usage', 'Where the product can be used in an offer (see below).'],
+            ['Type', 'Service or Physical good (an object, for example a laptop or a piece of furniture).'],
+            ['Offer usage', 'Where the product can be used: in an offer, or as a good for internal use (see below).'],
           ],
         },
         {
@@ -148,6 +148,24 @@ const guide: HelpGuide = {
         {
           type: 'tip',
           text: "When you convert a lead, its non-sellable products of interest do not become offer lines.",
+        },
+      ],
+    },
+    {
+      id: 'internal-use-stock',
+      title: 'Internal use and stock',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'The **Internal use** box can only be ticked when the Type is **Physical good**: with Type Service the form shows the error on the field and does not save. A Physical good with Internal use is a **tracked** product: in the **Equipment** module you record its loads, assignments and transfers by site and person.',
+        },
+        {
+          type: 'list',
+          items: [
+            'The record of a tracked product has the **Stock** section (site, person or “In site”, quantity and unit) and the grid has the **Stock** column: both are only visible with the View list permission on Equipment.',
+            'While the stock is greater than zero you cannot untick Internal use or change the Type.',
+            'A product with stock movements cannot be deleted.',
+          ],
         },
       ],
     },

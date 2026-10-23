@@ -68,6 +68,8 @@ use App\Tables\SkillsTableDefinition;
 use App\Tables\SourcesTableDefinition;
 use App\Tables\StaffCoursesTableDefinition;
 use App\Tables\StaffTrainings\StaffTrainingsTableDefinition;
+use App\Tables\Stock\StockBalancesTableDefinition;
+use App\Tables\Stock\StockMovementsTableDefinition;
 use App\Tables\TagsTableDefinition;
 use App\Tables\TaskCategoriesTableDefinition;
 use App\Tables\TaskImportancesTableDefinition;
@@ -129,6 +131,9 @@ return [
         // spec 0286: skills catalogue and user skills register.
         'skills' => SkillsTableDefinition::class,
         'user-skills' => UserSkillsTableDefinition::class,
+        // spec 0307: HR equipment stock rows and the movement register.
+        'stock-balances' => StockBalancesTableDefinition::class,
+        'stock-movements' => StockMovementsTableDefinition::class,
         'companies' => CompaniesTableDefinition::class,
         'commission-configurations' => CommissionConfigurationsTableDefinition::class,
         'company-sites' => CompanySitesTableDefinition::class,

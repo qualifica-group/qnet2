@@ -136,6 +136,8 @@ final class ProductColumnCatalog
             ],
             // Spec 0142: the Offerta usages, filtered/sorted by ProductUsageColumn.
             ProductUsageColumn::declaration(),
+            // Spec 0307: stock held, sorted by ProductStockColumn.
+            ProductStockColumn::declaration(),
             [
                 'id' => 'created_at',
                 'label' => 'products.columns.created_at',

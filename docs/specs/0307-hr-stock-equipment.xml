@@ -1,0 +1,357 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0307 — Dotazioni (fase 1): giacenze di beni fisici a uso interno per sede operativa e per utente,
+  con registro dei movimenti. Fase 2 (matricole, verbale di consegna, avviso a fine contratto) e fase 3
+  (carico dai ricevimenti OdA, scorte minime, inventario guidato) sono fuori scope.
+-->
+<spec id="0307-hr-stock-equipment" status="approved" owner="utente" date="2026-10-23">
+
+  <goal>
+    Chi gestisce il personale registra dove si trovano i beni fisici a uso interno dell'azienda (notebook,
+    telefoni, arredi, materiale) e a chi sono dati in dotazione: per ogni prodotto la quantita' in ogni sede
+    operativa, libera o assegnata a un utente, con lo storico di ogni movimento. Le stesse giacenze si leggono
+    dal prodotto e dalla scheda dell'utente.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-23: modulo HR "Dotazioni" collegato all'utente e al prodotto; nuova spunta sul
+    prodotto accanto a Vendibile / Usato come costo; gestione giacenze vera (carichi, scarichi, trasferimenti
+    tra sedi, assegnazione a un utente che si riflette sulla scheda utente); ogni combinazione sede + utente e'
+    una riga separata con la propria quantita'; nuovo tipo prodotto "fisico". L'utente ha detto "procedi"
+    accettando i default proposti in chat (D-1..D-7).
+
+    Fatti verificati nel repo:
+    - `products` (model `Product`): `product_type` cast a `App\Enums\ProductType` (oggi solo `Service = 'SERVICE'`,
+      `#[IsDefault]`; l'enum e' dichiarato punto unico di estensione: badge griglia e select client arrivano da
+      `config/config.php` form_enums `product_type`); `usages` = set JSON di `App\Enums\ProductUsage`
+      (`Sale = 'SALE'`, `Cost = 'COST'`, spec 0142), ordinato in `Product::booted()`, scritto da
+      `ProductService`; regole in `StoreProductRequest` / `UpdateProductRequest` (`usages` array min:1,
+      `usages.*` `Rule::enum`). `ProductService::forSelect()` filtra gia' per `productUsage`
+      (`whereJsonContains('usages', ...)`). `unit_of_measure_id` NOT NULL (spec 0088).
+    - Frontend prodotti: `features/products/product-usage-field.tsx` rende una checkbox per ogni opzione
+      dell'enum config `product_usage` (una nuova case compare da sola); `types.ts` ha
+      `ProductType = 'SERVICE'` e `ProductUsage = 'SALE' | 'COST'`; dettaglio a sezioni
+      `product-detail-sections.tsx` (`RecordSectionsGrid`). Griglia `ProductsTableDefinition` +
+      `Tables/Products/{ProductColumnCatalog, ProductUsageColumn, ProductRelationColumns}`.
+    - Sedi: `OperationalSite` (`alias`, `is_active` spec 0135, indirizzo via `HasAddresses`, etichetta
+      `App\Support\OperationalSiteLabel::displayName`), for-select `GET /api/operational-sites/for-select`.
+    - Utenti: `User` (`is_active`), for-select `GET /api/users/for-select`. Scheda utente a sezioni
+      `features/users/user-detail-sections.tsx`; precedente di sezione con propria lettura per `userId`:
+      `UserContractHistorySection`.
+    - Moduli HR: voci di menu di primo livello (`config/navigation/{absences,staff-trainings,user-skills}.php`,
+      assemblate in `config/navigation.php`), rotte API raccolte in `routes/api/hr.php`, rotte frontend in
+      `frontend/src/routes/hr-routes.tsx`. Precedente piu' vicino: Competenze (spec 0286) — `UserSkillPolicy`
+      con `abilities()` custom, `UserSkillsAuthorization` senza campi (permessi assegnabili dal form Ruolo),
+      griglia `UserSkillsTableDefinition` in `config/tables.php`, ruolo `risorse-umane` in
+      `database/seeders/QualificaCatalog/HrOfficeRoleCatalogue::MODULES`.
+    - Permessi: `permissions:sync` crea i permessi di navigazione + `BasePolicy::permissions()` di ogni policy
+      in `app/Policies`; in produzione dopo il deploy si lancia `php artisan permissions:sync` (come 0286).
+    - Envelope: `$this->ok($resource, $message, HttpStatusEnum::CREATED)` + `handleControllerException`. I decimali
+      escono come stringa (cast `decimal:3`, come `PurchaseOrderReceiptLine.quantity`, spec 0254).
+    - Lock: precedenti `Model::query()->whereKey(...)->lockForUpdate()` in `ProformaRequestService`,
+      `WorkOrderService`, `SettlementRunner`. Colonne generate: precedenti in
+      `2026_10_10_100000_add_residual_amount_to_invoice_installments_table.php`. Test su SQLite, prod MySQL.
+    - Guide in-app: `features/help/content/{it,en}/`, `HELP_GUIDE_KEYS` oggi 96 voci (`help-guide-keys.test.ts`).
+
+    Decisioni utente 2026-10-23 (accettate con "procedi"):
+    - D-1 Nuova case `ProductUsage::Internal = 'INTERNAL'`, etichetta "Uso interno" / "Internal use".
+    - D-2 Nuova case `ProductType::Physical = 'PHYSICAL'`, etichetta "Bene fisico" / "Physical good". Il default
+      resta Servizio. "Uso interno" e' ammesso solo su un Bene fisico (422 altrimenti).
+    - D-3 Fase 1 a sola quantita', senza matricole; lo schema non deve impedire la fase 2.
+    - D-4 Registro movimenti append-only + righe di giacenza uniche per (prodotto, sede, utente opzionale);
+      la quantita' di una riga non va mai sotto zero.
+    - D-5 Operazioni: Carico, Scarico, Trasferimento, Assegnazione, Restituzione, Rettifica. Una dotazione resta
+      legata alla sede in cui si trova.
+    - D-6 Visibilita' solo con permesso: niente vista "le mie dotazioni" per il dipendente in fase 1.
+    - D-7 Il carico dai ricevimenti degli ordini di acquisto e' fase 3.
+
+    Decisioni proposte (da validare con la spec):
+    - D-8 Naming: identificatori `stock` (tabelle `stock_balances`, `stock_movements`; model `StockBalance`,
+      `StockMovement`; risorsa/permessi/rotte `stock`); in UI il modulo si chiama "Dotazioni" / "Equipment",
+      le righe "Giacenze" / "Stock". Un solo nome tecnico per un solo concetto (fase 3 riusa le stesse tabelle).
+    - D-9 Prodotto "tracciato" = `product_type = PHYSICAL` E `usages` contiene `INTERNAL`. Solo i prodotti
+      tracciati accettano movimenti.
+    - D-10 Quantita' decimali a 3 cifre (`decimal(12,3)`), come i ricevimenti OdA (spec 0254), cosi' la fase 3
+      carica senza conversioni; la UI mostra la quantita' senza zeri finali e l'unita' di misura del prodotto.
+    - D-11 Un movimento ha una sorgente (`from_operational_site_id`, `from_user_id`) e/o una destinazione
+      (`to_operational_site_id`, `to_user_id`) e una `quantity` sempre &gt; 0: la sorgente scala, la
+      destinazione aumenta. Per tipo:
+      LOAD solo destinazione (sede, utente sempre null); UNLOAD solo sorgente (sede, utente opzionale);
+      TRANSFER sorgente (sede A, utente U o null) → destinazione (sede B diversa da A, stesso U): sposta merce
+      libera o la dotazione di un utente che cambia sede; ASSIGN (sede, null) → (stessa sede, utente);
+      RETURN (sede, utente) → (stessa sede, null); ADJUSTMENT su una riga (sede, utente opzionale): il client
+      manda la quantita' contata, il server registra la differenza come sola destinazione (aumento) o sola
+      sorgente (diminuzione); differenza zero = 422.
+    - D-12 Riga a zero: la riga di giacenza si cancella quando arriva a 0 (lo storico vive nei movimenti, che
+      puntano a prodotto/sede/utente, non alla riga). Le viste mostrano solo righe con quantita' &gt; 0.
+    - D-13 Concorrenza: ogni movimento gira in una transazione che blocca la riga del prodotto
+      (`lockForUpdate`) prima di leggere e scrivere le righe di giacenza; vincolo unico DB su
+      (`product_id`, `operational_site_id`, `holder_key`) con `holder_key` colonna generata stored =
+      COALESCE(`user_id`, 0) (MySQL non considera uguali due NULL in un indice unico).
+    - D-14 Validita': `moved_on` data del movimento, default oggi, mai nel futuro; `note` facoltativa, obbligatoria
+      per UNLOAD e ADJUSTMENT (max 1000). La destinazione di LOAD e TRANSFER deve essere una sede attiva; il
+      destinatario di ASSIGN un utente attivo. Uscite e restituzioni da sedi/utenti inattivi restano ammesse
+      (si deve poter svuotare una sede chiusa).
+    - D-15 Immutabilita': i movimenti non si modificano ne' si cancellano (nessun endpoint); un errore si corregge
+      con un movimento opposto o una rettifica. Niente activity log sui movimenti (sono gia' il log); il
+      movimento registra `created_by`.
+    - D-16 Vincoli sul prodotto: con giacenza &gt; 0 non si puo' togliere "Uso interno" ne' cambiare tipo da
+      Bene fisico (422 sul campo). Prodotto, sede o utente con almeno un movimento non si cancellano: FK
+      `restrictOnDelete` + guard nel service con 409 e messaggio leggibile (prodotto e sede); per l'utente il
+      guard si aggiunge solo se l'utente oggi e' cancellabile dall'app (da verificare nel build).
+    - D-17 Permessi della risorsa `stock`: `viewAny` (modulo, giacenze, movimenti, sezioni su prodotto e utente)
+      e `manage` (registrare movimenti; implica la lettura). `StockPolicy::abilities()` = `['viewAny', 'manage']`.
+    - D-21 (decisione utente 2026-10-23) Chi vede il modulo: per ora solo Flavio Scognamiglio
+      (`flavio.scognamiglio@qualificagroup.com`, "Tecnico Sistemi e Supporto Utenti") e gli `admin`
+      (che ricevono tutto il catalogo, QualificaRoleSeeder Step 4, invariato); i `super-admin` vedono tutto per
+      `Gate::before`. NON al ruolo `risorse-umane` ne' ad altre mansioni. Stesso schema della spec 0299: nuovo
+      catalogo `QualificaCatalog/StockKeeperRoleCatalogue` (ROLE `gestione-dotazioni`, DESCRIPTION
+      "Gestione Dotazioni", MODULES `['stock']`, USERS `['flavio.scognamiglio@qualificagroup.com']`), ruolo
+      sincronizzato in `QualificaRoleSeeder` (nuovo Step 4d, come il 4c del back office), assegnato in aggiunta
+      alla mansione da `QualificaStockKeeperSeeder` (chiamato in `QualificaProductionDataSeeder` dopo
+      `QualificaCommercialBackOfficeSeeder`; account mancante = warning, re-run convergente). I picker del form
+      movimento usano i for-select di prodotti, sedi e utenti, protetti dal solo `auth:sanctum` (ADR 0011): il
+      ruolo non ha bisogno di altri permessi. Le sezioni su prodotto e scheda utente compaiono solo a chi apre
+      anche quei record (Flavio lavora dalla pagina /stock).
+    - D-18 Colonna "Giacenza" nella griglia prodotti: somma delle righe del prodotto; `null` (cella vuota) per i
+      prodotti non tracciati e per chi non ha `stock.viewAny`. Ordinabile, non filtrabile.
+    - D-19 Pagina Dotazioni con due schede: "Giacenze" (griglia `stock-balances`) e "Movimenti" (griglia
+      `stock-movements`). Bottoni di pagina Carico e Trasferimento; azioni di riga Assegna (solo righe libere),
+      Restituisci (solo righe assegnate), Trasferisci, Scarica, Rettifica, Storico. Un unico form di movimento
+      (sheet) che cambia campi in base al tipo, precompilato dalla riga.
+    - D-20 Seed demo: `DemoStockSeeder` (in `DemoDataSeeder`, dopo prodotti, sedi e utenti) con 3 prodotti
+      tracciati e qualche movimento di ogni tipo. Nessun seed di produzione oltre ai permessi del ruolo.
+  </context>
+
+  <scope>
+    <in>
+      <item>Enum: `ProductType::Physical`, `ProductUsage::Internal` (+ label IT/EN, config form_enums).</item>
+      <item>Prodotti: regola "Uso interno solo su Bene fisico" (D-2), vincoli con giacenza (D-16), colonna
+        "Giacenza" (D-18), sezione "Giacenze" nel dettaglio prodotto (solo prodotto tracciato e `stock.viewAny`).</item>
+      <item>Tabelle `stock_balances` e `stock_movements`, model, factory, servizio dei movimenti (D-11..D-15).</item>
+      <item>Endpoint: creazione movimento, lettura giacenze filtrate, storico di una riga; griglie
+        `stock-balances` e `stock-movements` nel framework tabellare.</item>
+      <item>Permessi `stock.viewAny` / `stock.manage`, policy, authorization assegnabile dal form Ruolo; ruolo
+        `gestione-dotazioni` assegnato solo a Flavio Scognamiglio (D-21).</item>
+      <item>Menu: voce di primo livello "Dotazioni" dopo Competenze; pagina `/stock` con le due schede (D-19).</item>
+      <item>Scheda utente: sezione "Dotazioni" (righe dell'utente: prodotto, sede, quantita', ultimo movimento)
+        con azione Restituisci (solo `stock.manage`); visibile solo con `stock.viewAny`.</item>
+      <item>Seed demo `DemoStockSeeder` (D-20).</item>
+      <item>Guide in-app IT/EN: nuova `stock` (HELP_GUIDE_KEYS 96 → 97), aggiornare `products`, `users`, `general`;
+        manuale Claude Docs (nuovo capitolo Dotazioni + Prodotti + Utenti).</item>
+    </in>
+    <out>
+      <item>Matricole / numeri di serie, verbale di consegna PDF, firma, avviso a fine contratto (fase 2).</item>
+      <item>Carico dai ricevimenti OdA, scorte minime per sede, inventario guidato in massa (fase 3).</item>
+      <item>Vista "le mie dotazioni" per il dipendente, notifiche all'utente su assegnazione/restituzione.</item>
+      <item>Valorizzazione del magazzino (costo medio, FIFO), contabilita' di magazzino.</item>
+      <item>Modifica o cancellazione di un movimento; movimenti in massa su piu' righe; import/export Excel.</item>
+      <item>Giacenza per prodotti non tracciati; uso di Bene fisico nelle offerte (resta come oggi: dipende solo
+        da Vendibile / Usato come costo).</item>
+      <item>Migrazione dati dal legacy.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <!-- Schema -->
+    <table name="stock_balances">
+      id; product_id FK products restrictOnDelete; operational_site_id FK operational_sites restrictOnDelete;
+      user_id FK users nullable restrictOnDelete; holder_key unsignedBigInteger storedAs COALESCE(user_id, 0);
+      quantity decimal(12,3) &gt; 0; last_moved_on date; timestamps.
+      UNIQUE (product_id, operational_site_id, holder_key); INDEX (operational_site_id), (user_id).
+    </table>
+    <table name="stock_movements">
+      id; type varchar (StockMovementType: LOAD|UNLOAD|TRANSFER|ASSIGN|RETURN|ADJUSTMENT);
+      product_id FK restrictOnDelete; quantity decimal(12,3) &gt; 0;
+      from_operational_site_id, from_user_id, to_operational_site_id, to_user_id (FK nullable restrictOnDelete);
+      moved_on date; note text nullable; created_by FK users; timestamps.
+      INDEX (product_id, moved_on), (from_operational_site_id), (to_operational_site_id), (from_user_id),
+      (to_user_id).
+    </table>
+
+    <!-- Shape condivise -->
+    <shape name="StockBalance">
+      { id: int, product: { id, code, name, unit_of_measure: { id, code, name } },
+        operational_site: { id, label, is_active }, user: { id, name, is_active } | null,
+        quantity: string ("3.000"), last_moved_on: "YYYY-MM-DD" }
+    </shape>
+    <shape name="StockMovement">
+      { id: int, type: StockMovementType, product: { id, code, name, unit_of_measure: { id, code, name } },
+        quantity: string, from_operational_site: { id, label } | null, from_user: { id, name } | null,
+        to_operational_site: { id, label } | null, to_user: { id, name } | null, moved_on: "YYYY-MM-DD",
+        note: string | null, created_by: { id, name }, created_at: ISO-8601 }
+    </shape>
+
+    <endpoint method="POST" path="/api/stock-movements">
+      <request>
+        { type: StockMovementType (required),
+          product_id: int (required, prodotto tracciato D-9),
+          operational_site_id: int (required; sede di destinazione per LOAD, della riga sorgente per gli altri),
+          user_id: int | null (LOAD: assente/null; ASSIGN: destinatario, required; RETURN: required;
+                               UNLOAD/TRANSFER/ADJUSTMENT: utente della riga, null = merce libera),
+          to_operational_site_id: int (solo e required per TRANSFER, diverso da operational_site_id),
+          quantity: decimal &gt; 0, max 3 decimali (required tranne ADJUSTMENT),
+          counted_quantity: decimal &gt;= 0, max 3 decimali (solo e required per ADJUSTMENT),
+          moved_on: "YYYY-MM-DD" (opzionale, default oggi, &lt;= oggi),
+          note: string max 1000 (required per UNLOAD e ADJUSTMENT) }
+      </request>
+      <response status="201">
+        { success: true, message, data: { movement: StockMovement, balances: StockBalance[] } }
+        `balances` = le righe toccate dopo il movimento (quelle arrivate a 0 non ci sono).
+      </response>
+      <errors>
+        403 senza `stock.manage`.
+        422 `product_id` non tracciato; 422 `quantity` superiore alla giacenza della riga sorgente (il messaggio
+        riporta la quantita' disponibile) o riga sorgente inesistente; 422 `to_operational_site_id` uguale alla
+        sorgente o sede inattiva; 422 `operational_site_id` inattiva per LOAD; 422 `user_id` inattivo per ASSIGN,
+        presente per LOAD, mancante per ASSIGN/RETURN; 422 `counted_quantity` uguale alla giacenza attuale;
+        422 `moved_on` futura; 422 `note` mancante per UNLOAD/ADJUSTMENT.
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/stock-balances">
+      <request>query: product_id?: int, user_id?: int, operational_site_id?: int (almeno uno, 422 altrimenti)</request>
+      <response status="200">
+        { success, message, data: StockBalance[] } ordinate per sede, poi utente (liberi prima), poi prodotto.
+        Usato dalla sezione Giacenze del prodotto (product_id) e dalla sezione Dotazioni dell'utente (user_id).
+      </response>
+      <errors>403 senza `stock.viewAny`; 422 nessun filtro.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/stock-movements">
+      <request>query: product_id: int (required), operational_site_id: int (required), user_id?: int|null</request>
+      <response status="200">
+        { success, message, data: StockMovement[] } — storico di una riga: i movimenti in cui la coppia
+        (sede, utente) e' sorgente o destinazione per quel prodotto, dal piu' recente (moved_on desc, id desc),
+        massimo 200.
+      </response>
+      <errors>403 senza `stock.viewAny`; 422 filtri mancanti.</errors>
+    </endpoint>
+
+    <table_domain name="stock-balances">
+      authz: `StockPolicy::viewAny`. Colonne: product_code (text, sort, filtro), product_name (text, sort, filtro,
+      search), product_category (text), operational_site (text, filtro set), user_name (text, filtro; vuoto =
+      libera), holder (badge FREE|ASSIGNED, filtro set), quantity (number, sort), unit_of_measure (text),
+      last_moved_on (date, sort, filtro). Ordinamento default product_name asc. Riga: + `product_id`,
+      `operational_site_id`, `user_id`, `abilities: { manage: bool }`. Nessuna azione delete/bulk.
+    </table_domain>
+
+    <table_domain name="stock-movements">
+      authz: `StockPolicy::viewAny`. Colonne: moved_on (date, sort, filtro), type (badge, filtro set),
+      product_code, product_name (search), quantity (number), from_site, from_user, to_site, to_user, note,
+      created_by_name, created_at (datetime). Ordinamento default moved_on desc. Nessuna azione.
+    </table_domain>
+
+    <product_changes>
+      `ProductResource` / dettaglio: + `is_stock_tracked: bool` (D-9) e `stock_quantity: string | null` (somma,
+      null se non tracciato o senza `stock.viewAny`). Griglia `products`: + colonna `stock_quantity` (number,
+      sortable). Config `form_enums`: `product_type` + PHYSICAL, `product_usage` + INTERNAL,
+      + `stock_movement_type`.
+      422 su `usages` se contiene INTERNAL e `product_type` != PHYSICAL; 422 su `usages` / `product_type` se il
+      cambio rende non tracciato un prodotto con giacenza &gt; 0. 409 su DELETE prodotto o sede con movimenti.
+    </product_changes>
+
+    <navigation>
+      `config/navigation/stock.php`: key `stock`, label `navigation.stock`, icon `package`, route `/stock`,
+      permission `stock.viewAny`; inserita dopo `user-skills`.
+    </navigation>
+
+    <i18n_keys>
+      Etichette colonne delle griglie (scritte dal backend nella definizione colonne, tradotte dal frontend):
+      `stock.balances.columns.&lt;id&gt;` e `stock.movements.columns.&lt;id&gt;` (id = quelli dei table_domain).
+      Chiavi enum per badge/filtri (`enumKeyFor`, `config/config.php` form_enums): `stock_movement_type`
+      (LOAD|UNLOAD|TRANSFER|ASSIGN|RETURN|ADJUSTMENT) e `stock_holder` (FREE|ASSIGNED); `product_type` e
+      `product_usage` seguono il meccanismo gia' in uso per quelle chiavi. Radice i18n frontend `stock.*`
+      (file satellite `it-stock.ts` / `en-stock.ts`). Help key `stock`.
+    </i18n_keys>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un prodotto di tipo Servizio, quando si salva con usages [INTERNAL], allora 422
+      su `usages` e il prodotto non cambia; con tipo PHYSICAL lo stesso salvataggio riesce e `is_stock_tracked`
+      vale true. (Pest, Products)</criterion>
+    <criterion id="AC-002">Dato un prodotto tracciato con giacenza 2 in una sede, quando si toglie INTERNAL o si
+      cambia tipo in SERVICE, allora 422 e il prodotto non cambia; con giacenza 0 il cambio riesce. (Pest)</criterion>
+    <criterion id="AC-003">Dato un prodotto tracciato, quando un utente con `stock.manage` registra LOAD 5 nella
+      sede A, allora 201, esiste un movimento LOAD con sola destinazione (A, null) e la riga (prodotto, A, null)
+      vale 5.000; un secondo LOAD 2 porta la stessa riga a 7.000 senza crearne un'altra. (Pest)</criterion>
+    <criterion id="AC-004">Data la riga (P, A, null) = 7, quando si registra ASSIGN 1 all'utente U, allora la
+      riga libera vale 6 e la riga (P, A, U) vale 1; ASSIGN a un utente inattivo = 422 e nessuna riga cambia.
+      (Pest)</criterion>
+    <criterion id="AC-005">Data la riga (P, A, U) = 1, quando si registra RETURN 1, allora la riga (P, A, U)
+      non esiste piu' e la riga libera di A torna a 7; il movimento resta nello storico. (Pest)</criterion>
+    <criterion id="AC-006">Date (P, A, null) = 7 e (P, A, U) = 1, quando si registra TRANSFER 3 da (A, null) a B e
+      TRANSFER 1 da (A, U) a B, allora (P, A, null) = 4, (P, B, null) = 3, (P, B, U) = 1 e (P, A, U) non esiste;
+      TRANSFER verso la stessa sede o verso una sede inattiva = 422. (Pest)</criterion>
+    <criterion id="AC-007">Data una riga con 4, quando si chiede UNLOAD 5, TRANSFER 5 o ASSIGN 5, allora 422 su
+      `quantity` con la quantita' disponibile nel messaggio, nessun movimento creato, righe invariate; UNLOAD
+      senza nota = 422. (Pest)</criterion>
+    <criterion id="AC-008">Data una riga con 4, quando si registra ADJUSTMENT con counted_quantity 6 (e poi 1),
+      allora si crea un movimento ADJUSTMENT di 2 con sola destinazione (poi di 5 con sola sorgente) e la riga
+      vale 6 (poi 1); counted_quantity uguale alla giacenza = 422; counted_quantity 0 cancella la riga. (Pest)</criterion>
+    <criterion id="AC-009">Dato un prodotto non tracciato, una data futura, LOAD con user_id, o una sede
+      inattiva come destinazione di LOAD, allora 422 sul campo indicato nel contratto e nessuna scrittura.
+      (Pest, dataset)</criterion>
+    <criterion id="AC-010">Senza `stock.manage` POST /api/stock-movements = 403; senza `stock.viewAny`
+      GET /api/stock-balances, GET /api/stock-movements e le griglie `stock-balances` / `stock-movements` = 403;
+      con il solo `viewAny` le letture riescono e le righe hanno `abilities.manage` false. (Pest)</criterion>
+    <criterion id="AC-011">GET /api/stock-balances?user_id=U restituisce solo le righe di U con la shape
+      StockBalance; ?product_id=P restituisce tutte le righe di P (libere e assegnate) in ordine sede, liberi
+      prima, utente; senza filtri = 422. GET /api/stock-movements per (P, A, null) restituisce i movimenti in cui
+      (A, null) e' sorgente o destinazione, dal piu' recente. (Pest)</criterion>
+    <criterion id="AC-012">La griglia `products` espone `stock_quantity` = somma delle righe per un prodotto
+      tracciato e null per un prodotto non tracciato o per un attore senza `stock.viewAny`; ordinabile. (Pest)</criterion>
+    <criterion id="AC-013">DELETE di un prodotto o di una sede operativa con almeno un movimento = 409 con
+      messaggio, nulla cancellato. (Pest)</criterion>
+    <criterion id="AC-014">Il vincolo unico (product_id, operational_site_id, holder_key) rifiuta una seconda riga
+      libera per la stessa coppia anche se `user_id` e' NULL; il servizio esegue ogni movimento in una
+      transazione con `lockForUpdate` sul prodotto (test: due LOAD consecutivi sulla stessa riga producono una
+      riga sola; inserimento diretto duplicato lancia QueryException). (Pest)</criterion>
+    <criterion id="AC-015">`permissions:sync` crea `stock.viewAny` e `stock.manage`, offerti dal form Ruolo;
+      `QualificaRoleSeeder` crea `gestione-dotazioni` con i soli `stock.*` e `admin` li riceve; `risorse-umane` e
+      le mansioni no; `QualificaStockKeeperSeeder` assegna il ruolo all'account di Flavio senza togliergli la
+      mansione, salta con warning se l'account manca e rieseguito non duplica; la voce di menu "Dotazioni" compare
+      solo con `stock.viewAny`. (Pest)</criterion>
+    <criterion id="AC-016">Frontend prodotto: il form mostra la checkbox "Uso interno" e il tipo "Bene fisico";
+      scegliendo "Uso interno" con tipo Servizio il form mostra l'errore sul campo prima dell'invio (schema Zod);
+      il dettaglio di un prodotto tracciato mostra la sezione "Giacenze" con le righe (sede, utente o "In sede",
+      quantita' + unita') solo se l'attore ha `stock.viewAny`. (Vitest)</criterion>
+    <criterion id="AC-017">Frontend pagina /stock: scheda Giacenze con la griglia `stock-balances`, scheda
+      Movimenti con `stock-movements`; con `stock.manage` i bottoni Carico/Trasferimento e le azioni di riga
+      (Assegna solo su righe libere, Restituisci solo su righe assegnate, Trasferisci, Scarica, Rettifica)
+      aprono il form del movimento precompilato; senza `manage` bottoni e azioni non ci sono, Storico si'.
+      (Vitest)</criterion>
+    <criterion id="AC-018">Frontend form movimento: i campi cambiano col tipo (Carico: prodotto, sede, quantita';
+      Assegna: destinatario; Trasferisci: sede di destinazione; Rettifica: quantita' contata; nota obbligatoria
+      per Scarico/Rettifica); il picker prodotto chiede solo prodotti tracciati; un 422 del server appare sul
+      campo con la triade ARIA; al successo la griglia, la sezione del prodotto e quella dell'utente si
+      aggiornano (invalidazione query). (Vitest)</criterion>
+    <criterion id="AC-019">Frontend scheda utente: con `stock.viewAny` compare la sezione "Dotazioni" con le righe
+      dell'utente (o lo stato vuoto); con `stock.manage` ogni riga ha "Restituisci" che registra RETURN
+      dell'intera quantita' dopo conferma; senza `viewAny` la sezione non c'e' e nessuna richiesta parte. (Vitest)</criterion>
+    <criterion id="AC-020">Guide in-app IT/EN: nuova `stock` con le stesse sezioni nelle due lingue,
+      `HELP_GUIDE_KEYS` = 97, `products` / `users` / `general` aggiornate; `help-content-parity.test.ts` e
+      `help-guide-keys.test.ts` verdi. (Vitest)</criterion>
+    <criterion id="AC-021">Responsive: pagina /stock, form movimento e sezioni a 375 / 768 / 1024 px senza scroll
+      orizzontale della pagina (la griglia scorre dentro il suo contenitore). (verifica manuale)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Backend: Laravel, spatie/permission; frontend: TanStack Query, RHF + Zod,
+      shadcn/ui, AG Grid via `TableView` del framework tabellare.</item>
+    <item>Authz server-side su ogni endpoint e griglia (`StockPolicy`); l'UI nasconde, il backend decide.</item>
+    <item>Layering: Controller sottile → FormRequest (`StoreStockMovementRequest` con regole per tipo) →
+      `StockMovementService::record()` (orchestrazione a Step, transazione + lock) → Resource. Nessun model
+      restituito raw.</item>
+    <item>Ordinamenti e filtri delle griglie solo da colonne dichiarate (niente `orderByRaw` da input).</item>
+    <item>`stock_balances.quantity` scritta solo da `StockMovementService` (fuori da `#[Fillable]` come
+      `Product.code`); i movimenti non hanno update/delete.</item>
+    <item>Migrazioni nuove e reversibili; nessuna modifica a migrazioni esistenti. Mai migrate:fresh/rollback sul
+      DB di sviluppo.</item>
+    <item>File sotto 300 righe (500 hard); identificatori inglesi; stringhe UI via i18next (IT/EN).</item>
+    <item>Dopo il deploy: `php artisan permissions:sync`, poi
+      `php artisan db:seed --class=QualificaStockKeeperSeeder` (risincronizza i ruoli e assegna quello di Flavio).</item>
+  </constraints>
+
+</spec>

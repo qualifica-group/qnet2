@@ -12,7 +12,7 @@ uses(RefreshDatabase::class);
 // AC-018 — columns config
 // ---------------------------------------------------------------------------
 
-it('returns the 13 columns in order with the declared flags, 403 without viewAny', function () {
+it('returns the 14 columns in order with the declared flags, 403 without viewAny', function () {
     $actor = productUserWith([]);
     Sanctum::actingAs($actor);
     $this->getJson('/api/tables/products/columns')->assertForbidden();
@@ -32,7 +32,8 @@ it('returns the 13 columns in order with the declared flags, 403 without viewAny
     // this module deliberately leaves in place (D-1).
     // Spec 0142: `usages` (the Offerta usages) right after `product_type`.
     // Spec 0251: `cost_type` (default cost type) right after `product_typology`.
-    expect($ids)->toBe(['id', 'code', 'name', 'description', 'cost', 'price', 'category', 'unit_of_measure', 'product_typology', 'cost_type', 'product_type', 'usages', 'created_at']);
+    // Spec 0307: `stock_quantity` right after `usages` (REQUIREMENT CHANGED: 13 -> 14 columns).
+    expect($ids)->toBe(['id', 'code', 'name', 'description', 'cost', 'price', 'category', 'unit_of_measure', 'product_typology', 'cost_type', 'product_type', 'usages', 'stock_quantity', 'created_at']);
 
     $columns = collect($data['columns'])->keyBy('id');
     expect($columns['id']['sortable'])->toBeTrue()

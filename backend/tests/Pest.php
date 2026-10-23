@@ -77,6 +77,7 @@ require_once __DIR__.'/Helpers/AbsenceBalanceHelpers.php';
 require_once __DIR__.'/Helpers/AbsenceInsightHelpers.php';
 require_once __DIR__.'/Helpers/StaffTrainingHelpers.php';
 require_once __DIR__.'/Helpers/SkillHelpers.php';
+require_once __DIR__.'/Helpers/StockHelpers.php';
 
 /*
 |--------------------------------------------------------------------------

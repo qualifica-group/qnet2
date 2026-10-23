@@ -163,6 +163,7 @@ export const permissions = {
     'staff-courses': 'Corsi',
     'user-skills': 'Competenze',
     skills: 'Catalogo competenze',
+    stock: 'Dotazioni',
     'purchase-request-priorities': 'Priorità RDA',
     'purchase-order-statuses': 'Stati ODA',
     'purchase-request-line-statuses': 'Stati righe RDA',

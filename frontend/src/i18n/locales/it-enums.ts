@@ -133,11 +133,26 @@ export const enums = {
   // Classificazione del prodotto (spec 0017).
   product_type: {
     SERVICE: 'Servizio',
+    PHYSICAL: 'Bene fisico',
   },
   // Utilizzo del prodotto nell'offerta (spec 0142).
   product_usage: {
     SALE: 'Vendibile',
     COST: 'Utilizzabile come costo',
+    INTERNAL: 'Uso interno',
+  },
+  // Tipo di movimento di magazzino e stato della giacenza (spec 0307).
+  stock_movement_type: {
+    LOAD: 'Carico',
+    UNLOAD: 'Scarico',
+    TRANSFER: 'Trasferimento',
+    ASSIGN: 'Assegnazione',
+    RETURN: 'Restituzione',
+    ADJUSTMENT: 'Rettifica',
+  },
+  stock_holder: {
+    FREE: 'Libera',
+    ASSIGNED: 'Assegnata',
   },
   // Stato convenzione anagrafica (spec 0020).
   agreement_status: {

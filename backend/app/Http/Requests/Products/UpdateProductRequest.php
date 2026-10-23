@@ -6,6 +6,7 @@ use App\DataObjects\Products\UpdateProductData;
 use App\Enums\ProductType;
 use App\Enums\ProductUsage;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\EnforcesStockTracking;
 use App\Http\Requests\Concerns\RequiresPricingForUsages;
 use App\Models\Product;
 use App\Rules\SelectableProductCategory;
@@ -37,6 +38,7 @@ use Illuminate\Validation\Rules\Exists;
 class UpdateProductRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
+    use EnforcesStockTracking;
     use RequiresPricingForUsages;
 
     public function authorize(): bool
@@ -82,6 +84,7 @@ class UpdateProductRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
             $this->enforcePricingForUsages($validator);
+            $this->enforceStockTracking($validator);
         });
     }
 

@@ -89,6 +89,11 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'equipment',
+      title: 'Equipment',
+      blocks: [{ type: 'paragraph', text: 'With the **View list** permission on Equipment, the record of an already saved user shows the **Equipment** section with the physical goods they hold (product, site, quantity). With the **Manage** permission each row has **Return**: after confirmation it records the return of the whole quantity to the site. Without the permission the section does not appear.' }],
+    },
+    {
       id: 'payment',
       title: 'Payment and compensation data',
       blocks: [

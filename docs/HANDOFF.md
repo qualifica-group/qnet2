@@ -3,6 +3,36 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Dotazioni (spec 0307, fase 1) — VERDE, COMMITTATO (2026-10-23)
+
+- Giacenze di beni fisici a uso interno per sede operativa e utente + registro movimenti append-only. Spec
+  `docs/specs/0307-hr-stock-equipment.xml` (D-1..D-21, contratto congelato + `<i18n_keys>`).
+- Naming: tutto `stock` nel codice (`stock_balances`, `stock_movements`, `StockBalance`, `StockMovement`,
+  `StockMovementType` LOAD|UNLOAD|TRANSFER|ASSIGN|RETURN|ADJUSTMENT, `StockHolder` FREE|ASSIGNED, permessi
+  `stock.viewAny|manage`, rotta `/stock`, help key `stock`); in UI "Dotazioni"/"Giacenze". Nuove case
+  `ProductType::Physical` ('PHYSICAL'), `ProductUsage::Internal` ('INTERNAL'); tracciato = PHYSICAL + INTERNAL.
+- Backend: `Services/Stock/{StockMovementService, StockQueryService}` (transazione + `lockForUpdate` sul prodotto,
+  riga a zero cancellata), `StoreStockMovementRequest`, `StockPolicy`, `StockAuthorization`,
+  `Tables/Stock/{StockBalances,StockMovements}TableDefinition` (azioni riga assign|return|transfer|unload|adjust|history),
+  `Tables/Products/ProductStockColumn`, `holder_key` = colonna generata COALESCE(user_id,0) nell'unique.
+  Guard 409 su delete di prodotto, sede e utente con movimenti (anche delete di massa via `deleteModel`).
+- Accesso (D-21, decisione utente): ruolo `gestione-dotazioni` solo a flavio.scognamiglio@qualificagroup.com
+  (`StockKeeperRoleCatalogue` + `QualificaStockKeeperSeeder`, Step 4d di `QualificaRoleSeeder`) + `admin` (tutto il
+  catalogo). NON a `risorse-umane`. Deploy: `php artisan permissions:sync` + `db:seed --class=QualificaStockKeeperSeeder`.
+- Frontend: `features/stock/*` (pagina a due schede, sheet movimento, storico riga, sezioni riusabili), sezione
+  Giacenze nel prodotto, sezione Dotazioni nella scheda utente, guide in-app `stock` (+ products/users/general).
+- Verifica (verifier indipendente): Pest completo 12367 pass con `EXTERNAL_MIGRATION_USERS_LINK_ONLY=false`, unici
+  rossi `QuoteDocumentPdfTest` (manca LibreOffice); `tests/Feature/Stock` 38/38; vitest completo verde (timeout solo
+  sotto carico, rieseguiti isolati verdi); `tsc -b --force` 0; eslint/pint puliti. AC-001..020 PASS, AC-021 a codice.
+- REQUIREMENT CHANGED: `ProductTableTest` 13→14 colonne; `FieldCatalogueEndpointTest` + risorsa `stock`;
+  `help-guide-keys` 96→97; rollback step +2 in `PurchaseOrderMigrationTest` (90), `QuoteWorkflowMigrationTest` (241),
+  `SupplierCommissionDirectionTest` (105) — file condivisi con la 0306 non committata: riallineare se cambia ancora.
+- Non verificato: lock e colonna generata su MySQL reale; responsive nel browser.
+- Segnalati, fuori scope: etichetta "Utilizzo in offerta" ora contiene anche "Uso interno"; `products.columns.code`
+  senza traduzione (preesistente); questo file pesa ~800 KB (oltre il limite di 50 KB, va archiviato).
+- Prossimo: fase 2 (matricole, verbale di consegna, avviso a fine contratto), fase 3 (carico da ricevimenti OdA).
+
+
 ## Migrazioni bloccate "in corso" in produzione — VERDE, NON COMMITTATO (2026-10-23)
 
 - Causa: `RunMigrationJob`/`RunMassMigrationJob` senza `$timeout`, `$tries`, `failed()`. In produzione vale il

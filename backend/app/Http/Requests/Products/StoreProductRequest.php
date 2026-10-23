@@ -6,6 +6,7 @@ use App\DataObjects\Products\CreateProductData;
 use App\Enums\ProductType;
 use App\Enums\ProductUsage;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
+use App\Http\Requests\Concerns\EnforcesStockTracking;
 use App\Http\Requests\Concerns\RequiresPricingForUsages;
 use App\Rules\SelectableProductCategory;
 use Illuminate\Contracts\Validation\Validator;
@@ -35,6 +36,7 @@ use Illuminate\Validation\Rule;
 class StoreProductRequest extends FormRequest
 {
     use EnforcesFieldPermissions;
+    use EnforcesStockTracking;
     use RequiresPricingForUsages;
 
     public function authorize(): bool
@@ -79,6 +81,7 @@ class StoreProductRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
             $this->enforcePricingForUsages($validator);
+            $this->enforceStockTracking($validator);
         });
     }
 

@@ -57,6 +57,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'staff-courses': 'navigation.staffCourses',
   'user-skills': 'navigation.userSkills',
   skills: 'navigation.skills',
+  stock: 'navigation.stock',
   'purchase-request-priorities': 'navigation.purchaseRequestPriorities',
   'purchase-order-statuses': 'navigation.purchaseOrderStatuses',
   'purchase-request-line-statuses': 'navigation.purchaseRequestLineStatuses',

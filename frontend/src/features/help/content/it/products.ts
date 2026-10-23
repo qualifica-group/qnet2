@@ -84,8 +84,8 @@ const guide: HelpGuide = {
             ['Tipologia', "Scelta dall'elenco Tipologie Prodotto."],
             ['Tipo di costo', 'Facoltativo. Il tipo di costo predefinito del prodotto (per esempio Collaboratori o Fitti), pensato per i prodotti Utilizzabili come costo: viene proposto sulle righe di ordini di acquisto, fatture passive e costi commessa quando scegli il prodotto. Si mostra come badge colorato anche nella griglia (con filtro per nome).'],
             ['Unità di misura', 'Per esempio ore o pezzi.'],
-            ['Tipo', "Oggi l'unico valore è Servizio."],
-            ['Utilizzo in offerta', "Dove si può usare il prodotto in un'offerta (vedi sotto)."],
+            ['Tipo', 'Servizio oppure Bene fisico (un oggetto, per esempio un notebook o un arredo).'],
+            ['Utilizzo in offerta', "Dove si può usare il prodotto: in un'offerta, o come bene a uso interno (vedi sotto)."],
           ],
         },
         {
@@ -148,6 +148,24 @@ const guide: HelpGuide = {
         {
           type: 'tip',
           text: "Quando converti un lead, i suoi prodotti di interesse non vendibili non diventano righe dell'offerta.",
+        },
+      ],
+    },
+    {
+      id: 'internal-use-stock',
+      title: 'Uso interno e giacenze',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'La casella **Uso interno** si può spuntare solo se il Tipo è **Bene fisico**: con Tipo Servizio il modulo mostra l’errore sul campo e non salva. Un Bene fisico con Uso interno è un prodotto **tracciato**: nel modulo **Dotazioni** se ne registrano carichi, assegnazioni e trasferimenti per sede e persona.',
+        },
+        {
+          type: 'list',
+          items: [
+            'La scheda di un prodotto tracciato ha la sezione **Giacenze** (sede, persona o “In sede”, quantità e unità) e la griglia ha la colonna **Giacenza**: entrambe si vedono solo con il permesso Visualizza elenco sulle Dotazioni.',
+            'Finché la giacenza è maggiore di zero non puoi togliere Uso interno né cambiare il Tipo.',
+            'Un prodotto con movimenti di magazzino non si può eliminare.',
+          ],
         },
       ],
     },

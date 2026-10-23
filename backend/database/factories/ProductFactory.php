@@ -45,6 +45,14 @@ class ProductFactory extends Factory
         return $this->state(['usages' => [ProductUsage::Sale]]);
     }
 
+    /**
+     * A tracked product (spec 0307, D-9): a physical good for internal use.
+     */
+    public function internalUse(): static
+    {
+        return $this->state(['product_type' => ProductType::Physical, 'usages' => [ProductUsage::Internal]]);
+    }
+
     public function costOnly(): static
     {
         return $this->state(['usages' => [ProductUsage::Cost]]);

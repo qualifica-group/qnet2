@@ -57,7 +57,7 @@ trait RequiresPricingForUsages
      *
      * @return array<int, ProductUsage>
      */
-    private function effectiveUsages(): array
+    protected function effectiveUsages(): array
     {
         if ($this->has('usages')) {
             return array_values(array_filter(array_map(
@@ -74,7 +74,7 @@ trait RequiresPricingForUsages
     }
 
     /** The product being updated; null on create. */
-    private function persistedProduct(): ?Product
+    protected function persistedProduct(): ?Product
     {
         $product = $this->route('product');
 

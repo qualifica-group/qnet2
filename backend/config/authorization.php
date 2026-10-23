@@ -65,6 +65,7 @@ use App\Authorization\SkillsAuthorization;
 use App\Authorization\SourcesAuthorization;
 use App\Authorization\StaffCoursesAuthorization;
 use App\Authorization\StaffTrainingsAuthorization;
+use App\Authorization\StockAuthorization;
 use App\Authorization\TagsAuthorization;
 use App\Authorization\TaskCategoriesAuthorization;
 use App\Authorization\TaskImportancesAuthorization;
@@ -161,6 +162,8 @@ return [
         // spec 0286: HR skills catalogue and user skills register.
         'skills' => SkillsAuthorization::class,
         'user-skills' => UserSkillsAuthorization::class,
+        // spec 0307: HR equipment stock (balances and movements).
+        'stock' => StockAuthorization::class,
         'api-clients' => ApiClientsAuthorization::class,
         'reward-types' => RewardTypesAuthorization::class,
         'reward-statuses' => RewardStatusesAuthorization::class,

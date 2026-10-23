@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { RecordSectionsGrid } from '@/components/detail/record-panel'
+import { useAbilities } from '@/features/auth/use-abilities'
 import { CustomFieldRecordSections } from '@/features/custom-fields/custom-field-record-sections'
 import { toEffectiveAttribute } from '@/features/request-management/applicable-attribute-adapter'
 import type { ApplicableAttribute } from '@/features/request-management/types'
@@ -10,6 +11,8 @@ import {
   ProductIdentityRecordSection,
   ProductPricingRecordSection,
 } from '@/features/products/product-record-sections'
+import { StockProductSection } from '@/features/stock/stock-product-section'
+import { STOCK_VIEW_PERMISSION } from '@/features/stock/types'
 import { useProductCategoryPicker } from '@/features/products/use-product-category-picker'
 import type { ProductDetailEditor } from '@/features/products/use-product-inline-edit'
 import type { ProductDetailWithPermissions } from '@/features/products/types'
@@ -32,6 +35,7 @@ interface ProductDetailSectionsProps {
 export function ProductDetailSections({ product, editor }: ProductDetailSectionsProps) {
   const { state, inline } = editor
   const { form } = state
+  const { can } = useAbilities()
   const categories = useProductCategoryPicker(product.category_id)
   const values = persistedProductValues(product)
   const attributes = product.applicable_attributes ?? NO_ATTRIBUTES
@@ -65,6 +69,7 @@ export function ProductDetailSections({ product, editor }: ProductDetailSections
         control={form.control}
         canEdit={product.permissions.resource.update}
       />
+      {product.is_stock_tracked === true && can(STOCK_VIEW_PERMISSION) ? <StockProductSection productId={product.id} /> : null}
       <CustomFieldRecordSections
         resource="products"
         values={values.custom_fields}

@@ -9,8 +9,10 @@ use App\Models\ProductCategory;
 use App\Models\ProductTypology;
 use App\Models\UnitOfMeasure;
 use App\Models\User;
+use App\Services\ProductService;
 use App\Tables\Products\ProductColumnCatalog;
 use App\Tables\Products\ProductRelationColumns;
+use App\Tables\Products\ProductStockColumn;
 use App\Tables\Products\ProductUsageColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -34,6 +36,7 @@ class ProductsTableDefinition extends AbstractTableDefinition
     public function __construct(
         private readonly ProductRelationColumns $relationColumns,
         private readonly ProductUsageColumn $usageColumn,
+        private readonly ProductService $service,
     ) {}
 
     public function domain(): string
@@ -60,7 +63,10 @@ class ProductsTableDefinition extends AbstractTableDefinition
     {
         // Eager-load the derived relations to avoid N+1 when every row
         // projects them.
-        return Product::query()->with(['category', 'unitOfMeasure', 'productTypology', 'costType']);
+        $query = Product::query()->with(['category', 'unitOfMeasure', 'productTypology', 'costType']);
+        ProductStockColumn::withSum($query);
+
+        return $query;
     }
 
     /**
@@ -155,6 +161,7 @@ class ProductsTableDefinition extends AbstractTableDefinition
             'cost_type' => $row->costType === null ? null : ['id' => $row->costType->id, 'name' => $row->costType->name, 'color' => $row->costType->color],
             'product_type' => $row->product_type,
             'usages' => $row->usages?->map(static fn (ProductUsage $usage): string => $usage->value)->values()->all() ?? [],
+            ProductStockColumn::COLUMN_ID => ProductStockColumn::value($actor, $row),
             'created_at' => $row->created_at,
         ];
     }
@@ -259,6 +266,12 @@ class ProductsTableDefinition extends AbstractTableDefinition
             return true;
         }
 
+        if ($columnId === ProductStockColumn::COLUMN_ID) {
+            ProductStockColumn::applySort($query, $direction);
+
+            return true;
+        }
+
         return $this->relationColumns->applySort($query, $columnId, $direction);
     }
 
@@ -323,5 +336,15 @@ class ProductsTableDefinition extends AbstractTableDefinition
     private function escapeLike(string $value): string
     {
         return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
+    }
+
+    /**
+     * Delegate to the service so the generic bulk delete applies the SAME
+     * guards (409) as the single DELETE endpoint.
+     */
+    public function deleteModel(Model $model): void
+    {
+        /** @var Product $model */
+        $this->service->delete($model);
     }
 }

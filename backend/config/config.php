@@ -13,6 +13,8 @@ use App\Enums\ProductUsage;
 use App\Enums\ReferentContactScopeEnum;
 use App\Enums\SiteTypeEnum;
 use App\Enums\SizeClassEnum;
+use App\Enums\StockHolder;
+use App\Enums\StockMovementType;
 use App\Enums\SupplierCommissionDirection;
 use App\Enums\TaskAssignmentScope;
 use App\Enums\TaskDueWindow;
@@ -62,7 +64,7 @@ return [
         // shown on the referent form's "Contact scope" select.
         'referent_contact_scope' => ReferentContactScopeEnum::class,
         // Product classification (spec 0017): the products table's
-        // `product_type` badge. SERVICE-only for now.
+        // `product_type` badge and the form's type select.
         'product_type' => ProductType::class,
         // Product usage (spec 0142): the product form's Sellable / Usable as
         // cost checkboxes.
@@ -98,6 +100,10 @@ return [
         // Cost type nature (spec 0249): the cost-types form/detail select and
         // the grid's `nature` badge, which declares `enumKey: cost_type_nature`.
         'cost_type_nature' => CostTypeNature::class,
+        // Stock (spec 0307): the movement type badge/filter/select and the
+        // free/assigned badge of the stock grids (`enumKey` of their columns).
+        'stock_movement_type' => StockMovementType::class,
+        'stock_holder' => StockHolder::class,
     ],
 
 ];

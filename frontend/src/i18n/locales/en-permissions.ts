@@ -160,6 +160,7 @@ export const permissions = {
     'staff-courses': 'Courses',
     'user-skills': 'Skills',
     skills: 'Skills catalogue',
+    stock: 'Equipment',
     'purchase-request-priorities': 'RDA priorities',
     'purchase-order-statuses': 'ODA statuses',
     'purchase-request-line-statuses': 'RDA line statuses',

@@ -101,6 +101,7 @@ export const navigation = {
   staffCourses: 'Corsi',
   userSkills: 'Competenze',
   skills: 'Catalogo competenze',
+  stock: 'Dotazioni',
   orgChart: 'Organigramma',
   purchaseRequestPriorities: 'Priorità RDA',
   purchaseOrderStatuses: 'Stati ODA',

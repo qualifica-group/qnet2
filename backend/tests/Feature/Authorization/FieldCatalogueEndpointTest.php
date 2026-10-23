@@ -59,6 +59,8 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
     // renamed `quote-workflows`; the former flat quote-status module is
     // dropped entirely.
     expect($resources->keys()->all())->toEqualCanonicalizing([
+        // spec 0307 `stock` (StockAuthorization: no field, registered so its permissions are role-assignable).
+        'stock',
         'users', 'roles', 'business-functions', 'companies', 'company-sites', 'operational-sites', 'referent-types',
         'referents', 'attributes', 'custom-fields', 'product-categories', 'products', 'sources', 'sectors', 'tags',
         'registries', 'pipeline-statuses', 'projects', 'campaigns', 'leads',

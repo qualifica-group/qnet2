@@ -91,6 +91,7 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'staff-courses',
   'user-skills',
   'skills',
+  'stock',
   'sectors',
   'tags',
   'sources',

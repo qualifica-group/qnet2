@@ -11,7 +11,7 @@ import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { EffectiveAttribute } from '@/features/product-categories/types'
 import { buildAttributeEnumSchema } from '@/features/request-management/attribute-values-schema'
 import { productPricingVisibility } from '@/features/products/product-pricing-visibility'
-import type { ProductUsage } from '@/features/products/types'
+import type { ProductType, ProductUsage } from '@/features/products/types'
 
 /**
  * Zod schema for the product create/edit form's GENERIC fields, built as a
@@ -51,9 +51,9 @@ function baseFields(t: TFunction) {
     cost: z.number().nonnegative(t('products.form.costInvalid')).nullable(),
     price: z.number().nonnegative(t('products.form.priceInvalid')).nullable(),
     category_id: z.number().nullable(),
-    product_type: z.enum(['SERVICE']),
+    product_type: z.enum(['SERVICE', 'PHYSICAL']),
     // Spec 0142: the independent Sellable / Usable-as-cost set, at least one.
-    usages: z.array(z.enum(['SALE', 'COST'])).min(1, t('products.form.usagesRequired')),
+    usages: z.array(z.enum(['SALE', 'COST', 'INTERNAL'])).min(1, t('products.form.usagesRequired')),
     vat_rate_id: z.number().nullable(),
     supplier_id: z.number().nullable(),
     // `null`/unset resolves server-side to the default unit (spec 0088, D-4).
@@ -71,9 +71,14 @@ function withRequiredValueRules<T extends z.ZodTypeAny>(schema: T, t: TFunction)
       cost: number | null
       price: number | null
       usages: ProductUsage[]
+      product_type: ProductType
     }
     // Spec 0191 D-1: a value is required only when its usage is on; a hidden one is not validated.
     const visibility = productPricingVisibility(record.usages)
+    // Spec 0307 D-2: internal use (stock) only makes sense on a physical good.
+    if (record.usages.includes('INTERNAL') && record.product_type !== 'PHYSICAL') {
+      ctx.addIssue({ code: 'custom', path: ['usages'], message: t('products.form.usagesInternalNeedsPhysical') })
+    }
     if (record.category_id === null) {
       ctx.addIssue({ code: 'custom', path: ['category_id'], message: t('products.form.categoryRequired') })
     }

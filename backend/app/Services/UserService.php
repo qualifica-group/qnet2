@@ -8,6 +8,7 @@ use App\DataObjects\Users\CreateUserData;
 use App\DataObjects\Users\EmploymentData;
 use App\DataObjects\Users\ProfileData;
 use App\DataObjects\Users\UpdateUserData;
+use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\Assignment\OperatorCompetence;
 use App\Services\Users\BusinessFunctionCoverageGuard;
@@ -278,6 +279,8 @@ class UserService
         if ($user->opportunitiesAsSupervisor()->exists()) {
             abort(409, 'This user is the supervisor on opportunities and cannot be deleted.');
         }
+
+        abort_if(StockMovement::query()->involvingUser($user->id)->exists(), 409, __('stock.user_has_movements'));
 
         $user->delete();
     }

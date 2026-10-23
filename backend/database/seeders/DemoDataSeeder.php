@@ -16,6 +16,8 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderReceipt;
 use App\Models\PurchaseRequest;
 use App\Models\Quote;
+use App\Models\StockBalance;
+use App\Models\StockMovement;
 use App\Models\WorkOrder;
 use Database\Seeders\Concerns\SeedsWithoutMail;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -60,6 +62,10 @@ class DemoDataSeeder extends Seeder
         // (nullOnDelete / restrict), so they are cleared first to keep re-runs stable.
         // Accruals first: they restrict the settlement they belong to, which in turn
         // restricts its profile and company (runs only null their settlements).
+        // Stock movements and rows restrict products, sites and users, which
+        // their seeders delete-and-recreate (spec 0307).
+        StockMovement::query()->delete();
+        StockBalance::query()->delete();
         CommissionAccrual::query()->delete();
         CommissionSettlement::query()->delete();
         CommissionSettlementRun::query()->delete();
@@ -109,6 +115,9 @@ class DemoDataSeeder extends Seeder
         // Cost-only items (spec 0142: travel, lodging, materials) the demo
         // quotes' Costi tab draws from — before DemoQuoteSeeder.
         $this->call(DemoCostProductSeeder::class);
+        // Equipment stock (spec 0307): physical goods for internal use plus their
+        // movements, through the real service; needs the sites, users and products above.
+        $this->call(DemoStockSeeder::class);
         $this->call(DemoEmploymentProfileSeeder::class);
         // Depends on sources/sectors/referents (lookups, seeded above) and
         // users (internal managers, seeded above) — must run after all of them.

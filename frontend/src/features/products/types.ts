@@ -9,11 +9,11 @@ import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { ApplicableAttribute } from '@/features/request-management/types'
 
-/** Product classification (spec 0017). SERVICE-only for now; mirrors the `ProductType` enum. */
-export type ProductType = 'SERVICE'
+/** Product classification (spec 0017, PHYSICAL spec 0307); mirrors the `ProductType` enum. */
+export type ProductType = 'SERVICE' | 'PHYSICAL'
 
-/** Where the product may be used inside an Offerta (spec 0142); mirrors the `ProductUsage` enum. */
-export type ProductUsage = 'SALE' | 'COST'
+/** Where the product may be used (SALE/COST inside an Offerta, spec 0142; INTERNAL = stock tracked, spec 0307); mirrors the `ProductUsage` enum. */
+export type ProductUsage = 'SALE' | 'COST' | 'INTERNAL'
 
 /** Minimal category projection hydrating the product's grid/detail. */
 export interface ProductCategorySummary {
@@ -91,6 +91,10 @@ export interface ProductDetail {
    * as `business_function`.
    */
   usages?: ProductUsage[]
+  /** PHYSICAL + INTERNAL (spec 0307 D-9): the product accepts stock movements. Optional for fixture compatibility. */
+  is_stock_tracked?: boolean
+  /** Sum of the stock rows; null when not tracked or the actor lacks `stock.viewAny` (spec 0307 D-18). */
+  stock_quantity?: string | null
   created_at: string
   /**
    * Effective business function of the product's category, read-only

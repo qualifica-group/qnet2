@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\AsEnumCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Product (spec 0017): generic fields (name/description/cost/price/category/
@@ -91,6 +92,14 @@ class Product extends BaseModel
         return $this->usages?->contains($usage) ?? false;
     }
 
+    /**
+     * Spec 0307, D-9: only a physical good for internal use is tracked in stock.
+     */
+    public function isStockTracked(): bool
+    {
+        return $this->product_type === ProductType::Physical && $this->isUsableAs(ProductUsage::Internal);
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(ProductCategory::class, 'category_id');
@@ -119,5 +128,13 @@ class Product extends BaseModel
     public function costType(): BelongsTo
     {
         return $this->belongsTo(CostType::class);
+    }
+
+    /**
+     * @return HasMany<StockBalance, $this>
+     */
+    public function stockBalances(): HasMany
+    {
+        return $this->hasMany(StockBalance::class);
     }
 }

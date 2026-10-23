@@ -4,6 +4,7 @@ namespace App\Tables;
 
 use App\Models\OperationalSite;
 use App\Models\User;
+use App\Services\OperationalSiteService;
 use App\Tables\OperationalSites\OperationalSiteColumnCatalog;
 use App\Tables\OperationalSites\OperationalSiteGeoColumns;
 use Illuminate\Database\Eloquent\Builder;
@@ -23,7 +24,10 @@ use Illuminate\Support\Facades\Gate;
  */
 class OperationalSitesTableDefinition extends AbstractTableDefinition
 {
-    public function __construct(private readonly OperationalSiteGeoColumns $geoColumns) {}
+    public function __construct(
+        private readonly OperationalSiteGeoColumns $geoColumns,
+        private readonly OperationalSiteService $service,
+    ) {}
 
     public function domain(): string
     {
@@ -242,5 +246,15 @@ class OperationalSitesTableDefinition extends AbstractTableDefinition
     public function applyDerivedSearch(Builder $query, string $columnId, string $pattern): bool
     {
         return $this->geoColumns->applySearch($query, $columnId, $pattern);
+    }
+
+    /**
+     * Delegate to the service so the generic bulk delete applies the SAME
+     * guards (409) as the single DELETE endpoint.
+     */
+    public function deleteModel(Model $model): void
+    {
+        /** @var OperationalSite $model */
+        $this->service->delete($model);
     }
 }

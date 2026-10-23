@@ -35,10 +35,14 @@ export function permissionsFor(
 
 /** The config enums the product rows read (type and Offerta usages). */
 export const PRODUCT_ENUMS: Record<string, EnumOption[]> = {
-  product_type: [{ value: 'SERVICE', label: 'Service', color: null, icon: null, is_default: true, hidden_on_form: false }],
+  product_type: [
+    { value: 'SERVICE', label: 'Service', color: null, icon: null, is_default: true, hidden_on_form: false },
+    { value: 'PHYSICAL', label: 'Physical good', color: null, icon: null, is_default: false, hidden_on_form: false },
+  ],
   product_usage: [
     { value: 'SALE', label: 'Sellable', color: null, icon: null, is_default: true, hidden_on_form: false },
     { value: 'COST', label: 'Usable as cost', color: null, icon: null, is_default: false, hidden_on_form: false },
+    { value: 'INTERNAL', label: 'Internal use', color: null, icon: null, is_default: false, hidden_on_form: false },
   ],
 }
 

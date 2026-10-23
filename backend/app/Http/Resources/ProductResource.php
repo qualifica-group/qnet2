@@ -9,6 +9,7 @@ use App\Models\ProductTypology;
 use App\Models\Registry;
 use App\Models\UnitOfMeasure;
 use App\Models\VatRate;
+use App\Policies\StockPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -56,6 +57,9 @@ class ProductResource extends JsonResource
             'product_type' => $this->product_type,
             // Spec 0142: the Offerta tabs the product may be picked on.
             'usages' => $this->usages?->values()->all() ?? [],
+            // Spec 0307, D-9: tracked in stock; the quantity only for who may read the stock.
+            'is_stock_tracked' => $this->isStockTracked(),
+            'stock_quantity' => $this->stockQuantity($request),
             'vat_rate_id' => $this->vat_rate_id,
             'vat_rate' => $this->vatRateSummary($this->vatRate),
             'supplier_id' => $this->supplier_id,
@@ -84,6 +88,15 @@ class ProductResource extends JsonResource
             'attribute_layout' => $this->attributeLayout,
             'created_at' => $this->created_at,
         ];
+    }
+
+    private function stockQuantity(Request $request): ?string
+    {
+        if (! $this->isStockTracked() || ! app(StockPolicy::class)->viewAny($request->user())) {
+            return null;
+        }
+
+        return bcadd((string) $this->resource->stockBalances()->sum('quantity'), '0', 3);
     }
 
     /**

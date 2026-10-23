@@ -379,6 +379,7 @@ export const products = {
     product_type: 'Type',
     usages: 'Offer usage',
     business_function: 'Business function',
+    stock_quantity: 'Stock',
     created_at: 'Created at',
   },
   bulkCostType: {
@@ -422,6 +423,7 @@ export const products = {
     productType: 'Type',
     usages: 'Offer usage',
     usagesRequired: 'Select at least one usage.',
+    usagesInternalNeedsPhysical: 'Internal use is only allowed for a physical good.',
     category: 'Category',
     categoryPlaceholder: 'Select a category…',
     categorySearch: 'Search categories…',

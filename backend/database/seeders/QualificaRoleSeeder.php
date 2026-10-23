@@ -9,6 +9,7 @@ use Database\Seeders\QualificaCatalog\CommercialBackOfficeRoleCatalogue as BackO
 use Database\Seeders\QualificaCatalog\HrOfficeRoleCatalogue as HrOffice;
 use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue as Catalogue;
 use Database\Seeders\QualificaCatalog\OwnAbsencesCatalogue as OwnAbsences;
+use Database\Seeders\QualificaCatalog\StockKeeperRoleCatalogue as StockKeeper;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Artisan;
@@ -72,6 +73,11 @@ class QualificaRoleSeeder extends Seeder
         $backOffice = $this->syncRole(BackOffice::ROLE, BackOffice::DESCRIPTION, $this->backOfficePermissions($catalogue));
         $this->syncFieldPermissions($backOffice);
 
+        // Step 4d: the equipment keeper (spec 0307 D-21), held on top of a
+        // mansione, with the `stock` module only.
+        $stockKeeper = $this->syncRole(StockKeeper::ROLE, StockKeeper::DESCRIPTION, $this->stockKeeperPermissions($catalogue));
+        $this->syncFieldPermissions($stockKeeper);
+
         // Step 5: drop the roles the Italian names replaced. A model delete, so
         // spatie detaches their permissions and memberships and the field
         // matrix cascades with the row.
@@ -130,6 +136,17 @@ class QualificaRoleSeeder extends Seeder
     {
         return $catalogue->filter(fn (string $permission): bool => in_array(Str::beforeLast($permission, '.'), BackOffice::MODULES, true)
             || $this->isSelectOnlyGrant(Str::beforeLast($permission, '.'), Str::afterLast($permission, '.'), BackOffice::SELECT_ONLY_RESOURCES))
+            ->values();
+    }
+
+    /**
+     * @param  Collection<int, string>  $catalogue
+     * @return Collection<int, string>
+     */
+    private function stockKeeperPermissions(Collection $catalogue): Collection
+    {
+        return $catalogue
+            ->filter(static fn (string $permission): bool => in_array(Str::beforeLast($permission, '.'), StockKeeper::MODULES, true))
             ->values();
     }
 

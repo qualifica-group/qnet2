@@ -51,6 +51,7 @@ return [
         require __DIR__.'/navigation/absences.php',
         require __DIR__.'/navigation/staff-trainings.php',
         require __DIR__.'/navigation/user-skills.php',
+        require __DIR__.'/navigation/stock.php',
         require __DIR__.'/navigation/registries.php',
         require __DIR__.'/navigation/products.php',
         require __DIR__.'/navigation/rewards.php',

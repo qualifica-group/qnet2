@@ -9,6 +9,7 @@ use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Models\Address;
 use App\Models\OperationalSite;
+use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -85,6 +86,8 @@ class OperationalSiteService
         if ($site->leads()->exists()) {
             abort(409, 'This operational site has leads and cannot be deleted.');
         }
+
+        abort_if(StockMovement::query()->involvingSite($site->id)->exists(), 409, __('stock.site_has_movements'));
 
         $site->delete();
     }
