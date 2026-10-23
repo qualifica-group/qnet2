@@ -25,7 +25,7 @@ const guide: HelpGuide = {
       id: 'status-and-requirements',
       title: 'What is migrated and what it needs',
       blocks: [
-        { type: 'paragraph', text: 'The **Migration status** box lists every source by phase, in the order to import them, and shows how many are already migrated. Each source shows its state: **Migrated**, **Migrated with failed rows**, **Last import failed**, **In progress** or **Not migrated**, with the import date. Click a source to select it.' },
+        { type: 'paragraph', text: 'The **Migration status** box lists every source by phase, in the order to import them, and shows how many are already migrated. Each source shows its state: **Migrated**, **Migrated with failed rows**, **Last import failed**, **In progress** or **Not migrated**, with the import date. An import stopped by the server, for example because it exceeded the time limit, shows as **Last import failed** instead of staying **In progress**: you can launch it again, the rows already imported are skipped. Click a source to select it.' },
         { type: 'paragraph', text: 'The **What it takes to migrate well** box explains what the selected source needs and lists the sources to import first, each with its state. A missing **Required** source stops its rows from being imported; a missing **Recommended** one leaves the link empty, with a warning in the report. When a required source is missing, the box says so in red.' },
         { type: 'tip', text: 'A source stays **Migrated** even when a later import fails: the date is the last completed import.' },
       ],

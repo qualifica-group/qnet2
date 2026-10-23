@@ -194,3 +194,55 @@ it('show: 403 for a non-super-admin', function () {
 
     $this->getJson("/api/migrations/mass-runs/{$massRun->id}")->assertForbidden();
 });
+
+// ---------------------------------------------------------------------------
+// A worker that kills the job never leaves the runs `processing`
+// ---------------------------------------------------------------------------
+
+it('fails the aggregate run and the in-flight child when the worker kills the job', function () {
+    $actor = migrationsSuperAdminActor();
+    $massRun = MassMigrationRun::factory()->create([
+        'user_id' => $actor->id,
+        'sources' => ['companies', 'users'],
+        'status' => MigrationStatus::Processing,
+    ]);
+    $done = MigrationRun::factory()->create([
+        'user_id' => $actor->id,
+        'source' => 'companies',
+        'mass_migration_run_id' => $massRun->id,
+        'status' => MigrationStatus::Completed,
+    ]);
+    $inFlight = MigrationRun::factory()->create([
+        'user_id' => $actor->id,
+        'source' => 'users',
+        'mass_migration_run_id' => $massRun->id,
+        'status' => MigrationStatus::Processing,
+    ]);
+
+    (new RunMassMigrationJob($massRun->id))->failed(new RuntimeException('killed'));
+
+    expect($massRun->fresh()->status)->toBe(MigrationStatus::Failed)
+        ->and($inFlight->fresh()->status)->toBe(MigrationStatus::Failed)
+        ->and($done->fresh()->status)->toBe(MigrationStatus::Completed);
+});
+
+it('leaves a completed aggregate run untouched when a late failure lands', function () {
+    $actor = migrationsSuperAdminActor();
+    $massRun = MassMigrationRun::factory()->create([
+        'user_id' => $actor->id,
+        'status' => MigrationStatus::Completed,
+    ]);
+
+    (new RunMassMigrationJob($massRun->id))->failed(new RuntimeException('killed'));
+
+    expect($massRun->fresh()->status)->toBe(MigrationStatus::Completed);
+});
+
+it('exposes tries = 1 and timeout = config migrations.job_timeout', function () {
+    config(['migrations.job_timeout' => 4321]);
+
+    $job = new RunMassMigrationJob(1);
+
+    expect($job->tries)->toBe(1)
+        ->and($job->timeout)->toBe(4321);
+});

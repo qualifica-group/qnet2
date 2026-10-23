@@ -91,3 +91,42 @@ it('moves the run to failed on an unhandled exception (e.g. unregistered source)
 
     expect($run->fresh()->status)->toBe(MigrationStatus::Failed);
 });
+
+// ---------------------------------------------------------------------------
+// A worker that kills the job never leaves the run `processing`
+// ---------------------------------------------------------------------------
+
+it('moves the run to failed when the worker kills the job before runSource can catch anything', function () {
+    $actor = migrationsSuperAdminActor();
+    $run = MigrationRun::factory()->create([
+        'user_id' => $actor->id,
+        'source' => 'users',
+        'status' => MigrationStatus::Processing,
+    ]);
+
+    (new RunMigrationJob($run->id))->failed(new RuntimeException('killed'));
+
+    expect($run->fresh()->status)->toBe(MigrationStatus::Failed);
+});
+
+it('leaves a completed run untouched when a late failure lands', function () {
+    $actor = migrationsSuperAdminActor();
+    $run = MigrationRun::factory()->create([
+        'user_id' => $actor->id,
+        'source' => 'users',
+        'status' => MigrationStatus::Completed,
+    ]);
+
+    (new RunMigrationJob($run->id))->failed(new RuntimeException('killed'));
+
+    expect($run->fresh()->status)->toBe(MigrationStatus::Completed);
+});
+
+it('exposes tries = 1 and timeout = config migrations.job_timeout', function () {
+    config(['migrations.job_timeout' => 1234]);
+
+    $job = new RunMigrationJob(1);
+
+    expect($job->tries)->toBe(1)
+        ->and($job->timeout)->toBe(1234);
+});

@@ -3,6 +3,24 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Migrazioni bloccate "in corso" in produzione — VERDE, NON COMMITTATO (2026-10-23)
+
+- Causa: `RunMigrationJob`/`RunMassMigrationJob` senza `$timeout`, `$tries`, `failed()`. In produzione vale il
+  `queue:work --timeout` (default 60 s): il worker uccide il job, il catch di `MigrationService::runSource()` e gli
+  update di `RunMassMigrationJob::handle()` non girano, la run resta `processing` per sempre (i contatori, scritti
+  riga per riga, sembrano completi; il kill arriva spesso in `afterImport()`, che per users/sectors rilegge tutta l'API).
+  In locale non si vede: `composer dev` usa `queue:listen --timeout=0` e il `.env` `QUEUE_CONNECTION=sync`.
+- Fix (stesso schema di `StageImportJob`, spec 0136): `$tries = 1`, `$timeout = config('migrations.job_timeout')`
+  (env `MIGRATION_JOB_TIMEOUT`, default 1800, deve restare sotto `queue.connections.database.retry_after` 1900),
+  `failed()` che porta a `failed` la run se `pending`/`processing`; per la massiva anche la figlia in volo.
+  Laravel su timeout fa gia' rollback della transazione aperta (`Job::fail`), quindi l'update di `failed()` persiste.
+- Test: `RunMigrationJobTest` (+3), `MassMigrationTest` (+3). `tests/Feature/Migration` 596/596 verdi con
+  `EXTERNAL_MIGRATION_USERS_LINK_ONLY=false` (il `.env` locale lo mette a `true` e fa fallire 7 test users: preesistente,
+  phpunit.xml non lo fissa).
+- Da verificare in produzione: `failed_jobs`, comando del worker (`--timeout`), `DB_QUEUE_RETRY_AFTER`. Se l'import
+  massivo supera 1800 s ora finisce `failed` (non piu' appeso): per completarlo alzare insieme `MIGRATION_JOB_TIMEOUT` e
+  `DB_QUEUE_RETRY_AFTER`, oppure (decisione aperta, cambia spec 0046) una sorgente per job in `Bus::chain`.
+
 ## Seed di produzione: import legacy anche di utenti e conti finanziari — VERDE, NON COMMITTATO (2026-10-23)
 
 - Richiesta utente: `QualificaLegacyImportSeeder` importa anche `users` e `financial-accounts`.

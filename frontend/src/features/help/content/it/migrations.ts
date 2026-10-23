@@ -25,7 +25,7 @@ const guide: HelpGuide = {
       id: 'status-and-requirements',
       title: 'Cosa è migrato e cosa serve',
       blocks: [
-        { type: 'paragraph', text: 'Il riquadro **Stato migrazione** elenca tutte le sorgenti divise per fase, nell’ordine in cui importarle, e indica quante sono già migrate. Ogni sorgente mostra il suo stato: **Migrata**, **Migrata con righe fallite**, **Ultimo import fallito**, **In corso** o **Non migrata**, con la data dell’import. Fai clic su una sorgente per selezionarla.' },
+        { type: 'paragraph', text: 'Il riquadro **Stato migrazione** elenca tutte le sorgenti divise per fase, nell’ordine in cui importarle, e indica quante sono già migrate. Ogni sorgente mostra il suo stato: **Migrata**, **Migrata con righe fallite**, **Ultimo import fallito**, **In corso** o **Non migrata**, con la data dell’import. Un import interrotto dal server, ad esempio perché ha superato il tempo massimo, compare come **Ultimo import fallito** e non resta **In corso**: puoi rilanciarlo, le righe già importate vengono saltate. Fai clic su una sorgente per selezionarla.' },
         { type: 'paragraph', text: 'Il riquadro **Cosa serve per migrare bene** spiega cosa richiede la sorgente selezionata ed elenca le sorgenti da importare prima, ciascuna con il suo stato. Una sorgente **Obbligatoria** che manca impedisce di importare le righe; una **Consigliata** che manca lascia vuoto il collegamento, con un avviso nel report. Se manca una sorgente obbligatoria, il riquadro lo segnala in rosso.' },
         { type: 'tip', text: 'Una sorgente resta **Migrata** anche se un import successivo fallisce: la data indica l’ultimo import completato.' },
       ],

@@ -21,12 +21,21 @@ use Throwable;
  * FIRST failing source STOPS the chain — the not-yet-reached sources never run.
  * The failure is a domain outcome observed via polling, so the job does not
  * re-throw.
+ *
+ * Hardening: same `$tries`/`$timeout`/failed() contract as RunMigrationJob.
  */
 class RunMassMigrationJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(private readonly int $massMigrationRunId) {}
+    public int $tries = 1;
+
+    public int $timeout;
+
+    public function __construct(private readonly int $massMigrationRunId)
+    {
+        $this->timeout = (int) config('migrations.job_timeout');
+    }
 
     public function handle(MigrationService $service): void
     {
@@ -57,6 +66,26 @@ class RunMassMigrationJob implements ShouldQueue
 
         // Step 2: every source completed.
         $massRun->update(['status' => MigrationStatus::Completed]);
+    }
+
+    /**
+     * A worker that kills the job (queue timeout, PHP fatal) never reaches the
+     * status updates in handle(): close the aggregate run and the child that
+     * was in flight, so neither stays `processing` forever.
+     */
+    public function failed(?Throwable $exception): void
+    {
+        $inFlight = [MigrationStatus::Pending, MigrationStatus::Processing];
+
+        MigrationRun::query()
+            ->where('mass_migration_run_id', $this->massMigrationRunId)
+            ->whereIn('status', $inFlight)
+            ->update(['status' => MigrationStatus::Failed]);
+
+        MassMigrationRun::query()
+            ->whereKey($this->massMigrationRunId)
+            ->whereIn('status', $inFlight)
+            ->update(['status' => MigrationStatus::Failed]);
     }
 
     private function makeChildRun(MassMigrationRun $massRun, string $source): MigrationRun

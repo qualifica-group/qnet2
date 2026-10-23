@@ -71,6 +71,13 @@ return [
     // of the user-controlled preview per_page).
     'import_batch_size' => 100,
 
+    // RunMigrationJob/RunMassMigrationJob `$timeout`: what the worker enforces
+    // per job, over `queue:work --timeout` (whose 60s default killed every real
+    // migration, leaving its run `processing`). Must stay BELOW
+    // queue.connections.database.retry_after, otherwise a second worker
+    // reclaims a migration still legitimately running on the first.
+    'job_timeout' => (int) env('MIGRATION_JOB_TIMEOUT', 1800),
+
     // Spec 0285: the `users` source only links the legacy users to the qnet
     // accounts that already exist (writes `old_id`, creates nothing), for an
     // installation whose accounts come from its own seeder.
