@@ -48,9 +48,9 @@ const guide: HelpGuide = {
           headers: ['Permesso', 'Cosa permette'],
           rows: [
             ['Visualizza elenco', 'Apre la pagina e mostra le tue competenze.'],
-            ['Visualizza team', 'Mostra anche le competenze delle persone che fanno capo a te e ti permette di assegnarle, modificarle e rimuoverle (responsabile).'],
+            ['Avere dei sottoposti', 'Non serve un permesso: se qualcuno fa capo a te nell’organigramma, apri la pagina anche senza Visualizza elenco e vedi le tue competenze e quelle dei tuoi sottoposti, in sola lettura.'],
             ['Visualizza tutti', 'Mostra le competenze di tutte le persone, in sola lettura.'],
-            ['Gestire', 'Scrive per chiunque e vede tutti (ufficio del personale).'],
+            ['Gestire', 'Assegna, modifica e rimuove le competenze di chiunque e vede tutti: solo l’ufficio del personale scrive.'],
           ],
         },
         {
@@ -70,7 +70,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Fai clic su **Assegna competenza** (visibile con Gestire o Visualizza team).',
+            'Fai clic su **Assegna competenza** (visibile solo con Gestire).',
             'Nella sezione **Persona e competenza** scegli la persona e la competenza; nella sezione **Valutazione** il livello, la data di valutazione (non può essere futura) ed eventuali note.',
             'Premi **Salva**, in alto a destra o in fondo al modulo.',
           ],

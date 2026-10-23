@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * ResourceAuthorization for the `staff-trainings` resource (spec 0284),
- * registered only so `viewAny|viewTeam|viewAll|manage` are assignable from the
+ * registered only so `viewAny|viewAll|manage` are assignable from the
  * Role form: the training form is not metadata driven, hence no field and no
  * action.
  */

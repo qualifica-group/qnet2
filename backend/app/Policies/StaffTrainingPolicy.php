@@ -8,9 +8,9 @@ use App\Services\StaffTrainings\StaffTrainingScope;
 
 /**
  * Policy for the `staff-trainings` resource (spec 0284 D-5): `viewAny` sees
- * one's own trainings, `viewTeam` also the active descendants, `viewAll`
- * everyone, `manage` writes for anyone (HR office). The widest held wins, so
- * a wider ability opens the module too. Record-level visibility (404) is
+ * one's own trainings, `viewAll` everyone, `manage` writes for anyone (HR
+ * office); having active subordinates in the org chart also opens the module
+ * and shows them (spec 0309 D-2, no team permission). Record-level visibility (404) is
  * enforced by StaffTrainingVisibility, not here.
  */
 class StaffTrainingPolicy extends BasePolicy
@@ -35,6 +35,6 @@ class StaffTrainingPolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return ['viewAny', 'viewTeam', 'viewAll', 'manage'];
+        return ['viewAny', 'viewAll', 'manage'];
     }
 }

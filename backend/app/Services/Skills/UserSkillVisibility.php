@@ -12,14 +12,12 @@ use Illuminate\Database\Eloquent\Builder;
 /**
  * THE single visibility and write rule of user skills (spec 0286 D-5), reused
  * by the grid, the detail, the coverage view and every write: read follows the
- * widest scope held, write is `manage` for anyone or `viewTeam` for the
- * active descendants (never for oneself).
+ * widest scope held (UserSkillScope), write is `manage` only (spec 0309 D-3: a
+ * manager sees the subordinates' skills but does not edit them).
  */
 final class UserSkillVisibility
 {
     public const string MANAGE_PERMISSION = 'user-skills.manage';
-
-    public const string TEAM_PERMISSION = 'user-skills.viewTeam';
 
     public function __construct(private readonly TimeEntrySubordinateResolver $subordinates) {}
 
@@ -53,14 +51,13 @@ final class UserSkillVisibility
     /** Whether the actor may add, change or remove the skills of a person. */
     public function canWritePerson(User $actor, int $userId): bool
     {
-        return $this->canManage($actor)
-            || ($actor->can(self::TEAM_PERMISSION) && $this->subordinates->isDescendantOf($userId, $actor->id));
+        return $this->canManage($actor);
     }
 
     /** Whether the actor may write for at least someone (shows "assign a skill"). */
     public function canWriteAny(User $actor): bool
     {
-        return $this->canManage($actor) || $actor->can(self::TEAM_PERMISSION);
+        return $this->canManage($actor);
     }
 
     /** 403 without any access, 404 (never 403) on a record the actor cannot see. */

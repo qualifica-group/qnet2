@@ -121,4 +121,6 @@ export interface ImpersonationState {
 export interface AbilityMap {
   roles: string[]
   permissions: Record<string, boolean>
+  /** True when the user has at least one active subordinate in the org chart (spec 0309). */
+  has_subordinates: boolean
 }

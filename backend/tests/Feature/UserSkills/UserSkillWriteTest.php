@@ -28,21 +28,29 @@ it('0286 AC-003: manage assigns a skill to anyone, 201 with the contract shape a
         ->assertJsonPath('data.can_edit', true);
 });
 
-it('0286 AC-003: viewTeam writes on the active descendants only, never on oneself', function () {
-    $manager = skillUserWith(['viewTeam']);
+// REQUIREMENT CHANGED (spec 0309 D-3, supersedes spec 0286 D-5): a manager only reads the
+// subordinates' skills; writing is user-skills.manage.
+it('0309 AC-006: a manager without manage gets 403 on create, update and delete for a subordinate', function () {
+    $manager = skillUserWith([]);
     $report = User::factory()->create();
-    $gone = User::factory()->create(['is_active' => false]);
-    $stranger = User::factory()->create();
     skillProfile($report, $manager);
-    skillProfile($gone, $manager);
+    $userSkill = UserSkill::factory()->forUser($report)->create();
+    Sanctum::actingAs($manager);
+
+    $this->postJson('/api/user-skills', userSkillPayload($report))->assertForbidden();
+    $this->patchJson("/api/user-skills/{$userSkill->id}", ['level' => 1])->assertForbidden();
+    $this->deleteJson("/api/user-skills/{$userSkill->id}")->assertForbidden();
+
+    expect(UserSkill::query()->count())->toBe(1);
+});
+
+it('0309 AC-006: a manager with manage writes for a subordinate', function () {
+    $manager = skillUserWith(['manage']);
+    $report = User::factory()->create();
+    skillProfile($report, $manager);
     Sanctum::actingAs($manager);
 
     $this->postJson('/api/user-skills', userSkillPayload($report))->assertCreated()->assertJsonPath('data.can_edit', true);
-    $this->postJson('/api/user-skills', userSkillPayload($manager))->assertForbidden();
-    $this->postJson('/api/user-skills', userSkillPayload($gone))->assertForbidden();
-    $this->postJson('/api/user-skills', userSkillPayload($stranger))->assertForbidden();
-
-    expect(UserSkill::query()->count())->toBe(1);
 });
 
 it('0286 AC-003: viewAny and viewAll cannot write, even on themselves', function () {
@@ -109,32 +117,17 @@ it('0286 AC-003: update and destroy are 403 on a visible record that is not writ
     $this->deleteJson("/api/user-skills/{$stranger->id}")->assertNotFound();
 });
 
-it('0286 AC-003: viewTeam updates and removes the skill of a report, not one moved to a stranger', function () {
-    $manager = skillUserWith(['viewTeam']);
-    $report = User::factory()->create();
-    $stranger = User::factory()->create();
-    skillProfile($report, $manager);
-    $userSkill = UserSkill::factory()->forUser($report)->create();
-    Sanctum::actingAs($manager);
-
-    $this->patchJson("/api/user-skills/{$userSkill->id}", ['user_id' => $stranger->id])->assertForbidden();
-    $this->patchJson("/api/user-skills/{$userSkill->id}", ['level' => 1])->assertOk()->assertJsonPath('data.can_edit', true);
-    $this->deleteJson("/api/user-skills/{$userSkill->id}")->assertNoContent();
-
-    expect(UserSkill::find($userSkill->id))->toBeNull();
-});
-
 it('0286 AC-005: the policies declare the permissions, permissions:sync creates them and the Role form offers them', function () {
-    expect(UserSkillPolicy::abilities())->toBe(['viewAny', 'viewTeam', 'viewAll', 'manage']);
+    expect(UserSkillPolicy::abilities())->toBe(['viewAny', 'viewAll', 'manage']);
 
     $this->artisan('permissions:sync')->assertSuccessful();
 
     expect(Permission::query()->where('name', 'like', 'user-skills.%')->pluck('name')->sort()->values()->all())
-        ->toBe(['user-skills.manage', 'user-skills.viewAll', 'user-skills.viewAny', 'user-skills.viewTeam'])
+        ->toBe(['user-skills.manage', 'user-skills.viewAll', 'user-skills.viewAny'])
         ->and(Permission::query()->where('name', 'like', 'skills.%')->pluck('name')->all())
         ->toContain('skills.viewAny', 'skills.create', 'skills.delete');
 
-    expect(app(AssignablePermissionCatalogue::class)->names())->toContain('user-skills.manage', 'user-skills.viewTeam', 'skills.update');
+    expect(app(AssignablePermissionCatalogue::class)->names())->toContain('user-skills.manage', 'skills.update');
 });
 
 it('0286 BE-1: the menu shows Competenze after Formazione and the catalogue in Configurazione', function () {

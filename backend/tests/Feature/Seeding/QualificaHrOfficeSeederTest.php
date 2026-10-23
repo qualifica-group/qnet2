@@ -6,9 +6,11 @@ use App\Models\User;
 use Database\Seeders\QualificaCatalog\HrOfficeRoleCatalogue;
 use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue;
 use Database\Seeders\QualificaCatalog\OrgChartFunctions;
+use Database\Seeders\QualificaCatalog\OwnAbsencesCatalogue;
 use Database\Seeders\QualificaHrOfficeSeeder;
 use Database\Seeders\QualificaRoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -66,7 +68,8 @@ it('0283 AC-011: grants the HR office the training and skills modules too', func
     }
 
     foreach (['staff-trainings', 'user-skills'] as $resource) {
-        foreach (['viewAny', 'viewTeam', 'viewAll', 'manage'] as $ability) {
+        // REQUIREMENT CHANGED (spec 0309 D-1): the viewTeam permission is gone.
+        foreach (['viewAny', 'viewAll', 'manage'] as $ability) {
             expect($role->hasPermissionTo("{$resource}.{$ability}"))->toBeTrue("{$resource}.{$ability}");
         }
     }
@@ -124,4 +127,13 @@ it('0283 AC-003/AC-004: adds the HR role to the office on top of its own, and th
     foreach (HrOfficeRoleCatalogue::SENSITIVE_FIELDS['users'] as $field) {
         expect($fields[$field]->visible)->toBeFalse($field);
     }
+});
+
+it('0309 AC-013: the own-absences block no longer lists calendarTeam and the role seeder runs without errors', function () {
+    expect(OwnAbsencesCatalogue::PERMISSIONS)->not->toContain('absence-requests.calendarTeam')
+        ->toContain('absence-requests.calendarOwn');
+
+    $this->seed(QualificaRoleSeeder::class);
+
+    expect(Permission::query()->where('name', 'absence-requests.calendarTeam')->exists())->toBeFalse();
 });

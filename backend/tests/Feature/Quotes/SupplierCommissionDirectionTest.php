@@ -413,7 +413,7 @@ it('AC-004: the migrations backfill PAID on the Supplier rules only, touch no sn
 it('AC-004: the full history is reversible', function () {
     // REQUIREMENT CHANGED (spec 0306): +2 migrations (rule direction column, typology direction drop).
     // REQUIREMENT CHANGED (spec 0307): +2 migrations (stock balances and movements).
-    expect(Artisan::call('migrate:rollback', ['--step' => 105]))->toBe(0);
+    expect(Artisan::call('migrate:rollback', ['--step' => 106]))->toBe(0);
     expect(Schema::hasColumn('quote_lines', 'supplier_commission_direction'))->toBeFalse()
         ->and(Schema::hasColumn('product_typologies', 'supplier_commission_enabled'))->toBeFalse()
         ->and(Schema::hasColumn('commission_configurations', 'supplier_commission_direction'))->toBeFalse();

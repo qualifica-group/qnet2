@@ -8,10 +8,10 @@ use App\Services\Skills\UserSkillScope;
 
 /**
  * Policy for the `user-skills` resource (spec 0286 D-5): `viewAny` sees one's
- * own skills, `viewTeam` also the active descendants (and writes theirs),
- * `viewAll` everyone (read only), `manage` writes for anyone. The widest held
- * wins, so a wider ability opens the module too. Record-level visibility (404)
- * and write rights (403) are enforced by UserSkillVisibility.
+ * own skills, `viewAll` everyone (read only), `manage` writes for anyone;
+ * having active subordinates in the org chart also opens the module and shows
+ * them, read only (spec 0309 D-2/D-3). Record-level visibility (404) and write
+ * rights (403) are enforced by UserSkillVisibility.
  */
 class UserSkillPolicy extends BasePolicy
 {
@@ -30,6 +30,6 @@ class UserSkillPolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return ['viewAny', 'viewTeam', 'viewAll', 'manage'];
+        return ['viewAny', 'viewAll', 'manage'];
     }
 }

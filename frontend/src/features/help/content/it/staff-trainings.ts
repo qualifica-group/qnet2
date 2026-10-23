@@ -24,7 +24,7 @@ const guide: HelpGuide = {
           headers: ['Permesso', 'Cosa permette'],
           rows: [
             ['Visualizza elenco', 'Apre la pagina e mostra la propria formazione.'],
-            ['Visualizza team', 'Mostra anche la formazione delle persone che fanno capo a te.'],
+            ['Avere dei sottoposti', 'Non serve un permesso: se qualcuno fa capo a te nell’organigramma, apri la pagina anche senza Visualizza elenco e vedi la tua formazione e quella dei tuoi sottoposti.'],
             ['Visualizza tutti', 'Mostra la formazione di tutte le persone.'],
             ['Gestire', 'Registra, modifica ed elimina le formazioni e carica l’attestato per chiunque (ufficio del personale).'],
           ],

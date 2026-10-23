@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Services\StaffTrainings;
 
 use App\Models\User;
+use App\Services\TimeEntries\TimeEntrySubordinateResolver;
 
 /**
- * Whose trainings an actor sees (spec 0284 D-5): one permission per level, the
- * widest held wins, none means no access. `manage` (HR office) writes for
- * anyone, so it implies seeing everyone.
+ * Whose trainings an actor sees (spec 0284 D-5, amended by spec 0309 D-2): `manage` or
+ * `viewAll` see everyone; having active subordinates in the org chart sees
+ * oneself plus them, with no permission needed; `viewAny` alone sees one's own;
+ * none of these means no access. `manage` (HR office) writes for anyone.
  */
 enum StaffTrainingScope: string
 {
@@ -17,23 +19,22 @@ enum StaffTrainingScope: string
     case Team = 'team';
     case All = 'all';
 
-    /** Widest first, so the first permission held decides. */
-    private const array PERMISSIONS = [
-        'all' => ['staff-trainings.manage', 'staff-trainings.viewAll'],
-        'team' => ['staff-trainings.viewTeam'],
-        'own' => ['staff-trainings.viewAny'],
-    ];
+    private const array ALL_PERMISSIONS = ['staff-trainings.manage', 'staff-trainings.viewAll'];
+
+    private const string OWN_PERMISSION = 'staff-trainings.viewAny';
 
     public static function forActor(User $actor): ?self
     {
-        foreach (self::PERMISSIONS as $scope => $permissions) {
-            foreach ($permissions as $permission) {
-                if ($actor->can($permission)) {
-                    return self::from($scope);
-                }
+        foreach (self::ALL_PERMISSIONS as $permission) {
+            if ($actor->can($permission)) {
+                return self::All;
             }
         }
 
-        return null;
+        if ((new TimeEntrySubordinateResolver)->descendantIds($actor->id) !== []) {
+            return self::Team;
+        }
+
+        return $actor->can(self::OWN_PERMISSION) ? self::Own : null;
     }
 }

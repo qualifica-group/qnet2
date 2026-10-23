@@ -22,8 +22,9 @@ import type { TableRowScope } from '@/features/table/types'
  * `useModuleOpener` are stubbed: they are tested at their own layer.
  */
 const canMock = vi.fn<(permission: string) => boolean>()
+let hasSubordinates = false
 vi.mock('@/features/auth/use-abilities', () => ({
-  useAbilities: () => ({ can: (permission: string) => canMock(permission), hasRole: () => false, roles: [], isLoading: false }),
+  useAbilities: () => ({ can: (permission: string) => canMock(permission), hasRole: () => false, roles: [], hasSubordinates, isLoading: false }),
 }))
 
 const openCreateWithMock = vi.fn()
@@ -116,6 +117,7 @@ beforeAll(async () => {
 beforeEach(() => {
   vi.clearAllMocks()
   canMock.mockReturnValue(true)
+  hasSubordinates = false
 })
 
 describe.each(CASES)('$name panel (spec 0199)', ({ Panel, domain, createPermission, createLabel }) => {
@@ -154,14 +156,15 @@ describe('Task panel assignment (spec 0199)', () => {
     expect(capturedOverride).toEqual({ assignment: ['visible'] })
   })
 
-  it('falls back to every role for an actor without viewAll/viewSite/viewTeam', () => {
-    canMock.mockImplementation((permission) => !['tasks.viewAll', 'tasks.viewSite', 'tasks.viewTeam'].includes(permission))
+  it('falls back to every role for an actor without viewAll/viewSite/subordinates', () => {
+    canMock.mockImplementation((permission) => !['tasks.viewAll', 'tasks.viewSite'].includes(permission))
     renderPanel(RegistryTasksPanel)
     expect(capturedOverride).toEqual({ assignment: ['all'] })
   })
 
-  it('starts on every visible task for an actor with only viewTeam (spec 0214)', () => {
-    canMock.mockImplementation((permission) => permission === 'tasks.viewTeam')
+  it('starts on every visible task for an actor with subordinates (spec 0309)', () => {
+    hasSubordinates = true
+    canMock.mockImplementation(() => false)
     renderPanel(RegistryTasksPanel)
     expect(capturedOverride).toEqual({ assignment: ['visible'] })
   })

@@ -19,13 +19,12 @@ const guide: HelpGuide = {
           rows: [
             ['Nessuno (predefinito)', 'Solo i tuoi task: quelli che hai creato o richiesto, o di cui sei assegnatario o osservatore.'],
             ['**Visualizza per sede**', 'I tuoi task e quelli in cui almeno un assegnatario lavora in una delle tue sedi (fisica o remota).'],
-            ['**Visualizza team**', 'I tuoi task e quelli in cui almeno un assegnatario è un tuo sottoposto, anche indiretto (fino in fondo alla catena dei responsabili), compresi i colleghi disattivati.'],
             ['**Visualizza tutti**', 'Tutti i task.'],
           ],
         },
         {
           type: 'note',
-          text: 'Vedere un task della tua sede o del tuo team non ti permette di modificarlo: per farlo devi averci un ruolo (creatore, richiedente, assegnatario) o il permesso **Gestisci tutto**.',
+          text: 'Se hai dei sottoposti, vedi in automatico anche i task in cui almeno un assegnatario è un tuo sottoposto, anche indiretto (fino in fondo alla catena dei responsabili), compresi i colleghi disattivati: non serve alcun permesso dedicato, basta poter vedere i task. Vedere un task della tua sede o del tuo team non ti permette di modificarlo: per farlo devi averci un ruolo (creatore, richiedente, assegnatario) o il permesso **Gestisci tutto**.',
         },
         {
           type: 'tip',
@@ -171,7 +170,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Un **Task privato** è visibile solo al creatore, al richiedente, agli assegnatari e agli osservatori: chi ha il permesso Visualizza tutti, Visualizza per sede o Visualizza team non lo vede (il super-amministratore resta l\'unica eccezione).',
+          text: 'Un **Task privato** è visibile solo al creatore, al richiedente, agli assegnatari e agli osservatori: chi ha il permesso Visualizza tutti o Visualizza per sede e il responsabile di un assegnatario non lo vedono (il super-amministratore resta l\'unica eccezione).',
         },
         {
           type: 'note',

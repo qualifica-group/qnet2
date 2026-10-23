@@ -95,6 +95,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
+          text: 'Con il permesso **Visualizza tutti** puoi aprire in sola lettura il segnatempo di qualunque persona, anche se non fa capo a te. Per modificarlo serve comunque essere la persona stessa o avere il permesso di gestione completa.',
+        },
+        {
+          type: 'note',
           text: 'Il target di una giornata lavorativa è la **Durata giornaliera standard** meno la **Durata pausa giornaliera**, impostate nella scheda utente; nei giorni non lavorativi il target è zero. Se la scheda utente non le indica, vale un target predefinito.',
         },
       ],

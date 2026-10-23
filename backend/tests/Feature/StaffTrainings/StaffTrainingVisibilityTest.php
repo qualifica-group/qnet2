@@ -14,13 +14,13 @@ function trainingGridIds(): array
 }
 
 /** @return array{actor: User, own: StaffTraining, team: StaffTraining, stranger: StaffTraining, inactive: StaffTraining} */
-function trainingWorld(array $abilities): array
+function trainingWorld(array $abilities, bool $withTeam = true): array
 {
     $actor = trainingUserWith($abilities);
     $report = User::factory()->create();
     $gone = User::factory()->create(['is_active' => false]);
-    trainingProfile($report, $actor);
-    trainingProfile($gone, $actor);
+    trainingProfile($report, $withTeam ? $actor : null);
+    trainingProfile($gone, $withTeam ? $actor : null);
 
     return [
         'actor' => $actor,
@@ -32,7 +32,7 @@ function trainingWorld(array $abilities): array
 }
 
 it('0284 AC-003: viewAny sees only the own trainings, grid and detail', function () {
-    $world = trainingWorld(['viewAny']);
+    $world = trainingWorld(['viewAny'], withTeam: false);
     Sanctum::actingAs($world['actor']);
 
     expect(trainingGridIds())->toBe([$world['own']->id]);
@@ -41,8 +41,9 @@ it('0284 AC-003: viewAny sees only the own trainings, grid and detail', function
     $this->getJson("/api/staff-trainings/{$world['stranger']->id}")->assertNotFound();
 });
 
-it('0284 AC-003: viewTeam adds the active descendants', function () {
-    $world = trainingWorld(['viewTeam']);
+// REQUIREMENT CHANGED (spec 0309 D-2): the team part derives from the org chart, no viewTeam permission.
+it('0309 AC-003: a user with no permission but an active subordinate sees self and the descendants', function () {
+    $world = trainingWorld([]);
     Sanctum::actingAs($world['actor']);
 
     expect(trainingGridIds())->toBe(collect([$world['own']->id, $world['team']->id])->sort()->values()->all());
@@ -51,8 +52,16 @@ it('0284 AC-003: viewTeam adds the active descendants', function () {
     $this->getJson("/api/staff-trainings/{$world['stranger']->id}")->assertNotFound();
 });
 
+it('0309 AC-004: viewAny plus a subordinate sees self and the team', function () {
+    $world = trainingWorld(['viewAny']);
+    Sanctum::actingAs($world['actor']);
+
+    expect(trainingGridIds())->toBe(collect([$world['own']->id, $world['team']->id])->sort()->values()->all());
+    $this->getJson("/api/staff-trainings/{$world['stranger']->id}")->assertNotFound();
+});
+
 it('0284 AC-003: viewAll sees everyone and the widest permission wins', function () {
-    $world = trainingWorld(['viewAny', 'viewTeam', 'viewAll']);
+    $world = trainingWorld(['viewAny', 'viewAll']);
     Sanctum::actingAs($world['actor']);
 
     expect(trainingGridIds())->toHaveCount(4);
@@ -68,6 +77,14 @@ it('0284 AC-003: without any staff-trainings permission the grid and the detail 
     $this->getJson('/api/staff-trainings/compliance')->assertForbidden();
 });
 
+it('0309 AC-004: only deactivated subordinates do not open the module', function () {
+    $actor = trainingUserWith([]);
+    trainingProfile(User::factory()->create(['is_active' => false]), $actor);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/tables/staff-trainings/rows', ['startRow' => 0, 'endRow' => 10])->assertForbidden();
+});
+
 it('0284 AC-003: an out-of-visibility record is a 404 on write too, never a 403', function () {
     $world = trainingWorld(['viewAny']);
     Sanctum::actingAs($world['actor']);
@@ -77,7 +94,7 @@ it('0284 AC-003: an out-of-visibility record is a 404 on write too, never a 403'
 });
 
 it('0284 AC-003: the grid row carries the contract columns, the attachment flag and filters stay in scope', function () {
-    $world = trainingWorld(['viewTeam']);
+    $world = trainingWorld([]);
     $world['team']->user->update(['name' => 'Zeta Report']);
     Sanctum::actingAs($world['actor']);
 

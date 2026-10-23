@@ -42,10 +42,10 @@ function calendarPeopleIds(mixed $response): array
     return collect($response->json('data.people'))->pluck('id')->all();
 }
 
-it('AC-001: calendarOwn shows only the actor', function () {
+// REQUIREMENT CHANGED (spec 0309 D-4): calendarTeam is gone, the team part of
+// calendarOwn derives from the org chart.
+it('AC-001: calendarOwn without subordinates shows only the actor', function () {
     $actor = calendarActor('Own');
-    $subordinate = User::factory()->create();
-    absenceProfile($subordinate, $actor);
     Sanctum::actingAs($actor);
 
     $response = $this->getJson(CALENDAR_URL)->assertOk()->assertJsonPath('data.scope', 'own');
@@ -53,8 +53,8 @@ it('AC-001: calendarOwn shows only the actor', function () {
     expect(calendarPeopleIds($response))->toBe([$actor->id]);
 });
 
-it('AC-001: calendarTeam shows the actor and their active descendants', function () {
-    $actor = calendarActor('Team');
+it('AC-001: calendarOwn with subordinates shows the actor and their active descendants', function () {
+    $actor = calendarActor('Own');
     $direct = User::factory()->create(['name' => 'Anna']);
     $indirect = User::factory()->create(['name' => 'Bruno']);
     $inactive = User::factory()->create(['is_active' => false]);
@@ -79,6 +79,14 @@ it('AC-001: calendarAll shows every active person and the widest permission wins
     $ids = calendarPeopleIds($this->getJson(CALENDAR_URL)->assertOk()->assertJsonPath('data.scope', 'all'));
 
     expect($ids)->toContain($actor->id, $colleague->id)->not->toContain($inactive->id);
+});
+
+it('AC-007: subordinates without calendarOwn or calendarAll do not open the calendar', function () {
+    $actor = absenceUserWith(['viewAny', 'create']);
+    absenceProfile(User::factory()->create(), $actor);
+    Sanctum::actingAs($actor);
+
+    $this->getJson(CALENDAR_URL)->assertForbidden();
 });
 
 it('AC-001: without any calendar permission the calendar is 403', function () {
@@ -200,12 +208,12 @@ it('AC-004: the query count does not grow with the people', function () {
     expect($countQueries())->toBe($few);
 });
 
-it('AC-005: permissions:sync creates the three calendar permissions, offered under Assenze', function () {
+it('AC-005: permissions:sync creates the two calendar permissions, offered under Assenze', function () {
     Artisan::call('permissions:sync');
     app(PermissionRegistrar::class)->forgetCachedPermissions();
-    $calendar = ['absence-requests.calendarAll', 'absence-requests.calendarOwn', 'absence-requests.calendarTeam'];
+    $calendar = ['absence-requests.calendarAll', 'absence-requests.calendarOwn'];
 
-    expect(Permission::query()->whereIn('name', $calendar)->pluck('name')->sort()->values()->all())->toBe($calendar)
+    expect(Permission::query()->where('name', 'like', 'absence-requests.calendar%')->pluck('name')->sort()->values()->all())->toBe($calendar)
         ->and(app(AssignablePermissionCatalogue::class)->names())->toContain(...$calendar);
 
     Sanctum::actingAs(User::factory()->create()->givePermissionTo('roles.viewAny'));

@@ -95,6 +95,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
+          text: 'With the **View all** permission you can open anyone\'s timesheet read-only, even if they do not report to you. To change it you still need to be that person or hold the full management permission.',
+        },
+        {
+          type: 'note',
           text: 'A working day\'s target is the standard daily duration minus the daily break duration, set on the user profile; on non-working days the target is zero. If the user profile does not set them, a default target applies.',
         },
       ],

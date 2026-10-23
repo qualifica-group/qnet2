@@ -19,13 +19,12 @@ const guide: HelpGuide = {
           rows: [
             ['None (default)', 'Only your own tasks: the ones you created or requested, or where you are an assignee or a watcher.'],
             ['**View by site**', 'Your tasks plus those where at least one assignee works at one of your sites (physical or remote).'],
-            ['**View team**', 'Your tasks plus those where at least one assignee is your subordinate, even indirectly (all the way down the chain of managers), deactivated colleagues included.'],
             ['**View all**', 'Every task.'],
           ],
         },
         {
           type: 'note',
-          text: 'Seeing a task of your site or team does not let you edit it: for that you need a role on it (creator, requester, assignee) or the **Manage all** permission.',
+          text: 'If you have subordinates you automatically also see the tasks where at least one assignee is your subordinate, even indirectly (all the way down the chain of managers), deactivated colleagues included: no dedicated permission is needed, you only need to be able to view tasks. Seeing a task of your site or team does not let you edit it: for that you need a role on it (creator, requester, assignee) or the **Manage all** permission.',
         },
         {
           type: 'tip',
@@ -168,7 +167,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'A **Private task** is visible only to its creator, requester, assignees and watchers: the View all, View by site and View team permissions do not show it (the super-admin stays the one exception).',
+          text: 'A **Private task** is visible only to its creator, requester, assignees and watchers: those with the View all or View by site permission and the manager of an assignee do not see it (the super-admin stays the one exception).',
         },
         {
           type: 'note',

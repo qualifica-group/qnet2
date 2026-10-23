@@ -280,14 +280,13 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Permesso', 'Chi vedi'],
           rows: [
-            ['Calendario: solo le proprie', 'Solo te stesso.'],
-            ['Calendario: proprie e della squadra', 'Te e le persone che ti rispondono, anche indirettamente.'],
+            ['Calendario: solo le proprie', 'Te stesso e, se hai dei sottoposti, le persone che ti rispondono, anche indirettamente.'],
             ['Calendario: di tutti', 'Tutte le persone attive.'],
           ],
         },
         {
           type: 'paragraph',
-          text: 'Ogni ruolo ha già il calendario **proprie e della squadra**: chi non ha persone che gli rispondono vede solo se stesso. Il calendario **di tutti** è dell’ufficio del personale e degli amministratori.',
+          text: 'Con il calendario **solo le proprie** vedi in automatico anche la tua squadra: chi non ha persone che gli rispondono vede solo se stesso. Avere dei sottoposti, da solo, non apre il calendario. Il calendario **di tutti** è dell’ufficio del personale e degli amministratori.',
         },
         {
           type: 'list',
@@ -300,7 +299,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Senza nessuno dei tre permessi la vista Calendario non compare. Bozze, richieste rifiutate e annullate non sono nel calendario.',
+          text: 'Senza nessuno dei due permessi la vista Calendario non compare. Bozze, richieste rifiutate e annullate non sono nel calendario.',
         },
       ],
     },

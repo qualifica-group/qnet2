@@ -3,9 +3,12 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Services\TimeEntries\TimeEntrySubordinateResolver;
 
 class NavigationService
 {
+    public function __construct(private readonly TimeEntrySubordinateResolver $subordinates) {}
+
     /**
      * Build the navigation tree visible to the given user.
      *
@@ -74,6 +77,8 @@ class NavigationService
                 continue;
             }
 
+            // Server-side gating hint only: not part of the payload.
+            unset($item['open_to_managers']);
             $item['children'] = $children;
             $visible[] = $item;
         }
@@ -85,13 +90,17 @@ class NavigationService
      * An item with no permission is public to authenticated users. An
      * additional, optional `role` (spec 0013) gates the item to users holding
      * that Spatie role — combined with the permission check (both must pass).
+     * `open_to_managers` (spec 0309) also opens the item to anyone with at
+     * least one active subordinate in the org chart, permission or not.
      */
     private function isAllowed(array $item, User $user): bool
     {
         $permission = $item['permission'] ?? null;
         $role = $item['role'] ?? null;
 
-        $permissionAllowed = $permission === null || $user->can($permission);
+        $permissionAllowed = $permission === null
+            || $user->can($permission)
+            || (! empty($item['open_to_managers']) && $this->subordinates->descendantIds($user->id) !== []);
         $roleAllowed = $role === null || $user->hasRole($role);
 
         return $permissionAllowed && $roleAllowed;

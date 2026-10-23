@@ -17,8 +17,11 @@ use Spatie\Permission\Models\Permission;
 
 /*
 |--------------------------------------------------------------------------
-| Spec 0214 — the `tasks.viewTeam` visibility tier
+| Spec 0214 — the team visibility tier
 |--------------------------------------------------------------------------
+|
+| REQUIREMENT CHANGED (spec 0309 D-1/D-5): the `tasks.viewTeam` permission is gone,
+| the tier derives from the org chart for anyone holding `tasks.view`.
 |
 | Besides their own Tasks, an actor sees the NON private Tasks with at least
 | one assignee among their sottoposti at any depth, deactivated users
@@ -32,7 +35,7 @@ uses(RefreshDatabase::class);
  */
 function teamTaskActor(array $abilities): User
 {
-    foreach (['viewAny', 'view', 'update', 'delete', 'viewAll', 'viewSite', 'viewTeam', 'manageAll'] as $ability) {
+    foreach (['viewAny', 'view', 'update', 'delete', 'viewAll', 'viewSite', 'manageAll'] as $ability) {
         Permission::findOrCreate("tasks.{$ability}");
     }
 
@@ -79,12 +82,12 @@ function teamTaskGridTitles(): array
     return collect($items)->pluck('title')->sort()->values()->all();
 }
 
-it('exposes viewTeam as an assignable tasks ability', function () {
-    expect(TaskPolicy::abilities())->toContain('viewTeam');
+it('AC-002 no longer exposes viewTeam as an assignable tasks ability', function () {
+    expect(TaskPolicy::abilities())->not->toContain('viewTeam');
 });
 
 it('AC-001 shows the task of a direct subordinate in the grid and on show', function () {
-    $manager = teamTaskActor(['viewAny', 'view', 'viewTeam']);
+    $manager = teamTaskActor(['viewAny', 'view']);
     $report = teamTaskReportsTo(User::factory()->create(), $manager);
     $task = teamTaskAssignedTo('Del team', $report);
     Sanctum::actingAs($manager);
@@ -95,7 +98,7 @@ it('AC-001 shows the task of a direct subordinate in the grid and on show', func
 });
 
 it('AC-002 follows the chain at any depth', function () {
-    $manager = teamTaskActor(['viewAny', 'view', 'viewTeam']);
+    $manager = teamTaskActor(['viewAny', 'view']);
     $middle = teamTaskReportsTo(User::factory()->create(), $manager);
     $leaf = teamTaskReportsTo(User::factory()->create(), $middle);
     teamTaskAssignedTo('Foglia', $leaf);
@@ -104,19 +107,17 @@ it('AC-002 follows the chain at any depth', function () {
     expect(teamTaskGridTitles())->toBe(['Foglia']);
 });
 
-it('AC-003 grants nothing without viewTeam', function () {
-    $manager = teamTaskActor(['viewAny', 'view']);
+it('AC-003 grants nothing without tasks.view, even with subordinates', function () {
+    $manager = teamTaskActor(['viewAny']);
     $report = teamTaskReportsTo(User::factory()->create(), $manager);
     $task = teamTaskAssignedTo('Del team', $report);
     Sanctum::actingAs($manager);
 
     $this->getJson("/api/tasks/{$task->id}")->assertForbidden();
-
-    expect(teamTaskGridTitles())->toBe([]);
 });
 
 it('AC-004 hides private tasks unless the actor is a member', function () {
-    $manager = teamTaskActor(['viewAny', 'view', 'viewTeam']);
+    $manager = teamTaskActor(['viewAny', 'view']);
     $report = teamTaskReportsTo(User::factory()->create(), $manager);
     $private = Task::factory()->private()->create(['title' => 'Privato']);
     $private->assignees()->attach($report->id);
@@ -132,7 +133,7 @@ it('AC-004 hides private tasks unless the actor is a member', function () {
 });
 
 it('AC-005 ignores a subordinate who is only requester, creator or watcher', function () {
-    $manager = teamTaskActor(['viewAny', 'view', 'viewTeam']);
+    $manager = teamTaskActor(['viewAny', 'view']);
     $report = teamTaskReportsTo(User::factory()->create(), $manager);
     $asRequester = Task::factory()->create(['title' => 'Richiedente', 'requester_id' => $report->id]);
     Task::factory()->forCreator($report)->create(['title' => 'Creatore']);
@@ -146,7 +147,7 @@ it('AC-005 ignores a subordinate who is only requester, creator or watcher', fun
 });
 
 it('AC-006 counts deactivated subordinates and intermediates, while time entries stay active-only', function () {
-    $manager = teamTaskActor(['viewAny', 'view', 'viewTeam']);
+    $manager = teamTaskActor(['viewAny', 'view']);
     $middle = teamTaskReportsTo(User::factory()->create(['is_active' => false]), $manager);
     $leaf = teamTaskReportsTo(User::factory()->create(['is_active' => false]), $middle);
     teamTaskAssignedTo('Intermedio', $middle);
@@ -159,7 +160,7 @@ it('AC-006 counts deactivated subordinates and intermediates, while time entries
 });
 
 it('AC-007 is read-only: no update nor delete without a record role or manageAll', function () {
-    $manager = teamTaskActor(['viewAny', 'view', 'update', 'delete', 'viewTeam']);
+    $manager = teamTaskActor(['viewAny', 'view', 'update', 'delete']);
     $report = teamTaskReportsTo(User::factory()->create(), $manager);
     $task = teamTaskAssignedTo('Del team', $report);
     Sanctum::actingAs($manager);
@@ -173,7 +174,7 @@ it('AC-007 is read-only: no update nor delete without a record role or manageAll
 });
 
 it('AC-008 survives a cycle in the data: each side sees the other once', function () {
-    $a = teamTaskActor(['viewAny', 'view', 'viewTeam']);
+    $a = teamTaskActor(['viewAny', 'view']);
     $b = teamTaskReportsTo(User::factory()->create(), $a);
     teamTaskReportsTo($a, $b);
     teamTaskAssignedTo('Di B', $b);
@@ -185,7 +186,7 @@ it('AC-008 survives a cycle in the data: each side sees the other once', functio
 });
 
 it('AC-009 the in-memory record shape agrees with the query shape', function () {
-    $manager = teamTaskActor(['view', 'viewTeam']);
+    $manager = teamTaskActor(['view']);
     $middle = teamTaskReportsTo(User::factory()->create(), $manager);
     $leaf = teamTaskReportsTo(User::factory()->create(), $middle);
     $outsider = User::factory()->create();
@@ -208,7 +209,7 @@ it('AC-009 the in-memory record shape agrees with the query shape', function () 
 });
 
 it('AC-010 resolves the chain once per request, not once per row', function () {
-    $manager = teamTaskActor(['viewAny', 'view', 'viewTeam']);
+    $manager = teamTaskActor(['viewAny', 'view']);
     $report = teamTaskReportsTo(User::factory()->create(), $manager);
 
     foreach (range(1, 6) as $number) {
@@ -227,21 +228,24 @@ it('AC-010 resolves the chain once per request, not once per row', function () {
     expect($chainQueries)->toBe(1);
 });
 
-it('AC-011 offers the "visible" assignment option to a viewTeam holder only', function () {
+it('AC-011 offers the "visible" assignment option to whoever has subordinates only', function () {
     $excluded = fn (User $actor) => collect(TaskAdvancedFilterCatalog::advancedFilters($actor))
         ->firstWhere('name', 'assignment')['excludedValues'];
 
-    expect($excluded(teamTaskActor(['viewAny', 'view', 'viewTeam'])))->not->toContain('visible')
+    $manager = teamTaskActor(['viewAny', 'view']);
+    teamTaskReportsTo(User::factory()->create(), $manager);
+
+    expect($excluded($manager))->not->toContain('visible')
         ->and($excluded(teamTaskActor(['viewAny', 'view'])))->toContain('visible');
 });
 
 it('AC-012 makes a manager above an assignee mentionable, on non private tasks only', function () {
     $creator = teamTaskActor(['view']);
     $creator->givePermissionTo('notes.create');
-    $manager = teamTaskActor(['view', 'viewTeam']);
+    $manager = teamTaskActor(['view']);
     $middle = teamTaskReportsTo(User::factory()->create(), $manager);
     $leaf = teamTaskReportsTo(User::factory()->create(), $middle);
-    $noTeamGrant = teamTaskReportsTo(teamTaskActor(['view']), $middle);
+    $noTasksView = teamTaskReportsTo(teamTaskActor([]), $middle);
     $outsiderAssignee = User::factory()->create();
 
     $open = Task::factory()->forCreator($creator)->create(['requester_id' => $creator->id]);
@@ -256,18 +260,15 @@ it('AC-012 makes a manager above an assignee mentionable, on non private tasks o
         ->assertOk()->json('items'))->pluck('id')->all();
 
     expect($ids($open))->toContain($manager->id)
-        ->and($ids($open))->not->toContain($noTeamGrant->id)
+        ->and($ids($open))->not->toContain($noTasksView->id)
         ->and($ids($closed))->not->toContain($manager->id)
         ->and($ids($other))->not->toContain($manager->id);
 });
 
-it('AC-013 grants viewTeam to every role with the own-tasks block', function () {
+it('AC-002 leaves no role holding tasks.viewTeam after the seeders', function () {
     $this->seed(QualificaOperatorSeeder::class);
     $this->seed(QualificaStaffSeeder::class);
 
-    expect(OperatorRoleCatalogue::OWN_TASKS_DENIED_ABILITIES)->not->toContain('viewTeam');
-
-    foreach (OperatorRoleCatalogue::ROLES as $name => $role) {
-        expect(User::role($name)->firstOrFail()->can('tasks.viewTeam'))->toBeTrue("{$name} tasks.viewTeam");
-    }
+    expect(OperatorRoleCatalogue::OWN_TASKS_DENIED_ABILITIES)->not->toContain('viewTeam')
+        ->and(Permission::query()->where('name', 'tasks.viewTeam')->exists())->toBeFalse();
 });

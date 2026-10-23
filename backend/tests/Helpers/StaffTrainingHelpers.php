@@ -17,7 +17,7 @@ if (! function_exists('trainingUserWith')) {
      */
     function trainingUserWith(array $abilities = ['viewAny'], array $attributes = []): User
     {
-        foreach (['viewAny', 'viewTeam', 'viewAll', 'manage'] as $ability) {
+        foreach (['viewAny', 'viewAll', 'manage'] as $ability) {
             Permission::findOrCreate("staff-trainings.{$ability}", 'web');
         }
 

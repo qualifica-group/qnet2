@@ -14,13 +14,13 @@ function userSkillGridIds(): array
 }
 
 /** @return array<string, mixed> */
-function userSkillWorld(array $abilities): array
+function userSkillWorld(array $abilities, bool $withTeam = true): array
 {
     $actor = skillUserWith($abilities);
     $report = User::factory()->create();
     $gone = User::factory()->create(['is_active' => false]);
-    skillProfile($report, $actor);
-    skillProfile($gone, $actor);
+    skillProfile($report, $withTeam ? $actor : null);
+    skillProfile($gone, $withTeam ? $actor : null);
 
     return [
         'actor' => $actor,
@@ -32,7 +32,7 @@ function userSkillWorld(array $abilities): array
 }
 
 it('0286 AC-003: viewAny sees only the own skills, grid and detail', function () {
-    $world = userSkillWorld(['viewAny']);
+    $world = userSkillWorld(['viewAny'], withTeam: false);
     Sanctum::actingAs($world['actor']);
 
     expect(userSkillGridIds())->toBe([$world['own']->id]);
@@ -41,13 +41,23 @@ it('0286 AC-003: viewAny sees only the own skills, grid and detail', function ()
     $this->getJson("/api/user-skills/{$world['stranger']->id}")->assertNotFound();
 });
 
-it('0286 AC-003: viewTeam adds the active descendants', function () {
-    $world = userSkillWorld(['viewTeam']);
+// REQUIREMENT CHANGED (spec 0309 D-2/D-3): the team part derives from the org chart
+// (no viewTeam permission) and the manager only reads: writing stays with manage.
+it('0309 AC-005: a user with no permission but an active subordinate reads self and the descendants, read only', function () {
+    $world = userSkillWorld([]);
     Sanctum::actingAs($world['actor']);
 
     expect(userSkillGridIds())->toBe(collect([$world['own']->id, $world['team']->id])->sort()->values()->all());
-    $this->getJson("/api/user-skills/{$world['team']->id}")->assertOk()->assertJsonPath('data.can_edit', true);
+    $this->getJson("/api/user-skills/{$world['team']->id}")->assertOk()->assertJsonPath('data.can_edit', false);
     $this->getJson("/api/user-skills/{$world['inactive']->id}")->assertNotFound();
+    $this->getJson("/api/user-skills/{$world['stranger']->id}")->assertNotFound();
+});
+
+it('0309 AC-005: viewAny plus a subordinate sees self and the team', function () {
+    $world = userSkillWorld(['viewAny']);
+    Sanctum::actingAs($world['actor']);
+
+    expect(userSkillGridIds())->toBe(collect([$world['own']->id, $world['team']->id])->sort()->values()->all());
     $this->getJson("/api/user-skills/{$world['stranger']->id}")->assertNotFound();
 });
 
@@ -72,8 +82,16 @@ it('0286 AC-003: without any user-skills permission the grid, the detail and the
     $this->getJson('/api/user-skills/coverage')->assertForbidden();
 });
 
+it('0309 AC-005: only deactivated subordinates do not open the module', function () {
+    $actor = skillUserWith([]);
+    skillProfile(User::factory()->create(['is_active' => false]), $actor);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/tables/user-skills/rows', ['startRow' => 0, 'endRow' => 10])->assertForbidden();
+});
+
 it('0286 AC-003: the grid row carries the contract columns, sorts and filters inside the visibility', function () {
-    $world = userSkillWorld(['viewTeam']);
+    $world = userSkillWorld([]);
     $world['team']->user->update(['name' => 'Zeta Report']);
     $world['team']->skill->update(['category' => 'Backend']);
     Sanctum::actingAs($world['actor']);

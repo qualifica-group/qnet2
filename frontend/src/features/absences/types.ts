@@ -319,10 +319,9 @@ export interface BulkAllowancePayload {
   annual_days: number | null
 }
 
-/** Calendar of spec 0279: the three permission levels, any of them opens the tab. */
+/** Calendar of spec 0279: own or all opens the tab; the team is automatic (spec 0309). */
 export const ABSENCE_CALENDAR_PERMISSIONS = [
   'absence-requests.calendarOwn',
-  'absence-requests.calendarTeam',
   'absence-requests.calendarAll',
 ] as const
 

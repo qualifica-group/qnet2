@@ -25,7 +25,8 @@ use WeakMap;
  * to the Task is still decided by TaskAbilityResolver's record-role matrix.
  * A Task with no assignee, or an actor with no Sede, never matches the tier.
  *
- * Spec 0214 adds the tier `tasks.viewTeam`: the actor also sees every Task
+ * Spec 0214 adds the team tier (no permission since spec 0309: it derives from
+ * the org chart, the base `tasks.view` stays required): the actor also sees every Task
  * with at least one ASSEGNATARIO among their sottoposti, direct or indirect
  * at any depth, deactivated users and deactivated intermediate managers
  * included (TimeEntrySubordinateResolver::allDescendantIds()). Requester,
@@ -35,7 +36,7 @@ use WeakMap;
  * isVisibleTo() runs once per grid row.
  *
  * Spec 0154 D-2 adds `is_private`: a PRIVATE Task narrows ALL the wider tiers at
- * once — `viewAll`, `viewSite` and `viewTeam` see it ONLY through the membership tier,
+ * once — `viewAll`, `viewSite` and the team tier see it ONLY through the membership tier,
  * never through the resource permission or the shared-Sede bypass — while
  * leaving the membership tier itself untouched (creator/requester/assignee/
  * watcher always see their own Task, private or not). The super-admin is the
@@ -68,8 +69,6 @@ final class TaskVisibilityScope
     public const string VIEW_ALL_PERMISSION = 'tasks.viewAll';
 
     public const string VIEW_SITE_PERMISSION = 'tasks.viewSite';
-
-    public const string VIEW_TEAM_PERMISSION = 'tasks.viewTeam';
 
     /** @var WeakMap<User, array<int, int>>|null */
     private static ?WeakMap $teamIdsByActor = null;
@@ -192,8 +191,8 @@ final class TaskVisibilityScope
     }
 
     /**
-     * The `viewTeam` tier (spec 0214): the actor's sottoposti ids, empty
-     * without the permission so the tier drops out of the predicate. Memoized
+     * The team tier (specs 0214, 0309): the actor's sottoposti ids (empty when
+     * they have none, so the tier drops out of the predicate). Memoized
      * per actor instance: the rule is asked once per grid row and the chain
      * is a single projection query plus a BFS. A WeakMap (not a static array
      * by id) so the cache dies with the instance and can never leak across
@@ -201,12 +200,8 @@ final class TaskVisibilityScope
      *
      * @return array<int, int>
      */
-    private static function actorTeamIds(User $user): array
+    public static function actorTeamIds(User $user): array
     {
-        if (! $user->can(self::VIEW_TEAM_PERMISSION)) {
-            return [];
-        }
-
         self::$teamIdsByActor ??= new WeakMap;
 
         return self::$teamIdsByActor[$user] ??= (new TimeEntrySubordinateResolver)->allDescendantIds($user->id);

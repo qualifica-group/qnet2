@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0309-org-chart-team-visibility" status="draft" owner="utente" date="2026-10-23">
+
+  <goal>
+    Chi ha sottoposti in organigramma vede il proprio team in Task, calendario Assenze, Formazione e Competenze
+    senza un permesso dedicato: la visibilita' del team deriva dall'organigramma, come gia' accade per Segnatempo
+    e richieste di assenza. In Segnatempo, "Visualizza tutti" apre in lettura il segnatempo di chiunque.
+  </goal>
+
+  <context>
+    Fonte unica dei sottoposti: `App\Services\TimeEntries\TimeEntrySubordinateResolver` (pivot
+    `employment_profile_manager`): `descendantIds()` = discendenti ATTIVI a ogni livello, `allDescendantIds()` =
+    anche disattivati (usato dai Task, spec 0214), `isDescendantOf()`, `allAncestorIds()`.
+
+    Stato attuale (verificato):
+    - Segnatempo: team gia' derivato (`TimeEntryReadAuthorizer`, `TimeEntryTeamPulseService`, `TimeEntryListService`),
+      richiede `time-entries.viewAny`. Incoerenza: `time-entries.viewAll` elenca tutti nel pannello team (righe
+      cliccabili, `team/team-tree-branch.tsx` `isClickable = !isCurrentUser`) ma `TimeEntryReadAuthorizer::resolveSelectedUser`
+      accetta solo `manageAll` o un discendente: 403 sul dettaglio di un non sottoposto.
+    - Richieste/saldi assenze: gia' derivati (`AbsenceRequestVisibility`, `AbsenceBalanceController`). Nessun cambio.
+    - Calendario assenze: `AbsenceCalendarScope::forActor` (all/team/own da `calendarAll`/`calendarTeam`/`calendarOwn`),
+      usato da `AbsenceCalendarRequest::authorize`, `AbsenceCalendarController`, `AbsenceCalendarPeople`,
+      `AbsenceCalendarBuilder`, `AbsenceColleaguesResolver`. Seed: `OwnAbsencesCatalogue::PERMISSIONS` (tutti i ruoli).
+    - Task: tier `tasks.viewTeam` in `TaskVisibilityScope::actorTeamIds()` (+ `isVisibleTo`), `TaskNotable::mentionableUsersQuery`
+      (ramo viewTeam), `TaskAdvancedFilterCatalog::assignmentFilter` (opzione `visible`), `TaskPolicy::viewTeam()` + `abilities()`,
+      frontend `registries/registry-related-panels.tsx` (`can('tasks.viewTeam')`).
+    - Formazione: `StaffTrainingScope` (all = manage|viewAll, team = viewTeam, own = viewAny), `StaffTrainingVisibility`,
+      `StaffTrainingPolicy::viewAny()/abilities()`, voce menu `config/navigation` key `staff-trainings` (permission
+      `staff-trainings.viewAny`), pagina `staff-trainings-page.tsx` (`<Can permission="staff-trainings.viewAny">`).
+    - Competenze: `UserSkillScope`, `UserSkillVisibility` (`TEAM_PERMISSION` legge E scrive i sottoposti),
+      `UserSkillPolicy`, voce menu `user-skills`, pagina `user-skills-page.tsx` (`WRITE_PERMISSIONS` = manage|viewTeam).
+    - Menu: `NavigationService::isAllowed` controlla solo `permission` (+ `role` opzionale) via `$user->can()`.
+    - Frontend: permessi da `GET /api/auth/me/abilities` (`AbilitiesService::for`, `AbilityMap`), hook `useAbilities`.
+    - `permissions:sync` crea soltanto: la rimozione richiede una migrazione (precedente
+      `2026_08_05_120600_rename_and_prune_quote_workflow_permissions`).
+
+    Decisioni utente 2026-10-23:
+    - D-1 Nessun permesso "team": la visibilita' del team deriva dall'organigramma. `tasks.viewTeam`,
+      `absence-requests.calendarTeam`, `staff-trainings.viewTeam`, `user-skills.viewTeam` vengono eliminati da
+      catalogo, ruoli e codice.
+    - D-2 Formazione e Competenze: chi ha almeno un sottoposto attivo entra nel modulo anche senza `viewAny` e vede
+      se' + i discendenti attivi. `viewAny` resta per "solo il proprio"; `viewAll`/`manage` per tutti.
+    - D-3 Competenze: il responsabile SOLO VEDE i sottoposti; scrivere resta a `user-skills.manage` (REQUIREMENT
+      CHANGED rispetto a spec 0286 D-5).
+    - D-4 Calendario assenze: serve comunque `calendarOwn` (o `calendarAll`); chi ha `calendarOwn` vede se' + discendenti
+      attivi. Avere sottoposti senza `calendarOwn` NON apre il calendario.
+    - D-5 Task: il tier team vale per chiunque abbia `tasks.view` (il permesso base resta obbligatorio); restano invariati
+      gli altri vincoli della spec 0214 (sottoposto tra gli ASSEGNATARI, discendenti anche disattivati, mai i Task privati,
+      sola lettura).
+    - D-6 Segnatempo: `time-entries.viewAll` apre in SOLA LETTURA il segnatempo di qualunque utente; scrivere resta
+      a se stessi o `manageAll`.
+    - D-7 "Ha sottoposti" (segnale di accesso a menu/pagine) = almeno un discendente ATTIVO (`descendantIds() !== []`).
+
+    Supera parzialmente: spec 0214 (permesso viewTeam), 0279 D-1 (calendarTeam), 0284 D-5, 0286 D-5, 0292 (block own-absences).
+  </context>
+
+  <scope>
+    <in>
+      <item>Segnale derivato `has_subordinates` in `GET /api/auth/me/abilities` e flag di navigazione `open_to_managers`.</item>
+      <item>Formazione e Competenze: scope team derivato, accesso al modulo per chi ha sottoposti (menu + pagina + API).</item>
+      <item>Competenze: scrittura solo `manage` (backend + bottone "Assegna competenza").</item>
+      <item>Calendario assenze: scope team derivato per chi ha `calendarOwn`.</item>
+      <item>Task: tier team senza permesso (visibilita', menzionabili, opzione filtro `visible`, pannello Task in anagrafica).</item>
+      <item>Segnatempo: `viewAll` legge il dettaglio di chiunque.</item>
+      <item>Migrazione che elimina i 4 permessi (e le righe pivot ruolo) + svuota la cache spatie; seed e policy allineati.</item>
+      <item>Etichette i18n dei permessi rimossi, guide in-app IT/EN, manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Altri tier di visibilita' non legati all'organigramma (`tasks.viewSite`, `request-management.viewSite/viewAll`,
+        `work-orders.viewAll`, `purchase-requests.viewAll`): invariati.</item>
+      <item>Richieste e saldi assenze, approvatori: gia' derivati, invariati.</item>
+      <item>Scrittura del responsabile sul segnatempo dei sottoposti (resta `manageAll`).</item>
+      <item>Uniformare attivi/disattivati tra i moduli (Task continua a includere i disattivati, gli altri no).</item>
+      <item>Modifiche all'organigramma o alla relazione responsabile/sottoposto.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/auth/me/abilities">
+      <request>nessun parametro (auth:sanctum)</request>
+      <response status="200">
+        { success: true, message: string, data: {
+            roles: string[],
+            permissions: Record&lt;string, boolean&gt;,   // invariato; i 4 permessi rimossi non compaiono piu'
+            has_subordinates: boolean                  // NUOVO (D-7): almeno un discendente attivo; super-admin = valore reale
+        } }
+      </response>
+      <errors>401 non autenticato (invariato)</errors>
+    </endpoint>
+
+    <navigation_item key="staff-trainings|user-skills">
+      Nuova chiave opzionale `open_to_managers: true` in `config/navigation/*.php`: la voce e' visibile se
+      `permission` passa OPPURE l'utente ha sottoposti attivi. Solo sulle due voci staff-trainings e user-skills.
+      Il payload di `GET /api/navigation` non cambia shape (la chiave non viene esposta).
+    </navigation_item>
+
+    <endpoint method="GET" path="/api/time-entries (+ overview/pulse con user_id)">
+      <request>`user_id` di un utente qualunque</request>
+      <response status="200">con `time-entries.viewAll`: dati dell'utente richiesto; `meta.can_write` = false se non e'
+        se stesso e manca `manageAll` (invariato nella forma).</response>
+      <errors>403 senza viewAny; 403 su utente non sottoposto senza viewAll/manageAll (invariato).</errors>
+    </endpoint>
+
+    <permissions_removed>
+      tasks.viewTeam, absence-requests.calendarTeam, staff-trainings.viewTeam, user-skills.viewTeam
+    </permissions_removed>
+
+    <frontend>
+      `AbilityMap` + `has_subordinates: boolean`; `useAbilities()` espone `hasSubordinates: boolean`.
+    </frontend>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente con un discendente attivo, quando chiama GET /api/auth/me/abilities, allora
+      `data.has_subordinates` e' true; senza discendenti attivi (nessuno o solo disattivati) e' false.</criterion>
+    <criterion id="AC-002">Dopo la migrazione, la tabella `permissions` non contiene `tasks.viewTeam`,
+      `absence-requests.calendarTeam`, `staff-trainings.viewTeam`, `user-skills.viewTeam`, nessun ruolo li ha, e
+      `permissions:sync` non li ricrea (le policy non li dichiarano piu').</criterion>
+    <criterion id="AC-003">Formazione: un utente SENZA alcun permesso staff-trainings ma con un sottoposto attivo vede
+      la voce di menu, ottiene 200 sulla griglia e vede solo le formazioni proprie e dei discendenti attivi; il dettaglio
+      di un estraneo da' 404.</criterion>
+    <criterion id="AC-004">Formazione: un utente con solo `staff-trainings.viewAny` e un sottoposto vede se' + team;
+      senza sottoposti vede solo le proprie; senza viewAny e senza sottoposti riceve 403 e non vede la voce di menu.</criterion>
+    <criterion id="AC-005">Competenze: stesse regole di AC-003/AC-004 per lettura, griglia e vista copertura.</criterion>
+    <criterion id="AC-006">Competenze: un responsabile senza `user-skills.manage` riceve 403 su create/update/delete di
+      una competenza di un suo sottoposto; con `manage` passa. Il bottone "Assegna competenza" appare solo con `manage`.</criterion>
+    <criterion id="AC-007">Calendario assenze: con `calendarOwn` e un sottoposto attivo il calendario mostra se' + team;
+      con `calendarOwn` senza sottoposti solo se'; con `calendarAll` tutti; senza calendarOwn/calendarAll ma con
+      sottoposti la richiesta riceve 403 e la vista Calendario non compare.</criterion>
+    <criterion id="AC-008">Calendario assenze: i "colleghi assenti" (AbsenceColleaguesResolver) seguono lo stesso scope
+      di AC-007 (con sottoposti = team, senza = nessuno).</criterion>
+    <criterion id="AC-009">Task: un utente con `tasks.view` e un sottoposto (anche disattivato) assegnatario di un Task
+      NON privato lo vede in griglia e in dettaglio; non vede il Task se il sottoposto e' solo creatore/richiedente/
+      osservatore, ne' se il Task e' privato; senza `tasks.view` non vede nulla.</criterion>
+    <criterion id="AC-010">Task: i menzionabili di un Task non privato includono i responsabili (con `tasks.view`) di un
+      suo assegnatario; l'opzione filtro `visible` non e' esclusa per chi ha sottoposti.</criterion>
+    <criterion id="AC-011">Task in anagrafica: con sottoposti (`hasSubordinates`) il pannello parte dal filtro `visible`.</criterion>
+    <criterion id="AC-012">Segnatempo: con `time-entries.viewAll` senza `manageAll`, GET con `user_id` di un non sottoposto
+      risponde 200 con `meta.can_write` false; una scrittura sullo stesso utente risponde 403.</criterion>
+    <criterion id="AC-013">Il ruolo seed `own-absences` (OwnAbsencesCatalogue) non contiene piu' `calendarTeam`; i seeder
+      girano senza errori su permessi inesistenti.</criterion>
+    <criterion id="AC-014">Le etichette i18n `viewTeam`/`calendarTeam` non usate sono rimosse da IT ed EN e il parity test
+      dei permessi resta verde.</criterion>
+    <criterion id="AC-015">Guide in-app IT/EN aggiornate (tasks, absences, staff-trainings, user-skills, time-entries,
+      roles se cita i permessi) e `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Authz sempre server-side: `has_subordinates` serve solo a mostrare/nascondere UI.</item>
+    <item>Unica sorgente dei sottoposti: `TimeEntrySubordinateResolver`; nessuna query parallela sull'organigramma.</item>
+    <item>Task: memoization per attore gia' presente in `TaskVisibilityScope` (WeakMap) va mantenuta; ora il calcolo
+      avviene per ogni attore con `tasks.view`.</item>
+    <item>Migrazione non distruttiva per lo schema; `down()` irreversibile per design (come il precedente 2026_08_05),
+      documentato. Mai `migrate:fresh`/rollback sul DB di sviluppo.</item>
+    <item>I test esistenti che assegnano i permessi rimossi vengono aggiornati come REQUIREMENT CHANGED (spec 0309).</item>
+    <item>File entro 300/500 righe; nessun dead code (costanti `VIEW_TEAM_PERMISSION`/`TEAM_PERMISSION`, metodo
+      `TaskPolicy::viewTeam`, chiavi i18n rimosse).</item>
+  </constraints>
+
+</spec>

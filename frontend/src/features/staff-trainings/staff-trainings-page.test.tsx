@@ -5,8 +5,9 @@ import StaffTrainingsPage from '@/features/staff-trainings/staff-trainings-page'
 import { buildTraining, trainingWrapper } from '@/features/staff-trainings/staff-training-fixtures'
 
 const permissions = new Set<string>()
+let hasSubordinates = false
 vi.mock('@/features/auth/use-abilities', () => ({
-  useAbilities: () => ({ can: (permission: string) => permissions.has(permission), hasRole: () => false, roles: [], isLoading: false }),
+  useAbilities: () => ({ can: (permission: string) => permissions.has(permission), hasRole: () => false, roles: [], hasSubordinates, isLoading: false }),
 }))
 vi.mock('@/components/page-header', () => ({
   PageHeader: ({ actions }: { actions?: React.ReactNode }) => <header>{actions}</header>,
@@ -39,12 +40,22 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  hasSubordinates = false
   permissions.clear()
   permissions.add('staff-trainings.viewAny')
 })
 
 describe('StaffTrainingsPage', () => {
-  it('shows a forbidden message without viewAny', () => {
+  it('opens with subordinates alone, read-only (spec 0309)', () => {
+    permissions.clear()
+    hasSubordinates = true
+    render(<StaffTrainingsPage />, { wrapper: trainingWrapper() })
+
+    expect(screen.getByRole('button', { name: 'open-5' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: label('staffTrainings.page.register') })).not.toBeInTheDocument()
+  })
+
+  it('shows a forbidden message without viewAny nor subordinates', () => {
     permissions.clear()
     render(<StaffTrainingsPage />, { wrapper: trainingWrapper() })
 

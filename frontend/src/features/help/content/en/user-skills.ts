@@ -48,9 +48,9 @@ const guide: HelpGuide = {
           headers: ['Permission', 'What it allows'],
           rows: [
             ['View list', 'Opens the page and shows your own skills.'],
-            ['View team', 'Also shows the skills of the people reporting to you and lets you assign, edit and remove them (manager).'],
+            ['Having subordinates', 'No permission needed: if someone reports to you in the org chart, you open the page even without View list and see your own skills and those of your subordinates, read-only.'],
             ['View all', 'Shows the skills of everyone, read-only.'],
-            ['Manage', 'Writes for anyone and sees everyone (HR office).'],
+            ['Manage', 'Assigns, edits and removes the skills of anyone and sees everyone: only the HR office writes.'],
           ],
         },
         {
@@ -70,7 +70,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Click **Assign skill** (shown with Manage or View team).',
+            'Click **Assign skill** (shown only with Manage).',
             'In the **Person and skill** section choose the person and the skill; in the **Assessment** section the level, the assessment date (it cannot be in the future) and any notes.',
             'Press **Save**, at the top right or at the bottom of the form.',
           ],

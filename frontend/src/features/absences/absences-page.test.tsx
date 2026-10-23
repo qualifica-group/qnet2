@@ -5,8 +5,9 @@ import AbsencesPage from '@/features/absences/absences-page'
 import { absenceWrapper, buildRequest } from '@/features/absences/requests/absence-request-fixtures'
 
 const permissions = new Set<string>()
+let hasSubordinates = false
 vi.mock('@/features/auth/use-abilities', () => ({
-  useAbilities: () => ({ can: (permission: string) => permissions.has(permission), hasRole: () => false, roles: [], isLoading: false }),
+  useAbilities: () => ({ can: (permission: string) => permissions.has(permission), hasRole: () => false, roles: [], hasSubordinates, isLoading: false }),
 }))
 
 vi.mock('@/components/page-header', () => ({
@@ -66,6 +67,7 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  hasSubordinates = false
   permissions.clear()
   permissions.add('absence-requests.viewAny')
   summaryMock.mockResolvedValue({ to_approve_count: 0, my_pending_count: 0, daily_minutes: 480, my_upcoming: [], absent_today: [] })
@@ -106,6 +108,13 @@ describe('AbsencesPage', () => {
     render(<AbsencesPage />, { wrapper: absenceWrapper() })
 
     expect(screen.getByText(label('absences.forbidden'))).toBeInTheDocument()
+  })
+
+  it('spec 0309: subordinates alone do not open the Calendar view', () => {
+    hasSubordinates = true
+    render(<AbsencesPage />, { wrapper: absenceWrapper() })
+
+    expect(screen.queryByRole('tab', { name: label('absences.page.views.calendar') })).not.toBeInTheDocument()
   })
 
   it('spec 0279: hides the Calendar view without any calendar permission', () => {

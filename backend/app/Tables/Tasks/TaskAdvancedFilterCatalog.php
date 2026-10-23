@@ -88,7 +88,7 @@ final class TaskAdvancedFilterCatalog
     /**
      * `assignment` (spec 0153, D-1): required, multi-value, OR-combined by
      * TaskAdvancedFilterApplier, defaulting to `[assigned_to_me]`. `visible`
-     * is listed in `excludedValues` for an actor without viewAll/viewSite/viewTeam:
+     * is listed in `excludedValues` for an actor without viewAll/viewSite and without subordinates:
      * for them it would coincide with `all`, so the option is only noise.
      *
      * @return array<string, mixed>
@@ -98,7 +98,7 @@ final class TaskAdvancedFilterCatalog
         $canSeeBeyondRoles = $actor !== null
             && ($actor->can(TaskVisibilityScope::VIEW_ALL_PERMISSION)
                 || $actor->can(TaskVisibilityScope::VIEW_SITE_PERMISSION)
-                || $actor->can(TaskVisibilityScope::VIEW_TEAM_PERMISSION));
+                || TaskVisibilityScope::actorTeamIds($actor) !== []);
 
         return [
             'name' => self::ASSIGNMENT,

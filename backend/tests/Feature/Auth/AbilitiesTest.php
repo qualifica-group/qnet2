@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\EmploymentProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -67,4 +68,35 @@ it('returns all defined permissions as granted for the super-admin role', functi
         'users.view' => true,
     ]);
     expect($response->json('data.roles'))->toEqual(['super-admin']);
+});
+
+it('0309 AC-001: has_subordinates is true only with an active descendant', function () {
+    $manager = User::factory()->create();
+    Sanctum::actingAs($manager);
+
+    $this->getJson('/api/auth/me/abilities')->assertOk()->assertJsonPath('data.has_subordinates', false);
+
+    $gone = User::factory()->create(['is_active' => false]);
+    EmploymentProfile::factory()->create(['user_id' => $gone->id])->reportsTo()->attach($manager->id);
+
+    $this->getJson('/api/auth/me/abilities')->assertJsonPath('data.has_subordinates', false);
+
+    $report = User::factory()->create();
+    EmploymentProfile::factory()->create(['user_id' => $report->id])->reportsTo()->attach($manager->id);
+
+    $this->getJson('/api/auth/me/abilities')->assertJsonPath('data.has_subordinates', true);
+});
+
+it('0309 AC-001: has_subordinates is the real value for a super-admin too', function () {
+    Role::create(['name' => 'super-admin']);
+    $admin = User::factory()->create();
+    $admin->assignRole('super-admin');
+    Sanctum::actingAs($admin);
+
+    $this->getJson('/api/auth/me/abilities')->assertOk()->assertJsonPath('data.has_subordinates', false);
+
+    $report = User::factory()->create();
+    EmploymentProfile::factory()->create(['user_id' => $report->id])->reportsTo()->attach($admin->id);
+
+    $this->getJson('/api/auth/me/abilities')->assertJsonPath('data.has_subordinates', true);
 });

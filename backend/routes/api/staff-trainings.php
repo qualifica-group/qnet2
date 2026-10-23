@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
 | Staff trainings register (spec 0284)
 |--------------------------------------------------------------------------
 |
-| Authorization: staff-trainings.viewAny|viewTeam|viewAll|manage
+| Authorization: staff-trainings.viewAny|viewAll|manage
 | (StaffTrainingPolicy, StaffTrainingVisibility). Required from
 | routes/api/hr.php INSIDE the `auth:sanctum` group. `compliance` is declared
 | ABOVE the `{staffTraining}` route so it is not swallowed by the binding; the

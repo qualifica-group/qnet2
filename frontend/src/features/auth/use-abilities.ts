@@ -23,6 +23,7 @@ export function useAbilities() {
 
   const permissions = abilitiesQuery.data?.permissions
   const roles = abilitiesQuery.data?.roles
+  const hasSubordinates = abilitiesQuery.data?.has_subordinates ?? false
 
   const can = useCallback(
     (permission: string) => permissions?.[permission] === true,
@@ -35,6 +36,7 @@ export function useAbilities() {
     can,
     hasRole,
     roles: roles ?? [],
+    hasSubordinates,
     isLoading: abilitiesQuery.isLoading,
   }
 }

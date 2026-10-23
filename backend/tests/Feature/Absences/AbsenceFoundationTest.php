@@ -75,8 +75,8 @@ it('0278 BE-1: one allowance per user, type and year', function () {
 });
 
 it('0278 BE-1: the policies declare the permissions and permissions:sync creates them', function () {
-    // REQUIREMENT CHANGED (spec 0279 D-1): the three calendar levels joined the module.
-    expect(AbsenceRequestPolicy::abilities())->toBe(['viewAny', 'create', 'manageAll', 'calendarOwn', 'calendarTeam', 'calendarAll'])
+    // REQUIREMENT CHANGED (spec 0279 D-1): the calendar levels joined the module; spec 0309 D-1: calendarTeam dropped.
+    expect(AbsenceRequestPolicy::abilities())->toBe(['viewAny', 'create', 'manageAll', 'calendarOwn', 'calendarAll'])
         ->and((new AbsenceTypePolicy)->permissions())->toContain(
             'absence-types.view', 'absence-types.create', 'absence-types.update', 'absence-types.delete',
         );
@@ -85,7 +85,7 @@ it('0278 BE-1: the policies declare the permissions and permissions:sync creates
 
     expect(Permission::query()->where('name', 'like', 'absence-requests.%')->pluck('name')->sort()->values()->all())
         ->toBe([
-            'absence-requests.calendarAll', 'absence-requests.calendarOwn', 'absence-requests.calendarTeam',
+            'absence-requests.calendarAll', 'absence-requests.calendarOwn',
             'absence-requests.create', 'absence-requests.manageAll', 'absence-requests.viewAny',
         ]);
 

@@ -5,8 +5,9 @@ import UserSkillsPage from '@/features/user-skills/user-skills-page'
 import { buildUserSkill, userSkillWrapper } from '@/features/user-skills/user-skill-fixtures'
 
 const permissions = new Set<string>()
+let hasSubordinates = false
 vi.mock('@/features/auth/use-abilities', () => ({
-  useAbilities: () => ({ can: (permission: string) => permissions.has(permission), hasRole: () => false, roles: [], isLoading: false }),
+  useAbilities: () => ({ can: (permission: string) => permissions.has(permission), hasRole: () => false, roles: [], hasSubordinates, isLoading: false }),
 }))
 vi.mock('@/components/page-header', () => ({
   PageHeader: ({ actions }: { actions?: React.ReactNode }) => <header>{actions}</header>,
@@ -39,12 +40,22 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  hasSubordinates = false
   permissions.clear()
   permissions.add('user-skills.viewAny')
 })
 
 describe('UserSkillsPage', () => {
-  it('shows a forbidden message without viewAny', () => {
+  it('opens with subordinates alone and hides "Assign skill" (spec 0309 D-3)', () => {
+    permissions.clear()
+    hasSubordinates = true
+    render(<UserSkillsPage />, { wrapper: userSkillWrapper() })
+
+    expect(screen.getByRole('button', { name: 'open-5' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: label('userSkills.page.assign') })).not.toBeInTheDocument()
+  })
+
+  it('shows a forbidden message without viewAny nor subordinates', () => {
     permissions.clear()
     render(<UserSkillsPage />, { wrapper: userSkillWrapper() })
 
@@ -66,8 +77,8 @@ describe('UserSkillsPage', () => {
     expect(screen.queryByRole('button', { name: label('userSkills.page.assign') })).not.toBeInTheDocument()
   })
 
-  it.each(['user-skills.manage', 'user-skills.viewTeam'])('shows "Assign skill" with %s and opens the form', async (permission) => {
-    permissions.add(permission)
+  it('shows "Assign skill" with manage and opens the form', async () => {
+    permissions.add('user-skills.manage')
     render(<UserSkillsPage />, { wrapper: userSkillWrapper() })
 
     fireEvent.click(screen.getByRole('button', { name: label('userSkills.page.assign') }))

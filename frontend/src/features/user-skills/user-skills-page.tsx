@@ -4,7 +4,6 @@ import { Plus } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { FilterTabs } from '@/components/ui/filter-tabs'
-import { Can } from '@/features/auth/can'
 import { useAbilities } from '@/features/auth/use-abilities'
 import type { TableViewHandle } from '@/features/table/table-view'
 import { UserSkillCoverage } from '@/features/user-skills/user-skill-coverage'
@@ -13,22 +12,19 @@ import { UserSkillSheet } from '@/features/user-skills/user-skill-sheet'
 import { UserSkillsGrid } from '@/features/user-skills/user-skills-grid'
 import { USER_SKILL_VIEWS, type UserSkill, type UserSkillView } from '@/features/user-skills/types'
 
-/** Who may write at all (the server still decides per person): the office, and managers of a team. */
-const WRITE_PERMISSIONS = ['user-skills.manage', 'user-skills.viewTeam']
-
 /**
  * Skills page (spec 0286): the "Persone" grid and the "Copertura" table, the detail Sheet and the
- * assign/edit Sheet. Gated by `user-skills.viewAny`; "Assegna competenza" needs `manage` or `viewTeam`.
+ * assign/edit Sheet. Opened by `user-skills.viewAny` or by having subordinates; "Assegna competenza" needs `manage` (spec 0309).
  */
 export default function UserSkillsPage() {
   const { t } = useTranslation()
-  const { can } = useAbilities()
+  const { can, hasSubordinates, isLoading } = useAbilities()
   const tableRef = useRef<TableViewHandle>(null)
   const [view, setView] = useState<UserSkillView>('people')
   const [openedId, setOpenedId] = useState<number | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<UserSkill | undefined>(undefined)
-  const canWrite = WRITE_PERMISSIONS.some((permission) => can(permission))
+  const canWrite = can('user-skills.manage')
 
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
   const closeDetail = useCallback(() => setOpenedId(null), [])
@@ -43,11 +39,13 @@ export default function UserSkillsPage() {
     setFormOpen(true)
   }
 
+  if (isLoading) return null
+  if (!can('user-skills.viewAny') && !hasSubordinates) {
+    return <p className="text-sm text-muted-foreground">{t('userSkills.forbidden')}</p>
+  }
+
   return (
-    <Can
-      permission="user-skills.viewAny"
-      fallback={<p className="text-sm text-muted-foreground">{t('userSkills.forbidden')}</p>}
-    >
+    <>
       <div className="flex flex-1 flex-col gap-4">
         <PageHeader
           actions={
@@ -82,6 +80,6 @@ export default function UserSkillsPage() {
         refreshGrid={refreshGrid}
         onSaved={() => setFormOpen(false)}
       />
-    </Can>
+    </>
   )
 }

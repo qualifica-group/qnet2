@@ -33,7 +33,7 @@ it('0284 AC-002: store needs manage, answers 201 with the contract shape and rec
 it('0284 AC-002: store is 403 without manage, even for who sees everything', function () {
     $person = User::factory()->create();
 
-    foreach ([['viewAny'], ['viewTeam'], ['viewAll'], []] as $abilities) {
+    foreach ([['viewAny'], ['viewAll'], []] as $abilities) {
         Sanctum::actingAs(trainingUserWith($abilities));
         $this->postJson('/api/staff-trainings', trainingPayload($person))->assertForbidden();
         $this->postJson('/api/staff-trainings', [])->assertForbidden();
@@ -101,19 +101,20 @@ it('0284 AC-002: update and destroy are 403 for who sees the record without mana
     expect(StaffTraining::find($training->id))->toBeNull();
 });
 
+// REQUIREMENT CHANGED (spec 0309 D-1): staff-trainings.viewTeam is gone.
 it('0284 AC-006: the policies declare the permissions, permissions:sync creates them and the Role form offers them', function () {
-    expect(StaffTrainingPolicy::abilities())->toBe(['viewAny', 'viewTeam', 'viewAll', 'manage']);
+    expect(StaffTrainingPolicy::abilities())->toBe(['viewAny', 'viewAll', 'manage']);
 
     $this->artisan('permissions:sync')->assertSuccessful();
 
     expect(Permission::query()->where('name', 'like', 'staff-trainings.%')->pluck('name')->sort()->values()->all())
-        ->toBe(['staff-trainings.manage', 'staff-trainings.viewAll', 'staff-trainings.viewAny', 'staff-trainings.viewTeam'])
+        ->toBe(['staff-trainings.manage', 'staff-trainings.viewAll', 'staff-trainings.viewAny'])
         ->and(Permission::query()->where('name', 'like', 'staff-courses.%')->pluck('name')->all())
         ->toContain('staff-courses.viewAny', 'staff-courses.create', 'staff-courses.delete');
 
     $assignable = app(AssignablePermissionCatalogue::class)->names();
 
-    expect($assignable)->toContain('staff-trainings.manage', 'staff-trainings.viewTeam', 'staff-courses.update');
+    expect($assignable)->toContain('staff-trainings.manage', 'staff-courses.update');
 });
 
 it('0284 AC-006: trainings are in the activity log', function () {

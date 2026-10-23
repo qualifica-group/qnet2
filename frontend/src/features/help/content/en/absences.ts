@@ -280,14 +280,13 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Permission', 'Who you see'],
           rows: [
-            ['Calendar: own only', 'Only yourself.'],
-            ['Calendar: own and team', 'You and the people who report to you, also indirectly.'],
+            ['Calendar: own only', 'Yourself and, if you have subordinates, the people who report to you, also indirectly.'],
             ['Calendar: everyone', 'Every active person.'],
           ],
         },
         {
           type: 'paragraph',
-          text: 'Every role already has the **own and team** calendar: someone nobody reports to sees only themselves. The **everyone** calendar belongs to HR and the administrators.',
+          text: 'With the **own only** calendar you automatically also see your team: someone nobody reports to sees only themselves. Having subordinates alone does not open the calendar. The **everyone** calendar belongs to HR and the administrators.',
         },
         {
           type: 'list',
@@ -300,7 +299,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Without any of the three permissions the Calendar view does not appear. Drafts, rejected and cancelled requests are not in the calendar.',
+          text: 'Without either of the two permissions the Calendar view does not appear. Drafts, rejected and cancelled requests are not in the calendar.',
         },
       ],
     },

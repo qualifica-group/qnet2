@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Route;
 | User skills register (spec 0286)
 |--------------------------------------------------------------------------
 |
-| Authorization: user-skills.viewAny|viewTeam|viewAll|manage
+| Authorization: user-skills.viewAny|viewAll|manage
 | (UserSkillPolicy, UserSkillVisibility). Required from routes/api/hr.php
 | INSIDE the `auth:sanctum` group. `coverage` is declared ABOVE the
 | `{userSkill}` route so it is not swallowed by the binding; the list is the

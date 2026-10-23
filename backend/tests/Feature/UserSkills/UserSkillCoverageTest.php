@@ -96,7 +96,7 @@ it('0286 AC-004: filters narrow by status, skill and business function', functio
 
 it('0286 AC-004: the people follow the visibility of the actor', function () {
     $skill = Skill::factory()->create(['name' => 'C']);
-    $manager = skillUserWith(['viewTeam'], ['name' => 'Manager']);
+    $manager = skillUserWith([], ['name' => 'Manager']);
     $report = User::factory()->create(['name' => 'Report']);
     $stranger = User::factory()->create(['name' => 'Stranger']);
     $role = skillRequiredBy([[$skill, 1]]);

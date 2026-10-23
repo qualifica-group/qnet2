@@ -3,6 +3,27 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Visibilita' team dall'organigramma, spec 0309 — VERDE, NON COMMITTATO (2026-10-23)
+
+- Direttiva utente: chi ha sottoposti vede il proprio team senza permesso dedicato. Eliminati `tasks.viewTeam`,
+  `absence-requests.calendarTeam`, `staff-trainings.viewTeam`, `user-skills.viewTeam` (migrazione
+  `2026_10_23_100000_drop_team_visibility_permissions`, `down()` irreversibile; GIA' applicata al DB dev).
+- Regole (D-1..D-7 della spec): Task = tier team per chi ha `tasks.view` (assegnatari, disattivati inclusi, mai privati);
+  calendario assenze = `calendarOwn` + sottoposti attivi -> team (senza calendarOwn niente calendario); Formazione/
+  Competenze = chi ha sottoposti attivi entra anche senza `viewAny`; Competenze scrittura solo `user-skills.manage`;
+  Segnatempo `time-entries.viewAll` legge chiunque in sola lettura (`TimeEntryReadAuthorizer`).
+- Contratto: `GET /api/auth/me/abilities` + `has_subordinates` (discendenti ATTIVI), `useAbilities().hasSubordinates`;
+  chiave di navigazione `open_to_managers` (solo voci staff-trainings/user-skills, rimossa dal payload).
+- Nota: l'opzione filtro Task `visible` usa `allDescendantIds` (anche disattivati), `has_subordinates` solo attivi:
+  divergenza voluta (coerente col tier Task 0214).
+- Verifica (verifier indipendente): AC-001..015 PASS; Vitest 9155/9155, `tsc -b --force` e ESLint puliti, Pint pulito;
+  `composer test` 12387 passati, rossi fuori scope: 7 in `tests/Feature/Migration` (UsersSource*, MigrationSource
+  Availability, MigrationPlanEndpoints), `QuoteDocumentPdfTest` (manca soffice), `DemoOpportunitySeederTest` flaky
+  in parallelo (isolato verde). Alzati di 1 i `--step` di rollback in PurchaseOrderMigrationTest,
+  SupplierCommissionDirectionTest, QuoteWorkflowMigrationTest (nuova migrazione nel conteggio).
+- Manuale: guide in-app IT/EN (tasks, absences, staff-trainings, user-skills, time-entries) e manuale Claude Docs
+  aggiornati; PDF derivato da rigenerare.
+
 ## Righe offerta in sola lettura come le card dell'editor — VERDE, NON COMMITTATO (2026-10-23)
 
 - Direttiva utente: le righe salvate del dettaglio offerta (e contratto, componente condiviso BR-7) hanno lo stesso

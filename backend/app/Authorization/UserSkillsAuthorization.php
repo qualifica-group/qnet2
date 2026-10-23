@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * ResourceAuthorization for the `user-skills` resource (spec 0286),
- * registered only so `viewAny|viewTeam|viewAll|manage` are assignable from the
+ * registered only so `viewAny|viewAll|manage` are assignable from the
  * Role form: the user skill form is not metadata driven, hence no field and no
  * action.
  */

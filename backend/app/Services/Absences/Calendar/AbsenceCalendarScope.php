@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Services\Absences\Calendar;
 
 use App\Models\User;
+use App\Services\TimeEntries\TimeEntrySubordinateResolver;
 
 /**
- * Whose absences the calendar shows (spec 0279 D-1): one permission per
- * level, the widest held wins, none means no calendar at all.
+ * Whose absences the calendar shows (spec 0279 D-1, amended by spec 0309 D-4):
+ * `calendarAll` shows everyone; `calendarOwn` shows oneself plus the active
+ * subordinates in the org chart when the actor has any (no team permission);
+ * neither means no calendar at all, even for a manager.
  */
 enum AbsenceCalendarScope: string
 {
@@ -16,21 +19,16 @@ enum AbsenceCalendarScope: string
     case Team = 'team';
     case All = 'all';
 
-    /** Widest first, so the first permission held decides. */
-    private const array PERMISSIONS = [
-        'all' => 'absence-requests.calendarAll',
-        'team' => 'absence-requests.calendarTeam',
-        'own' => 'absence-requests.calendarOwn',
-    ];
-
     public static function forActor(User $actor): ?self
     {
-        foreach (self::PERMISSIONS as $scope => $permission) {
-            if ($actor->can($permission)) {
-                return self::from($scope);
-            }
+        if ($actor->can('absence-requests.calendarAll')) {
+            return self::All;
         }
 
-        return null;
+        if (! $actor->can('absence-requests.calendarOwn')) {
+            return null;
+        }
+
+        return (new TimeEntrySubordinateResolver)->descendantIds($actor->id) !== [] ? self::Team : self::Own;
     }
 }

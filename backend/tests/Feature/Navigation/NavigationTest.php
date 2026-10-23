@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\EmploymentProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -115,4 +116,31 @@ it('drops empty groups but keeps groups with visible children', function () {
         ->assertJsonCount(1, 'data')
         ->assertJsonPath('data.0.key', 'settings')
         ->assertJsonPath('data.0.children.0.key', 'profile');
+});
+
+it('0309 AC-003: open_to_managers shows the item to who has active subordinates, without exposing the key', function () {
+    config(['navigation.items' => [
+        ['key' => 'staff-trainings', 'label' => 'navigation.staffTrainings', 'route' => '/staff-trainings', 'permission' => 'staff-trainings.viewAny', 'open_to_managers' => true],
+        ['key' => 'closed', 'label' => 'navigation.closed', 'route' => '/closed', 'permission' => 'closed.viewAny'],
+    ]]);
+    Permission::create(['name' => 'staff-trainings.viewAny']);
+    Permission::create(['name' => 'closed.viewAny']);
+
+    $manager = User::factory()->create();
+    Sanctum::actingAs($manager);
+    $this->getJson('/api/navigation')->assertOk()->assertJsonCount(0, 'data');
+
+    EmploymentProfile::factory()->create(['user_id' => User::factory()->create()->id])->reportsTo()->attach($manager->id);
+
+    $response = $this->getJson('/api/navigation')->assertOk()->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.key', 'staff-trainings');
+
+    expect($response->json('data.0'))->not->toHaveKey('open_to_managers');
+});
+
+it('0309 AC-003: only staff-trainings and user-skills are open to managers in the real config', function () {
+    $open = collect(config('navigation.items'))->flatMap(fn (array $item) => [$item, ...($item['children'] ?? [])])
+        ->filter(fn (array $item) => ! empty($item['open_to_managers']))->pluck('key')->sort()->values()->all();
+
+    expect($open)->toBe(['staff-trainings', 'user-skills']);
 });

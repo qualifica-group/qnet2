@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { FilterTabs } from '@/components/ui/filter-tabs'
 import { Can } from '@/features/auth/can'
+import { useAbilities } from '@/features/auth/use-abilities'
 import type { TableViewHandle } from '@/features/table/table-view'
 import { StaffTrainingCompliance } from '@/features/staff-trainings/staff-training-compliance'
 import { StaffTrainingDetailSheet } from '@/features/staff-trainings/staff-training-detail-sheet'
@@ -14,10 +15,11 @@ import { STAFF_TRAINING_VIEWS, type StaffTraining, type StaffTrainingView } from
 
 /**
  * Training page (spec 0284): the "Registro" grid and the "Situazione" table, the detail Sheet and
- * the register/edit Sheet. Gated by `staff-trainings.viewAny`; "Registra formazione" needs `manage`.
+ * the register/edit Sheet. Opened by `staff-trainings.viewAny` or by having subordinates (spec 0309); "Registra formazione" needs `manage`.
  */
 export default function StaffTrainingsPage() {
   const { t } = useTranslation()
+  const { can, hasSubordinates, isLoading } = useAbilities()
   const tableRef = useRef<TableViewHandle>(null)
   const [view, setView] = useState<StaffTrainingView>('register')
   const [openedId, setOpenedId] = useState<number | null>(null)
@@ -37,11 +39,13 @@ export default function StaffTrainingsPage() {
     setFormOpen(true)
   }
 
+  if (isLoading) return null
+  if (!can('staff-trainings.viewAny') && !hasSubordinates) {
+    return <p className="text-sm text-muted-foreground">{t('staffTrainings.forbidden')}</p>
+  }
+
   return (
-    <Can
-      permission="staff-trainings.viewAny"
-      fallback={<p className="text-sm text-muted-foreground">{t('staffTrainings.forbidden')}</p>}
-    >
+    <>
       <div className="flex flex-1 flex-col gap-4">
         <PageHeader
           actions={
@@ -81,6 +85,6 @@ export default function StaffTrainingsPage() {
         refreshGrid={refreshGrid}
         onSaved={() => setFormOpen(false)}
       />
-    </Can>
+    </>
   )
 }

@@ -62,9 +62,9 @@ final class TaskNotable implements NotableEntity
      * D-5: active users who hold `tasks.view` AND reach this Task — they are
      * one of its four record roles (creatore, richiedente, assegnatario,
      * osservatore), they hold `tasks.viewAll`, or they hold `tasks.viewSite`
-     * and share a Sede with one of its assignees (spec 0148), or they hold
-     * `tasks.viewTeam` and stand above one of its assignees on a NON private
-     * Task (spec 0214 D-9) — plus super-admins. It is
+     * and share a Sede with one of its assignees (spec 0148), or they
+     * stand above one of its assignees on a NON private Task (specs 0214 D-9,
+     * 0309: no team permission, the org chart decides) — plus super-admins. It is
      * authorizeRead() read from the other end: there the actor is known and
      * the Task is queried, here the Task is known and the actors are. Any
      * gap between the two would mean either mentioning someone who then gets
@@ -75,7 +75,7 @@ final class TaskNotable implements NotableEntity
      * with a join: the four roles are two scalar columns and two pivots the
      * caller has usually already loaded.
      *
-     * Both permission branches are probed for existence first (name AND
+     * The permission branches are probed for existence first (name AND
      * guard, exactly what spatie's `permission()` scope will resolve): that
      * scope goes through `Permission::findByName()` and THROWS
      * `PermissionDoesNotExist` on a name no row carries. On an environment
@@ -93,17 +93,16 @@ final class TaskNotable implements NotableEntity
         $viewAllExists = $this->permissionExists(TaskVisibilityScope::VIEW_ALL_PERMISSION);
         $viewSiteExists = $siteIds !== [] && $this->permissionExists(TaskVisibilityScope::VIEW_SITE_PERMISSION);
         $teamIds = $record->is_private ? [] : $this->assigneeAncestorIds($record);
-        $viewTeamExists = $teamIds !== [] && $this->permissionExists(TaskVisibilityScope::VIEW_TEAM_PERMISSION);
 
         return User::query()
             ->excludingServiceAccounts()
             ->where('is_active', true)
-            ->where(function (Builder $query) use ($memberIds, $siteIds, $teamIds, $viewExists, $viewAllExists, $viewSiteExists, $viewTeamExists): void {
+            ->where(function (Builder $query) use ($memberIds, $siteIds, $teamIds, $viewExists, $viewAllExists, $viewSiteExists): void {
                 $query->whereHas('roles', fn (Builder $role) => $role->where('name', 'super-admin'))
-                    ->when($viewExists, function (Builder $canRead) use ($memberIds, $siteIds, $teamIds, $viewAllExists, $viewSiteExists, $viewTeamExists): void {
-                        $canRead->orWhere(function (Builder $reader) use ($memberIds, $siteIds, $teamIds, $viewAllExists, $viewSiteExists, $viewTeamExists): void {
+                    ->when($viewExists, function (Builder $canRead) use ($memberIds, $siteIds, $teamIds, $viewAllExists, $viewSiteExists): void {
+                        $canRead->orWhere(function (Builder $reader) use ($memberIds, $siteIds, $teamIds, $viewAllExists, $viewSiteExists): void {
                             $reader->permission('tasks.view')
-                                ->where(function (Builder $access) use ($memberIds, $siteIds, $teamIds, $viewAllExists, $viewSiteExists, $viewTeamExists): void {
+                                ->where(function (Builder $access) use ($memberIds, $siteIds, $teamIds, $viewAllExists, $viewSiteExists): void {
                                     $access->whereIn('id', $memberIds)
                                         ->when($viewAllExists, function (Builder $tiers): void {
                                             $tiers->orWhere(function (Builder $viewAll): void {
@@ -119,12 +118,7 @@ final class TaskNotable implements NotableEntity
                                                     );
                                             });
                                         })
-                                        ->when($viewTeamExists, function (Builder $tiers) use ($teamIds): void {
-                                            $tiers->orWhere(function (Builder $byTeam) use ($teamIds): void {
-                                                $byTeam->permission(TaskVisibilityScope::VIEW_TEAM_PERMISSION)
-                                                    ->whereIn('id', $teamIds);
-                                            });
-                                        });
+                                        ->when($teamIds !== [], fn (Builder $tiers) => $tiers->orWhereIn('id', $teamIds));
                                 });
                         });
                     });
@@ -216,7 +210,7 @@ final class TaskNotable implements NotableEntity
 
     /**
      * Every user standing above one of the Task's assignees, at any level
-     * (spec 0214 D-9): the set a `viewTeam` reader must belong to.
+     * (spec 0214 D-9): the set a team reader must belong to.
      *
      * @return array<int, int>
      */

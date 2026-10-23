@@ -33,9 +33,6 @@ export const permissions = {
     // Spec 0105: Request Management's third visibility tier — the requests of
     // the actor's own Sedi, with no need to manage them.
     viewSite: 'View by site',
-    // Spec 0214: Tasks only — the tasks of the actor's subordinates along the
-    // whole "Reports to" chain, deactivated ones included; read-only.
-    viewTeam: 'View team',
     // Spec 0165: Enrollee Management only — the enrollees of the actor's
     // physical Sede (not the remote ones), on top of those they operate.
     viewPrimarySite: 'View physical site',
@@ -95,7 +92,6 @@ export const permissions = {
     manageCompensation: 'Manage compensation data',
     // Spec 0279: absence calendar, three visibility levels.
     calendarOwn: 'Calendar: own only',
-    calendarTeam: 'Calendar: own and team',
     calendarAll: 'Calendar: everyone',
   },
   resources: {

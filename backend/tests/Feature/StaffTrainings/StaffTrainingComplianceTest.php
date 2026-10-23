@@ -149,7 +149,7 @@ it('0284 AC-004: filters narrow by status, course and business function', functi
 
 it('0284 AC-004: the people follow the visibility of the actor', function () {
     $course = StaffCourse::factory()->create(['name' => 'C']);
-    $manager = trainingUserWith(['viewTeam'], ['name' => 'Manager']);
+    $manager = trainingUserWith([], ['name' => 'Manager']);
     $report = User::factory()->create(['name' => 'Report']);
     $stranger = User::factory()->create(['name' => 'Stranger']);
     $role = trainingRequiredBy([$course]);

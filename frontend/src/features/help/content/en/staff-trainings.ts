@@ -24,7 +24,7 @@ const guide: HelpGuide = {
           headers: ['Permission', 'What it allows'],
           rows: [
             ['View list', 'Opens the page and shows your own training.'],
-            ['View team', 'Also shows the training of the people reporting to you.'],
+            ['Having subordinates', 'No permission needed: if someone reports to you in the org chart, you open the page even without View list and see your own training and that of your subordinates.'],
             ['View all', 'Shows the training of everyone.'],
             ['Manage', 'Records, edits and deletes trainings and uploads the certificate for anyone (HR office).'],
           ],

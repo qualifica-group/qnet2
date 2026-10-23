@@ -119,3 +119,19 @@ it('without time-entries.viewAny, list/overview/pulse are all 403', function () 
     $this->getJson('/api/time-entries/stats/overview')->assertForbidden();
     $this->getJson('/api/time-entries/stats/pulse')->assertForbidden();
 });
+
+it('0309 AC-012: a viewAll holder without manageAll reads a non-subordinate read only and cannot write for them', function () {
+    $viewer = timeEntryActorWith(['viewAny', 'create', 'viewAll']);
+    $stranger = User::factory()->create();
+    Sanctum::actingAs($viewer);
+
+    $list = $this->getJson("/api/time-entries?user_id={$stranger->id}&date_from=2026-09-14&date_to=2026-09-14")->assertOk();
+
+    expect($list->json('meta.can_write'))->toBeFalse()
+        ->and($list->json('meta.selected_user.id'))->toBe($stranger->id);
+
+    $this->getJson("/api/time-entries/stats/overview?user_id={$stranger->id}&date_from=2026-09-14&date_to=2026-09-14")->assertOk();
+    $this->getJson("/api/time-entries/stats/pulse?user_id={$stranger->id}&date_from=2026-09-14&date_to=2026-09-14")->assertOk();
+
+    $this->postJson('/api/time-entries', validTimeEntryPayload(['title' => 'Altrui', 'user_id' => $stranger->id]))->assertForbidden();
+});

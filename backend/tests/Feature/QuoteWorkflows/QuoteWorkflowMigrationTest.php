@@ -240,7 +240,7 @@ it('rolls back all 7 new migrations cleanly and re-applies them (AC-004)', funct
     // two Italian geo reference fixes (`2026_10_18_100000`, `2026_10_18_110000`), plus spec 0267's five settlement document migrations, spec 0267's three multi-quote migrations and spec 0271's four HR org structure migrations and spec 0272's 7 employee record migrations and the hourly cost migration, plus spec 0277's two hourly cost removal migrations, plus spec 0278's four absence migrations, plus spec 0280's business function active flag, plus spec 0284's two staff training migrations (REQUIREMENT CHANGED), plus spec 0286's three skill migrations (REQUIREMENT CHANGED), plus spec 0289's tasks old_id migration (REQUIREMENT CHANGED), plus spec 0290's two contract type migrations (REQUIREMENT CHANGED), plus spec 0291's working time migration (REQUIREMENT CHANGED), plus spec 0293's CCNL removal migration (REQUIREMENT CHANGED): 227 in all.
     // Adding a migration means bumping this number (239: spec 0306 adds the rule direction column and the typology direction drop, REQUIREMENT CHANGED).
     // 241: spec 0307 adds the stock balances and movements tables, REQUIREMENT CHANGED.
-    Artisan::call('migrate:rollback', ['--step' => 241]);
+    Artisan::call('migrate:rollback', ['--step' => 242]);
 
     expect(Schema::hasTable('quote_workflows'))->toBeFalse()
         ->and(Schema::hasTable('opportunity_workflows'))->toBeTrue()

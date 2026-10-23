@@ -10,9 +10,9 @@ use App\Policies\Abstracts\BasePolicy;
  * module, `create` files a request, `manageAll` is the HR office ("sees and
  * manages everyone", like `time-entries.manageAll`). Record-level visibility
  * and the approver rules are enforced by the visibility scope and the
- * workflow service, not by assignable permissions. `calendarOwn|calendarTeam|
- * calendarAll` (spec 0279 D-1) decide whose absences the calendar shows: self,
- * self and team, everyone; the widest held wins.
+ * workflow service, not by assignable permissions. `calendarOwn|calendarAll`
+ * (spec 0279 D-1, spec 0309 D-4) decide whose absences the calendar shows:
+ * self (plus the active subordinates, derived from the org chart) or everyone.
  */
 class AbsenceRequestPolicy extends BasePolicy
 {
@@ -31,6 +31,6 @@ class AbsenceRequestPolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return ['viewAny', 'create', 'manageAll', 'calendarOwn', 'calendarTeam', 'calendarAll'];
+        return ['viewAny', 'create', 'manageAll', 'calendarOwn', 'calendarAll'];
     }
 }

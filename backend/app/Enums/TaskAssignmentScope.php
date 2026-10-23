@@ -51,8 +51,8 @@ enum TaskAssignmentScope: string
 
     /**
      * No role restriction (spec 0153, D-1, user decision 2026-09-24): only
-     * TaskVisibilityScope applies, so `tasks.viewAll`/`tasks.viewSite`/`tasks.viewTeam` keep
-     * listing their colleagues' tasks. For any other actor it coincides with
+     * TaskVisibilityScope applies, so `tasks.viewAll`/`tasks.viewSite` and the org-chart team tier
+     * (spec 0309) keep listing their colleagues' tasks. For any other actor it coincides with
      * `all`, so it needs no gate of its own.
      */
     #[Label('All visible')]

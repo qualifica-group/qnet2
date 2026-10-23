@@ -50,7 +50,8 @@ it('0304 AC-005: a colleague sharing only a direct manager counts, a stranger do
         ->and($response->json('data.colleagues_absent.0.status'))->toBe('submitted');
 });
 
-it('0304 AC-005: calendarOwn sees nobody, calendarTeam only the descendants, no calendar permission nobody', function () {
+// REQUIREMENT CHANGED (spec 0309 D-4): the team part derives from the org chart, not from calendarTeam.
+it('0304 AC-005: calendarOwn without subordinates sees nobody, with them only the descendants, no calendar permission nobody', function () {
     $manager = absenceUserWith();
     $person = absenceUserWith();
     $team = absenceUserWith();
@@ -70,7 +71,7 @@ it('0304 AC-005: calendarOwn sees nobody, calendarTeam only the descendants, no 
     $person->revokePermissionTo('absence-requests.calendarOwn');
     $this->postJson('/api/absence-requests/preview', $payload)->assertOk()->assertJsonCount(0, 'data.colleagues_absent');
 
-    $hr = grantAbsencePermissions(absenceUserWith(['viewAny', 'create', 'manageAll']), ['absence-requests.calendarTeam']);
+    $hr = grantAbsencePermissions(absenceUserWith(['viewAny', 'create', 'manageAll']), ['absence-requests.calendarOwn']);
     absenceProfile($team, $hr);
     DB::table('employment_profile_manager')->where('user_id', $manager->id)->delete();
     Sanctum::actingAs($hr);

@@ -68,7 +68,7 @@ it('0284 AC-005: upload and delete are 403 for who only sees the training', func
 });
 
 it('0284 AC-005: download is for who sees the training, a stranger gets 404, no file is 404', function () {
-    $manager = trainingUserWith(['viewTeam']);
+    $manager = trainingUserWith([]);
     $person = User::factory()->create();
     trainingProfile($person, $manager);
     $training = StaffTraining::factory()->forUser($person)->create();

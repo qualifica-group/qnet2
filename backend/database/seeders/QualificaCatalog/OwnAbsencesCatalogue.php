@@ -14,8 +14,8 @@ final class OwnAbsencesCatalogue
 
     /**
      * The block's grants (D-1): open Assenze, file one's own requests, the
-     * calendar of oneself and of the people reporting to the actor, also
-     * indirectly (D-2). Everyone's absences — `manageAll`, `calendarAll` —
+     * calendar of oneself (the team part is derived from the org chart, spec
+     * 0309 D-4, no permission). Everyone's absences — `manageAll`, `calendarAll` —
      * stay with the HR office and `admin` (D-3). An allow-list, so an ability
      * added to the module later does not reach every role by default.
      *
@@ -25,6 +25,5 @@ final class OwnAbsencesCatalogue
         'absence-requests.viewAny',
         'absence-requests.create',
         'absence-requests.calendarOwn',
-        'absence-requests.calendarTeam',
     ];
 }
