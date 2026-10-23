@@ -14,6 +14,7 @@ use App\Models\Source;
 use App\Models\User;
 use App\Services\UserService;
 use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue;
+use Database\Seeders\QualificaLegacyImportSeeder;
 use Database\Seeders\QualificaProductionDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -124,7 +125,7 @@ it('seeds no fabricated row on the first run, and duplicates nothing on a re-run
         ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->count())->toBe(1);
 });
 
-it('runs the q-crm import once, without the catalogue step asking again', function (): void {
+it('runs the q-crm catalogue import once and the users after the account seeders, without the catalogue step asking again', function (): void {
     config(['migrations.base_url' => 'https://q-crm.test']);
     Http::fake(['https://q-crm.test/*' => Http::response(['items' => [], 'pagination' => ['total' => 0]])]);
 
@@ -132,5 +133,8 @@ it('runs the q-crm import once, without the catalogue step asking again', functi
     // the catalogue step asking here would surface as an unexpected question.
     test()->artisan('db:seed', ['--class' => QualificaProductionDataSeeder::class])->assertSuccessful();
 
-    expect(MassMigrationRun::query()->count())->toBe(1);
+    // REQUIREMENT CHANGED (user directive 2026-10-23): the legacy users come
+    // in a second run, after the account seeders.
+    expect(MassMigrationRun::query()->orderBy('id')->pluck('sources')->all())
+        ->toBe([QualificaLegacyImportSeeder::SOURCES, QualificaLegacyImportSeeder::USER_SOURCES]);
 });

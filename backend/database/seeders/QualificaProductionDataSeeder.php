@@ -87,6 +87,11 @@ use Illuminate\Database\Seeder;
  *                                    linked to its activities, then each
  *                                    listed person's roles and shared
  *                                    mailboxes (OrgChartRoster).
+ *  10. QualificaLegacyImportSeeder — again, for the legacy users only
+ *                                    (USER_SOURCES): each one is matched to
+ *                                    the account steps 4, 6 and 7 created and
+ *                                    gets its `old_id`; the unmatched ones are
+ *                                    created from the legacy record.
  *
  * The order is a contract, not a preference:
  *   - step 5 adopts step 2's sources and business functions by name instead
@@ -105,10 +110,14 @@ use Illuminate\Database\Seeder;
  *     operators of step 6 and the staff of step 7.
  *   - step 9 assigns roles and mailboxes to the accounts of steps 4, 6 and 7, so
  *     it runs once they all exist.
+ *   - step 10 matches the legacy users to the accounts of steps 4, 6 and 7:
+ *     run before them, it would create the accounts itself and the seeders
+ *     would land on those.
  *
  * Every step stays runnable on its own and is idempotent, so this seeder is
- * too: re-running it converges instead of duplicating. Step 5 is a no-op with
- * a warning when no external system is configured — the rest still lands.
+ * too: re-running it converges instead of duplicating. Steps 5 and 10 are
+ * no-ops with a warning when no external system is configured — the rest
+ * still lands.
  *
  * Run on its own, step 2 offers to chain step 5 interactively; here it must
  * not, or the import would run twice — hence the explicit `false`.
@@ -137,12 +146,13 @@ class QualificaProductionDataSeeder extends Seeder
         $this->call(QualificaContractTypeSeeder::class);
         $this->call(TestUsersSeeder::class);
         $this->call(WorkOrderPaymentStatusSeeder::class);
-        $this->call(QualificaLegacyImportSeeder::class);
+        $this->callWith(QualificaLegacyImportSeeder::class, ['sources' => QualificaLegacyImportSeeder::SOURCES]);
         $this->call(QualificaOperatorSeeder::class);
         $this->call(QualificaStaffSeeder::class);
         $this->call(QualificaHrOfficeSeeder::class);
         $this->call(QualificaCommercialBackOfficeSeeder::class);
         $this->call(QualificaReportsToSeeder::class);
         $this->call(QualificaHrCatalogSeeder::class);
+        $this->callWith(QualificaLegacyImportSeeder::class, ['sources' => QualificaLegacyImportSeeder::USER_SOURCES]);
     }
 }

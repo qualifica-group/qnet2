@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Seed di produzione: import legacy anche di utenti e conti finanziari — VERDE, NON COMMITTATO (2026-10-23)
+
+- Richiesta utente: `QualificaLegacyImportSeeder` importa anche `users` e `financial-accounts`.
+- `financial-accounts` in `SOURCES` (fase 2, dopo `company-sites`: risolve la societa' via `old_id`).
+- `users` in `USER_SOURCES`, separato: deve girare DOPO i seeder degli account (operatori, staff), cosi'
+  `UsersSource` abbina gli account esistenti invece di crearli lui (in link-only: disattivati e "[OLD]").
+  `ALL_SOURCES` = `SOURCES` + `USER_SOURCES`; `run(array $sources = ALL_SOURCES)`.
+- `QualificaProductionDataSeeder`: passo 5 con `SOURCES`, nuovo passo 10 (dopo `QualificaHrCatalogSeeder`) con
+  `USER_SOURCES`. `QualificaCatalogSeeder::offerLegacyImport()` passa solo `SOURCES`. Esecuzione da sola = tutto.
+- `roles` NON importato: gli utenti creati dal legacy (non abbinati) restano senza ruolo legacy (avviso non fatale).
+- Test: `QualificaProductionDataSeederTest` (REQUIREMENT CHANGED: 2 mass run, SOURCES poi USER_SOURCES),
+  `QualificaLegacyImportSeederTest` (REQUIREMENT CHANGED: mass run = `ALL_SOURCES`; + conto e utente abbinato;
+  + liste separate).
+
 ## Righe d'offerta legacy senza servizio -> prodotto [OLD] (spec 0305) — REV. 1 COMMITTATA (4ba5395f, legacy 1df9e60b), REV. 2 VERDE NON COMMITTATA (2026-10-22)
 
 - Spec `docs/specs/0305-legacy-quote-lines-without-service.xml` (approvata, D-1..D-9). Caso guida commessa 270 ->

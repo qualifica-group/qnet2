@@ -334,7 +334,8 @@ class QualificaCatalogSeeder extends Seeder
             return;
         }
 
-        $this->call(QualificaLegacyImportSeeder::class);
+        // The catalogues only: the legacy users land after the account seeders.
+        $this->callWith(QualificaLegacyImportSeeder::class, ['sources' => QualificaLegacyImportSeeder::SOURCES]);
     }
 
     private function seedCatalog(): void

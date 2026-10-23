@@ -42,10 +42,11 @@ class QualificaLegacyImportSeeder extends Seeder
     /**
      * The catalogues imported here, in MigrationOrder phase order — a
      * later entry resolves its references against the earlier ones via
-     * `old_id`. Deliberately a fixed subset of the mass-import plan: users
-     * and referents are operational data, not template data. The legacy
-     * costs (`cost-products`, spec 0174) and the sellable catalogue
-     * (`products`, user directive 2026-09-29) are in, by user request.
+     * `old_id`. Deliberately a fixed subset of the mass-import plan: the
+     * referents are operational data, not template data. The legacy costs
+     * (`cost-products`, spec 0174), the sellable catalogue (`products`, user
+     * directive 2026-09-29) and the financial accounts (user directive
+     * 2026-10-23) are in, by user request.
      *
      * @var list<string>
      */
@@ -67,11 +68,13 @@ class QualificaLegacyImportSeeder extends Seeder
         // data too, same category as `task-templates`: no cross-source link.
         'email-templates',
         'document-bundles',
-        // Phase 2 — company sites ("Societa Sedi") resolve their owning
-        // company through the phase-1 `companies` old_id, so they can only run
-        // once that anchor is in. The rest of phase 2 (users, referents) stays
-        // out: operational data, not template data.
+        // Phase 2 — company sites ("Societa Sedi") and the financial accounts
+        // (spec 0297) resolve their owning company through the phase-1
+        // `companies` old_id, so they can only run once that anchor is in.
+        // The users are phase 2 too but run apart (USER_SOURCES); the
+        // referents stay out: operational data, not template data.
         'company-sites',
+        'financial-accounts',
         // Phase 4 — product anchors: the attribute catalogue and the category
         // tree, neither of which carries the pivot between them.
         'attributes',
@@ -89,7 +92,28 @@ class QualificaLegacyImportSeeder extends Seeder
         'cost-products',
     ];
 
-    public function run(): void
+    /**
+     * The legacy users (user directive 2026-10-23), kept apart from SOURCES
+     * because they must land AFTER the seeders that create the client's
+     * accounts (QualificaOperatorSeeder, QualificaStaffSeeder): UsersSource
+     * matches a legacy user to an existing account by email or name and
+     * adopts it, keeping its role and password; run earlier, it would create
+     * every one of them itself (disabled and marked "[OLD]" in link-only
+     * mode), and the account seeders would then land on those. QualificaProductionDataSeeder runs
+     * them as its last step; a standalone run takes them last too.
+     *
+     * @var list<string>
+     */
+    public const array USER_SOURCES = ['users'];
+
+    /** @var list<string> */
+    public const array ALL_SOURCES = [...self::SOURCES, ...self::USER_SOURCES];
+
+    /**
+     * @param  list<string>  $sources  The sources of this run: everything by default,
+     *                                 one of the two lists from QualificaProductionDataSeeder.
+     */
+    public function run(array $sources = self::ALL_SOURCES): void
     {
         // Step 1: the external system is optional (env-backed, empty by
         // default) — without it there is nothing to import.
@@ -116,8 +140,8 @@ class QualificaLegacyImportSeeder extends Seeder
             return;
         }
 
-        // Step 3: one mass run over the fixed source list, executed inline.
-        $run = app(MigrationService::class)->runMassSync($actor, self::SOURCES);
+        // Step 3: one mass run over the requested sources, executed inline.
+        $run = app(MigrationService::class)->runMassSync($actor, $sources);
 
         // Step 4: the legacy sectors are history only (spec 0213 D-2).
         $this->deactivateLegacySectors();

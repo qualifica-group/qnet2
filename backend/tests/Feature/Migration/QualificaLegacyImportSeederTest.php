@@ -10,6 +10,7 @@ use App\Models\AttributeLayout;
 use App\Models\BusinessFunction;
 use App\Models\Company;
 use App\Models\CompanySite;
+use App\Models\FinancialAccount;
 use App\Models\MassMigrationRun;
 use App\Models\MigrationRun;
 use App\Models\PaymentMethod;
@@ -26,6 +27,7 @@ use Database\Seeders\QualificaCatalogSeeder;
 use Database\Seeders\QualificaLegacyImportSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
@@ -52,8 +54,9 @@ if (! function_exists('migrationsSuperAdminActor')) {
  * the static catalogue already ships + one it does not), `attributes` and
  * `product-categories` (a legacy root, its child, and the attribute links the
  * phase-5 pass back-fills off the SAME endpoint), plus `payment-methods` and
- * the `companies`/`company-sites` pair that proves the phase-2 remap runs
- * inside this seed. Specific patterns first: Http::fake matches in declaration
+ * the `companies`/`company-sites`/`financial-accounts` trio that proves the
+ * phase-2 remap runs inside this seed, plus one legacy user an account seeded
+ * beforehand already holds. Specific patterns first: Http::fake matches in declaration
  * order, so the catch-all stays last.
  */
 function fakeLegacyCatalogues(): void
@@ -93,6 +96,22 @@ function fakeLegacyCatalogues(): void
         ]),
         fakeMigrationsBaseUrl().'/companies*' => Http::response([
             'items' => [['id' => 21, 'denomination' => 'Lucania Srl']],
+            'pagination' => ['total' => 1],
+        ]),
+        fakeMigrationsBaseUrl().'/financial-accounts*' => Http::response([
+            'items' => [[
+                'id' => 13, 'type' => 'bank_account', 'name' => 'Banca Generali spa - Lucania Srl', 'company_id' => 21,
+                'iban' => 'IT60X0542811101000000123456', 'account_number' => '0000123456', 'address_line' => null,
+                'postal_code' => null, 'notes' => null, 'warnings' => [],
+                'created_at' => '2023-10-02 17:14:41', 'updated_at' => '2023-10-03 09:00:00',
+            ]],
+            'pagination' => ['total' => 1],
+        ]),
+        fakeMigrationsBaseUrl().'/users*' => Http::response([
+            'items' => [[
+                'id' => 501, 'email' => 'mario.rossi@qualifica.test', 'password' => Hash::make('legacy-secret'),
+                'first_name' => 'Mario', 'last_name' => 'Rossi', 'is_active' => true,
+            ]],
             'pagination' => ['total' => 1],
         ]),
         fakeMigrationsBaseUrl().'/attributes*' => Http::response([
@@ -161,6 +180,9 @@ it('imports the fixed legacy source list as one mass run, mirrored across every 
     seedMigrationsConfig();
     migrationsSuperAdminActor();
     fakeLegacyCatalogues();
+    // The account a seeder created before the import (QualificaOperatorSeeder).
+    $operator = User::factory()->create(['email' => 'mario.rossi@qualifica.test', 'name' => 'Mario Rossi']);
+    $operatorPassword = $operator->password;
 
     seedCatalogThenLegacy();
     // Read before the re-run below, exactly where the merged 're-running...'
@@ -170,11 +192,14 @@ it('imports the fixed legacy source list as one mass run, mirrored across every 
     // was: 'runs the fixed source list as one inline mass run and completes it'
     $massRun = MassMigrationRun::query()->sole();
 
-    expect($massRun->sources)->toBe(QualificaLegacyImportSeeder::SOURCES)
+    // REQUIREMENT CHANGED (user directive 2026-10-23): the legacy users come
+    // last in a standalone run.
+    expect($massRun->sources)->toBe(QualificaLegacyImportSeeder::ALL_SOURCES)
         ->and($massRun->status)->toBe(MigrationStatus::Completed)
-        ->and($massRun->runs()->count())->toBe(count(QualificaLegacyImportSeeder::SOURCES))
+        ->and($massRun->runs()->count())->toBe(count(QualificaLegacyImportSeeder::ALL_SOURCES))
         // Child runs created in plan order: the phase order is the contract.
-        ->and(MigrationRun::query()->orderBy('id')->pluck('source')->all())->toBe(QualificaLegacyImportSeeder::SOURCES)
+        ->and(MigrationRun::query()->orderBy('id')->pluck('source')->all())->toBe(QualificaLegacyImportSeeder::ALL_SOURCES)
+        ->and(last(QualificaLegacyImportSeeder::ALL_SOURCES))->toBe('users')
         ->and(Tag::query()->where('old_id', 71)->value('name'))->toBe('Legacy Tag');
 
     // was: 'adopts a catalogue source instead of duplicating it, and imports the legacy-only one'
@@ -275,6 +300,19 @@ it('imports the fixed legacy source list as one mass run, mirrored across every 
         ->and($service->category_id)->toBe($legacyChild->id)
         ->and($service->vat_rate_id)->toBe(VatRate::query()->where('old_id', 61)->value('id'));
 
+    // User directive 2026-10-23: the financial accounts land once, on the
+    // company the same run imported.
+    expect(FinancialAccount::query()->where('old_id', 13)->sole()->company_id)
+        ->toBe(Company::query()->where('old_id', 21)->value('id'));
+
+    // User directive 2026-10-23: the legacy user is matched to the account
+    // already there, which keeps its own password, never duplicated.
+    $operator->refresh();
+
+    expect(User::query()->where('email', 'mario.rossi@qualifica.test')->count())->toBe(1)
+        ->and($operator->old_id)->toBe(501)
+        ->and($operator->password)->toBe($operatorPassword);
+
     // was: 're-running the seeders never duplicates an imported catalogue'
     expect(Source::query()->count())->toBe($sourceCountAfterFirst)
         ->and(Tag::query()->where('name', 'Legacy Tag')->count())->toBe(1)
@@ -367,6 +405,25 @@ it('REQUIREMENT CHANGED (user directive 2026-10-14): adopts no static root, nest
         ->and($categoryOf(202))->toBe('[OLD] Tirocini extracurriculari privati')
         ->and($categoryOf(203))->toBe('[OLD] Formazione Apprendistato')
         ->and($categoryOf(204))->toBe('[OLD] Ricerca e Selezione');
+});
+
+it('runs only the sources it is called with, so the users can land after the account seeders', function () {
+    seedMigrationsConfig();
+    migrationsSuperAdminActor();
+    Http::fake([fakeMigrationsBaseUrl().'/*' => Http::response(['items' => [], 'pagination' => ['total' => 0]])]);
+
+    test()->seed(QualificaCatalogSeeder::class);
+    app(QualificaLegacyImportSeeder::class)->run(QualificaLegacyImportSeeder::SOURCES);
+    app(QualificaLegacyImportSeeder::class)->run(QualificaLegacyImportSeeder::USER_SOURCES);
+
+    $runs = MassMigrationRun::query()->orderBy('id')->get();
+
+    expect(QualificaLegacyImportSeeder::SOURCES)->toContain('financial-accounts')
+        ->not->toContain('users')
+        ->and($runs)->toHaveCount(2)
+        ->and($runs[0]->sources)->toBe(QualificaLegacyImportSeeder::SOURCES)
+        ->and($runs[1]->sources)->toBe(['users'])
+        ->and($runs[1]->status)->toBe(MigrationStatus::Completed);
 });
 
 it('skips the import when no external system is configured', function () {
