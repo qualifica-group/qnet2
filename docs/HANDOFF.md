@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Righe offerta in sola lettura come le card dell'editor — VERDE, NON COMMITTATO (2026-10-23)
+
+- Direttiva utente: le righe salvate del dettaglio offerta (e contratto, componente condiviso BR-7) hanno lo stesso
+  aspetto della card dell'editor aperto. `QuoteLinesReadOnlyList` ora usa `QuoteLineEditorFrame` (catalog `null`,
+  titolo "Righe dell'offerta"/"Righe di costo" + conteggio, totali Imponibile/IVA/Totale offerta|costi sommati dalle
+  righe persistite) e una card per riga. Parti comuni estratte in `line-editor/quote-line-card-parts.tsx`
+  (`LINE_CARD_CLASS`, `LINE_CARD_STRIP_CLASS`, `LINE_CARD_FOOTER_CLASS`, `QuoteLineCardHeading`, `QuoteLineAmounts`),
+  usate anche da `QuoteLineCard`. Nel read-only la striscia mostra Quantita (+ simbolo UM), Prezzo unitario, IVA,
+  Prodotto associato (costi) come etichetta/valore; categoria = `product.category.name` (non il percorso dal tree,
+  per non aggiungere una fetch). `QuoteLineProductRef.product_typology` ora tipizzato con `color` (il backend lo
+  mandava gia'). Test `quote-lines-read-only.test.tsx` aggiornato (REQUIREMENT CHANGED: niente piu' tabella).
+- Verifica: Vitest quotes+contracts+help 71 file/724 test verdi, `tsc -b --force` pulito, ESLint pulito. Guide in-app
+  IT/EN (`quotes.ts`, sezione righe) e manuale Claude Docs aggiornati. Verifica visiva su /quotes/28020 da fare a mano.
+
 ## Dotazioni (spec 0307, fase 1) — VERDE, COMMITTATO (2026-10-23)
 
 - Giacenze di beni fisici a uso interno per sede operativa e utente + registro movimenti append-only. Spec

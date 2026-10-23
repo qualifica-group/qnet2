@@ -131,7 +131,7 @@ const guide: HelpGuide = {
           items: [
             'Each tab has the **Product catalogue** on the left and the rows (**Offer rows** / **Cost rows**) on the right; on narrow screens they stack. Search by name or description: each product shows name, code, typology, price with unit of measure (on the Costs tab the cost price), category path and description.',
             'Tick one or more products and press **Add N selected**: one row per product is created with quantity 1 and the product\'s price (sale or cost) and VAT, which you can edit. On the **Offer** tab the default commissions of each product are loaded too: if loading fails no row is added and the selection stays, so you can retry.',
-            'Each row is a two-level card: product, code and typology; below, quantity × unit price, VAT and net/VAT/total. At the bottom you find the **Offer total** / **Cost total**.',
+            'Each row is a two-level card: product, code and typology; below, quantity × unit price, VAT and net/VAT/total. At the bottom you find the **Offer total** / **Cost total**. In the quote (and contract) detail the saved rows use the same card, read-only: product with typology and category, then quantity, unit price, VAT rate (and, for costs, the associated product) beside net/VAT/total, with the additional description below.',
             'To change the product of a row, remove the row and pick the new product from the catalogue.',
             'The **Costs** tab shows the whole catalogue of cost products, with no category filter, and the same product can be added more than once.',
             '**Additional description** adds text to the row, printable on the quote document.',

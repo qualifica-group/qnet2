@@ -5,13 +5,18 @@ import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { ForSelectItem } from '@/features/for-select/types'
-import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
 import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-types'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
-import { formatQuoteAmount } from '@/features/quotes/quote-summary'
 import { computeLineAmounts } from '@/features/quotes/quote-totals'
 import type { QuoteLineVatRateRef } from '@/features/quotes/types'
 import { VAT_RATES_FOR_SELECT_RESOURCE } from '@/features/vat-rates/for-select-api'
+import {
+  LINE_CARD_CLASS,
+  LINE_CARD_FOOTER_CLASS,
+  LINE_CARD_STRIP_CLASS,
+  QuoteLineAmounts,
+  QuoteLineCardHeading,
+} from './quote-line-card-parts'
 import type { QuoteLineCardSlots, QuoteLineProductView } from './types'
 
 /** `GET /vat-rates/for-select` meta: the decimal percentage of the picked rate (feeds the live preview). */
@@ -85,34 +90,21 @@ export function QuoteLineCard({
   const vatRateItem: ForSelectItem | null = knownVatRate ? { id: knownVatRate.id, label: knownVatRate.name } : null
 
   return (
-    <li className="flex flex-col gap-2.5 rounded-lg border bg-card p-3 shadow-sm">
-      <div className="flex items-start gap-2">
-        <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
-          {position}
-        </span>
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-            <span className="min-w-0 text-sm font-medium break-words">
-              {product?.name ??
-                (row.product_id === null ? t('quotes.lineEditor.rows.productMissing') : PENDING_LABEL)}
-            </span>
-            {product?.typology ? (
-              <ProductTypologyBadge name={product.typology.name} color={product.typology.color} />
-            ) : null}
-          </div>
-          {product ? (
-            <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-              {product.code ? <span className="shrink-0 font-mono">{product.code}</span> : null}
-              {product.code && categoryPath ? <span aria-hidden="true">·</span> : null}
-              {categoryPath ? <span className="truncate" title={categoryPath}>{categoryPath}</span> : null}
-            </div>
-          ) : null}
-          {error?.product_id ? (
+    <li className={LINE_CARD_CLASS}>
+      <QuoteLineCardHeading
+        position={position}
+        name={product?.name ?? (row.product_id === null ? t('quotes.lineEditor.rows.productMissing') : PENDING_LABEL)}
+        typology={product?.typology}
+        code={product?.code}
+        categoryPath={product ? categoryPath : null}
+        note={
+          error?.product_id ? (
             <span id={productErrorId} role="alert" className="text-[11px] text-destructive">
               {error.product_id.message}
             </span>
-          ) : null}
-        </div>
+          ) : null
+        }
+      >
         {slots?.actions}
         <Button
           type="button"
@@ -124,11 +116,9 @@ export function QuoteLineCard({
         >
           <Trash2 aria-hidden="true" />
         </Button>
-      </div>
+      </QuoteLineCardHeading>
 
-      {/* Tinted strip (ui-design §1-bis: a wash on top of the card): the
-          editable amounts read as one block under the product. */}
-      <div className="ml-7 flex flex-wrap items-start gap-x-3 gap-y-2 rounded-md bg-muted/40 px-2.5 py-2">
+      <div className={LINE_CARD_STRIP_CLASS}>
         {simplified ? null : (
           <div className="flex flex-wrap items-start gap-2">
             <div className="flex w-20 flex-col gap-1">
@@ -200,17 +190,10 @@ export function QuoteLineCard({
 
         {slots?.extraField ? <div className="w-full max-w-60">{slots.extraField}</div> : null}
 
-        <dl className="ml-auto grid grid-cols-3 gap-x-4 text-right text-xs">
-          <dt className="text-muted-foreground">{t('quotes.form.lineNetHeader')}</dt>
-          <dt className="text-muted-foreground">{t('quotes.form.lineVatHeader')}</dt>
-          <dt className="text-muted-foreground">{t('quotes.form.lineTotalHeader')}</dt>
-          <dd className="tabular-nums">{formatQuoteAmount(amounts.net)}</dd>
-          <dd className="tabular-nums">{formatQuoteAmount(amounts.vat)}</dd>
-          <dd className="font-semibold tabular-nums">{formatQuoteAmount(amounts.total)}</dd>
-        </dl>
+        <QuoteLineAmounts net={amounts.net} vat={amounts.vat} total={amounts.total} />
       </div>
 
-      {slots?.footer ? <div className="ml-7">{slots.footer}</div> : null}
+      {slots?.footer ? <div className={LINE_CARD_FOOTER_CLASS}>{slots.footer}</div> : null}
     </li>
   )
 }

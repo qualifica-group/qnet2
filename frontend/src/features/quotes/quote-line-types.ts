@@ -85,6 +85,11 @@ export interface QuoteLineCategoryRef {
   name: string
 }
 
+/** The product's typology with its badge colour token (`BADGE_COLOR_TOKENS`). */
+export interface QuoteLineProductTypologyRef extends QuoteLineCategoryRef {
+  color?: string | null
+}
+
 /**
  * The product a quote line points to, resolved LIVE (D-7): `name`/`code`/
  * `category`/`business_function` always reflect the product's current state,
@@ -100,7 +105,7 @@ export interface QuoteLineProductRef {
    * deliberately NOT frozen onto the line, unlike `unit_of_measure`. Seeds
    * the live summary's per-typology bucket cache in edit mode.
    */
-  product_typology: QuoteLineCategoryRef | null
+  product_typology: QuoteLineProductTypologyRef | null
   business_function: QuoteLineCategoryRef | null
 }
 

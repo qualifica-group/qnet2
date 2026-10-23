@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import i18n from '@/i18n'
 import { QuoteLinesReadOnlyList } from '@/features/quotes/quote-lines-read-only'
 import type { QuoteLine } from '@/features/quotes/types'
@@ -7,7 +7,9 @@ import type { QuoteLine } from '@/features/quotes/types'
 /**
  * Spec 0072 BR-7/AC-046: this component is shared, unmodified, between the
  * Offer detail view (spec 0065) and the Contract detail view — read-only
- * rendering of persisted quote lines, no edit controls, no addable rows.
+ * rendering of persisted quote lines, no edit controls, no addable rows. Since
+ * 2026-10-23 (requirement changed, user directive) each row is the line
+ * editor's card, not a table row.
  */
 
 function lineFixture(overrides: Partial<QuoteLine> = {}): QuoteLine {
@@ -44,7 +46,7 @@ describe('QuoteLinesReadOnlyList', () => {
     render(<QuoteLinesReadOnlyList lines={[lineFixture()]} />)
     expect(screen.getByText('Widget Pro')).toBeInTheDocument()
     expect(screen.getByText('PRD-0042')).toBeInTheDocument()
-    expect(screen.getByText('292.80')).toBeInTheDocument()
+    expect(within(screen.getByRole('listitem')).getByText('292.80')).toBeInTheDocument()
   })
 
   it('shows the unit of measure symbol next to the quantity (spec 0088 AC-061)', () => {
@@ -57,8 +59,14 @@ describe('QuoteLinesReadOnlyList', () => {
     expect(screen.getByText('Montaggio incluso')).toBeInTheDocument()
   })
 
-  it('falls back to a placeholder for a legacy line with no frozen unit of measure', () => {
+  it('shows the quantity alone for a legacy line with no frozen unit of measure', () => {
     render(<QuoteLinesReadOnlyList lines={[lineFixture({ unit_of_measure: null })]} />)
+    expect(screen.getByText('2.00')).toBeInTheDocument()
+    expect(screen.queryByText('kg')).not.toBeInTheDocument()
+  })
+
+  it('falls back to a placeholder for a line with no VAT rate', () => {
+    render(<QuoteLinesReadOnlyList lines={[lineFixture({ vat_rate_id: null, vat_rate: null })]} />)
     expect(screen.getByText('—')).toBeInTheDocument()
   })
 
@@ -72,14 +80,39 @@ describe('QuoteLinesReadOnlyList', () => {
     expect(screen.getByRole('button', { name: /commission/i })).toBeInTheDocument()
   })
 
-  it('keeps the wide table scrolling inside its box on a narrow screen', () => {
-    render(<QuoteLinesReadOnlyList lines={[lineFixture()]} />)
-    const scroller = screen.getByText(i18n.t('quotes.form.lineProductHeader')).parentElement?.parentElement?.parentElement
-    expect(scroller).toHaveClass('overflow-x-auto', 'contain-inline-size')
+  it('renders each line as a card like the open editor: position, typology and category', () => {
+    render(
+      <QuoteLinesReadOnlyList
+        lines={[
+          lineFixture({
+            product: {
+              id: 42,
+              code: 'PRD-0042',
+              name: 'Widget Pro',
+              category: { id: 3, name: 'Corsi' },
+              product_typology: { id: 5, name: 'Formazione', color: 'blue' },
+              business_function: null,
+            },
+          }),
+        ]}
+      />,
+    )
+    const card = screen.getByRole('listitem')
+    expect(within(card).getByText('1')).toBeInTheDocument()
+    expect(within(card).getByText('Formazione')).toBeInTheDocument()
+    expect(within(card).getByText('Corsi')).toBeInTheDocument()
+  })
+
+  it('titles the rows and totals them like the editor frame', () => {
+    render(<QuoteLinesReadOnlyList lines={[lineFixture(), lineFixture({ id: 2 })]} />)
+    expect(screen.getByRole('region', { name: i18n.t('quotes.lineEditor.rows.titleRevenue') })).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(screen.getByText(i18n.t('quotes.lineEditor.rows.totalRevenue'))).toBeInTheDocument()
+    expect(screen.getByText('585.60')).toBeInTheDocument()
   })
 })
 
-/** Spec 0144 AC-016: the Cost variant's "Associated product" column. */
+/** Spec 0144 AC-016: the Cost variant's "Associated product" value. */
 describe('QuoteLinesReadOnlyList — Associated product (cost variant)', () => {
   it('shows the associated offer row label resolved from offer_line_id', () => {
     render(
@@ -104,12 +137,12 @@ describe('QuoteLinesReadOnlyList — Associated product (cost variant)', () => {
     expect(screen.getByText('Generic cost')).toBeInTheDocument()
   })
 
-  it('never shows the Associated product column on the revenue variant', () => {
+  it('never shows the Associated product value on the revenue variant', () => {
     render(<QuoteLinesReadOnlyList lines={[lineFixture()]} />)
     expect(screen.queryByText('Associated product')).not.toBeInTheDocument()
   })
 
-  it('shows the Associated product column header on the cost variant', () => {
+  it('shows the Associated product label on the cost variant', () => {
     render(<QuoteLinesReadOnlyList lines={[lineFixture({ offer_line_id: null })]} variant="cost" />)
     expect(screen.getByText('Associated product')).toBeInTheDocument()
   })
