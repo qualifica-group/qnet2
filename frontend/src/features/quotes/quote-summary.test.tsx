@@ -268,8 +268,8 @@ describe('QuoteLiveSummary — commissions on margin (spec 0145 AC-010)', () => 
     const commissionsCard = screen.getByText(i18n.t('quotes.form.summary.commissions')).closest('div')!.parentElement!
     const marginCard = screen.getByText(i18n.t('quotes.form.summary.margin')).closest('div')!.parentElement!
 
-    // Base = 1000 - 400 = 600; 10% commercial commission = 60.00.
-    expect(within(commissionsCard).getByText('60.00')).toBeInTheDocument()
+    // Base = 1000 - 400 = 600; 10% commercial commission = 60.00, paid out.
+    expect(within(commissionsCard).getByText('\u221260.00')).toBeInTheDocument()
     // Margin = revenue.net (1000) - cost.net (400) - commissions (60) = 540.00.
     expect(within(marginCard).getByText('540.00')).toBeInTheDocument()
   })

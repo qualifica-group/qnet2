@@ -3,6 +3,26 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Segni +/- nel Riepilogo Commissioni dell'offerta — VERDE, NON COMMITTATO (2026-10-23)
+
+- Richiesta utente, solo FE, nessun cambio di contratto. Card estratta in `features/quotes/quote-commission-summary.tsx`
+  (`QuoteCommissionSummary`): Commerciale/Segnalatore/Supervisore sempre "-"; Fornitore "+" se RECEIVED, "-" se PAID;
+  con entrambi i versi due righe `supplierReceived`/`supplierPaid`; zero senza segno; hint `commissionsHint`.
+- Parte ricevuta = `receivedSupplierCommission(productMargins.rows)` (in `quote-product-margins-calc.ts`), pagata =
+  `commissionTotals.supplier - ricevuta`: stessa fonte di "Margine per prodotto", live e dettaglio salvato.
+- Margine atteso: la commissione Fornitore RECEIVED entra gia' come ricavo della riga (`QuoteTotalsCalculator::
+  receivedAdjustment`, FE `calculateLineMarginBeforeCosts`, spec 0202 D-8): nessuna modifica.
+- Seguito: segni anche nel "Dettaglio provvigioni per prodotto" (`quote-commission-details.tsx`): ogni importo
+  firmato con `commissionFlowSign(role, direction)` (`commission-calculator.ts`, +1 solo Fornitore RECEIVED);
+  totali di riga, di ruolo e generale = SALDO entrate - uscite (non piu' somma lorda). Formatter condiviso
+  `formatSignedQuoteAmount` (`quote-summary.tsx`, usato anche dalla card); `sumFormula` dei calculation hints
+  sottrae i termini negativi. Test aggiornati per requisito cambiato (REQUIREMENT CHANGED):
+  `quote-commission-details.test.tsx`, `quote-summary.test.tsx` (importo commerciale ora "−60.00").
+- Fuori scope, segnalato: il KPI "Commissioni" della testata (`sumCommissionTotals`) somma ancora tutti i ruoli,
+  ricevute incluse. Aperta con l'utente: base % del Commerciale sulle righe RECEIVED (imponibile vs commissione
+  ricevuta), es. offerta 28020 margine 3.600 perche' Commerciale 40% = Fornitore 40%.
+- Verifica: Vitest 9162/9162, `tsc -b --force` e ESLint puliti; guida in-app IT/EN `quotes` + manuale Claude Docs (rev 400).
+
 ## Visibilita' team dall'organigramma, spec 0309 — VERDE, NON COMMITTATO (2026-10-23)
 
 - Direttiva utente: chi ha sottoposti vede il proprio team senza permesso dedicato. Eliminati `tasks.viewTeam`,

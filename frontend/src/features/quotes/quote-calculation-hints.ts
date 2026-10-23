@@ -16,9 +16,20 @@ import type { QuoteLineCommission } from '@/features/quotes/types'
  * spec 0202 D-8).
  */
 
-/** "a + b + c = total", or the lone amount when there is only one. */
+/** An amount with the same minus sign the commission details show. */
+function signedMoney(amount: number): string {
+  return amount < 0 ? `\u2212${money(-amount)}` : money(amount)
+}
+
+/** "a + b - c = total" (a negative term is subtracted), or the lone amount when there is only one. */
 function sumFormula(amounts: number[], total: number): string {
-  return amounts.length > 1 ? `${amounts.map(money).join(' + ')} = ${money(total)}` : money(total)
+  if (amounts.length <= 1) {
+    return signedMoney(total)
+  }
+  const terms = amounts.map((amount, index) =>
+    index === 0 ? signedMoney(amount) : `${amount < 0 ? '\u2212' : '+'} ${money(Math.abs(amount))}`,
+  )
+  return `${terms.join(' ')} = ${signedMoney(total)}`
 }
 
 interface CommissionHintInput {

@@ -13,6 +13,8 @@ vi.mock('@/features/auth/use-abilities', () => ({
 
 /** User directive 2026-10-23: the legacy "Dettaglio Provvigioni per Servizio", in the quote summary. */
 
+const MINUS = '\u2212'
+
 const hover = (element: HTMLElement) => fireEvent.pointerEnter(element, { pointerType: 'mouse' })
 
 beforeAll(async () => {
@@ -86,16 +88,18 @@ describe('QuoteCommissionDetails', () => {
     expect(within(rows[1]).getByText('Luigi Cirillo')).toBeInTheDocument()
     expect(within(rows[1]).getByText('Perry Johnson')).toBeInTheDocument()
     expect(within(rows[1]).getAllByText('40%')).toHaveLength(2)
-    expect(within(rows[1]).getAllByText('1,960.00')).toHaveLength(2)
+    // The Commercial commission goes out, the received Supplier one comes in: the row balance is zero.
+    expect(within(rows[1]).getByText(`${MINUS}1,960.00`)).toBeInTheDocument()
+    expect(within(rows[1]).getByText('+1,960.00')).toBeInTheDocument()
     expect(within(rows[1]).getByText('Received')).toBeInTheDocument()
-    expect(within(rows[1]).getByText('3,920.00')).toBeInTheDocument()
+    expect(within(rows[1]).getByText('0.00')).toBeInTheDocument()
 
     expect(within(rows[2]).getByText('Course (row 3)')).toBeInTheDocument()
     expect(within(rows[2]).getByText('Fixed amount')).toBeInTheDocument()
-    expect(within(rows[2]).getAllByText('150.00')).toHaveLength(2)
+    expect(within(rows[2]).getAllByText(`${MINUS}150.00`)).toHaveLength(2)
 
     const totals = within(rows[3]).getAllByRole('cell').map((cell) => cell.textContent)
-    expect(totals).toEqual(['Total', '1,960.00', '150.00', '0.00', '1,960.00', '4,070.00'])
+    expect(totals).toEqual(['Total', `${MINUS}1,960.00`, `${MINUS}150.00`, '0.00', '+1,960.00', `${MINUS}150.00`])
   })
 
   it('explains what Received means behind the (?) of the Supplier direction', async () => {
@@ -109,7 +113,7 @@ describe('QuoteCommissionDetails', () => {
   it('explains a percentage on its base: net amount minus the imputed costs', async () => {
     render(<QuoteCommissionDetails lines={LINES} costLines={COSTS} />)
     const institutionRow = within(screen.getByRole('table', { name: 'Commission details per product' })).getAllByRole('row')[1]
-    const commercialAmount = within(institutionRow).getAllByRole('button', { name: '1,960.00' })[0]
+    const commercialAmount = within(institutionRow).getByRole('button', { name: `${MINUS}1,960.00` })
 
     hover(commercialAmount)
     expect(await screen.findByText('Commercial · Luigi Cirillo')).toBeInTheDocument()
@@ -117,22 +121,35 @@ describe('QuoteCommissionDetails', () => {
     expect(screen.getByText('40% × 4,900.00 = 1,960.00')).toBeInTheDocument()
   })
 
-  it('explains a row total as the sum of its commissions', async () => {
+  it('explains a row total as the balance of its commissions', async () => {
     render(<QuoteCommissionDetails lines={LINES} costLines={COSTS} />)
     const institutionRow = within(screen.getByRole('table', { name: 'Commission details per product' })).getAllByRole('row')[1]
 
-    hover(within(institutionRow).getByRole('button', { name: '3,920.00' }))
+    hover(within(institutionRow).getByRole('button', { name: '0.00' }))
 
-    expect(await screen.findByText('1,960.00 + 1,960.00 = 3,920.00')).toBeInTheDocument()
+    expect(await screen.findByText(`${MINUS}1,960.00 + 1,960.00 = 0.00`)).toBeInTheDocument()
   })
 
   it('says a fixed amount does not depend on the base', async () => {
     render(<QuoteCommissionDetails lines={LINES} costLines={COSTS} />)
     const courseRow = within(screen.getByRole('table', { name: 'Commission details per product' })).getAllByRole('row')[2]
 
-    hover(within(courseRow).getAllByRole('button', { name: '150.00' })[0])
+    hover(within(courseRow).getAllByRole('button', { name: `${MINUS}150.00` })[0])
 
     expect(await screen.findByText('Fixed amount: 150.00. It does not depend on the net amount or the costs.')).toBeInTheDocument()
+  })
+
+  it('marks a paid Supplier commission as going out', () => {
+    const paidLine = quoteLineFixture({
+      id: 4,
+      supplier_commission_direction: 'PAID',
+      commissions: [commission({ id: 13, recipient_role: 'SUPPLIER', recipient_type: 'registry', calculated_amount: '90.00' })],
+    })
+    render(<QuoteCommissionDetails lines={[paidLine]} costLines={[]} />)
+
+    const rows = within(screen.getByRole('table', { name: 'Commission details per product' })).getAllByRole('row')
+    expect(within(rows[1]).getAllByText(`${MINUS}90.00`)).toHaveLength(2)
+    expect(within(rows[1]).getByText('Paid')).toBeInTheDocument()
   })
 
   it('renders nothing when no line carries commissions', () => {

@@ -55,6 +55,17 @@ export function sumCommissionTotals(totals: CommissionTotals): number {
 }
 
 /**
+ * User request 2026-10-23: a commission comes IN (+1) only when it is a
+ * RECEIVED Supplier one; every other commission is paid out (-1).
+ */
+export function commissionFlowSign(
+  role: CommissionRole,
+  direction: SupplierCommissionDirection | null | undefined,
+): 1 | -1 {
+  return role === 'SUPPLIER' && direction === 'RECEIVED' ? 1 : -1
+}
+
+/**
  * Spec 0202 D-8: a REVENUE row's margin BEFORE its imputed costs, from the
  * direction frozen on the row. RECEIVED: the Supplier commission is the row's
  * revenue (`s - p`); PAID: it is a cost (`n - p - s`); null: the commission

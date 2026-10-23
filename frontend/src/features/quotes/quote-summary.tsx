@@ -1,8 +1,8 @@
-/* eslint-disable react-refresh/only-export-components -- small formatting/mapping helpers (`formatQuoteAmount`/`totalsFromPersistedSummary`) shared by the row editor and the read-only detail view, colocated with the summary component they feed */
+/* eslint-disable react-refresh/only-export-components -- small formatting/mapping helpers (`formatQuoteAmount`/`formatSignedQuoteAmount`/`totalsFromPersistedSummary`) shared by the row editor and the read-only detail view, colocated with the summary component they feed */
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Control } from 'react-hook-form'
-import { HandCoins, Shapes, TrendingDown, TrendingUp, Wallet, type LucideIcon } from 'lucide-react'
+import { Shapes, TrendingDown, TrendingUp, Wallet, type LucideIcon } from 'lucide-react'
 import i18n from '@/i18n'
 import { cn } from '@/lib/utils'
 import { round2, type QuoteAmountAggregate, type QuoteTotalsSummary } from '@/features/quotes/quote-totals'
@@ -10,10 +10,12 @@ import {
   computeProductMargins,
   costLinesFromFormCostLines,
   productLinesFromFormOfferLines,
+  receivedSupplierCommission,
   type ProductMarginsSummary,
 } from '@/features/quotes/quote-product-margins-calc'
 import { QuoteProductMargins } from '@/features/quotes/quote-product-margins'
 import { QuoteCommissionDetails } from '@/features/quotes/quote-commission-details'
+import { QuoteCommissionSummary } from '@/features/quotes/quote-commission-summary'
 import { QuoteSummaryDisclosure } from '@/features/quotes/quote-summary-disclosure'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
@@ -34,6 +36,14 @@ export function formatQuoteAmount(value: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value)
+}
+
+/** A commission flow: "+" when it comes in, "\u2212" when it goes out, no sign on zero. */
+export function formatSignedQuoteAmount(value: number): string {
+  if (value === 0) {
+    return formatQuoteAmount(0)
+  }
+  return `${value > 0 ? '+' : '\u2212'}${formatQuoteAmount(Math.abs(value))}`
 }
 
 /** Maps the persisted `QuoteSummary` (decimal strings, D-9) onto the numeric shape the presentational component renders. */
@@ -206,20 +216,10 @@ export function QuoteSummary({
           vatLabel={t('quotes.form.summary.vat')}
           grossLabel={t('quotes.form.summary.gross')}
         />
-        <div className="flex flex-col gap-1.5 rounded-md border bg-card p-3">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <HandCoins aria-hidden="true" className="size-3.5" />
-            {t('quotes.form.summary.commissions')}
-          </div>
-          <dl className="grid gap-1 text-xs">
-            {(['commercial', 'reporter', 'supervisor', 'supplier'] as const).map((role) => (
-              <div key={role} className="flex items-center justify-between">
-                <dt className="text-muted-foreground">{t(`quotes.form.summary.roles.${role}`)}</dt>
-                <dd className="font-medium tabular-nums">{formatQuoteAmount(commissionTotals[role])}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
+        <QuoteCommissionSummary
+          totals={commissionTotals}
+          receivedSupplier={productMargins ? receivedSupplierCommission(productMargins.rows) : 0}
+        />
         <div className="flex flex-col gap-1.5 rounded-md border bg-card p-3">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
             <Wallet aria-hidden="true" className="size-3.5" />

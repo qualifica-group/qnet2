@@ -8,8 +8,9 @@ import { FieldHint } from '@/components/field-hint'
 import { commissionAmountHint, sumHint } from '@/features/quotes/quote-calculation-hints'
 import { QuoteCommissionRecipient } from '@/features/quotes/quote-commission-recipient'
 import { TruncatedLabel } from '@/features/quotes/quote-truncated-label'
-import { formatQuoteAmount } from '@/features/quotes/quote-summary'
+import { formatSignedQuoteAmount } from '@/features/quotes/quote-summary'
 import { round2 } from '@/features/quotes/quote-totals'
+import { commissionFlowSign } from '@/features/quotes/commission-calculator'
 import type { CommissionRole, SupplierCommissionDirection } from '@/features/commission-configurations/types'
 import type { QuoteLine, QuoteLineCommission } from '@/features/quotes/types'
 
@@ -29,13 +30,26 @@ function allocatedCostNetByOfferLineId(costLines: QuoteLine[]): Map<number, numb
   return totals
 }
 
-/** The persisted calculated amount of a set of commissions. */
-function amountOf(commissions: QuoteLineCommission[]): number {
-  return round2(commissions.reduce((sum, commission) => sum + Number(commission.calculated_amount), 0))
+/** One commission's persisted amount, positive when it comes in and negative when it is paid out. */
+interface SignedCommission {
+  commission: QuoteLineCommission
+  amount: number
+}
+
+function signedCommissions(commissions: QuoteLineCommission[], direction: QuoteLine['supplier_commission_direction']): SignedCommission[] {
+  return commissions.map((commission) => ({
+    commission,
+    amount: commissionFlowSign(commission.recipient_role, direction) * Number(commission.calculated_amount),
+  }))
+}
+
+/** The balance of a set of commissions: what comes in minus what goes out. */
+function balanceOf(entries: SignedCommission[]): number {
+  return round2(entries.reduce((sum, entry) => sum + entry.amount, 0))
 }
 
 interface CommissionCellProps {
-  commissions: QuoteLineCommission[]
+  commissions: SignedCommission[]
   role: CommissionRole
   lineNet: number
   allocatedCostNet: number
@@ -82,7 +96,7 @@ function CommissionCell({ commissions, role, lineNet, allocatedCostNet, directio
 
   return (
     <div className="flex min-w-0 flex-col gap-1">
-      {commissions.map((commission, index) => (
+      {commissions.map(({ commission, amount }, index) => (
         <div key={commission.id ?? index} className="flex min-w-0 flex-col">
           <QuoteCommissionRecipient recipient={commission.recipient} type={commission.recipient_type} />
           <div className="flex items-baseline justify-between gap-2 tabular-nums">
@@ -99,7 +113,7 @@ function CommissionCell({ commissions, role, lineNet, allocatedCostNet, directio
                 t,
               )}
             >
-              {formatQuoteAmount(Number(commission.calculated_amount))}
+              {formatSignedQuoteAmount(amount)}
             </CalculationHint>
           </div>
         </div>
@@ -128,15 +142,19 @@ export function QuoteCommissionDetails({ lines, costLines }: QuoteCommissionDeta
   const titleId = useId()
   const allocatedCostNetById = allocatedCostNetByOfferLineId(costLines)
   const rows = lines
-    .map((line, index) => ({ line, rowNumber: index + 1, commissions: line.commissions ?? [] }))
+    .map((line, index) => ({
+      line,
+      rowNumber: index + 1,
+      commissions: signedCommissions(line.commissions ?? [], line.supplier_commission_direction),
+    }))
     .filter((row) => row.commissions.length > 0)
 
   if (rows.length === 0) {
     return null
   }
 
-  const byRole = (commissions: QuoteLineCommission[], role: CommissionRole) =>
-    commissions.filter((commission) => commission.recipient_role === role)
+  const byRole = (commissions: SignedCommission[], role: CommissionRole) =>
+    commissions.filter((entry) => entry.commission.recipient_role === role)
   const allCommissions = rows.flatMap((row) => row.commissions)
 
   return (
@@ -186,11 +204,11 @@ export function QuoteCommissionDetails({ lines, costLines }: QuoteCommissionDeta
                     {...sumHint(
                       t('quotes.calculationHints.rowTotalTitle', { n: rowNumber }),
                       t('quotes.calculationHints.rowTotalRule'),
-                      commissions.map((commission) => Number(commission.calculated_amount)),
-                      amountOf(commissions),
+                      commissions.map((entry) => entry.amount),
+                      balanceOf(commissions),
                     )}
                   >
-                    {formatQuoteAmount(amountOf(commissions))}
+                    {formatSignedQuoteAmount(balanceOf(commissions))}
                   </CalculationHint>
                 </td>
               </tr>
@@ -203,11 +221,11 @@ export function QuoteCommissionDetails({ lines, costLines }: QuoteCommissionDeta
                     {...sumHint(
                       t('quotes.calculationHints.roleTotalTitle', { role: t(`quotes.form.commissions.roles.${role}`) }),
                       t('quotes.calculationHints.roleTotalRule'),
-                      byRole(allCommissions, role).map((commission) => Number(commission.calculated_amount)),
-                      amountOf(byRole(allCommissions, role)),
+                      byRole(allCommissions, role).map((entry) => entry.amount),
+                      balanceOf(byRole(allCommissions, role)),
                     )}
                   >
-                    {formatQuoteAmount(amountOf(byRole(allCommissions, role)))}
+                    {formatSignedQuoteAmount(balanceOf(byRole(allCommissions, role)))}
                   </CalculationHint>
                 </td>
               ))}
@@ -216,11 +234,11 @@ export function QuoteCommissionDetails({ lines, costLines }: QuoteCommissionDeta
                   {...sumHint(
                     t('quotes.calculationHints.grandTotalTitle'),
                     t('quotes.calculationHints.grandTotalRule'),
-                    ROLES.map((role) => amountOf(byRole(allCommissions, role))).filter((amount) => amount !== 0),
-                    amountOf(allCommissions),
+                    ROLES.map((role) => balanceOf(byRole(allCommissions, role))).filter((amount) => amount !== 0),
+                    balanceOf(allCommissions),
                   )}
                 >
-                  {formatQuoteAmount(amountOf(allCommissions))}
+                  {formatSignedQuoteAmount(balanceOf(allCommissions))}
                 </CalculationHint>
               </td>
             </tr>

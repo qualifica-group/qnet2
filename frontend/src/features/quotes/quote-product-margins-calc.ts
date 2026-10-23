@@ -217,3 +217,16 @@ export function costLinesFromPersistedCostLines(costLines: QuoteLine[]): Product
     net: Number(line.net_amount),
   }))
 }
+
+/**
+ * The Supplier part of the offer's commissions that comes IN (RECEIVED rows,
+ * spec 0202 D-8: the commission is the row's revenue), read from the same
+ * per-row amounts of "Margine per prodotto", so the card and the margin agree.
+ */
+export function receivedSupplierCommission(rows: ProductMarginRow[]): number {
+  return round2(
+    rows
+      .filter((row) => row.supplierCommissionDirection === 'RECEIVED')
+      .reduce((sum, row) => sum + row.supplierCommissionNet, 0),
+  )
+}
