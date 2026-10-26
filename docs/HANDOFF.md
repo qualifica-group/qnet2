@@ -3,6 +3,19 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Export tabelle AG Grid: fix 422 e stato griglia congelato — VERDE, COMMITTATO (2026-10-26)
+
+- Bug: nessun export partiva (0 `ExportRun` nel DB). `buildExportGridState` escludeva solo la colonna azioni: sulle
+  tabelle con selezione righe (bulk delete/azioni) mandava `ag-Grid-SelectionColumn`, sulle raggruppate/tree
+  `ag-Grid-AutoColumn` -> `Rule::in` di `CreateExportRequest` -> 422 "errore di validazione". Backend sano
+  (verificato: export reali su tasks/registries/quotes/users completati).
+- Fix FE: colonne e sortModel filtrati sul catalogo del dominio (`labelById`), come `toColumnPreferences`; prop
+  `actionsColumnId` rimossa (`ExportDialog`, `table-view-slots`). `ExportDialog` non memoizza piu' lo stato griglia:
+  lo legge a ogni render mentre e' aperto (prima restava quello del grid-ready, senza filtri/sort/colonne successivi).
+- Test: builder (colonne sintetiche scartate; REQUIREMENT CHANGED: niente piu' fallback al colId grezzo) + dialog
+  (stato letto all'apertura). Vitest exports+table 354/354, ESLint e `tsc -b --force` puliti.
+- Manuale: nessun impatto.
+
 ## Back Office Commerciale: anche i Contratti (spec 0299 D-7) — VERDE, NON COMMITTATO (2026-10-26)
 
 - `CommercialBackOfficeRoleCatalogue::MODULES` + `contracts`: il ruolo `back-office-commerciale` riceve ogni ability

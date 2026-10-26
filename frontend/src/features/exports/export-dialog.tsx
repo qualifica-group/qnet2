@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { GridApi } from 'ag-grid-community'
 import { Download, FileSpreadsheet, FileText } from 'lucide-react'
@@ -40,8 +40,6 @@ export interface ExportDialogProps {
   gridApi: GridApi<TableRow> | null
   /** The domain's column catalog, for resolving each colId's i18n label. */
   columns: TableColumn[]
-  /** The synthetic row-actions column id, excluded from the export. */
-  actionsColumnId: string
   /** The applied global search term (may be empty). */
   search: string
   /**
@@ -84,7 +82,6 @@ export function ExportDialog({
   onOpenChange,
   gridApi,
   columns,
-  actionsColumnId,
   search,
   advancedFilters = NO_ADVANCED_FILTERS,
   customFilterRules,
@@ -96,10 +93,11 @@ export function ExportDialog({
   const exportState = useExport({ domain })
   const [format, setFormat] = useState<ExportFormat>('csv')
 
-  const gridState = useMemo(() => {
-    if (!gridApi) return null
-    return buildExportGridState({ gridApi, columns, actionsColumnId, search, t })
-  }, [gridApi, columns, actionsColumnId, search, t])
+  // Read on every render while open, never memoized: the dialog stays mounted
+  // with the table, and column/sort/filter changes do not re-render it, so a
+  // memo would freeze the grid state of the moment the grid became ready.
+  const gridState =
+    open && gridApi ? buildExportGridState({ gridApi, columns, search, t }) : null
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {

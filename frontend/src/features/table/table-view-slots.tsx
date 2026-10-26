@@ -3,7 +3,6 @@ import type { TFunction } from 'i18next'
 import type { GridApi } from 'ag-grid-community'
 import { Download } from 'lucide-react'
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
-import { ACTIONS_COLUMN_ID } from '@/components/data-table/data-table'
 import { ExportDialog } from '@/features/exports/export-dialog'
 import { SavedViewsSlot } from '@/features/table/saved-views-slot'
 import { RuleBuilderDialog } from '@/features/table/custom-filters/rule-builder-dialog'
@@ -97,7 +96,6 @@ export function buildTableViewSlots({
           onOpenChange={onExportOpenChange}
           gridApi={gridApi}
           columns={config.columns}
-          actionsColumnId={ACTIONS_COLUMN_ID}
           search={getSearchTerm()}
           advancedFilters={advancedFilters.activeValues}
           customFilterRules={customFilters.active.state?.rules ?? null}

@@ -9,10 +9,8 @@ import type {
 
 interface BuildExportGridStateArgs {
   gridApi: GridApi<TableRow>
-  /** The domain's column catalog, for resolving each colId's i18n label. */
+  /** The domain's column catalog: the only exportable colIds, each with its i18n label. */
   columns: TableColumn[]
-  /** The synthetic row-actions column id, excluded (it is not a real column). */
-  actionsColumnId: string
   /** The applied global search term (may be empty). */
   search: string
   t: TFunction
@@ -32,23 +30,24 @@ function toSortModel(columnState: ColumnState[]): ExportSortModelItem[] {
  * that becomes the file's column title), the active sort, the active filter
  * model and the applied global search term. Pure/side-effect free so it is
  * unit-testable against a mocked `GridApi`.
+ *
+ * Only colIds declared in `columns` are sent: AG Grid's synthetic columns (row
+ * actions, 'ag-Grid-SelectionColumn' on tables with bulk actions,
+ * 'ag-Grid-AutoColumn' on grouped/tree tables) are not in the server's
+ * `Rule::in` allow-list, and a single one 422s the whole export.
  */
 export function buildExportGridState({
   gridApi,
   columns,
-  actionsColumnId,
   search,
   t,
 }: BuildExportGridStateArgs): ExportGridState {
-  const columnState = gridApi.getColumnState()
   const labelById = new Map(columns.map((column) => [column.id, column.label]))
+  const columnState = gridApi.getColumnState().filter((state) => labelById.has(state.colId))
 
   const exportColumns: ExportColumnInput[] = columnState
-    .filter((state) => state.colId !== actionsColumnId && !state.hide)
-    .map((state) => {
-      const label = labelById.get(state.colId)
-      return { colId: state.colId, header: label ? t(label) : state.colId }
-    })
+    .filter((state) => !state.hide)
+    .map((state) => ({ colId: state.colId, header: t(labelById.get(state.colId) as string) }))
 
   return {
     columns: exportColumns,

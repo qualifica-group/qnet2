@@ -44,7 +44,6 @@ describe('buildExportGridState', () => {
     const result = buildExportGridState({
       gridApi: stubGridApi(columnState),
       columns,
-      actionsColumnId: ACTIONS,
       search: '',
       t: i18n.t,
     })
@@ -69,7 +68,6 @@ describe('buildExportGridState', () => {
     const result = buildExportGridState({
       gridApi: stubGridApi(columnState),
       columns,
-      actionsColumnId: ACTIONS,
       search: '',
       t: i18n.t,
     })
@@ -77,18 +75,22 @@ describe('buildExportGridState', () => {
     expect(result.columns.map((c) => c.colId)).toEqual(['name'])
   })
 
-  it('falls back to the raw colId when no label is declared for it', () => {
-    const columnState: ColumnState[] = [{ colId: 'unknown_col', hide: false } as ColumnState]
+  it('drops the AG Grid synthetic selection and auto group columns, which the server rejects', () => {
+    const columnState: ColumnState[] = [
+      { colId: 'ag-Grid-SelectionColumn', hide: false } as ColumnState,
+      { colId: 'ag-Grid-AutoColumn', hide: false, sort: 'asc', sortIndex: 0 } as ColumnState,
+      { colId: 'name', hide: false } as ColumnState,
+    ]
 
     const result = buildExportGridState({
       gridApi: stubGridApi(columnState),
-      columns: [],
-      actionsColumnId: ACTIONS,
+      columns: [column({ id: 'name', label: 'companies.columns.denomination' })],
       search: '',
       t: i18n.t,
     })
 
-    expect(result.columns).toEqual([{ colId: 'unknown_col', header: 'unknown_col' }])
+    expect(result.columns.map((c) => c.colId)).toEqual(['name'])
+    expect(result.sortModel).toEqual([])
   })
 
   it('derives the sort model from column state, ordered by sortIndex', () => {
@@ -97,11 +99,11 @@ describe('buildExportGridState', () => {
       { colId: 'created_at', hide: false, sort: 'desc', sortIndex: 0 } as ColumnState,
       { colId: 'email', hide: false, sort: null } as ColumnState,
     ]
+    const columns = ['name', 'created_at', 'email'].map((id) => column({ id, label: id }))
 
     const result = buildExportGridState({
       gridApi: stubGridApi(columnState),
-      columns: [],
-      actionsColumnId: ACTIONS,
+      columns,
       search: '',
       t: i18n.t,
     })
@@ -118,7 +120,6 @@ describe('buildExportGridState', () => {
     const result = buildExportGridState({
       gridApi: stubGridApi([], filterModel),
       columns: [],
-      actionsColumnId: ACTIONS,
       search: '  acme  ',
       t: i18n.t,
     })

@@ -26,8 +26,6 @@ vi.mock('@/features/exports/api', () => ({
   downloadExport: (...args: unknown[]) => downloadExportMock(...args),
 }))
 
-const ACTIONS_COLUMN_ID = '__actions'
-
 const COLUMNS: TableColumn[] = [
   {
     id: 'name',
@@ -94,7 +92,6 @@ function renderDialog(
       onOpenChange={onOpenChange}
       gridApi={gridApi}
       columns={COLUMNS}
-      actionsColumnId={ACTIONS_COLUMN_ID}
       search=""
       advancedFilters={advancedFilters}
       customFilterRules={customFilterRules}
@@ -175,6 +172,29 @@ describe('ExportDialog', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'The export request could not be validated. Please try again.',
+    )
+  })
+
+  it('reads the grid state when it opens, not when the grid became ready', async () => {
+    createExportMock.mockResolvedValue(baseRun({ status: 'processing' }))
+    getExportRunMock.mockResolvedValue(baseRun({ status: 'processing' }))
+    let columnState: ColumnState[] = [{ colId: 'name', hide: true } as ColumnState]
+    const gridApi = {
+      getColumnState: () => columnState,
+      getFilterModel: () => ({}),
+    } as unknown as GridApi<TableRow>
+    const props = { domain: 'companies', onOpenChange: vi.fn(), gridApi, columns: COLUMNS, search: '' }
+    const { rerender } = render(<ExportDialog {...props} open={false} />, { wrapper: wrapper() })
+
+    columnState = [{ colId: 'name', hide: false, sort: 'asc', sortIndex: 0 } as ColumnState]
+    rerender(<ExportDialog {...props} open />)
+    fireEvent.click(screen.getByRole('button', { name: /^export$/i }))
+
+    await waitFor(() =>
+      expect(createExportMock).toHaveBeenCalledWith('companies', expect.objectContaining({
+        columns: [{ colId: 'name', header: 'Denomination' }],
+        sortModel: [{ colId: 'name', sort: 'asc' }],
+      })),
     )
   })
 
