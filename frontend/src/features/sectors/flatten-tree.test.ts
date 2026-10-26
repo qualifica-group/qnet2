@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { findInactiveAncestor } from '@/features/sectors/flatten-tree'
+import { findInactiveAncestor, findSectorLabel, flattenSectorTree } from '@/features/sectors/flatten-tree'
 import type { SectorTreeNode } from '@/features/sectors/types'
 
 function node(id: number, parentId: number | null, isActive: boolean, children: SectorTreeNode[] = []): SectorTreeNode {
-  return { id, name: `S${id}`, parent_id: parentId, is_active: isActive, children }
+  return { id, code: null, name: `S${id}`, parent_id: parentId, is_active: isActive, children }
 }
 
 /** 1 (inactive) > 2 > 3 (inactive) > 4, plus an active root 5. */
@@ -23,5 +23,21 @@ describe('findInactiveAncestor (spec 0212)', () => {
     expect(findInactiveAncestor(TREE, null)).toBeNull()
     expect(findInactiveAncestor(TREE, 5)).toBeNull()
     expect(findInactiveAncestor(TREE, 99)).toBeNull()
+  })
+})
+
+describe('sector labels in the parent picker (spec 0213)', () => {
+  const CODED: SectorTreeNode[] = [
+    { id: 1, code: '07', name: 'Carta', parent_id: null, is_active: true, children: [node(2, 1, true)] },
+  ]
+
+  it('labels a coded node "code — name" and an uncoded one by its name, keeping the indentation', () => {
+    expect(flattenSectorTree(CODED).map((option) => option.name)).toEqual(['07 — Carta', '    ↳ S2'])
+  })
+
+  it('finds the label of a node anywhere in the tree', () => {
+    expect(findSectorLabel(CODED, 1)).toBe('07 — Carta')
+    expect(findSectorLabel(CODED, 2)).toBe('S2')
+    expect(findSectorLabel(CODED, 99)).toBeNull()
   })
 })

@@ -20,7 +20,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Campo', 'Cosa indicare'],
           rows: [
-            ['**Codice**', 'Facoltativo: il codice del settore, esattamente come lo usi (es. 01, 07a, NA). Due settori non possono avere lo stesso codice. Si può cercare per codice.'],
+            ['**Codice**', 'Facoltativo: il codice del settore, esattamente come lo usi (es. 01, 07a, NA). Due settori non possono avere lo stesso codice. Si può cercare per codice. Nei menu a tendina dei settori (anagrafiche, ODA, settore padre) compare come «codice — nome».'],
             ['**Nome**', 'Il nome del settore.'],
             ['**Settore padre**', 'Facoltativo: collega il settore a un settore padre per creare una gerarchia.'],
             ['**Attivo**', 'Attivo di default. Spegnilo per non proporre più il settore nei campi di scelta.'],

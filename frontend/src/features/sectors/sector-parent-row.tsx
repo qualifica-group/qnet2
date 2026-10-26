@@ -6,7 +6,7 @@ import { RecordInlineField, type InlineEdit } from '@/components/record-form/rec
 import { FormControl } from '@/components/ui/form'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { MetaField } from '@/features/authorization/MetaField'
-import { collectSubtreeIds, findSectorName, flattenSectorTree } from '@/features/sectors/flatten-tree'
+import { collectSubtreeIds, findSectorLabel, flattenSectorTree } from '@/features/sectors/flatten-tree'
 import { useSectorTree } from '@/features/sectors/use-sector-tree'
 import type { SectorFormValues } from '@/features/sectors/use-sector-form'
 
@@ -20,7 +20,7 @@ interface SectorParentRowProps {
   sectorId?: number
 }
 
-/** The parent sector: its name when closed, the searchable sector tree when open. */
+/** The parent sector: its "code — name" label when closed, the searchable sector tree when open. */
 export function SectorParentRow({ inline, canEdit, sectorId }: SectorParentRowProps) {
   const { t } = useTranslation()
   const { control } = useFormContext<SectorFormValues>()
@@ -36,7 +36,7 @@ export function SectorParentRow({ inline, canEdit, sectorId }: SectorParentRowPr
     ]
   }, [treeQuery.data, sectorId, t])
 
-  const parentName = parentId === null ? t('sectors.form.noParent') : findSectorName(treeQuery.data ?? [], parentId)
+  const parentLabel = parentId === null ? t('sectors.form.noParent') : findSectorLabel(treeQuery.data ?? [], parentId)
 
   return (
     <RecordInlineField
@@ -70,7 +70,7 @@ export function SectorParentRow({ inline, canEdit, sectorId }: SectorParentRowPr
         </MetaField>
       }
     >
-      {parentName ?? <DetailEmpty />}
+      {parentLabel ?? <DetailEmpty />}
     </RecordInlineField>
   )
 }

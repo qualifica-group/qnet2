@@ -10,8 +10,8 @@ use Illuminate\Http\Request;
  * For-select projection of a Sector (GET /api/sectors/for-select,
  * spec 0020).
  *
- * Minimal by design (ADR 0011): label = name, no subtitle/avatar. Mirrors
- * SourceForSelectResource.
+ * Minimal by design (ADR 0011): label = Sector::selectLabel() ("{code} —
+ * {name}", spec 0213), no subtitle/avatar.
  *
  * @mixin Sector
  */
@@ -24,7 +24,7 @@ class SectorForSelectResource extends ForSelectResource
     {
         return [
             'id' => $this->id,
-            'label' => $this->name,
+            'label' => $this->selectLabel(),
         ];
     }
 }

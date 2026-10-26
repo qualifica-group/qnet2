@@ -6,6 +6,7 @@ use App\DataObjects\Enums\EnumMeta;
 use App\Enums\PurchaseOrderStatus;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderStatusLabel;
+use App\Models\Sector;
 use App\Models\User;
 use App\Services\PurchaseOrders\PurchaseOrderStatusService;
 use App\Support\OperationalSiteLabel;
@@ -85,7 +86,7 @@ class PurchaseOrdersTableDefinition extends AbstractTableDefinition
                 'workOrder:id,code,title',
                 'quote:id,title',
                 'opportunity:id,name',
-                'sectors:id,name',
+                'sectors:id,code,name',
                 'createdBy:id,name',
             ])
             ->withCount('lines');
@@ -162,7 +163,7 @@ class PurchaseOrdersTableDefinition extends AbstractTableDefinition
             'work_order' => $row->workOrder === null ? null : ['id' => $row->workOrder->id, 'code' => $row->workOrder->code, 'title' => $row->workOrder->title],
             'quote' => $row->quote === null ? null : ['id' => $row->quote->id, 'name' => $row->quote->title],
             'opportunity' => $this->summary($row->opportunity),
-            'sectors' => $row->sectors->map(fn (object $sector): array => ['id' => $sector->id, 'name' => $sector->name])->all(),
+            'sectors' => $row->sectors->map(fn (Sector $sector): array => ['id' => $sector->id, 'name' => $sector->selectLabel()])->all(),
             'is_internal_user' => $row->is_internal_user,
             'taxable_total' => $row->taxable_total,
             'vat_total' => $row->vat_total,

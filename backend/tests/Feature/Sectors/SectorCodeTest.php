@@ -75,14 +75,27 @@ it('AC-001: PATCH code=null clears it, omitting it leaves it untouched', functio
     expect($sector->fresh()->code)->toBeNull();
 });
 
-it('AC-002: for-select searches by code and keeps the name as label', function () {
+it('AC-002: for-select searches by code and labels the sector "code — name"', function () {
     $target = Sector::factory()->create(['code' => '07a', 'name' => 'Prodotti in carta']);
     Sector::factory()->create(['code' => '08', 'name' => 'Case editrici']);
     Sanctum::actingAs(sectorCodeUserWith([]));
 
     $items = $this->getJson('/api/sectors/for-select?search=07a')->assertOk()->json('items');
 
-    expect($items)->toBe([['id' => $target->id, 'label' => 'Prodotti in carta']]);
+    expect($items)->toBe([['id' => $target->id, 'label' => '07a — Prodotti in carta']]);
+});
+
+it('AC-002: a sector without a code is labelled by its name alone, also when hydrated by id', function () {
+    $coded = Sector::factory()->create(['code' => '33', 'name' => 'Tecnologia']);
+    $plain = Sector::factory()->create(['code' => null, 'name' => 'Varie']);
+    Sanctum::actingAs(sectorCodeUserWith([]));
+
+    $items = $this->getJson("/api/sectors/for-select?search=zzz&ids[]={$coded->id}&ids[]={$plain->id}")
+        ->assertOk()
+        ->json('items');
+
+    expect(collect($items)->pluck('label', 'id')->all())
+        ->toBe([$coded->id => '33 — Tecnologia', $plain->id => 'Varie']);
 });
 
 it('AC-003: the grid exposes the code column and quick-searches it', function () {
@@ -100,4 +113,15 @@ it('AC-003: the grid exposes the code column and quick-searches it', function ()
 
     expect(collect($rows)->pluck('id')->all())->toBe([$target->id])
         ->and($rows[0]['code'])->toBe('17b');
+});
+
+it('AC-002: the tree nodes carry the code, so the parent picker can label them "code — name"', function () {
+    $root = Sector::factory()->create(['code' => '07', 'name' => 'Carta']);
+    Sector::factory()->childOf($root)->create(['code' => null, 'name' => 'Imballaggi']);
+    Sanctum::actingAs(sectorCodeUserWith(['viewAny']));
+
+    $node = $this->getJson('/api/sectors/tree')->assertOk()->json('data.0');
+
+    expect($node['code'])->toBe('07')
+        ->and($node['children'][0]['code'])->toBeNull();
 });

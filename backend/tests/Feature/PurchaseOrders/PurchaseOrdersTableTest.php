@@ -221,3 +221,14 @@ it('filters the related text columns with the grid multi filter and every text o
         ->and($ids($condition('equals', 'Acme Forniture')))->toBe([$acme->id])
         ->and($ids(['filterType' => 'multi', 'filterModels' => [null, ['filterType' => 'set', 'values' => ['Beta Docenti']]]]))->toBe([$beta->id]);
 });
+
+it('spec 0213: the sector refs of a row and of the ODA detail carry the "code — name" label', function () {
+    Sanctum::actingAs(purchaseOrderUserWith(['view']));
+    $order = purchaseOrderWithLines(Status::Draft, 1);
+    $order->sectors()->attach(Sector::factory()->create(['code' => '07a', 'name' => 'Carta'])->id);
+
+    $detail = $this->getJson("/api/purchase-orders/{$order->id}")->assertOk()->json('data.sectors');
+
+    expect(orderRows($this)[0]['sectors'][0]['name'])->toBe('07a — Carta')
+        ->and($detail[0]['name'])->toBe('07a — Carta');
+});

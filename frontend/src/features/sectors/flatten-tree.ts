@@ -1,3 +1,4 @@
+import { sectorLabel } from '@/features/sectors/sector-label'
 import type { SectorTreeNode } from '@/features/sectors/types'
 
 /** A flattened tree node, ready to feed a plain `id`/`name` select. */
@@ -20,7 +21,7 @@ export function flattenSectorTree(
   depth = 0,
 ): FlatSectorOption[] {
   return nodes.flatMap((node) => [
-    { id: node.id, name: `${DEPTH_PREFIX.repeat(depth)}${depth > 0 ? '↳ ' : ''}${node.name}` },
+    { id: node.id, name: `${DEPTH_PREFIX.repeat(depth)}${depth > 0 ? '↳ ' : ''}${sectorLabel(node)}` },
     ...flattenSectorTree(node.children, depth + 1),
   ])
 }
@@ -56,13 +57,13 @@ export function findInactiveAncestor(
   return visit(nodes, null) ?? null
 }
 
-/** The name of the sector `id` in the tree, `null` when it is not there (not loaded yet, or deleted). */
-export function findSectorName(nodes: SectorTreeNode[], id: number): string | null {
+/** The "code — name" label of the sector `id` in the tree, `null` when it is not there (not loaded yet, or deleted). */
+export function findSectorLabel(nodes: SectorTreeNode[], id: number): string | null {
   for (const node of nodes) {
     if (node.id === id) {
-      return node.name
+      return sectorLabel(node)
     }
-    const found = findSectorName(node.children, id)
+    const found = findSectorLabel(node.children, id)
     if (found !== null) {
       return found
     }

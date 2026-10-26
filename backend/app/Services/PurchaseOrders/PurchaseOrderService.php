@@ -38,7 +38,7 @@ class PurchaseOrderService
         'workOrder:id,code,title',
         'quote:id,title',
         'opportunity:id,name',
-        'sectors:id,name',
+        'sectors:id,code,name',
         'createdBy:id,name',
         'purchaseInvoices:purchase_invoices.id,document_type,document_number,document_date',
         'lines.product:id,name',

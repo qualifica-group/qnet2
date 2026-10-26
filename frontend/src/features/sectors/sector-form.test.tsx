@@ -53,12 +53,13 @@ function permissions(fields: ResourcePermissions['fields'] = {}): ResourcePermis
 const TREE: SectorTreeNode[] = [
   {
     id: 1,
+    code: null,
     name: 'Root A',
     parent_id: null,
     is_active: true,
-    children: [{ id: 2, name: 'Child A1', parent_id: 1, is_active: true, children: [] }],
+    children: [{ id: 2, code: null, name: 'Child A1', parent_id: 1, is_active: true, children: [] }],
   },
-  { id: 4, name: 'Root B', parent_id: null, is_active: true, children: [] },
+  { id: 4, code: null, name: 'Root B', parent_id: null, is_active: true, children: [] },
 ]
 
 function wrapper() {

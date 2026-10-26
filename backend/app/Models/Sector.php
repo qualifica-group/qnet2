@@ -21,6 +21,9 @@ class Sector extends BaseModel
     /** @use HasFactory<SectorFactory> */
     use HasFactory, LogsModelActivity;
 
+    /** Separator between the code and the name, matching the app's other composed labels. */
+    private const string LABEL_SEPARATOR = ' — ';
+
     /**
      * @return array<string, string>
      */
@@ -37,6 +40,17 @@ class Sector extends BaseModel
             // whole subtree, D-1) is resolved at read time by SectorActivity.
             'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * The label every sector picker shows: "{code} — {name}", or the bare
+     * name when the sector has no code (spec 0213).
+     */
+    public function selectLabel(): string
+    {
+        $code = trim((string) $this->code);
+
+        return $code === '' ? $this->name : $code.self::LABEL_SEPARATOR.$this->name;
     }
 
     public function parent(): BelongsTo

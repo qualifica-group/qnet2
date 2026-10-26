@@ -1,6 +1,7 @@
 import { lazy } from 'react'
 import type { QuickCreateEntry, QuickCreateFormProps } from '@/features/quick-create/types'
 import { SECTORS_FOR_SELECT_RESOURCE } from '@/features/sectors/for-select-api'
+import { sectorLabel } from '@/features/sectors/sector-label'
 import { PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE } from '@/features/product-categories/for-select-api'
 
 /**
@@ -19,7 +20,7 @@ const sectors: QuickCreateEntry = {
     return {
       default: ({ onSuccess, onCancel }: QuickCreateFormProps) => (
         <SectorForm
-          onSuccess={(sector) => onSuccess({ id: sector.id, name: sector.name })}
+          onSuccess={(sector) => onSuccess({ id: sector.id, name: sectorLabel(sector) })}
           onCancel={onCancel}
         />
       ),

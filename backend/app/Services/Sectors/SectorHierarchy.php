@@ -86,6 +86,7 @@ final class SectorHierarchy
         foreach ($children as $sector) {
             $nodes[] = [
                 'id' => $sector->id,
+                'code' => $sector->code,
                 'name' => $sector->name,
                 'parent_id' => $sector->parent_id,
                 // Spec 0212 D-5: the OWN flag; the tree stays complete.

@@ -315,6 +315,17 @@ it('show: 200 with the full data shape and permissions block', function () {
         ]);
 });
 
+it('show: the sector refs carry the "code — name" label (spec 0213)', function () {
+    $actor = registryUserWith(['view']);
+    $registry = Registry::factory()->create();
+    $registry->sectors()->sync([Sector::factory()->create(['code' => '33', 'name' => 'Tecnologia'])->id]);
+    Sanctum::actingAs($actor);
+
+    $this->getJson("/api/registries/{$registry->id}")
+        ->assertOk()
+        ->assertJsonPath('data.sectors.0.name', '33 — Tecnologia');
+});
+
 it('show: 403 without registries.view', function () {
     $actor = registryUserWith([]);
     $registry = Registry::factory()->create();

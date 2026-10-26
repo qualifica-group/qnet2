@@ -31,14 +31,18 @@
       <response status="200|201">`SectorResource` guadagna `"code": string|null`.</response>
     </endpoint>
     <endpoint method="GET" path="/api/sectors/for-select">
-      <response status="200">Shape invariata (label = nome); `search` cerca su nome O codice.</response>
+      <response status="200">Shape invariata; label = "{code} — {name}" (solo nome se il codice manca: `Sector::selectLabel()`, delta 2026-10-26, richiesta utente "in tutti i select"); `search` cerca su nome O codice.</response>
     </endpoint>
+    <endpoint method="GET" path="/api/sectors/tree">
+      <response status="200">Ogni nodo guadagna `"code": string|null` (delta 2026-10-26): il picker del settore padre compone la stessa label lato client (`sectorLabel`).</response>
+    </endpoint>
+    <refs>I riferimenti `sectors: [{id, name}]` di `RegistryResource`, `PurchaseOrderResource` e delle righe della griglia ODA portano in `name` la label "{code} — {name}" (delta 2026-10-26), cosi' i chip gia' salvati coincidono con le opzioni del select.</refs>
     <table_grid>Colonna `code` (text, ordinabile, filtrabile, nella quick-search) prima di `name`.</table_grid>
   </data_contract>
 
   <acceptance_criteria>
     <criterion id="AC-001">POST /api/sectors con `code` "07a" lo salva verbatim; un `code` gia' usato -> 422; PATCH che rimanda il proprio codice -> 200.</criterion>
-    <criterion id="AC-002">/sectors/for-select?search=07a trova il settore per codice; la label resta il nome.</criterion>
+    <criterion id="AC-002">/sectors/for-select?search=07a trova il settore per codice; la label e' "07a — nome" (solo nome se senza codice). REQUIREMENT CHANGED 2026-10-26: prima la label restava il nome.</criterion>
     <criterion id="AC-003">La griglia Settori espone la colonna `code` ed e' ricercabile per codice.</criterion>
     <criterion id="AC-004">`QualificaSectorSeeder` crea 44 settori attivi con i codici della lista (01, 07a, NA...); un secondo giro non duplica e non sovrascrive una rinomina.</criterion>
     <criterion id="AC-005">`QualificaLegacyImportSeeder` lascia non attivi tutti i settori con `old_id`, anche uno riattivato prima del giro; i settori del catalogo restano attivi.</criterion>

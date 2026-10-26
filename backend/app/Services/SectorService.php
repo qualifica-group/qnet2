@@ -90,11 +90,11 @@ class SectorService
     public function forSelect(ForSelectQuery $query): ForSelectResult
     {
         $base = Sector::query()
-            ->select(['id', 'name'])
+            ->select(['id', 'code', 'name'])
             ->whereNotIn('id', $this->activity->inactiveSectorIds());
 
         if ($query->hasSearch()) {
-            // Spec 0213: the code is searchable, the label stays the name.
+            // Spec 0213: the code is searchable, as it is part of the label.
             $base->where(static function ($match) use ($query): void {
                 $match->where('name', 'like', '%'.$query->search.'%')
                     ->orWhere('code', 'like', '%'.$query->search.'%');
@@ -123,7 +123,7 @@ class SectorService
     /**
      * Append the explicitly-requested `ids[]` (edit-mode hydration) that are
      * not already on the page, deduplicated. They bypass search and the same
-     * id/name projection applies. Total is unaffected.
+     * id/code/name projection applies. Total is unaffected.
      *
      * @param  Collection<int, Sector>  $page
      * @return Collection<int, Sector>
@@ -143,7 +143,7 @@ class SectorService
 
         /** @var Collection<int, Sector> $hydrated */
         $hydrated = Sector::query()
-            ->select(['id', 'name'])
+            ->select(['id', 'code', 'name'])
             ->whereIn('id', $missingIds)
             ->orderBy('name')
             ->orderBy('id')

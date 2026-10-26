@@ -9,6 +9,7 @@ use App\Models\PurchaseInvoice;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderLine;
 use App\Models\Registry;
+use App\Models\Sector;
 use App\Services\PurchaseOrders\PurchaseOrderLineBalance;
 use App\Services\PurchaseOrders\PurchaseOrderLineBillingLedger;
 use App\Services\PurchaseOrders\PurchaseOrderStatusService;
@@ -71,7 +72,7 @@ class PurchaseOrderResource extends JsonResource
             'work_order' => $this->workOrderRef($this->workOrder),
             'quote' => $this->quote === null ? null : ['id' => $this->quote->id, 'name' => $this->quote->title],
             'opportunity' => $this->namedRef($this->opportunity),
-            'sectors' => $this->sectors->map(fn (object $sector): array => ['id' => $sector->id, 'name' => $sector->name])->all(),
+            'sectors' => $this->sectors->map(fn (Sector $sector): array => ['id' => $sector->id, 'name' => $sector->selectLabel()])->all(),
             'sector_notes' => $this->sector_notes,
             'taxable_total' => $this->taxable_total,
             'vat_total' => $this->vat_total,

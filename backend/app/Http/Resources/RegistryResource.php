@@ -6,6 +6,7 @@ use App\Authorization\LegacyIdVisibility;
 use App\Models\Contact;
 use App\Models\PersonalData;
 use App\Models\Registry;
+use App\Models\Sector;
 use App\Tables\Shared\PrimaryContactColumn;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -29,7 +30,7 @@ class RegistryResource extends JsonResource
             'source_id' => $this->source_id,
             'source' => $this->toRef($this->source),
             'sector_ids' => $this->sectors->pluck('id')->all(),
-            'sectors' => $this->toRefList($this->sectors),
+            'sectors' => $this->sectors->map(fn (Sector $sector): array => ['id' => $sector->id, 'name' => $sector->selectLabel()])->all(),
             'referent_ids' => $this->referents->pluck('id')->all(),
             // Referents as person cards (name + primary contacts).
             'referents' => $this->toPersonRefList($this->referents),
@@ -109,16 +110,6 @@ class RegistryResource extends JsonResource
         return $card !== null
             ? $card->contacts->where('is_primary', true)->values()
             : null;
-    }
-
-    /**
-     * A to-many relation projected to a list of {id, name}.
-     *
-     * @return array<int, array{id: int, name: string}>
-     */
-    private function toRefList(iterable $related): array
-    {
-        return collect($related)->map(fn ($item): array => ['id' => $item->id, 'name' => $item->name])->all();
     }
 
     /**

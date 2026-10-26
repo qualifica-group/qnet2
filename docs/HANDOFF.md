@@ -3,6 +3,24 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Settori: "codice — nome" in tutti i select — VERDE, NON COMMITTATO (2026-10-26)
+
+- Richiesta utente: "sui select dei settori voglio anche il codice oltre al nome, in tutti i select". Supera la AC-002
+  della spec 0213 ("la label resta il nome", REQUIREMENT CHANGED, spec aggiornata con delta).
+- **Fonte unica BE:** `Sector::selectLabel()` = `"{code} — {name}"`, solo nome se il codice e' null/vuoto. Usata da
+  `SectorForSelectResource` (anche per gli `ids[]` idratati e per `RelationValueScopeChecker`) e dai ref `sectors:
+  [{id, name}]` di `RegistryResource`, `PurchaseOrderResource` e righe `PurchaseOrdersTableDefinition` (`name` porta la
+  label, cosi' i chip salvati coincidono con le opzioni). Eager load `sectors:id,code,name`. Rimosso
+  `RegistryResource::toRefList` (orfano).
+- `GET /sectors/tree`: ogni nodo ha `code`. FE `features/sectors/sector-label.ts` (`sectorLabel`) rispecchia il formato
+  per le opzioni costruite lato client: picker settore padre (`flattenSectorTree`, `findSectorLabel` ex
+  `findSectorName`) e quick-create settore.
+- Non toccati: ordinamento del for-select (resta per nome) e filtro testo della colonna Settori della griglia ODA
+  (cerca solo sul nome).
+- Verifica: Pest Sectors 61, PurchaseOrders 261, Registries 140, InlineCellEditing 18 verdi; Pint ok; Vitest
+  sectors/quick-create/purchase-orders/registries 286 + help 150 verdi; `tsc -b --force` exit 0; ESLint pulito.
+- Manuale: guide `sectors` IT/EN aggiornate (campo Codice); manuale Claude Docs aggiornato (tabella Settori).
+
 ## Tab uniformi + "+" quick-create su tutti i select di modulo — VERDE, COMMITTATO (2026-10-26)
 
 - Richiesta utente: "i tab devono essere tutti uguali; ogni select che ha un modulo, con permesso, deve avere il +".

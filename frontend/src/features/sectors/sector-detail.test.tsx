@@ -66,20 +66,22 @@ function permissions(overrides: Partial<ResourcePermissions> = {}): ResourcePerm
 const TREE: SectorTreeNode[] = [
   {
     id: 1,
+    code: null,
     name: 'Root A',
     parent_id: null,
     is_active: true,
     children: [
       {
         id: 2,
+        code: null,
         name: 'Child A1',
         parent_id: 1,
         is_active: true,
-        children: [{ id: 3, name: 'Grandchild A1a', parent_id: 2, is_active: true, children: [] }],
+        children: [{ id: 3, code: null, name: 'Grandchild A1a', parent_id: 2, is_active: true, children: [] }],
       },
     ],
   },
-  { id: 4, name: 'Root B', parent_id: null, is_active: true, children: [] },
+  { id: 4, code: null, name: 'Root B', parent_id: null, is_active: true, children: [] },
 ]
 
 function sector(overrides: Partial<SectorDetailWithPermissions> = {}): SectorDetailWithPermissions {

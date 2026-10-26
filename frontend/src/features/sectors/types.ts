@@ -13,6 +13,8 @@ import type { CustomFieldValue } from '@/features/custom-fields/types'
 /** A node of the sector tree, as returned by `GET /sectors/tree`. */
 export interface SectorTreeNode {
   id: number
+  /** Verbatim code (01, 07a, NA), spec 0213; null when none. */
+  code: string | null
   name: string
   parent_id: number | null
   /** The node's OWN flag (spec 0212); an inactive ancestor deactivates the whole branch. */
