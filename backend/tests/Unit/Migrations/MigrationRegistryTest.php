@@ -14,6 +14,7 @@ use App\Migrations\Sources\DocumentBundlesSource;
 use App\Migrations\Sources\EmailTemplatesSource;
 use App\Migrations\Sources\FinancialAccountsSource;
 use App\Migrations\Sources\InvoicesSource;
+use App\Migrations\Sources\NotesSource;
 use App\Migrations\Sources\OperationalSitesSource;
 use App\Migrations\Sources\OpportunitiesSource;
 use App\Migrations\Sources\PaymentMethodsSource;
@@ -99,13 +100,15 @@ it('config/migrations.php registers every source (spec 0013 Increment 2)', funct
         'proforma-requests' => ProformaRequestsSource::class,
         'invoices' => InvoicesSource::class,
         'collections' => CollectionsSource::class,
+        // REQUIREMENT CHANGED (spec 0311): the legacy notes source.
+        'notes' => NotesSource::class,
     ]);
 });
 
 it('all() resolves every registered source', function () {
     $sources = app(MigrationRegistry::class)->all();
 
-    expect($sources)->toHaveCount(37)
+    expect($sources)->toHaveCount(38)
         ->and(array_map(fn ($source) => $source->key(), $sources))->toBe([
             'roles', 'users', 'business-functions', 'companies', 'company-sites', 'operational-sites',
             'business-function-members', 'referent-types', 'referents',
@@ -113,5 +116,6 @@ it('all() resolves every registered source', function () {
             'product-category-attributes', 'attribute-layouts', 'products', 'cost-products', 'email-templates', 'document-bundles',
             'registries', 'opportunities', 'quotes', 'work-orders', 'tasks',
             'product-suppliers', 'commission-configurations', 'purchase-requests', 'purchase-orders', 'financial-accounts', 'purchase-invoices', 'proforma-requests', 'invoices', 'collections',
+            'notes',
         ]);
 });

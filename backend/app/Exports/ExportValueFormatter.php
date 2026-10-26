@@ -2,14 +2,18 @@
 
 namespace App\Exports;
 
+use App\Enums\Concerns\HasMeta;
+use BackedEnum;
 use Carbon\Carbon;
 use DateTimeInterface;
+use UnitEnum;
 
 /**
  * Formats one mapRow() value for the export file according to the column's
  * declared `type` (spec 0014), so the file mirrors what the grid shows:
  * datetime → the configured format; boolean → a localized yes/no; tags/array
- * → joined with '; '; null → ''; anything else → its string form. Not a
+ * → joined with '; '; enum → its label; null → ''; anything else → its
+ * string form. Not a
  * pixel-perfect match of the frontend cell renderers (documented trade-off) —
  * the backend-formatted value is the single source of truth.
  */
@@ -89,6 +93,24 @@ class ExportValueFormatter
             return (string) ($value['name'] ?? json_encode($value));
         }
 
+        if ($value instanceof UnitEnum) {
+            return $this->formatEnum($value);
+        }
+
         return is_bool($value) ? ($value ? '1' : '0') : (string) $value;
+    }
+
+    /**
+     * An enum cast left in a mapRow value (e.g. the products `product_type`)
+     * exports as the label the grid badge shows when the enum declares one,
+     * otherwise as the value the grid receives in JSON.
+     */
+    private function formatEnum(UnitEnum $value): string
+    {
+        if (in_array(HasMeta::class, class_uses($value), true)) {
+            return $value->label();
+        }
+
+        return $value instanceof BackedEnum ? (string) $value->value : $value->name;
     }
 }

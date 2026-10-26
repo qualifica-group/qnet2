@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\OutboundEmailPurpose;
+use App\Enums\ProductType;
 use App\Exports\ExportValueFormatter;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -59,4 +61,15 @@ it('casts a scalar value to its string form for any other type', function () {
 
 it('formats a single related-entity summary by its name for any other type', function () {
     expect(exportValueFormatter()->format(['id' => 7, 'name' => 'Mario Rossi', 'avatar_url' => null], 'text'))->toBe('Mario Rossi');
+});
+
+it('formats an enum with labels by its localized label, like the grid badge', function () {
+    app()->setLocale('en');
+
+    expect(exportValueFormatter()->format(ProductType::Physical, 'text'))->toBe('Physical good');
+});
+
+it('formats an enum without labels by its backed value', function () {
+    expect(exportValueFormatter()->format(OutboundEmailPurpose::cases()[0], 'text'))
+        ->toBe(OutboundEmailPurpose::cases()[0]->value);
 });

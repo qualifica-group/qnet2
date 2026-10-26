@@ -51,6 +51,7 @@ export const migrations = {
     'proforma-requests': 'Proforma requests',
     invoices: 'Invoices',
     collections: 'Collections',
+    notes: 'Notes',
   },
   state: {
     notMigrated: 'Not migrated',

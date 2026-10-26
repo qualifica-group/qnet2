@@ -5,6 +5,7 @@ use App\Models\CommissionConfiguration;
 use App\Models\Company;
 use App\Models\CompanySite;
 use App\Models\FinancialAccount;
+use App\Models\Note;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\ProformaRequest;
@@ -64,6 +65,7 @@ dataset('old_id_tables', [
     'financial_accounts' => ['financial_accounts'],
     'purchase_invoices' => ['purchase_invoices'],
     'proforma_requests' => ['proforma_requests'],
+    'notes' => ['notes'],
 ]);
 
 /**
@@ -99,6 +101,7 @@ function oldIdFactoryFor(string $table): Factory
         'financial_accounts' => FinancialAccount::factory(),
         'purchase_invoices' => PurchaseInvoice::factory(),
         'proforma_requests' => ProformaRequest::factory(),
+        'notes' => Note::factory(),
     };
 }
 

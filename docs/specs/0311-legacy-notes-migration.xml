@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0311-legacy-notes-migration" status="approved" owner="nicola" date="2026-10-26">
+
+  <goal>
+    Il modulo Migrazioni importa le note del QNet legacy di ogni modulo in un'unica sorgente qnet-2 `notes`, tramite
+    un nuovo endpoint legacy `GET /api/v2/migration/notes`, idempotente per `old_id`. Nasce dalla spec contenitore
+    0295 (parte note); gli allegati restano li'.
+  </goal>
+
+  <context>
+    Verificato sul codice e sui dati reali il 2026-10-26 (richiesta utente: "import di tutte le note per ogni modulo
+    [...] un'unica /migration per queste note").
+
+    Legacy: non esiste una tabella note. Le note sono righe di `activity_log` (Spatie) con `log_name` scelto
+    dall'utente: `Note`, `Call`, `Appointment` (111.826 righe; gli altri log_name sono log di sistema). Soggetti:
+    commesse (`order` / `App\Models\Order`, ~94k), opportunita' (`opportunity` / `App\Models\Opportunity`, ~6k), task
+    (`task` / `App\Models\Task`, ~2.5k), aziende (`App\Models\Company`, 566), RDA (`App\Models\Rda`, 33), contatti
+    (`App\Models\Contact`, 3), lead (`App\Models\Lead`, `App\Models\RawLead`, 28). Le offerte (`Quotation`) non hanno
+    note. Le risposte sono activity con soggetto un'altra activity (`Spatie\Activitylog\Models\Activity`, ~11.5k,
+    anche annidate) oppure, per i task dal 2026-02, `parent_id` sullo stesso soggetto; ~140 rispondono a un log di
+    sistema (cambio stato, documento), 25 a un'activity inesistente. Menzioni: span Quill
+    `span.mention[data-id][data-value]` nel testo + `properties.attributes.user`. 236 autori non piu' in `users`;
+    1.205 note su record inesistenti (cancellati). Corpo HTML Quill (alcune note in testo semplice), 303 con immagini
+    inline `data:`, 3.299 modificate dopo la creazione (`updated_at > created_at`).
+
+    qnet-2: `notes` polimorfica (spec 0052/0128) su Opportunita', Task, Commesse, Richieste proforma: thread a un
+    livello (`parent_id` = radice), corpo rich text sanificato con menzioni
+    `span[data-type=mention][data-id][data-label]`, `note_mentions`, `edited_at`, immagini inline come allegati
+    `rich_text` della nota. Anagrafiche, Referenti e RDA non hanno un thread note.
+
+    Decisioni (utente 2026-10-26 + backend.md section 9):
+    D-1 Tipi importati: `Note`, `Call`, `Appointment`. Esclusi i log `Email` (mail inviate, registrazione automatica)
+        e tutti i log di sistema. Chiamata e appuntamento arrivano con un paragrafo d'intestazione composto dal legacy
+        ("Chiamata" / "Appuntamento" in grassetto) prima del testo.
+    D-2 Risposte appiattite (qnet-2 ammette un livello): il legacy risale la catena fino alla radice e manda
+        `parent_id` = id legacy della nota radice e il soggetto della radice. Una risposta a un log di sistema
+        diventa nota radice sul soggetto del log, col testo del log citato in testa (`blockquote`, composto dal
+        legacy). Risposta a un'activity inesistente o su un modulo non migrabile -> orphan (spec 0303).
+    D-3 Legacy: corpo sempre HTML (testo semplice -> paragrafi escapati); menzioni Quill convertite nel nodo qnet-2
+        con l'id utente legacy (`data-id`) e il nome (`data-label`), quelle di utenti inesistenti diventano testo
+        "@Nome"; autore cancellato -> `LegacyPlaceholderUser::ID` (come le commesse); `edited_at` = `updated_at`
+        quando successivo a `created_at`; soggetto inesistente -> orphan; lead e raw lead -> orphan (moduli non
+        migrati). Ordine per id: la radice precede sempre le sue risposte.
+    D-4 qnet-2: lookup `old_id` del soggetto (tipo nel vocabolario qnet-2, allow-list `NOTABLE_TYPES`) e dell'autore
+        -> se mancano riga fallita; risposta: la nota radice va cercata per `old_id` e la risposta eredita il suo
+        soggetto, radice non migrata -> riga fallita; menzione di un utente non migrato -> testo con warning; corpo
+        sanificato e immagini inline salvate come allegati della nota (NoteBodyProcessor, regole 0128; un corpo
+        oltre i limiti fallisce col motivo); `note_mentions` dalle menzioni del corpo; scrittura senza log ne'
+        notifiche; timestamp legacy.
+    D-5 Tipi soggetto del contratto: `work_order`, `opportunity`, `task`, `registry`, `purchase_request`,
+        `referent`. qnet-2 accetta per ora `work_order`, `opportunity`, `task`; gli altri falliscono con
+        "Notes on {type} are not supported yet" finche' il thread note non esiste su quei moduli (sotto-task B,
+        decisione utente: aggiungere il thread note ad Anagrafiche e RDA). Una riga fallita non ha `old_id`: un
+        rilancio dopo B le importa.
+    D-6 `old_id` su `notes`. `MigrationOrder`: nuova fase finale dopo `collections`. Dipendenze: required `users`,
+        `work-orders`; optional `opportunities`, `tasks`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Legacy: `NoteMigrationController` + helper `LegacyNoteBody`, route `GET /api/v2/migration/notes`.</item>
+      <item>qnet-2: migrazione `add_old_id_to_notes_table`, `NotesSource`, config, ordine, test, i18n
+        (sorgente + requisiti), guida in-app Migrazioni, manuale.</item>
+    </in>
+    <out>
+      <item>Sotto-task B: thread note su Anagrafiche e RDA (spec dedicata), poi abilitazione di `registry` e
+        `purchase_request` in `NotesSource::NOTABLE_TYPES`. Contatti (3 note): da decidere nella spec di B.</item>
+      <item>Log `Email`, log di sistema, allegati (spec 0295), note di lead. Aggiornamento delle note gia' migrate.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="(legacy) /api/v2/migration/notes">
+      <request>Query `search` (sul testo), `offset`, `limit` 1-100. Ordine id; gli orphan dopo i record.</request>
+      <response status="200">
+        { items: [Note | Orphan], export_link: null, pagination }
+        Note = { id: int, subject_type: "work_order"|"opportunity"|"task"|"registry"|"purchase_request"|"referent",
+          subject_id: int, parent_id: ?int, kind: "note"|"call"|"appointment", body: string (HTML),
+          author_user_id: int, warnings: string[], edited_at: ?datetime, created_at: datetime,
+          updated_at: ?datetime }
+        Orphan = { id: "activity_log:{id}", orphan_reason: string, warnings: [] } (spec 0303)
+        Menzione nel body: &lt;span data-type="mention" data-id="{legacy user id}" data-label="{Nome}"&gt;@{Nome}&lt;/span&gt;
+      </response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Una nota radice su commessa, opportunita' o task nasce con `old_id`, soggetto, autore,
+      corpo sanificato, `edited_at` e timestamp legacy, senza log ne' notifiche.</criterion>
+    <criterion id="AC-002">Una risposta si aggancia alla nota radice migrata e ne eredita il soggetto; radice non
+      migrata -> riga fallita.</criterion>
+    <criterion id="AC-003">Re-import -> saltato.</criterion>
+    <criterion id="AC-004">Soggetto o autore mancanti o non migrati -> riga fallita; tipo soggetto non ancora
+      supportato -> riga fallita col motivo (D-5).</criterion>
+    <criterion id="AC-005">Menzioni: utente migrato -> nodo con l'id qnet-2 e riga in `note_mentions`; utente non
+      migrato -> testo "@Nome" con warning.</criterion>
+    <criterion id="AC-006">Immagine inline `data:` -> allegato `rich_text` della nota referenziato nel corpo.</criterion>
+    <criterion id="AC-007">Registro: `notes` nella fase finale, con le dipendenze di D-6.</criterion>
+  </acceptance_criteria>
+</spec>

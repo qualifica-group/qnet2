@@ -21,9 +21,9 @@ use Illuminate\Support\Facades\Schema;
  * attaches it for the same actors), so the frontend can toggle them on
  * demand. A definition that needs different semantics (e.g. the roles table,
  * which keeps `id` non-filterable) declares its own column, which wins — this
- * is a default, not a mandate. The raw `columns()` catalogue (used by
- * export/migration) is left untouched: the defaults are a grid/preferences
- * concern only.
+ * is a default, not a mandate. The raw `columns()` catalogue is left
+ * untouched: the defaults reach the grid, the preferences and the export
+ * allow-lists through `defaultColumnLayout()`.
  */
 trait InjectsDefaultIdColumn
 {

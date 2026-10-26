@@ -50,6 +50,7 @@ export const migrations = {
     'proforma-requests': 'Richieste proforma',
     invoices: 'Fatture attive',
     collections: 'Incassi',
+    notes: 'Note',
   },
   state: {
     notMigrated: 'Non migrata',

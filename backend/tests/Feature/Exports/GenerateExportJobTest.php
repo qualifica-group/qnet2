@@ -1,5 +1,6 @@
 <?php
 
+use App\Authorization\LegacyIdVisibility;
 use App\Enums\ExportFormat;
 use App\Enums\ExportStatus;
 use App\Jobs\GenerateExportJob;
@@ -10,6 +11,7 @@ use App\Services\ExportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use OpenSpout\Reader\XLSX\Reader as XlsxReader;
+use Spatie\Permission\Models\Permission;
 use Tests\Stubs\StubExportTableDefinition;
 
 uses(RefreshDatabase::class);
@@ -66,6 +68,33 @@ it('writes ONLY the requested columns, in the requested order, with the requeste
         ->and($rows[1])->toBe(['Yes', 'Sales']) // sorted asc by name
         ->and($rows[2])->toBe(['No', 'Support']);
 });
+
+it('writes the legacy old_id the grid shows, only for an actor who may see it', function (bool $mayViewLegacyId, string $expected) {
+    config(['tables.definitions' => ['stub-exports' => StubExportTableDefinition::class]]);
+    Storage::fake('local');
+
+    $actor = User::factory()->create();
+    if ($mayViewLegacyId) {
+        $actor->givePermissionTo(Permission::findOrCreate(LegacyIdVisibility::PERMISSION));
+    }
+    BusinessFunction::factory()->create(['name' => 'Sales'])->forceFill(['old_id' => 4321])->save();
+
+    $run = ExportRun::factory()->create([
+        'user_id' => $actor->id,
+        'resource' => 'stub-exports',
+        'format' => ExportFormat::Csv,
+        'state' => ['columns' => [['colId' => 'old_id', 'header' => 'Old ID'], ['colId' => 'name', 'header' => 'Name']]],
+    ]);
+
+    runGenerateExportJob($run);
+
+    $rows = csvRows(Storage::disk('local')->get($run->fresh()->file_path));
+
+    expect($rows[1])->toBe([$expected, 'Sales']);
+})->with([
+    'with legacy-ids.view' => [true, '4321'],
+    'without legacy-ids.view' => [false, ''],
+]);
 
 it('respects filterModel + global search identical to the grid', function () {
     config(['tables.definitions' => ['stub-exports' => StubExportTableDefinition::class]]);

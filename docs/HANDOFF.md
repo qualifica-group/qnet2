@@ -3,6 +3,52 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Migrazione note legacy, sorgente unica `notes` (spec 0311) — VERDE, NON COMMITTATO (2026-10-26)
+
+- Richiesta utente: "import di tutte le note per ogni modulo [...] un'unica /migration". Legacy: le note sono righe
+  `activity_log` con `log_name` Note/Call/Appointment (111.826); `Email` e log di sistema esclusi (decisione utente).
+- **Legacy** (`../qnet`, non committato, git soggetto a §3.6): `NoteMigrationController` + `LegacyNoteBody`, route
+  `GET /api/v2/migration/notes` spostata con tutto il blocco "Migration domain" in `routes/apiV2-migration.php`
+  (richiesto da `apiV2.php`, che aveva gia' superato le 500 righe). Risposte appiattite sulla radice (catene
+  Activity->Activity e `parent_id`), risposta a log di sistema -> nota radice con `blockquote` del log; tre formati
+  di menzione (Quill, badge v1 `data-mention-id`, badge v2) -> nodo qnet-2 con id utente legacy; autore cancellato
+  -> `LegacyPlaceholderUser::ID`; soggetto cancellato, risposta orfana, lead -> orphan (spec 0303).
+  Scansione completa sui dati reali (1.119 pagine, 1-1,7 s a pagina): 110.518 note (commesse 102.282, opportunita'
+  5.721, task 1.955, anagrafiche 525, RDA 33, referenti 2), di cui 11.298 risposte e 186 risposte a log di sistema;
+  1.308 orphan (1.253 su record cancellati, 26 risposte orfane, 28 lead); warning: 430 menzioni di utenti
+  inesistenti, 234 autori cancellati; nessun markup di menzione legacy residuo.
+- **qnet-2**: `old_id` su `notes` (migrazione `2026_11_03_100000`, NON ancora eseguita su qnet2 dev), `NotesSource`
+  (fase 18, dopo `collections`; required users/work-orders, optional opportunities/tasks), allow-list
+  `NOTABLE_TYPES` = work_order/opportunity/task. `registry`/`purchase_request`/`referent` falliscono "not
+  supported yet" -> **sotto-task B** (decisione utente): thread note su Anagrafiche e RDA con spec dedicata, poi
+  aggiungerli a `NOTABLE_TYPES` e rilanciare la sorgente (le righe fallite non hanno old_id).
+- Test: `NotesSourceImportTest` (13), registri sorgenti aggiornati (REQUIREMENT CHANGED 0311), OldIdSchemaTest.
+  Migration+Notes+RichText 731/731 con `EXTERNAL_MIGRATION_USERS_LINK_ONLY=false`: col `.env` locale (`true`) 7 test
+  utenti/disponibilita' falliscono gia' prima di questa modifica. FE: vitest help/migrations/i18n 415/415, ESLint,
+  `tsc -b --force` puliti. Pint pulito.
+- Manuale: guida in-app Migrazioni IT/EN (nuova sezione `notes`, frasi task/commesse), i18n sorgente + requisiti,
+  manuale Claude Docs (paragrafo sorgente Note + frase Task).
+
+## Export tabelle AG Grid: colonne id/old_id e enum (Prodotti) — VERDE, NON COMMITTATO (2026-10-26)
+
+- Bug 1 (Offerte, Opportunita', ogni tabella): la griglia riceve le colonne di default `id`/`old_id`
+  (`InjectsDefaultIdColumn`), ma `CreateExportRequest` validava contro `columns()` grezzo -> 422 su `columns.N.colId`
+  appena l'utente le mostra. Ora l'allow-list e' `array_keys(defaultColumnLayout())`, lo stesso di
+  `TablePreferencesRequest` (include anche i custom field). `old_id` resta solo a chi ha `legacy-ids.view`.
+- Il file valorizza `old_id`: nuovo `LegacyIdVisibility::attachToRow()`, condiviso da `TableService` (righe griglia)
+  e `ExportService` (prima solo la griglia lo aggiungeva).
+- Bug 2 (Prodotti): `mapRow` restituisce l'enum `ProductType` -> 500 nel formatter. `ExportValueFormatter` esporta
+  un enum con `HasMeta` come `label()` (come il badge), altrimenti come value/name.
+- Verifica su TUTTE le 84 tabelle del registry (script tinker in scratchpad, super-admin, tutte le colonne di
+  `/tables/{d}/columns` + sort, max 30 righe, run cancellati a fine prova): 84/84 completed.
+- Test: ExportStoreTest (old_id 201 con permesso, 422 senza), GenerateExportJobTest (old_id scritto solo con
+  permesso), ExportValueFormatterTest (enum con/senza label). Exports 61/61, Pint pulito.
+- Suite completa: 12428 passati, 15 rossi tutti fuori area export e gia' rossi o di ambiente: TableBulkDeleteTest e
+  SupplierCommissionDirectionTest rossi anche col backend a HEAD; QuoteDocumentPdfTest = LibreOffice assente;
+  Migration*/UsersSource*/rollback = area con modifiche locali non committate (migrazione note, spec 0311);
+  GeoLookupTest verde da solo (flaky in parallelo).
+- Manuale: nessun impatto.
+
 ## Export tabelle AG Grid: fix 422 e stato griglia congelato — VERDE, COMMITTATO (2026-10-26)
 
 - Bug: nessun export partiva (0 `ExportRun` nel DB). `buildExportGridState` escludeva solo la colonna azioni: sulle

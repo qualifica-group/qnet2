@@ -13,6 +13,7 @@ use App\Migrations\Sources\DocumentBundlesSource;
 use App\Migrations\Sources\EmailTemplatesSource;
 use App\Migrations\Sources\FinancialAccountsSource;
 use App\Migrations\Sources\InvoicesSource;
+use App\Migrations\Sources\NotesSource;
 use App\Migrations\Sources\OperationalSitesSource;
 use App\Migrations\Sources\OpportunitiesSource;
 use App\Migrations\Sources\PaymentMethodsSource;
@@ -146,6 +147,8 @@ return [
         'invoices' => InvoicesSource::class,
         // spec 0302: every legacy collection, recorded where still missing.
         'collections' => CollectionsSource::class,
+        // spec 0311: the notes of every legacy module, after the records they belong to.
+        'notes' => NotesSource::class,
     ],
 
 ];

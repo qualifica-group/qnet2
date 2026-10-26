@@ -15,8 +15,10 @@
     - RDA (spec 0294 D-4): `rda_document`, 328 file, 233 di testata (`rda_id`, `rda_detail_id` null) e 95 di riga
       (`rda_detail_id`); campi `document` (path sullo storage legacy), `name`, `title`. In qnet-2 `PurchaseRequest`
       e `PurchaseRequestLine` usano `HasAttachments`; entrambe hanno `old_id` (spec 0294 D-7).
-    - Commesse (spec 0189): note e documenti esclusi.
-    - Task (spec 0289 D-2): note (activity_log legacy) e documenti `task_documents` esclusi.
+    - Commesse (spec 0189): documenti esclusi.
+    - Task (spec 0289 D-2): documenti `task_documents` esclusi.
+
+    Le note di tutti i moduli sono uscite da questa spec (2026-10-26): sorgente unica `notes`, spec 0311.
   </context>
 
   <scope>

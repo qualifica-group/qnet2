@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Authorization\LegacyIdVisibility;
 use App\Enums\ExportFormat;
 use App\Enums\ExportStatus;
 use App\Exports\ExportValueFormatter;
@@ -133,7 +134,7 @@ class ExportService
             }
 
             /** @var Model $model */
-            $mapped = $definition->mapRow($actor, $model);
+            $mapped = LegacyIdVisibility::attachToRow($definition->mapRow($actor, $model), $model, $actor);
             $writer->writeRow($this->formatRow($mapped, $columns, $columnTypes));
             $rowCount++;
         }

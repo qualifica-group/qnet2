@@ -128,6 +128,10 @@ final class MigrationOrder
         // Phase 17 — spec 0302: the legacy collections, recorded on the
         // installments of the phase 16 documents where still missing.
         ['collections'],
+
+        // Phase 18 — spec 0311: the notes of every legacy module (work orders,
+        // opportunities, tasks), last so every record they belong to exists.
+        ['notes'],
     ];
 
     /**

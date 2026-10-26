@@ -1,5 +1,6 @@
 <?php
 
+use App\Authorization\LegacyIdVisibility;
 use App\Http\Requests\Table\TableRowsRequest;
 use App\Jobs\GenerateExportJob;
 use App\Models\BusinessFunction;
@@ -153,6 +154,28 @@ it('422 when a column colId is not in the definition allow-list', function () {
 
     $this->postJson('/api/exports/stub-exports', exportPayload([
         'columns' => [['colId' => 'not-a-real-column', 'header' => 'X']],
+    ]))->assertStatus(422)->assertJsonValidationErrors('columns.0.colId');
+});
+
+it('201 accepts the default old_id column the grid shows to an actor who may see the legacy id', function () {
+    registerStubExportDomain();
+    Queue::fake();
+    $actor = stubExportActorWith(['export']);
+    $actor->givePermissionTo(Permission::findOrCreate(LegacyIdVisibility::PERMISSION));
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/exports/stub-exports', exportPayload([
+        'columns' => [['colId' => 'old_id', 'header' => 'Old ID'], ['colId' => 'name', 'header' => 'Name']],
+    ]))->assertCreated();
+});
+
+it('422 on the old_id column for an actor who may not see the legacy id', function () {
+    registerStubExportDomain();
+    $actor = stubExportActorWith(['export']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/exports/stub-exports', exportPayload([
+        'columns' => [['colId' => 'old_id', 'header' => 'Old ID']],
     ]))->assertStatus(422)->assertJsonValidationErrors('columns.0.colId');
 });
 

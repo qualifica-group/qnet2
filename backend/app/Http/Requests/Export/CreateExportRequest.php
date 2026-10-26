@@ -144,14 +144,18 @@ class CreateExportRequest extends FormRequest
     }
 
     /**
-     * Every declared column id (the allow-list for `columns[].colId` — every
-     * VISIBLE-or-not column may be exported, unlike sortable/filterable).
+     * Every column the grid can show (the allow-list for `columns[].colId` —
+     * every VISIBLE-or-not column may be exported, unlike sortable/filterable).
+     * The grid catalogue, not the raw `columns()`: it adds the default `id` and
+     * `old_id` columns (InjectsDefaultIdColumn) and the custom fields, and a
+     * user who shows one of them must be able to export it. Same allow-list as
+     * TablePreferencesRequest.
      *
      * @return array<int, string>
      */
     private function columnIds(TableDefinition $definition): array
     {
-        return array_column($definition->columns(), 'id');
+        return array_keys($definition->defaultColumnLayout());
     }
 
     /**

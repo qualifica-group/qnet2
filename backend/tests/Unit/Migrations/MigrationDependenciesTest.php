@@ -40,7 +40,8 @@ it('phaseOf gives the 1-based phase, or null for a source outside the order', fu
         ->and(MigrationOrder::phaseOf('purchase-orders'))->toBe(14)
         ->and(MigrationOrder::phaseOf('purchase-invoices'))->toBe(15)
         ->and(MigrationOrder::phaseOf('invoices'))->toBe(16)
-        // REQUIREMENT CHANGED (spec 0302): `collections` is the new last phase, after `invoices`.
-        ->and(MigrationOrder::phaseOf('collections'))->toBe(count(MigrationOrder::phases()))
+        ->and(MigrationOrder::phaseOf('collections'))->toBe(17)
+        // REQUIREMENT CHANGED (spec 0311): `notes` is the new last phase, after `collections`.
+        ->and(MigrationOrder::phaseOf('notes'))->toBe(count(MigrationOrder::phases()))
         ->and(MigrationOrder::phaseOf('unknown-source'))->toBeNull();
 });
