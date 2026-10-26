@@ -25,6 +25,8 @@
         autenticato (ADR 0011, emendamento 2026-07-31).
     D-5 Nessuna riga nella matrice dei permessi di campo: i dati contrattuali dell'utente restano nascosti dalle
         righe del ruolo base (spec 0283 D-3).
+    D-6 (utente 2026-10-26, REQUIREMENT CHANGED rispetto a D-1) Anche Martina Mosca riceve il ruolo nel seed di
+        produzione, in aggiunta alla sua mansione `coordinatore-commerciale` (che resta): sei persone elencate.
   </context>
 
   <scope>
@@ -44,7 +46,7 @@
     <criterion id="AC-001">Il ruolo ha ogni permesso di `registries`, `referents`, `opportunities`, `quotes`,
       `work-orders`, piu' `product-categories.viewAny` e `operational-sites.viewAny`, e nient'altro di quei
       moduli di supporto (`.view`, scritture) ne' di Tipi referente, Societa', Configuratore Stati Offerta.</criterion>
-    <criterion id="AC-002">Il seeder aggiunge il ruolo alle cinque persone con un account, sopra il ruolo che hanno;
+    <criterion id="AC-002">Il seeder aggiunge il ruolo alle sei persone elencate con un account (D-6), sopra il ruolo che hanno;
       un'email senza account viene saltata con un warning; rieseguito converge.</criterion>
     <criterion id="AC-003">Con il ruolo base + il nuovo ruolo la navigazione mostra Anagrafiche, Referenti,
       Opportunita', Offerte e Commesse, e non Tipi referente, Societa', Sedi operative, Configuratore Stati

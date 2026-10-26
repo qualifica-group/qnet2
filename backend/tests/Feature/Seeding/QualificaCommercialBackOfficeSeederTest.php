@@ -66,6 +66,17 @@ it('0299 AC-002: adds the role to the listed people on top of their own and skip
     }
 });
 
+it('0299 D-6: gives Martina Mosca the role on top of her coordinator mansione', function () {
+    $this->seed(QualificaRoleSeeder::class);
+    $mosca = User::factory()->create(['email' => 'martina.mosca@qualificagroup.com']);
+    $mosca->assignRole(OperatorRoleCatalogue::COORDINATOR_ROLE);
+
+    $this->seed(QualificaCommercialBackOfficeSeeder::class);
+
+    expect($mosca->fresh()->getRoleNames()->sort()->values()->all())
+        ->toBe([CommercialBackOfficeRoleCatalogue::ROLE, OperatorRoleCatalogue::COORDINATOR_ROLE]);
+});
+
 it('0299 AC-003: shows the five modules in the menu next to Task, Segnatempo and Assenze, nothing else', function () {
     $this->seed(QualificaRoleSeeder::class);
 

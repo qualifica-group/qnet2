@@ -77,7 +77,7 @@ use Illuminate\Database\Seeder;
  *                                    on top of the role of step 6 or 7.
  *      QualificaCommercialBackOfficeSeeder — the "Back Office Commerciale"
  *                                    role (spec 0299), added the same way to
- *                                    five listed people of the staff.
+ *                                    six listed people (spec 0299 D-6).
  *      QualificaStockKeeperSeeder  — the "Gestione Dotazioni" role (spec
  *                                    0307), added to one listed person.
  *   8. QualificaReportsToSeeder    — who each operator reports to ("Risponde

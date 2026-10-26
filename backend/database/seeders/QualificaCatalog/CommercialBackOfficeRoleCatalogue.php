@@ -42,7 +42,8 @@ final class CommercialBackOfficeRoleCatalogue
 
     /**
      * Listed by name (D-1): the org-chart function and job role they share
-     * hold other people too.
+     * hold other people too. Martina Mosca joined on top of her coordinator
+     * mansione (D-6).
      *
      * @var array<int, string>
      */
@@ -52,5 +53,6 @@ final class CommercialBackOfficeRoleCatalogue
         'caterina.maduni@qualificagroup.com',
         'alessia.luongo@qualificagroup.com',
         'lia.palladino@qualificagroup.com',
+        'martina.mosca@qualificagroup.com',
     ];
 }

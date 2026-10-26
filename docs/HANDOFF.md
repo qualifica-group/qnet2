@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Martina Mosca nel ruolo Back Office Commerciale (spec 0299 D-6) — VERDE, COMMITTATO (2026-10-26)
+
+- `CommercialBackOfficeRoleCatalogue::USERS` + `martina.mosca@qualificagroup.com`: nel seed di produzione
+  (`QualificaCommercialBackOfficeSeeder`, step 7 di `QualificaProductionDataSeeder`) riceve `back-office-commerciale`
+  in aggiunta a `coordinatore-commerciale`, che resta. Spec 0299: D-6 (REQUIREMENT CHANGED rispetto a D-1), AC-002 a
+  sei persone. Test `0299 D-6` in `QualificaCommercialBackOfficeSeederTest`; Seeding 189/189, Pint pulito.
+- Solo seed: su qnet2 il ruolo NON e' stato assegnato (lo assegna il seeder o la pagina Utenti).
+- Manuale: nessun impatto.
+
 ## Settori: "codice — nome" in tutti i select — VERDE, NON COMMITTATO (2026-10-26)
 
 - Richiesta utente: "sui select dei settori voglio anche il codice oltre al nome, in tutti i select". Supera la AC-002
