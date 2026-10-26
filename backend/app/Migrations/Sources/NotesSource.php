@@ -13,6 +13,9 @@ use App\Migrations\Sources\Concerns\RequiresLegacyAnchors;
 use App\Migrations\Support\ExternalApiClient;
 use App\Models\Note;
 use App\Models\Opportunity;
+use App\Models\PurchaseRequest;
+use App\Models\Referent;
+use App\Models\Registry;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\WorkOrder;
@@ -36,8 +39,8 @@ class NotesSource extends AbstractMigrationSource
     use MapsLegacyOperationalRecord, RequiresLegacyAnchors;
 
     /**
-     * Contract subject types with a notes thread in qnet-2 (D-5): `registry`,
-     * `purchase_request` and `referent` fail until their module gets one.
+     * Contract subject types with a notes thread in qnet-2 (D-5; anagrafiche,
+     * referenti and RDA since spec 0312 D-6). Any other type fails the row.
      *
      * @var array<string, class-string<Model>>
      */
@@ -45,6 +48,9 @@ class NotesSource extends AbstractMigrationSource
         'work_order' => WorkOrder::class,
         'opportunity' => Opportunity::class,
         'task' => Task::class,
+        'registry' => Registry::class,
+        'referent' => Referent::class,
+        'purchase_request' => PurchaseRequest::class,
     ];
 
     private const string BODY_FIELD = 'body';
@@ -81,6 +87,9 @@ class NotesSource extends AbstractMigrationSource
             MigrationDependency::required('work-orders'),
             MigrationDependency::optional('opportunities'),
             MigrationDependency::optional('tasks'),
+            MigrationDependency::optional('registries'),
+            MigrationDependency::optional('referents'),
+            MigrationDependency::optional('purchase-requests'),
         ];
     }
 
@@ -184,7 +193,7 @@ class NotesSource extends AbstractMigrationSource
 
         $subjectType = (string) ($record['subject_type'] ?? '');
         $notableClass = self::NOTABLE_TYPES[$subjectType]
-            ?? throw new RuntimeException("Notes on {$subjectType} are not supported yet; the record is not imported.");
+            ?? throw new RuntimeException("Notes on {$subjectType} are not supported; the record is not imported.");
 
         $note->notable()->associate($notableClass::query()->findOrFail(
             $this->requiredOldId($notableClass, $record['subject_id'] ?? null, "Subject {$subjectType}")

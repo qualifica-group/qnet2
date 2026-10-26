@@ -241,6 +241,15 @@ final class RegistryColumnCatalog
                 'count_field' => 'documents_count',
             ],
             [
+                'key' => 'notes',
+                'label' => 'actions.notes',
+                'icon' => 'messages-square',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'registries.view',
+                'count_field' => 'notes_count',
+            ],
+            [
                 'key' => 'delete',
                 'label' => 'actions.delete',
                 'icon' => 'trash',

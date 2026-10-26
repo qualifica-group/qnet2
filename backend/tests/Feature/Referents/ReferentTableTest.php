@@ -104,7 +104,8 @@ it('rows expose referent_type/contact_scope/primary_contact and per-row actions,
     expect($row)->not->toBeNull()
         ->and($row['referent_type'])->toMatchArray(['id' => $type->id, 'name' => 'Commercial'])
         ->and($row['contact_scope'])->toBe('external')
-        ->and($row['actions'])->toEqualCanonicalizing(['view', 'delete'])
+        // REQUIREMENT CHANGED (spec 0312): `notes` follows `view`.
+        ->and($row['actions'])->toEqualCanonicalizing(['view', 'notes', 'delete'])
         ->and($row)->not->toHaveKey('tax_code');
 
     // primary_contact is the array of ALL primary contacts (one per type),

@@ -130,7 +130,8 @@ final class MigrationOrder
         ['collections'],
 
         // Phase 18 — spec 0311: the notes of every legacy module (work orders,
-        // opportunities, tasks), last so every record they belong to exists.
+        // opportunities, tasks; registries, referents and purchase requests
+        // since spec 0312), last so every record they belong to exists.
         ['notes'],
     ];
 

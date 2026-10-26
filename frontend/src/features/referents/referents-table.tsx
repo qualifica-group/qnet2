@@ -1,18 +1,20 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
-import { Plus } from 'lucide-react'
+import { MessagesSquare, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
+import { NotesDialog } from '@/features/notes/notes-dialog'
 import { ModuleStatsPanel } from '@/features/stats/module-stats-panel'
 import { StatsToggleButton } from '@/features/stats/stats-toggle-button'
 import { useStatsPanel } from '@/features/stats/use-stats-panel'
 import { useInvalidateModuleStats } from '@/features/stats/use-invalidate-module-stats'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
+import type { ActionIconMap } from '@/features/table/action-icon-map'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { referentColumnRenderers } from '@/features/referents/column-renderers'
@@ -20,6 +22,9 @@ import { deleteReferent } from '@/features/referents/api'
 
 /** Domain key used to mount the generic table for referents. */
 const REFERENTS_DOMAIN = 'referents'
+
+/** Icon of the `notes` row action (spec 0312), absent from the shared defaults. */
+const REFERENTS_ACTION_ICONS: ActionIconMap = { 'messages-square': MessagesSquare }
 
 /**
  * Thin Referents adapter over the generic table. It mounts `<TableView>` with
@@ -30,7 +35,7 @@ const REFERENTS_DOMAIN = 'referents'
  * generic table still owns the delete flow (confirm + toast + grid refresh)
  * and the SSRM grid refresh after every mutation via the table's imperative
  * handle. Permission gating is an affordance only; the backend re-authorizes
- * each call.
+ * each call. The `notes` row action (spec 0312) opens the shared `NotesDialog`.
  */
 export function ReferentsTable() {
   const { t } = useTranslation()
@@ -42,6 +47,7 @@ export function ReferentsTable() {
 
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
+  const [notesRowId, setNotesRowId] = useState<number | null>(null)
 
   // After a modal create/edit succeeds the Sheet closes itself; the grid and
   // the stats panel are this adapter's to refresh. The detail query is
@@ -85,6 +91,9 @@ export function ReferentsTable() {
         case 'activity':
           setActivityRow(row)
           break
+        case 'notes':
+          setNotesRowId(Number(row.id))
+          break
         default:
           break
       }
@@ -122,6 +131,7 @@ export function ReferentsTable() {
         renderers={referentColumnRenderers}
         onAction={handleAction}
         isBusy={isBusy}
+        iconMap={REFERENTS_ACTION_ICONS}
       />
 
       {sheet}
@@ -134,6 +144,14 @@ export function ReferentsTable() {
             setActivityRow(null)
           }
         }}
+      />
+
+      {/* Each note added or deleted refreshes the grid, so the row's `notes_count` badge follows. */}
+      <NotesDialog
+        entityType={REFERENTS_DOMAIN}
+        entityId={notesRowId}
+        onThreadChanged={refreshGrid}
+        onOpenChange={(open) => (open ? undefined : setNotesRowId(null))}
       />
     </div>
   )

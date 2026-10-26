@@ -64,6 +64,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'referent-notes',
+      title: 'Referent notes',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'In the right column of the detail there is the **Notes** tab, the first one: here you discuss the referent with your colleagues, mentioning them with **@** as in Opportunities. From the table you open the same notes with the row **Notes** action, which shows how many there are. The notes written in the old QNet come with the migration.',
+        },
+        {
+          type: 'tip',
+          text: 'The Notes tab and action appear to whoever can see the referent; writing a note also needs the permission to create notes. The notes differ from the **Notes** field, which stays a text of the record.',
+        },
+      ],
+    },
+    {
       id: 'supplier-registry',
       title: 'Supplier registry (agents)',
       blocks: [

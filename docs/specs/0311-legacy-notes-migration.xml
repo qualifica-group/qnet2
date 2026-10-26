@@ -48,10 +48,9 @@
         oltre i limiti fallisce col motivo); `note_mentions` dalle menzioni del corpo; scrittura senza log ne'
         notifiche; timestamp legacy.
     D-5 Tipi soggetto del contratto: `work_order`, `opportunity`, `task`, `registry`, `purchase_request`,
-        `referent`. qnet-2 accetta per ora `work_order`, `opportunity`, `task`; gli altri falliscono con
-        "Notes on {type} are not supported yet" finche' il thread note non esiste su quei moduli (sotto-task B,
-        decisione utente: aggiungere il thread note ad Anagrafiche e RDA). Una riga fallita non ha `old_id`: un
-        rilancio dopo B le importa.
+        `referent`. Tutti accettati da qnet-2 dalla spec 0312 (thread note su Anagrafiche, Referenti, RDA); un
+        tipo fuori contratto fallisce con "Notes on {type} are not supported". Una riga fallita non ha `old_id`:
+        un rilancio la importa.
     D-6 `old_id` su `notes`. `MigrationOrder`: nuova fase finale dopo `collections`. Dipendenze: required `users`,
         `work-orders`; optional `opportunities`, `tasks`.
   </context>
@@ -63,8 +62,7 @@
         (sorgente + requisiti), guida in-app Migrazioni, manuale.</item>
     </in>
     <out>
-      <item>Sotto-task B: thread note su Anagrafiche e RDA (spec dedicata), poi abilitazione di `registry` e
-        `purchase_request` in `NotesSource::NOTABLE_TYPES`. Contatti (3 note): da decidere nella spec di B.</item>
+      <item>Sotto-task B: thread note su Anagrafiche, Referenti e RDA, spec 0312 (che abilita i tre tipi).</item>
       <item>Log `Email`, log di sistema, allegati (spec 0295), note di lead. Aggiornamento delle note gia' migrate.</item>
     </out>
   </scope>

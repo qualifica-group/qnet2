@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Spatie\Activitylog\LogOptions;
 
 /**
@@ -61,6 +62,18 @@ class PurchaseRequest extends BaseModel
     public function isClosed(): bool
     {
         return $this->status === PurchaseRequestStatus::Closed;
+    }
+
+    /**
+     * The collaborative notes thread (spec 0312, D-4). Not `notes()`, the
+     * name HasNotes uses: this model already has a `notes` text column, which
+     * the relation would shadow.
+     *
+     * @return MorphMany<Note, $this>
+     */
+    public function noteThread(): MorphMany
+    {
+        return $this->morphMany(Note::class, 'notable');
     }
 
     /**

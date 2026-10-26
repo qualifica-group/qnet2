@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
-import { Paperclip, Plus } from 'lucide-react'
+import { MessagesSquare, Paperclip, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { FilterTabs } from '@/components/ui/filter-tabs'
@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { DocumentsDialog } from '@/features/attachments/documents-dialog'
+import { NotesDialog } from '@/features/notes/notes-dialog'
 import { ModuleStatsPanel } from '@/features/stats/module-stats-panel'
 import { StatsToggleButton } from '@/features/stats/stats-toggle-button'
 import { useStatsPanel } from '@/features/stats/use-stats-panel'
@@ -27,13 +28,15 @@ import { useRegistryTypeTab } from '@/features/registries/use-registry-type-tab'
 const REGISTRIES_DOMAIN = 'registries'
 
 /**
- * Domain icon override for the 'documents' row action (spec 0173): the backend
- * catalog fixes its icon key as 'paperclip', absent from the shared defaults
- * in `action-icon-map.ts`. Hoisted at module level so its identity stays
- * stable across renders, mirroring `OPPORTUNITIES_ACTION_ICONS`.
+ * Domain icon overrides for the 'documents' (spec 0173) and 'notes' (spec 0312)
+ * row actions: the backend catalog fixes their icon keys as 'paperclip' and
+ * 'messages-square', absent from the shared defaults in `action-icon-map.ts`.
+ * Hoisted at module level so its identity stays stable across renders,
+ * mirroring `OPPORTUNITIES_ACTION_ICONS`.
  */
 const REGISTRIES_ACTION_ICONS: ActionIconMap = {
   paperclip: Paperclip,
+  'messages-square': MessagesSquare,
 }
 
 /**
@@ -46,7 +49,8 @@ const REGISTRIES_ACTION_ICONS: ActionIconMap = {
  * and the SSRM grid refresh after every mutation via the table's imperative
  * handle. Permission gating is an affordance only; the backend re-authorizes
  * each call. The `documents` row action (spec 0173) opens the shared
- * `DocumentsDialog`, exactly like Opportunita'. The Tutte / Persone fisiche /
+ * `DocumentsDialog` and the `notes` one (spec 0312) the shared `NotesDialog`,
+ * exactly like Opportunita'. The Tutte / Persone fisiche /
  * Aziende tabs are a preset of the `registry_type` grid filter.
  */
 export function RegistriesTable() {
@@ -65,6 +69,7 @@ export function RegistriesTable() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
   const [documentsRowId, setDocumentsRowId] = useState<number | null>(null)
+  const [notesRowId, setNotesRowId] = useState<number | null>(null)
 
   // After a modal create/edit succeeds the Sheet closes itself; the grid and
   // the stats panel are this adapter's to refresh. The detail query is
@@ -110,6 +115,9 @@ export function RegistriesTable() {
           break
         case 'documents':
           setDocumentsRowId(Number(row.id))
+          break
+        case 'notes':
+          setNotesRowId(Number(row.id))
           break
         default:
           break
@@ -187,6 +195,14 @@ export function RegistriesTable() {
         resource={REGISTRY_ATTACHABLE_ALIAS}
         id={documentsRowId}
         onOpenChange={handleDocumentsOpenChange}
+      />
+
+      {/* Each note added or deleted refreshes the grid, so the row's `notes_count` badge follows. */}
+      <NotesDialog
+        entityType={REGISTRIES_DOMAIN}
+        entityId={notesRowId}
+        onThreadChanged={refreshGrid}
+        onOpenChange={(open) => (open ? undefined : setNotesRowId(null))}
       />
     </div>
   )

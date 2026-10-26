@@ -126,7 +126,7 @@ const guide: HelpGuide = {
       id: 'notes-and-documents',
       title: 'Note e documenti',
       blocks: [
-        { type: 'paragraph', text: 'Le note servono a discutere un record con i colleghi, per esempio in **Opportunità**, **Offerte**, **Commesse**, **Task** e **Gestione Richieste**. Si aprono dall’azione **Note** nella riga o dalla sezione **Note** della scheda.' },
+        { type: 'paragraph', text: 'Le note servono a discutere un record con i colleghi, per esempio in **Opportunità**, **Offerte**, **Commesse**, **Task**, **Gestione Richieste**, **Anagrafiche**, **Referenti** e **RDA**. Si aprono dall’azione **Note** nella riga o dalla sezione **Note** della scheda.' },
         { type: 'steps', items: ['Scrivi nel riquadro "Scrivi una nota, usa @ per menzionare un collega…".', 'Per coinvolgere un collega digita **@**, scegli il nome e conferma con **Tab** o **Invio**: riceverà una notifica.', 'Premi **Invia**.'] },
         { type: 'paragraph', text: 'Con **Rispondi** apri una risposta sotto la nota. Solo l’autore vede **Modifica nota** ed **Elimina nota**; una nota modificata riporta "(modificato)". Nelle **Opportunità** una nota può essere generale o legata a un’offerta: filtra con **Tutte le note**, **Note generali** o il nome dell’offerta.' },
         { type: 'warning', text: 'Eliminando una nota scompaiono anche le sue risposte.' },

@@ -16,6 +16,15 @@ import {
 } from '@/features/referents/referent-test-fixtures'
 import type { ReferentDetailWithPermissions } from '@/features/referents/types'
 
+// Spec 0312: the notes tab mounts the agnostic NotesSection, covered by `notes-section.test.tsx`.
+// REQUIREMENT CHANGED (spec 0312): the Notes tab panel is labelled "Notes" too, so the Notes
+// FIELD is addressed by its textbox role.
+vi.mock('@/features/notes/notes-section', () => ({
+  NotesSection: (props: { entityType: string; entityId: number }) => (
+    <div>{`notes-section:${props.entityType}:${props.entityId}`}</div>
+  ),
+}))
+
 /**
  * Spec 0216: the referente detail edits in place, one row at a time, custom
  * fields ("campi flessibili") and the anagraphic card included. Each save is
@@ -93,14 +102,14 @@ describe('ReferentDetailView — in-place editing (spec 0216)', () => {
     const client = renderDetail(referentFixture())
 
     fireEvent.click(pencilOf('Notes'))
-    fireEvent.change(screen.getByLabelText(/^Notes/), { target: { value: 'Updated note' } })
+    fireEvent.change(screen.getByRole('textbox', { name: /^Notes/ }), { target: { value: 'Updated note' } })
     confirmOpenRow('Save')
 
     await waitFor(() => expect(updateReferentMock).toHaveBeenCalledWith(7, { notes: 'Updated note' }))
     expect(client.getQueryData<ReferentDetailWithPermissions>(['referents', 'detail', 7])?.permissions).toEqual(
       saved.permissions,
     )
-    await waitFor(() => expect(screen.queryByLabelText(/^Notes/)).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByRole('textbox', { name: /^Notes/ })).not.toBeInTheDocument())
   })
 
   it('unlinks the user without touching any other field (spec 0090 AC-003)', async () => {
@@ -129,10 +138,10 @@ describe('ReferentDetailView — in-place editing (spec 0216)', () => {
     renderDetail(referentFixture())
 
     fireEvent.click(pencilOf('Notes'))
-    fireEvent.change(screen.getByLabelText(/^Notes/), { target: { value: 'Changed' } })
+    fireEvent.change(screen.getByRole('textbox', { name: /^Notes/ }), { target: { value: 'Changed' } })
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
 
-    expect(screen.queryByLabelText(/^Notes/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: /^Notes/ })).not.toBeInTheDocument()
     expect(screen.getByText('VIP sponsor')).toBeInTheDocument()
     expect(updateReferentMock).not.toHaveBeenCalled()
   })
@@ -149,7 +158,7 @@ describe('ReferentDetailView — in-place editing (spec 0216)', () => {
     renderDetail(referentFixture())
 
     fireEvent.click(pencilOf('Notes'))
-    fireEvent.change(screen.getByLabelText(/^Notes/), { target: { value: 'x' } })
+    fireEvent.change(screen.getByRole('textbox', { name: /^Notes/ }), { target: { value: 'x' } })
     confirmOpenRow('Save')
 
     expect(await screen.findByText('Notes too long.')).toBeInTheDocument()

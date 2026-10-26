@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { MessagesSquare } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Form } from '@/components/ui/form'
 import { RecordCanvas, RecordMeta, RecordSectionsGrid } from '@/components/detail/record-panel'
@@ -6,6 +7,7 @@ import { RecordBody } from '@/components/detail/record-body'
 import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
+import { NotesSection } from '@/features/notes/notes-section'
 import { PersonalDataRecordSections } from '@/features/personal-data/personal-data-record-cards'
 import { referentDetailQueryKey } from '@/features/referents/api'
 import { ReferentDetailHeader, ReferentStatsStrip } from '@/features/referents/referent-detail-header'
@@ -21,10 +23,35 @@ interface ReferentDetailViewProps {
 }
 
 /**
+ * The record's collaboration tabs (Notes | Activity), each gated by its OWN
+ * authorization source and absent entirely when unauthorized.
+ */
+function useReferentCollaborationTabs(referent: ReferentDetailWithPermissions): RecordCollaborationTab[] {
+  const { t } = useTranslation()
+  const tabs: RecordCollaborationTab[] = []
+
+  // The thread is readable exactly when the record is (ReferentNotable); the server re-authorizes it.
+  if (referent.permissions.resource.view) {
+    tabs.push({
+      value: 'notes',
+      label: t('notes.section.title'),
+      icon: <MessagesSquare className="size-3.5" aria-hidden="true" />,
+      content: <NotesSection entityType="referents" entityId={referent.id} showHeader={false} />,
+    })
+  }
+
+  if (referent.permissions.actions.view_activity) {
+    tabs.push(activityLogTab('referents', referent.id, t('activityLog.title')))
+  }
+
+  return tabs
+}
+
+/**
  * Detail of a single referente, rendered as an enterprise-CRM record — the
  * same `RecordBody` every detail uses: identity + KPI, then the sections and
- * "how to reach them" (contacts, addresses) in the record card, the activity
- * log in the side column, a metadata footer.
+ * "how to reach them" (contacts, addresses) in the record card, the notes
+ * thread (spec 0312) and the activity log in the side column, a metadata footer.
  *
  * There is no edit page (spec 0216): the sections' fields — custom fields
  * included — edit IN PLACE, one at a time (`RecordInlineField`, driven by
@@ -52,9 +79,7 @@ function ReferentDetailContent({ referent, onChanged }: ReferentDetailViewProps)
   const editor = useReferentInlineEdit(referent, onChanged)
   const createdAt = formatDateTime(referent.created_at)
   const card = referent.personal_data
-  const collaborationTabs: RecordCollaborationTab[] = referent.permissions.actions.view_activity
-    ? [activityLogTab('referents', referent.id, t('activityLog.title'))]
-    : []
+  const collaborationTabs = useReferentCollaborationTabs(referent)
 
   // A contact/address persisted on its own: refetch the record (its KPI strip
   // counts them) and tell the host.

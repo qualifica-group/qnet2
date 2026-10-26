@@ -131,12 +131,12 @@ const guide: HelpGuide = {
       id: 'notes',
       title: 'Note',
       blocks: [
-        { type: 'paragraph', text: 'La sorgente **Note** si importa per ultima e porta in un solo passaggio le note, le **chiamate** e gli **appuntamenti** scritti a mano nel legacy su **commesse**, **opportunità** e **task**. Servono già importati **Utenti** e **Commesse**; conviene avere prima anche **Opportunità** e **Task**.' },
+        { type: 'paragraph', text: 'La sorgente **Note** si importa per ultima e porta in un solo passaggio le note, le **chiamate** e gli **appuntamenti** scritti a mano nel legacy su **commesse**, **opportunità**, **task**, **anagrafiche**, **referenti** e **RDA**. Servono già importati **Utenti** e **Commesse**; conviene avere prima anche gli altri moduli.' },
         { type: 'list', items: [
           'Ogni nota arriva sul suo record con autore, data, testo, **menzioni** e immagini; una nota modificata nel legacy risulta modificata. Chiamate e appuntamenti hanno in testa la scritta **Chiamata** o **Appuntamento**.',
           'Le **risposte** si agganciano alla nota iniziale del loro thread, anche quando nel legacy rispondevano a un’altra risposta. Una risposta a una voce automatica (cambio stato, documento caricato) diventa una nota con quella voce citata in testa.',
           'Un autore cancellato nel legacy diventa **Utente legacy**; la menzione di un utente non importato resta come testo, con un avviso.',
-          'Una nota su un record non importato o cancellato nel legacy, con un autore non importato o in risposta a una nota non importata fallisce con il motivo. Le note di anagrafiche e RDA falliscono finché quei moduli non avranno le note: una nuova importazione le porterà.',
+          'Una nota su un record non importato o cancellato nel legacy, con un autore non importato o in risposta a una nota non importata fallisce con il motivo. Le note fallite perché il loro record non era ancora importato arrivano rilanciando la sorgente.',
         ] },
         { type: 'note', text: 'Non partono notifiche, nemmeno agli utenti menzionati, e non vengono scritte voci nel registro attività. Le email inviate e le voci automatiche del legacy non vengono importate.' },
       ],

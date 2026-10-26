@@ -70,7 +70,9 @@ class ReferentsTableDefinition extends AbstractTableDefinition
         // the linked user (spec 0090, D-3), so mapRow reads referent_type/
         // primary_contact/user entirely from memory — a fixed number of
         // queries regardless of row count.
-        return Referent::query()->with(['referentType', 'personalData.contacts', 'user']);
+        // `notes_count` feeds the `notes` action badge (spec 0312).
+        return Referent::query()->with(['referentType', 'personalData.contacts', 'user'])
+            ->withCount('noteThread as notes_count');
     }
 
     /**
@@ -134,6 +136,7 @@ class ReferentsTableDefinition extends AbstractTableDefinition
             'primary_contact' => $this->contactColumn->format($row->personalData?->contacts),
             'created_at' => $row->created_at,
             'user' => $row->user?->name,
+            'notes_count' => (int) ($row->notes_count ?? 0),
         ];
     }
 
@@ -146,8 +149,10 @@ class ReferentsTableDefinition extends AbstractTableDefinition
     {
         $allowed = [];
 
+        // The notes thread is readable exactly when the record is (ReferentNotable).
         if (Gate::forUser($actor)->allows('view', $row)) {
             $allowed[] = 'view';
+            $allowed[] = 'notes';
         }
 
         if (Gate::forUser($actor)->allows('delete', $row)) {

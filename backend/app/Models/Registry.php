@@ -6,6 +6,7 @@ use App\Enums\AgreementStatusEnum;
 use App\Enums\SizeClassEnum;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\HasAttachments;
+use App\Models\Concerns\HasNotes;
 use App\Models\Concerns\HasPersonalData;
 use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\RegistryFactory;
@@ -27,7 +28,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * managed as a supplier (no duplication).
  *
  * `HasAttachments` (spec 0173): the registry's documents, alias `registry` in
- * config/attachments.php (same identity as the global morph map).
+ * config/attachments.php (same identity as the global morph map). `HasNotes`
+ * (spec 0312): the collaborative notes thread.
  */
 #[Fillable([
     'name',
@@ -47,7 +49,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Registry extends BaseModel
 {
     /** @use HasFactory<RegistryFactory> */
-    use HasAttachments, HasFactory, HasPersonalData, LogsModelActivity;
+    use HasAttachments, HasFactory, HasNotes, HasPersonalData, LogsModelActivity;
 
     /**
      * @return array<string, string>

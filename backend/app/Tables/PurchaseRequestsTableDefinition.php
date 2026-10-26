@@ -87,7 +87,7 @@ class PurchaseRequestsTableDefinition extends AbstractTableDefinition
             'createdBy:id,name',
             'lines:id,purchase_request_id,status,supplier_id',
             'lines.supplier:id,name',
-        ]);
+        ])->withCount('noteThread as notes_count');
 
         return PurchaseRequestVisibilityScope::scopeToActor($query, Auth::user());
     }
@@ -162,6 +162,7 @@ class PurchaseRequestsTableDefinition extends AbstractTableDefinition
             'grand_total' => $row->grand_total,
             'status' => $row->status->value,
             'line_status_counts' => $row->lineStatusCounts(),
+            'notes_count' => (int) ($row->notes_count ?? 0),
             'abilities' => [
                 'update' => ! $row->isClosed() && $gate->allows('update', $row),
                 'delete' => $gate->allows('delete', $row),
@@ -180,7 +181,8 @@ class PurchaseRequestsTableDefinition extends AbstractTableDefinition
         $allowed = [];
 
         // Action key => policy ability. No `update`: the record edits in place from `view` (spec 0256).
-        $abilities = ['view' => 'view', 'notify_manager' => 'notifyManager', 'close' => 'close', 'delete' => 'delete', 'activity' => 'viewActivity'];
+        // `notes` is readable exactly when the record is (PurchaseRequestNotable).
+        $abilities = ['view' => 'view', 'notes' => 'view', 'notify_manager' => 'notifyManager', 'close' => 'close', 'delete' => 'delete', 'activity' => 'viewActivity'];
         $openOnly = ['notify_manager', 'close'];
 
         foreach ($abilities as $key => $ability) {

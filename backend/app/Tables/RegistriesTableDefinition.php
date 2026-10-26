@@ -117,7 +117,9 @@ class RegistriesTableDefinition extends AbstractTableDefinition
             ->with(['source', 'commercial', 'supervisor.avatar', 'reporter', 'managers.avatar', 'personalData.contacts'])
             // Per-row count for the `documents` action badge (spec 0173),
             // scoped to the 'documents' collection only, as Opportunita'.
-            ->withCount(['attachments as documents_count' => fn (Builder $q) => $q->where('collection', 'documents')]);
+            ->withCount(['attachments as documents_count' => fn (Builder $q) => $q->where('collection', 'documents')])
+            // Per-row count for the `notes` action badge (spec 0312), roots AND replies.
+            ->withCount('notes');
     }
 
     /**
@@ -186,6 +188,7 @@ class RegistriesTableDefinition extends AbstractTableDefinition
             'managers' => $row->managers->map(fn (User $user): array => $this->userSummary($user))->all(),
             'created_at' => $row->created_at,
             'documents_count' => (int) ($row->documents_count ?? 0),
+            'notes_count' => (int) ($row->notes_count ?? 0),
         ];
     }
 
@@ -222,8 +225,10 @@ class RegistriesTableDefinition extends AbstractTableDefinition
     {
         $allowed = [];
 
+        // The notes thread is readable exactly when the record is (RegistryNotable).
         if (Gate::forUser($actor)->allows('view', $row)) {
             $allowed[] = 'view';
+            $allowed[] = 'notes';
         }
 
         if (Gate::forUser($actor)->allows('viewDocuments', $row)) {

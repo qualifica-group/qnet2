@@ -120,6 +120,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'registry-notes',
+      title: "Note dell'anagrafica",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Nella colonna di destra del dettaglio c’è la scheda **Note**, la prima: qui discuti il cliente o il fornitore con i colleghi, menzionandoli con **@** come nelle Opportunità. Dalla tabella apri le stesse note con l’azione **Note** della riga, che mostra quante ce ne sono. Le note scritte nel vecchio QNet arrivano con la migrazione.',
+        },
+        {
+          type: 'tip',
+          text: 'La scheda e l’azione Note compaiono a chi può vedere l’anagrafica; per scrivere una nota serve anche il permesso di creare note. Le note sono diverse dal campo **Note generali**, che resta un testo del record.',
+        },
+      ],
+    },
+    {
       id: 'registry-documents',
       title: "Documenti dell'anagrafica",
       blocks: [

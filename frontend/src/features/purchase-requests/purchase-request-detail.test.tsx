@@ -8,6 +8,15 @@ import { PurchaseRequestDetailView } from '@/features/purchase-requests/purchase
 import { makeLine, makeRequest } from '@/features/purchase-requests/purchase-request-fixtures'
 import type { PurchaseRequest, PurchaseRequestPayload } from '@/features/purchase-requests/types'
 
+// Spec 0312: the notes tab mounts the agnostic NotesSection, covered by `notes-section.test.tsx`.
+// REQUIREMENT CHANGED (spec 0312): the Notes tab panel is labelled "Notes" too, so the Notes
+// FIELD is addressed by its textbox role.
+vi.mock('@/features/notes/notes-section', () => ({
+  NotesSection: (props: { entityType: string; entityId: number }) => (
+    <div>{`notes-section:${props.entityType}:${props.entityId}`}</div>
+  ),
+}))
+
 vi.mock('@/features/for-select/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/for-select/api')>()),
   fetchForSelect: vi.fn(async () => ({
@@ -79,11 +88,11 @@ describe('RDA detail header, edited in place (spec 0256 AC-006)', () => {
     renderDetail()
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit Notes' }))
-    fireEvent.change(screen.getByLabelText(/^Notes/), { target: { value: 'Draft' } })
+    fireEvent.change(screen.getByRole('textbox', { name: /^Notes/ }), { target: { value: 'Draft' } })
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
 
     expect(updateMock).not.toHaveBeenCalled()
-    expect(screen.queryByLabelText(/^Notes/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: /^Notes/ })).not.toBeInTheDocument()
   })
 
   it('applies the field permissions: a read-only company has no pencil', () => {
@@ -225,5 +234,14 @@ describe('RDA detail lines, one at a time (spec 0256 AC-007)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Extract the VAT from the price 1' }))
 
     expect(screen.getByLabelText('Unit price 1')).toHaveValue(100)
+  })
+})
+
+describe('RDA detail notes tab (spec 0312)', () => {
+  it('shows the Notes tab on the purchase-requests thread of the record', () => {
+    renderDetail()
+
+    expect(screen.getByRole('tab', { name: 'Notes' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByText('notes-section:purchase-requests:5')).toBeInTheDocument()
   })
 })

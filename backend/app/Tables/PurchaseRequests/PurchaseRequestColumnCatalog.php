@@ -163,6 +163,7 @@ final class PurchaseRequestColumnCatalog
     {
         return [
             ['key' => 'view', 'label' => 'actions.view', 'icon' => 'eye', 'type' => 'link', 'confirm' => false, 'permission' => 'purchase-requests.view'],
+            ['key' => 'notes', 'label' => 'actions.notes', 'icon' => 'messages-square', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-requests.view', 'count_field' => 'notes_count'],
             ['key' => 'notify_manager', 'label' => 'purchaseRequests.actions.notifyManager', 'icon' => 'send', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-requests.update'],
             ['key' => 'close', 'label' => 'purchaseRequests.actions.close', 'icon' => 'lock', 'type' => 'action', 'confirm' => false, 'permission' => 'purchase-requests.close'],
             ['key' => 'delete', 'label' => 'actions.delete', 'icon' => 'trash', 'type' => 'danger', 'confirm' => true, 'permission' => 'purchase-requests.delete'],

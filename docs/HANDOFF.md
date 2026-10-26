@@ -3,7 +3,33 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Migrazione note legacy, sorgente unica `notes` (spec 0311) — VERDE, NON COMMITTATO (2026-10-26)
+## Note su Anagrafiche, Referenti e RDA (spec 0312) — VERDE, NON COMMITTATO (2026-10-26)
+
+- Sotto-task B della 0311. Richiesta utente: "voglio le note su rda, anagrafiche, referenti" + "prendi spunto da
+  opportunita'": scheda **Note** (la prima) nel dettaglio e azione di riga `notes` con `notes_count` + `NotesDialog`.
+- Backend: base agnostica `App\Notes\PermissionGatedNotable` (permesso di vista + `isVisibleTo`/`narrowReaders`
+  opzionali) estesa da `RegistryNotable` (`registries.view`), `ReferentNotable` (`referents.view`),
+  `PurchaseRequestNotable` (`purchase-requests.view` + `PurchaseRequestVisibilityScope`); slug in
+  `config/notes.php`. `HasNotes` solo su Registry: Referent e PurchaseRequest hanno gia' la colonna testo `notes`,
+  la relazione si chiama `noteThread()` (usata da `withCount('noteThread as notes_count')`). Azione `notes` ammessa
+  quando lo e' `view`. `NotesSource::NOTABLE_TYPES` + registry/referent/purchase_request, dipendenze opzionali
+  registries/referents/purchase-requests: rilanciando la sorgente arrivano le 560 note prima fallite.
+- Frontend: tab Note in `registry-detail`/`referent-detail` (gate `permissions.resource.view` del record) e
+  `purchase-request-detail` (passato a `RecordBody`, gate `can('purchase-requests.view')`); azione + dialog nelle
+  tre griglie. Nota UX: referente e RDA hanno anche un campo testo "Note" accanto alla scheda "Note" (fuori scope
+  rinominarlo; i test che cercavano il campo per etichetta ora usano il ruolo textbox).
+- Test: nuovo `tests/Feature/Notes/RegistryReferentPurchaseRequestNotesTest.php` (AC-001..006, mutation-check
+  sulla visibilita' RDA), `NotesSourceImportTest` e 3 test griglia aggiornati (REQUIREMENT CHANGED 0312). Backend
+  Notes/Registries/Referents/PurchaseRequests/Migration/Tables 1213/1213 con `EXTERNAL_MIGRATION_USERS_LINK_ONLY=false`.
+  FE: 3 nuovi `*-table-notes.test.tsx`, casi tab Note nei detail test; 157 file / 1227 test verdi; ESLint e
+  `tsc -b --force` puliti; Pint pulito.
+- Manuale: guide in-app IT/EN (sezioni note di Anagrafiche/Referenti/RDA, generale, Migrazioni), requisiti
+  sorgente, manuale Claude Docs (rev 408: paragrafo note generale, "Note dell'anagrafica", referenti+RDA, sorgente Note).
+  Il manuale Claude Docs non ha un capitolo sul modulo RDA: le note RDA stanno nel paragrafo dei referenti.
+
+## Migrazione note legacy, sorgente unica `notes` (spec 0311) — VERDE, qnet-2 in 8223a855, legacy NON COMMITTATO (2026-10-26)
+
+- Sotto-task B chiuso dalla spec 0312 (voce sopra): il punto qui sotto su `NOTABLE_TYPES` e' superato.
 
 - Richiesta utente: "import di tutte le note per ogni modulo [...] un'unica /migration". Legacy: le note sono righe
   `activity_log` con `log_name` Note/Call/Appointment (111.826); `Email` e log di sistema esclusi (decisione utente).

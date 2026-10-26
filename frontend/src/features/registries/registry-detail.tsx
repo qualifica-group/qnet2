@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Paperclip } from 'lucide-react'
+import { MessagesSquare, Paperclip } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Form } from '@/components/ui/form'
 import { RecordCanvas, RecordMeta, RecordSectionsGrid } from '@/components/detail/record-panel'
@@ -8,6 +8,7 @@ import type { RecordCollaborationTab } from '@/components/detail/record-collabor
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { DocumentsSection } from '@/features/attachments/documents-section'
 import { useAbilities } from '@/features/auth/use-abilities'
+import { NotesSection } from '@/features/notes/notes-section'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { PersonalDataRecordSections } from '@/features/personal-data/personal-data-record-cards'
 import { REGISTRY_ATTACHABLE_ALIAS, registryDetailQueryKey } from '@/features/registries/api'
@@ -26,13 +27,24 @@ interface RegistryDetailViewProps {
 }
 
 /**
- * The record's collaboration tabs (Documents | Activity, spec 0173), each gated
- * by its OWN authorization source and absent entirely when unauthorized.
+ * The record's collaboration tabs (Notes | Documents | Activity, specs 0312 and
+ * 0173), each gated by its OWN authorization source and absent entirely when
+ * unauthorized.
  */
 function useCollaborationTabs(registry: RegistryDetailWithPermissions): RecordCollaborationTab[] {
   const { t } = useTranslation()
   const { can } = useAbilities()
   const tabs: RecordCollaborationTab[] = []
+
+  // The thread is readable exactly when the record is (RegistryNotable); the server re-authorizes it.
+  if (registry.permissions.resource.view) {
+    tabs.push({
+      value: 'notes',
+      label: t('notes.section.title'),
+      icon: <MessagesSquare className="size-3.5" aria-hidden="true" />,
+      content: <NotesSection entityType="registries" entityId={registry.id} showHeader={false} />,
+    })
+  }
 
   if (registry.permissions.actions.view_documents) {
     tabs.push({

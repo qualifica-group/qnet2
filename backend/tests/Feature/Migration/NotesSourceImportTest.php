@@ -6,6 +6,9 @@ use App\Models\Attachment;
 use App\Models\MigrationRun;
 use App\Models\Note;
 use App\Models\Opportunity;
+use App\Models\PurchaseRequest;
+use App\Models\Referent;
+use App\Models\Registry;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\WorkOrder;
@@ -92,16 +95,23 @@ it('AC-001 imports a root note on its work order with author, body, mentions and
     Notification::assertNothingSent();
 });
 
-it('AC-001 imports notes on opportunities and tasks', function (string $subjectType, string $modelClass) {
+it('AC-001 imports notes on opportunities, tasks, registries, referents and purchase requests', function (string $subjectType, string $modelClass) {
     $subject = $modelClass::factory()->create();
     $subject->forceFill(['old_id' => 555])->save();
 
     runLegacyNotesImport([legacyNoteRecord(['subject_type' => $subjectType, 'subject_id' => 555])]);
 
-    expect(Note::query()->sole()->notable_id)->toBe($subject->id);
+    $note = Note::query()->sole();
+
+    expect($note->notable_type)->toBe($subject->getMorphClass())
+        ->and($note->notable_id)->toBe($subject->id);
 })->with([
     'opportunity' => ['opportunity', Opportunity::class],
     'task' => ['task', Task::class],
+    // REQUIREMENT CHANGED (spec 0312 D-6): the three modules now host a notes thread.
+    'registry' => ['registry', Registry::class],
+    'referent' => ['referent', Referent::class],
+    'purchase request' => ['purchase_request', PurchaseRequest::class],
 ]);
 
 it('AC-001 sanitizes the legacy markup of the body', function () {
@@ -142,7 +152,7 @@ it('AC-003 skips a note already imported', function () {
         ->and(Note::query()->count())->toBe(1);
 });
 
-it('AC-004 fails the row when the subject or the author is missing, not migrated or not supported yet', function (array $overrides, string $reason) {
+it('AC-004 fails the row when the subject or the author is missing, not migrated or not supported', function (array $overrides, string $reason) {
     $run = runLegacyNotesImport([legacyNoteRecord($overrides)]);
 
     expect($run->failed_rows)->toBe(1)
@@ -152,8 +162,8 @@ it('AC-004 fails the row when the subject or the author is missing, not migrated
     'subject not migrated' => [['subject_id' => 99], 'Subject work_order (legacy id 99) not migrated'],
     'subject missing' => [['subject_id' => null], 'Subject work_order is required'],
     'author not migrated' => [['author_user_id' => 99], 'Author (legacy id 99) not migrated'],
-    'registry not supported yet' => [['subject_type' => 'registry'], 'Notes on registry are not supported yet'],
-    'purchase request not supported yet' => [['subject_type' => 'purchase_request'], 'Notes on purchase_request are not supported yet'],
+    // REQUIREMENT CHANGED (spec 0312 D-6): registry and purchase_request are supported now.
+    'type not supported' => [['subject_type' => 'lead'], 'Notes on lead are not supported'],
 ]);
 
 it('AC-004 fails an orphan sent by the legacy with its reason', function () {
@@ -199,5 +209,8 @@ it('AC-007 registers the source in the last phase with its dependencies', functi
             ['source' => 'work-orders', 'required' => true],
             ['source' => 'opportunities', 'required' => false],
             ['source' => 'tasks', 'required' => false],
+            ['source' => 'registries', 'required' => false],
+            ['source' => 'referents', 'required' => false],
+            ['source' => 'purchase-requests', 'required' => false],
         ]);
 });

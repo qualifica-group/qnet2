@@ -126,7 +126,7 @@ const guide: HelpGuide = {
       id: 'notes-and-documents',
       title: 'Notes and documents',
       blocks: [
-        { type: 'paragraph', text: 'Notes are used to discuss a record with colleagues, for example in **Opportunities**, **Quotes**, **Work orders**, **Tasks** and **Request Management**. They open from the **Notes** action on the row or the **Notes** section of the record.' },
+        { type: 'paragraph', text: 'Notes are used to discuss a record with colleagues, for example in **Opportunities**, **Quotes**, **Work orders**, **Tasks**, **Request Management**, **Registries**, **Referents** and **Purchase requests**. They open from the **Notes** action on the row or the **Notes** section of the record.' },
         { type: 'steps', items: ['Type in the box "Write a note, use @ to mention a colleague…".', 'To involve a colleague, type **@**, pick the name and confirm with **Tab** or **Enter**: they will receive a notification.', 'Press **Send**.'] },
         { type: 'paragraph', text: 'Use **Reply** to open a response under the note. Only the author sees **Edit note** and **Delete note**; an edited note shows "(edited)". In **Opportunities**, a note can be general or tied to a quote: filter by **All notes**, **General notes** or the quote name.' },
         { type: 'warning', text: 'Deleting a note also removes its replies.' },

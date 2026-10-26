@@ -3,11 +3,12 @@ import { useTranslation } from 'react-i18next'
 import type { ICellRendererParams } from 'ag-grid-community'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Lock, Plus, Send } from 'lucide-react'
+import { Lock, MessagesSquare, Plus, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
+import { NotesDialog } from '@/features/notes/notes-dialog'
 import type { ActionIconMap } from '@/features/table/action-icon-map'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { RowActionHandler } from '@/features/table/row-actions'
@@ -25,8 +26,8 @@ import { PURCHASE_REQUESTS_DOMAIN } from '@/features/purchase-requests/types'
 /** Grid filter key of the status tabs: RDA with at least one line in that status (spec 0208 contract). */
 const LINE_STATUS_FILTER_KEY = 'line_status'
 
-/** Icon names the backend catalog uses beyond the shared defaults (`notify_manager`, `close`). */
-const PURCHASE_ACTION_ICONS: ActionIconMap = { send: Send, lock: Lock }
+/** Icon names the backend catalog uses beyond the shared defaults (`notes`, `notify_manager`, `close`). */
+const PURCHASE_ACTION_ICONS: ActionIconMap = { 'messages-square': MessagesSquare, send: Send, lock: Lock }
 
 /**
  * Thin RDA list adapter over the generic table: status tabs write into the
@@ -45,6 +46,7 @@ export function PurchaseRequestsTable() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [closeId, setCloseId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
+  const [notesRowId, setNotesRowId] = useState<number | null>(null)
 
   const runDelete = useCallback(
     async (row: TableRow) => {
@@ -85,6 +87,9 @@ export function PurchaseRequestsTable() {
           break
         case 'activity':
           setActivityRow(row)
+          break
+        case 'notes':
+          setNotesRowId(Number(row.id))
           break
         default:
           break
@@ -144,6 +149,14 @@ export function PurchaseRequestsTable() {
         resource={PURCHASE_REQUESTS_DOMAIN}
         row={activityRow}
         onOpenChange={(open) => (open ? undefined : setActivityRow(null))}
+      />
+
+      {/* Each note added or deleted refreshes the grid, so the row's `notes_count` badge follows. */}
+      <NotesDialog
+        entityType={PURCHASE_REQUESTS_DOMAIN}
+        entityId={notesRowId}
+        onThreadChanged={refreshGrid}
+        onOpenChange={(open) => (open ? undefined : setNotesRowId(null))}
       />
     </div>
   )

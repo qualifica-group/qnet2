@@ -3,6 +3,9 @@
 use App\RequestManagement\EnrolleeManagementNotable;
 use App\RequestManagement\RequestManagementNotable;
 use App\Services\ProformaRequests\ProformaRequestNotable;
+use App\Services\PurchaseRequests\PurchaseRequestNotable;
+use App\Services\Referents\ReferentNotable;
+use App\Services\Registries\RegistryNotable;
 use App\Services\Tasks\TaskNotable;
 use App\Services\WorkOrders\WorkOrderNotable;
 
@@ -46,6 +49,10 @@ return [
         'work-orders' => WorkOrderNotable::class,
         // Spec 0193: the Accounting list's "Genera nota" (D-6).
         'proforma-requests' => ProformaRequestNotable::class,
+        // Spec 0312: anagrafiche, referenti and RDA, same plural-slug pattern.
+        'registries' => RegistryNotable::class,
+        'referents' => ReferentNotable::class,
+        'purchase-requests' => PurchaseRequestNotable::class,
     ],
 
 ];

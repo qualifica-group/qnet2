@@ -4,6 +4,7 @@ import i18n from '@/i18n'
 import type { ResourceMeta } from '@/features/authorization/types'
 import { ReferentDetailView } from '@/features/referents/referent-detail'
 import {
+  FULL_RESOURCE,
   HIDDEN,
   READ_ONLY,
   permissionsFor,
@@ -11,6 +12,13 @@ import {
   referentWrapper,
 } from '@/features/referents/referent-test-fixtures'
 import type { ReferentDetailWithPermissions } from '@/features/referents/types'
+
+// Spec 0312: the notes tab mounts the agnostic NotesSection, covered by `notes-section.test.tsx`.
+vi.mock('@/features/notes/notes-section', () => ({
+  NotesSection: (props: { entityType: string; entityId: number }) => (
+    <div>{`notes-section:${props.entityType}:${props.entityId}`}</div>
+  ),
+}))
 
 /**
  * The referente record card (spec 0016 AC-023, record kit of 2026-09-11):
@@ -117,5 +125,20 @@ describe('ReferentDetailView — record card (user directive 2026-09-11)', () =>
     renderDetail(referentFixture())
 
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+  })
+})
+
+describe('ReferentDetailView — notes tab (spec 0312)', () => {
+  it('shows the Notes tab first, on the referents thread, when the record is readable', () => {
+    renderDetail(referentFixture())
+
+    expect(screen.getByRole('tab', { name: 'Notes' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByText('notes-section:referents:7')).toBeInTheDocument()
+  })
+
+  it('hides the Notes tab without the view permission on the record', () => {
+    renderDetail(referentFixture({ permissions: permissionsFor({}, { ...FULL_RESOURCE, view: false }) }))
+
+    expect(screen.queryByRole('tab', { name: 'Notes' })).not.toBeInTheDocument()
   })
 })

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0312-notes-on-registries-referents-purchase-requests" status="approved" owner="nicola" date="2026-10-26">
+
+  <goal>
+    Anagrafiche, Referenti e RDA ospitano il thread note collaborativo (spec 0052) come commesse, task e richieste
+    proforma; la sorgente di migrazione `notes` (spec 0311) importa anche le note legacy di questi tre moduli.
+  </goal>
+
+  <context>
+    Sotto-task B della spec 0311 (D-5). Richiesta utente 2026-10-26: "voglio le note su rda, anagrafiche, referenti".
+    Note legacy in attesa: anagrafiche 525, RDA 33, referenti 2 (scansione 0311), oggi righe fallite
+    "Notes on {type} are not supported yet"; senza `old_id`, un rilancio della sorgente le importa.
+
+    Il nucleo note e' agnostico: un modulo si aggancia con una classe `NotableEntity` nel proprio namespace e una
+    voce in `config/notes.php` (`notable_types`); nessun endpoint nuovo. Scrittura gia' governata da `notes.create`
+    (NotePolicy), lettura delegata al descrittore. Alias morph gia' presenti: `registry`, `referent`,
+    `purchase_request`. Id legacy: `companies.id` -> `registries.old_id`, `contacts.id` -> `referents.old_id`,
+    `rda.id` -> `purchase_requests.old_id`.
+
+    D-1 Slug (vocabolario di autorizzazione = chiave del modulo): `registries` -> `RegistryNotable`
+        (App\Services\Registries), `referents` -> `ReferentNotable` (App\Services\Referents), `purchase-requests` ->
+        `PurchaseRequestNotable` (App\Services\PurchaseRequests).
+    D-2 Lettura: anagrafiche `registries.view`, referenti `referents.view` (le loro policy non hanno altri vincoli);
+        RDA `purchase-requests.view` E `PurchaseRequestVisibilityScope::isVisibleTo` (stessa regola di
+        PurchaseRequestPolicy::view). Menzionabili = la stessa regola letta dall'altro lato, utenti attivi, account
+        di servizio esclusi, piu' i super-admin; RDA: `purchase-requests.view` e (`purchase-requests.viewAll` oppure
+        richiedente / responsabile di funzione / autore).
+    D-3 Etichetta (notifica di menzione): anagrafica e referente -> `name`; RDA -> "RDA {id} — {subject}".
+        Deep link per destinatario, null se non leggibile: `/registries/{id}`, `/referents/{id}`,
+        `/purchase-requests/{id}`. Nessuna unita' di scoping (`ownsQuote` false, `quoteScopes` vuoto).
+    D-4 `HasNotes` solo su Registry. Referent e PurchaseRequest hanno gia' una colonna di testo `notes` che la
+        relazione `notes()` oscurerebbe (Opportunity ha rinominato la sua in `general_notes` per lo stesso motivo):
+        su questi due la relazione si chiama `noteThread()`. Il nucleo non usa la relazione (`Note::notable()`).
+        Lettura e menzionabili in una base agnostica `App\Notes\PermissionGatedNotable` (permesso di vista +
+        regola di visibilita' opzionale del record), estesa dai tre descrittori.
+    D-5 UI, come Opportunita' (indicazione utente 2026-10-26 "prendi spunto da opportunita'"): scheda "Note",
+        la prima, nella colonna di collaborazione del dettaglio (`NotesSection`, `showHeader=false`); azione di riga
+        `notes` con contatore `notes_count` (radici e risposte) che apre `NotesDialog` e rinfresca la griglia a ogni
+        scrittura. Gate: anagrafica e referente `permissions.resource.view` del record, RDA
+        `can('purchase-requests.view')`; azione di riga ammessa quando lo e' `view`; il server ri-autorizza. Il
+        dettaglio RDA passa a `RecordBody` (prima `RecordCard` diretto) per avere la colonna di collaborazione.
+    D-6 Migrazione: `NotesSource::NOTABLE_TYPES` aggiunge `registry`, `referent`, `purchase_request`; dipendenze
+        opzionali `registries`, `referents`, `purchase-requests` (fasi precedenti, la sorgente resta l'ultima).
+  </context>
+
+  <scope>
+    <in>
+      <item>Backend: `PermissionGatedNotable` + tre descrittori, `config/notes.php`, relazioni sui modelli,
+        azione `notes` e `notes_count` nelle tre TableDefinition, `NotesSource`, test.</item>
+      <item>Frontend: scheda Note nei dettagli e azione Note nelle griglie di anagrafiche, referenti, RDA; test.</item>
+      <item>Guide in-app (IT/EN) di Anagrafiche, Referenti, RDA e Migrazioni; manuale Claude Docs; spec 0311 D-5.</item>
+    </in>
+    <out>
+      <item>Scheda Attivita' sull'RDA; rinomina dei campi di testo "Note" di referente e RDA.</item>
+      <item>Legacy: nessuna modifica (l'endpoint manda gia' i tre tipi).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET|POST" path="/api/notes, /api/notes/mentionable-users">
+      <request>Invariati; `entity_type` ammette in piu' `registries`, `referents`, `purchase-requests`.</request>
+      <response status="200|201">Invariata (spec 0052).</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">I tre slug sono registrati e risolvono al proprio descrittore.</criterion>
+    <criterion id="AC-002">Chi ha `{modulo}.view` legge il thread; senza -> 403 e nessuna nota esposta. RDA: con
+      `view` ma fuori dalla visibilita' (non richiedente/responsabile/autore, senza `viewAll`) -> 403.</criterion>
+    <criterion id="AC-003">Con `notes.create` si scrive una nota col morph del modulo; senza -> 403.</criterion>
+    <criterion id="AC-004">Menzionabili = regola di lettura; RDA esclude chi non vede la richiesta.</criterion>
+    <criterion id="AC-005">Deep link al dettaglio per chi legge, null per chi no; etichetta come D-3.</criterion>
+    <criterion id="AC-006">Il dettaglio di anagrafica, referente e RDA mostra la scheda Note (la prima) a chi puo'
+      leggere il record, non la mostra senza; la riga della griglia ha l'azione `notes` col contatore
+      `notes_count`, che apre il thread e si aggiorna a ogni scrittura.</criterion>
+    <criterion id="AC-007">La sorgente `notes` importa le note su anagrafica, referente e RDA migrati; dipendenze di
+      D-6.</criterion>
+  </acceptance_criteria>
+</spec>

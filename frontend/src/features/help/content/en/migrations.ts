@@ -131,12 +131,12 @@ const guide: HelpGuide = {
       id: 'notes',
       title: 'Notes',
       blocks: [
-        { type: 'paragraph', text: 'The **Notes** source runs last and brings, in a single pass, the notes, **calls** and **appointments** written by hand in the legacy system on **work orders**, **opportunities** and **tasks**. It needs **Users** and **Work orders** already imported; it is better to have **Opportunities** and **Tasks** first too.' },
+        { type: 'paragraph', text: 'The **Notes** source runs last and brings, in a single pass, the notes, **calls** and **appointments** written by hand in the legacy system on **work orders**, **opportunities**, **tasks**, **registries**, **referents** and **purchase requests**. It needs **Users** and **Work orders** already imported; it is better to have the other modules first too.' },
         { type: 'list', items: [
           'Each note comes on its record with author, date, text, **mentions** and images; a note edited in the legacy system shows as edited. Calls and appointments start with the words **Chiamata** or **Appuntamento**.',
           '**Replies** are attached to the first note of their thread, also when in the legacy system they replied to another reply. A reply to an automatic entry (status change, uploaded document) becomes a note with that entry quoted at the top.',
           'An author deleted in the legacy system becomes **Utente legacy**; the mention of a user not imported stays as text, with a warning.',
-          'A note on a record not imported or deleted in the legacy system, with an author not imported or replying to a note not imported fails with the reason. The notes of registries and purchase requests fail until those modules have notes: a new import will bring them.',
+          'A note on a record not imported or deleted in the legacy system, with an author not imported or replying to a note not imported fails with the reason. The notes that failed because their record was not imported yet come when the source runs again.',
         ] },
         { type: 'note', text: 'No notifications are sent, not even to the mentioned users, and no activity log entries are written. Sent emails and the automatic entries of the legacy system are not imported.' },
       ],

@@ -64,6 +64,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'referent-notes',
+      title: 'Note del referente',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Nella colonna di destra del dettaglio c’è la scheda **Note**, la prima: qui discuti il referente con i colleghi, menzionandoli con **@** come nelle Opportunità. Dalla tabella apri le stesse note con l’azione **Note** della riga, che mostra quante ce ne sono. Le note scritte nel vecchio QNet arrivano con la migrazione.',
+        },
+        {
+          type: 'tip',
+          text: 'La scheda e l’azione Note compaiono a chi può vedere il referente; per scrivere una nota serve anche il permesso di creare note. Le note sono diverse dal campo **Note**, che resta un testo del record.',
+        },
+      ],
+    },
+    {
       id: 'supplier-registry',
       title: 'Anagrafica fornitore (agenti)',
       blocks: [

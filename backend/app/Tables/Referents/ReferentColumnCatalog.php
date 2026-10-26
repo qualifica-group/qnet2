@@ -132,6 +132,15 @@ final class ReferentColumnCatalog
                 'permission' => 'referents.view',
             ],
             [
+                'key' => 'notes',
+                'label' => 'actions.notes',
+                'icon' => 'messages-square',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'referents.view',
+                'count_field' => 'notes_count',
+            ],
+            [
                 'key' => 'delete',
                 'label' => 'actions.delete',
                 'icon' => 'trash',

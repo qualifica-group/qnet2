@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
  * A contact person/entity (spec 0016) that reuses the `users` anagraphic
@@ -50,6 +51,18 @@ class Referent extends BaseModel
     public function referentType(): BelongsTo
     {
         return $this->belongsTo(ReferentType::class);
+    }
+
+    /**
+     * The collaborative notes thread (spec 0312, D-4). Not `notes()`, the
+     * name HasNotes uses: this model already has a `notes` text column, which
+     * the relation would shadow.
+     *
+     * @return MorphMany<Note, $this>
+     */
+    public function noteThread(): MorphMany
+    {
+        return $this->morphMany(Note::class, 'notable');
     }
 
     /**

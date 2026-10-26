@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { render as rtlRender, screen, within } from '@testing-library/react'
+import { fireEvent, render as rtlRender, screen, within } from '@testing-library/react'
 import type { ReactElement, ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -61,6 +61,13 @@ vi.mock('@/features/attachments/documents-section', () => ({
     documentsSectionMock(props)
     return <div>{`documents-section:${props.resource}:${props.id}`}</div>
   },
+}))
+
+// Spec 0312: the notes tab mounts the agnostic NotesSection, covered by `notes-section.test.tsx`.
+vi.mock('@/features/notes/notes-section', () => ({
+  NotesSection: (props: { entityType: string; entityId: number }) => (
+    <div>{`notes-section:${props.entityType}:${props.entityId}`}</div>
+  ),
 }))
 
 // Spec 0199: the related-records tabs mount the modules' own grids; their
@@ -246,9 +253,34 @@ describe('RegistryDetailView — documents tab (spec 0173)', () => {
       />,
     )
 
-    expect(screen.getByRole('tab', { name: 'Documents' })).toBeInTheDocument()
+    // REQUIREMENT CHANGED (spec 0312): Notes is the first, default tab now.
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Documents' }))
     expect(screen.getByText('documents-section:registry:1')).toBeInTheDocument()
     expect(documentsSectionMock).toHaveBeenCalledWith(expect.objectContaining({ resource: 'registry', id: 1 }))
+  })
+})
+
+describe('RegistryDetailView — notes tab (spec 0312)', () => {
+  beforeAll(async () => {
+    await i18n.changeLanguage('en')
+  })
+
+  it('shows the Notes tab first, on the registries thread, when the record is readable', () => {
+    render(<RegistryDetailView registry={registry()} />)
+
+    expect(screen.getByRole('tab', { name: 'Notes' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByText('notes-section:registries:1')).toBeInTheDocument()
+  })
+
+  it('hides the Notes tab without the view permission on the record', () => {
+    const base = registry()
+    render(
+      <RegistryDetailView
+        registry={registry({ permissions: { ...base.permissions, resource: { ...base.permissions.resource, view: false } } })}
+      />,
+    )
+
+    expect(screen.queryByRole('tab', { name: 'Notes' })).not.toBeInTheDocument()
   })
 })
 
