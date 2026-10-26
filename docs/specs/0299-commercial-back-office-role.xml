@@ -27,6 +27,9 @@
         righe del ruolo base (spec 0283 D-3).
     D-6 (utente 2026-10-26, REQUIREMENT CHANGED rispetto a D-1) Anche Martina Mosca riceve il ruolo nel seed di
         produzione, in aggiunta alla sua mansione `coordinatore-commerciale` (che resta): sei persone elencate.
+    D-7 (utente 2026-10-26, REQUIREMENT CHANGED rispetto a D-3) Anche i Contratti (`contracts`) entrano nei moduli
+        completi: ogni ability (vedere, modificare, esportare, attivita', cambio stato, validare, programmare,
+        disdire, riattivare). Configuratore Stati Offerta, Stati contratto e Gestione Richieste restano fuori.
   </context>
 
   <scope>
@@ -44,13 +47,13 @@
 
   <acceptance>
     <criterion id="AC-001">Il ruolo ha ogni permesso di `registries`, `referents`, `opportunities`, `quotes`,
-      `work-orders`, piu' `product-categories.viewAny` e `operational-sites.viewAny`, e nient'altro di quei
+      `work-orders`, `contracts` (D-7), piu' `product-categories.viewAny` e `operational-sites.viewAny`, e nient'altro di quei
       moduli di supporto (`.view`, scritture) ne' di Tipi referente, Societa', Configuratore Stati Offerta.</criterion>
     <criterion id="AC-002">Il seeder aggiunge il ruolo alle sei persone elencate con un account (D-6), sopra il ruolo che hanno;
       un'email senza account viene saltata con un warning; rieseguito converge.</criterion>
     <criterion id="AC-003">Con il ruolo base + il nuovo ruolo la navigazione mostra Anagrafiche, Referenti,
-      Opportunita', Offerte e Commesse, e non Tipi referente, Societa', Sedi operative, Configuratore Stati
-      Offerta, Contratti, Gestione Richieste.</criterion>
+      Opportunita', Offerte, Commesse e Contratti (D-7), e non Tipi referente, Societa', Sedi operative,
+      Configuratore Stati Offerta, Gestione Richieste.</criterion>
   </acceptance>
 
   <rollout>

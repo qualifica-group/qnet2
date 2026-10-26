@@ -15,7 +15,7 @@ final class CommercialBackOfficeRoleCatalogue
     public const string DESCRIPTION = 'Back Office Commerciale';
 
     /**
-     * Granted in full, every ability included (D-2, D-3).
+     * Granted in full, every ability included (D-2, D-3; contracts D-7).
      *
      * @var array<int, string>
      */
@@ -25,6 +25,7 @@ final class CommercialBackOfficeRoleCatalogue
         'opportunities',
         'quotes',
         'work-orders',
+        'contracts',
     ];
 
     /**

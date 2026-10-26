@@ -25,7 +25,7 @@ it('0299 AC-001: grants the back office its modules in full and only viewAny on 
     $this->seed(QualificaRoleSeeder::class);
     $role = Role::findByName(CommercialBackOfficeRoleCatalogue::ROLE);
 
-    foreach (CommercialBackOfficeRoleCatalogue::MODULES as $resource) {
+    foreach (array_diff(CommercialBackOfficeRoleCatalogue::MODULES, ['contracts']) as $resource) {
         foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity'] as $ability) {
             expect($role->hasPermissionTo("{$resource}.{$ability}"))->toBeTrue("{$resource}.{$ability}");
         }
@@ -38,11 +38,21 @@ it('0299 AC-001: grants the back office its modules in full and only viewAny on 
     }
 
     foreach (['product-categories.view', 'operational-sites.view', 'operational-sites.update', 'referent-types.view',
-        'companies.view', 'quote-workflows.view', 'contracts.view', 'request-management.view', 'tasks.viewAny'] as $permission) {
+        'companies.view', 'quote-workflows.view', 'contract-statuses.view', 'request-management.view', 'tasks.viewAny'] as $permission) {
         expect($role->hasPermissionTo($permission))->toBeFalse($permission);
     }
 
     expect($role->fieldPermissions()->exists())->toBeFalse();
+});
+
+it('0299 D-7: grants the back office every contracts ability', function () {
+    $this->seed(QualificaRoleSeeder::class);
+    $role = Role::findByName(CommercialBackOfficeRoleCatalogue::ROLE);
+
+    foreach (['viewAny', 'view', 'update', 'export', 'viewActivity', 'changeStatus', 'validate', 'program', 'terminate',
+        'reactivate'] as $ability) {
+        expect($role->hasPermissionTo("contracts.{$ability}"))->toBeTrue("contracts.{$ability}");
+    }
 });
 
 it('0299 AC-002: adds the role to the listed people on top of their own and skips a missing account', function () {
@@ -77,12 +87,12 @@ it('0299 D-6: gives Martina Mosca the role on top of her coordinator mansione', 
         ->toBe([CommercialBackOfficeRoleCatalogue::ROLE, OperatorRoleCatalogue::COORDINATOR_ROLE]);
 });
 
-it('0299 AC-003: shows the five modules in the menu next to Task, Segnatempo and Assenze, nothing else', function () {
+it('0299 AC-003: shows the six modules in the menu next to Task, Segnatempo and Assenze, nothing else', function () {
     $this->seed(QualificaRoleSeeder::class);
 
     expect(visibleRoutes(commercialBackOfficeUser()))->toEqualCanonicalizing([
         '/dashboard', '/opportunities', '/quotes', '/work-orders', '/tasks', '/time-entries', '/absences',
-        '/registries', '/referents',
+        '/registries', '/referents', '/contracts',
     ]);
 });
 
@@ -92,7 +102,7 @@ it('0299 AC-003: opens the reads the opportunity and quote forms need beyond the
 
     $this->getJson('/api/product-categories/tree')->assertOk();
 
-    foreach (['opportunities', 'quotes', 'work-orders', 'registries', 'referents'] as $resource) {
+    foreach (['opportunities', 'quotes', 'work-orders', 'registries', 'referents', 'contracts'] as $resource) {
         $this->getJson("/api/meta/{$resource}")->assertOk();
     }
 

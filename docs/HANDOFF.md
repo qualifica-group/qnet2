@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Back Office Commerciale: anche i Contratti (spec 0299 D-7) — VERDE, NON COMMITTATO (2026-10-26)
+
+- `CommercialBackOfficeRoleCatalogue::MODULES` + `contracts`: il ruolo `back-office-commerciale` riceve ogni ability
+  `contracts.*` (view/viewAny, update, export, viewActivity, changeStatus, validate, program, terminate, reactivate) e
+  la voce di menu Contratti. Stati contratto, Configuratore Stati Offerta e Gestione Richieste restano fuori.
+- Spec 0299: D-7 (REQUIREMENT CHANGED rispetto a D-3), AC-001/AC-003 aggiornati. Test: nuovo `0299 D-7`, AC-003 con
+  `/contracts` nel menu e `GET /api/meta/contracts` 200; il negativo `contracts.view` sostituito da
+  `contract-statuses.view`. Seeding 190/190, Pint pulito.
+- Solo seed: su qnet2 rieseguire `php artisan db:seed --class=QualificaCommercialBackOfficeSeeder` (risemina i ruoli).
+- Manuale: nessun impatto.
+
 ## Martina Mosca nel ruolo Back Office Commerciale (spec 0299 D-6) — VERDE, COMMITTATO (2026-10-26)
 
 - `CommercialBackOfficeRoleCatalogue::USERS` + `martina.mosca@qualificagroup.com`: nel seed di produzione
