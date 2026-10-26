@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useWatch, type Control } from 'react-hook-form'
 import { Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { Button } from '@/components/ui/button'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
@@ -54,11 +55,14 @@ interface LineSelectProps {
   required?: boolean
   renderItem?: (item: ForSelectItem) => ReactNode
   onItemChange?: (item: ForSelectItem | null) => void
+  /** Shows the "+" quick-create; off for the VAT rate, whose amounts need the rate the create result does not carry. */
+  quickCreate?: boolean
 }
 
 /** Compact for-select picker of one id of a row, with the accessible error triad via FormControl. */
-function LineSelect({ control, index, name, resource, label, placeholder, required, renderItem, onItemChange }: LineSelectProps) {
+function LineSelect({ control, index, name, resource, label, placeholder, required, renderItem, onItemChange, quickCreate = false }: LineSelectProps) {
   const { t } = useTranslation()
+  const { renderAction, selectedItemFor } = useQuickCreateAction(resource)
   return (
     <FormField
       control={control}
@@ -74,6 +78,7 @@ function LineSelect({ control, index, name, resource, label, placeholder, requir
               value={idToSelectValue(field.value ?? NO_ID)}
               onChange={(id) => field.onChange(id ?? (required ? NO_ID : null))}
               onItemChange={onItemChange}
+              selectedItem={selectedItemFor(idToSelectValue(field.value ?? NO_ID))}
               renderItem={renderItem}
               labels={{
                 placeholder,
@@ -84,6 +89,7 @@ function LineSelect({ control, index, name, resource, label, placeholder, requir
                 triggerLabel: label,
                 retry: t('common.retry'),
               }}
+              action={quickCreate ? renderAction((ref) => field.onChange(ref.id)) : undefined}
             />
           </FormControl>
           <FormMessage className="text-xs" />
@@ -199,6 +205,7 @@ export function PurchaseInvoiceEditorLineRow({
           label={label('costType')}
           placeholder={t('purchaseInvoices.editor.lines.selectCostType')}
           required
+          quickCreate
           renderItem={costTypeOptionRenderer}
         />
         <LineSelect
@@ -208,6 +215,7 @@ export function PurchaseInvoiceEditorLineRow({
           resource={WORK_ORDERS_FOR_SELECT_RESOURCE}
           label={label('workOrder')}
           placeholder={t('purchaseInvoices.editor.lines.selectWorkOrder')}
+          quickCreate
         />
         <dl className="grid grid-cols-2 gap-x-2 text-xs sm:col-span-2 lg:contents">
           <div className="flex justify-between lg:block lg:text-right">

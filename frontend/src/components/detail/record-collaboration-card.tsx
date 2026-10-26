@@ -5,9 +5,6 @@ import { RecordCard } from '@/components/detail/record-panel'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
-/** Compact trigger sizing of the collaboration tab strip (Opportunita' reference). */
-export const RECORD_TAB_TRIGGER_CLASS = 'px-2.5 py-1 text-xs'
-
 export interface RecordCollaborationTab {
   value: string
   /** Trigger content after the icon: the label, optionally followed by a badge. */
@@ -46,7 +43,7 @@ export function RecordCollaborationCard({ tabs, value, onValueChange, onCollapse
         <div className="flex items-start gap-2 px-4 py-3">
           <TabsList className="min-w-0 flex-1">
             {tabs.map((tab) => (
-              <TabsTrigger key={tab.value} value={tab.value} className={RECORD_TAB_TRIGGER_CLASS}>
+              <TabsTrigger key={tab.value} value={tab.value}>
                 {tab.icon}
                 {tab.label}
               </TabsTrigger>

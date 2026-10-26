@@ -3,6 +3,33 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Tab uniformi + "+" quick-create su tutti i select di modulo — VERDE, COMMITTATO (2026-10-26)
+
+- Richiesta utente: "i tab devono essere tutti uguali; ogni select che ha un modulo, con permesso, deve avere il +".
+- **Tab:** l'unico look e' in `components/ui/tabs.tsx` (`TABS_LIST_CLASS`, `TABS_TRIGGER_CLASS`, ex `FORM_TAB_*` di
+  `form-tab-strip.tsx`, rimossi). `TabsList`/`TabsTrigger` li applicano di default; `FilterTabs`, il trough e il bottone
+  "altro" di Gestione Richieste importano le costanti. Vietati override di sizing/colore sui trigger (solo layout:
+  `w-fit`, `flex-1`...). Rimossi `RECORD_TAB_TRIGGER_CLASS` e i `TRIGGER_CLASS`/`TAB_CLASS` locali. Test `components/ui/tabs.test.tsx`.
+  `SegmentedControl` resta distinto: e' un campo radio di form/filtri, non un tab.
+- **Quick-create (spec 0028 D3):** nuove mappe `quick-create-entries/{lookup,record,catalog}-entries.tsx` (sedi aziendali,
+  tipi contratto, layout documento, tag fattura, metodi pagamento, tipologie prodotto, priorita' RDA, lookup task, template
+  task, UdM, IVA, conti finanziari, lead, opportunita', task, commesse, tipi costo, mansioni, attivita', competenze, corsi).
+  Label = quella del `*ForSelectResource` (lead = nome anagrafica, commessa = `code — title`). Nuova chiave
+  `financialAccounts.form.createSubtitle` IT/EN.
+- Select "raw" cablati con `useQuickCreateAction` (wrapper fatture/fatture passive, conto finanziario, layout/tag fattura,
+  generate-orders, lead opportunita', programma contratto, costi commessa, chiusure, competenze, formazioni, user-skills,
+  magazzino, richiesta assenza). `ForSelectFormField`/`ForSelectMultiFormField` hanno prop opt-in `quickCreate` (spento:
+  i filtri della run di liquidazione non devono avere il "+"). Test `quick-create/wired-selects-quick-create.test.tsx`.
+- 20 test esistenti: aggiunto solo `vi.mock('@/features/auth/use-abilities')` con `can: () => false` (ora i select
+  renderizzano `<Can>`, che senza AuthProvider lancia). Nessuna asserzione cambiata.
+- **Senza "+", deliberato:** aliquota IVA e prodotto nelle righe fattura/offerta/costo (la riga ricava prezzo/aliquota dal
+  `meta`, il form di creazione restituisce solo `{id,name}`); prodotti d'interesse (vincolati alle categorie) e prodotto
+  del movimento di magazzino (solo INTERNAL); offerte (creazione = pagina intera, nessun form); nodi categoria (albero);
+  filtri, azioni bulk, editor dell'import, campo intercettato read-only; absence-types (nessun select async).
+- Guida in-app `general` IT/EN, sezione `opening-records-and-quick-create`, aggiornata. Manuale Claude Docs: da aggiornare
+  la stessa sezione (creazione rapida) e l'aspetto dei tab.
+- Nota: `docs/HANDOFF.md` e' ~820 KB, molto oltre il limite di 50 KB: va archiviato in `docs/handoff-archive/`.
+
 ## Attivazione/disattivazione massiva utenti (spec 0310) — VERDE, COMMITTATO (2026-10-26)
 
 - `POST /api/users/bulk-activation` `{ is_active, ids (1..200) }` -> `data: { updated: int[], failed: [{id, name, message}] }`.

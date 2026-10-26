@@ -8,7 +8,6 @@ import {
   RECORD_SIDE_COLUMNS_CLASS,
 } from '@/components/detail/record-layout'
 import {
-  RECORD_TAB_TRIGGER_CLASS,
   RecordCollaborationCard,
   type RecordCollaborationTab,
 } from '@/components/detail/record-collaboration-card'
@@ -186,13 +185,13 @@ function RecordInlineTabs({ tabs, value, onValueChange, children }: RecordInline
       <div className="border-b px-4 py-3">
         <TabsList>
           {hasSections ? (
-            <TabsTrigger value={DETAILS_TAB} className={RECORD_TAB_TRIGGER_CLASS}>
+            <TabsTrigger value={DETAILS_TAB}>
               <FileText className="size-3.5" aria-hidden="true" />
               {t('common.recordSide.details')}
             </TabsTrigger>
           ) : null}
           {tabs.map((tab) => (
-            <TabsTrigger key={tab.value} value={tab.value} className={RECORD_TAB_TRIGGER_CLASS}>
+            <TabsTrigger key={tab.value} value={tab.value}>
               {tab.icon}
               {tab.label}
             </TabsTrigger>

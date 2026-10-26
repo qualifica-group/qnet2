@@ -24,9 +24,9 @@ export function ActivityLogEventFilterTabs({ value, onChange }: ActivityLogEvent
       onValueChange={(next) => onChange(next as ActivityLogEventFilter)}
       aria-label={t('activityLog.filter.label')}
     >
-      <TabsList className="h-8 w-fit">
+      <TabsList className="w-fit">
         {FILTER_OPTIONS.map((option) => (
-          <TabsTrigger key={option} value={option} className="px-2.5 py-1 text-xs">
+          <TabsTrigger key={option} value={option}>
             {t(`activityLog.filter.${option}`)}
           </TabsTrigger>
         ))}

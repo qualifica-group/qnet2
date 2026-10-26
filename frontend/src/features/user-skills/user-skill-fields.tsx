@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useFormContext } from 'react-hook-form'
 import { Gauge, UserRound } from 'lucide-react'
 import { RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
+import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { AsyncPaginatedSelect, type AsyncPaginatedSelectLabels } from '@/components/ui/async-paginated-select'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
@@ -24,6 +25,8 @@ interface UserSkillFieldsProps {
 /** The skill form in two record sections (spec 0287 D-4): person and skill, then level, day and notes. */
 export function UserSkillFields({ selectedUser, selectedSkill }: UserSkillFieldsProps) {
   const { t } = useTranslation()
+  const userCreate = useQuickCreateAction(USERS_RESOURCE)
+  const skillCreate = useQuickCreateAction(SKILLS_RESOURCE)
   const { control } = useFormContext<UserSkillFormValues>()
 
   const pickerLabels = (prefix: 'user' | 'skill'): AsyncPaginatedSelectLabels => ({
@@ -50,7 +53,8 @@ export function UserSkillFields({ selectedUser, selectedSkill }: UserSkillFields
                   resource={USERS_RESOURCE}
                   value={field.value}
                   onChange={field.onChange}
-                  selectedItem={selectedUser}
+                  selectedItem={userCreate.selectedItemFor(field.value) ?? selectedUser}
+                  action={userCreate.renderAction((ref) => field.onChange(ref.id))}
                   labels={pickerLabels('user')}
                   showAvatar
                 />
@@ -70,7 +74,8 @@ export function UserSkillFields({ selectedUser, selectedSkill }: UserSkillFields
                   resource={SKILLS_RESOURCE}
                   value={field.value}
                   onChange={field.onChange}
-                  selectedItem={selectedSkill}
+                  selectedItem={skillCreate.selectedItemFor(field.value) ?? selectedSkill}
+                  action={skillCreate.renderAction((ref) => field.onChange(ref.id))}
                   labels={pickerLabels('skill')}
                 />
               </FormControl>

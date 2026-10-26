@@ -6,6 +6,11 @@ import { buildMovement, httpError, stockWrapper } from '@/features/stock/stock-f
 import { StockMovementSheet } from '@/features/stock/stock-movement-sheet'
 import type { StockMovementType } from '@/features/stock/types'
 
+// The pickers render the quick-create "+" (spec 0028), gated by `<Can>`: no abilities here, so it stays hidden.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+
 const recordMock = vi.fn()
 vi.mock('@/features/stock/api', () => ({
   recordStockMovement: (payload: unknown) => recordMock(payload),

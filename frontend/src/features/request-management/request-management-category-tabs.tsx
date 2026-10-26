@@ -1,8 +1,7 @@
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { FORM_TAB_LIST_CLASS, FORM_TAB_TRIGGER_CLASS } from '@/components/form-tab-strip'
+import { Tabs, TabsList, TabsTrigger, TABS_LIST_CLASS } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import {
   CategoryMoreButton,
@@ -25,7 +24,7 @@ const ALL_TAB_VALUE = 'all'
  * shares the same pill background as the tabs. Not clipped: the fit keeps it
  * within the trough, and clipping would cut the active chip's ring.
  */
-const INLINE_TAB_LIST_CLASS = 'w-auto min-w-0 flex-nowrap gap-1 rounded-none border-0 bg-transparent p-0'
+const INLINE_TAB_LIST_CLASS = 'w-auto min-w-0 flex-nowrap gap-1 rounded-none border-0 bg-transparent p-0 shadow-none'
 
 interface RequestManagementCategoryTabsProps {
   categories: RequestManagementProductCategory[]
@@ -94,10 +93,10 @@ export function RequestManagementCategoryTabs({
       <Tabs value={value} onValueChange={selectValue}>
         <div
           ref={troughRef}
-          className={cn('flex items-center border border-border/60 bg-surface', FORM_TAB_LIST_CLASS)}
+          className={cn(TABS_LIST_CLASS, 'flex flex-nowrap')}
         >
           <TabsList aria-label={t('requestManagement.categoryTabs.pickerLabel')} className={INLINE_TAB_LIST_CLASS}>
-            <TabsTrigger value={ALL_TAB_VALUE} className={FORM_TAB_TRIGGER_CLASS}>
+            <TabsTrigger value={ALL_TAB_VALUE}>
               {t('requestManagement.categoryTabs.all')}
             </TabsTrigger>
             {inlineIds.map((id) => (
@@ -128,7 +127,7 @@ export function RequestManagementCategoryTabs({
       >
         <Tabs value={value}>
           <TabsList className={INLINE_TAB_LIST_CLASS}>
-            <TabsTrigger value={ALL_TAB_VALUE} className={FORM_TAB_TRIGGER_CLASS} data-tab-measure={MEASURE_ALL}>
+            <TabsTrigger value={ALL_TAB_VALUE} data-tab-measure={MEASURE_ALL}>
               {t('requestManagement.categoryTabs.all')}
             </TabsTrigger>
             {categories.map((category) => (
@@ -152,7 +151,7 @@ function CategoryTab({ category, 'data-tab-measure': measureKey }: CategoryTabPr
   return (
     <TabsTrigger
       value={String(category.id)}
-      className={FORM_TAB_TRIGGER_CLASS}
+     
       title={category.name}
       data-tab-measure={measureKey}
     >

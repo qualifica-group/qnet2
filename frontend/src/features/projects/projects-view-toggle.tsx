@@ -18,12 +18,12 @@ export function ProjectsViewToggle({ view, onChange }: ProjectsViewToggleProps) 
       onValueChange={(value) => onChange(value as ProjectsView)}
       aria-label={t('projects.view.toggleLabel')}
     >
-      <TabsList className="h-9 w-fit">
-        <TabsTrigger value="grid" className="gap-1 px-2.5 py-1 text-xs">
+      <TabsList className="w-fit">
+        <TabsTrigger value="grid">
           <LayoutGrid className="size-3.5" aria-hidden="true" />
           {t('projects.view.grid')}
         </TabsTrigger>
-        <TabsTrigger value="table" className="gap-1 px-2.5 py-1 text-xs">
+        <TabsTrigger value="table">
           <Table className="size-3.5" aria-hidden="true" />
           {t('projects.view.table')}
         </TabsTrigger>

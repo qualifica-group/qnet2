@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import type { ForSelectItem } from '@/features/for-select/types'
 import { FINANCIAL_ACCOUNTS_FOR_SELECT_RESOURCE } from '@/features/financial-accounts/for-select-api'
@@ -28,6 +29,7 @@ export function PurchaseFinancialAccountSelect({
   ...aria
 }: PurchaseFinancialAccountSelectProps) {
   const { t } = useTranslation()
+  const { renderAction, selectedItemFor } = useQuickCreateAction(FINANCIAL_ACCOUNTS_FOR_SELECT_RESOURCE)
   const selectedItem: ForSelectItem | null = selected ? { id: selected.id, label: selected.name } : null
 
   return (
@@ -35,7 +37,7 @@ export function PurchaseFinancialAccountSelect({
       resource={FINANCIAL_ACCOUNTS_FOR_SELECT_RESOURCE}
       value={value}
       onChange={onChange}
-      selectedItem={selectedItem}
+      selectedItem={selectedItemFor(value) ?? selectedItem}
       params={companyId === undefined ? undefined : { company_id: companyId }}
       labels={{
         placeholder: t('purchaseInvoiceInstallments.payment.financialAccountPlaceholder'),
@@ -46,6 +48,7 @@ export function PurchaseFinancialAccountSelect({
         triggerLabel: label,
         retry: t('common.retry'),
       }}
+      action={renderAction((ref) => onChange(ref.id))}
       {...aria}
     />
   )

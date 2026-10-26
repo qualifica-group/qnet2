@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useFieldArray, useFormContext, useFormState, useWatch } from 'react-hook-form'
 import { Plus, Trash2 } from 'lucide-react'
+import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -21,6 +22,7 @@ interface SkillJobRolesEditorProps {
 export function SkillJobRolesEditor({ jobRoles }: SkillJobRolesEditorProps) {
   const { t } = useTranslation()
   const { control, setValue } = useFormContext<SkillFormValues>()
+  const { renderAction, selectedItemFor } = useQuickCreateAction(JOB_ROLES_FOR_SELECT_RESOURCE)
   const { fields, append, remove } = useFieldArray({ control, name: 'job_roles' })
   // `fields` only keys the rows: their live values come from the watch (setValue does not refresh `fields`).
   const rows = useWatch({ control, name: 'job_roles' })
@@ -38,8 +40,9 @@ export function SkillJobRolesEditor({ jobRoles }: SkillJobRolesEditorProps) {
               <AsyncPaginatedSelect
                 resource={JOB_ROLES_FOR_SELECT_RESOURCE}
                 value={row.job_role_id}
-                selectedItem={known ? { id: known.id, label: known.name } : null}
+                selectedItem={known ? { id: known.id, label: known.name } : selectedItemFor(row.job_role_id)}
                 onChange={(value) => setValue(`job_roles.${index}.job_role_id`, value, { shouldDirty: true })}
+                action={renderAction((ref) => setValue(`job_roles.${index}.job_role_id`, ref.id, { shouldDirty: true }))}
                 labels={{
                   placeholder: t('skills.form.jobRolePlaceholder'),
                   searchPlaceholder: t('skills.form.jobRoleSearch'),

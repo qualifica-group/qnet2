@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import type { ForSelectItem } from '@/features/for-select/types'
@@ -49,6 +50,7 @@ export function PurchaseInvoiceEditorRelationField({
   onPicked,
 }: PurchaseInvoiceEditorRelationFieldProps) {
   const { t } = useTranslation()
+  const { renderAction, selectedItemFor } = useQuickCreateAction(resource)
   const selectedItem: ForSelectItem | null = selected ? { id: selected.id, label: selected.name } : null
 
   return (
@@ -68,7 +70,7 @@ export function PurchaseInvoiceEditorRelationField({
                 field.onChange(id ?? (required ? NO_ID : null))
                 onPicked?.()
               }}
-              selectedItem={selectedItem}
+              selectedItem={selectedItemFor(idToSelectValue(field.value ?? NO_ID)) ?? selectedItem}
               disabled={disabled}
               params={params}
               renderItem={renderItem}
@@ -81,6 +83,10 @@ export function PurchaseInvoiceEditorRelationField({
                 triggerLabel: label,
                 retry: t('common.retry'),
               }}
+              action={renderAction((ref) => {
+                field.onChange(ref.id)
+                onPicked?.()
+              }, disabled)}
             />
           </FormControl>
           <FormMessage className="text-xs" />

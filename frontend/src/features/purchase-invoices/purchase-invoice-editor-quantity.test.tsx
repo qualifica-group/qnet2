@@ -13,6 +13,11 @@ import type {
   PurchaseInvoiceWritePayload,
 } from '@/features/purchase-invoices/types'
 
+// The pickers render the quick-create "+" (spec 0028), gated by `<Can>`: no abilities here, so it stays hidden.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+
 /** Spec 0254 D-2: billing by quantity in the passive invoice editor (AC-014). */
 
 const FOR_SELECT_ITEMS: Record<string, unknown[]> = {

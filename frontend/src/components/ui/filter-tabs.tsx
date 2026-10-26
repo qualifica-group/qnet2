@@ -1,17 +1,5 @@
-import { FORM_TAB_LIST_CLASS, FORM_TAB_TRIGGER_CLASS } from '@/components/form-tab-strip'
+import { TABS_LIST_CLASS, TABS_TRIGGER_CLASS } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-
-/**
- * The look of the Gestione Richieste category strip: a surface trough with the
- * active tab raised as a card chip. The trigger classes key off `data-state`,
- * which each button sets the way a Radix `TabsTrigger` would.
- */
-const TAB_LIST_CLASS = cn('flex flex-wrap items-center border border-border/60 bg-surface', FORM_TAB_LIST_CLASS)
-const TAB_CLASS = cn(
-  'inline-flex shrink-0 items-center font-medium whitespace-nowrap outline-none',
-  'focus-visible:ring-[3px] focus-visible:ring-ring/50',
-  FORM_TAB_TRIGGER_CLASS,
-)
 
 export interface FilterTabOption<T extends string> {
   value: T
@@ -32,7 +20,8 @@ interface FilterTabsProps<T extends string> {
 /**
  * Compact tab strip above a grid: each tab is a preset of the grid filter
  * model, so the caller owns the mapping and this component only renders the
- * selection.
+ * selection. Same look as `TabsTrigger`: each button sets `data-state` the way
+ * a Radix trigger would, so the shared classes apply unchanged.
  */
 export function FilterTabs<T extends string>({
   value,
@@ -42,7 +31,7 @@ export function FilterTabs<T extends string>({
   className,
 }: FilterTabsProps<T>) {
   return (
-    <div role="tablist" aria-label={ariaLabel} className={cn(TAB_LIST_CLASS, className)}>
+    <div role="tablist" aria-label={ariaLabel} className={cn(TABS_LIST_CLASS, className)}>
       {options.map((option) => {
         const selected = value === option.value
         return (
@@ -53,7 +42,7 @@ export function FilterTabs<T extends string>({
             aria-selected={selected}
             data-state={selected ? 'active' : 'inactive'}
             onClick={() => onValueChange(option.value)}
-            className={TAB_CLASS}
+            className={TABS_TRIGGER_CLASS}
           >
             {option.label}
             {option.count !== undefined && option.count > 0 ? (

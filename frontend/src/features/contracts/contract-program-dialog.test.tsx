@@ -10,6 +10,11 @@ import { createContractWorkOrdersBatch, fetchContractProgrammableLines } from '@
 import type { ContractProgrammableLine } from '@/features/contracts/types'
 import { todayIsoDate } from '@/features/work-order-costs/work-order-costs-schema'
 
+// The pickers render the quick-create "+" (spec 0028), gated by `<Can>`: no abilities here, so it stays hidden.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+
 /**
  * Spec 0215 (AC-020..AC-028): the dialog builds N groups from the offer
  * lines, shows the group of every line, saves them all with ONE batch call,

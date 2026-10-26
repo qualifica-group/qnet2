@@ -29,15 +29,15 @@ export function TaskViewModeSelector({
     <div className="flex flex-wrap items-center gap-2">
       <Tabs value={viewMode} onValueChange={(value) => onViewModeChange(value as TaskListViewMode)}>
         <TabsList>
-          <TabsTrigger value="analytic" className="text-xs">
+          <TabsTrigger value="analytic">
             <List aria-hidden="true" className="size-3.5" />
             {t('tasks.views.analytic')}
           </TabsTrigger>
-          <TabsTrigger value="synthetic" className="text-xs">
+          <TabsTrigger value="synthetic">
             <ListTree aria-hidden="true" className="size-3.5" />
             {t('tasks.views.synthetic')}
           </TabsTrigger>
-          <TabsTrigger value="kanban" className="text-xs">
+          <TabsTrigger value="kanban">
             <KanbanSquare aria-hidden="true" className="size-3.5" />
             {t('tasks.views.kanban')}
           </TabsTrigger>
@@ -47,10 +47,10 @@ export function TaskViewModeSelector({
       {viewMode === 'kanban' ? (
         <Tabs value={kanbanMode} onValueChange={(value) => onKanbanModeChange(value as TaskKanbanMode)}>
           <TabsList>
-            <TabsTrigger value="status" className="text-xs">
+            <TabsTrigger value="status">
               {t('tasks.views.kanbanByStatus')}
             </TabsTrigger>
-            <TabsTrigger value="due" className="text-xs">
+            <TabsTrigger value="due">
               {t('tasks.views.kanbanByDue')}
             </TabsTrigger>
           </TabsList>

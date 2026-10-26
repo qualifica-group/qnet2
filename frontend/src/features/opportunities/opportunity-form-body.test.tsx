@@ -13,6 +13,11 @@ import {
   resolveForSelectLabels,
 } from '@/features/opportunities/opportunity-form-test-helpers'
 
+// The pickers render the quick-create "+" (spec 0028), gated by `<Can>`: no abilities here, so it stays hidden.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+
 /**
  * AC-071 (every field of the contract renders), AC-074 (field permissions:
  * hidden vs not editable). Spec 0171: the title is a form input again

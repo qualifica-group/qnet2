@@ -8,6 +8,11 @@ import { todayIsoDate } from '@/features/work-order-costs/work-order-costs-schem
 import { OVERVIEW } from '@/features/work-order-costs/work-order-costs-fixtures'
 import type { WorkOrderCostOverview } from '@/features/work-order-costs/types'
 
+// The pickers render the quick-create "+" (spec 0028), gated by `<Can>`: no abilities here, so it stays hidden.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+
 const fetchCostsMock = vi.fn<(id: number) => Promise<WorkOrderCostOverview>>()
 const syncCostsMock = vi.fn<(id: number, payload: unknown) => Promise<WorkOrderCostOverview>>()
 vi.mock('@/features/work-order-costs/api', () => ({

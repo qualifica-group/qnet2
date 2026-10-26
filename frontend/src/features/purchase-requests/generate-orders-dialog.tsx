@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { FileText, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import {
   Dialog,
@@ -43,6 +44,8 @@ export function GenerateOrdersDialog({ targets, onOpenChange, onGenerated }: Gen
   const queryClient = useQueryClient()
   const [costTypeId, setCostTypeId] = useState<number | null>(null)
   const [paymentMethodId, setPaymentMethodId] = useState<number | null>(null)
+  const costTypeCreate = useQuickCreateAction(COST_TYPES_FOR_SELECT_RESOURCE)
+  const paymentMethodCreate = useQuickCreateAction(PAYMENT_METHODS_FOR_SELECT_RESOURCE)
   const [orderDate, setOrderDate] = useState(() => todayIso())
   const groups = groupBySupplier(targets)
 
@@ -112,6 +115,8 @@ export function GenerateOrdersDialog({ targets, onOpenChange, onGenerated }: Gen
                 resource={COST_TYPES_FOR_SELECT_RESOURCE}
                 value={costTypeId}
                 onChange={setCostTypeId}
+                selectedItem={costTypeCreate.selectedItemFor(costTypeId)}
+                action={costTypeCreate.renderAction((ref) => setCostTypeId(ref.id))}
                 renderItem={costTypeOptionRenderer}
                 labels={labels(t('purchaseRequests.generateOrders.costTypePlaceholder'), t('purchaseRequests.generateOrders.costType'))}
               />
@@ -122,6 +127,8 @@ export function GenerateOrdersDialog({ targets, onOpenChange, onGenerated }: Gen
                 resource={PAYMENT_METHODS_FOR_SELECT_RESOURCE}
                 value={paymentMethodId}
                 onChange={setPaymentMethodId}
+                selectedItem={paymentMethodCreate.selectedItemFor(paymentMethodId)}
+                action={paymentMethodCreate.renderAction((ref) => setPaymentMethodId(ref.id))}
                 labels={labels(t('purchaseRequests.generateOrders.paymentMethodPlaceholder'), t('purchaseRequests.generateOrders.paymentMethod'))}
               />
             </div>

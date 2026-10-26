@@ -5,6 +5,11 @@ import i18n from '@/i18n'
 import { WorkOrderCostCard } from '@/features/work-order-costs/work-order-cost-card'
 import { EMPTY_ROW_DISPLAY, type WorkOrderCostRowValues } from '@/features/work-order-costs/work-order-costs-schema'
 
+// The pickers render the quick-create "+" (spec 0028), gated by `<Can>`: no abilities here, so it stays hidden.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+
 /**
  * Spec 0270 D-3: one real-cost card on its own — every field of the former
  * grid row reaches the row through `onChangeField`, the live amounts, the

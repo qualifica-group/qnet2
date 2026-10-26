@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { Label } from '@/components/ui/label'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { ExistingOpportunityAlert } from '@/features/opportunities/existing-opportunity-alert'
@@ -20,6 +21,7 @@ interface OpportunityLeadFieldProps {
  */
 export function OpportunityLeadField({ state, onSelect }: OpportunityLeadFieldProps) {
   const { t } = useTranslation()
+  const { renderAction, selectedItemFor } = useQuickCreateAction(LEADS_FOR_SELECT_RESOURCE)
 
   const selectedItem =
     state.leadId !== null ? { id: state.leadId, label: state.registry?.name ?? `#${state.leadId}` } : null
@@ -32,7 +34,7 @@ export function OpportunityLeadField({ state, onSelect }: OpportunityLeadFieldPr
           resource={LEADS_FOR_SELECT_RESOURCE}
           value={state.leadId}
           onChange={onSelect}
-          selectedItem={selectedItem}
+          selectedItem={selectedItemFor(state.leadId) ?? selectedItem}
           disabled={state.isApplying}
           labels={{
             placeholder: t('opportunities.form.selectPlaceholder'),
@@ -43,6 +45,7 @@ export function OpportunityLeadField({ state, onSelect }: OpportunityLeadFieldPr
             triggerLabel: t('opportunities.form.lead'),
             retry: t('common.retry'),
           }}
+          action={renderAction((ref) => onSelect(ref.id), state.isApplying)}
         />
       </div>
 

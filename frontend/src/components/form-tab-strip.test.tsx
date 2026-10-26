@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
-import { FormTabStrip, FORM_TAB_TRIGGER_CLASS } from '@/components/form-tab-strip'
+import { FormTabStrip } from '@/components/form-tab-strip'
 import { Tabs, TabsContent, TabsTrigger } from '@/components/ui/tabs'
 
 /**
@@ -28,10 +28,10 @@ function TabbedFixture() {
   return (
     <Tabs value={tab} onValueChange={setTab}>
       <FormTabStrip value={tab} onValueChange={setTab}>
-        <TabsTrigger value="offer" className={FORM_TAB_TRIGGER_CLASS}>
+        <TabsTrigger value="offer">
           Offerta
         </TabsTrigger>
-        <TabsTrigger value="costs" className={FORM_TAB_TRIGGER_CLASS}>
+        <TabsTrigger value="costs">
           Costi
         </TabsTrigger>
       </FormTabStrip>

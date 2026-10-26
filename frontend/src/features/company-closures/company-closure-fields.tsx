@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormContext, useWatch } from 'react-hook-form'
+import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { AsyncPaginatedMultiSelect } from '@/components/ui/async-paginated-multi-select'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
@@ -189,7 +190,11 @@ function AbsenceTypeField({ locked, knownAbsenceType }: Pick<CompanyClosureField
 function SitesField({ locked, knownSites }: Pick<CompanyClosureFieldsProps, 'locked' | 'knownSites'>) {
   const { t } = useTranslation()
   const { control } = useFormContext<CompanyClosureFormValues>()
-  const selectedItems = useMemo(() => knownSites.map(({ id, name }) => ({ id, label: name })), [knownSites])
+  const { quickCreated, renderAction } = useQuickCreateAction(OPERATIONAL_SITES_FOR_SELECT_RESOURCE)
+  const selectedItems = useMemo(
+    () => [...knownSites, ...quickCreated].map(({ id, name }) => ({ id, label: name })),
+    [knownSites, quickCreated],
+  )
 
   return (
     <FormField
@@ -205,6 +210,11 @@ function SitesField({ locked, knownSites }: Pick<CompanyClosureFieldsProps, 'loc
               onChange={field.onChange}
               selectedItems={selectedItems}
               disabled={locked}
+              action={renderAction((ref) => {
+                if (!field.value.includes(ref.id)) {
+                  field.onChange([...field.value, ref.id])
+                }
+              }, locked)}
               labels={{
                 placeholder: t('companyClosures.form.sitesPlaceholder'),
                 searchPlaceholder: t('companyClosures.form.search'),

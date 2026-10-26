@@ -52,6 +52,7 @@ export const financialAccounts = {
   },
   form: {
     newFinancialAccount: 'Nuovo conto',
+    createSubtitle: 'Registra un nuovo conto bancario, cassa o carta.',
     type: 'Tipo',
     bank: 'Banca',
     cashName: 'Nome',

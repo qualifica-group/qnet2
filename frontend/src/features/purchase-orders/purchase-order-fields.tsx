@@ -1,5 +1,6 @@
 import type { Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { RelationSelectField, type RelationFieldRef } from '@/components/form/relation-select-field'
 import { AsyncPaginatedMultiSelect } from '@/components/ui/async-paginated-multi-select'
 import { FormControl } from '@/components/ui/form'
@@ -111,7 +112,8 @@ interface SectorsFieldProps {
 export function OrderSectorsField({ control, selected }: SectorsFieldProps) {
   const { t } = useTranslation()
   const label = t('purchaseOrderForm.fields.sector_ids')
-  const selectedItems: ForSelectItem[] = selected.map((sector) => ({ id: sector.id, label: sector.name }))
+  const { quickCreated, renderAction } = useQuickCreateAction(SECTORS_FOR_SELECT_RESOURCE)
+  const selectedItems: ForSelectItem[] = [...selected, ...quickCreated].map((sector) => ({ id: sector.id, label: sector.name }))
   return (
     <MetaField control={control} name="sector_ids" metaKey="sector_ids" label={label}>
       {({ field, disabled }) => (
@@ -131,6 +133,11 @@ export function OrderSectorsField({ control, selected }: SectorsFieldProps) {
               triggerLabel: label,
               retry: t('common.retry'),
             }}
+            action={renderAction((ref) => {
+              if (!field.value.includes(ref.id)) {
+                field.onChange([...field.value, ref.id])
+              }
+            }, disabled)}
           />
         </FormControl>
       )}

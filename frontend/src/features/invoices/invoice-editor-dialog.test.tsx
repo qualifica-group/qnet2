@@ -6,6 +6,11 @@ import { invoiceEditor } from '@/i18n/locales/en-invoice-editor'
 import { InvoiceEditorDialog } from '@/features/invoices/invoice-editor-dialog'
 import type { Invoice, InvoiceDraft, InstallmentPreviewRow } from '@/features/invoices/types'
 
+// The pickers render the quick-create "+" (spec 0028), gated by `<Can>`: no abilities here, so it stays hidden.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+
 const getDraftMock = vi.fn<(id: number) => Promise<InvoiceDraft>>()
 const previewMock = vi.fn<() => Promise<InstallmentPreviewRow[]>>()
 const createMock = vi.fn<(id: number, payload: unknown) => Promise<Invoice>>()

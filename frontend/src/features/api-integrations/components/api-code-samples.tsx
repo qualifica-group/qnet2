@@ -5,7 +5,6 @@ import { CopyButton } from '@/features/api-integrations/components/copy-button'
 import { CODE_LANGUAGES, type CodeLanguage } from '@/features/api-integrations/code-samples'
 
 const LANGUAGE_LABELS: Record<CodeLanguage, string> = { curl: 'cURL', javascript: 'JavaScript' }
-const TAB_CLASS = 'px-2 py-0.5 text-xs'
 
 interface CodeBlockProps {
   label: string
@@ -51,7 +50,7 @@ export function LanguageTabs({ children }: LanguageTabsProps) {
     <Tabs defaultValue={CODE_LANGUAGES[0]} className="min-w-0 gap-2">
       <TabsList aria-label={t('apiIntegrations.docs.languageLabel')} className="w-fit">
         {CODE_LANGUAGES.map((language) => (
-          <TabsTrigger key={language} value={language} className={TAB_CLASS}>
+          <TabsTrigger key={language} value={language}>
             {LANGUAGE_LABELS[language]}
           </TabsTrigger>
         ))}

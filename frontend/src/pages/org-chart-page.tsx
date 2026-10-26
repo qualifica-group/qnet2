@@ -24,10 +24,10 @@ export default function OrgChartPage() {
         <PageHeader />
         <Tabs value={tab} onValueChange={(value) => setTab(value === 'people' ? 'people' : 'functions')}>
           <TabsList className="w-fit">
-            <TabsTrigger value="functions" className="px-2.5 py-1 text-xs">
+            <TabsTrigger value="functions">
               {t('orgChart.tabs.functions')}
             </TabsTrigger>
-            <TabsTrigger value="people" className="px-2.5 py-1 text-xs">
+            <TabsTrigger value="people">
               {t('orgChart.tabs.people')}
             </TabsTrigger>
           </TabsList>

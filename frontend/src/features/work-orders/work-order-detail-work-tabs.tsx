@@ -10,7 +10,6 @@ import { WorkOrderTaskBoard } from '@/features/work-orders/task-board/work-order
 import type { WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
 /** Compact trigger sizing, same as the collaboration card's strip. */
-const TRIGGER_CLASS = 'px-2.5 py-1 text-xs'
 
 interface WorkTab {
   value: string
@@ -82,7 +81,7 @@ export function WorkOrderDetailWorkTabs({ workOrder }: { workOrder: WorkOrderDet
         <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
           <TabsList className="w-auto">
             {tabs.map((tab) => (
-              <TabsTrigger key={tab.value} value={tab.value} className={TRIGGER_CLASS}>
+              <TabsTrigger key={tab.value} value={tab.value}>
                 {tab.icon}
                 {tab.label}
               </TabsTrigger>

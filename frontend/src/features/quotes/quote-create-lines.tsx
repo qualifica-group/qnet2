@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useFormState } from 'react-hook-form'
 import { TrendingDown, TrendingUp } from 'lucide-react'
 import { Tabs, TabsContent, TabsTrigger } from '@/components/ui/tabs'
-import { FormTabStrip, FORM_TAB_TRIGGER_CLASS, TabErrorDot } from '@/components/form-tab-strip'
+import { FormTabStrip, TabErrorDot } from '@/components/form-tab-strip'
 import {
   QuoteCostLinesEditor,
   QuoteLinesLiveSummary,
@@ -35,12 +35,12 @@ export function QuoteCreateLines({ quoteForm }: { quoteForm: QuoteFormState }) {
     <Tabs value={activeTab} onValueChange={setActiveTab} className="gap-0">
       <div className="flex min-w-0 flex-col gap-3 border-t p-4">
         <FormTabStrip value={activeTab} onValueChange={setActiveTab}>
-          <TabsTrigger value={OFFER_TAB} className={FORM_TAB_TRIGGER_CLASS}>
+          <TabsTrigger value={OFFER_TAB}>
             <TrendingUp aria-hidden="true" />
             {t('quotes.form.tabs.offer')}
             {errors.offer_lines ? <TabErrorDot label={tabHasErrorsLabel} /> : null}
           </TabsTrigger>
-          <TabsTrigger value={COSTS_TAB} className={FORM_TAB_TRIGGER_CLASS}>
+          <TabsTrigger value={COSTS_TAB}>
             <TrendingDown aria-hidden="true" />
             {t('quotes.form.tabs.costs')}
             {errors.cost_lines ? <TabErrorDot label={tabHasErrorsLabel} /> : null}

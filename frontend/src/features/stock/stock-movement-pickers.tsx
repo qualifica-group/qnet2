@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useFormContext } from 'react-hook-form'
+import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { AsyncPaginatedSelect, type AsyncPaginatedSelectLabels } from '@/components/ui/async-paginated-select'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import type { StockMovementFormValues } from '@/features/stock/stock-movement-schema'
@@ -14,6 +15,9 @@ const TRACKED_PRODUCTS_PARAMS = { usage: 'INTERNAL' }
 
 type PickerName = 'product_id' | 'operational_site_id' | 'to_operational_site_id' | 'user_id'
 type PickerKind = 'product' | 'site' | 'user'
+
+/** Products are left out: the picker only offers tracked (INTERNAL) ones, which a freshly created product is not. */
+const QUICK_CREATE_KINDS: readonly PickerKind[] = ['site', 'user']
 
 const RESOURCE_OF: Record<PickerKind, string> = {
   product: PRODUCTS_RESOURCE,
@@ -32,6 +36,7 @@ interface StockPickerProps {
 export function StockPicker({ name, kind, label, required = false }: StockPickerProps) {
   const { t } = useTranslation()
   const { control } = useFormContext<StockMovementFormValues>()
+  const { renderAction, selectedItemFor } = useQuickCreateAction(RESOURCE_OF[kind])
 
   const labels: AsyncPaginatedSelectLabels = {
     placeholder: t(`stock.form.pickers.${kind}.placeholder`),
@@ -55,6 +60,8 @@ export function StockPicker({ name, kind, label, required = false }: StockPicker
               resource={RESOURCE_OF[kind]}
               value={field.value}
               onChange={field.onChange}
+              selectedItem={selectedItemFor(field.value)}
+              action={QUICK_CREATE_KINDS.includes(kind) ? renderAction((ref) => field.onChange(ref.id)) : undefined}
               labels={labels}
               showAvatar={kind === 'user'}
               params={kind === 'product' ? TRACKED_PRODUCTS_PARAMS : undefined}

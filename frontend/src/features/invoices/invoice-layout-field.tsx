@@ -1,5 +1,6 @@
 import type { Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { DOCUMENT_LAYOUTS_FOR_SELECT_RESOURCE } from '@/features/document-layouts/for-select-api'
@@ -21,6 +22,7 @@ interface InvoiceLayoutFieldProps<T extends LayoutFormValues> {
 /** "Layout di stampa": active Invoices layouts; cleared (null) = "Predefinito". */
 export function InvoiceLayoutField<T extends LayoutFormValues>({ control, selected }: InvoiceLayoutFieldProps<T>) {
   const { t } = useTranslation()
+  const { renderAction, selectedItemFor } = useQuickCreateAction(DOCUMENT_LAYOUTS_FOR_SELECT_RESOURCE)
   const label = t('invoiceEditor.fields.layout')
   const placeholder = t('invoiceEditor.fields.layoutPlaceholder')
 
@@ -36,7 +38,8 @@ export function InvoiceLayoutField<T extends LayoutFormValues>({ control, select
               resource={DOCUMENT_LAYOUTS_FOR_SELECT_RESOURCE}
               value={field.value}
               onChange={(id) => field.onChange(id ?? null)}
-              selectedItem={selected ? { id: selected.id, label: selected.name } : null}
+              selectedItem={selectedItemFor(field.value) ?? (selected ? { id: selected.id, label: selected.name } : null)}
+              action={renderAction((ref) => field.onChange(ref.id))}
               params={INVOICES_LAYOUT_PARAMS}
               labels={{
                 placeholder,

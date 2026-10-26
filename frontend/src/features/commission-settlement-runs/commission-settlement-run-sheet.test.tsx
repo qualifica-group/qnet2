@@ -9,6 +9,11 @@ import { CommissionSettlementRunSheet } from '@/features/commission-settlement-r
 import { CommissionSettlementRunDetailSheet } from '@/features/commission-settlement-runs/commission-settlement-run-detail-sheet'
 import type { CommissionSettlementRunResult } from '@/features/commission-settlement-runs/types'
 
+// The pickers render the quick-create "+" (spec 0028), gated by `<Can>`: no abilities here, so it stays hidden.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+
 const apiMocks = vi.hoisted(() => ({ create: vi.fn(), fetch: vi.fn() }))
 
 vi.mock('@/features/commission-settlement-runs/api', async (importOriginal) => ({

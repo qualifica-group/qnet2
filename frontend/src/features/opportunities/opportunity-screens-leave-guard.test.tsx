@@ -12,6 +12,11 @@ import {
   resolveForSelectLabels,
 } from '@/features/opportunities/opportunity-form-test-helpers'
 
+// The pickers render the quick-create "+" (spec 0028), gated by `<Can>`: no abilities here, so it stays hidden.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+
 /**
  * Spec 0198 AC-004 / D-5: leaving the create form without saving asks first
  * (`GuardedOpportunityForm`, spec 0195 D-9 applied to Opportunita'). The real

@@ -16,7 +16,6 @@ import {
 } from '@/features/registries/registry-related-panels'
 
 /** Compact trigger sizing, the same strip as the record's collaboration card. */
-const TRIGGER_CLASS = 'px-2.5 py-1 text-xs'
 
 interface RelatedTab {
   key: string
@@ -117,7 +116,7 @@ export function RegistryRelatedRecords({ registryId }: RegistryRelatedRecordsPro
         <div className="overflow-x-auto px-4 py-3">
           <TabsList aria-label={t('registries.detail.related.title')}>
             {tabs.map((tab) => (
-              <TabsTrigger key={tab.key} value={tab.key} className={TRIGGER_CLASS}>
+              <TabsTrigger key={tab.key} value={tab.key}>
                 {tab.icon}
                 {t(tab.labelKey)}
                 {counts[tab.key] !== undefined ? (

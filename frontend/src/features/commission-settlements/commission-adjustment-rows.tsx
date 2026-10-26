@@ -69,6 +69,7 @@ function PartyRow({ inline, name }: RowProps & { name: PartyField }) {
           placeholder={t(PARTY_LABELS[name].placeholder)}
           required
           hideLabel
+          quickCreate
         />
       }
     >

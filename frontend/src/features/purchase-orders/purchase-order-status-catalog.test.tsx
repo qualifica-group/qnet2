@@ -8,6 +8,11 @@ import { PurchaseOrderStatusBadge } from '@/features/purchase-orders/purchase-or
 import { PurchaseOrderStatusOptions } from '@/features/purchase-orders/purchase-order-status-options'
 import { StatusTabs } from '@/features/purchase-orders/status-tabs'
 
+// The pickers render the quick-create "+" (spec 0028), gated by `<Can>`: no abilities here, so it stays hidden.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+
 /**
  * Spec 0248 AC-008: badge, status tabs and the target options of the status
  * dialog draw name, color, icon and order from the catalog, not from maps in

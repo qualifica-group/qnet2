@@ -6,7 +6,6 @@ import { WorkOrderCostsComparisonTab } from '@/features/work-order-costs/work-or
 import { WorkOrderCostsEditorTab } from '@/features/work-order-costs/work-order-costs-editor-tab'
 import { useWorkOrderCosts } from '@/features/work-order-costs/use-work-order-costs'
 
-const TAB_CLASS = 'px-2.5 py-1 text-xs'
 
 interface WorkOrderCostsSectionProps {
   workOrderId: number
@@ -41,8 +40,8 @@ export function WorkOrderCostsSection({ workOrderId, canManage }: WorkOrderCosts
       ) : (
         <Tabs defaultValue="comparison">
           <TabsList>
-            <TabsTrigger value="comparison" className={TAB_CLASS}>{t('workOrders.costs.tabs.comparison')}</TabsTrigger>
-            <TabsTrigger value="actual" className={TAB_CLASS}>{t('workOrders.costs.tabs.actual')}</TabsTrigger>
+            <TabsTrigger value="comparison">{t('workOrders.costs.tabs.comparison')}</TabsTrigger>
+            <TabsTrigger value="actual">{t('workOrders.costs.tabs.actual')}</TabsTrigger>
           </TabsList>
           <TabsContent value="comparison">
             <WorkOrderCostsComparisonTab overview={costs.data} />

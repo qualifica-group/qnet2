@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { FORM_TAB_LIST_CLASS, FORM_TAB_TRIGGER_CLASS } from '@/components/form-tab-strip'
 import {
   ATTRIBUTE_LAYOUT_CONTEXTS,
   ATTRIBUTE_LAYOUT_FORM_SCOPES,
@@ -35,9 +34,9 @@ export function AttributeLayoutContextModeSelector({
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Tabs value={context} onValueChange={(value) => onContextChange(value as AttributeContext)}>
-        <TabsList className={FORM_TAB_LIST_CLASS} aria-label={t('section.contextLabel')}>
+        <TabsList aria-label={t('section.contextLabel')}>
           {ATTRIBUTE_LAYOUT_CONTEXTS.map((value) => (
-            <TabsTrigger key={value} value={value} className={FORM_TAB_TRIGGER_CLASS}>
+            <TabsTrigger key={value} value={value}>
               {t(`section.context.${value}`)}
             </TabsTrigger>
           ))}

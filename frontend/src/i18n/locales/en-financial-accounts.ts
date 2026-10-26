@@ -51,6 +51,7 @@ export const financialAccounts = {
   },
   form: {
     newFinancialAccount: 'New account',
+    createSubtitle: 'Register a new bank account, cash desk or card.',
     type: 'Type',
     bank: 'Bank',
     cashName: 'Name',

@@ -9,7 +9,6 @@ import type { ParsedOperation } from '@/features/api-integrations/openapi-operat
 import { parametersToFields } from '@/features/api-integrations/schema-fields'
 import { buildOperationLink } from '@/features/api-integrations/use-api-reference'
 
-const TAB_CLASS = 'px-2.5 py-1 text-xs'
 
 interface ApiEndpointDetailProps {
   operation: ParsedOperation
@@ -51,13 +50,13 @@ export function ApiEndpointDetail({ operation, baseUrl }: ApiEndpointDetailProps
           <Tabs defaultValue={tabs[0]} className="min-w-0 gap-2">
             <TabsList className="w-fit">
               {tabs.includes('parameters') ? (
-                <TabsTrigger value="parameters" className={TAB_CLASS}>{t('apiIntegrations.docs.parameters')}</TabsTrigger>
+                <TabsTrigger value="parameters">{t('apiIntegrations.docs.parameters')}</TabsTrigger>
               ) : null}
               {tabs.includes('body') ? (
-                <TabsTrigger value="body" className={TAB_CLASS}>{t('apiIntegrations.docs.body')}</TabsTrigger>
+                <TabsTrigger value="body">{t('apiIntegrations.docs.body')}</TabsTrigger>
               ) : null}
               {tabs.includes('response') ? (
-                <TabsTrigger value="response" className={TAB_CLASS}>{responseLabel}</TabsTrigger>
+                <TabsTrigger value="response">{responseLabel}</TabsTrigger>
               ) : null}
             </TabsList>
             <TabsContent value="parameters">

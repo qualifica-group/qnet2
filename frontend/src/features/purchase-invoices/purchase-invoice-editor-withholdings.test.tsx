@@ -10,6 +10,11 @@ import type {
   PurchaseInvoiceWritePayload,
 } from '@/features/purchase-invoices/types'
 
+// The pickers render the quick-create "+" (spec 0028), gated by `<Can>`: no abilities here, so it stays hidden.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+
 const FOR_SELECT_ITEMS: Record<string, unknown[]> = {
   registries: [{ id: 8, label: 'Acme Supplies' }],
   companies: [{ id: 3, label: 'Qualifica Srl' }],

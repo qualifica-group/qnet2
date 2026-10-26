@@ -88,9 +88,9 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: 'To choose the mode, go to **Settings › System settings › Module opening mode**:' },
         { type: 'list', items: ['**Modal only**: every module opens in the side panel.', '**Single page only**: every module opens as a full page.', '**Custom**: choose **Modal** or **Single page** module by module.'] },
         { type: 'paragraph', text: 'Press **Save changes**. **Restore default** returns every module to single page.' },
-        { type: 'paragraph', text: 'Next to some selection fields there is a **+** button, useful when the value you need does not exist yet:' },
+        { type: 'paragraph', text: 'Next to the selection fields linked to a QNet module (registries, referents, products, VAT rates, payment methods, units of measure, tasks, work orders, opportunities and so on) there is a **+** button, useful when the value you need does not exist yet:' },
         { type: 'steps', items: ['Press **+** next to the field.', 'Fill in the creation window.', 'Save: the new value is inserted into the field right away.'] },
-        { type: 'note', text: 'The button only appears if you can create that type of record.' },
+        { type: 'note', text: 'The button only appears if you can create that type of record. It does not appear in list filters, inside a quick-create window that is already open, or on the invoice, quote and cost line fields that take a price or rate from the chosen value (product, VAT rate): there, create the record from its module and then pick it.' },
       ],
     },
     {

@@ -9,6 +9,11 @@ import { GenerateOrdersDialog } from '@/features/purchase-requests/generate-orde
 import type { LineTarget } from '@/features/purchase-requests/line-status-transitions'
 import type { GenerateOrdersPayload, GenerateOrdersResult } from '@/features/purchase-requests/types'
 
+// The pickers render the quick-create "+" (spec 0028), gated by `<Can>`: no abilities here, so it stays hidden.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+
 const generateMock = vi.fn<(payload: GenerateOrdersPayload) => Promise<GenerateOrdersResult>>()
 vi.mock('@/features/purchase-requests/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/purchase-requests/api')>()),

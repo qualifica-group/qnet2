@@ -1,5 +1,6 @@
 import type { Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { INVOICE_TAGS_FOR_SELECT_RESOURCE } from '@/features/invoice-tags/for-select-api'
@@ -20,6 +21,7 @@ interface InvoiceTagFieldProps<T extends TagFormValues> {
 /** Optional "Tag" of an invoice: active catalog entries; cleared (null) = "Nessun tag". */
 export function InvoiceTagField<T extends TagFormValues>({ control, selected, labelClassName }: InvoiceTagFieldProps<T>) {
   const { t } = useTranslation()
+  const { renderAction, selectedItemFor } = useQuickCreateAction(INVOICE_TAGS_FOR_SELECT_RESOURCE)
   const label = t('invoiceEditor.fields.tag')
 
   return (
@@ -34,7 +36,8 @@ export function InvoiceTagField<T extends TagFormValues>({ control, selected, la
               resource={INVOICE_TAGS_FOR_SELECT_RESOURCE}
               value={field.value}
               onChange={(id) => field.onChange(id ?? null)}
-              selectedItem={selected ? { id: selected.id, label: selected.name } : null}
+              selectedItem={selectedItemFor(field.value) ?? (selected ? { id: selected.id, label: selected.name } : null)}
+              action={renderAction((ref) => field.onChange(ref.id))}
               labels={{
                 placeholder: t('invoiceEditor.fields.noTag'),
                 searchPlaceholder: t('invoiceEditor.fields.searchPlaceholder'),

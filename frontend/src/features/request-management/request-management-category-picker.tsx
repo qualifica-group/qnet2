@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Switch } from '@/components/ui/switch'
-import { FORM_TAB_TRIGGER_CLASS } from '@/components/form-tab-strip'
+import { TABS_TRIGGER_CLASS } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { filterCategoriesByName } from '@/features/request-management/category-tab-fit'
 import type { RequestManagementProductCategory } from '@/features/request-management/types'
@@ -16,9 +16,7 @@ import type { RequestManagementProductCategory } from '@/features/request-manage
  * compact type, raised like the active chip while its menu is open.
  */
 const MORE_BUTTON_CLASS = cn(
-  'inline-flex shrink-0 items-center font-medium whitespace-nowrap outline-none',
-  'focus-visible:ring-[3px] focus-visible:ring-ring/50',
-  FORM_TAB_TRIGGER_CLASS,
+  TABS_TRIGGER_CLASS,
   'data-[state=open]:bg-card data-[state=open]:text-foreground data-[state=open]:shadow-sm',
 )
 

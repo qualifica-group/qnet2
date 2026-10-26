@@ -88,9 +88,9 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: 'Per scegliere la modalità vai in **Impostazioni › Impostazioni sistema › Modalità apertura moduli**:' },
         { type: 'list', items: ['**Solo modale**: tutti i moduli nel pannello laterale.', '**Solo pagina singola**: tutti i moduli a pagina intera.', '**Personalizzata**: scegli **Modale** o **Pagina singola** modulo per modulo.'] },
         { type: 'paragraph', text: 'Premi **Salva modifiche**. **Ripristina default** riporta tutti i moduli alla pagina singola.' },
-        { type: 'paragraph', text: 'Accanto ad alcuni campi di scelta c’è un pulsante **+**, utile se il valore che cerchi non esiste ancora:' },
+        { type: 'paragraph', text: 'Accanto ai campi di scelta collegati a un modulo di QNet (anagrafiche, referenti, prodotti, aliquote IVA, metodi di pagamento, unità di misura, task, commesse, opportunità e così via) c’è un pulsante **+**, utile se il valore che cerchi non esiste ancora:' },
         { type: 'steps', items: ['Premi **+** accanto al campo.', 'Compila la finestra di creazione.', 'Salva: il nuovo valore viene inserito subito nel campo.'] },
-        { type: 'note', text: 'Il pulsante compare solo se puoi creare quel tipo di record.' },
+        { type: 'note', text: 'Il pulsante compare solo se puoi creare quel tipo di record. Non compare nei filtri degli elenchi, dentro una finestra di creazione rapida già aperta e sui campi delle righe di fatture, offerte e costi che ricavano prezzo o aliquota dal valore scelto (prodotto, aliquota IVA): lì crea il record dal suo modulo e poi sceglilo.' },
       ],
     },
     {

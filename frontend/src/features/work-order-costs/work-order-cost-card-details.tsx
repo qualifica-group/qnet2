@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { Input } from '@/components/ui/input'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { costTypeOptionRenderer } from '@/features/cost-types/cost-type-option-renderer'
@@ -15,6 +16,8 @@ import {
 
 /** Filters the supplier picker's `registries` for-select to `is_supplier` records only. */
 const SUPPLIER_PARAMS: Record<string, string | number> = { is_supplier: 1 }
+/** The "+" quick-create opens the registry form with the supplier flag already on. */
+const SUPPLIER_PRESETS = { is_supplier: true } as const
 
 interface WorkOrderCostCardDetailsProps {
   /** 1-based row number: the row's name in every label. */
@@ -35,6 +38,8 @@ interface WorkOrderCostCardDetailsProps {
  */
 export function WorkOrderCostCardDetails({ n, row, disabled, error, rowId, onChangeField }: WorkOrderCostCardDetailsProps) {
   const { t } = useTranslation()
+  const costTypeCreate = useQuickCreateAction(COST_TYPES_FOR_SELECT_RESOURCE)
+  const supplierCreate = useQuickCreateAction(REGISTRIES_FOR_SELECT_RESOURCE, SUPPLIER_PRESETS)
   const errorId = (field: string) => `${rowId}-${field}-error`
 
   const costTypeItem: (ForSelectItem & { meta: { color: string | null } }) | null =
@@ -73,6 +78,14 @@ export function WorkOrderCostCardDetails({ n, row, disabled, error, rowId, onCha
           }}
           selectedItem={costTypeItem}
           renderItem={costTypeOptionRenderer}
+          action={costTypeCreate.renderAction(
+            (ref) =>
+              onChangeField({
+                cost_type_id: ref.id,
+                display: { ...row.display, cost_type_name: ref.name, cost_type_color: null },
+              }),
+            disabled,
+          )}
           disabled={disabled}
           className="min-h-8 py-1"
           {...errorAria(errorId('costType'), error?.cost_type_id)}
@@ -99,6 +112,10 @@ export function WorkOrderCostCardDetails({ n, row, disabled, error, rowId, onCha
             onChangeField({ supplier_id: item?.id ?? null, display: { ...row.display, supplier_name: item?.label ?? null } })
           }
           selectedItem={supplierItem}
+          action={supplierCreate.renderAction(
+            (ref) => onChangeField({ supplier_id: ref.id, display: { ...row.display, supplier_name: ref.name } }),
+            disabled,
+          )}
           disabled={disabled}
           className="min-h-8 py-1"
           {...errorAria(errorId('supplier'), error?.supplier_id)}

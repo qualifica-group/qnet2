@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import type { Control, FieldPathByValue, FieldValues } from 'react-hook-form'
+import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { AsyncPaginatedMultiSelect } from '@/components/ui/async-paginated-multi-select'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
@@ -12,6 +13,8 @@ interface BaseProps {
   required?: boolean
   /** The row around it already shows the label (an in-place record row): keep it for assistive tech only. */
   hideLabel?: boolean
+  /** Shows the "+" quick-create next to the picker: data-entry fields only, never a criteria/filter picker. */
+  quickCreate?: boolean
 }
 
 interface SingleProps<TFieldValues extends FieldValues> extends BaseProps {
@@ -25,9 +28,9 @@ interface MultiProps<TFieldValues extends FieldValues> extends BaseProps {
 }
 
 /**
- * Single for-select picker bound to a nullable id, without the quick-create
- * action of `RelationSelectField`: used by dialogs that only FILTER or pick
- * existing agents/companies (settlement runs, adjustments).
+ * Single for-select picker bound to a nullable id. No quick-create "+" unless
+ * `quickCreate` is set: the settlement-run pickers FILTER what gets settled,
+ * so they must not create records.
  */
 export function ForSelectFormField<TFieldValues extends FieldValues>({
   control,
@@ -37,8 +40,10 @@ export function ForSelectFormField<TFieldValues extends FieldValues>({
   placeholder,
   required = false,
   hideLabel = false,
+  quickCreate = false,
 }: SingleProps<TFieldValues>) {
   const { t } = useTranslation()
+  const { renderAction, selectedItemFor } = useQuickCreateAction(resource)
   return (
     <FormField
       control={control}
@@ -53,6 +58,7 @@ export function ForSelectFormField<TFieldValues extends FieldValues>({
               resource={resource}
               value={field.value as number | null}
               onChange={field.onChange}
+              selectedItem={selectedItemFor(field.value as number | null)}
               labels={{
                 placeholder,
                 searchPlaceholder: t('commissionSettlements.picker.search'),
@@ -62,6 +68,7 @@ export function ForSelectFormField<TFieldValues extends FieldValues>({
                 triggerLabel: label,
                 retry: t('common.retry'),
               }}
+              action={quickCreate ? renderAction((ref) => field.onChange(ref.id)) : undefined}
             />
           </FormControl>
           <FormMessage className="text-xs" />
@@ -71,7 +78,7 @@ export function ForSelectFormField<TFieldValues extends FieldValues>({
   )
 }
 
-/** Multi for-select picker bound to an id array (same no-quick-create rationale as the single one). */
+/** Multi for-select picker bound to an id array (same opt-in quick-create rationale as the single one). */
 export function ForSelectMultiFormField<TFieldValues extends FieldValues>({
   control,
   name,
@@ -79,8 +86,10 @@ export function ForSelectMultiFormField<TFieldValues extends FieldValues>({
   label,
   placeholder,
   hideLabel = false,
+  quickCreate = false,
 }: MultiProps<TFieldValues>) {
   const { t } = useTranslation()
+  const { quickCreated, renderAction } = useQuickCreateAction(resource)
   return (
     <FormField
       control={control}
@@ -93,6 +102,7 @@ export function ForSelectMultiFormField<TFieldValues extends FieldValues>({
               resource={resource}
               value={field.value as number[]}
               onChange={field.onChange}
+              selectedItems={quickCreated.map((ref) => ({ id: ref.id, label: ref.name }))}
               labels={{
                 placeholder,
                 searchPlaceholder: t('commissionSettlements.picker.search'),
@@ -102,6 +112,16 @@ export function ForSelectMultiFormField<TFieldValues extends FieldValues>({
                 triggerLabel: label,
                 retry: t('common.retry'),
               }}
+              action={
+                quickCreate
+                  ? renderAction((ref) => {
+                      const current = field.value as number[]
+                      if (!current.includes(ref.id)) {
+                        field.onChange([...current, ref.id])
+                      }
+                    })
+                  : undefined
+              }
             />
           </FormControl>
           <FormMessage className="text-xs" />

@@ -8,6 +8,11 @@ import { InvoiceTagBadge } from '@/features/invoices/invoice-status-badges'
 import { InvoiceTagField } from '@/features/invoices/invoice-tag-field'
 import type { InvoiceTagRef } from '@/features/invoices/types'
 
+// The pickers render the quick-create "+" (spec 0028), gated by `<Can>`: no abilities here, so it stays hidden.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+
 /**
  * Spec 0247 AC-014: the tag is picked from the `invoice-tags` catalog (for-select),
  * "no tag" is the empty state, and the badge takes its colour from the server.

@@ -7,6 +7,11 @@ import i18n from '@/i18n'
 import { InvoiceDetailView } from '@/features/invoices/invoice-detail'
 import type { InvoiceWithPermissions } from '@/features/invoices/types'
 
+// The pickers render the quick-create "+" (spec 0028), gated by `<Can>`: no abilities here, so it stays hidden.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+
 const getInvoiceMock = vi.fn<(id: number) => Promise<InvoiceWithPermissions>>()
 const patchInvoiceMock = vi.fn<(id: number, payload: Record<string, unknown>) => Promise<InvoiceWithPermissions>>()
 const detailsMock = vi.fn<(id: number, payload: Record<string, unknown>) => Promise<InvoiceWithPermissions>>()

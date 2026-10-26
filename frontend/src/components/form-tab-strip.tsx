@@ -18,17 +18,6 @@ import {
  * visibility and content.
  */
 
-/** Tab-strip container: compact pill trough on the base list surface. */
-export const FORM_TAB_LIST_CLASS = 'gap-1 rounded-lg p-1 shadow-sm'
-
-/** Tab trigger: pill, muted until active, white (card surface) chip when active. */
-export const FORM_TAB_TRIGGER_CLASS =
-  'gap-1.5 rounded-md px-2.5 py-1 text-xs text-muted-foreground transition-all duration-200 ' +
-  'hover:bg-card/60 hover:text-foreground ' +
-  'data-[state=active]:bg-card data-[state=active]:text-primary ' +
-  'data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-primary/15 ' +
-  '[&_svg]:size-3.5 [&_svg]:transition-transform [&_svg]:duration-200 data-[state=active]:[&_svg]:scale-110'
-
 /** Sub-pixel slack, so a strip that fits exactly is not read as overflowing. */
 const OVERFLOW_TOLERANCE_PX = 1
 
@@ -109,7 +98,6 @@ export function FormTabStrip({
         ref={listRef}
         aria-label={ariaLabel}
         className={cn(
-          FORM_TAB_LIST_CLASS,
           // `overflow-hidden` keeps a strip that outgrows its container from
           // widening the page in the frame before the measurement below runs.
           'flex-nowrap overflow-hidden',

@@ -14,7 +14,6 @@ const NOTES_TAB = 'notes'
 const DOCUMENTS_TAB = 'documents'
 const ACTIVITY_TAB = 'activity'
 
-const TRIGGER_CLASS = 'px-2.5 py-1 text-xs'
 
 interface RequestWorkCollaborationProps {
   panel: RequestWorkPanel
@@ -51,18 +50,18 @@ export function RequestWorkCollaboration({ panel, canViewActivity }: RequestWork
       <Tabs defaultValue={NOTES_TAB} className="gap-0">
         <div className="px-4 py-3">
           <TabsList>
-            <TabsTrigger value={NOTES_TAB} className={TRIGGER_CLASS}>
+            <TabsTrigger value={NOTES_TAB}>
               <MessagesSquare className="size-3.5" aria-hidden="true" />
               {t('requestManagement.workPanel.collaboration.notesTab', { defaultValue: 'Notes' })}
             </TabsTrigger>
             {canViewDocuments && (
-              <TabsTrigger value={DOCUMENTS_TAB} className={TRIGGER_CLASS}>
+              <TabsTrigger value={DOCUMENTS_TAB}>
                 <Paperclip className="size-3.5" aria-hidden="true" />
                 {t('requestManagement.workPanel.collaboration.documentsTab', { defaultValue: 'Documents' })}
               </TabsTrigger>
             )}
             {canViewActivity && (
-              <TabsTrigger value={ACTIVITY_TAB} className={TRIGGER_CLASS}>
+              <TabsTrigger value={ACTIVITY_TAB}>
                 <History className="size-3.5" aria-hidden="true" />
                 {t('requestManagement.workPanel.collaboration.activityTab', { defaultValue: 'History' })}
               </TabsTrigger>

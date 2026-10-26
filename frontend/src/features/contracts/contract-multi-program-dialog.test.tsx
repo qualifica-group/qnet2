@@ -11,6 +11,11 @@ import { createMultiQuoteWorkOrder, fetchMultiProgrammableLines } from '@/featur
 import type { MultiProgrammableLine, MultiProgrammableLinesData } from '@/features/contracts/types'
 import type { WorkOrderDetail } from '@/features/work-orders/types'
 
+// The pickers render the quick-create "+" (spec 0028), gated by `<Can>`: no abilities here, so it stays hidden.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+
 /** Spec 0267 AC-015: grouped lines, eligibility + same-branch rule, >=2 offers, payload, 422 on the lines. */
 
 vi.mock('@/features/contracts/api', async () => {

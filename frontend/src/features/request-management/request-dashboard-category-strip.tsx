@@ -1,10 +1,9 @@
 import { useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check, LayoutGrid } from 'lucide-react'
-import { FORM_TAB_LIST_CLASS, FORM_TAB_TRIGGER_CLASS } from '@/components/form-tab-strip'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger, TABS_LIST_CLASS } from '@/components/ui/tabs'
 import type { RequestDashboardCategory } from '@/features/request-management/dashboard-api'
 import { filterCategoriesByName } from '@/features/request-management/category-tab-fit'
 import { CategoryMoreButton } from '@/features/request-management/request-management-category-picker'
@@ -13,7 +12,7 @@ import { OVERVIEW_TAB } from '@/features/request-management/use-request-dashboar
 import { cn } from '@/lib/utils'
 
 /** Borderless list inside the trough, so the "Altre" button shares the tabs' pill background (as in Gestione Richieste). */
-const INLINE_TAB_LIST_CLASS = 'w-auto min-w-0 flex-nowrap gap-1 rounded-none border-0 bg-transparent p-0'
+const INLINE_TAB_LIST_CLASS = 'w-auto min-w-0 flex-nowrap gap-1 rounded-none border-0 bg-transparent p-0 shadow-none'
 
 /**
  * The fit Gestione Richieste uses keys tabs by number: here that number is the
@@ -148,16 +147,16 @@ export function DashboardCategoryStrip({ categories, value, onSelect }: Dashboar
   return (
     // `w-0 min-w-full` keeps the strip off the page's intrinsic width (see `FormTabStrip`).
     <div className="relative w-0 min-w-full overflow-x-clip">
-      <div ref={troughRef} className={cn('flex items-center border border-border/60 bg-surface', FORM_TAB_LIST_CLASS)}>
+      <div ref={troughRef} className={cn(TABS_LIST_CLASS, 'flex flex-nowrap')}>
         <TabsList aria-label={t('requestManagement.dashboard.tabsLabel')} className={INLINE_TAB_LIST_CLASS}>
-          <TabsTrigger value={OVERVIEW_TAB} className={FORM_TAB_TRIGGER_CLASS}>
+          <TabsTrigger value={OVERVIEW_TAB}>
             <LayoutGrid aria-hidden="true" />
             {overviewLabel}
           </TabsTrigger>
           {inlineIds.map((id) => {
             const category = stripCategories[id]
             return (
-              <TabsTrigger key={category.key} value={category.key} className={FORM_TAB_TRIGGER_CLASS} title={category.name}>
+              <TabsTrigger key={category.key} value={category.key} title={category.name}>
                 <span className="max-w-48 truncate">{category.name}</span>
               </TabsTrigger>
             )
@@ -183,7 +182,7 @@ export function DashboardCategoryStrip({ categories, value, onSelect }: Dashboar
       >
         <Tabs value={value}>
           <TabsList className={INLINE_TAB_LIST_CLASS}>
-            <TabsTrigger value={OVERVIEW_TAB} className={FORM_TAB_TRIGGER_CLASS} data-tab-measure={MEASURE_ALL}>
+            <TabsTrigger value={OVERVIEW_TAB} data-tab-measure={MEASURE_ALL}>
               <LayoutGrid aria-hidden="true" />
               {overviewLabel}
             </TabsTrigger>
@@ -191,7 +190,7 @@ export function DashboardCategoryStrip({ categories, value, onSelect }: Dashboar
               <TabsTrigger
                 key={category.key}
                 value={category.key}
-                className={FORM_TAB_TRIGGER_CLASS}
+               
                 data-tab-measure={String(category.id)}
               >
                 <span className="max-w-48 truncate">{category.name}</span>

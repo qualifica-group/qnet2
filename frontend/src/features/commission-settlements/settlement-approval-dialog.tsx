@@ -37,6 +37,7 @@ function ApprovalForm({ settlement, draft, onChanged, onClose }: ApprovalFormPro
             label={t('commissionSettlements.approvalDialog.paymentMethod')}
             placeholder={placeholder}
             required
+            quickCreate
           />
           <ForSelectFormField
             control={form.control}
@@ -45,6 +46,7 @@ function ApprovalForm({ settlement, draft, onChanged, onClose }: ApprovalFormPro
             label={t('commissionSettlements.approvalDialog.costType')}
             placeholder={placeholder}
             required
+            quickCreate
           />
           <ForSelectFormField
             control={form.control}
@@ -53,6 +55,7 @@ function ApprovalForm({ settlement, draft, onChanged, onClose }: ApprovalFormPro
             label={t('commissionSettlements.approvalDialog.vatRate')}
             placeholder={placeholder}
             required
+            quickCreate
           />
           <ForSelectFormField
             control={form.control}
@@ -60,6 +63,7 @@ function ApprovalForm({ settlement, draft, onChanged, onClose }: ApprovalFormPro
             resource={FINANCIAL_ACCOUNTS_FOR_SELECT_RESOURCE}
             label={t('commissionSettlements.approvalDialog.financialAccount')}
             placeholder={placeholder}
+            quickCreate
           />
         </div>
         <PurchaseInvoiceEditorInstallments preview={preview} />

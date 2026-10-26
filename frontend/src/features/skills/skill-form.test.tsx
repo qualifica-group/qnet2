@@ -8,6 +8,11 @@ import { SkillForm } from '@/features/skills/skill-form'
 import type { Skill } from '@/features/skills/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 
+// The pickers render the quick-create "+" (spec 0028), gated by `<Can>`: no abilities here, so it stays hidden.
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: () => false, hasRole: () => false, roles: [], isLoading: false }),
+}))
+
 /** The create form replicates the detail with closed rows; Save creates everything at once. */
 
 const createMock = vi.fn()

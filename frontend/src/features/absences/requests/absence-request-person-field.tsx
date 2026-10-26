@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useFormContext } from 'react-hook-form'
+import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { useSelectLabels } from '@/features/absences/balances/use-select-labels'
@@ -15,6 +16,7 @@ interface AbsenceRequestPersonFieldProps {
 export function AbsenceRequestPersonField({ selectedPerson }: AbsenceRequestPersonFieldProps) {
   const { t } = useTranslation()
   const { control } = useFormContext<AbsenceRequestFormValues>()
+  const { renderAction, selectedItemFor } = useQuickCreateAction(USERS_FOR_SELECT_RESOURCE)
   const labels = {
     ...useSelectLabels(),
     placeholder: t('absences.requests.form.personPlaceholder'),
@@ -36,7 +38,8 @@ export function AbsenceRequestPersonField({ selectedPerson }: AbsenceRequestPers
               resource={USERS_FOR_SELECT_RESOURCE}
               value={field.value}
               onChange={field.onChange}
-              selectedItem={selectedPerson ? { id: selectedPerson.id, label: selectedPerson.name } : null}
+              selectedItem={selectedItemFor(field.value) ?? (selectedPerson ? { id: selectedPerson.id, label: selectedPerson.name } : null)}
+              action={renderAction((ref) => field.onChange(ref.id))}
               labels={labels}
               showAvatar
             />

@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import type { Control } from 'react-hook-form'
+import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { AsyncPaginatedMultiSelect } from '@/components/ui/async-paginated-multi-select'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
@@ -29,6 +30,8 @@ interface ContractProgramSharedFieldsProps {
  */
 export function ContractProgramSharedFields({ control, prefix, required }: ContractProgramSharedFieldsProps) {
   const { t } = useTranslation()
+  const templateCreate = useQuickCreateAction(TASK_TEMPLATES_FOR_SELECT_RESOURCE)
+  const supervisorCreate = useQuickCreateAction(USERS_FOR_SELECT_RESOURCE)
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -82,6 +85,8 @@ export function ContractProgramSharedFields({ control, prefix, required }: Contr
                 resource={TASK_TEMPLATES_FOR_SELECT_RESOURCE}
                 value={field.value}
                 onChange={field.onChange}
+                selectedItem={templateCreate.selectedItemFor(field.value)}
+                action={templateCreate.renderAction((ref) => field.onChange(ref.id))}
                 labels={{
                   placeholder: t('contracts.actions.programDialog.taskTemplatePlaceholder'),
                   searchPlaceholder: t('contracts.actions.programDialog.taskTemplateSearchPlaceholder'),
@@ -111,6 +116,12 @@ export function ContractProgramSharedFields({ control, prefix, required }: Contr
                 value={field.value}
                 onChange={field.onChange}
                 showAvatar
+                selectedItems={supervisorCreate.quickCreated.map((ref) => ({ id: ref.id, label: ref.name }))}
+                action={supervisorCreate.renderAction((ref) => {
+                  if (!field.value.includes(ref.id)) {
+                    field.onChange([...field.value, ref.id])
+                  }
+                })}
                 labels={{
                   placeholder: t('workOrders.form.supervisorsPlaceholder'),
                   searchPlaceholder: t('workOrders.form.supervisorsSearch'),

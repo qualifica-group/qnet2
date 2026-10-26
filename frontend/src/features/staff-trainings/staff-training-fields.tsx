@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useFormContext } from 'react-hook-form'
 import { GraduationCap, UserRound } from 'lucide-react'
 import { RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
+import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { AsyncPaginatedSelect, type AsyncPaginatedSelectLabels } from '@/components/ui/async-paginated-select'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
@@ -24,6 +25,8 @@ interface StaffTrainingFieldsProps {
 /** The training form in two record sections (spec 0287 D-4): person and course, then day, outcome and notes. */
 export function StaffTrainingFields({ selectedUser, selectedCourse }: StaffTrainingFieldsProps) {
   const { t } = useTranslation()
+  const userCreate = useQuickCreateAction(USERS_RESOURCE)
+  const courseCreate = useQuickCreateAction(STAFF_COURSES_RESOURCE)
   const { control } = useFormContext<StaffTrainingFormValues>()
 
   const pickerLabels = (prefix: 'user' | 'course'): AsyncPaginatedSelectLabels => ({
@@ -50,7 +53,8 @@ export function StaffTrainingFields({ selectedUser, selectedCourse }: StaffTrain
                   resource={USERS_RESOURCE}
                   value={field.value}
                   onChange={field.onChange}
-                  selectedItem={selectedUser}
+                  selectedItem={userCreate.selectedItemFor(field.value) ?? selectedUser}
+                  action={userCreate.renderAction((ref) => field.onChange(ref.id))}
                   labels={pickerLabels('user')}
                   showAvatar
                 />
@@ -70,7 +74,8 @@ export function StaffTrainingFields({ selectedUser, selectedCourse }: StaffTrain
                   resource={STAFF_COURSES_RESOURCE}
                   value={field.value}
                   onChange={field.onChange}
-                  selectedItem={selectedCourse}
+                  selectedItem={courseCreate.selectedItemFor(field.value) ?? selectedCourse}
+                  action={courseCreate.renderAction((ref) => field.onChange(ref.id))}
                   labels={pickerLabels('course')}
                 />
               </FormControl>
