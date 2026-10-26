@@ -264,5 +264,17 @@ export interface UpdateUserPayload {
   custom_fields?: Record<string, CustomFieldValue>
 }
 
+/** Payload of POST /users/bulk-activation (spec 0310). */
+export interface UserBulkActivationPayload {
+  is_active: boolean
+  ids: number[]
+}
+
+/** Per-user outcome: a refused user carries the backend's reason and never blocks the others. */
+export interface UserBulkActivationResult {
+  updated: number[]
+  failed: { id: number; name: string | null; message: string }[]
+}
+
 /** Discriminated form mode: a bare create, or the in-place detail of a persisted user (spec 0222). */
 export type UserFormMode = { type: 'create' } | { type: 'edit'; user: UserDetailWithPermissions }

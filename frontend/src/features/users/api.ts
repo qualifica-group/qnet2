@@ -4,6 +4,8 @@ import type { ResourcePermissions } from '@/features/authorization/types'
 import type {
   CreateUserPayload,
   UpdateUserPayload,
+  UserBulkActivationPayload,
+  UserBulkActivationResult,
   UserDetail,
   UserDetailWithPermissions,
 } from '@/features/users/types'
@@ -54,6 +56,12 @@ export async function updateUser(
 export async function resendWelcomeEmail(id: number): Promise<string | null> {
   const { data } = await apiClient.post<ApiResponse<null>>(`/users/${id}/resend-welcome`)
   return data.message || null
+}
+
+/** Activates or deactivates many users at once (spec 0310); the outcome is per user. */
+export async function bulkSetUsersActive(payload: UserBulkActivationPayload): Promise<UserBulkActivationResult> {
+  const { data } = await apiClient.post<ApiResponse<UserBulkActivationResult>>('/users/bulk-activation', payload)
+  return data.data
 }
 
 /** Deletes a user. Backend responds 204 with no body. */

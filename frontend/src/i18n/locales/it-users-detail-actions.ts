@@ -1,6 +1,7 @@
 /**
  * Azioni di record del dettaglio utente (barra azioni: attiva/disattiva,
- * impersona, elimina). Separate da `it.ts` per restare nei limiti di dimensione
+ * impersona, elimina) e azioni massive della griglia (`bulk`, spec 0310).
+ * Separate da `it.ts` per restare nei limiti di dimensione
  * (`.claude/rules/engineering.md` §6); confluiscono in `users.detail.actions`.
  */
 
@@ -25,4 +26,15 @@ export const usersDetailActions = {
     description: "L'utente verrà eliminato definitivamente. L'operazione non può essere annullata.",
   },
   deleteInUse: "L'utente è operatore di lead o supervisore di opportunità: riassegnali prima di eliminarlo.",
+  bulk: {
+    activate: 'Attiva selezionati',
+    deactivate: 'Disattiva selezionati',
+    deactivateTitle_one: 'Disattivare {{count}} utente?',
+    deactivateTitle_other: 'Disattivare {{count}} utenti?',
+    allUpdated_one: '{{count}} utente aggiornato.',
+    allUpdated_other: '{{count}} utenti aggiornati.',
+    result: '{{updated}} aggiornati, {{failed}} non riusciti.',
+    failedItem: '{{name}}: {{message}}',
+    error: 'Impossibile aggiornare lo stato degli utenti. Riprova.',
+  },
 }

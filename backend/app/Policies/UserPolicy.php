@@ -21,13 +21,23 @@ class UserPolicy extends BasePolicy
     }
 
     /**
+     * A super-admin is changed (edit, activate/deactivate, avatar, contracts)
+     * only by another super-admin. Gate::before grants a super-admin actor
+     * every ability, so reaching this method means the actor is not one.
+     */
+    public function update(User $user, Model $model): bool
+    {
+        return ! $this->isPrivilegedTarget($model) && parent::update($user, $model);
+    }
+
+    /**
      * In addition to the standard `users.delete` permission, a user can never
-     * delete their own account: this prevents an authenticated actor from
-     * locking themselves (or the last admin) out via the table delete action.
+     * delete their own account (it would lock them, or the last admin, out),
+     * and only a super-admin deletes a super-admin.
      */
     public function delete(User $user, Model $model): bool
     {
-        if ($user->is($model)) {
+        if ($user->is($model) || $this->isPrivilegedTarget($model)) {
             return false;
         }
 
@@ -67,7 +77,16 @@ class UserPolicy extends BasePolicy
             return false;
         }
 
+        return ! $this->isPrivilegedTarget($model);
+    }
+
+    /**
+     * Whether $model is a super-admin, reserved to super-admin actors: every
+     * caller runs only for a non-super-admin actor (Gate::before).
+     */
+    private function isPrivilegedTarget(Model $model): bool
+    {
         /** @var User $model */
-        return ! ($model->hasRole(RoleAssignmentGuard::PRIVILEGED_ROLE) && ! $user->hasRole(RoleAssignmentGuard::PRIVILEGED_ROLE));
+        return $model->hasRole(RoleAssignmentGuard::PRIVILEGED_ROLE);
     }
 }

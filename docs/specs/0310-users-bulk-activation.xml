@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0310-users-bulk-activation" status="approved" owner="utente" date="2026-10-26">
+
+  <goal>
+    Attivare o disattivare in modo MASSIVO piu' utenti dalla lista del modulo Utenti, con una
+    sola operazione. Oggi Attiva/Disattiva esiste solo sulla scheda del singolo utente.
+  </goal>
+
+  <context>
+    Il cambio di stato singolo passa da PATCH /api/users/{user} { is_active } e quindi da
+    UserService::update(), che applica gia' due regole che questa feature RIUSA senza duplicarle:
+      - spec 0272 D-8: con "Cessato il" gia' trascorsa l'utente resta non attivo;
+      - spec 0275 D-4: una persona attiva (non account di servizio) deve appartenere ad almeno
+        una funzione aziendale (BusinessFunctionCoverageGuard), altrimenti 422.
+    Il campo is_active e' soggetto ai permessi di campo (UsersAuthorization, matrice DB dei ruoli).
+    Il framework tabellare offre selezione a checkbox e dropdown "Azioni" via getBulkActions.
+    Precedente da ricalcare: spec 0304 D-17 (POST /api/absence-requests/bulk-decision), esito per id.
+  </context>
+
+  <decisions source="default dichiarati 2026-10-26">
+    <d id="D-1">Esito PER UTENTE (best-effort), non tutto-o-niente: un utente che non si puo'
+      attivare (manca la funzione aziendale, cessato) non blocca gli altri. Ogni id passa da
+      UserService::update in una propria transazione: stesse regole e stesso log attivita' del singolo.</d>
+    <d id="D-2">Il proprio account non si disattiva mai (stessa ragione dell'auto-eliminazione e
+      della barra azioni della scheda, che sul proprio account non offre Disattiva): esito fallito.</d>
+    <d id="D-3">Un utente gia' nello stato richiesto e' un no-op contato fra gli aggiornati.</d>
+    <d id="D-4">Disattivare chiede conferma; attivare no (ripristina solo l'accesso), come nella scheda.</d>
+  </decisions>
+
+  <decisions source="utente 2026-10-26">
+    <d id="D-5">Un super-admin si modifica, disattiva o elimina SOLO da un altro super-admin. Regola in
+      UserPolicy::update/delete (Gate::before lascia passare i super-admin), quindi vale per ogni percorso
+      di scrittura sull'utente: PATCH, DELETE, bulk-delete della griglia, modifica in griglia, avatar,
+      email di benvenuto, storico contrattuale e questa attivazione massiva (esito "forbidden").
+      UsersAuthorization legge update/delete dalla policy: per un non super-admin la scheda di un
+      super-admin e' in sola lettura (resource.update/delete false, campi non editabili, nessuna azione).
+      La PATCH di un campo modificato risponde 422 (gate dei permessi di campo, prima della policy).</d>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Endpoint POST /api/users/bulk-activation (nuovo), dichiarato prima di users/{user}.</item>
+      <item>UserBulkActivation (service), UserBulkActivationRequest, UserBulkActivationController.</item>
+      <item>Voci "Attiva selezionati" / "Disattiva selezionati" nel dropdown Azioni della griglia Utenti,
+        presenti solo con users.update.</item>
+      <item>Chiavi i18n backend (lang/{it,en}/users.php) e frontend (users.bulk.*); guida in-app Utenti IT/EN.</item>
+    </in>
+    <out>
+      <item>Revoca delle sessioni/token gia' aperti dell'utente disattivato (oggi non la fa nemmeno il singolo).</item>
+      <item>Nuovi permessi: si riusa users.update + permesso di campo is_active.</item>
+      <item>Modifiche allo schema DB.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/users/bulk-activation">
+      <request>
+        is_active: bool  (required; true = attiva, false = disattiva)
+        ids:       int[] (required, min 1, max 200, distinct)
+      </request>
+      <response status="200">
+        { success: true, message, data: { updated: int[], failed: [{ id: int, name: string|null, message: string }] } }
+        updated = utenti ora nello stato richiesto (no-op inclusi, D-3).
+        failed.message (tradotto) per: utente inesistente; proprio account in disattivazione (D-2);
+        is_active non modificabile per l'attore su quell'utente; funzione aziendale mancante
+        all'attivazione; cessazione gia' trascorsa all'attivazione.
+      </response>
+      <errors>
+        403 — attore senza users.update (nessuna scrittura).
+        422 — validazione FormRequest (is_active mancante, ids vuoto/oltre 200/non interi).
+      </errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un attore con users.update, quando disattiva tre utenti attivi, allora 200, updated contiene i tre id e sono tutti is_active = false.</criterion>
+    <criterion id="AC-002">Quando attiva utenti non attivi che appartengono a una funzione aziendale, allora risultano attivi.</criterion>
+    <criterion id="AC-003">Dato un utente senza funzione aziendale nella selezione da attivare, allora e' in failed con il messaggio della funzione obbligatoria, resta non attivo, e gli altri vengono attivati (D-1).</criterion>
+    <criterion id="AC-004">Dato un utente con cessazione trascorsa, attivarlo lo lascia non attivo e lo riporta in failed.</criterion>
+    <criterion id="AC-005">Se la selezione da disattivare contiene l'attore, l'attore resta attivo ed e' in failed (D-2).</criterion>
+    <criterion id="AC-006">Un id inesistente e' in failed, senza bloccare gli altri.</criterion>
+    <criterion id="AC-007">Un attore senza users.update riceve 403 e nessun utente cambia.</criterion>
+    <criterion id="AC-008">Un attore il cui ruolo ha is_active in sola lettura vede l'utente in failed, invariato.</criterion>
+    <criterion id="AC-010">(D-5) Un non super-admin con tutti i permessi utenti non puo' modificare, disattivare (singolo o massivo), eliminare (singolo o massivo) ne' cambiare l'avatar di un super-admin, e la sua scheda gli arriva in sola lettura; un super-admin puo' disattivare ed eliminare un altro super-admin.</criterion>
+    <criterion id="AC-009">(FE) Senza users.update la griglia non offre le due voci; con users.update le offre e "Disattiva" chiede conferma prima di un solo POST con gli id selezionati; l'esito misto e' riportato in un solo toast, poi griglia e statistiche si aggiornano e la selezione si svuota.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza. Authz server-side per riga (policy update + permesso di campo).
+    Nessun throttle. Envelope di progetto. File entro 300/500 righe. Test Pest + Vitest ESEGUITI.
+  </constraints>
+
+</spec>

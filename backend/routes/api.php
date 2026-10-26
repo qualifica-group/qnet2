@@ -31,6 +31,7 @@ use App\Http\Controllers\Stats\StatsController;
 use App\Http\Controllers\System\PresenceHeartbeatController;
 use App\Http\Controllers\System\SystemHealthController;
 use App\Http\Controllers\Table\TableController;
+use App\Http\Controllers\Users\UserBulkActivationController;
 use App\Http\Controllers\Users\UserController;
 use App\Http\Controllers\Users\UserForSelectController;
 use Illuminate\Support\Facades\Route;
@@ -225,6 +226,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // literal `for-select` segment wins over the bound {user} wildcard.
     // The only gate is auth:sanctum (ADR 0011, amended 2026-07-31).
     Route::get('users/for-select', UserForSelectController::class);
+
+    // Activate/deactivate many users from the grid (spec 0310): users.update
+    // plus, per user, the policy and the `is_active` field permission.
+    Route::post('users/bulk-activation', UserBulkActivationController::class);
 
     Route::get('users/{user}', [UserController::class, 'show']);
     Route::post('users', [UserController::class, 'store']);

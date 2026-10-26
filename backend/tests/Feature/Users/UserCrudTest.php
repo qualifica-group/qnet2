@@ -4,7 +4,6 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
@@ -416,24 +415,15 @@ it('delete: 404 for a non-existent user', function () {
 });
 
 it('delete: 422 when deleting the last super-admin', function () {
+    // REQUIREMENT CHANGED (2026-10-26): only a super-admin deletes a super-admin
+    // (non-super-admin -> 403, UserSuperAdminProtectionTest). The guard is still
+    // reached by the sole super-admin deleting their own account (Gate::before).
     Role::create(['name' => 'super-admin']);
-
-    // The actor is a super-admin (Gate::before grants delete), deleting the only
-    // other super-admin... actually we need the TARGET to be the last super-admin.
-    // Make a single super-admin target and a separate privileged actor.
-    $actor = User::factory()->create();
-    $actor->assignRole('super-admin');
 
     $target = User::factory()->create();
     $target->assignRole('super-admin');
 
-    // Now there are 2 super-admins; remove the actor's role so target is the last.
-    $actor->removeRole('super-admin');
-    // Re-grant delete via explicit permission so the (now non-super-admin) actor can act.
-    Permission::findOrCreate('users.delete');
-    $actor->givePermissionTo('users.delete');
-
-    Sanctum::actingAs($actor);
+    Sanctum::actingAs($target);
 
     $this->deleteJson("/api/users/{$target->id}")
         ->assertStatus(422);

@@ -1,7 +1,8 @@
 /**
  * Record actions of the user detail (actions bar: activate/deactivate, sign in
- * as, delete). Split out of `en.ts` to stay within the engineering size limits
- * (`.claude/rules/engineering.md` §6); merged into `users.detail.actions`.
+ * as, delete) and the grid's bulk activation (`bulk`, spec 0310). Split out of
+ * `en.ts` to stay within the engineering size limits (`.claude/rules/engineering.md`
+ * §6); merged into `users.detail.actions`.
  */
 
 export const usersDetailActions = {
@@ -24,4 +25,15 @@ export const usersDetailActions = {
     description: 'The user will be permanently deleted. This cannot be undone.',
   },
   deleteInUse: 'The user is the operator of leads or the supervisor of opportunities: reassign them before deleting.',
+  bulk: {
+    activate: 'Activate selected',
+    deactivate: 'Deactivate selected',
+    deactivateTitle_one: 'Deactivate {{count}} user?',
+    deactivateTitle_other: 'Deactivate {{count}} users?',
+    allUpdated_one: '{{count}} user updated.',
+    allUpdated_other: '{{count}} users updated.',
+    result: '{{updated}} updated, {{failed}} failed.',
+    failedItem: '{{name}}: {{message}}',
+    error: 'Unable to update the status of the users. Please try again.',
+  },
 }

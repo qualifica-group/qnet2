@@ -10,6 +10,8 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import type { User } from '@/features/auth/types'
 import { DEFAULT_MODULE_OPEN_PREFERENCES } from '@/features/modules/types'
+import { ConfirmContext } from '@/components/confirm-dialog-context'
+import type { BulkAction, TableSelection } from '@/features/table/use-bulk-actions-slot'
 
 /**
  * Spec 0050 AC-023 — the Users adapter wires the generic table's 'impersonate'
@@ -26,14 +28,22 @@ function action(key: string): TableActionDefinition {
 }
 
 vi.mock('@/features/table/table-view', () => ({
-  TableView: forwardRef<{ refresh: () => void }, { domain: string; onAction: RowActionHandler }>(
-    function TableViewStub({ domain, onAction }, ref) {
+  TableView: forwardRef<
+    { refresh: () => void },
+    { domain: string; onAction: RowActionHandler; getBulkActions?: (selection: TableSelection) => BulkAction[] }
+  >(
+    function TableViewStub({ domain, onAction, getBulkActions }, ref) {
       useImperativeHandle(ref, () => ({ refresh: vi.fn() }))
       return (
         <div role="region" aria-label={`table-${domain}`}>
           <button type="button" onClick={() => onAction(action('impersonate'), ROW)}>
             trigger-impersonate
           </button>
+          <ul aria-label="bulk-actions">
+            {(getBulkActions?.({ ids: [ROW.id], rows: [ROW] }) ?? []).map((item) => (
+              <li key={item.key}>{item.label}</li>
+            ))}
+          </ul>
         </div>
       )
     },
@@ -82,13 +92,20 @@ vi.mock('@/features/auth/use-auth', () => ({
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
+const canMock = vi.fn<(permission: string) => boolean>()
+vi.mock('@/features/auth/use-abilities', () => ({
+  useAbilities: () => ({ can: (permission: string) => canMock(permission) }),
+}))
+
 function renderTable() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
-        <UsersTable />
-      </MemoryRouter>
+      <ConfirmContext.Provider value={vi.fn()}>
+        <MemoryRouter>
+          <UsersTable />
+        </MemoryRouter>
+      </ConfirmContext.Provider>
     </QueryClientProvider>,
   )
 }
@@ -101,6 +118,7 @@ beforeEach(() => {
   impersonateMock.mockReset()
   navigateMock.mockReset()
   vi.mocked(toast.error).mockClear()
+  canMock.mockReturnValue(true)
 })
 
 describe('UsersTable — impersonate row action (AC-023)', () => {
@@ -124,5 +142,19 @@ describe('UsersTable — impersonate row action (AC-023)', () => {
       expect(toast.error).toHaveBeenCalledWith('Unable to start impersonation. Please try again.'),
     )
     expect(navigateMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('UsersTable — bulk activation (spec 0310 AC-009)', () => {
+  it('offers activate/deactivate selected only with users.update', () => {
+    canMock.mockImplementation((permission) => permission === 'users.update')
+    const { unmount } = renderTable()
+    expect(screen.getByRole('list', { name: 'bulk-actions' })).toHaveTextContent('Activate selected')
+    expect(screen.getByRole('list', { name: 'bulk-actions' })).toHaveTextContent('Deactivate selected')
+    unmount()
+
+    canMock.mockReturnValue(false)
+    renderTable()
+    expect(screen.getByRole('list', { name: 'bulk-actions' })).toBeEmptyDOMElement()
   })
 })

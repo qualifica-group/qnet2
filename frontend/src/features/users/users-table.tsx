@@ -13,6 +13,7 @@ import { StatsToggleButton } from '@/features/stats/stats-toggle-button'
 import { useStatsPanel } from '@/features/stats/use-stats-panel'
 import { useInvalidateModuleStats } from '@/features/stats/use-invalidate-module-stats'
 import { useAuth } from '@/features/auth/use-auth'
+import { useAbilities } from '@/features/auth/use-abilities'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import type { RowActionHandler } from '@/features/table/row-actions'
@@ -22,6 +23,7 @@ import type {
 } from '@/features/table/types'
 import { userColumnRenderers } from '@/features/users/column-renderers'
 import { deleteUser } from '@/features/users/api'
+import { useUserBulkActivation } from '@/features/users/use-user-bulk-activation'
 
 /** Domain key used to mount the generic table for users. */
 const USERS_DOMAIN = 'users'
@@ -44,6 +46,7 @@ export function UsersTable() {
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
+  const clearSelection = useCallback(() => tableRef.current?.clearSelection(), [])
 
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
@@ -57,6 +60,8 @@ export function UsersTable() {
   }, [refreshGrid, invalidateStats])
 
   const { openCreate, openView, sheet } = useModuleOpener(USERS_DOMAIN, { onSaved })
+  const { can } = useAbilities()
+  const bulkActivation = useUserBulkActivation({ onChanged: onSaved, clearSelection })
 
   const runDelete = useCallback(
     async (row: TableRow) => {
@@ -162,6 +167,7 @@ export function UsersTable() {
         onAction={handleAction}
         isBusy={isBusy}
         decorateRow={decorateRow}
+        getBulkActions={can('users.update') ? bulkActivation.getBulkActions : undefined}
       />
 
       {sheet}

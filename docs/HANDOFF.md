@@ -3,6 +3,30 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Attivazione/disattivazione massiva utenti (spec 0310) — VERDE, COMMITTATO (2026-10-26)
+
+- `POST /api/users/bulk-activation` `{ is_active, ids (1..200) }` -> `data: { updated: int[], failed: [{id, name, message}] }`.
+  FormRequest `UserBulkActivationRequest` (users.update, altrimenti 403), controller invokable
+  `UserBulkActivationController`, service `App\Services\Users\UserBulkActivation`: per id policy `update` +
+  permesso di campo `is_active` editabile, mai disattivare se stessi (D-2), poi `UserService::update` con
+  `UpdateUserData(is_active:)` (stesse regole del singolo: cessazione 0272 D-8, funzione aziendale 0275 D-4, log).
+  Esito per utente, best-effort (D-1). Messaggi in `lang/{it,en}/users.php` `bulk_activation.*`.
+- FE: `use-user-bulk-activation.ts` (getBulkActions: Attiva/Disattiva selezionati, conferma solo su disattiva,
+  un toast con l'esito misto), cablato in `users-table.tsx` solo con `can('users.update')`; `bulkSetUsersActive`
+  in `api.ts`, tipi in `types.ts`. Chiavi i18n sotto `users.detail.actions.bulk.*` (nei file
+  `*-users-detail-actions.ts`: `en.ts` e' gia' a 500 righe, hard limit).
+- Test: `tests/Feature/Users/UserBulkActivationTest.php` (10), `use-user-bulk-activation.test.tsx` (3),
+  `users-table.test.tsx` (+1 gate permesso; harness con `ConfirmContext` e mock `useAbilities`, nuovo requisito
+  del componente). Guida in-app Utenti IT/EN aggiornata (sezione `edit-deactivate-delete`).
+- Direttiva utente (spec 0310 D-5): un super-admin si modifica/disattiva/elimina SOLO da un altro super-admin.
+  `UserPolicy::update/delete` rifiutano un target super-admin (helper `isPrivilegedTarget`, riusato da
+  `impersonate`; i super-admin passano da Gate::before). `UsersAuthorization` legge update/delete dalla policy
+  (`resourcePermissions`, `actorMayWrite`, azioni delete/avatar): per un non super-admin la scheda di un
+  super-admin e' tutta in sola lettura, la griglia non offre Elimina. PATCH di un campo cambiato = 422 (gate dei
+  campi, prima della policy). Test `UserSuperAdminProtectionTest.php`; `UserCrudTest` "422 when deleting the
+  last super-admin" riscritto (REQUIREMENT CHANGED): ora e' l'unico super-admin che elimina se stesso.
+- Fuori scope, segnalato: disattivare non revoca token/sessioni gia' aperti (vale anche per il singolo).
+
 ## Segni +/- nel Riepilogo Commissioni dell'offerta — VERDE, NON COMMITTATO (2026-10-23)
 
 - Richiesta utente, solo FE, nessun cambio di contratto. Card estratta in `features/quotes/quote-commission-summary.tsx`

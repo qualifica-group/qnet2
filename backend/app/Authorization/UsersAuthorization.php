@@ -7,18 +7,17 @@ namespace App\Authorization;
 use App\Models\BusinessFunction;
 use App\Models\User;
 use App\Policies\UserPolicy;
-use App\Services\RoleAssignmentGuard;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 
 /**
  * ResourceAuthorization for the `users` resource (spec 0004).
  *
- * Reuses RoleAssignmentGuard::PRIVILEGED_ROLE (single source of truth for the
- * super-admin role name) — no super-admin logic is duplicated here. The
- * per-role-id escalation filter (which roles an actor may actually assign)
- * stays owned by RoleAssignmentGuard / ResolvesAssignableRoles; this class
- * only decides whether the whole `roles` field is editable at all.
+ * The super-admin boundary (only a super-admin changes or deletes a
+ * super-admin) is owned by UserPolicy; on an existing user this class reads
+ * update/delete through it, so the metadata never offers what the write path
+ * refuses. The per-role-id escalation filter (which roles an actor may
+ * actually assign) stays owned by RoleAssignmentGuard / ResolvesAssignableRoles.
  */
 class UsersAuthorization extends AbstractResourceAuthorization
 {
@@ -36,6 +35,39 @@ class UsersAuthorization extends AbstractResourceAuthorization
     public function resource(): string
     {
         return 'users';
+    }
+
+    /**
+     * On an existing user, update/delete come from UserPolicy (super-admin
+     * target, self-delete) instead of the bare permission.
+     *
+     * @return array<string, bool>
+     */
+    public function resourcePermissions(User $actor, ?Model $model): array
+    {
+        $permissions = parent::resourcePermissions($actor, $model);
+
+        if ($model === null) {
+            return $permissions;
+        }
+
+        $gate = Gate::forUser($actor);
+
+        return array_merge($permissions, [
+            'update' => $gate->allows('update', $model),
+            'delete' => $gate->allows('delete', $model),
+        ]);
+    }
+
+    /**
+     * Every field turns read-only when UserPolicy refuses the update (e.g. a
+     * super-admin target for a non-super-admin actor).
+     */
+    protected function actorMayWrite(User $actor, ?Model $model): bool
+    {
+        return $model === null
+            ? parent::actorMayWrite($actor, $model)
+            : Gate::forUser($actor)->allows('update', $model);
     }
 
     /**
@@ -124,7 +156,7 @@ class UsersAuthorization extends AbstractResourceAuthorization
             'locale' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'is_active' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'password' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
-            'roles' => $this->rolesFieldPermission($actor, $model, $mayWrite),
+            'roles' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ], $this->personalDataFieldPermissions($mayWrite), $this->employmentFieldPermissions($actor, $mayWrite));
     }
 
@@ -221,35 +253,18 @@ class UsersAuthorization extends AbstractResourceAuthorization
     }
 
     /**
-     * `roles` is editable when the actor may write, UNLESS the target is a
-     * super-admin and the actor is not — mirrors the escalation boundary
-     * already enforced by RoleAssignmentGuard on the write path.
-     */
-    private function rolesFieldPermission(User $actor, ?User $model, bool $mayWrite): FieldPermission
-    {
-        $targetIsPrivileged = $model !== null && $model->hasRole(RoleAssignmentGuard::PRIVILEGED_ROLE);
-        $actorIsPrivileged = $actor->hasRole(RoleAssignmentGuard::PRIVILEGED_ROLE);
-
-        if ($targetIsPrivileged && ! $actorIsPrivileged) {
-            return FieldPermission::visibleReadonly();
-        }
-
-        return $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly();
-    }
-
-    /**
      * @return array<string, bool>
      */
     public function actionPermissions(User $actor, ?Model $model): array
     {
         /** @var User|null $model */
         return [
-            // Mirrors UserPolicy::delete: users.delete AND never self.
-            'delete' => $model !== null && ! $actor->is($model) && $actor->can('users.delete'),
+            // UserPolicy: users.delete, never self, a super-admin only by a super-admin.
+            'delete' => $model !== null && Gate::forUser($actor)->allows('delete', $model),
             'export' => $actor->can('users.export'),
             'import' => $actor->can('users.import'),
-            'upload_avatar' => $model !== null && $actor->can('users.update'),
-            'delete_avatar' => $model !== null && $actor->can('users.update'),
+            'upload_avatar' => $model !== null && Gate::forUser($actor)->allows('update', $model),
+            'delete_avatar' => $model !== null && Gate::forUser($actor)->allows('update', $model),
             // Gates the ActivityLogSection in the detail (spec 0034); the
             // record-level `users.view` boundary is enforced separately by
             // GET /api/activity-log/users/{id} itself.
