@@ -42,7 +42,9 @@ it('0299 AC-001: grants the back office its modules in full and only viewAny on 
         expect($role->hasPermissionTo($permission))->toBeFalse($permission);
     }
 
-    expect($role->fieldPermissions()->exists())->toBeFalse();
+    // REQUIREMENT CHANGED (spec 0314): only the Lead row every seeded role carries.
+    expect($role->fieldPermissions()->get(['resource', 'field', 'visible'])->toArray())
+        ->toBe([['resource' => 'opportunities', 'field' => 'lead_id', 'visible' => false]]);
 });
 
 it('0299 D-7: grants the back office every contracts ability', function () {

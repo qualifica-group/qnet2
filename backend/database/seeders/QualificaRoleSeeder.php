@@ -36,6 +36,16 @@ use Spatie\Permission\PermissionRegistrar;
  */
 class QualificaRoleSeeder extends Seeder
 {
+    /**
+     * Hidden from every role this seeder syncs (spec 0314): the opportunity's
+     * Lead is for super-admin only, who bypasses the matrix.
+     *
+     * @var array<string, array<int, string>>
+     */
+    private const array EVERY_ROLE_HIDDEN_FIELDS = [
+        'opportunities' => ['lead_id'],
+    ];
+
     public function run(): void
     {
         // Step 1: guarantee the permission catalogue the matrices filter.
@@ -69,7 +79,8 @@ class QualificaRoleSeeder extends Seeder
         $this->syncFieldPermissions($hrOffice, readonlyFields: HrOffice::READONLY_FIELDS, grantedFields: HrOffice::SENSITIVE_FIELDS);
 
         // Step 4c: the commercial back office (spec 0299), held on top of a
-        // mansione. No field rows: the mansione's hidden rows keep applying.
+        // mansione. Only the rows every role carries: the mansione's hidden
+        // rows keep applying.
         $backOffice = $this->syncRole(BackOffice::ROLE, BackOffice::DESCRIPTION, $this->backOfficePermissions($catalogue));
         $this->syncFieldPermissions($backOffice);
 
@@ -234,10 +245,11 @@ class QualificaRoleSeeder extends Seeder
     }
 
     /**
-     * Replaces the role's WHOLE field-permission matrix with the three lists —
-     * a full sync, exactly like RoleService::syncFieldPermissions() on the
-     * admin UI path. ONE writer for every degree, because the
-     * delete-then-create is what makes the sync convergent.
+     * Replaces the role's WHOLE field-permission matrix with the three lists,
+     * plus EVERY_ROLE_HIDDEN_FIELDS — a full sync, exactly like
+     * RoleService::syncFieldPermissions() on the admin UI path. ONE writer for
+     * every degree, because the delete-then-create is what makes the sync
+     * convergent.
      *
      * A granted row restricts nothing (the matrix intersects the code
      * ceiling, spec 0006), but it is not the same as no row: the matrix is the
@@ -252,6 +264,7 @@ class QualificaRoleSeeder extends Seeder
     {
         $role->fieldPermissions()->delete();
 
+        $hiddenFields = array_merge_recursive(self::EVERY_ROLE_HIDDEN_FIELDS, $hiddenFields);
         $this->createFieldPermissions($role, $hiddenFields, visible: false, editable: false);
         $this->createFieldPermissions($role, $readonlyFields, visible: true, editable: false);
         $this->createFieldPermissions($role, $grantedFields, visible: true, editable: true);

@@ -26,7 +26,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Sezione', 'Campi'],
           rows: [
-            ['Lead di origine', '**Lead** (facoltativo, precompila e blocca i campi derivati)'],
+            ['Lead di origine', '**Lead** (facoltativo, precompila e blocca i campi derivati; visibile solo ai ruoli abilitati, di norma il super-admin)'],
             ['Note generali', 'Testo libero'],
             ['Dettagli', '**Titolo** (facoltativo), **Data inizio**, **Data chiusura prevista**, **Valore stimato**, **Probabilità di successo (%)**'],
             ['Anagrafica e contatti', '**Anagrafica** (obbligatoria), **Referente**, **Commerciale**, **Segnalatore** con i **Buoni assegnati**'],
@@ -75,7 +75,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure è ereditato e bloccato dal lead di origine (Anagrafica, Fonte), oppure cambiarlo modificherebbe un campo che non puoi toccare. Il **Lead di origine** non si cambia; lo **Stato** è calcolato dalle offerte.",
+          text: "Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure è ereditato e bloccato dal lead di origine (Anagrafica, Fonte), oppure cambiarlo modificherebbe un campo che non puoi toccare. Il **Lead di origine** non si cambia e, se il tuo ruolo non lo vede, non compare né in creazione né nel dettaglio; lo **Stato** è calcolato dalle offerte.",
         },
       ],
     },

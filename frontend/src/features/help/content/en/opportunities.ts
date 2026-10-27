@@ -26,7 +26,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Section', 'Fields'],
           rows: [
-            ['Originating lead', '**Lead** (optional, prefills and locks the derived fields)'],
+            ['Originating lead', '**Lead** (optional, prefills and locks the derived fields; visible only to the roles allowed to, normally the super-admin)'],
             ['General notes', 'Free-form text'],
             ['Details', '**Title** (optional), **Start date**, **Expected close date**, **Estimated value**, **Success probability (%)**'],
             ['Registry and contacts', '**Registry** (required), **Contact**, **Sales rep**, **Reporter** with the **Assigned rewards**'],
@@ -75,7 +75,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'A field with no pencil is not editable by you: your role makes it read-only, or it is inherited and locked by the originating lead (Registry, Source), or changing it would change a field you cannot touch. The **Originating lead** cannot be changed; the **Status** is computed from the quotes.',
+          text: 'A field with no pencil is not editable by you: your role makes it read-only, or it is inherited and locked by the originating lead (Registry, Source), or changing it would change a field you cannot touch. The **Originating lead** cannot be changed and, when your role cannot see it, it shows neither on create nor in the detail; the **Status** is computed from the quotes.',
         },
       ],
     },

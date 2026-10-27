@@ -25,7 +25,27 @@
   super-admin, SupplierCommissionDirection, DemoOpportunitySeeder, PDF senza LibreOffice), non legati alla modifica.
 - Manuale: guide IT/EN `request-management` + Claude Docs aggiornati; PDF derivato da rigenerare.
 
-## Fix: ruoli ereditati dall'anagrafica sull'opportunita' — VERDE, NON COMMITTATO (2026-10-27)
+## Campo Lead dell'Opportunita' nascosto ai ruoli tranne super-admin (spec 0314) — VERDE, NON COMMITTATO (2026-10-27)
+
+- Richiesta utente: "tutti tranne superadmin, oscurare il campo lead in opportunita' tramite permessi in productionSeeder".
+- Backend: `lead_id` ora e' un FieldDefinition di `OpportunitiesAuthorization` (in coda al catalogo, `select`);
+  ceiling editabile solo in creazione con `$mayWrite`, sempre readonly in modifica (BR-2). `QualificaRoleSeeder::
+  EVERY_ROLE_HIDDEN_FIELDS` (`opportunities.lead_id`) unito alle righe nascoste di OGNI ruolo dentro
+  `syncFieldPermissions` (mansioni, admin, HR, back office, magazziniere); super-admin bypassa. Costante nel seeder,
+  non in `OperatorRoleCatalogue` (494 righe, limite 500). Con il campo nascosto POST con `lead_id` -> 422;
+  la conversione `leads/convert-to-opportunities` non passa dalla matrice ed e' invariata. La risposta API porta
+  ancora `lead`/`lead_id` (stesso schema degli altri campi nascosti: la UI nasconde).
+- Frontend: sezione Lead del form di creazione e riga "Lead di origine" del dettaglio dietro
+  `useResourcePermissions().field('lead_id').visible`. Deep-link `?lead_id=N` non gestito (non linkato dall'app).
+- Test: nuovo `OpportunityLeadFieldPermissionTest` (AC-001..003); REQUIREMENT CHANGED 0314 su `OpportunityMetaTest`
+  (17 campi), `QualificaCommercialBackOfficeSeederTest` e `StockAuthorizationTest` (ora solo la riga lead). Suite
+  Opportunities/Leads/Seeding/RequestManagement/Roles/Authorization/ActivityLog/Users/Stock/Spec0177/ContractTypes/
+  CompanyClosures verdi; Pint pulito. FE: opportunities+roles+leads 64 file / 513 test, help 150, ESLint, `tsc -b --force` puliti.
+- Manuale: guide in-app IT/EN Opportunita' (tabella campi + paragrafo campi senza matita), Claude Docs rev 410
+  (paragrafo "Se l'opportunita' nasce da un lead"); PDF derivato da rigenerare.
+- Da fare in ambiente: rilanciare `QualificaRoleSeeder` (o il production seed) perche' le righe arrivino sul DB.
+
+## Fix: ruoli ereditati dall'anagrafica sull'opportunita' — VERDE, COMMITTATO c33b1439 (2026-10-27)
 
 - Segnalazione utente: in `/opportunities/new` e in "Nuova opportunita'" dal dettaglio anagrafica, scegliendo
   l'anagrafica non arrivavano Commerciale, Segnalatore, Supervisore e G.A. (spec 0040 A-5, 0199: gia' previsti).

@@ -202,3 +202,28 @@ describe('OpportunityFormBody — saving an invalid draft (spec 0198, AC-004)', 
     expect(screen.queryByTestId('select-Parent category 1')).not.toBeInTheDocument()
   })
 })
+
+describe('OpportunityFormBody — Lead hidden by the role matrix (spec 0314, AC-004)', () => {
+  it('shows the originating lead picker when lead_id is visible', async () => {
+    await renderCreateForm()
+
+    expect(screen.getByTestId('select-Lead')).toBeInTheDocument()
+  })
+
+  it('hides the whole originating lead section when lead_id is not visible', async () => {
+    fetchResourceMetaMock.mockResolvedValue({
+      fields: [],
+      permissions: {
+        ...FULL_PERMISSIONS,
+        fields: {
+          lead_id: { visible: false, hidden: true, editable: false, readonly: false, required: false, disabled: false },
+        },
+      },
+    })
+
+    await renderCreateForm()
+
+    expect(screen.queryByTestId('select-Lead')).not.toBeInTheDocument()
+    expect(screen.queryByText('Originating lead')).not.toBeInTheDocument()
+  })
+})

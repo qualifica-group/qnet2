@@ -9,6 +9,7 @@ import { ExistingOpportunityAlert } from '@/features/opportunities/existing-oppo
 import { OpportunityRegistryField } from '@/features/opportunities/opportunity-registry-field'
 import { OpportunityReporterField } from '@/features/opportunities/opportunity-reporter-field'
 import { useCascadeEditable } from '@/components/record-form/use-cascade-editable'
+import { useResourcePermissions } from '@/features/authorization/permissions'
 import type { OpportunityRecordSectionProps } from '@/features/opportunities/opportunity-record'
 import {
   OpportunityCommercialField,
@@ -46,7 +47,8 @@ interface OpportunityClientRecordSectionProps extends OpportunityRecordSectionPr
  * so it opens only when everything that cascade writes is editable too, and
  * never on an anagrafica derived from a Lead (BR-2). The Segnalatore's editor
  * carries its reward assignments (spec 0059 D-3). The originating Lead is
- * immutable: a plain read-only row.
+ * immutable: a plain read-only row, absent when the role matrix hides it
+ * (spec 0314).
  */
 export function OpportunityClientRecordSection({
   values,
@@ -57,6 +59,7 @@ export function OpportunityClientRecordSection({
 }: OpportunityClientRecordSectionProps) {
   const { t } = useTranslation()
   const { control, setValue, getValues } = form
+  const { field } = useResourcePermissions()
   const cascadeEditable = useCascadeEditable(REGISTRY_CASCADE_FIELDS)
 
   return (
@@ -120,7 +123,7 @@ export function OpportunityClientRecordSection({
         >
           <ReferentLink value={values.reporter} />
         </RecordInlineField>
-        {values.lead ? (
+        {values.lead && field('lead_id').visible ? (
           <RecordField label={t('opportunities.detail.sourceLead')}>
             <RecordLink domain="leads" id={values.lead.id}>
               {values.lead.label}

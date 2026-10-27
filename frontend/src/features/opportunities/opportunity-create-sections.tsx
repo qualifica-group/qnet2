@@ -7,6 +7,7 @@ import type { InlineEdit } from '@/components/record-form/record-inline-field'
 import { RewardChipsSection } from '@/features/rewards/reward-chips-section'
 import { OpportunityFromLeadBanner } from '@/features/opportunities/opportunity-from-lead-banner'
 import { OpportunityLeadField } from '@/features/opportunities/opportunity-lead-field'
+import { useResourcePermissions } from '@/features/authorization/permissions'
 import { OpportunityClientRecordSection } from '@/features/opportunities/opportunity-record-client'
 import {
   OpportunityClassificationRecordSection,
@@ -55,7 +56,8 @@ interface OpportunityCreateSectionsProps {
  *
  * The originating Lead comes first and stays open: it is not a form field,
  * and picking it fills (and locks, BR-2) the derived rows below — the closed
- * rows show what it handed down, the locked ones without a pencil.
+ * rows show what it handed down, the locked ones without a pencil. The role
+ * matrix can hide it (spec 0314).
  */
 export function OpportunityCreateSections({
   form,
@@ -65,22 +67,25 @@ export function OpportunityCreateSections({
   blockingOpportunity,
 }: OpportunityCreateSectionsProps) {
   const { t } = useTranslation()
+  const { field } = useResourcePermissions()
   const { values, productLineLabels } = useOpportunityDraftValues(form.control, leadSelection.registry)
   const leadIsApplied = leadSelection.leadId !== null && leadSelection.existingOpportunityId === null
   const sectionProps = { values, form, inline: draft, lockedFields: new Set(leadSelection.lockedFields) }
 
   return (
     <RecordSectionsGrid>
-      <RecordSection
-        title={t('opportunities.form.sections.lead.title')}
-        icon={<Link2 />}
-        className={FULL_WIDTH_SECTION_CLASS}
-      >
-        <div className="flex flex-col gap-2">
-          <OpportunityLeadField state={leadSelection} onSelect={onSelectLead} />
-          {leadIsApplied ? <OpportunityFromLeadBanner registryName={leadSelection.registry?.name ?? null} /> : null}
-        </div>
-      </RecordSection>
+      {field('lead_id').visible ? (
+        <RecordSection
+          title={t('opportunities.form.sections.lead.title')}
+          icon={<Link2 />}
+          className={FULL_WIDTH_SECTION_CLASS}
+        >
+          <div className="flex flex-col gap-2">
+            <OpportunityLeadField state={leadSelection} onSelect={onSelectLead} />
+            {leadIsApplied ? <OpportunityFromLeadBanner registryName={leadSelection.registry?.name ?? null} /> : null}
+          </div>
+        </RecordSection>
+      ) : null}
 
       <OpportunityGeneralNotesRow
         notes={values.general_notes}

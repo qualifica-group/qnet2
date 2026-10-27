@@ -13,9 +13,10 @@ use Illuminate\Database\Eloquent\Model;
  *
  * No contextual rules: every field's ceiling is simply visible+editable when
  * the actor may write (create/update), else visible+readonly, mirroring
- * LeadsAuthorization. `registry_id` is the mandatory scalar field (D-4);
- * `lead_id` is NOT permissionable (structural, immutable server-side
- * derivation — BR-1/BR-2) and carries no FieldDefinition here. `name` (spec
+ * LeadsAuthorization. `registry_id` is the mandatory scalar field (D-4).
+ * `lead_id` (spec 0314) is permissionable so the role matrix can hide it, but
+ * its ceiling is editable on create only: once set it stays immutable (BR-2).
+ * `name` (spec
  * 0171, superseding spec 0057 D-5) is a plain editable text field. Amendment
  * rev.3: the former `business_function_id`/`product_category_id` scalars are
  * REPLACED by a single `product_lines` field (a to-many collection) — which,
@@ -77,6 +78,7 @@ class OpportunitiesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('expected_close_date', 'date'),
             new FieldDefinition('success_probability', 'number'),
             new FieldDefinition('general_notes', 'textarea'),
+            new FieldDefinition('lead_id', 'select'),
         ];
     }
 
@@ -114,6 +116,7 @@ class OpportunitiesAuthorization extends AbstractResourceAuthorization
             'expected_close_date' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'success_probability' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'general_notes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'lead_id' => $mayWrite && $model === null ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 

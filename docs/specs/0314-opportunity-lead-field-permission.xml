@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0314-opportunity-lead-field-permission" status="approved" owner="nicola" date="2026-10-27">
+
+  <goal>
+    Il campo Lead dell'Opportunita' (selettore "Lead" in creazione, "Lead di origine" nel dettaglio) diventa un campo
+    governato dalla matrice permessi per campo, e il production seed lo nasconde a tutti i ruoli tranne super-admin.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-27: "tutti tranne superadmin, oscurare il campo lead in opportunita' tramite permessi in
+    productionSeeder".
+
+    Oggi `lead_id` NON e' permissionable: OpportunitiesAuthorization non ha un FieldDefinition (spec 0040 BR-1/BR-2,
+    "structural, immutable"), quindi nessuna riga `role_field_permissions` lo puo' nascondere.
+
+    D-1 Permesso: nuovo FieldDefinition `lead_id` (`select`, non mandatory) in OpportunitiesAuthorization. Ceiling:
+        editabile solo in creazione quando l'attore puo' creare; in modifica sempre sola lettura (il lead resta
+        immutabile, BR-2). Super-admin bypassa la matrice come per ogni campo.
+    D-2 Seed: QualificaRoleSeeder (eseguito dal production seed tramite TestUsersSeeder/Operator/Staff/HR/Back
+        office/Stock keeper) aggiunge a OGNI ruolo che sincronizza la riga nascosta `opportunities.lead_id`
+        (visible=false, editable=false). Costante `OperatorRoleCatalogue::EVERY_ROLE_HIDDEN_FIELDS`, unita alle
+        righe nascoste proprie di ciascun ruolo dentro `syncFieldPermissions`, cosi' nessun ruolo seminato la salta.
+        Ruoli creati a mano fuori dal seed non ricevono la riga (la matrice resta configurabile dalla pagina Ruoli).
+    D-3 Scrittura: con il campo nascosto, POST /api/opportunities con `lead_id` valorizzato -> 422 (EnforcesFieldPermissions).
+        La conversione dal modulo Lead (`POST /api/leads/convert-to-opportunities`) e' un percorso separato e resta
+        invariata.
+    D-4 UI: il form di creazione non mostra la sezione Lead (selettore + banner) se `lead_id` non e' visibile; il
+        dettaglio non mostra la riga "Lead di origine". Il blocco lead della risposta API resta (come per gli altri
+        campi nascosti dalla matrice: la UI nasconde, il backend autorizza le scritture); il registro attivita'
+        filtra gia' i campi nascosti.
+  </context>
+
+  <scope>
+    <in>
+      <item>Backend: OpportunitiesAuthorization, OperatorRoleCatalogue, QualificaRoleSeeder; test meta, store e seed.</item>
+      <item>Frontend: opportunity-create-sections, opportunity-record-client; test.</item>
+      <item>Guide in-app IT/EN Opportunita'; manuale.</item>
+    </in>
+    <out>
+      <item>Modulo Lead e conversione bulk dei lead.</item>
+      <item>Gestione Richieste.</item>
+      <item>Deep-link `/opportunities/new?lead_id=N` (non linkato dall'app): con il campo nascosto il salvataggio
+        viene rifiutato dal server.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/meta/opportunities, GET /api/opportunities/{id}">
+      <response status="200">`data.fields` acquista in coda `{key: lead_id, type: select, mandatory: false}`;
+        `permissions.fields.lead_id` presente (visible/editable secondo matrice e ceiling).</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/opportunities">
+      <request>Invariata.</request>
+      <response status="422">`errors.lead_id` quando il lead e' valorizzato e il campo non e' editabile per l'attore.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Il catalogo dei campi Opportunita' contiene `lead_id`; in creazione e' editabile per chi puo'
+      creare, in modifica e' in sola lettura.</criterion>
+    <criterion id="AC-002">Con una riga ruolo `opportunities.lead_id` nascosta, `permissions.fields.lead_id` e' hidden
+      e POST con `lead_id` -> 422; super-admin lo vede e lo scrive.</criterion>
+    <criterion id="AC-003">QualificaRoleSeeder scrive la riga nascosta `opportunities.lead_id` su ogni ruolo che
+      sincronizza e su nessun'altra; super-admin non ne riceve.</criterion>
+    <criterion id="AC-004">Form di creazione senza sezione Lead e dettaglio senza "Lead di origine" quando il campo non
+      e' visibile; invariati quando lo e'.</criterion>
+  </acceptance_criteria>
+</spec>

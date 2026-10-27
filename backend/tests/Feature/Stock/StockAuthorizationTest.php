@@ -38,7 +38,8 @@ it('0307 AC-015: the keeper role holds only stock.*, admin receives them, the HR
 
     $keeper = Role::findByName(StockKeeperRoleCatalogue::ROLE);
     expect($keeper->permissions->pluck('name')->sort()->values()->all())->toBe(['stock.manage', 'stock.viewAny'])
-        ->and($keeper->fieldPermissions()->exists())->toBeFalse()
+        // REQUIREMENT CHANGED (spec 0314): only the Lead row every seeded role carries.
+        ->and($keeper->fieldPermissions()->pluck('field')->all())->toBe(['lead_id'])
         ->and(Role::findByName(OperatorRoleCatalogue::ADMIN_ROLE)->hasPermissionTo('stock.manage'))->toBeTrue()
         ->and(Role::findByName(HrOfficeRoleCatalogue::ROLE)->hasPermissionTo('stock.viewAny'))->toBeFalse();
 

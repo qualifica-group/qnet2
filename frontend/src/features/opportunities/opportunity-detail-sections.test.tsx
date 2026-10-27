@@ -247,3 +247,25 @@ describe('OpportunityDetailSections — related records', () => {
     expect(hrefOf('Fotovoltaico')).toBe('/products/40')
   })
 })
+
+describe('OpportunityDetailSections — Lead hidden by the role matrix (spec 0314, AC-004)', () => {
+  it('omits the source lead row when lead_id is not visible', () => {
+    render(
+      <Sections
+        opportunity={opportunity({
+          lead_id: 30,
+          lead: { id: 30, label: 'Lead Rossi' },
+          permissions: {
+            ...FULL_PERMISSIONS,
+            fields: {
+              lead_id: { visible: false, hidden: true, editable: false, readonly: false, required: false, disabled: false },
+            },
+          },
+        })}
+      />,
+    )
+
+    expect(screen.queryByRole('link', { name: 'Lead Rossi' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Originating lead')).not.toBeInTheDocument()
+  })
+})
