@@ -107,7 +107,8 @@ function NavNode({ item, badges }: { item: NavigationItem; badges?: NavBadges })
   const label = t(item.label)
   const badge = badges?.[item.key]
 
-  if (item.children.length > 0) {
+  // Route-less parent: a heading that only toggles its children.
+  if (item.children.length > 0 && !item.route) {
     const keepOpen = hasActiveDescendant(item, pathname)
 
     return (
@@ -145,20 +146,50 @@ function NavNode({ item, badges }: { item: NavigationItem; badges?: NavBadges })
     )
   }
 
+  const linkButton = (
+    <SidebarMenuButton
+      asChild
+      tooltip={badge ? `${label} (${badge.count})` : label}
+      size="sm"
+      isActive={isActive(item, pathname)}
+      className={cn(NAV_ITEM_CLASS, NAV_LEAF_CLASS)}
+    >
+      <NavLink to={link(item.route)}>
+        {icon}
+        <span>{label}</span>
+      </NavLink>
+    </SidebarMenuButton>
+  )
+
+  // Navigable parent (e.g. Gestione Richieste -> Richieste di modifica): the
+  // label keeps navigating, a dedicated chevron toggles the children, same as
+  // a nested sub-item in NavSubNode. Its chevron takes the badge's slot.
+  if (item.children.length > 0) {
+    return (
+      <Collapsible asChild defaultOpen={hasActiveDescendant(item, pathname)} className="group/collapsible">
+        <SidebarMenuItem>
+          {linkButton}
+          <CollapsibleTrigger asChild>
+            <SidebarMenuAction className="[&>svg]:size-3.5">
+              <ChevronRight className="transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+              <span className="sr-only">{label}</span>
+            </SidebarMenuAction>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <SidebarMenuSub>
+              {item.children.map((child) => (
+                <NavSubNode key={child.key} item={child} />
+              ))}
+            </SidebarMenuSub>
+          </CollapsibleContent>
+        </SidebarMenuItem>
+      </Collapsible>
+    )
+  }
+
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton
-        asChild
-        tooltip={badge ? `${label} (${badge.count})` : label}
-        size="sm"
-        isActive={isActive(item, pathname)}
-        className={cn(NAV_ITEM_CLASS, NAV_LEAF_CLASS)}
-      >
-        <NavLink to={link(item.route)}>
-          {icon}
-          <span>{label}</span>
-        </NavLink>
-      </SidebarMenuButton>
+      {linkButton}
       {badge ? (
         <SidebarMenuBadge aria-label={badge.ariaLabel} className={NAV_BADGE_CLASS}>
           {badge.label}

@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Menu: voce con route e figli dentro una sezione resta un link — VERDE, COMMITTATO (2026-10-27)
+
+- Bug dopo spec 0318: `request-management` (route + figlio `field-change-requests`) e' figlio diretto della sezione
+  Commerciale, e `NavNode` (`components/nav-main.tsx`) disegnava ogni nodo con figli come intestazione collassabile:
+  il link a Gestione Richieste spariva. Ora `NavNode` distingue: senza route = intestazione che apre/chiude; con route =
+  link + chevron `SidebarMenuAction` separata (stesso schema di `NavSubNode`, es. Lead -> Import). La chevron prende il
+  posto del badge (nessun badge sui genitori navigabili).
+- Test: `nav-main.test.tsx` "NavMain navigable parents in a section". Vitest `src/components/` 579/579, ESLint, tsc -b ok.
+  Manuale: nessun impatto (percorso del menu invariato).
+
 ## Ruoli del QNet legacy nel seed di produzione — VERDE, COMMITTATO (2026-10-27)
 
 - Richiesta utente: ruoli legacy trasformati sui moduli qnet-2 e assegnati, solo quelli tenuti da utenti attivi; chi ha

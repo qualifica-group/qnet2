@@ -108,3 +108,36 @@ describe('NavMain single-child groups (user rule 2026-10-27)', () => {
     expect(screen.getByRole('button', { name: 'Task' })).toBeInTheDocument()
   })
 })
+
+describe('NavMain navigable parents in a section', () => {
+  it('keeps a parent with a route as a link, with its children behind a separate toggle', () => {
+    render(
+      <MemoryRouter>
+        <SidebarProvider>
+          <NavMain
+            items={[
+              {
+                key: 'commercial', label: 'navigation.commercial', icon: null, route: null, type: 'section',
+                children: [
+                  {
+                    key: 'request-management', label: 'navigation.requestManagement', icon: null, route: '/request-management', type: 'item',
+                    children: [
+                      { key: 'field-change-requests', label: 'navigation.fieldChangeRequests', icon: null, route: '/field-change-requests', type: 'item', children: [] },
+                    ],
+                  },
+                ],
+              },
+            ]}
+          />
+        </SidebarProvider>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('link', { name: 'Gestione Richieste' })).toHaveAttribute('href', '/request-management')
+    expect(screen.queryByRole('link', { name: 'Richieste di modifica' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Gestione Richieste' }))
+
+    expect(screen.getByRole('link', { name: 'Richieste di modifica' })).toHaveAttribute('href', '/field-change-requests')
+  })
+})
