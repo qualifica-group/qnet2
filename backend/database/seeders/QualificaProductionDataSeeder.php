@@ -98,6 +98,9 @@ use Illuminate\Database\Seeder;
  *                                    the account steps 4, 6 and 7 created and
  *                                    gets its `old_id`; the unmatched ones are
  *                                    created from the legacy record.
+ *  11. QualificaFunctionCompetenceSeeder — each member of a business function
+ *                                    gets it as an assignment scope on every
+ *                                    category, next to the scopes already there.
  *
  * The order is a contract, not a preference:
  *   - step 5 adopts step 2's sources and business functions by name instead
@@ -119,6 +122,8 @@ use Illuminate\Database\Seeder;
  *   - step 10 matches the legacy users to the accounts of steps 4, 6 and 7:
  *     run before them, it would create the accounts itself and the seeders
  *     would land on those.
+ *   - step 11 reads the memberships of steps 5 and 9 and runs after step 6,
+ *     which recreates its operators' scopes on every run.
  *
  * Every step stays runnable on its own and is idempotent, so this seeder is
  * too: re-running it converges instead of duplicating. Steps 5 and 10 are
@@ -162,5 +167,6 @@ class QualificaProductionDataSeeder extends Seeder
         $this->call(QualificaReportsToSeeder::class);
         $this->call(QualificaHrCatalogSeeder::class);
         $this->callWith(QualificaLegacyImportSeeder::class, ['sources' => QualificaLegacyImportSeeder::USER_SOURCES]);
+        $this->call(QualificaFunctionCompetenceSeeder::class);
     }
 }

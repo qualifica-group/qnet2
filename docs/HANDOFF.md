@@ -3,6 +3,18 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Ambito di assegnazione dalle funzioni di appartenenza (seed produzione) — VERDE, NON COMMITTATO (2026-10-27)
+
+- Richiesta utente: nel seed di produzione ogni membro di una funzione aziendale riceve quella funzione come
+  ambito di assegnazione su tutte le categorie; chi ha gia' ambiti li tiene e riceve la riga in piu'.
+- Nuovo step 11 `QualificaFunctionCompetenceSeeder` (ultimo di `QualificaProductionDataSeeder`): per ogni utente
+  in `business_function_user` su funzione ATTIVA aggiunge `employment_product_lines` (funzione, `product_category_id`
+  null, spec 0129 D-3). Le righe di altre funzioni restano; le righe (stessa funzione, categoria) vengono sostituite
+  perche' ridondanti (D-4, il form le rifiuterebbe al salvataggio). Saltati i profili `covers_all_product_categories`
+  (D-2); profilo creato se manca. Deve girare dopo `QualificaOperatorSeeder` (che ricrea le righe degli operatori).
+- Test: `QualificaFunctionCompetenceSeederTest` (3) + asserzione in `QualificaProductionDataSeederTest`
+  (Rosa Falzarano: Commerciale + Formazione). `tests/Feature/Seeding` 197/197 verdi. Manuale: nessun impatto.
+
 ## Codice progressivo suggerito non piu' inviato se intatto (5 form) — VERDE, NON COMMITTATO (2026-10-27)
 
 - Bug utente: creando un'offerta, se un altro utente salvava prima con lo stesso codice suggerito

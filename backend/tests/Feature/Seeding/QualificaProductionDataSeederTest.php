@@ -94,6 +94,11 @@ it('composes structure, catalogue and operators in one run, with a super-admin a
         ->with('employment.operationalSites')->firstOrFail()->employment;
 
     expect($employment->primaryOperationalSiteId)->toBe($site->getKey());
+
+    // Step 11 runs after step 6: the org chart's "Commerciale" scope lands
+    // next to the "Formazione" one the operator roster gives her.
+    expect($employment->productLines()->whereNull('product_category_id')->with('businessFunction')->get()
+        ->pluck('businessFunction.name')->sort()->values()->all())->toBe(['Commerciale', 'Formazione']);
 });
 
 /**
