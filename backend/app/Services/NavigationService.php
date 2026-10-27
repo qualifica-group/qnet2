@@ -20,6 +20,33 @@ class NavigationService
     }
 
     /**
+     * Prune an already-filtered tree to the given item keys (spec 0317): an
+     * item stays when assigned or when a descendant does; sections and groups
+     * left without children are dropped.
+     *
+     * @param  array<int, array<string, mixed>>  $tree
+     * @param  array<int, string>  $keys
+     * @return array<int, array<string, mixed>>
+     */
+    public function prune(array $tree, array $keys): array
+    {
+        $kept = [];
+
+        foreach ($tree as $item) {
+            $children = $this->prune($item['children'] ?? [], $keys);
+
+            if ($children === [] && ! (in_array($item['key'], $keys, true) && ! empty($item['route']))) {
+                continue;
+            }
+
+            $item['children'] = $children;
+            $kept[] = $item;
+        }
+
+        return $kept;
+    }
+
+    /**
      * All distinct permissions referenced by the navigation config.
      *
      * @return array<int, string>

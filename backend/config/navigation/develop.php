@@ -32,6 +32,15 @@ return [
             'role' => 'super-admin',
         ],
         [
+            // Workspaces / "App" (spec 0317): menu subsets per app.
+            'key' => 'workspaces',
+            'label' => 'navigation.workspaces',
+            'icon' => 'layout-grid',
+            'route' => '/dev/workspaces',
+            'permission' => null,
+            'role' => 'super-admin',
+        ],
+        [
             // API clients (spec 0209).
             'key' => 'api-integrations',
             'label' => 'navigation.apiIntegrations',

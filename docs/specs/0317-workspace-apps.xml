@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0317-workspace-apps" status="approved" owner="nicola" date="2026-10-27" revision="3">
+
+  <goal>
+    Il super-admin configura, dalla sezione Sviluppo, N "app" (es. HR, Contabilita') ciascuna con il proprio
+    sottoinsieme di voci di menu. L'utente lavora dentro un'app (URL `/app/{slug}/...`), vede nel menu solo le
+    pagine di quell'app e passa da un'app all'altra con un launcher nell'header (stile Microsoft 365).
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-27: "creare un involucro (tipo Microsoft o Amazon) dove posso gestire l'app dell'HR e la
+    si vedranno solo le pagine dell'HR, involucro della contabilita' [...]. Configurabile solo dal superadmin
+    (categoria delle cose per sviluppatore)".
+
+    Fatti verificati nel repo:
+    - Il menu e' backend-driven: `config/navigation.php` assembla `config/navigation/*.php` (17 voci di primo livello,
+      sezioni `type: section`, gruppi `route: null`, foglie con `key` stabile); `App\Services\NavigationService::for()`
+      filtra per permesso/ruolo/`open_to_managers` e scarta i gruppi rimasti vuoti; `GET /api/navigation`
+      (`NavigationController@index`, `NavigationItemResource`) lo espone. Il frontend lo legge con `useNavigation()`
+      (`features/navigation`), consumato da `app-sidebar.tsx`, `routes/breadcrumbs.tsx`, `top-loading-bar.tsx`,
+      `help/hooks/use-help-visible-guides.ts`, `api-integrations/components/api-docs-content.tsx`.
+    - Sezione Sviluppo: `config/navigation/develop.php` (voci con `role => 'super-admin'`), rotte FE in
+      `routes/dev-routes.tsx` sotto `/dev/*`. Gate super-admin lato API: middleware alias `super-admin`
+      (`EnsureSuperAdmin`, ruolo `UserService::PRIVILEGED_ROLE`), gia' usato da `system-health`.
+    - Router FE: tutte le pagine sono figli RELATIVI di `<AppLayout/>` in `routes/router.tsx` (+ file `*-routes.tsx`);
+      indice `/` -> `/dashboard`. Ci sono ~55 link interni assoluti (`navigate('/...')`, `to="/..."`).
+    - Footer sidebar: Notifiche e Impostazioni sono link fissi FE, fuori dall'albero di navigazione.
+    - Pattern pagina di configurazione dev a lista piccola: `features/api-integrations` (lista + dialog form, niente
+      TableDefinition).
+
+    Decisioni utente (2026-10-27):
+    D-1 Visibilita' dai permessi: un utente vede un'app se puo' vedere almeno una delle voci assegnate (stesso filtro di
+        oggi: permesso, `role`, `open_to_managers`). Nessuna assegnazione app->ruolo/utente.
+    D-2 Filtro SOLO sul menu: l'app decide cosa compare in sidebar. URL diretti, link tra moduli e modali restano
+        governati dai permessi come oggi; nessun blocco di navigazione.
+    D-3 Vista completa (menu di oggi) solo per il super-admin. Gli altri utenti lavorano sempre dentro un'app.
+    D-4 Ingresso: launcher + switcher nell'header, con prefisso URL `/app/{slug}/...`.
+
+    Decisioni confermate dall'utente (2026-10-27):
+    D-5 Retrocompatibilita' al deploy: finche' non esiste NESSUNA app configurata, la vista completa e' disponibile a
+        tutti e il comportamento resta identico a oggi. Dalla prima app creata vale D-3.
+        Regola unica: `full_view_available = utente super-admin OR nessuna app esiste`.
+    D-6 Granularita': si assegnano voci di menu con `route` non nullo, per `key`. Una voce puo' stare in piu' app.
+        Il menu dell'app e' l'albero globale potato alle voci assegnate: ordine, sezioni e gruppi restano quelli
+        globali (niente ordinamento/struttura personalizzata per app). Chiavi non piu' presenti in config vengono
+        ignorate in lettura e rifiutate in scrittura.
+    D-7 Prefisso e link assoluti: le pagine si montano due volte, sotto `/` e sotto `/app/:workspaceSlug`. I link
+        interni assoluti NON vengono riscritti: un URL senza prefisso viene reindirizzato a `/app/{app ricordata}/...`
+        (path, query e hash conservati). L'app ricordata e' una comodita' per-browser (localStorage per utente);
+        il super-admin che sceglie "Vista completa" la azzera e naviga senza prefisso.
+    D-8 Home dell'app: `/app/{slug}` porta alla prima voce visibile dell'app in ordine di menu (`home_route`).
+        Slug inesistente o non visibile all'utente -> l'app ricordata viene azzerata e si torna al percorso senza
+        prefisso (che applica D-7). Utente non super-admin senza app visibili e con vista completa non disponibile ->
+        pagina vuota "Nessuna app disponibile, contatta l'amministratore".
+    D-9 Naming: entita' `Workspace` (tabella `workspaces`, voci `workspace_navigation_items`); in UI si chiama "App".
+        `App` non e' usabile come nome di classe (collide con il namespace `App\`). Nome dell'app libero (non i18n).
+    D-10 Le guide in-app visibili dentro un'app seguono il menu dell'app (effetto naturale di D-2 su
+        `useHelpVisibleGuides`); la guida `general` resta sempre.
+
+    Revisione 2 (richiesta utente 2026-10-27, "voglio che ci sia un select per le icone, poi colore dell'app che andra'
+    scritta sopra al qnet dell'header. icone delle app a sinistra deve stare"):
+    D-11 Icona: selettore dal catalogo curato esistente (`components/icon-picker.tsx`, catalogo
+        `features/custom-fields/icon-catalog.ts`), validata server-side con `Rule::in(BadgeTokens::icons())`; resa con
+        `features/custom-fields/dynamic-icon.tsx`. Sostituisce il testo libero (REQUIREMENT CHANGED).
+    D-12 Colore: nuova colonna `color` (token di palette, mai hex) scelta con `ColorTokenPicker` esistente e validata con
+        `Rule::in(BadgeTokens::colors())`; nullable (nessun colore = testo neutro).
+    D-13 Header sidebar: dentro un'app, il nome dell'app sta SOPRA "QNet" (env.appNameSidebar), scritto nel colore
+        dell'app, con contrasto AA (4.5:1) sulla superficie della sidebar in tema chiaro e scuro.
+    D-14 Il launcher delle app (pulsante a griglia) sta a SINISTRA nell'header, subito dopo il toggle della sidebar,
+        come il "waffle" di Microsoft 365; nel pannello ogni app ha l'icona a sinistra del nome, nel suo colore.
+
+    Revisione 3 (richiesta utente 2026-10-27, "voglio anche una piccola descrizione per le app e le voglio inserire
+    nel select"):
+    D-15 Descrizione: nuova colonna `description` (testo breve, nullable, max 160) in una migrazione additiva separata,
+        perche' `workspaces` e' gia' migrata sul DB dev. Si inserisce nel dialog di configurazione e compare nel
+        pannello del launcher sotto il nome di ogni app (testo secondario, al massimo 2 righe).
+  </context>
+
+  <scope>
+    <in>
+      <item>Backend: migrazioni `workspaces` + `workspace_navigation_items`, model `Workspace` (LogsModelActivity),
+        factory, CRUD super-admin, catalogo voci, elenco app disponibili, parametro `workspace` su `GET /navigation`,
+        voce di menu in `config/navigation/develop.php`. Test Pest.</item>
+      <item>Frontend: feature `features/workspaces` (api, tipi, hook), doppio montaggio rotte sotto `/app/:workspaceSlug`,
+        redirect con app ricordata, prefisso nei link della sidebar, breadcrumbs con nome app, launcher nell'header,
+        nome app nell'header della sidebar, pagina `/dev/workspaces` (lista + dialog con selettore voci per sezione),
+        i18n IT/EN (namespace `workspaces`). Test Vitest.</item>
+      <item>Manuale: nuova guida in-app `workspaces` IT/EN + chiave in `HELP_GUIDE_KEYS` (97 -> 98), sezione sul
+        launcher nella guida `general`; manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Assegnazione app a ruoli o utenti (D-1).</item>
+      <item>Blocco della navigazione verso pagine fuori dall'app (D-2).</item>
+      <item>Sottodomini per app, branding per app (colori, logo), ordine o struttura di menu personalizzati per app (D-6).</item>
+      <item>Riscrittura dei ~55 link assoluti esistenti (coperti dal redirect D-7).</item>
+      <item>Dashboard diversa per app: la dashboard e' una voce assegnabile come le altre.</item>
+      <item>App ricordata lato server o sincronizzata tra dispositivi.</item>
+      <item>Seed di app predefinite (le crea il super-admin dalla UI).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope di progetto { success, message, data }. Tutte le rotte sotto auth:sanctum. -->
+
+    <schema name="workspaces">
+      id bigint pk; slug varchar(40) unique; name varchar(60); description varchar(160) null; icon varchar(50) null;
+      color varchar(20) null; sort_order unsigned int default 0.
+      (`color` aggiunta da `2026_11_04_100200_add_color_to_workspaces_table`, `description` da
+      `2026_11_04_100300_add_description_to_workspaces_table`.)
+      timestamps.
+    </schema>
+    <schema name="workspace_navigation_items">
+      id bigint pk; workspace_id fk -> workspaces cascadeOnDelete; navigation_key varchar(100);
+      unique(workspace_id, navigation_key); timestamps.
+    </schema>
+
+    <endpoint method="GET" path="/api/navigation">
+      <request>query `workspace`: string|null (slug). Senza parametro = vista completa.</request>
+      <response status="200">
+        data: NavigationItem[] (shape INVARIATA). Con `workspace`: albero filtrato come oggi e potato alle voci
+        assegnate (D-6). Senza `workspace`: albero completo se `full_view_available`, altrimenti [].
+      </response>
+      <errors>404 slug inesistente o app non visibile all'utente (nessuna voce assegnata visibile).</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/workspaces/available">
+      <request>nessuno</request>
+      <response status="200">
+        data: {
+          workspaces: Array&lt;{ slug: string, name: string, description: string|null, icon: string|null,
+            color: string|null, home_route: string }&gt;,
+          full_view_available: boolean
+        }
+        Solo le app visibili all'utente (D-1), ordinate per sort_order, name. home_route = prima voce visibile in
+        ordine di menu (D-8).
+      </response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/workspaces/navigation-catalogue" auth="super-admin">
+      <response status="200">
+        data: Array&lt;{ key: string, label: string, icon: string|null, route: string, path: string[] }&gt;
+        Ogni voce con route non nulla dell'albero GLOBALE (non filtrato), in ordine di menu. `path` = label i18n
+        degli antenati (sezione, gruppo) per raggruppare il selettore.
+      </response>
+      <errors>401 anonimo; 403 non super-admin.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/workspaces" auth="super-admin">
+      <response status="200">data: WorkspaceResource[] ordinate per sort_order, name.</response>
+      <errors>401; 403 non super-admin.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/workspaces" auth="super-admin">
+      <request>
+        { slug: string, regex ^[a-z0-9]+(-[a-z0-9]+)*$, max 40, unique;
+          name: string required max 60;
+          description: string|null max 160 (trim, stringa vuota -> null);
+          icon: string|null, Rule::in(BadgeTokens::icons());
+          color: string|null, Rule::in(BadgeTokens::colors());
+          sort_order: int|null min 0 (default 0);
+          navigation_keys: string[] required min 1, distinct, ognuno chiave del catalogo }
+      </request>
+      <response status="201">data: WorkspaceResource</response>
+      <errors>401; 403; 422 validazione (niente scritto).</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/workspaces/{workspace}" auth="super-admin">
+      <response status="200">data: WorkspaceResource</response>
+      <errors>401; 403; 404.</errors>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/workspaces/{workspace}" auth="super-admin">
+      <request>Stessa shape di POST (unique slug ignora se stessa). navigation_keys sostituisce l'insieme.</request>
+      <response status="200">data: WorkspaceResource</response>
+      <errors>401; 403; 404; 422.</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/workspaces/{workspace}" auth="super-admin">
+      <response status="200">data: null (voci eliminate in cascata)</response>
+      <errors>401; 403; 404.</errors>
+    </endpoint>
+
+    <resource name="WorkspaceResource">
+      { id: number, slug: string, name: string, description: string|null, icon: string|null, color: string|null,
+        sort_order: number,
+        navigation_keys: string[] }
+      navigation_keys in ordine di menu globale, gia' depurate delle chiavi non piu' in config.
+    </resource>
+
+    <frontend>
+      Rotte: `/app/:workspaceSlug` (indice -> home_route) e `/app/:workspaceSlug/&lt;ogni rotta di oggi&gt;`;
+      `/dev/workspaces` (pagina di configurazione). Query key: `['workspaces','available']`,
+      `['workspaces','admin']`, `['workspaces','catalogue']`, `['navigation', slug|null]`.
+      localStorage: `qnet.activeWorkspace.&lt;userId&gt;` = slug (lettura/scrittura in try/catch).
+      Voce di menu: key `workspaces`, label `navigation.workspaces`, icon `layout-grid`, route `/dev/workspaces`,
+      `role => 'super-admin'`.
+    </frontend>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Backend: tests/Feature/Workspaces/* -->
+    <criterion id="AC-001">Dato un super-admin, quando POST /api/workspaces con dati validi, allora 201, riga in
+      `workspaces` e una riga per chiave in `workspace_navigation_items`; risposta = WorkspaceResource.</criterion>
+    <criterion id="AC-002">Dato un utente non super-admin (anche con tutti i permessi), quando chiama uno qualsiasi tra
+      GET/POST/PUT/DELETE /api/workspaces e GET /api/workspaces/navigation-catalogue, allora 403 e nessuna scrittura;
+      anonimo -> 401.</criterion>
+    <criterion id="AC-003">Dato un super-admin, quando invia slug con formato errato o duplicato, name vuoto,
+      navigation_keys vuoto, duplicato o con chiave fuori catalogo, allora 422 sul campo e nessuna riga
+      scritta/modificata.</criterion>
+    <criterion id="AC-004">Dato un'app esistente, quando PUT con un nuovo insieme di chiavi, allora l'insieme
+      persistito coincide con quello inviato; quando DELETE, allora app e voci sono rimosse.</criterion>
+    <criterion id="AC-005">Dato un super-admin, quando GET /api/workspaces/navigation-catalogue, allora riceve ogni voce
+      con route della config, in ordine di menu, con `path` delle label antenate; nessun gruppo senza route.</criterion>
+    <criterion id="AC-006">Dato l'app "hr" con voci [absences, invoices] e un utente che vede solo absences, quando
+      GET /api/navigation?workspace=hr, allora l'albero contiene la sola voce absences dentro la sua sezione
+      originale, e nessuna sezione/gruppo vuoto.</criterion>
+    <criterion id="AC-007">Dato un utente che non vede nessuna voce dell'app "hr", quando GET
+      /api/navigation?workspace=hr, allora 404; idem per slug inesistente.</criterion>
+    <criterion id="AC-008">Dato che non esiste alcuna app, quando un utente qualunque chiama GET /api/navigation senza
+      parametro, allora riceve lo stesso albero di oggi; GET /api/workspaces/available restituisce workspaces [] e
+      full_view_available true (D-5).</criterion>
+    <criterion id="AC-009">Dato almeno un'app configurata, quando un utente non super-admin chiama GET /api/navigation
+      senza parametro, allora 200 con data []; il super-admin riceve l'albero completo; full_view_available e'
+      false per il primo e true per il secondo.</criterion>
+    <criterion id="AC-010">Dato due app (una con voci visibili all'utente, una no), quando GET /api/workspaces/available,
+      allora compare solo la prima, ordinata per sort_order/name, con home_route = route della prima voce visibile
+      in ordine di menu.</criterion>
+    <criterion id="AC-011">Dato una chiave assegnata che non esiste piu' in config, quando si legge l'app (resource,
+      navigation, available), allora la chiave e' ignorata senza errori.</criterion>
+    <criterion id="AC-012">Creazione, modifica e cancellazione di un'app scrivono una voce nel registro attivita'.</criterion>
+
+    <!-- Frontend: features/workspaces/**/*.test.tsx, routes/*.test.tsx -->
+    <criterion id="AC-013">Dato l'URL `/app/hr/invoices`, allora si apre la stessa pagina di `/invoices`, la sidebar
+      mostra il menu restituito da `GET /navigation?workspace=hr` e i suoi link hanno il prefisso `/app/hr`.</criterion>
+    <criterion id="AC-014">Dato un utente con app ricordata "hr", quando apre un URL senza prefisso (es.
+      `/contracts/5?tab=x`, anche da un link interno), allora viene reindirizzato a `/app/hr/contracts/5?tab=x`
+      e la pagina si apre secondo i permessi (D-2, D-7).</criterion>
+    <criterion id="AC-015">Dato un utente non super-admin senza app ricordata (o con app ricordata non piu'
+      disponibile), quando apre un URL senza prefisso, allora entra nella prima app disponibile; se non ne ha e
+      full_view_available e' false, vede "Nessuna app disponibile".</criterion>
+    <criterion id="AC-016">Quando si apre `/app/hr`, allora si arriva a `/app/hr` + home_route; con slug non
+      disponibile, l'app ricordata viene azzerata e si applica AC-015.</criterion>
+    <criterion id="AC-017">Il launcher nell'header elenca le app disponibili (icona + nome, quella corrente marcata);
+      per il super-admin aggiunge "Vista completa". Scegliere un'app porta alla sua home e la ricorda; "Vista
+      completa" azzera il ricordo e porta a `/dashboard` senza prefisso. Con zero app e vista completa per tutti
+      (D-5) il launcher non compare.</criterion>
+    <criterion id="AC-018">Sotto `/app/hr/...` le breadcrumbs risolvono le pagine come senza prefisso e la prima
+      briciola e' il nome dell'app (link alla sua home); l'header della sidebar mostra il nome dell'app.</criterion>
+    <criterion id="AC-019">La pagina `/dev/workspaces` (voce di menu solo super-admin) elenca le app; il dialog
+      crea/modifica nome, slug, icona, ordine e voci (selettore a checkbox raggruppato per sezione dal catalogo);
+      gli errori 422 compaiono sui campi; la cancellazione chiede conferma. Dopo ogni salvataggio si invalidano
+      `workspaces` e `navigation`.</criterion>
+    <criterion id="AC-020">Guida `workspaces` IT/EN presente, `HELP_GUIDE_KEYS` = 98, parity test verde; la guida
+      `general` ha la sezione sul launcher.</criterion>
+    <criterion id="AC-022">Dato un super-admin, quando POST/PUT con `icon` fuori dal catalogo curato o `color` fuori
+      dalla palette, allora 422 sul campo e nessuna scrittura; con valori validi o null li ritrova in WorkspaceResource
+      e in /workspaces/available.</criterion>
+    <criterion id="AC-023">Nel dialog di configurazione icona e colore si scelgono da selettori (IconPicker,
+      ColorTokenPicker), non da campi di testo; il valore scelto viene inviato nel payload.</criterion>
+    <criterion id="AC-024">Sotto `/app/hr/...` l'header della sidebar mostra il nome dell'app SOPRA "QNet" con la classe
+      colore del token dell'app (classe neutra se null); fuori da un'app mostra solo "QNet".</criterion>
+    <criterion id="AC-025">Il pulsante launcher e' il primo controllo a sinistra dell'header dopo il toggle della
+      sidebar; nel pannello ogni app mostra icona (a sinistra) e nome nel colore dell'app.</criterion>
+    <criterion id="AC-026">Dato un super-admin, quando POST/PUT con `description` oltre 160 caratteri, allora 422 e
+      nessuna scrittura; con testo valido o null lo ritrova in WorkspaceResource e in /workspaces/available.</criterion>
+    <criterion id="AC-027">Il dialog di configurazione ha il campo descrizione (facoltativo, con limite di 160 caratteri
+      validato lato client); il pannello del launcher mostra la descrizione sotto il nome dell'app, troncata a 2 righe,
+      e niente quando manca.</criterion>
+    <criterion id="AC-021">(verifica manuale) A 375px il launcher e il dialog di configurazione sono usabili senza
+      scroll orizzontale.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Icone da lucide via `icon-map.ts`.</item>
+    <item>Authz server-side: CRUD e catalogo dietro middleware `super-admin`; la potatura del menu non sostituisce
+      nessun controllo sugli endpoint (D-2).</item>
+    <item>`NavigationService` resta l'unico punto che decide la visibilita' delle voci: la potatura per app si
+      applica dopo il filtro esistente, senza duplicarlo.</item>
+    <item>La shape di `NavigationItem` non cambia: breadcrumbs, help, top-loading-bar e api-docs continuano a
+      funzionare.</item>
+    <item>`routes/router.tsx` (441 righe): il doppio montaggio estrae le rotte figlie in un modulo dedicato, senza
+      superare 500 righe in nessun file.</item>
+    <item>Migrazioni nuove e reversibili; niente comandi distruttivi sul DB di sviluppo.</item>
+    <item>Git: nessun commit senza richiesta esplicita (CLAUDE.md §3.6).</item>
+  </constraints>
+
+</spec>

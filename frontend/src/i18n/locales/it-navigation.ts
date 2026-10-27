@@ -113,6 +113,7 @@ export const navigation = {
   systemHealth: 'Stato del sistema',
   apiIntegrations: 'API e integrazioni',
   apiDocs: 'Documentazione API',
+  workspaces: 'App',
   develop: 'Develop',
   settings: 'Impostazioni',
   toggleSidebar: 'Apri/chiudi sidebar',

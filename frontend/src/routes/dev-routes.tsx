@@ -8,6 +8,7 @@ const SystemHealthPage = lazyRoute(() => import('@/features/system-health/system
 const ApiIntegrationsPage = lazyRoute(
   () => import('@/features/api-integrations/api-integrations-page'),
 )
+const WorkspacesPage = lazyRoute(() => import('@/features/workspaces/workspaces-page'))
 const ApiDocsPage = lazyRoute(() => import('@/features/api-integrations/api-docs-page'))
 
 /** Routes of the "Develop" menu section, plus redirects from their former URLs. */
@@ -22,6 +23,7 @@ export const devRoutes: RouteObject[] = [
     children: [
       { path: 'dev/migrations', element: <MigrationsPage /> },
       { path: 'dev/system-health', element: <SystemHealthPage /> },
+      { path: 'dev/workspaces', element: <WorkspacesPage /> },
     ],
   },
   { path: 'dev/api-clients', element: <ApiIntegrationsPage /> },

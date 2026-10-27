@@ -98,6 +98,7 @@ Route::prefix('auth')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     // Level 0 — backend-driven navigation.
     Route::get('navigation', [NavigationController::class, 'index']);
+    require __DIR__.'/api/workspaces.php'; // Workspaces / "App" (spec 0317)
 
     // Generic, domain-driven DataTable framework (AG Grid SSRM). One pair of
     // endpoints serves every domain; {domain} selects the TableDefinition from

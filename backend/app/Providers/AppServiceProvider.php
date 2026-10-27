@@ -109,6 +109,7 @@ use App\Models\WorkOrderCost;
 use App\Models\WorkOrderLinePayment;
 use App\Models\WorkOrderPaymentStatus;
 use App\Models\WorkOrderStage;
+use App\Models\Workspace;
 use App\Services\Graph\GraphMailClient;
 use App\Services\Opportunities\OpportunityDefaultStatusResolver;
 use App\Services\Opportunities\OpportunityStatusResolver;
@@ -355,6 +356,8 @@ class AppServiceProvider extends ServiceProvider
             'email_template' => EmailTemplate::class,
             'document_bundle' => DocumentBundle::class,
             'outbound_email' => OutboundEmail::class,
+            // Spec 0317: menu apps configured by the super-admin (audited).
+            'workspace' => Workspace::class,
         ]);
 
         Gate::before(function (User $user, string $ability): ?bool {

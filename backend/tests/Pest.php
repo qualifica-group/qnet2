@@ -27,6 +27,7 @@ use Tests\TestCase;
 */
 
 require_once __DIR__.'/Helpers/MigrationHelpers.php';
+require_once __DIR__.'/Helpers/MigrationStepHelpers.php';
 require_once __DIR__.'/Helpers/QuoteMigrationHelpers.php';
 require_once __DIR__.'/Helpers/WorkOrderMigrationHelpers.php';
 require_once __DIR__.'/Helpers/TaskMigrationHelpers.php';

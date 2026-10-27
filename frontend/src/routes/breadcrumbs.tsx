@@ -1,5 +1,5 @@
 import { Fragment } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   Breadcrumb,
@@ -10,6 +10,10 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { useNavigation } from '@/features/navigation/use-navigation'
+import { useActiveWorkspaceSlug } from '@/features/workspaces/use-active-workspace-slug'
+import { useWorkspaceName } from '@/features/workspaces/use-workspace-name'
+import { useWorkspaceNav } from '@/features/workspaces/use-workspace-nav'
+import { workspacePath } from '@/features/workspaces/workspace-path'
 import { resolveIcon } from '@/features/navigation/icon-map'
 import { useBreadcrumbTitles } from '@/routes/breadcrumb-title'
 import type { NavigationItem } from '@/features/navigation/types'
@@ -123,6 +127,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'system-health': 'navigation.systemHealth',
   'api-clients': 'navigation.apiIntegrations',
   'api-docs': 'navigation.apiDocs',
+  workspaces: 'navigation.workspaces',
   settings: 'navigation.settings',
   login: 'auth.signInTitle',
   'forgot-password': 'auth.forgotPasswordTitle',
@@ -155,7 +160,10 @@ function findNavItemByRoute(
 
 interface Crumb {
   label: string
+  /** Link target, with the app prefix when inside an app. */
   href: string
+  /** Unprefixed path: the key pages register their entity title under, and the menu route it matches. */
+  path: string
 }
 
 /**
@@ -165,16 +173,17 @@ interface Crumb {
  */
 function useCrumbs(): Crumb[] {
   const { t, i18n } = useTranslation()
-  const { pathname } = useLocation()
+  const { slug, link, pathname } = useWorkspaceNav()
   const titles = useBreadcrumbTitles()
 
+  // Pages resolve exactly as without the app prefix (spec 0317 D-7).
   const segments = pathname.split('/').filter(Boolean)
 
   return segments.map((segment, index) => {
-    const href = '/' + segments.slice(0, index + 1).join('/')
+    const path = '/' + segments.slice(0, index + 1).join('/')
     const key = SEGMENT_LABELS[segment]
     const label = key && i18n.exists(key) ? t(key) : humanize(segment)
-    return { label: titles[href] ?? label, href }
+    return { label: titles[path] ?? label, href: slug ? link(path) : path, path }
   })
 }
 
@@ -201,21 +210,26 @@ export function AppPageTitle({ className }: { className?: string }) {
 export function AppBreadcrumbs() {
   const navigation = useNavigation()
   const crumbs = useCrumbs()
+  const workspaceSlug = useActiveWorkspaceSlug()
 
-  if (crumbs.length === 0) {
+  if (crumbs.length === 0 && !workspaceSlug) {
     return null
   }
 
   // The module icon is the one the sidebar uses for the top-level crumb: match
   // its route against the backend-driven navigation tree.
-  const moduleItem = navigation.data
-    ? findNavItemByRoute(navigation.data, crumbs[0].href)
-    : null
+  const moduleItem =
+    navigation.data && crumbs.length > 0
+      ? findNavItemByRoute(navigation.data, crumbs[0].path)
+      : null
   const ModuleIcon = moduleItem?.icon ? resolveIcon(moduleItem.icon) : null
 
   return (
     <Breadcrumb>
       <BreadcrumbList>
+        {workspaceSlug ? (
+          <WorkspaceCrumb slug={workspaceSlug} isLast={crumbs.length === 0} />
+        ) : null}
         {crumbs.map((crumb, index) => {
           const isLast = index === crumbs.length - 1
           const icon =
@@ -224,7 +238,7 @@ export function AppBreadcrumbs() {
             ) : null
 
           return (
-            <Fragment key={crumb.href}>
+            <Fragment key={crumb.path}>
               <BreadcrumbItem>
                 {isLast ? (
                   <BreadcrumbPage className="flex items-center gap-1.5">
@@ -246,5 +260,25 @@ export function AppBreadcrumbs() {
         })}
       </BreadcrumbList>
     </Breadcrumb>
+  )
+}
+
+/** First crumb inside an app: its name, linking to the app home (spec 0317 D-7). */
+function WorkspaceCrumb({ slug, isLast }: { slug: string; isLast: boolean }) {
+  const name = useWorkspaceName(slug)
+
+  return (
+    <>
+      <BreadcrumbItem>
+        {isLast ? (
+          <BreadcrumbPage>{name}</BreadcrumbPage>
+        ) : (
+          <BreadcrumbLink asChild>
+            <Link to={workspacePath(slug, '')}>{name}</Link>
+          </BreadcrumbLink>
+        )}
+      </BreadcrumbItem>
+      {!isLast ? <BreadcrumbSeparator /> : null}
+    </>
   )
 }

@@ -1,6 +1,6 @@
 import { createElement } from 'react'
 import { ChevronRight } from 'lucide-react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   Collapsible,
@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/sidebar'
 import { resolveIcon } from '@/features/navigation/icon-map'
 import type { NavigationItem } from '@/features/navigation/types'
+import { useWorkspaceNav } from '@/features/workspaces/use-workspace-nav'
 import { cn } from '@/lib/utils'
 
 // Compact navigation items: smaller text (via size="sm") and shrunk icons,
@@ -96,12 +97,12 @@ function NavSection({ section, badges }: { section: NavigationItem; badges?: Nav
 
 function NavNode({ item, badge }: { item: NavigationItem; badge?: NavBadge | null }) {
   const { t } = useTranslation()
-  const location = useLocation()
+  const { link, pathname } = useWorkspaceNav()
   const icon = createElement(resolveIcon(item.icon))
   const label = t(item.label)
 
   if (item.children.length > 0) {
-    const keepOpen = hasActiveDescendant(item, location.pathname)
+    const keepOpen = hasActiveDescendant(item, pathname)
 
     return (
       <Collapsible asChild defaultOpen={keepOpen} className="group/collapsible">
@@ -144,10 +145,10 @@ function NavNode({ item, badge }: { item: NavigationItem; badge?: NavBadge | nul
         asChild
         tooltip={badge ? `${label} (${badge.count})` : label}
         size="sm"
-        isActive={isActive(item, location.pathname)}
+        isActive={isActive(item, pathname)}
         className={cn(NAV_ITEM_CLASS, NAV_LEAF_CLASS)}
       >
-        <NavLink to={item.route}>
+        <NavLink to={link(item.route)}>
           {icon}
           <span>{label}</span>
         </NavLink>
@@ -167,27 +168,27 @@ function NavNode({ item, badge }: { item: NavigationItem; badge?: NavBadge | nul
 // navigating, the chevron toggles the list, default collapsed.
 function NavSubNode({ item }: { item: NavigationItem }) {
   const { t } = useTranslation()
-  const location = useLocation()
+  const { link, pathname } = useWorkspaceNav()
   const label = t(item.label)
 
-  const link = (
-    <SidebarMenuSubButton asChild size="sm" isActive={isActive(item, location.pathname)} className={cn(NAV_ITEM_CLASS, NAV_LEAF_CLASS)}>
-      <NavLink to={item.route ?? '#'}>
+  const linkNode = (
+    <SidebarMenuSubButton asChild size="sm" isActive={isActive(item, pathname)} className={cn(NAV_ITEM_CLASS, NAV_LEAF_CLASS)}>
+      <NavLink to={item.route ? link(item.route) : '#'}>
         <span>{label}</span>
       </NavLink>
     </SidebarMenuSubButton>
   )
 
   if (item.children.length === 0) {
-    return <SidebarMenuSubItem>{link}</SidebarMenuSubItem>
+    return <SidebarMenuSubItem>{linkNode}</SidebarMenuSubItem>
   }
 
-  const keepOpen = hasActiveDescendant(item, location.pathname)
+  const keepOpen = hasActiveDescendant(item, pathname)
 
   return (
     <Collapsible asChild defaultOpen={keepOpen} className="group/subcollapsible">
       <SidebarMenuSubItem>
-        {link}
+        {linkNode}
         <CollapsibleTrigger asChild>
           <SidebarMenuAction className="top-1 [&>svg]:size-3.5">
             <ChevronRight className="transition-transform duration-200 group-data-[state=open]/subcollapsible:rotate-90" />

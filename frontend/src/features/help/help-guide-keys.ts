@@ -105,4 +105,5 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'system-health',
   'api-integrations',
   'api-docs',
+  'workspaces',
 ]

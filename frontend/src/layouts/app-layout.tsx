@@ -6,6 +6,7 @@ import { NavUserHeader } from '@/components/nav-user-header'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { NotificationBell } from '@/features/notifications/notification-bell'
 import { useNotificationTitle } from '@/features/notifications/use-notification-title'
+import { WorkspaceLauncher } from '@/features/workspaces/components/workspace-launcher'
 import { HelpButton } from '@/features/help/components/help-button'
 import { usePresenceHeartbeat } from '@/features/system-health/use-presence-heartbeat'
 import { useAuth } from '@/features/auth/use-auth'
@@ -47,6 +48,10 @@ export function AppLayout() {
             <ImpersonationBanner />
             <header className="relative flex h-12 shrink-0 items-center gap-2 border-b border-sidebar-border bg-sidebar px-4 text-sidebar-foreground">
               <SidebarSeamToggle />
+              {/* ml-6 below md: the seam toggle sits inside the header there (left-3, size-6) and would cover the launcher. */}
+              <div className="ml-6 md:ml-0">
+                <WorkspaceLauncher />
+              </div>
               <div className="ml-auto flex items-center gap-0.5">
                 <HelpButton />
                 <NotificationBell />

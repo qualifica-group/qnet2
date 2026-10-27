@@ -23,7 +23,9 @@ it('rolls back the six purchase order tables (and the payable ones built on them
     // and the hourly cost migration, plus spec 0277's two hourly cost removal migrations, plus spec 0278's four absence migrations, plus spec 0280's business function active flag, plus spec 0284's two staff training migrations (REQUIREMENT CHANGED), plus spec 0286's three skill migrations (REQUIREMENT CHANGED), plus spec 0289's tasks old_id migration (REQUIREMENT CHANGED), plus spec 0290's two contract type migrations (REQUIREMENT CHANGED), plus spec 0291's working time migration (REQUIREMENT CHANGED), plus spec 0293's CCNL removal migration (REQUIREMENT CHANGED).
     // Spec 0306 adds two migrations on top (REQUIREMENT CHANGED: 86 -> 88).
     // Spec 0307 adds two more (stock balances and movements; REQUIREMENT CHANGED: 88 -> 90).
-    expect(Artisan::call('migrate:rollback', ['--step' => 91]))->toBe(0);
+    // REQUIREMENT CHANGED (spec 0317 follow-up): derived from the first migration under test, not a hard-coded count.
+    $steps = migrationStepsFrom('2026_10_13_100000_create_cost_types_table.php');
+    expect(Artisan::call('migrate:rollback', ['--step' => $steps]))->toBe(0);
 
     foreach ($tables as $table) {
         expect(Schema::hasTable($table))->toBeFalse($table);

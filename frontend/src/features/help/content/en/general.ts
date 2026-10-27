@@ -36,12 +36,23 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Element', 'What it does'],
           rows: [
+            ['Grid (**Apps**)', 'Appears when apps are set up: opens the launcher to switch app.'],
             ['Bell', 'Opens notifications.'],
             ['Sun/moon (**Change theme**)', 'Picks the **Light**, **Dark** or **System** theme.'],
             ['Name and avatar', 'Opens the user menu with **Settings** and **Sign out**.'],
           ],
         },
         { type: 'paragraph', text: 'Below the header, every page except the home shows the navigation path; to its right is the button to create a new record. If **New version available** appears, press **Update now**.' },
+      ],
+    },
+    {
+      id: 'apps-launcher',
+      title: 'Apps and the launcher',
+      blocks: [
+        { type: 'paragraph', text: 'When the administrator has set up **apps** (for example HR or Accounting), you work inside one of them: the side menu shows only that app’s pages and its name appears at the top of the menu, above QNet. The page address starts with **/app/** followed by the app name.' },
+        { type: 'steps', items: ['Press the grid icon (**Apps**) at the top left of the header, right after the button that opens and closes the menu.', 'Pick the app: its first page opens.'] },
+        { type: 'paragraph', text: 'Each app has its own icon and, if set, its own colour. The app you are working in is highlighted and its name appears above the product name in the menu. QNet remembers the last app used on this browser: if you open a link without an app, it takes you to that one.' },
+        { type: 'note', text: 'Only the super-admin also sees **Full view**, the whole menu without an app. If you have no app available you see "No app available": contact the administrator. An app only changes the menu: your permissions on pages stay the same.' },
       ],
     },
     {

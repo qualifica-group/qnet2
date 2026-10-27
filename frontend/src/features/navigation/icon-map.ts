@@ -61,6 +61,7 @@ import {
   FileSpreadsheet,
   Play,
   TrendingUp,
+  LayoutGrid,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -152,6 +153,8 @@ const iconMap: Record<string, LucideIcon> = {
   library: Library,
   // Spec 0286: "Competenze" and "Catalogo competenze" (`list-checks` is already mapped).
   sparkles: Sparkles,
+  // Spec 0317: "App" under Develop.
+  'layout-grid': LayoutGrid,
 }
 
 export function resolveIcon(name: string | null): LucideIcon {

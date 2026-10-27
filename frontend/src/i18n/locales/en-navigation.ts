@@ -112,6 +112,7 @@ export const navigation = {
   systemHealth: 'System health',
   apiIntegrations: 'API & integrations',
   apiDocs: 'API documentation',
+  workspaces: 'Apps',
   develop: 'Develop',
   settings: 'Settings',
   toggleSidebar: 'Toggle sidebar',

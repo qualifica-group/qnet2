@@ -36,12 +36,23 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Elemento', 'A cosa serve'],
           rows: [
+            ['Griglia (**App**)', 'Appare se sono configurate delle app: apre il launcher per cambiare app.'],
             ['Campanella', 'Apre le notifiche.'],
             ['Sole/luna (**Cambia tema**)', 'Sceglie il tema **Chiaro**, **Scuro** o **Sistema**.'],
             ['Nome e avatar', 'Apre il menu utente con **Impostazioni** ed **Esci**.'],
           ],
         },
         { type: 'paragraph', text: 'Sotto l’intestazione ogni pagina, tranne la home, mostra il percorso di navigazione; alla sua destra c’è il pulsante per creare un nuovo record. Se compare **Nuova versione disponibile**, premi **Aggiorna ora**.' },
+      ],
+    },
+    {
+      id: 'apps-launcher',
+      title: 'Le app e il launcher',
+      blocks: [
+        { type: 'paragraph', text: 'Se l’amministratore ha configurato delle **app** (per esempio HR o Contabilità), lavori dentro una di esse: il menu laterale mostra solo le pagine di quell’app e il suo nome compare in cima al menu, sopra QNet. L’indirizzo della pagina inizia con **/app/** seguito dal nome dell’app.' },
+        { type: 'steps', items: ['Premi l’icona a griglia (**App**) in alto a sinistra nell’intestazione, subito dopo il pulsante che apre e chiude il menu.', 'Scegli l’app: si apre la sua prima pagina.'] },
+        { type: 'paragraph', text: 'Ogni app ha la sua icona e, se impostato, il suo colore. L’app in cui stai lavorando è evidenziata e il suo nome compare sopra il nome del prodotto nel menu. QNet ricorda l’ultima app usata su questo browser: se apri un link senza app, ti riporta in quella.' },
+        { type: 'note', text: 'Solo il super-admin vede anche **Vista completa**, il menu intero senza app. Se non hai nessuna app disponibile compare "Nessuna app disponibile": contatta l’amministratore. L’app cambia solo il menu: i permessi sulle pagine restano gli stessi.' },
       ],
     },
     {

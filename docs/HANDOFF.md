@@ -3,6 +3,35 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## App del menu, stile Microsoft 365 (spec 0317, rev 3) — VERDE, NON COMMITTATO (2026-10-27)
+
+- Spec `docs/specs/0317-workspace-apps.xml` (approvata, rev 3: icona/colore D-11..D-14, descrizione D-15).
+  Il super-admin configura N "app" (entita' `Workspace`, in UI "App") da `Develop > App` (`/dev/workspaces`);
+  ogni app = sottoinsieme di voci di menu (per `key`). Visibilita' dai permessi (D-1), filtro SOLO sul menu (D-2),
+  vista completa solo super-admin (D-3) MA a tutti finche' non esiste nessuna app (D-5, retrocompatibilita').
+- Backend: tabelle `workspaces` (slug, name, description, icon, color, sort_order) e `workspace_navigation_items`;
+  `color`/`description` in migrazioni additive `2026_11_04_100200/100300` perche' la create era gia' migrata sul DB
+  dev (tutte e 4 eseguite sul dev). `App\Services\Workspaces\{NavigationCatalogue,WorkspaceService,
+  WorkspaceAccessService}`, `NavigationService::prune()` dopo il filtro esistente. Rotte `routes/api/workspaces.php`:
+  `GET workspaces/available` (tutti), `GET workspaces/navigation-catalogue` + apiResource dietro `super-admin`;
+  `GET /navigation?workspace=<slug>` (404 se non visibile; senza param `[]` per chi non ha la vista completa).
+  `icon`/`color` validati con `BadgeTokens::icons()/colors()`. Alias morph `workspace` in AppServiceProvider.
+- Frontend: `features/workspaces/`; rotte figlie del layout estratte in `routes/app-child-routes.tsx` (407 righe,
+  sopra soft limit) e montate sotto `/` e `/app/:workspaceSlug`; URL senza prefisso -> redirect nell'app ricordata
+  (localStorage `qnet.activeWorkspace.<userId>`). Launcher a sinistra nell'header (dopo il seam toggle), nome app
+  sopra "QNet" nel colore dell'app (sfumature `-300`, mappa `workspace-color.ts`, AA verificato a calcolo).
+- Test REQUIREMENT CHANGED: `DevelopSectionTest` (5 voci develop), `HELP_GUIDE_KEYS` 98; i 3 test di rollback
+  (SupplierCommissionDirection, PurchaseOrderMigration, QuoteWorkflowMigration) ora calcolano `--step` con
+  `migrationStepsFrom()` (`tests/Helpers/MigrationStepHelpers.php`) invece del numero fisso.
+- Verifica: verifier su rev 3 -> tutti gli AC verdi; Pest suite completa 12557 pass, rossi non 0317: PDF senza
+  LibreOffice, TableBulkDelete super-admin, 7 test `tests/Feature/Migration/*` causati da
+  `EXTERNAL_MIGRATION_USERS_LINK_ONLY=true` nel `backend/.env` locale (verdi con `false`). Vitest completo 9261/9261.
+  Dopo i fix: Workspaces+Navigation+rollback 60/60, vitest mirato 138 file/1054, ESLint e `tsc -b --force` puliti.
+- Manuale: guide in-app IT/EN `workspaces` (nuova) e `general`; Claude Docs rev 413 (riga App nell'intestazione,
+  paragrafo App in "Com'e' fatta", sezione "App" dopo "Stato del sistema"). PDF derivato da rigenerare.
+- Da verificare a occhio: 375px (launcher vs seam toggle, footer del dialog). Commit: stage per file, nel tree
+  ci sono anche i file della 0316 (altra sessione).
+
 ## Visibilita' record Opportunita'/Offerte/Commesse/Contratti (spec 0316) — VERDE, NON COMMITTATO (2026-10-27)
 
 - Spec `docs/specs/0316-record-visibility-opportunities-quotes-work-orders.xml` (approvata; AC-031 [revised]).
