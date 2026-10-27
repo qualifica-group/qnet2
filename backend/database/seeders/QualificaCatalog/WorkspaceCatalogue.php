@@ -8,12 +8,13 @@ namespace Database\Seeders\QualificaCatalog;
  * keys; their order is irrelevant, the menu keeps its own.
  *
  * Each app holds only the pages of its own job (user directive 2026-10-27):
- * absences and time entries live in HR alone. Only the home page and the
- * tasks, every employee's own work list, are in all three.
+ * absences live in HR alone. The home page, the tasks and the time entries
+ * (user directive 2026-10-27, later the same day), every employee's own work
+ * list and the time logged on it, are in all three.
  */
 final class WorkspaceCatalogue
 {
-    private const array SHARED_KEYS = ['dashboard', 'tasks'];
+    private const array SHARED_KEYS = ['dashboard', 'tasks', 'time-entries'];
 
     /**
      * @return array<int, array{slug: string, name: string, description: string, icon: string, color: string, sort_order: int, navigation_keys: array<int, string>}>
@@ -56,7 +57,7 @@ final class WorkspaceCatalogue
                 'sort_order' => 20,
                 'navigation_keys' => [
                     ...self::SHARED_KEYS,
-                    'users', 'org-chart', 'time-entries', 'absences', 'staff-trainings', 'user-skills', 'stock',
+                    'users', 'org-chart', 'absences', 'staff-trainings', 'user-skills', 'stock',
                     'business-functions', 'job-roles', 'job-activities', 'contract-types', 'absence-types',
                     'company-closures', 'staff-courses', 'skills', 'operational-sites',
                 ],

@@ -20,7 +20,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'L’installazione iniziale crea già tre app, che puoi modificare o eliminare: **Qualifica Contabilità** (fatture, prima nota, acquisti, provvigioni, controllo di gestione), **Qualifica HR** (utenti, organigramma, segnatempo, assenze, formazione, dotazioni e configurazione del personale) e **Qualifica Sales** (lead, opportunità, offerte, commesse, contratti, anagrafiche). Ogni app contiene solo le pagine del suo settore, più Dashboard e Task.',
+          text: 'L’installazione iniziale crea già tre app, che puoi modificare o eliminare: **Qualifica Contabilità** (fatture, prima nota, acquisti, provvigioni, controllo di gestione), **Qualifica HR** (utenti, organigramma, assenze, formazione, dotazioni e configurazione del personale) e **Qualifica Sales** (lead, opportunità, offerte, commesse, contratti, anagrafiche). Ogni app contiene solo le pagine del suo settore, più Dashboard, Task e Segnatempo.',
         },
       ],
     },

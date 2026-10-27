@@ -17,18 +17,19 @@ it('seeds the three Qualifica apps with their menu entries', function () {
         ->and($apps->pluck('slug')->all())->toBe(['contabilita', 'hr', 'sales']);
 
     foreach ($apps as $app) {
-        expect($app->navigationKeys())->toContain('dashboard', 'tasks');
+        expect($app->navigationKeys())->toContain('dashboard', 'tasks', 'time-entries');
     }
 
-    // REQUIREMENT CHANGED (user directive 2026-10-27): each app holds only its own job's pages.
+    // REQUIREMENT CHANGED (user directive 2026-10-27): each app holds only its own job's pages;
+    // REQUIREMENT CHANGED again the same day: time entries are shared by all three, like tasks.
     [$accounting, $hr, $sales] = $apps->map->navigationKeys()->all();
 
     expect($accounting)->toContain('invoices', 'ledger', 'purchase-orders')
-        ->and(array_intersect($accounting, ['absences', 'time-entries', 'leads', 'users']))->toBe([])
-        ->and($hr)->toContain('users', 'org-chart', 'absences', 'time-entries')
+        ->and(array_intersect($accounting, ['absences', 'leads', 'users']))->toBe([])
+        ->and($hr)->toContain('users', 'org-chart', 'absences')
         ->and(array_intersect($hr, ['invoices', 'leads']))->toBe([])
         ->and($sales)->toContain('leads', 'opportunities', 'quotes')
-        ->and(array_intersect($sales, ['absences', 'time-entries', 'ledger', 'users']))->toBe([]);
+        ->and(array_intersect($sales, ['absences', 'ledger', 'users']))->toBe([]);
 });
 
 it('lists only entries that exist in the menu config', function () {

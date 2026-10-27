@@ -20,7 +20,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'The initial setup already creates three apps, which you can edit or delete: **Qualifica Contabilità** (invoices, ledger, purchasing, commissions, management control), **Qualifica HR** (users, org chart, time entries, absences, training, equipment and staff configuration) and **Qualifica Sales** (leads, opportunities, quotes, work orders, contracts, registries). Each app holds only the pages of its area, plus Dashboard and Tasks.',
+          text: 'The initial setup already creates three apps, which you can edit or delete: **Qualifica Contabilità** (invoices, ledger, purchasing, commissions, management control), **Qualifica HR** (users, org chart, absences, training, equipment and staff configuration) and **Qualifica Sales** (leads, opportunities, quotes, work orders, contracts, registries). Each app holds only the pages of its area, plus Dashboard, Tasks and Time entries.',
         },
       ],
     },

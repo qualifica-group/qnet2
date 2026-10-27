@@ -3,6 +3,15 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Segnatempo in tutte e tre le app del seed (WorkspaceCatalogue) — VERDE, NON COMMITTATO (2026-10-27)
+
+- Richiesta utente: nel seed di produzione Segnatempo insieme a Task in ogni app. `WorkspaceCatalogue::SHARED_KEYS` =
+  `dashboard`, `tasks`, `time-entries` (tolto dalla lista HR). RETTIFICA la mappatura spec 0317 "time-entries solo HR";
+  `absences` resta solo in HR.
+- `QualificaWorkspaceSeederTest` aggiornato (REQUIREMENT CHANGED), 6 test seeding verdi. Guida in-app `workspaces`
+  IT/EN e manuale Claude Docs (sezione App, rev 461) aggiornati.
+- Seeder CREATE-ONLY: sul DB dev le 3 app esistenti NON cambiano; aggiungere Segnatempo a mano da Develop > App.
+
 ## Board task commessa: casella "per tutti gli assegnatari" sul Completa (spec 0319) — VERDE, NON COMMITTATO (2026-10-27)
 
 - `TaskBoardBulkCompleteDialog` mostra la casella `tasks.actions.completeDialog.forAllAssignees`, **non spuntata** di
