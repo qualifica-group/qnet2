@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Fix: ruoli ereditati dall'anagrafica sull'opportunita' — VERDE, NON COMMITTATO (2026-10-27)
+
+- Segnalazione utente: in `/opportunities/new` e in "Nuova opportunita'" dal dettaglio anagrafica, scegliendo
+  l'anagrafica non arrivavano Commerciale, Segnalatore, Supervisore e G.A. (spec 0040 A-5, 0199: gia' previsti).
+- Root cause: `fetchOpportunityRegistryMeta` (`opportunity-relation-meta.ts`) leggeva `page.items[0]`, ma
+  `registries/for-select?ids[]=N` NON filtra: restituisce la prima pagina per nome + l'id in coda
+  (`appendHydratedForSelectIds`). Si ereditavano i ruoli della prima anagrafica alfabetica ("A. GABELLI", vuota).
+  Ora match per id, come `use-campaign-project-meta.ts`. I test erano verdi perche' il mock restituiva solo l'id
+  richiesto: fixture di `opportunity-registry-role-inheritance.test.tsx` allineata al contratto reale (prima riga
+  = altra anagrafica con ruoli propri), 5/6 rossi prima del fix. Requisito invariato.
+- Verifica: vitest `features/opportunities` 33 file / 253 test, ESLint, `tsc -b --force` puliti; endpoint reale
+  con id 6058 -> la riga giusta porta commerciale/segnalatore/G.A. Manuale: nessun impatto (la guida descrive gia'
+  l'ereditarieta'). Le altre letture per id (`use-competence-lines-field`, `use-task-work-order-registry`) fanno
+  gia' `find` per id.
+
 ## Note su Anagrafiche, Referenti e RDA (spec 0312) — VERDE, NON COMMITTATO (2026-10-26)
 
 - Sotto-task B della 0311. Richiesta utente: "voglio le note su rda, anagrafiche, referenti" + "prendi spunto da

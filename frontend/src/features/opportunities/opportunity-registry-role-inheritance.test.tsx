@@ -67,6 +67,28 @@ vi.mock('@/components/ui/async-paginated-select', async () => ({
  * `fetchForSelect`, mocked here per resource+id.
  */
 const fetchForSelectMock = vi.fn()
+
+/**
+ * The real `registries/for-select` ignores `ids[]` as a filter: it returns the
+ * first page by name and APPENDS the requested id (hydration). This first-page
+ * registry carries roles of its own, so reading `items[0]` instead of matching
+ * the id would inherit the wrong anagrafica's team (user report 2026-10-27).
+ */
+const FIRST_PAGE_REGISTRY = {
+  id: 1,
+  label: 'Aaa Prima Srl',
+  meta: {
+    commercial: { id: 501, name: 'Wrong Commercial' },
+    reporter: { id: 502, name: 'Wrong Reporter' },
+    supervisor: { id: 503, name: 'Wrong Supervisor' },
+    managers: [{ id: 504, name: 'Wrong Manager', position: 1 }],
+  },
+}
+
+function hydratedRegistryPage(item: { id: number; label: string; meta: unknown }) {
+  return { ...EMPTY_PAGE, items: [FIRST_PAGE_REGISTRY, item] }
+}
+
 vi.mock('@/features/for-select/api', async () => {
   const actual = await vi.importActual<typeof import('@/features/for-select/api')>('@/features/for-select/api')
   return { ...actual, fetchForSelect: (...args: unknown[]) => fetchForSelectMock(...args) }
@@ -87,37 +109,27 @@ beforeEach(() => {
   fetchForSelectMock.mockReset()
   fetchForSelectMock.mockImplementation(async (resource: string, params: { ids?: number[] }) => {
     if (resource === 'registries' && params?.ids?.includes(TEST_REGISTRY_WITH_DEFAULTS)) {
-      return {
-        ...EMPTY_PAGE,
-        items: [
-          {
-            id: TEST_REGISTRY_WITH_DEFAULTS,
-            label: 'Acme S.p.A.',
-            meta: {
-              commercial: { id: 71, name: 'Sara Conti' },
-              reporter: { id: 81, name: 'Elio Fabbri' },
-              supervisor: { id: 61, name: 'Ivo Bianchi' },
-              // A-5: account managers inherited into manager_slots (gap-aware by position).
-              managers: [
-                { id: 91, name: 'Gina Manager', position: 1 },
-                { id: 93, name: 'Turi Manager', position: 3 },
-              ],
-            },
-          },
-        ],
-      }
+      return hydratedRegistryPage({
+        id: TEST_REGISTRY_WITH_DEFAULTS,
+        label: 'Acme S.p.A.',
+        meta: {
+          commercial: { id: 71, name: 'Sara Conti' },
+          reporter: { id: 81, name: 'Elio Fabbri' },
+          supervisor: { id: 61, name: 'Ivo Bianchi' },
+          // A-5: account managers inherited into manager_slots (gap-aware by position).
+          managers: [
+            { id: 91, name: 'Gina Manager', position: 1 },
+            { id: 93, name: 'Turi Manager', position: 3 },
+          ],
+        },
+      })
     }
     if (resource === 'registries' && params?.ids?.includes(TEST_REGISTRY_WITHOUT_DEFAULTS)) {
-      return {
-        ...EMPTY_PAGE,
-        items: [
-          {
-            id: TEST_REGISTRY_WITHOUT_DEFAULTS,
-            label: 'Beta Srl',
-            meta: { commercial: null, reporter: null, supervisor: null, managers: [] },
-          },
-        ],
-      }
+      return hydratedRegistryPage({
+        id: TEST_REGISTRY_WITHOUT_DEFAULTS,
+        label: 'Beta Srl',
+        meta: { commercial: null, reporter: null, supervisor: null, managers: [] },
+      })
     }
     return resolveForSelectLabels(resource, params)
   })

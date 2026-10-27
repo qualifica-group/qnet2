@@ -39,6 +39,8 @@ export async function fetchOpportunityRegistryMeta(
     queryKey: ['registries', 'meta-for-opportunity', registryId],
     queryFn: () => fetchForSelect(REGISTRIES_FOR_SELECT_RESOURCE, { ids: [registryId] }),
   })
-  const item = page.items[0] as RegistryForSelectItem | undefined
+  // `ids[]` does not filter: the endpoint returns the first page by name and
+  // appends the requested id, so `items[0]` is a different anagrafica.
+  const item = page.items.find((option) => option.id === registryId) as RegistryForSelectItem | undefined
   return item?.meta ?? null
 }
