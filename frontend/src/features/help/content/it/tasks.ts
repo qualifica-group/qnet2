@@ -281,7 +281,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Nella finestra Completa la casella **Registra il segnatempo per tutti gli assegnatari** è spuntata di default: il segnatempo viene registrato per tutti gli assegnatari, uno identico per ciascuno (per te soltanto se il task non ne ha). Togli la spunta per registrarlo solo per te. La scelta vale ovunque completi il task: dettaglio, elenco, kanban e pannello Sotto-task.',
+          text: 'Nella finestra Completa la casella **Registra il segnatempo per tutti gli assegnatari** è spuntata di default: il segnatempo viene registrato per tutti gli assegnatari, uno identico per ciascuno (per te soltanto se il task non ne ha). Togli la spunta per registrarlo solo per te. La scelta vale ovunque completi il task: dettaglio, elenco, kanban e pannello Sotto-task. Nella board task della commessa (**Completa** sui task selezionati) la stessa casella c\'è ma è **non spuntata** di default: il segnatempo viene registrato solo per te, a meno che non la spunti.',
         },
         {
           type: 'note',

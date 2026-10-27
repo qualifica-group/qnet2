@@ -7,6 +7,10 @@
  * back to the type picker's first option). A task requiring validation, or
  * blocked, fails that ROW instead of the whole request (AC-018): there is no
  * `validation_status_id` field here, that path stays single-task only.
+ *
+ * `for_all_assignees` (spec 0319): same checkbox as `TaskCompleteDialog`, but
+ * UNCHECKED by default here — the board logs the segnatempo for the actor
+ * only unless they opt in.
  */
 
 import { useForm } from 'react-hook-form'
@@ -14,6 +18,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import axios from 'axios'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
@@ -24,7 +29,10 @@ import { showBulkResultToast } from '@/features/work-orders/task-board/task-boar
 
 interface CompleteFormValues {
   closure_feedback: string
+  for_all_assignees: boolean
 }
+
+const DEFAULT_VALUES: CompleteFormValues = { closure_feedback: '', for_all_assignees: false }
 
 interface TaskBoardBulkCompleteDialogProps {
   workOrderId: number
@@ -35,7 +43,7 @@ interface TaskBoardBulkCompleteDialogProps {
 
 export function TaskBoardBulkCompleteDialog({ workOrderId, taskIds, onClose, onSuccess }: TaskBoardBulkCompleteDialogProps) {
   const { t } = useTranslation()
-  const form = useForm<CompleteFormValues>({ defaultValues: { closure_feedback: '' } })
+  const form = useForm<CompleteFormValues>({ defaultValues: DEFAULT_VALUES })
   const timeEntryForm = useTaskCompleteTimeEntryForm({ taskTypeId: null })
   const mutation = useBulkBoardTaskAction(workOrderId)
 
@@ -55,6 +63,7 @@ export function TaskBoardBulkCompleteDialog({ workOrderId, taskIds, onClose, onS
         task_ids: taskIds,
         closure_feedback: feedback === '' ? undefined : feedback,
         time_entry: timeEntryPayload,
+        for_all_assignees: values.for_all_assignees,
       })
       showBulkResultToast(t, result)
       onClose()
@@ -117,6 +126,23 @@ export function TaskBoardBulkCompleteDialog({ workOrderId, taskIds, onClose, onS
                   onEndTimeChange={timeEntryForm.handleEndTimeChange}
                 />
               </Form>
+
+              <FormField
+                control={form.control}
+                name="for_all_assignees"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center gap-2">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={(checked) => field.onChange(checked === true)}
+                        disabled={mutation.isPending}
+                      />
+                    </FormControl>
+                    <FormLabel className="font-normal">{t('tasks.actions.completeDialog.forAllAssignees')}</FormLabel>
+                  </FormItem>
+                )}
+              />
             </form>
           </Form>
         </div>

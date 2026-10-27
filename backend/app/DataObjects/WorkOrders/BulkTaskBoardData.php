@@ -28,6 +28,7 @@ final readonly class BulkTaskBoardData
         public ?array $assigneeIds = null,
         public ?string $closureFeedback = null,
         public bool $closureFeedbackSubmitted = false,
+        public bool $forAllAssignees = false,
         public ?array $timeEntry = null,
         public ?int $taskPriorityId = null,
         public ?string $startDate = null,
@@ -49,6 +50,7 @@ final readonly class BulkTaskBoardData
                 ? (string) $data['closure_feedback']
                 : null,
             closureFeedbackSubmitted: array_key_exists('closure_feedback', $data),
+            forAllAssignees: (bool) ($data['for_all_assignees'] ?? false),
             timeEntry: isset($data['time_entry']) ? (array) $data['time_entry'] : null,
             taskPriorityId: isset($data['task_priority_id']) ? (int) $data['task_priority_id'] : null,
             startDate: $data['start_date'] ?? null,

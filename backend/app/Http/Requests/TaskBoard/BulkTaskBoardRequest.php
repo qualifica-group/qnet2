@@ -23,6 +23,10 @@ use Illuminate\Validation\Rule;
  * merged only when `action=complete` — every other action must not carry it
  * at all (`prohibited`).
  *
+ * `for_all_assignees` (spec 0319) is the actor's own "per tutti gli
+ * assegnatari" choice; omitted means false (only the actor), unlike
+ * `CompleteTaskRequest`'s own default.
+ *
  * `block` carries no inner rules on purpose: `App\Http\Requests\Tasks\
  * BlockTaskRequest`, the single-task sibling this mirrors, has none either
  * (spec 0116 — block is bodyless).
@@ -59,6 +63,7 @@ class BulkTaskBoardRequest extends FormRequest
             'assignee_ids.*' => ['integer', Rule::exists('users', 'id')],
 
             'closure_feedback' => ['sometimes', 'nullable', 'string', 'prohibited_unless:action,complete'],
+            'for_all_assignees' => ['sometimes', 'boolean', 'prohibited_unless:action,complete'],
             'block' => ['sometimes', 'array', 'prohibited_unless:action,block'],
 
             'task_priority_id' => [

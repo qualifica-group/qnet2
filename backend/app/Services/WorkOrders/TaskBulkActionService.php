@@ -72,9 +72,9 @@ final class TaskBulkActionService
     {
         match ($data->action) {
             'assign' => $this->executor->assign($task, $data->assigneeIds ?? [], $actor),
-            // Never `for_all_assignees`/`validation_status_id`: the board
-            // keeps its own pre-0156 shape (docblock above).
-            'complete' => $this->executor->complete($task, $data->timeEntry ?? [], $data->closureFeedback, $data->closureFeedbackSubmitted, null, false, $actor),
+            // Never `validation_status_id` (docblock above); `for_all_assignees`
+            // is the actor's own choice, false unless submitted (spec 0319).
+            'complete' => $this->executor->complete($task, $data->timeEntry ?? [], $data->closureFeedback, $data->closureFeedbackSubmitted, null, $data->forAllAssignees, $actor),
             'uncomplete' => $this->executor->uncomplete($task, $actor),
             'block' => $this->executor->block($task, $actor),
             'priority' => $this->executor->priority($task, (int) $data->taskPriorityId, $actor),

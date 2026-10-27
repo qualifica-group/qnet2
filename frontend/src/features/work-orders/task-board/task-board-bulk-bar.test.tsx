@@ -106,9 +106,27 @@ describe('TaskBoardBulkBar', () => {
         task_ids: [5],
         closure_feedback: 'Consegnato',
         time_entry: expect.objectContaining({ minutes: 60 }),
+        for_all_assignees: false,
       }),
     )
     expect(onClear).toHaveBeenCalled()
+  })
+
+  it('Completa: the all-assignees checkbox is unchecked by default and sends true once checked (spec 0319)', async () => {
+    bulkBoardTaskActionMock.mockResolvedValue({ results: [], succeeded: 1, failed: 0 })
+    renderBulkBar([5])
+
+    fireEvent.click(screen.getByRole('button', { name: /Completa/ }))
+    const checkbox = await screen.findByRole('checkbox', { name: 'Registra il segnatempo per tutti gli assegnatari' })
+    expect(checkbox).not.toBeChecked()
+
+    fireEvent.click(checkbox)
+    fireEvent.change(screen.getByLabelText(/Tempo/), { target: { value: '01:00' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Completa', hidden: false }))
+
+    await waitFor(() =>
+      expect(bulkBoardTaskActionMock).toHaveBeenCalledWith(9, expect.objectContaining({ for_all_assignees: true })),
+    )
   })
 
   it('Riapri: sends only task_ids, no body', async () => {

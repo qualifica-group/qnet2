@@ -104,13 +104,15 @@ export interface BulkAssignPayload {
 /**
  * Bulk "completa": ONE `closure_feedback`/`time_entry` applied to every
  * selected task (D-7). A task requiring validation fails that row instead of
- * completing it — validation stays a single-task action.
+ * completing it — validation stays a single-task action. `for_all_assignees`
+ * (spec 0319) defaults to false server-side when omitted.
  */
 export interface BulkCompletePayload {
   action: 'complete'
   task_ids: number[]
   closure_feedback?: string | null
   time_entry: CompleteTaskTimeEntryPayload
+  for_all_assignees?: boolean
 }
 
 /** Bulk "riapri". */

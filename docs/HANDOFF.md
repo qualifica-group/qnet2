@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Board task commessa: casella "per tutti gli assegnatari" sul Completa (spec 0319) — VERDE, NON COMMITTATO (2026-10-27)
+
+- `TaskBoardBulkCompleteDialog` mostra la casella `tasks.actions.completeDialog.forAllAssignees`, **non spuntata** di
+  default, e invia sempre `for_all_assignees`. Il dialog Completa del task (0205) resta spuntato di default.
+- BE `POST /api/work-orders/{workOrder}/task-board/bulk`: `for_all_assignees` sometimes|boolean, solo con
+  action=complete (altrimenti 422); assente -> false. `BulkTaskBoardData::$forAllAssignees` ->
+  `TaskBulkActionService` -> `TaskBulkActionExecutor::complete()`.
+- Test: `TaskBulkActionsTest` (+3, AC-001..003), `task-board-bulk-bar.test.tsx` (payload con `for_all_assignees: false`
+  = REQUIREMENT CHANGED, +1 test casella). Guida in-app `tasks` IT/EN e manuale Claude Docs (nota "Attenzione" del
+  completamento task) aggiornati; PDF del manuale da rigenerare.
+
 ## Suite backend piu' veloce: provider spatie senza pubblicazione migrazioni nei test — VERIFICATO, NON COMMITTATO (2026-10-27)
 
 - Causa: ogni test riavvia Laravel; `spatie/laravel-package-tools` (`generateMigrationName`) fa un `glob` di

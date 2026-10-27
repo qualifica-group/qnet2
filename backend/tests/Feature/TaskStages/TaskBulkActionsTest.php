@@ -109,6 +109,64 @@ it('bulk complete: closes completable tasks and logs a time entry each; validati
     $this->assertDatabaseHas('tasks', ['id' => $withOpenSubtask->id, 'task_status_id' => $openStatus->id]);
 });
 
+it('bulk complete without for_all_assignees logs the time entry for the actor only (spec 0319 AC-001)', function () {
+    $actor = taskBulkActor();
+    $workOrder = WorkOrder::factory()->create();
+    $openStatus = TaskStatus::factory()->group(TaskStatusGroup::Open)->create();
+    $otherAssignee = User::factory()->create();
+
+    $task = Task::factory()->forCreator($actor)->inStatus($openStatus)->create(['work_order_id' => $workOrder->id]);
+    $task->assignees()->attach([$actor->id, $otherAssignee->id]);
+
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/work-orders/{$workOrder->id}/task-board/bulk", [
+        'action' => 'complete',
+        'task_ids' => [$task->id],
+        'time_entry' => validTimeEntryPayload(),
+    ])->assertOk();
+
+    $this->assertDatabaseCount('time_entries', 1);
+    $this->assertDatabaseHas('time_entries', ['task_id' => $task->id, 'user_id' => $actor->id]);
+});
+
+it('bulk complete with for_all_assignees true logs one time entry per assignee (spec 0319 AC-002)', function () {
+    $actor = taskBulkActor();
+    $workOrder = WorkOrder::factory()->create();
+    $openStatus = TaskStatus::factory()->group(TaskStatusGroup::Open)->create();
+    $otherAssignee = User::factory()->create();
+
+    $task = Task::factory()->forCreator($actor)->inStatus($openStatus)->create(['work_order_id' => $workOrder->id]);
+    $task->assignees()->attach([$actor->id, $otherAssignee->id]);
+
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/work-orders/{$workOrder->id}/task-board/bulk", [
+        'action' => 'complete',
+        'task_ids' => [$task->id],
+        'time_entry' => validTimeEntryPayload(),
+        'for_all_assignees' => true,
+    ])->assertOk();
+
+    $this->assertDatabaseCount('time_entries', 2);
+    $this->assertDatabaseHas('time_entries', ['task_id' => $task->id, 'user_id' => $actor->id]);
+    $this->assertDatabaseHas('time_entries', ['task_id' => $task->id, 'user_id' => $otherAssignee->id]);
+});
+
+it('rejects for_all_assignees on a bulk action other than complete (spec 0319 AC-003)', function () {
+    $actor = taskBulkActor();
+    $workOrder = WorkOrder::factory()->create();
+    $task = Task::factory()->forCreator($actor)->create(['work_order_id' => $workOrder->id]);
+
+    Sanctum::actingAs($actor);
+
+    $this->postJson("/api/work-orders/{$workOrder->id}/task-board/bulk", [
+        'action' => 'block',
+        'task_ids' => [$task->id],
+        'for_all_assignees' => true,
+    ])->assertUnprocessable()->assertJsonValidationErrors(['for_all_assignees']);
+});
+
 it('bulk uncomplete/block/priority apply through the existing domain services (AC-019)', function () {
     $actor = taskBulkActor();
     $workOrder = WorkOrder::factory()->create();

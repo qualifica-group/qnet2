@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0319-task-board-complete-for-all-assignees" status="done" owner="utente" date="2026-10-27">
+
+  <goal>
+    Il "Completa" della board task della commessa mostra la casella "Registra il segnatempo per tutti gli assegnatari",
+    come il dialog Completa del task (0205), ma spenta di default: il segnatempo e' registrato solo per l'attore.
+  </goal>
+
+  <context>
+    - FE `features/work-orders/task-board/task-board-bulk-complete-dialog.tsx` (azione massiva Completa della board).
+    - BE `POST /api/work-orders/{workOrder}/task-board/bulk`: `BulkTaskBoardRequest`, `BulkTaskBoardData`,
+      `Services/WorkOrders/TaskBulkActionService` (passava `false` fisso a `TaskBulkActionExecutor::complete`).
+  </context>
+
+  <decisions>
+    D-1 (utente) Casella presente nel Completa della board commessa, non spuntata di default (solo per te).
+    D-2 `for_all_assignees` sometimes|boolean, ammesso solo con action=complete; assente -> false (comportamento
+        precedente invariato). Il default true di 0205 resta per `POST /api/tasks/{task}/complete`.
+    D-3 Il FE invia sempre il valore scelto. Etichetta riusata: `tasks.actions.completeDialog.forAllAssignees`.
+  </decisions>
+
+  <data_contract>
+    POST /api/work-orders/{workOrder}/task-board/bulk, action=complete: `for_all_assignees?: boolean` (default false).
+    Altre action: `for_all_assignees` proibito (422). Response invariata.
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Bulk complete senza `for_all_assignees` su task con 2 assegnatari -> 1 voce, dell'attore.</criterion>
+    <criterion id="AC-002">Bulk complete con `for_all_assignees: true` -> una voce per assegnatario.</criterion>
+    <criterion id="AC-003">`for_all_assignees` su action diversa da complete -> 422.</criterion>
+    <criterion id="AC-004">FE: casella non spuntata di default, payload `false`; spuntata -> `true`.</criterion>
+    <criterion id="AC-005">Guide in-app IT/EN `tasks` aggiornate; parity test verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>Nessuna nuova dipendenza; nessun cambio di schema DB.</constraints>
+
+</spec>
