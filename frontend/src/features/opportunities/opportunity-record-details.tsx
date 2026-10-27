@@ -71,7 +71,7 @@ export function OpportunityDetailsSection({ values, form, inline }: OpportunityR
           field="estimated_value"
           label={t('opportunities.form.estimatedValue')}
           inline={inline}
-          editor={<OpportunityEstimatedValueField control={control} />}
+          editor={<OpportunityEstimatedValueField control={control} name="estimated_value" />}
         >
           {formatDecimal(values.estimated_value) || <DetailEmpty />}
         </RecordInlineField>
@@ -79,7 +79,7 @@ export function OpportunityDetailsSection({ values, form, inline }: OpportunityR
           field="success_probability"
           label={t('opportunities.form.successProbability')}
           inline={inline}
-          editor={<OpportunitySuccessProbabilityField control={control} />}
+          editor={<OpportunitySuccessProbabilityField control={control} name="success_probability" />}
         >
           {values.success_probability !== null ? (
             <span className="tabular-nums">{values.success_probability}%</span>

@@ -82,11 +82,17 @@ class UpdateRequestRequest extends FormRequest
 
     /**
      * The catalogued fields that still live on the parent Opportunity (spec
-     * 0086, D-2): the classification rows and — since the direttiva utente
-     * 2026-09-09 made it writable from this panel — the "Note generali" free
-     * text. Both are read through `quote.opportunity` by currentFieldValue().
+     * 0086, D-2): the classification rows, the "Note generali" free text
+     * (direttiva utente 2026-09-09) and the forecast trio (spec 0313, D-3).
+     * All are read through `quote.opportunity` by currentFieldValue().
      */
-    private const array OPPORTUNITY_FIELDS = ['product_lines', 'general_notes'];
+    private const array OPPORTUNITY_FIELDS = [
+        'product_lines',
+        'general_notes',
+        'estimated_value',
+        'expected_close_date',
+        'success_probability',
+    ];
 
     /**
      * The "the persisted team is NOT what was submitted" marker
@@ -148,6 +154,11 @@ class UpdateRequestRequest extends FormRequest
             // key here, and `null` DOES clear it (an empty note is a legitimate
             // state, unlike `source_id` above).
             'general_notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            // "Previsione commerciale" (spec 0313, D-2): the Opportunity's
+            // forecast trio, byte-for-byte UpdateOpportunityRequest's rules.
+            'estimated_value' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:9999999999999.99'],
+            'expected_close_date' => ['sometimes', 'nullable', 'date'],
+            'success_probability' => ['sometimes', 'nullable', 'integer', 'between:0,100'],
             // "Linee dell'offerta" (user directive 2026-08-07): the REVENUE
             // rows, full-replace when submitted (D-8) and untouched when the
             // key is absent — the same convention the quotes PATCH follows.
@@ -209,8 +220,8 @@ class UpdateRequestRequest extends FormRequest
      * EnforcesFieldPermissions' generic dot-path reader only understands
      * relations/attributes declared on $model directly (spec 0008). Two of
      * this endpoint's catalogued fields no longer live on the route-bound
-     * Quote (spec 0086, D-2): `product_lines` and `general_notes` stayed
-     * Opportunity-level (read through the Quote's own `opportunity`
+     * Quote (spec 0086, D-2): `product_lines`, `general_notes` and the
+     * forecast trio stayed Opportunity-level (read through the Quote's own `opportunity`
      * relation) — see OPPORTUNITY_FIELDS.
      * `next_callback_at` left that set with the user directive 2026-09-04 —
      * a real Quote column now, read by the generic reader. `source_id` needs

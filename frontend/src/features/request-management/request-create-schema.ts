@@ -10,6 +10,7 @@ import {
 import { hiddenAttributeCodes } from '@/features/attributes/attribute-section-visibility'
 import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import { attributeValuesFilled } from '@/features/request-management/request-create-payload'
+import { requestForecastSchemaShape } from '@/features/request-management/request-forecast'
 import type { ApplicableAttribute } from '@/features/request-management/types'
 
 /** Backend per-tab row ceiling (`max:200`), mirrored from `quote-schema.ts`. */
@@ -114,6 +115,9 @@ export function buildRequestCreateSchema(
     // opened knowing nothing but its anagrafica and its product lines.
     next_callback_at: z.string().nullable(),
     general_notes: z.string(),
+    // "Previsione commerciale" (spec 0313): the created Opportunity's forecast
+    // trio, under the Opportunities form's own rules.
+    ...requestForecastSchemaShape(t),
     // "Informazioni aggiuntive" (user directive 2026-08-07): one key per
     // applicable `code`, per-type shape from the SHARED builder — the same one
     // the work panel and the Offerta form use.

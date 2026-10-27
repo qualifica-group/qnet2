@@ -53,6 +53,9 @@ function values(overrides: Record<string, unknown> = {}) {
   return {
     next_callback_at: null,
     general_notes: '',
+    expected_close_date: null,
+    estimated_value: null,
+    success_probability: 0,
     client_identity: null,
     client_contacts: [],
     client_address: [],

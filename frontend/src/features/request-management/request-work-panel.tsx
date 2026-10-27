@@ -36,6 +36,7 @@ import { RequestProductLinesSection } from '@/features/request-management/reques
 import { RequestSiteSection } from '@/features/request-management/request-site-section'
 import { RequestWorkCollaboration } from '@/features/request-management/request-work-collaboration'
 import { RequestWorkHeader } from '@/features/request-management/request-work-header'
+import { RequestForecastSection } from '@/features/request-management/request-forecast-section'
 import { RequestWorkSummary } from '@/features/request-management/request-work-summary'
 import { useRequestSiteOperatorLink } from '@/features/request-management/use-request-site-operator-link'
 import { useRequestTransfer } from '@/features/request-management/use-request-transfer'
@@ -240,6 +241,11 @@ function RequestWorkPanelBody({ panel, onSaved }: RequestWorkPanelBodyProps) {
               slotParamsFor={siteLink.slotParamsFor}
               onSlotItemChange={siteLink.onSlotItemChange}
             />
+
+            {/* "Previsione commerciale" (spec 0313): the Opportunity's forecast
+                trio, editable here instead of read-only in the summary; right
+                after the team (user directive 2026-10-27). */}
+            <RequestForecastSection control={form.control} />
 
             <RequestWorkSummary panel={panel} />
 

@@ -236,6 +236,11 @@ class RequestManagementController extends BaseApiController
                         // used to only display it. Sparse like the rest —
                         // absent means untouched, `null` clears it.
                         'general_notes',
+                        // "Previsione commerciale" (spec 0313): the
+                        // Opportunity's forecast trio, same sparse rule.
+                        'estimated_value',
+                        'expected_close_date',
+                        'success_probability',
                     ]),
                     // Typed DTOs (ContactInput/AddressInput), not raw arrays:
                     // the client anagraphic block never reaches the service as

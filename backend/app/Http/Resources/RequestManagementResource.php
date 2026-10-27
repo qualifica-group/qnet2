@@ -182,15 +182,15 @@ class RequestManagementResource extends JsonResource
             // "Note generali" (user directive 2026-07-27): the Opportunity's
             // free text. TOP-LEVEL since the direttiva utente 2026-09-09 made
             // it editable from the work panel — it used to sit in the
-            // read-only `context` block below precisely because this module
-            // never wrote it, so leaving it there would now advertise a
-            // writable field as commercial context.
+            // read-only `context` block precisely because this module never
+            // wrote it.
             'general_notes' => $opportunity->general_notes,
-            'context' => [
-                'estimated_value' => $opportunity->estimated_value,
-                'expected_close_date' => $opportunity->expected_close_date?->format('Y-m-d'),
-                'success_probability' => $opportunity->success_probability,
-            ],
+            // "Previsione commerciale" (spec 0313, D-5): editable from this
+            // panel, so top-level like `general_notes` — the read-only
+            // `context` block that used to carry them is gone.
+            'estimated_value' => $opportunity->estimated_value,
+            'expected_close_date' => $opportunity->expected_close_date?->format('Y-m-d'),
+            'success_probability' => $opportunity->success_probability,
         ];
     }
 

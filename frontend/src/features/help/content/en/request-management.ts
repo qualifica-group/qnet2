@@ -46,6 +46,7 @@ const guide: HelpGuide = {
             ['Next callback', 'Date of the next call to the client.'],
             ['Transferred', 'Whether the contact was transferred from another site.'],
             ['Working status', "The quote's working status."],
+            ['Estimated value, Success probability, Expected close date', "The opportunity's sales forecast. Hidden at first: turn them on from the column chooser. They can be sorted and filtered, not edited from the cell."],
           ],
         },
         {
@@ -63,6 +64,7 @@ const guide: HelpGuide = {
           items: [
             'Press **New request**.',
             'In **General notes** write what the client asked for, in their own words.',
+            'If you know them, fill in the **Sales forecast**: **Expected close date**, **Estimated value** and **Success probability** (the slider at 0 means "not set").',
             'If needed, set the **Next callback** (the time is optional).',
             'In **Product lines** add at least one row: parent category, then product category. When the parent category has groups (for example Consulting › ISO), **Filter** lets you pick the group and the product category then lists only its subcategories; the filter is not saved, only the product category.',
             "In the **Product catalogue** tick the products and press **Add N selected**, then check quantity, unit price and VAT of the rows (see **Offer rows and product catalogue**).",
@@ -128,6 +130,7 @@ const guide: HelpGuide = {
           items: [
             '**Product lines**: they decide the selectable products and the request-specific fields. Changing or removing a line empties the offer rows whose product belongs to a category no longer picked: pick the product again.',
             '**Offer rows**: products picked from the **Product catalogue**, with quantities, prices and VAT.',
+            "**Sales forecast**: expected close date, estimated value and success probability. They are the opportunity's values: changing them here changes them in **Opportunities** and in the other requests of the same opportunity too.",
             '**Status**: some statuses require a **Note**.',
             '**Client details**, **Attribution** and **Team** (**Supervisor** and **Account managers**).',
             'The **Additional information**, which depends on the categories picked.',

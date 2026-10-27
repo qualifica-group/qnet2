@@ -326,6 +326,8 @@ final class RequestColumnCatalog
                 ...self::clientColumn('vat_number', 'requestManagement.columns.vatNumber', 'client_vat_number', [new VatNumber], 'vat_number'),
                 'visible' => false,
             ],
+            // "Previsione commerciale" (spec 0313, D-6), hidden by default.
+            ...RequestForecastColumns::declarations(),
             [
                 // Hidden: not shown, but a real sortable DB column so the
                 // default "most recently loaded first" ordering (defaultSort,

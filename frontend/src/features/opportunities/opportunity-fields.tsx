@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { useWatch, type Control } from 'react-hook-form'
+import { useWatch, type Control, type FieldValues, type Path } from 'react-hook-form'
 import { FormControl } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
@@ -19,10 +19,20 @@ import type { OpportunityFormValues } from '@/features/opportunities/use-opportu
  * SAME control is the editor of a detail row and of a create-draft row. Every
  * one sits in `MetaField`: hidden means absent, non-editable means disabled,
  * `required` comes from the field permission.
+ *
+ * The forecast trio (date, value, probability) is generic over the host form:
+ * Gestione Richieste edits the same Opportunity columns from its own forms
+ * (spec 0313), where the RHF path and the permission key coincide too.
  */
 
 interface FieldProps {
   control: Control<OpportunityFormValues>
+}
+
+interface ForecastFieldProps<TFieldValues extends FieldValues> {
+  control: Control<TFieldValues>
+  /** The RHF path, also the field-permission key. */
+  name: Path<TFieldValues>
 }
 
 /** Formats a raw numeric field's RHF value for a controlled `<input type="number">`. */
@@ -59,13 +69,16 @@ export function OpportunityNameField({ control }: FieldProps) {
   )
 }
 
-interface DateFieldProps extends FieldProps {
-  name: 'start_date' | 'expected_close_date'
+interface DateFieldProps<TFieldValues extends FieldValues> extends ForecastFieldProps<TFieldValues> {
   label: string
 }
 
 /** "Data inizio" / "Data chiusura prevista": independent estimates (BR-5), an emptied date is `null`. */
-export function OpportunityDateField({ control, name, label }: DateFieldProps) {
+export function OpportunityDateField<TFieldValues extends FieldValues>({
+  control,
+  name,
+  label,
+}: DateFieldProps<TFieldValues>) {
   return (
     <MetaField control={control} name={name} metaKey={name} label={label}>
       {({ field, disabled, readOnly }) => (
@@ -74,7 +87,7 @@ export function OpportunityDateField({ control, name, label }: DateFieldProps) {
             type="date"
             disabled={disabled}
             readOnly={readOnly}
-            value={field.value ?? ''}
+            value={(field.value as string | null) ?? ''}
             onChange={(event) => field.onChange(event.target.value || null)}
             onBlur={field.onBlur}
             name={field.name}
@@ -87,15 +100,13 @@ export function OpportunityDateField({ control, name, label }: DateFieldProps) {
 }
 
 /** "Valore stimato": mirrors the backend `decimal(15,2)`. */
-export function OpportunityEstimatedValueField({ control }: FieldProps) {
+export function OpportunityEstimatedValueField<TFieldValues extends FieldValues>({
+  control,
+  name,
+}: ForecastFieldProps<TFieldValues>) {
   const { t } = useTranslation()
   return (
-    <MetaField
-      control={control}
-      name="estimated_value"
-      metaKey="estimated_value"
-      label={t('opportunities.form.estimatedValue')}
-    >
+    <MetaField control={control} name={name} metaKey={name} label={t('opportunities.form.estimatedValue')}>
       {({ field, disabled, readOnly }) => (
         <FormControl>
           <Input
@@ -104,7 +115,7 @@ export function OpportunityEstimatedValueField({ control }: FieldProps) {
             min={0}
             disabled={disabled}
             readOnly={readOnly}
-            value={numberInputValue(field.value)}
+            value={numberInputValue(field.value as number | null)}
             onChange={(event) => field.onChange(event.target.value === '' ? null : Number(event.target.value))}
             onBlur={field.onBlur}
             name={field.name}
@@ -117,17 +128,15 @@ export function OpportunityEstimatedValueField({ control }: FieldProps) {
 }
 
 /** "Probabilita' di successo" (A-6): a 0..100 slider that always holds a value. */
-export function OpportunitySuccessProbabilityField({ control }: FieldProps) {
+export function OpportunitySuccessProbabilityField<TFieldValues extends FieldValues>({
+  control,
+  name,
+}: ForecastFieldProps<TFieldValues>) {
   const { t } = useTranslation()
   return (
-    <MetaField
-      control={control}
-      name="success_probability"
-      metaKey="success_probability"
-      label={t('opportunities.form.successProbability')}
-    >
+    <MetaField control={control} name={name} metaKey={name} label={t('opportunities.form.successProbability')}>
       {({ field, disabled }) => {
-        const current = field.value ?? 0
+        const current = (field.value as number | null) ?? 0
         return (
           <div className="flex items-center gap-3">
             <FormControl>

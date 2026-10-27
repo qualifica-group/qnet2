@@ -19,6 +19,7 @@ import { emptyProductLineRow } from '@/features/product-lines/types'
 import type { AddressDraft, ContactDraft, PersonalDataDraft } from '@/features/personal-data/types'
 import { createRequest } from '@/features/request-management/api'
 import { buildRequestCreatePayload } from '@/features/request-management/request-create-payload'
+import { NO_FORECAST, toForecastValues } from '@/features/request-management/request-forecast'
 import {
   buildRequestCreateSchema,
   type RequestCreateFormValues,
@@ -51,6 +52,9 @@ const SCALAR_ERROR_FIELDS: Path<RequestCreateFormValues>[] = [
   // own control, so a server 422 lands inline.
   'next_callback_at',
   'general_notes',
+  'estimated_value',
+  'expected_close_date',
+  'success_probability',
 ]
 
 /** 422 error groups whose sections live OUTSIDE this form's RHF tree (see below). */
@@ -140,6 +144,7 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       rewards: [],
       next_callback_at: null,
       general_notes: '',
+      ...toForecastValues(NO_FORECAST),
       attribute_values: {},
     },
   })
@@ -255,6 +260,7 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       rewards: values.rewards,
       nextCallbackAt: values.next_callback_at,
       generalNotes: values.general_notes,
+      forecast: values,
       attributeValues: values.attribute_values,
       attributeCodes: context.applicable_attributes.map((attribute) => attribute.code),
     })

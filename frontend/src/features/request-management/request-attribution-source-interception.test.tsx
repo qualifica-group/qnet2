@@ -121,7 +121,9 @@ function panel(overrides: Partial<RequestWorkPanelWithPermissions> = {}): Reques
     quote_workflow_status_id: null,
     quote_workflow_status: null,
     quote_workflow_statuses: [],
-    context: { estimated_value: null, expected_close_date: null, success_probability: null },
+    estimated_value: null,
+    expected_close_date: null,
+    success_probability: null,
     permissions: { resource: { view: true, create: true, update: true, delete: true, export: true, import: true }, fields: {}, actions: {} },
     ...overrides,
   }

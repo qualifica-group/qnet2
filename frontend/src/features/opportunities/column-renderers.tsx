@@ -67,7 +67,7 @@ export function probabilityToneClass(percent: number): string {
  * plus its percentage. The bar is decorative (`aria-hidden`); the visible
  * percentage carries the value for assistive tech. Em dash when null.
  */
-function ProbabilityCell({ value }: ICellRendererParams) {
+export function ProbabilityCell({ value }: ICellRendererParams) {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     return <EmptyCell align="left" />
   }

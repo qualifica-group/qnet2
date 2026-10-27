@@ -100,13 +100,14 @@ it('GET as the offer supervisor returns the full work-panel shape (AC-020)', fun
         ->assertJsonPath('data.client_contacts.items.0.is_primary', true)
         ->assertJsonPath('data.referent_contacts.owner', ['type' => 'personal_data', 'id' => $referentCard->id])
         ->assertJsonPath('data.referent_contacts.items.0.value', '+39 333 0000000')
-        ->assertJsonPath('data.context', [
-            'estimated_value' => $opportunity->estimated_value,
-            'expected_close_date' => $opportunity->expected_close_date?->format('Y-m-d'),
-            'success_probability' => $opportunity->success_probability,
-        ])
-        // Direttiva utente 2026-09-09: editable now, so it sits at the top
-        // level and no longer inside the read-only context block above.
+        // REQUIREMENT CHANGED (spec 0313, D-5): the forecast trio is
+        // editable from the panel, so it sits at the top level and the
+        // read-only `context` block is gone.
+        ->assertJsonPath('data.estimated_value', $opportunity->estimated_value)
+        ->assertJsonPath('data.expected_close_date', $opportunity->expected_close_date?->format('Y-m-d'))
+        ->assertJsonPath('data.success_probability', $opportunity->success_probability)
+        ->assertJsonMissingPath('data.context')
+        // Direttiva utente 2026-09-09: editable now, so it sits at the top level.
         ->assertJsonPath('data.general_notes', $opportunity->general_notes)
         ->assertJsonStructure([
             'data' => ['status', 'product_lines'],

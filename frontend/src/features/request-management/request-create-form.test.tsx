@@ -144,11 +144,13 @@ describe('RequestCreateForm — lo scheletro del pannello', () => {
       .getAllByRole('heading', { level: 3 })
       .map((heading) => heading.textContent)
 
+    // REQUIREMENT CHANGED (spec 0313): "Previsione commerciale" follows the team.
     expect(order).toEqual([
       'Note generali',
       'Prossimo richiamo',
       'Sede operativa',
       'Team',
+      'Previsione commerciale',
       'Riepilogo richiesta',
     ])
     expect(form).not.toContainElement(within(aside).getByRole('heading', { name: 'Team' }))

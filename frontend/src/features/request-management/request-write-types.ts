@@ -9,6 +9,7 @@
 import type { BalancedOperatorsBySiteEntry } from '@/features/assignment/types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { QuoteLineInput } from '@/features/quotes/types'
+import type { RequestForecastPayload } from '@/features/request-management/request-forecast'
 import type { RequestClientIdentity } from '@/features/request-management/types'
 
 /**
@@ -70,7 +71,7 @@ export interface RequestClientAddressPayload {
  * never deletes the client's other addresses. `products_of_interest` is NOT
  * part of this shape (spec 0086 AC-022): the panel no longer writes it.
  */
-export interface UpdateRequestWorkPayload {
+export interface UpdateRequestWorkPayload extends RequestForecastPayload {
   next_callback_at?: string | null
   /**
    * "Note generali" (direttiva utente 2026-09-09): the Opportunity's free
@@ -162,7 +163,7 @@ export interface RequestRewardInput {
  * carries an `id`, but the type stays optional there so both endpoints share
  * one definition.
  */
-export interface CreateRequestPayload {
+export interface CreateRequestPayload extends RequestForecastPayload {
   registry_id?: number
   client_identity?: RequestClientIdentityPayload
   client_contacts?: RequestClientContactPayload[]

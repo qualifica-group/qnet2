@@ -51,6 +51,10 @@ use App\DataObjects\Users\ProfileData;
  * own dimension that spec 0084 D-1 removed, but the created Offerta's, where
  * RequestCreationService writes them). `null` means "not submitted" for each.
  *
+ * `estimatedValue`/`expectedCloseDate`/`successProbability` (spec 0313, D-4)
+ * are the created Opportunity's forecast trio, also OPTIONAL: `null` leaves
+ * them unset, as before.
+ *
  * No working-status pair here: the create form does not offer one (the set
  * depends on criteria the server resolves), so the Offerta is born on the
  * `open` row QuoteService bootstraps, exactly as in the Offerte module.
@@ -82,6 +86,9 @@ final readonly class CreateRequestData
         public ?int $operationalSiteId = null,
         public ?string $nextCallbackAt = null,
         public ?string $generalNotes = null,
+        public ?float $estimatedValue = null,
+        public ?string $expectedCloseDate = null,
+        public ?int $successProbability = null,
         public ?array $attributeValues = null,
         public ?array $offerLines = null,
     ) {}

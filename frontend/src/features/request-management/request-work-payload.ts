@@ -9,6 +9,7 @@ import { EMPTY_LINE_ROW } from '@/features/quotes/use-quote-lines-field'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteLine } from '@/features/quotes/types'
 import { toProductLinesPayload } from '@/features/request-management/request-create-payload'
+import { buildForecastPayload } from '@/features/request-management/request-forecast'
 import type { RequestWorkFormValues } from '@/features/request-management/request-work-schema'
 import type {
   RequestClientAddressPayload,
@@ -208,7 +209,8 @@ export function buildRequestWorkPayload(
   values: RequestWorkFormValues,
   panel: RequestWorkPanel,
 ): UpdateRequestWorkPayload {
-  const payload: UpdateRequestWorkPayload = {}
+  // "Previsione commerciale" (spec 0313): each key only when it changed.
+  const payload: UpdateRequestWorkPayload = buildForecastPayload(values, panel)
 
   if (values.next_callback_at !== (panel.next_callback_at ?? null)) {
     payload.next_callback_at = values.next_callback_at

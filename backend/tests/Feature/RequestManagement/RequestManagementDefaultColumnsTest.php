@@ -97,6 +97,11 @@ it('shows exactly the requested columns, in the requested order, and hides the r
         'operational_site',
         'is_transferred',
         'vat_number',
+        // REQUIREMENT CHANGED (spec 0313, D-6): the forecast trio joins the
+        // column chooser, hidden by default.
+        'estimated_value',
+        'success_probability',
+        'expected_close_date',
         'created_at',
     ]);
 });

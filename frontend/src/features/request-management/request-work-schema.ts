@@ -26,6 +26,7 @@ import type {
   RequestContact,
 } from '@/features/request-management/types'
 import type { QuoteWorkflowStatusRef } from '@/features/quotes/types'
+import { requestForecastSchemaShape } from '@/features/request-management/request-forecast'
 
 /**
  * Client-side schema for the work panel's editable surface (spec 0049
@@ -214,6 +215,9 @@ export function buildRequestWorkSchema(
       // the wire (`buildRequestWorkPayload`); the 5000-char ceiling stays a
       // server rule, surfaced as a 422 on this very field.
       general_notes: z.string(),
+      // "Previsione commerciale" (spec 0313): the Opportunity's forecast trio,
+      // under the Opportunities form's own rules.
+      ...requestForecastSchemaShape(t),
       // The three buffered client blocks carry no field-level rule: they are
       // checked by the refinement below, which alone knows whether they travel.
       client_identity: z.custom<PersonalDataDraft | null>(),

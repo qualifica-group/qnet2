@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0313-request-management-forecast-fields" status="approved" owner="nicola" date="2026-10-27">
+
+  <goal>
+    Data chiusura prevista, valore stimato e probabilita' di successo si gestiscono anche da Gestione Richieste
+    (e Gestione Iscritti, spec 0130), non solo da Opportunita': modificabili nel pannello di lavoro, compilabili in
+    creazione, visibili come colonne della griglia.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-27: "data chiusura prevista, valore stimato, probabilita' di successo vanno messe anche
+    in gestioni richieste e non solo in opportunita'". Scelte utente nella stessa sessione: pannello di lavoro
+    (modifica), form di creazione, colonne della griglia; il report CSV aggregato (spec 0106) NON cambia.
+
+    Oggi i tre campi sono colonne di `opportunities` (`estimated_value` decimal(15,2), `expected_close_date` date,
+    `success_probability` tinyint 0..100, tutti nullable) scritte solo dal modulo Opportunita'. Il pannello di
+    lavoro li mostra in sola lettura nel blocco `context` di RequestManagementResource (`RequestWorkSummary`).
+
+    D-1 Dato: restano sull'Opportunita' (scelta utente). Un'opportunita' con piu' offerte condivide i valori fra le
+        richieste sorelle e col modulo Opportunita'. Nessuna migrazione. Stesso schema delle "Note generali"
+        (direttiva 2026-09-09): campo dell'Opportunita' scritto dal PATCH di questo modulo.
+    D-2 Regole: identiche a UpdateOpportunityRequest/StoreOpportunityRequest (`numeric|min:0|max:9999999999999.99`,
+        `date`, `integer|between:0,100`), sparse e nullable (`null` svuota).
+    D-3 Permessi: tre FieldDefinition in RequestManagementAuthorization (`number`, `date`, `number`), ceiling
+        editabile se l'attore puo' scrivere, mai obbligatori; ereditate da EnrolleeManagementAuthorization. Il gate
+        per campo del PATCH le legge dall'Opportunita' (`OPPORTUNITY_FIELDS`).
+    D-4 Scrittura: `RequestManagementService::updateWork()` le applica all'Opportunita' con il `save()` condiviso;
+        l'activity log automatico dell'Opportunita' registra il diff (sono in `$fillable`). In creazione passano a
+        `CreateOpportunityData` (oggi `null` fissi).
+    D-5 UI: sezione "Previsione commerciale" con i tre controlli del form Opportunita' (data, valore, slider
+        0..100), nel pannello di lavoro e nel form di creazione, nella colonna laterale subito dopo il Team (indicazione
+        utente 2026-10-27). Le tre righe
+        in sola lettura escono dal riepilogo. Probabilita': come in Opportunita' lo slider tiene sempre un valore,
+        `null` persistito si mostra come 0 e viaggia solo se cambiato.
+    D-6 Griglia: tre colonne `estimated_value` (number), `success_probability` (number), `expected_close_date` (date),
+        ordinabili e filtrabili tramite l'hop `quote.opportunity` (RequestRelationColumns OPPORTUNITY_SCALAR_COLUMNS),
+        `hasFilterValues: false`, sola lettura in cella. Nascoste di default (direttiva 2026-09-17 ha fissato le
+        colonne visibili): si attivano dal selettore colonne ed entrano nell'export della griglia.
+  </context>
+
+  <scope>
+    <in>
+      <item>Backend: FormRequest store/update, CreateRequestData, RequestCreationService, RequestManagementService,
+        controller (chiavi ammesse), RequestManagementAuthorization, RequestManagementResource, catalogo colonne,
+        row mapper, RequestRelationColumns; test.</item>
+      <item>Frontend: tipi, schema/form/payload di pannello e creazione, sezione condivisa, riepilogo, renderer delle
+        tre colonne, i18n IT/EN; test.</item>
+      <item>Guide in-app IT/EN di Gestione Richieste (e Gestione Iscritti se descrive il pannello); manuale.</item>
+    </in>
+    <out>
+      <item>Report CSV aggregato e dashboard (spec 0106/0107).</item>
+      <item>Modifica in cella dei tre campi nella griglia.</item>
+      <item>Valori per singola offerta (colonne su `quotes`).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET|PATCH" path="/api/request-management/{quote}, /api/enrollee-management/{quote}">
+      <request>PATCH: chiavi sparse in piu' `estimated_value` (number|null), `expected_close_date` (Y-m-d|null),
+        `success_probability` (int 0..100|null).</request>
+      <response status="200">`data` perde `context`; acquista top-level `estimated_value` (string decimale|null),
+        `expected_close_date` (Y-m-d|null), `success_probability` (int|null), letti dall'Opportunita'.</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/request-management, /api/enrollee-management">
+      <request>Opzionali in piu' le stesse tre chiavi, stesse regole.</request>
+      <response status="201">Invariata (stessa shape del GET).</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/table/request-management/*">
+      <response status="200">Righe con in piu' `estimated_value`, `success_probability`, `expected_close_date`;
+        tre colonne nel config (`visible: false`).</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">PATCH con i tre campi aggiorna l'Opportunita' della richiesta e la risposta li riporta
+      top-level; `null` li svuota; chiave assente li lascia invariati.</criterion>
+    <criterion id="AC-002">Valori fuori regola (valore negativo, probabilita' 101, data non valida) -> 422 sul campo.</criterion>
+    <criterion id="AC-003">Un campo reso non editabile dalla matrice ruoli -> 422 se cambiato via PATCH.</criterion>
+    <criterion id="AC-004">POST con i tre campi crea l'Opportunita' con quei valori.</criterion>
+    <criterion id="AC-005">La griglia espone le tre colonne nascoste, con valori dell'Opportunita', ordinabili e
+      filtrabili (number/date).</criterion>
+    <criterion id="AC-006">Pannello e form di creazione mostrano la sezione "Previsione commerciale"; una modifica
+      viaggia nel payload solo se cambiata; il riepilogo non mostra piu' i tre valori in sola lettura.</criterion>
+  </acceptance_criteria>
+</spec>

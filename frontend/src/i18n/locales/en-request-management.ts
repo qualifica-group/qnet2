@@ -32,6 +32,9 @@ export const requestManagement = {
     productCategory: 'Product category',
     offerLines: 'Product lines',
     generalNotes: 'General notes',
+    estimatedValue: 'Estimated value',
+    successProbability: 'Success probability',
+    expectedCloseDate: 'Expected close date',
     operator: 'Operator',
     managerGa1: 'Tutor',
     operationalSite: 'Operational site',
@@ -220,6 +223,10 @@ export const requestManagement = {
       title: 'General notes',
       placeholder: 'What the client asked for, in their own words…',
     },
+    forecast: {
+      title: 'Sales forecast',
+      description: 'Expected close, value and probability of the deal: they belong to the opportunity.',
+    },
     callback: {
       title: 'Next callback',
       description: 'Plan the next follow-up call with the client.',
@@ -280,9 +287,6 @@ export const requestManagement = {
       registry: 'Client',
       referent: 'Contact',
       commercial: 'Sales rep',
-      expectedCloseDate: 'Expected close date',
-      estimatedValue: 'Estimated value',
-      successProbability: 'Success probability',
     },
     productLines: {
       title: 'Product lines',

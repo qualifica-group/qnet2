@@ -33,6 +33,9 @@ export const requestManagement = {
     productCategory: 'Categoria prodotto',
     offerLines: 'Linee di prodotto',
     generalNotes: 'Note generali',
+    estimatedValue: 'Valore stimato',
+    successProbability: 'Probabilità di successo',
+    expectedCloseDate: 'Data chiusura prevista',
     operator: 'Operatore',
     managerGa1: 'Tutor',
     operationalSite: 'Sede operativa',
@@ -221,6 +224,10 @@ export const requestManagement = {
       title: 'Note generali',
       placeholder: 'Cosa ha chiesto il cliente, con le sue parole…',
     },
+    forecast: {
+      title: 'Previsione commerciale',
+      description: "Chiusura attesa, valore e probabilità della trattativa: sono quelli dell'opportunità.",
+    },
     callback: {
       title: 'Prossimo richiamo',
       description: 'Pianifica la prossima chiamata di follow-up con il cliente.',
@@ -283,9 +290,6 @@ export const requestManagement = {
       registry: 'Cliente',
       referent: 'Referente',
       commercial: 'Commerciale',
-      expectedCloseDate: 'Chiusura prevista',
-      estimatedValue: 'Valore stimato',
-      successProbability: 'Probabilità di successo',
     },
     productLines: {
       title: 'Linee di prodotto',

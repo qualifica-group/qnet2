@@ -120,7 +120,9 @@ export function workPanel(overrides: Partial<RequestWorkPanelWithPermissions> = 
     quote_workflow_status_id: 900,
     quote_workflow_status: WORKFLOW_STATUS_OPEN,
     quote_workflow_statuses: [WORKFLOW_STATUS_OPEN],
-    context: { estimated_value: 1234.5, expected_close_date: '2026-08-01', success_probability: null },
+    estimated_value: 1234.5,
+    expected_close_date: '2026-08-01',
+    success_probability: null,
     permissions: FULL_PERMISSIONS,
     ...overrides,
   }

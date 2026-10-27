@@ -115,6 +115,11 @@ class StoreRequestRequest extends FormRequest
                 // Opportunity resolves no working state of its own any more.
                 'next_callback_at' => ['sometimes', 'nullable', 'date'],
                 'general_notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
+                // "Previsione commerciale" (spec 0313, D-2): the created
+                // Opportunity's forecast trio, StoreOpportunityRequest's rules.
+                'estimated_value' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:9999999999999.99'],
+                'expected_close_date' => ['sometimes', 'nullable', 'date'],
+                'success_probability' => ['sometimes', 'nullable', 'integer', 'between:0,100'],
                 // "Informazioni aggiuntive" (user directive 2026-08-07):
                 // shallow here on purpose. The per-code applicability/type/
                 // required validation runs in RequestCreationService against
@@ -211,6 +216,9 @@ class StoreRequestRequest extends FormRequest
             operationalSiteId: isset($validated['operational_site_id']) ? (int) $validated['operational_site_id'] : null,
             nextCallbackAt: $validated['next_callback_at'] ?? null,
             generalNotes: $validated['general_notes'] ?? null,
+            estimatedValue: isset($validated['estimated_value']) ? (float) $validated['estimated_value'] : null,
+            expectedCloseDate: $validated['expected_close_date'] ?? null,
+            successProbability: isset($validated['success_probability']) ? (int) $validated['success_probability'] : null,
             attributeValues: array_key_exists('attribute_values', $validated)
                 ? (array) $validated['attribute_values']
                 : null,

@@ -46,6 +46,7 @@ const guide: HelpGuide = {
             ['Prossimo richiamo', 'Data della prossima chiamata al cliente.'],
             ['Trasferito', "Se il contatto è stato trasferito da un'altra sede."],
             ['Stato di lavorazione', "Stato operativo dell'offerta."],
+            ['Valore stimato, Probabilità di successo, Data chiusura prevista', "Previsione commerciale dell'opportunità. Nascoste all'inizio: attivale dalla scelta colonne. Si ordinano e si filtrano, non si modificano dalla cella."],
           ],
         },
         {
@@ -63,6 +64,7 @@ const guide: HelpGuide = {
           items: [
             'Premi **Nuova richiesta**.',
             'Scrivi nelle **Note generali** cosa ha chiesto il cliente, con le sue parole.',
+            'Se le conosci, compila la **Previsione commerciale**: **Data chiusura prevista**, **Valore stimato** e **Probabilità di successo** (lo slider a 0 vale "non indicata").',
             "Se serve, indica il **Prossimo richiamo** (l'ora è facoltativa).",
             'In **Linee di prodotto** aggiungi almeno una riga: categoria genitore, poi categoria prodotto. Se la categoria genitore ha dei gruppi (ad esempio Consulenza › ISO), con **Filtro** scegli il gruppo e la categoria prodotto elenca solo le sue sottocategorie; il filtro non viene salvato, solo la categoria prodotto.',
             "Nel **Catalogo prodotti** spunta i prodotti e premi **Aggiungi N selezionati**, poi controlla quantità, prezzo unitario e IVA delle righe (vedi **Righe dell'offerta e catalogo prodotti**).",
@@ -128,6 +130,7 @@ const guide: HelpGuide = {
           items: [
             "**Linee di prodotto**: decidono i prodotti selezionabili e i campi specifici. Se cambi o togli una linea, le righe offerta con un prodotto di una categoria non più scelta si svuotano: scegli di nuovo il prodotto.",
             '**Righe offerta**: prodotti scelti dal **Catalogo prodotti**, con quantità, prezzi e IVA.',
+            "**Previsione commerciale**: data chiusura prevista, valore stimato e probabilità di successo. Sono i valori dell'opportunità: se cambiano qui, cambiano anche in **Opportunità** e nelle altre richieste della stessa opportunità.",
             '**Stato**: alcuni stati richiedono una **Nota**.',
             '**Anagrafica**, **Attribuzione** e **Team** (**Supervisore** e **Gestori account**).',
             'Le **Informazioni aggiuntive**, che dipendono dalle categorie scelte.',

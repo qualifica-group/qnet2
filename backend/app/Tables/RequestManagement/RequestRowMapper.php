@@ -79,6 +79,11 @@ final class RequestRowMapper
             // "Note generali" (user directive 2026-07-31; spec 0086, D-11):
             // still `opportunity.general_notes`, display-only in this module.
             'general_notes' => $opportunity?->general_notes,
+            // "Previsione commerciale" (spec 0313, D-6): the Opportunity's
+            // forecast trio, display-only in the grid.
+            'estimated_value' => $opportunity?->estimated_value,
+            'success_probability' => $opportunity?->success_probability,
+            'expected_close_date' => $opportunity?->expected_close_date?->format('Y-m-d'),
             // "Categoria prodotto": the OPPORTUNITY's own product lines (spec
             // 0075), re-derived through `quote.opportunity` (spec 0086).
             // Projected as the {funzione aziendale, categoria} PAIRS — ids

@@ -3,6 +3,28 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Previsione commerciale in Gestione Richieste (spec 0313) — VERDE, NON COMMITTATO (2026-10-27)
+
+- Richiesta utente: data chiusura prevista, valore stimato, probabilita' di successo anche in Gestione Richieste.
+  Scelte utente: pannello (modifica) + form di creazione + colonne griglia; valori sull'OPPORTUNITA' (condivisi con
+  le richieste sorelle e col modulo Opportunita'); report CSV aggregato NON toccato.
+- Backend: `UpdateRequestRequest`/`StoreRequestRequest` (regole di UpdateOpportunityRequest, sparse, null svuota;
+  `OPPORTUNITY_FIELDS` + i tre per il gate per campo), `RequestManagementAuthorization` (3 FieldDefinition, ereditate
+  da Gestione Iscritti), `RequestManagementService::OPPORTUNITY_SCALAR_FIELDS` (fill sull'Opportunita'),
+  `CreateRequestData` -> `CreateOpportunityData`. `RequestManagementResource`: i tre top-level, blocco `context`
+  RIMOSSO. Griglia: nuova `RequestForecastColumns` (hidden, sortable/filterable via OPPORTUNITY_SCALAR_COLUMNS,
+  display-only), `RequestRowMapper`.
+- Frontend: `request-forecast.ts` (schema shape, `toForecastValues`, `buildForecastPayload`, `NO_FORECAST`) +
+  `RequestForecastSection` (riusa i campi di `opportunity-fields.tsx`, resi generici con prop `name`), nel pannello
+  e nel form di creazione subito dopo il Team (indicazione utente 2026-10-27); tolti i 3 valori da `RequestWorkSummary`; renderer griglia
+  (`ProbabilityCell` ora esportato da opportunities). Probabilita': slider, 0 = non indicata, viaggia solo se cambia.
+- Test: `RequestManagementForecastFieldsTest` (AC-001..005), `request-work-panel-forecast.test.tsx`,
+  `request-forecast.test.ts`; REQUIREMENT CHANGED 0313 su ShowTest (`context` -> top-level),
+  DefaultColumnsTest (3 colonne nascoste), ordine sezioni del form di creazione, fixture del pannello.
+- Suite backend completa: 14 failure + 2 error FUORI scope (Migration utenti, rollback migrazioni, TableBulkDelete
+  super-admin, SupplierCommissionDirection, DemoOpportunitySeeder, PDF senza LibreOffice), non legati alla modifica.
+- Manuale: guide IT/EN `request-management` + Claude Docs aggiornati; PDF derivato da rigenerare.
+
 ## Fix: ruoli ereditati dall'anagrafica sull'opportunita' — VERDE, NON COMMITTATO (2026-10-27)
 
 - Segnalazione utente: in `/opportunities/new` e in "Nuova opportunita'" dal dettaglio anagrafica, scegliendo

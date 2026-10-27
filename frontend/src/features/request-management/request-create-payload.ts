@@ -12,6 +12,7 @@ import type {
   RequestClientIdentityPayload,
   RequestRewardInput,
 } from '@/features/request-management/request-write-types'
+import { buildForecastPayload, NO_FORECAST, type RequestForecastValues } from '@/features/request-management/request-forecast'
 
 /** The wire shape of the client's identity (full create, no `id`: the server always makes a new card). */
 function toClientIdentityPayload(draft: PersonalDataDraft): RequestClientIdentityPayload {
@@ -111,6 +112,8 @@ export interface BuildRequestCreatePayloadArgs {
    */
   nextCallbackAt: string | null
   generalNotes: string
+  /** "Previsione commerciale" (spec 0313): only the values actually set travel. */
+  forecast: RequestForecastValues
   /** "Informazioni aggiuntive" (user directive 2026-08-07): the submitted dynamic map. */
   attributeValues: Record<string, unknown>
   /** The applicable codes, i.e. which keys of `attributeValues` are eligible to travel. */
@@ -139,6 +142,7 @@ export function buildRequestCreatePayload({
   rewards,
   nextCallbackAt,
   generalNotes,
+  forecast,
   attributeValues,
   attributeCodes,
 }: BuildRequestCreatePayloadArgs): CreateRequestPayload {
@@ -189,6 +193,7 @@ export function buildRequestCreatePayload({
   const operative = {
     ...(nextCallbackAt !== null ? { next_callback_at: nextCallbackAt } : {}),
     ...(generalNotes.trim() !== '' ? { general_notes: generalNotes.trim() } : {}),
+    ...buildForecastPayload(forecast, NO_FORECAST),
     ...(attributeValuesFilled(attributeValues, attributeCodes)
       ? { attribute_values: pickAttributeValues(attributeValues, attributeCodes) }
       : {}),

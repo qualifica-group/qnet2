@@ -16,6 +16,7 @@ import type { ContactDraft, PersonalDataDraft } from '@/features/personal-data/t
 import { updateRequestWork } from '@/features/request-management/api'
 import { requestManagementKeys } from '@/features/request-management/query-keys'
 import { useRequestModule } from '@/features/request-management/request-module'
+import { toForecastValues } from '@/features/request-management/request-forecast'
 import { describeInvalidFields } from '@/features/request-management/request-work-invalid-fields'
 import { buildRequestWorkPayload, openingOfferLines, toProductLineRows } from '@/features/request-management/request-work-payload'
 import {
@@ -75,6 +76,7 @@ function buildDefaultValues(panel: RequestWorkPanelWithPermissions): RequestWork
     // carries none — the field is always rendered, precisely so an empty note
     // can be typed in.
     general_notes: panel.general_notes ?? '',
+    ...toForecastValues(panel),
     client_identity: panel.client_identity ? toIdentityDraft(panel.client_identity) : null,
     client_contacts: panel.client_contacts.items.map(toContactDraft),
     // 0-or-1 array: the shape `AddressCreateField` reads, empty when the
@@ -182,6 +184,9 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions, onSav
 
   const errorFields: Path<RequestWorkFormValues>[] = [
     'next_callback_at' as Path<RequestWorkFormValues>,
+    'estimated_value' as Path<RequestWorkFormValues>,
+    'expected_close_date' as Path<RequestWorkFormValues>,
+    'success_probability' as Path<RequestWorkFormValues>,
     // The client block is submitted as a whole: a per-row 422
     // (`client_contacts.0.value`) has no matching control here, so the block
     // root carries the message.

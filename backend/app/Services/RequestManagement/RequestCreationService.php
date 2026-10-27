@@ -124,9 +124,11 @@ final class RequestCreationService
                 // concern. The named argument is simply left out — the DTO
                 // defaults it to null, i.e. "untouched".
                 startDate: null,
-                estimatedValue: null,
-                expectedCloseDate: null,
-                successProbability: null,
+                // "Previsione commerciale" (spec 0313, D-4): written at
+                // creation too, `null` when the form left them blank.
+                estimatedValue: $data->estimatedValue,
+                expectedCloseDate: $data->expectedCloseDate,
+                successProbability: $data->successProbability,
                 rewards: null,
                 generalNotes: $data->generalNotes,
             ), $actor);

@@ -19,6 +19,7 @@ import { RequestCreateTeamSection } from '@/features/request-management/request-
 import { RequestCreateCallbackSection } from '@/features/request-management/request-create-callback-section'
 import { RequestCreateClientSection } from '@/features/request-management/request-create-client-section'
 import { RequestCreateSiteSection } from '@/features/request-management/request-create-site-section'
+import { RequestForecastSection } from '@/features/request-management/request-forecast-section'
 import { RequestCreateGeneralNotes } from '@/features/request-management/request-create-general-notes'
 import { RequestCreateHeader } from '@/features/request-management/request-create-header'
 import { RequestCreateSummary } from '@/features/request-management/request-create-summary'
@@ -185,6 +186,9 @@ export function RequestCreateForm({ onSuccess, onCancel }: RequestCreateFormProp
               slotParamsFor={siteLink.slotParamsFor}
               onSlotItemChange={siteLink.onSlotItemChange}
             />
+
+            {/* "Previsione commerciale" (spec 0313), after the team as in the work panel. */}
+            <RequestForecastSection control={form.control} />
 
             <RequestCreateSummary
               control={form.control}

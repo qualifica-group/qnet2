@@ -17,6 +17,7 @@ import type {
   QuoteWorkflowStatusRef,
 } from '@/features/quotes/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
+import type { RequestForecast } from '@/features/request-management/request-forecast'
 
 /** Table/stats domain key of this module, shared by the table adapter. */
 export const REQUEST_MANAGEMENT_DOMAIN = 'request-management'
@@ -154,25 +155,18 @@ export interface ApplicableAttribute {
   options: ApplicableAttributeOption[]
 }
 
-/** Read-only commercial context surfaced alongside the work panel. */
-export interface RequestWorkContext {
-  estimated_value: string | number | null
-  expected_close_date: string | null
-  success_probability: number | null
-}
-
 /**
  * The work panel returned by `GET /api/request-management/{quote}` (envelope
- * `data`). Matches `RequestManagementResource`.
+ * `data`). Matches `RequestManagementResource`. The forecast trio ("Previsione
+ * commerciale", spec 0313) is the Opportunity's own, editable from the panel.
  */
-export interface RequestWorkPanel {
+export interface RequestWorkPanel extends RequestForecast {
   /** The Offerta (Quote) id — this module's own record id since spec 0086. */
   id: number
   /**
    * "Note generali" (user directive 2026-07-27): the opportunity's free-text
    * notes, inherited from the originating lead. EDITABLE from this panel since
-   * the direttiva utente 2026-09-09 — which is why it sits here and no longer
-   * in the read-only `context` block below. Optional for the same
+   * the direttiva utente 2026-09-09. Optional for the same
    * fixture-compatibility reason as `rewards`; treat a missing key as `null`.
    */
   general_notes?: string | null
@@ -275,7 +269,6 @@ export interface RequestWorkPanel {
   quote_workflow_status_id: number | null
   quote_workflow_status: QuoteWorkflowStatusRef | null
   quote_workflow_statuses: QuoteWorkflowStatusRef[]
-  context: RequestWorkContext
   /**
    * Spec 0059 D-3: reward assignments belonging to the reporter, ordered by
    * `reward_type.name`. Optional for the same fixture-compatibility reason

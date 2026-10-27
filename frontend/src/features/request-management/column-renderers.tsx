@@ -12,7 +12,15 @@ import {
   EmptyCell,
   badgeColorClass,
 } from '@/features/table/cell-renderers'
-import { BooleanBadgeCell, RefNamesCell, RelationCell, StatusBadgeCell } from '@/features/table/rich-cells'
+import { ProbabilityCell } from '@/features/opportunities/column-renderers'
+import {
+  BooleanBadgeCell,
+  CurrencyCell,
+  DateCell,
+  RefNamesCell,
+  RelationCell,
+  StatusBadgeCell,
+} from '@/features/table/rich-cells'
 import { UserCell } from '@/features/table/user-cell'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 
@@ -95,6 +103,10 @@ export const requestManagementColumnRenderers: TableRendererMap = {
   product_categories: (params) => <ProductCategoriesCell {...params} />,
   offer_lines: (params) => <RefNamesCell {...params} />,
   general_notes: (params) => <TextCell {...params} />,
+  // "Previsione commerciale" (spec 0313): the Opportunities grid's own cells.
+  estimated_value: (params) => <CurrencyCell {...params} />,
+  success_probability: (params) => <ProbabilityCell {...params} />,
+  expected_close_date: (params) => <DateCell {...params} />,
   operator_ga2: (params) => <UserCell {...params} />,
   manager_ga1: (params) => <UserCell {...params} />,
   operational_site: (params) => <RelationCell {...params} icon={MapPin} />,

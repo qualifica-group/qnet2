@@ -34,7 +34,7 @@ function ProbabilityHarness({ initial = 0 }: { initial?: number }) {
   const form = useForm<OpportunityFormValues>({ defaultValues: { success_probability: initial } })
   return (
     <Form {...form}>
-      <OpportunitySuccessProbabilityField control={form.control} />
+      <OpportunitySuccessProbabilityField control={form.control} name="success_probability" />
     </Form>
   )
 }

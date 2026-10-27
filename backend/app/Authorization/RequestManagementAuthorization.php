@@ -170,6 +170,12 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             // It stays a plain, never-mandatory field: a request with no note
             // is the normal state, and the create form has always written it.
             new FieldDefinition('general_notes', 'textarea'),
+            // "Previsione commerciale" (spec 0313, D-3): the Opportunity's own
+            // forecast trio, editable from this module too and never mandatory
+            // — the same definitions OpportunitiesAuthorization declares.
+            new FieldDefinition('estimated_value', 'number'),
+            new FieldDefinition('expected_close_date', 'date'),
+            new FieldDefinition('success_probability', 'number'),
         ];
     }
 
@@ -212,6 +218,9 @@ class RequestManagementAuthorization extends AbstractResourceAuthorization
             'quote_workflow_status_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'offer_lines' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'general_notes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'estimated_value' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'expected_close_date' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'success_probability' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 
