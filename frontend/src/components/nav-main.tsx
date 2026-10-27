@@ -20,6 +20,7 @@ import {
   SidebarMenuSubItem,
 } from '@/components/ui/sidebar'
 import { resolveIcon } from '@/features/navigation/icon-map'
+import { buildNavBlocks, isSingleChildGroup } from '@/features/navigation/nav-blocks'
 import type { NavigationItem } from '@/features/navigation/types'
 import { useWorkspaceNav } from '@/features/workspaces/use-workspace-nav'
 import { cn } from '@/lib/utils'
@@ -55,31 +56,29 @@ export interface NavBadge {
 export type NavBadges = Record<string, NavBadge | null | undefined>
 
 export function NavMain({ items, badges }: { items: NavigationItem[]; badges?: NavBadges }) {
-  const topLevel = items.filter((item) => item.type !== 'section')
-  const sections = items.filter((item) => item.type === 'section')
-
   return (
     <>
-      {topLevel.length > 0 && (
-        <SidebarGroup>
-          <SidebarMenu>
-            {topLevel.map((item) => (
-              <NavNode key={item.key} item={item} badge={badges?.[item.key]} />
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
+      {buildNavBlocks(items).map((block) =>
+        block.kind === 'items' ? (
+          <SidebarGroup key={block.key}>
+            <SidebarMenu>
+              {block.items.map((item) => (
+                <NavNode key={item.key} item={item} badges={badges} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        ) : (
+          <NavSection key={block.section.key} section={block.section} badges={badges} />
+        ),
       )}
-
-      {sections.map((section) => (
-        <NavSection key={section.key} section={section} badges={badges} />
-      ))}
     </>
   )
 }
 
 // A section is a static labeled group: its children render as flat siblings.
 // A child that is itself a parent (has children) is rendered collapsible by
-// NavNode, so both behaviors coexist under the same section.
+// NavNode, so both behaviors coexist under the same section. A top-level group
+// with a single child is rendered here too, as a section over that child.
 function NavSection({ section, badges }: { section: NavigationItem; badges?: NavBadges }) {
   const { t } = useTranslation()
 
@@ -88,18 +87,25 @@ function NavSection({ section, badges }: { section: NavigationItem; badges?: Nav
       <SidebarGroupLabel className={NAV_HEADING_CLASS}>{t(section.label)}</SidebarGroupLabel>
       <SidebarMenu>
         {section.children.map((child) => (
-          <NavNode key={child.key} item={child} badge={badges?.[child.key]} />
+          <NavNode key={child.key} item={child} badges={badges} />
         ))}
       </SidebarMenu>
     </SidebarGroup>
   )
 }
 
-function NavNode({ item, badge }: { item: NavigationItem; badge?: NavBadge | null }) {
+function NavNode({ item, badges }: { item: NavigationItem; badges?: NavBadges }) {
   const { t } = useTranslation()
   const { link, pathname } = useWorkspaceNav()
+
+  // Inside a section a lone child takes the group's place: sections do not nest.
+  if (isSingleChildGroup(item)) {
+    return <NavNode item={item.children[0]} badges={badges} />
+  }
+
   const icon = createElement(resolveIcon(item.icon))
   const label = t(item.label)
+  const badge = badges?.[item.key]
 
   if (item.children.length > 0) {
     const keepOpen = hasActiveDescendant(item, pathname)

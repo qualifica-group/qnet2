@@ -18,6 +18,10 @@ const guide: HelpGuide = {
           type: 'note',
           text: 'Until you create an app, everyone sees the full menu as before. From the first app on, only the super-admin can still use the **Full view**; everyone else always works inside an app.',
         },
+        {
+          type: 'paragraph',
+          text: 'The initial setup already creates three apps, which you can edit or delete: **Qualifica Contabilità** (invoices, ledger, purchasing, commissions, management control), **Qualifica HR** (users, org chart, time entries, absences, training, equipment and staff configuration) and **Qualifica Sales** (leads, opportunities, quotes, work orders, contracts, registries). Each app holds only the pages of its area, plus Dashboard and Tasks.',
+        },
       ],
     },
     {
@@ -27,12 +31,12 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Press **New app** (or the pencil icon on an existing app).',
-            'Type the **Name** and the **Address (slug)**, which appears in the URL as **/app/address**.',
+            'Press **New app** (or the pencil icon on an existing app): the form opens in a side panel on the right, split into **Identity**, **Appearance** and **Menu entries**.',
+            'Type the **Name**: the **Address (slug)**, which appears in the URL as **/app/address**, fills in by itself as you type. You can change it; from then on it no longer follows the name.',
             'Optional: a short **Description** (up to 160 characters) shown under the app name in the launcher.',
-            'Pick the **Icon** from the list (you can search by name), the **Colour** and the **Order** in the launcher. Icon and colour are optional.',
-            'Tick the **Menu entries** the app must show, grouped by section.',
-            'Press **Save**.',
+            'Pick the **Icon** from the list (you can search by name), the **Colour** and the **Order** in the launcher. Icon and colour are optional: the **Launcher preview** shows right away how the app will look.',
+            'Tick the **Menu entries** the app must show, grouped by section. The box next to a section name selects all of it; the **Search menu entries** field filters the list, and **Select all** / **Clear** act on the visible entries.',
+            'Press **Save** (or **Ctrl+Enter**). Closing the panel with unsaved changes asks for confirmation.',
           ],
         },
         {

@@ -60,3 +60,51 @@ describe('NavMain badges (spec 0304 AC-020)', () => {
     expect(screen.queryByLabelText(/da approvare/)).not.toBeInTheDocument()
   })
 })
+
+describe('NavMain single-child groups (user rule 2026-10-27)', () => {
+  function renderItems(items: NavigationItem[]) {
+    return render(
+      <MemoryRouter>
+        <SidebarProvider>
+          <NavMain items={items} />
+        </SidebarProvider>
+      </MemoryRouter>,
+    )
+  }
+
+  const leaf = (key: string, label: string): NavigationItem => ({
+    key, label, icon: null, route: `/${key}`, type: 'item', children: [],
+  })
+
+  it('renders a top-level group with one child as a section heading over a plain link, not a collapsible', () => {
+    renderItems([
+      { key: 'tasks-group', label: 'navigation.tasks', icon: null, route: null, type: 'item', children: [leaf('tasks', 'navigation.absences')] },
+    ])
+
+    expect(screen.queryByRole('button', { name: 'Task' })).not.toBeInTheDocument()
+    expect(screen.getByText('Task')).toHaveAttribute('data-sidebar', 'group-label')
+    expect(screen.getByRole('link', { name: 'Assenze' })).toHaveAttribute('href', '/tasks')
+  })
+
+  it('lifts the lone child of a group nested in a section straight into the section', () => {
+    renderItems([
+      {
+        key: 'accounting', label: 'navigation.accounting', icon: null, route: null, type: 'section',
+        children: [
+          { key: 'accounting-payable', label: 'navigation.accountingPayable', icon: null, route: null, type: 'item', children: [leaf('purchase-invoices', 'navigation.purchaseInvoices')] },
+        ],
+      },
+    ])
+
+    expect(screen.queryByText('Passiva')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Fatture passive' })).toHaveAttribute('href', '/purchase-invoices')
+  })
+
+  it('keeps a group with two or more children collapsible', () => {
+    renderItems([
+      { key: 'tasks-group', label: 'navigation.tasks', icon: null, route: null, type: 'item', children: [leaf('tasks', 'navigation.absences'), leaf('task-types', 'navigation.taskTypes')] },
+    ])
+
+    expect(screen.getByRole('button', { name: 'Task' })).toBeInTheDocument()
+  })
+})

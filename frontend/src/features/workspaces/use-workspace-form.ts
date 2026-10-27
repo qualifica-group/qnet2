@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import type { Path } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -13,6 +13,7 @@ import {
   workspaceToFormValues,
   type WorkspaceFormValues,
 } from '@/features/workspaces/workspace-schema'
+import { slugify } from '@/features/workspaces/workspace-slug'
 import type { Workspace } from '@/features/workspaces/types'
 
 const SERVER_ERROR_FIELDS: Path<WorkspaceFormValues>[] = [
@@ -25,7 +26,10 @@ const SERVER_ERROR_FIELDS: Path<WorkspaceFormValues>[] = [
   'navigation_keys',
 ]
 
-/** RHF/Zod wiring and the create/update submit of the app dialog. */
+/**
+ * RHF/Zod wiring and the create/update submit of the app form. On create the
+ * address follows the name until it is typed by hand; clearing it resumes.
+ */
 export function useWorkspaceForm({ workspace, onSaved }: { workspace: Workspace | null; onSaved: () => void }) {
   const { t } = useTranslation('workspaces')
   const [serverError, setServerError] = useState<string | null>(null)
@@ -37,6 +41,17 @@ export function useWorkspaceForm({ workspace, onSaved }: { workspace: Workspace 
     resolver: zodResolver(schema),
     defaultValues: workspace ? workspaceToFormValues(workspace) : EMPTY_WORKSPACE_FORM,
   })
+  const slugEditedByHand = useRef(workspace !== null)
+
+  const followName = (name: string) => {
+    if (!slugEditedByHand.current) {
+      form.setValue('slug', slugify(name), { shouldDirty: true, shouldValidate: form.formState.isSubmitted })
+    }
+  }
+
+  const markSlugEdited = (slug: string) => {
+    slugEditedByHand.current = slug !== ''
+  }
 
   const onSubmit = async (values: WorkspaceFormValues) => {
     setServerError(null)
@@ -57,5 +72,5 @@ export function useWorkspaceForm({ workspace, onSaved }: { workspace: Workspace 
     }
   }
 
-  return { form, serverError, onSubmit }
+  return { form, serverError, onSubmit, followName, markSlugEdited }
 }

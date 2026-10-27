@@ -68,7 +68,9 @@ describe('WorkspaceLauncher (spec 0317 AC-017)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'App' }))
 
     const hr = screen.getByRole('link', { name: 'Risorse umane' })
-    expect(hr.firstElementChild?.tagName.toLowerCase()).toBe('svg')
+    // REQUIREMENT CHANGED (user directive 2026-10-27, CRM-style launcher): the icon sits in a tile tinted by the app colour.
+    expect(hr.firstElementChild?.firstElementChild?.tagName.toLowerCase()).toBe('svg')
+    expect(hr.firstElementChild?.className).toContain('bg-current/10')
     expect(hr.className).toContain('text-blue-700')
     expect(hr.className).toContain('dark:text-blue-300')
     expect(screen.getByRole('link', { name: 'Contabilita' }).className).toContain('text-foreground')
@@ -105,6 +107,33 @@ describe('WorkspaceLauncher (spec 0317 AC-017)', () => {
 
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/dashboard$/))
     expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull()
+  })
+
+  it('shows the current app on the trigger, and the full view label outside any app', async () => {
+    renderLauncher('/app/hr/absences', buildAvailable({ workspaces: TWO_APPS }))
+
+    const trigger = await screen.findByRole('button', { name: 'App' })
+    expect(trigger).toHaveTextContent('Risorse umane')
+    expect(trigger).toHaveAttribute('title', 'Risorse umane')
+  })
+
+  it('links a super-admin to the app configuration, and nobody else', async () => {
+    renderLauncher('/dashboard', buildAvailable({ full_view_available: true }))
+
+    const trigger = await screen.findByRole('button', { name: 'App' })
+    expect(trigger).toHaveTextContent('Vista completa')
+    fireEvent.click(trigger)
+    fireEvent.click(screen.getByRole('link', { name: 'Gestisci app' }))
+
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/dev/workspaces'))
+  })
+
+  it('hides the configuration link from a regular user', async () => {
+    renderLauncher('/app/hr/absences', buildAvailable())
+
+    fireEvent.click(await screen.findByRole('button', { name: 'App' }))
+
+    expect(screen.queryByRole('link', { name: 'Gestisci app' })).not.toBeInTheDocument()
   })
 
   it('is not rendered with zero apps and the full view open to everyone (D-5)', async () => {

@@ -80,10 +80,19 @@ describe('AppSidebar inside an app (spec 0317 AC-018)', () => {
     expect((await screen.findByText('Risorse umane')).className).toContain('text-sidebar-foreground')
   })
 
+  it('badges the logo with the app icon inside an app, and not on the full view', async () => {
+    renderSidebar('/app/hr/absences')
+
+    const logo = document.querySelector('img[src="/brands/logo_white.svg"]')
+    await screen.findByText('Risorse umane')
+    expect(logo?.parentElement?.querySelector('svg')).not.toBeNull()
+  })
+
   it('shows no app name on the full view', () => {
     renderSidebar('/absences')
 
     expect(screen.queryByText('Risorse umane')).not.toBeInTheDocument()
+    expect(document.querySelector('img[src="/brands/logo_white.svg"]')?.parentElement?.querySelector('svg')).toBeNull()
     expect(screen.getByRole('link', { name: /Impostazioni/ })).toHaveAttribute('href', '/settings')
   })
 })

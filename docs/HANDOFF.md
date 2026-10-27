@@ -3,6 +3,36 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## App: form a pannello stile CRM + tre app nel seed di produzione — VERDE, NON COMMITTATO (2026-10-27)
+
+- Form create/edit di `/dev/workspaces`: `WorkspaceFormDialog` sostituito da `components/workspace-form-sheet.tsx`
+  (Sheet 720px, `storageKey sheet-width:workspaces-form`): header con icona/colore live, tre `FormSection`
+  (`workspace-identity-section.tsx`, `workspace-appearance-section.tsx` con anteprima del launcher, Voci di menu con
+  badge conteggio), footer sticky (riepilogo voci, Annulla, Salva + Ctrl/Cmd+Invio), conferma su chiusura con modifiche.
+  Slug segue il nome in creazione finche' non e' scritto a mano (`workspace-slug.ts` `slugify`, `useWorkspaceForm`
+  `followName`/`markSlugEdited`). Picker: ricerca, checkbox tri-state per sezione, Seleziona tutte/Deseleziona,
+  icone voce (`resolveIcon`); logica pura in `workspace-entries.ts` (`groupEntries`, `toggleKeys`). Contratto API invariato.
+- Seed: `QualificaWorkspaceSeeder` + `QualificaCatalog/WorkspaceCatalogue` (slug `contabilita`/`hr`/`sales`,
+  "Qualifica Contabilità/HR/Sales"), CREATE-ONLY per slug (non sovrascrive le modifiche del super-admin), chiamato da
+  `QualificaProductionDataSeeder` dopo `QualificaContractTypeSeeder`. Ogni app solo con le pagine del suo settore
+  (direttiva utente 2026-10-27: niente Assenze in Contabilita'); in tutte e tre solo `dashboard` e `tasks`
+  (`SHARED_KEYS`); `time-entries`/`absences` solo in HR. Il DB dev ha gia' le 3 app con la mappatura VECCHIA
+  (create-only): vanno riallineate a mano.
+- Launcher header (`workspace-launcher.tsx`): trigger con griglia + icona/nome dell'app corrente + chevron; pannello con
+  intestazione e conteggio, tessere icona tinte `bg-current/10` (test AC-025 aggiornato, REQUIREMENT CHANGED),
+  piede "Vista completa" + "Gestisci app" (`/dev/workspaces`) solo con `full_view_available`. ATTENZIONE D-5: dal seed in poi i non super-admin vedono solo le voci delle app; una pagina
+  fuori da tutte le app (es. config Task, prodotti/attributi, Develop) resta raggiungibile dal menu solo in Vista completa.
+- Menu: regola utente 2026-10-27 in `features/navigation/nav-blocks.ts` (`isSingleChildGroup`, `buildNavBlocks`) usata da
+  `nav-main.tsx`: gruppo senza route con UN solo figlio non e' collapsible; al primo livello diventa una sezione (label
+  come "Configurazione") sopra la voce, dentro una sezione la voce sale nella sezione. Voci navigabili con figli
+  (Lead -> Import) invariate. NavMain ora rende i blocchi in ordine di menu (run di voci + sezioni).
+- Header sidebar: `ActiveWorkspaceName` sostituito da `features/workspaces/components/workspace-brand.tsx`
+  (`WorkspaceBrand`): tessera logo `size-8` con badge icona app nell'angolo, nome app (colore app) sopra il nome prodotto.
+- Test: `QualificaWorkspaceSeederTest` (3), `QualificaProductionDataSeederTest` (3, +asserzioni), `tests/Feature/Workspaces`
+  verdi; Vitest `features/workspaces` 39 + `features/help` 151 verdi; eslint + `tsc -b --force` puliti.
+- Manuale: guide in-app IT/EN `workspaces` aggiornate; manuale Claude Docs aggiornato (sezione App, rev 414).
+- Da verificare a vista: pannello a 375/768/1024, tema dark. Non eseguito il seeder sul DB dev.
+
 ## App del menu, stile Microsoft 365 (spec 0317, rev 3) — VERDE, NON COMMITTATO (2026-10-27)
 
 - Spec `docs/specs/0317-workspace-apps.xml` (approvata, rev 3: icona/colore D-11..D-14, descrizione D-15).

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { WorkspaceIcon } from '@/features/workspaces/components/workspace-icon'
-import { WorkspaceFormDialog } from '@/features/workspaces/components/workspace-form-dialog'
+import { WorkspaceFormSheet } from '@/features/workspaces/components/workspace-form-sheet'
 import { useDeleteWorkspace, useWorkspaces } from '@/features/workspaces/use-workspaces'
 import { workspacePanelTextClass } from '@/features/workspaces/workspace-color'
 import { cn } from '@/lib/utils'
@@ -80,7 +80,7 @@ export default function WorkspacesPage() {
       )}
 
       {target ? (
-        <WorkspaceFormDialog
+        <WorkspaceFormSheet
           key={target.type === 'edit' ? target.workspace.id : 'new'}
           workspace={target.type === 'edit' ? target.workspace : null}
           onClose={() => setTarget(null)}

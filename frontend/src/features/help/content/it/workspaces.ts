@@ -18,6 +18,10 @@ const guide: HelpGuide = {
           type: 'note',
           text: 'Finché non crei nessuna app, tutti vedono il menu completo come prima. Dalla prima app creata, solo il super-admin può ancora usare la **Vista completa**; gli altri lavorano sempre dentro un’app.',
         },
+        {
+          type: 'paragraph',
+          text: 'L’installazione iniziale crea già tre app, che puoi modificare o eliminare: **Qualifica Contabilità** (fatture, prima nota, acquisti, provvigioni, controllo di gestione), **Qualifica HR** (utenti, organigramma, segnatempo, assenze, formazione, dotazioni e configurazione del personale) e **Qualifica Sales** (lead, opportunità, offerte, commesse, contratti, anagrafiche). Ogni app contiene solo le pagine del suo settore, più Dashboard e Task.',
+        },
       ],
     },
     {
@@ -27,12 +31,12 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Premi **Nuova app** (oppure l’icona matita su un’app esistente).',
-            'Scrivi il **Nome** e l’**Indirizzo (slug)**, che compare nell’URL come **/app/indirizzo**.',
+            'Premi **Nuova app** (oppure l’icona matita su un’app esistente): il modulo si apre in un pannello a destra, diviso in **Identità**, **Aspetto** e **Voci di menu**.',
+            'Scrivi il **Nome**: l’**Indirizzo (slug)**, che compare nell’URL come **/app/indirizzo**, si compila da solo mentre scrivi. Puoi cambiarlo; da quel momento non segue più il nome.',
             'Facoltativa: una **Descrizione** breve (fino a 160 caratteri) che compare sotto il nome dell’app nel launcher.',
-            'Scegli l’**Icona** dall’elenco (puoi cercarla per nome), il **Colore** e l’**Ordine** nel launcher. Icona e colore sono facoltativi.',
-            'Spunta le **Voci di menu** che l’app deve mostrare, raggruppate per sezione.',
-            'Premi **Salva**.',
+            'Scegli l’**Icona** dall’elenco (puoi cercarla per nome), il **Colore** e l’**Ordine** nel launcher. Icona e colore sono facoltativi: l’**Anteprima nel launcher** mostra subito come apparirà l’app.',
+            'Spunta le **Voci di menu** che l’app deve mostrare, raggruppate per sezione. La casella accanto al nome della sezione la seleziona tutta; il campo **Cerca voci di menu** filtra l’elenco, e **Seleziona tutte** / **Deseleziona** agiscono sulle voci visibili.',
+            'Premi **Salva** (oppure **Ctrl+Invio**). Se chiudi il pannello con modifiche non salvate, ti viene chiesta conferma.',
           ],
         },
         {

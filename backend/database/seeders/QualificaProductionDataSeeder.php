@@ -57,6 +57,10 @@ use Illuminate\Database\Seeder;
  *                                    determinato, Tempo indeterminato,
  *                                    Apprendistato, spec 0290/0291).
  *                                    Same kind of row, same reasoning.
+ *      QualificaWorkspaceSeeder    — the three menu apps (Contabilita', HR,
+ *                                    Sales, spec 0317), each with the pages
+ *                                    of its job. Create-only: an app the
+ *                                    super-admin already edited is left alone.
  *   4. TestUsersSeeder             — the named super-admin account.
  *      WorkOrderPaymentStatusSeeder — the legacy payment statuses of a
  *                                    commessa line.
@@ -146,6 +150,7 @@ class QualificaProductionDataSeeder extends Seeder
         $this->call(QualificaSectorSeeder::class);
         $this->call(QualificaAbsenceTypeSeeder::class);
         $this->call(QualificaContractTypeSeeder::class);
+        $this->call(QualificaWorkspaceSeeder::class);
         $this->call(TestUsersSeeder::class);
         $this->call(WorkOrderPaymentStatusSeeder::class);
         $this->callWith(QualificaLegacyImportSeeder::class, ['sources' => QualificaLegacyImportSeeder::SOURCES]);

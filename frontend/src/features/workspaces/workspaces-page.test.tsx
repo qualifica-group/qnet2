@@ -196,6 +196,50 @@ describe('WorkspacesPage (spec 0317 AC-019)', () => {
     expect(slugField.getAttribute('aria-describedby')).toContain(alert.id)
   })
 
+  it('fills the address from the name until it is typed by hand', async () => {
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Nuova app' }))
+    const dialog = await screen.findByRole('dialog')
+    const name = within(dialog).getByLabelText(/Nome/)
+    const slug = within(dialog).getByLabelText(/Indirizzo/)
+    fireEvent.change(name, { target: { value: 'Qualifica Contabilità' } })
+    expect(slug).toHaveValue('qualifica-contabilita')
+
+    fireEvent.change(slug, { target: { value: 'acc' } })
+    fireEvent.change(name, { target: { value: 'Contabilità generale' } })
+    expect(slug).toHaveValue('acc')
+  })
+
+  it('selects a whole section from its checkbox and narrows the entries with the search', async () => {
+    vi.mocked(createWorkspace).mockResolvedValue(buildWorkspace({ id: 2, slug: 'acc' }))
+    renderPage()
+
+    const dialog = await fillNewApp()
+    fireEvent.change(await within(dialog).findByRole('searchbox', { name: 'Cerca voci di menu' }), {
+      target: { value: 'fatt' },
+    })
+    expect(within(dialog).queryByRole('checkbox', { name: 'Assenze' })).not.toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Amministrazione' }))
+    expect(within(dialog).getByText('1 selezionata')).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Salva' }))
+
+    await waitFor(() =>
+      expect(createWorkspace).toHaveBeenCalledWith(expect.objectContaining({ navigation_keys: ['invoices'] })),
+    )
+  })
+
+  it('asks before closing with unsaved changes and stays open when declined', async () => {
+    confirmMock.mockResolvedValue(false)
+    renderPage()
+
+    const dialog = await fillNewApp()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Annulla' }))
+
+    await waitFor(() => expect(confirmMock).toHaveBeenCalledWith(expect.objectContaining({ tone: 'warning' })))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
   it('asks for confirmation before deleting and does nothing when declined', async () => {
     confirmMock.mockResolvedValue(false)
     renderPage()

@@ -21,7 +21,7 @@ import { useNavigation } from '@/features/navigation/use-navigation'
 import { useAuth } from '@/features/auth/use-auth'
 import { useAbsenceMenuBadge } from '@/features/absences/use-absence-menu-badge'
 import { useUnreadBadge } from '@/features/notifications/use-unread-badge'
-import { ActiveWorkspaceName } from '@/features/workspaces/components/active-workspace-name'
+import { WorkspaceBrand } from '@/features/workspaces/components/workspace-brand'
 import { useWorkspaceNav } from '@/features/workspaces/use-workspace-nav'
 import { env } from '@/config/env'
 
@@ -63,18 +63,7 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton className="pointer-events-none gap-0">
-              <img
-                src="/brands/logo_white.svg"
-                alt=""
-                aria-hidden
-                className="size-6 shrink-0 object-contain"
-              />
-              <div className="grid flex-1 text-left leading-tight">
-                <ActiveWorkspaceName />
-                <span className="truncate text-sm font-semibold">{env.appNameSidebar}</span>
-              </div>
-            </SidebarMenuButton>
+            <WorkspaceBrand productName={env.appNameSidebar} />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>

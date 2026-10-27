@@ -12,6 +12,7 @@ use App\Models\ProductTypology;
 use App\Models\Quote;
 use App\Models\Source;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Services\UserService;
 use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue;
 use Database\Seeders\QualificaLegacyImportSeeder;
@@ -65,6 +66,7 @@ it('composes structure, catalogue and operators in one run, with a super-admin a
         ->and(Product::query()->count())->toBe(989) // REQUIREMENT CHANGED: +33 Gare, +16 GDPR, +47 Finanza Agevolata, +2 Autofinanziato - Campania, +18 Istruzione and +1 Accreditamenti products (2026-10-20), +322 ISO products (2026-10-21).
         // Before the legacy import: its products are filed by typology NAME.
         ->and(ProductTypology::query()->orderBy('name')->pluck('name')->all())->toBe(['Consulenza', 'Ente'])
+        ->and(Workspace::query()->orderBy('sort_order')->pluck('slug')->all())->toBe(['contabilita', 'hr', 'sales'])
         ->and(User::query()->where('email', 'ciro.cacciapuoti@qualificagroup.com')->exists())->toBeTrue()
         ->and(User::query()->where('email', 'rosa.falzarano@qualificagroup.com')->exists())->toBeTrue()
         // Step 8 runs after step 7: the staff lands, the roster keeps its mansione.
@@ -118,6 +120,7 @@ it('seeds no fabricated row on the first run, and duplicates nothing on a re-run
     test()->seed(QualificaProductionDataSeeder::class);
 
     expect(Source::query()->count())->toBe(10)
+        ->and(Workspace::query()->count())->toBe(3)
         ->and(Product::query()->count())->toBe(989) // REQUIREMENT CHANGED: +33 Gare, +16 GDPR, +47 Finanza Agevolata, +2 Autofinanziato - Campania, +18 Istruzione and +1 Accreditamenti products (2026-10-20), +322 ISO products (2026-10-21).
         // Before the legacy import: its products are filed by typology NAME.
         ->and(ProductTypology::query()->orderBy('name')->pluck('name')->all())->toBe(['Consulenza', 'Ente'])
