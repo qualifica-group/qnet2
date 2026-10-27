@@ -121,6 +121,7 @@ export const it: TranslationResources = {
     impersonate: 'Impersona',
     layout: 'Layout attributi',
     generatePdf: 'Scarica preventivo',
+    openContract: 'Apri contratto',
     transferContact: 'Trasferisci contatto',
     forceClose: 'Chiusura forzata',
     reopen: 'Riapri',

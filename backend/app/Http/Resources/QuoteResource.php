@@ -171,6 +171,8 @@ class QuoteResource extends JsonResource
             'payment_method' => $this->summarizeByName($this->paymentMethod),
             'internal_notes' => $this->internal_notes,
             'rewards' => $this->summarizeRewards($this->rewards),
+            // Spec 0315: the Contract born from this Offerta (closed won), null when none.
+            'contract_id' => $this->contract?->id,
             'offer_lines' => QuoteLineResource::collection($this->offerLines),
             'cost_lines' => QuoteLineResource::collection($this->costLines),
             // Cast to object, non array: un array PHP vuoto serializza come `[]`,

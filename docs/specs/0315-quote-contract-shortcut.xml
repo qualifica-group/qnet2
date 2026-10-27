@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0315-quote-contract-shortcut" status="approved" owner="nicola" date="2026-10-27">
+
+  <goal>
+    Da un'Offerta chiusa positiva si apre in modale il Contratto che ne e' nato, sia dalla griglia Offerte (azione di
+    riga) sia dal dettaglio dell'Offerta (pulsante nell'intestazione).
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-27: "quando c'e' un'offerta con chiuso positivo, voglio un bottone che mi faccia aprire la
+    modale del contratto di riferimento che si e' generato (sia su tabella che sulla pagina dell'offerta)".
+
+    Il Contratto (spec 0072) nasce dall'automazione quando l'Offerta raggiunge `closed_won` (`contracts.quote_id`,
+    uno-a-uno, `Quote::contract()`); il permesso di lettura e' a livello risorsa (`contracts.view`, ContractPolicy).
+
+    D-1 Presenza: l'azione compare quando l'Offerta HA un contratto. Un contratto sospeso (l'Offerta ha lasciato
+        `closed_won`, spec 0072 D-3) resta il contratto di riferimento e resta raggiungibile.
+    D-2 Permesso: serve `contracts.view` (gate ContractPolicy::view sul contratto della riga). Senza, nessuna azione e
+        nessun pulsante; il dettaglio contratto resta autorizzato dal proprio endpoint.
+    D-3 Apertura: sempre in modale (`useModuleOpener('contracts', { forceMode: 'modal' })`, come i link correlati del
+        contratto), mai una navigazione: l'Offerta resta aperta sotto.
+    D-4 Griglia: azione `contract` nel catalogo dopo `notes`, quindi nel menu "altre azioni" (le tre icone inline
+        view/generate_document/notes restano invariate, direttiva 2026-08-06). Vale anche per il pannello Offerte
+        dentro la riga Opportunita' (stesso catalogo e stesso hook `useQuoteRowActions`).
+    D-5 File: `actionsFor`/`allowsNotes` escono da QuotesTableDefinition (498 righe, limite 500) in
+        `App\Tables\Quotes\QuoteRowActions`, comportamento invariato.
+  </context>
+
+  <scope>
+    <in>
+      <item>Backend: QuoteColumnCatalog (azione), QuotesTableDefinition (eager-load + `contract_id` sulla riga),
+        nuova QuoteRowActions, QuoteService::DETAIL_RELATIONS + QuoteResource (`contract_id`); test.</item>
+      <item>Frontend: use-quote-row-actions, action-icons, quote-detail-header, types, i18n IT/EN; test.</item>
+      <item>Guide in-app IT/EN Offerte; manuale.</item>
+    </in>
+    <out>
+      <item>Griglia Gestione Richieste (catalogo azioni proprio).</item>
+      <item>Contratti multi-offerta e ordini di lavoro.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/quotes/{id}">
+      <response status="200">`data.contract_id`: int|null, l'id del contratto nato da questa offerta (additivo).</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/tables/quotes/columns">
+      <response status="200">`data.actions` acquista, dopo `notes` e solo per chi ha `contracts.view`,
+        `{key: contract, label: actions.openContract, icon: file-signature, type: action, confirm: false}`.</response>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/quotes/rows">
+      <response status="200">Ogni riga porta `contract_id`: int|null; `actions` contiene `contract` solo se la riga ha
+        un contratto e l'attore lo puo' vedere.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Catalogo: `contract` presente dopo `notes` con `contracts.view`, assente senza.</criterion>
+    <criterion id="AC-002">Righe: `contract_id` e azione `contract` sulle offerte con contratto; offerta senza
+      contratto -> `contract_id` null e nessuna azione; senza `contracts.view` nessuna azione.</criterion>
+    <criterion id="AC-003">Dettaglio: `contract_id` valorizzato con contratto, null senza.</criterion>
+    <criterion id="AC-004">UI: l'azione di riga e il pulsante "Apri contratto" del dettaglio aprono il contratto in
+      modale; il pulsante non compare senza contratto o senza `contracts.view`.</criterion>
+  </acceptance_criteria>
+</spec>

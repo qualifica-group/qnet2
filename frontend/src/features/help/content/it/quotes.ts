@@ -178,7 +178,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Portando l'offerta in uno stato **Chiuso con esito positivo** nasce il contratto.",
+          text: "Portando l'offerta in uno stato **Chiuso con esito positivo** nasce il contratto. Da quel momento il pulsante **Apri contratto** in cima al dettaglio dell'offerta, e la voce **Apri contratto** nel menu delle altre azioni (i tre puntini) della riga in tabella, aprono il contratto in una finestra sopra l'offerta. Li vedi solo se il tuo ruolo può consultare i Contratti.",
         },
       ],
     },

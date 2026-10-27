@@ -284,6 +284,16 @@ final class QuoteColumnCatalog
                 'permission' => 'request-management.view',
                 'count_field' => 'notes_count',
             ],
+            // Spec 0315: opens the Contract born from a closed-won Offerta. After
+            // the three inline slots on purpose (D-4), so it lands in the menu.
+            [
+                'key' => 'contract',
+                'label' => 'actions.openContract',
+                'icon' => 'file-signature',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'contracts.view',
+            ],
             [
                 'key' => 'delete',
                 'label' => 'actions.delete',

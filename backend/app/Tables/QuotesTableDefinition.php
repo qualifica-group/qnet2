@@ -8,17 +8,16 @@ use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Services\QuoteService;
-use App\Services\RequestManagement\RequestManagementScope;
 use App\Tables\Quotes\Concerns\WritesQuoteCells;
 use App\Tables\Quotes\QuoteAdvancedFilterCatalog;
 use App\Tables\Quotes\QuoteCellWriter;
 use App\Tables\Quotes\QuoteColumnCatalog;
 use App\Tables\Quotes\QuoteRelationColumns;
+use App\Tables\Quotes\QuoteRowActions;
 use App\Tables\Shared\OfferLinesColumn;
 use App\Tables\Shared\OperationalSiteColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Gate;
 
 /**
  * Table definition for the `quotes` domain (spec 0065, MT-05).
@@ -79,6 +78,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
         private readonly QuoteService $service,
         private readonly QuoteCellWriter $cellWriter,
         private readonly QuoteWorkflowResolver $workflowResolver,
+        private readonly QuoteRowActions $rowActions,
     ) {}
 
     public function domain(): string
@@ -122,6 +122,8 @@ class QuotesTableDefinition extends AbstractTableDefinition
             'operationalSite.addresses.city',
             // Spec 0206, D-6: read by QuoteWorkflowResolver (per-row status set).
             'offerLines.product.category', 'opportunity.productLines', 'opportunity.customFieldValueRow',
+            // Spec 0315: `contract_id` and the `contract` row action.
+            'contract',
         ])
             // Per-row count for the `notes` action badge: the notes SCOPED to
             // this Offerta (`notes.quote_id`), not the parent Opportunity's
@@ -217,6 +219,8 @@ class QuotesTableDefinition extends AbstractTableDefinition
             // "Gestori Account" (spec 0087, D-1/T-10): avatar stack by pivot position; [] when no team.
             'managers' => $row->managers->map(fn (User $user): array => $this->userSummary($user))->all(),
             'alert' => $this->resolveAlert($row),
+            // Spec 0315: the Contract born from this Offerta, opened by the `contract` action.
+            'contract_id' => $row->contract?->id,
         ];
     }
 
@@ -283,68 +287,14 @@ class QuotesTableDefinition extends AbstractTableDefinition
     }
 
     /**
-     * Allowed action keys for a single row, via QuotePolicy.
+     * Allowed action keys for a single row (QuoteRowActions).
      *
      * @return array<int, string>
      */
     public function actionsFor(User $actor, Model $row): array
     {
-        $allowed = [];
-
-        if (Gate::forUser($actor)->allows('view', $row)) {
-            $allowed[] = 'view';
-        }
-
-        if (Gate::forUser($actor)->allows('delete', $row)) {
-            $allowed[] = 'delete';
-        }
-
-        if (Gate::forUser($actor)->allows('viewActivity', $row)) {
-            $allowed[] = 'activity';
-        }
-
-        // spec 0070: `.docx` generation is a read, gated the same as `view`.
-        if (Gate::forUser($actor)->allows('view', $row)) {
-            $allowed[] = 'generate_document';
-        }
-
         /** @var Quote $row */
-        if ($this->allowsNotes($actor, $row)) {
-            $allowed[] = 'notes';
-        }
-
-        return $allowed;
-    }
-
-    /**
-     * The SAME rule RequestManagementNotable::authorizeRead re-checks when the
-     * note endpoints are called, applied here to the Offerta's PARENT
-     * Opportunity: spec 0085 keeps the note attached to the Opportunity and
-     * only scopes it with `quote_id`, so reading an Offerta's notes is
-     * reading its Opportunity's thread — never a `quotes.*` permission.
-     *
-     * Spec 0087, D-10: the gate evaluates the OFFERTA's own GA2 Operatore
-     * (`quote.operator_id`, a real column — no eager-load needed), not the
-     * parent Opportunity's — the two can diverge since the Offerta acquired
-     * its own team (D-1). Was `$opportunity->operatorManager()?->id` before
-     * this migration; mirrors OpportunitiesTableDefinition::allowsNotes'
-     * shape, not its source any more. This action is an affordance only, the
-     * endpoint authorizes for real.
-     *
-     * Spec 0105: the third tier is delegated to RequestManagementScope rather
-     * than re-spelled here — `operational_site_id` is a real column on the
-     * row, so the check costs no query, and the actor's own Sedi are resolved
-     * once per request by the scope's loadMissing.
-     */
-    private function allowsNotes(User $actor, Quote $quote): bool
-    {
-        if (! $actor->can('request-management.view')) {
-            return false;
-        }
-
-        return $actor->can('request-management.viewAll')
-            || $quote->operator_id === $actor->id
-            || RequestManagementScope::isInActorSites($actor, $quote);
+        return $this->rowActions->for($actor, $row);
     }
 
     /**

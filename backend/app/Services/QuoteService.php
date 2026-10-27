@@ -113,6 +113,8 @@ class QuoteService
         'costLines.commissions.recipient',
         'costLines.unitOfMeasure',
         'costLines.product.unitOfMeasure',
+        // Spec 0315: QuoteResource::contract_id (the "Apri contratto" button).
+        'contract',
     ];
 
     public function __construct(

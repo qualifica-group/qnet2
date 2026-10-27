@@ -178,7 +178,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'Moving the quote to a **Closed (won)** status generates the contract.',
+          text: 'Moving the quote to a **Closed (won)** status generates the contract. From then on the **Open contract** button at the top of the quote detail, and the **Open contract** entry in the more-actions menu (the three dots) of the row in the table, open the contract in a window over the quote. You see them only if your role may view Contracts.',
         },
       ],
     },

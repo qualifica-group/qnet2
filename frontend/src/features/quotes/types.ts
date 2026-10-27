@@ -220,6 +220,11 @@ export interface QuoteDetail {
    * for fixture compatibility, exactly like `OpportunityDetail.rewards`.
    */
   rewards?: RewardAssignmentRef[]
+  /**
+   * Spec 0315: il Contratto nato da questa offerta (chiusa positiva), `null`
+   * se non ne esiste uno. Opzionale per le fixture esistenti, come `rewards`.
+   */
+  contract_id?: number | null
   /** Spec 0084: i valori raccolti, uno per `code` applicabile. `{}` quando vuoto. */
   attribute_values: Record<string, CustomFieldValue>
   /** Il set risolto dalle categorie dei prodotti delle righe offerta, contesto `quote`. */

@@ -1,9 +1,9 @@
-import { useCallback, useState, type ReactNode } from 'react'
+import { createElement, Fragment, useCallback, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { toast } from 'sonner'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
-import type { ModuleCreateParams, OpenMode } from '@/features/modules/types'
+import { OPEN_MODE_MODAL, type ModuleCreateParams, type OpenMode } from '@/features/modules/types'
 import { deleteQuote, QUOTES_DOMAIN } from '@/features/quotes/api'
 import { useQuoteDocument } from '@/features/quotes/use-quote-document'
 import type { RowActionHandler } from '@/features/table/row-actions'
@@ -57,6 +57,14 @@ function resolveRowCode(row: TableRow): string {
   return typeof row.code === 'string' ? row.code : String(row.id)
 }
 
+/** The registry domain the `contract` action opens (spec 0315). */
+const CONTRACTS_DOMAIN = 'contracts'
+
+/** Reads the row's `contract_id` (spec 0315), `null` when the Offerta has no contract. */
+function resolveContractId(row: TableRow): number | null {
+  return typeof row.contract_id === 'number' ? row.contract_id : null
+}
+
 /**
  * Reads the parent Opportunity id off the row's `opportunity` relation ref
  * (`{ id, name }`, projected by QuotesTableDefinition::mapRow). Defensive like
@@ -97,6 +105,12 @@ export function useQuoteRowActions({
   const { openCreate, openCreateWith, openView, sheet } = useModuleOpener(QUOTES_DOMAIN, {
     onSaved: onMutated,
     forceMode,
+  })
+
+  // Spec 0315, D-3: the contract always opens in a modal over the grid,
+  // whatever the actor's open-mode preference for the Contratti module.
+  const { openView: openContract, sheet: contractSheet } = useModuleOpener(CONTRACTS_DOMAIN, {
+    forceMode: OPEN_MODE_MODAL,
   })
 
   const { generate: generateDocument, isGenerating } = useQuoteDocument()
@@ -140,6 +154,13 @@ export function useQuoteRowActions({
           }
           break
         }
+        case 'contract': {
+          const contractId = resolveContractId(row)
+          if (contractId !== null) {
+            openContract({ id: contractId, actions: [] })
+          }
+          break
+        }
         case 'generate_document':
           // Not a mutation (spec 0070 D-2): no refresh, the row is unchanged.
           void generateDocument(Number(row.id), resolveRowCode(row))
@@ -148,7 +169,7 @@ export function useQuoteRowActions({
           break
       }
     },
-    [openView, runDelete, generateDocument],
+    [openView, runDelete, generateDocument, openContract],
   )
 
   const isBusy = useCallback(
@@ -183,7 +204,8 @@ export function useQuoteRowActions({
     closeActivity,
     notesTarget,
     closeNotes,
-    sheet,
+    // One node for the callers to mount: the Offerta's own Sheet and the contract's.
+    sheet: createElement(Fragment, null, sheet, contractSheet),
     openCreate,
     openCreateWith,
   }

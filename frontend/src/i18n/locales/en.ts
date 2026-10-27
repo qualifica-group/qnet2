@@ -128,6 +128,7 @@ export const en = {
     impersonate: 'Impersonate',
     layout: 'Attribute layout',
     generatePdf: 'Download quote',
+    openContract: 'Open contract',
     transferContact: 'Transfer contact',
     forceClose: 'Force close',
     reopen: 'Reopen',

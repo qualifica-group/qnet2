@@ -1,8 +1,11 @@
 import { useTranslation } from 'react-i18next'
-import { Download, FileText, HandCoins, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
+import { Download, FileSignature, FileText, HandCoins, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
 import { DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
 import { Button } from '@/components/ui/button'
+import { OPEN_MODE_MODAL } from '@/features/modules/types'
+import { useModuleOpener } from '@/features/modules/use-module-opener'
+import { useViewableDomain } from '@/features/modules/use-viewable-domain'
 import { WorkflowStatusBadge } from '@/features/quote-workflows/workflow-status-badge'
 import { QuoteRecalculateCommissions } from '@/features/quotes/quote-recalculate-commissions'
 import { formatQuoteAmount } from '@/features/quotes/quote-summary'
@@ -23,6 +26,37 @@ interface QuoteDetailHeaderProps {
   quote: QuoteDetailWithPermissions
   /** Called after a commission recalculation, so the host refreshes whatever lists the offer. */
   onChanged?: () => void
+}
+
+/** The registry domain "Apri contratto" opens (spec 0315). */
+const CONTRACTS_DOMAIN = 'contracts'
+
+/**
+ * "Apri contratto" (spec 0315): the Contract born from this closed-won offer,
+ * always in a modal so the offer stays open underneath (D-3). Shown only when
+ * the offer has a contract and the actor may view the Contratti module (D-2);
+ * the contract endpoint still authorizes server-side.
+ */
+function QuoteContractButton({ contractId }: { contractId: number }) {
+  const viewableDomain = useViewableDomain(CONTRACTS_DOMAIN)
+
+  return viewableDomain === null ? null : <QuoteContractOpener contractId={contractId} />
+}
+
+/** Split out so the opener only mounts once the actor may view contracts. */
+function QuoteContractOpener({ contractId }: { contractId: number }) {
+  const { t } = useTranslation()
+  const opener = useModuleOpener(CONTRACTS_DOMAIN, { forceMode: OPEN_MODE_MODAL })
+
+  return (
+    <>
+      <Button type="button" variant="secondary" size="sm" onClick={() => opener.openView({ id: contractId, actions: [] })}>
+        <FileSignature aria-hidden="true" />
+        {t('actions.openContract')}
+      </Button>
+      {opener.sheet}
+    </>
+  )
 }
 
 /**
@@ -57,6 +91,7 @@ export function QuoteDetailHeader({ quote, onChanged }: QuoteDetailHeaderProps) 
       }
       actions={
         <>
+          {quote.contract_id ? <QuoteContractButton contractId={quote.contract_id} /> : null}
           {quote.permissions.actions.recalculate_commissions ? (
             <QuoteRecalculateCommissions quoteId={quote.id} onChanged={onChanged} />
           ) : null}

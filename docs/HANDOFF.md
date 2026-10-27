@@ -3,6 +3,26 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Apri contratto dall'Offerta chiusa positiva (spec 0315) — VERDE, NON COMMITTATO (2026-10-27)
+
+- Richiesta utente: bottone che apre in modale il contratto nato da un'offerta chiusa positiva, su tabella e dettaglio.
+- Backend: azione `contract` (`actions.openContract`, icona `file-signature`, permesso `contracts.view`) in
+  `QuoteColumnCatalog` DOPO `notes` -> sta nel menu "tre puntini" (le 3 inline restano view/generate_document/notes).
+  Righe: `contract_id` + azione solo se il contratto esiste e Gate `view` sul Contract. `actionsFor`/`allowsNotes`
+  spostati in nuova `App\Tables\Quotes\QuoteRowActions` (QuotesTableDefinition era a 498 righe, ora 448).
+  Dettaglio: `QuoteResource.contract_id` (+ `contract` in `QuoteService::DETAIL_RELATIONS`). Contratto sospeso
+  incluso (resta il contratto di riferimento, D-1).
+- Frontend: `useQuoteRowActions` caso `contract` (opener `contracts` forzato in modale, `sheet` restituito come
+  Fragment dei due Sheet: vale anche per il pannello Offerte dentro l'Opportunita'); `QuoteDetailHeader` pulsante
+  "Apri contratto" dietro `useViewableDomain('contracts')`; `QuoteDetail.contract_id?`; i18n `actions.openContract`.
+- Test: `QuoteContractShortcutTest` (AC-001..003) + suite Quotes/Contracts/RequestManagement/Opportunities/Table
+  verdi salvo i rossi gia' noti (SupplierCommissionDirection, PDF senza LibreOffice, TableBulkDelete super-admin);
+  Pint pulito. FE `quote-contract-shortcut.test.tsx`; vitest quotes/opportunities/contracts/help/i18n 139 file /
+  1226 test, ESLint, `tsc -b --force` puliti.
+- Manuale: guide in-app IT/EN Offerte (sezione stato) + Claude Docs rev 411; PDF derivato da rigenerare.
+- Fuori scope: griglia Gestione Richieste (catalogo azioni proprio). Se l'utente vuole l'azione inline, va spostata
+  prima di `notes` nel catalogo (cambia l'ordine delle icone inline, direttiva 2026-08-06).
+
 ## Previsione commerciale in Gestione Richieste (spec 0313) — VERDE, NON COMMITTATO (2026-10-27)
 
 - Richiesta utente: data chiusura prevista, valore stimato, probabilita' di successo anche in Gestione Richieste.
