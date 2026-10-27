@@ -101,6 +101,9 @@ use Illuminate\Database\Seeder;
  *  11. QualificaFunctionCompetenceSeeder — each member of a business function
  *                                    gets it as an assignment scope on every
  *                                    category, next to the scopes already there.
+ *  12. QualificaLegacyRoleSeeder   — the QNet legacy roles of the active people,
+ *                                    merged by profile onto the qnet-2 modules,
+ *                                    for whoever holds no role but the base one.
  *
  * The order is a contract, not a preference:
  *   - step 5 adopts step 2's sources and business functions by name instead
@@ -124,6 +127,8 @@ use Illuminate\Database\Seeder;
  *     would land on those.
  *   - step 11 reads the memberships of steps 5 and 9 and runs after step 6,
  *     which recreates its operators' scopes on every run.
+ *   - step 12 runs last: it leaves alone whoever steps 4 to 7 gave a role,
+ *     and needs the accounts step 10 creates from the legacy users.
  *
  * Every step stays runnable on its own and is idempotent, so this seeder is
  * too: re-running it converges instead of duplicating. Steps 5 and 10 are
@@ -168,5 +173,6 @@ class QualificaProductionDataSeeder extends Seeder
         $this->call(QualificaHrCatalogSeeder::class);
         $this->callWith(QualificaLegacyImportSeeder::class, ['sources' => QualificaLegacyImportSeeder::USER_SOURCES]);
         $this->call(QualificaFunctionCompetenceSeeder::class);
+        $this->call(QualificaLegacyRoleSeeder::class);
     }
 }

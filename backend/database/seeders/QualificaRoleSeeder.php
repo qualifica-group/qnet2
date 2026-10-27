@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\Role;
-use App\Models\User;
 use App\RequestManagement\RequestModule;
+use Database\Seeders\Concerns\SyncsRoleMatrix;
 use Database\Seeders\QualificaCatalog\CommercialBackOfficeRoleCatalogue as BackOffice;
 use Database\Seeders\QualificaCatalog\HrOfficeRoleCatalogue as HrOffice;
 use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue as Catalogue;
@@ -14,7 +14,6 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Str;
-use Spatie\Permission\Guard;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -36,15 +35,7 @@ use Spatie\Permission\PermissionRegistrar;
  */
 class QualificaRoleSeeder extends Seeder
 {
-    /**
-     * Hidden from every role this seeder syncs (spec 0314): the opportunity's
-     * Lead is for super-admin only, who bypasses the matrix.
-     *
-     * @var array<string, array<int, string>>
-     */
-    private const array EVERY_ROLE_HIDDEN_FIELDS = [
-        'opportunities' => ['lead_id'],
-    ];
+    use SyncsRoleMatrix;
 
     public function run(): void
     {
@@ -163,28 +154,6 @@ class QualificaRoleSeeder extends Seeder
             ->values();
     }
 
-    /**
-     * @param  Collection<int, string>  $permissions
-     * @param  Collection<int, string>  $catalogue
-     * @return Collection<int, string>
-     */
-    private function withUserFormStack(Collection $permissions, Collection $catalogue): Collection
-    {
-        return $permissions->contains(Catalogue::USER_FORM_GATE)
-            ? $permissions->merge($catalogue->filter($this->isUserFormGrant(...)))->unique()->values()
-            : $permissions;
-    }
-
-    /**
-     * Derived from the role's permissions rather than from a block: whichever
-     * block opens the Utenti section, the form must load in full.
-     */
-    private function isUserFormGrant(string $permission): bool
-    {
-        return in_array(Str::beforeLast($permission, '.'), Catalogue::USER_FORM_MODULES, true)
-            && in_array(Str::afterLast($permission, '.'), Catalogue::USER_FORM_ABILITIES, true);
-    }
-
     private function blockGrants(string $block, string $permission): bool
     {
         $resource = Str::beforeLast($permission, '.');
@@ -231,62 +200,5 @@ class QualificaRoleSeeder extends Seeder
     private function isSelectOnlyGrant(string $resource, string $ability, array $resources): bool
     {
         return $ability === 'viewAny' && in_array($resource, $resources, true);
-    }
-
-    /**
-     * @param  Collection<int, string>  $permissions
-     */
-    private function syncRole(string $name, string $description, Collection $permissions): Role
-    {
-        $role = Role::findOrCreate($name, Guard::getDefaultName(User::class));
-        $role->description = $description;
-        $role->save();
-        $role->syncPermissions($permissions->all());
-
-        return $role;
-    }
-
-    /**
-     * Replaces the role's WHOLE field-permission matrix with the three lists,
-     * plus EVERY_ROLE_HIDDEN_FIELDS — a full sync, exactly like
-     * RoleService::syncFieldPermissions() on the admin UI path. ONE writer for
-     * every degree, because the delete-then-create is what makes the sync
-     * convergent.
-     *
-     * A granted row restricts nothing (the matrix intersects the code
-     * ceiling, spec 0006), but it is not the same as no row: the matrix is the
-     * union of the actor's roles that HAVE a row, so only an explicit grant
-     * outweighs the hidden row of another role the same person holds.
-     *
-     * @param  array<string, array<int, string>>  $hiddenFields  resource => field keys the role never sees
-     * @param  array<string, array<int, string>>  $readonlyFields  resource => field keys the role sees but cannot write
-     * @param  array<string, array<int, string>>  $grantedFields  resource => field keys the role sees and writes
-     */
-    private function syncFieldPermissions(Role $role, array $hiddenFields = [], array $readonlyFields = [], array $grantedFields = []): void
-    {
-        $role->fieldPermissions()->delete();
-
-        $hiddenFields = array_merge_recursive(self::EVERY_ROLE_HIDDEN_FIELDS, $hiddenFields);
-        $this->createFieldPermissions($role, $hiddenFields, visible: false, editable: false);
-        $this->createFieldPermissions($role, $readonlyFields, visible: true, editable: false);
-        $this->createFieldPermissions($role, $grantedFields, visible: true, editable: true);
-    }
-
-    /**
-     * @param  array<string, array<int, string>>  $fieldsByResource
-     */
-    private function createFieldPermissions(Role $role, array $fieldsByResource, bool $visible, bool $editable): void
-    {
-        foreach ($fieldsByResource as $resource => $fields) {
-            foreach ($fields as $field) {
-                $role->fieldPermissions()->create([
-                    'resource' => $resource,
-                    'field' => $field,
-                    'visible' => $visible,
-                    'editable' => $editable,
-                    'required' => false,
-                ]);
-            }
-        }
     }
 }

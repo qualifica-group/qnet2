@@ -3,6 +3,28 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Ruoli del QNet legacy nel seed di produzione — VERDE, COMMITTATO (2026-10-27)
+
+- Richiesta utente: ruoli legacy trasformati sui moduli qnet-2 e assegnati, solo quelli tenuti da utenti attivi; chi ha
+  gia' un ruolo vero non si tocca, gli altri tengono `operatore-base` come ruolo. Decisioni in chat: ruoli ACCORPATI per profilo.
+- Nuovo step 12 `QualificaLegacyRoleSeeder` (ultimo di `QualificaProductionDataSeeder`): sincronizza 11 ruoli
+  (`QualificaCatalog/LegacyRoleCatalogue::ROLES`, matrice `resource => abilita'|ALL` filtrata sul catalogo reale) e assegna
+  `operatore-base` + i ruoli derivati alle 71 persone di `LegacyRoleRoster::USERS` (email qnet-2 => nomi ruolo legacy
+  verbatim, snapshot 2026-10-27), tramite `LegacyRoleCatalogue::LEGACY_ROLES` (Admin -> `admin`; Ticket, Web Master,
+  Registro NC, Upload Manuale -> nessun ruolo). Salta account inattivi/mancanti e chi ha un ruolo fuori da
+  `operatore-base` + ruoli del catalogo legacy; re-run convergente (`syncRoles`).
+- Solo `segreteria-utenti` scrive gli utenti: chi ha `users.create/update` puo' assegnare `admin` (RoleAssignmentGuard
+  esclude solo super-admin). Gli altri profili vedono gli utenti in sola lettura.
+- Refactor: `syncRole`/`syncFieldPermissions`/`withUserFormStack` + `EVERY_ROLE_HIDDEN_FIELDS` spostati da
+  `QualificaRoleSeeder` nel trait `Concerns/SyncsRoleMatrix` (comportamento invariato).
+- Regola utente (stesso giorno): ogni ruolo SEMINATO con `opportunities.view` E `quotes.view` riceve in
+  `SyncsRoleMatrix::withRequestModulesSight()` `viewAny`+`view` su `request-management` ed `enrollee-management`, piu'
+  `viewAll`/`viewSite` se li ha sulle quotes (sola lettura, nessuna scrittura). Tocca anche `back-office-commerciale`
+  (test 0299 AC-001/AC-003: REQUIREMENT CHANGED). NON vale per i ruoli creati/modificati dalla UI Ruoli.
+- Test: `QualificaLegacyRoleSeederTest` (8); `QualificaProductionDataSeederTest` Giuseppe Agus ora base + 2 ruoli
+  (REQUIREMENT CHANGED). Suite completa: stessi 15 rossi pre-esistenti. Sul DB dev il seeder NON e' stato eseguito
+  (controllo in sola lettura: 71/71 assegnabili). Manuale: nessun impatto.
+
 ## Ambito di assegnazione dalle funzioni di appartenenza (seed produzione) — VERDE, NON COMMITTATO (2026-10-27)
 
 - Richiesta utente: nel seed di produzione ogni membro di una funzione aziendale riceve quella funzione come

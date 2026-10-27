@@ -37,8 +37,10 @@ it('0299 AC-001: grants the back office its modules in full and only viewAny on 
         expect($role->hasPermissionTo($permission))->toBeTrue($permission);
     }
 
+    // REQUIREMENT CHANGED (2026-10-27): seeing opportunities and quotes now opens the
+    // request modules too, see the legacy role seeder test.
     foreach (['product-categories.view', 'operational-sites.view', 'operational-sites.update', 'referent-types.view',
-        'companies.view', 'quote-workflows.view', 'contract-statuses.view', 'request-management.view', 'tasks.viewAny'] as $permission) {
+        'companies.view', 'quote-workflows.view', 'contract-statuses.view', 'tasks.viewAny'] as $permission) {
         expect($role->hasPermissionTo($permission))->toBeFalse($permission);
     }
 
@@ -108,9 +110,10 @@ it('0299 AC-003: shows the six modules and the proforma requests in the menu nex
     $this->seed(QualificaRoleSeeder::class);
 
     // REQUIREMENT CHANGED (spec 0299 D-8): the proforma requests join the menu.
+    // REQUIREMENT CHANGED (2026-10-27): seeing opportunities and quotes opens the request modules.
     expect(visibleRoutes(commercialBackOfficeUser()))->toEqualCanonicalizing([
         '/dashboard', '/opportunities', '/quotes', '/work-orders', '/tasks', '/time-entries', '/absences',
-        '/registries', '/referents', '/contracts', '/proforma-requests',
+        '/registries', '/referents', '/contracts', '/proforma-requests', '/request-management', '/enrollee-management',
     ]);
 });
 
