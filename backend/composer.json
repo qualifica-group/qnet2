@@ -86,7 +86,10 @@
     },
     "extra": {
         "laravel": {
-            "dont-discover": []
+            "dont-discover": [
+                "spatie/laravel-activitylog",
+                "spatie/laravel-permission"
+            ]
         }
     },
     "config": {

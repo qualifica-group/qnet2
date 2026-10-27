@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Suite backend piu' veloce: provider spatie senza pubblicazione migrazioni nei test — VERIFICATO, NON COMMITTATO (2026-10-27)
+
+- Causa: ogni test riavvia Laravel; `spatie/laravel-package-tools` (`generateMigrationName`) fa un `glob` di
+  `database/migrations` (350+ file) per ogni migrazione pubblicabile (activitylog 3, permission 1) = ~25 ms/test.
+- Fix: `composer.json` `extra.laravel.dont-discover` per `spatie/laravel-activitylog` e `spatie/laravel-permission`;
+  ri-registrati in `bootstrap/providers.php` (prima di `AppServiceProvider`) come `App\Providers\ActivitylogServiceProvider`
+  / `PermissionServiceProvider` col trait `Providers/Concerns/SkipsMigrationPublishingInTests` (salta
+  `bootPackageMigrations` solo se `runningUnitTests()`, `getPackageBaseDir` punta al pacchetto vendor). Fuori dai test
+  invariato (config, comandi, tag publish). `composer.lock`: solo content-hash (+ URL phpdotenv riscritto da composer).
+- Misure suite completa: 263 s -> 241 s reali, CPU user 2026 -> 1807 s; boot app ~50 -> ~13 ms. Stessi 15 test rossi
+  pre-esistenti prima e dopo (Migration/UsersSource*, MigrationPlan/SourceAvailability, LibreOffice assente,
+  ManagementControl navigazione, TableBulkDelete super-admin): non legati a questa modifica.
+- Nuovi pacchetti spatie con `hasMigrations` -> stesso trait. Non togliere il `dont-discover` (doppia registrazione).
+
 ## Menu sulle macro-aree del QNet legacy (spec 0318) — VERDE, NON COMMITTATO (2026-10-27)
 
 - Spec `docs/specs/0318-menu-legacy-layout.xml` (decisioni utente in chat: struttura legacy, TUTTI i configuratori in
