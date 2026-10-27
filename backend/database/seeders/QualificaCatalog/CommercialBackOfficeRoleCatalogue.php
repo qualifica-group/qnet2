@@ -42,6 +42,18 @@ final class CommercialBackOfficeRoleCatalogue
     ];
 
     /**
+     * Single abilities of modules held only in part (D-8): the proforma
+     * requests are seen and created, never edited, deleted or exported.
+     *
+     * @var array<int, string>
+     */
+    public const array EXTRA_PERMISSIONS = [
+        'proforma-requests.viewAny',
+        'proforma-requests.view',
+        'proforma-requests.create',
+    ];
+
+    /**
      * Listed by name (D-1): the org-chart function and job role they share
      * hold other people too. Martina Mosca joined on top of her coordinator
      * mansione (D-6).

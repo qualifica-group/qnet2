@@ -57,6 +57,21 @@ it('0299 D-7: grants the back office every contracts ability', function () {
     }
 });
 
+it('0299 D-8: lets the back office see and create proforma requests, nothing more', function () {
+    $this->seed(QualificaRoleSeeder::class);
+    $role = Role::findByName(CommercialBackOfficeRoleCatalogue::ROLE);
+
+    foreach (['viewAny', 'view', 'create'] as $ability) {
+        expect($role->hasPermissionTo("proforma-requests.{$ability}"))->toBeTrue("proforma-requests.{$ability}");
+    }
+
+    foreach (['update', 'delete', 'export', 'viewActivity'] as $ability) {
+        expect($role->hasPermissionTo("proforma-requests.{$ability}"))->toBeFalse("proforma-requests.{$ability}");
+    }
+
+    expect($role->hasPermissionTo('invoices.view'))->toBeFalse();
+});
+
 it('0299 AC-002: adds the role to the listed people on top of their own and skips a missing account', function () {
     $this->seed(QualificaRoleSeeder::class);
     [$missing] = CommercialBackOfficeRoleCatalogue::USERS;
@@ -89,12 +104,13 @@ it('0299 D-6: gives Martina Mosca the role on top of her coordinator mansione', 
         ->toBe([CommercialBackOfficeRoleCatalogue::ROLE, OperatorRoleCatalogue::COORDINATOR_ROLE]);
 });
 
-it('0299 AC-003: shows the six modules in the menu next to Task, Segnatempo and Assenze, nothing else', function () {
+it('0299 AC-003: shows the six modules and the proforma requests in the menu next to Task, Segnatempo and Assenze, nothing else', function () {
     $this->seed(QualificaRoleSeeder::class);
 
+    // REQUIREMENT CHANGED (spec 0299 D-8): the proforma requests join the menu.
     expect(visibleRoutes(commercialBackOfficeUser()))->toEqualCanonicalizing([
         '/dashboard', '/opportunities', '/quotes', '/work-orders', '/tasks', '/time-entries', '/absences',
-        '/registries', '/referents', '/contracts',
+        '/registries', '/referents', '/contracts', '/proforma-requests',
     ]);
 });
 

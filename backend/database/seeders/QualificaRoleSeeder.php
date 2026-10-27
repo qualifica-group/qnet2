@@ -137,8 +137,9 @@ class QualificaRoleSeeder extends Seeder
     }
 
     /**
-     * The back-office modules in full and the read-only support resources.
-     * Task, Segnatempo and Assenze come from the mansione it is held on top of.
+     * The back-office modules in full, the single extra abilities and the
+     * read-only support resources. Task, Segnatempo and Assenze come from the
+     * mansione it is held on top of.
      *
      * @param  Collection<int, string>  $catalogue
      * @return Collection<int, string>
@@ -146,6 +147,7 @@ class QualificaRoleSeeder extends Seeder
     private function backOfficePermissions(Collection $catalogue): Collection
     {
         return $catalogue->filter(fn (string $permission): bool => in_array(Str::beforeLast($permission, '.'), BackOffice::MODULES, true)
+            || in_array($permission, BackOffice::EXTRA_PERMISSIONS, true)
             || $this->isSelectOnlyGrant(Str::beforeLast($permission, '.'), Str::afterLast($permission, '.'), BackOffice::SELECT_ONLY_RESOURCES))
             ->values();
     }

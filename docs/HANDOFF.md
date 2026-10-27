@@ -200,6 +200,15 @@
   (stato letto all'apertura). Vitest exports+table 354/354, ESLint e `tsc -b --force` puliti.
 - Manuale: nessun impatto.
 
+## Back Office Commerciale: vedere e creare Proforma (spec 0299 D-8) — VERDE, NON COMMITTATO (2026-10-27)
+
+- Nuova `CommercialBackOfficeRoleCatalogue::EXTRA_PERMISSIONS` (`proforma-requests.viewAny`/`view`/`create`), letta da
+  `QualificaRoleSeeder::backOfficePermissions()`. Niente update/delete/export/viewActivity, niente Fatture.
+- Spec 0299: D-8 (REQUIREMENT CHANGED rispetto a D-3), AC-001/AC-003 aggiornati. Test: nuovo `0299 D-8`, AC-003 con
+  `/proforma-requests` nel menu. Seeding 191/191, Pint pulito.
+- Solo seed: su qnet2 rieseguire `php artisan db:seed --class=QualificaCommercialBackOfficeSeeder` (risemina i ruoli).
+- Manuale: nessun impatto.
+
 ## Back Office Commerciale: anche i Contratti (spec 0299 D-7) — VERDE, NON COMMITTATO (2026-10-26)
 
 - `CommercialBackOfficeRoleCatalogue::MODULES` + `contracts`: il ruolo `back-office-commerciale` riceve ogni ability
