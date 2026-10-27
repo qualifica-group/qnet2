@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0318-menu-legacy-layout" status="approved" owner="nicola" date="2026-10-27">
+
+  <goal>
+    Il menu laterale di qnet-2 segue le macro-aree di lavoro del QNet legacy (Commerciale, Lavorazioni, Anagrafiche,
+    Magazzino e Dotazioni, Contabilita', Personale, Configurazione), con le pagine operative personali in cima e tutti
+    i configuratori raccolti in Configurazione, divisi per area.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-10-27: "vai sul qnet legacy e su qnet-2 sistemami il menu prendendo spunto dal legacy".
+    Legacy: `qnet/resources/views/layouts/admin.blade.php` (`#main-menu-navigation`, tenant crm_type 3): Progetti,
+    Attivita', Segnatempo, RDA; Magazzino/Dotazioni; Commerciale (Lead, Appuntamenti, RDO, Opportunita', Offerte,
+    Commissioni, Report vendite); Lavorazioni (Contratti, Commesse); Amministrazione (Attivo, Passivo, Finanziario,
+    Agenti, Controllo gestione); Statistiche; Impostazioni (tutti i configuratori). Anagrafiche/Contatti/Utenti stanno
+    nella tendina "Elenchi" dell'header, non nella sidebar.
+  </context>
+
+  <decisions>
+    <decision id="D-1">Struttura a macro-aree del legacy (scelta utente in chat, opzione raccomandata).</decision>
+    <decision id="D-2">Tutti i configuratori in Configurazione, in sottogruppi per area. SUPERA le decisioni
+      2026-07-27 e 2026-09-04 (pick-list accanto al modulo).</decision>
+    <decision id="D-3">La sezione contabile resta "Contabilita'" (non "Amministrazione" del legacy). La sezione
+      "Amministrazione" di qnet-2 sparisce: Utenti e Organigramma vanno in Personale, Ruoli e Campi personalizzati in
+      Configurazione > Sistema.</decision>
+    <decision id="D-4">Le foglie non cambiano: stessa `key`, `label`, `icon`, `route`, `permission`, `role`,
+      `open_to_managers`. Cambiano solo gruppi, sezioni e ordine. App (spec 0317) e permessi restano validi.</decision>
+    <decision id="D-5">Il catalogo permessi dei ruoli (aree = voci di primo livello) segue la nuova struttura.</decision>
+  </decisions>
+
+  <data_contract name="navigation tree (config/navigation.php)">
+    dashboard
+    tasks
+    time-entries
+    absences
+    [section] commercial (navigation.commercial)
+      [group] marketing-leads: projects, campaigns, leads (> imports)
+      opportunities, quotes, request-management (> field-change-requests), enrollee-management,
+      rewarded-referents, request-statistics
+    [section] operations (navigation.operations): contracts, work-orders
+    [section] registries-section (navigation.registries): registries, referents, companies, company-sites,
+      operational-sites
+    [section] warehouse (navigation.warehouse): products, stock,
+      [group] purchasing: purchase-requests, purchase-request-lines, purchase-orders
+    [section] accounting (navigation.accounting)
+      [group] accounting-receivable: proforma-requests, invoices, invoice-installments
+      [group] accounting-payable: purchase-invoices, purchase-invoice-installments
+      [group] accounting-finance (navigation.accountingFinance): ledger, financial-accounts
+      [group] accounting-commissions: agent-fiscal-profiles, commission-accruals, commission-settlement-runs,
+        commission-settlements
+      [group] management-control-group (navigation.managementControl): the 7 management-control reports
+    [section] personnel (navigation.personnel): users, org-chart, staff-trainings, user-skills
+    [section] configuration (navigation.configuration)
+      [group] config-commercial (navigation.commercial): pipeline-statuses, quote-workflows, contract-statuses,
+        referent-types, sources, sectors, tags, reward-types, reward-statuses
+      [group] config-tasks (navigation.tasks): task-statuses, task-types, task-categories, task-priorities,
+        task-importances, task-templates
+      [group] config-products (navigation.products): product-categories, attributes, vat-rates, units-of-measure,
+        product-typologies
+      [group] config-purchasing (navigation.purchasing): cost-types, purchase-request-priorities,
+        purchase-order-statuses, purchase-request-line-statuses
+      [group] config-accounting (navigation.accounting): payment-methods, work-order-payment-statuses, invoice-tags,
+        commission-configurations, enasarco-parameters
+      [group] config-personnel (navigation.personnel): business-functions, job-roles, job-activities, contract-types,
+        absence-types, company-closures, staff-courses, skills
+      [group] config-documents (navigation.documents): document-layouts, email-templates, document-bundles
+      [group] config-system (navigation.system): roles, custom-fields
+    [section] develop: invariata
+  </data_contract>
+
+  <acceptance>
+    <ac id="AC-001">GET /api/navigation per un super-admin restituisce esattamente l'albero del data_contract.</ac>
+    <ac id="AC-002">Nessuna foglia aggiunta o persa rispetto a prima: stesso insieme di chiavi del catalogo.</ac>
+    <ac id="AC-003">I test di visibilita' per permesso esistenti passano sulla nuova posizione delle voci.</ac>
+    <ac id="AC-004">Guide in-app e manuale descrivono la nuova struttura.</ac>
+  </acceptance>
+</spec>

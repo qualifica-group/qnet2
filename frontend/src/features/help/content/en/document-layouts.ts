@@ -9,14 +9,14 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'Overview',
       blocks: [
-        { type: 'paragraph', text: 'The module is found in **Configuration › Layouts**. The available **Modules** are **Quotes** (the document is downloaded with **Download quote** on the quote) and **Invoices** (downloaded with **Download PDF** in Active invoices) and **ODA** (printed with **Print PDF** on the purchase order page).' },
+        { type: 'paragraph', text: 'The module is found in **Configuration › Documents › Layouts**. The available **Modules** are **Quotes** (the document is downloaded with **Download quote** on the quote) and **Invoices** (downloaded with **Download PDF** in Active invoices) and **ODA** (printed with **Print PDF** on the purchase order page).' },
       ],
     },
     {
       id: 'create-layout',
       title: 'Creating a layout',
       blocks: [
-        { type: 'steps', items: ['Open **Configuration › Layouts** and press **New layout**.', 'The sheet opens with closed rows: for **Name**, **Code**, **Module**, **Description**, **Active** and **Default** press the pencil (or the value), fill in and press **Done**; **Revert** puts the row back as it was.', 'The **Content** section is already open: build the page with the visual editor.', 'Press **Save**: the layout is created with everything at once.'] },
+        { type: 'steps', items: ['Open **Configuration › Documents › Layouts** and press **New layout**.', 'The sheet opens with closed rows: for **Name**, **Code**, **Module**, **Description**, **Active** and **Default** press the pencil (or the value), fill in and press **Done**; **Revert** puts the row back as it was.', 'The **Content** section is already open: build the page with the visual editor.', 'Press **Save**: the layout is created with everything at once.'] },
         { type: 'warning', text: 'After creation, **Code** and **Module** cannot be changed.' },
       ],
     },

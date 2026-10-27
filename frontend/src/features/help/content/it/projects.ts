@@ -23,7 +23,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Apri **Marketing e Lead › Progetti** e clicca **Nuovo progetto**: il modulo ha lo stesso aspetto della scheda, con le stesse sezioni e **righe chiuse** (il Codice è già proposto).',
+            'Apri **Commerciale › Marketing e Lead › Progetti** e clicca **Nuovo progetto**: il modulo ha lo stesso aspetto della scheda, con le stesse sezioni e **righe chiuse** (il Codice è già proposto).',
             "Fai clic su una riga (o sulla matita) per aprirla, compila e premi **Fatto** per tenere il valore o **Ripristina** per riportarlo com'era (vedi tabella).",
             'Clicca **Salva**: QNet controlla tutto e crea il progetto. Se esci senza salvare ti viene chiesta conferma.',
           ],

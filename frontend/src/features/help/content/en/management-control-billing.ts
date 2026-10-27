@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **Billing** page answers “how much of the open work orders do I still have to invoice?” and “how are the proforma doing?”. You find it under **Management control › Billing**. It is **read-only** and shows aggregate data, with no lists per document.',
+          text: 'The **Billing** page answers “how much of the open work orders do I still have to invoice?” and “how are the proforma doing?”. You find it under **Accounting › Management control › Billing**. It is **read-only** and shows aggregate data, with no lists per document.',
         },
         {
           type: 'paragraph',

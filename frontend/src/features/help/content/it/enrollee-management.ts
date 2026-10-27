@@ -12,7 +12,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si trova in **Opportunità e Commesse › Gestione Iscritti**. È lo stesso banco di lavoro di **Gestione Richieste**: stesse colonne, filtri, ricerca (dal terzo carattere, per parole che iniziano con quanto scrivi), azioni sulle righe.',
+          text: 'Si trova in **Commerciale › Gestione Iscritti**. È lo stesso banco di lavoro di **Gestione Richieste**: stesse colonne, filtri, ricerca (dal terzo carattere, per parole che iniziano con quanto scrivi), azioni sulle righe.',
         },
         {
           type: 'table',

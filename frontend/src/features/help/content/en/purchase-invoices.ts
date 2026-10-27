@@ -116,7 +116,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Installments are generated from the **payment method** and, when editing a proforma without payments, they are **recalculated**. The installments add up to the **Net payable**, not to the document total. If payments exist, date, method, supplier, **Withholding tax** and **ENASARCO** are frozen and the installments are **rebalanced** leaving the paid ones intact. Payments are recorded from **Accounting › Payable › Installments**, where the **Open document** action leads to the document sheet.',
+          text: 'Installments are generated from the **payment method** and, when editing a proforma without payments, they are **recalculated**. The installments add up to the **Net payable**, not to the document total. If payments exist, date, method, supplier, **Withholding tax** and **ENASARCO** are frozen and the installments are **rebalanced** leaving the paid ones intact. Payments are recorded from **Accounting › Payable › Payable installments**, where the **Open document** action leads to the document sheet.',
         },
         {
           type: 'note',

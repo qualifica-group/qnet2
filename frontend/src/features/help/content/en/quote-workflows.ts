@@ -12,7 +12,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'It lives in the **Opportunities & Contracts** menu (page **Offer status configurator**) and defines the processing statuses of quotes. Every workflow has a name, criteria that decide which quotes it applies to, and its own list of statuses.',
+          text: 'It lives in the **Configuration › Sales** menu (page **Offer status configurator**) and defines the processing statuses of quotes. Every workflow has a name, criteria that decide which quotes it applies to, and its own list of statuses.',
         },
       ],
     },

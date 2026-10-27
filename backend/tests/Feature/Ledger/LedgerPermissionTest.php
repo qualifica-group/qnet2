@@ -38,8 +38,8 @@ it('AC-014: the Partitario menu entry shows only to who holds ledger.view', func
 
     Sanctum::actingAs(User::factory()->create()->givePermissionTo('ledger.view'));
     $navigation = $this->getJson('/api/navigation')->json('data');
-    $accounting = collect($navigation)->firstWhere('key', 'accounting');
 
+    // REQUIREMENT CHANGED (spec 0318): Partitario sits in Contabilita' > Finanziario.
     expect(navigationNodeKeys($navigation))->toContain('ledger')
-        ->and(collect($accounting['children'])->firstWhere('key', 'ledger'))->toMatchArray(['route' => '/ledger', 'icon' => 'book-open']);
+        ->and(navigationNode($navigation, 'accounting-finance')['children'][0])->toMatchArray(['key' => 'ledger', 'route' => '/ledger', 'icon' => 'book-open']);
 });

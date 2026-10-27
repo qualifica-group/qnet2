@@ -10,6 +10,9 @@ use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
+// REQUIREMENT CHANGED (spec 0318): the opportunities-group became the top-level "Commerciale"
+// section (key `commercial`); the items checked here are its direct children as before.
+
 // Spec 0185 — "Statistiche Gestione Richieste": the request dashboard and its
 // report are a module of their own, gated by `request-statistics.view`, which
 // replaces the former `{module}.report` ability.
@@ -22,7 +25,7 @@ if (! function_exists('statisticsNavigationChild')) {
     /** @return array<string, mixed>|null */
     function statisticsNavigationChild(mixed $groups): ?array
     {
-        $group = collect($groups)->firstWhere('key', 'opportunities-group');
+        $group = collect($groups)->firstWhere('key', 'commercial');
 
         return $group === null ? null : collect($group['children'])->firstWhere('key', 'request-statistics');
     }

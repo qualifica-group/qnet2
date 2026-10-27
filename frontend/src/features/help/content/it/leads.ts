@@ -12,7 +12,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Apri **Marketing e Lead › Lead** e clicca **Nuovo lead**: il modulo ha lo stesso aspetto della scheda, con le stesse sezioni e **righe chiuse**.',
+            'Apri **Commerciale › Marketing e Lead › Lead** e clicca **Nuovo lead**: il modulo ha lo stesso aspetto della scheda, con le stesse sezioni e **righe chiuse**.',
             "Fai clic su una riga (o sulla matita) per aprirla, scegli il valore e premi **Fatto** per tenerlo o **Ripristina** per riportarlo com'era (vedi tabella).",
             'Clicca **Salva**: QNet controlla tutto e crea il lead. Se esci senza salvare ti viene chiesta conferma.',
           ],

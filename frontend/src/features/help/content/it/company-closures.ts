@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si trova in **Configurazione**. Una chiusura può valere come un festivo oppure generare le ferie di tutti in un colpo solo.',
+          text: 'Si trova in **Configurazione › Personale**. Una chiusura può valere come un festivo oppure generare le ferie di tutti in un colpo solo.',
         },
       ],
     },

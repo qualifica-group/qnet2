@@ -74,7 +74,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Open Products › Attributes and press New attribute.',
+            'Open Configuration › Products › Attributes and press New attribute.',
             'The create form has the same shape as the attribute page: the rows (Code, Name, Type, Presentation and the custom fields) are closed. Press the pencil (or the value) to open one and enter the Code, Name and field Type; Done confirms the row without saving anything, Revert puts it back as it was.',
             'The editors that depend on the Type (Field settings, Options, Relation, Columns) are already open: for an Option list add at least one option, with a Value and a Label.',
             'For a Relation choose the linked module: besides the modules you can choose Provinces, to link a province.',

@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'They are configured in **Configuration › Task Statuses**. For every status you set Name, Description, Color, Icon and the **Phase** it belongs to: Open, Pending, To validate, Closed (positive outcome) or Closed (negative outcome).',
+          text: 'They are configured in **Configuration › Tasks › Task Statuses**. For every status you set Name, Description, Color, Icon and the **Phase** it belongs to: Open, Pending, To validate, Closed (positive outcome) or Closed (negative outcome).',
         },
         {
           type: 'paragraph',

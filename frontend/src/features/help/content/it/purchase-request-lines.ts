@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La pagina è sotto **Acquisti › Gestione righe RDA** e mostra **una riga per ogni riga di RDA**, di tutte le richieste che puoi vedere. Puoi filtrare, ordinare ed esportare; le **schede per stato** in alto restringono l’elenco a un solo stato.',
+          text: 'La pagina è sotto **Magazzino e Dotazioni › Acquisti › Gestione righe RDA** e mostra **una riga per ogni riga di RDA**, di tutte le richieste che puoi vedere. Puoi filtrare, ordinare ed esportare; le **schede per stato** in alto restringono l’elenco a un solo stato.',
         },
         {
           type: 'paragraph',
@@ -19,7 +19,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'I nomi, i colori e le icone degli stati (Da approvare, Approvato, Ordinato, Ricevuto, Rifiutato, Stand by) sono quelli predefiniti e si possono personalizzare in **Acquisti › Stati righe RDA**: schede, badge, filtri e storico stati seguono la configurazione. Il significato degli stati e i passaggi consentiti non cambiano.',
+          text: 'I nomi, i colori e le icone degli stati (Da approvare, Approvato, Ordinato, Ricevuto, Rifiutato, Stand by) sono quelli predefiniti e si possono personalizzare in **Configurazione › Acquisti › Stati righe RDA**: schede, badge, filtri e storico stati seguono la configurazione. Il significato degli stati e i passaggi consentiti non cambiano.',
         },
       ],
     },

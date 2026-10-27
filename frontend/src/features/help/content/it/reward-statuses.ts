@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si configurano in **Premi e Incentivi › Stati Buoni Collegati**.',
+          text: 'Si configurano in **Configurazione › Commerciale › Stati Buoni Collegati**.',
         },
         {
           type: 'table',

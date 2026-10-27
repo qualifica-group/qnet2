@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: '**Management control** answers the question “are the work orders earning what was planned?”. You find it under **Management control › Income statement**. The page is **read-only** and shows figures **net of VAT** (taxable amount).',
+          text: '**Management control** answers the question “are the work orders earning what was planned?”. You find it under **Accounting › Management control › Income statement**. The page is **read-only** and shows figures **net of VAT** (taxable amount).',
         },
         {
           type: 'paragraph',

@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si trova in **Configurazione**. Il catalogo elenca i corsi di formazione interna del personale; le formazioni fatte dalle persone si registrano nella pagina **Formazione**. Non c’entra con i corsi venduti ai clienti.',
+          text: 'Si trova in **Configurazione › Personale**. Il catalogo elenca i corsi di formazione interna del personale; le formazioni fatte dalle persone si registrano nella pagina **Formazione**. Non c’entra con i corsi venduti ai clienti.',
         },
       ],
     },

@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si configura in **Acquisti › Priorità RDA** e compare nel campo **Priorità** della RDA, come badge colorato nelle griglie RDA e Righe RDA. Le cinque voci iniziali (Bassa, Media, Alta, Urgente, Critica) si possono rinominare, ricolorare, riordinare o disattivare, e se ne possono aggiungere altre.',
+          text: 'Si configura in **Configurazione › Acquisti › Priorità RDA** e compare nel campo **Priorità** della RDA, come badge colorato nelle griglie RDA e Righe RDA. Le cinque voci iniziali (Bassa, Media, Alta, Urgente, Critica) si possono rinominare, ricolorare, riordinare o disattivare, e se ne possono aggiungere altre.',
         },
         {
           type: 'table',

@@ -29,7 +29,7 @@ vi.mock('@/features/workspaces/api', () => ({
 
 const CATALOGUE: NavigationCatalogueEntry[] = [
   { key: 'absences', label: 'navigation.absences', icon: null, route: '/absences', path: ['navigation.management'] },
-  { key: 'invoices', label: 'navigation.invoices', icon: null, route: '/invoices', path: ['navigation.administration'] },
+  { key: 'invoices', label: 'navigation.invoices', icon: null, route: '/invoices', path: ['navigation.accounting'] },
 ]
 
 function unprocessable(errors: Record<string, string[]>): AxiosError {
@@ -83,7 +83,7 @@ describe('WorkspacesPage (spec 0317 AC-019)', () => {
     const { invalidate } = renderPage()
 
     const dialog = await fillNewApp()
-    expect(await within(dialog).findByText('Amministrazione')).toBeInTheDocument()
+    expect(await within(dialog).findByText('Contabilità')).toBeInTheDocument()
     fireEvent.click(await within(dialog).findByRole('checkbox', { name: 'Fatture Attive' }))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Salva' }))
 
@@ -220,7 +220,7 @@ describe('WorkspacesPage (spec 0317 AC-019)', () => {
       target: { value: 'fatt' },
     })
     expect(within(dialog).queryByRole('checkbox', { name: 'Assenze' })).not.toBeInTheDocument()
-    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Amministrazione' }))
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Contabilità' }))
     expect(within(dialog).getByText('1 selezionata')).toBeInTheDocument()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Salva' }))
 

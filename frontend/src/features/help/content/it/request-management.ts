@@ -12,7 +12,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si trova in **Opportunità e Commesse › Gestione Richieste**. Ogni riga dell\'elenco corrisponde a un\'offerta collegata a un\'opportunità.',
+          text: 'Si trova in **Commerciale › Gestione Richieste**. Ogni riga dell\'elenco corrisponde a un\'offerta collegata a un\'opportunità.',
         },
         {
           type: 'paragraph',
@@ -220,7 +220,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Le statistiche non sono più nella tabella di Gestione Richieste né in quella di Gestione Iscritti: hanno una pagina propria, **Opportunità e Commesse › Statistiche Gestione Richieste** (vedi la relativa guida). Gestione Iscritti non ha più statistiche.',
+          text: 'Le statistiche non sono più nella tabella di Gestione Richieste né in quella di Gestione Iscritti: hanno una pagina propria, **Commerciale › Statistiche Gestione Richieste** (vedi la relativa guida). Gestione Iscritti non ha più statistiche.',
         },
       ],
     },

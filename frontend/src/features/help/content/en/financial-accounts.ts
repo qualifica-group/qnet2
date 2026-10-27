@@ -9,7 +9,7 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'Overview',
       blocks: [
-        { type: 'paragraph', text: 'The module is under **Accounting › Financial accounts**. It lists three kinds of account in one place: **Bank account**, **Card** and **Cash**. You can filter, sort and export the list; the **Company** column is hidden by default and can be turned on from the column picker.' },
+        { type: 'paragraph', text: 'The module is under **Accounting › Finance › Financial accounts**. It lists three kinds of account in one place: **Bank account**, **Card** and **Cash**. You can filter, sort and export the list; the **Company** column is hidden by default and can be turned on from the column picker.' },
       ],
     },
     {
@@ -49,7 +49,7 @@ const guide: HelpGuide = {
       id: 'manage',
       title: 'Create, edit and delete',
       blocks: [
-        { type: 'steps', items: ['Open **Accounting › Financial accounts** and press **New account**.', 'Pick the **Type** and fill in the fields.', 'Press **Save**.'] },
+        { type: 'steps', items: ['Open **Accounting › Finance › Financial accounts** and press **New account**.', 'Pick the **Type** and fill in the fields.', 'Press **Save**.'] },
         { type: 'paragraph', text: 'List rows offer **View** and **Delete**, if your role allows it. To edit, open the record with **View** and press **Edit**.' },
         { type: 'warning', text: 'A bank account with linked cards cannot be deleted: delete or unlink the cards first.' },
       ],

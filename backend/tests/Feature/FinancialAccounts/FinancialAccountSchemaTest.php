@@ -34,20 +34,21 @@ it('AC-019: the accounting section with the financial-accounts entry shows only 
     $keys = navigationNodeKeys($data);
     $node = collect($data)->firstWhere('key', 'accounting');
 
+    // REQUIREMENT CHANGED (spec 0318): the entry sits in Contabilita' > Finanziario, and the
+    // "Controllo di gestione" reports are a group of Contabilita', no longer a section of their own.
     expect($keys)->toContain('accounting')->toContain('financial-accounts')
         ->and($node['label'])->toBe('navigation.accounting')
-        ->and($node['children'][0])->toMatchArray([
+        ->and(navigationNode($data, 'accounting-finance')['children'][0])->toMatchArray([
             'key' => 'financial-accounts',
             'label' => 'navigation.financialAccounts',
             'icon' => 'landmark',
             'route' => '/financial-accounts',
-        ])
-        ->and(array_column(config('navigation.items'), 'key'))->toContain('accounting', 'administration');
+        ]);
 
-    // Spec 0268 (D-18): the "Controllo di gestione" section sits between Contabilita' and Amministrazione.
     $order = array_column(config('navigation.items'), 'key');
-    expect(array_search('accounting', $order, true))->toBe(array_search('management-control-section', $order, true) - 1)
-        ->and(array_search('management-control-section', $order, true))->toBe(array_search('administration', $order, true) - 1);
+    expect(array_search('personnel', $order, true))->toBe(array_search('accounting', $order, true) + 1)
+        ->and(navigationNodeKeys(config('navigation.items')))->toContain('management-control-group')
+        ->and($order)->not->toContain('management-control-section');
 });
 
 it('AC-020: the migration creates the contract columns, the unique IBAN and rolls back cleanly', function () {

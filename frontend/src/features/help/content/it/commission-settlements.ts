@@ -140,7 +140,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             'La scheda dell’estratto mostra la sezione **Fattura passiva** con il link alla fattura, **Netto da pagare**, **Pagato**, **Residuo** e lo **Stato pagamento**.',
-            'Lo **stato pagamento** è quello delle scadenze della fattura (le rate si pagano da **Contabilità › Passiva › Scadenze**): non è memorizzato sull’estratto. Nell’elenco puoi filtrare per **Stato pagamento**.',
+            'Lo **stato pagamento** è quello delle scadenze della fattura (le rate si pagano da **Contabilità › Passiva › Scadenze passive**): non è memorizzato sull’estratto. Nell’elenco puoi filtrare per **Stato pagamento**.',
             'Un estratto **Approvato** è **immutabile**: non si ricalcola, non si annulla e il documento non si rimuove.',
             'La fattura passiva collegata è bloccata: non si modifica né si elimina e il numero non cambia; restano consentiti note, documenti allegati, pagamenti e la modifica di scadenza e metodo delle rate non pagate.',
           ],

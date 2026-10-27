@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La pagina è sotto **Contabilità › Provvigioni agenti › Parametri ENASARCO**. Contiene **una riga per anno**: l’estratto usa i parametri dell’anno della **data finale** del periodo. I valori li inserisci tu: il sistema non ne contiene di preimpostati.',
+          text: 'La pagina è sotto **Configurazione › Contabilità › Parametri ENASARCO**. Contiene **una riga per anno**: l’estratto usa i parametri dell’anno della **data finale** del periodo. I valori li inserisci tu: il sistema non ne contiene di preimpostati.',
         },
       ],
     },

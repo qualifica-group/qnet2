@@ -9,7 +9,7 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'Overview',
       blocks: [
-        { type: 'paragraph', text: 'The module is found in **Configuration › Business Functions**. It is one of the reference tables to prepare early: the user record offers business functions in its selection lists, and Product Categories use them to assign their scope.' },
+        { type: 'paragraph', text: 'The module is found in **Configuration › Personnel › Business Functions**. It is one of the reference tables to prepare early: the user record offers business functions in its selection lists, and Product Categories use them to assign their scope.' },
         { type: 'tip', text: 'In the recommended configuration order, Business Functions come first: Product Categories and workflow criteria depend on them.' },
       ],
     },

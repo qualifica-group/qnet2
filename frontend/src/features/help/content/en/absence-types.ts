@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'It is under **Configuration**. Each type decides whether the absence draws on a balance and whether the manager’s approval is needed.',
+          text: 'It is under **Configuration › Personnel**. Each type decides whether the absence draws on a balance and whether the manager’s approval is needed.',
         },
       ],
     },

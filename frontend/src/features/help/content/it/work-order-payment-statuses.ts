@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si configurano in **Configurazione › Stati pagamento commessa**. Gli stati si scelgono, riga per riga, nel tab **Dati contrattuali** del dettaglio commessa.',
+          text: 'Si configurano in **Configurazione › Contabilità › Stati pagamento commessa**. Gli stati si scelgono, riga per riga, nel tab **Dati contrattuali** del dettaglio commessa.',
         },
         {
           type: 'table',

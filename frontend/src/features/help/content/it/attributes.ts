@@ -74,7 +74,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Apri Prodotti › Attributi e premi Nuovo attributo.',
+            'Apri Configurazione › Prodotti › Attributi e premi Nuovo attributo.',
             'Il form di creazione ha la stessa forma della scheda: le righe (Codice, Nome, Tipo, Presentazione e i campi personalizzati) sono chiuse. Premi la matita (o il valore) per aprirne una e inserire Codice, Nome e Tipo di campo; Fatto conferma la riga senza salvare nulla, Ripristina la riporta com\'era.',
             "Gli editor che dipendono dal Tipo (Impostazioni del campo, Opzioni, Relazione, Colonne) sono già aperti: per un Elenco di opzioni aggiungi almeno un'opzione, con Valore ed Etichetta.",
             'Per una Relazione scegli il modulo collegato: oltre ai moduli puoi scegliere Province, per collegare una provincia.',

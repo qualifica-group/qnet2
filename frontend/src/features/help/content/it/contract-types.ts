@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si trova in **Configurazione**. La tipologia si indica in ogni condizione dello **Storico contrattuale** di un utente; quella della condizione in vigore compare nel **Rapporto contrattuale** della scheda e nella colonna **Tipologia contrattuale** dell’elenco utenti.',
+          text: 'Si trova in **Configurazione › Personale**. La tipologia si indica in ogni condizione dello **Storico contrattuale** di un utente; quella della condizione in vigore compare nel **Rapporto contrattuale** della scheda e nella colonna **Tipologia contrattuale** dell’elenco utenti.',
         },
         {
           type: 'paragraph',

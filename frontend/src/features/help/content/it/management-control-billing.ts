@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La pagina **Fatturazione** risponde alle domande “quanto valore delle commesse aperte devo ancora fatturare?” e “come vanno le proforma?”. La trovi in **Controllo di gestione › Fatturazione**. È **solo di consultazione** e mostra dati aggregati, senza elenchi per documento.',
+          text: 'La pagina **Fatturazione** risponde alle domande “quanto valore delle commesse aperte devo ancora fatturare?” e “come vanno le proforma?”. La trovi in **Contabilità › Controllo di gestione › Fatturazione**. È **solo di consultazione** e mostra dati aggregati, senza elenchi per documento.',
         },
         {
           type: 'paragraph',

@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Il **Controllo di gestione** risponde alla domanda “le commesse stanno rendendo quanto previsto?”. Lo trovi in **Controllo di gestione › Conto economico**. La pagina è **solo di consultazione** e mostra le cifre **al netto dell’IVA** (imponibile).',
+          text: 'Il **Controllo di gestione** risponde alla domanda “le commesse stanno rendendo quanto previsto?”. Lo trovi in **Contabilità › Controllo di gestione › Conto economico**. La pagina è **solo di consultazione** e mostra le cifre **al netto dell’IVA** (imponibile).',
         },
         {
           type: 'paragraph',

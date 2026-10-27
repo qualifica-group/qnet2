@@ -9,14 +9,14 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'Panoramica',
       blocks: [
-        { type: 'paragraph', text: 'Il modulo si trova in **Configurazione › Layout**. I **Moduli** disponibili sono **Preventivi** (il documento si scarica con **Scarica preventivo** sull’offerta) e **Fatture** (si scarica con **Scarica PDF** in Fatture Attive) e **ODA** (si stampa con **Stampa PDF** nella pagina dell’ordine di acquisto).' },
+        { type: 'paragraph', text: 'Il modulo si trova in **Configurazione › Documenti › Layout**. I **Moduli** disponibili sono **Preventivi** (il documento si scarica con **Scarica preventivo** sull’offerta) e **Fatture** (si scarica con **Scarica PDF** in Fatture Attive) e **ODA** (si stampa con **Stampa PDF** nella pagina dell’ordine di acquisto).' },
       ],
     },
     {
       id: 'create-layout',
       title: 'Creare un layout',
       blocks: [
-        { type: 'steps', items: ['Apri **Configurazione › Layout** e premi **Nuovo layout**.', 'Si apre la scheda con le righe chiuse: per **Nome**, **Codice**, **Modulo**, **Descrizione**, **Attivo** e **Predefinito** premi la matita (o il valore), compila e premi **Fatto**; **Ripristina** riporta la riga com’era.', 'La sezione **Contenuto** è già aperta: costruisci la pagina con l’editor visuale.', 'Premi **Salva**: il layout viene creato con tutto insieme.'] },
+        { type: 'steps', items: ['Apri **Configurazione › Documenti › Layout** e premi **Nuovo layout**.', 'Si apre la scheda con le righe chiuse: per **Nome**, **Codice**, **Modulo**, **Descrizione**, **Attivo** e **Predefinito** premi la matita (o il valore), compila e premi **Fatto**; **Ripristina** riporta la riga com’era.', 'La sezione **Contenuto** è già aperta: costruisci la pagina con l’editor visuale.', 'Premi **Salva**: il layout viene creato con tutto insieme.'] },
         { type: 'warning', text: 'Dopo la creazione **Codice** e **Modulo** non si modificano.' },
       ],
     },

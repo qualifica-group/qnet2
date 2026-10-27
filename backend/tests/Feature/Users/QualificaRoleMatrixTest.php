@@ -205,7 +205,9 @@ it('checks the role matrix permissions and visible routes for every mansione', f
     // `/dashboard` carries no permission: public to every authenticated user.
     // `/tasks` and `/time-entries` are every role's (user directive 2026-09-24),
     // `/absences` too since spec 0292 (REQUIREMENT CHANGED).
-    expect(visibleRoutes($marketing))->toBe(['/dashboard', '/projects', '/campaigns', '/leads', '/imports', '/pipeline-statuses', '/tasks', '/time-entries', '/absences']);
+    // REQUIREMENT CHANGED (spec 0318): the personal pages follow the dashboard, the pick-lists
+    // (Stati pipeline) sit in Configurazione at the bottom.
+    expect(visibleRoutes($marketing))->toBe(['/dashboard', '/tasks', '/time-entries', '/absences', '/projects', '/campaigns', '/leads', '/imports', '/pipeline-statuses']);
 
     // was: 'shows the supervisor menu exactly the modules of its mansione'
     $supervisorRoutes = visibleRoutes($supervisor);
@@ -225,14 +227,15 @@ it('checks the role matrix permissions and visible routes for every mansione', f
     // `/field-change-requests` (spec 0078) is NOT one: user directive
     // 2026-08-04 made that page supervisor-only, so the seed dropped
     // `field-change-requests.view` — the very permission the navigation entry
-    // is gated on (config/navigation/opportunities.php). The role keeps
+    // is gated on (config/navigation/commercial.php). The role keeps
     // `.create`, which carries no menu entry. `/enrollee-management` joined
     // with the user directive 2026-09-18 (read-only, own enrollees only);
     // `/tasks` and `/time-entries` with the user directive 2026-09-24,
     // `/absences` with spec 0292 (REQUIREMENT CHANGED).
     $commercialRoutes = visibleRoutes(User::query()->where('email', 'biagio.fusco@qualificagroup.it')->firstOrFail());
 
-    expect($commercialRoutes)->toBe(['/dashboard', '/request-management', '/enrollee-management', '/tasks', '/time-entries', '/absences']);
+    // REQUIREMENT CHANGED (spec 0318): the personal pages follow the dashboard.
+    expect($commercialRoutes)->toBe(['/dashboard', '/tasks', '/time-entries', '/absences', '/request-management', '/enrollee-management']);
 });
 
 /**

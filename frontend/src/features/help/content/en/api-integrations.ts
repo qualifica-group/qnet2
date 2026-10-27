@@ -12,7 +12,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The page is under **Administration › API & integrations**. An **API client** represents an external system (for example an ERP or a website) that uses the **same APIs as QNet** with its own **key**. With the key alone the system acts as the client\'s **technical user**, with super-admin permissions; with the key it can also sign in a QNet user and act with that user\'s permissions. All the APIs are listed in the **API documentation** page of the **Develop** section (link at the top right).',
+          text: 'The page is under **Develop › API & integrations**. An **API client** represents an external system (for example an ERP or a website) that uses the **same APIs as QNet** with its own **key**. With the key alone the system acts as the client\'s **technical user**, with super-admin permissions; with the key it can also sign in a QNet user and act with that user\'s permissions. All the APIs are listed in the **API documentation** page of the **Develop** section (link at the top right).',
         },
         {
           type: 'note',

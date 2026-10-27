@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si configura in **Contabilità › Attiva › Tag fattura** e compare nel campo **Tag** della fattura, nella testata dell’editor e nei **Dettagli**, e come colonna con filtro nell’elenco. Il tag è facoltativo: puoi lasciare **Nessun tag**.',
+          text: 'Si configura in **Configurazione › Contabilità › Tag fattura** e compare nel campo **Tag** della fattura, nella testata dell’editor e nei **Dettagli**, e come colonna con filtro nell’elenco. Il tag è facoltativo: puoi lasciare **Nessun tag**.',
         },
         {
           type: 'table',

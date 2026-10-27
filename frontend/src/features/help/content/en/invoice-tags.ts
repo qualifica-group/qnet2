@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'It is configured in **Accounting › Active › Invoice Tags** and appears in the invoice **Tag** field, in the editor header and in **Details**, and as a filterable column in the list. The tag is optional: you can leave **No tag**.',
+          text: 'It is configured in **Configuration › Accounting › Invoice tags** and appears in the invoice **Tag** field, in the editor header and in **Details**, and as a filterable column in the list. The tag is optional: you can leave **No tag**.',
         },
         {
           type: 'table',

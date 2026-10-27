@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Il modulo si trova in **Acquisti › RDA**. Ogni **RDA** (richiesta di acquisto) ha una testata, una o più **righe** da acquistare, un piede con note e condizioni e dei **documenti**. Il **Responsabile di funzione** assegnato approva o rifiuta le singole righe; chi ha il permesso di evasione le porta a **Ordinato**, **Ricevuto** o **Stand by**.',
+          text: 'Il modulo si trova in **Magazzino e Dotazioni › Acquisti › RDA**. Ogni **RDA** (richiesta di acquisto) ha una testata, una o più **righe** da acquistare, un piede con note e condizioni e dei **documenti**. Il **Responsabile di funzione** assegnato approva o rifiuta le singole righe; chi ha il permesso di evasione le porta a **Ordinato**, **Ricevuto** o **Stand by**.',
         },
         {
           type: 'paragraph',
@@ -19,7 +19,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'I nomi, i colori e le icone degli stati delle righe (Da approvare, Approvato, Ordinato, Ricevuto, Rifiutato, Stand by) sono quelli predefiniti e si possono personalizzare in **Acquisti › Stati righe RDA**: schede, badge e finestra di cambio stato seguono la configurazione. Il significato degli stati e i passaggi consentiti non cambiano.',
+          text: 'I nomi, i colori e le icone degli stati delle righe (Da approvare, Approvato, Ordinato, Ricevuto, Rifiutato, Stand by) sono quelli predefiniti e si possono personalizzare in **Configurazione › Acquisti › Stati righe RDA**: schede, badge e finestra di cambio stato seguono la configurazione. Il significato degli stati e i passaggi consentiti non cambiano.',
         },
       ],
     },

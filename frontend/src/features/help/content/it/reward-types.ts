@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si configurano in **Premi e Incentivi › Buoni, Premi e Incentivi** e compaiono nel campo **Tipologia** quando assegni un buono a un referente.',
+          text: 'Si configurano in **Configurazione › Commerciale › Buoni, Premi e Incentivi** e compaiono nel campo **Tipologia** quando assegni un buono a un referente.',
         },
         {
           type: 'table',

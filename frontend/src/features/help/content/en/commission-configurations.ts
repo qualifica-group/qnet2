@@ -9,7 +9,7 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'Overview',
       blocks: [
-        { type: 'paragraph', text: 'The module is found in **Configuration › Commission Configurator**. In the recommended order, category rules are prepared right away, product rules after loading the products.' },
+        { type: 'paragraph', text: 'The module is found in **Configuration › Accounting › Commission Configurator**. In the recommended order, category rules are prepared right away, product rules after loading the products.' },
       ],
     },
     {
@@ -17,7 +17,7 @@ const guide: HelpGuide = {
       title: 'Creating a configuration',
       blocks: [
         { type: 'steps', items: [
-          'Open **Configuration › Commission Configurator** and press **New configuration**.',
+          'Open **Configuration › Accounting › Commission Configurator** and press **New configuration**.',
           'In **Recipient and scope**: type the **Configuration name**; choose the **Recipient role** (Salesperson, Referrer, Supervisor or Supplier); choose the **Application scope** (Product category, Product or Specific recipient).',
           'Depending on the scope, indicate **Product category**, **Product** or **Recipient type** (Referent, User or Registry) and **Recipient**.',
           'In **Calculation** choose the **Commission type** (Fixed amount or Percentage), the **Commission value**, the **Rule priority** and the **Status** (Active or Suspended). When the Role is **Supplier** also choose the **Direction** (required): **Received** when we collect the commission and it is the line revenue, **Paid** when it is a cost towards the supplier.',

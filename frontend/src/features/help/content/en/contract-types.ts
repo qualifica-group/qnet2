@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'It is under **Configuration**. The type is set on every condition of a user’s **Contract history**; the one of the condition in force appears in the card’s **Contract** section and in the **Contract type** column of the users list.',
+          text: 'It is under **Configuration › Personnel**. The type is set on every condition of a user’s **Contract history**; the one of the condition in force appears in the card’s **Contract** section and in the **Contract type** column of the users list.',
         },
         {
           type: 'paragraph',

@@ -53,13 +53,13 @@ describe('HelpPanel index', () => {
     renderIndex()
 
     expect(screen.getByRole('button', { name: /Primi passi/ })).toBeInTheDocument()
-    const adminGroup = screen.getByRole('button', { name: 'Amministrazione' })
+    const adminGroup = screen.getByRole('button', { name: 'Personale' })
     expect(adminGroup).toHaveAttribute('aria-expanded', 'false')
     expect(within(adminGroup).getByText('2')).toBeInTheDocument()
     // Collapsed: its guides are not in the accessibility tree yet.
     expect(screen.queryByRole('button', { name: 'Utenti' })).not.toBeInTheDocument()
 
-    expect(screen.getByRole('button', { name: 'Opportunità e Commesse' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Commerciale' })).toBeInTheDocument()
   })
 
   it('drops a guide whose menu entry is not present, but keeps "general"', () => {
@@ -68,13 +68,13 @@ describe('HelpPanel index', () => {
     renderIndex()
 
     expect(screen.getByRole('button', { name: /Primi passi/ })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Opportunità e Commesse' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Commerciale' })).not.toBeInTheDocument()
   })
 
   it('expanding a group reveals its guides with a module icon each (AC-014)', () => {
     renderIndex()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Amministrazione' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Personale' }))
 
     const usersRow = screen.getByRole('button', { name: 'Utenti' })
     expect(usersRow.querySelector('svg')).not.toBeNull()
@@ -84,7 +84,7 @@ describe('HelpPanel index', () => {
   it('auto-expands the group holding the current module and marks it "Sei qui" (AC-016)', () => {
     renderIndex('/field-change-requests')
 
-    const group = screen.getByRole('button', { name: 'Opportunità e Commesse' })
+    const group = screen.getByRole('button', { name: 'Commerciale' })
     expect(group).toHaveAttribute('aria-expanded', 'true')
 
     const currentRow = screen.getByRole('button', { name: 'Richieste di modifica Sei qui' })

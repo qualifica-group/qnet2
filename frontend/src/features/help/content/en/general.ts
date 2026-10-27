@@ -29,7 +29,7 @@ const guide: HelpGuide = {
       title: 'How the interface is laid out',
       blocks: [
         { type: 'paragraph', text: 'The screen has three areas: the side menu on the left, the header at the top and the work area in the center.' },
-        { type: 'paragraph', text: 'The **side menu** contains the **Dashboard** and the work areas: **Marketing & Leads**, **Opportunities & Contracts**, **Tasks**, **Time tracking**, **Absences**, **Registries**, **Products**, **Rewards & Incentives**, **Configuration** and **Administration**. Click a group name to open or close it; a group with a single entry (it happens inside an app) does not open or close, it shows as a section heading with the entry below. Inside an app, the top of the menu shows the app name in its colour and its icon on the logo. **Settings** is at the bottom. Some entries, such as **Equipment** in the **Products** group (physical goods for internal use), only appear if you have the permission.' },
+        { type: 'paragraph', text: 'The **side menu** contains, at the top, the **Dashboard**, **Tasks**, **Time tracking** and **Absences**, then the work areas: **Sales**, **Operations**, **Registries**, **Warehouse & Equipment**, **Accounting**, **Personnel**, **Configuration** and **Develop**. Click a group name to open or close it; a group with a single entry (it happens inside an app) does not open or close, it shows as a section heading with the entry below. Inside an app, the top of the menu shows the app name in its colour and its icon on the logo. **Settings** is at the bottom. Some entries, such as **Equipment** in the **Warehouse & Equipment** group (physical goods for internal use), only appear if you have the permission.' },
         { type: 'list', items: ['Press the round button with the arrow on the edge of the menu (**Toggle sidebar**).', 'Or use **Ctrl+B** (Mac **Cmd+B**).'] },
         { type: 'paragraph', text: 'When the menu is collapsed only the icons remain; hover over one to see its name. Drag the edge of the menu to widen it; double-click to restore the original width.' },
         {
@@ -192,7 +192,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Question', 'Answer'],
           rows: [
-            ["I don't see a menu item or button described in the manual.", 'The menu and actions depend on your role permissions. Ask the administrator to check the role in **Administration › Roles**.'],
+            ["I don't see a menu item or button described in the manual.", 'The menu and actions depend on your role permissions. Ask the administrator to check the role in **Configuration › System › Roles**.'],
             ['Opening a record shows **Record not found** or **Access denied**.', 'The record no longer exists (it was deleted or the link is wrong) or your role does not allow you to see it. Retrying does not help: check the link or ask the administrator or the record owners for access.'],
             ["I can't edit a field.", 'Your role may have it as read-only, or the field is inherited (for example from a project or a lead) or protected: for **Source**, propose a change from the **Change Requests** guide.'],
             ["I can't delete a configuration value.", "It is already used by some record. Turn off **Active** instead: it disappears from drop-downs without touching existing data."],
@@ -200,7 +200,7 @@ const guide: HelpGuide = {
             ["I closed a quote as won but don't see the contract.", 'The product category may have **Generates a contract** turned off. Check it in **Product Categories**.'],
             ["An operator doesn't receive assignments.", "Their user record is missing the assignment scope on the category or the site: the module flags it at the top with **Not assignable**."],
             ["I can't convert a lead.", 'The lead already has an opportunity, the campaign has no business function or category, or the registry already has an open opportunity.'],
-            ['The quote PDF gives an error.', 'At least one active layout is needed for Quotes: check **Configuration › Layouts** and the **Default** layout.'],
+            ['The quote PDF gives an error.', 'At least one active layout is needed for Quotes: check **Configuration › Documents › Layouts** and the **Default** layout.'],
             ["I don't receive the password reset email.", 'Check the spam folder; if the link expired, request a new one.'],
           ],
         },

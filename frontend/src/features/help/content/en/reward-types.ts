@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'They are configured in **Rewards and Incentives › Vouchers, Rewards and Incentives** and appear in the **Type** field when assigning a reward to a referent.',
+          text: 'They are configured in **Configuration › Sales › Vouchers, Rewards and Incentives** and appear in the **Type** field when assigning a reward to a referent.',
         },
         {
           type: 'table',

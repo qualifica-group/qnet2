@@ -26,7 +26,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Apri Prodotti › Prodotti.',
+            'Apri Magazzino e Dotazioni › Prodotti.',
             'Scrivi nel campo Cerca… in alto nella tabella.',
             "Restringi l'elenco con i filtri sulle colonne: Categoria, Tipologia, Funzione aziendale o Utilizzo in offerta.",
             'Dal menu Azioni della riga scegli Visualizza per aprire la scheda: i dati si modificano lì, un campo alla volta.',
@@ -105,7 +105,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Apri Prodotti › Prodotti e, se serve, filtra per Categoria o Utilizzo in offerta.',
+            'Apri Magazzino e Dotazioni › Prodotti e, se serve, filtra per Categoria o Utilizzo in offerta.',
             'Seleziona le righe con le caselle a sinistra.',
             'Dal menu delle azioni sulla selezione scegli **Imposta tipo di costo** (compare solo se puoi modificare i prodotti).',
             'Nella finestra scegli il tipo di costo, oppure **Nessuno** per toglierlo, e conferma: l’operazione vale per tutti i prodotti selezionati o per nessuno.',

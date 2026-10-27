@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si trova in **Configurazione**. Il catalogo elenca le competenze; i livelli delle persone si registrano nella pagina **Competenze**. Non c’entra con gli **Ambiti di assegnazione** della scheda utente.',
+          text: 'Si trova in **Configurazione › Personale**. Il catalogo elenca le competenze; i livelli delle persone si registrano nella pagina **Competenze**. Non c’entra con gli **Ambiti di assegnazione** della scheda utente.',
         },
       ],
     },

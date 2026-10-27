@@ -51,7 +51,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Proposals are found in **Request Management › Change requests**, with the current value, the requested value, the reason and the requester.',
+          text: 'Proposals are found in **Sales › Request Management › Change Requests**, with the current value, the requested value, the reason and the requester.',
         },
         {
           type: 'steps',

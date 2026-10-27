@@ -3,6 +3,26 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Menu sulle macro-aree del QNet legacy (spec 0318) — VERDE, NON COMMITTATO (2026-10-27)
+
+- Spec `docs/specs/0318-menu-legacy-layout.xml` (decisioni utente in chat: struttura legacy, TUTTI i configuratori in
+  Configurazione (supera le decisioni 2026-07-27/09-04), sezione contabile = "Contabilita'", niente piu' sezione
+  "Amministrazione": Utenti/Organigramma in Personale, Ruoli/Campi in Configurazione > Sistema).
+- Config: `config/navigation.php` assembla dashboard, tasks (foglia), time-entries, absences, sezioni `commercial`,
+  `operations`, `registries-section`, `warehouse` (con gruppo `purchasing`), `accounting` (gruppi receivable, payable,
+  `accounting-finance`, commissions, `management-control-group`), `personnel`, `configuration` (8 gruppi in
+  `config/navigation/configuration/*.php`, chiavi `config-*`), `develop`. Foglie IDENTICHE (96 rotte prima e dopo).
+  File rimossi: marketing-leads, opportunities, products, rewards, purchasing, management-control, administration,
+  staff-trainings, user-skills. Nuove etichette i18n: commercial, operations, warehouse, personnel, accountingFinance,
+  documents, system; rimosse opportunitiesAndCommesse, administration, rewards.
+- Il catalogo permessi dei ruoli (aree = voci di primo livello) segue la nuova struttura (D-5).
+- Test: helper `navigationNode()` in `tests/Pest.php`; 13 test aggiornati con REQUIREMENT CHANGED (spec 0318).
+  Rossi NON legati al menu, gia' presenti: 6 Migration/UsersSource* (il `.env` locale ha
+  `EXTERNAL_MIGRATION_USERS_LINK_ONLY=true`, verdi con `false`), `QuoteDocumentPdfTest` (convertitore documenti
+  assente in locale), `TableBulkDeleteTest` last super-admin (`UserPolicy` spec 0310 da' `forbidden`, il test vuole
+  `guarded`).
+- Manuale: guide in-app IT/EN aggiornate (~180 percorsi); manuale Claude Docs: paragrafo "Menu laterale" + 40 percorsi.
+
 ## App: form a pannello stile CRM + tre app nel seed di produzione — VERDE, NON COMMITTATO (2026-10-27)
 
 - Form create/edit di `/dev/workspaces`: `WorkspaceFormDialog` sostituito da `components/workspace-form-sheet.tsx`

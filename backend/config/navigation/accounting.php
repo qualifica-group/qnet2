@@ -1,8 +1,7 @@
 <?php
 
-// "Contabilita'": accounting registries (financial accounts: bank accounts,
-// cards, cash). The section is dropped automatically when the actor can see
-// none of its children.
+// Spec 0318 (menu on the legacy QNet macro-areas). "Contabilita'" (the legacy "Amministrazione", D-3):
+// receivable, payable, finance, agents' commissions and management control.
 return [
     'key' => 'accounting',
     'label' => 'navigation.accounting',
@@ -11,14 +10,6 @@ return [
     'permission' => null,
     'type' => 'section',
     'children' => [
-        [
-            'key' => 'financial-accounts',
-            'label' => 'navigation.financialAccounts',
-            'icon' => 'landmark',
-            'route' => '/financial-accounts',
-            'permission' => 'financial-accounts.view',
-        ],
-        // "Attiva" (spec 0193): receivables; a group with no route of its own.
         [
             'key' => 'accounting-receivable',
             'label' => 'navigation.accountingReceivable',
@@ -40,7 +31,6 @@ return [
                     'route' => '/invoices',
                     'permission' => 'invoices.view',
                 ],
-                // spec 0197: installments of the active invoices.
                 [
                     'key' => 'invoice-installments',
                     'label' => 'navigation.invoiceInstallments',
@@ -48,17 +38,8 @@ return [
                     'route' => '/invoice-installments',
                     'permission' => 'invoice-installments.view',
                 ],
-                // spec 0247: tags of the active invoices.
-                [
-                    'key' => 'invoice-tags',
-                    'label' => 'navigation.invoiceTags',
-                    'icon' => 'tag',
-                    'route' => '/invoice-tags',
-                    'permission' => 'invoice-tags.view',
-                ],
             ],
         ],
-        // "Passiva" (spec 0211): payables; a group with no route of its own.
         [
             'key' => 'accounting-payable',
             'label' => 'navigation.accountingPayable',
@@ -66,7 +47,6 @@ return [
             'route' => null,
             'permission' => null,
             'children' => [
-                // spec 0250: payable documents (proforma and invoices).
                 [
                     'key' => 'purchase-invoices',
                     'label' => 'navigation.purchaseInvoices',
@@ -83,15 +63,29 @@ return [
                 ],
             ],
         ],
-        // "Partitario" (spec 0266): customer/supplier ledger of a registry.
         [
-            'key' => 'ledger',
-            'label' => 'navigation.ledger',
-            'icon' => 'book-open',
-            'route' => '/ledger',
-            'permission' => 'ledger.view',
+            'key' => 'accounting-finance',
+            'label' => 'navigation.accountingFinance',
+            'icon' => 'landmark',
+            'route' => null,
+            'permission' => null,
+            'children' => [
+                [
+                    'key' => 'ledger',
+                    'label' => 'navigation.ledger',
+                    'icon' => 'book-open',
+                    'route' => '/ledger',
+                    'permission' => 'ledger.view',
+                ],
+                [
+                    'key' => 'financial-accounts',
+                    'label' => 'navigation.financialAccounts',
+                    'icon' => 'landmark',
+                    'route' => '/financial-accounts',
+                    'permission' => 'financial-accounts.view',
+                ],
+            ],
         ],
-        // "Provvigioni agenti" (spec 0212): agent commissions; a group with no route of its own.
         [
             'key' => 'accounting-commissions',
             'label' => 'navigation.accountingCommissions',
@@ -113,7 +107,6 @@ return [
                     'route' => '/commission-accruals',
                     'permission' => 'commission-accruals.view',
                 ],
-                // spec 0213: liquidazione dei maturati (lanci, estratti, parametri ENASARCO).
                 [
                     'key' => 'commission-settlement-runs',
                     'label' => 'navigation.commissionSettlementRuns',
@@ -128,12 +121,63 @@ return [
                     'route' => '/commission-settlements',
                     'permission' => 'commission-settlements.view',
                 ],
+            ],
+        ],
+        [
+            'key' => 'management-control-group',
+            'label' => 'navigation.managementControl',
+            'icon' => 'chart-column',
+            'route' => null,
+            'permission' => null,
+            'children' => [
                 [
-                    'key' => 'enasarco-parameters',
-                    'label' => 'navigation.enasarcoParameters',
-                    'icon' => 'percent',
-                    'route' => '/enasarco-parameters',
-                    'permission' => 'enasarco-parameters.view',
+                    'key' => 'management-control',
+                    'label' => 'navigation.incomeStatement',
+                    'icon' => 'chart-column',
+                    'route' => '/management-control/income-statement',
+                    'permission' => 'management-control.view',
+                ],
+                [
+                    'key' => 'management-control-exposure',
+                    'label' => 'navigation.exposure',
+                    'icon' => 'calendar-clock',
+                    'route' => '/management-control/exposure',
+                    'permission' => 'management-control.view',
+                ],
+                [
+                    'key' => 'management-control-cash-flow',
+                    'label' => 'navigation.cashFlow',
+                    'icon' => 'wallet',
+                    'route' => '/management-control/cash-flow',
+                    'permission' => 'management-control.view',
+                ],
+                [
+                    'key' => 'management-control-trend',
+                    'label' => 'navigation.trend',
+                    'icon' => 'trending-up',
+                    'route' => '/management-control/trend',
+                    'permission' => 'management-control.view',
+                ],
+                [
+                    'key' => 'management-control-billing',
+                    'label' => 'navigation.billing',
+                    'icon' => 'file-text',
+                    'route' => '/management-control/billing',
+                    'permission' => 'management-control.view',
+                ],
+                [
+                    'key' => 'management-control-accounts',
+                    'label' => 'navigation.accounts',
+                    'icon' => 'landmark',
+                    'route' => '/management-control/accounts',
+                    'permission' => 'management-control.view',
+                ],
+                [
+                    'key' => 'management-control-agents',
+                    'label' => 'navigation.agents',
+                    'icon' => 'hand-coins',
+                    'route' => '/management-control/agents',
+                    'permission' => 'management-control.view',
                 ],
             ],
         ],

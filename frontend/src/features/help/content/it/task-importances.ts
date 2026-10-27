@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si configura in **Configurazione › Importanza Task** e compare nel campo **Importanza** del task.',
+          text: 'Si configura in **Configurazione › Task › Importanza Task** e compare nel campo **Importanza** del task.',
         },
         {
           type: 'table',

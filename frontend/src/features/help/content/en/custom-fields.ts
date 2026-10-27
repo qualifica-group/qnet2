@@ -9,14 +9,14 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'Overview',
       blocks: [
-        { type: 'paragraph', text: 'The module is found in **Administration › Custom Fields**. The field appears in the record and the list of the chosen module.' },
+        { type: 'paragraph', text: 'The module is found in **Configuration › System › Custom Fields**. The field appears in the record and the list of the chosen module.' },
       ],
     },
     {
       id: 'create-custom-field',
       title: 'Creating a custom field',
       blocks: [
-        { type: 'steps', items: ['Open **Administration › Custom Fields**.', 'Click **New custom field**.', 'The **Preview** box shows in real time how the field will look. The rows start closed: press the pencil (or click the value) of **Module**, **Type**, **Key** and **Label**, fill it in and confirm with **Done**; **Revert** puts the row back as it was.', 'The editors that depend on the type (settings, options, relation, table columns, validation) appear already open below the rows.', 'Click **Save**, at the top or at the bottom of the page. **Cancel** asks for confirmation before discarding what you entered.'] },
+        { type: 'steps', items: ['Open **Configuration › System › Custom Fields**.', 'Click **New custom field**.', 'The **Preview** box shows in real time how the field will look. The rows start closed: press the pencil (or click the value) of **Module**, **Type**, **Key** and **Label**, fill it in and confirm with **Done**; **Revert** puts the row back as it was.', 'The editors that depend on the type (settings, options, relation, table columns, validation) appear already open below the rows.', 'Click **Save**, at the top or at the bottom of the page. **Cancel** asks for confirmation before discarding what you entered.'] },
         {
           type: 'table',
           headers: ['Field', 'What to enter'],

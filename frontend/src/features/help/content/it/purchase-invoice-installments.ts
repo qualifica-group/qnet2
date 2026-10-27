@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Il modulo si trova in **Contabilità › Passiva › Scadenze**. Mostra **le rate di tutte le fatture e proforma passive** in un elenco unico, con fornitore, ODA collegati, commessa, società, sedi, importo, pagato e residuo.',
+          text: 'Il modulo si trova in **Contabilità › Passiva › Scadenze passive**. Mostra **le rate di tutte le fatture e proforma passive** in un elenco unico, con fornitore, ODA collegati, commessa, società, sedi, importo, pagato e residuo.',
         },
         {
           type: 'paragraph',

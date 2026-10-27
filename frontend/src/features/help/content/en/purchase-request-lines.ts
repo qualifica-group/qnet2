@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The page is under **Purchasing › RDA line management** and shows **one row per RDA line**, across all the requests you can see. You can filter, sort and export; the **status tabs** at the top narrow the list to a single status.',
+          text: 'The page is under **Warehouse & Equipment › Purchasing › RDA line management** and shows **one row per RDA line**, across all the requests you can see. You can filter, sort and export; the **status tabs** at the top narrow the list to a single status.',
         },
         {
           type: 'paragraph',
@@ -19,7 +19,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'The names, colors and icons of the statuses (To approve, Approved, Ordered, Received, Rejected, On hold) are the defaults and can be customized in **Purchasing › RDA line statuses**: tabs, badges, filters and the status history follow the configuration. What the statuses mean and the allowed transitions do not change.',
+          text: 'The names, colors and icons of the statuses (To approve, Approved, Ordered, Received, Rejected, On hold) are the defaults and can be customized in **Configuration › Purchasing › RDA line statuses**: tabs, badges, filters and the status history follow the configuration. What the statuses mean and the allowed transitions do not change.',
         },
       ],
     },

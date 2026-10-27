@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si trovano in **Task › Task**. Quali task vedi dipende dai permessi del tuo ruolo:',
+          text: 'Si trovano alla voce **Task** del menu. Quali task vedi dipende dai permessi del tuo ruolo:',
         },
         {
           type: 'table',
@@ -285,7 +285,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Il segnatempo è obbligatorio al completamento, salvo che la **Tipologia** del task lo renda facoltativo (campo **Segnatempo obbligatorio al completamento** disattivato in Configurazione › Tipologie Task): in quel caso la finestra Completa mostra l\'interruttore **Registra il tempo** (acceso di default) — spegnilo per chiudere il task senza registrare una voce di segnatempo. Un task senza tipologia richiede sempre il segnatempo.',
+          text: 'Il segnatempo è obbligatorio al completamento, salvo che la **Tipologia** del task lo renda facoltativo (campo **Segnatempo obbligatorio al completamento** disattivato in Configurazione › Task › Tipologie Task): in quel caso la finestra Completa mostra l\'interruttore **Registra il tempo** (acceso di default) — spegnilo per chiudere il task senza registrare una voce di segnatempo. Un task senza tipologia richiede sempre il segnatempo.',
         },
         {
           type: 'note',
@@ -340,7 +340,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Scegliendo un **Modello di Task** alla creazione di una commessa (azione **Programma** sul contratto), i task del modello vengono creati e assegnati ai responsabili: li trovi nella sezione Task della commessa. I modelli si configurano in **Task › Modelli di Task**.',
+          text: 'Scegliendo un **Modello di Task** alla creazione di una commessa (azione **Programma** sul contratto), i task del modello vengono creati e assegnati ai responsabili: li trovi nella sezione Task della commessa. I modelli si configurano in **Configurazione › Task › Modelli di Task**.',
         },
       ],
     },

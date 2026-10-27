@@ -150,6 +150,29 @@ function navigationNodeKeys(array $data): Collection
 }
 
 /**
+ * The navigation node with this key at ANY depth, or null. Sections hold
+ * groups (spec 0318), so a top-level-only lookup misses most nodes.
+ *
+ * @param  array<int, array<string, mixed>>  $data
+ * @return array<string, mixed>|null
+ */
+function navigationNode(array $data, string $key): ?array
+{
+    foreach ($data as $item) {
+        if (($item['key'] ?? null) === $key) {
+            return $item;
+        }
+
+        $found = navigationNode($item['children'] ?? [], $key);
+        if ($found !== null) {
+            return $found;
+        }
+    }
+
+    return null;
+}
+
+/**
  * A consistent 4-level geo chain (Country -> State -> Province -> City),
  * shared across every domain that validates BR-4 geo-hierarchy consistency
  * (spec 0027): projects, campaigns, operational sites, addresses. Extracted

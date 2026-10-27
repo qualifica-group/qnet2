@@ -9,14 +9,14 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'Overview',
       blocks: [
-        { type: 'paragraph', text: 'The module is found in **Administration › Roles**. The roles list shows the number of **Permissions** and **Users** for each one.' },
+        { type: 'paragraph', text: 'The module is found in **Configuration › System › Roles**. The roles list shows the number of **Permissions** and **Users** for each one.' },
       ],
     },
     {
       id: 'create-role',
       title: 'Creating a role',
       blocks: [
-        { type: 'steps', items: ['Open **Administration › Roles**.', 'Click **New role**: the new role\'s record opens, with the same sections as a saved role.', 'In **Role details** the **Name** and **Members** rows are closed: press the pencil (or the value), fill it in and press **Done**; **Revert** puts the row back as it was.', 'The **Permissions** section is already open: choose what the role can do. If the module has custom fields, they appear in a separate section (**Other fields**).', 'Click **Save**. If you leave before, QNet asks you to confirm: the role has not been created yet.'] },
+        { type: 'steps', items: ['Open **Configuration › System › Roles**.', 'Click **New role**: the new role\'s record opens, with the same sections as a saved role.', 'In **Role details** the **Name** and **Members** rows are closed: press the pencil (or the value), fill it in and press **Done**; **Revert** puts the row back as it was.', 'The **Permissions** section is already open: choose what the role can do. If the module has custom fields, they appear in a separate section (**Other fields**).', 'Click **Save**. If you leave before, QNet asks you to confirm: the role has not been created yet.'] },
         {
           type: 'table',
           headers: ['Field', 'What to enter'],

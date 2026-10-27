@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'It is configured in **Purchasing › ODA statuses** and decides how the ODA statuses appear in the **status tabs** of the ODA grid, in badges, in the status filter and in the **Change status** dialog. There are seven fixed statuses: **Draft**, **In validation**, **Approved**, **Sent to supplier**, **Partially fulfilled**, **Fulfilled**, **Cancelled**.',
+          text: 'It is configured in **Configuration › Purchasing › ODA statuses** and decides how the ODA statuses appear in the **status tabs** of the ODA grid, in badges, in the status filter and in the **Change status** dialog. There are seven fixed statuses: **Draft**, **In validation**, **Approved**, **Sent to supplier**, **Partially fulfilled**, **Fulfilled**, **Cancelled**.',
         },
         {
           type: 'table',

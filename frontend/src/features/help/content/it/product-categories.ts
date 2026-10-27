@@ -47,7 +47,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Apri Prodotti › Categorie Prodotto. Le categorie compaiono in una tabella, non ad albero: la colonna Padre dice dove si trova ciascuna.',
+          text: 'Apri Configurazione › Prodotti › Categorie Prodotto. Le categorie compaiono in una tabella, non ad albero: la colonna Padre dice dove si trova ciascuna.',
         },
         {
           type: 'table',

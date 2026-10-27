@@ -9,7 +9,7 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'Panoramica',
       blocks: [
-        { type: 'paragraph', text: 'Il modulo si trova in **Contabilità › Gestione Conti**. Raccoglie in un unico elenco tre tipi di conto: **Conto Corrente**, **Carta** e **Cassa**. Puoi filtrare, ordinare ed esportare l’elenco; la colonna **Società** è nascosta per impostazione predefinita e si attiva dal selettore colonne.' },
+        { type: 'paragraph', text: 'Il modulo si trova in **Contabilità › Finanziario › Gestione Conti**. Raccoglie in un unico elenco tre tipi di conto: **Conto Corrente**, **Carta** e **Cassa**. Puoi filtrare, ordinare ed esportare l’elenco; la colonna **Società** è nascosta per impostazione predefinita e si attiva dal selettore colonne.' },
       ],
     },
     {
@@ -49,7 +49,7 @@ const guide: HelpGuide = {
       id: 'manage',
       title: 'Creare, modificare ed eliminare',
       blocks: [
-        { type: 'steps', items: ['Apri **Contabilità › Gestione Conti** e premi **Nuovo conto**.', 'Scegli il **Tipo** e compila i campi.', 'Premi **Salva**.'] },
+        { type: 'steps', items: ['Apri **Contabilità › Finanziario › Gestione Conti** e premi **Nuovo conto**.', 'Scegli il **Tipo** e compila i campi.', 'Premi **Salva**.'] },
         { type: 'paragraph', text: 'Sulle righe dell’elenco trovi **Visualizza** ed **Elimina**, se il tuo ruolo lo consente. Per modificare apri la scheda con **Visualizza** e premi **Modifica**.' },
         { type: 'warning', text: 'Un Conto Corrente con carte collegate non si può eliminare: elimina o scollega prima le carte.' },
       ],

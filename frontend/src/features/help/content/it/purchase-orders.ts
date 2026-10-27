@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La pagina è sotto **Acquisti › ODA** e mostra gli **ordini di acquisto** ai fornitori. L’ODA è **solo l’ordine**: non diventa una fattura. La fattura passiva è un documento separato e una stessa fattura può raccogliere più ODA. Gli imponibili delle righe collegate a una **commessa** alimentano il **consuntivo** della commessa finché l’ODA è impegnato e non ancora fatturato.',
+          text: 'La pagina è sotto **Magazzino e Dotazioni › Acquisti › ODA** e mostra gli **ordini di acquisto** ai fornitori. L’ODA è **solo l’ordine**: non diventa una fattura. La fattura passiva è un documento separato e una stessa fattura può raccogliere più ODA. Gli imponibili delle righe collegate a una **commessa** alimentano il **consuntivo** della commessa finché l’ODA è impegnato e non ancora fatturato.',
         },
         {
           type: 'paragraph',
@@ -89,7 +89,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Elemento', 'Significato'],
           rows: [
-            ['**Tipo costo**', '**Obbligatorio** su ogni riga. Nel menu compare con il colore del tipo. I tipi si gestiscono in Acquisti › Tipi di costo (vedi la sua guida).'],
+            ['**Tipo costo**', '**Obbligatorio** su ogni riga. Nel menu compare con il colore del tipo. I tipi si gestiscono in Configurazione › Acquisti › Tipi di costo (vedi la sua guida).'],
             ['**Imponibile / IVA / Totale**', 'Calcolati dal server (quantità × prezzo, poi IVA) e in sola lettura; l’anteprima nel form si allinea al salvataggio. I totali della testata sono la somma delle righe.'],
             ['**Scorpora l’IVA dal prezzo**', 'Se conosci solo il prezzo IVA inclusa, inseriscilo e premi l’icona: il prezzo torna all’imponibile con l’aliquota della riga (122,00 al 22% diventa 100,00). Serve un’aliquota maggiore di zero.'],
             ['**Badge RDA #n**', 'Compare sulle righe generate da una richiesta di acquisto (vedi **Collegamento con le RDA**).'],
@@ -121,7 +121,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'I nomi degli stati in questa guida sono quelli **predefiniti**: da **Acquisti › Stati ODA** si possono rinominare, ricolorare, cambiare di icona e riordinare. Schede, badge e finestra **Cambia stato** seguono subito il nome, il colore, l’icona e l’ordine configurati. I passaggi consentiti e le regole qui sotto non cambiano.',
+          text: 'I nomi degli stati in questa guida sono quelli **predefiniti**: da **Configurazione › Acquisti › Stati ODA** si possono rinominare, ricolorare, cambiare di icona e riordinare. Schede, badge e finestra **Cambia stato** seguono subito il nome, il colore, l’icona e l’ordine configurati. I passaggi consentiti e le regole qui sotto non cambiano.',
         },
         {
           type: 'table',
@@ -236,7 +236,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Un’ODA si elimina solo in **Bozza** o **In validazione**, con conferma. Non si può eliminare se è **collegata a una fattura o proforma passiva** (compare in **Contabilità › Passiva › Scadenze**, colonna **ODA collegati**): in quel caso l’operazione è rifiutata con un messaggio. Le righe RDA collegate vengono liberate come descritto in **Collegamento con le RDA**.',
+          text: 'Un’ODA si elimina solo in **Bozza** o **In validazione**, con conferma. Non si può eliminare se è **collegata a una fattura o proforma passiva** (compare in **Contabilità › Passiva › Scadenze passive**, colonna **ODA collegati**): in quel caso l’operazione è rifiutata con un messaggio. Le righe RDA collegate vengono liberate come descritto in **Collegamento con le RDA**.',
         },
       ],
     },
@@ -260,7 +260,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: '**Stampa PDF** (nella pagina dell’ordine) e **Scarica PDF** (nell’elenco) generano il documento con il nome **ODA-numero-anno**. Serve un **Layout** del modulo **ODA** attivo (o predefinito) in **Configurazione › Layout**; senza, la stampa è rifiutata.',
+          text: '**Stampa PDF** (nella pagina dell’ordine) e **Scarica PDF** (nell’elenco) generano il documento con il nome **ODA-numero-anno**. Serve un **Layout** del modulo **ODA** attivo (o predefinito) in **Configurazione › Documenti › Layout**; senza, la stampa è rifiutata.',
         },
         {
           type: 'paragraph',

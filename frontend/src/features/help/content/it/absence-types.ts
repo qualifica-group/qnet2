@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si trova in **Configurazione**. Ogni tipo stabilisce se l’assenza scala un saldo e se serve l’approvazione del responsabile.',
+          text: 'Si trova in **Configurazione › Personale**. Ogni tipo stabilisce se l’assenza scala un saldo e se serve l’approvazione del responsabile.',
         },
       ],
     },

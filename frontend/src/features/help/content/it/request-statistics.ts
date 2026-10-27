@@ -25,7 +25,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            "Serve il permesso **Statistiche Gestione Richieste › Visualizza**, che si assegna in **Amministrazione › Ruoli**: senza, la voce di menu non compare e la pagina mostra l'accesso negato.",
+            "Serve il permesso **Statistiche Gestione Richieste › Visualizza**, che si assegna in **Configurazione › Sistema › Ruoli**: senza, la voce di menu non compare e la pagina mostra l'accesso negato.",
             "Ognuno vede solo le richieste che vede già nell'elenco: con **Visualizza tutti** tutte; altrimenti quelle di cui è GA2, più quelle delle proprie sedi con **Visualizza per sede**.",
             'I filtri possono solo restringere questa visibilità, mai allargarla.',
           ],
@@ -38,7 +38,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Apri **Opportunità e Commesse › Statistiche Gestione Richieste**: la pagina mostra subito le statistiche, non serve aprirle.',
+          text: 'Apri **Commerciale › Statistiche Gestione Richieste**: la pagina mostra subito le statistiche, non serve aprirle.',
         },
         {
           type: 'note',
@@ -157,7 +157,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Quali categorie compaiono si decide in **Prodotti › Categorie Prodotto**: **Visibile nei report** mette la categoria nel report (le sottocategorie ereditano e possono forzarlo a no, escludendo anche le proprie); **Colonne report** sceglie le colonne calcolate. Una categoria esclusa non è contata nemmeno nei totali della categoria superiore.',
+          text: 'Quali categorie compaiono si decide in **Configurazione › Prodotti › Categorie Prodotto**: **Visibile nei report** mette la categoria nel report (le sottocategorie ereditano e possono forzarlo a no, escludendo anche le proprie); **Colonne report** sceglie le colonne calcolate. Una categoria esclusa non è contata nemmeno nei totali della categoria superiore.',
         },
         {
           type: 'paragraph',

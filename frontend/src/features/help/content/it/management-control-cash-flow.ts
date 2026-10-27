@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La pagina **Cash flow previsionale** risponde alla domanda “quanto entrerà e uscirà nei prossimi mesi?”. La trovi in **Controllo di gestione › Cash flow previsionale**. È **solo di consultazione** e mostra importi **sul totale del documento** (IVA compresa), in forma aggregata: non c’è l’elenco dei singoli documenti, che restano nella pagina **Scadenze**.',
+          text: 'La pagina **Cash flow previsionale** risponde alla domanda “quanto entrerà e uscirà nei prossimi mesi?”. La trovi in **Contabilità › Controllo di gestione › Cash flow previsionale**. È **solo di consultazione** e mostra importi **sul totale del documento** (IVA compresa), in forma aggregata: non c’è l’elenco dei singoli documenti, che restano nella pagina **Scadenze**.',
         },
         {
           type: 'paragraph',

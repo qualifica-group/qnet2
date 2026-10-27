@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si configura in **Configurazione › Priorità Task** e compare nel campo **Priorità** del task.',
+          text: 'Si configura in **Configurazione › Task › Priorità Task** e compare nel campo **Priorità** del task.',
         },
         {
           type: 'table',

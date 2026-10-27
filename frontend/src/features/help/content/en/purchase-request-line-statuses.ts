@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'It is configured under **Purchasing › RDA line statuses**. There are six predefined statuses: **To approve**, **Approved**, **Ordered**, **Received**, **Rejected** and **On hold**. The name, color and icon you choose appear in the status tabs, in the badges of the RDA and RDA lines grids, in the **Change status** dialog and in the status history.',
+          text: 'It is configured under **Configuration › Purchasing › RDA line statuses**. There are six predefined statuses: **To approve**, **Approved**, **Ordered**, **Received**, **Rejected** and **On hold**. The name, color and icon you choose appear in the status tabs, in the badges of the RDA and RDA lines grids, in the **Change status** dialog and in the status history.',
         },
         {
           type: 'table',

@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The module is found in **Configuration › Document bundles**. A document bundle is a set of files (for example a delivery form or a privacy notice) that a work order\'s email composer can attach all at once with **From document bundle**.',
+          text: 'The module is found in **Configuration › Documents › Document bundles**. A document bundle is a set of files (for example a delivery form or a privacy notice) that a work order\'s email composer can attach all at once with **From document bundle**.',
         },
         {
           type: 'note',
@@ -26,7 +26,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Open **Configuration › Document bundles** and press **New document bundle**.',
+            'Open **Configuration › Documents › Document bundles** and press **New document bundle**.',
             'The sheet opens with closed rows: for **Name**, **Description** and **Active** press the pencil (or the value), fill in and press **Done**; **Revert** puts the row back as it was.',
             'Press **Save**: the bundle is created with all the rows at once.',
             "On the bundle's detail, in the **Files** tab, drag one or more files onto the upload area or click it to pick them.",

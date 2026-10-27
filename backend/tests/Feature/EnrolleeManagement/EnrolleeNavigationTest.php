@@ -5,6 +5,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
+// REQUIREMENT CHANGED (spec 0318): the opportunities-group became the top-level "Commerciale"
+// section (key `commercial`); the items checked here are its direct children as before.
+
 // Spec 0130, AC-011 — the `enrollee-management` nav item (config/navigation/
 // opportunities.php) is gated SOLELY by `enrollee-management.view`, siblings
 // `request-management` (not a child of it, D-1: a separate module) and
@@ -20,7 +23,7 @@ it('the enrollee-management item is present under opportunities-group only with 
     Sanctum::actingAs($actor);
 
     $groups = collect($this->getJson('/api/navigation')->assertOk()->json('data'));
-    $opportunitiesGroup = $groups->firstWhere('key', 'opportunities-group');
+    $opportunitiesGroup = $groups->firstWhere('key', 'commercial');
 
     expect($opportunitiesGroup)->not->toBeNull();
 
@@ -41,7 +44,7 @@ it('the enrollee-management item is absent without enrollee-management.view, eve
     Sanctum::actingAs($actor);
 
     $groups = collect($this->getJson('/api/navigation')->assertOk()->json('data'));
-    $opportunitiesGroup = $groups->firstWhere('key', 'opportunities-group');
+    $opportunitiesGroup = $groups->firstWhere('key', 'commercial');
 
     expect($opportunitiesGroup)->not->toBeNull(); // request-management itself is visible
 
@@ -53,7 +56,7 @@ it('the enrollee-management item is absent when the actor has no permission at a
     Sanctum::actingAs($actor);
 
     $groups = collect($this->getJson('/api/navigation')->assertOk()->json('data'));
-    $opportunitiesGroup = $groups->firstWhere('key', 'opportunities-group');
+    $opportunitiesGroup = $groups->firstWhere('key', 'commercial');
 
     if ($opportunitiesGroup !== null) {
         expect(collect($opportunitiesGroup['children'])->firstWhere('key', 'enrollee-management'))->toBeNull();

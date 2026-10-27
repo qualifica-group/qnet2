@@ -1,16 +1,14 @@
 <?php
 
-// "Anagrafiche" domain: every registry/contact master-data record under
-// one collapsible parent. Replaces the former flat "Gestione" section,
-// dissolved into domain groups (user decision 2026-07-17). A route-less
-// parent renders collapsible; NavigationService drops it when the actor
-// can see none of its children. Ordered from the central registry outward.
+// Spec 0318 (menu on the legacy QNet macro-areas). "Anagrafiche": customers, contacts, companies and sites.
+// Referent types are a pick-list: Configurazione > Commerciale.
 return [
-    'key' => 'registries-group',
+    'key' => 'registries-section',
     'label' => 'navigation.registries',
-    'icon' => 'book-user',
+    'icon' => null,
     'route' => null,
     'permission' => null,
+    'type' => 'section',
     'children' => [
         [
             'key' => 'registries',
@@ -27,16 +25,6 @@ return [
             'permission' => 'referents.view',
         ],
         [
-            // Referent types (spec 0016): the Referent classification
-            // pick-list. Moved here from Configurazione: it belongs to
-            // the registry domain it classifies (user decision 2026-07-17).
-            'key' => 'referent-types',
-            'label' => 'navigation.referentTypes',
-            'icon' => 'tags',
-            'route' => '/referent-types',
-            'permission' => 'referent-types.view',
-        ],
-        [
             'key' => 'companies',
             'label' => 'navigation.companies',
             'icon' => 'building',
@@ -44,8 +32,6 @@ return [
             'permission' => 'companies.view',
         ],
         [
-            // Company Sites (spec 0020): flexible site
-            // anagraphic under a Company.
             'key' => 'company-sites',
             'label' => 'navigation.companySites',
             'icon' => 'building-2',

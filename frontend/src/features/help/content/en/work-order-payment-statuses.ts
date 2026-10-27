@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'They are configured in **Configuration › Work order payment statuses**. Statuses are picked, line by line, in the **Contract data** tab of the work order detail.',
+          text: 'They are configured in **Configuration › Accounting › Work order payment statuses**. Statuses are picked, line by line, in the **Contract data** tab of the work order detail.',
         },
         {
           type: 'table',

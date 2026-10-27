@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "It is configured in **Configuration › Task Importances** and appears in the task's **Importance** field.",
+          text: "It is configured in **Configuration › Tasks › Task Importances** and appears in the task's **Importance** field.",
         },
         {
           type: 'table',

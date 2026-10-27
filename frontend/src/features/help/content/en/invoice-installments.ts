@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The module is under **Accounting › Active › Due dates**. It shows **the installments of every active invoice** (the due dates created when an invoice is issued or rebalanced) in a single list, with customer, work order, company, sites, amount, collected and residual.',
+          text: 'The module is under **Accounting › Receivables › Due dates**. It shows **the installments of every active invoice** (the due dates created when an invoice is issued or rebalanced) in a single list, with customer, work order, company, sites, amount, collected and residual.',
         },
         {
           type: 'paragraph',

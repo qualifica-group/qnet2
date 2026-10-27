@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The page is under **Purchasing › ODA** and lists the **purchase orders** sent to suppliers. An ODA is **only the order**: it never turns into an invoice. The purchase invoice is a separate document and a single invoice can collect several ODA. The net amounts of lines linked to a **work order** feed the work order\'s **actual cost** while the ODA is committed and not yet invoiced.',
+          text: 'The page is under **Warehouse & Equipment › Purchasing › ODA** and lists the **purchase orders** sent to suppliers. An ODA is **only the order**: it never turns into an invoice. The purchase invoice is a separate document and a single invoice can collect several ODA. The net amounts of lines linked to a **work order** feed the work order\'s **actual cost** while the ODA is committed and not yet invoiced.',
         },
         {
           type: 'paragraph',
@@ -89,7 +89,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Item', 'Meaning'],
           rows: [
-            ['**Cost type**', '**Required** on every line. It shows in the type’s color in the picker. Types are managed under Purchasing › Cost types (see its guide).'],
+            ['**Cost type**', '**Required** on every line. It shows in the type’s color in the picker. Types are managed under Configuration › Purchasing › Cost types (see its guide).'],
             ['**Taxable / VAT / Total**', 'Computed by the server (quantity × price, then VAT) and read-only; the preview in the form matches the saved result. Header totals are the sum of the lines.'],
             ['**Extract VAT from price**', 'If you only know the VAT-inclusive price, enter it and press the icon: the price goes back to the taxable amount using the line rate (122.00 at 22% becomes 100.00). A rate above zero is needed.'],
             ['**RDA #n badge**', 'Appears on lines generated from a purchase request (see **Link with RDA**).'],
@@ -121,7 +121,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'The status names in this guide are the **default** ones: under **Purchasing › ODA statuses** they can be renamed, recolored, given another icon and reordered. Tabs, badges and the **Change status** dialog follow the configured name, color, icon and order at once. The allowed steps and the rules below do not change.',
+          text: 'The status names in this guide are the **default** ones: under **Configuration › Purchasing › ODA statuses** they can be renamed, recolored, given another icon and reordered. Tabs, badges and the **Change status** dialog follow the configured name, color, icon and order at once. The allowed steps and the rules below do not change.',
         },
         {
           type: 'table',
@@ -236,7 +236,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'An ODA can only be deleted in **Draft** or **In validation**, after confirmation. It cannot be deleted if it is **linked to a purchase invoice or proforma** (it appears under **Accounting › Payable › Installments**, column **Linked POs**): the operation is refused with a message. Linked RDA lines are freed as described in **Link with RDA**.',
+          text: 'An ODA can only be deleted in **Draft** or **In validation**, after confirmation. It cannot be deleted if it is **linked to a purchase invoice or proforma** (it appears under **Accounting › Payable › Payable installments**, column **Linked POs**): the operation is refused with a message. Linked RDA lines are freed as described in **Link with RDA**.',
         },
       ],
     },
@@ -260,7 +260,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: '**Print PDF** (on the order page) and **Download PDF** (in the list) generate the document named **ODA-number-year**. You need an active (or default) **Layout** of the **ODA** module under **Configuration › Layouts**; without one, printing is refused.',
+          text: '**Print PDF** (on the order page) and **Download PDF** (in the list) generate the document named **ODA-number-year**. You need an active (or default) **Layout** of the **ODA** module under **Configuration › Documents › Layouts**; without one, printing is refused.',
         },
         {
           type: 'paragraph',

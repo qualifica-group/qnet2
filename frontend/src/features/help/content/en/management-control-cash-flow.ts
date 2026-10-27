@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **Cash flow forecast** page answers “how much will come in and go out in the next months?”. You find it under **Management control › Cash flow forecast**. It is **read-only** and shows amounts on the **document total** (VAT included), in aggregate form: there is no list of single documents, which stay in the **Installments** page.',
+          text: 'The **Cash flow forecast** page answers “how much will come in and go out in the next months?”. You find it under **Accounting › Management control › Cash flow forecast**. It is **read-only** and shows amounts on the **document total** (VAT included), in aggregate form: there is no list of single documents, which stay in the **Installments** page.',
         },
         {
           type: 'paragraph',

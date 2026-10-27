@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Il **Partitario** mostra, per una anagrafica, i suoi documenti in ordine di data con **Dare**, **Avere**, **saldo progressivo** e **stato**. Lo trovi in **Contabilità › Partitario** (scegli l’anagrafica dall’elenco) e nella scheda di ogni anagrafica, nella scheda **Partitario**.',
+          text: 'Il **Partitario** mostra, per una anagrafica, i suoi documenti in ordine di data con **Dare**, **Avere**, **saldo progressivo** e **stato**. Lo trovi in **Contabilità › Finanziario › Partitario** (scegli l’anagrafica dall’elenco) e nella scheda di ogni anagrafica, nella scheda **Partitario**.',
         },
         {
           type: 'paragraph',

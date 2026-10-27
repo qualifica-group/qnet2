@@ -9,14 +9,14 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'Panoramica',
       blocks: [
-        { type: 'paragraph', text: 'Il modulo si trova in **Amministrazione › Campi personalizzati**. Il campo compare nella scheda e nell’elenco del modulo scelto.' },
+        { type: 'paragraph', text: 'Il modulo si trova in **Configurazione › Sistema › Campi personalizzati**. Il campo compare nella scheda e nell’elenco del modulo scelto.' },
       ],
     },
     {
       id: 'create-custom-field',
       title: 'Creare un campo personalizzato',
       blocks: [
-        { type: 'steps', items: ['Apri **Amministrazione › Campi personalizzati**.', 'Fai clic su **Nuovo campo personalizzato**.', 'Il riquadro **Anteprima** mostra in tempo reale come apparirà il campo. Le righe sono chiuse: premi la matita (o fai clic sul valore) di **Modulo**, **Tipo**, **Chiave** ed **Etichetta**, compila e conferma con **Fatto**; **Ripristina** riporta la riga com’era.', 'Gli editor che dipendono dal tipo (impostazioni, opzioni, relazione, colonne della tabella, validazione) compaiono già aperti sotto le righe.', 'Fai clic su **Salva**, in alto o in fondo alla pagina. **Annulla** chiede conferma prima di scartare i dati inseriti.'] },
+        { type: 'steps', items: ['Apri **Configurazione › Sistema › Campi personalizzati**.', 'Fai clic su **Nuovo campo personalizzato**.', 'Il riquadro **Anteprima** mostra in tempo reale come apparirà il campo. Le righe sono chiuse: premi la matita (o fai clic sul valore) di **Modulo**, **Tipo**, **Chiave** ed **Etichetta**, compila e conferma con **Fatto**; **Ripristina** riporta la riga com’era.', 'Gli editor che dipendono dal tipo (impostazioni, opzioni, relazione, colonne della tabella, validazione) compaiono già aperti sotto le righe.', 'Fai clic su **Salva**, in alto o in fondo alla pagina. **Annulla** chiede conferma prima di scartare i dati inseriti.'] },
         {
           type: 'table',
           headers: ['Campo', 'Cosa indicare'],

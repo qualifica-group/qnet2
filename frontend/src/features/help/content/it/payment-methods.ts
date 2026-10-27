@@ -9,7 +9,7 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'Panoramica',
       blocks: [
-        { type: 'paragraph', text: 'Il modulo si trova in **Configurazione › Modalità di Pagamento**.' },
+        { type: 'paragraph', text: 'Il modulo si trova in **Configurazione › Contabilità › Modalità di Pagamento**.' },
       ],
     },
     {
@@ -46,7 +46,7 @@ const guide: HelpGuide = {
       id: 'manage',
       title: 'Creare, modificare, riordinare ed eliminare',
       blocks: [
-        { type: 'steps', items: ['Apri **Configurazione › Modalità di Pagamento** e premi **Nuova modalità di pagamento**.', 'Si apre la scheda con le righe chiuse: per ogni riga premi la matita (o il valore), compila (vedi tabella sopra) e premi **Fatto**; **Ripristina** riporta la riga com’era. Poi premi **Salva**.', 'Il **Codice** si inserisce solo alla creazione.'] },
+        { type: 'steps', items: ['Apri **Configurazione › Contabilità › Modalità di Pagamento** e premi **Nuova modalità di pagamento**.', 'Si apre la scheda con le righe chiuse: per ogni riga premi la matita (o il valore), compila (vedi tabella sopra) e premi **Fatto**; **Ripristina** riporta la riga com’era. Poi premi **Salva**.', 'Il **Codice** si inserisce solo alla creazione.'] },
         { type: 'paragraph', text: 'Sulle righe dell’elenco trovi **Visualizza** ed **Elimina**, se il tuo ruolo lo consente. Per modificare non c’è un modulo a parte: apri la scheda con **Visualizza**, premi la matita sulla riga, cambia il valore e premi **Salva** (si salva solo quella riga); **Annulla** o Esc lasciano la riga com’era. **Numero di rate** e **Giorni tra le rate** sono una riga sola, così come **Fine mese** e i suoi giorni extra: si aprono, si salvano e si annullano insieme. **Riordina** cambia l’ordine con cui le modalità compaiono nei menu a tendina.' },
         { type: 'warning', text: 'Non puoi eliminare una modalità di pagamento già usata: disattivala invece.' },
       ],

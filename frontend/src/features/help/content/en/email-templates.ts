@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "The module is found in **Configuration › Email templates**. A template is the **Subject**/**Body** pair the work order's email composer offers when you pick **Email template**: the available **Modules** are **Work orders** and **Invoices**.",
+          text: "The module is found in **Configuration › Documents › Email templates**. A template is the **Subject**/**Body** pair the work order's email composer offers when you pick **Email template**: the available **Modules** are **Work orders** and **Invoices**.",
         },
         {
           type: 'note',
@@ -26,7 +26,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Open **Configuration › Email templates** and press **New email template**.',
+            'Open **Configuration › Documents › Email templates** and press **New email template**.',
             'The sheet opens with closed rows: for **Name**, **Module**, **Subject**, **Description** and **Active** press the pencil (or the value), fill in and press **Done**; **Revert** puts the row back as it was.',
             'The **Body** is already open: write it with the text editor (no images, they are not allowed in an email body).',
             'Press **Save**: the template is created with everything at once.',

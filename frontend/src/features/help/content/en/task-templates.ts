@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "They are configured in **Task › Task Templates**. Picking a template when creating a Commessa makes QNet create the template's tasks and assign them to the owners.",
+          text: "They are configured in **Configuration › Tasks › Task Templates**. Picking a template when creating a Commessa makes QNet create the template's tasks and assign them to the owners.",
         },
         {
           type: 'note',
@@ -26,7 +26,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Open **Task › Task Templates** and press **New task template**.',
+            'Open **Configuration › Tasks › Task Templates** and press **New task template**.',
             'The new template opens with its **Name**, **Description** and **Active** rows closed: press the pencil (or the value), fill it in and press **Done**; **Revert** puts the row back as it was.',
             'In **Phases** press **Add phase** for every phase of the work (optional) and name each one.',
             'Press **Add row** for every task of the template.',

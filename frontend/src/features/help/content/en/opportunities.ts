@@ -16,7 +16,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Open **Opportunities & Contracts › Opportunities**.',
+            'Open **Sales › Opportunities**.',
             'Click **New opportunity**.',
             'Fill in the sections (see table): the form looks like the detail, with its rows **closed**. Open a row with the pencil, fill the field and press **Done** to keep it (or **Revert** to put it back as it was).',
             'Click **Save** (top or bottom): it checks every field and creates the opportunity; errors show under the rows to fix. Leaving without saving asks for confirmation.',

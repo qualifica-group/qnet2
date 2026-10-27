@@ -140,7 +140,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             'The statement record shows the **Passive invoice** section with the link to the invoice, **Net payable**, **Paid**, **Residual** and the **Payment status**.',
-            'The **payment status** is that of the invoice installments (installments are paid from **Accounting › Payable › Installments**): it is not stored on the statement. In the list you can filter by **Payment status**.',
+            'The **payment status** is that of the invoice installments (installments are paid from **Accounting › Payable › Payable installments**): it is not stored on the statement. In the list you can filter by **Payment status**.',
             'An **Approved** statement is **immutable**: it cannot be recalculated or cancelled and the document cannot be removed.',
             'The linked passive invoice is locked: it cannot be edited or deleted and its number does not change; notes, attached documents, payments and the change of due date and method of unpaid installments remain allowed.',
           ],

@@ -5,6 +5,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
+// REQUIREMENT CHANGED (spec 0318): the opportunities-group became the top-level "Commerciale"
+// section (key `commercial`); the items checked here are its direct children as before.
+
 uses(RefreshDatabase::class);
 
 // ---------------------------------------------------------------------------
@@ -21,7 +24,7 @@ it('the request-management item is present under opportunities-group only with r
     Sanctum::actingAs($actor);
 
     $groups = collect($this->getJson('/api/navigation')->assertOk()->json('data'));
-    $opportunitiesGroup = $groups->firstWhere('key', 'opportunities-group');
+    $opportunitiesGroup = $groups->firstWhere('key', 'commercial');
 
     expect($opportunitiesGroup)->not->toBeNull();
 
@@ -37,7 +40,7 @@ it('the request-management item is absent without request-management.view (AC-06
     Sanctum::actingAs($actor);
 
     $groups = collect($this->getJson('/api/navigation')->assertOk()->json('data'));
-    $opportunitiesGroup = $groups->firstWhere('key', 'opportunities-group');
+    $opportunitiesGroup = $groups->firstWhere('key', 'commercial');
 
     // Every other child requires its own missing permission too, so the
     // whole group is dropped when the actor has none of them.

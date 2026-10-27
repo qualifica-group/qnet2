@@ -34,31 +34,25 @@ return [
     | NOTE: hiding a menu item is UX only. Every endpoint must still enforce
     | authorization server-side via Policies/permissions.
     |
-    | Split into config/navigation/*.php — one file per top-level item/group
-    | (engineering.md §6 file-size budget: this file alone had grown past the
-    | 500-line hard limit). This file only assembles them, in the SAME
-    | declaration order as before the split; NavigationService still reads
-    | config('navigation.items') exactly as before, unaware of it.
+    | Split into config/navigation/*.php — one file per top-level item/section
+    | (engineering.md §6 file-size budget). The order follows the legacy QNet
+    | macro-areas (spec 0318); NavigationService reads config('navigation.items')
+    | unaware of the split.
     |
     */
 
     'items' => [
         require __DIR__.'/navigation/dashboard.php',
-        require __DIR__.'/navigation/marketing-leads.php',
-        require __DIR__.'/navigation/opportunities.php',
         require __DIR__.'/navigation/tasks.php',
         require __DIR__.'/navigation/time-entries.php',
         require __DIR__.'/navigation/absences.php',
-        require __DIR__.'/navigation/staff-trainings.php',
-        require __DIR__.'/navigation/user-skills.php',
+        require __DIR__.'/navigation/commercial.php',
+        require __DIR__.'/navigation/operations.php',
         require __DIR__.'/navigation/registries.php',
-        require __DIR__.'/navigation/products.php',
-        require __DIR__.'/navigation/rewards.php',
-        require __DIR__.'/navigation/configuration.php',
-        require __DIR__.'/navigation/purchasing.php',
+        require __DIR__.'/navigation/warehouse.php',
         require __DIR__.'/navigation/accounting.php',
-        require __DIR__.'/navigation/management-control.php',
-        require __DIR__.'/navigation/administration.php',
+        require __DIR__.'/navigation/personnel.php',
+        require __DIR__.'/navigation/configuration.php',
         require __DIR__.'/navigation/develop.php',
     ],
 

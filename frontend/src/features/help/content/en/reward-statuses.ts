@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'They are configured in **Rewards and Incentives › Reward Statuses**.',
+          text: 'They are configured in **Configuration › Sales › Reward Statuses**.',
         },
         {
           type: 'table',

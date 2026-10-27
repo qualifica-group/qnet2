@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Il modulo si trova in **Configurazione › Modelli documenti**. Un modello documenti è un insieme di file (per esempio un modulo di consegna o un'informativa) che il composer email di una commessa può allegare tutto insieme con **Da modello documenti**.",
+          text: "Il modulo si trova in **Configurazione › Documenti › Modelli documenti**. Un modello documenti è un insieme di file (per esempio un modulo di consegna o un'informativa) che il composer email di una commessa può allegare tutto insieme con **Da modello documenti**.",
         },
         {
           type: 'note',
@@ -26,7 +26,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Apri **Configurazione › Modelli documenti** e premi **Nuovo modello documenti**.',
+            'Apri **Configurazione › Documenti › Modelli documenti** e premi **Nuovo modello documenti**.',
             "Si apre la scheda con le righe chiuse: per **Nome**, **Descrizione** e **Attivo** premi la matita (o il valore), compila e premi **Fatto**; **Ripristina** riporta la riga com'era.",
             'Premi **Salva**: il modello viene creato con tutte le righe insieme.',
             "Nel dettaglio del modello, nella scheda **File**, trascina uno o più file nell'area di caricamento oppure cliccala per sceglierli.",

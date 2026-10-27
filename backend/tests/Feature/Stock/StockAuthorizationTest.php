@@ -78,14 +78,15 @@ it('0307 AC-015: the Dotazioni menu entry shows only with stock.viewAny', functi
     expect(visibleRoutes($keeper))->toContain('/stock');
 });
 
-it('0307 AC-015: Dotazioni sits in the Prodotti group, alone for a keeper without catalogue rights', function () {
+// REQUIREMENT CHANGED (spec 0318): the Prodotti group became the "Magazzino e Dotazioni" section (`warehouse`).
+it('0307 AC-015: Dotazioni sits in the Magazzino e Dotazioni section, alone for a keeper without catalogue rights', function () {
     $this->seed(QualificaRoleSeeder::class);
 
     $keeper = User::factory()->create();
     $keeper->assignRole(StockKeeperRoleCatalogue::ROLE);
 
-    $productsGroup = collect(app(NavigationService::class)->for($keeper))->firstWhere('key', 'products-group');
+    $warehouse = collect(app(NavigationService::class)->for($keeper))->firstWhere('key', 'warehouse');
 
-    expect($productsGroup)->not->toBeNull()
-        ->and(collect($productsGroup['children'])->pluck('key')->all())->toBe(['stock']);
+    expect($warehouse)->not->toBeNull()
+        ->and(collect($warehouse['children'])->pluck('key')->all())->toBe(['stock']);
 });

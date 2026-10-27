@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The module is under **Purchasing › RDA**. Each **RDA** (purchase request) has a header, one or more **lines** to buy, a footer with notes and conditions and some **documents**. The assigned **Function manager** approves or rejects the single lines; whoever has the fulfilment permission moves them to **Ordered**, **Received** or **On hold**.',
+          text: 'The module is under **Warehouse & Equipment › Purchasing › RDA**. Each **RDA** (purchase request) has a header, one or more **lines** to buy, a footer with notes and conditions and some **documents**. The assigned **Function manager** approves or rejects the single lines; whoever has the fulfilment permission moves them to **Ordered**, **Received** or **On hold**.',
         },
         {
           type: 'paragraph',
@@ -19,7 +19,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'The names, colors and icons of the line statuses (To approve, Approved, Ordered, Received, Rejected, On hold) are the defaults and can be customized in **Purchasing › RDA line statuses**: tabs, badges and the change status dialog follow the configuration. What the statuses mean and the allowed transitions do not change.',
+          text: 'The names, colors and icons of the line statuses (To approve, Approved, Ordered, Received, Rejected, On hold) are the defaults and can be customized in **Configuration › Purchasing › RDA line statuses**: tabs, badges and the change status dialog follow the configuration. What the statuses mean and the allowed transitions do not change.',
         },
       ],
     },

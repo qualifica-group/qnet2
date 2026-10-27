@@ -5,6 +5,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
+// REQUIREMENT CHANGED (spec 0318): the opportunities-group became the top-level "Commerciale"
+// section (key `commercial`); the items checked here are its direct children as before.
+
 uses(RefreshDatabase::class);
 
 // ---------------------------------------------------------------------------
@@ -21,7 +24,7 @@ uses(RefreshDatabase::class);
 function navigationChangeRequestsItem(): ?array
 {
     $groups = collect(test()->getJson('/api/navigation')->assertOk()->json('data'));
-    $group = $groups->firstWhere('key', 'opportunities-group');
+    $group = $groups->firstWhere('key', 'commercial');
 
     if ($group === null) {
         return null;
@@ -61,7 +64,7 @@ it('nests the field-change-requests item under request-management, never as its 
         ->and($item['label'])->toBe('navigation.fieldChangeRequests');
 
     $group = collect($this->getJson('/api/navigation')->json('data'))
-        ->firstWhere('key', 'opportunities-group');
+        ->firstWhere('key', 'commercial');
 
     expect(collect($group['children'])->firstWhere('key', 'field-change-requests'))->toBeNull();
 });

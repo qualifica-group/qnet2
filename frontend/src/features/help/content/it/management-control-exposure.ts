@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La pagina **Scadenzario ed esposizione** risponde alle domande “quanto devo ancora incassare e pagare?” e “quanto sono esposto?”. La trovi in **Controllo di gestione › Scadenzario ed esposizione**. È **solo di consultazione** e mostra importi **sul totale del documento** (IVA compresa), in forma aggregata: non c’è l’elenco dei singoli documenti, che restano nelle pagine **Scadenze** e **Partitario**.',
+          text: 'La pagina **Scadenzario ed esposizione** risponde alle domande “quanto devo ancora incassare e pagare?” e “quanto sono esposto?”. La trovi in **Contabilità › Controllo di gestione › Scadenzario ed esposizione**. È **solo di consultazione** e mostra importi **sul totale del documento** (IVA compresa), in forma aggregata: non c’è l’elenco dei singoli documenti, che restano nelle pagine **Scadenze** e **Partitario**.',
         },
         {
           type: 'paragraph',

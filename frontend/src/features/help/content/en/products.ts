@@ -26,7 +26,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Open Products › Products.',
+            'Open Warehouse & Equipment › Products.',
             'Type in the Search… field at the top of the table.',
             'Narrow the list with the column filters: Category, Typology, Business function or Offer usage.',
             'From the row Actions menu choose View to open the card: its data is edited right there, one field at a time.',
@@ -105,7 +105,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Open Products › Products and, if needed, filter by Category or Offer usage.',
+            'Open Warehouse & Equipment › Products and, if needed, filter by Category or Offer usage.',
             'Select the rows with the checkboxes on the left.',
             'From the selection actions menu choose **Set cost type** (it only appears if you can edit products).',
             'In the dialog pick the cost type, or **None** to remove it, and confirm: it applies to all the selected products or to none.',

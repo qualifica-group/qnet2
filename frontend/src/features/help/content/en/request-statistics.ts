@@ -25,7 +25,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'You need the **Request Management Statistics › View** permission, assigned in **Administration › Roles**: without it the menu entry does not appear and the page shows an access denied message.',
+            'You need the **Request Management Statistics › View** permission, assigned in **Configuration › System › Roles**: without it the menu entry does not appear and the page shows an access denied message.',
             'Everyone sees only the requests they already see in the list: with **View all**, all of them; otherwise the ones where they are GA2, plus the ones of their own sites with **View by site**.',
             'The filters can only narrow this visibility, never widen it.',
           ],
@@ -38,7 +38,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Open **Opportunities and Work Orders › Request Management Statistics**: the page shows the statistics right away, nothing to open.',
+          text: 'Open **Sales › Request Management Statistics**: the page shows the statistics right away, nothing to open.',
         },
         {
           type: 'note',
@@ -157,7 +157,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Which categories appear is decided in **Products › Product Categories**: **Visible in reports** puts the category in the report (subcategories inherit it and can force it to no, excluding their own too); **Report columns** picks the calculated columns. An excluded category is not counted even in the totals of the parent category.',
+          text: 'Which categories appear is decided in **Configuration › Products › Product Categories**: **Visible in reports** puts the category in the report (subcategories inherit it and can force it to no, excluding their own too); **Report columns** picks the calculated columns. An excluded category is not counted even in the totals of the parent category.',
         },
         {
           type: 'paragraph',

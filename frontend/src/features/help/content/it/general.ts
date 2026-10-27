@@ -29,7 +29,7 @@ const guide: HelpGuide = {
       title: 'Com’è fatta l’interfaccia',
       blocks: [
         { type: 'paragraph', text: 'La schermata ha tre zone: il menu laterale a sinistra, l’intestazione in alto e l’area di lavoro al centro.' },
-        { type: 'paragraph', text: 'Il **menu laterale** contiene la **Dashboard** e le aree di lavoro: **Marketing e Lead**, **Opportunità e Commesse**, **Task**, **Segnatempo**, **Assenze**, **Anagrafiche**, **Prodotti**, **Premi e Incentivi**, **Configurazione** e **Amministrazione**. Clicca il nome di un gruppo per aprirlo o chiuderlo; un gruppo con una sola voce (capita dentro un’app) non si apre e chiude, ma compare come intestazione di sezione con la voce sotto. Dentro un’app, in cima al menu trovi il nome dell’app nel suo colore e la sua icona sul logo. In fondo trovi **Impostazioni**. Alcune voci, come **Dotazioni** nel gruppo **Prodotti** (beni fisici a uso interno), compaiono solo se hai il permesso.' },
+        { type: 'paragraph', text: 'Il **menu laterale** contiene in alto la **Dashboard**, **Task**, **Segnatempo** e **Assenze**, poi le aree di lavoro: **Commerciale**, **Lavorazioni**, **Anagrafiche**, **Magazzino e Dotazioni**, **Contabilità**, **Personale**, **Configurazione** e **Develop**. Clicca il nome di un gruppo per aprirlo o chiuderlo; un gruppo con una sola voce (capita dentro un’app) non si apre e chiude, ma compare come intestazione di sezione con la voce sotto. Dentro un’app, in cima al menu trovi il nome dell’app nel suo colore e la sua icona sul logo. In fondo trovi **Impostazioni**. Alcune voci, come **Dotazioni** nel gruppo **Magazzino e Dotazioni** (beni fisici a uso interno), compaiono solo se hai il permesso.' },
         { type: 'list', items: ['Premi il pulsante rotondo con la freccia sul bordo del menu (**Apri/chiudi sidebar**).', 'Oppure usa **Ctrl+B** (su Mac **Cmd+B**).'] },
         { type: 'paragraph', text: 'A menu chiuso restano solo le icone; passandoci sopra col mouse compare il nome. Trascina il bordo del menu per allargarlo; un doppio clic lo riporta alla larghezza iniziale.' },
         {
@@ -192,7 +192,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Domanda', 'Risposta'],
           rows: [
-            ['Non vedo una voce di menu o un pulsante descritto nel manuale.', 'Il menu e le azioni dipendono dai permessi del tuo ruolo. Chiedi all’amministratore di verificare il ruolo in **Amministrazione › Ruoli**.'],
+            ['Non vedo una voce di menu o un pulsante descritto nel manuale.', 'Il menu e le azioni dipendono dai permessi del tuo ruolo. Chiedi all’amministratore di verificare il ruolo in **Configurazione › Sistema › Ruoli**.'],
             ['Aprendo un record vedo **Record non trovato** o **Accesso negato**.', 'Il record non esiste più (è stato eliminato o il collegamento è sbagliato) oppure il tuo ruolo non ti consente di vederlo. Non serve riprovare: verifica il collegamento o chiedi l’accesso all’amministratore o ai responsabili del record.'],
             ['Non riesco a modificare un campo.', 'Il tuo ruolo può averlo in sola lettura, oppure il campo è ereditato (per esempio da un progetto o da un lead) o protetto: nel caso della **Fonte** proponi una modifica dalla guida **Richieste di modifica**.'],
             ['Non riesco a eliminare un valore di configurazione.', 'È già usato da qualche record. Disattivalo con **Attivo**: sparisce dai menu a tendina senza toccare i dati esistenti.'],
@@ -200,7 +200,7 @@ const guide: HelpGuide = {
             ['Ho chiuso positivamente un’offerta ma non vedo il contratto.', 'La categoria prodotto può avere **Prevede un contratto** spento. Verificalo in **Categorie Prodotto**.'],
             ['Un operatore non riceve assegnazioni.', 'Nella sua scheda utente mancano l’ambito di assegnazione sulla categoria o la sede: in alto il modulo lo segnala con **Non assegnabile**.'],
             ['Non posso convertire un lead.', 'Il lead ha già un’opportunità, la campagna non ha funzione aziendale o categoria, oppure l’anagrafica ha già un’opportunità aperta.'],
-            ['Il preventivo PDF dà errore.', 'Serve almeno un layout attivo per i Preventivi: controlla **Configurazione › Layout** e il layout **Predefinito**.'],
+            ['Il preventivo PDF dà errore.', 'Serve almeno un layout attivo per i Preventivi: controlla **Configurazione › Documenti › Layout** e il layout **Predefinito**.'],
             ['Non ricevo la mail di reset password.', 'Controlla la cartella spam; se il link è scaduto, richiedine uno nuovo.'],
           ],
         },

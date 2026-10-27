@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "They are configured in **Configuration › Task Categories** and appear in the task's **Category** field.",
+          text: "They are configured in **Configuration › Tasks › Task Categories** and appear in the task's **Category** field.",
         },
         {
           type: 'table',

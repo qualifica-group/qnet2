@@ -1,31 +1,13 @@
 <?php
 
-// "Prodotti" domain: the product catalogue plus its own lookup tables
-// (categories, attributes, VAT rates) under one collapsible parent
-// (user decision 2026-07-17). Same collapsible-group shape as above.
+// Spec 0318 (menu on the legacy QNet macro-areas). Configurazione > products: the pick-lists of that area (D-2).
 return [
-    'key' => 'products-group',
+    'key' => 'config-products',
     'label' => 'navigation.products',
     'icon' => 'package',
     'route' => null,
     'permission' => null,
     'children' => [
-        [
-            'key' => 'products',
-            'label' => 'navigation.products',
-            'icon' => 'package',
-            'route' => '/products',
-            'permission' => 'products.view',
-        ],
-        // Dotazioni (spec 0307, user decision 2026-10-23): stock of the
-        // physical goods for internal use, under the catalogue they come from.
-        [
-            'key' => 'stock',
-            'label' => 'navigation.stock',
-            'icon' => 'boxes',
-            'route' => '/stock',
-            'permission' => 'stock.viewAny',
-        ],
         [
             'key' => 'product-categories',
             'label' => 'navigation.productCategories',

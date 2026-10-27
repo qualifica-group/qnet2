@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La pagina **Conti** risponde alla domanda “su quali conti sono entrati e usciti i soldi nel periodo?”. La trovi in **Controllo di gestione › Conti**. È **solo di consultazione** e mostra importi aggregati, senza elenchi per documento.',
+          text: 'La pagina **Conti** risponde alla domanda “su quali conti sono entrati e usciti i soldi nel periodo?”. La trovi in **Contabilità › Controllo di gestione › Conti**. È **solo di consultazione** e mostra importi aggregati, senza elenchi per documento.',
         },
         {
           type: 'paragraph',

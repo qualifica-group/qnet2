@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si configura in **Acquisti › Stati righe RDA**. Gli stati sono sei e sono predefiniti: **Da approvare**, **Approvato**, **Ordinato**, **Ricevuto**, **Rifiutato** e **Stand by**. Nome, colore e icona che scegli compaiono nelle schede di stato, nei badge delle griglie RDA e Righe RDA, nella finestra **Cambia stato** e nello storico stati.',
+          text: 'Si configura in **Configurazione › Acquisti › Stati righe RDA**. Gli stati sono sei e sono predefiniti: **Da approvare**, **Approvato**, **Ordinato**, **Ricevuto**, **Rifiutato** e **Stand by**. Nome, colore e icona che scegli compaiono nelle schede di stato, nei badge delle griglie RDA e Righe RDA, nella finestra **Cambia stato** e nello storico stati.',
         },
         {
           type: 'table',

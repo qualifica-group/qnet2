@@ -47,7 +47,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Open Products › Product Categories. Categories appear in a table, not a tree: the Parent column says where each one sits.',
+          text: 'Open Configuration › Products › Product Categories. Categories appear in a table, not a tree: the Parent column says where each one sits.',
         },
         {
           type: 'table',

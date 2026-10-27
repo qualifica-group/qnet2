@@ -119,7 +119,9 @@ it('navigation: the units-of-measure node only shows with units-of-measure.view'
 // AC-030 — permission-catalogue: the module appears under Prodotti
 // ---------------------------------------------------------------------------
 
-it('permission-catalogue: units-of-measure appears under the products area with its 8 permissions and 4 fields (AC-030)', function () {
+// REQUIREMENT CHANGED (spec 0318 D-2, D-5): the pick-lists moved to the "Configurazione" section, which is the
+// area units of measure now belong to in the Role form.
+it('permission-catalogue: units-of-measure appears under the configuration area with its 8 permissions and 4 fields (AC-030)', function () {
     $this->artisan('permissions:sync');
     Permission::findOrCreate('roles.viewAny');
     $actor = User::factory()->create();
@@ -128,10 +130,10 @@ it('permission-catalogue: units-of-measure appears under the products area with 
 
     $response = $this->getJson('/api/authorization/permission-catalogue')->assertOk();
 
-    $productsArea = collect($response->json('data.areas'))->firstWhere('key', 'products-group');
-    expect($productsArea)->not->toBeNull();
+    $configurationArea = collect($response->json('data.areas'))->firstWhere('key', 'configuration');
+    expect($configurationArea)->not->toBeNull();
 
-    $module = collect($productsArea['resources'])->firstWhere('resource', 'units-of-measure');
+    $module = collect($configurationArea['resources'])->firstWhere('resource', 'units-of-measure');
     expect($module)->not->toBeNull()
         ->and($module['permissions'])->toHaveCount(8)
         ->and(collect($module['fields'])->pluck('key')->all())->toBe(['code', 'name', 'symbol', 'description']);

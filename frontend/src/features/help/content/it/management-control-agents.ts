@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La pagina **Agenti** risponde alla domanda “quanto abbiamo maturato con ciascun agente, quanto resta da liquidare e quanto abbiamo già pagato?”. La trovi in **Controllo di gestione › Agenti**. È **solo di consultazione** e mostra importi aggregati; per il dettaglio dei singoli movimenti usa **Provvigioni agenti › Maturato** ed **Estratti**.',
+          text: 'La pagina **Agenti** risponde alla domanda “quanto abbiamo maturato con ciascun agente, quanto resta da liquidare e quanto abbiamo già pagato?”. La trovi in **Contabilità › Controllo di gestione › Agenti**. È **solo di consultazione** e mostra importi aggregati; per il dettaglio dei singoli movimenti usa **Provvigioni agenti › Maturato** ed **Estratti**.',
         },
         {
           type: 'paragraph',

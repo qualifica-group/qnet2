@@ -16,7 +16,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Apri **Opportunità e Commesse › Opportunità**.',
+            'Apri **Commerciale › Opportunità**.',
             'Clicca **Nuova opportunità**.',
             'Compila le sezioni (vedi tabella): il modulo ha lo stesso aspetto del dettaglio, con le righe **chiuse**. Apri una riga con la matita, compila il campo e premi **Fatto** per tenerlo (o **Ripristina** per riportarlo com\'era).',
             'Clicca **Salva** (in alto o in fondo): controlla tutti i campi e crea l\'opportunità; gli errori compaiono sotto le righe da correggere. Uscendo senza salvare ti viene chiesta conferma.',

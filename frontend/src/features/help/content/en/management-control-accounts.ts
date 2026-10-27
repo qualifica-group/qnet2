@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **Accounts** page answers “on which accounts did the money come in and go out in the period?”. You find it under **Management control › Accounts**. It is **read-only** and shows aggregate amounts, with no lists per document.',
+          text: 'The **Accounts** page answers “on which accounts did the money come in and go out in the period?”. You find it under **Accounting › Management control › Accounts**. It is **read-only** and shows aggregate amounts, with no lists per document.',
         },
         {
           type: 'paragraph',

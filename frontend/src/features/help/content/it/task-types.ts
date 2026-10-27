@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si configurano in **Configurazione › Tipologie Task** e compaiono nel campo **Tipologia** del task.',
+          text: 'Si configurano in **Configurazione › Task › Tipologie Task** e compaiono nel campo **Tipologia** del task.',
         },
         {
           type: 'table',

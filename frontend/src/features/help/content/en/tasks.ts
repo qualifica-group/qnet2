@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'They live in **Task › Tasks**. Which tasks you see depends on your role permissions:',
+          text: 'They live under the **Tasks** menu entry. Which tasks you see depends on your role permissions:',
         },
         {
           type: 'table',
@@ -282,7 +282,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "The time entry is mandatory on completion unless the task's **Type** makes it optional (the **Time entry required on completion** field turned off in Configuration › Task Types): in that case the Complete window shows the **Track time** switch (on by default) — turn it off to close the task without logging a time entry. A task with no type always requires it.",
+          text: "The time entry is mandatory on completion unless the task's **Type** makes it optional (the **Time entry required on completion** field turned off in Configuration › Tasks › Task Types): in that case the Complete window shows the **Track time** switch (on by default) — turn it off to close the task without logging a time entry. A task with no type always requires it.",
         },
         {
           type: 'note',
@@ -337,7 +337,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Picking a **Task Template** when creating a Commessa (the **Schedule** action on the contract) creates the template's tasks and assigns them to the owners: you find them in the Commessa's Task section. Templates are configured in **Task › Task Templates**.",
+          text: "Picking a **Task Template** when creating a Commessa (the **Schedule** action on the contract) creates the template's tasks and assigns them to the owners: you find them in the Commessa's Task section. Templates are configured in **Configuration › Tasks › Task Templates**.",
         },
       ],
     },

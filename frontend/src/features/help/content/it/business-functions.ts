@@ -9,7 +9,7 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'Panoramica',
       blocks: [
-        { type: 'paragraph', text: 'Il modulo si trova in **Configurazione › Funzioni aziendali**. È uno dei dati di riferimento da preparare presto: la scheda utente propone le funzioni aziendali negli elenchi a scelta, e le Categorie Prodotto le usano per assegnare l’ambito.' },
+        { type: 'paragraph', text: 'Il modulo si trova in **Configurazione › Personale › Funzioni aziendali**. È uno dei dati di riferimento da preparare presto: la scheda utente propone le funzioni aziendali negli elenchi a scelta, e le Categorie Prodotto le usano per assegnare l’ambito.' },
         { type: 'tip', text: 'Nell’ordine consigliato di configurazione, le Funzioni aziendali vengono prima di tutto: servono alle Categorie Prodotto e ai criteri dei workflow.' },
       ],
     },

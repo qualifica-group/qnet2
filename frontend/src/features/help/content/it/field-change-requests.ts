@@ -51,7 +51,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Le proposte si trovano in **Gestione Richieste › Richieste di modifica**, con valore attuale, valore richiesto, motivazione e richiedente.',
+          text: 'Le proposte si trovano in **Commerciale › Gestione Richieste › Richieste di modifica**, con valore attuale, valore richiesto, motivazione e richiedente.',
         },
         {
           type: 'steps',

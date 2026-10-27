@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si configura in **Acquisti › Stati ODA** e decide come gli stati dell’ODA compaiono nelle **schede per stato** della griglia ODA, nei badge, nel filtro per stato e nella finestra **Cambia stato**. Gli stati sono sette e fissi: **Bozza**, **In validazione**, **Approvato**, **Inviato al fornitore**, **Parzialmente evaso**, **Evaso**, **Annullato**.',
+          text: 'Si configura in **Configurazione › Acquisti › Stati ODA** e decide come gli stati dell’ODA compaiono nelle **schede per stato** della griglia ODA, nei badge, nel filtro per stato e nella finestra **Cambia stato**. Gli stati sono sette e fissi: **Bozza**, **In validazione**, **Approvato**, **Inviato al fornitore**, **Parzialmente evaso**, **Evaso**, **Annullato**.',
         },
         {
           type: 'table',

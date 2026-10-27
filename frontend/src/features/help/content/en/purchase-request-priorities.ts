@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'It is configured in **Purchasing › RDA priorities** and appears in the RDA **Priority** field, as a colored badge in the RDA and RDA lines grids. The five initial entries (Low, Medium, High, Urgent, Critical) can be renamed, recolored, reordered or deactivated, and more can be added.',
+          text: 'It is configured in **Configuration › Purchasing › RDA priorities** and appears in the RDA **Priority** field, as a colored badge in the RDA and RDA lines grids. The five initial entries (Low, Medium, High, Urgent, Critical) can be renamed, recolored, reordered or deactivated, and more can be added.',
         },
         {
           type: 'table',

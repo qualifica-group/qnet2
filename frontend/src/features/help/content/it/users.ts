@@ -9,14 +9,14 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'Panoramica',
       blocks: [
-        { type: 'paragraph', text: 'Ogni utente ha una scheda con dati anagrafici, dati di accesso, ruoli e rapporto di lavoro. Il modulo si trova in **Amministrazione › Utenti** e compare solo a chi ha il permesso di vederlo.' },
+        { type: 'paragraph', text: 'Ogni utente ha una scheda con dati anagrafici, dati di accesso, ruoli e rapporto di lavoro. Il modulo si trova in **Personale › Utenti** e compare solo a chi ha il permesso di vederlo.' },
       ],
     },
     {
       id: 'create-user',
       title: 'Creare un utente',
       blocks: [
-        { type: 'steps', items: ['Apri **Amministrazione › Utenti** e fai clic su **Nuovo utente**: il modulo ha lo stesso aspetto della scheda, con le stesse sezioni e **righe chiuse**.', 'Fai clic su una riga (o sulla matita) per aprirla, compila e premi **Fatto** per tenere il valore o **Ripristina** per riportarlo com’era (vedi le tabelle qui sotto). I **Dati anagrafici** sono obbligatori.', '**Contatti** e **Indirizzi** si compilano nella colonna laterale e vengono salvati insieme all’utente.', 'Fai clic su **Salva**. Compare il messaggio "Utente creato con successo." Se esci senza salvare ti viene chiesta conferma.'] },
+        { type: 'steps', items: ['Apri **Personale › Utenti** e fai clic su **Nuovo utente**: il modulo ha lo stesso aspetto della scheda, con le stesse sezioni e **righe chiuse**.', 'Fai clic su una riga (o sulla matita) per aprirla, compila e premi **Fatto** per tenere il valore o **Ripristina** per riportarlo com’era (vedi le tabelle qui sotto). I **Dati anagrafici** sono obbligatori.', '**Contatti** e **Indirizzi** si compilano nella colonna laterale e vengono salvati insieme all’utente.', 'Fai clic su **Salva**. Compare il messaggio "Utente creato con successo." Se esci senza salvare ti viene chiesta conferma.'] },
         { type: 'paragraph', text: 'Il pulsante **Salva** si trova sia in alto sia in fondo al modulo. La fascia dei numeri in alto (ambiti di assegnazione, sedi, ruoli, abbinamento) si aggiorna mentre compili.' },
         {
           type: 'table',

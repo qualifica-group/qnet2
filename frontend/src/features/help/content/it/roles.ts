@@ -9,14 +9,14 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'Panoramica',
       blocks: [
-        { type: 'paragraph', text: 'Il modulo si trova in **Amministrazione › Ruoli**. L’elenco dei ruoli mostra per ognuno il numero di **Permessi** e di **Utenti**.' },
+        { type: 'paragraph', text: 'Il modulo si trova in **Configurazione › Sistema › Ruoli**. L’elenco dei ruoli mostra per ognuno il numero di **Permessi** e di **Utenti**.' },
       ],
     },
     {
       id: 'create-role',
       title: 'Creare un ruolo',
       blocks: [
-        { type: 'steps', items: ['Apri **Amministrazione › Ruoli**.', 'Fai clic su **Nuovo ruolo**: si apre la scheda del nuovo ruolo, con le stesse sezioni di un ruolo già salvato.', 'In **Dettagli ruolo** le righe **Nome** e **Membri** sono chiuse: premi la matita (o il valore), compila e premi **Fatto**; **Ripristina** riporta la riga com\'era.', 'La sezione **Permessi** è già aperta: scegli cosa può fare il ruolo. Se il modulo ha campi personalizzati, compaiono in una sezione a parte (**Altri campi**).', 'Fai clic su **Salva**. Se esci prima, QNet chiede di confermare: il ruolo non è ancora stato creato.'] },
+        { type: 'steps', items: ['Apri **Configurazione › Sistema › Ruoli**.', 'Fai clic su **Nuovo ruolo**: si apre la scheda del nuovo ruolo, con le stesse sezioni di un ruolo già salvato.', 'In **Dettagli ruolo** le righe **Nome** e **Membri** sono chiuse: premi la matita (o il valore), compila e premi **Fatto**; **Ripristina** riporta la riga com\'era.', 'La sezione **Permessi** è già aperta: scegli cosa può fare il ruolo. Se il modulo ha campi personalizzati, compaiono in una sezione a parte (**Altri campi**).', 'Fai clic su **Salva**. Se esci prima, QNet chiede di confermare: il ruolo non è ancora stato creato.'] },
         {
           type: 'table',
           headers: ['Campo', 'Cosa indicare'],

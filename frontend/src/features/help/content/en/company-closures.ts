@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'It lives under **Configuration**. A closure can count as a holiday or generate everyone’s leave in one go.',
+          text: 'It lives under **Configuration › Personnel**. A closure can count as a holiday or generate everyone’s leave in one go.',
         },
       ],
     },

@@ -9,7 +9,7 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'Overview',
       blocks: [
-        { type: 'paragraph', text: 'The module is found in **Configuration › Payment Methods**.' },
+        { type: 'paragraph', text: 'The module is found in **Configuration › Accounting › Payment Methods**.' },
       ],
     },
     {
@@ -46,7 +46,7 @@ const guide: HelpGuide = {
       id: 'manage',
       title: 'Creating, editing, reordering and deleting',
       blocks: [
-        { type: 'steps', items: ['Open **Configuration › Payment Methods** and press **New payment method**.', 'The record opens with its rows closed: on each row press the pencil (or the value), fill it in (see the table above) and press **Done**; **Revert** puts the row back as it was. Then press **Save**.', 'The **Code** is entered only at creation.'] },
+        { type: 'steps', items: ['Open **Configuration › Accounting › Payment Methods** and press **New payment method**.', 'The record opens with its rows closed: on each row press the pencil (or the value), fill it in (see the table above) and press **Done**; **Revert** puts the row back as it was. Then press **Save**.', 'The **Code** is entered only at creation.'] },
         { type: 'paragraph', text: 'On the list rows you find **View** and **Delete**, if your role allows it. There is no separate edit form: open the record with **View**, press the pencil on the row, change the value and press **Save** (only that row is saved); **Cancel** or Esc leave the row as it was. **Number of installments** and **Days between installments** are a single row, and so are **End of month** and its extra days: they open, save and cancel together. **Reorder** changes the order in which the methods appear in drop-downs.' },
         { type: 'warning', text: 'You cannot delete a payment method that is already in use: deactivate it instead.' },
       ],

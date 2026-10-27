@@ -116,7 +116,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Le scadenze sono generate dalla **modalità di pagamento** e, in modifica di un proforma senza pagamenti, vengono **ricalcolate**. Le scadenze sommano al **Netto da pagare**, non al totale del documento. Se esistono già pagamenti, data, modalità, fornitore, **Ritenuta d’acconto** ed **ENASARCO a carico** sono congelati e le scadenze si **ribilanciano** lasciando intatte le rate pagate. I pagamenti si registrano da **Contabilità › Passiva › Scadenze**, dove l’azione **Apri documento** porta alla scheda del documento.',
+          text: 'Le scadenze sono generate dalla **modalità di pagamento** e, in modifica di un proforma senza pagamenti, vengono **ricalcolate**. Le scadenze sommano al **Netto da pagare**, non al totale del documento. Se esistono già pagamenti, data, modalità, fornitore, **Ritenuta d’acconto** ed **ENASARCO a carico** sono congelati e le scadenze si **ribilanciano** lasciando intatte le rate pagate. I pagamenti si registrano da **Contabilità › Passiva › Scadenze passive**, dove l’azione **Apri documento** porta alla scheda del documento.',
         },
         {
           type: 'note',

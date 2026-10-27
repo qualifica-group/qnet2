@@ -12,7 +12,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'It lives in **Opportunities and Work Orders › Request Management**. Each row of the list corresponds to a Quote linked to an Opportunity.',
+          text: 'It lives in **Sales › Request Management**. Each row of the list corresponds to a Quote linked to an Opportunity.',
         },
         {
           type: 'paragraph',
@@ -220,7 +220,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Statistics are no longer in the Request Management or Enrollee Management tables: they have their own page, **Opportunities and Work Orders › Request Management Statistics** (see its guide). Enrollee Management no longer has statistics.',
+          text: 'Statistics are no longer in the Request Management or Enrollee Management tables: they have their own page, **Sales › Request Management Statistics** (see its guide). Enrollee Management no longer has statistics.',
         },
       ],
     },

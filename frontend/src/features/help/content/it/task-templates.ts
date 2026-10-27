@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si configurano in **Task › Modelli di Task**. Scegliendo un modello alla creazione di una Commessa, QNet crea i task del modello e li assegna ai responsabili.',
+          text: 'Si configurano in **Configurazione › Task › Modelli di Task**. Scegliendo un modello alla creazione di una Commessa, QNet crea i task del modello e li assegna ai responsabili.',
         },
         {
           type: 'note',
@@ -26,7 +26,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Apri **Task › Modelli di Task** e premi **Nuovo modello di task**.',
+            'Apri **Configurazione › Task › Modelli di Task** e premi **Nuovo modello di task**.',
             'Si apre la scheda del nuovo modello con le righe **Nome**, **Descrizione** e **Attivo** chiuse: premi la matita (o il valore), compila e premi **Fatto**; **Ripristina** riporta la riga com\'era.',
             'In **Fasi** premi **Aggiungi fase** per ogni fase del lavoro (facoltativo) e dai un nome a ciascuna.',
             'Premi **Aggiungi riga** per ogni task del modello.',

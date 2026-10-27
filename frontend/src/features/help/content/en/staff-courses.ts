@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'It is under **Configuration**. The catalogue lists the internal training courses for staff; the trainings done by people are recorded on the **Training** page. It has nothing to do with the courses sold to customers.',
+          text: 'It is under **Configuration › Personnel**. The catalogue lists the internal training courses for staff; the trainings done by people are recorded on the **Training** page. It has nothing to do with the courses sold to customers.',
         },
       ],
     },

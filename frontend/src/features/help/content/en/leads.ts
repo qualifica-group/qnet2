@@ -12,7 +12,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Open **Marketing & Leads › Leads** and click **New lead**: the form looks like the lead card, with the same sections and **closed rows**.',
+            'Open **Sales › Marketing & Leads › Leads** and click **New lead**: the form looks like the lead card, with the same sections and **closed rows**.',
             'Click a row (or its pencil) to open it, pick the value and press **Done** to keep it or **Revert** to put it back (see table).',
             'Click **Save**: QNet checks everything and creates the lead. Leaving without saving asks for confirmation.',
           ],

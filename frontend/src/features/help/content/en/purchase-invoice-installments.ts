@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The module is under **Accounting › Payable › Installments**. It lists **the installments of all passive invoices and proformas** in a single table, with supplier, linked purchase orders, work order, company, sites, amount, paid and residual.',
+          text: 'The module is under **Accounting › Payable › Payable installments**. It lists **the installments of all passive invoices and proformas** in a single table, with supplier, linked purchase orders, work order, company, sites, amount, paid and residual.',
         },
         {
           type: 'paragraph',

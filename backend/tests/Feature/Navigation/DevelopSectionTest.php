@@ -48,7 +48,9 @@ it('hides the develop section from a user without permissions', function () {
     expect(navSection('develop'))->toBeNull();
 });
 
-it('no longer lists the developer items under administration', function () {
+// REQUIREMENT CHANGED (spec 0318): the "Amministrazione" section is gone; the developer items
+// must still live under Develop only, and Develop stays the last section.
+it('lists the developer items under develop only', function () {
     Role::query()->firstOrCreate(['name' => 'super-admin']);
     Permission::query()->firstOrCreate(['name' => 'api-clients.view', 'guard_name' => 'web']);
     $user = User::factory()->create();
@@ -56,12 +58,16 @@ it('no longer lists the developer items under administration', function () {
     $user->givePermissionTo('api-clients.view');
     Sanctum::actingAs($user);
 
-    expect(navChildKeys(navSection('administration')))
-        ->not->toContain('migrations', 'system-health', 'api-integrations');
+    $outsideDevelop = collect(test()->getJson('/api/navigation')->json('data'))
+        ->reject(fn (array $item): bool => $item['key'] === 'develop')
+        ->all();
+
+    expect(array_values(array_intersect(navigationNodeKeys($outsideDevelop)->all(), ['migrations', 'system-health', 'api-integrations', 'api-docs', 'workspaces'])))
+        ->toBe([]);
 });
 
-it('places develop after administration', function () {
+it('places develop last', function () {
     $order = array_column(config('navigation.items'), 'key');
 
-    expect(array_search('develop', $order, true))->toBe(array_search('administration', $order, true) + 1);
+    expect(array_search('develop', $order, true))->toBe(count($order) - 1);
 });

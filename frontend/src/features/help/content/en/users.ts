@@ -9,14 +9,14 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'Overview',
       blocks: [
-        { type: 'paragraph', text: 'Every user has a record with personal details, sign-in data, roles and employment relationship. The module is found in **Administration › Users** and only appears to those who have permission to view it.' },
+        { type: 'paragraph', text: 'Every user has a record with personal details, sign-in data, roles and employment relationship. The module is found in **Personnel › Users** and only appears to those who have permission to view it.' },
       ],
     },
     {
       id: 'create-user',
       title: 'Creating a user',
       blocks: [
-        { type: 'steps', items: ['Open **Administration › Users** and click **New user**: the form looks like the record, with the same sections and **closed rows**.', 'Click a row (or its pencil) to open it, fill it in and press **Done** to keep the value or **Revert** to put it back (see the tables below). The **Personal details** are required.', '**Contacts** and **Addresses** are filled in the side column and saved together with the user.', 'Click **Save**. The message "User created successfully." appears. If you leave without saving, you are asked to confirm.'] },
+        { type: 'steps', items: ['Open **Personnel › Users** and click **New user**: the form looks like the record, with the same sections and **closed rows**.', 'Click a row (or its pencil) to open it, fill it in and press **Done** to keep the value or **Revert** to put it back (see the tables below). The **Personal details** are required.', '**Contacts** and **Addresses** are filled in the side column and saved together with the user.', 'Click **Save**. The message "User created successfully." appears. If you leave without saving, you are asked to confirm.'] },
         { type: 'paragraph', text: 'The **Save** button sits both at the top and at the bottom of the form. The figures strip at the top (assignment scopes, sites, roles, matching) updates as you fill it in.' },
         {
           type: 'table',

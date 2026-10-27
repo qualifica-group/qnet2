@@ -13,7 +13,7 @@ export const HELP_NAV_FIXTURE: NavigationItem[] = [
   item({ key: 'dashboard', label: 'navigation.dashboard', route: '/dashboard', icon: 'layout-dashboard' }),
   item({
     key: 'administration',
-    label: 'navigation.administration',
+    label: 'navigation.personnel',
     type: 'section',
     // Real config: a `type: 'section'` node always has `icon: null` (AC-014).
     children: [
@@ -23,7 +23,7 @@ export const HELP_NAV_FIXTURE: NavigationItem[] = [
   }),
   item({
     key: 'opportunities-group',
-    label: 'navigation.opportunitiesAndCommesse',
+    label: 'navigation.commercial',
     icon: 'briefcase',
     children: [
       item({

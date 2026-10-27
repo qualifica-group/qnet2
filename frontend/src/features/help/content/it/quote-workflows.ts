@@ -12,7 +12,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si trova nel menu **Opportunità e Commesse** (pagina **Configuratore Stati Offerta**) e definisce gli stati di lavorazione delle offerte. Ogni workflow ha un nome, dei criteri che decidono a quali offerte si applica e un proprio elenco di stati.',
+          text: 'Si trova nel menu **Configurazione › Commerciale** (pagina **Configuratore Stati Offerta**) e definisce gli stati di lavorazione delle offerte. Ogni workflow ha un nome, dei criteri che decidono a quali offerte si applica e un proprio elenco di stati.',
         },
       ],
     },

@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **Ledger** shows, for a registry, its documents in date order with **Debit**, **Credit**, **running balance** and **status**. You find it in **Accounting › Ledger** (pick the registry from the list) and in each registry’s record, in the **Ledger** tab.',
+          text: 'The **Ledger** shows, for a registry, its documents in date order with **Debit**, **Credit**, **running balance** and **status**. You find it in **Accounting › Finance › Ledger** (pick the registry from the list) and in each registry’s record, in the **Ledger** tab.',
         },
         {
           type: 'paragraph',

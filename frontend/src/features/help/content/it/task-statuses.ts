@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Si configurano in **Configurazione › Stati Task**. Per ogni stato indichi Nome, Descrizione, Colore, Icona e la **Fase** a cui appartiene: Aperto, In attesa, Da validare, Chiuso con esito positivo o Chiuso con esito negativo.",
+          text: "Si configurano in **Configurazione › Task › Stati Task**. Per ogni stato indichi Nome, Descrizione, Colore, Icona e la **Fase** a cui appartiene: Aperto, In attesa, Da validare, Chiuso con esito positivo o Chiuso con esito negativo.",
         },
         {
           type: 'paragraph',

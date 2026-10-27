@@ -1,9 +1,7 @@
 <?php
 
-// "Configurazione": cross-cutting lookup tables not tied to a single
-// domain. Product/registry pick-lists moved into their domain groups
-// above; custom fields moved to Amministrazione (user decision
-// 2026-07-17). What remains are the taxonomies shared across modules.
+// Spec 0318 (menu on the legacy QNet macro-areas). "Configurazione": every pick-list and setting, one
+// group per area, as in the legacy "Impostazioni" (D-2).
 return [
     'key' => 'configuration',
     'label' => 'navigation.configuration',
@@ -12,139 +10,13 @@ return [
     'permission' => null,
     'type' => 'section',
     'children' => [
-        [
-            'key' => 'business-functions',
-            'label' => 'navigation.businessFunctions',
-            'icon' => 'briefcase',
-            'route' => '/business-functions',
-            'permission' => 'business-functions.view',
-        ],
-        [
-            'key' => 'job-roles',
-            'label' => 'navigation.jobRoles',
-            'icon' => 'id-card',
-            'route' => '/job-roles',
-            'permission' => 'job-roles.view',
-        ],
-        [
-            'key' => 'job-activities',
-            'label' => 'navigation.jobActivities',
-            'icon' => 'list-checks',
-            'route' => '/job-activities',
-            'permission' => 'job-activities.view',
-        ],
-        [
-            'key' => 'contract-types',
-            'label' => 'navigation.contractTypes',
-            'icon' => 'clipboard-list',
-            'route' => '/contract-types',
-            'permission' => 'contract-types.view',
-        ],
-        [
-            'key' => 'absence-types',
-            'label' => 'navigation.absenceTypes',
-            'icon' => 'calendar-cog',
-            'route' => '/absence-types',
-            'permission' => 'absence-types.view',
-        ],
-        [
-            'key' => 'company-closures',
-            'label' => 'navigation.companyClosures',
-            'icon' => 'calendar-x',
-            'route' => '/company-closures',
-            'permission' => 'company-closures.view',
-        ],
-        [
-            'key' => 'staff-courses',
-            'label' => 'navigation.staffCourses',
-            'icon' => 'library',
-            'route' => '/staff-courses',
-            'permission' => 'staff-courses.viewAny',
-        ],
-        [
-            'key' => 'skills',
-            'label' => 'navigation.skills',
-            'icon' => 'list-checks',
-            'route' => '/skills',
-            'permission' => 'skills.viewAny',
-        ],
-        [
-            'key' => 'sectors',
-            'label' => 'navigation.sectors',
-            'icon' => 'list-tree',
-            'route' => '/sectors',
-            'permission' => 'sectors.view',
-        ],
-        [
-            'key' => 'tags',
-            'label' => 'navigation.tags',
-            'icon' => 'tag',
-            'route' => '/tags',
-            'permission' => 'tags.view',
-        ],
-        [
-            'key' => 'sources',
-            'label' => 'navigation.sources',
-            'icon' => 'waypoints',
-            'route' => '/sources',
-            'permission' => 'sources.view',
-        ],
-        [
-            'key' => 'commission-configurations',
-            'label' => 'navigation.commissionConfigurations',
-            'icon' => 'percent',
-            'route' => '/commission-configurations',
-            'permission' => 'commission-configurations.view',
-        ],
-        [
-            // Payment methods (spec 0068): a standalone,
-            // consumer-agnostic lookup describing the payment
-            // modalities selectable across the CRM — no single
-            // consuming module yet, so it belongs among the
-            // cross-cutting taxonomies rather than a domain group.
-            'key' => 'payment-methods',
-            'label' => 'navigation.paymentMethods',
-            'icon' => 'credit-card',
-            'route' => '/payment-methods',
-            'permission' => 'payment-methods.view',
-        ],
-        [
-            // Work order payment statuses (spec 0201): the configurable
-            // payment status of a commessa line.
-            'key' => 'work-order-payment-statuses',
-            'label' => 'navigation.workOrderPaymentStatuses',
-            'icon' => 'credit-card',
-            'route' => '/work-order-payment-statuses',
-            'permission' => 'work-order-payment-statuses.view',
-        ],
-        [
-            // Document layouts (spec 0069): reusable, block-based
-            // document layout catalogue (first consumer: quotes,
-            // module-agnostic by design) — a cross-cutting
-            // configuration tool, not tied to a single domain group.
-            'key' => 'document-layouts',
-            'label' => 'navigation.documentLayouts',
-            'icon' => 'files',
-            'route' => '/document-layouts',
-            'permission' => 'document-layouts.view',
-        ],
-        [
-            // Email templates (spec 0175, D-14): the "Modello email"
-            // subject/body pairs the Commessa email composer resolves.
-            'key' => 'email-templates',
-            'label' => 'navigation.emailTemplates',
-            'icon' => 'mail',
-            'route' => '/email-templates',
-            'permission' => 'email-templates.view',
-        ],
-        [
-            // Document bundles (spec 0175, D-14): the "Modello documenti"
-            // file sets the composer can attach in bulk (D-7c).
-            'key' => 'document-bundles',
-            'label' => 'navigation.documentBundles',
-            'icon' => 'folder-archive',
-            'route' => '/document-bundles',
-            'permission' => 'document-bundles.view',
-        ],
+        require __DIR__.'/configuration/commercial.php',
+        require __DIR__.'/configuration/tasks.php',
+        require __DIR__.'/configuration/products.php',
+        require __DIR__.'/configuration/purchasing.php',
+        require __DIR__.'/configuration/accounting.php',
+        require __DIR__.'/configuration/personnel.php',
+        require __DIR__.'/configuration/documents.php',
+        require __DIR__.'/configuration/system.php',
     ],
 ];

@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **Monthly trend** page answers “how are revenue, costs and margin moving, and in which function?”. You find it under **Management control › Monthly trend**. It is **read-only** and shows amounts **net of VAT**, in aggregate form, by the month of the **document date**.',
+          text: 'The **Monthly trend** page answers “how are revenue, costs and margin moving, and in which function?”. You find it under **Accounting › Management control › Monthly trend**. It is **read-only** and shows amounts **net of VAT**, in aggregate form, by the month of the **document date**.',
         },
         {
           type: 'paragraph',

@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **Agents** page answers “how much have we accrued with each agent, how much is left to settle and how much have we already paid?”. You find it under **Management control › Agents**. It is **read-only** and shows aggregate amounts; for the single movements use **Agent commissions › Accruals** and **Statements**.',
+          text: 'The **Agents** page answers “how much have we accrued with each agent, how much is left to settle and how much have we already paid?”. You find it under **Accounting › Management control › Agents**. It is **read-only** and shows aggregate amounts; for the single movements use **Agent commissions › Accruals** and **Statements**.',
         },
         {
           type: 'paragraph',

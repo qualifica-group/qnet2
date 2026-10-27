@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "It is configured in **Configuration › Task Priorities** and appears in the task's **Priority** field.",
+          text: "It is configured in **Configuration › Tasks › Task Priorities** and appears in the task's **Priority** field.",
         },
         {
           type: 'table',

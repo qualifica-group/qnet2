@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La pagina **Andamento mensile** risponde alle domande “come si muovono fatturato, costi e margine, e in quale funzione?”. La trovi in **Controllo di gestione › Andamento mensile**. È **solo di consultazione** e mostra importi **al netto dell’IVA**, in forma aggregata, per mese della **data del documento**.',
+          text: 'La pagina **Andamento mensile** risponde alle domande “come si muovono fatturato, costi e margine, e in quale funzione?”. La trovi in **Contabilità › Controllo di gestione › Andamento mensile**. È **solo di consultazione** e mostra importi **al netto dell’IVA**, in forma aggregata, per mese della **data del documento**.',
         },
         {
           type: 'paragraph',

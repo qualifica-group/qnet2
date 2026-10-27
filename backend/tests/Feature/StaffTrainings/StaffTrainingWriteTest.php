@@ -124,7 +124,8 @@ it('0284 AC-006: trainings are in the activity log', function () {
     expect($training->activities()->count())->toBe(2);
 });
 
-it('0284 BE-1: the menu shows Formazione after Assenze and the courses in Configurazione', function () {
+// REQUIREMENT CHANGED (spec 0318): Formazione moved into the "Personale" section, after Utenti and Organigramma.
+it('0284 BE-1: the menu shows Formazione in Personale and the courses in Configurazione', function () {
     $this->artisan('permissions:sync')->assertSuccessful();
     $this->artisan('roles:create-super-admin')->assertSuccessful();
     $admin = User::factory()->create();
@@ -133,5 +134,5 @@ it('0284 BE-1: the menu shows Formazione after Assenze and the courses in Config
     $routes = visibleRoutes($admin);
 
     expect($routes)->toContain('/staff-trainings', '/staff-courses')
-        ->and(array_search('/staff-trainings', $routes, true))->toBe(array_search('/absences', $routes, true) + 1);
+        ->and(array_search('/staff-trainings', $routes, true))->toBe(array_search('/org-chart', $routes, true) + 1);
 });

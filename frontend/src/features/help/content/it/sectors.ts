@@ -9,7 +9,7 @@ const guide: HelpGuide = {
       id: 'overview',
       title: 'Panoramica',
       blocks: [
-        { type: 'paragraph', text: 'Il modulo si trova in **Configurazione › Settori** e si usa nelle **Anagrafiche**, per classificarle in base all’attività svolta.' },
+        { type: 'paragraph', text: 'Il modulo si trova in **Configurazione › Commerciale › Settori** e si usa nelle **Anagrafiche**, per classificarle in base all’attività svolta.' },
       ],
     },
     {
@@ -34,7 +34,7 @@ const guide: HelpGuide = {
       id: 'manage',
       title: 'Creare, modificare ed eliminare',
       blocks: [
-        { type: 'steps', items: ['Apri **Configurazione › Settori** e premi **Nuovo settore**.', 'Si apre la scheda con le righe chiuse: per ogni riga premi la matita (o il valore), compila **Nome** e, se serve, **Settore padre** e premi **Fatto** (**Ripristina** riporta la riga com’era).', 'Premi **Salva**.'] },
+        { type: 'steps', items: ['Apri **Configurazione › Commerciale › Settori** e premi **Nuovo settore**.', 'Si apre la scheda con le righe chiuse: per ogni riga premi la matita (o il valore), compila **Nome** e, se serve, **Settore padre** e premi **Fatto** (**Ripristina** riporta la riga com’era).', 'Premi **Salva**.'] },
         { type: 'paragraph', text: 'Sulle righe dell’elenco trovi **Visualizza** ed **Elimina**, se il tuo ruolo lo consente. Per modificare non c’è un modulo a parte: apri la scheda con **Visualizza**, premi la matita sulla riga, cambia il valore e premi **Salva** (si salva solo quella riga); **Annulla** o Esc lasciano la riga com’era.' },
         { type: 'warning', text: 'Un settore con sotto-settori non si può eliminare.' },
       ],

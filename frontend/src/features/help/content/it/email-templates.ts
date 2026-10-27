@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Il modulo si trova in **Configurazione › Modelli email**. Un modello è la coppia **Oggetto**/**Corpo** che il composer email di una commessa propone quando scegli **Modello email**: i **Moduli** disponibili sono **Commesse** e **Fatture**.",
+          text: "Il modulo si trova in **Configurazione › Documenti › Modelli email**. Un modello è la coppia **Oggetto**/**Corpo** che il composer email di una commessa propone quando scegli **Modello email**: i **Moduli** disponibili sono **Commesse** e **Fatture**.",
         },
         {
           type: 'note',
@@ -26,7 +26,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Apri **Configurazione › Modelli email** e premi **Nuovo modello email**.',
+            'Apri **Configurazione › Documenti › Modelli email** e premi **Nuovo modello email**.',
             "Si apre la scheda con le righe chiuse: per **Nome**, **Modulo**, **Oggetto**, **Descrizione** e **Attivo** premi la matita (o il valore), compila e premi **Fatto**; **Ripristina** riporta la riga com'era.",
             "Il **Corpo** è già aperto: scrivilo con l'editor di testo (niente immagini, non sono ammesse nel corpo delle email).",
             'Premi **Salva**: il modello viene creato con tutto insieme.',

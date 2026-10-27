@@ -67,9 +67,9 @@ it('AC-016: the Configuration menu lists each catalogue only to who holds its .v
 
     $keysFor = function (User $user): array {
         Sanctum::actingAs($user);
-        $items = collect($this->getJson('/api/navigation')->assertOk()->json('data'));
 
-        return $items->flatMap(fn (array $item): array => $item['children'] ?? [])->pluck('key')->all();
+        // REQUIREMENT CHANGED (spec 0318): the catalogues sit one level deeper, in Configurazione > Personale.
+        return navigationNodeKeys($this->getJson('/api/navigation')->assertOk()->json('data'))->all();
     };
 
     expect($keysFor(User::factory()->create()))

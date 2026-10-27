@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The page is under **Accounting › Agent commissions › ENASARCO parameters**. It holds **one row per year**: a statement uses the parameters of the year of the period **end date**. You enter the values yourself: the system contains no preset ones.',
+          text: 'The page is under **Configuration › Accounting › ENASARCO parameters**. It holds **one row per year**: a statement uses the parameters of the year of the period **end date**. You enter the values yourself: the system contains no preset ones.',
         },
       ],
     },

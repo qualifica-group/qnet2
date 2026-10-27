@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'It is under **Configuration**. The catalogue lists the skills; people’s levels are recorded on the **Skills** page. It has nothing to do with the **Assignment scopes** of the user record.',
+          text: 'It is under **Configuration › Personnel**. The catalogue lists the skills; people’s levels are recorded on the **Skills** page. It has nothing to do with the **Assignment scopes** of the user record.',
         },
       ],
     },

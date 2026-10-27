@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The **Schedule and exposure** page answers “how much do I still have to collect and pay?” and “how exposed am I?”. You find it under **Management control › Schedule and exposure**. It is **read-only** and shows amounts on the **document total** (VAT included), in aggregate form: there is no list of single documents, which stay in the **Installments** and **Ledger** pages.',
+          text: 'The **Schedule and exposure** page answers “how much do I still have to collect and pay?” and “how exposed am I?”. You find it under **Accounting › Management control › Schedule and exposure**. It is **read-only** and shows amounts on the **document total** (VAT included), in aggregate form: there is no list of single documents, which stay in the **Installments** and **Ledger** pages.',
         },
         {
           type: 'paragraph',

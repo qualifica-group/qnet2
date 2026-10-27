@@ -23,7 +23,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Open **Marketing & Leads › Projects** and click **New project**: the form looks like the record, with the same sections and **closed rows** (the Code is already suggested).',
+            'Open **Sales › Marketing & Leads › Projects** and click **New project**: the form looks like the record, with the same sections and **closed rows** (the Code is already suggested).',
             'Click a row (or its pencil) to open it, fill it in and press **Done** to keep the value or **Revert** to put it back (see table).',
             'Click **Save**: QNet checks everything and creates the project. If you leave without saving, you are asked to confirm.',
           ],

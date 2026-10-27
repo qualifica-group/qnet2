@@ -12,7 +12,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'La pagina si trova in **Amministrazione › API e integrazioni**. Un **client API** rappresenta un sistema esterno (ad esempio un gestionale o un sito) che usa le **stesse API di QNet** con una **chiave** propria. Con la sola chiave il sistema agisce come l\'**utente tecnico** del client, con permessi da super-admin; con la chiave può anche far accedere un utente QNet e agire con i permessi di quell\'utente. Tutte le API sono elencate nella pagina **Documentazione API** della sezione **Develop** (link in alto a destra).',
+          text: 'La pagina si trova in **Develop › API e integrazioni**. Un **client API** rappresenta un sistema esterno (ad esempio un gestionale o un sito) che usa le **stesse API di QNet** con una **chiave** propria. Con la sola chiave il sistema agisce come l\'**utente tecnico** del client, con permessi da super-admin; con la chiave può anche far accedere un utente QNet e agire con i permessi di quell\'utente. Tutte le API sono elencate nella pagina **Documentazione API** della sezione **Develop** (link in alto a destra).',
         },
         {
           type: 'note',
