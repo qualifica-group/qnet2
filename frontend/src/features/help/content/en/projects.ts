@@ -32,7 +32,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Section', 'Fields', 'Notes'],
           rows: [
-            ['Identity', '**Code**, **Name**, **Description**', 'The code is auto-suggested, but editable.'],
+            ['Identity', '**Code**, **Name**, **Description**', 'The code is auto-suggested, but editable. The suggested code is provisional: if you keep it and another user takes it in the meantime, saving assigns the next free code.'],
             [
               'Classification',
               '**Status**, **Product lines**, **Partner**, **Site**',

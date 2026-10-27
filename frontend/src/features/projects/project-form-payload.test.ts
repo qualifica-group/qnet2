@@ -93,6 +93,11 @@ describe('buildCreatePayload', () => {
     expect(payload.code).toBe('ACME-2026')
   })
 
+  it('omits the code still equal to the next-code suggestion, so a concurrent create cannot make it collide', () => {
+    const payload = buildCreatePayload(values({ code: 'PRJ-0007' }), 'PRJ-0007')
+    expect(payload).not.toHaveProperty('code')
+  })
+
   it('omits code when it is blank after trimming (empty equals absent, AC-003)', () => {
     const payload = buildCreatePayload(values({ code: '   ' }))
     expect(payload).not.toHaveProperty('code')

@@ -40,7 +40,13 @@ export function CampaignFormBody({ source, onSuccess, onCancel, initialCode }: C
     [source],
   )
   const { form, customFieldErrorPaths } = useCampaignForm({ mode, initialCode })
-  const { serverError, onSubmit } = useCampaignFormSubmit({ form, mode, customFieldErrorPaths, onSuccess })
+  const { serverError, onSubmit } = useCampaignFormSubmit({
+    form,
+    mode,
+    customFieldErrorPaths,
+    suggestedCode: initialCode,
+    onSuccess,
+  })
   const draft = useDraftInlineEdit(form)
   const values = useCampaignDraftValues(form.control)
   const { isSubmitting } = form.formState

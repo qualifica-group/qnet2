@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The create form looks like the quote detail: the same sections and rows, **closed**. Open a row with its pencil, fill in the field and press **Done** to keep it (or **Revert** to put it back as it was). The **Code** is already suggested.',
+          text: 'The create form looks like the quote detail: the same sections and rows, **closed**. Open a row with its pencil, fill in the field and press **Done** to keep it (or **Revert** to put it back as it was). The **Code** is already suggested. The suggested code is provisional: if you keep it and another user takes it in the meantime, saving assigns the next free code.',
         },
         {
           type: 'steps',

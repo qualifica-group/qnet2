@@ -7,18 +7,18 @@ import type {
   WorkOrderDetail,
 } from '@/features/work-orders/types'
 import type { WorkOrderFormValues } from '@/features/work-orders/use-work-order-form'
+import { submittedCode } from '@/lib/sequential-code'
 
 /**
- * Builds the create payload. `code` is included only when set (trimmed,
- * non-empty) — an empty value falls back to server-side sequential
- * generation (D-1, mirrors `quotes`' `buildCreatePayload`). The forced
+ * Builds the create payload. `code` is included only when typed by the user
+ * (`submittedCode`): blank or still the `next-code` suggestion, it is omitted
+ * and the server assigns the next free sequential code at save time (D-1). The forced
  * closure is never part of the form: it is the detail's action
  * (`useWorkOrderClosure`, user directive 2026-10-06).
  */
-export function buildCreatePayload(values: WorkOrderFormValues): CreateWorkOrderPayload {
-  const code = values.code.trim()
+export function buildCreatePayload(values: WorkOrderFormValues, suggestedCode?: string): CreateWorkOrderPayload {
   return {
-    ...(code ? { code } : {}),
+    ...submittedCode(values.code, suggestedCode),
     quote_id: values.quote_id as number,
     // Spec 0215 D-2: a blank title travels as `null` (the server derives it).
     title: blankToNull(values.title),

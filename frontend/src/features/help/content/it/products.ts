@@ -64,7 +64,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: 'Se non hai un codice tuo, lascia quello proposto: la numerazione resta ordinata.',
+          text: 'Se non hai un codice tuo, lascia quello proposto: la numerazione resta ordinata. Il codice proposto è indicativo: se lo lasci così e intanto un altro utente lo usa, al salvataggio ricevi il primo codice libero.',
         },
       ],
     },

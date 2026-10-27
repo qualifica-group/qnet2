@@ -37,7 +37,12 @@ export function ProductFormBody({ onSuccess, onCancel, initialCode }: ProductFor
   const { t } = useTranslation()
   const state = useProductForm({ mode: CREATE_MODE, initialCode })
   const { form } = state
-  const { serverError, onSubmit } = useProductFormSubmit({ state, mode: CREATE_MODE, onSuccess })
+  const { serverError, onSubmit } = useProductFormSubmit({
+    state,
+    mode: CREATE_MODE,
+    suggestedCode: initialCode,
+    onSuccess,
+  })
   const categories = useProductCategoryPicker(null)
   const values = useProductDraftValues(form.control, categories)
   const draftRows = useDraftInlineEdit(form)

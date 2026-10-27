@@ -9,22 +9,22 @@ import {
 import { blankToNull, managerSlotsFromRefs, sameIdSet, sameManagerSlots } from '@/lib/utils'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
 import type { CreateQuotePayload, QuoteDetail, UpdateQuotePayload } from '@/features/quotes/types'
+import { submittedCode } from '@/lib/sequential-code'
 
 /**
- * Builds the create payload. `code` is included only when set (trimmed,
- * non-empty) — an empty/absent value falls back to server-side sequential
- * generation (D-13/AC-066, mirrors `projects`' `buildCreatePayload`).
+ * Builds the create payload. `code` is included only when typed by the user
+ * (`submittedCode`): blank or still the `next-code` suggestion, it is omitted
+ * and the server assigns the next free sequential code at save time (D-13/AC-066).
  * `offer_lines`/`cost_lines` are ALWAYS sent in full (even empty): the create
  * request has no "original" set to diff against. AC-076: only the contract's
  * own `QuoteLineInput` fields are emitted — `net_amount`/`vat_amount`/
  * `total_amount` never travel, by construction of `toLineInputs`.
  */
-export function buildCreatePayload(values: QuoteFormValues): CreateQuotePayload {
-  const code = values.code.trim()
+export function buildCreatePayload(values: QuoteFormValues, suggestedCode?: string): CreateQuotePayload {
   // Spec 0171 rev.2: a blank title is omitted, the server derives it.
   const title = blankToNull(values.title)
   return {
-    ...(code ? { code } : {}),
+    ...submittedCode(values.code, suggestedCode),
     ...(title ? { title } : {}),
     quote_date: values.quote_date,
     opportunity_id: values.opportunity_id as number,

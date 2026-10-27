@@ -59,6 +59,8 @@ interface UseProjectFormSubmitArgs {
   mode: ProjectFormMode
   /** The custom fields' 422 paths (spec 0021), from `useProjectForm`. */
   customFieldErrorPaths: string[]
+  /** Create/duplicate: the `next-code` suggestion prefilled into `code`, omitted on submit when untouched. */
+  suggestedCode?: string
   onSuccess: (project: ProjectDetail) => void
 }
 
@@ -69,7 +71,13 @@ interface UseProjectFormSubmitArgs {
  * having no slot of its own. On the in-place detail (spec 0220) the form is
  * reset on the saved record.
  */
-export function useProjectFormSubmit({ form, mode, customFieldErrorPaths, onSuccess }: UseProjectFormSubmitArgs) {
+export function useProjectFormSubmit({
+  form,
+  mode,
+  customFieldErrorPaths,
+  suggestedCode,
+  onSuccess,
+}: UseProjectFormSubmitArgs) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const invalidateStats = useInvalidateModuleStats(PROJECTS_DOMAIN)
@@ -91,7 +99,7 @@ export function useProjectFormSubmit({ form, mode, customFieldErrorPaths, onSucc
         return
       }
 
-      const created = await createProject(buildCreatePayload(values))
+      const created = await createProject(buildCreatePayload(values, suggestedCode))
       toast.success(t('projects.form.created'))
       invalidateStats()
       onSuccess(created)

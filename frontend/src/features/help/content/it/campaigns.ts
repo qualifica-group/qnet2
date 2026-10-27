@@ -22,7 +22,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Apri **Commerciale › Marketing e Lead › Campagne** e clicca **Nuova campagna**: il modulo ha lo stesso aspetto della scheda, con le stesse sezioni e **righe chiuse** (il Codice è già proposto, lo stato **Nuovo** e il paese predefinito sono già impostati).',
+            'Apri **Commerciale › Marketing e Lead › Campagne** e clicca **Nuova campagna**: il modulo ha lo stesso aspetto della scheda, con le stesse sezioni e **righe chiuse** (il Codice è già proposto, lo stato **Nuovo** e il paese predefinito sono già impostati). Il codice proposto è indicativo: se lo lasci così e intanto un altro utente lo usa, al salvataggio ricevi il primo codice libero.',
             "Fai clic su una riga (o sulla matita) per aprirla, compila e premi **Fatto** per tenere il valore o **Ripristina** per riportarlo com'era.",
             'Compila **Denominazione**, le **Righe prodotto** e la **Data inizio**; in **Collegamento al progetto** scegli un **Progetto**, se serve.',
             'Indica una **Fonte**, se serve (facoltativa): i lead generati da questa campagna la ereditano, precompilata e modificabile.',

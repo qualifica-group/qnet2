@@ -40,7 +40,13 @@ export function ProjectFormBody({ source, onSuccess, onCancel, initialCode }: Pr
     [source],
   )
   const { form, customFieldErrorPaths } = useProjectForm({ mode, initialCode })
-  const { serverError, onSubmit } = useProjectFormSubmit({ form, mode, customFieldErrorPaths, onSuccess })
+  const { serverError, onSubmit } = useProjectFormSubmit({
+    form,
+    mode,
+    customFieldErrorPaths,
+    suggestedCode: initialCode,
+    onSuccess,
+  })
   const draft = useDraftInlineEdit(form)
   const values = useProjectDraftValues(form.control)
   const { isSubmitting } = form.formState

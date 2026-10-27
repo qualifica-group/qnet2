@@ -213,11 +213,11 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
         onSuccess(saved)
         return
       }
-      const created = await createQuote({ ...buildCreatePayload(values), ...promotion })
+      const created = await createQuote({ ...buildCreatePayload(values, initialCode), ...promotion })
       toast.success(t('quotes.form.created'))
       onSuccess(created)
     },
-    [mode, queryClient, form, t, onSuccess],
+    [mode, queryClient, form, t, onSuccess, initialCode],
   )
 
   const reportFailure = (error: unknown) => {

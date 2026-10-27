@@ -61,6 +61,8 @@ interface UseCampaignFormSubmitArgs {
   mode: CampaignFormMode
   /** The custom fields' 422 paths (spec 0021), from `useCampaignForm`. */
   customFieldErrorPaths: string[]
+  /** Create/duplicate: the `next-code` suggestion prefilled into `code`, omitted on submit when untouched. */
+  suggestedCode?: string
   onSuccess: (campaign: CampaignDetail) => void
 }
 
@@ -71,7 +73,13 @@ interface UseCampaignFormSubmitArgs {
  * `product_lines` 422 surfaces as `serverError` (spec 0221 D-7). On the
  * in-place detail the form is reset on the saved record.
  */
-export function useCampaignFormSubmit({ form, mode, customFieldErrorPaths, onSuccess }: UseCampaignFormSubmitArgs) {
+export function useCampaignFormSubmit({
+  form,
+  mode,
+  customFieldErrorPaths,
+  suggestedCode,
+  onSuccess,
+}: UseCampaignFormSubmitArgs) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
@@ -91,7 +99,7 @@ export function useCampaignFormSubmit({ form, mode, customFieldErrorPaths, onSuc
         return
       }
 
-      const created = await createCampaign(buildCreatePayload(values))
+      const created = await createCampaign(buildCreatePayload(values, suggestedCode))
       toast.success(t('campaigns.form.created'))
       onSuccess(created)
     } catch (error) {

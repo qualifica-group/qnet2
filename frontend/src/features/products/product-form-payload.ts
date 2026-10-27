@@ -8,6 +8,7 @@ import type {
 } from '@/features/products/types'
 import type { ProductFormValues } from '@/features/products/use-product-form'
 import { buildCustomFieldsCreate, buildCustomFieldsUpdate } from '@/features/custom-fields/custom-fields-payload'
+import { submittedCode } from '@/lib/sequential-code'
 
 type AttributeValues = Record<string, CustomFieldValue>
 
@@ -43,19 +44,19 @@ function buildAttributeValuesUpdate(values: AttributeValues, original: Attribute
  * attribute values. `productAttributeCodes` is the selected category's
  * CURRENT PRODUCT-context attribute set — the only codes ever sent, so a
  * stale code left over from a since-abandoned category never reaches the
- * server. `code` is included only when set (trimmed, non-empty) — an
- * empty/absent value falls back to server-side sequential generation (spec
- * 0065, mirrors the project's `code`).
+ * server. `code` is included only when typed by the user (`submittedCode`):
+ * blank or still the `next-code` suggestion, it is omitted and the server
+ * assigns the next free sequential code at save time (spec 0065).
  */
 export function buildCreatePayload(
   values: ProductFormValues,
   productAttributeCodes: string[],
+  suggestedCode?: string,
 ): CreateProductPayload {
   const customFields = buildCustomFieldsCreate(values.custom_fields)
   const attributeValues = buildAttributeValuesCreate(values.attribute_values, productAttributeCodes)
-  const code = values.code.trim()
   return {
-    ...(code ? { code } : {}),
+    ...submittedCode(values.code, suggestedCode),
     name: values.name,
     description: values.description,
     // Sent as typed, null included: the schema requires a value only for an

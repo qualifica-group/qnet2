@@ -203,7 +203,7 @@ export function useWorkOrderForm({ mode, onSuccess, initialCode }: UseWorkOrderF
         return
       }
 
-      const created = await createWorkOrder(buildCreatePayload(values))
+      const created = await createWorkOrder(buildCreatePayload(values, initialCode))
       toast.success(t('workOrders.form.created'))
       onSuccess(created)
     } catch (error) {

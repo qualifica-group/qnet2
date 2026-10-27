@@ -7,6 +7,7 @@ import type {
 import type { CampaignFormValues } from '@/features/campaigns/use-campaign-form'
 import { buildCustomFieldsCreate, buildCustomFieldsUpdate } from '@/features/custom-fields/custom-fields-payload'
 import { GEO_LEVEL_FIELDS, GEO_LEVELS, type GeoFieldName } from '@/features/campaigns/campaign-geo'
+import { submittedCode } from '@/lib/sequential-code'
 
 /** The scalar BR-2 classification field, never sent when the campaign is linked to a project. `product_lines` (spec 0094) follows its own collection-shaped gating below. */
 const DERIVED_FIELDS = ['pipeline_status_id'] as const
@@ -66,21 +67,21 @@ function sameProductLines(a: CampaignProductLineInput[], b: CampaignProductLineI
 
 /**
  * Builds the create payload: generic fields + valued custom fields. `code` is
- * included only when set (trimmed, non-empty) — an empty/absent value falls
- * back to server-side sequential generation (spec 0025 AC-010). BR-2: when
+ * included only when typed by the user (`submittedCode`): blank or still the
+ * `next-code` suggestion, it is omitted and the server assigns the next free
+ * sequential code at save time (spec 0025 AC-010). BR-2: when
  * `project_id` is set, `pipeline_status_id` and `product_lines` are omitted
  * entirely — the backend derives/forces them from the project and rejects an
  * explicit value (AC-022, `prohibited`) — regardless of what the (disabled,
  * read-only) form controls currently hold. BR-5 (spec 0027): the geo fields
  * follow their own, per-level lock instead (`geoCreateFields`).
  */
-export function buildCreatePayload(values: CampaignFormValues): CreateCampaignPayload {
+export function buildCreatePayload(values: CampaignFormValues, suggestedCode?: string): CreateCampaignPayload {
   const customFields = buildCustomFieldsCreate(values.custom_fields)
   const linked = values.project_id !== null
-  const code = values.code.trim()
 
   return {
-    ...(code ? { code } : {}),
+    ...submittedCode(values.code, suggestedCode),
     name: values.name,
     project_id: values.project_id,
     description: values.description,

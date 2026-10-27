@@ -133,6 +133,10 @@ describe('buildCreatePayload', () => {
     expect(buildCreatePayload(values(), [])).not.toHaveProperty('cost_type_id')
   })
 
+  it('omits the code still equal to the next-code suggestion, so a concurrent create cannot make it collide', () => {
+    expect(buildCreatePayload(values({ code: 'PRD-0005' }), [], 'PRD-0005')).not.toHaveProperty('code')
+  })
+
   it('AC-079: omits code when left empty, so the server generates the sequential one', () => {
     expect(buildCreatePayload(values({ code: '' }), [])).not.toHaveProperty('code')
   })

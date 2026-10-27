@@ -82,6 +82,11 @@ describe('buildCreatePayload (spec 0093, D-1)', () => {
     expect(buildCreatePayload({ ...formValues, task_template_id: 3 }).task_template_id).toBe(3)
   })
 
+  it('omits the code still equal to the next-code suggestion, so a concurrent create cannot make it collide', () => {
+    const payload = buildCreatePayload({ ...formValues, code: 'COM-0001' }, 'COM-0001')
+    expect(payload).not.toHaveProperty('code')
+  })
+
   it('omits an empty code so the server generates the sequential one', () => {
     const payload = buildCreatePayload({ ...formValues, code: '  ' })
     expect(payload).not.toHaveProperty('code')

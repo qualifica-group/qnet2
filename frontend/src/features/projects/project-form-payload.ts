@@ -6,17 +6,18 @@ import type {
 } from '@/features/projects/types'
 import type { ProjectFormValues } from '@/features/projects/use-project-form'
 import { buildCustomFieldsCreate, buildCustomFieldsUpdate } from '@/features/custom-fields/custom-fields-payload'
+import { submittedCode } from '@/lib/sequential-code'
 
 /**
  * Builds the create payload: generic fields + valued custom fields. `code` is
- * included only when set (trimmed, non-empty) — an empty/absent value falls
- * back to server-side sequential generation (spec 0025 AC-010).
+ * included only when typed by the user (`submittedCode`): blank or still the
+ * `next-code` suggestion, it is omitted and the server assigns the next free
+ * sequential code at save time (spec 0025 AC-010).
  */
-export function buildCreatePayload(values: ProjectFormValues): CreateProjectPayload {
+export function buildCreatePayload(values: ProjectFormValues, suggestedCode?: string): CreateProjectPayload {
   const customFields = buildCustomFieldsCreate(values.custom_fields)
-  const code = values.code.trim()
   return {
-    ...(code ? { code } : {}),
+    ...submittedCode(values.code, suggestedCode),
     name: values.name,
     // Nullable/optional (spec 0039 D-3): the server falls back to the system "Nuovo" status when omitted.
     pipeline_status_id: values.pipeline_status_id,

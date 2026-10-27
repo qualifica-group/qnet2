@@ -33,6 +33,8 @@ const PRODUCTS_DOMAIN = 'products'
 interface UseProductFormSubmitArgs {
   state: ProductFormState
   mode: ProductFormMode
+  /** Create: the `next-code` suggestion prefilled into `code`, omitted on submit when untouched. */
+  suggestedCode?: string
   /** Called after a successful create/update. */
   onSuccess: (product: ProductDetail) => void
 }
@@ -43,7 +45,7 @@ interface UseProductFormSubmitArgs {
  * seed and the server 422 mapping. On the in-place detail (spec 0218) the
  * form is reset on the saved record, so the next row starts clean.
  */
-export function useProductFormSubmit({ state, mode, onSuccess }: UseProductFormSubmitArgs) {
+export function useProductFormSubmit({ state, mode, suggestedCode, onSuccess }: UseProductFormSubmitArgs) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const invalidateStats = useInvalidateModuleStats(PRODUCTS_DOMAIN)
@@ -72,7 +74,7 @@ export function useProductFormSubmit({ state, mode, onSuccess }: UseProductFormS
         return
       }
 
-      const created = await createProduct(buildCreatePayload(values, attributeCodes))
+      const created = await createProduct(buildCreatePayload(values, attributeCodes, suggestedCode))
       toast.success(t('products.form.created'))
       invalidateStats()
       onSuccess(created)

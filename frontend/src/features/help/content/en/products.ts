@@ -64,7 +64,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'tip',
-          text: 'If you do not have your own code, keep the proposed one: the numbering stays orderly.',
+          text: 'If you do not have your own code, keep the proposed one: the numbering stays orderly. The suggested code is provisional: if you keep it and another user takes it in the meantime, saving assigns the next free code.',
         },
       ],
     },

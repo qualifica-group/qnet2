@@ -110,11 +110,13 @@ describe('Project — duplicate (row action "duplicate")', () => {
     expect(updateProjectMock).not.toHaveBeenCalled()
     expect(createProjectMock.mock.calls[0][0]).toMatchObject({
       name: 'Acme rollout (copy)',
-      code: 'PRJ-0200',
       product_lines: [{ product_category_id: 4 }],
       country_id: 1,
       pipeline_status_id: 3,
     })
+    // REQUIREMENT CHANGED (user directive 2026-10-27): the untouched suggestion
+    // is not sent, the server assigns the next free code at save time.
+    expect(createProjectMock.mock.calls[0][0]).not.toHaveProperty('code')
   })
 
   it('does not overwrite the copied pipeline status with the system default', async () => {

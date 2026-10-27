@@ -11,7 +11,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Il modulo di creazione ha lo stesso aspetto del dettaglio dell'offerta: le stesse sezioni e righe, **chiuse**. Apri una riga con la matita, compila il campo e premi **Fatto** per tenerlo (o **Ripristina** per riportarlo com'era). Il **Codice** è già proposto.",
+          text: "Il modulo di creazione ha lo stesso aspetto del dettaglio dell'offerta: le stesse sezioni e righe, **chiuse**. Apri una riga con la matita, compila il campo e premi **Fatto** per tenerlo (o **Ripristina** per riportarlo com'era). Il **Codice** è già proposto. Il codice proposto è indicativo: se lo lasci così e intanto un altro utente lo usa, al salvataggio ricevi il primo codice libero.",
         },
         {
           type: 'steps',

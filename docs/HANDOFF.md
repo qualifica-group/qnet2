@@ -3,6 +3,19 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Codice progressivo suggerito non piu' inviato se intatto (5 form) — VERDE, NON COMMITTATO (2026-10-27)
+
+- Bug utente: creando un'offerta, se un altro utente salvava prima con lo stesso codice suggerito
+  (`GET /quotes/next-code`), il salvataggio falliva con 422 `code` unique. Il form inviava il suggerimento come codice manuale.
+- Fix solo FE: `lib/sequential-code.ts` `submittedCode(code, suggestedCode)` omette `code` se vuoto o uguale al
+  suggerimento -> il server genera sotto lock (`GeneratesSequentialCode::nextSequentialCode`). Un codice digitato resta manuale.
+- Applicato a `buildCreatePayload(values, …, suggestedCode?)` di quotes, work-orders, products, projects, campaigns;
+  il suggerimento arriva da `initialCode` (quote/work-order hook) o dall'arg `suggestedCode` di
+  `use{Product,Project,Campaign}FormSubmit` (passato dai `*-form-body.tsx`, incluso il Duplica). Backend invariato.
+- Test: `sequential-code.test.ts` + 1 test per payload; `project-form-duplicate.test.tsx` ora si aspetta NESSUN `code`
+  (REQUIREMENT CHANGED). Guide in-app IT/EN (quotes, work-orders, products, projects, campaigns) e manuale Claude Docs
+  (rev 465: Offerte, Prodotti, Progetti, Campagne; le Commesse non hanno una sezione di creazione) aggiornati.
+
 ## Segnatempo in tutte e tre le app del seed (WorkspaceCatalogue) — VERDE, NON COMMITTATO (2026-10-27)
 
 - Richiesta utente: nel seed di produzione Segnatempo insieme a Task in ogni app. `WorkspaceCatalogue::SHARED_KEYS` =

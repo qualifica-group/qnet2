@@ -105,6 +105,16 @@ describe('buildCreatePayload', () => {
     expect(payload.code).toBe('QUO-0001')
   })
 
+  it('omits code still equal to the next-code suggestion, so a concurrent create cannot make it collide', () => {
+    const payload = buildCreatePayload(formValues({ code: 'QUO-0012' }), 'QUO-0012')
+    expect(payload).not.toHaveProperty('code')
+  })
+
+  it('includes a code the user changed from the suggestion', () => {
+    const payload = buildCreatePayload(formValues({ code: 'QUO-0100' }), 'QUO-0012')
+    expect(payload.code).toBe('QUO-0100')
+  })
+
   it('omits code when blank (server generates the sequential value)', () => {
     const payload = buildCreatePayload(formValues({ code: '   ' }))
     expect(payload.code).toBeUndefined()
