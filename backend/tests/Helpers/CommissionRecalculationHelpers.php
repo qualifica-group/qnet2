@@ -29,12 +29,13 @@ if (! function_exists('recalcActor')) {
     function recalcActor(array $permissions): User
     {
         // Every permission the endpoints check must exist, or a policy lookup throws.
-        foreach (['quotes.view', 'quotes.update', 'commission-configurations.view', 'commission-configurations.update'] as $permission) {
+        foreach (['quotes.view', 'quotes.update', 'quotes.viewAll', 'commission-configurations.view', 'commission-configurations.update'] as $permission) {
             Permission::findOrCreate($permission);
         }
 
         $user = User::factory()->create();
-        $user->givePermissionTo($permissions);
+        // Spec 0316: these tests are not about record visibility.
+        $user->givePermissionTo([...$permissions, 'quotes.viewAll']);
 
         return $user;
     }

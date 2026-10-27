@@ -1,6 +1,8 @@
 <?php
 
+use App\Models\EmploymentProfile;
 use App\Models\Note;
+use App\Models\OperationalSite;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\WorkOrder;
@@ -30,7 +32,7 @@ if (! function_exists('workOrderNoteActor')) {
      */
     function workOrderNoteActor(array $abilities, bool $canCreateNotes = true): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'viewDocuments'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll', 'viewSite', 'viewDocuments'] as $ability) {
             Permission::findOrCreate("work-orders.{$ability}");
         }
 
@@ -142,11 +144,14 @@ it('AC-004: a member WITHOUT notes.create is 403 and nothing is written', functi
     expect(Note::count())->toBe(0);
 });
 
-it('AC-005: the mentionable set is exactly the members, plus viewAll holders and super-admins', function () {
+it('AC-005: the mentionable set is exactly the members, plus viewAll holders, viewSite holders of the offer site and super-admins', function () {
     $supervisor = workOrderNoteActor(['view']);
     $participant = workOrderNoteActor(['view']);
     $viewAll = workOrderNoteActor(['view', 'viewAll']);
     $stranger = workOrderNoteActor(['view']);
+    $site = OperationalSite::factory()->create();
+    $siteHolder = workOrderNoteActor(['view', 'viewSite']);
+    EmploymentProfile::factory()->physicalSite($site)->create(['user_id' => $siteHolder->id]);
     $inactive = workOrderNoteActor(['view']);
     $inactive->update(['is_active' => false]);
 
@@ -154,6 +159,7 @@ it('AC-005: the mentionable set is exactly the members, plus viewAll holders and
     $superAdmin->assignRole(Role::findOrCreate('super-admin'));
 
     $workOrder = workOrderWithSupervisor($supervisor);
+    $workOrder->quote->update(['operational_site_id' => $site->id]);
     $workOrder->participants()->attach($participant, ['position' => 1]);
     $workOrder->participants()->attach($inactive, ['position' => 2]);
 
@@ -163,7 +169,7 @@ it('AC-005: the mentionable set is exactly the members, plus viewAll holders and
         ->assertOk()->json('items'))->pluck('id')->sort()->values()->all();
 
     expect($ids)->toBe(
-        collect([$supervisor->id, $participant->id, $viewAll->id, $superAdmin->id])->sort()->values()->all()
+        collect([$supervisor->id, $participant->id, $viewAll->id, $siteHolder->id, $superAdmin->id])->sort()->values()->all()
     );
 });
 

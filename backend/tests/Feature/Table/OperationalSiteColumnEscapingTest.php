@@ -45,9 +45,11 @@ if (! function_exists('siteWithLine1')) {
 if (! function_exists('operationalSiteEscapingOpportunityActor')) {
     function operationalSiteEscapingOpportunityActor(): User
     {
-        Permission::findOrCreate('opportunities.viewAny');
+        foreach (['viewAny', 'viewAll'] as $ability) {
+            Permission::findOrCreate("opportunities.{$ability}");
+        }
         $actor = User::factory()->create();
-        $actor->givePermissionTo('opportunities.viewAny');
+        $actor->givePermissionTo(['opportunities.viewAny', 'opportunities.viewAll']);
 
         return $actor;
     }

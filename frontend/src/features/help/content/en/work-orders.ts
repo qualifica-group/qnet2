@@ -275,6 +275,16 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'visibility',
+      title: "Which work orders you see",
+      blocks: [
+        { type: 'paragraph', text: "What you see depends on your role. You always need the **View** permission; the levels are cumulative:" },
+        { type: 'table', headers: ["Permission", "Visible work orders"], rows: [["**View**", "Those where you are a **Supervisor** or a **Participant**."], ["**View by site**", "Your own plus those whose quote belongs to one of your sites. For a work order with several quotes, one is enough."], ["**View all**", "All of them."]] },
+        { type: 'paragraph', text: "The filter applies to the list, the detail, filters, exports, statistics and dashboard, selectors and documents. Opening a link to a work order you cannot see shows an access error. Seeing a work order does not let you edit or delete it: that takes the **Edit** and **Delete** permissions, and you can only edit what you can see." },
+        { type: 'note', text: "If you create a work order without being a Supervisor or a Participant, you will no longer see it unless you have **View all** or **View by site**." },
+      ],
+    },
+    {
       id: 'in-development',
       title: 'Module in development',
       blocks: [

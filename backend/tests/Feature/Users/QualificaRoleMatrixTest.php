@@ -430,10 +430,12 @@ it('lets the supervisor and the commercial role list, upload and remove request 
     Storage::fake('local');
     $this->seed(QualificaOperatorSeeder::class);
 
-    $opportunity = Opportunity::factory()->create();
-
     foreach (['rosa.falzarano@qualificagroup.com', 'marco.baldi@qualificagroup.com'] as $email) {
         $actor = User::query()->where('email', $email)->firstOrFail();
+        // Spec 0316: these roles hold no opportunities.view; they reach the
+        // opportunity's documents by operating one of its offers.
+        $opportunity = Opportunity::factory()->create();
+        Quote::factory()->create(['opportunity_id' => $opportunity->id, 'operator_id' => $actor->id]);
 
         expect($actor->can('request-management.viewDocuments'))->toBeTrue($email);
 

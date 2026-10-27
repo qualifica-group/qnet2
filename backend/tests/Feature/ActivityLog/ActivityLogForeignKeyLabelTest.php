@@ -28,7 +28,7 @@ uses(RefreshDatabase::class);
 if (! function_exists('fkLabelActor')) {
     function fkLabelActor(string $resource, array $abilities): User
     {
-        foreach (['viewAny', 'view', 'viewActivity'] as $ability) {
+        foreach (['viewAny', 'view', 'viewActivity', 'viewAll'] as $ability) {
             Permission::findOrCreate("{$resource}.{$ability}");
         }
 
@@ -157,7 +157,7 @@ it('resolves FK labels with one batched query per related class, never per row/f
 // ---------------------------------------------------------------------------
 
 it('an explicit opportunity entry resolves Quote-level FKs through the configured foreign-key map', function () {
-    $actor = fkLabelActor('opportunities', ['view', 'viewActivity']);
+    $actor = fkLabelActor('opportunities', ['view', 'viewActivity', 'viewAll']);
     $opportunity = Opportunity::factory()->create();
     $statusFrom = QuoteWorkflowStatus::factory()->create(['name' => 'Da contattare']);
     $statusTo = QuoteWorkflowStatus::factory()->create(['name' => 'Contattato']);
@@ -186,7 +186,7 @@ it('an explicit opportunity entry resolves Quote-level FKs through the configure
 });
 
 it('an explicit opportunity entry resolves id-list fields to their joined labels', function () {
-    $actor = fkLabelActor('opportunities', ['view', 'viewActivity']);
+    $actor = fkLabelActor('opportunities', ['view', 'viewActivity', 'viewAll']);
     $opportunity = Opportunity::factory()->create();
     $categoryA = ProductCategory::factory()->create(['name' => 'Corsi']);
     $categoryB = ProductCategory::factory()->create(['name' => 'Master']);

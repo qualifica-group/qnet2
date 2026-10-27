@@ -23,13 +23,13 @@ uses(RefreshDatabase::class);
 if (! function_exists('mandatoryFieldActor')) {
     function mandatoryFieldActor(): User
     {
-        foreach (['viewAny', 'update'] as $ability) {
+        foreach (['viewAny', 'update', 'viewAll'] as $ability) {
             Permission::findOrCreate("opportunities.{$ability}");
         }
         Permission::findOrCreate('products.viewAny');
 
         $user = User::factory()->create();
-        $user->givePermissionTo(['opportunities.viewAny', 'opportunities.update', 'products.viewAny']);
+        $user->givePermissionTo(['opportunities.viewAny', 'opportunities.update', 'opportunities.viewAll', 'products.viewAny']);
 
         return $user;
     }
@@ -111,9 +111,10 @@ it('a mandatory field accepts a genuine value -> 200, persisted', function () {
 it('a DB-matrix `required:true` on an otherwise-nullable column rejects null (most restrictive wins)', function () {
     Permission::findOrCreate('opportunities.viewAny');
     Permission::findOrCreate('opportunities.update');
+    Permission::findOrCreate('opportunities.viewAll');
 
     $role = Role::create(['name' => 'estimated-value-required-'.uniqid()]);
-    $role->givePermissionTo(['opportunities.viewAny', 'opportunities.update']);
+    $role->givePermissionTo(['opportunities.viewAny', 'opportunities.update', 'opportunities.viewAll']);
     $role->fieldPermissions()->create([
         'resource' => 'opportunities', 'field' => 'estimated_value', 'visible' => true, 'editable' => true, 'required' => true,
     ]);

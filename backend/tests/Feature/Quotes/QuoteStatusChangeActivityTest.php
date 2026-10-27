@@ -26,7 +26,7 @@ function quoteStatusActivityActor(): User
     }
 
     $actor = User::factory()->create();
-    $actor->givePermissionTo(['quotes.viewAny', 'quotes.view', 'quotes.update']);
+    $actor->givePermissionTo(['quotes.viewAny', 'quotes.view', 'quotes.update', Permission::findOrCreate('quotes.viewAll', 'web')]);
 
     return $actor;
 }

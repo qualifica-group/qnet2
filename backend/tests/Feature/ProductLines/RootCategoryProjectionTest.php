@@ -66,7 +66,7 @@ it('OpportunityResource: product_lines exposes root_category, coinciding with pr
     $opportunity->productLines()->create(['business_function_id' => $function->id, 'product_category_id' => $chain['leaf']->id]);
     $opportunity->productLines()->create(['business_function_id' => $function->id, 'product_category_id' => $chain['root']->id]);
 
-    Sanctum::actingAs(rootCategoryUserWith('opportunities', ['view']));
+    Sanctum::actingAs(rootCategoryUserWith('opportunities', ['view', 'viewAll']));
 
     $lines = collect($this->getJson("/api/opportunities/{$opportunity->id}")->assertOk()->json('data.product_lines'));
 
@@ -115,7 +115,7 @@ it('QuoteResource: product_lines mirrors the parent Opportunity, root_category i
     $opportunity->productLines()->create(['business_function_id' => $function->id, 'product_category_id' => $chain['leaf']->id]);
     $quote = Quote::factory()->for($opportunity)->create();
 
-    Sanctum::actingAs(rootCategoryUserWith('quotes', ['view']));
+    Sanctum::actingAs(rootCategoryUserWith('quotes', ['view', 'viewAll']));
 
     $line = $this->getJson("/api/quotes/{$quote->id}")->assertOk()->json('data.product_lines.0');
 

@@ -107,7 +107,7 @@ it('gives an opportunity notification no link to a recipient who may only see re
 it('an opportunity assignment never points a request-management-only recipient to request management (AC-014)', function () {
     Notification::fake();
 
-    $actor = linkUserWith(['opportunities.update']);
+    $actor = linkUserWith(['opportunities.update', 'opportunities.viewAll']);
     $recipient = linkUserWith(['request-management.view']);
     $opportunity = Opportunity::factory()->create();
     Quote::factory()->for($opportunity)->create();

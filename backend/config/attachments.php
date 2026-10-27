@@ -159,5 +159,18 @@ return [
         // Supplier document (spec 0250, D-3): alias in the global morph map.
         'purchase_invoice' => PurchaseInvoice::class,
     ],
+    /*
+    |--------------------------------------------------------------------------
+    | Owner-scoped attachable types (spec 0316, D-9)
+    |--------------------------------------------------------------------------
+    |
+    | Aliases (keys of attachable_types) whose files are visible only to who
+    | may `view` the owning record: list, show, download, upload and delete
+    | additionally require Gate `view` on the owner. Any alias not listed keeps
+    | the plain `attachments.*` permission check.
+    |
+    */
+
+    'owner_scoped_types' => ['opportunity', 'work_order', 'contract'],
 
 ];

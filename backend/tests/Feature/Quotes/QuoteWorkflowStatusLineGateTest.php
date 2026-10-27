@@ -30,7 +30,7 @@ if (! function_exists('lineGateActor')) {
         }
 
         $user = User::factory()->create();
-        $user->givePermissionTo(['quotes.view', 'quotes.update']);
+        $user->givePermissionTo(['quotes.view', 'quotes.update', Permission::findOrCreate('quotes.viewAll', 'web')]);
 
         return $user;
     }

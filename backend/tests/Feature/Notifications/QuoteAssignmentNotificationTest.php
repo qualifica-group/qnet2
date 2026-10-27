@@ -123,7 +123,7 @@ it('notifies the GA2 assigned from request management with the Offerta title and
 it('notifies every manager newly inserted from the Offerta form, at its own slot (AC-005)', function () {
     Notification::fake();
 
-    $actor = quoteNotificationUserWith(['quotes.view', 'quotes.update']);
+    $actor = quoteNotificationUserWith(['quotes.view', 'quotes.update', 'quotes.viewAll']);
     $ga1 = User::factory()->create();
     $ga3 = User::factory()->create();
     $quote = Quote::factory()->create();
@@ -142,7 +142,7 @@ it('notifies every manager newly inserted from the Offerta form, at its own slot
 it('moving a manager between slots of the Offerta notifies nobody (AC-005)', function () {
     Notification::fake();
 
-    $actor = quoteNotificationUserWith(['quotes.view', 'quotes.update']);
+    $actor = quoteNotificationUserWith(['quotes.view', 'quotes.update', 'quotes.viewAll']);
     $manager = User::factory()->create();
     $quote = Quote::factory()->create();
     $quote->opportunity->managers()->sync([$manager->id => ['position' => 1]]);
@@ -157,7 +157,7 @@ it('moving a manager between slots of the Offerta notifies nobody (AC-005)', fun
 it('never notifies the actor who inserts themselves on the Offerta (AC-005)', function () {
     Notification::fake();
 
-    $actor = quoteNotificationUserWith(['quotes.view', 'quotes.update']);
+    $actor = quoteNotificationUserWith(['quotes.view', 'quotes.update', 'quotes.viewAll']);
     $quote = Quote::factory()->create();
     $quote->opportunity->managers()->sync([$actor->id => ['position' => ManagerPositions::OPERATOR]]);
     Sanctum::actingAs($actor);

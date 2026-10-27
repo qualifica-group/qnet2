@@ -16,15 +16,17 @@ uses(RefreshDatabase::class);
 |--------------------------------------------------------------------------
 |
 | The 6 widgets D-8 lists: total, revenue_net, margin_net, won (stats),
-| by_status (distribution) and trend. Global counts, no visibility scoping.
+| by_status (distribution) and trend. Counts over the visible quotes (spec 0316: the actor holds viewAll).
 */
 
 function quotesStatsActor(): User
 {
-    Permission::findOrCreate('quotes.viewAny');
+    foreach (['quotes.viewAny', 'quotes.viewAll'] as $permission) {
+        Permission::findOrCreate($permission);
+    }
 
     $user = User::factory()->create();
-    $user->givePermissionTo('quotes.viewAny');
+    $user->givePermissionTo(['quotes.viewAny', 'quotes.viewAll']);
 
     return $user;
 }
@@ -93,7 +95,9 @@ it('places every quote in the monthly creation trend (AC-007)', function () {
 });
 
 it('returns 403 without quotes.viewAny (AC-007)', function () {
-    Permission::findOrCreate('quotes.viewAny');
+    foreach (['quotes.viewAny', 'quotes.viewAll'] as $permission) {
+        Permission::findOrCreate($permission);
+    }
     Sanctum::actingAs(User::factory()->create());
 
     $this->getJson('/api/stats/quotes')->assertForbidden();

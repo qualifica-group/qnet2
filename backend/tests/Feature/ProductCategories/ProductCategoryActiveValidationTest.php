@@ -128,7 +128,7 @@ it('AC-010/AC-014: opportunity PATCH resubmitting unchanged lines and products p
     $function = BusinessFunction::factory()->create();
     $category = ProductCategory::factory()->create(['business_function_id' => $function->id]);
     $product = Product::factory()->create(['category_id' => $category->id]);
-    Sanctum::actingAs(activeValidationActor(['opportunities.create', 'opportunities.update']));
+    Sanctum::actingAs(activeValidationActor(['opportunities.create', 'opportunities.update', 'opportunities.viewAll']));
     $lines = [['business_function_id' => $function->id, 'product_category_id' => $category->id]];
 
     $id = $this->postJson('/api/opportunities', activeValidationOpportunityPayload($lines, [$product->id]))

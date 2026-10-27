@@ -33,13 +33,17 @@ if (! function_exists('revenueLineProduct')) {
     }
 }
 
-if (! function_exists('quoteTableUserWith')) {
+if (! function_exists('quoteScopedUserWith')) {
     /**
+     * An actor holding exactly $abilities (spec 0316): unlike
+     * quoteTableUserWith() it does NOT receive `viewAll`, so the record
+     * visibility scope applies to it.
+     *
      * @param  array<int, string>  $abilities
      */
-    function quoteTableUserWith(array $abilities): User
+    function quoteScopedUserWith(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewSite', 'viewAll'] as $ability) {
             Permission::findOrCreate("quotes.{$ability}");
         }
 
@@ -50,6 +54,20 @@ if (! function_exists('quoteTableUserWith')) {
         }
 
         return $user;
+    }
+}
+
+if (! function_exists('quoteTableUserWith')) {
+    /**
+     * An actor holding $abilities plus `viewAll` (spec 0316, REQUIREMENT
+     * CHANGED D-1): the tests using it are not about record visibility, so
+     * they must keep seeing every quote.
+     *
+     * @param  array<int, string>  $abilities
+     */
+    function quoteTableUserWith(array $abilities): User
+    {
+        return quoteScopedUserWith([...$abilities, 'viewAll']);
     }
 }
 

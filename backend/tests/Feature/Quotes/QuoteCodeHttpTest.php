@@ -34,6 +34,9 @@ if (! function_exists('quoteCodeUserWith')) {
             $user->givePermissionTo("quotes.{$ability}");
         }
 
+        // Spec 0316: not a visibility test, so the actor sees every quote.
+        $user->givePermissionTo(Permission::findOrCreate('quotes.viewAll', 'web'));
+
         return $user;
     }
 }

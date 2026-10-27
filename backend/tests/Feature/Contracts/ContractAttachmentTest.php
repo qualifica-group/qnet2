@@ -48,6 +48,7 @@ beforeEach(function () {
 
 it('upload: links multiple files to a contract via attachable_type=contract, collection=documents (AC-041)', function () {
     $actor = userWithContractAttachmentAbilities(['create', 'view']);
+    $actor->givePermissionTo([Permission::findOrCreate('contracts.view', 'web'), Permission::findOrCreate('contracts.viewAll', 'web')]);
     Sanctum::actingAs($actor);
     $contract = Contract::factory()->create();
 

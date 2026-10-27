@@ -245,7 +245,9 @@ it('export is scoped to the client and freezes registryId in the run state', fun
 it('quotes for-select registry_id returns only the client\'s offers; hydration by ids bypasses it', function () {
     $fixture = registryScopeFixture();
     $other = Quote::factory()->create();
-    Sanctum::actingAs(User::factory()->create());
+    $actor = User::factory()->create();
+    $actor->givePermissionTo([Permission::findOrCreate('quotes.view', 'web'), Permission::findOrCreate('quotes.viewAll', 'web')]);
+    Sanctum::actingAs($actor);
 
     $scoped = $this->getJson('/api/quotes/for-select?registry_id='.$fixture['a']->id)->assertOk();
     expect(collect($scoped->json('data.items') ?? $scoped->json('items'))->pluck('id')->all())->toBe([$fixture['quoteA']->id]);

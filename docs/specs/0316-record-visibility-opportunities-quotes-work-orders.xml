@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0316-record-visibility-opportunities-quotes-work-orders" status="approved" owner="utente" date="2026-10-27">
+
+  <goal>
+    Rendere configurabile, per ruolo, quali record di Opportunita', Offerte, Commesse e Contratti un utente puo'
+    vedere: solo i propri (team), quelli delle proprie sedi operative (dove previsto) o tutti. La regola vale per
+    elenchi, dettaglio, export, filtri, statistiche/dashboard, selettori e documenti; vedere un record non concede
+    di modificarlo.
+  </goal>
+
+  <context>
+    Fatti verificati nel repo (2026-10-27):
+    - Permessi: `permissions:sync` (app/Console/Commands/SyncPermissions.php) crea "{resource}.{ability}" da
+      `Policy::abilities()`; l'editor ruoli (PermissionCatalogueBuilder + frontend/src/features/roles/permission-labels.ts)
+      etichetta per ability condivisa: `viewAll` = "Visualizza tutti", `viewSite` = "Visualizza per sede" (gia' in
+      it/en-permissions.ts). Super-admin passa tutto via Gate::before (AppServiceProvider.php:360).
+    - Precedenti da ricalcare: `App\Services\WorkOrders\WorkOrderVisibilityScope` (scopeToActor/isVisibleTo, statico,
+      fail-closed, applicato in WorkOrderPolicy view/update/delete e in WorkOrdersTableDefinition::baseQuery) e
+      `App\Services\RequestManagement\RequestManagementScope` (tre livelli; `actorSiteIds()` = sedi fisiche+remote via
+      `employment.operationalSites`; disgiunzione chiusa in un `where()` per non scappare dai filtri del chiamante).
+    - Il framework tabellare parte sempre da `baseQuery()` per righe, totali, raggruppamenti, valori filtro
+      (cache per utente), modifica inline (findOrFail -> 404), bulk delete ed export (ExportService fa Auth::setUser).
+    - Opportunita': `opportunities.supervisor_id` + `managers()` (pivot `opportunity_user`, "Gestori account").
+      OpportunityPolicy = BasePolicy + viewDocuments, nessuno scope di record.
+    - Offerte: `quotes.supervisor_id` + `managers()` (pivot `quote_user`); sede = `quotes.operational_site_id`
+      (nullable). QuotePolicy = BasePolicy puro.
+    - Commesse = `WorkOrder`: gia' due livelli (Responsabili `supervisors` / Partecipanti `participants`;
+      `work-orders.viewAll`). `work_orders.quote_id` nullable (multi-offerta: offerte sorgente via
+      `quote_line_work_order` -> `quote_lines.quote_id`, vedi `WorkOrder::pivotLinesQuery()`).
+    - Contratti: `contracts.quote_id` (1:1 con l'offerta). ContractPolicy permission-only; ogni endpoint di record
+      autorizza gia' sul record (ContractController, *Validation/Termination/StatusChange/Reactivation/
+      ProgrammableLines/WorkOrder/WorkOrderBatchController).
+    - Fughe oggi fuori da baseQuery/policy: `GET opportunities/for-select` (OpportunityService::forSelect),
+      `GET quotes/for-select` (QuoteForSelectService), `/stats/opportunities` e `/stats/quotes` (query grezze,
+      cacheScope 'global'), allegati (AttachmentController::index/AttachmentPolicy controllano solo
+      `attachments.*`), `OpportunityResource.quotes_count`, `DocumentLayoutPreviewController::mostRecentVisibleQuote`,
+      `ContractMultiProgrammableLinesController`, `WorkOrderNotable::mentionableUsersQuery` (riscrive la regola a mano).
+    - Gestione Richieste/Iscritti hanno un loro scope (`request-management.*`) e non condividono codice con /quotes.
+
+    Decisioni utente (2026-10-27):
+    - D-1 Nessun backfill: dal rilascio chi ha solo `view` vede solo i propri record. Le Commesse non cambiano per chi
+      ha gia' `work-orders.viewAll`.
+    - D-2 Commessa multi-offerta: rientra nel livello sede se ALMENO UNA delle offerte sorgente (quote_id o righe
+      pivot) ha una sede dell'utente.
+    - D-3 I Contratti entrano nello scope e seguono l'offerta collegata, con permessi propri.
+    - D-4 Link e notifiche verso record non visibili restano invariati: il backend risponde 403.
+
+    Decisioni di progetto proposte (da validare con la spec):
+    - D-5 Livello "proprie" = il permesso `view` gia' esistente, ristretto; i livelli superiori sono nuove ability:
+      `opportunities.viewAll`; `quotes.viewSite`, `quotes.viewAll`; `work-orders.viewSite`; `contracts.viewSite`,
+      `contracts.viewAll`. I livelli superiori RESTRINGONO mai ALLARGANO: senza `view` non si vede nulla.
+      Cumulativi: Tutte assorbe Sedi, Sedi si somma (OR) a Proprie.
+    - D-6 Proprie: Opportunita' = supervisor_id o Gestore account (qualsiasi posizione); Offerta = supervisor_id o
+      Gestore account dell'offerta; Commessa = Responsabile o Partecipante (invariato); Contratto = supervisor_id o
+      Gestore account dell'offerta collegata. Uso di `quotes.supervisor_id` per i permessi `quotes.*`/`contracts.*`:
+      eccezione voluta all'INV-5 della spec 0087, che resta valido per `request-management.*`.
+    - D-7 Sedi utente = `RequestManagementScope::actorSiteIds()` (fisiche + remote). Un'offerta senza sede non rientra
+      nel livello sede per nessuno.
+    - D-8 update/delete e le azioni di dominio (contratti: validate/terminate/program/changeStatus/reactivate)
+      richiedono il proprio permesso E la visibilita' del record (precedente WorkOrderPolicy V-3). Visibilita' da sola
+      non concede alcuna scrittura.
+    - D-9 Allegati di `opportunity`, `work_order` e `contract`: elenco, dettaglio, download, upload ed eliminazione
+      richiedono anche `view` sul record proprietario. Gli altri attachable_type restano invariati.
+    - D-10 Pannelli annidati: ogni pannello filtra con lo scope del PROPRIO modulo (es. le Offerte dentro
+      un'Opportunita' seguono lo scope offerte). Lo stato calcolato dell'opportunita' e il vincolo "una sola offerta
+      per opportunita'" restano calcolati su tutte le offerte (sono regole di dominio, non elenchi).
+  </context>
+
+  <scope>
+    <in>
+      <item>Classi scope statiche fail-closed: `OpportunityVisibilityScope`, `QuoteVisibilityScope`
+        (parametrizzata sul prefisso permessi per essere riusata dai Contratti), `WorkOrderVisibilityScope` estesa con
+        il livello sede, scope Contratti costruito sul predicato offerta.</item>
+      <item>Policy: OpportunityPolicy, QuotePolicy, WorkOrderPolicy, ContractPolicy con nuove ability e view/update/
+        delete (+ azioni di dominio) ristrette alla visibilita'.</item>
+      <item>baseQuery di OpportunitiesTableDefinition, QuotesTableDefinition, WorkOrdersTableDefinition (eager-load
+        per il controllo sede in memoria), ContractsTableDefinition: quindi elenchi, pannelli annidati, filtri,
+        ricerca rapida, raggruppamenti, export, modifica inline, bulk delete.</item>
+      <item>Selettori: `opportunities/for-select`, `quotes/for-select` (inclusa idratazione `ids[]`),
+        `work-orders` for-select gia' scoped (aggiunge il livello sede automaticamente).</item>
+      <item>Statistiche/dashboard `/stats/opportunities` e `/stats/quotes` sulla query scoped, cache per utente.</item>
+      <item>`OpportunityResource.quotes_count` conta solo le offerte visibili; anteprima layout senza quote_id usa
+        l'ultima offerta visibile; `contracts/multi-programmable-lines` solo contratti visibili.</item>
+      <item>Menzioni nelle note commessa: `WorkOrderNotable::mentionableUsersQuery` include i membri delle sedi con
+        `work-orders.viewSite`.</item>
+      <item>Allegati di opportunita'/commesse/contratti (D-9).</item>
+      <item>Test esistenti che assumono "view = vede tutto": aggiornati concedendo `viewAll` nel setup quando il test
+        non riguarda la visibilita' (REQUIREMENT CHANGED, D-1).</item>
+      <item>Guide in-app IT/EN: opportunities, quotes, work-orders, contracts, roles (stessi id di sezione).
+        Manuale Claude Docs aggiornato dal lead.</item>
+    </in>
+    <out>
+      <item>Gestione Richieste / Gestione Iscritti / Statistiche richieste: restano sul loro scope
+        `request-management.*` (incluse note e timeline dell'opportunita' archiviate li').</item>
+      <item>Controllo di gestione: ignora gli scope per decisione spec 0268 D-7.</item>
+      <item>Nomi/codici di opportunita'/offerte/commesse mostrati dentro altri moduli (Task, Ore, Ordini, Fatture,
+        Proforma, Premi, Provvigioni, Richieste di modifica, log attivita' di altri record): invariati, segnalati come
+        follow-up.</item>
+      <item>Validazione `Rule::exists` sugli id in scrittura di altri moduli (task, ore, ordini, offerte create da
+        opportunita' non visibile), `quote-offer-lines/for-select`, ricalcolo provvigioni da configurazione: invariati,
+        segnalati come follow-up.</item>
+      <item>Link e notifiche verso record non visibili (D-4) e avviso "opportunita' gia' aperta" su anagrafica/lead.</item>
+      <item>Backfill/migration dei permessi sui ruoli esistenti (D-1) e modifica dei cataloghi ruoli Qualifica.</item>
+      <item>Nuove colonne DB, nuove etichette i18n di ability, nuovi endpoint.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Nessun endpoint nuovo e nessuna shape nuova. Il contratto e' il catalogo permessi e il comportamento
+         degli endpoint esistenti. -->
+    <permissions>
+      <permission name="opportunities.view">livello Proprie (esistente, ristretto)</permission>
+      <permission name="opportunities.viewAll">nuova</permission>
+      <permission name="quotes.view">livello Proprie (esistente, ristretto)</permission>
+      <permission name="quotes.viewSite">nuova</permission>
+      <permission name="quotes.viewAll">nuova</permission>
+      <permission name="work-orders.view">livello Proprie (esistente, invariato)</permission>
+      <permission name="work-orders.viewSite">nuova</permission>
+      <permission name="work-orders.viewAll">esistente, invariata</permission>
+      <permission name="contracts.view">livello Proprie (esistente, ristretto)</permission>
+      <permission name="contracts.viewSite">nuova</permission>
+      <permission name="contracts.viewAll">nuova</permission>
+    </permissions>
+    <endpoint method="GET" path="/api/authorization/permission-catalogue">
+      <response status="200">shape invariata; le nuove ability compaiono sotto i rispettivi moduli.</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/tables/{opportunities|quotes|work-orders|contracts}/rows (+ export, filter values, groups)">
+      <response status="200">shape invariata; righe e `total` limitati ai record visibili.</response>
+    </endpoint>
+    <endpoint method="GET|PUT|DELETE" path="/api/{opportunities|quotes|work-orders|contracts}/{id} (+ sotto-risorse e azioni)">
+      <errors>403 se il record non e' visibile all'utente (anche con il permesso di modulo); 404 sulla modifica
+        inline di cella fuori scope (findOrFail su baseQuery, comportamento esistente).</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/{opportunities|quotes}/for-select">
+      <response status="200">shape invariata; solo record visibili, anche per `ids[]` esplicitamente richiesti.</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/stats/{opportunities|quotes}">
+      <response status="200">shape invariata; valori calcolati sui soli record visibili all'utente.</response>
+    </endpoint>
+    <endpoint method="GET|POST|DELETE" path="/api/attachments (attachable_type opportunity|work_order|contract)">
+      <errors>403 se il record proprietario non e' visibile.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Opportunita' -->
+    <criterion id="AC-001">Dato un utente con solo `opportunities.view`, quando legge la griglia opportunita', allora
+      vede solo quelle in cui e' Supervisore o Gestore account (qualsiasi posizione); `total` coincide.</criterion>
+    <criterion id="AC-002">Dato lo stesso utente, quando apre `GET /api/opportunities/{id}` di un'opportunita' non sua,
+      allora riceve 403; con `opportunities.viewAll` riceve 200 e la griglia mostra tutte le opportunita'.</criterion>
+    <criterion id="AC-003">Dato un utente con `opportunities.viewAll` ma senza `opportunities.view`, allora non vede
+      alcuna opportunita' (403 su elenco e dettaglio): i livelli restringono, non concedono.</criterion>
+    <criterion id="AC-004">Dato un utente con `opportunities.view` + `opportunities.update`, quando modifica (PUT o cella
+      inline) un'opportunita' non visibile, allora riceve 403/404 e il record non cambia; dato un utente con solo
+      `opportunities.view` su un'opportunita' propria, PUT riceve 403.</criterion>
+    <criterion id="AC-005">`opportunities/for-select` restituisce solo opportunita' visibili, anche quando l'id non
+      visibile e' passato in `ids[]`.</criterion>
+    <criterion id="AC-006">L'export della griglia opportunita' e i valori dei filtri contengono solo record visibili.</criterion>
+    <criterion id="AC-007">`/api/stats/opportunities` calcola i widget sui soli record visibili e due utenti con scope
+      diversi ottengono valori diversi (nessuna cache condivisa).</criterion>
+    <!-- Offerte -->
+    <criterion id="AC-010">Dato un utente con solo `quotes.view`, la griglia offerte mostra solo quelle in cui e'
+      Supervisore o Gestore account dell'offerta.</criterion>
+    <criterion id="AC-011">Con `quotes.view` + `quotes.viewSite`, la griglia mostra in piu' le offerte con
+      `operational_site_id` in una sede (fisica o remota) dell'utente; un'offerta senza sede non compare se non e'
+      propria.</criterion>
+    <criterion id="AC-012">Con `quotes.viewAll` (+ view) la griglia mostra tutte le offerte; `GET /api/quotes/{id}`
+      fuori scope risponde 403, in scope 200; lo stesso per PDF documento e log attivita'.</criterion>
+    <criterion id="AC-013">update/delete di un'offerta richiedono il permesso proprio e la visibilita': un utente con
+      `quotes.viewAll` senza `quotes.update` riceve 403 sul PUT.</criterion>
+    <criterion id="AC-014">`quotes/for-select`, export, valori filtri e `/api/stats/quotes` rispettano lo scope offerte.</criterion>
+    <criterion id="AC-015">Nel pannello Offerte dentro un'opportunita' (`tables/quotes/rows?opportunityId=`) compaiono
+      solo le offerte visibili e `OpportunityResource.quotes_count` le conta allo stesso modo.</criterion>
+    <!-- Commesse -->
+    <criterion id="AC-020">Con `work-orders.view` + `work-orders.viewSite`, la griglia commesse mostra, oltre a quelle
+      di cui l'utente e' Responsabile/Partecipante, le commesse la cui offerta (`quote_id`) ha una sua sede.</criterion>
+    <criterion id="AC-021">Una commessa multi-offerta (quote_id NULL) rientra nel livello sede se almeno una delle
+      offerte delle sue righe pivot ha una sede dell'utente; altrimenti no.</criterion>
+    <criterion id="AC-022">`GET /api/work-orders/{id}` e le sotto-risorse (costi, fatture, dati contrattuali, email)
+      rispondono 200 per una commessa visibile per sede e 403 fuori scope; il for-select commesse coincide con la
+      griglia.</criterion>
+    <criterion id="AC-023">Le menzioni nelle note di una commessa includono gli utenti con `work-orders.viewSite` membri
+      della sede dell'offerta, oltre a membri e titolari di `viewAll`.</criterion>
+    <criterion id="AC-024">I test esistenti del comportamento a due livelli (WorkOrderVisibilityTest,
+      WorkOrderForSelectScopeTest, ...) restano verdi senza modifiche, salvo l'AC-005 di WorkOrderNotesTest aggiornato
+      per AC-023.</criterion>
+    <!-- Contratti -->
+    <criterion id="AC-030">Con solo `contracts.view`, la griglia contratti mostra solo i contratti la cui offerta ha
+      l'utente come Supervisore o Gestore account; con `contracts.viewSite` anche quelli la cui offerta e' di una sua
+      sede; con `contracts.viewAll` tutti.</criterion>
+    <criterion id="AC-031">`GET /api/contracts/{id}` e le azioni (validate, terminate, changeStatus, reactivate,
+      programmable-lines, programmazione commesse) rispondono 403 su un contratto non visibile anche con la relativa
+      ability; [revised] `contracts/multi-programmable-lines` risponde 403 all'intera richiesta se uno dei contratti
+      richiesti non e' visibile (semantica esistente di MultiQuoteContractGate: una violazione = 403, nessuna
+      esclusione silenziosa).</criterion>
+    <criterion id="AC-032">I permessi contratti sono indipendenti da quelli offerte: `quotes.viewAll` non rende visibile
+      alcun contratto e viceversa.</criterion>
+    <!-- Trasversali -->
+    <criterion id="AC-040">Allegati: `GET /api/attachments?attachable_type=opportunity|work_order|contract&amp;attachable_id=X`,
+      download, upload ed eliminazione rispondono 403 se X non e' visibile; allegati di altri tipi invariati.</criterion>
+    <criterion id="AC-041">Dopo `php artisan permissions:sync` esistono `opportunities.viewAll`, `quotes.viewSite`,
+      `quotes.viewAll`, `work-orders.viewSite`, `contracts.viewSite`, `contracts.viewAll` e il catalogo permessi
+      dell'editor ruoli le espone sotto i rispettivi moduli.</criterion>
+    <criterion id="AC-042">Un utente non autenticato/null negli scope non vede nulla (fail-closed) e un super-admin vede
+      tutto senza permessi espliciti.</criterion>
+    <criterion id="AC-043">Le guide in-app IT/EN di opportunities, quotes, work-orders, contracts, roles descrivono i
+      livelli di visibilita'; `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza, nessuna migration di schema, nessun backfill permessi (D-1).</item>
+    <item>Ogni scope e' UNA classe statica con forma query e forma record dello stesso predicato (precedente
+      WorkOrderVisibilityScope); la forma record risponde in memoria quando le relazioni sono caricate, cosi' le
+      griglie non fanno query per riga (preventLazyLoading attivo fuori produzione).</item>
+    <item>Fail-closed: utente null -> condizione che non matcha alcuna riga. Disgiunzioni chiuse in un `where()`.</item>
+    <item>Policy senza costruttore (SyncPermissions usa `new $class`).</item>
+    <item>Nessun `whereRaw` con input; solo builder Eloquent.</item>
+    <item>File sotto 500 righe (QuotesTableDefinition e OpportunitiesTableDefinition sono vicini al limite: la logica
+      va nelle classi scope, non nelle definition).</item>
+    <item>Test Pest mirati per AC (`XDEBUG_MODE=off ./vendor/bin/pest tests/Feature/<Area>`), suite completa con
+      `composer test` a fine lavoro; Pint pulito. Frontend: vitest help/roles, ESLint, `npx tsc -b --force`.</item>
+    <item>Git: nessun commit/branch senza ordine esplicito (CLAUDE.md §3.6). Mai comandi distruttivi sul DB dev.</item>
+  </constraints>
+
+</spec>

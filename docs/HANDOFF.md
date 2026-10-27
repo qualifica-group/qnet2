@@ -3,6 +3,41 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Visibilita' record Opportunita'/Offerte/Commesse/Contratti (spec 0316) — VERDE, NON COMMITTATO (2026-10-27)
+
+- Spec `docs/specs/0316-record-visibility-opportunities-quotes-work-orders.xml` (approvata; AC-031 [revised]).
+- Livelli: Proprie = `{module}.view` esistente, RISTRETTO; nuove ability `opportunities.viewAll`,
+  `quotes.viewSite`/`viewAll`, `work-orders.viewSite`, `contracts.viewSite`/`viewAll` (etichette i18n gia' esistenti).
+  Restringono, mai concedono: senza `view` niente. D-1: NESSUN backfill, chi ha solo `view` ora vede solo i propri.
+- Scope statici fail-closed (forma query + forma record, in memoria sulle griglie):
+  `App\Services\Opportunities\OpportunityVisibilityScope` (supervisor_id o Gestore account),
+  `App\Services\Quotes\QuoteVisibilityScope` (parametrizzata sul prefisso: riusata dai contratti; supervisor_id o
+  managers, + sede `operational_site_id` in `RequestManagementScope::actorSiteIds()` con viewSite),
+  `App\Services\Contracts\ContractVisibilityScope` (whereHas quote, permessi `contracts.*`),
+  `WorkOrderVisibilityScope` + livello sede (offerta `quote_id` o offerte delle righe pivot, D-2;
+  `WorkOrder::scopeWithSourceQuoteInSites`). Policy: view/update/delete (+ azioni contratto) = permesso E visibilita'.
+- Applicato a: baseQuery delle 4 griglie (righe, filtri, export, inline, bulk), for-select opportunita'
+  (estratto in `App\Services\Opportunities\OpportunityForSelectService`) e offerte, stats opportunita'/offerte
+  (cache `user:{id}`), `quotes_count` dell'opportunita', anteprima layout, menzioni note commessa.
+- Allegati (D-9): `config('attachments.owner_scoped_types')` = opportunity/work_order/contract -> serve `view` sul
+  proprietario. Per `opportunity` vale `OpportunityDocumentAccess::allows`: view opportunita' OPPURE raggiunta da
+  Gestione Richieste/Iscritti (`RequestManagementScope::reachesOpportunity`, ora usata anche da
+  RequestManagementNotable) OPPURE contratto visibile di quell'opportunita' (regressione operatori RM evitata).
+- Fuori scope (follow-up segnalati): nomi/codici in Task/Ore/Ordini/Fatture/Premi/Provvigioni, `Rule::exists` sulle
+  scritture di altri moduli, `quote-offer-lines/for-select`, link/notifiche verso record non visibili (403 accettato),
+  Controllo di gestione e Gestione Richieste invariati. Cataloghi ruoli Qualifica che danno "tutte le ability" di un
+  modulo ricevono automaticamente viewAll/viewSite. Creatore fuori dal team perde il record (nessuna colonna creatore).
+- Test: 6 nuovi file (`*VisibilityTest`, `OwnerScopedAttachmentVisibilityTest`, `OpportunityQuotesCountVisibilityTest`,
+  `RecordVisibilityPermissionsTest`); ~60 test esistenti adeguati SOLO nel setup (viewAll/team), dichiarato
+  REQUIREMENT CHANGE; cambi attesi dichiarati: PermissionCatalogueEndpointTest AC-007, WorkOrderSecurityTest 17->18,
+  WorkOrderNotesTest AC-005. Verifier: tutti gli AC PASS; `composer test` nessun rosso 0316 (rossi presenti = 0317
+  workspaces migrations modificate durante il run + pre-esistenti noti). Pint, ESLint, vitest help/roles,
+  `tsc -b --force` puliti. Da fare: rilanciare `composer test` completo quando 0317 e' stabile.
+- Manuale: guide in-app IT/EN sezione `visibility` (opportunities, quotes, work-orders, contracts, roles) +
+  Claude Docs rev 412 (5 sottosezioni "Quali ... vedi" + "Livelli di visibilita' dei record"); PDF da rigenerare.
+- Nota: nello stesso albero c'e' il lavoro parallelo spec 0317 (Workspaces, altra sessione): committare per file.
+- Nota: questo HANDOFF e' ~840 KB, molto oltre i 50 KB: serve un'archiviazione in `docs/handoff-archive/`.
+
 ## Apri contratto dall'Offerta chiusa positiva (spec 0315) — VERDE, NON COMMITTATO (2026-10-27)
 
 - Richiesta utente: bottone che apre in modale il contratto nato da un'offerta chiusa positiva, su tabella e dettaglio.

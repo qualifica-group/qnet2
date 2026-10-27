@@ -98,6 +98,15 @@ const guide: HelpGuide = {
         { type: 'list', items: ['**Dai solo i permessi necessari.** Ogni persona deve poter fare il proprio lavoro, niente di più.', '**Crea ruoli per mansione**, non per persona: "Commerciale" o "Back office", non "Mario Rossi".', '**Usa il super-admin con parsimonia.** Riservalo a una o due persone di fiducia.', '**Verifica con l’impersonificazione.** Dopo aver creato un ruolo, impersona un utente che lo ha e controlla cosa vede.', '**Limita i campi delicati.** Spegni **Visibile** per i ruoli che non devono vedere dati riservati.'] },
       ],
     },
+    {
+      id: 'visibility',
+      title: "Livelli di visibilità dei record",
+      blocks: [
+        { type: 'paragraph', text: "Per **Opportunità**, **Offerte**, **Commesse** e **Contratti** la visibilità si sceglie con tre permessi, uno per modulo, che si sommano:" },
+        { type: 'list', items: ["**Visualizza**: solo i record in cui la persona fa parte del team (ad esempio Supervisore o Gestore account).", "**Visualizza per sede**: in più i record della propria sede operativa (non previsto per le Opportunità).", "**Visualizza tutti**: tutti i record."] },
+        { type: 'note', text: "I livelli sono per modulo: dare **Visualizza tutti** sulle Offerte non lo dà sui Contratti. Serve sempre anche **Visualizza**. Vedere un record non dà il diritto di modificarlo o eliminarlo." },
+      ],
+    },
   ],
 }
 

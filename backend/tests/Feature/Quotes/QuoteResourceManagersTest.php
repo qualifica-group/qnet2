@@ -28,7 +28,7 @@ if (! function_exists('quoteManagersActor')) {
         }
 
         $user = User::factory()->create();
-        $user->givePermissionTo('quotes.view');
+        $user->givePermissionTo(['quotes.view', Permission::findOrCreate('quotes.viewAll', 'web')]);
 
         return $user;
     }

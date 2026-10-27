@@ -5,6 +5,7 @@ namespace App\Tables;
 use App\Models\Opportunity;
 use App\Models\User;
 use App\Services\Opportunities\OpportunityStatusResolver;
+use App\Services\Opportunities\OpportunityVisibilityScope;
 use App\Services\RequestManagement\RequestManagementScope;
 use App\Tables\Opportunities\OpportunityAdvancedFilterCatalog;
 use App\Tables\Opportunities\OpportunityCellWriter;
@@ -100,7 +101,9 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
         // Eager-load every relation mapRow touches to avoid N+1 across the page.
         // supervisor/managers pull their avatar relation too, so each row can
         // project the inline avatar (data URI) without a per-row query.
-        $query = Opportunity::query()
+        // Spec 0316: rows, totals, filters, export, inline edit and bulk delete
+        // all start here, so the visibility rule lives in one place.
+        $query = OpportunityVisibilityScope::scopeToActor(Opportunity::query(), Auth::user())
             ->with([
                 'registry', 'referent', 'commercial', 'supervisor.avatar', 'source',
                 'managers.avatar', 'productLines.businessFunction', 'productLines.productCategory',

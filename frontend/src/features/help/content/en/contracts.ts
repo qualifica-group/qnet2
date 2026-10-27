@@ -119,6 +119,15 @@ const guide: HelpGuide = {
         },
       ],
     },
+    {
+      id: 'visibility',
+      title: "Which contracts you see",
+      blocks: [
+        { type: 'paragraph', text: "What you see depends on your role. You always need the **View** permission; the levels are cumulative and depend on the contract's quote. Contract permissions are independent of the Quotes ones." },
+        { type: 'table', headers: ["Permission", "Visible contracts"], rows: [["**View**", "Those where you are the **Supervisor** or an **Account manager** of the contract's quote."], ["**View by site**", "Your own plus those whose quote belongs to your **Operating site**."], ["**View all**", "All of them."]] },
+        { type: 'paragraph', text: "The filter applies to the list, the detail, filters, exports, statistics and dashboard, selectors and documents. Opening a link to a contract you cannot see shows an access error. Seeing a contract does not let you edit or delete it: that takes the **Edit** and **Delete** permissions, and you can only edit what you can see." },
+      ],
+    },
   ],
 }
 

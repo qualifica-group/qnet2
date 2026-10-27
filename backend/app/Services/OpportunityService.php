@@ -6,8 +6,6 @@ namespace App\Services;
 
 use App\DataObjects\Opportunities\CreateOpportunityData;
 use App\DataObjects\Opportunities\UpdateOpportunityData;
-use App\DataObjects\Shared\ForSelectQuery;
-use App\DataObjects\Shared\ForSelectResult;
 use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\User;
@@ -22,10 +20,10 @@ use App\Services\Opportunities\RegistryOpenOpportunityGuard;
 use App\Services\Opportunities\RewardAssignmentWriter;
 use App\Services\ProductLines\ProductLineWriter;
 use App\Services\Quotes\QuoteManagerSyncMode;
+use App\Services\Quotes\QuoteVisibilityScope;
 use App\Support\ManagerPositions;
 use App\Support\PositionalPivotSync;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
@@ -106,7 +104,8 @@ class OpportunityService
     public function loadDetail(Opportunity $opportunity): Opportunity
     {
         // Spec 0067, AC-020/021: `quotes_count` feeds the panel's initial
-        // counter via its own loadCount().
+        // counter via its own loadCount(), restricted to the quotes the actor
+        // may see (spec 0316, D-10/AC-015) like the nested quotes panel.
         //
         // The quotes themselves are loaded through
         // OpportunityStatusResolver::EAGER_LOADS, and that constant is
@@ -118,92 +117,7 @@ class OpportunityService
         return $opportunity
             ->load(self::DETAIL_RELATIONS)
             ->load(OpportunityStatusResolver::EAGER_LOADS)
-            ->loadCount('quotes');
-    }
-
-    /**
-     * Minimal, searchable, paginated opportunity list for the for-select
-     * standard (ADR 0011, MT-10/spec 0059 — feeds the `rewarded-referents`
-     * "opportunity" advanced filter). Searches on `name` directly: unlike
-     * Lead, an Opportunity owns its own descriptive column (spec 0057, D-5:
-     * `OPP_{id}`), so no registry subquery is needed.
-     */
-    public function forSelect(ForSelectQuery $query): ForSelectResult
-    {
-        $base = $this->forSelectBaseQuery();
-
-        if ($query->hasSearch()) {
-            $base->where('name', 'like', '%'.$query->search.'%');
-        }
-
-        // Cascading client filter (spec 0122, D-5): additive, bypassed for
-        // the explicit ids[] hydration below exactly like `search` is — the
-        // edit-mode value must keep showing even if the client filter would
-        // otherwise exclude it.
-        if ($query->registryId !== null) {
-            $base->where('registry_id', $query->registryId);
-        }
-
-        $window = $query->page($base, static fn ($ordered) => $ordered->orderBy('name')->orderBy('id'));
-
-        /** @var Collection<int, Opportunity> $page */
-        $page = $window->items;
-
-        $items = $this->appendHydratedForSelectIds($page, $query);
-
-        return $window->withItems($items);
-    }
-
-    /**
-     * Base for-select query: opportunities with the three commercial roles
-     * AND the sede operativa eager-loaded, so OpportunityForSelectResource's
-     * `meta` (the Quote snapshot prefill, spec 0065 D-3 + directive
-     * 2026-07-30) never N+1s.
-     *
-     * @return Builder<Opportunity>
-     */
-    private function forSelectBaseQuery(): Builder
-    {
-        return Opportunity::query()
-            ->select(['id', 'name', 'commercial_id', 'reporter_id', 'supervisor_id', 'operational_site_id'])
-            ->with([
-                'commercial:id,name', 'reporter:id,name', 'supervisor:id,name',
-                'managers:id,name',
-                // The sede operativa's label is composed from its primary
-                // address + city (it has no name column of its own).
-                'operationalSite.addresses.city',
-            ]);
-    }
-
-    /**
-     * Append the explicitly-requested `ids[]` (edit-mode hydration) that are
-     * not already on the page, deduplicated. They bypass search and the same
-     * id/name/meta projection applies. Total is unaffected.
-     *
-     * @param  Collection<int, Opportunity>  $page
-     * @return Collection<int, Opportunity>
-     */
-    private function appendHydratedForSelectIds(Collection $page, ForSelectQuery $query): Collection
-    {
-        if (! $query->hasIds()) {
-            return $page;
-        }
-
-        $presentIds = $page->pluck('id')->all();
-        $missingIds = array_values(array_diff($query->ids, $presentIds));
-
-        if ($missingIds === []) {
-            return $page;
-        }
-
-        /** @var Collection<int, Opportunity> $hydrated */
-        $hydrated = $this->forSelectBaseQuery()
-            ->whereIn('id', $missingIds)
-            ->orderBy('name')
-            ->orderBy('id')
-            ->get();
-
-        return $page->concat($hydrated);
+            ->loadCount(['quotes' => fn ($quotes) => QuoteVisibilityScope::scopeToActor($quotes, Auth::user())]);
     }
 
     /**

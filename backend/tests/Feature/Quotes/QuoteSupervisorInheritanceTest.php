@@ -41,6 +41,9 @@ if (! function_exists('quoteSupervisorUserWith')) {
             $user->givePermissionTo("quotes.{$ability}");
         }
 
+        // Spec 0316: not a visibility test, so the actor sees every quote.
+        $user->givePermissionTo(Permission::findOrCreate('quotes.viewAll', 'web'));
+
         return $user;
     }
 }
@@ -191,7 +194,9 @@ it('inherits nothing when the opportunity has no supervisor', function () {
 it('exposes a non-Gestore-Account supervisor in the opportunity for-select meta', function () {
     $outsider = User::factory()->create(['name' => 'Estraneo Rossi']);
     $opportunity = Opportunity::factory()->create(['supervisor_id' => $outsider->id]);
-    Sanctum::actingAs(quoteSupervisorUserWith(['create']));
+    $actor = quoteSupervisorUserWith(['create']);
+    $actor->givePermissionTo(Permission::findOrCreate('opportunities.viewAll', 'web'));
+    Sanctum::actingAs($actor);
 
     $items = collect($this->getJson('/api/opportunities/for-select')->assertOk()->json('items'));
 

@@ -113,11 +113,11 @@ it('counts a request moved to a validated status from Gestione Richieste as a po
 
 it('counts a request moved to a pending status from the Offerte module as a potential', function () {
     $gol = ProductCategory::factory()->reportable()->create(['name' => 'GOL']);
-    foreach (['viewAny', 'view', 'update'] as $ability) {
+    foreach (['viewAny', 'view', 'update', 'viewAll'] as $ability) {
         Permission::findOrCreate("quotes.{$ability}");
     }
     $actor = transitionsEndToEndActor();
-    $actor->givePermissionTo(['quotes.viewAny', 'quotes.view', 'quotes.update']);
+    $actor->givePermissionTo(['quotes.viewAny', 'quotes.view', 'quotes.update', 'quotes.viewAll']);
     $quote = transitionsEndToEndQuote($gol, $actor);
     $pending = QuoteWorkflowStatus::factory()->global()->create(['system_key' => null, 'group' => WorkflowStatusGroup::Pending, 'requires_note' => false]);
 

@@ -23,7 +23,7 @@ if (! function_exists('workOrderGenerationActorWith')) {
      */
     function workOrderGenerationActorWith(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'program'] as $ability) {
+        foreach (['viewAny', 'view', 'program', 'viewAll'] as $ability) {
             Permission::findOrCreate("contracts.{$ability}");
         }
         foreach (['viewAny', 'view', 'create'] as $ability) {
@@ -35,6 +35,9 @@ if (! function_exists('workOrderGenerationActorWith')) {
         foreach ($abilities as $ability) {
             $user->givePermissionTo($ability);
         }
+
+        // Not about record visibility (spec 0316, REQUIREMENT CHANGED D-1).
+        $user->givePermissionTo('contracts.viewAll');
 
         return $user;
     }

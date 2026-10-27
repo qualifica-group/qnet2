@@ -25,6 +25,8 @@ function opportunityGridEditor(): User
     $actor = User::factory()->create();
     $actor->givePermissionTo(['opportunities.viewAny', 'opportunities.update']);
 
+    $actor->givePermissionTo(Permission::findOrCreate('opportunities.viewAll', 'web'));
+
     return $actor;
 }
 

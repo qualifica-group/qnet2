@@ -20,7 +20,7 @@ function quoteActor(): User
 {
     Permission::findOrCreate('quotes.viewAny');
     $user = User::factory()->create();
-    $user->givePermissionTo('quotes.viewAny');
+    $user->givePermissionTo(['quotes.viewAny', Permission::findOrCreate('quotes.viewAll', 'web')]);
 
     return $user;
 }

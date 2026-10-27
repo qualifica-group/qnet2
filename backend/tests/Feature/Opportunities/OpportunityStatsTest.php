@@ -25,6 +25,7 @@ it('200 with the contract widgets: total, estimated_value, average_probability, 
     Permission::findOrCreate('opportunities.viewAny');
     $actor = User::factory()->create();
     $actor->givePermissionTo('opportunities.viewAny');
+    $actor->givePermissionTo(Permission::findOrCreate('opportunities.viewAll', 'web'));
 
     $site = OperationalSite::factory()->create();
     $site->addresses()->create([
@@ -61,6 +62,7 @@ it('no longer emits the per-registry breakdown', function () {
     Permission::findOrCreate('opportunities.viewAny');
     $actor = User::factory()->create();
     $actor->givePermissionTo('opportunities.viewAny');
+    $actor->givePermissionTo(Permission::findOrCreate('opportunities.viewAll', 'web'));
     Opportunity::factory()->create();
 
     Sanctum::actingAs($actor);
@@ -74,6 +76,7 @@ it('ranks sites by opportunity count, labels sites without a city by line1 alone
     Permission::findOrCreate('opportunities.viewAny');
     $actor = User::factory()->create();
     $actor->givePermissionTo('opportunities.viewAny');
+    $actor->givePermissionTo(Permission::findOrCreate('opportunities.viewAll', 'web'));
 
     $busy = OperationalSite::factory()->create();
     $busy->addresses()->create(['line1' => 'Corso Italia 2', 'is_primary' => true, 'city_id' => null]);
@@ -101,6 +104,7 @@ it('average_probability is null (not 0) when no opportunity has one', function (
     Permission::findOrCreate('opportunities.viewAny');
     $actor = User::factory()->create();
     $actor->givePermissionTo('opportunities.viewAny');
+    $actor->givePermissionTo(Permission::findOrCreate('opportunities.viewAll', 'web'));
 
     Opportunity::factory()->create(['success_probability' => null]);
     Sanctum::actingAs($actor);

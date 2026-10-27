@@ -31,7 +31,7 @@ function pdfActorWithQuotesView(): User
 {
     Permission::findOrCreate('quotes.view');
 
-    return tap(User::factory()->create())->givePermissionTo('quotes.view');
+    return tap(User::factory()->create())->givePermissionTo(['quotes.view', Permission::findOrCreate('quotes.viewAll', 'web')]);
 }
 
 /**

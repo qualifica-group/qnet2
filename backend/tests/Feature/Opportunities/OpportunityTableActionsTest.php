@@ -44,6 +44,8 @@ if (! function_exists('opportunityActionsUserWith')) {
             $user->givePermissionTo("request-management.{$ability}");
         }
 
+        $user->givePermissionTo(Permission::findOrCreate('opportunities.viewAll', 'web'));
+
         return $user;
     }
 }

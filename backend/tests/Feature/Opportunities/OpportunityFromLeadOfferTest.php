@@ -26,9 +26,10 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     Permission::findOrCreate('opportunities.create');
     Permission::findOrCreate('leads.view');
+    Permission::findOrCreate('quotes.viewAll', 'web');
 
     $this->actor = User::factory()->create();
-    $this->actor->givePermissionTo(['opportunities.create', 'leads.view']);
+    $this->actor->givePermissionTo(['opportunities.create', 'leads.view', 'quotes.viewAll']);
     Sanctum::actingAs($this->actor);
 
     $this->lead = Lead::factory()->create([

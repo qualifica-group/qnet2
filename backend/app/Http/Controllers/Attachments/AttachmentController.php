@@ -49,6 +49,7 @@ class AttachmentController extends BaseApiController
         try {
             $collection = $request->validated('collection');
             $this->authorize('viewAny', [Attachment::class, $collection]);
+            $this->authorize('accessOwner', [Attachment::class, $request->validated('attachable_type'), $request->validated('attachable_id')]);
 
             $attachments = Attachment::query()
                 ->where('attachable_type', $request->validated('attachable_type'))
@@ -83,6 +84,7 @@ class AttachmentController extends BaseApiController
     {
         try {
             $this->authorize('create', [Attachment::class, $request->validated('collection')]);
+            $this->authorize('accessOwner', [Attachment::class, $request->validated('attachable_type'), $request->validated('attachable_id')]);
 
             $attachment = $this->service->store($request->user(), $request->toData());
 

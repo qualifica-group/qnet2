@@ -41,6 +41,9 @@ function marginTestActor(array $abilities): User
         $user->givePermissionTo("quotes.{$ability}");
     }
 
+    // Spec 0316: not a visibility test, so the actor sees every quote.
+    $user->givePermissionTo(Permission::findOrCreate('quotes.viewAll', 'web'));
+
     return $user;
 }
 
@@ -261,14 +264,14 @@ it('AC-005: margin_net is revenue_net - cost_net - total commissions, identical 
     // makes spatie/laravel-permission guess a different guard for them than
     // the 'web' one an actor's own role/permission rows resolve against.
     $actor = marginTestActor(['create', 'view']);
-    foreach (['viewAny'] as $ability) {
+    foreach (['viewAny', 'viewAll'] as $ability) {
         Permission::findOrCreate("quotes.{$ability}");
     }
-    $actor->givePermissionTo('quotes.viewAny');
-    foreach (['viewAny', 'view'] as $ability) {
-        Permission::findOrCreate("contracts.{$ability}");
+    $actor->givePermissionTo(['quotes.viewAny', 'quotes.viewAll']);
+    foreach (['viewAny', 'view', 'viewAll'] as $ability) {
+        Permission::findOrCreate("contracts.{$ability}", 'web');
     }
-    $actor->givePermissionTo(['contracts.viewAny', 'contracts.view']);
+    $actor->givePermissionTo(['contracts.viewAny', 'contracts.view', 'contracts.viewAll']);
 
     Sanctum::actingAs($actor);
 
@@ -323,7 +326,7 @@ it('AC-006: a user without commission visibility still sees the net-of-commissio
         Permission::findOrCreate("quotes.{$ability}");
     }
     $role = Role::create(['name' => fake()->unique()->slug()]);
-    $role->givePermissionTo(['quotes.view', 'quotes.update', 'quotes.viewActivity']);
+    $role->givePermissionTo(['quotes.view', 'quotes.update', 'quotes.viewActivity', Permission::findOrCreate('quotes.viewAll', 'web')]);
     $role->fieldPermissions()->create([
         'resource' => 'quotes',
         'field' => 'commission_value',

@@ -55,6 +55,15 @@ class WorkOrderPolicy extends BasePolicy
     }
 
     /**
+     * Resource-level middle tier (spec 0316): adds the commesse whose source
+     * offer sits in one of the actor's operational sites.
+     */
+    public function viewSite(User $user): bool
+    {
+        return $user->can($this->permission('viewSite'));
+    }
+
+    /**
      * Resource-level, exactly like OpportunityPolicy::viewDocuments (spec
      * 0134): it gates the documents tab of the detail, NOT the single
      * attachment, which AttachmentPolicy keeps authorizing on its own.
@@ -139,7 +148,7 @@ class WorkOrderPolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll', 'viewDocuments', 'viewEmails', 'sendEmail', 'viewCosts', 'viewInvoices', 'manageCosts', 'viewContractData', 'managePayments'];
+        return [...parent::abilities(), 'viewAll', 'viewSite', 'viewDocuments', 'viewEmails', 'sendEmail', 'viewCosts', 'viewInvoices', 'manageCosts', 'viewContractData', 'managePayments'];
     }
 
     private function isInScope(User $user, Model $model): bool

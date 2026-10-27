@@ -125,6 +125,16 @@ const guide: HelpGuide = {
         },
       ],
     },
+    {
+      id: 'visibility',
+      title: "Which opportunities you see",
+      blocks: [
+        { type: 'paragraph', text: "What you see depends on your role. You always need the **View** permission; then:" },
+        { type: 'list', items: ["With **View** you only see opportunities where you are the **Supervisor** or one of the **Account managers**.", "With **View all** you see all of them."] },
+        { type: 'paragraph', text: "The filter applies to the list, the detail, filters, exports, statistics and dashboard, selectors and documents. Opening a link to an opportunity you cannot see shows an access error. Seeing an opportunity does not let you edit or delete it: that takes the **Edit** and **Delete** permissions, and you can only edit what you can see." },
+        { type: 'note', text: "If you create an opportunity without being in its team, you will no longer see it unless you have **View all**. The **Quotes** panel inside an opportunity only lists the quotes you can see." },
+      ],
+    },
   ],
 }
 

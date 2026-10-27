@@ -2,8 +2,11 @@
 
 namespace App\Policies;
 
+use App\Models\Opportunity;
 use App\Models\User;
 use App\Policies\Abstracts\BasePolicy;
+use App\Services\Opportunities\OpportunityVisibilityScope;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Standard CRUD policy for the `opportunities` resource (spec 0040),
@@ -30,10 +33,43 @@ class OpportunityPolicy extends BasePolicy
     }
 
     /**
+     * Spec 0316, D-8: record-level abilities need the resource permission AND
+     * the record to be visible to the actor (viewAll, supervisor or manager).
+     */
+    public function view(User $user, Model $model): bool
+    {
+        return parent::view($user, $model) && $this->isVisible($user, $model);
+    }
+
+    /**
+     * Resource-level gate lifting the record scoping (see
+     * OpportunityVisibilityScope).
+     */
+    public function viewAll(User $user): bool
+    {
+        return $user->can($this->permission('viewAll'));
+    }
+
+    public function update(User $user, Model $model): bool
+    {
+        return parent::update($user, $model) && $this->isVisible($user, $model);
+    }
+
+    public function delete(User $user, Model $model): bool
+    {
+        return parent::delete($user, $model) && $this->isVisible($user, $model);
+    }
+
+    private function isVisible(User $user, Model $model): bool
+    {
+        return ! $model instanceof Opportunity || OpportunityVisibilityScope::isVisibleTo($user, $model);
+    }
+
+    /**
      * @return array<int, string>
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewDocuments'];
+        return [...parent::abilities(), 'viewAll', 'viewDocuments'];
     }
 }

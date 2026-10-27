@@ -36,6 +36,8 @@ if (! function_exists('opportunityFromLeadActor')) {
             $user->givePermissionTo("leads.{$ability}");
         }
 
+        $user->givePermissionTo(Permission::findOrCreate('opportunities.viewAll', 'web'));
+
         return $user;
     }
 }

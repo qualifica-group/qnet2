@@ -31,7 +31,7 @@ if (! function_exists('rewardAssignmentActor')) {
      */
     function rewardAssignmentActor(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
+        foreach (['viewAny', 'view', 'viewAll', 'create', 'update', 'delete'] as $ability) {
             Permission::findOrCreate("opportunities.{$ability}");
         }
 
@@ -112,7 +112,7 @@ it('create: rewards + reporter_id persists reward rows and is exposed on the res
 // ---------------------------------------------------------------------------
 
 it('update: rewards replaces the set, keeps the survivor\'s assigned_at, [] clears all, absent leaves untouched (AC-020)', function () {
-    $actor = rewardAssignmentActor(['create', 'update']);
+    $actor = rewardAssignmentActor(['create', 'update', 'viewAll']);
     $reporter = Referent::factory()->create();
     $typeA = RewardType::factory()->create();
     $typeB = RewardType::factory()->create();
@@ -170,7 +170,7 @@ it('create: rewards non-empty with no reporter_id -> 422 on rewards, nothing cre
 });
 
 it('update: clearing reporter_id while rewards exist -> 422 on reporter_id, nothing changed (AC-021)', function () {
-    $actor = rewardAssignmentActor(['create', 'update']);
+    $actor = rewardAssignmentActor(['create', 'update', 'viewAll']);
     $reporter = Referent::factory()->create();
     $rewardType = RewardType::factory()->create();
     Sanctum::actingAs($actor);
@@ -194,7 +194,7 @@ it('update: clearing reporter_id while rewards exist -> 422 on reporter_id, noth
 // ---------------------------------------------------------------------------
 
 it('update: changing reporter_id retargets every existing reward to the new Segnalatore (AC-022)', function () {
-    $actor = rewardAssignmentActor(['create', 'update']);
+    $actor = rewardAssignmentActor(['create', 'update', 'viewAll']);
     $originalReporter = Referent::factory()->create();
     $newReporter = Referent::factory()->create();
     $typeA = RewardType::factory()->create();

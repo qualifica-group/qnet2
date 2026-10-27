@@ -25,7 +25,7 @@ if (! function_exists('contractLifecycleUserWith')) {
      */
     function contractLifecycleUserWith(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll'] as $ability) {
             Permission::findOrCreate("quotes.{$ability}");
         }
 
@@ -34,6 +34,9 @@ if (! function_exists('contractLifecycleUserWith')) {
         foreach ($abilities as $ability) {
             $user->givePermissionTo("quotes.{$ability}");
         }
+
+        // Not about record visibility (spec 0316, REQUIREMENT CHANGED D-1).
+        $user->givePermissionTo('quotes.viewAll');
 
         return $user;
     }

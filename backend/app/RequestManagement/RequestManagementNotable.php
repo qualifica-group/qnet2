@@ -77,20 +77,8 @@ class RequestManagementNotable implements NotableEntity
      */
     public function authorizeRead(User $user, Model $record): bool
     {
-        $module = $this->module();
-
-        if (! $user->can($module->permission('view'))) {
-            return false;
-        }
-
-        if ($user->can($module->permission('viewAll'))) {
-            return true;
-        }
-
         /** @var Opportunity $record */
-        $query = Quote::query()->where('opportunity_id', $record->getKey());
-
-        return RequestManagementScope::scopeToActor($query, $user, $module)->exists();
+        return RequestManagementScope::reachesOpportunity($user, (int) $record->getKey(), $this->module());
     }
 
     /**

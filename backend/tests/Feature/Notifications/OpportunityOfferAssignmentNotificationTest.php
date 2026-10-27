@@ -83,7 +83,7 @@ it('notifies a manager inserted in the Opportunity only with the Opportunity not
     $recipient = offerAssignmentRecipient();
     $opportunity = Opportunity::factory()->create();
     Quote::factory()->for($opportunity)->create();
-    Sanctum::actingAs(offerAssignmentUserWith(['opportunities.update']));
+    Sanctum::actingAs(offerAssignmentUserWith(['opportunities.update', 'opportunities.viewAll']));
 
     $this->patchJson("/api/opportunities/{$opportunity->id}", ['manager_slots' => [$recipient->id]])->assertOk();
 
@@ -96,7 +96,7 @@ it('sends only the Offerta notification when a synchronized Opportunity copies t
     $recipient = offerAssignmentRecipient();
     $opportunity = offerAssignmentSynchronizedOpportunity();
     $quote = Quote::factory()->for($opportunity)->create();
-    Sanctum::actingAs(offerAssignmentUserWith(['opportunities.update']));
+    Sanctum::actingAs(offerAssignmentUserWith(['opportunities.update', 'opportunities.viewAll']));
 
     $this->patchJson("/api/opportunities/{$opportunity->id}", ['manager_slots' => [$recipient->id]])->assertOk();
 
@@ -134,7 +134,7 @@ it('does not send the Opportunity notification to a supervisor who already manag
     $opportunity = Opportunity::factory()->create();
     $opportunity->managers()->sync([$recipient->id => ['position' => 1]]);
     Quote::factory()->for($opportunity)->create()->managers()->sync([$recipient->id => ['position' => 1]]);
-    Sanctum::actingAs(offerAssignmentUserWith(['opportunities.update']));
+    Sanctum::actingAs(offerAssignmentUserWith(['opportunities.update', 'opportunities.viewAll']));
 
     $this->patchJson("/api/opportunities/{$opportunity->id}", ['supervisor_id' => $recipient->id])->assertOk();
 

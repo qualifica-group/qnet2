@@ -24,6 +24,9 @@ if (! function_exists('opportunityQuotesCountViewer')) {
         $user = User::factory()->create();
         $user->givePermissionTo(['opportunities.view', 'opportunities.delete']);
 
+        $user->givePermissionTo(Permission::findOrCreate('opportunities.viewAll', 'web'));
+        $user->givePermissionTo(Permission::findOrCreate('quotes.viewAll', 'web'));
+
         return $user;
     }
 }

@@ -10,6 +10,7 @@ use App\Models\ContractStatus;
 use App\Models\User;
 use App\Services\Contracts\ContractActionAvailability;
 use App\Services\Contracts\ContractAlertResolver;
+use App\Services\Contracts\ContractVisibilityScope;
 use App\Tables\Contracts\ContractAdvancedFilterCatalog;
 use App\Tables\Contracts\ContractColumnCatalog;
 use App\Tables\Contracts\ContractRelationColumns;
@@ -18,6 +19,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -86,7 +88,7 @@ class ContractsTableDefinition extends AbstractTableDefinition
         // page: the whole `quote` tree this table projects (D-1), plus its
         // own `contractStatus` (contract_status_id is a real FK on
         // `contracts` itself).
-        return Contract::query()->with([
+        $query = Contract::query()->with([
             'quote.opportunity.registry',
             'quote.commercial',
             'quote.reporter',
@@ -99,6 +101,9 @@ class ContractsTableDefinition extends AbstractTableDefinition
             'quote.offerLines.product.category',
             'contractStatus',
         ]);
+
+        // Record visibility (spec 0316, D-3): own / own site / all, through the quote.
+        return ContractVisibilityScope::scopeToActor($query, Auth::user());
     }
 
     /**

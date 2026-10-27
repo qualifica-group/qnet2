@@ -22,6 +22,8 @@ if (! function_exists('editableTitleActor')) {
         $actor = User::factory()->create();
         $actor->givePermissionTo("opportunities.{$ability}");
 
+        $actor->givePermissionTo(Permission::findOrCreate('opportunities.viewAll', 'web'));
+
         return $actor;
     }
 }

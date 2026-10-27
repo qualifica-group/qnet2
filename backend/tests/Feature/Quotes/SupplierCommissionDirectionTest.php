@@ -41,7 +41,7 @@ function supplierDirectionQuoteActor(): User
     }
 
     $user = User::factory()->create();
-    $user->givePermissionTo(['quotes.view', 'quotes.create', 'quotes.update']);
+    $user->givePermissionTo(['quotes.view', 'quotes.create', 'quotes.update', Permission::findOrCreate('quotes.viewAll', 'web')]);
 
     return $user;
 }
@@ -343,7 +343,7 @@ it('AC-008: without the commission_type permission the direction cannot change, 
     Permission::findOrCreate('quotes.view');
     Permission::findOrCreate('quotes.update');
     $role = Role::create(['name' => 'commission-type-locked']);
-    $role->givePermissionTo(['quotes.view', 'quotes.update']);
+    $role->givePermissionTo(['quotes.view', 'quotes.update', Permission::findOrCreate('quotes.viewAll', 'web')]);
     $role->fieldPermissions()->create(['resource' => 'quotes', 'field' => 'commission_type', 'visible' => true, 'editable' => false, 'required' => false]);
     $actor = User::factory()->create();
     $actor->assignRole($role);

@@ -9,6 +9,7 @@ use App\Models\WorkOrder;
 use App\Notes\Contracts\NotableEntity;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Guard;
 use Spatie\Permission\Models\Permission;
 
@@ -49,7 +50,9 @@ final class WorkOrderNotable implements NotableEntity
     /**
      * authorizeRead() read from the other end: active users holding
      * `work-orders.view` who are Responsabili/Partecipanti or hold
-     * `work-orders.viewAll`, plus super-admins. Both permission branches are
+     * `work-orders.viewAll`, plus (spec 0316) holders of `work-orders.viewSite`
+     * belonging to an operational site of one of the commessa's source offers,
+     * plus super-admins. Both permission branches are
      * probed for existence first because spatie's `permission()` scope throws
      * on a name no row carries (unsynced catalogue must answer, not 500).
      */
@@ -59,20 +62,28 @@ final class WorkOrderNotable implements NotableEntity
         $memberIds = $this->memberIds($record);
         $viewExists = $this->permissionExists(self::VIEW_PERMISSION);
         $viewAllExists = $this->permissionExists(WorkOrderVisibilityScope::VIEW_ALL_PERMISSION);
+        $siteIds = $this->sourceSiteIds($record);
+        $siteExists = $siteIds !== [] && $this->permissionExists(WorkOrderVisibilityScope::VIEW_SITE_PERMISSION);
 
         return User::query()
             ->excludingServiceAccounts()
             ->where('is_active', true)
-            ->where(function (Builder $query) use ($memberIds, $viewExists, $viewAllExists): void {
+            ->where(function (Builder $query) use ($memberIds, $viewExists, $viewAllExists, $siteExists, $siteIds): void {
                 $query->whereHas('roles', fn (Builder $role) => $role->where('name', 'super-admin'))
-                    ->when($viewExists, function (Builder $canRead) use ($memberIds, $viewAllExists): void {
-                        $canRead->orWhere(function (Builder $reader) use ($memberIds, $viewAllExists): void {
+                    ->when($viewExists, function (Builder $canRead) use ($memberIds, $viewAllExists, $siteExists, $siteIds): void {
+                        $canRead->orWhere(function (Builder $reader) use ($memberIds, $viewAllExists, $siteExists, $siteIds): void {
                             $reader->permission(self::VIEW_PERMISSION)
-                                ->where(function (Builder $access) use ($memberIds, $viewAllExists): void {
+                                ->where(function (Builder $access) use ($memberIds, $viewAllExists, $siteExists, $siteIds): void {
                                     $access->whereIn('id', $memberIds)
                                         ->when($viewAllExists, function (Builder $tiers): void {
                                             $tiers->orWhere(function (Builder $viewAll): void {
                                                 $viewAll->permission(WorkOrderVisibilityScope::VIEW_ALL_PERMISSION);
+                                            });
+                                        })
+                                        ->when($siteExists, function (Builder $tiers) use ($siteIds): void {
+                                            $tiers->orWhere(function (Builder $bySite) use ($siteIds): void {
+                                                $bySite->permission(WorkOrderVisibilityScope::VIEW_SITE_PERMISSION)
+                                                    ->whereHas('employment.operationalSites', fn (Builder $sites) => $sites->whereIn('operational_sites.id', $siteIds));
                                             });
                                         });
                                 });
@@ -127,6 +138,25 @@ final class WorkOrderNotable implements NotableEntity
         ];
 
         return array_values(array_unique(array_map('intval', $ids)));
+    }
+
+    /**
+     * Operational sites of the commessa's source offers (`quote_id`, or its
+     * pivot lines' offers): the site-tier counterpart of memberIds().
+     *
+     * @return array<int, int>
+     */
+    private function sourceSiteIds(WorkOrder $workOrder): array
+    {
+        $viaLines = DB::table('quote_line_work_order')
+            ->join('quote_lines', 'quote_lines.id', '=', 'quote_line_work_order.quote_line_id')
+            ->join('quotes', 'quotes.id', '=', 'quote_lines.quote_id')
+            ->where('quote_line_work_order.work_order_id', $workOrder->getKey())
+            ->pluck('quotes.operational_site_id');
+
+        $direct = DB::table('quotes')->where('id', $workOrder->quote_id)->pluck('operational_site_id');
+
+        return $direct->merge($viaLines)->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
     }
 
     /**

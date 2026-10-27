@@ -31,7 +31,7 @@ if (! function_exists('singleOfferLineActor')) {
         }
 
         $user = User::factory()->create();
-        $user->givePermissionTo(['quotes.create', 'quotes.update']);
+        $user->givePermissionTo(['quotes.create', 'quotes.update', Permission::findOrCreate('quotes.viewAll', 'web')]);
 
         QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
 

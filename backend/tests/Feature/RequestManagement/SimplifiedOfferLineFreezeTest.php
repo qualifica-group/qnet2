@@ -296,12 +296,12 @@ it('AC-014: a non-simplified classification persists the submitted values as-is'
 // ---------------------------------------------------------------------------
 
 it('AC-015: PATCH /api/quotes/{quote} never normalizes, even on a simplified category', function () {
-    $abilities = ['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity'];
+    $abilities = ['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll'];
     foreach ($abilities as $ability) {
         Permission::findOrCreate("quotes.{$ability}");
     }
     $actor = User::factory()->create();
-    $actor->givePermissionTo('quotes.update');
+    $actor->givePermissionTo(['quotes.update', 'quotes.viewAll']);
     $category = simplifiedLineCategory();
     $opportunity = Opportunity::factory()->create();
     OpportunityProductLine::factory()->for($opportunity)->create([

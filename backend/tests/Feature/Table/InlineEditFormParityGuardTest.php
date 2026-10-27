@@ -116,6 +116,9 @@ it('every inline-editable field is also accepted by the real update endpoint (fo
         // genuine parity comparison.
         $actor = User::factory()->create();
         $actor->givePermissionTo(["{$resource}.viewAny", "{$resource}.update"]);
+        if ($resource === 'opportunities') {
+            $actor->givePermissionTo(Permission::findOrCreate('opportunities.viewAll', 'web'));
+        }
         Sanctum::actingAs($actor);
 
         $response = $this->patchJson(($case['endpoint'])($case['model']), $case['payload']);

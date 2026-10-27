@@ -11,7 +11,7 @@ use App\Services\CompanyService;
 use App\Services\CompanySiteService;
 use App\Services\InvoiceTagService;
 use App\Services\OperationalSiteService;
-use App\Services\OpportunityService;
+use App\Services\Opportunities\OpportunityForSelectService;
 use App\Services\PaymentMethodService;
 use App\Services\ProductService;
 use App\Services\PurchaseRequestPriorityService;
@@ -70,7 +70,7 @@ final class RelationValueScopeChecker
         private readonly PurchaseRequestPriorityService $purchaseRequestPriorities,
         private readonly PaymentMethodService $paymentMethods,
         private readonly QuoteForSelectService $quotes,
-        private readonly OpportunityService $opportunities,
+        private readonly OpportunityForSelectService $opportunities,
         private readonly SectorService $sectors,
         private readonly InvoiceTagService $invoiceTags,
         private readonly VatRateService $vatRates,

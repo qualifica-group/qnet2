@@ -119,6 +119,15 @@ const guide: HelpGuide = {
         },
       ],
     },
+    {
+      id: 'visibility',
+      title: "Quali contratti vedi",
+      blocks: [
+        { type: 'paragraph', text: "Cosa vedi dipende dal tuo ruolo. Serve sempre il permesso **Visualizza**; i livelli si sommano e dipendono dall'offerta del contratto. I permessi dei Contratti sono indipendenti da quelli delle Offerte." },
+        { type: 'table', headers: ["Permesso", "Contratti visibili"], rows: [["**Visualizza**", "Quelli in cui sei **Supervisore** o **Gestore account** dell'offerta del contratto."], ["**Visualizza per sede**", "I tuoi e quelli la cui offerta è della tua **Sede operativa**."], ["**Visualizza tutti**", "Tutti."]] },
+        { type: 'paragraph', text: "Il filtro vale per elenco, scheda, filtri, esportazioni, statistiche e dashboard, selettori e documenti. Aprire il link di un contratto che non puoi vedere mostra un errore di accesso. Vedere un contratto non permette di modificarlo o eliminarlo: servono i permessi **Modifica** ed **Elimina**, e si modifica solo ciò che si vede." },
+      ],
+    },
   ],
 }
 

@@ -62,7 +62,7 @@ it('AC-009: `work_order` is an attachable alias matching the morph alias already
 });
 
 it('AC-009: a file is uploaded against attachable_type=work_order and listed back', function () {
-    $actor = workOrderDocumentActor(['view'], ['create', 'viewAny']);
+    $actor = workOrderDocumentActor(['view', 'viewAll'], ['create', 'viewAny']);
     $workOrder = WorkOrder::factory()->create();
     Sanctum::actingAs($actor);
 
@@ -79,7 +79,7 @@ it('AC-009: a file is uploaded against attachable_type=work_order and listed bac
 });
 
 it('AC-009: a work order document upload is 403 without attachments.create', function () {
-    $actor = workOrderDocumentActor(['view'], ['viewAny']);
+    $actor = workOrderDocumentActor(['view', 'viewAll'], ['viewAny']);
     $workOrder = WorkOrder::factory()->create();
     Sanctum::actingAs($actor);
 

@@ -23,7 +23,7 @@ if (! function_exists('quoteExportActorWith')) {
      */
     function quoteExportActorWith(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'viewAll'] as $ability) {
             Permission::findOrCreate("quotes.{$ability}");
         }
 
@@ -70,7 +70,7 @@ if (! function_exists('csvExportRows')) {
 
 it('freezes opportunityId in ExportRun::state and generates a file with ONLY that Opportunity\'s Offerte', function () {
     Storage::fake('local');
-    $actor = quoteExportActorWith(['viewAny', 'export']);
+    $actor = quoteExportActorWith(['viewAny', 'export', 'viewAll']);
     Sanctum::actingAs($actor);
 
     $opportunityA = Opportunity::factory()->create();
@@ -99,7 +99,7 @@ it('freezes opportunityId in ExportRun::state and generates a file with ONLY tha
 
 it('exports every Offerta when opportunityId is omitted (non-regression)', function () {
     Storage::fake('local');
-    $actor = quoteExportActorWith(['viewAny', 'export']);
+    $actor = quoteExportActorWith(['viewAny', 'export', 'viewAll']);
     Sanctum::actingAs($actor);
 
     $opportunityA = Opportunity::factory()->create();
@@ -121,7 +121,7 @@ it('exports every Offerta when opportunityId is omitted (non-regression)', funct
 
 it('422s on an unknown opportunityId and creates no ExportRun', function () {
     Storage::fake('local');
-    $actor = quoteExportActorWith(['viewAny', 'export']);
+    $actor = quoteExportActorWith(['viewAny', 'export', 'viewAll']);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/exports/quotes', quoteExportPayload(['opportunityId' => 999999]))

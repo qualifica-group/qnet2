@@ -12,12 +12,12 @@ uses(RefreshDatabase::class);
 
 function multiQuoteDeleteActor(): User
 {
-    foreach (['viewAny', 'view', 'delete'] as $ability) {
+    foreach (['viewAny', 'view', 'delete', 'viewAll'] as $ability) {
         Permission::findOrCreate("quotes.{$ability}");
     }
 
     $user = User::factory()->create();
-    $user->givePermissionTo(['quotes.viewAny', 'quotes.view', 'quotes.delete']);
+    $user->givePermissionTo(['quotes.viewAny', 'quotes.view', 'quotes.delete', 'quotes.viewAll']);
 
     return $user;
 }

@@ -455,9 +455,10 @@ it('AC-019: POST /api/contracts/{contract}/work-orders accepts attribute_values 
     ['product' => $product] = workOrderAttrCategory('generation_field');
 
     Permission::findOrCreate('contracts.program');
+    Permission::findOrCreate('contracts.viewAll', 'web');
     Permission::findOrCreate('work-orders.view');
     $actor = User::factory()->create();
-    $actor->givePermissionTo(['contracts.program', 'work-orders.view']);
+    $actor->givePermissionTo(['contracts.program', 'work-orders.view', 'contracts.viewAll']);
     Sanctum::actingAs($actor);
 
     $contract = Contract::factory()->create([

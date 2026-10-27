@@ -44,7 +44,9 @@ if (! function_exists('grantQuotesView')) {
     function grantQuotesView(User $user): void
     {
         Permission::findOrCreate('quotes.view');
-        $user->givePermissionTo('quotes.view');
+        Permission::findOrCreate('quotes.viewAll');
+        // Spec 0316: not a visibility test, so the actor sees every quote.
+        $user->givePermissionTo(['quotes.view', 'quotes.viewAll']);
     }
 }
 

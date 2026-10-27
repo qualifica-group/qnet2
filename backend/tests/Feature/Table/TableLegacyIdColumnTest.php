@@ -51,7 +51,7 @@ it('injects a hidden sortable and filterable old_id column right after id when t
 });
 
 it('filters old_id with the number condition only, never a capped value checklist', function () {
-    Sanctum::actingAs(legacyIdActor(['opportunities.viewAny']));
+    Sanctum::actingAs(legacyIdActor(['opportunities.viewAny', 'opportunities.viewAll']));
 
     $target = Opportunity::factory()->create(['old_id' => 173029]);
     Opportunity::factory()->create(['old_id' => 173030]);
@@ -122,7 +122,7 @@ it('filters the rows by old_id', function () {
 });
 
 it('finds an opportunity by old_id through the quick search', function () {
-    Sanctum::actingAs(legacyIdActor(['opportunities.viewAny']));
+    Sanctum::actingAs(legacyIdActor(['opportunities.viewAny', 'opportunities.viewAll']));
 
     $target = Opportunity::factory()->create(['old_id' => 173029]);
     Opportunity::factory()->create(['old_id' => 173030]);

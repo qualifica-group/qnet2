@@ -34,6 +34,8 @@ if (! function_exists('productLinesOpportunityUserWith')) {
             $user->givePermissionTo("opportunities.{$ability}");
         }
 
+        $user->givePermissionTo(Permission::findOrCreate('opportunities.viewAll', 'web'));
+
         return $user;
     }
 }

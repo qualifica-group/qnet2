@@ -31,6 +31,9 @@ if (! function_exists('contractUpdateUserWith')) {
             $user->givePermissionTo("contracts.{$ability}");
         }
 
+        // Not about record visibility (spec 0316, REQUIREMENT CHANGED D-1): see every contract.
+        $user->givePermissionTo(Permission::findOrCreate('contracts.viewAll'));
+
         return $user;
     }
 }
@@ -213,12 +216,12 @@ it('PATCH with an inactive contract_status_id is 422, nothing persisted', functi
 // ---------------------------------------------------------------------------
 
 it('AC-039: payment_notes readonly for the actor\'s role -> 422 on a CHANGED value, no write', function () {
-    foreach (['view', 'update'] as $ability) {
+    foreach (['view', 'update', 'viewAll'] as $ability) {
         Permission::findOrCreate("contracts.{$ability}");
     }
 
     $role = Role::create(['name' => 'contract-payment-notes-locked']);
-    $role->givePermissionTo(['contracts.view', 'contracts.update']);
+    $role->givePermissionTo(['contracts.view', 'contracts.update', 'contracts.viewAll']);
     $role->fieldPermissions()->create([
         'resource' => 'contracts',
         'field' => 'payment_notes',
@@ -241,12 +244,12 @@ it('AC-039: payment_notes readonly for the actor\'s role -> 422 on a CHANGED val
 });
 
 it('AC-039: PATCH resubmitting the SAME payment_notes for a locked field is a no-op that passes', function () {
-    foreach (['view', 'update'] as $ability) {
+    foreach (['view', 'update', 'viewAll'] as $ability) {
         Permission::findOrCreate("contracts.{$ability}");
     }
 
     $role = Role::create(['name' => 'contract-payment-notes-locked-noop']);
-    $role->givePermissionTo(['contracts.view', 'contracts.update']);
+    $role->givePermissionTo(['contracts.view', 'contracts.update', 'contracts.viewAll']);
     $role->fieldPermissions()->create([
         'resource' => 'contracts',
         'field' => 'payment_notes',

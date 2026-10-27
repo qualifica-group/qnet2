@@ -26,12 +26,12 @@ uses(RefreshDatabase::class);
 if (! function_exists('defaultStatusActor')) {
     function defaultStatusActor(): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
+        foreach (['viewAny', 'view', 'viewAll', 'create', 'update', 'delete'] as $ability) {
             Permission::findOrCreate("opportunities.{$ability}");
         }
 
         $user = User::factory()->create();
-        $user->givePermissionTo(['opportunities.create', 'opportunities.update']);
+        $user->givePermissionTo(['opportunities.create', 'opportunities.update', 'opportunities.viewAll']);
 
         return $user;
     }

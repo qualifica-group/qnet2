@@ -9,6 +9,7 @@ use App\DataObjects\Shared\ForSelectResult;
 use App\Models\Quote;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * GET /api/quotes/for-select (ADR 0011), feeding the `rewarded-referents`
@@ -61,7 +62,7 @@ final class QuoteForSelectService
      */
     private function baseQuery(): Builder
     {
-        return Quote::query()->select(['id', 'code', 'title']);
+        return QuoteVisibilityScope::scopeToActor(Quote::query(), Auth::user())->select(['quotes.id', 'quotes.code', 'quotes.title']);
     }
 
     /**
@@ -86,7 +87,7 @@ final class QuoteForSelectService
 
         /** @var Collection<int, Quote> $hydrated */
         $hydrated = $this->baseQuery()
-            ->whereIn('id', $missingIds)
+            ->whereIn('quotes.id', $missingIds)
             ->orderBy('code')
             ->orderBy('id')
             ->get();

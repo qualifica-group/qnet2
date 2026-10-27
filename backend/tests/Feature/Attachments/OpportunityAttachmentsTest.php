@@ -42,8 +42,10 @@ beforeEach(function () {
 
 it('upload: links a file to an opportunity via attachable_type=opportunity, collection=documents', function () {
     $actor = userWithAttachmentAbilities(['create']);
+    // Spec 0316 D-9 (REQUIREMENT CHANGED): the actor must be able to view the owner.
+    $actor->givePermissionTo(Permission::findOrCreate('opportunities.view'));
     Sanctum::actingAs($actor);
-    $opportunity = Opportunity::factory()->create();
+    $opportunity = Opportunity::factory()->create(['supervisor_id' => $actor->id]);
 
     $this->postJson('/api/attachments', [
         'file' => UploadedFile::fake()->create('contract.pdf', 16, 'application/pdf'),
@@ -60,8 +62,9 @@ it('upload: links a file to an opportunity via attachable_type=opportunity, coll
 
 it('download: still works for an attachment linked to an opportunity', function () {
     $actor = userWithAttachmentAbilities(['create', 'view']);
+    $actor->givePermissionTo(Permission::findOrCreate('opportunities.view'));
     Sanctum::actingAs($actor);
-    $opportunity = Opportunity::factory()->create();
+    $opportunity = Opportunity::factory()->create(['supervisor_id' => $actor->id]);
 
     $this->postJson('/api/attachments', [
         'file' => UploadedFile::fake()->create('contract.pdf', 16, 'application/pdf'),

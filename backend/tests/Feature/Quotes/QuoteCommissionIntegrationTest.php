@@ -32,6 +32,9 @@ function quoteCommissionActor(array $abilities): User
         $actor->givePermissionTo("quotes.{$ability}");
     }
 
+    // Spec 0316: not a visibility test, so the actor sees every quote.
+    $actor->givePermissionTo(Permission::findOrCreate('quotes.viewAll', 'web'));
+
     return $actor;
 }
 
@@ -148,7 +151,7 @@ it('allows unchanged locked commission fields but rejects attempts to modify the
     Permission::findOrCreate('quotes.view');
     Permission::findOrCreate('quotes.update');
     $role = Role::create(['name' => 'commission-value-locked']);
-    $role->givePermissionTo(['quotes.view', 'quotes.update']);
+    $role->givePermissionTo(['quotes.view', 'quotes.update', Permission::findOrCreate('quotes.viewAll', 'web')]);
     $role->fieldPermissions()->create([
         'resource' => 'quotes',
         'field' => 'commission_value',

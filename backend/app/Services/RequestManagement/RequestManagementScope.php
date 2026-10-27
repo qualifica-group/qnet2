@@ -240,6 +240,26 @@ final class RequestManagementScope
     }
 
     /**
+     * Whether the actor reaches the opportunity through this module: they hold
+     * the module's `view` AND either `viewAll` (short-circuits BEFORE the
+     * existence check, so an opportunity with zero offers stays reachable) or
+     * at least one of its offers is in their scope. The one rule shared by the
+     * notes descriptor and the opportunity documents access.
+     */
+    public static function reachesOpportunity(User $user, int $opportunityId, RequestModule $module = RequestModule::Requests): bool
+    {
+        if (! $user->can($module->permission('view'))) {
+            return false;
+        }
+
+        if ($user->can($module->permission('viewAll'))) {
+            return true;
+        }
+
+        return self::scopeToActor(Quote::query()->where('opportunity_id', $opportunityId), $user, $module)->exists();
+    }
+
+    /**
      * Cache-key identity of the rows $user can see (spec 0178 D-5): the module
      * plus `all` for a viewAll actor, otherwise the actor id and the ordered
      * visible Sede ids. Two actors with the same fingerprint see exactly the

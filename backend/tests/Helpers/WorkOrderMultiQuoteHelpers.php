@@ -45,12 +45,13 @@ if (! function_exists('multiQuoteProgramActor')) {
      */
     function multiQuoteProgramActor(array $abilities = ['contracts.program', 'work-orders.view']): User
     {
-        foreach (['contracts.viewAny', 'contracts.view', 'contracts.program', 'work-orders.viewAny', 'work-orders.view', 'work-orders.update', 'work-orders.viewAll'] as $name) {
+        foreach (['contracts.viewAny', 'contracts.view', 'contracts.program', 'contracts.viewAll', 'work-orders.viewAny', 'work-orders.view', 'work-orders.update', 'work-orders.viewAll'] as $name) {
             Permission::findOrCreate($name);
         }
 
         $user = User::factory()->create();
-        $user->givePermissionTo($abilities);
+        // Not about record visibility (spec 0316, REQUIREMENT CHANGED D-1).
+        $user->givePermissionTo([...$abilities, 'contracts.viewAll']);
 
         return $user;
     }

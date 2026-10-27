@@ -104,6 +104,15 @@ const guide: HelpGuide = {
         ] },
       ],
     },
+    {
+      id: 'visibility',
+      title: "Record visibility levels",
+      blocks: [
+        { type: 'paragraph', text: "For **Opportunities**, **Quotes**, **Work orders** and **Contracts**, visibility is set with three permissions, one set per module, which are cumulative:" },
+        { type: 'list', items: ["**View**: only the records where the person is part of the team (for example Supervisor or Account manager).", "**View by site**: plus the records of their own operating site (not available for Opportunities).", "**View all**: every record."] },
+        { type: 'note', text: "Levels are per module: granting **View all** on Quotes does not grant it on Contracts. **View** is always required too. Seeing a record does not give the right to edit or delete it." },
+      ],
+    },
   ],
 }
 

@@ -30,6 +30,8 @@ if (! function_exists('opportunityDocumentsActorWith')) {
             $user->givePermissionTo("opportunities.{$ability}");
         }
 
+        $user->givePermissionTo(Permission::findOrCreate('opportunities.viewAll', 'web'));
+
         return $user;
     }
 }

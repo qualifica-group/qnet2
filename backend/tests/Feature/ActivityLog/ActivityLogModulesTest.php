@@ -106,6 +106,9 @@ dataset('activityLogModules', function (): array {
 
 it('200 with the frozen envelope, given view + viewActivity (AC-001)', function (string $resource, string $modelClass) {
     $actor = activityLogModuleActor($resource, ['view', 'viewActivity']);
+    if (in_array($resource, ['opportunities', 'contracts'], true)) {
+        $actor->givePermissionTo(Permission::findOrCreate("{$resource}.viewAll", 'web'));
+    }
     /** @var Model $target */
     $target = $modelClass::factory()->create();
     Sanctum::actingAs($actor);

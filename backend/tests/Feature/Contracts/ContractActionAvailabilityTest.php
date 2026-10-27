@@ -26,7 +26,8 @@ uses(RefreshDatabase::class);
 if (! function_exists('contractAvailabilityActor')) {
     function contractAvailabilityActor(): User
     {
-        $abilities = ['viewAny', 'view', 'update', 'export', 'viewActivity', 'validate', 'terminate', 'program', 'changeStatus', 'reactivate'];
+        // 'viewAll': not about record visibility (spec 0316, REQUIREMENT CHANGED D-1).
+        $abilities = ['viewAny', 'view', 'update', 'export', 'viewActivity', 'validate', 'terminate', 'program', 'changeStatus', 'reactivate', 'viewAll'];
 
         foreach ($abilities as $ability) {
             Permission::findOrCreate("contracts.{$ability}");

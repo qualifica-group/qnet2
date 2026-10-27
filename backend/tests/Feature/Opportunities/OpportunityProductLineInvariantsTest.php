@@ -38,6 +38,8 @@ if (! function_exists('invariantsOpportunityActor')) {
         $user = User::factory()->create();
         $user->givePermissionTo(['opportunities.create', 'opportunities.update', 'opportunities.view', 'opportunities.viewAny']);
 
+        $user->givePermissionTo(Permission::findOrCreate('opportunities.viewAll', 'web'));
+
         return $user;
     }
 }

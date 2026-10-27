@@ -150,7 +150,7 @@ it('AC-006: no update on the quote, or a non-editable commissions field, is 403;
     Permission::findOrCreate('quotes.view');
     Permission::findOrCreate('quotes.update');
     $role = Role::create(['name' => 'commissions-locked']);
-    $role->givePermissionTo(['quotes.view', 'quotes.update']);
+    $role->givePermissionTo(['quotes.view', 'quotes.update', Permission::findOrCreate('quotes.viewAll', 'web')]);
     $role->fieldPermissions()->create(['resource' => 'quotes', 'field' => 'commissions', 'visible' => true, 'editable' => false, 'required' => false]);
     $locked = User::factory()->create();
     $locked->assignRole($role);

@@ -20,8 +20,10 @@ uses(RefreshDatabase::class);
 function contractActor(): User
 {
     Permission::findOrCreate('contracts.viewAny');
+    Permission::findOrCreate('contracts.viewAll');
     $user = User::factory()->create();
-    $user->givePermissionTo('contracts.viewAny');
+    // Not about record visibility (spec 0316, REQUIREMENT CHANGED D-1).
+    $user->givePermissionTo(['contracts.viewAny', 'contracts.viewAll']);
 
     return $user;
 }

@@ -22,6 +22,7 @@ use App\Services\DocumentLayouts\Rendering\Invoices\InvoiceSampleFactory;
 use App\Services\DocumentLayouts\Rendering\PurchaseOrders\PurchaseOrderRenderSubject;
 use App\Services\DocumentLayouts\Rendering\PurchaseOrders\PurchaseOrderSampleFactory;
 use App\Services\DocumentLayouts\Rendering\QuoteRenderSubject;
+use App\Services\Quotes\QuoteVisibilityScope;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -144,7 +145,7 @@ class DocumentLayoutPreviewController extends BaseApiController
             return null;
         }
 
-        return Quote::query()->latest('id')->first();
+        return QuoteVisibilityScope::scopeToActor(Quote::query(), $actor)->latest('quotes.id')->first();
     }
 
     private function sampleQuote(): Quote

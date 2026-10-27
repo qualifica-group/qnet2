@@ -41,6 +41,8 @@ if (! function_exists('computedStatusActor')) {
         $user = User::factory()->create();
         $user->givePermissionTo(['opportunities.viewAny', 'opportunities.view', 'opportunities.create', 'opportunities.update']);
 
+        $user->givePermissionTo(Permission::findOrCreate('opportunities.viewAll', 'web'));
+
         return $user;
     }
 }

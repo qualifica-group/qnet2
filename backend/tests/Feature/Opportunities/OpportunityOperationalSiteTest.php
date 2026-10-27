@@ -35,6 +35,8 @@ if (! function_exists('operationalSiteOpportunityUserWith')) {
             $user->givePermissionTo("opportunities.{$ability}");
         }
 
+        $user->givePermissionTo(Permission::findOrCreate('opportunities.viewAll', 'web'));
+
         return $user;
     }
 }

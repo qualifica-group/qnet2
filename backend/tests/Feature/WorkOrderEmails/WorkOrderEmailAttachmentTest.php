@@ -165,9 +165,10 @@ it('AC-010: import source=document_bundle 422s for an inactive/unknown bundle', 
 
 it('AC-010: import source=quote_pdf 422s when no layout is resolvable', function () {
     Permission::findOrCreate('quotes.view');
+    Permission::findOrCreate('quotes.viewAll', 'web');
     $workOrder = WorkOrder::factory()->create();
     $actor = workOrderEmailActor($workOrder, ['sendEmail']);
-    $actor->givePermissionTo('quotes.view');
+    $actor->givePermissionTo(['quotes.view', 'quotes.viewAll']);
     $email = draftEmail($workOrder, $actor);
     Sanctum::actingAs($actor);
 
@@ -177,9 +178,10 @@ it('AC-010: import source=quote_pdf 422s when no layout is resolvable', function
 
 it('AC-010: import source=quote_pdf generates and attaches "{quote.code}.pdf" when a layout resolves', function () {
     Permission::findOrCreate('quotes.view');
+    Permission::findOrCreate('quotes.viewAll', 'web');
     $workOrder = WorkOrder::factory()->create();
     $actor = workOrderEmailActor($workOrder, ['sendEmail']);
-    $actor->givePermissionTo('quotes.view');
+    $actor->givePermissionTo(['quotes.view', 'quotes.viewAll']);
     $email = draftEmail($workOrder, $actor);
 
     $layout = DocumentLayout::factory()->create([

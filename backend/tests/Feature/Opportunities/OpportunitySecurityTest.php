@@ -44,12 +44,12 @@ it('navigation: the opportunities node only shows with opportunities.view (AC-08
 // ---------------------------------------------------------------------------
 
 it('update: estimated_value editable:false for the actor\'s role -> 422 on a CHANGED value, no write (AC-032)', function () {
-    foreach (['viewAny', 'view', 'update'] as $ability) {
+    foreach (['viewAny', 'view', 'update', 'viewAll'] as $ability) {
         Permission::findOrCreate("opportunities.{$ability}");
     }
 
     $role = Role::create(['name' => 'opportunity-value-locked']);
-    $role->givePermissionTo(['opportunities.view', 'opportunities.update']);
+    $role->givePermissionTo(['opportunities.view', 'opportunities.update', 'opportunities.viewAll']);
     $role->fieldPermissions()->create([
         'resource' => 'opportunities',
         'field' => 'estimated_value',
@@ -78,12 +78,12 @@ it('update: resubmitting the SAME (unchanged) value for a locked field is a no-o
     // decimal-cast "150.00" against a submitted numeric 150, a pre-existing
     // gap in that trait (also latent on Campaign/Project's own decimal
     // fields), not introduced by this module and out of scope for spec 0040.
-    foreach (['viewAny', 'view', 'update'] as $ability) {
+    foreach (['viewAny', 'view', 'update', 'viewAll'] as $ability) {
         Permission::findOrCreate("opportunities.{$ability}");
     }
 
     $role = Role::create(['name' => 'opportunity-name-locked-noop']);
-    $role->givePermissionTo(['opportunities.view', 'opportunities.update']);
+    $role->givePermissionTo(['opportunities.view', 'opportunities.update', 'opportunities.viewAll']);
     $role->fieldPermissions()->create([
         'resource' => 'opportunities',
         'field' => 'name',

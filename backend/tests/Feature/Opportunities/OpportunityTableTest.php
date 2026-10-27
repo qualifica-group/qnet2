@@ -33,6 +33,8 @@ if (! function_exists('opportunityTableUserWith')) {
             $user->givePermissionTo("opportunities.{$ability}");
         }
 
+        $user->givePermissionTo(Permission::findOrCreate('opportunities.viewAll', 'web'));
+
         return $user;
     }
 }

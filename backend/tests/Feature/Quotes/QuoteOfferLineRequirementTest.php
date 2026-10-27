@@ -29,7 +29,7 @@ if (! function_exists('offerLineRequirementActor')) {
         }
 
         $user = User::factory()->create();
-        $user->givePermissionTo(['quotes.viewAny', 'quotes.view', 'quotes.create', 'quotes.update']);
+        $user->givePermissionTo(['quotes.viewAny', 'quotes.view', 'quotes.create', 'quotes.update', Permission::findOrCreate('quotes.viewAll', 'web')]);
 
         return $user;
     }

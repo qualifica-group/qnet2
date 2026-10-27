@@ -29,7 +29,7 @@ function quoteCommissionFieldActor(array $fieldPermissions): User
     }
 
     $role = Role::create(['name' => fake()->unique()->slug()]);
-    $role->givePermissionTo(['quotes.view', 'quotes.update', 'quotes.viewActivity']);
+    $role->givePermissionTo(['quotes.view', 'quotes.update', 'quotes.viewActivity', Permission::findOrCreate('quotes.viewAll', 'web')]);
 
     foreach ($fieldPermissions as $field => $permission) {
         $role->fieldPermissions()->create([

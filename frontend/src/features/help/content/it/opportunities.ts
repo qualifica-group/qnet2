@@ -125,6 +125,16 @@ const guide: HelpGuide = {
         },
       ],
     },
+    {
+      id: 'visibility',
+      title: "Quali opportunità vedi",
+      blocks: [
+        { type: 'paragraph', text: "Cosa vedi dipende dal tuo ruolo. Serve sempre il permesso **Visualizza**; poi:" },
+        { type: 'list', items: ["Con **Visualizza** vedi solo le opportunità in cui sei **Supervisore** o tra i **Gestori account**.", "Con **Visualizza tutti** le vedi tutte."] },
+        { type: 'paragraph', text: "Il filtro vale per elenco, scheda, filtri, esportazioni, statistiche e dashboard, selettori e documenti. Aprire il link di un'opportunità che non puoi vedere mostra un errore di accesso. Vedere un'opportunità non permette di modificarla o eliminarla: servono i permessi **Modifica** ed **Elimina**, e si modifica solo ciò che si vede." },
+        { type: 'note', text: "Se crei un'opportunità senza far parte del suo team, non la vedrai più a meno di avere **Visualizza tutti**. Nel riquadro **Offerte** di un'opportunità compaiono solo le offerte che puoi vedere." },
+      ],
+    },
   ],
 }
 

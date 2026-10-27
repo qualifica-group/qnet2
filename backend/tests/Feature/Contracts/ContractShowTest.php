@@ -39,6 +39,9 @@ if (! function_exists('contractShowUserWith')) {
             $user->givePermissionTo("contracts.{$ability}");
         }
 
+        // Not about record visibility (spec 0316, REQUIREMENT CHANGED D-1): see every contract.
+        $user->givePermissionTo(Permission::findOrCreate('contracts.viewAll'));
+
         return $user;
     }
 }

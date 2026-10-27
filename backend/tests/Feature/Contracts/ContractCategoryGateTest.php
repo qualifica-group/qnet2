@@ -34,7 +34,7 @@ if (! function_exists('contractGateActor')) {
      */
     function contractGateActor(array $abilities): User
     {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity'] as $ability) {
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewAll'] as $ability) {
             Permission::findOrCreate("quotes.{$ability}");
         }
 
@@ -43,6 +43,9 @@ if (! function_exists('contractGateActor')) {
         foreach ($abilities as $ability) {
             $user->givePermissionTo("quotes.{$ability}");
         }
+
+        // Not about record visibility (spec 0316, REQUIREMENT CHANGED D-1).
+        $user->givePermissionTo('quotes.viewAll');
 
         return $user;
     }

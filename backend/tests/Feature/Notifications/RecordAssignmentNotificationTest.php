@@ -180,7 +180,7 @@ it('the actor is never notified, not even when assigning themselves (AC-007)', f
 it('applies the same supervisor and manager rules to an opportunity (AC-008)', function () {
     Notification::fake();
 
-    $actor = assignmentActorWith(['opportunities.update']);
+    $actor = assignmentActorWith(['opportunities.update', 'opportunities.viewAll']);
     $supervisor = User::factory()->create();
     $manager = User::factory()->create();
     $opportunity = Opportunity::factory()->create();

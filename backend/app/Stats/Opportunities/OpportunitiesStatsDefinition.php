@@ -6,6 +6,8 @@ namespace App\Stats\Opportunities;
 
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
+use App\Models\User;
+use App\Services\Opportunities\OpportunityVisibilityScope;
 use App\Stats\AbstractStatsDefinition;
 use App\Stats\Support\Aggregates;
 use App\Stats\Widgets\DistributionChart;
@@ -13,7 +15,8 @@ use App\Stats\Widgets\StatFormat;
 use App\Stats\Widgets\TrendChart;
 use App\Stats\Widgets\Widget;
 use App\Support\OperationalSiteLabel;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * Statistics panel of the `opportunities` module (spec 0040): volume, the
@@ -39,18 +42,24 @@ class OpportunitiesStatsDefinition extends AbstractStatsDefinition
         return Opportunity::class;
     }
 
+    /** Widgets are narrowed by OpportunityVisibilityScope, so each actor has their own numbers. */
+    public function cacheScope(User $actor): string
+    {
+        return 'user:'.$actor->getKey();
+    }
+
     /**
      * @return array<int, Widget>
      */
     public function widgets(): array
     {
-        $total = $this->totalRows();
+        $total = $this->visible()->count();
 
         return [
             $this->stat('total', $total, icon: 'briefcase'),
             $this->stat(
                 key: 'estimated_value',
-                value: round((float) DB::table(self::TABLE)->sum('estimated_value'), 2),
+                value: round((float) $this->visible()->sum('opportunities.estimated_value'), 2),
                 format: StatFormat::Currency,
                 icon: 'wallet',
             ),
@@ -62,13 +71,13 @@ class OpportunitiesStatsDefinition extends AbstractStatsDefinition
             ),
             $this->stat(
                 key: 'from_lead',
-                value: Opportunity::query()->whereNotNull('lead_id')->count(),
+                value: $this->visible()->whereNotNull('opportunities.lead_id')->count(),
                 icon: 'check-circle',
             ),
             $this->distribution(
                 key: 'by_operational_site',
                 items: Aggregates::topRelatedLabelledBy(
-                    query: DB::table(self::TABLE),
+                    query: $this->visible()->toBase(),
                     foreignKey: self::TABLE.'.operational_site_id',
                     limit: self::TOP_LIMIT,
                     labels: $this->operationalSiteLabels(...),
@@ -78,7 +87,12 @@ class OpportunitiesStatsDefinition extends AbstractStatsDefinition
             ),
             $this->trend(
                 key: 'trend',
-                points: Aggregates::monthlyTrend(self::TABLE, 'created_at', self::TREND_MONTHS),
+                points: Aggregates::monthlyTrend(
+                    self::TABLE,
+                    'created_at',
+                    self::TREND_MONTHS,
+                    fn ($query) => $query->whereIn('opportunities.id', $this->visible()->select('opportunities.id')),
+                ),
                 format: StatFormat::Number,
                 chart: TrendChart::Area,
                 tone: 1,
@@ -114,8 +128,18 @@ class OpportunitiesStatsDefinition extends AbstractStatsDefinition
      */
     private function averageSuccessProbability(): ?float
     {
-        $average = DB::table(self::TABLE)->whereNotNull('success_probability')->avg('success_probability');
+        $average = $this->visible()->whereNotNull('opportunities.success_probability')->avg('opportunities.success_probability');
 
         return $average === null ? null : round((float) $average, 1);
+    }
+
+    /**
+     * The actor's visible opportunities, a fresh builder per widget.
+     *
+     * @return Builder<Opportunity>
+     */
+    private function visible(): Builder
+    {
+        return OpportunityVisibilityScope::scopeToActor(Opportunity::query(), Auth::user());
     }
 }

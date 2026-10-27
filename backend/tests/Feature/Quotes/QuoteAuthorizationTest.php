@@ -34,6 +34,9 @@ if (! function_exists('quoteAuthUserWith')) {
             $user->givePermissionTo("quotes.{$ability}");
         }
 
+        // Spec 0316: not a visibility test, so the actor sees every quote.
+        $user->givePermissionTo(Permission::findOrCreate('quotes.viewAll', 'web'));
+
         return $user;
     }
 }
@@ -136,7 +139,7 @@ it('AC-063: commercial_id editable:false for the actor\'s role -> 422 on a CHANG
     }
 
     $role = Role::create(['name' => 'quote-commercial-locked']);
-    $role->givePermissionTo(['quotes.view', 'quotes.update']);
+    $role->givePermissionTo(['quotes.view', 'quotes.update', Permission::findOrCreate('quotes.viewAll', 'web')]);
     $role->fieldPermissions()->create([
         'resource' => 'quotes',
         'field' => 'commercial_id',
@@ -167,7 +170,7 @@ it('AC-063: PATCH resubmitting the SAME commercial_id for a locked field is a no
     }
 
     $role = Role::create(['name' => 'quote-commercial-locked-noop']);
-    $role->givePermissionTo(['quotes.view', 'quotes.update']);
+    $role->givePermissionTo(['quotes.view', 'quotes.update', Permission::findOrCreate('quotes.viewAll', 'web')]);
     $role->fieldPermissions()->create([
         'resource' => 'quotes',
         'field' => 'commercial_id',

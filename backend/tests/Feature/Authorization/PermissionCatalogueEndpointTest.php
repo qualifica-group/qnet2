@@ -134,7 +134,7 @@ it('AC-007: leads is in canonical ability order; contracts appends its extra act
     $contractsAbilities = collect($resources['contracts']['permissions'])->pluck('ability')->all();
     expect($contractsAbilities)->toBe([
         'viewAny', 'view', 'update', 'export', 'viewActivity',
-        'changeStatus', 'program', 'reactivate', 'terminate', 'validate',
+        'changeStatus', 'program', 'reactivate', 'terminate', 'validate', 'viewAll', 'viewSite',
     ]);
 });
 

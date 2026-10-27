@@ -3,11 +3,13 @@
 namespace App\Policies;
 
 use App\Models\Attachment;
+use App\Models\Opportunity;
 use App\Models\OutboundEmail;
 use App\Models\User;
 use App\Policies\Abstracts\BasePolicy;
 use App\RichText\RichText;
 use App\RichText\RichTextOwnerAccess;
+use App\Services\Opportunities\OpportunityDocumentAccess;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -23,9 +25,15 @@ use Illuminate\Database\Eloquent\Model;
  *   through the nested `work-orders/{workOrder}/emails/{email}/attachments/*`
  *   endpoints, authorized on the owning Commessa.
  *
- * Every other collection is untouched: maps to the `attachments.{ability}`
- * permission (registered by `php artisan permissions:sync`), resource-level,
- * no per-record boundary — the pre-existing, deliberately unfixed gap spec
+ * Files owned by an opportunity, work order or contract
+ * (`attachments.owner_scoped_types`, spec 0316 D-9) additionally require the
+ * actor to be able to `view` the owning record, on every endpoint. For an
+ * opportunity "can view" is OpportunityDocumentAccess (any screen showing its
+ * documents), not the Opportunity policy alone.
+ *
+ * Every other owner maps to the `attachments.{ability}` permission
+ * (registered by `php artisan permissions:sync`), resource-level, no
+ * per-record boundary — the pre-existing, deliberately unfixed gap spec
  * 0128's scope note calls out (0128 out-of-scope).
  */
 class AttachmentPolicy extends BasePolicy
@@ -74,6 +82,10 @@ class AttachmentPolicy extends BasePolicy
             return false;
         }
 
+        if ($model instanceof Attachment && ! $this->canSeeOwner($user, $model->attachable_type, $model->attachable_id)) {
+            return false;
+        }
+
         return parent::view($user, $model);
     }
 
@@ -105,7 +117,44 @@ class AttachmentPolicy extends BasePolicy
             return false;
         }
 
+        if ($model instanceof Attachment && ! $this->canSeeOwner($user, $model->attachable_type, $model->attachable_id)) {
+            return false;
+        }
+
         return parent::delete($user, $model);
+    }
+
+    /**
+     * Owner gate for the endpoints that name the owner in the request (list,
+     * upload): true unless the owner type is owner-scoped and not visible.
+     */
+    public function accessOwner(User $user, ?string $attachableType, mixed $attachableId): bool
+    {
+        return $this->canSeeOwner($user, $attachableType, $attachableId === null ? null : (int) $attachableId);
+    }
+
+    /**
+     * Single owner-scoped check (config `owner_scoped_types`). A missing
+     * owner of a scoped type is refused (fail-closed).
+     */
+    private function canSeeOwner(User $user, ?string $attachableType, ?int $attachableId): bool
+    {
+        if ($attachableType === null || ! in_array($attachableType, (array) config('attachments.owner_scoped_types'), true)) {
+            return true;
+        }
+
+        $modelClass = config("attachments.attachable_types.{$attachableType}");
+        $owner = $attachableId === null ? null : $modelClass::query()->find($attachableId);
+
+        if ($owner === null) {
+            return false;
+        }
+
+        // The opportunity is also worked from other screens (request management,
+        // contract detail) whose users hold no `opportunities.view`.
+        return $owner instanceof Opportunity
+            ? OpportunityDocumentAccess::allows($user, $owner)
+            : $user->can('view', $owner);
     }
 
     /**

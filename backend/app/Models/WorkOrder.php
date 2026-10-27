@@ -144,6 +144,30 @@ class WorkOrder extends BaseModel
     }
 
     /**
+     * Work orders with at least one source offer (`quote_id`, or the offers of
+     * its pivot lines, spec 0267) located in one of the given operational
+     * sites. A NULL site never matches; an empty list matches nothing.
+     *
+     * @param  Builder<WorkOrder>  $query
+     * @param  array<int, int>  $siteIds
+     */
+    public function scopeWithSourceQuoteInSites(Builder $query, array $siteIds): void
+    {
+        $query->where(function (Builder $query) use ($siteIds): void {
+            $query->whereExists(
+                DB::table('quotes')
+                    ->whereColumn('quotes.id', 'work_orders.quote_id')
+                    ->whereIn('quotes.operational_site_id', $siteIds)
+                    ->select(DB::raw(1))
+            )->orWhereExists(
+                self::pivotLinesQuery()
+                    ->join('quotes', 'quotes.id', '=', 'quote_lines.quote_id')
+                    ->whereIn('quotes.operational_site_id', $siteIds)
+            );
+        });
+    }
+
+    /**
      * Work orders of a registry (customer), directly or through one of their
      * lines' offers (quotes.opportunity_id -> opportunities.registry_id).
      *

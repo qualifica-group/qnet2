@@ -109,7 +109,7 @@ function conditionalSurface(string $name): array
             ];
         })(),
         'quote' => (function (): array {
-            Sanctum::actingAs(conditionalActor('quotes', ['viewAny', 'view', 'create', 'update']));
+            Sanctum::actingAs(conditionalActor('quotes', ['viewAny', 'view', 'create', 'update', 'viewAll']));
             $category = conditionalValuesCategory(AttributeContext::Quote, ['business_function_id' => BusinessFunction::factory()->create()->id]);
             $product = Product::factory()->create(['category_id' => $category->id]);
 

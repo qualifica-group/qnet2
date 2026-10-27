@@ -29,7 +29,7 @@ if (! function_exists('inlineEditActor')) {
      */
     function inlineEditActor(string $resource, array $abilities): User
     {
-        foreach (['viewAny', 'view', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewDocuments'] as $ability) {
+        foreach (['viewAny', 'view', 'update', 'delete', 'export', 'import', 'viewActivity', 'viewDocuments', 'viewAll'] as $ability) {
             Permission::findOrCreate("{$resource}.{$ability}");
         }
 
@@ -55,7 +55,7 @@ if (! function_exists('inlineEditActorWithRole')) {
      */
     function inlineEditActorWithRole(string $resource, array $abilities, ?array $matrixRow = null, ?string $roleName = null): User
     {
-        foreach (['viewAny', 'view', 'update'] as $ability) {
+        foreach (['viewAny', 'view', 'update', 'viewAll'] as $ability) {
             Permission::findOrCreate("{$resource}.{$ability}");
         }
 
@@ -78,7 +78,7 @@ if (! function_exists('inlineEditActorWithRole')) {
 // ---------------------------------------------------------------------------
 
 it('AC-001: PATCH a declared-editable column -> 200, persisted, full re-mapped row', function () {
-    $actor = inlineEditActor('opportunities', ['viewAny', 'update']);
+    $actor = inlineEditActor('opportunities', ['viewAny', 'update', 'viewAll']);
     $opportunity = Opportunity::factory()->create(['estimated_value' => 100]);
     Sanctum::actingAs($actor);
 
@@ -101,7 +101,7 @@ it('AC-001: PATCH a declared-editable column -> 200, persisted, full re-mapped r
 // ---------------------------------------------------------------------------
 
 it('AC-002: without opportunities.update -> 403, no DB write', function () {
-    $actor = inlineEditActor('opportunities', ['viewAny']);
+    $actor = inlineEditActor('opportunities', ['viewAny', 'viewAll']);
     $opportunity = Opportunity::factory()->create(['name' => 'Untouched']);
     Sanctum::actingAs($actor);
 
@@ -124,7 +124,7 @@ it('AC-003: a DB field-permission row denying `estimated_value` -> 403 on PATCH,
     // retargeting for the same reason.
     $actor = inlineEditActorWithRole(
         'opportunities',
-        ['viewAny', 'update'],
+        ['viewAny', 'update', 'viewAll'],
         ['resource' => 'opportunities', 'field' => 'estimated_value', 'visible' => true, 'editable' => false, 'required' => false],
     );
     $opportunity = Opportunity::factory()->create(['estimated_value' => 42]);
@@ -148,7 +148,7 @@ it('AC-003: a DB field-permission row denying `estimated_value` -> 403 on PATCH,
 // ---------------------------------------------------------------------------
 
 it('AC-004: a non-existent row id -> 404, no DB write, existence not confirmed', function () {
-    $actor = inlineEditActor('opportunities', ['viewAny', 'update']);
+    $actor = inlineEditActor('opportunities', ['viewAny', 'update', 'viewAll']);
     Sanctum::actingAs($actor);
 
     $this->patchJson('/api/tables/opportunities/rows/999999999', [
@@ -163,7 +163,7 @@ it('AC-004: a non-existent row id -> 404, no DB write, existence not confirmed',
 // non-numeric id on an INT-keyed domain must still resolve to a clean 404 —
 // never a 500 — through the exact same `baseQuery()->findOrFail()` path.
 it('a non-numeric row id on an int-keyed domain -> 404 with the envelope, never a 500', function () {
-    $actor = inlineEditActor('opportunities', ['viewAny', 'update']);
+    $actor = inlineEditActor('opportunities', ['viewAny', 'update', 'viewAll']);
     Sanctum::actingAs($actor);
 
     $this->patchJson('/api/tables/opportunities/rows/not-a-number', [
@@ -179,7 +179,7 @@ it('a non-numeric row id on an int-keyed domain -> 404 with the envelope, never 
 // ---------------------------------------------------------------------------
 
 it('AC-005: a column that exists but is not declared editable -> 422, no DB write', function () {
-    $actor = inlineEditActor('opportunities', ['viewAny', 'update']);
+    $actor = inlineEditActor('opportunities', ['viewAny', 'update', 'viewAll']);
     $opportunity = Opportunity::factory()->create();
     Sanctum::actingAs($actor);
 
@@ -190,7 +190,7 @@ it('AC-005: a column that exists but is not declared editable -> 422, no DB writ
 });
 
 it('AC-006: an arbitrary/unknown column id -> 422, no DB write, no SQL error', function () {
-    $actor = inlineEditActor('opportunities', ['viewAny', 'update']);
+    $actor = inlineEditActor('opportunities', ['viewAny', 'update', 'viewAll']);
     $opportunity = Opportunity::factory()->create();
     Sanctum::actingAs($actor);
 
@@ -268,7 +268,7 @@ it('AC-009: request-management operator not managing the record and without view
 // ---------------------------------------------------------------------------
 
 it('AC-010: a non-numeric value on a number column -> 422, no DB write', function () {
-    $actor = inlineEditActor('opportunities', ['viewAny', 'update']);
+    $actor = inlineEditActor('opportunities', ['viewAny', 'update', 'viewAll']);
     $opportunity = Opportunity::factory()->create(['estimated_value' => 100]);
     Sanctum::actingAs($actor);
 
@@ -281,7 +281,7 @@ it('AC-010: a non-numeric value on a number column -> 422, no DB write', functio
 });
 
 it('AC-010: an unparsable date on a date column -> 422', function () {
-    $actor = inlineEditActor('opportunities', ['viewAny', 'update']);
+    $actor = inlineEditActor('opportunities', ['viewAny', 'update', 'viewAll']);
     $opportunity = Opportunity::factory()->create();
     Sanctum::actingAs($actor);
 
@@ -292,7 +292,7 @@ it('AC-010: an unparsable date on a date column -> 422', function () {
 });
 
 it('AC-010: a value outside the column\'s own extra rules (success_probability out of 0-100) -> 422', function () {
-    $actor = inlineEditActor('opportunities', ['viewAny', 'update']);
+    $actor = inlineEditActor('opportunities', ['viewAny', 'update', 'viewAll']);
     $opportunity = Opportunity::factory()->create();
     Sanctum::actingAs($actor);
 
@@ -327,7 +327,7 @@ it('AC-011: value:null on a non-nullable column -> 422', function () {
 });
 
 it('AC-011: value:null on a nullable column -> 200, NULL persisted', function () {
-    $actor = inlineEditActor('opportunities', ['viewAny', 'update']);
+    $actor = inlineEditActor('opportunities', ['viewAny', 'update', 'viewAll']);
     $opportunity = Opportunity::factory()->create(['estimated_value' => 250]);
     Sanctum::actingAs($actor);
 
@@ -344,7 +344,7 @@ it('AC-011: value:null on a nullable column -> 200, NULL persisted', function ()
 // ---------------------------------------------------------------------------
 
 it('AC-014: saving preferences with an `editable` key does not change the resolved config', function () {
-    $actor = inlineEditActor('opportunities', ['viewAny', 'update']);
+    $actor = inlineEditActor('opportunities', ['viewAny', 'update', 'viewAll']);
     Sanctum::actingAs($actor);
 
     $before = collect($this->getJson('/api/tables/opportunities/columns')->assertOk()->json('data.columns'))
@@ -367,7 +367,7 @@ it('AC-014: saving preferences with an `editable` key does not change the resolv
 // ---------------------------------------------------------------------------
 
 it('AC-015: a successful PATCH writes an activity-log entry for the changed field', function () {
-    $actor = inlineEditActor('opportunities', ['viewAny', 'update']);
+    $actor = inlineEditActor('opportunities', ['viewAny', 'update', 'viewAll']);
     $opportunity = Opportunity::factory()->create(['estimated_value' => 100]);
     Sanctum::actingAs($actor);
 

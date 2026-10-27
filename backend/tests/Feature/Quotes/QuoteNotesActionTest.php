@@ -38,6 +38,9 @@ if (! function_exists('quoteNotesActionUserWith')) {
             $user->givePermissionTo("quotes.{$ability}");
         }
 
+        // Spec 0316: not a visibility test, so the actor sees every quote.
+        $user->givePermissionTo(Permission::findOrCreate('quotes.viewAll', 'web'));
+
         foreach ($requestManagementAbilities as $ability) {
             $user->givePermissionTo("request-management.{$ability}");
         }

@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
+use App\Services\Quotes\QuoteVisibilityScope;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Services\QuoteService;
 use App\Tables\Quotes\Concerns\WritesQuoteCells;
@@ -18,6 +19,7 @@ use App\Tables\Shared\OfferLinesColumn;
 use App\Tables\Shared\OperationalSiteColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * Table definition for the `quotes` domain (spec 0065, MT-05).
@@ -111,7 +113,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
         // gate now reads the OFFERTA's own `operator_id` column directly (no
         // relation to eager-load for it any more — was `opportunity.managers`
         // before this migration).
-        return Quote::query()->with([
+        return QuoteVisibilityScope::scopeToActor(Quote::query(), Auth::user())->with([
             'opportunity', 'quoteWorkflowStatus', 'commercial', 'reporter', 'supervisor.avatar',
             // "Gestori Account" (spec 0087, D-1/T-10): the Offerta's own team,
             // rendered as an avatar stack by the `managers` column.

@@ -31,6 +31,8 @@ if (! function_exists('managerLabelOpportunityUserWith')) {
             $user->givePermissionTo("opportunities.{$ability}");
         }
 
+        $user->givePermissionTo(Permission::findOrCreate('opportunities.viewAll', 'web'));
+
         return $user;
     }
 }

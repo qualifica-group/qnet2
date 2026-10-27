@@ -25,6 +25,9 @@ function quoteContractShortcutUser(array $permissions): User
         $user->givePermissionTo(Permission::findOrCreate($permission));
     }
 
+    // Spec 0316: not a visibility test, so the actor sees every quote.
+    $user->givePermissionTo(Permission::findOrCreate('quotes.viewAll', 'web'));
+
     return $user;
 }
 
@@ -62,7 +65,7 @@ it('AC-001: declares the contract action after notes only for contracts.view', f
 it('AC-002: only an Offerta with a contract carries contract_id and the contract action', function () {
     $contract = Contract::factory()->create();
     $plain = Quote::factory()->create();
-    Sanctum::actingAs(quoteContractShortcutUser(['quotes.viewAny', 'quotes.view', 'contracts.view']));
+    Sanctum::actingAs(quoteContractShortcutUser(['quotes.viewAny', 'quotes.view', 'contracts.view', 'contracts.viewAll']));
 
     $rows = collect(quoteContractShortcutRows())->keyBy('id');
 

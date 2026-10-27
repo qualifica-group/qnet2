@@ -196,6 +196,16 @@ const guide: HelpGuide = {
         },
       ],
     },
+    {
+      id: 'visibility',
+      title: "Quali offerte vedi",
+      blocks: [
+        { type: 'paragraph', text: "Cosa vedi dipende dal tuo ruolo. Serve sempre il permesso **Visualizza**; i livelli si sommano:" },
+        { type: 'table', headers: ["Permesso", "Offerte visibili"], rows: [["**Visualizza**", "Quelle di cui sei **Supervisore** o **Gestore account**."], ["**Visualizza per sede**", "Le tue e quelle della tua **Sede operativa** (fisica o remota). Un'offerta senza sede operativa conta solo per il suo team."], ["**Visualizza tutti**", "Tutte."]] },
+        { type: 'paragraph', text: "Il filtro vale per elenco, scheda, filtri, esportazioni, statistiche e dashboard, selettori e documenti. Aprire il link di un'offerta che non puoi vedere mostra un errore di accesso. Vedere un'offerta non permette di modificarla o eliminarla: servono i permessi **Modifica** ed **Elimina**, e si modifica solo ciò che si vede." },
+        { type: 'note', text: "Se crei un'offerta senza far parte del suo team, non la vedrai più a meno di avere **Visualizza tutti** o **Visualizza per sede** (con la sede operativa giusta)." },
+      ],
+    },
   ],
 }
 

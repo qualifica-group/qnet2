@@ -34,6 +34,9 @@ function recipientLockActor(array $abilities): User
         $actor->givePermissionTo("quotes.{$ability}");
     }
 
+    // Spec 0316: not a visibility test, so the actor sees every quote.
+    $actor->givePermissionTo(Permission::findOrCreate('quotes.viewAll', 'web'));
+
     return $actor;
 }
 

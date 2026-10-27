@@ -39,6 +39,8 @@ if (! function_exists('generalNotesOpportunityUserWith')) {
             $user->givePermissionTo($ability);
         }
 
+        $user->givePermissionTo(Permission::findOrCreate('opportunities.viewAll', 'web'));
+
         return $user;
     }
 }

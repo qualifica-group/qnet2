@@ -194,7 +194,7 @@ it('opportunities create: an unselectable category on a product line is rejected
 it('opportunities update: resubmitting the OWN lines unchanged passes (AC-011)', function () {
     $businessFunction = BusinessFunction::factory()->create();
     $category = ProductCategory::factory()->create(['business_function_id' => $businessFunction->id]);
-    Sanctum::actingAs(selectableCategoryActorWith(['opportunities.create', 'opportunities.update']));
+    Sanctum::actingAs(selectableCategoryActorWith(['opportunities.create', 'opportunities.update', 'opportunities.viewAll']));
 
     $lines = [['business_function_id' => $businessFunction->id, 'product_category_id' => $category->id]];
 

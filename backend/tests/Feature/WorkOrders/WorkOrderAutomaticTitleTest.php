@@ -104,11 +104,11 @@ it('AC-010: POST /api/work-orders without title is 201 with the automatic title'
 });
 
 it('AC-010: the single contract endpoint without title is 201 automatic, with a title stays manual', function () {
-    foreach (['contracts.viewAny', 'contracts.view', 'contracts.program', 'work-orders.view'] as $name) {
+    foreach (['contracts.viewAny', 'contracts.view', 'contracts.program', 'contracts.viewAll', 'work-orders.view'] as $name) {
         Permission::findOrCreate($name);
     }
     $actor = User::factory()->create();
-    $actor->givePermissionTo(['contracts.program', 'work-orders.view']);
+    $actor->givePermissionTo(['contracts.program', 'contracts.viewAll', 'work-orders.view']);
     Sanctum::actingAs($actor);
     $contract = Contract::factory()->create([
         'contract_status_id' => ContractStatus::where('system_key', 'validated')->sole()->id,

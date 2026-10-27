@@ -27,7 +27,7 @@ if (! function_exists('singleQuoteActor')) {
         }
 
         $user = User::factory()->create();
-        $user->givePermissionTo(['quotes.create', 'quotes.update']);
+        $user->givePermissionTo(['quotes.create', 'quotes.update', Permission::findOrCreate('quotes.viewAll', 'web')]);
 
         QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
 
@@ -157,7 +157,7 @@ it('grandfathering: an already-multi-quote opportunity stays editable once the f
 it('GET opportunity exposes single_quote_per_opportunity, true only on a capped branch', function () {
     Permission::findOrCreate('opportunities.view');
     $actor = User::factory()->create();
-    $actor->givePermissionTo('opportunities.view');
+    $actor->givePermissionTo(['opportunities.view', Permission::findOrCreate('opportunities.viewAll', 'web')]);
     Sanctum::actingAs($actor);
 
     $capped = singleQuoteOpportunity(true);
