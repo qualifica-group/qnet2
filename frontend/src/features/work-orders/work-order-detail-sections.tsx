@@ -134,6 +134,10 @@ export function WorkOrderDetailSections({ workOrder, editor }: DetailSectionProp
           task_template: workOrder.task_template,
           force_close_reason: workOrder.is_force_closed ? workOrder.force_close_reason : null,
         }}
+        workflowStatus={{
+          current: workOrder.work_order_workflow_status,
+          statuses: workOrder.work_order_workflow_statuses,
+        }}
         form={editor}
         inline={inline}
       />

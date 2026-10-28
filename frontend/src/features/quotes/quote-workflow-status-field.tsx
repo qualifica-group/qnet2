@@ -12,9 +12,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { MetaField } from '@/features/authorization/MetaField'
-import { RequiresNoteBadge } from '@/features/quote-workflows/requires-note-badge'
-import { WorkflowStatusOption } from '@/features/quote-workflows/workflow-status-option'
-import { WorkflowStatusSwatch } from '@/features/quote-workflows/workflow-status-swatch'
+import { RequiresNoteBadge } from '@/features/workflow-statuses/requires-note-badge'
+import { WorkflowStatusOption } from '@/features/workflow-statuses/workflow-status-option'
+import { WorkflowStatusSwatch } from '@/features/workflow-statuses/workflow-status-swatch'
 import type { QuoteWorkflowStatusRef } from '@/features/quotes/types'
 
 /**

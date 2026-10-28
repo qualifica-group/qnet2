@@ -23,6 +23,13 @@ return [
             'permission' => 'quote-workflows.viewAny',
         ],
         [
+            'key' => 'work-order-workflows',
+            'label' => 'navigation.workOrderWorkflows',
+            'icon' => 'workflow',
+            'route' => '/work-order-workflows',
+            'permission' => 'work-order-workflows.viewAny',
+        ],
+        [
             'key' => 'contract-statuses',
             'label' => 'navigation.contractStatuses',
             'icon' => 'tag',

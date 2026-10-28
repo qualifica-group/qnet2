@@ -17,9 +17,10 @@ function leafEntries(tree: I18nTree, prefix = ''): [string, string][] {
 }
 
 describe('workspaces manual (spec 0317 AC-020)', () => {
-  it('registers the "workspaces" guide: 98 keys in total', () => {
+  // REQUIREMENT CHANGED (spec 0322): the "work-order-workflows" guide makes 99.
+  it('registers the "workspaces" guide: 99 keys in total', () => {
     expect(HELP_GUIDE_KEYS).toContain('workspaces')
-    expect(HELP_GUIDE_KEYS).toHaveLength(98)
+    expect(HELP_GUIDE_KEYS).toHaveLength(99)
   })
 
   it('has the guide in IT and EN with the same section ids', () => {

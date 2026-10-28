@@ -3,6 +3,44 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0322 Configuratore Stati Commessa + Stato lavorazione — VERDE, NON COMMITTATO (2026-10-28)
+
+- Dominio `work-order-workflows`, gemello di `quote-workflows`: tabelle `work_order_workflows`,
+  `work_order_workflow_criteria`, `work_order_workflow_statuses` (`progress_percentage` 0..100 nullable, `old_id`,
+  `system_key` open|completed|closed, group = valori di `Enums\WorkOrderStatus`, set globale = `work_order_workflow_id`
+  NULL con Aperta/Completata/Chiusa). `work_orders.work_order_workflow_status_id` NOT NULL FK restrict, fuori Fillable.
+- Lo stato calcolato (spec 0149/0321) NON cambia: "Stato lavorazione" e' un campo separato; `progress_percentage`
+  per ora non muove l'avanzamento (aggancio task -> avanzamento = spec successiva, legacy
+  `TaskServizi::markasdoneupdate` / `Manageorder::updateStatoConsulenza`).
+- Risoluzione: `Services\WorkOrders\WorkOrderWorkflowResolver` su righe REVENUE programmate (`quoteLines`), funzione
+  aziendale EFFETTIVA (`CategoryHierarchy`); criteri business_function_id / product_category_id /
+  product_category_branch_id. Punto unico di scrittura `Services\WorkOrders\WorkOrderWorkflowStatusAssigner`
+  (placeholder Aperta globale all'insert in `WorkOrderService::create`, poi assign dopo il sync righe; 422 fuori set;
+  activity log manuale "Work order working status change"). Chi salva un WorkOrder fuori dal service assegna la
+  colonna a mano (come Quote).
+- API `/api/work-order-workflows` (+ `criterion-fields`, `default-statuses`), permessi `work-order-workflows.*` via
+  `permissions:sync` (gia' lanciato su qnet2), nav Configurazione > Commerciale dopo `quote-workflows`. Commessa:
+  `work_order_workflow_status(_id|es)` in `WorkOrderResource`, colonna griglia `work_order_workflow_status` +
+  `_options`, permesso di campo `work_order_workflow_status_id`. Nome workflow max 191 (colonna string(191)).
+- FE: componenti condivisi spostati in `features/workflow-statuses/` (editor stati con `showProgressPercentage` /
+  `showRequiresNote`, sheet default, badge, swatch, option, hint); `features/work-order-workflows/**`; campo in
+  `features/work-orders/work-order-workflow-status-field.tsx`. Guide IT/EN `work-order-workflows` (99 chiavi) e
+  `work-orders` sezione `processing-status`. Manuale Claude Docs aggiornato (sezione + sorgenti migrazione).
+- Migrazione: legacy `../qnet` `GET /api/v2/migration/work-order-workflows` (12 categorie `progress`, 305 stati,
+  `product_category_id` solo su SOA- id 50) e `.../work-order-workflow-statuses` (8412 + 546 orfani; con piu'
+  orderisos prende l'ultima riga con stato valido). Sorgenti qnet-2 `work-order-workflows` (fase 5) e
+  `work-order-workflow-statuses` (fase 12). Import reale su qnet2: 12 workflow / 305 stati, SOA in due set
+  (Ente di Certificazione = solo funzione; SOA = funzione + ramo [OLD] SOA-). Stati per commessa non importati:
+  0/125 commesse qnet2 hanno old_id.
+- Verifica (verifier indipendente + fix): Pint ok; `composer test` 12775 test, fallimenti solo pre-esistenti provati
+  su copia di HEAD (TableBulkDelete, 4 ManagementControl, 7 users/migration per `EXTERNAL_MIGRATION_USERS_LINK_ONLY`
+  nel .env, 3 PDF LibreOffice) + 2 flaky che passano da soli; Vitest completo verde dopo fix; `tsc -b --force` EXIT 0;
+  ESLint ok. AC-001..019 PASS (AC-001: `down()` presente ma senza test).
+- Da fare / segnalato: spostare `QuoteWorkflowCriteriaEditor` in `features/workflow-statuses/` (oggi importato da
+  quote-workflows con chiavi i18n offerte); `QuoteClassificationSource::businessFunctionIds()` usa la funzione
+  propria e non quella ereditata (possibile difetto offerte); file oltre 300 righe cresciuti: `WorkOrderResource.php`
+  354, `features/work-orders/types.ts` 307; rotazione di `EXTERNAL_MIGRATION_TOKEN` (stampato in un output di verifica).
+
 ## Layout preventivi del QNet legacy nel seed di produzione — VERDE, NON COMMITTATO (2026-10-28)
 
 - Richiesta utente: importare tutti i layout di https://www.qualificagroup.org/layoutquotes (legacy `layout_quotes`,

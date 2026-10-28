@@ -19,6 +19,7 @@ use App\Services\WorkOrders\WorkOrderTaskForceCloser;
 use App\Services\WorkOrders\WorkOrderTaskGenerator;
 use App\Services\WorkOrders\WorkOrderTitleWriter;
 use App\Services\WorkOrders\WorkOrderVisibilityScope;
+use App\Services\WorkOrders\WorkOrderWorkflowStatusAssigner;
 use App\Support\ManagerPositions;
 use App\Support\PositionalPivotSync;
 use App\WorkOrders\WorkOrderAttributeResolver;
@@ -69,6 +70,8 @@ class WorkOrderService
         'quoteLines.quote.opportunity.registry',
         'supervisors',
         'participants',
+        // Spec 0322: the "Stato lavorazione" WorkOrderResource exposes.
+        'workOrderWorkflowStatus',
         // Spec 0124: the `task_template` summary WorkOrderResource exposes —
         // null on the (majority) commessa generated without one, so this
         // never N+1s the detail read either way.
@@ -90,6 +93,7 @@ class WorkOrderService
         private readonly WorkOrderTaskGenerator $taskGenerator,
         private readonly WorkOrderTaskForceCloser $taskForceCloser,
         private readonly WorkOrderTitleWriter $titleWriter,
+        private readonly WorkOrderWorkflowStatusAssigner $statusAssigner,
     ) {}
 
     public function loadDetail(WorkOrder $workOrder): WorkOrder
@@ -212,6 +216,8 @@ class WorkOrderService
             // Step 1: insert with the server-generated (or manual) code.
             $workOrder = new WorkOrder($data->attributes());
             $workOrder->code = $data->code ?? $this->nextSequentialCode(self::CODE_TABLE, self::CODE_COLUMN, self::CODE_PREFIX);
+            // Spec 0322: NOT NULL placeholder, remapped in Step 2a-bis once the lines exist.
+            $workOrder->work_order_workflow_status_id = $this->statusAssigner->globalDefaultOpenStatusId();
             $this->enforceForceCloseInvariant($workOrder);
             $workOrder->save();
 
@@ -220,6 +226,9 @@ class WorkOrderService
 
             // Step 2a (spec 0215, D-2): the title, AFTER the lines it derives from.
             $this->titleWriter->write($workOrder, $data->title);
+
+            // Step 2a-bis (spec 0322, D-8): the "Stato lavorazione" of the set the lines resolve to.
+            $this->statusAssigner->assign($workOrder, $data->workOrderWorkflowStatusId, logChange: false);
 
             // Step 2b (spec 0098, D-6): "Informazioni aggiuntive" — written
             // AFTER the quote lines, so the applicable set validated against
@@ -303,6 +312,12 @@ class WorkOrderService
                 $this->titleWriter->write($workOrder, $data->title);
             } elseif ($data->hasQuoteLineIds()) {
                 $this->titleWriter->recalculate($workOrder);
+            }
+
+            // Spec 0322, D-8/AC-008/AC-010: new lines may change the resolved set; an
+            // explicit status must belong to it.
+            if ($data->hasQuoteLineIds() || $data->workOrderWorkflowStatusId !== null) {
+                $this->statusAssigner->assign($workOrder, $data->workOrderWorkflowStatusId, logChange: true);
             }
 
             // "Informazioni aggiuntive" (spec 0098, D-6): validated against

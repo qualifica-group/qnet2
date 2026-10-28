@@ -140,6 +140,7 @@ export const permissions = {
     'request-management': 'Gestione Richieste',
     'reward-statuses': 'Stati Buoni Collegati',
     'work-order-payment-statuses': 'Stati pagamento commessa',
+    'work-order-workflows': 'Configuratore Stati Commessa',
     'reward-types': 'Buoni, Premi e Incentivi',
     'rewarded-referents': 'Referenti con Buoni',
     sectors: 'Settori',

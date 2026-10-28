@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render as rtlRender, screen, within } from '@testing-library/react'
+import { WORKFLOW_STATUS_FIELDS } from '@/features/work-orders/work-order-workflow-fixtures'
 import type { ReactElement, ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -96,6 +97,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     status: { value: 'open', is_force_closed: false },
     completion_percentage: 0,
     is_force_closed: false,
+    ...WORKFLOW_STATUS_FIELDS,
     force_close_reason: null,
     open_tasks_count: 0,
     callback_date: '2026-09-30',

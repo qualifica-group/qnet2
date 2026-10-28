@@ -1,6 +1,5 @@
-import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
-import { RequiresNoteBadge } from '@/features/quote-workflows/requires-note-badge'
-import { cn } from '@/lib/utils'
+import { RequiresNoteBadge } from '@/features/workflow-statuses/requires-note-badge'
+import { WorkflowStatusSwatch } from '@/features/workflow-statuses/workflow-status-swatch'
 
 interface WorkflowStatusOptionProps {
   name: string
@@ -20,10 +19,7 @@ export function WorkflowStatusOption({ name, description, color, requiresNote }:
   return (
     <span className="flex min-w-0 flex-col gap-0.5">
       <span className="flex items-center gap-2">
-        <span
-          className={cn('size-2.5 shrink-0 rounded-full border', swatchClassFor(color) ?? 'bg-transparent')}
-          aria-hidden="true"
-        />
+        <WorkflowStatusSwatch color={color} />
         <span className="truncate">{name}</span>
         {requiresNote ? <RequiresNoteBadge /> : null}
       </span>

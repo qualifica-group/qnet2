@@ -6,6 +6,7 @@ use App\Enums\WorkOrderType;
 use App\Models\Quote;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Models\WorkOrderWorkflowStatus;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -33,6 +34,14 @@ class WorkOrderFactory extends Factory
             'internal_notes' => fake()->optional()->sentence(),
             'is_force_closed' => false,
             'force_close_reason' => null,
+            // Spec 0322: a work order lands on the `open` row of the global
+            // default set when no workflow matches it, so fixtures reuse that
+            // seeded row (mirrors QuoteFactory).
+            'work_order_workflow_status_id' => fn (): int => WorkOrderWorkflowStatus::query()
+                ->whereNull('work_order_workflow_id')
+                ->where('system_key', 'open')
+                ->value('id')
+                ?? WorkOrderWorkflowStatus::factory()->global()->system('open')->create()->id,
         ];
     }
 

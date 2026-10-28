@@ -136,6 +136,7 @@ export const permissions = {
     registries: 'Registries',
     'request-management': 'Request Management',
     'reward-statuses': 'Reward Statuses',
+    'work-order-workflows': 'Work order status configurator',
     'work-order-payment-statuses': 'Work order payment statuses',
     'reward-types': 'Vouchers, Rewards and Incentives',
     'rewarded-referents': 'Rewarded Referents',

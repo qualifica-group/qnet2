@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0322 — Configuratore Stati Commessa + stato di lavorazione della commessa + import dal legacy `progress`.
+  Ricalca il Configuratore Stati Offerta (spec 0047/0083/0092, dominio `quote-workflows`).
+  Non tocca: stato calcolato della commessa (spec 0149/0321).
+-->
+<spec id="0322-work-order-workflow-statuses" status="draft" owner="nicola" date="2026-10-28">
+
+  <goal>
+    Gli utenti configurano gli stati di lavorazione delle commesse con un "Configuratore Stati Commessa",
+    identico per struttura, comportamento e posizione nel menu al Configuratore Stati Offerta.
+    Ci sono set di stati scelti per criteri (funzione aziendale / categoria), un set globale di default,
+    righe di sistema, colore, descrizione, ordine e in più la percentuale di avanzamento di ogni stato.
+    Ogni commessa ha un campo "Stato lavorazione", scelto dal set che le si applica.
+    Tutto il catalogo legacy `progress` e lo stato attuale delle commesse legacy arrivano tramite /migration.
+  </goal>
+
+  <context>
+    Stato verificato del repo (main @ 87fa0d48) e del legacy `../qnet` (2026-10-28).
+
+    Modulo di riferimento, Configuratore Stati Offerta (`quote-workflows`):
+    - Tabelle `quote_workflows` (name, is_active), `quote_workflow_criteria` (field, value_id) e
+      `quote_workflow_statuses`. Quest'ultima ha `quote_workflow_id` NULL = set globale, name,
+      description, color, sort_order, group, requires_note, system_key.
+    - Backend:
+      - `Models\QuoteWorkflow*`, `Services\QuoteWorkflowService`, `Services\QuoteWorkflows\WorkflowStatusWriter`
+        (STEP 10, open in testa, righe di sistema di coda in fondo, forceFill per system_key/workflow_id);
+      - `Services\Quotes\QuoteWorkflowResolver`: tutti i criteri in AND, vince la specificita',
+        poi il ramo di categoria piu' vicino, poi l'id asc; `targetStatus` = stato corrente se nel set,
+        altrimenti stessa system_key, altrimenti open;
+      - `Support\QuoteWorkflows\{QuoteCriterionFieldRegistry,CategoryBranchResolver,QuoteClassificationSource,
+        QuoteCriterionValueLabelResolver}`;
+      - `Http\Controllers\QuoteWorkflows\QuoteWorkflowController` (rotte in `routes/api/lookups.php`);
+      - `Http\Requests\QuoteWorkflows\*`, `DataObjects\QuoteWorkflows\*`, `Policies\QuoteWorkflowPolicy`,
+        `Authorization\QuoteWorkflowsAuthorization` (registrata in `config/authorization.php`, da cui
+        derivano i permessi `quote-workflows.*`), `Tables\QuoteWorkflowsTableDefinition`
+        (+ `QuoteWorkflows\QuoteWorkflowColumnCatalog`, in `config/tables.php`),
+        `config/activity-log.php`, `Tables\Shared\QuoteWorkflowStatusOptions`.
+    - Navigazione: `config/navigation/configuration/commercial.php`, voce `quote-workflows`
+      (icon `workflow`, route `/quote-workflows`, permission `quote-workflows.viewAny`) tra
+      `pipeline-statuses` e `contract-statuses`.
+    - FE: `features/quote-workflows/**` (~30 file, tra cui gli editor generici
+      `workflow-statuses-editor.tsx`, `workflow-status-badge.tsx`, `workflow-status-swatch.tsx`,
+      `status-description-hint.tsx`, `default-statuses-sheet.tsx`), `pages/quote-workflows-page.tsx`,
+      route `quote-workflows` in `routes/app-child-routes.tsx`, `routes/breadcrumbs.tsx`,
+      i18n `{it,en}-quote-workflows.ts`, guida `help/content/{it,en}/quote-workflows.ts`.
+
+    Commessa:
+    - `Models\WorkOrder`: `quote_id` nullable (multi-offerta, spec 0267) e righe programmate
+      `quoteLines()` (pivot `quote_line_work_order`, `quote_lines.line_type` REVENUE/COST).
+    - Lo stato calcolato `Enums\WorkOrderStatus` (open|in_progress|completed|closed) viene da
+      `WorkOrderStatusResolver` sull'avanzamento manuale (spec 0149/0321) e resta INVARIATO.
+    - La funzione aziendale effettiva di una categoria e' la propria o quella ereditata dall'antenato:
+      `Services\ProductCategories\CategoryHierarchy::effectiveBusinessFunction()`.
+      ATTENZIONE: `QuoteClassificationSource::businessFunctionIds()` legge solo la colonna propria
+      `category.business_function_id`. Sulle offerte e' un possibile difetto: va SEGNALATO,
+      non corretto in questa spec.
+
+    Legacy:
+    - Catalogo `progress` (pagina /progress, `App\Livewire\Progress\Progress`): id, service_id, description,
+      position, stato_avanzamento.
+      - `service_id` -> `service_categories.id` (radici, piu' FOR_Classi 141), ognuna con `gruppo_lavoro_id`
+        = funzione aziendale. In qnet-2: `business_functions.old_id` (tutte presenti nel DB dev) e
+        `product_categories.old_id` (categorie "[OLD] ...").
+      - Numeri: 305 righe in 12 categorie, piu' la riga 1000 "***" con service_id 0, che e' il
+        "nessuno stato" usato da 5163 commesse. `position` e' NULL su tutte le righe, quindi l'ordine
+        segue l'id. 152 righe hanno `stato_avanzamento` NULL; valori 0..100, non monotoni in
+        tutte le categorie (es. APL).
+      - SOA ha due categorie sulla stessa funzione (gruppo 4): 69 "ENTE DI CERTIFICAZIONE - SOA"
+        (37 stati, 500 commesse) e 50 "SOA-" (10 stati, 36 commesse).
+    - Stato attuale per commessa: `orderisos.stato_consulenza`, valorizzato su 14122 righe su 14139;
+      1 punta a un id fuori catalogo.
+    - Endpoint di migrazione in `routes/apiV2-migration.php`, controller `Api\V2\*MigrationController`,
+      paginazione `offset`/`limit` + orfani (`LegacyOrphanRows`, spec 0303); esempio
+      `WorkOrderProgressMigrationController`.
+    - qnet-2 `Migrations\MigrationOrder`: `work-orders` in fase 11; `tasks`/`proforma-requests`/
+      `work-order-progress` in fase 12.
+
+    Decisioni utente (2026-10-28):
+    - D-1: nuovo campo SEPARATO "Stato lavorazione" sulla commessa. Lo stato calcolato
+      (badge/filtri/KPI) non cambia.
+    - D-2: righe di sistema di ogni set: `open` (in testa), `completed` e `closed` (in coda, in
+      quest'ordine).
+    - D-3: in questo giro entrano configuratore, import catalogo, campo sulla commessa e import dello
+      stato attuale. L'aggancio task -> avanzamento e' rimandato.
+    - D-4: SOA in DUE set distinti.
+    - D-5: il modulo e' coerente e posizionato come il Configuratore Stati Offerta, cioe' in
+      Configurazione > Commerciale, subito dopo `quote-workflows`.
+
+    Decisioni tecniche di questa spec:
+    - D-6: dominio nuovo e parallelo `work-order-workflows`, non una generalizzazione di
+      `quote-workflows`: tabelle, model, servizi e permessi propri.
+      - FE: i componenti gia' generici (editor righe stato, badge, swatch, hint descrizione, sheet set
+        di default) si SPOSTANO in `features/workflow-statuses/` e si riusano da entrambi i domini.
+        Le parti specifiche (criteri, payload, screens) si creano nuove in
+        `features/work-order-workflows/`. Niente copia-incolla dei generici.
+      - BE: il writer dei set non si condivide, perche' system key ed enum sono diversi: nuovo
+        `Services\WorkOrderWorkflows\WorkOrderWorkflowStatusWriter` con la stessa struttura.
+    - D-7: gruppi degli stati = valori di `Enums\WorkOrderStatus` (open|in_progress|completed|closed),
+      riusato, non duplicato. Le righe di sistema hanno il gruppo uguale alla propria key, non modificabile.
+    - D-8: criteri disponibili `business_function_id`, `product_category_id` e
+      `product_category_branch_id`, tutti multi-valore e valutati sulle righe REVENUE programmate
+      nella commessa (`quoteLines`, `line_type = REVENUE`). La funzione aziendale e' quella EFFETTIVA
+      della categoria (`CategoryHierarchy`). Senza righe REVENUE nessun criterio fa match, quindi si
+      usa il set globale.
+      Esclusi: `source_id` e custom field (ereditati dall'opportunita', ambigui sulle commesse
+      multi-offerta).
+    - D-9: `progress_percentage` (unsigned tinyint 0..100, nullable) su ogni stato, incluse le righe
+      di sistema. In questo giro e' solo dato configurato e mostrato: non muove l'avanzamento.
+    - D-10: `requires_note` NON esiste sugli stati commessa (vedi out).
+    - D-11: import legacy.
+      - Il legacy invia un record per categoria `progress` (esclusi service_id 0 e la riga 1000)
+        con funzione e categoria come id legacy. `product_category_id` e' valorizzato SOLO dove serve
+        a distinguere due set della stessa funzione: lo decide il legacy, e in pratica vale solo per
+        SOA-, perche' il set con piu' commesse della funzione resta senza criterio di categoria.
+      - qnet-2 crea un workflow attivo per record: criterio `business_function_id` e, se presente,
+        `product_category_branch_id` sulla categoria [OLD]. La specificita' fa vincere SOA- sulle
+        sue commesse; le nuove commesse SOA cadono su Ente di Certificazione.
+      - Gli stati legacy diventano righe custom con `old_id`; il writer aggiunge le righe di sistema.
+    - D-12: lo stato attuale arriva da una sorgente separata `work-order-workflow-statuses` (fase 12),
+      sul modello di `work-order-progress`. Lo stato legacy si scrive SOLO se appartiene al set
+      risolto per la commessa; altrimenti la commessa resta sullo stato risolto e la riga torna con
+      un warning (validazione difensiva, niente riparazione).
+  </context>
+
+  <scope>
+    <in>
+      <item>Schema: `work_order_workflows`, `work_order_workflow_criteria`, `work_order_workflow_statuses`
+            (con `progress_percentage`, `old_id`) e set globale di default (open/completed/closed)
+            creato dalla migrazione.</item>
+      <item>`work_orders.work_order_workflow_status_id` (FK restrict). Backfill di ogni commessa
+            esistente allo stato risolto, poi NOT NULL.</item>
+      <item>Configuratore backend: CRUD workflow con criteri + stati, set di default,
+            criterion-fields, TableDefinition `work-order-workflows`, authorization/policy/permessi,
+            activity log.</item>
+      <item>Risoluzione e assegnazione: alla create della commessa, al cambio delle sue righe
+            programmate, a modifica/cancellazione di un workflow (riassegnazione delle commesse
+            impattate).</item>
+      <item>Campo "Stato lavorazione" sulla commessa: dettaglio (select dal set risolto), griglia
+            (colonna con editor inline e filtro), `WorkOrderResource`, validazione di appartenenza al set.</item>
+      <item>FE configuratore `features/work-order-workflows/**` + pagina + route + breadcrumb + i18n,
+            navigazione dopo `quote-workflows`. Componenti generici spostati in
+            `features/workflow-statuses/`.</item>
+      <item>Legacy `../qnet`: `GET /api/v2/migration/work-order-workflows` e
+            `GET /api/v2/migration/work-order-workflow-statuses`.</item>
+      <item>qnet-2: sorgenti `work-order-workflows` (fase 5 accanto a `products`: nella fase 4 non possono stare dipendenze reciproche) e
+            `work-order-workflow-statuses` (fase 12).</item>
+      <item>Guide in-app IT/EN: nuova `work-order-workflows` (+ `HELP_GUIDE_KEYS`) e aggiornamento di
+            `work-orders`. Manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Aggancio task -> avanzamento: stato consulenza su task e modelli, avanzamento automatico al
+            completamento del task o al cambio di stato (legacy `TaskServizi::markasdoneupdate`,
+            `Manageorder::updateStatoConsulenza`). E' la spec successiva.</item>
+      <item>Qualsiasi effetto di `progress_percentage` su `work_order_progress_entries` o sullo stato
+            calcolato.</item>
+      <item>`requires_note` e note di transizione sugli stati commessa.</item>
+      <item>Criteri `source_id` e custom field sulle commesse.</item>
+      <item>Correzione di `QuoteClassificationSource::businessFunctionIds()` (funzione propria invece
+            di quella effettiva): solo segnalata.</item>
+      <item>Macchina a stati con transizioni consentite: lista ordinata, come le offerte.</item>
+      <item>Storico dei cambi di stato oltre all'activity log del model.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <!-- ====== Configuratore (permessi work-order-workflows.*) ====== -->
+    <endpoint method="GET" path="/api/work-order-workflows/criterion-fields">
+      <request>Nessun parametro. Gate `work-order-workflows.view`.</request>
+      <response status="200">
+        { success, message, data: [ {
+            field: 'business_function_id' | 'product_category_id' | 'product_category_branch_id',
+            label: string,                 // chiave i18n `workOrderWorkflows.criterionFields.&lt;field&gt;`
+            source: 'native',
+            for_select_resource: 'business-functions' | 'product-categories' | 'product-category-branches',
+            multi_valued: true,
+            inherited: false
+        } ] }
+      </response>
+      <errors>403 senza `work-order-workflows.view`</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST|PUT|PATCH|DELETE" path="/api/work-order-workflows[/{workOrderWorkflow}]">
+      <request>
+        POST/PUT: { name: string(max 191), is_active: bool,
+          criteria: [{ field: string, value_id: int }]                 // min 1, field unico per workflow
+          statuses: [{ id?: int, name: string(max 191), description?: string|null(max 1000),
+                       color?: string|null (#RRGGBB), group: 'in_progress'|'open'|'completed'|'closed',
+                       progress_percentage?: int|null (0..100),
+                       system_key?: 'open'|'completed'|'closed' /* solo POST: valorizza la riga di sistema creata */ }] }
+        Una riga di sistema si identifica dall'`id` persistito: su di essa sono mutabili solo
+        name, description, color, progress_percentage. `system_key`/`group` delle righe di sistema
+        sono ignorati.
+        Lista e righe della griglia: GET /api/tables/work-order-workflows/* (TableDefinition).
+      </request>
+      <response status="200|201">
+        { success, message, permissions, data: {
+            id, name, is_active,
+            criteria: [{ id, field, value_id, value_label }],
+            statuses: [ WorkOrderWorkflowStatus ],
+            created_at, updated_at } }
+        WorkOrderWorkflowStatus = { id, name, description, color, group, system_key: 'open'|'completed'|'closed'|null,
+                                    progress_percentage: int|null, sort_order }
+      </response>
+      <errors>
+        403 senza permesso; 404 inesistente;
+        422: criterio con field non ammesso o value_id inesistente; field duplicato; stessa firma di
+        criteri di un altro workflow; riga di sistema mutata oltre i campi ammessi (una riga di sistema omessa resta invariata, come nelle offerte);
+        `progress_percentage` fuori 0..100;
+        DELETE: 204, con le commesse del workflow riassegnate (`targetStatus`).
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET|PUT" path="/api/work-order-workflows/default-statuses">
+      <request>PUT: { statuses: [ come sopra ] }: set globale (`work_order_workflow_id IS NULL`).</request>
+      <response status="200">{ success, message, data: [ WorkOrderWorkflowStatus ] }</response>
+      <errors>403 senza `work-order-workflows.view` (GET) / `.update` (PUT); 422 come sopra</errors>
+    </endpoint>
+
+    <!-- ====== Commessa ====== -->
+    <endpoint method="GET" path="/api/work-orders/{workOrder}">
+      <response status="200">
+        data: { ...campi attuali INVARIATI (incluso lo stato calcolato),
+          work_order_workflow_status_id: int,                                   // NOT NULL
+          work_order_workflow_status: { id, name, color, group, system_key, progress_percentage, description },
+          work_order_workflow_statuses: [ WorkOrderWorkflowStatus ]              // set risolto per QUESTA commessa
+        }
+      </response>
+    </endpoint>
+
+    <endpoint method="POST|PUT|PATCH" path="/api/work-orders[/{workOrder}]">
+      <request>
+        ...campi attuali INVARIATI, piu':
+        work_order_workflow_status_id: int|null   // omesso/null alla create -> risolto server-side (open del set)
+        Permesso di campo `work_order_workflow_status_id` in WorkOrdersAuthorization (come gli altri campi).
+        Stessa chiave nell'inline edit della griglia commesse (colonna `work_order_workflow_status`).
+      </request>
+      <response status="200|201">come GET</response>
+      <errors>422 `work_order_workflow_status_id` fuori dal set risolto per la commessa; 403 restanti invariati</errors>
+    </endpoint>
+
+    <!-- ====== Legacy ../qnet (dati gia' pronti, backend.md §9) ====== -->
+    <endpoint method="GET" path="(legacy) /api/v2/migration/work-order-workflows">
+      <request>offset, limit (1..100, default 50), search (nome categoria)</request>
+      <response status="200">
+        paginatedResponse, items: [ {
+          id: int,                         // service_categories.id
+          name: string,                    // service_categories.description, trim e senza il "-" finale ("SOA-" -> "SOA")
+          business_function_id: int,       // service_categories.gruppo_lavoro_id (id legacy)
+          product_category_id: int|null,   // service_categories.id SOLO se la funzione ha piu' set e questo non e' il piu' usato; altrimenti null
+          statuses: [ { id: int, name: string, progress_percentage: int|null } ],  // progress in ordine di id, description trim
+          warnings: []
+        } ]
+        Esclusi service_id 0 e la riga 1000 "***".
+      </response>
+    </endpoint>
+
+    <endpoint method="GET" path="(legacy) /api/v2/migration/work-order-workflow-statuses">
+      <request>offset, limit, search (titolo commessa)</request>
+      <response status="200">
+        paginatedResponse, items: [ { id: int /* orders.id */, status_id: int /* progress.id */, warnings: [] } ]
+        Solo orderisos con stato_consulenza nel catalogo e diverso da 1000 (il fuori catalogo non si
+        invia). Una commessa con piu' righe orderisos (86 nel legacy) usa la riga piu' recente con
+        uno stato valido: la piu' recente in assoluto punta sempre a 1000. Orfani (ordine
+        inesistente, `id` = "orderisos:&lt;order_id&gt;") in coda come da spec 0303.
+        Dati reali 2026-10-28: 8412 record + 546 orfani.
+      </response>
+    </endpoint>
+
+    <!-- ====== Sorgenti qnet-2 ====== -->
+    <endpoint method="-" path="(qnet-2) migration source work-order-workflows">
+      <request>Dipendenze: required `business-functions`, optional `product-categories`.</request>
+      <response status="-">
+        Per record: workflow attivo `name`, criterio `business_function_id` (lookup old_id; non
+        risolto = riga fallita), criterio `product_category_branch_id` se `product_category_id`
+        (lookup old_id; non risolto = warning e workflow senza quel criterio NON creato, riga fallita).
+        Stati custom in ordine con `old_id`, group `in_progress`, `progress_percentage` come inviato
+        (fuori 0..100 = riga fallita). Idempotente: workflow esistente per firma criteri o stati con
+        old_id gia' presenti = skip. Niente activity log.
+      </response>
+    </endpoint>
+
+    <endpoint method="-" path="(qnet-2) migration source work-order-workflow-statuses">
+      <request>Dipendenze: required `work-orders`, required `work-order-workflows`.</request>
+      <response status="-">
+        Commessa per old_id (assente = riga fallita), stato per `work_order_workflow_statuses.old_id`
+        (assente = riga fallita). Si scrive solo se lo stato e' nel set risolto, altrimenti warning e
+        nessuna scrittura. Senza activity log; re-run idempotente.
+      </response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un DB migrato, allora esiste il set globale con le tre righe di sistema open (sort 0), completed, closed (in coda, in quest'ordine) e ogni commessa esistente ha `work_order_workflow_status_id` = open del set globale. La migrazione e' reversibile.</criterion>
+    <criterion id="AC-002">Quando creo un workflow con criteri e 2 stati custom, allora il set e' open, custom1, custom2, completed, closed con sort_order a passo 10, e la risposta ha la shape del contratto.</criterion>
+    <criterion id="AC-003">Quando aggiorno un set, allora le custom inviate con id si aggiornano, quelle nuove si creano e quelle omesse si cancellano; open resta in testa e completed/closed in coda; sulle righe di sistema cambiano solo name/description/color/progress_percentage.</criterion>
+    <criterion id="AC-004">Dato un criterio duplicato, una firma di criteri gia' esistente, un field non ammesso, un value_id inesistente o un progress_percentage 101, allora 422 e nessuna scrittura.</criterion>
+    <criterion id="AC-005">Dato un utente senza `work-order-workflows.*`, allora show/store/update/destroy/default-statuses/criterion-fields rispondono 403; la voce di menu e la pagina restano nascoste.</criterion>
+    <criterion id="AC-006">Data una commessa con righe REVENUE in una categoria figlia di un ramo con funzione aziendale F (funzione ereditata), allora si risolve sul workflow con criterio business_function_id = F.</criterion>
+    <criterion id="AC-007">Dati due workflow attivi che fanno match, allora vince quello con piu' criteri, poi il ramo di categoria piu' vicino, poi l'id piu' basso. Una commessa senza righe REVENUE si risolve sul set globale.</criterion>
+    <criterion id="AC-008">Quando creo una commessa senza stato, allora riceve l'open del set risolto. Quando cambio le sue righe programmate e il set cambia, allora lo stato diventa quello con la stessa system_key, altrimenti open.</criterion>
+    <criterion id="AC-009">Quando cancello un workflow, allora le sue commesse si riassegnano al set ora risolto (stato corrente se presente, altrimenti stessa system_key, altrimenti open).</criterion>
+    <criterion id="AC-010">Quando aggiorno una commessa con uno stato di un altro set, allora 422; con uno stato del suo set, allora 200 e activity log del cambio.</criterion>
+    <criterion id="AC-011">GET commessa espone `work_order_workflow_status` e `work_order_workflow_statuses` (set risolto); lo stato calcolato e il suo badge non cambiano.</criterion>
+    <criterion id="AC-012">Griglia commesse: la colonna "Stato lavorazione" mostra badge colore + nome; l'editor inline offre solo gli stati della riga; il filtro per stato funziona; un valore fuori set e' rifiutato dal server.</criterion>
+    <criterion id="AC-013">FE: la voce "Configuratore Stati Commessa" compare in Configurazione > Commerciale subito dopo "Configuratore Stati Offerta". Lista, dettaglio, form e sheet del set di default hanno la stessa struttura del configuratore offerte, con la colonna/campo "% avanzamento" in piu'.</criterion>
+    <criterion id="AC-014">FE: nel dettaglio commessa il campo "Stato lavorazione" mostra lo stato corrente e permette di sceglierne un altro dal set risolto, rispettando il permesso di campo.</criterion>
+    <criterion id="AC-015">Legacy work-order-workflows: verificato con tinker, invia 12 record (nessuno con service_id 0), stati in ordine di id, nomi senza "-" finale, `product_category_id` valorizzato solo su SOA- (50).</criterion>
+    <criterion id="AC-016">Sorgente work-order-workflows: dalla fixture del contratto crea un workflow per record, con criteri e stati (`old_id`, progress_percentage) e righe di sistema; un re-run non duplica nulla; una funzione non risolta fa fallire la riga.</criterion>
+    <criterion id="AC-017">Legacy work-order-workflow-statuses: verificato con tinker, non invia stato 1000 ne' stati fuori catalogo.</criterion>
+    <criterion id="AC-018">Sorgente work-order-workflow-statuses: con uno stato nel set risolto lo scrive senza activity log; con uno stato fuori set lascia lo stato invariato e restituisce un warning; commessa o stato non migrati = riga fallita.</criterion>
+    <criterion id="AC-019">Guide in-app IT/EN `work-order-workflows` (nuova) e `work-orders` (aggiornata) con gli stessi id di sezione; `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    Nessuna nuova dipendenza. Layering backend.md (FormRequest, Policy, Service, Resource, envelope).
+    Authz server-side su ogni endpoint, incluse TableDefinition e permesso di campo sulla commessa.
+    `system_key`/`work_order_workflow_id` fuori da #[Fillable]. Nessun orderByRaw/whereRaw da input:
+    il filtro di colonna usa l'allow-list della TableDefinition. preventLazyLoading: la risoluzione su
+    batch (griglia, riassegnazione) carica `quoteLines.product.category` in una query.
+    Migrazioni additive e reversibili; mai migrate:fresh/rollback sul DB dev `qnet2`.
+    Legacy: niente test automatici, quindi verifica tinker + `php -l`, senza toccare le modifiche locali
+    dell'utente. File sotto 300 righe (500 hard); i generici FE si spostano, non si duplicano.
+    UI compatta (ui-design.md §2), mobile-first 375/768/1024, i18n IT/EN.
+  </constraints>
+
+</spec>

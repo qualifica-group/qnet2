@@ -77,6 +77,10 @@ class StoreWorkOrderRequest extends FormRequest
             'force_close_reason' => ['nullable', 'string', 'required_if:is_force_closed,true'],
             'quote_line_ids' => ['sometimes', 'array'],
             'quote_line_ids.*' => ['integer'],
+            // Spec 0322: membership in the set resolved for the commessa is
+            // enforced by WorkOrderWorkflowStatusAssigner (422), the single
+            // choke point every write channel reaches.
+            'work_order_workflow_status_id' => ['sometimes', 'nullable', 'integer', Rule::exists('work_order_workflow_statuses', 'id')],
             // Spec 0124, D-5/D-8: the optional Modello di Task this
             // Commessa's tasks are generated from — only an ACTIVE one is
             // acceptable (422 otherwise, AC-019), same shape as an

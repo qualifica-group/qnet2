@@ -3,6 +3,7 @@
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\WorkOrder;
+use App\Models\WorkOrderWorkflowStatus;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +23,8 @@ it('schema: work_orders has every declared column, code unique, quote_id restric
     }
 
     $quote = Quote::factory()->create();
-    $required = ['start_date' => '2026-09-10'];
+    // REQUIREMENT CHANGED (spec 0322): the "Stato lavorazione" column is NOT NULL.
+    $required = ['start_date' => '2026-09-10', 'work_order_workflow_status_id' => WorkOrderWorkflowStatus::query()->whereNull('work_order_workflow_id')->value('id')];
 
     DB::table('work_orders')->insert([
         'code' => 'COM-9001', 'quote_id' => $quote->id, 'title' => 'Prima commessa', 'type' => 'processing',

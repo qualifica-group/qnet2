@@ -21,7 +21,7 @@ import {
   buildUpdateQuoteWorkflowSchema,
   type CreateQuoteWorkflowFormValues,
 } from '@/features/quote-workflows/quote-workflow-schema'
-import { initialSystemStatusRows, statusRowsFromDetail } from '@/features/quote-workflows/workflow-status-rows'
+import { initialSystemStatusRows, statusRowsFromDetail } from '@/features/quote-workflows/quote-status-rows'
 import type { QuoteWorkflowDetail, QuoteWorkflowFormMode } from '@/features/quote-workflows/types'
 
 /** Server-side field names mapped onto the form for 422 handling. */

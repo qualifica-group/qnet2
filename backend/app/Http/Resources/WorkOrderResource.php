@@ -12,6 +12,7 @@ use App\RequestManagement\ApplicableAttribute;
 use App\Services\WorkOrders\WorkOrderSourceQuotes;
 use App\Services\WorkOrders\WorkOrderStatusResolver;
 use App\Services\WorkOrders\WorkOrderTaskForceCloser;
+use App\Services\WorkOrders\WorkOrderWorkflowResolver;
 use App\Support\OperationalSiteLabel;
 use App\WorkOrders\WorkOrderAttributeResolver;
 use Carbon\CarbonInterface;
@@ -59,6 +60,9 @@ class WorkOrderResource extends JsonResource
                 'value' => $progress->status->value,
                 'is_force_closed' => $this->is_force_closed,
             ],
+            'work_order_workflow_status_id' => $this->work_order_workflow_status_id,
+            'work_order_workflow_status' => $this->summarizeWorkflowStatus(),
+            'work_order_workflow_statuses' => $this->resolvedWorkflowStatuses(),
             'completion_percentage' => $progress->completionPercentage,
             'completion_recorded_on' => $progress->recordedOn,
             'is_force_closed' => $this->is_force_closed,
@@ -94,6 +98,45 @@ class WorkOrderResource extends JsonResource
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
+    }
+
+    /**
+     * The "Stato lavorazione" (spec 0322, D-1), distinct from the computed `status`.
+     *
+     * @return array{id: int, name: string, color: string|null, group: string, system_key: string|null, progress_percentage: int|null, description: string|null}|null
+     */
+    private function summarizeWorkflowStatus(): ?array
+    {
+        $status = $this->workOrderWorkflowStatus;
+
+        if ($status === null) {
+            return null;
+        }
+
+        return [
+            'id' => $status->id,
+            'name' => $status->name,
+            'color' => $status->color,
+            'group' => $status->group->value,
+            'system_key' => $status->system_key,
+            'progress_percentage' => $status->progress_percentage,
+            'description' => $status->description,
+        ];
+    }
+
+    /**
+     * The status set resolved for THIS commessa (spec 0322, D-8), from its
+     * `quoteLines.product` the detail already eager-loads.
+     *
+     * @return array<int, mixed>
+     */
+    private function resolvedWorkflowStatuses(): array
+    {
+        $resolver = app(WorkOrderWorkflowResolver::class);
+
+        return WorkOrderWorkflowStatusResource::collection(
+            $resolver->statusesFor($resolver->resolve($this->resource)),
+        )->resolve();
     }
 
     /**

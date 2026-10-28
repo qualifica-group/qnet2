@@ -18,7 +18,11 @@ import {
   WorkOrderTypeField,
 } from '@/features/work-orders/work-order-identity-fields'
 import type { WorkOrderFormState } from '@/features/work-orders/use-work-order-form'
-import type { WorkOrderType } from '@/features/work-orders/types'
+import {
+  WorkOrderWorkflowStatusField,
+  WorkOrderWorkflowStatusValue,
+} from '@/features/work-orders/work-order-workflow-status-field'
+import type { WorkOrderType, WorkOrderWorkflowStatusRef } from '@/features/work-orders/types'
 
 /** What the identity rows show: the persisted record on the detail, the draft on create. */
 export interface WorkOrderIdentityValues {
@@ -41,8 +45,15 @@ function DateValue({ value }: { value: string | null }) {
   return <>{formatDate(value) || <DetailEmpty />}</>
 }
 
+/** The "Stato lavorazione" of a persisted work order and its resolved set: absent on create (the server assigns `open`). */
+export interface WorkOrderWorkflowStatusContext {
+  current: WorkOrderWorkflowStatusRef
+  statuses: WorkOrderWorkflowStatusRef[]
+}
+
 interface WorkOrderIdentitySectionProps {
   values: WorkOrderIdentityValues
+  workflowStatus?: WorkOrderWorkflowStatusContext
   form: WorkOrderFormState
   inline: InlineEdit
 }
@@ -53,7 +64,7 @@ interface WorkOrderIdentitySectionProps {
  * written at creation only: their field permission turns them read-only on
  * the detail (D-1/D-5, spec 0124 D-5), so the row shows no pencil there.
  */
-export function WorkOrderIdentitySection({ values, form, inline }: WorkOrderIdentitySectionProps) {
+export function WorkOrderIdentitySection({ values, workflowStatus, form, inline }: WorkOrderIdentitySectionProps) {
   const { t } = useTranslation()
   const { control } = form.form
 
@@ -84,6 +95,16 @@ export function WorkOrderIdentitySection({ values, form, inline }: WorkOrderIden
         >
           {t(`workOrders.options.type.${values.type}`)}
         </RecordInlineField>
+        {workflowStatus ? (
+          <RecordInlineField
+            field="work_order_workflow_status_id"
+            label={t('workOrders.detail.workflowStatus')}
+            inline={inline}
+            editor={<WorkOrderWorkflowStatusField control={control} statuses={workflowStatus.statuses} />}
+          >
+            <WorkOrderWorkflowStatusValue status={workflowStatus.current} />
+          </RecordInlineField>
+        ) : null}
         <RecordInlineField
           field="start_date"
           label={t('workOrders.form.startDate')}

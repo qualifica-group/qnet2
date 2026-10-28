@@ -110,6 +110,8 @@ use App\Models\WorkOrderLinePayment;
 use App\Models\WorkOrderPaymentStatus;
 use App\Models\WorkOrderProgressEntry;
 use App\Models\WorkOrderStage;
+use App\Models\WorkOrderWorkflow;
+use App\Models\WorkOrderWorkflowStatus;
 use App\Models\Workspace;
 use App\Services\Graph\GraphMailClient;
 use App\Services\Opportunities\OpportunityDefaultStatusResolver;
@@ -316,6 +318,9 @@ class AppServiceProvider extends ServiceProvider
             // Spec 0093 (work-orders module): WorkOrder uses LogsModelActivity,
             // same reasoning as document_layout above.
             'work_order' => WorkOrder::class,
+            // Spec 0322: both audited (LogsModelActivity), so strict morph map needs them.
+            'work_order_workflow' => WorkOrderWorkflow::class,
+            'work_order_workflow_status' => WorkOrderWorkflowStatus::class,
             // Spec 0101 (tasks module): Task and its five configurators all use
             // LogsModelActivity, same reasoning as document_layout above — without
             // these aliases the very first save() of any of them throws

@@ -3,6 +3,7 @@ import {
   buildCreatePayload,
   buildUpdatePayload,
 } from '@/features/work-orders/work-order-form-payload'
+import { WORKFLOW_STATUS_FIELDS } from '@/features/work-orders/work-order-workflow-fixtures'
 import type { WorkOrderDetail } from '@/features/work-orders/types'
 import type { WorkOrderFormValues } from '@/features/work-orders/use-work-order-form'
 
@@ -19,6 +20,7 @@ const formValues: WorkOrderFormValues = {
   internal_notes: null,
   quote_line_ids: [11, 12],
   task_template_id: null,
+  work_order_workflow_status_id: null,
   attribute_values: {},
 }
 
@@ -32,6 +34,7 @@ function original(overrides: Partial<WorkOrderDetail> = {}): WorkOrderDetail {
     status: { value: 'open', is_force_closed: false },
     completion_percentage: 0,
     is_force_closed: false,
+    ...WORKFLOW_STATUS_FIELDS,
     force_close_reason: null,
     open_tasks_count: 0,
     start_date: '2026-03-01',
@@ -253,5 +256,21 @@ describe('buildCreatePayload / buildUpdatePayload — attribute_values (spec 009
     expect(
       buildUpdatePayload({ ...formValues, attribute_values: { site_access: 'Gate 4' } }, withAttribute),
     ).toEqual({ attribute_values: { site_access: 'Gate 4' } })
+  })
+})
+
+describe('buildUpdatePayload — Stato lavorazione (spec 0322)', () => {
+  it('sends the id only when it changed', () => {
+    const values = { ...formValues, work_order_workflow_status_id: 2 }
+    expect(buildUpdatePayload(values, original({ work_order_workflow_status_id: 1 }))).toEqual({
+      work_order_workflow_status_id: 2,
+    })
+    expect(buildUpdatePayload(values, original({ work_order_workflow_status_id: 2 }))).toEqual({})
+  })
+
+  it('never puts it in the create payload', () => {
+    expect(buildCreatePayload({ ...formValues, work_order_workflow_status_id: 2 })).not.toHaveProperty(
+      'work_order_workflow_status_id',
+    )
   })
 })

@@ -8,7 +8,7 @@ import { formatDate } from '@/lib/formatting/date-display'
 import { NotesCalloutRow } from '@/components/record-form/notes-callout-row'
 import { RecordInlineField, type InlineEdit } from '@/components/record-form/record-inline-field'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
-import { WorkflowStatusBadge } from '@/features/quote-workflows/workflow-status-badge'
+import { WorkflowStatusBadge } from '@/features/workflow-statuses/workflow-status-badge'
 import {
   QuoteCodeField,
   QuoteDateField,

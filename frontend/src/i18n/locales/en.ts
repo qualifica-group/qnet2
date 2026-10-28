@@ -45,6 +45,8 @@ import { leads } from './en-leads'
 import { opportunities } from './en-opportunities'
 import { productLines } from './en-product-lines'
 import { quoteWorkflows } from './en-quote-workflows'
+import { workOrderWorkflows } from './en-work-order-workflows'
+import { workflowStatuses } from './en-workflow-statuses'
 import { quotes } from './en-quotes'
 import { contractStatuses } from './en-contract-statuses'
 import { contracts } from './en-contracts'
@@ -454,6 +456,8 @@ export const en = {
   opportunities: { ...opportunities, stats: moduleStats.opportunities },
   productLines,
   quoteWorkflows,
+  workOrderWorkflows,
+  workflowStatuses,
   quotes: { ...quotes, stats: moduleStats.quotes },
   contractStatuses,
   contracts,

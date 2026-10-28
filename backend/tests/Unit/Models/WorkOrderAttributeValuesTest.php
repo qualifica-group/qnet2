@@ -4,6 +4,7 @@ use App\Enums\AttributeContext;
 use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\WorkOrder;
+use App\Models\WorkOrderWorkflowStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -77,7 +78,13 @@ it('attribute_values is NOT mass-assignable (absent from Fillable, D-5)', functi
         'start_date' => '2026-09-10',
         'attribute_values' => ['warehouse_size' => 120],
     ]);
+    // REQUIREMENT CHANGED (spec 0322): the working status is a NOT NULL,
+    // service-only column, assigned directly like `code` (mirrors the Quote test).
     $workOrder->code = 'COM-9999';
+    $workOrder->work_order_workflow_status_id = WorkOrderWorkflowStatus::query()
+        ->whereNull('work_order_workflow_id')
+        ->where('system_key', 'open')
+        ->value('id');
     $workOrder->save();
 
     expect($workOrder->attribute_values)->toBeNull();

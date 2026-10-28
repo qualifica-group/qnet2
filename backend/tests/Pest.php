@@ -58,6 +58,7 @@ require_once __DIR__.'/Helpers/UserHelpers.php';
 require_once __DIR__.'/Helpers/WorkOrderHelpers.php';
 require_once __DIR__.'/Helpers/WorkOrderMultiQuoteHelpers.php';
 require_once __DIR__.'/Helpers/StatsHelpers.php';
+require_once __DIR__.'/Helpers/WorkOrderWorkflowHelpers.php';
 require_once __DIR__.'/Helpers/EmailTemplateHelpers.php';
 require_once __DIR__.'/Helpers/DocumentBundleHelpers.php';
 require_once __DIR__.'/Helpers/TableFieldHelpers.php';

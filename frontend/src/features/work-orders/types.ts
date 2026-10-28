@@ -21,6 +21,24 @@ export interface WorkOrderStatus {
   is_force_closed: boolean
 }
 
+/** `WorkOrderStatus` group of a working status (spec 0322 D-7): the same vocabulary as the computed status. */
+export type WorkOrderWorkflowStatusGroup = WorkOrderStatusValue
+
+/**
+ * One "Stato lavorazione" row (spec 0322). `system_key` pins the three system
+ * rows; `progress_percentage` is the 0..100 advancement the status stands for.
+ */
+export interface WorkOrderWorkflowStatusRef {
+  id: number
+  name: string
+  description: string | null
+  color: string | null
+  group: WorkOrderWorkflowStatusGroup
+  system_key: 'open' | 'completed' | 'closed' | null
+  progress_percentage: number | null
+  sort_order?: number
+}
+
 /** A user projection for the Responsabili set (spec 0096, D-1). */
 export interface WorkOrderSupervisor {
   id: number
@@ -160,6 +178,11 @@ export interface WorkOrderDetail {
   completion_recorded_on?: string | null
   is_force_closed: boolean
   force_close_reason: string | null
+  /** Spec 0322: the "Stato lavorazione", separate from the computed `status`. */
+  work_order_workflow_status_id: number
+  work_order_workflow_status: WorkOrderWorkflowStatusRef
+  /** The set resolved for THIS work order: the picker never offers anything outside it (422 otherwise). */
+  work_order_workflow_statuses: WorkOrderWorkflowStatusRef[]
   /**
    * Spec 0146 D-8/AC-023: task of this commessa NOT closed, counted WITHOUT
    * visibility (the actor may not see all of them) — the exact set the
@@ -253,7 +276,10 @@ export interface CreateWorkOrderPayload {
  */
 export type UpdateWorkOrderPayload = Partial<
   Omit<CreateWorkOrderPayload, 'code' | 'quote_id' | 'task_template_id'>
->
+> & {
+  /** Spec 0322: update-only, the create resolves the `open` row server-side. */
+  work_order_workflow_status_id?: number
+}
 
 /**
  * Discriminated form mode shared by the form hook/meta-resolver and the

@@ -106,6 +106,24 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'processing-status',
+      title: 'Stato lavorazione',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Oltre allo stato calcolato (Aperta, In corso, Completata, Chiusa, che dipende dall'avanzamento e non cambia), ogni commessa ha il campo **Stato lavorazione**: lo stato di avanzamento operativo scelto da te. Lo trovi nel dettaglio e come colonna della tabella, con badge colorato e nome.",
+        },
+        {
+          type: 'paragraph',
+          text: "Le opzioni arrivano dal **set di stati** che corrisponde alla commessa per funzione aziendale e categoria delle sue righe programmate (vedi **Configuratore Stati Commessa**); senza corrispondenza si usano gli stati di default. Una nuova commessa parte da **Aperta**. Nel dettaglio e nella tabella puoi scegliere solo gli stati del suo set, se puoi modificare il campo.",
+        },
+        {
+          type: 'note',
+          text: "In questa versione cambiare lo **Stato lavorazione** non sposta la percentuale di **Avanzamento** né lo stato calcolato: la **% avanzamento** configurata per ogni stato è solo informativa. Se i dati della commessa cambiano e il set applicabile è diverso, lo stato passa a quello equivalente (Aperta, Completata, Chiusa) oppure ad Aperta.",
+        },
+      ],
+    },
+    {
       id: 'creating-a-work-order',
       title: 'Creare una commessa',
       blocks: [

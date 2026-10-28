@@ -65,6 +65,8 @@ it('200 with the catalogue for users and roles, keys matching each resolver\'s f
         'referents', 'attributes', 'custom-fields', 'product-categories', 'products', 'sources', 'sectors', 'tags',
         'registries', 'pipeline-statuses', 'projects', 'campaigns', 'leads',
         'opportunities', 'quote-workflows', 'vat-rates',
+        // spec 0322 `work-order-workflows` (WorkOrderWorkflowsAuthorization, twin of quote-workflows).
+        'work-order-workflows',
         // spec 0049 `request-management` (RequestManagementAuthorization registered in the generic
         // registry so GET /api/meta/request-management works; the module operates on Opportunity).
         'request-management',

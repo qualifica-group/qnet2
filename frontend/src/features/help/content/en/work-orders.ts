@@ -106,6 +106,24 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'processing-status',
+      title: 'Processing status',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Besides the computed status (Open, In progress, Completed, Closed, which depends on progress and is unchanged), every work order has a **Processing status** field: the operational status you choose. You find it in the detail and as a table column, with a colored badge and the name.",
+        },
+        {
+          type: 'paragraph',
+          text: "The options come from the **status set** matching the work order by business function and category of its scheduled lines (see the **Work order status configurator**); with no match the default statuses apply. A new work order starts as **Open**. In the detail and in the table you can only pick the statuses of its own set, if you may edit the field.",
+        },
+        {
+          type: 'note',
+          text: "In this release changing the **Processing status** does not move the **Progress** percentage nor the computed status: the **progress %** configured for each status is informational only. If the work order data change and the applicable set is different, the status becomes the equivalent one (Open, Completed, Closed) or Open.",
+        },
+      ],
+    },
+    {
       id: 'creating-a-work-order',
       title: 'Creating a work order',
       blocks: [

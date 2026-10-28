@@ -8,7 +8,7 @@ import type {
   UpdateQuoteWorkflowStatusPayload,
   WorkflowStatusFormRow,
 } from '@/features/quote-workflows/types'
-import { statusRowsFromDetail } from '@/features/quote-workflows/workflow-status-rows'
+import { statusRowsFromDetail } from '@/features/quote-workflows/quote-status-rows'
 import type { CreateQuoteWorkflowFormValues } from '@/features/quote-workflows/quote-workflow-schema'
 
 /** One `criteria[]` row exactly as the RHF field array edits it (each id individually nullable while the row fills in). */

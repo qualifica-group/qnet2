@@ -49,6 +49,12 @@ use Illuminate\Support\Facades\DB;
  * commessa (isMultiQuote()), whose source offers are derived from the
  * `quote_line_work_order` pivot (sourceQuoteIds()), with no extra pivot.
  *
+ * `work_order_workflow_status_id` (spec 0322, D-1 — the "Stato lavorazione",
+ * distinct from the computed status above) is DELIBERATELY absent from
+ * #[Fillable], mirroring `Quote::quote_workflow_status_id`: mandatory,
+ * restrictOnDelete, written only by the services through
+ * App\Services\WorkOrders\WorkOrderWorkflowResolver.
+ *
  * `task_template_id` (spec 0124, D-5/D-7) IS fillable — unlike `code`, it is
  * genuine client input (`CreateWorkOrderData`), the same category as
  * `quote_id`: mass-assignable on the model, with its post-create
@@ -98,6 +104,17 @@ class WorkOrder extends BaseModel
     public function quote(): BelongsTo
     {
         return $this->belongsTo(Quote::class);
+    }
+
+    /**
+     * The commessa's "Stato lavorazione" (spec 0322), a row of the set
+     * resolved for it (a workflow's own, or the global default).
+     *
+     * @return BelongsTo<WorkOrderWorkflowStatus, $this>
+     */
+    public function workOrderWorkflowStatus(): BelongsTo
+    {
+        return $this->belongsTo(WorkOrderWorkflowStatus::class);
     }
 
     /**

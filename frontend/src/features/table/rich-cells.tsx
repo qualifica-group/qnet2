@@ -14,7 +14,7 @@ import {
 } from '@/features/table/cell-renderers'
 import { swatchClassFor } from '@/features/custom-fields/badge-color-tokens'
 import { DynamicIcon } from '@/features/custom-fields/dynamic-icon'
-import { StatusDescriptionHint } from '@/features/quote-workflows/status-description-hint'
+import { StatusDescriptionHint } from '@/features/workflow-statuses/status-description-hint'
 import { formatDecimal } from '@/features/products/column-renderers'
 import { GeoScopeBadge } from '@/features/geo/geo-scope-badge'
 import { geoScopePlaceName, type GeoScope, type GeoScopeNames } from '@/features/geo/geo-scope'

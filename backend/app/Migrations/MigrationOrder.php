@@ -71,8 +71,10 @@ final class MigrationOrder
         // 4 anchors migrated. The two have no cross-dependency, so they share
         // the phase. `cost-products` (spec 0174) references only the phase 1
         // vat-rates and provisions its own "Costi" branch, so it sits beside
-        // `products`.
-        ['product-category-attributes', 'products', 'cost-products'],
+        // `products`. `work-order-workflows` (spec 0322) link the phase 1
+        // business functions and the phase 4 product-categories by old_id and
+        // nothing else, so they sit here too.
+        ['product-category-attributes', 'products', 'cost-products', 'work-order-workflows'],
 
         // Phase 6 — category form layouts (spec 0181): AttributeLayoutValidator
         // only accepts codes the category has ALREADY linked for the context,
@@ -101,8 +103,10 @@ final class MigrationOrder
         // the commessa and its stages (phase 11), and optionally registries,
         // referents and opportunities (phases 7, 9). `proforma-requests`
         // (spec 0300) link the commessa and its quote, no task: same phase, as
-        // `work-order-progress` (spec 0321), which only needs the commessa.
-        ['tasks', 'proforma-requests', 'work-order-progress'],
+        // `work-order-progress` (spec 0321), which only needs the commessa;
+        // `work-order-workflow-statuses` (spec 0322) set the current status of
+        // the commessa from the phase 5 workflows.
+        ['tasks', 'proforma-requests', 'work-order-progress', 'work-order-workflow-statuses'],
 
         // Phase 13 — spec 0294, start of the accounting part: the legacy RDA.
         // They link users, companies, company sites, operational sites and

@@ -69,6 +69,7 @@ final class WorkOrderDerivedColumns
         private readonly FilterApplier $filterApplier,
         private readonly WorkOrderRegistryColumn $registryColumn,
         private readonly WorkOrderContractExpiryColumn $contractExpiryColumn,
+        private readonly WorkOrderWorkflowStatusColumn $workflowStatusColumn,
     ) {}
 
     /**
@@ -104,6 +105,12 @@ final class WorkOrderDerivedColumns
 
         if ($columnId === WorkOrderContractExpiryColumn::COLUMN) {
             $this->contractExpiryColumn->applyFilter($query, $columnConfig, $filter);
+
+            return true;
+        }
+
+        if ($columnId === WorkOrderWorkflowStatusColumn::COLUMN) {
+            $this->workflowStatusColumn->applyFilter($query, $filter);
 
             return true;
         }
@@ -183,6 +190,12 @@ final class WorkOrderDerivedColumns
             return true;
         }
 
+        if ($columnId === WorkOrderWorkflowStatusColumn::COLUMN) {
+            $this->workflowStatusColumn->applySort($query, $direction);
+
+            return true;
+        }
+
         $quoteColumn = self::QUOTE_SCALAR_COLUMNS[$columnId] ?? null;
 
         if ($quoteColumn === null) {
@@ -223,6 +236,7 @@ final class WorkOrderDerivedColumns
                 fn (): bool => (clone $query)->whereDoesntHave(self::SUPERVISORS_RELATION)->exists(),
             ),
             WorkOrderRegistryColumn::COLUMN => $this->registryColumn->distinctValues($search, $query, $limit),
+            WorkOrderWorkflowStatusColumn::COLUMN => $this->workflowStatusColumn->distinctValues($search, $query, $limit),
             default => null,
         };
     }

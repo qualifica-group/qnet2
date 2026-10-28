@@ -209,6 +209,22 @@ final class WorkOrderColumnCatalog
                 'relation' => ['resource' => 'users'],
                 'editableField' => 'supervisor_ids',
             ],
+            [
+                // Spec 0322: the "Stato lavorazione", a real FK column rendered as a
+                // colored badge; the select editor offers only the row's own set
+                // (`work_order_workflow_status_options`, WorkOrderWorkflowStatusColumn).
+                'id' => 'work_order_workflow_status',
+                'label' => 'workOrders.columns.work_order_workflow_status',
+                'type' => 'text',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'set',
+                'editable' => true,
+                'editor' => 'select',
+                'editableField' => 'work_order_workflow_status_id',
+                'nullable' => false,
+            ],
         ];
     }
 
@@ -228,6 +244,7 @@ final class WorkOrderColumnCatalog
             ['columnId' => 'callback_date', 'type' => 'date'],
             ['columnId' => 'is_force_closed', 'type' => 'set'],
             ['columnId' => 'status', 'type' => 'set'],
+            ['columnId' => 'work_order_workflow_status', 'type' => 'set'],
             ['columnId' => 'created_at', 'type' => 'date'],
             ['columnId' => 'updated_at', 'type' => 'date'],
             ['columnId' => 'start_date', 'type' => 'date'],

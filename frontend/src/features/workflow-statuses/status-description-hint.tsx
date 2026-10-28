@@ -28,7 +28,7 @@ export function StatusDescriptionHint({ description, className }: StatusDescript
         <TooltipTrigger asChild>
           <button
             type="button"
-            aria-label={t('quoteWorkflows.form.statuses.descriptionHint')}
+            aria-label={t('workflowStatuses.descriptionHint')}
             className={cn(
               'inline-flex shrink-0 cursor-help items-center text-muted-foreground/70 transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none',
               className,

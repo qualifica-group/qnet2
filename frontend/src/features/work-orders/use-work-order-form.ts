@@ -42,6 +42,7 @@ const SERVER_ERROR_FIELDS = [
   'internal_notes',
   'quote_line_ids',
   'task_template_id',
+  'work_order_workflow_status_id',
 ] as const
 
 export type WorkOrderFormValues = CreateWorkOrderFormValues & UpdateWorkOrderFormValues
@@ -65,6 +66,7 @@ function editDefaults(workOrder: WorkOrderDetail): WorkOrderFormValues {
     // Spec 0124 D-9: never resubmitted (`buildUpdatePayload` never reads it,
     // D-5), kept only so the shared shape stays one.
     task_template_id: workOrder.task_template?.id ?? null,
+    work_order_workflow_status_id: workOrder.work_order_workflow_status_id,
     // An empty PHP map serializes as a JSON ARRAY (`toAttributeValuesMap`),
     // and every applicable code needs its key for the Zod object: seeded
     // here, not by the effect below, so the `values` re-sync after a save
@@ -91,6 +93,7 @@ function createDefaults(initialCode: string | undefined): WorkOrderFormValues {
     internal_notes: null,
     quote_line_ids: [],
     task_template_id: null,
+    work_order_workflow_status_id: null,
     attribute_values: {},
   }
 }

@@ -7,6 +7,10 @@
  */
 
 import type { ResourcePermissions } from '@/features/authorization/types'
+import type {
+  WorkflowStatusFormRow as SharedWorkflowStatusFormRow,
+  WorkflowStatusRowPatch as SharedWorkflowStatusRowPatch,
+} from '@/features/workflow-statuses/types'
 
 /**
  * Fixed group values a workflow status row carries — DEDICATED to quote
@@ -165,27 +169,17 @@ export type QuoteWorkflowFormMode =
   | { type: 'edit'; quoteWorkflow: QuoteWorkflowDetailWithPermissions }
 
 /**
- * One status row as edited locally by `<WorkflowStatusesEditor>` (a
- * SortableList-driven local array, not an RHF field array — mirrors
- * `StatusReorderItem`/`useStatusReorder`). `id` is the STRING identity
- * `<SortableList>` requires (mirrors every other row's stringified id);
- * `statusId` is the persisted backend id, or `undefined` for a row not yet
- * created (a freshly-added custom row, or the 3 pinned system rows in create
- * mode — the backend then persists the real open/closed_won/closed_lost rows,
- * seeded with the name/color the user typed, AC-004).
+ * One status row as edited locally by `<WorkflowStatusesEditor>`: the shared
+ * row shape narrowed to the quote vocabulary. `statusId` is `undefined` for a
+ * row not yet created (a freshly-added custom row, or the 3 pinned system
+ * rows in create mode — the backend then persists the real open/closed_won/
+ * closed_lost rows, seeded with the name/color the user typed, AC-004).
  */
-export interface WorkflowStatusFormRow {
-  id: string
-  statusId?: number
-  name: string
-  description: string | null
-  color: string | null
+export interface WorkflowStatusFormRow extends SharedWorkflowStatusFormRow {
   group: WorkflowStatusGroupValue
   system_key: WorkflowStatusSystemKey
   requires_note: boolean
 }
 
 /** The row fields the editor may patch (everything but the row identity and its pinned `system_key`). */
-export type WorkflowStatusRowPatch = Partial<
-  Pick<WorkflowStatusFormRow, 'name' | 'description' | 'color' | 'group' | 'requires_note'>
->
+export type WorkflowStatusRowPatch = SharedWorkflowStatusRowPatch<WorkflowStatusFormRow>

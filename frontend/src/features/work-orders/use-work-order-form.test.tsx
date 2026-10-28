@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { WORKFLOW_STATUS_FIELDS } from '@/features/work-orders/work-order-workflow-fixtures'
 import type { ReactNode } from 'react'
 import i18n from '@/i18n'
 import { fetchWorkOrderFormContext, updateWorkOrder } from '@/features/work-orders/api'
@@ -42,6 +43,7 @@ function persistedWorkOrder(overrides: Partial<WorkOrderDetailWithPermissions> =
     status: { value: 'open', is_force_closed: false },
     completion_percentage: 0,
     is_force_closed: false,
+    ...WORKFLOW_STATUS_FIELDS,
     force_close_reason: null,
     open_tasks_count: 0,
     callback_date: null,

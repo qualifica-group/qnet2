@@ -80,6 +80,7 @@ use App\Authorization\UserSkillsAuthorization;
 use App\Authorization\VatRatesAuthorization;
 use App\Authorization\WorkOrderPaymentStatusesAuthorization;
 use App\Authorization\WorkOrdersAuthorization;
+use App\Authorization\WorkOrderWorkflowsAuthorization;
 
 return [
 
@@ -138,6 +139,8 @@ return [
         // spec 0093: le Commesse, collegate a un'offerta e alle sue righe.
         'work-orders' => WorkOrdersAuthorization::class,
         'work-order-payment-statuses' => WorkOrderPaymentStatusesAuthorization::class,
+        // spec 0322: Configuratore Stati Commessa, twin of quote-workflows.
+        'work-order-workflows' => WorkOrderWorkflowsAuthorization::class,
         // spec 0175: le email della Commessa e i loro due configuratori.
         'email-templates' => EmailTemplatesAuthorization::class,
         'document-bundles' => DocumentBundlesAuthorization::class,

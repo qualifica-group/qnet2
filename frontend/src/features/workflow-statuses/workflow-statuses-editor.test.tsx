@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import i18n from '@/i18n'
-import { WorkflowStatusesEditor } from '@/features/quote-workflows/workflow-statuses-editor'
-import { WorkflowStatusOption } from '@/features/quote-workflows/workflow-status-option'
-import type { WorkflowStatusFormRow } from '@/features/quote-workflows/types'
+import { WorkflowStatusesEditor } from '@/features/workflow-statuses/workflow-statuses-editor'
+import { WorkflowStatusOption } from '@/features/workflow-statuses/workflow-status-option'
+import type { WorkflowStatusFormRow, WorkflowStatusGroupOption } from '@/features/workflow-statuses/types'
 
 /**
  * Spec 0047 amendment: a working status carries a `description` and a
@@ -13,6 +13,12 @@ import type { WorkflowStatusFormRow } from '@/features/quote-workflows/types'
 beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
+
+const GROUPS: WorkflowStatusGroupOption[] = [
+  { value: 'open', label: 'Open', badgeClassName: '' },
+  { value: 'pending', label: 'Pending', badgeClassName: '' },
+  { value: 'validated', label: 'Validated', badgeClassName: '' },
+]
 
 const ROWS: WorkflowStatusFormRow[] = [
   {
@@ -37,10 +43,16 @@ const ROWS: WorkflowStatusFormRow[] = [
   },
 ]
 
-function renderEditor(onUpdateRow = vi.fn()) {
+function renderEditor(
+  onUpdateRow = vi.fn(),
+  features: { showRequiresNote?: boolean; showProgressPercentage?: boolean } = { showRequiresNote: true },
+  rows: WorkflowStatusFormRow[] = ROWS,
+) {
   render(
     <WorkflowStatusesEditor
-      rows={ROWS}
+      rows={rows}
+      groups={GROUPS}
+      {...features}
       onReorder={vi.fn()}
       onAddCustom={vi.fn()}
       onRemoveCustom={vi.fn()}
@@ -104,6 +116,33 @@ describe('WorkflowStatusesEditor — description and note marker', () => {
 
     // Only the flagged row carries the marker.
     expect(screen.getAllByText('Note required')).toHaveLength(1)
+  })
+})
+
+describe('WorkflowStatusesEditor — optional fields', () => {
+  it('hides the note switch and the progress input unless the domain opts in', () => {
+    renderEditor(vi.fn(), {})
+
+    expect(screen.queryByRole('switch')).toBeNull()
+    expect(screen.queryByRole('spinbutton')).toBeNull()
+  })
+
+  it('patches the progress percentage as a clamped number, and null once cleared', () => {
+    const onUpdateRow = renderEditor(
+      vi.fn(),
+      { showProgressPercentage: true },
+      ROWS.map((row) => ({ ...row, progress_percentage: row.id === 'custom-1' ? 40 : null })),
+    )
+    const inputs = screen.getAllByRole('spinbutton', { name: 'Progress %' })
+    expect(inputs[1]).toHaveValue(40)
+    expect(inputs[0]).toHaveValue(null)
+
+    fireEvent.change(inputs[0], { target: { value: '150' } })
+    expect(onUpdateRow).toHaveBeenCalledWith('system-open', { progress_percentage: 100 })
+
+    fireEvent.change(inputs[1], { target: { value: '' } })
+    expect(onUpdateRow).toHaveBeenCalledWith('custom-1', { progress_percentage: null })
+    expect(screen.queryByRole('switch')).toBeNull()
   })
 })
 

@@ -61,6 +61,8 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             // below — writable only when generating the Commessa, then
             // permanently readonly.
             new FieldDefinition('task_template_id', 'select'),
+            // Spec 0322: the "Stato lavorazione", editable after create like any plain field.
+            new FieldDefinition('work_order_workflow_status_id', 'select'),
         ];
     }
 
@@ -102,6 +104,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             'quote_line_ids' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'attribute_values' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'task_template_id' => $mayWriteOnlyAtCreate ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'work_order_workflow_status_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];
     }
 

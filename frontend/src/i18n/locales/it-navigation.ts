@@ -60,6 +60,7 @@ export const navigation = {
   contractStatuses: 'Stati Contratto',
   contracts: 'Contratti',
   workOrders: 'Commesse',
+  workOrderWorkflows: 'Configuratore Stati Commessa',
   emailTemplates: 'Modelli email',
   documentBundles: 'Modelli documenti',
   tasks: 'Task',

@@ -14,14 +14,15 @@ use App\Services\WorkOrders\WorkOrderSourceQuotes;
 use App\Services\WorkOrders\WorkOrderStatusResolver;
 use App\Services\WorkOrders\WorkOrderVisibilityScope;
 use App\Services\WorkOrderService;
+use App\Tables\Shared\WorkOrderWorkflowStatusOptions;
 use App\Tables\WorkOrders\WorkOrderCellWriter;
 use App\Tables\WorkOrders\WorkOrderColumnCatalog;
 use App\Tables\WorkOrders\WorkOrderDerivedColumns;
+use App\Tables\WorkOrders\WorkOrderWorkflowStatusColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -63,6 +64,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         private readonly WorkOrderDerivedColumns $derivedColumns,
         private readonly WorkOrderCellWriter $cellWriter,
         private readonly WorkOrderSourceQuotes $sourceQuotes,
+        private readonly WorkOrderWorkflowStatusColumn $workflowStatusColumn,
     ) {}
 
     /**
@@ -118,13 +120,11 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'quote.contract',
             'supervisors.avatar',
             'participants',
-            // Spec 0267, D-8: only multi-offer rows need their lines' offers.
-            'quoteLines' => static fn ($lines) => $lines->whereExists(
-                DB::table('work_orders')
-                    ->whereColumn('work_orders.id', 'quote_line_work_order.work_order_id')
-                    ->whereNull('work_orders.quote_id')
-                    ->select(DB::raw(1))
-            ),
+            // Spec 0322: the "Stato lavorazione" cell, and its per-row set
+            // (WorkOrderWorkflowResolver reads `quoteLines.product`).
+            'workOrderWorkflowStatus',
+            'quoteLines.product',
+            // Spec 0267, D-8: only multi-offer rows read their lines' offers.
             'quoteLines.quote.opportunity.registry',
         ]));
 
@@ -219,6 +219,17 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
     }
 
     /**
+     * The `select` editor catalogue of the "Stato lavorazione" column
+     * (spec 0322); the per-row narrowing rides on the row itself.
+     *
+     * @return array<int, array<string, mixed>>|null
+     */
+    protected function optionsFor(string $columnId, User $actor): ?array
+    {
+        return $columnId === WorkOrderWorkflowStatusColumn::COLUMN ? WorkOrderWorkflowStatusOptions::catalog() : null;
+    }
+
+    /**
      * The `type`/`status` badges are driven by WorkOrderType/WorkOrderStatus,
      * exposed to the frontend config under the `work_order_type`/
      * `work_order_status` enum keys (config/config.php form_enums), so the
@@ -267,6 +278,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'callback_date' => $row->callback_date,
             'is_force_closed' => $row->is_force_closed,
             'status' => $progress->status->value,
+            ...$this->workflowStatusColumn->project($row),
             'completion_percentage' => $progress->completionPercentage,
             'completion_recorded_on' => $progress->recordedOn,
             'created_at' => $row->created_at,

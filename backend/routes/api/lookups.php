@@ -33,6 +33,7 @@ use App\Http\Controllers\VatRates\VatRateController;
 use App\Http\Controllers\VatRates\VatRateForSelectController;
 use App\Http\Controllers\WorkOrderPaymentStatuses\WorkOrderPaymentStatusController;
 use App\Http\Controllers\WorkOrderPaymentStatuses\WorkOrderPaymentStatusForSelectController;
+use App\Http\Controllers\WorkOrderWorkflows\WorkOrderWorkflowController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -114,6 +115,18 @@ Route::get('quote-workflows/{quoteWorkflow}', [QuoteWorkflowController::class, '
 Route::post('quote-workflows', [QuoteWorkflowController::class, 'store']);
 Route::match(['put', 'patch'], 'quote-workflows/{quoteWorkflow}', [QuoteWorkflowController::class, 'update']);
 Route::delete('quote-workflows/{quoteWorkflow}', [QuoteWorkflowController::class, 'destroy']);
+
+// Work order workflow configurator (spec 0322): same layout and ordering rule
+// as quote-workflows above; authorization in WorkOrderWorkflowController via
+// WorkOrderWorkflowPolicy.
+Route::get('work-order-workflows/criterion-fields', [WorkOrderWorkflowController::class, 'criterionFields']);
+Route::get('work-order-workflows/default-statuses', [WorkOrderWorkflowController::class, 'defaultStatuses']);
+Route::put('work-order-workflows/default-statuses', [WorkOrderWorkflowController::class, 'updateDefaultStatuses']);
+
+Route::get('work-order-workflows/{workOrderWorkflow}', [WorkOrderWorkflowController::class, 'show']);
+Route::post('work-order-workflows', [WorkOrderWorkflowController::class, 'store']);
+Route::match(['put', 'patch'], 'work-order-workflows/{workOrderWorkflow}', [WorkOrderWorkflowController::class, 'update']);
+Route::delete('work-order-workflows/{workOrderWorkflow}', [WorkOrderWorkflowController::class, 'destroy']);
 
 // Reward types CRUD (spec 0058): a pure anagraphic (name/color) describing
 // the TYPES of voucher/reward/incentive usable in the CRM (BR-3: no

@@ -1,4 +1,4 @@
-import { BooleanBadgeCell, CodeBadgeCell, DateCell } from '@/features/table/rich-cells'
+import { BooleanBadgeCell, CodeBadgeCell, DateCell, StatusBadgeCell } from '@/features/table/rich-cells'
 import { UserStackCell } from '@/features/table/user-cell'
 import { DateTimeCell } from '@/features/table/cell-renderers'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
@@ -25,6 +25,9 @@ import { WorkOrderProgressCell } from '@/features/work-orders/work-order-progres
  * `managers` columns render with — no second avatar-stack cell.
  * `registry` (the Anagrafica, `{id, name}` through the quote's opportunity)
  * renders as the same `RelationCell` the Contratti grid uses.
+ * `work_order_workflow_status` ("Stato lavorazione", spec 0322) is a
+ * `{id, name, color}` relation: the shared `StatusBadgeCell`, like the
+ * Offerte's `quote_workflow_status`.
  * `title`/`contract_number`/`quote` stay on the AG Grid default text cell.
  * `completion_percentage` (spec 0321 R-6) renders `WorkOrderProgressCell`, a
  * button opening the progress popup: the renderer map is therefore built by a
@@ -34,6 +37,7 @@ export function buildWorkOrderColumnRenderers(openProgress: (workOrderId: number
   return {
     code: (params) => <CodeBadgeCell {...params} />,
     registry: (params) => <RegistryCell {...params} />,
+    work_order_workflow_status: (params) => <StatusBadgeCell {...params} />,
     is_force_closed: (params) => <BooleanBadgeCell {...params} />,
     callback_date: (params) => <DateCell {...params} />,
     start_date: (params) => <DateCell {...params} />,

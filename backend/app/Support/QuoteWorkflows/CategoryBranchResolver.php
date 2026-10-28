@@ -64,20 +64,21 @@ final class CategoryBranchResolver
     }
 
     /**
+     * The same branch projection for an explicit list of classifying
+     * categories (spec 0322: a work order is classified by its own lines,
+     * not by a Quote). Not memoized: callers memoize per subject.
+     *
+     * @param  array<int, int>  $categoryIds
      * @return array<int, int>
      */
-    private function build(Quote $quote): array
+    public function distancesForCategoryIds(array $categoryIds): array
     {
-        // Step 1: the categories the quote sits on directly — the SAME set
-        // the exact-category criterion matches on, fallback included.
-        $categoryIds = $this->classification->categoryIds($quote);
-
         if ($categoryIds === []) {
             return [];
         }
 
-        // Step 2: climb from each of them, keeping the shortest distance when
-        // two of them reach the same ancestor from different depths.
+        // Climb from each of them, keeping the shortest distance when two of
+        // them reach the same ancestor from different depths.
         $parents = $this->hierarchy->parentIdMap();
         $distances = [];
 
@@ -86,6 +87,16 @@ final class CategoryBranchResolver
         }
 
         return $distances;
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function build(Quote $quote): array
+    {
+        // The categories the quote sits on directly — the SAME set the
+        // exact-category criterion matches on, fallback included.
+        return $this->distancesForCategoryIds($this->classification->categoryIds($quote));
     }
 
     /**

@@ -5,29 +5,18 @@ import { toast } from 'sonner'
 import type { ApiErrorResponse } from '@/api/types'
 import { fetchDefaultStatuses, updateDefaultStatuses } from '@/features/quote-workflows/api'
 import { buildDefaultStatusesPayload } from '@/features/quote-workflows/quote-workflow-form-payload'
+import { newCustomRow, statusRowsFromItems } from '@/features/quote-workflows/quote-status-rows'
 import {
   isTailWorkflowSystemKey,
   type QuoteWorkflowStatusItem,
   type WorkflowStatusFormRow,
   type WorkflowStatusRowPatch,
 } from '@/features/quote-workflows/types'
+import { inOrder, withCustomRow, withoutRow, withPatchedRow } from '@/features/workflow-statuses/workflow-status-rows'
 
 /** Query key for the GLOBAL default status set (fresh-on-open pattern, mirrors `useStatusReorder`). */
 function defaultStatusesQueryKey() {
   return ['quote-workflows', 'default-statuses'] as const
-}
-
-function toFormRows(statuses: QuoteWorkflowStatusItem[]): WorkflowStatusFormRow[] {
-  return statuses.map((status) => ({
-    id: String(status.id),
-    statusId: status.id,
-    name: status.name,
-    description: status.description,
-    color: status.color,
-    group: status.group,
-    system_key: status.system_key,
-    requires_note: status.requires_note,
-  }))
 }
 
 interface UseDefaultStatusesLabels {
@@ -63,7 +52,7 @@ export function useDefaultStatuses({ enabled, labels }: UseDefaultStatusesArgs) 
   const [syncedFrom, setSyncedFrom] = useState<QuoteWorkflowStatusItem[] | undefined>(undefined)
   if (query.data && query.data !== syncedFrom) {
     setSyncedFrom(query.data)
-    setRows(toFormRows(query.data))
+    setRows(statusRowsFromItems(query.data))
   }
 
   const [isSaving, setIsSaving] = useState(false)
@@ -72,35 +61,20 @@ export function useDefaultStatuses({ enabled, labels }: UseDefaultStatusesArgs) 
 
   const addCustom = () => {
     nextCustomRowId.current += 1
-    const newRow: WorkflowStatusFormRow = {
-      id: `custom-${nextCustomRowId.current}`,
-      name: '',
-      description: null,
-      color: null,
-      group: 'pending',
-      system_key: null,
-      requires_note: false,
-    }
-    setRows((current) => {
-      const tailIndex = current.findIndex((row) => isTailWorkflowSystemKey(row.system_key))
-      const insertAt = tailIndex === -1 ? current.length : tailIndex
-      return [...current.slice(0, insertAt), newRow, ...current.slice(insertAt)]
-    })
+    const newRow = newCustomRow(nextCustomRowId.current)
+    setRows((current) => withCustomRow(current, newRow, isTailWorkflowSystemKey))
   }
 
   const removeCustom = (id: string) => {
-    setRows((current) => current.filter((row) => row.id !== id))
+    setRows((current) => withoutRow(current, id))
   }
 
   const updateRow = (id: string, patch: WorkflowStatusRowPatch) => {
-    setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)))
+    setRows((current) => withPatchedRow(current, id, patch))
   }
 
   const reorder = (orderedIds: string[]) => {
-    setRows((current) => {
-      const byId = new Map(current.map((row) => [row.id, row]))
-      return orderedIds.map((id) => byId.get(id)).filter((row): row is WorkflowStatusFormRow => row !== undefined)
-    })
+    setRows((current) => inOrder(current, orderedIds))
   }
 
   const save = async (): Promise<boolean> => {
@@ -113,7 +87,7 @@ export function useDefaultStatuses({ enabled, labels }: UseDefaultStatusesArgs) 
     setIsSaving(true)
     try {
       const fresh = await updateDefaultStatuses(buildDefaultStatusesPayload(rows))
-      setRows(toFormRows(fresh))
+      setRows(statusRowsFromItems(fresh))
       setSyncedFrom(fresh)
       queryClient.setQueryData(defaultStatusesQueryKey(), fresh)
       toast.success(labels.saved)

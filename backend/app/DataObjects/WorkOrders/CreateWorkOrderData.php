@@ -30,6 +30,10 @@ use App\Enums\WorkOrderType;
  * `quote_id`, genuine client input the model receives by mass assignment —
  * unlike `code`, whose absence from the model's own #[Fillable] is what
  * makes attributes() omit it here.
+ *
+ * `workOrderWorkflowStatusId` (spec 0322): the optional explicit "Stato
+ * lavorazione"; null lets the resolver pick the open row of the set. Out of
+ * attributes() — the column is not fillable.
  */
 final readonly class CreateWorkOrderData
 {
@@ -57,6 +61,7 @@ final readonly class CreateWorkOrderData
         public ?array $attributeValues = null,
         public ?int $taskTemplateId = null,
         public array $multiQuoteIds = [],
+        public ?int $workOrderWorkflowStatusId = null,
     ) {}
 
     /**
@@ -87,6 +92,9 @@ final readonly class CreateWorkOrderData
                 : null,
             taskTemplateId: array_key_exists('task_template_id', $data) && $data['task_template_id'] !== null
                 ? (int) $data['task_template_id']
+                : null,
+            workOrderWorkflowStatusId: isset($data['work_order_workflow_status_id'])
+                ? (int) $data['work_order_workflow_status_id']
                 : null,
         );
     }

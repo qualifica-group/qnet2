@@ -23,6 +23,9 @@ use App\Enums\WorkOrderType;
  * as `App\DataObjects\Quotes\UpdateQuoteData`'s own field: `null` when the
  * key was absent — and sparse WITHIN itself too, a code the map leaves out
  * keeps its persisted value (WorkOrderAttributeValueWriter owns that merge).
+ *
+ * `workOrderWorkflowStatusId` (spec 0322): the explicit "Stato lavorazione";
+ * null (absent, or sent as null) leaves the resolver's baseline untouched.
  */
 final readonly class UpdateWorkOrderData
 {
@@ -50,6 +53,7 @@ final readonly class UpdateWorkOrderData
         /** @var array<int, int|null>|null */
         public ?array $participantSlots = null,
         public ?array $attributeValues = null,
+        public ?int $workOrderWorkflowStatusId = null,
     ) {}
 
     /**
@@ -78,6 +82,9 @@ final readonly class UpdateWorkOrderData
             participantSlots: array_key_exists('participant_slots', $data) ? self::normalizeSlots($data['participant_slots']) : null,
             attributeValues: array_key_exists('attribute_values', $data)
                 ? (array) $data['attribute_values']
+                : null,
+            workOrderWorkflowStatusId: isset($data['work_order_workflow_status_id'])
+                ? (int) $data['work_order_workflow_status_id']
                 : null,
         );
     }

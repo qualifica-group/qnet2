@@ -14,7 +14,8 @@ import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import type { ApiErrorResponse } from '@/api/types'
 import { quoteWorkflowColumnRenderers } from '@/features/quote-workflows/column-renderers'
 import { deleteQuoteWorkflow } from '@/features/quote-workflows/api'
-import { DefaultStatusesToggle } from '@/features/quote-workflows/default-statuses-toggle'
+import { QuoteDefaultStatusesSheet } from '@/features/quote-workflows/quote-default-statuses-sheet'
+import { DefaultStatusesToggle } from '@/features/workflow-statuses/default-statuses-toggle'
 
 /** Domain key used to mount the generic table for opportunity workflows. */
 const OPPORTUNITY_WORKFLOWS_DOMAIN = 'quote-workflows'
@@ -93,7 +94,11 @@ export function QuoteWorkflowsTable() {
       <PageHeader
         actions={
           <>
-            <DefaultStatusesToggle />
+            <DefaultStatusesToggle
+              permission="quote-workflows.update"
+              label={t('quoteWorkflows.defaultStatuses.openButton')}
+              renderSheet={(sheet) => <QuoteDefaultStatusesSheet {...sheet} />}
+            />
             <Can permission="quote-workflows.create">
               <Button onClick={openCreate}>
                 <Plus aria-hidden="true" />

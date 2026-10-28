@@ -16,7 +16,7 @@ export function RequiresNoteBadge({ className }: { className?: string }) {
   return (
     <Badge className={cn('shrink-0 gap-1', BADGE_COLOR_CLASSES.amber, className)}>
       <StickyNote aria-hidden="true" className="size-3" />
-      {t('quoteWorkflows.form.statuses.requiresNoteBadge')}
+      {t('workflowStatuses.requiresNoteBadge')}
     </Badge>
   )
 }

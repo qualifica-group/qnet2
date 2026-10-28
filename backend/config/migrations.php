@@ -39,6 +39,8 @@ use App\Migrations\Sources\UsersSource;
 use App\Migrations\Sources\VatRatesSource;
 use App\Migrations\Sources\WorkOrderProgressSource;
 use App\Migrations\Sources\WorkOrdersSource;
+use App\Migrations\Sources\WorkOrderWorkflowsSource;
+use App\Migrations\Sources\WorkOrderWorkflowStatusesSource;
 
 return [
 
@@ -132,6 +134,9 @@ return [
         'tasks' => TasksSource::class,
         // spec 0321: the manual progress entries of the migrated work orders.
         'work-order-progress' => WorkOrderProgressSource::class,
+        // spec 0322: the work order workflows and the current status of each work order.
+        'work-order-workflows' => WorkOrderWorkflowsSource::class,
+        'work-order-workflow-statuses' => WorkOrderWorkflowStatusesSource::class,
         // spec 0203: the product supplier link and the legacy commission rules,
         // both needing the migrated registries.
         'product-suppliers' => ProductSuppliersSource::class,

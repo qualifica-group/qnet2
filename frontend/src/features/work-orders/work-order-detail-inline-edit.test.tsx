@@ -7,6 +7,7 @@ import i18n from '@/i18n'
 import { ConfirmContext } from '@/components/confirm-dialog-context'
 import { fetchWorkOrderFormContext, updateWorkOrder } from '@/features/work-orders/api'
 import { WorkOrderDetailView } from '@/features/work-orders/work-order-detail'
+import { WORKFLOW_STATUS_FIELDS } from '@/features/work-orders/work-order-workflow-fixtures'
 import type { FieldPermission } from '@/features/authorization/types'
 import type { ApplicableAttributeSummary, WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
@@ -75,6 +76,7 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
     status: { value: 'open', is_force_closed: false },
     completion_percentage: 0,
     is_force_closed: false,
+    ...WORKFLOW_STATUS_FIELDS,
     force_close_reason: null,
     open_tasks_count: 2,
     callback_date: null,
@@ -194,7 +196,7 @@ describe('WorkOrderDetailView — in-place editing', () => {
         ...record.permissions,
         fields: Object.fromEntries(
           ['code', 'task_template_id', 'title', 'type', 'start_date', 'callback_date', 'description', 'internal_notes', 'supervisor_ids',
-            'participant_slots', 'quote_line_ids', 'attribute_values'].map((key) => [key, READ_ONLY_FIELD]),
+            'participant_slots', 'quote_line_ids', 'attribute_values', 'work_order_workflow_status_id'].map((key) => [key, READ_ONLY_FIELD]),
         ),
       },
     })
