@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0323-task-template-work-order-status-link" status="draft" owner="utente" date="2026-10-28">
+
+  <goal>
+    Ogni riga di un Modello di Task puo' essere collegata a uno stato di lavorazione commessa (configuratore
+    spec 0322). Il task generato dalla riga porta con se' quello stato: quando il task si chiude con esito
+    positivo, la commessa passa automaticamente a quello Stato lavorazione e il suo avanzamento sale alla
+    percentuale dello stato, esattamente come nel QNet legacy. Anche il cambio manuale dello Stato lavorazione
+    muove l'avanzamento, con il blocco del legacy.
+  </goal>
+
+  <context>
+    Legacy `../qnet` (verificato sul codice e sui dati reali):
+    - `templatebtypemilestoneactions.stato_consulenza` (id `progress`), scelto da una select con TUTTI gli
+      stati raggruppati per categoria (`Livewire/Templatebtypes/{Create,Update}.php`). 285 azioni su 1315.
+    - La generazione dei task copia il valore su `tasks.stato_consulenza` (`Orders/Contractplanning.php`,
+      `Programmazione/Servizi.php`, `Orders/RicaricaModelloTemplate.php`). 240.405 task, 139.105 aperti.
+    - `TaskServizi/TaskServizi.php::markasdoneupdate`: a task fatto con `stato_consulenza` e `order_id`,
+      `orderisos.stato_consulenza` = stato del task (senza controllo di coerenza con la categoria, anche "all'indietro");
+      se `progress.stato_avanzamento` > 0 e >= SUM(`avanzamento_commesse.percentuale`) crea una riga
+      `avanzamento_commesse` col delta e data oggi; log "ha cambiato lo stato consulenza in". La riapertura
+      del task non annulla nulla.
+    - `Orders/Manageorder.php::updateStatoConsulenza` (cambio manuale): se `stato_avanzamento` > 0 e
+      <= totale raggiunto rifiuta il cambio con errore; altrimenti crea la riga delta e cambia lo stato.
+
+    qnet-2 (verificato):
+    - `task_template_items` (model `TaskTemplateItem`, #[Fillable] con `task_status_id`...), validazione in
+      `Http/Requests/TaskTemplates/Concerns/ValidatesTaskTemplateItems::itemsRules()`, scrittura in
+      `Services/TaskTemplates/TaskTemplateItemWriter`, output `Http/Resources/TaskTemplateItemResource`.
+    - `Services/WorkOrders/WorkOrderTaskGenerator::materialize()` copia la riga su un nuovo `Task` (snapshot,
+      spec 0124 D-6: nessuna FK verso il modello).
+    - Stato lavorazione: `work_orders.work_order_workflow_status_id`, punto unico di scrittura
+      `Services/WorkOrders/WorkOrderWorkflowStatusAssigner` (`assign()`, `followForceClose()`, log manuale
+      "Work order working status change"); set risolto da `WorkOrderWorkflowResolver::resolve()` +
+      `statusesFor()`. `work_order_workflow_statuses.progress_percentage` 0..100 nullable, `old_id` = legacy
+      `progress.id` (305 righe su qnet2, nessun duplicato).
+    - Avanzamento manuale (spec 0321): `work_order_progress_entries` (`percentage` = INCREMENTO come il legacy,
+      `recorded_on`, `created_by`), `Services/WorkOrders/WorkOrderProgressEntryService::create()` (totale - SUM),
+      regola "sopra il totale" in `StoreWorkOrderProgressEntryRequest`; commessa chiusa forzatamente = nessuna
+      registrazione (0321 D-8).
+    - Un task arriva in `TaskStatusGroup::ClosedPositive` SOLO da `Services/Tasks/TaskCompletionService::complete()`
+      (percorso chiusura; le azioni massive passano da qui via `TaskBulkActionExecutor`) e `::approve()`
+      (`TaskActionOnlyStatusGuard` vieta il PATCH diretto). `TaskCreationCompletion` riguarda task creati a mano
+      (mai collegati).
+    - Cambio manuale: `WorkOrderService::update()` chiama `statusAssigner->assign($workOrder, $data->workOrderWorkflowStatusId, logChange: true)`.
+    - Migrazione: `MigrationOrder` mette `task-templates` in fase 1 e `work-order-workflows` in fase 5;
+      `TaskTemplatesSource` e' idempotente per MODELLO (un modello gia' importato si salta intero);
+      `TasksSource` (fase 12) dipende da `work-orders`. Legacy `Api/V2/TaskTemplateMigrationController.php`,
+      `Api/V2/TaskMigrationController.php`, helper `app/Support/Migration/TaskTemplateTree.php`.
+    - for-select standard: ADR 0011 (`paginatedResponse`: `items` + `pagination`), nessun gate oltre `auth:sanctum`.
+  </context>
+
+  <decisions>
+    D-1 (utente) Stato del task fuori dal set risolto della commessa al momento della chiusura: si IGNORA
+        (il task si chiude, Stato lavorazione e avanzamento invariati, nessun errore).
+    D-2 (utente) Anche il cambio MANUALE dello Stato lavorazione muove l'avanzamento, CON il blocco legacy:
+        nuovo stato con `progress_percentage` > 0 e <= avanzamento raggiunto -> 422, stato invariato.
+    D-3 (utente) Migrazione inclusa: collegamento sulle righe dei modelli e sui task.
+    D-4 Colonne nuove nullable `task_template_items.work_order_workflow_status_id` e
+        `tasks.work_order_workflow_status_id`, FK `nullOnDelete` (cancellare uno stato o un workflow scollega,
+        non blocca). Sul task e' uno snapshot copiato dal generatore, fuori #[Fillable] del Task, mai
+        scrivibile dalle API dei task.
+    D-5 La select del modello offre TUTTI gli stati di tutti i workflow + set predefinito, raggruppati per
+        workflow (come il legacy): il modello non e' legato a un workflow.
+    D-6 Trigger automatico = passaggio del task a "chiuso positivo" (complete() percorso chiusura, approve()).
+        Nello stesso transaction della chiusura. Condizioni: task con commessa e stato collegato, commessa NON
+        chiusa forzatamente, stato nel set risolto (D-1). Effetti: Stato lavorazione = stato del task anche se
+        "all'indietro" (come legacy) con log "Work order working status change" causato dall'attore; se
+        `progress_percentage` > avanzamento raggiunto, nuova registrazione con il delta, `recorded_on` oggi,
+        `created_by` attore. Uguale o minore: nessuna registrazione (il legacy creava una riga a 0, inutile).
+    D-7 Riapertura/rifiuto del task (uncomplete/reject) e chiusura negativa: nessun effetto sulla commessa.
+    D-8 Regola manuale (D-2) solo in `WorkOrderService::update()` quando lo stato inviato e' diverso da quello
+        attuale; non alla creazione della commessa, non al ricalcolo per cambio righe, non da `followForceClose`.
+        Commessa chiusa forzatamente: nessuna registrazione di avanzamento (coerente con 0321 D-8).
+    D-9 Migrazione: il legacy invia `work_order_workflow_status_old_id` (legacy `progress.id`, gia' ripulito:
+        0/''/stato inesistente -> null) per ogni azione dei modelli e per ogni task. qnet-2 risolve via
+        `work_order_workflow_statuses.old_id`, warning se non trovato e campo null. `task-templates` passa
+        dalla fase 1 alla fase 6 (dopo `work-order-workflows`), dipendenza opzionale `work-order-workflows`.
+        I modelli gia' importati su qnet2 restano senza collegamento (idempotenza per modello, 0172 D-12):
+        nessuna cancellazione o reimport automatico.
+    D-10 I task migrati non innescano nulla all'import: l'effetto parte solo dalle chiusure future.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazioni: colonne D-4 su `task_template_items` e `tasks` (con `down()`).</item>
+      <item>Modello task: validazione, scrittura, output della riga con `work_order_workflow_status_id` + oggetto annidato.</item>
+      <item>Endpoint `GET /api/work-order-workflow-statuses/for-select` raggruppabile per workflow.</item>
+      <item>Generatore: copia dello stato dalla riga al task (anche sotto-task).</item>
+      <item>Task: output read-only `work_order_workflow_status` nel dettaglio.</item>
+      <item>Automatismo D-6 su complete()/approve(); regola manuale D-2/D-8 in update commessa.</item>
+      <item>FE: select "Stato lavorazione commessa" nell'editor righe del modello (raggruppata per workflow, con %),
+        visualizzazione in dettaglio modello e dettaglio task; invalidazione dei dati commessa dopo chiusura/approvazione
+        di un task; messaggio 422 sul cambio manuale.</item>
+      <item>Migrazione: legacy (2 controller) + `TaskTemplatesSource`, `TasksSource`, `MigrationOrder`.</item>
+      <item>Guide in-app IT/EN (`task-templates`, `work-orders` sezione `processing-status`, `tasks`) e manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Collegamento di uno stato su task creati a mano o modificabile dal task (solo snapshot dal modello).</item>
+      <item>Annullare stato/avanzamento alla riapertura del task (D-7).</item>
+      <item>Retroattivita': task gia' generati in qnet-2 non ricevono lo stato se il modello cambia dopo.</item>
+      <item>Reimport/backfill dei modelli gia' migrati su qnet2 (D-9).</item>
+      <item>Modifiche allo stato calcolato commessa (0321 D-2) o alla regola delle registrazioni manuali.</item>
+      <item>Spostamento di `QuoteWorkflowCriteriaEditor` e altri debiti segnalati in HANDOFF.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/work-order-workflow-statuses/for-select">
+      <request>search?: string(max 255) su nome stato o nome workflow; offset?: int>=0; limit?: int 1..MAX_LIMIT;
+        ids?: int[] (idratazione dei valori gia' scelti)</request>
+      <response status="200">
+        { success, message, data: { items: [ {
+            id: int, name: string, color: string|null, progress_percentage: int|null,
+            system_key: "open"|"completed"|"closed"|null,
+            work_order_workflow_id: int|null,          // null = set predefinito
+            work_order_workflow_name: string|null      // null = set predefinito (etichetta i18n lato FE)
+          } ], export_link: null, pagination: { total, offset, limit, total_pages } } }
+        Ordine: set predefinito per primo, poi workflow per nome, dentro il workflow per `sort_order`.
+        Workflow inattivi inclusi solo se richiesti via `ids`.
+      </response>
+      <errors>401 non autenticato; 422 query non valida.</errors>
+    </endpoint>
+
+    <endpoint method="POST|PUT" path="/api/task-templates[/{taskTemplate}]">
+      <request>items.*.work_order_workflow_status_id?: int|null, deve esistere in `work_order_workflow_statuses`.</request>
+      <response status="200|201">TaskTemplateItemResource aggiunge:
+        work_order_workflow_status_id: int|null,
+        work_order_workflow_status: { id, name, color, progress_percentage, work_order_workflow_id, work_order_workflow_name } | null
+      </response>
+      <errors>422 `items.N.work_order_workflow_status_id` inesistente; autorizzazione invariata.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/tasks/{task}">
+      <response status="200">aggiunge work_order_workflow_status: { id, name, color, progress_percentage } | null (read-only).
+        `work_order_workflow_status_id` inviato a POST/PATCH dei task e' ignorato (fuori Fillable).</response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/tasks/{task}/complete | /api/tasks/{task}/approve">
+      <response status="200">Shape invariata. Effetto collaterale D-6 sulla commessa.</response>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH" path="/api/work-orders/{workOrder}">
+      <request>work_order_workflow_status_id invariato.</request>
+      <errors>422 `work_order_workflow_status_id`: "Lo stato porta l'avanzamento al X%, che non supera
+        l'avanzamento gia' raggiunto (Y%)." (chiave i18n backend `work_orders.workflow_status.progress_not_above_current`).
+        Nessuna scrittura (transaction).</errors>
+    </endpoint>
+
+    <migration_payload source="legacy GET /api/v2/migration/task-templates">
+      stages[].items[].work_order_workflow_status_old_id: int|null
+    </migration_payload>
+    <migration_payload source="legacy GET /api/v2/migration/tasks">
+      work_order_workflow_status_old_id: int|null
+    </migration_payload>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Migrazione: dopo `migrate` esistono le due colonne nullable con FK nullOnDelete; `down()` le rimuove.</criterion>
+    <criterion id="AC-002">Dato un modello, quando si salva una riga con uno stato esistente, allora la show restituisce
+      `work_order_workflow_status_id` e l'oggetto annidato con nome workflow; con un id inesistente -> 422 su `items.N.work_order_workflow_status_id`.</criterion>
+    <criterion id="AC-003">GET for-select restituisce gli stati di tutti i workflow e del set predefinito nell'ordine del contratto,
+      filtrabili per `search` e idratabili per `ids`; senza auth -> 401.</criterion>
+    <criterion id="AC-004">Dato un modello con righe (anche sotto-righe) collegate, quando si genera la commessa, allora ogni task
+      ha `work_order_workflow_status_id` della propria riga; righe non collegate -> null.</criterion>
+    <criterion id="AC-005">Dato un task collegato a uno stato del set della commessa (progress 40, avanzamento 10), quando
+      complete() chiude il task, allora Stato lavorazione = quello stato, nuova registrazione percentage 30 / oggi / attore,
+      log "Work order working status change" con causer l'attore.</criterion>
+    <criterion id="AC-006">Percorso validazione: complete() che mette il task in validazione NON cambia la commessa; approve() si'.</criterion>
+    <criterion id="AC-007">Stato con progress <= avanzamento raggiunto o null: lo Stato lavorazione cambia (anche "all'indietro"),
+      nessuna nuova registrazione.</criterion>
+    <criterion id="AC-008">D-1: stato fuori dal set risolto -> task chiuso, Stato lavorazione e registrazioni invariati, risposta 200.</criterion>
+    <criterion id="AC-009">Commessa chiusa forzatamente o task senza commessa/stato: chiusura invariata, nessun effetto sulla commessa.</criterion>
+    <criterion id="AC-010">uncomplete()/reject() di un task collegato: Stato lavorazione e registrazioni invariati.</criterion>
+    <criterion id="AC-011">Azione massiva "completa" su piu' task collegati: ogni chiusura applica D-6 (stato finale = ultimo applicato,
+      avanzamento = MAX raggiunto, nessun delta negativo).</criterion>
+    <criterion id="AC-012">Un errore dopo l'aggiornamento della commessa dentro complete() annulla anche stato e registrazione (transaction).</criterion>
+    <criterion id="AC-013">Cambio manuale (update) a uno stato con progress 60 su avanzamento 20: stato cambiato, registrazione 40 oggi.</criterion>
+    <criterion id="AC-014">Cambio manuale a uno stato con progress 20 su avanzamento 20 (o 10 su 20): 422 sul campo, stato e registrazioni invariati.</criterion>
+    <criterion id="AC-015">Cambio manuale a uno stato con progress null/0: stato cambiato, nessuna registrazione; ricalcolo per cambio righe,
+      creazione commessa e followForceClose non creano registrazioni.</criterion>
+    <criterion id="AC-016">POST/PATCH di un task con `work_order_workflow_status_id` non lo scrive.</criterion>
+    <criterion id="AC-017">Migrazione modelli: la riga importata ha lo stato risolto da `work_order_workflow_status_old_id`; old_id non
+      trovato -> null + warning; `MigrationOrder::phaseOf('task-templates')` > phaseOf('work-order-workflows').</criterion>
+    <criterion id="AC-018">Migrazione task: stesso lookup sul task; l'import non crea registrazioni ne' cambia lo Stato lavorazione (D-10).</criterion>
+    <criterion id="AC-019">Legacy: i due endpoint restituiscono il campo valorizzato sui dati reali (tinker), null per 0/''/progress inesistente.</criterion>
+    <criterion id="AC-020">FE editor modello: la select mostra gli stati raggruppati per workflow con la %, salva e reidrata il valore;
+      payload invia `work_order_workflow_status_id` (null se svuotata). Vitest.</criterion>
+    <criterion id="AC-021">FE: dopo complete/approve di un task, le query di dettaglio/griglia/avanzamento commessa sono invalidate; il 422
+      del cambio manuale e' mostrato sul campo Stato lavorazione. Dettaglio task e dettaglio modello mostrano lo stato collegato. Vitest.</criterion>
+    <criterion id="AC-022">Guide IT/EN aggiornate con gli stessi id di sezione, parity test verde; manuale Claude Docs aggiornato.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Identificatori in inglese; stringhe UI via i18n IT/EN.
+    - Scrittura dello Stato lavorazione solo via `WorkOrderWorkflowStatusAssigner`; registrazioni solo via
+      `WorkOrderProgressEntryService`. Niente observer sul Task: l'aggancio e' esplicito in `TaskCompletionService`.
+    - Authz invariata: for-select solo `auth:sanctum` (ADR 0011); modelli con `TaskTemplatePolicy`; l'effetto sulla
+      commessa NON richiede `work-orders.update` all'attore (e' conseguenza della chiusura autorizzata del task, come il legacy).
+    - Migrazione: regola backend.md §9 (legacy invia dati pronti); legacy verificato con tinker + `php -l`.
+    - File entro 300/500 righe: `WorkOrderResource.php` (354) e `features/work-orders/types.ts` (307) non vanno ingranditi.
+    - Mai `migrate:fresh`/rollback/seed su qnet2; solo `migrate` delle nuove migrazioni.
+    - Test: Pest mirati in parallelo, Vitest, `tsc -b --force`, Pint, ESLint.
+  </constraints>
+
+</spec>

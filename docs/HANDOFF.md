@@ -3,7 +3,14 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0322 Configuratore Stati Commessa + Stato lavorazione — VERDE, NON COMMITTATO (2026-10-28)
+## Spec 0322 Configuratore Stati Commessa + Stato lavorazione — VERDE, COMMITTATO 929156f6 (2026-10-28)
+
+- Emendamento (VERDE, NON COMMITTATO): righe di sistema `completed`/`closed` rinominate "Chiusa con esito
+  positivo"/"Chiusa con esito negativo" (migrazione 2026_10_28_100400, gia' applicata su qnet2). La chiusura forzata
+  porta lo Stato lavorazione su `closed`, la riapertura torna su `open` se ancora su `closed`
+  (`WorkOrderWorkflowStatusAssigner::followForceClose`); la sorgente stati salta le commesse chiuse forzatamente.
+  Fix test: `WorkOrderWorkflowResolverTest` lasciava `Model::preventLazyLoading()` acceso e rompeva
+  `WorkOrderTaskBoardStageTotalsTest` (non era flaky). Pest mirato 627/627, Vitest feature verdi, tsc EXIT 0.
 
 - Dominio `work-order-workflows`, gemello di `quote-workflows`: tabelle `work_order_workflows`,
   `work_order_workflow_criteria`, `work_order_workflow_statuses` (`progress_percentage` 0..100 nullable, `old_id`,

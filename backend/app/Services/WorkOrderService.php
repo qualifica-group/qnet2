@@ -229,6 +229,8 @@ class WorkOrderService
 
             // Step 2a-bis (spec 0322, D-8): the "Stato lavorazione" of the set the lines resolve to.
             $this->statusAssigner->assign($workOrder, $data->workOrderWorkflowStatusId, logChange: false);
+            // A commessa BORN force-closed starts on "Chiusa con esito negativo" (spec 0322 amendment).
+            $this->statusAssigner->followForceClose($workOrder, wasForceClosed: false, logChange: false);
 
             // Step 2b (spec 0098, D-6): "Informazioni aggiuntive" — written
             // AFTER the quote lines, so the applicable set validated against
@@ -319,6 +321,9 @@ class WorkOrderService
             if ($data->hasQuoteLineIds() || $data->workOrderWorkflowStatusId !== null) {
                 $this->statusAssigner->assign($workOrder, $data->workOrderWorkflowStatusId, logChange: true);
             }
+
+            // Spec 0322 amendment: a force-close transition drives the status (after any explicit choice).
+            $this->statusAssigner->followForceClose($workOrder, $wasForceClosed, logChange: true);
 
             // "Informazioni aggiuntive" (spec 0098, D-6): validated against
             // the applicable set as it is AFTER any submitted

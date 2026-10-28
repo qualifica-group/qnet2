@@ -119,7 +119,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "In questa versione cambiare lo **Stato lavorazione** non sposta la percentuale di **Avanzamento** né lo stato calcolato: la **% avanzamento** configurata per ogni stato è solo informativa. Se i dati della commessa cambiano e il set applicabile è diverso, lo stato passa a quello equivalente (Aperta, Completata, Chiusa) oppure ad Aperta.",
+          text: "In questa versione cambiare lo **Stato lavorazione** non sposta la percentuale di **Avanzamento** né lo stato calcolato: la **% avanzamento** configurata per ogni stato è solo informativa. Se i dati della commessa cambiano e il set applicabile è diverso, lo stato passa a quello equivalente (Aperta, Chiusa con esito positivo, Chiusa con esito negativo) oppure ad Aperta. La chiusura forzata porta lo Stato lavorazione su **Chiusa con esito negativo**; riaprendo la commessa torna su **Aperta**, se nel frattempo non l'hai cambiato a mano.",
         },
       ],
     },

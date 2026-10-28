@@ -31,8 +31,8 @@ function row(overrides: Partial<WorkOrderStatusFormRow> & Pick<WorkOrderStatusFo
 const CREATE_ROWS: WorkOrderStatusFormRow[] = [
   row({ id: 'system-open', name: 'Aperta', group: 'open', system_key: 'open', progress_percentage: 0 }),
   row({ id: 'c1', name: 'Review', color: 'blue', progress_percentage: 40 }),
-  row({ id: 'system-completed', name: 'Completata', group: 'completed', system_key: 'completed', progress_percentage: 100 }),
-  row({ id: 'system-closed', name: 'Chiusa', group: 'closed', system_key: 'closed' }),
+  row({ id: 'system-completed', name: 'Chiusa con esito positivo', group: 'completed', system_key: 'completed', progress_percentage: 100 }),
+  row({ id: 'system-closed', name: 'Chiusa con esito negativo', group: 'closed', system_key: 'closed' }),
 ]
 
 const SAVED_ROWS: WorkOrderStatusFormRow[] = [

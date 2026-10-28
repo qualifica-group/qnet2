@@ -190,8 +190,8 @@ describe('WorkOrderWorkflowForm — create submit ', () => {
     const onSuccess = renderForm()
 
     expect(screen.getByDisplayValue('Open')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Completed')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Closed')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Closed (won)')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Closed (lost)')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Add status' }))
     // 4 name inputs now: open (0), the new custom (1, inserted before the pinned
@@ -208,8 +208,8 @@ describe('WorkOrderWorkflowForm — create submit ', () => {
     expect(payload.statuses).toEqual([
       { name: 'Open', color: null, group: 'open', system_key: 'open', description: null, progress_percentage: null },
       { name: 'In review', color: null, group: 'in_progress', system_key: null, description: null, progress_percentage: null },
-      { name: 'Completed', color: null, group: 'completed', system_key: 'completed', description: null, progress_percentage: null },
-      { name: 'Closed', color: null, group: 'closed', system_key: 'closed', description: null, progress_percentage: null },
+      { name: 'Closed (won)', color: null, group: 'completed', system_key: 'completed', description: null, progress_percentage: null },
+      { name: 'Closed (lost)', color: null, group: 'closed', system_key: 'closed', description: null, progress_percentage: null },
     ])
     expect(payload.criteria).toEqual([{ field: 'business_function_id', value_id: 101 }])
     expect(payload.name).toBe('SOA set')

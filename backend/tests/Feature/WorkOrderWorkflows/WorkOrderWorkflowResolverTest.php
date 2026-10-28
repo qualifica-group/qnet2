@@ -94,10 +94,16 @@ it('resolves a batch with a single eager load and no lazy loading', function () 
     workOrderWorkflowFor('By function', ['business_function_id' => $function->id]);
     $ids = [workOrderWithRevenueIn([$category])->id, workOrderWithRevenueIn([$category])->id, workOrderWithRevenueIn([])->id];
 
+    // The flag is process-wide: reset it, or every later test in this worker inherits it.
     Model::preventLazyLoading();
-    $resolver = app(WorkOrderWorkflowResolver::class);
-    $resolved = WorkOrder::query()->whereIn('id', $ids)->with('quoteLines.product')->get()
-        ->map(fn (WorkOrder $workOrder) => $resolver->resolve($workOrder)?->name)->all();
+
+    try {
+        $resolver = app(WorkOrderWorkflowResolver::class);
+        $resolved = WorkOrder::query()->whereIn('id', $ids)->with('quoteLines.product')->get()
+            ->map(fn (WorkOrder $workOrder) => $resolver->resolve($workOrder)?->name)->all();
+    } finally {
+        Model::preventLazyLoading(false);
+    }
 
     expect($resolved)->toBe(['By function', 'By function', null]);
 });

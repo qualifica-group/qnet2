@@ -60,7 +60,7 @@ it('POST creates a workflow with the contract shape and the set order', function
 
     $statuses = collect($response->json('data.statuses'));
 
-    expect($statuses->pluck('name')->all())->toBe(['Aperta', 'Documents', 'Review', 'Completata', 'Chiusa'])
+    expect($statuses->pluck('name')->all())->toBe(['Aperta', 'Documents', 'Review', 'Chiusa con esito positivo', 'Chiusa con esito negativo'])
         ->and($statuses->pluck('sort_order')->all())->toBe([0, 10, 20, 30, 40])
         ->and($statuses->pluck('system_key')->all())->toBe(['open', null, null, 'completed', 'closed'])
         ->and($statuses[1]['progress_percentage'])->toBe(20)
@@ -100,7 +100,7 @@ it('PATCH syncs the set: customs by id, new created, omitted deleted, system row
 
     $statuses = collect($response->json('data.statuses'));
 
-    expect($statuses->pluck('name')->all())->toBe(['Start', 'Kept', 'Brand new', 'Completata', 'Archived'])
+    expect($statuses->pluck('name')->all())->toBe(['Start', 'Kept', 'Brand new', 'Chiusa con esito positivo', 'Archived'])
         ->and($statuses->pluck('group')->all())->toBe(['open', 'in_progress', 'in_progress', 'completed', 'closed'])
         ->and($statuses->contains('id', $drop->id))->toBeFalse();
 });
@@ -243,7 +243,7 @@ it('PUT default-statuses syncs the customs and keeps the system rows', function 
         ],
     ])->assertOk()->json('data'));
 
-    expect($data->pluck('name')->all())->toBe(['Start', 'In corso', 'Completata', 'Chiusa'])
+    expect($data->pluck('name')->all())->toBe(['Start', 'In corso', 'Chiusa con esito positivo', 'Chiusa con esito negativo'])
         ->and($data->pluck('system_key')->all())->toBe(['open', null, 'completed', 'closed'])
         ->and($data->first()['progress_percentage'])->toBe(5);
 });

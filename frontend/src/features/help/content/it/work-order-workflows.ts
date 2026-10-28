@@ -50,7 +50,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Ogni set nasce con tre stati fissi: **Aperta** in testa, **Completata** e **Chiusa** in coda. In mezzo aggiungi stati con **Aggiungi stato** e li riordini trascinandoli. Per ognuno indichi **Nome stato**, **Gruppo** (Aperta, In lavorazione, Completata, Chiusa), **Descrizione dello stato** e **% avanzamento** (da 0 a 100). Per gli stati fissi puoi cambiare nome, descrizione, colore e % avanzamento, non il gruppo.',
+          text: 'Ogni set nasce con tre stati fissi: **Aperta** in testa, **Chiusa con esito positivo** e **Chiusa con esito negativo** in coda. In mezzo aggiungi stati con **Aggiungi stato** e li riordini trascinandoli. Per ognuno indichi **Nome stato**, **Gruppo** (Aperta, In lavorazione, Chiusa con esito positivo, Chiusa con esito negativo), **Descrizione dello stato** e **% avanzamento** (da 0 a 100). Per gli stati fissi puoi cambiare nome, descrizione, colore e % avanzamento, non il gruppo. La chiusura forzata di una commessa la porta su **Chiusa con esito negativo**; se la riapri torna su **Aperta**.',
         },
         {
           type: 'paragraph',

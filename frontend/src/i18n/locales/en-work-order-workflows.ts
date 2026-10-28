@@ -65,7 +65,7 @@ export const workOrderWorkflows = {
       },
       statuses: {
         title: 'Processing statuses',
-        description: 'The statuses of this set. "Open" stays first; "Completed" and "Closed" stay last.',
+        description: 'The statuses of this set. "Open" stays first; "Closed (won)" and "Closed (lost)" stay last.',
       },
     },
     criteria: {
@@ -77,13 +77,13 @@ export const workOrderWorkflows = {
     statuses: {
       nameRequired: 'Every status needs a name.',
       defaultOpenName: 'Open',
-      defaultCompletedName: 'Completed',
-      defaultClosedName: 'Closed',
+      defaultCompletedName: 'Closed (won)',
+      defaultClosedName: 'Closed (lost)',
       group: {
         open: 'Open',
         in_progress: 'In progress',
-        completed: 'Completed',
-        closed: 'Closed',
+        completed: 'Closed (won)',
+        closed: 'Closed (lost)',
       },
     },
   },

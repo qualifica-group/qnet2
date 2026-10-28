@@ -81,6 +81,53 @@ final class WorkOrderWorkflowStatusAssigner
         }
 
         // Step 4: persist and trace.
+        $this->persist($workOrder, $previousStatusId, $targetId, $logChange);
+    }
+
+    /**
+     * Follow a force-close transition (spec 0322 amendment): closing moves the
+     * commessa onto the `closed` row ("Chiusa con esito negativo") of its
+     * resolved set; reopening moves it back onto `open` only while it still
+     * sits on that `closed` row, so a status picked by hand meanwhile stays.
+     */
+    public function followForceClose(WorkOrder $workOrder, bool $wasForceClosed, bool $logChange): void
+    {
+        $isForceClosed = (bool) $workOrder->is_force_closed;
+
+        if ($wasForceClosed === $isForceClosed) {
+            return;
+        }
+
+        // Step 1: the set the lines resolve to right now.
+        $workOrder->unsetRelation('quoteLines');
+        $previousStatusId = $workOrder->work_order_workflow_status_id;
+        $statuses = $this->resolver->statusesFor($this->resolver->resolve($workOrder));
+        $closedId = $statuses->firstWhere('system_key', WorkOrderWorkflowStatusSystemKey::Closed->value)?->id;
+
+        // Step 2: closing lands on `closed`; reopening leaves `closed` for `open`.
+        $targetKey = match (true) {
+            $isForceClosed => WorkOrderWorkflowStatusSystemKey::Closed,
+            $previousStatusId === $closedId => WorkOrderWorkflowStatusSystemKey::Open,
+            default => null,
+        };
+
+        if ($targetKey === null) {
+            return;
+        }
+
+        $target = $statuses->firstWhere('system_key', $targetKey->value);
+
+        if ($target === null) {
+            // Defense in depth: every set is seeded with its three system rows.
+            abort(500, 'The work order workflow status set has no '.$targetKey->value.' system row.');
+        }
+
+        // Step 3: persist and trace.
+        $this->persist($workOrder, $previousStatusId, $target->id, $logChange);
+    }
+
+    private function persist(WorkOrder $workOrder, ?int $previousStatusId, int $targetId, bool $logChange): void
+    {
         if ($targetId === $previousStatusId) {
             return;
         }

@@ -116,8 +116,8 @@ final class WorkOrderWorkflowStatusWriter
     {
         $defaultName = match ($key) {
             WorkOrderWorkflowStatusSystemKey::Open => 'Aperta',
-            WorkOrderWorkflowStatusSystemKey::Completed => 'Completata',
-            WorkOrderWorkflowStatusSystemKey::Closed => 'Chiusa',
+            WorkOrderWorkflowStatusSystemKey::Completed => 'Chiusa con esito positivo',
+            WorkOrderWorkflowStatusSystemKey::Closed => 'Chiusa con esito negativo',
         };
 
         WorkOrderWorkflowStatus::query()->forceCreate([

@@ -86,6 +86,22 @@ it('AC-018: a status outside the resolved set leaves the work order unchanged an
         ->and(collect($run->report)->where('level', 'warning')->count())->toBe(1);
 });
 
+it('a force-closed work order keeps its closing status and warns', function () {
+    $workOrder = statusWorkOrder(17);
+    $workOrder->forceFill([
+        'is_force_closed' => true,
+        'force_close_reason' => 'Legacy closed',
+        'work_order_workflow_status_id' => globalWorkOrderStatus('closed')->id,
+    ])->save();
+    legacyWorkflowStatus(10, global: true);
+
+    $run = runLegacyWorkOrderWorkflowStatusesImport([['id' => 17, 'status_id' => 10, 'warnings' => []]]);
+
+    expect($run->failed_rows)->toBe(0)->and($run->created_rows)->toBe(0)
+        ->and($workOrder->fresh()->work_order_workflow_status_id)->toBe(globalWorkOrderStatus('closed')->id)
+        ->and(collect($run->report)->where('level', 'warning')->count())->toBe(1);
+});
+
 it('AC-018: a work order not migrated fails the row', function () {
     legacyWorkflowStatus(10, global: true);
 

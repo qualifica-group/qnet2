@@ -41,8 +41,8 @@ class WorkOrderWorkflowStatusFactory extends Factory
     public function system(string $key): static
     {
         return $this->state(fn () => match ($key) {
-            'completed' => ['system_key' => 'completed', 'name' => 'Completata', 'sort_order' => 998, 'group' => WorkOrderStatus::Completed],
-            'closed' => ['system_key' => 'closed', 'name' => 'Chiusa', 'sort_order' => 999, 'group' => WorkOrderStatus::Closed],
+            'completed' => ['system_key' => 'completed', 'name' => 'Chiusa con esito positivo', 'sort_order' => 998, 'group' => WorkOrderStatus::Completed],
+            'closed' => ['system_key' => 'closed', 'name' => 'Chiusa con esito negativo', 'sort_order' => 999, 'group' => WorkOrderStatus::Closed],
             default => ['system_key' => 'open', 'name' => 'Aperta', 'sort_order' => 0, 'group' => WorkOrderStatus::Open],
         });
     }

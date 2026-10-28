@@ -6,6 +6,19 @@
 -->
 <spec id="0322-work-order-workflow-statuses" status="draft" owner="nicola" date="2026-10-28">
 
+  <amendment date="2026-10-28" status="applied">
+    Direttive utente dopo il commit 929156f6.
+    - Righe di sistema rinominate: `completed` -> "Chiusa con esito positivo", `closed` -> "Chiusa con esito
+      negativo" (EN "Closed (won)" / "Closed (lost)"), anche come etichette di gruppo nel configuratore. Le chiavi
+      restano `completed`/`closed`. Migrazione `2026_10_28_100400_rename_closing_work_order_workflow_system_statuses`
+      (solo le righe col nome di default).
+    - Chiusura forzata: la transizione `is_force_closed` false->true (anche alla create) porta lo Stato lavorazione
+      sulla riga `closed` del set risolto, e vince su uno stato inviato nella stessa richiesta. La riapertura riporta
+      su `open` solo se la commessa e' ancora sulla riga `closed`.
+      `WorkOrderWorkflowStatusAssigner::followForceClose()`. La sorgente `work-order-workflow-statuses` non
+      sovrascrive una commessa chiusa forzatamente (skipped + warning).
+  </amendment>
+
   <goal>
     Gli utenti configurano gli stati di lavorazione delle commesse con un "Configuratore Stati Commessa",
     identico per struttura, comportamento e posizione nel menu al Configuratore Stati Offerta.

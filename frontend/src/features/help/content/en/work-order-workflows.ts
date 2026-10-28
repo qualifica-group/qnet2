@@ -50,7 +50,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Every set is created with three fixed statuses: **Open** first, **Completed** and **Closed** last. In between you add statuses with **Add status** and reorder them by dragging. For each one you set **Status name**, **Group** (Open, In progress, Completed, Closed), **Status description** and **progress %** (0 to 100). For the fixed statuses you can change name, description, color and progress %, not the group.',
+          text: 'Every set is created with three fixed statuses: **Open** first, **Closed (won)** and **Closed (lost)** last. In between you add statuses with **Add status** and reorder them by dragging. For each one you set **Status name**, **Group** (Open, In progress, Closed (won), Closed (lost)), **Status description** and **progress %** (0 to 100). For the fixed statuses you can change name, description, color and progress %, not the group. Force-closing a work order moves it to **Closed (lost)**; reopening it moves it back to **Open**.',
         },
         {
           type: 'paragraph',

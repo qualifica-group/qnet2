@@ -119,7 +119,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "In this release changing the **Processing status** does not move the **Progress** percentage nor the computed status: the **progress %** configured for each status is informational only. If the work order data change and the applicable set is different, the status becomes the equivalent one (Open, Completed, Closed) or Open.",
+          text: "In this release changing the **Processing status** does not move the **Progress** percentage nor the computed status: the **progress %** configured for each status is informational only. If the work order data change and the applicable set is different, the status becomes the equivalent one (Open, Closed (won), Closed (lost)) or Open. Force-closing sets the Processing status to **Closed (lost)**; reopening the work order sets it back to **Open**, unless you changed it by hand in the meantime.",
         },
       ],
     },

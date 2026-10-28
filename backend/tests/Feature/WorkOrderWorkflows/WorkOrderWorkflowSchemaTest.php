@@ -13,7 +13,7 @@ it('seeds the global default set with open first and completed/closed in the tai
     $set = WorkOrderWorkflowStatus::query()->whereNull('work_order_workflow_id')->orderBy('sort_order')->get();
 
     expect($set->pluck('system_key')->all())->toBe(['open', 'completed', 'closed'])
-        ->and($set->pluck('name')->all())->toBe(['Aperta', 'Completata', 'Chiusa'])
+        ->and($set->pluck('name')->all())->toBe(['Aperta', 'Chiusa con esito positivo', 'Chiusa con esito negativo'])
         ->and($set->pluck('sort_order')->all())->toBe([0, 10, 20])
         ->and($set->map(fn ($status) => $status->group->value)->all())->toBe(['open', 'completed', 'closed'])
         ->and($set->every->isSystem())->toBeTrue();

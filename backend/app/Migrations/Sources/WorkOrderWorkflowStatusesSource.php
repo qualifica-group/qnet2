@@ -19,7 +19,8 @@ use RuntimeException;
  *
  * The status is written ONLY when it belongs to the set the resolver gives the
  * work order (its workflow, or the global one); otherwise the work order stays
- * on the status it has and the row returns a warning. A work order or status
+ * on the status it has and the row returns a warning. A force-closed work order
+ * keeps its closing status, with a warning. A work order or status
  * not migrated fails the row. Written quietly, without activity log; a work
  * order already on that status is skipped.
  */
@@ -98,7 +99,12 @@ class WorkOrderWorkflowStatusesSource extends AbstractMigrationSource
         $status = WorkOrderWorkflowStatus::query()->where('old_id', $record['status_id'] ?? null)->first()
             ?? throw new RuntimeException('Workflow status not migrated (legacy id '.($record['status_id'] ?? 'null').'); migrate work order workflows first.');
 
-        // Step 2: only a status of the set resolved for this work order is written
+        // Step 2: a force-closed work order keeps "Chiusa con esito negativo" (spec 0322 amendment)
+        if ($workOrder->is_force_closed) {
+            return MigrationRowOutcome::skipped([...$warnings, "Work order is force-closed: it keeps its closing status instead of \"{$status->name}\"."]);
+        }
+
+        // Step 3: only a status of the set resolved for this work order is written
         $resolver = $this->resolver ??= app(WorkOrderWorkflowResolver::class);
         $allowedIds = $resolver->statusesFor($resolver->resolve($workOrder))->pluck('id');
 
@@ -106,12 +112,12 @@ class WorkOrderWorkflowStatusesSource extends AbstractMigrationSource
             return MigrationRowOutcome::skipped([...$warnings, "Status \"{$status->name}\" is not in the workflow resolved for this work order; left unchanged."]);
         }
 
-        // Step 3: nothing to do when it is already the current status
+        // Step 4: nothing to do when it is already the current status
         if ($workOrder->work_order_workflow_status_id === $status->id) {
             return MigrationRowOutcome::skipped($warnings);
         }
 
-        // Step 4: quiet write, no activity log
+        // Step 5: quiet write, no activity log
         activity()->withoutLogs(fn () => $workOrder->forceFill(['work_order_workflow_status_id' => $status->id])->saveQuietly());
 
         return MigrationRowOutcome::created($warnings);

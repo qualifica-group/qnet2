@@ -65,7 +65,7 @@ export const workOrderWorkflows = {
       },
       statuses: {
         title: 'Stati di lavorazione',
-        description: 'Gli stati di questo set. "Aperta" resta primo; "Completata" e "Chiusa" restano ultimi.',
+        description: 'Gli stati di questo set. "Aperta" resta primo; "Chiusa con esito positivo" e "Chiusa con esito negativo" restano ultimi.',
       },
     },
     criteria: {
@@ -77,13 +77,13 @@ export const workOrderWorkflows = {
     statuses: {
       nameRequired: 'Ogni stato richiede un nome.',
       defaultOpenName: 'Aperta',
-      defaultCompletedName: 'Completata',
-      defaultClosedName: 'Chiusa',
+      defaultCompletedName: 'Chiusa con esito positivo',
+      defaultClosedName: 'Chiusa con esito negativo',
       group: {
         open: 'Aperta',
         in_progress: 'In lavorazione',
-        completed: 'Completata',
-        closed: 'Chiusa',
+        completed: 'Chiusa con esito positivo',
+        closed: 'Chiusa con esito negativo',
       },
     },
   },

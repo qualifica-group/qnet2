@@ -32,8 +32,8 @@ it('creates a workflow with open, the custom rows in order, then completed and c
         ['Aperta', 'open', 0, 'open'],
         ['Documents', null, 10, 'in_progress'],
         ['Review', null, 20, 'in_progress'],
-        ['Completata', 'completed', 30, 'completed'],
-        ['Chiusa', 'closed', 40, 'closed'],
+        ['Chiusa con esito positivo', 'completed', 30, 'completed'],
+        ['Chiusa con esito negativo', 'closed', 40, 'closed'],
     ])
         ->and($workflow->is_active)->toBeTrue()
         ->and($workflow->criteria)->toHaveCount(1)
@@ -59,7 +59,7 @@ it('updates a set: customs by id, new created, omitted deleted, system rows desc
         ['Start', 'open', 0, 'open'],
         ['Kept', null, 10, 'in_progress'],
         ['Brand new', null, 20, 'in_progress'],
-        ['Completata', 'completed', 30, 'completed'],
+        ['Chiusa con esito positivo', 'completed', 30, 'completed'],
         ['Archived', 'closed', 40, 'closed'],
     ])
         ->and($updated->statuses->firstWhere('id', $keep->id)->progress_percentage)->toBe(50)
@@ -108,6 +108,6 @@ it('syncs the global default set the same way', function () {
         ['id' => null, 'name' => 'Global custom', 'description' => null, 'color' => null, 'group' => 'in_progress', 'progress_percentage' => 10],
     ]);
 
-    expect($synced->pluck('name')->all())->toBe(['Opened', 'Global custom', 'Completata', 'Chiusa'])
+    expect($synced->pluck('name')->all())->toBe(['Opened', 'Global custom', 'Chiusa con esito positivo', 'Chiusa con esito negativo'])
         ->and($synced->pluck('sort_order')->all())->toBe([0, 10, 20, 30]);
 });
