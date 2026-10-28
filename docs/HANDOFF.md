@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Seeder di reset di ruoli e permessi — VERDE, NON COMMITTATO (2026-10-28)
+
+- Richiesta utente: un seeder che cancella ogni ruolo e permesso, li ricrea e li riassegna agli utenti con i ruoli di
+  `QualificaProductionDataSeeder`. Nuovo `QualificaRoleResetSeeder` (on-demand, fuori da DatabaseSeeder e dal seed di
+  produzione): `php artisan db:seed --class=QualificaRoleResetSeeder`.
+- In una transazione: svuota `model_has_permissions`, `model_has_roles`, `role_has_permissions`, `role_field_permissions`,
+  `roles`, `permissions`; poi `permissions:sync`, `roles:create-super-admin`, `QualificaRoleSeeder`; ruoli di
+  `TestUsersSeeder::TEST_USERS` e `OperatorRoster` (syncRoles), `operatore-base` allo `StaffRoster` senza ruolo; infine
+  HrOffice, CommercialBackOffice, StockKeeper e `QualificaLegacyRoleSeeder`. SOLO ruoli: nessun account creato, password,
+  Sedi e competenze intatte (per questo non richiama TestUsers/Operator/Staff seeder). Gli utenti attivi rimasti senza
+  ruolo vengono elencati in un warning (es. account creati a mano o importati dal legacy fuori dai roster).
+- Test: `tests/Feature/Seeding/QualificaRoleResetSeederTest.php` 3/3; regressione LegacyRole/Staff/HrOffice/BackOffice
+  24/24; Pint ok. Mai eseguito sul DB `qnet2`. Manuale: nessun impatto.
+
 ## Menu: voce con route e figli dentro una sezione resta un link — VERDE, COMMITTATO (2026-10-27)
 
 - Bug dopo spec 0318: `request-management` (route + figlio `field-change-requests`) e' figlio diretto della sezione
