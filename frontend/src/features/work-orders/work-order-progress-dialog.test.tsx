@@ -5,6 +5,7 @@ import { AxiosError, type AxiosResponse } from 'axios'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { WorkOrderProgressDialog } from '@/features/work-orders/work-order-progress-dialog'
+import { workOrderDetailQueryKey } from '@/features/work-orders/api'
 import { WorkOrderDetailHeader, WorkOrderStatsStrip } from '@/features/work-orders/work-order-detail-header'
 import type { WorkOrderDetailWithPermissions, WorkOrderProgressEntry } from '@/features/work-orders/types'
 
@@ -152,6 +153,7 @@ describe('WorkOrderStatsStrip progress KPI', () => {
 
 describe('WorkOrderDetailHeader progress action', () => {
   beforeEach(async () => {
+    vi.clearAllMocks()
     await i18n.changeLanguage('it')
     fetchEntriesMock.mockResolvedValue(ENTRIES)
     fetchWorkOrderMock.mockResolvedValue(detail())
@@ -176,9 +178,13 @@ describe('WorkOrderDetailHeader progress action', () => {
       </QueryClientProvider>,
     )
 
+    client.setQueryData(workOrderDetailQueryKey(7), workOrder)
     fireEvent.click(screen.getByRole('button', { name: 'Avanzamento commessa' }))
 
     expect(await screen.findByRole('dialog', { name: 'Avanzamento commessa' })).toBeInTheDocument()
     await waitFor(() => expect(fetchEntriesMock).toHaveBeenCalledWith(7))
+    // Regression: refetching the open record's detail put the record screen
+    // into its loading skeleton, which unmounted the popup with it.
+    expect(fetchWorkOrderMock).not.toHaveBeenCalled()
   })
 })

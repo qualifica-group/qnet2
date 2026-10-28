@@ -49,9 +49,13 @@ export function useWorkOrderProgress({ workOrderId, onMutated }: UseWorkOrderPro
     queryKey: workOrderProgressQueryKey(id),
     queryFn: () => fetchProgressEntries(id),
   })
+  // Reuses the detail the open record already holds: a refetch here would put
+  // the record screen (useEntityDetail: skeleton while fetching) into loading
+  // and unmount this popup with it. Opened from the grid it fetches once.
   const detailQuery = useQuery({
     queryKey: workOrderDetailQueryKey(id),
     queryFn: () => fetchWorkOrder(id),
+    staleTime: Infinity,
   })
 
   const entries = entriesQuery.data ?? EMPTY_ENTRIES
@@ -66,10 +70,13 @@ export function useWorkOrderProgress({ workOrderId, onMutated }: UseWorkOrderPro
   })
 
   async function refreshAfterMutation() {
-    await Promise.all([
+    // The fresh detail is written into the cache, never invalidated: an
+    // invalidation would refetch it and reload the open record (see above).
+    const [, freshDetail] = await Promise.all([
       queryClient.invalidateQueries({ queryKey: workOrderProgressQueryKey(id) }),
-      queryClient.invalidateQueries({ queryKey: workOrderDetailQueryKey(id) }),
+      fetchWorkOrder(id),
     ])
+    queryClient.setQueryData(workOrderDetailQueryKey(id), freshDetail)
     onMutated?.()
   }
 
