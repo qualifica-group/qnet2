@@ -3,14 +3,12 @@
 namespace Database\Seeders;
 
 use App\Enums\LocaleEnum;
-use App\Models\BusinessFunction;
 use App\Models\EmploymentProfile;
 use App\Models\OperationalSite;
-use App\Models\ProductCategory;
 use App\Models\User;
-use App\Services\ProductCategories\CategoryHierarchy;
 use Database\Seeders\Concerns\AssignsSeedPassword;
 use Database\Seeders\Concerns\SyncsPersonName;
+use Database\Seeders\Concerns\SyncsRosterCompetence;
 use Database\Seeders\QualificaCatalog\OperatorRoster;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
@@ -41,16 +39,10 @@ use Illuminate\Support\Str;
  */
 class QualificaOperatorSeeder extends Seeder
 {
-    use AssignsSeedPassword, SyncsPersonName;
+    use AssignsSeedPassword, SyncsPersonName, SyncsRosterCompetence;
 
     /** @var Collection<int, OperationalSite> */
     private Collection $sites;
-
-    /** @var array<string, array{product_category_id: int, business_function_id: int}> */
-    private array $competenceByCategoryName = [];
-
-    /** @var array<string, int> */
-    private array $functionIdByName = [];
 
     public function run(): void
     {
@@ -59,30 +51,21 @@ class QualificaOperatorSeeder extends Seeder
 
         // Step 2: the lookups every row resolves against, read once.
         $this->sites = OperationalSite::query()->whereNotNull('alias')->orderBy('alias')->orderBy('id')->get();
-        $this->competenceByCategoryName = $this->resolveCompetencePairs();
-        $this->functionIdByName = $this->resolveFunctionIds();
+        $this->loadCompetenceLookups();
 
         // Step 3: one account per row, with its employment profile.
         foreach (OperatorRoster::OPERATORS as [$firstName, $lastName, $email, , $role, $physicalCity, $cities, $categories]) {
             $user = $this->seedAccount("{$firstName} {$lastName}", $email, $role);
             $this->syncPersonName($user, $firstName, $lastName);
 
-            $wholeFunction = OperatorRoster::FUNCTION_WIDE_COMPETENCE[$email] ?? null;
-            $isAssignable = $wholeFunction !== null || $categories !== [];
-
             // Never the wildcard: a profile seeded as "Tutte" before converges.
             $employment = $user->employment()->updateOrCreate([], [
                 'covers_all_product_categories' => false,
-                'is_assignable' => $isAssignable,
+                'is_assignable' => $this->isRosterAssignable($email, $categories),
             ]);
 
             $this->syncSites($employment, $email, $physicalCity, $cities);
-            $this->syncCompetence(
-                $employment,
-                $email,
-                $categories,
-                $isAssignable ? $wholeFunction : OperatorRoster::UNASSIGNABLE_FUNCTION,
-            );
+            $this->syncRosterCompetence($employment, $email, $categories);
         }
 
         $this->command?->info(sprintf('%d operators seeded.', count(OperatorRoster::OPERATORS)));
@@ -150,103 +133,5 @@ class QualificaOperatorSeeder extends Seeder
         }
 
         return $matches;
-    }
-
-    /**
-     * Delete-and-recreate from the roster: one "every category" row on
-     * $wholeFunctionName when given (spec 0129 D-3), the roster's categories
-     * otherwise.
-     *
-     * @param  array<int, string>  $categories
-     */
-    private function syncCompetence(EmploymentProfile $employment, string $email, array $categories, ?string $wholeFunctionName): void
-    {
-        $employment->productLines()->delete();
-
-        if ($wholeFunctionName !== null) {
-            $this->createFunctionWideLine($employment, $email, $wholeFunctionName);
-
-            return;
-        }
-
-        foreach ($categories as $categoryName) {
-            $pair = $this->competenceByCategoryName[$categoryName] ?? null;
-
-            if ($pair === null) {
-                $this->command?->warn(sprintf('%s: category "%s" skipped, missing or without a business function.', $email, $categoryName));
-
-                continue;
-            }
-
-            $employment->productLines()->create($pair);
-        }
-    }
-
-    private function createFunctionWideLine(EmploymentProfile $employment, string $email, string $functionName): void
-    {
-        $functionId = $this->functionIdByName[Str::lower($functionName)] ?? null;
-
-        if ($functionId === null) {
-            $this->command?->warn(sprintf('%s: business function "%s" not found, no competence row.', $email, $functionName));
-
-            return;
-        }
-
-        $employment->productLines()->create([
-            'business_function_id' => $functionId,
-            'product_category_id' => null,
-        ]);
-    }
-
-    /**
-     * lowercased business function name => id, for the functions the roster
-     * names as a whole. Case-insensitive: the imported functions are upper
-     * case ("FORMAZIONE"). `name` is not unique: the lowest id wins, as in
-     * QualificaBusinessFunctionLinkSeeder.
-     *
-     * @return array<string, int>
-     */
-    private function resolveFunctionIds(): array
-    {
-        $wanted = array_map(
-            Str::lower(...),
-            [...array_values(OperatorRoster::FUNCTION_WIDE_COMPETENCE), OperatorRoster::UNASSIGNABLE_FUNCTION],
-        );
-
-        return BusinessFunction::query()
-            ->orderByDesc('id')
-            ->get(['id', 'name'])
-            ->filter(static fn (BusinessFunction $function): bool => in_array(Str::lower($function->name), $wanted, true))
-            ->mapWithKeys(static fn (BusinessFunction $function): array => [Str::lower($function->name) => (int) $function->id])
-            ->all();
-    }
-
-    /**
-     * category name => the (category, EFFECTIVE business function) pair a
-     * competence row must carry (spec 0111 D-2). `name` is the catalogue's
-     * natural key; on a duplicate the lowest id wins.
-     *
-     * @return array<string, array{product_category_id: int, business_function_id: int}>
-     */
-    private function resolveCompetencePairs(): array
-    {
-        $names = collect(OperatorRoster::OPERATORS)
-            ->pluck(7)
-            ->flatten()
-            ->unique()
-            ->all();
-
-        $summaries = app(CategoryHierarchy::class)->effectiveBusinessFunctionSummaries();
-
-        return ProductCategory::query()
-            ->whereIn('name', $names)
-            ->orderByDesc('id')
-            ->get(['id', 'name'])
-            ->filter(fn (ProductCategory $category): bool => isset($summaries[$category->id]))
-            ->mapWithKeys(fn (ProductCategory $category): array => [$category->name => [
-                'product_category_id' => $category->id,
-                'business_function_id' => $summaries[$category->id]['id'],
-            ]])
-            ->all();
     }
 }

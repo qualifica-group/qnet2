@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\EmploymentProductLine;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\RoleAssignmentGuard;
@@ -26,10 +27,12 @@ it('wipes every role, permission and field row, then rebuilds the production cat
     $user = User::factory()->create(['is_active' => true]);
     $user->assignRole($stale);
     $user->givePermissionTo($stalePermission);
+    $staleScope = EmploymentProductLine::factory()->create();
 
     $this->seed(QualificaRoleResetSeeder::class);
 
     expect(Role::query()->where('name', 'stale-role')->exists())->toBeFalse()
+        ->and(EmploymentProductLine::query()->whereKey($staleScope->id)->exists())->toBeFalse()
         ->and(Permission::query()->where('name', 'stale.permission')->exists())->toBeFalse()
         ->and(DB::table('role_field_permissions')->where('resource', 'users')->where('field', 'email')->where('visible', false)->exists())->toBeFalse()
         ->and($user->fresh()->roles)->toBeEmpty()

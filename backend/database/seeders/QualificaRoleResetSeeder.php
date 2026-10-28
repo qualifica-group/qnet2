@@ -14,10 +14,11 @@ use Spatie\Permission\PermissionRegistrar;
 /**
  * Wipes EVERY role and permission (assignments, direct grants and field
  * matrices included) and rebuilds them as QualificaProductionDataSeeder does:
- * `php artisan db:seed --class=QualificaRoleResetSeeder`.
+ * `php artisan db:seed --class=QualificaRoleResetSeeder`. Then resets the
+ * assignment scopes too (QualificaAssignmentScopeResetSeeder).
  *
- * Roles only: no account is created, and no password, Sede or competence is
- * touched, so the steps of the production seed that also write those
+ * No account is created, and no password or Sede is touched, so the steps of
+ * the production seed that also write those
  * (TestUsersSeeder, QualificaOperatorSeeder, QualificaStaffSeeder) are
  * replaced here by their role assignment alone. A roster email with no
  * account is skipped with a warning. Whoever holds no role in any roster is
@@ -57,6 +58,9 @@ class QualificaRoleResetSeeder extends Seeder
             $this->call(QualificaCommercialBackOfficeSeeder::class);
             $this->call(QualificaStockKeeperSeeder::class);
             $this->call(QualificaLegacyRoleSeeder::class);
+
+            // Step 5: the assignment scopes.
+            $this->call(QualificaAssignmentScopeResetSeeder::class);
         });
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();

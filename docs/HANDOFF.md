@@ -3,7 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Seeder di reset di ruoli e permessi — VERDE, NON COMMITTATO (2026-10-28)
+## Seeder di reset degli Ambiti di assegnazione — VERDE, COMMITTATO (2026-10-28)
+
+- Richiesta utente: oltre ai ruoli, reset degli "Ambito di assegnazione". Nuovo `QualificaAssignmentScopeResetSeeder`
+  (lanciabile da solo, e ultimo step di `QualificaRoleResetSeeder`): in transazione cancella tutte le
+  `employment_product_lines` e spegne `covers_all_product_categories` su ogni profilo, poi ricrea le competenze del
+  mansionario (`OperatorRoster`) e chiama `QualificaFunctionCompetenceSeeder`. Non tocca ruoli, Sedi, "Assegnabile",
+  account.
+- Refactor senza cambi di comportamento: la scrittura delle competenze del mansionario esce da `QualificaOperatorSeeder`
+  nel trait `Concerns/SyncsRosterCompetence` (`loadCompetenceLookups`, `isRosterAssignable`, `syncRosterCompetence`),
+  usato da entrambi.
+- Test: `QualificaAssignmentScopeResetSeederTest` 2/2 + RoleReset/Operator/FunctionCompetence/AssignableSwitch, 19/19;
+  Pint ok. Mai eseguito sul DB `qnet2`. Manuale: nessun impatto.
+
+## Seeder di reset di ruoli e permessi — VERDE, COMMITTATO (2026-10-28)
 
 - Richiesta utente: un seeder che cancella ogni ruolo e permesso, li ricrea e li riassegna agli utenti con i ruoli di
   `QualificaProductionDataSeeder`. Nuovo `QualificaRoleResetSeeder` (on-demand, fuori da DatabaseSeeder e dal seed di
