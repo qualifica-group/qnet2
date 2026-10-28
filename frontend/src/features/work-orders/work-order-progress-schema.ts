@@ -5,11 +5,10 @@ const MIN_PERCENTAGE = 1
 const MAX_PERCENTAGE = 100
 
 /**
- * Mirrors the server rules (spec 0321 D-6): integer 1..100 strictly above the
- * current percentage. The date-order rule lives server-side only (it needs the
- * latest entry's date, which the 422 reports on the field).
+ * Mirrors the server rules (spec 0321 R-2): the typed "% Stato attuale" is an
+ * integer 1..100 strictly above the total already reached; the date is required.
  */
-export function buildProgressSchema(t: TFunction, currentPercentage: number) {
+export function buildProgressSchema(t: TFunction, currentTotal: number) {
   return z.object({
     percentage: z
       .string()
@@ -20,10 +19,7 @@ export function buildProgressSchema(t: TFunction, currentPercentage: number) {
         (value) => Number(value) >= MIN_PERCENTAGE && Number(value) <= MAX_PERCENTAGE,
         t('workOrders.progress.percentageRange'),
       )
-      .refine(
-        (value) => Number(value) > currentPercentage,
-        t('workOrders.progress.percentageAboveCurrent', { current: currentPercentage }),
-      ),
+      .refine((value) => Number(value) > currentTotal, t('workOrders.progress.totalNotAbove')),
     recorded_on: z.string().min(1, t('workOrders.progress.dateRequired')),
   })
 }

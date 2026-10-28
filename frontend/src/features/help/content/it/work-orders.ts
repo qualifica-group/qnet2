@@ -78,14 +78,15 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "L'avanzamento si registra a mano: ogni registrazione indica la **percentuale raggiunta** (cumulata, da 1 a 100) e la **data**. La colonna **Avanzamento** della tabella e l'indicatore in alto nel dettaglio mostrano la percentuale e la data dell'ultima registrazione; senza registrazioni l'avanzamento è 0%.",
+          text: "L'avanzamento si registra a mano ed è la **somma** delle percentuali di tutte le registrazioni (nel popup, la colonna Percentuale è l'incremento di ogni riga). La colonna **Avanzamento** della tabella e l'indicatore in alto nel dettaglio mostrano il totale e la data dell'ultima registrazione; senza registrazioni la cella della tabella mostra un'icona **+** e l'avanzamento è 0%.",
         },
         {
           type: 'steps',
           items: [
-            "Premi **Avanzamento commessa**: lo trovi in alto nel dettaglio della commessa, accanto a Chiusura forzata, e tra le azioni di riga della tabella Commesse. Si apre il popup con le registrazioni.",
-            'Scrivi la **percentuale raggiunta**: deve superare quella attuale. La data è oggi, modificabile ma non anteriore all\'ultima registrazione.',
-            'Premi **Registra**. Per correggere un errore elimina la registrazione e inseriscila di nuovo.',
+            "Apri **Lista avanzamenti commessa**: clicca la cella **Avanzamento** della tabella, oppure premi **Avanzamento commessa** in alto nel dettaglio della commessa (accanto a Chiusura forzata) o tra le azioni di riga.",
+            'Il campo **Totale % raggiunto** mostra la somma già registrata. Scrivi in **% Stato attuale** il nuovo totale (da 1 a 100): deve essere maggiore del totale raggiunto. Indica la **Data** (obbligatoria).',
+            'Premi **Conferma**: la registrazione viene salvata (come differenza rispetto al totale) e il popup si chiude.',
+            "Per eliminare una riga premi il cestino nella colonna Azioni, poi conferma con il cestino o annulla con la X: il totale scende dell'incremento di quella riga.",
           ],
         },
         {
@@ -94,13 +95,13 @@ const guide: HelpGuide = {
           rows: [
             ['0% (nessuna registrazione)', 'Aperta'],
             ['da 1% a 99%', 'In lavorazione'],
-            ['100%', 'Terminata'],
+            ['100% o più', 'Terminata'],
             ['qualsiasi, con chiusura forzata', 'Chiusa'],
           ],
         },
         {
           type: 'note',
-          text: "Registri ed elimini le registrazioni se puoi modificare la commessa. Su una commessa chiusa forzatamente l'avanzamento è in sola lettura: riaprila per aggiornarlo. Lo stato dei task non cambia più lo stato della commessa; la percentuale dei task resta visibile nel task board.",
+          text: "Registri ed elimini le registrazioni se puoi modificare la commessa, altrimenti vedi solo l'elenco. Lo stato dei task non cambia più lo stato della commessa; la percentuale dei task resta visibile nel task board.",
         },
       ],
     },

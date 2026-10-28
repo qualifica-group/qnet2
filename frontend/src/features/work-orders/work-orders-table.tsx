@@ -2,7 +2,6 @@ import { useCallback, useRef } from 'react'
 import { PageHeader } from '@/components/page-header'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
-import { workOrderColumnRenderers } from '@/features/work-orders/column-renderers'
 import { WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { useWorkOrderRowActions } from '@/features/work-orders/use-work-order-row-actions'
 import { WorkOrderProformaDialog } from '@/features/work-orders/work-order-proforma-dialog'
@@ -28,6 +27,7 @@ export function WorkOrdersTable() {
     closeProforma,
     resolveActionState,
     iconMap,
+    renderers,
     sheet,
     forceCloseDialog,
     progressDialog,
@@ -45,7 +45,7 @@ export function WorkOrdersTable() {
       <TableView
         ref={tableRef}
         domain={WORK_ORDERS_DOMAIN}
-        renderers={workOrderColumnRenderers}
+        renderers={renderers}
         onAction={handleAction}
         isBusy={isBusy}
         resolveActionState={resolveActionState}

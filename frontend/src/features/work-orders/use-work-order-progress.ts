@@ -1,11 +1,9 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
-import axios from 'axios'
 import { toast } from 'sonner'
-import { useConfirm } from '@/components/confirm-dialog-context'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { fetchWorkOrder, workOrderDetailQueryKey } from '@/features/work-orders/api'
 import {
@@ -18,32 +16,28 @@ import { buildProgressSchema, type ProgressFormValues } from '@/features/work-or
 import type { WorkOrderProgressEntry } from '@/features/work-orders/types'
 
 const EMPTY_ENTRIES: WorkOrderProgressEntry[] = []
-const HTTP_CONFLICT = 409
-
-/** Today as a local `Y-m-d` (the default of the date field; `toISOString` would shift by the UTC offset). */
-function todayLocalIso(): string {
-  const now = new Date()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  return `${now.getFullYear()}-${month}-${day}`
-}
+/** "% Stato attuale" starts at 0, like the total reached; the date starts empty, as in the legacy popup. */
+const EMPTY_FORM: ProgressFormValues = { percentage: '0', recorded_on: '' }
 
 interface UseWorkOrderProgressOptions {
   workOrderId: number
   /** After a registration or a deletion, so the host refreshes the grid or detail it lives in. */
   onMutated?: () => void
+  /** After a successful registration: the legacy popup closes on "Conferma". */
+  onSaved?: () => void
 }
 
 /**
- * Logic of the "Avanzamento commessa" dialog (spec 0321): the entries list,
- * the permission to write (server-granted `update`, work order not
- * force-closed — the backend re-checks both), the add form and the delete flow.
+ * Logic of the "Lista avanzamenti commessa" popup (spec 0321 R-5): the rows
+ * (increments), their sum (the total reached), the add form (typed total +
+ * date) and the inline two-step delete. Writing needs the server-granted
+ * `update`; the backend re-checks it.
  */
-export function useWorkOrderProgress({ workOrderId, onMutated }: UseWorkOrderProgressOptions) {
+export function useWorkOrderProgress({ workOrderId, onMutated, onSaved }: UseWorkOrderProgressOptions) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const confirm = useConfirm()
   const id = workOrderId
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null)
 
   const entriesQuery = useQuery({
     queryKey: workOrderProgressQueryKey(id),
@@ -59,14 +53,13 @@ export function useWorkOrderProgress({ workOrderId, onMutated }: UseWorkOrderPro
   })
 
   const entries = entriesQuery.data ?? EMPTY_ENTRIES
-  const currentPercentage = entries[0]?.percentage ?? 0
+  const total = useMemo(() => entries.reduce((sum, entry) => sum + entry.percentage, 0), [entries])
   const detail = detailQuery.data
-  const canWrite = Boolean(detail?.permissions.resource.update) && !detail?.is_force_closed
+  const canWrite = Boolean(detail?.permissions.resource.update)
 
-  const defaultValues = useMemo<ProgressFormValues>(() => ({ percentage: '', recorded_on: todayLocalIso() }), [])
   const form = useForm<ProgressFormValues>({
-    resolver: zodResolver(buildProgressSchema(t, currentPercentage)),
-    defaultValues,
+    resolver: zodResolver(buildProgressSchema(t, total)),
+    defaultValues: EMPTY_FORM,
   })
 
   async function refreshAfterMutation() {
@@ -80,26 +73,17 @@ export function useWorkOrderProgress({ workOrderId, onMutated }: UseWorkOrderPro
     onMutated?.()
   }
 
-  function reportFailure(error: unknown) {
-    if (axios.isAxiosError(error) && error.response?.status === HTTP_CONFLICT) {
-      toast.error(t('workOrders.progress.closedError'))
-      void refreshAfterMutation()
-      return
-    }
-    toast.error(t('workOrders.progress.genericError'))
-  }
-
   const createMutation = useMutation({
     mutationFn: (values: ProgressFormValues) =>
       createProgressEntry(id, { percentage: Number(values.percentage), recorded_on: values.recorded_on }),
     onSuccess: async () => {
-      form.reset({ percentage: '', recorded_on: todayLocalIso() })
       await refreshAfterMutation()
       toast.success(t('workOrders.progress.added'))
+      onSaved?.()
     },
     onError: (error) => {
       if (!applyServerValidationErrors(error, form.setError, ['percentage', 'recorded_on'])) {
-        reportFailure(error)
+        toast.error(t('workOrders.progress.genericError'))
       }
     },
   })
@@ -107,36 +91,27 @@ export function useWorkOrderProgress({ workOrderId, onMutated }: UseWorkOrderPro
   const deleteMutation = useMutation({
     mutationFn: (entryId: number) => deleteProgressEntry(id, entryId),
     onSuccess: async () => {
+      setPendingDeleteId(null)
       await refreshAfterMutation()
       toast.success(t('workOrders.progress.deleted'))
     },
-    onError: reportFailure,
+    onError: () => toast.error(t('workOrders.progress.genericError')),
   })
 
-  async function removeEntry(entry: WorkOrderProgressEntry) {
-    // Step 1: ask before the irreversible delete
-    const confirmed = await confirm({
-      title: t('workOrders.progress.deleteTitle'),
-      description: t('workOrders.progress.deleteDescription', { percentage: entry.percentage }),
-      confirmLabel: t('workOrders.progress.delete'),
-      tone: 'destructive',
-    })
-    // Step 2: delete; the list, the detail and the host grid refresh on success
-    if (confirmed) {
-      deleteMutation.mutate(entry.id)
-    }
-  }
-
   return {
+    code: detail?.code ?? '',
     entries,
+    total,
     isLoading: entriesQuery.isLoading,
     isError: entriesQuery.isError,
     canWrite,
-    currentPercentage,
     form,
     submit: form.handleSubmit((values) => createMutation.mutate(values)),
     isSaving: createMutation.isPending,
     isDeleting: deleteMutation.isPending,
-    removeEntry,
+    pendingDeleteId,
+    askDelete: setPendingDeleteId,
+    cancelDelete: () => setPendingDeleteId(null),
+    confirmDelete: (entry: WorkOrderProgressEntry) => deleteMutation.mutate(entry.id),
   }
 }

@@ -1,9 +1,9 @@
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import type { ICellRendererParams } from 'ag-grid-community'
 import i18n from '@/i18n'
 import { formatDate } from '@/lib/formatting/date-display'
-import { workOrderColumnRenderers } from '@/features/work-orders/column-renderers'
+import { buildWorkOrderColumnRenderers } from '@/features/work-orders/column-renderers'
 
 /**
  * Spec 0093 `data_contract`. `type`/`status` declare an `enumKey`
@@ -13,6 +13,8 @@ import { workOrderColumnRenderers } from '@/features/work-orders/column-renderer
  * own: `code`, `registry`, `is_force_closed` (a plain boolean with no backend `enumKey`/
  * `badges`) and the date columns.
  */
+
+const workOrderColumnRenderers = buildWorkOrderColumnRenderers(vi.fn())
 
 function renderCell(columnId: string, value: unknown) {
   const renderer = workOrderColumnRenderers[columnId]
@@ -72,18 +74,5 @@ describe('workOrderColumnRenderers date columns', () => {
   it.each(['created_at', 'updated_at'])('renders %s as a datetime', (columnId) => {
     renderCell(columnId, '2026-09-30T14:30:00Z')
     expect(screen.queryByText('—')).not.toBeInTheDocument()
-  })
-})
-
-describe('workOrderColumnRenderers.completion_percentage (spec 0149 AC-015)', () => {
-  it('renders the toned bar with its percentage', () => {
-    renderCell('completion_percentage', 75)
-    expect(screen.getByText('75%')).toHaveClass('text-primary')
-    expect(screen.getByRole('progressbar', { name: 'Progress' })).toBeInTheDocument()
-  })
-
-  it('renders a non-numeric value as an empty cell', () => {
-    renderCell('completion_percentage', null)
-    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
 })

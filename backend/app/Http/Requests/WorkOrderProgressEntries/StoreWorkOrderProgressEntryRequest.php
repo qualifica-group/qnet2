@@ -9,7 +9,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
 /**
- * POST /api/work-orders/{workOrder}/progress-entries (spec 0321, D-6).
+ * POST /api/work-orders/{workOrder}/progress-entries (spec 0321, R-2).
  * Authorization is checked here (and again in the controller) so a caller
  * without `update` never learns the current percentage through a 422 message.
  */
@@ -40,11 +40,15 @@ class StoreWorkOrderProgressEntryRequest extends FormRequest
                 return;
             }
 
-            $this->assertAboveCurrent($validator);
-            $this->assertNotBeforeLatest($validator);
+            if ((int) $this->input('percentage') <= $this->currentTotal()) {
+                $validator->errors()->add('percentage', __('work_orders.progress.percentage_not_above_current'));
+            }
         });
     }
 
+    /**
+     * The "% Stato attuale" typed by the user: the new TOTAL, not the increment.
+     */
     public function percentage(): int
     {
         return (int) $this->validated('percentage');
@@ -55,22 +59,9 @@ class StoreWorkOrderProgressEntryRequest extends FormRequest
         return (string) $this->validated('recorded_on');
     }
 
-    private function assertAboveCurrent(Validator $validator): void
+    public function currentTotal(): int
     {
-        $current = (int) $this->workOrder()->progressEntries()->reorder()->max('percentage');
-
-        if ((int) $this->input('percentage') <= $current) {
-            $validator->errors()->add('percentage', __('work_orders.progress.percentage_not_above_current', ['current' => $current]));
-        }
-    }
-
-    private function assertNotBeforeLatest(Validator $validator): void
-    {
-        $latest = $this->workOrder()->progressEntries()->reorder()->max('recorded_on');
-
-        if ($latest !== null && (string) $this->input('recorded_on') < substr((string) $latest, 0, 10)) {
-            $validator->errors()->add('recorded_on', __('work_orders.progress.recorded_on_before_latest', ['date' => substr((string) $latest, 0, 10)]));
-        }
+        return (int) $this->workOrder()->progressEntries()->reorder()->sum('percentage');
     }
 
     private function workOrder(): WorkOrder

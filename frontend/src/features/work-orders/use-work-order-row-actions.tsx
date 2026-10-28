@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { toast } from 'sonner'
@@ -8,6 +8,8 @@ import type { ModuleCreateParams, OpenMode } from '@/features/modules/types'
 import { deleteWorkOrder, WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import type { ActionIconMap } from '@/features/table/action-icon-map'
 import { REOPEN_PAYLOAD, useWorkOrderClosure, WORK_ORDER_ACTION_ICONS } from '@/features/work-orders/use-work-order-closure'
+import { buildWorkOrderColumnRenderers } from '@/features/work-orders/column-renderers'
+import type { TableRendererMap } from '@/features/table/renderer-registry'
 import { WorkOrderProgressDialog } from '@/features/work-orders/work-order-progress-dialog'
 import { WorkOrderForceCloseDialog } from '@/features/work-orders/work-order-force-close-dialog'
 import type { RowActionHandler, RowActionState } from '@/features/table/row-actions'
@@ -49,6 +51,8 @@ export interface UseWorkOrderRowActionsResult {
   /** Tint/label/disabled of the "€" action per row, for `<TableView resolveActionState>`. */
   resolveActionState: (action: TableActionDefinition, row: TableRow) => RowActionState | undefined
   iconMap: ActionIconMap
+  /** The Commesse cell renderers, its progress cell wired to this hook's popup (spec 0321 R-6). */
+  renderers: TableRendererMap
   /**
    * Opens the create form seeded with `params`, in the same Sheet as view:
    * only the anagrafica detail's Commesse tab offers it (spec 0199,
@@ -89,6 +93,7 @@ export function useWorkOrderRowActions({
   const [progressId, setProgressId] = useState<number | null>(null)
   const { mutateAsync: changeClosure } = useWorkOrderClosure()
   const resolveActionState = useProformaActionState()
+  const renderers = useMemo(() => buildWorkOrderColumnRenderers(setProgressId), [])
 
   const { openCreateWith, openView, sheet } = useModuleOpener(WORK_ORDERS_DOMAIN, {
     onSaved: onMutated,
@@ -215,6 +220,7 @@ export function useWorkOrderRowActions({
     closeProforma,
     resolveActionState,
     iconMap: ROW_ACTION_ICONS,
+    renderers,
     openCreateWith,
     sheet,
     forceCloseDialog,

@@ -78,14 +78,15 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Progress is recorded by hand: each record states the **percentage reached** (cumulative, from 1 to 100) and the **date**. The table's **Progress** column and the indicator at the top of the detail show the percentage and date of the latest record; with no records progress is 0%.",
+          text: "Progress is recorded by hand and is the **sum** of the percentages of all the records (in the popup, the Percentage column is the increment of each row). The table's **Progress** column and the indicator at the top of the detail show the total and the date of the latest record; with no records the table cell shows a **+** icon and progress is 0%.",
         },
         {
           type: 'steps',
           items: [
-            'Press **Work order progress**: you find it at the top of the work order detail, next to Force close, and among the row actions of the Work orders table. The popup with the records opens.',
-            'Type the **percentage reached**: it must exceed the current one. The date is today, editable but not earlier than the latest record.',
-            'Press **Record**. To fix a mistake delete the record and enter it again.',
+            'Open the **Work order progress list**: click the **Progress** cell of the table, or press **Work order progress** at the top of the work order detail (next to Force close) or among the row actions.',
+            'The **Total % reached** field shows the sum already recorded. Type the new total (1 to 100) in **Current status %**: it must be greater than the total reached. Enter the **Date** (required).',
+            'Press **Confirm**: the record is saved (as the difference from the total) and the popup closes.',
+            "To delete a row press the trash in the Actions column, then confirm with the trash or cancel with the X: the total drops by that row's increment.",
           ],
         },
         {
@@ -94,13 +95,13 @@ const guide: HelpGuide = {
           rows: [
             ['0% (no records)', 'Open'],
             ['1% to 99%', 'In progress'],
-            ['100%', 'Completed'],
+            ['100% or more', 'Completed'],
             ['any, when force-closed', 'Closed'],
           ],
         },
         {
           type: 'note',
-          text: 'You record and delete records if you may edit the work order. On a force-closed work order progress is read-only: reopen it to update it. Task statuses no longer change the work order status; the tasks percentage stays visible in the task board.',
+          text: 'You record and delete records if you may edit the work order, otherwise you only see the list. Task statuses no longer change the work order status; the tasks percentage stays visible in the task board.',
         },
       ],
     },

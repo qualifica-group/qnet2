@@ -18,7 +18,7 @@ use App\Enums\WorkOrderType;
  * relation (D-2, resolved by WorkOrdersTableDefinition) and declare
  * `hasFilterValues: false`: no real DB column on `work_orders` to
  * `SELECT DISTINCT` on. `status` and `completion_percentage` are COMPUTED
- * from the manual progress entries (spec 0321, resolved by WorkOrderStatusResolver):
+ * from the manual progress entries (spec 0321, SUM of the increments / MAX of the date, resolved by WorkOrderStatusResolver):
  * `status` is `sortable: false` (no single sort key for a derived state) and
  * `set`-filterable over its 4 values; `completion_percentage` is sortable
  * but not filterable (D-10). `registry` (the Anagrafica) is DERIVED through

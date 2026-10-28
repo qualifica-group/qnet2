@@ -55,7 +55,7 @@ class WorkOrderProgressEntryController extends BaseApiController
         try {
             $this->authorize('update', $workOrder);
 
-            $this->service->delete($workOrder, $progressEntry);
+            $this->service->delete($progressEntry);
 
             return $this->ok();
         } catch (Throwable $exception) {

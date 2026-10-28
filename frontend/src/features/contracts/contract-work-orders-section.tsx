@@ -6,7 +6,6 @@ import { ResourceActivityDialog } from '@/features/activity-log/resource-activit
 import { useAbilities } from '@/features/auth/use-abilities'
 import { OPEN_MODE_MODAL } from '@/features/modules/types'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
-import { workOrderColumnRenderers } from '@/features/work-orders/column-renderers'
 import { WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { useWorkOrderRowActions } from '@/features/work-orders/use-work-order-row-actions'
 import { WorkOrderProformaDialog } from '@/features/work-orders/work-order-proforma-dialog'
@@ -42,7 +41,7 @@ export const ContractWorkOrdersSection = forwardRef<ContractWorkOrdersSectionHan
 
 /**
  * The Contract detail's Commesse tab (spec 0095 D-8/D-10): the SAME
- * `TableView domain="work-orders"` and `workOrderColumnRenderers` the
+ * `TableView domain="work-orders"` and renderers (from `useWorkOrderRowActions`) the
  * standalone Commesse page uses, scoped to this contract's offer via
  * `rowScope={{quoteId}}`, in a full-width `RecordCard` below the two-column
  * grid (too narrow a column for a toolbar + grid + filters). Row actions
@@ -71,6 +70,7 @@ const ContractWorkOrdersPanel = forwardRef<ContractWorkOrdersSectionHandle, Cont
       closeProforma,
       resolveActionState,
       iconMap,
+      renderers,
       sheet,
       forceCloseDialog,
     progressDialog,
@@ -96,7 +96,7 @@ const ContractWorkOrdersPanel = forwardRef<ContractWorkOrdersSectionHandle, Cont
             ref={tableRef}
             domain={WORK_ORDERS_DOMAIN}
             rowScope={{ quoteId }}
-            renderers={workOrderColumnRenderers}
+            renderers={renderers}
             onAction={handleAction}
             isBusy={isBusy}
             resolveActionState={resolveActionState}

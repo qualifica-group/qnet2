@@ -10,9 +10,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * One manual progress record of a commessa (spec 0321): the CUMULATIVE
- * percentage reached on `recorded_on` (D-5). Entries of a work order are
- * strictly increasing, so the latest is the one with the highest percentage.
+ * One manual progress record of a commessa (spec 0321): the INCREMENT
+ * (0..100) recorded on `recorded_on`, like the legacy `avanzamento_commesse`.
+ * The progress of a work order is the SUM of its entries.
  */
 #[Fillable([
     'work_order_id',

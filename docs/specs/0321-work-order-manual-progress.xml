@@ -57,6 +57,28 @@
         solo se la commessa non ne ha (re-run idempotente, inserimenti fatti a mano in qnet-2 mai toccati).
   </decisions>
 
+  <revision date="2026-10-28" reason="utente: 'voglio esattamente come il legacy'">
+    Sostituisce D-5, D-6, D-7, D-8, D-10 e le parti corrispondenti del data_contract e degli AC. Riferimento:
+    `../qnet` resources/views/livewire/amministrazione/lista-avanzamento-commesse-modale.blade.php,
+    Livewire `ListaAvanzamentoCommesseModale`, colonna `avanzamento_commessa` di `OrdersTable`.
+    R-1 Ogni registrazione salva l'INCREMENTO (`percentage` 0..100), come `avanzamento_commesse.percentuale`.
+        Avanzamento corrente = SUM(percentage); data mostrata = MAX(recorded_on). Lista in ordine di inserimento (id).
+    R-2 Inserimento: l'utente digita "% Stato attuale" (`percentage` intero 1..100) e "Data" (obbligatoria, nessun
+        default); valido solo se maggiore del totale raggiunto, altrimenti 422 su `percentage` con
+        "Il totale deve essere maggiore dello stato raggiunto."; si salva percentage - totale. Nessun vincolo sulla
+        data, nessun blocco su commessa chiusa (409 rimosso).
+    R-3 Cancellazione di qualsiasi riga: il totale scende di quell'incremento.
+    R-4 Stato: force-closed -> closed; SUM 0 -> open; 1..99 -> in_progress; >= 100 -> completed (i dati legacy
+        possono sommare oltre 100: si mostrano come nel legacy).
+    R-5 Popup "Lista avanzamenti commessa n. {code}": campi "Totale % raggiunto" (sola lettura), "% Stato attuale",
+        "Data"; tabella Data | Percentuale | Azioni con cancellazione a conferma inline (cestino, poi conferma/annulla);
+        footer Chiudi / Conferma; Conferma salva e chiude. Sola lettura senza `update` (authz invariata).
+    R-6 Griglia: cella Avanzamento = "{totale}%" con sotto la data (gg/mm/aaaa), icona "+" se nessuna registrazione;
+        il clic sulla cella apre il popup. Restano l'azione di riga e l'azione in alto nel dettaglio.
+    R-7 Migrazione 1:1: il legacy invia per ordine le righe grezze `[{percentage: percentuale, recorded_on: data}]`
+        in ordine di id, senza trasformazioni (zeri inclusi); qnet-2 le crea tutte se la commessa non ne ha.
+  </revision>
+
   <scope>
     <in>
       <item>Tabella `work_order_progress_entries` + model `WorkOrderProgressEntry` + factory.</item>

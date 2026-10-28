@@ -154,7 +154,7 @@ export interface WorkOrderDetail {
   title_is_manual: boolean
   type: WorkOrderType
   status: WorkOrderStatus
-  /** Spec 0321 D-1: percentage of the latest manual progress entry, 0..100 (0 when none). */
+  /** Spec 0321 D-1: sum of the manual progress increments (can exceed 100 on legacy data, 0 when none). */
   completion_percentage: number
   /** Spec 0321: `Y-m-d` of that latest entry, `null` when none; optional like `registry`, so older fixtures stay valid. */
   completion_recorded_on?: string | null
@@ -266,7 +266,7 @@ export type WorkOrderFormMode =
 /** One manual progress registration of a work order (spec 0321 `data_contract`). */
 export interface WorkOrderProgressEntry {
   id: number
-  /** Cumulative percentage reached, 1..100. */
+  /** The increment of this row, 0..100 (legacy `avanzamento_commesse.percentuale`); the work order total is the sum. */
   percentage: number
   /** `Y-m-d`. */
   recorded_on: string
@@ -274,7 +274,7 @@ export interface WorkOrderProgressEntry {
   created_at: string
 }
 
-/** Payload for POST /work-orders/{id}/progress-entries. */
+/** Payload for POST /work-orders/{id}/progress-entries: `percentage` is the new TOTAL typed by the user; the server stores the difference. */
 export interface CreateProgressEntryPayload {
   percentage: number
   recorded_on: string

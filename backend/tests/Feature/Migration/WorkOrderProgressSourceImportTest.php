@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Http;
 use Spatie\Activitylog\Models\Activity;
 
 /**
- * `work-order-progress` source (spec 0321, D-10): AC-013, AC-014, AC-015.
+ * `work-order-progress` source (spec 0321, D-10): AC-013, AC-014, AC-015; revision 2026-10-28 (R-7): raw
+ * increments 1:1, zeros included, sums above 100 allowed.
  */
 uses(RefreshDatabase::class);
 
@@ -40,21 +41,23 @@ function progressWorkOrder(int $legacyId): WorkOrder
 
 beforeEach(fn () => seedMigrationsConfig());
 
-it('AC-013: creates the entries as received, without creator and without activity log', function () {
+it('AC-013: creates the raw rows as received, in order, without creator and without activity log', function () {
     $workOrder = progressWorkOrder(17);
     Activity::query()->delete();
 
     $run = runLegacyWorkOrderProgressImport([['id' => 17, 'entries' => [
         ['percentage' => 10, 'recorded_on' => '2024-07-03'],
-        ['percentage' => 90, 'recorded_on' => '2025-02-28'],
-        ['percentage' => 100, 'recorded_on' => '2025-05-22'],
+        ['percentage' => 0, 'recorded_on' => '2024-08-01'],
+        ['percentage' => 80, 'recorded_on' => '2025-02-28'],
+        ['percentage' => 50, 'recorded_on' => '2025-01-10'],
     ]]]);
 
-    $rows = $workOrder->progressEntries()->get()->sortBy('percentage')->values();
+    $rows = $workOrder->progressEntries()->get();
 
     expect($run->created_rows)->toBe(1)->and($run->failed_rows)->toBe(0)
-        ->and($rows->pluck('percentage')->all())->toBe([10, 90, 100])
-        ->and($rows->map(fn ($row) => $row->recorded_on->toDateString())->all())->toBe(['2024-07-03', '2025-02-28', '2025-05-22'])
+        ->and($rows->pluck('percentage')->all())->toBe([10, 0, 80, 50])
+        ->and($rows->map(fn ($row) => $row->recorded_on->toDateString())->all())->toBe(['2024-07-03', '2024-08-01', '2025-02-28', '2025-01-10'])
+        ->and((int) $rows->sum('percentage'))->toBe(140)
         ->and($rows->pluck('created_by')->filter()->all())->toBe([])
         ->and(Activity::query()->where('subject_type', (new WorkOrderProgressEntry)->getMorphClass())->count())->toBe(0);
 });
@@ -94,10 +97,9 @@ it('AC-015: an invalid entry list fails the row and writes nothing', function (a
     expect($run->failed_rows)->toBe(1)->and($run->created_rows)->toBe(0)
         ->and($workOrder->progressEntries()->count())->toBe(0);
 })->with([
-    'not increasing' => [[['percentage' => 50, 'recorded_on' => '2025-01-01'], ['percentage' => 50, 'recorded_on' => '2025-01-02']]],
     'above 100' => [[['percentage' => 10, 'recorded_on' => '2025-01-01'], ['percentage' => 101, 'recorded_on' => '2025-01-02']]],
-    'zero' => [[['percentage' => 0, 'recorded_on' => '2025-01-01']]],
-    'date going back' => [[['percentage' => 10, 'recorded_on' => '2025-01-02'], ['percentage' => 20, 'recorded_on' => '2025-01-01']]],
+    'negative' => [[['percentage' => -1, 'recorded_on' => '2025-01-01']]],
+    'not an integer' => [[['percentage' => '10', 'recorded_on' => '2025-01-01']]],
     'invalid date' => [[['percentage' => 10, 'recorded_on' => '2025-02-30']]],
     'no entries' => [[]],
 ]);

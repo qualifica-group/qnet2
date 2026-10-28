@@ -19,22 +19,20 @@ use Illuminate\Support\Facades\DB;
  * (applyCompletionSort()) on the SAME class, so the four can never disagree.
  *
  * The rule (D-1/D-2) reads only the manual progress entries
- * (`work_order_progress_entries`, cumulative and strictly increasing per
- * commessa): the percentage is the MAX of their `percentage` (0 when none),
- * the date is the `recorded_on` of that same entry (null when none). Tasks do
- * not count any more.
+ * (`work_order_progress_entries`, each holding an INCREMENT, like the
+ * legacy `avanzamento_commesse`): the percentage is the SUM of their
+ * `percentage` (0 when none; migrated legacy data may exceed 100), the date is
+ * the MAX of their `recorded_on` (null when none). Tasks do not count.
  *   - `is_force_closed`  -> closed (wins)
  *   - 0                  -> open
  *   - 1..99              -> in_progress
- *   - 100                -> completed
+ *   - 100 or more        -> completed
  *
  * Every identifier reaching the SQL is a private constant or an enum value
  * bound as a parameter, never client input (backend.md §8).
  */
 final class WorkOrderStatusResolver
 {
-    private const string ENTRIES_RELATION = 'progressEntries';
-
     private const string ENTRIES_TABLE = 'work_order_progress_entries';
 
     private const string WORK_ORDERS_TABLE = 'work_orders';
@@ -136,35 +134,32 @@ final class WorkOrderStatusResolver
     private function constrainToStatus(Builder $query, WorkOrderStatus $status): void
     {
         $query->where(self::WORK_ORDERS_TABLE.'.'.self::FORCE_CLOSED_COLUMN, $status === WorkOrderStatus::Closed);
-        $complete = fn (Builder $entries) => $entries->where(self::ENTRIES_TABLE.'.'.self::PERCENTAGE_COLUMN, self::COMPLETE);
+        $total = $this->percentageSubquery();
 
         match ($status) {
             WorkOrderStatus::Closed => null,
-            WorkOrderStatus::Open => $query->whereDoesntHave(self::ENTRIES_RELATION),
-            WorkOrderStatus::InProgress => $query->whereHas(self::ENTRIES_RELATION)->whereDoesntHave(self::ENTRIES_RELATION, $complete),
-            WorkOrderStatus::Completed => $query->whereHas(self::ENTRIES_RELATION, $complete),
+            WorkOrderStatus::Open => $query->where($total, '=', 0),
+            WorkOrderStatus::InProgress => $query->where($total, '>', 0)->where($this->percentageSubquery(), '<', self::COMPLETE),
+            WorkOrderStatus::Completed => $query->where($total, '>=', self::COMPLETE),
         };
     }
 
     /**
-     * MAX of the cumulative percentages, 0 when the commessa has no entry.
+     * SUM of the increments, 0 when the commessa has no entry.
      */
     private function percentageSubquery(): QueryBuilder
     {
         return $this->entriesOfWorkOrder()
-            ->selectRaw('COALESCE(MAX('.self::ENTRIES_TABLE.'.'.self::PERCENTAGE_COLUMN.'), 0)');
+            ->selectRaw('COALESCE(SUM('.self::ENTRIES_TABLE.'.'.self::PERCENTAGE_COLUMN.'), 0)');
     }
 
     /**
-     * `recorded_on` of the entry holding the MAX percentage; NULL when none.
+     * Latest `recorded_on`; NULL when none.
      */
     private function recordedOnSubquery(): QueryBuilder
     {
         return $this->entriesOfWorkOrder()
-            ->select(self::ENTRIES_TABLE.'.'.self::RECORDED_ON_COLUMN)
-            ->orderByDesc(self::ENTRIES_TABLE.'.'.self::PERCENTAGE_COLUMN)
-            ->orderByDesc(self::ENTRIES_TABLE.'.id')
-            ->limit(1);
+            ->selectRaw('MAX('.self::ENTRIES_TABLE.'.'.self::RECORDED_ON_COLUMN.')');
     }
 
     private function entriesOfWorkOrder(): QueryBuilder

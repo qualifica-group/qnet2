@@ -16,8 +16,9 @@ use Throwable;
 /**
  * `work-order-progress` migration source (spec 0321, D-10): the manual progress
  * entries of a migrated work order. The legacy sends one record per order with
- * the entries already cumulated (`percentage` 1..100, `recorded_on` Y-m-d), so
- * here they are only looked up and written.
+ * its raw `avanzamento_commesse` rows in id order (`percentage` = the increment
+ * 0..100, zeros included; `recorded_on` Y-m-d), so here they are only looked up
+ * and written 1:1. The progress is their SUM, which may exceed 100.
  *
  * Entries are only ever CREATED: a work order that already has some (a re-run,
  * or entries typed in qnet-2) is skipped untouched; a work order not migrated
@@ -26,7 +27,7 @@ use Throwable;
  */
 class WorkOrderProgressSource extends AbstractMigrationSource
 {
-    private const int MIN_PERCENTAGE = 1;
+    private const int MIN_PERCENTAGE = 0;
 
     private const int MAX_PERCENTAGE = 100;
 
@@ -61,7 +62,7 @@ class WorkOrderProgressSource extends AbstractMigrationSource
         return [
             ['id' => 'id', 'label' => 'Work order (external id)', 'type' => 'number'],
             ['id' => 'entries_count', 'label' => 'Entries', 'type' => 'number'],
-            ['id' => 'latest_percentage', 'label' => 'Latest percentage', 'type' => 'number'],
+            ['id' => 'total_percentage', 'label' => 'Total percentage', 'type' => 'number'],
             ['id' => 'latest_recorded_on', 'label' => 'Latest date', 'type' => 'string'],
         ];
     }
@@ -79,11 +80,12 @@ class WorkOrderProgressSource extends AbstractMigrationSource
     {
         $entries = is_array($record['entries'] ?? null) ? $record['entries'] : [];
         $latest = $entries === [] ? [] : (array) end($entries);
+        $total = array_sum(array_map(fn ($entry): int => is_array($entry) ? (int) ($entry['percentage'] ?? 0) : 0, $entries));
 
         return [
             'id' => $record['id'] ?? null,
             'entries_count' => count($entries),
-            'latest_percentage' => $latest['percentage'] ?? null,
+            'total_percentage' => $entries === [] ? null : $total,
             'latest_recorded_on' => $latest['recorded_on'] ?? null,
         ];
     }
@@ -130,8 +132,6 @@ class WorkOrderProgressSource extends AbstractMigrationSource
         }
 
         $validated = [];
-        $previousPercentage = 0;
-        $previousDate = null;
 
         foreach (array_values($entries) as $position => $entry) {
             $number = $position + 1;
@@ -141,20 +141,10 @@ class WorkOrderProgressSource extends AbstractMigrationSource
                 throw new RuntimeException("Entry {$number}: percentage must be an integer between ".self::MIN_PERCENTAGE.' and '.self::MAX_PERCENTAGE.'.');
             }
 
-            if ($percentage <= $previousPercentage) {
-                throw new RuntimeException("Entry {$number}: percentage {$percentage} does not increase the previous one ({$previousPercentage}).");
-            }
-
             $date = $this->parseDate($entry['recorded_on'] ?? null)
                 ?? throw new RuntimeException("Entry {$number}: recorded_on must be a valid Y-m-d date.");
 
-            if ($previousDate !== null && $date < $previousDate) {
-                throw new RuntimeException("Entry {$number}: recorded_on {$date} is before the previous entry ({$previousDate}).");
-            }
-
             $validated[] = ['percentage' => $percentage, 'recorded_on' => $date];
-            $previousPercentage = $percentage;
-            $previousDate = $date;
         }
 
         return $validated;

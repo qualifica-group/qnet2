@@ -31,7 +31,7 @@ class WorkOrderProgressEntryFactory extends Factory
         return $this->state(fn (): array => ['work_order_id' => $workOrder->id]);
     }
 
-    public function reached(int $percentage, string $recordedOn): static
+    public function increment(int $percentage, string $recordedOn): static
     {
         return $this->state(fn (): array => ['percentage' => $percentage, 'recorded_on' => $recordedOn]);
     }

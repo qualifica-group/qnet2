@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\WorkOrders;
 
-use App\Exceptions\WorkOrders\WorkOrderClosedForProgressException;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderProgressEntry;
@@ -12,8 +11,9 @@ use Illuminate\Database\Eloquent\Collection;
 
 /**
  * List/create/delete of a commessa's manual progress entries (spec 0321).
- * Ordering/monotonicity rules are validated in the FormRequest (D-6); the
- * closed-commessa veto (D-8) lives here.
+ * Like the legacy `avanzamento_commesse`, an entry stores the INCREMENT: the
+ * new total typed by the user minus the SUM already reached (the "above the
+ * total" rule is validated in the FormRequest). No date or closed-commessa rule.
  */
 final class WorkOrderProgressEntryService
 {
@@ -25,12 +25,15 @@ final class WorkOrderProgressEntryService
         return $workOrder->progressEntries()->with('creator')->get();
     }
 
-    public function create(WorkOrder $workOrder, int $percentage, string $recordedOn, User $actor): WorkOrderProgressEntry
+    /**
+     * @param  int  $total  the new total progress ("% Stato attuale"), above the current SUM
+     */
+    public function create(WorkOrder $workOrder, int $total, string $recordedOn, User $actor): WorkOrderProgressEntry
     {
-        $this->assertOpen($workOrder);
+        $current = (int) $workOrder->progressEntries()->reorder()->sum('percentage');
 
         $entry = $workOrder->progressEntries()->create([
-            'percentage' => $percentage,
+            'percentage' => $total - $current,
             'recorded_on' => $recordedOn,
             'created_by' => $actor->id,
         ]);
@@ -38,17 +41,8 @@ final class WorkOrderProgressEntryService
         return $entry->load('creator');
     }
 
-    public function delete(WorkOrder $workOrder, WorkOrderProgressEntry $entry): void
+    public function delete(WorkOrderProgressEntry $entry): void
     {
-        $this->assertOpen($workOrder);
-
         $entry->delete();
-    }
-
-    private function assertOpen(WorkOrder $workOrder): void
-    {
-        if ($workOrder->is_force_closed) {
-            throw new WorkOrderClosedForProgressException;
-        }
     }
 }

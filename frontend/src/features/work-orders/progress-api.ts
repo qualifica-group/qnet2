@@ -8,7 +8,7 @@ export function workOrderProgressQueryKey(workOrderId: number) {
   return [WORK_ORDERS_DOMAIN, 'progress-entries', workOrderId] as const
 }
 
-/** Entries of a work order, latest (highest percentage) first. */
+/** Entries of a work order in insertion order; each `percentage` is that row's increment. */
 export async function fetchProgressEntries(workOrderId: number): Promise<WorkOrderProgressEntry[]> {
   const { data } = await apiClient.get<ApiResponse<WorkOrderProgressEntry[]>>(
     `/work-orders/${workOrderId}/progress-entries`,
@@ -16,7 +16,7 @@ export async function fetchProgressEntries(workOrderId: number): Promise<WorkOrd
   return data.data
 }
 
-/** Registers a new cumulative percentage; 422 carries field errors, 409 means force-closed. */
+/** Registers the new total percentage; 422 carries field errors. */
 export async function createProgressEntry(
   workOrderId: number,
   payload: CreateProgressEntryPayload,

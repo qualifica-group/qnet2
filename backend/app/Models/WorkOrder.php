@@ -372,14 +372,14 @@ class WorkOrder extends BaseModel
     }
 
     /**
-     * The manual progress records of this commessa (spec 0321), latest first:
-     * cumulative and strictly increasing, so the highest percentage is the latest.
+     * The manual progress records of this commessa (spec 0321), in insertion
+     * order. Each holds an INCREMENT; the current progress is their SUM.
      *
      * @return HasMany<WorkOrderProgressEntry, $this>
      */
     public function progressEntries(): HasMany
     {
-        return $this->hasMany(WorkOrderProgressEntry::class)->orderByDesc('percentage');
+        return $this->hasMany(WorkOrderProgressEntry::class)->orderBy('id');
     }
 
     /**

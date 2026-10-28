@@ -26,7 +26,6 @@ import { taskColumnRenderers } from '@/features/tasks/task-column-renderers'
 import { useTaskDomainRowActions } from '@/features/tasks/use-task-domain-row-actions'
 import { useTaskRowActions } from '@/features/tasks/use-task-row-actions'
 import { useTaskStatusCellIntercept } from '@/features/tasks/use-task-status-cell-intercept'
-import { workOrderColumnRenderers } from '@/features/work-orders/column-renderers'
 import { WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import { useWorkOrderRowActions } from '@/features/work-orders/use-work-order-row-actions'
 import { WorkOrderProformaDialog } from '@/features/work-orders/work-order-proforma-dialog'
@@ -151,6 +150,7 @@ export function RegistryWorkOrdersPanel({ registryId, onRowCountChanged }: Regis
     closeProforma,
     resolveActionState,
     iconMap,
+    renderers,
     openCreateWith,
     sheet,
     forceCloseDialog,
@@ -163,7 +163,7 @@ export function RegistryWorkOrdersPanel({ registryId, onRowCountChanged }: Regis
         ref={tableRef}
         domain={WORK_ORDERS_DOMAIN}
         registryId={registryId}
-        renderers={workOrderColumnRenderers}
+        renderers={renderers}
         iconMap={iconMap}
         onAction={handleAction}
         isBusy={isBusy}

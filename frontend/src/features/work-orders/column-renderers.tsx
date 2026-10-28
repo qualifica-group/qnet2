@@ -2,9 +2,8 @@ import { BooleanBadgeCell, CodeBadgeCell, DateCell } from '@/features/table/rich
 import { UserStackCell } from '@/features/table/user-cell'
 import { DateTimeCell } from '@/features/table/cell-renderers'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
-import i18n from '@/i18n'
 import { RegistryCell } from '@/features/work-orders/registry-cell'
-import { CompletionCell } from '@/features/table/completion-cell'
+import { WorkOrderProgressCell } from '@/features/work-orders/work-order-progress-cell'
 
 /**
  * Custom cell renderers keyed by the backend column `id` (spec 0093
@@ -27,20 +26,21 @@ import { CompletionCell } from '@/features/table/completion-cell'
  * `registry` (the Anagrafica, `{id, name}` through the quote's opportunity)
  * renders as the same `RelationCell` the Contratti grid uses.
  * `title`/`contract_number`/`quote` stay on the AG Grid default text cell.
- * `completion_percentage` (spec 0149) renders the shared `CompletionCell`.
+ * `completion_percentage` (spec 0321 R-6) renders `WorkOrderProgressCell`, a
+ * button opening the progress popup: the renderer map is therefore built by a
+ * factory taking that handler from `useWorkOrderRowActions`.
  */
-
-export const workOrderColumnRenderers: TableRendererMap = {
-  code: (params) => <CodeBadgeCell {...params} />,
-  registry: (params) => <RegistryCell {...params} />,
-  is_force_closed: (params) => <BooleanBadgeCell {...params} />,
-  callback_date: (params) => <DateCell {...params} />,
-  start_date: (params) => <DateCell {...params} />,
-  contract_expiry_date: (params) => <DateCell {...params} />,
-  supervisors: (params) => <UserStackCell {...params} />,
-  completion_percentage: (params) => (
-    <CompletionCell {...params} label={i18n.t('workOrders.columns.completion_percentage')} dateField="completion_recorded_on" />
-  ),
-  created_at: (params) => <DateTimeCell {...params} />,
-  updated_at: (params) => <DateTimeCell {...params} />,
+export function buildWorkOrderColumnRenderers(openProgress: (workOrderId: number) => void): TableRendererMap {
+  return {
+    code: (params) => <CodeBadgeCell {...params} />,
+    registry: (params) => <RegistryCell {...params} />,
+    is_force_closed: (params) => <BooleanBadgeCell {...params} />,
+    callback_date: (params) => <DateCell {...params} />,
+    start_date: (params) => <DateCell {...params} />,
+    contract_expiry_date: (params) => <DateCell {...params} />,
+    supervisors: (params) => <UserStackCell {...params} />,
+    completion_percentage: (params) => <WorkOrderProgressCell {...params} onOpen={openProgress} />,
+    created_at: (params) => <DateTimeCell {...params} />,
+    updated_at: (params) => <DateTimeCell {...params} />,
+  }
 }

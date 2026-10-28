@@ -13,8 +13,6 @@ return [
         'lines_removal_only' => 'In una commessa multi-offerta puoi solo togliere righe, lasciandone almeno una: non puoi aggiungerne di nuove.',
     ],
     'progress' => [
-        'percentage_not_above_current' => 'La percentuale deve essere maggiore dell\'avanzamento attuale (:current%).',
-        'recorded_on_before_latest' => 'La data non può essere anteriore all\'ultima registrazione (:date).',
-        'work_order_closed' => 'La commessa è chiusa: riaprila per aggiornare l\'avanzamento.',
+        'percentage_not_above_current' => 'Il totale deve essere maggiore dello stato raggiunto.',
     ],
 ];

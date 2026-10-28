@@ -4,9 +4,9 @@ import { CalendarClock, CalendarDays, CalendarX, CheckCircle2, Hammer, TrendingU
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
 import { Badge } from '@/components/ui/badge'
+import { CompletionBar } from '@/components/completion-bar'
 import { Button } from '@/components/ui/button'
 import { ACTION_BUTTON_VARIANT } from '@/features/table/action-tone'
-import { CompletionBar } from '@/components/completion-bar'
 import { BADGE_BASE, BADGE_COLOR_CLASSES } from '@/features/table/cell-renderers'
 import { formatDate } from '@/lib/formatting/date-display'
 import { cn } from '@/lib/utils'
@@ -111,7 +111,7 @@ function WorkOrderProgressAction({ workOrder, onChanged }: WorkOrderDetailHeader
         onClick={() => setOpen(true)}
       >
         <TrendingUp aria-hidden="true" />
-        {t('workOrders.progress.title')}
+        {t('workOrders.progress.action')}
       </Button>
       <WorkOrderProgressDialog workOrderId={open ? workOrder.id : null} onOpenChange={setOpen} onMutated={onChanged} />
     </>
@@ -119,9 +119,9 @@ function WorkOrderProgressAction({ workOrder, onChanged }: WorkOrderDetailHeader
 }
 
 interface WorkOrderStatsStripProps {
-  /** Latest manual progress (spec 0321); `null` on a work order not created yet. */
+  /** Sum of the manual progress increments (spec 0321); `null` on a work order not created yet. */
   completionPercentage: number | null
-  /** `Y-m-d` of that latest registration, `null` when none. */
+  /** `Y-m-d` of the latest registration, `null` when none. */
   completionRecordedOn?: string | null
   startDate: string | null
   callbackDate: string | null
