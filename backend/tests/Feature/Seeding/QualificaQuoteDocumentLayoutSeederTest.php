@@ -76,6 +76,20 @@ it('points every image block at an attachment the layout owns, with its binary s
     }
 });
 
+it('keeps the body clear of the letterhead footer band', function (): void {
+    test()->seed(QualificaQuoteDocumentLayoutSeeder::class);
+
+    foreach (seededLegacyQuoteLayouts() as $layout) {
+        $onLetterhead = collect($layout->config['header']['blocks'])
+            ->contains(fn (array $block): bool => $block['type'] === 'image' && $block['wrap'] === 'behind_page');
+
+        if ($onLetterhead) {
+            expect($layout->config['page']['margins']['bottom'])
+                ->toBeGreaterThanOrEqual(QuoteDocumentLayoutCatalogue::LETTERHEAD_FOOTER_TWIPS, $layout->code);
+        }
+    }
+});
+
 it('names no legacy placeholder and only variables of the quotes catalogue', function (): void {
     test()->seed(QualificaQuoteDocumentLayoutSeeder::class);
 

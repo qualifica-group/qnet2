@@ -27,7 +27,11 @@ namespace Database\Seeders\QualificaCatalog;
  *     SLINE_TOTAL being quantity x price), the totals and VAT tables folded
  *     into its `totals` rows, STOTAL_INCL_VAT -> {totals.revenue_gross};
  *   - the grey floating rules -> `divider`, list numbering -> a literal prefix,
- *     line breaks -> one paragraph per line, sizes under 6pt -> 6pt.
+ *     line breaks -> one paragraph per line, sizes under 6pt -> 6pt;
+ *   - a bottom margin under LETTERHEAD_FOOTER_TWIPS raised to the client's
+ *     standard 1560 (`private_internship` 280, `recruitment_contract` 1134):
+ *     the full-page letterhead prints its footer in that band, and a body
+ *     reaching into it wrote over it (as it did in the legacy templates).
  * What the contract cannot express was left out: the second "folder" products
  * table of `services` and `iso` (one table lists every line), multi-column
  * sections, floating decorative shapes in the header.
@@ -35,6 +39,14 @@ namespace Database\Seeders\QualificaCatalog;
 final class QuoteDocumentLayoutCatalogue
 {
     public const string CODE_PREFIX = 'qualifica_quote_';
+
+    /**
+     * Height of the footer band printed at the bottom of every client
+     * letterhead (company data and logo), measured on the images: the
+     * tallest starts 1291 twips (65pt) above the page edge. A layout on a
+     * letterhead keeps its bottom margin at least this high.
+     */
+    public const int LETTERHEAD_FOOTER_TWIPS = 1291;
 
     /** @var array<string, array{0: string, 1: string}> */
     public const array LAYOUTS = [

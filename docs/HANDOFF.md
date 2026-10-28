@@ -18,6 +18,12 @@
   `services`/`iso` non riproducibile (una sola tabella con tutte le righe), sezioni a 2 colonne di `recruitment_contract`
   rese a colonna singola, forme flottanti decorative omesse; rimosso a mano un refuso "ì" nell'header di
   `recruitment_fee_200`.
+- Fix 2026-10-28 (segnalazione utente "il footer si accavalla col testo"): `private_internship` (280) e
+  `recruitment_contract` (1134) avevano il margine inferiore sotto la fascia footer della carta intestata (misurata:
+  `QuoteDocumentLayoutCatalogue::LETTERHEAD_FOOTER_TWIPS` = 1291) -> portati a 1560; test dedicato. Il seeder e'
+  create-only: sul DB dev gia' seminato i due margini vanno aggiornati a mano (tinker) o cancellando e riseminando.
+  APERTO: l'anteprima A4 dell'editor non impagina (un solo foglio), sui layout lunghi il testo copre il footer
+  della carta intestata; in attesa di conferma utente per l'anteprima multipagina.
 - Test: `tests/Feature/Seeding/QualificaQuoteDocumentLayoutSeederTest.php` (validator, immagini possedute, variabili
   del catalogo, render `.docx` di tutti i 28, default invariato, create-only, nome occupato). Verdi anche Seeding (217),
   DocumentLayouts, Unit/DocumentLayouts, Products, QualificaTemplateSeederTest, QuoteDocumentFidelityTest.
