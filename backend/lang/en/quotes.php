@@ -19,4 +19,7 @@ return [
     'commission_recalculation' => [
         'closed' => 'The commissions of a closed quote cannot be recalculated.',
     ],
+    // Spec 0320, D-5.
+    'supplier_required' => 'The supplier is required for this product.',
+    'supplier_not_of_product' => "The selected supplier is not one of the product's suppliers.",
 ];

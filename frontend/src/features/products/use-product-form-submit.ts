@@ -21,11 +21,20 @@ const SERVER_ERROR_FIELDS = [
   'product_type',
   'usages',
   'vat_rate_id',
-  'supplier_id',
+  'suppliers',
   'unit_of_measure_id',
   'product_typology_id',
   'cost_type_id',
 ] as const
+
+/** Spec 0320: the 422 keys of each supplier row (`suppliers.N.supplier_id` / `.price` / `.cost`). */
+function supplierErrorFields(count: number): Path<ProductFormValues>[] {
+  return Array.from({ length: count }, (_, index) => [
+    `suppliers.${index}.supplier_id` as Path<ProductFormValues>,
+    `suppliers.${index}.price` as Path<ProductFormValues>,
+    `suppliers.${index}.cost` as Path<ProductFormValues>,
+  ]).flat()
+}
 
 /** Domain key of the module statistics (mirrors `PRODUCTS_DOMAIN` in `products-table.tsx`). */
 const PRODUCTS_DOMAIN = 'products'
@@ -57,6 +66,7 @@ export function useProductFormSubmit({ state, mode, suggestedCode, onSuccess }: 
     const attributeCodes = productAttributes.map((attribute) => attribute.code)
     const errorFields: Path<ProductFormValues>[] = [
       ...SERVER_ERROR_FIELDS,
+      ...supplierErrorFields(values.suppliers.length),
       ...(customFieldErrorPaths as Path<ProductFormValues>[]),
       ...attributeCodes.map((code) => `attribute_values.${code}` as Path<ProductFormValues>),
     ]

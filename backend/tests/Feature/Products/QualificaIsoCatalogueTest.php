@@ -9,6 +9,7 @@ use App\Models\AttributeLayout;
 use App\Models\BusinessFunction;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductSupplier;
 use App\Models\Registry;
 use App\RequestManagement\AttributeSectionVisibility;
 use App\Services\ProductCategories\AttributeLayoutService;
@@ -228,10 +229,10 @@ it('applies the corrections of the list: third-year codes, repeated codes, dupli
 it('links the certifying-body products to IQI once its supplier registry exists', function (): void {
     test()->seed(QualificaCatalogSeeder::class);
 
-    expect(isoProduct('ISO - Ente 27001', 'ENTE IQI_ISO 27001_1 ANNO')->supplier_id)->toBeNull();
+    expect(isoProduct('ISO - Ente 27001', 'ENTE IQI_ISO 27001_1 ANNO')->productSuppliers()->exists())->toBeFalse();
 
     $iqi = Registry::factory()->supplier()->create(['name' => 'iqi']);
     test()->seed(QualificaCatalogSeeder::class);
 
-    expect(Product::query()->where('supplier_id', $iqi->id)->count())->toBe(18);
+    expect(ProductSupplier::query()->where('supplier_id', $iqi->id)->where('is_default', true)->where('cost', 0)->count())->toBe(18);
 });

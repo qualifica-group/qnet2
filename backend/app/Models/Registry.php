@@ -147,4 +147,14 @@ class Registry extends BaseModel
     {
         return $this->hasMany(Lead::class);
     }
+
+    /**
+     * The product-supplier rows where this registry is the supplier (spec 0320).
+     *
+     * @return HasMany<ProductSupplier, $this>
+     */
+    public function productSuppliers(): HasMany
+    {
+        return $this->hasMany(ProductSupplier::class, 'supplier_id');
+    }
 }

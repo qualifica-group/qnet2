@@ -7,17 +7,19 @@ use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Models\Product;
+use App\Models\ProductSupplier;
 use App\Models\Registry;
 use RuntimeException;
 
 /**
- * `product-suppliers` migration source (spec 0203, D-7): links each migrated
- * product to its legacy supplier. Reads the same `products` endpoint as
- * ProductsSource, but is a source of its own because that one skips products
- * already migrated, and runs after `registries` (the supplier is a registry
- * resolved via `old_id`, which the products phase cannot do).
+ * `product-suppliers` migration source (spec 0203, D-7; spec 0320, D-12): gives
+ * each migrated product its default `product_suppliers` row (legacy supplier
+ * remapped via `old_id`, `price` and `cost` of the legacy record, 0 when absent). Reads the
+ * same `products` endpoint as ProductsSource, but is a source of its own because
+ * that one skips products already migrated, and runs after `registries` (the
+ * supplier is a registry resolved via `old_id`, which the products phase cannot do).
  *
- * `supplier_id` is only ever FILLED: a product that already has one (a choice
+ * The row is only ever CREATED: a product that already has suppliers (a choice
  * made in qnet) is skipped untouched, so a re-run changes nothing. A legacy
  * product without supplier is skipped; a supplier not migrated yet leaves the
  * product as is with a warning; a product not migrated fails its row. Written
@@ -60,6 +62,8 @@ class ProductSuppliersSource extends AbstractMigrationSource
             ['id' => 'id', 'label' => 'Product (external id)', 'type' => 'number'],
             ['id' => 'name', 'label' => 'Name', 'type' => 'string'],
             ['id' => 'supplier_id', 'label' => 'Supplier (external id)', 'type' => 'number'],
+            ['id' => 'price', 'label' => 'Price', 'type' => 'number'],
+            ['id' => 'cost', 'label' => 'Cost', 'type' => 'number'],
         ];
     }
 
@@ -78,6 +82,8 @@ class ProductSuppliersSource extends AbstractMigrationSource
             'id' => $record['id'] ?? null,
             'name' => $record['name'] ?? null,
             'supplier_id' => $record['supplier_id'] ?? null,
+            'price' => $record['price'] ?? null,
+            'cost' => $record['cost'] ?? null,
         ];
     }
 
@@ -105,8 +111,8 @@ class ProductSuppliersSource extends AbstractMigrationSource
             throw new RuntimeException("Product not migrated (legacy id {$externalId}); migrate products first.");
         }
 
-        // Step 2: never overwrite a supplier already set
-        if ($product->supplier_id !== null) {
+        // Step 2: never touch a product that already has suppliers
+        if ($product->productSuppliers()->exists()) {
             return MigrationRowOutcome::skipped();
         }
 
@@ -114,12 +120,21 @@ class ProductSuppliersSource extends AbstractMigrationSource
         $supplierId = $this->resolveOldId(Registry::class, $legacySupplierId);
 
         if ($supplierId === null) {
-            return MigrationRowOutcome::skipped(["Supplier not migrated (legacy id {$legacySupplierId}); the product was left without supplier. Migrate registries first."]);
+            return MigrationRowOutcome::skipped(["Supplier not migrated (legacy id {$legacySupplierId}); the product was left without suppliers. Migrate registries first."]);
         }
 
-        activity()->withoutLogs(function () use ($product, $supplierId): void {
-            $product->supplier_id = $supplierId;
-            $product->save();
+        // Step 4: the default row; the legacy price and cost are those of that supplier
+        $price = bcadd((string) ($record['price'] ?? 0), '0', 2);
+        $cost = bcadd((string) ($record['cost'] ?? 0), '0', 2);
+
+        activity()->withoutLogs(function () use ($product, $supplierId, $price, $cost): void {
+            ProductSupplier::query()->create([
+                'product_id' => $product->id,
+                'supplier_id' => $supplierId,
+                'price' => $price,
+                'cost' => $cost,
+                'is_default' => true,
+            ]);
         });
 
         return MigrationRowOutcome::created();

@@ -108,6 +108,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
+            "If the product has suppliers, the row shows **Supplier** with the product suppliers: the default is already chosen and the field is required. The row price is the chosen supplier's price and changes if you change supplier. If the supplier has a Supplier commission on that product, a notice appears next to the supplier (for example '10% commission paid'). Products proposed automatically arrive with the default supplier.",
             'A product already in the rows shows **Already added** and cannot be selected: change the quantity on the row.',
             'Single-row categories (for example Formazione) have no checkboxes: clicking a product replaces the one in the single row.',
             'With no product category picked the catalogue is disabled: pick the category first.',

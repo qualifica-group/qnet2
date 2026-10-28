@@ -279,6 +279,28 @@ describe('seedSoleProductRows', () => {
     expect(seeded[0]).toMatchObject({ product_id: 900, quantity: 1, unit_price: 49.9, vat_rate_id: 7 })
   })
 
+  // Spec 0320 D-2/D-5: the seeded row proposes the product's default supplier.
+  it('proposes the default supplier of a sole product that has suppliers', () => {
+    const withSuppliers = {
+      ...SOLE_PRODUCT,
+      meta: {
+        ...SOLE_PRODUCT.meta,
+        suppliers: [
+          { supplier_id: 5, name: 'Acme', price: '170.00', cost: '70.00', is_default: true },
+          { supplier_id: 6, name: 'Beta', price: '190.00', cost: '90.00', is_default: false },
+        ],
+      },
+    }
+
+    const seeded = seedSoleProductRows([EMPTY_LINE_ROW], [withSuppliers], 200)
+
+    expect(seeded[0]).toMatchObject({ product_id: 900, supplier_id: 5, supplier: { id: 5, name: 'Acme' }, unit_price: 170 })
+  })
+
+  it('leaves the supplier empty for a sole product without suppliers', () => {
+    expect(seedSoleProductRows([EMPTY_LINE_ROW], [SOLE_PRODUCT], 200)[0]).toMatchObject({ supplier_id: null })
+  })
+
   it('returns the very same array when the product is already on the card', () => {
     const rows = [filledRow]
 

@@ -8,8 +8,7 @@ import { enumLabelOf } from '@/features/config/enum-label'
 import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
 import { formatDecimal } from '@/features/products/column-renderers'
 import { computeProductMargin } from '@/features/products/product-margin'
-import { productPricingVisibility } from '@/features/products/product-pricing-visibility'
-import type { ProductDetailWithPermissions, ProductUsage } from '@/features/products/types'
+import type { ProductDetailWithPermissions } from '@/features/products/types'
 
 /**
  * Identity band and KPI strip of the product record card. Kept in one file:
@@ -17,12 +16,8 @@ import type { ProductDetailWithPermissions, ProductUsage } from '@/features/prod
  * together — the same split `opportunity-detail-header.tsx` makes.
  */
 
-/** One column per visible KPI tile (price / cost / margin, spec 0191), never the strip's default four. */
-const STAT_STRIP_CLASS: Record<number, string> = {
-  1: '@2xl:grid-cols-1',
-  2: '@2xl:grid-cols-2',
-  3: '@2xl:grid-cols-3',
-}
+/** Three KPI tiles (price / cost / margin), never the strip's default four. */
+const STAT_STRIP_CLASS = '@2xl:grid-cols-3'
 
 /**
  * Identity band: monogram, name, the category as subtitle, the code, type and
@@ -52,60 +47,49 @@ export function ProductDetailHeader({ product }: { product: ProductDetailWithPer
 }
 
 interface ProductStatsStripProps {
+  /** Effective cost: the default supplier's, else the standard one (spec 0320 D-4). */
   cost: string | number | null
+  /** Effective price: the default supplier's, else the standard one (rev.2 D-18). */
   price: string | number | null
-  usages: readonly ProductUsage[]
 }
 
 /**
- * KPI strip: price, cost and their margin — each only where the usages make
- * it relevant (spec 0191). The persisted amounts on the detail, the draft's,
- * live, on create (spec 0218). Renders nothing when no tile applies.
+ * KPI strip: price, cost and their margin, for every product (spec 0320 rev.3
+ * D-20). The persisted amounts on the detail, the draft's, live, on create
+ * (spec 0218).
  */
-export function ProductStatsStrip({ cost, price, usages }: ProductStatsStripProps) {
+export function ProductStatsStrip({ cost, price }: ProductStatsStripProps) {
   const { t } = useTranslation()
-  const pricing = productPricingVisibility(usages)
   const margin = computeProductMargin(cost, price)
-  const statCount = Number(pricing.price) + Number(pricing.cost) + Number(pricing.margin)
-
-  if (statCount === 0) {
-    return null
-  }
 
   return (
-    <RecordStatStrip className={STAT_STRIP_CLASS[statCount]}>
-      {pricing.price ? (
-        <RecordStat
-          label={t('products.columns.price')}
-          icon={<TrendingUp aria-hidden="true" />}
-          value={formatDecimal(price) || <DetailEmpty />}
-        />
-      ) : null}
-      {pricing.cost ? (
-        <RecordStat
-          label={t('products.columns.cost')}
-          icon={<TrendingDown aria-hidden="true" />}
-          value={formatDecimal(cost) || <DetailEmpty />}
-        />
-      ) : null}
-      {pricing.margin ? (
-        <RecordStat
-          label={t('products.margin')}
-          icon={<Wallet aria-hidden="true" />}
-          value={
-            margin ? (
-              <span className={cn(margin.amount < 0 && 'text-destructive')}>{formatDecimal(margin.amount)}</span>
-            ) : (
-              <DetailEmpty />
-            )
-          }
-          hint={
-            margin && margin.percent !== null
-              ? t('products.marginPercent', { percent: formatDecimal(margin.percent) })
-              : undefined
-          }
-        />
-      ) : null}
+    <RecordStatStrip className={STAT_STRIP_CLASS}>
+      <RecordStat
+        label={t('products.columns.price')}
+        icon={<TrendingUp aria-hidden="true" />}
+        value={formatDecimal(price) || <DetailEmpty />}
+      />
+      <RecordStat
+        label={t('products.columns.cost')}
+        icon={<TrendingDown aria-hidden="true" />}
+        value={formatDecimal(cost) || <DetailEmpty />}
+      />
+      <RecordStat
+        label={t('products.margin')}
+        icon={<Wallet aria-hidden="true" />}
+        value={
+          margin ? (
+            <span className={cn(margin.amount < 0 && 'text-destructive')}>{formatDecimal(margin.amount)}</span>
+          ) : (
+            <DetailEmpty />
+          )
+        }
+        hint={
+          margin && margin.percent !== null
+            ? t('products.marginPercent', { percent: formatDecimal(margin.percent) })
+            : undefined
+        }
+      />
     </RecordStatStrip>
   )
 }

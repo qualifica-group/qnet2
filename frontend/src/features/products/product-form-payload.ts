@@ -6,6 +6,7 @@ import type {
   ProductUsage,
   UpdateProductPayload,
 } from '@/features/products/types'
+import { rowsFromOptions, sameSupplierRows, toSuppliersPayload } from '@/features/products/product-supplier-rows'
 import type { ProductFormValues } from '@/features/products/use-product-form'
 import { buildCustomFieldsCreate, buildCustomFieldsUpdate } from '@/features/custom-fields/custom-fields-payload'
 import { submittedCode } from '@/lib/sequential-code'
@@ -59,18 +60,17 @@ export function buildCreatePayload(
     ...submittedCode(values.code, suggestedCode),
     name: values.name,
     description: values.description,
-    // Sent as typed, null included: the schema requires a value only for an
-    // active usage and the server mirrors that (spec 0191).
-    cost: values.cost,
-    price: values.price,
+    // Every usage has both amounts (rev.3 D-20); the standard ones are hidden (so null) when suppliers carry them.
+    cost: values.cost ?? 0,
+    price: values.price ?? 0,
     category_id: values.category_id as number,
     product_type: values.product_type,
     usages: values.usages,
     vat_rate_id: values.vat_rate_id,
-    supplier_id: values.supplier_id,
     unit_of_measure_id: values.unit_of_measure_id,
     product_typology_id: values.product_typology_id,
     ...(values.cost_type_id !== null ? { cost_type_id: values.cost_type_id } : {}),
+    ...(values.suppliers.length > 0 ? { suppliers: toSuppliersPayload(values.suppliers) } : {}),
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
     ...(Object.keys(attributeValues).length > 0 ? { attribute_values: attributeValues } : {}),
   }
@@ -96,10 +96,10 @@ export function buildUpdatePayload(
     payload.description = values.description
   }
   if (values.cost !== normalizeDecimal(original.cost)) {
-    payload.cost = values.cost
+    payload.cost = values.cost ?? 0
   }
   if (values.price !== normalizeDecimal(original.price)) {
-    payload.price = values.price
+    payload.price = values.price ?? 0
   }
   if (values.category_id !== original.category_id) {
     payload.category_id = values.category_id as number
@@ -113,8 +113,9 @@ export function buildUpdatePayload(
   if (values.vat_rate_id !== original.vat_rate_id) {
     payload.vat_rate_id = values.vat_rate_id
   }
-  if (values.supplier_id !== original.supplier_id) {
-    payload.supplier_id = values.supplier_id
+  // Spec 0320: the list is replaced as a whole, so it is sent only when it changed.
+  if (!sameSupplierRows(values.suppliers, rowsFromOptions(original.suppliers))) {
+    payload.suppliers = toSuppliersPayload(values.suppliers)
   }
   if (values.unit_of_measure_id !== original.unit_of_measure_id) {
     payload.unit_of_measure_id = values.unit_of_measure_id

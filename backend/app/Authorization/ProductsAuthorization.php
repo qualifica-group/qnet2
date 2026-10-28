@@ -50,7 +50,7 @@ class ProductsAuthorization extends AbstractResourceAuthorization
             // default (Sellable only), like unit_of_measure_id below.
             new FieldDefinition('usages', 'multiselect'),
             new FieldDefinition('vat_rate_id', 'select'),
-            new FieldDefinition('supplier_id', 'select'),
+            new FieldDefinition('suppliers', 'multiselect'),
             // Spec 0088, D-4: NOT `mandatory` — an absent value still resolves
             // server-side to the default unit, so the field stays restrictable
             // by the role field-permission matrix.
@@ -90,7 +90,7 @@ class ProductsAuthorization extends AbstractResourceAuthorization
             'product_type' => $mayWrite ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'usages' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'vat_rate_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
-            'supplier_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'suppliers' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'unit_of_measure_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'product_typology_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'cost_type_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

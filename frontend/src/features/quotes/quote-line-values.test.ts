@@ -238,3 +238,27 @@ describe('manual Supplier commission direction on the wire (spec 0306)', () => {
     expect(sameLines(toLineInputs([changed]), baseline)).toBe(false)
   })
 })
+
+describe('supplier_id on the wire (spec 0320 D-5)', () => {
+  it('hydrates the saved supplier and sends it with the row', () => {
+    const [row] = linesToFormValues([quoteLineFixture({ supplier_id: 5, supplier: { id: 5, name: 'Acme' } })])
+
+    expect(row).toMatchObject({ supplier_id: 5, supplier: { id: 5, name: 'Acme' } })
+    expect(toLineInputs([row])[0]).toMatchObject({ supplier_id: 5 })
+  })
+
+  it('sends null for a line without supplier and never invents the key for a row that lacks it', () => {
+    const [row] = linesToFormValues([quoteLineFixture()])
+
+    expect(toLineInputs([row])[0]).toHaveProperty('supplier_id', null)
+    expect(toLineInputs([offerRow()])[0]).not.toHaveProperty('supplier_id')
+  })
+
+  it('reads a supplier change as a real difference from the saved rows', () => {
+    const saved = [quoteLineFixture({ supplier_id: 5, supplier: { id: 5, name: 'Acme' } })]
+    const [row] = linesToFormValues(saved)
+
+    expect(sameLines(toLineInputs([row]), originalLineInputs(saved))).toBe(true)
+    expect(sameLines(toLineInputs([{ ...row, supplier_id: 6 }]), originalLineInputs(saved))).toBe(false)
+  })
+})

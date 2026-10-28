@@ -7,6 +7,8 @@
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
+import type { ProductSupplierPayload } from '@/features/products/product-supplier-rows'
+import type { ProductSupplierOption } from '@/features/products/product-suppliers'
 import type { ApplicableAttribute } from '@/features/request-management/types'
 
 /** Product classification (spec 0017, PHYSICAL spec 0307); mirrors the `ProductType` enum. */
@@ -34,11 +36,6 @@ export interface ProductVatRateSummary {
   rate: number
 }
 
-/** Minimal supplier (registry) projection hydrating the product's form/detail. */
-export interface ProductSupplierSummary {
-  id: number
-  name: string
-}
 
 /** Minimal unit of measure projection hydrating the product's form/detail (spec 0088). */
 export interface ProductUnitOfMeasureSummary {
@@ -79,6 +76,7 @@ export interface ProductDetail {
    * Money columns are `decimal:2` casts server-side: Laravel serializes them
    * as STRINGS (`"12.00"`), so the form must normalize before validating.
    * Same contract as `OpportunityDetail.estimated_value`.
+   * `cost` is the Standard cost (spec 0320 D-3): it applies only without suppliers.
    */
   cost: string | number | null
   price: string | number | null
@@ -107,9 +105,11 @@ export interface ProductDetail {
   /** The product's VAT rate, if assigned. */
   vat_rate_id: number | null
   vat_rate: ProductVatRateSummary | null
-  /** The product's supplier (a registry flagged `is_supplier`), if assigned. */
-  supplier_id: number | null
-  supplier: ProductSupplierSummary | null
+  /**
+   * The product's suppliers with their own cost, default first (spec 0320).
+   * Absent when the `suppliers` field permission hides it.
+   */
+  suppliers?: ProductSupplierOption[]
   /**
    * The product's unit of measure (spec 0088, D-4): `NOT NULL` server-side —
    * `ProductService` resolves the default unit (code `unit`) when omitted at
@@ -170,15 +170,16 @@ export interface CreateProductPayload {
   code?: string
   name: string
   description?: string | null
-  /** `null` when the matching usage is off (spec 0191). */
-  cost: number | null
-  price: number | null
+  /** Both always sent, for every usage (spec 0320 rev.3 D-20). */
+  cost: number
+  price: number
   category_id: number
   product_type: ProductType
   /** At least one (spec 0142); omitted resolves server-side to `['SALE']`. */
   usages: ProductUsage[]
   vat_rate_id: number | null
-  supplier_id: number | null
+  /** Full replacement of the supplier list (spec 0320); omitted on update = unchanged. */
+  suppliers?: ProductSupplierPayload[]
   /** `null`/omitted resolves server-side to the default unit (spec 0088, D-4). */
   unit_of_measure_id: number | null
   /** `null`/omitted resolves server-side to the default typology (spec 0099, D-3). */

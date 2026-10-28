@@ -6,8 +6,8 @@ import type { RecordCollaborationTab } from '@/components/detail/record-collabor
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { formatDateTime } from '@/features/table/cell-renderers'
-import { DEFAULT_PRODUCT_USAGES } from '@/features/products/product-form-payload'
 import { ProductDetailHeader, ProductStatsStrip } from '@/features/products/product-detail-header'
+import { effectiveAmountOfRows } from '@/features/products/product-supplier-rows'
 import { ProductDetailSections } from '@/features/products/product-detail-sections'
 import { useProductInlineEdit } from '@/features/products/use-product-inline-edit'
 import type { ProductDetailWithPermissions } from '@/features/products/types'
@@ -53,11 +53,9 @@ function ProductDetailContent({ product, onChanged }: ProductDetailViewProps) {
         header={
           <>
             <ProductDetailHeader product={product} />
-            {/* A server that omits `usages` means the default, Sellable only (spec 0142 D-3). */}
             <ProductStatsStrip
-              cost={product.cost}
-              price={product.price}
-              usages={product.usages ?? DEFAULT_PRODUCT_USAGES}
+              cost={effectiveAmountOfRows(product.suppliers ?? [], 'cost', product.cost)}
+              price={effectiveAmountOfRows(product.suppliers ?? [], 'price', product.price)}
             />
           </>
         }

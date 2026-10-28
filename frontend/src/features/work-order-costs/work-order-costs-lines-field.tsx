@@ -19,7 +19,7 @@ interface WorkOrderCostsLinesFieldProps {
   revenueOptions: RevenueLineOption[]
   rowErrors: (index: number) => CostRowErrors | undefined
   onChangeField: (index: number, patch: Partial<WorkOrderCostRowValues>) => void
-  onAddProducts: (items: QuoteCatalogProduct[]) => void
+  onAddProducts: (items: QuoteCatalogProduct[]) => Promise<void>
   onRemove: (index: number) => void
 }
 
@@ -76,7 +76,7 @@ export function WorkOrderCostsLinesField({
             remainingSlots={Math.max(0, MAX_LINES_PER_TAB - rows.length)}
             addedProductIds={NO_ADDED_IDS}
             onAdd={async (items) => {
-              onAddProducts(items)
+              await onAddProducts(items)
               return true
             }}
             onPickSingle={() => undefined}

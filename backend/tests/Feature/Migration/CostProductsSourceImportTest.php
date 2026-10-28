@@ -193,15 +193,15 @@ it('keeps a warehouse article without a legacy category on the Articoli branch',
         ->toBe(costCategory(CostProductCatalogue::BRANCHES['products'], $root->id)->id);
 });
 
-it('warns and nulls an unmigrated VAT rate and the un-remappable supplier', function () {
+it('warns and nulls an unmigrated VAT rate and never writes the legacy supplier', function () {
     $run = runCostProductsImport([legacyCostRow('equipment', 1, 'Motosega', ['vat_rate_id' => 3, 'supplier_id' => 5])]);
 
     $product = Product::query()->where('old_source', 'equipment')->firstOrFail();
 
     expect($product->vat_rate_id)->toBeNull()
-        ->and($product->supplier_id)->toBeNull()
+        ->and($product->productSuppliers()->count())->toBe(0)
         ->and($run->created_rows)->toBe(1)
-        ->and(collect($run->report)->where('level', 'warning'))->toHaveCount(2);
+        ->and(collect($run->report)->where('level', 'warning'))->toHaveCount(1);
 });
 
 // ---------------------------------------------------------------------------

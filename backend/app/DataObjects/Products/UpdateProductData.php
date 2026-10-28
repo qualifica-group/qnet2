@@ -30,13 +30,15 @@ use App\Enums\ProductUsage;
  * typology resolved by ProductService.
  *
  * `usages` (spec 0142) is never a legitimate null (min:1), so absent = null
- * needs no `*Submitted` flag, like `attributeValues`.
+ * needs no `*Submitted` flag, like `attributeValues`. `suppliers` (spec 0320)
+ * is likewise an array or absent (null = untouched; [] = all removed).
  */
 final readonly class UpdateProductData
 {
     /**
      * @param  array<string, mixed>|null  $attributeValues
      * @param  array<int, ProductUsage>|null  $usages
+     * @param  array<int, ProductSupplierData>|null  $suppliers  full replacement; null = untouched, [] = all removed
      */
     public function __construct(
         public ?string $name = null,
@@ -52,8 +54,6 @@ final readonly class UpdateProductData
         public bool $productTypeSubmitted = false,
         public ?int $vatRateId = null,
         public bool $vatRateIdSubmitted = false,
-        public ?int $supplierId = null,
-        public bool $supplierIdSubmitted = false,
         public ?int $unitOfMeasureId = null,
         public bool $unitOfMeasureIdSubmitted = false,
         public ?int $productTypologyId = null,
@@ -62,6 +62,7 @@ final readonly class UpdateProductData
         public ?array $usages = null,
         public ?int $costTypeId = null,
         public bool $costTypeIdSubmitted = false,
+        public ?array $suppliers = null,
     ) {}
 
     /**
@@ -85,8 +86,6 @@ final readonly class UpdateProductData
             productTypeSubmitted: array_key_exists('product_type', $data),
             vatRateId: array_key_exists('vat_rate_id', $data) && $data['vat_rate_id'] !== null ? (int) $data['vat_rate_id'] : null,
             vatRateIdSubmitted: array_key_exists('vat_rate_id', $data),
-            supplierId: array_key_exists('supplier_id', $data) && $data['supplier_id'] !== null ? (int) $data['supplier_id'] : null,
-            supplierIdSubmitted: array_key_exists('supplier_id', $data),
             unitOfMeasureId: array_key_exists('unit_of_measure_id', $data) && $data['unit_of_measure_id'] !== null ? (int) $data['unit_of_measure_id'] : null,
             unitOfMeasureIdSubmitted: array_key_exists('unit_of_measure_id', $data),
             productTypologyId: array_key_exists('product_typology_id', $data) && $data['product_typology_id'] !== null ? (int) $data['product_typology_id'] : null,
@@ -95,6 +94,7 @@ final readonly class UpdateProductData
             usages: array_key_exists('usages', $data) ? array_map(static fn (mixed $usage): ProductUsage => ProductUsage::from((string) $usage), (array) $data['usages']) : null,
             costTypeId: array_key_exists('cost_type_id', $data) && $data['cost_type_id'] !== null ? (int) $data['cost_type_id'] : null,
             costTypeIdSubmitted: array_key_exists('cost_type_id', $data),
+            suppliers: array_key_exists('suppliers', $data) ? ProductSupplierData::listFromValidated((array) $data['suppliers']) : null,
         );
     }
 
@@ -122,11 +122,11 @@ final readonly class UpdateProductData
         }
 
         if ($this->costSubmitted) {
-            $attributes['cost'] = $this->cost;
+            $attributes['cost'] = $this->cost ?? 0.0;
         }
 
         if ($this->priceSubmitted) {
-            $attributes['price'] = $this->price;
+            $attributes['price'] = $this->price ?? 0.0;
         }
 
         if ($this->categoryIdSubmitted) {
@@ -143,10 +143,6 @@ final readonly class UpdateProductData
 
         if ($this->vatRateIdSubmitted) {
             $attributes['vat_rate_id'] = $this->vatRateId;
-        }
-
-        if ($this->supplierIdSubmitted) {
-            $attributes['supplier_id'] = $this->supplierId;
         }
 
         if ($this->unitOfMeasureIdSubmitted) {

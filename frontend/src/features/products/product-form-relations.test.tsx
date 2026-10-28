@@ -105,8 +105,9 @@ describe('Product — VAT rate, supplier and unit of measure', () => {
   it('scopes the supplier picker to registries with the is_supplier param', async () => {
     renderCreate()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Edit Supplier' }))
-    fireEvent.click(screen.getByRole('combobox', { name: 'Supplier' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Suppliers' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add supplier' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Supplier 1' }))
 
     await waitFor(() =>
       expect(useForSelectMock).toHaveBeenCalledWith(
@@ -133,8 +134,7 @@ describe('Product — VAT rate, supplier and unit of measure', () => {
         product={productFixture({
           vat_rate_id: 4,
           vat_rate: { id: 4, name: 'Standard 22%', rate: 22 },
-          supplier_id: 11,
-          supplier: { id: 11, name: 'ACME Supplies' },
+          suppliers: [{ supplier_id: 11, name: 'ACME Supplies', price: '110.00', cost: '10.00', is_default: true }],
           unit_of_measure_id: 2,
           unit_of_measure: { id: 2, name: 'Kilogram', symbol: 'kg' },
         })}

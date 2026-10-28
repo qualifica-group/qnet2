@@ -55,6 +55,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             'Tick one or more products and press **Add N selected**: each product becomes a row with quantity 1 and the product price and VAT.',
+            "If the product has suppliers, the row shows **Supplier** with the product suppliers: the default is already chosen and the field is required. The row price is the chosen supplier's price and changes if you change supplier. If the supplier has a Supplier commission on that product, a notice appears next to the supplier (for example '10% commission paid'). Products proposed automatically arrive with the default supplier.",
             'A product already on the rows is marked **Already added** and cannot be selected: change its quantity on the row.',
             'On a single-row category a click on a product replaces the row product; on a simplified category the row shows the amounts only.',
           ],

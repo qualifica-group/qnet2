@@ -10,7 +10,7 @@ import { hiddenAttributeCodes } from '@/features/attributes/attribute-section-vi
 import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { EffectiveAttribute } from '@/features/product-categories/types'
 import { buildAttributeEnumSchema } from '@/features/request-management/attribute-values-schema'
-import { productPricingVisibility } from '@/features/products/product-pricing-visibility'
+import type { ProductSupplierRow } from '@/features/products/product-supplier-rows'
 import type { ProductType, ProductUsage } from '@/features/products/types'
 
 /**
@@ -47,7 +47,7 @@ function baseFields(t: TFunction) {
     description: z.string().nullable(),
     // cost/price/category_id are held nullable so the controlled inputs can
     // represent "empty"; the required-value superRefine below rejects a null
-    // at submit (cost/price only when their usage is on), mirroring the backend.
+    // at submit (cost/price only without suppliers), mirroring the backend.
     cost: z.number().nonnegative(t('products.form.costInvalid')).nullable(),
     price: z.number().nonnegative(t('products.form.priceInvalid')).nullable(),
     category_id: z.number().nullable(),
@@ -55,12 +55,49 @@ function baseFields(t: TFunction) {
     // Spec 0142: the independent Sellable / Usable-as-cost set, at least one.
     usages: z.array(z.enum(['SALE', 'COST', 'INTERNAL'])).min(1, t('products.form.usagesRequired')),
     vat_rate_id: z.number().nullable(),
-    supplier_id: z.number().nullable(),
+    // Spec 0320: the product's suppliers with their own cost; completeness,
+    // duplicates and the single default are checked in `withRequiredValueRules`.
+    suppliers: z.array(
+      z.object({
+        supplier_id: z.number().nullable(),
+        name: z.string(),
+        price: z.number().nullable(),
+        cost: z.number().nullable(),
+        is_default: z.boolean(),
+      }),
+    ),
     // `null`/unset resolves server-side to the default unit (spec 0088, D-4).
     unit_of_measure_id: z.number().nullable(),
     product_typology_id: z.number().nullable(),
     // Spec 0251: optional default cost type of the product.
     cost_type_id: z.number().nullable(),
+  }
+}
+
+function addAmountIssue(ctx: z.RefinementCtx, index: number, field: 'price' | 'cost', value: number | null, t: TFunction) {
+  const message = value === null ? t(`products.form.suppliers.${field}Required`) : value < 0 ? t(`products.form.${field}Invalid`) : null
+  if (message) {
+    ctx.addIssue({ code: 'custom', path: ['suppliers', index, field], message })
+  }
+}
+
+/** Each supplier row complete, no supplier twice, and with 2+ rows exactly one default (spec 0320 D-1/D-2). */
+function addSupplierIssues(rows: ProductSupplierRow[], ctx: z.RefinementCtx, t: TFunction) {
+  const seen = new Set<number>()
+  rows.forEach((row, index) => {
+    if (row.supplier_id === null) {
+      ctx.addIssue({ code: 'custom', path: ['suppliers', index, 'supplier_id'], message: t('products.form.suppliers.supplierRequired') })
+    } else if (seen.has(row.supplier_id)) {
+      ctx.addIssue({ code: 'custom', path: ['suppliers', index, 'supplier_id'], message: t('products.form.suppliers.duplicate') })
+    } else {
+      seen.add(row.supplier_id)
+    }
+    // Rev.3 D-20: every supplier carries both amounts, whatever the usages.
+    addAmountIssue(ctx, index, 'price', row.price, t)
+    addAmountIssue(ctx, index, 'cost', row.cost, t)
+  })
+  if (rows.length > 1 && rows.filter((row) => row.is_default).length !== 1) {
+    ctx.addIssue({ code: 'custom', path: ['suppliers'], message: t('products.form.suppliers.defaultRequired') })
   }
 }
 
@@ -72,9 +109,8 @@ function withRequiredValueRules<T extends z.ZodTypeAny>(schema: T, t: TFunction)
       price: number | null
       usages: ProductUsage[]
       product_type: ProductType
+      suppliers: ProductSupplierRow[]
     }
-    // Spec 0191 D-1: a value is required only when its usage is on; a hidden one is not validated.
-    const visibility = productPricingVisibility(record.usages)
     // Spec 0307 D-2: internal use (stock) only makes sense on a physical good.
     if (record.usages.includes('INTERNAL') && record.product_type !== 'PHYSICAL') {
       ctx.addIssue({ code: 'custom', path: ['usages'], message: t('products.form.usagesInternalNeedsPhysical') })
@@ -82,10 +118,12 @@ function withRequiredValueRules<T extends z.ZodTypeAny>(schema: T, t: TFunction)
     if (record.category_id === null) {
       ctx.addIssue({ code: 'custom', path: ['category_id'], message: t('products.form.categoryRequired') })
     }
-    if (visibility.cost && record.cost === null) {
+    addSupplierIssues(record.suppliers, ctx, t)
+    // Rev.3 D-20: without suppliers the standard cost and price are required, for every usage.
+    if (record.suppliers.length === 0 && record.cost === null) {
       ctx.addIssue({ code: 'custom', path: ['cost'], message: t('products.form.costRequired') })
     }
-    if (visibility.price && record.price === null) {
+    if (record.suppliers.length === 0 && record.price === null) {
       ctx.addIssue({ code: 'custom', path: ['price'], message: t('products.form.priceRequired') })
     }
   })

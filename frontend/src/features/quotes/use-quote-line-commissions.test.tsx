@@ -188,3 +188,72 @@ describe('useQuoteLineCommissions — aggiunta dal catalogo', () => {
     expect(defaults?.get(20)).toEqual({ commissions: [], supplierCommissionDirection: null })
   })
 })
+
+describe('useQuoteLineCommissions — fornitore (spec 0320 D-7)', () => {
+  const withSuppliers = (): QuoteCatalogProduct => {
+    const item = product(20, '50.00')
+    return {
+      ...item,
+      meta: {
+        ...item.meta,
+        suppliers: [
+          { supplier_id: 5, name: 'Acme', price: '130.00', cost: '30.00', is_default: false },
+          { supplier_id: 6, name: 'Beta', price: '135.00', cost: '35.00', is_default: true },
+        ],
+      },
+    }
+  }
+
+  it('asks the defaults of a new row with its default supplier', async () => {
+    vi.mocked(fetchQuoteCommissionDefaults).mockResolvedValue(DEFAULTS)
+    const { result } = renderCommissions()
+
+    await result.current.defaultsForNewRows([withSuppliers()])
+
+    expect(fetchQuoteCommissionDefaults).toHaveBeenCalledWith(expect.objectContaining({ product_id: 20, supplier_id: 6 }))
+  })
+
+  it('computes the new row net amount from the default supplier price, not the standard one (rev.2 D-17)', async () => {
+    vi.mocked(fetchQuoteCommissionDefaults).mockResolvedValue(DEFAULTS)
+    const { result } = renderCommissions()
+
+    await result.current.defaultsForNewRows([withSuppliers()])
+
+    expect(fetchQuoteCommissionDefaults).toHaveBeenCalledWith(expect.objectContaining({ line_net_amount: 135 }))
+  })
+
+  it('asks the defaults of the row with the new supplier, after a confirmed change', async () => {
+    confirm.mockResolvedValue(true)
+    vi.mocked(fetchQuoteCommissionDefaults).mockResolvedValue(DEFAULTS)
+    const { result } = renderCommissions()
+
+    const defaults = await result.current.defaultsForSupplier({ ...existingRow, supplier_id: 5 }, 6)
+
+    expect(confirm).toHaveBeenCalled()
+    expect(fetchQuoteCommissionDefaults).toHaveBeenCalledWith(
+      expect.objectContaining({ product_id: 10, supplier_id: 6, line_net_amount: 200 }),
+    )
+    expect(defaults?.supplierCommissionDirection).toBe('RECEIVED')
+  })
+
+  it('changes nothing when the regeneration is cancelled', async () => {
+    confirm.mockResolvedValue(false)
+    const { result } = renderCommissions()
+
+    expect(await result.current.defaultsForSupplier(existingRow, 6)).toBeNull()
+    expect(fetchQuoteCommissionDefaults).not.toHaveBeenCalled()
+  })
+
+  it('re-syncs the commissions of a row with the supplier it carries when a role changes', async () => {
+    vi.mocked(fetchQuoteCommissionDefaults).mockResolvedValue({ commissions: [], supplier_commission_direction: null })
+    const { rerender } = renderHook(
+      ({ ctx }: { ctx: QuoteCommissionContext }) =>
+        useQuoteLineCommissions({ value: [{ ...existingRow, supplier_id: 5 }], onChange: vi.fn(), commissionContext: ctx }),
+      { initialProps: { ctx: context(4) } },
+    )
+
+    await act(async () => rerender({ ctx: context(77) }))
+
+    await waitFor(() => expect(fetchQuoteCommissionRecipients).toHaveBeenCalledWith(expect.objectContaining({ supplier_id: 5 })))
+  })
+})

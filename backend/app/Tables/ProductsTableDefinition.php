@@ -10,7 +10,9 @@ use App\Models\ProductTypology;
 use App\Models\UnitOfMeasure;
 use App\Models\User;
 use App\Services\ProductService;
+use App\Services\Table\FilterApplier;
 use App\Tables\Products\ProductColumnCatalog;
+use App\Tables\Products\ProductEffectivePricingColumn;
 use App\Tables\Products\ProductRelationColumns;
 use App\Tables\Products\ProductStockColumn;
 use App\Tables\Products\ProductUsageColumn;
@@ -23,8 +25,9 @@ use Illuminate\Support\Facades\Gate;
  * Table definition for the `products` domain (spec 0017; `code` per spec
  * 0065, AC-009b).
  *
- * Real columns (code, name, description, cost, price, created_at) are handled
- * entirely by the generic engine. `category` and `unit_of_measure` (spec
+ * Real columns (code, name, description, created_at) are handled
+ * entirely by the generic engine, except `price` and `cost`, which are the
+ * effective values (spec 0320, ProductEffectivePricingColumn). `category` and `unit_of_measure` (spec
  * 0088) have no real DB column of their own (they are the related lookup's
  * name) and are DERIVED: their set filter/sort/distinct-values are resolved
  * here against the related name, mirroring BusinessFunctionsTableDefinition's
@@ -33,11 +36,19 @@ use Illuminate\Support\Facades\Gate;
  */
 class ProductsTableDefinition extends AbstractTableDefinition
 {
+    private readonly ProductEffectivePricingColumn $priceColumn;
+
+    private readonly ProductEffectivePricingColumn $costColumn;
+
     public function __construct(
         private readonly ProductRelationColumns $relationColumns,
         private readonly ProductUsageColumn $usageColumn,
+        FilterApplier $filters,
         private readonly ProductService $service,
-    ) {}
+    ) {
+        $this->priceColumn = ProductEffectivePricingColumn::forPrice($filters);
+        $this->costColumn = ProductEffectivePricingColumn::forCost($filters);
+    }
 
     public function domain(): string
     {
@@ -65,6 +76,8 @@ class ProductsTableDefinition extends AbstractTableDefinition
         // projects them.
         $query = Product::query()->with(['category', 'unitOfMeasure', 'productTypology', 'costType']);
         ProductStockColumn::withSum($query);
+        $this->priceColumn->withEffectiveValue($query);
+        $this->costColumn->withEffectiveValue($query);
 
         return $query;
     }
@@ -153,8 +166,8 @@ class ProductsTableDefinition extends AbstractTableDefinition
             'code' => $row->code,
             'name' => $row->name,
             'description' => $row->description,
-            'cost' => $row->cost === null ? null : (float) $row->cost,
-            'price' => $row->price === null ? null : (float) $row->price,
+            $this->costColumn->columnId() => $this->costColumn->value($row),
+            $this->priceColumn->columnId() => $this->priceColumn->value($row),
             'category' => $this->categorySummary($row->category),
             'unit_of_measure' => $this->unitOfMeasureSummary($row->unitOfMeasure),
             'product_typology' => $this->productTypologySummary($row->productTypology),
@@ -249,7 +262,24 @@ class ProductsTableDefinition extends AbstractTableDefinition
             return true;
         }
 
+        $pricing = $this->pricingColumn($columnId);
+
+        if ($pricing !== null) {
+            $pricing->applyFilter($query, $columnConfig, $filter);
+
+            return true;
+        }
+
         return $this->relationColumns->applyFilter($query, $columnId, $filter);
+    }
+
+    private function pricingColumn(string $columnId): ?ProductEffectivePricingColumn
+    {
+        return match ($columnId) {
+            ProductEffectivePricingColumn::PRICE => $this->priceColumn,
+            ProductEffectivePricingColumn::COST => $this->costColumn,
+            default => null,
+        };
     }
 
     /**
@@ -268,6 +298,14 @@ class ProductsTableDefinition extends AbstractTableDefinition
 
         if ($columnId === ProductStockColumn::COLUMN_ID) {
             ProductStockColumn::applySort($query, $direction);
+
+            return true;
+        }
+
+        $pricing = $this->pricingColumn($columnId);
+
+        if ($pricing !== null) {
+            $pricing->applySort($query, $direction);
 
             return true;
         }

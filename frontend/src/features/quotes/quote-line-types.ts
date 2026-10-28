@@ -180,6 +180,9 @@ export interface QuoteLine {
    * fields (`types.ts`) — a missing key reads the same as `null`.
    */
   offer_line_id?: number | null
+  /** Spec 0320 D-5: the line's supplier (null = the product has none). Optional for fixture compatibility. */
+  supplier_id?: number | null
+  supplier?: QuoteRelationRef | null
 }
 
 /**
@@ -195,6 +198,8 @@ export interface QuoteLineInput {
   /** >= 0, max 99999999.99, max 2 decimals. */
   unit_price: number
   vat_rate_id?: number | null
+  /** Spec 0320 D-5: required when the product has suppliers, null otherwise. */
+  supplier_id?: number | null
   /** Omitted = the server keeps the stored value; `null` clears it. */
   additional_description?: string | null
   /** Row position; when omitted the server uses the array index. */
@@ -219,6 +224,7 @@ export interface QuoteLineRowErrors {
   product_id?: FieldError
   quantity?: FieldError
   unit_price?: FieldError
+  supplier_id?: FieldError
 }
 
 /** One selectable OFFER row of the Cost tab's "Associated product" field (spec 0144 AC-011). */

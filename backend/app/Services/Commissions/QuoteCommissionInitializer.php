@@ -34,7 +34,7 @@ final class QuoteCommissionInitializer
         // Submitted role ids win over the quote's persisted ones: the caller is
         // an open form whose roles may already have been changed but not saved.
         $recipients = $this->recipients->resolve(
-            $product,
+            $data->supplierId,
             $data->commercialId ?? $quote?->commercial_id,
             $data->reporterId ?? $quote?->reporter_id,
             $data->supervisorId ?? $quote?->supervisor_id,

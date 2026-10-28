@@ -43,6 +43,17 @@ describe('workOrderCostRowSchema', () => {
     expect(issuePaths(validRow({ unit_price: 0 }))).toEqual([])
   })
 
+  it('requires a supplier when the product has suppliers (spec 0320 D-9), not for a row it was not looked up for', () => {
+    const suppliers = [{ supplier_id: 40, name: 'Fornitore Uno', price: '108.00', cost: '8.00', is_default: true }]
+    const withSuppliers = (supplierId: number | null, list = suppliers) =>
+      validRow({ supplier_id: supplierId, display: { ...validRow().display, product_suppliers: list } })
+
+    expect(issuePaths(withSuppliers(null))).toEqual(['lines.0.supplier_id'])
+    expect(issuePaths(withSuppliers(40))).toEqual([])
+    expect(issuePaths(withSuppliers(null, []))).toEqual([])
+    expect(issuePaths(validRow({ supplier_id: null }))).toEqual([])
+  })
+
   it('rejects a missing or malformed incurred_on', () => {
     expect(issuePaths(validRow({ incurred_on: '' }))).toEqual(['lines.0.incurred_on'])
     expect(issuePaths(validRow({ incurred_on: '15/09/2026' }))).toEqual(['lines.0.incurred_on'])

@@ -28,6 +28,60 @@
 - Fuori scope, da fare: margine di settore / ricavi pro-quota per periodo (legacy MargineDiSettore), avanzamento da
   "stato consulenza" ISO.
 
+## Spec 0320 Gestione multifornitore prodotti — VERDE, COMMITTATO (2026-10-28)
+
+- Prodotto con N fornitori (`product_suppliers`: supplier_id registry `is_supplier`, `cost`, `is_default`, unique
+  prodotto+fornitore, FK fornitore restrict -> delete anagrafica 409). `products.supplier_id` ELIMINATO (dati copiati
+  come predefinito, cost null -> 0); `products.cost` resta "Costo standard" (vale solo senza fornitori; obbligatorio per
+  uso COST solo senza fornitori). Permesso di campo `products.supplier_id` -> `suppliers`.
+- Contratto: write prodotto `suppliers[{supplier_id,cost,is_default}]` (full replace, `supplier_id` prohibited);
+  `ProductResource.suppliers[{supplier_id,name,cost,is_default}]` e for-select `meta.suppliers` (default primo).
+  `quote_lines.supplier_id` (REVENUE e COST, tutti i canali): obbligatorio e tra i fornitori del prodotto se ne ha,
+  null altrimenti; rivalidato solo su riga nuova o prodotto/fornitore cambiati. 422 `quotes.supplier_required` /
+  `quotes.supplier_not_of_product`; costi commessa idem con `work_order_costs.*` (ma prodotto senza fornitori = libero).
+- Provvigioni: `CommissionRecipientResolver::resolve(?int $supplierId, ...)` = fornitore della riga; commission-defaults
+  e commission-recipients accettano `supplier_id`. Proforma Ente e bozza fattura raggruppano per fornitore di riga.
+- Regola condivisa `App\Products\ProductSupplierRule` (+ `Quotes\QuoteLineSupplierRule`, `WorkOrders\WorkOrderCostSupplierRule`);
+  sync `App\Products\ProductSupplierSync`. FE: helper `features/products/product-suppliers.ts`, select
+  `product-supplier-select.tsx`, editor `product-suppliers-editor.tsx`; RDA/ODA precompilano dal costo del fornitore.
+- Legacy (solo qnet-2): `product-suppliers` crea la riga predefinita col cost legacy se il prodotto non ha fornitori;
+  `QuotesSource` mette il fornitore predefinito sulle righe. Legacy `../qnet` non toccato.
+- Verifica: Pest completo 12613/12629 (fallimenti preesistenti: PDF LibreOffice, sorgente users col flag
+  `EXTERNAL_MIGRATION_USERS_LINK_ONLY`, `TableBulkDeleteTest:131` guarded/forbidden su utenti, 4 ManagementControl
+  flaky sotto carico); Vitest completo verde (4 timeout da carico ripassati); `tsc -b` pulito; ESLint e Pint puliti.
+  Migrate + rollback provati su copia MySQL temporanea (eliminata); `qnet2` risulta poi migrato (non da questa sessione).
+- Fix post-verifica (segnalazione utente, prodotto 2467): la colonna `cost` della griglia Prodotti mostra il costo
+  EFFETTIVO (predefinito, altrimenti standard) con sort e filtro sullo stesso valore: `Tables\Products\ProductCostColumn`
+  (subquery costante + FilterApplier su tabella derivata). Ora generalizzata in `ProductEffectivePricingColumn`
+  (`forPrice`/`forCost`): anche la colonna `price` e' effettiva. Test `ProductEffectivePricingColumnTest`.
+- Rev. 2 (prezzo per fornitore): `product_suppliers.price` (default 0, backfill da products.price); righe REVENUE
+  prendono il prezzo del fornitore scelto e si riprezzano al cambio; server: `SimplifiedOfferLineNormalizer` (Gestione
+  Richieste/Iscritti) e `ProductOfferLineResolver` (Lead) dal fornitore. FE `productPriceFor`, select con prop `amount`.
+- Rev. 3 (cambio di rotta utente): ogni prodotto ha SEMPRE prezzo e costo (standard senza fornitori, per fornitore con
+  fornitori), `products.price/cost` NOT NULL default 0, eliminato `RequiresPricingForUsages`. Commissione Fornitore
+  (regola che vincerebbe oggi, tipologia con calcolo Fornitore acceso) -> costo del fornitore 0 bloccato con avviso:
+  `App\Products\SupplierCommissionLookup`, `GET /api/products/supplier-commissions` (authz products.viewAny|create|update,
+  quotes.create|update, work-orders.manageCosts), `ProductResource.suppliers[].commission` (non nel for-select).
+  Righe COST offerta e costi commessa nuove/cambiate con quel fornitore -> unit_price 0 (QuoteLineWriter,
+  WorkOrderCostWriter); l'import legacy offerte NO (`QuoteLineData::$keepsUnitPrice`, decisione utente). RDA/ODA liberi.
+  Migrazioni nuove: `2026_11_05_100200_add_price_to_product_suppliers_table`, `2026_11_05_100300_make_product_price_and_cost_not_nullable`.
+- Verifica finale (T-22) VERDE AC-001..AC-033: Pest 12669/12685 (non verdi tutti preesistenti/altra sessione: users
+  LINK_ONLY, PDF LibreOffice, TableBulkDeleteTest:131, 4 ManagementControl "array offset on null" su nodo nav
+  `management-control-section`, sospetto commit cef3c411), Vitest 9408/9408, tsc -b, ESLint, Pint puliti.
+- Legacy: `product-suppliers` (servizi) gia' collegava i fornitori; su `qnet2_prod_20261024` 250/250 servizi con
+  fornitore. Articoli di costo legacy con fornitore (3) restano senza: decisione utente "lascia come era".
+- Manuale: guide in-app IT/EN aggiornate (products, quotes, request-management, enrollee-management, work-orders,
+  purchase-requests, purchase-orders); manuale Claude Docs aggiornato (Prodotti, Offerte, provvigioni, Gestione
+  Richieste, migrazione).
+- UI Prodotti: sezione "Fornitori" a tutta larghezza (`ProductSuppliersRecordSection`), tabella listino
+  `product-suppliers-table.tsx` (avatar, Predefinito, prezzo/costo/margine, pillola commissione) ed editor a colonne
+  (`product-supplier-editor-row.tsx`); breakpoint di contenitore `@xl` tabella, `@3xl` editor (`product-suppliers-layout.ts`).
+- Deploy provato su copia di `qnet2_prod_20261024` (eliminata): `migrate` -> 250/250 prodotti col fornitore legacy come
+  predefinito (stesso fornitore/costo/prezzo), 7923/7923 righe d'offerta col fornitore, nessun prodotto/riga perso,
+  515 costi null -> 0; rollback ripristina products.supplier_id identico.
+- Prossimi passi: `migrate` su `qnet2` dev (2 migrazioni rev.2/rev.3 non ancora eseguite) con ok utente.
+  Fuori scope segnalati: fatture passive su Costo standard; RDA senza fornitori ancora da prezzo di vendita (0208 D-13).
+
 ## Seeder di reset degli Ambiti di assegnazione — VERDE, COMMITTATO (2026-10-28)
 
 - Richiesta utente: oltre ai ruoli, reset degli "Ambito di assegnazione". Nuovo `QualificaAssignmentScopeResetSeeder`

@@ -159,6 +159,7 @@ export function useOfferLinesForm(
           value: lines.map((line) => ({
             ...(line.id !== undefined ? { id: line.id } : {}),
             product_id: line.product_id,
+            supplier_id: line.supplier_id ?? null,
             quantity: line.quantity,
             unit_price: line.unit_price,
             vat_rate_id: line.vat_rate_id ?? null,

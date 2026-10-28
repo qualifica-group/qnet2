@@ -2,6 +2,7 @@
 
 use App\Models\PaymentMethod;
 use App\Models\ProformaRequest;
+use App\Models\QuoteLine;
 use App\Models\Registry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -79,4 +80,29 @@ it('AC-004: create/summary need proforma-requests.create and a visible work orde
     $this->getJson("{$url}/summary")->assertForbidden();
     $this->getJson("/api/proforma-requests/{$request->id}")->assertForbidden();
     $this->postJson('/api/tables/proforma-requests/rows', ['startRow' => 0, 'endRow' => 25])->assertForbidden();
+});
+
+it('AC-010 (spec 0320): the same product with two line suppliers raises one institution request per line supplier, each draft offering only its own line', function () {
+    $actor = invoiceUserWith(['viewAny', 'view', 'create']);
+    $actor->givePermissionTo('proforma-requests.create');
+    Sanctum::actingAs($actor);
+    $supplierA = Registry::factory()->supplier()->create();
+    $supplierB = Registry::factory()->supplier()->create();
+    $workOrder = proformaWorkOrder([['institution', $supplierA]]);
+    $lineA = $workOrder->quoteLines()->sole();
+    $lineB = QuoteLine::factory()->create([
+        'quote_id' => $lineA->quote_id,
+        'product_id' => $lineA->product_id,
+        'supplier_id' => $supplierB->id,
+    ]);
+    $workOrder->quoteLines()->attach($lineB->id);
+
+    $this->postJson("/api/work-orders/{$workOrder->id}/proforma-requests", ['note' => 'x'])->assertCreated();
+
+    $requests = ProformaRequest::query()->where('work_order_id', $workOrder->id)->get()->keyBy('supplier_id');
+    expect($requests)->toHaveCount(2)->and($requests->keys()->sort()->values()->all())->toBe(collect([$supplierA->id, $supplierB->id])->sort()->values()->all());
+
+    $offered = fn (ProformaRequest $request): array => collect($this->getJson("/api/proforma-requests/{$request->id}/invoice-draft")->assertOk()->json('data.available_lines'))->pluck('quote_line_id')->all();
+    expect($offered($requests[$supplierA->id]))->toBe([$lineA->id])
+        ->and($offered($requests[$supplierB->id]))->toBe([$lineB->id]);
 });

@@ -8,6 +8,7 @@ use App\Migrations\AbstractMigrationSource;
 use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
+use App\Migrations\Sources\Concerns\AssignsDefaultProductSuppliers;
 use App\Migrations\Sources\Concerns\MapsLegacyOperationalRecord;
 use App\Migrations\Sources\Concerns\MapsLegacyQuoteCostLines;
 use App\Migrations\Sources\Concerns\MapsLegacyQuoteLines;
@@ -47,10 +48,12 @@ use RuntimeException;
  * opportunity's callback are written as is (G-14); a legacy customer other
  * than the opportunity's is reported, the offer stays under the opportunity
  * (G-15). The legacy "Info preliminari" land in the attribute values
- * applicable to the offer's own lines (G-17).
+ * applicable to the offer's own lines (G-17). Every line carries the default
+ * supplier its product has at migration time, null without one (spec 0320, D-6).
  */
 class QuotesSource extends AbstractMigrationSource
 {
+    use AssignsDefaultProductSuppliers;
     use MapsLegacyOperationalRecord;
     use MapsLegacyQuoteCostLines;
     use MapsLegacyQuoteLines;
@@ -91,6 +94,7 @@ class QuotesSource extends AbstractMigrationSource
             MigrationDependency::required('opportunities'),
             MigrationDependency::optional('products'),
             MigrationDependency::optional('cost-products'),
+            MigrationDependency::optional('product-suppliers'),
             MigrationDependency::optional('product-category-attributes'),
             MigrationDependency::optional('vat-rates'),
             MigrationDependency::optional('payment-methods'),
@@ -177,6 +181,7 @@ class QuotesSource extends AbstractMigrationSource
         $this->reportCustomerMismatch((bool) ($record['customer_differs_from_opportunity'] ?? false), $warnings);
         [$lines, $legacyLineIds] = $this->legacyOfferLines($record['lines'] ?? [], $warnings);
         $costLines = $this->legacyCostLines($record['cost_lines'] ?? [], $legacyLineIds, $warnings);
+        [$lines, $costLines] = $this->withDefaultSuppliers($lines, $costLines, (array) ($record['cost_lines'] ?? []), $warnings);
 
         // Step 2: the managers to write after the create (read before it, see managerSlotsToWrite()).
         $managerSlots = $this->managerSlotsToWrite($opportunity, $record, $warnings);

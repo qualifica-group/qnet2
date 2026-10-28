@@ -55,6 +55,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             'Spunta uno o più prodotti e premi **Aggiungi N selezionati**: ogni prodotto diventa una riga con quantità 1, prezzo e IVA del prodotto.',
+            "Se il prodotto ha dei fornitori, sulla riga compare **Fornitore** con i fornitori del prodotto: il predefinito è già scelto e il campo è obbligatorio. Il prezzo della riga è quello del fornitore scelto e cambia se cambi fornitore. Se il fornitore ha una commissione Fornitore su quel prodotto, accanto al fornitore compare l'avviso (per esempio 'Commissione 10% pagata'). I prodotti proposti automaticamente arrivano con il fornitore predefinito.",
             'Un prodotto già nelle righe è segnato **Già aggiunto** e non si seleziona: la quantità si cambia sulla riga.',
             'Con una categoria a riga singola il clic su un prodotto sostituisce quello della riga; con una categoria semplificata la riga mostra solo gli importi.',
           ],

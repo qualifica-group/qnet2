@@ -98,15 +98,15 @@ describe('Product — decimal cost/price hydration', () => {
   it('opens the money editor on the number behind the decimal string', () => {
     renderDetail(productFixture({ price: '1200.50' }))
 
-    fireEvent.click(pencilOf('Price'))
-    expect(inputOf('Price')).toHaveValue(1200.5)
+    fireEvent.click(pencilOf('Standard price'))
+    expect(inputOf('Standard price')).toHaveValue(1200.5)
   })
 
   it('PATCHes only the edited amount', async () => {
     updateProductMock.mockResolvedValue(productFixture({ price: '1250.00' }))
     renderDetail(productFixture({ usages: ['SALE', 'COST'] }))
 
-    typeInRow('Price', '1250', 'Save')
+    typeInRow('Standard price', '1250', 'Save')
 
     await waitFor(() => expect(updateProductMock).toHaveBeenCalledWith(5, { price: 1250 }))
   })

@@ -42,7 +42,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Press New product: the form looks like the card, with the same sections and closed rows (the Code is already suggested).',
-            'Click a row (or its pencil) to open it, fill it in and press Done to keep the value or Revert to put it back. Sections: Identity, Classification, Pricing and supply, Attributes.',
+            'Click a row (or its pencil) to open it, fill it in and press Done to keep the value or Revert to put it back. Sections: Identity, Classification, Pricing and supply, Suppliers, Attributes.',
             'The header shows Price, Cost and Margin as you fill them in.',
             'Press Save: QNet checks everything and shows "Product created successfully.". Leaving without saving asks for confirmation.',
           ],
@@ -177,15 +177,24 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Field', 'What to enter'],
           rows: [
-            ['Cost', 'How much the product costs you. Required if the product is Usable as cost, zero or positive; it only appears in that case.'],
-            ['Price', 'The selling price. Required if the product is Sellable, zero or positive; it only appears in that case.'],
+            ['Standard price', 'The price of the product when it has no suppliers. Required, zero or positive (default 0). With suppliers it no longer appears.'],
+            ['Standard cost', 'How much the product costs you when it has no suppliers. Required, zero or positive (default 0). With suppliers it no longer appears.'],
             ['VAT', 'The VAT rate, from the VAT list.'],
-            ['Supplier', 'Who supplies the product.'],
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            "Every product, whatever its usage (Sellable, Usable as cost, Internal), has a **Price** and a **Cost**: usages only decide where the product can be chosen.",
+            "In the **Suppliers** section you can add several suppliers, each with its own **Price** and **Cost** (required, default 0). One is the **Default**: with a single supplier it is automatic, with several suppliers you must choose it. With suppliers the Standard price and Standard cost no longer appear. The Suppliers section spans the full width: a table with supplier, price, cost and margin (in euro and as a percentage, red when negative), the Default badge next to the name and, instead of the cost, the commission when the supplier has one. While editing, each row shows its margin as you type.",
+            "If the supplier has a **Supplier** commission on that product (the Commission Configurator rule that would apply today: dedicated to the supplier on the product or its category, or the generic Supplier role rule; only if the typology has **Supplier commission calculation** on), its **Cost** is locked at 0 and the notice \"10% commission paid\" or \"received\" (or \"Fixed commission ...\") appears.",
+            "The grid **Price** and **Cost** columns (filters and sorting too) and the product **Price**, **Cost** and **Margin** box show the default supplier's values; without suppliers the standard ones.",
+            "A registry that is the supplier of a product cannot be deleted.",
           ],
         },
         {
           type: 'paragraph',
-          text: 'If the product is both Sellable and Usable as cost, the Margin (price minus cost) appears below cost and price with its percentage of the price. It updates as you type. If you remove a usage, the field disappears but the value already typed is kept: it comes back if you tick it again.',
+          text: 'The Margin (price minus cost, with suppliers those of the default supplier) appears below price and cost with its percentage of the price. It updates as you type.',
         },
         {
           type: 'warning',
@@ -223,7 +232,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "From the Actions menu choose View to open the card. You find the code and name, Price, Cost and Margin in evidence (each only when relevant: the Margin appears only with both usages), the Identity, Classification and Pricing and supply sections, the attributes (split into the same sections set up for the category, empty ones included), the custom fields, the change history (if you have permission) and the Created at date.",
+          text: "From the Actions menu choose View to open the card. You find the code and name, Price, Cost and Margin in evidence (of the default supplier, or standard if there are no suppliers), the Identity, Classification, Pricing and supply and Suppliers sections, the attributes (split into the same sections set up for the category, empty ones included), the custom fields, the change history (if you have permission) and the Created at date.",
         },
         {
           type: 'steps',
@@ -235,7 +244,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "The Code cannot change after creation. Changing the Category, the attributes the new category adds are filled in the same box; turning on a Usage asks the Price or Cost in the same box. A field without a pencil is read-only for your role.",
+          text: "The Code cannot change after creation. Changing the Category, the attributes the new category adds are filled in the same box; turning on a Usage asks the Price and Cost in the same box. A field without a pencil is read-only for your role.",
         },
         {
           type: 'paragraph',
@@ -254,7 +263,7 @@ const guide: HelpGuide = {
             'Keep the proposed Code and write the Name, for example "Train trip".',
             'Choose the right Category.',
             'In Offer usage remove Sellable and tick Usable as cost.',
-            'Enter the Cost, then choose the VAT.',
+            'Enter the Cost (and the Price), then choose the VAT.',
             'Fill in the required attributes and press Save.',
           ],
         },

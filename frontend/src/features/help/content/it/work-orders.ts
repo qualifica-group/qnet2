@@ -162,6 +162,7 @@ const guide: HelpGuide = {
             'Apri la scheda **Costi effettivi**: un unico riquadro con a sinistra il **Catalogo prodotti** e a destra i costi effettivi come card (su schermi stretti uno sotto l\'altro). Senza il permesso di gestire i costi il catalogo non compare e le card sono in sola lettura.',
             'Nel **Catalogo prodotti** cerca per nome o descrizione: ogni prodotto mostra nome, codice, tipologia, prezzo di costo con unità di misura, categoria e descrizione.',
             'Spunta uno o più prodotti e premi **Aggiungi N selezionati**: ogni prodotto diventa un costo con data di oggi, quantità 1, prezzo di costo, IVA, unità di misura e **tipo di costo** del prodotto. Lo stesso prodotto si può aggiungere più volte.',
+            "Se il prodotto ha dei fornitori, il **fornitore** si sceglie solo tra quelli del prodotto: il predefinito e il suo costo sono proposti e, cambiando fornitore, cambia il prezzo. Se il fornitore ha una commissione Fornitore su quel prodotto, il prezzo è 0 e non modificabile, con l'avviso accanto al fornitore. Con un prodotto senza fornitori, o senza prodotto, il fornitore è libero come prima.",
             'In ogni card trovi in alto prodotto, codice e categoria con il cestino per rimuoverla; sotto quantità per prezzo unitario, IVA, **Riga offerta di riferimento** e imponibile, IVA e totale; in fondo data, **tipo di costo**, **fornitore**, **riferimento documento** e descrizione aggiuntiva. In fondo al riquadro c\'è il **Totale costi**.',
             'Per cambiare prodotto rimuovi la card e scegli il prodotto dal catalogo.',
             'Premi **Salva** per sostituire l\'intero elenco dei costi, oppure **Annulla** per tornare all\'ultimo salvataggio.',
@@ -283,7 +284,7 @@ const guide: HelpGuide = {
             'Premi il pulsante **€** grigio: si apre la finestra **Richiesta emissione Proforma: Commessa #numero**.',
             'Controlla la **Modalità di pagamento** presa dall\'offerta (se manca compare **Non indicata**).',
             'Scrivi le **Note per la Contabilità** (obbligatorie, massimo 5000 caratteri): il testo è precompilato con il titolo della finestra.',
-            'Premi **Invia richiesta**. Il sistema crea una richiesta per le righe di tipo Consulenza e una per ciascun fornitore delle righe di tipo Ente.',
+            'Premi **Invia richiesta**. Il sistema crea una richiesta per le righe di tipo Consulenza e una per ciascun fornitore delle righe di tipo Ente (il fornitore scelto sulla riga dell’offerta).',
           ],
         },
         {

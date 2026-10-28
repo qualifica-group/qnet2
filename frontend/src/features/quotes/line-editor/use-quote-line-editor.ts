@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useForSelectLabels } from '@/features/for-select/use-for-select'
 import { PRODUCTS_FOR_SELECT_RESOURCE } from '@/features/products/for-select-api'
+import { productSuppliersOf, type ProductSupplierOption } from '@/features/products/product-suppliers'
+import { commissionedDefaultProductIds, loadSupplierCommissions } from '@/features/products/supplier-commissions-api'
 import { isPristineLineRow } from '@/features/quotes/quote-line-values'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import { aggregateLines } from '@/features/quotes/quote-totals'
@@ -69,7 +72,8 @@ export function useQuoteLineEditor({
   vatRatePercentFor,
   rememberVatRatePercent,
 }: UseQuoteLineEditorArgs) {
-  const { removeRow, setField, setProduct } = useQuoteLinesField({ value, onChange, variant, rememberVatRatePercent })
+  const queryClient = useQueryClient()
+  const { removeRow, setField, setProduct, setSupplier } = useQuoteLinesField({ value, onChange, variant, rememberVatRatePercent })
   const [pickedViews, setPickedViews] = useState<Map<number, QuoteLineProductView>>(() => new Map())
 
   const visibleLines = useMemo<VisibleQuoteLine[]>(
@@ -95,7 +99,20 @@ export function useQuoteLineEditor({
     ],
     [visibleLines, localViews],
   )
-  const fetchedProducts = useForSelectLabels({ resource: PRODUCTS_FOR_SELECT_RESOURCE, ids: unresolvedIds })
+  // Spec 0320: a persisted row carries its supplier but not the product's
+  // options, so its product is looked up too (the same ids-keyed query).
+  const supplierLookupIds = useMemo(
+    () => [
+      ...new Set(
+        visibleLines.flatMap(({ row }) =>
+          row.product_id === null || row.product_suppliers !== undefined ? [] : [row.product_id],
+        ),
+      ),
+    ],
+    [visibleLines],
+  )
+  const lookupIds = useMemo(() => [...new Set([...unresolvedIds, ...supplierLookupIds])], [unresolvedIds, supplierLookupIds])
+  const fetchedProducts = useForSelectLabels({ resource: PRODUCTS_FOR_SELECT_RESOURCE, ids: lookupIds })
 
   const productViews = useMemo(() => {
     const views = new Map(localViews)
@@ -107,6 +124,14 @@ export function useQuoteLineEditor({
     })
     return views
   }, [localViews, unresolvedIds, fetchedProducts])
+
+  /** The options of a row's supplier select: its pick's own list, else the looked-up product's. */
+  const suppliersOf = (row: QuoteLineFormValues): ProductSupplierOption[] => {
+    if (row.product_suppliers !== undefined) {
+      return row.product_suppliers
+    }
+    return row.product_id === null ? [] : productSuppliersOf((fetchedProducts.get(row.product_id) as QuoteCatalogProduct | undefined)?.meta)
+  }
 
   // Products the catalogue marks "Gia' aggiunto": none where the channel allows repeats.
   const addedProductIds = useMemo(
@@ -145,6 +170,8 @@ export function useQuoteLineEditor({
     if (defaults === null) {
       return false
     }
+    // Step 1b: a cost row of a commissioned default supplier is free of charge (rev.3 D-23).
+    const freeOfCharge = variant === 'cost' ? await commissionedDefaultProductIds(queryClient, items) : new Set<number>()
     // Step 2: the preview caches the rows read (VAT percent, product label, channel caches).
     items.forEach((item) => {
       if (item.meta.vat_rate_id !== null && item.meta.vat_rate !== null) {
@@ -160,12 +187,15 @@ export function useQuoteLineEditor({
       allowDuplicates,
       extraFor: (product) => {
         const productDefaults = defaults?.get(product.id)
-        return productDefaults
-          ? {
-              commissions: productDefaults.commissions,
-              supplier_commission_direction: productDefaults.supplierCommissionDirection,
-            }
-          : {}
+        return {
+          ...(productDefaults
+            ? {
+                commissions: productDefaults.commissions,
+                supplier_commission_direction: productDefaults.supplierCommissionDirection,
+              }
+            : {}),
+          ...(freeOfCharge.has(product.id) ? { unit_price: 0 } : {}),
+        }
       },
     })
     if (next !== value) {
@@ -189,6 +219,30 @@ export function useQuoteLineEditor({
     setProduct(index, item.id, item, defaults, simplified)
   }
 
+  /**
+   * Spec 0320 D-4/D-7: a supplier pick on a row. A revenue row first asks the
+   * commission defaults of the new supplier (nothing changes if that is
+   * declined or fails); a cost row reprices from the supplier's cost, or to 0
+   * when that supplier earns a commission (rev.3 D-23).
+   */
+  const changeSupplier = async (index: number, option: ProductSupplierOption) => {
+    const row = value[index]
+    const defaults =
+      variant === 'revenue' && commissions ? await commissions.defaultsForSupplier(row, option.supplier_id) : undefined
+    if (defaults === null) {
+      return
+    }
+    const commissioned =
+      variant === 'cost'
+        ? await loadSupplierCommissions(queryClient, {
+            productId: row.product_id,
+            categoryId: null,
+            supplierIds: suppliersOf(row).map((candidate) => candidate.supplier_id),
+          })
+        : null
+    setSupplier(index, option, defaults, !!commissioned?.get(option.supplier_id))
+  }
+
   return {
     visibleLines,
     productViews,
@@ -197,6 +251,8 @@ export function useQuoteLineEditor({
     totals,
     addProducts,
     pickSingle,
+    suppliersOf,
+    changeSupplier,
     removeRow,
     setField,
   }

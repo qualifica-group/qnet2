@@ -40,26 +40,28 @@ function recipientLockActor(array $abilities): User
     return $actor;
 }
 
-function recipientLockProduct(?int $supplierId = null): Product
+function recipientLockProduct(?Registry $supplier = null): Product
 {
-    return Product::factory()->create([
+    $attributes = [
         'category_id' => ProductCategory::factory()->create([
             'business_function_id' => BusinessFunction::factory()->create()->id,
         ])->id,
-        'supplier_id' => $supplierId,
-    ]);
+    ];
+
+    return $supplier === null ? Product::factory()->create($attributes) : productWithSupplier($attributes, $supplier);
 }
 
 it('exposes the one admissible recipient per role, null where nothing was picked upstream', function () {
     $commercial = Referent::factory()->create();
     $supervisor = User::factory()->create();
     $supplier = Registry::factory()->create();
-    $product = recipientLockProduct($supplier->id);
+    $product = recipientLockProduct($supplier);
 
     Sanctum::actingAs(recipientLockActor(['create']));
 
     $response = $this->postJson('/api/quotes/commission-recipients', [
         'product_id' => $product->id,
+        'supplier_id' => $supplier->id,
         'commercial_id' => $commercial->id,
         'reporter_id' => null,
         'supervisor_id' => $supervisor->id,

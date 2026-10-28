@@ -162,6 +162,7 @@ const guide: HelpGuide = {
             'Open the **Actual costs** tab: a single panel with the **Product catalogue** on the left and the actual costs as cards on the right (stacked on narrow screens). Without the permission to manage costs the catalogue is hidden and the cards are read-only.',
             'In the **Product catalogue** search by name or description: each product shows name, code, type, cost price with unit of measure, category and description.',
             'Tick one or more products and press **Add N selected**: each product becomes a cost with today\'s date, quantity 1, cost price, VAT, unit of measure and the product\'s **cost type**. The same product can be added more than once.',
+            "If the product has suppliers, the **supplier** is chosen only among the product ones: the default and its cost are proposed and, when you change supplier, the price changes. If the supplier has a Supplier commission on that product, the price is 0 and cannot be edited, with the notice next to the supplier. With a product without suppliers, or no product, the supplier is free as before.",
             'Each card shows product, code and category at the top with the bin to remove it; below, quantity times unit price, VAT, **Reference offer line** and net amount, VAT and total; at the bottom date, **cost type**, **supplier**, **document reference** and extra description. The **Cost total** is at the bottom of the panel.',
             'To change product, remove the card and pick the product from the catalogue.',
             'Press **Save** to replace the whole list of costs, or **Cancel** to go back to the last saved state.',
@@ -283,7 +284,7 @@ const guide: HelpGuide = {
             'Press the grey **€** button: the **Proforma issue request: Work order #number** window opens.',
             'Check the **Payment method** taken from the quote (**Not specified** appears when it is missing).',
             'Write the **Notes for Accounting** (required, up to 5000 characters): the text is prefilled with the window title.',
-            'Press **Send request**. The system creates one request for the Consultancy lines and one for each supplier of the Institution lines.',
+            'Press **Send request**. The system creates one request for the Consultancy lines and one for each supplier of the Institution lines (the supplier chosen on the offer line).',
           ],
         },
         {

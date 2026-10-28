@@ -1,4 +1,11 @@
 import type { SupplierCommissionDirection } from '@/features/commission-configurations/types'
+import {
+  defaultProductSupplierOf,
+  productCostFor,
+  productPriceFor,
+  productSuppliersOf,
+  type ProductSupplierOption,
+} from '@/features/products/product-suppliers'
 import { isPristineLineRow } from '@/features/quotes/quote-line-values'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteProductForSelectItem } from '@/features/quotes/quote-product-select'
@@ -59,17 +66,25 @@ interface UseQuoteLinesFieldArgs {
   rememberVatRatePercent: (vatRateId: number, percent: number) => void
 }
 
+/** The row fields a picked product precompiles. */
+type ProductRowValues = Pick<
+  QuoteLineFormValues,
+  'product_id' | 'unit_of_measure' | 'unit_price' | 'vat_rate_id' | 'supplier_id' | 'supplier' | 'product_suppliers'
+>
+
 /**
- * The row values a picked product precompiles (AC-074, D-6): the price of the
- * tab's own variant plus the product's VAT rate. Pure, so the deep-link
- * seeding path (an offer opened with products already chosen, user directive
- * 2026-08-31) fills its rows exactly like a manual pick does.
+ * The row values a picked product precompiles (AC-074, D-6; spec 0320 D-4):
+ * the VAT rate, the product's default supplier (null when it has none) and the
+ * price of the tab's own variant — the default supplier's sale price on a
+ * revenue row, its cost on a cost row (the standard price/cost without suppliers, rev.2 D-16).
+ * Pure, so the deep-link seeding path (an offer opened with products already
+ * chosen, user directive 2026-08-31) fills its rows exactly like a manual pick.
  */
-export function lineValuesFromProduct(
-  item: QuoteProductForSelectItem,
-  variant: QuoteLineVariant,
-): Pick<QuoteLineFormValues, 'product_id' | 'unit_of_measure' | 'unit_price' | 'vat_rate_id'> {
-  const priceSource = variant === 'revenue' ? item.meta.price : item.meta.cost
+export function lineValuesFromProduct(item: QuoteProductForSelectItem, variant: QuoteLineVariant): ProductRowValues {
+  const defaultSupplier = defaultProductSupplierOf(item.meta)
+  const defaultSupplierId = defaultSupplier?.supplier_id ?? null
+  const priceSource =
+    variant === 'revenue' ? productPriceFor(item.meta, defaultSupplierId) : productCostFor(item.meta, defaultSupplierId)
 
   return {
     product_id: item.id,
@@ -77,8 +92,11 @@ export function lineValuesFromProduct(
     // (spec 0088, D-5): without it the row's unit column stays "—" for the
     // whole create/edit, even though the product always carries a unit.
     unit_of_measure: item.meta.unit_of_measure,
-    unit_price: priceSource !== null ? Number(priceSource) : null,
+    unit_price: priceSource,
     vat_rate_id: item.meta.vat_rate_id,
+    supplier_id: defaultSupplier?.supplier_id ?? null,
+    supplier: defaultSupplier ? { id: defaultSupplier.supplier_id, name: defaultSupplier.name } : null,
+    product_suppliers: productSuppliersOf(item.meta),
   }
 }
 
@@ -95,7 +113,7 @@ export function lineValuesFromProduct(
 export function simplifiedLineValuesFromProduct(
   item: QuoteProductForSelectItem,
   variant: QuoteLineVariant,
-): Pick<QuoteLineFormValues, 'product_id' | 'unit_of_measure' | 'unit_price' | 'vat_rate_id'> {
+): ProductRowValues {
   const base = lineValuesFromProduct(item, variant)
   return { ...base, unit_price: base.unit_price ?? 0 }
 }
@@ -189,7 +207,7 @@ export function useQuoteLinesField({
     simplified = false,
   ) => {
     if (productId === null || !item) {
-      setField(index, { product_id: null, unit_of_measure: null })
+      setField(index, { product_id: null, unit_of_measure: null, supplier_id: null, supplier: null, product_suppliers: undefined })
       return
     }
 
@@ -221,5 +239,27 @@ export function useQuoteLinesField({
     )
   }
 
-  return { removeRow, setField, setProduct }
+  /**
+   * Spec 0320 D-4/D-7, rev.2 D-17: a supplier pick on a row. The row takes
+   * the new supplier's price (revenue) or cost (cost) as its unit price; a
+   * revenue row also takes the commission defaults the new supplier brings
+   * (`defaults`, resolved by the caller like a product change). A cost row
+   * whose supplier earns a commission is free of charge: price 0 (rev.3 D-23).
+   */
+  const setSupplier = (
+    index: number,
+    option: ProductSupplierOption,
+    defaults?: LineCommissionDefaults,
+    freeOfCharge = false,
+  ) =>
+    setField(index, {
+      supplier_id: option.supplier_id,
+      supplier: { id: option.supplier_id, name: option.name },
+      unit_price: freeOfCharge ? 0 : Number(variant === 'revenue' ? option.price : option.cost),
+      ...(defaults
+        ? { commissions: defaults.commissions, supplier_commission_direction: defaults.supplierCommissionDirection }
+        : {}),
+    })
+
+  return { removeRow, setField, setProduct, setSupplier }
 }

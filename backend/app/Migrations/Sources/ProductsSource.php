@@ -31,10 +31,10 @@ use RuntimeException;
  * `vat_rate_id` IS remapped via `old_id` (vat-rates must be migrated first),
  * but unlike the category it is OPTIONAL: an unmigrated reference leaves the
  * column null with a non-fatal warning instead of failing the row.
- * `supplier_id` is NOT remapped here: products come BEFORE the registries (which
- * carry the `old_id` the supplier resolves through). It is left null with a
- * non-fatal warning when the external record carries one; the later
- * ProductSuppliersSource fills it once the registries are migrated (spec 0203).
+ * The supplier is NOT written here: products come BEFORE the registries (which
+ * carry the `old_id` the supplier resolves through). `cost` stays the product's
+ * standard cost; the later ProductSuppliersSource creates the default
+ * `product_suppliers` row once the registries are migrated (spec 0320, D-12).
  *
  * `code` (spec 0065, D-1) carries the external `code` as-is when present; an
  * absent/blank value leaves it null so ProductService::create() falls back to
@@ -116,7 +116,7 @@ class ProductsSource extends AbstractMigrationSource
             ['id' => 'category_id', 'label' => 'Category (external id)', 'type' => 'number'],
             ['id' => 'product_type', 'label' => 'Product type', 'type' => 'string'],
             ['id' => 'vat_rate_id', 'label' => 'VAT rate (external id)', 'type' => 'number'],
-            ['id' => 'supplier_id', 'label' => 'Supplier (external id, not remapped)', 'type' => 'number'],
+            ['id' => 'supplier_id', 'label' => 'Supplier (external id, preview only)', 'type' => 'number'],
             ['id' => 'folder', 'label' => 'Folder (product typology)', 'type' => 'string'],
         ];
     }
@@ -169,7 +169,6 @@ class ProductsSource extends AbstractMigrationSource
             categoryId: $this->resolveCategory($record['category_id'] ?? null, $warnings),
             productType: $this->mapProductType($record['product_type'] ?? null, $warnings),
             vatRateId: $this->resolveVatRate($record['vat_rate_id'] ?? null, $warnings),
-            supplierId: $this->unresolvableReference('supplier_id', $record['supplier_id'] ?? null, $warnings),
             code: $this->trimmedText($record['code'] ?? null),
             productTypologyId: $this->resolveTypology($record['folder'] ?? null, $warnings),
         ));

@@ -108,6 +108,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
+            "Se il prodotto ha dei fornitori, sulla riga compare **Fornitore** con i fornitori del prodotto: il predefinito è già scelto e il campo è obbligatorio. Il prezzo della riga è quello del fornitore scelto e cambia se cambi fornitore. Se il fornitore ha una commissione Fornitore su quel prodotto, accanto al fornitore compare l'avviso (per esempio 'Commissione 10% pagata'). I prodotti proposti automaticamente arrivano con il fornitore predefinito.",
             'Un prodotto già nelle righe mostra **Già aggiunto** e non è selezionabile: cambia la quantità sulla riga.',
             'Nelle categorie a riga singola (ad esempio Formazione) non ci sono caselle: il clic su un prodotto sostituisce quello della riga unica.',
             'Senza categorie prodotto scelte il catalogo è disattivato: scegli prima la categoria.',

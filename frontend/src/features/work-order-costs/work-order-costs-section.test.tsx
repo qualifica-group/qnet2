@@ -20,6 +20,12 @@ vi.mock('@/features/work-order-costs/api', () => ({
   syncWorkOrderCosts: (id: number, payload: unknown) => syncCostsMock(id, payload),
 }))
 
+const apiGetMock = vi.fn()
+vi.mock('@/api/client', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/api/client')>()),
+  apiClient: { get: (...args: unknown[]) => apiGetMock(...args) },
+}))
+
 const fetchForSelectMock = vi.fn()
 vi.mock('@/features/for-select/api', async () => {
   const actual = await vi.importActual<typeof import('@/features/for-select/api')>('@/features/for-select/api')
@@ -67,8 +73,11 @@ async function openEditor(canManage: boolean) {
  */
 async function addFromCatalogue(times = 1) {
   for (let pick = 0; pick < times; pick += 1) {
+    const rowsBefore = screen.getAllByLabelText(/^Cost date, row/).length
     fireEvent.click(await screen.findByRole('option', { name: /Noleggio auto/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Add 1 selected' }))
+    // The row opens once the supplier commissions of the pick are known (rev.3 D-23): asynchronous.
+    await screen.findByLabelText(`Cost date, row ${rowsBefore + 1}`)
   }
 }
 
@@ -84,6 +93,7 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  apiGetMock.mockReset()
   fetchCostsMock.mockReset().mockResolvedValue(OVERVIEW)
   syncCostsMock.mockReset().mockResolvedValue(OVERVIEW)
   fetchForSelectMock.mockReset().mockImplementation((resource: string) =>
@@ -152,6 +162,34 @@ describe('WorkOrderCostsSection — Actual costs editor (AC-012)', () => {
     await addFromCatalogue()
 
     expect(screen.getByLabelText('Cost date, row 2')).toHaveValue(todayIsoDate())
+  })
+
+  it('AC-032: a picked product whose default supplier earns a commission opens at unit price 0, locked', async () => {
+    const withSuppliers = {
+      ...PRODUCT_ITEM,
+      meta: { ...PRODUCT_ITEM.meta, suppliers: [{ supplier_id: 40, name: 'Alfa Srl', price: '20.00', cost: '12.50', is_default: true }] },
+    }
+    const previous = fetchForSelectMock.getMockImplementation()
+    fetchForSelectMock.mockImplementation((resource: string, params: unknown) =>
+      resource === 'products'
+        ? Promise.resolve({ items: [withSuppliers], pagination: PAGINATION, export_link: null })
+        : previous?.(resource, params),
+    )
+    // Other GETs (e.g. the category tree) keep failing as before: only the commissions lookup is answered.
+    apiGetMock.mockImplementation((url: string) =>
+      url === '/products/supplier-commissions'
+        ? Promise.resolve({
+            data: { data: [{ supplier_id: 40, commission: { configuration_id: 9, type: 'FIXED_AMOUNT', value: '25.00', direction: 'RECEIVED' } }] },
+          })
+        : Promise.reject(new Error('not mocked')),
+    )
+    await openEditor(true)
+
+    await addFromCatalogue()
+
+    expect(screen.getByRole('spinbutton', { name: 'Unit price, row 2' })).toHaveValue(0)
+    expect(screen.getByRole('spinbutton', { name: 'Unit price, row 2' })).toBeDisabled()
+    expect(await screen.findByText(/Fixed commission .*25,00.* received/)).toBeInTheDocument()
   })
 
   it('AC-003: lists the whole COST catalogue and lets the same product be added twice', async () => {

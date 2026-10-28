@@ -7,7 +7,7 @@ use App\Enums\ProductType;
 use App\Enums\ProductUsage;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\EnforcesStockTracking;
-use App\Http\Requests\Concerns\RequiresPricingForUsages;
+use App\Http\Requests\Concerns\ValidatesProductSuppliers;
 use App\Rules\SelectableProductCategory;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Model;
@@ -35,9 +35,11 @@ use Illuminate\Validation\Rule;
  */
 class StoreProductRequest extends FormRequest
 {
-    use EnforcesFieldPermissions;
+    use EnforcesFieldPermissions, ValidatesProductSuppliers {
+        ValidatesProductSuppliers::currentFieldValue insteadof EnforcesFieldPermissions;
+        EnforcesFieldPermissions::currentFieldValue as protected defaultCurrentFieldValue;
+    }
     use EnforcesStockTracking;
-    use RequiresPricingForUsages;
 
     public function authorize(): bool
     {
@@ -51,11 +53,12 @@ class StoreProductRequest extends FormRequest
     public function rules(): array
     {
         return [
+            ...$this->supplierRules(),
             'code' => ['nullable', 'string', 'max:32', Rule::unique('products', 'code')],
             'name' => ['required', 'string', 'max:191'],
             'description' => ['nullable', 'string'],
-            'cost' => ['nullable', 'numeric'],
-            'price' => ['nullable', 'numeric'],
+            'cost' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],
+            'price' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],
             'category_id' => ['required', 'integer', new SelectableProductCategory],
             'product_type' => ['required', Rule::enum(ProductType::class)],
             // Spec 0142, D-2: the independent Sellable / Usable-as-cost set,
@@ -63,7 +66,6 @@ class StoreProductRequest extends FormRequest
             'usages' => ['sometimes', 'array', 'min:1'],
             'usages.*' => ['distinct', Rule::enum(ProductUsage::class)],
             'vat_rate_id' => ['nullable', 'integer', 'exists:vat_rates,id'],
-            'supplier_id' => ['nullable', 'integer', 'exists:registries,id'],
             // Spec 0088, D-4: absent/null falls back to the default unit in
             // ProductService, so `sometimes` (not `nullable` alone) matters —
             // it is what lets CreateProductData tell "not submitted" from
@@ -80,7 +82,7 @@ class StoreProductRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
-            $this->enforcePricingForUsages($validator);
+            $this->enforceSingleDefaultSupplier($validator);
             $this->enforceStockTracking($validator);
         });
     }

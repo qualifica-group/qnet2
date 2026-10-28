@@ -16,7 +16,6 @@ use App\Models\QuoteLine;
 use App\Models\QuoteLineCommission;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
-use App\Models\Registry;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -54,9 +53,8 @@ function supplierDirectionProduct(bool $enabled = true, ?ProductTypology $typolo
     ]);
     $typology ??= $enabled ? ProductTypology::factory()->supplierCommission()->create() : ProductTypology::factory()->create();
 
-    return Product::factory()->create([
+    return productWithSupplier([
         'category_id' => $category->id,
-        'supplier_id' => Registry::factory()->create()->id,
         'product_typology_id' => $typology->id,
     ]);
 }
@@ -102,12 +100,12 @@ it('AC-006: a new REVENUE line freezes the direction of the Supplier rule, PAID 
         'title' => 'Snapshot',
         'opportunity_id' => $opportunity->id,
         'offer_lines' => [
-            ['product_id' => $received->id, 'quantity' => 1, 'unit_price' => 100],
-            ['product_id' => $paid->id, 'quantity' => 1, 'unit_price' => 100],
-            ['product_id' => $noRule->id, 'quantity' => 1, 'unit_price' => 100],
-            ['product_id' => $disabled->id, 'quantity' => 1, 'unit_price' => 100],
+            ['product_id' => $received->id, 'supplier_id' => defaultSupplierId($received), 'quantity' => 1, 'unit_price' => 100],
+            ['product_id' => $paid->id, 'supplier_id' => defaultSupplierId($paid), 'quantity' => 1, 'unit_price' => 100],
+            ['product_id' => $noRule->id, 'supplier_id' => defaultSupplierId($noRule), 'quantity' => 1, 'unit_price' => 100],
+            ['product_id' => $disabled->id, 'supplier_id' => defaultSupplierId($disabled), 'quantity' => 1, 'unit_price' => 100],
         ],
-        'cost_lines' => [['product_id' => $cost->id, 'quantity' => 1, 'unit_price' => 10]],
+        'cost_lines' => [['product_id' => $cost->id, 'supplier_id' => defaultSupplierId($cost), 'quantity' => 1, 'unit_price' => 10]],
     ])->assertCreated();
 
     $lines = collect($response->json('data.offer_lines'));
@@ -128,7 +126,7 @@ it('AC-006: changing the typology later does not touch an existing line, changin
     $created = $this->postJson('/api/quotes', [
         'title' => 'Freeze',
         'opportunity_id' => $opportunity->id,
-        'offer_lines' => [['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 100]],
+        'offer_lines' => [['product_id' => $product->id, 'supplier_id' => defaultSupplierId($product), 'quantity' => 1, 'unit_price' => 100]],
     ])->assertCreated();
     $quoteId = $created->json('data.id');
     $lineId = $created->json('data.offer_lines.0.id');
@@ -137,11 +135,11 @@ it('AC-006: changing the typology later does not touch an existing line, changin
     $typology->update(['supplier_commission_enabled' => false]);
 
     $this->patchJson("/api/quotes/{$quoteId}", [
-        'offer_lines' => [['id' => $lineId, 'product_id' => $product->id, 'quantity' => 2, 'unit_price' => 100]],
+        'offer_lines' => [['id' => $lineId, 'product_id' => $product->id, 'supplier_id' => defaultSupplierId($product), 'quantity' => 2, 'unit_price' => 100]],
     ])->assertOk()->assertJsonPath('data.offer_lines.0.supplier_commission_direction', 'PAID');
 
     $this->patchJson("/api/quotes/{$quoteId}", [
-        'offer_lines' => [['id' => $lineId, 'product_id' => $other->id, 'quantity' => 2, 'unit_price' => 100]],
+        'offer_lines' => [['id' => $lineId, 'product_id' => $other->id, 'supplier_id' => defaultSupplierId($other), 'quantity' => 2, 'unit_price' => 100]],
     ])->assertOk()->assertJsonPath('data.offer_lines.0.supplier_commission_direction', 'RECEIVED');
 });
 
@@ -169,14 +167,14 @@ it('AC-007: a later rule change leaves the saved RECEIVED line alone until the c
     $created = $this->postJson('/api/quotes', [
         'title' => 'Rule drift',
         'opportunity_id' => $opportunity->id,
-        'offer_lines' => [['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 1000]],
+        'offer_lines' => [['product_id' => $product->id, 'supplier_id' => defaultSupplierId($product), 'quantity' => 1, 'unit_price' => 1000]],
     ])->assertCreated()->assertJsonPath('data.offer_lines.0.supplier_commission_direction', 'RECEIVED');
     $quoteId = $created->json('data.id');
     $line = $created->json('data.offer_lines.0');
     $rule->update(['supplier_commission_direction' => SupplierCommissionDirection::Paid]);
 
     $this->patchJson("/api/quotes/{$quoteId}", [
-        'offer_lines' => [['id' => $line['id'], 'product_id' => $product->id, 'quantity' => 1, 'unit_price' => 1000]],
+        'offer_lines' => [['id' => $line['id'], 'product_id' => $product->id, 'supplier_id' => defaultSupplierId($product), 'quantity' => 1, 'unit_price' => 1000]],
     ])->assertOk()
         ->assertJsonPath('data.offer_lines.0.supplier_commission_direction', 'RECEIVED')
         ->assertJsonPath('data.offer_lines.0.commissions.0.calculated_amount', '100.00');
@@ -184,7 +182,7 @@ it('AC-007: a later rule change leaves the saved RECEIVED line alone until the c
     $supplier = $line['commissions'][0];
     $this->patchJson("/api/quotes/{$quoteId}", [
         'offer_lines' => [[
-            'id' => $line['id'], 'product_id' => $product->id, 'quantity' => 1, 'unit_price' => 1000,
+            'id' => $line['id'], 'product_id' => $product->id, 'supplier_id' => defaultSupplierId($product), 'quantity' => 1, 'unit_price' => 1000,
             'commissions' => [[
                 'recipient_role' => 'SUPPLIER', 'recipient_type' => $supplier['recipient_type'], 'recipient_id' => $supplier['recipient_id'],
                 'commission_type' => 'PERCENTAGE', 'value' => 10, 'origin' => 'PRODUCT',
@@ -205,18 +203,18 @@ it('AC-009: commission-defaults returns the direction of the resolved Supplier r
     supplierDirectionRule($disabled, CommissionRecipientRole::Supplier, CommissionType::Percentage, 10, SupplierCommissionDirection::Received);
     Sanctum::actingAs(supplierDirectionQuoteActor());
 
-    $this->postJson('/api/quotes/commission-defaults', ['product_id' => $received->id, 'line_net_amount' => 100])
+    $this->postJson('/api/quotes/commission-defaults', ['product_id' => $received->id, 'supplier_id' => defaultSupplierId($received), 'line_net_amount' => 100])
         ->assertOk()
         ->assertJsonPath('data.supplier_commission_direction', 'RECEIVED')
         ->assertJsonPath('data.commissions.0.recipient_role', 'SUPPLIER')
         ->assertJsonPath('data.commissions.0.calculated_amount', '10.00');
 
-    $this->postJson('/api/quotes/commission-defaults', ['product_id' => $noRule->id, 'line_net_amount' => 100])
+    $this->postJson('/api/quotes/commission-defaults', ['product_id' => $noRule->id, 'supplier_id' => defaultSupplierId($noRule), 'line_net_amount' => 100])
         ->assertOk()
         ->assertJsonPath('data.supplier_commission_direction', 'PAID')
         ->assertJsonPath('data.commissions', []);
 
-    $this->postJson('/api/quotes/commission-defaults', ['product_id' => $disabled->id, 'line_net_amount' => 100])
+    $this->postJson('/api/quotes/commission-defaults', ['product_id' => $disabled->id, 'supplier_id' => defaultSupplierId($disabled), 'line_net_amount' => 100])
         ->assertOk()
         ->assertJsonPath('data.supplier_commission_direction', null)
         ->assertJsonPath('data.commissions', []);
@@ -237,7 +235,7 @@ it('AC-005: with the switch off the Supplier commission is not created even with
         'title' => 'Disattivata',
         'opportunity_id' => $opportunity->id,
         'commercial_id' => $opportunity->commercial_id,
-        'offer_lines' => [['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 1000]],
+        'offer_lines' => [['product_id' => $product->id, 'supplier_id' => defaultSupplierId($product), 'quantity' => 1, 'unit_price' => 1000]],
     ])->assertCreated();
 
     $roles = collect($response->json('data.offer_lines.0.commissions'))->pluck('recipient_role')->all();
@@ -264,12 +262,12 @@ it('margin_net follows D-8 (RECEIVED = s - c - p), revenue unchanged', function 
         'opportunity_id' => $opportunity->id,
         'commercial_id' => $opportunity->commercial_id,
         'offer_lines' => [
-            ['product_id' => $received->id, 'quantity' => 1, 'unit_price' => 2000],
-            ['product_id' => $paid->id, 'quantity' => 1, 'unit_price' => 1000],
+            ['product_id' => $received->id, 'supplier_id' => defaultSupplierId($received), 'quantity' => 1, 'unit_price' => 2000],
+            ['product_id' => $paid->id, 'supplier_id' => defaultSupplierId($paid), 'quantity' => 1, 'unit_price' => 1000],
         ],
         'cost_lines' => [
-            ['product_id' => $cost->id, 'quantity' => 1, 'unit_price' => 100, 'offer_line_index' => 1],
-            ['product_id' => $cost->id, 'quantity' => 1, 'unit_price' => 30],
+            ['product_id' => $cost->id, 'supplier_id' => defaultSupplierId($cost), 'quantity' => 1, 'unit_price' => 100, 'offer_line_index' => 1],
+            ['product_id' => $cost->id, 'supplier_id' => defaultSupplierId($cost), 'quantity' => 1, 'unit_price' => 30],
         ],
     ])->assertCreated();
 
@@ -292,7 +290,7 @@ function supplierManualCommission(Product $product, array $overrides = []): arra
     return [
         'recipient_role' => 'SUPPLIER',
         'recipient_type' => 'registry',
-        'recipient_id' => $product->supplier_id,
+        'recipient_id' => defaultSupplierId($product),
         'commission_type' => 'PERCENTAGE',
         'value' => 10,
         'origin' => 'MANUAL_OVERRIDE',
@@ -309,7 +307,7 @@ it('AC-008: a manual Supplier commission carries its own direction, the snapshot
         'title' => 'Manuale',
         'opportunity_id' => $opportunity->id,
         'offer_lines' => [[
-            'product_id' => $product->id, 'quantity' => 1, 'unit_price' => 1000,
+            'product_id' => $product->id, 'supplier_id' => defaultSupplierId($product), 'quantity' => 1, 'unit_price' => 1000,
             'commissions' => [supplierManualCommission($product, ['supplier_commission_direction' => 'RECEIVED'])],
         ]],
     ])->assertCreated();
@@ -327,7 +325,7 @@ it('AC-008: a manual Supplier commission without or with an invalid direction is
     $payload = fn (array $commission): array => [
         'title' => 'Verso',
         'opportunity_id' => $opportunity->id,
-        'offer_lines' => [['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 1000, 'commissions' => [$commission]]],
+        'offer_lines' => [['product_id' => $product->id, 'supplier_id' => defaultSupplierId($product), 'quantity' => 1, 'unit_price' => 1000, 'commissions' => [$commission]]],
     ];
 
     $this->postJson('/api/quotes', $payload(supplierManualCommission($product)))
@@ -351,16 +349,16 @@ it('AC-008: without the commission_type permission the direction cannot change, 
     $product = supplierDirectionProduct();
     $quote = Quote::factory()->create();
     $line = QuoteLine::factory()->create([
-        'quote_id' => $quote->id, 'product_id' => $product->id, 'quantity' => 1, 'unit_price' => 100, 'net_amount' => 100, 'total_amount' => 100,
+        'quote_id' => $quote->id, 'product_id' => $product->id, 'supplier_id' => defaultSupplierId($product), 'quantity' => 1, 'unit_price' => 100, 'net_amount' => 100, 'total_amount' => 100,
         'supplier_commission_direction' => SupplierCommissionDirection::Received,
     ]);
     $commission = $line->commissions()->create([
-        'recipient_role' => CommissionRecipientRole::Supplier, 'recipient_type' => 'registry', 'recipient_id' => $product->supplier_id,
+        'recipient_role' => CommissionRecipientRole::Supplier, 'recipient_type' => 'registry', 'recipient_id' => defaultSupplierId($product),
         'commission_type' => 'PERCENTAGE', 'value' => 10, 'calculated_amount' => 10, 'origin' => 'MANUAL_OVERRIDE',
     ]);
     Sanctum::actingAs($actor);
     $payload = fn (string $direction): array => ['offer_lines' => [[
-        'id' => $line->id, 'product_id' => $product->id, 'quantity' => 1, 'unit_price' => 100,
+        'id' => $line->id, 'product_id' => $product->id, 'supplier_id' => defaultSupplierId($product), 'quantity' => 1, 'unit_price' => 100,
         'commissions' => [supplierManualCommission($product, ['id' => $commission->id, 'supplier_commission_direction' => $direction])],
     ]]];
 

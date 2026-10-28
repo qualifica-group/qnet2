@@ -12,6 +12,7 @@ use App\Models\Product;
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\VatRate;
+use App\Products\SupplierCommissionLookup;
 use App\Services\Commissions\QuoteLineCommissionWriter;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -23,6 +24,7 @@ final class QuoteLineWriter
         private readonly QuoteLineCommissionWriter $commissionWriter,
         private readonly CostLineAllocationResolver $allocationResolver,
         private readonly SupplierCommissionEnablement $enablement,
+        private readonly SupplierCommissionLookup $supplierCommissions,
     ) {}
 
     /**
@@ -73,13 +75,24 @@ final class QuoteLineWriter
             $isNew = $line === null;
             $line ??= new QuoteLine(['quote_id' => $quote->id, 'line_type' => $type]);
             $productChanged = ! $isNew && $line->product_id !== $data->productId;
+            // Spec 0320, D-5: an omitted key keeps the stored supplier of an
+            // untouched row; a new row or a product change starts from none.
+            $supplierId = $data->hasSupplier || $isNew || $productChanged ? $data->supplierId : $line->supplier_id;
+            $supplierChanged = ! $isNew && $line->supplier_id !== $supplierId;
             $rate = $data->vatRateId === null ? null : ($rates[$data->vatRateId] ?? null);
-            $amounts = $this->calculator->lineAmounts($data->quantity, $data->unitPrice, $rate);
+            // Spec 0320, D-23: a supplier paid through a commission costs 0 here,
+            // except on a legacy import, whose prices are historical facts.
+            $unitPrice = $type === QuoteLineType::Cost && ! $data->keepsUnitPrice && ($isNew || $productChanged || $supplierChanged) && $supplierId !== null
+                && $this->supplierCommissions->hasCommission($data->productId, $supplierId)
+                ? 0.0
+                : $data->unitPrice;
+            $amounts = $this->calculator->lineAmounts($data->quantity, $unitPrice, $rate);
 
             $line->fill([
                 'product_id' => $data->productId,
+                'supplier_id' => $supplierId,
                 'quantity' => $data->quantity,
-                'unit_price' => $data->unitPrice,
+                'unit_price' => $unitPrice,
                 'vat_rate_id' => $data->vatRateId,
                 // Spec 0088, D-5 (AC-054/AC-055): frozen from the Product ONLY
                 // when the row is created or its product actually changes —
@@ -113,7 +126,8 @@ final class QuoteLineWriter
             $saved[$index] = $line;
 
             if ($type === QuoteLineType::Revenue) {
-                $this->commissionWriter->sync($line, $data->commissions, $productChanged);
+                // Spec 0320, D-7: a new supplier re-asks the defaults, like a new product.
+                $this->commissionWriter->sync($line, $data->commissions, $productChanged || $supplierChanged);
             } else {
                 $line->commissions()->delete();
             }

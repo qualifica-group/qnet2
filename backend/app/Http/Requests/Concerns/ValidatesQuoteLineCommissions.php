@@ -7,7 +7,6 @@ namespace App\Http\Requests\Concerns;
 use App\Authorization\AuthorizationRegistry;
 use App\Enums\CommissionOrigin;
 use App\Enums\CommissionRecipientRole;
-use App\Models\Product;
 use App\Models\QuoteLine;
 use App\Models\QuoteLineCommission;
 use App\Models\User;
@@ -162,7 +161,7 @@ trait ValidatesQuoteLineCommissions
     /**
      * A commission recipient is NOT free input: each role may only ever be
      * awarded to the one identity selected upstream (the quote's
-     * commercial/reporter/supervisor, the line product's supplier). A role
+     * commercial/reporter/supervisor, the line's supplier). A role
      * with no upstream selection admits no commission at all. The dialog locks
      * the field client-side against the same resolver; this is the server-side
      * half of that rule, so a stale or hand-rolled payload cannot pay someone
@@ -178,22 +177,14 @@ trait ValidatesQuoteLineCommissions
         $commercialId = $this->effectiveRoleId('commercial_id', $quote?->commercial_id);
         $reporterId = $this->effectiveRoleId('reporter_id', $quote?->reporter_id);
         $supervisorId = $this->effectiveRoleId('supervisor_id', $quote?->supervisor_id);
+        $persistedSuppliers = $this->persistedLineSuppliers($quote);
 
         foreach ((array) $this->input('offer_lines', []) as $lineIndex => $line) {
             if (! is_array($line) || ! is_array($line['commissions'] ?? null)) {
                 continue;
             }
 
-            $productId = $line['product_id'] ?? null;
-            $product = is_numeric($productId) ? Product::query()->find((int) $productId) : null;
-
-            if ($product === null) {
-                // A missing/malformed/unknown product is already reported by
-                // the product_id rule; nothing to resolve against here.
-                continue;
-            }
-
-            $allowed = $resolver->resolve($product, $commercialId, $reporterId, $supervisorId);
+            $allowed = $resolver->resolve($this->effectiveLineSupplierId($line, $persistedSuppliers), $commercialId, $reporterId, $supervisorId);
 
             foreach ($line['commissions'] as $commissionIndex => $commission) {
                 $role = is_array($commission) ? (string) ($commission['recipient_role'] ?? '') : '';
@@ -224,6 +215,35 @@ trait ValidatesQuoteLineCommissions
                 }
             }
         }
+    }
+
+    /**
+     * The supplier the line will be saved with (spec 0320, D-7): the submitted
+     * one, or the stored one when an untouched row omits the key (the writer's
+     * own rule, QuoteLineWriter::sync()).
+     *
+     * @param  array<string, mixed>  $line
+     * @param  array<int, array{product_id: int, supplier_id: int|null}>  $persisted
+     */
+    private function effectiveLineSupplierId(array $line, array $persisted): ?int
+    {
+        if (array_key_exists('supplier_id', $line)) {
+            return is_numeric($line['supplier_id']) ? (int) $line['supplier_id'] : null;
+        }
+
+        $stored = isset($line['id']) && is_numeric($line['id']) ? ($persisted[(int) $line['id']] ?? null) : null;
+
+        return $stored !== null && $stored['product_id'] === (int) ($line['product_id'] ?? 0) ? $stored['supplier_id'] : null;
+    }
+
+    /** @return array<int, array{product_id: int, supplier_id: int|null}> the quote's saved rows keyed by id */
+    private function persistedLineSuppliers(?Model $quote): array
+    {
+        return $quote === null
+            ? []
+            : QuoteLine::query()->where('quote_id', $quote->getKey())->get(['id', 'product_id', 'supplier_id'])
+                ->mapWithKeys(fn (QuoteLine $line): array => [$line->id => ['product_id' => $line->product_id, 'supplier_id' => $line->supplier_id]])
+                ->all();
     }
 
     /** The role id the payload works against: the submitted one when present, the persisted one otherwise. */

@@ -8,6 +8,7 @@ use App\DataObjects\Quotes\QuoteLineData;
 use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductSupplier;
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use Illuminate\Support\Collection;
@@ -53,8 +54,13 @@ final class SimplifiedOfferLineNormalizer
             $lines,
         ));
 
+        $prices = $this->supplierPrices(array_map(
+            static fn (QuoteLineData $line): int => $line->productId,
+            $lines,
+        ));
+
         return array_map(
-            fn (QuoteLineData $line): QuoteLineData => $this->freezeLine($line, $products->get($line->productId)),
+            fn (QuoteLineData $line): QuoteLineData => $this->freezeLine($line, $products->get($line->productId), $prices),
             $lines,
         );
     }
@@ -90,10 +96,15 @@ final class SimplifiedOfferLineNormalizer
             $rows,
         ));
 
+        $prices = $this->supplierPrices(array_map(
+            static fn (array $row): int => (int) $row['product_id'],
+            $rows,
+        ));
+
         // Step 3: re-freeze the rows D-6 covers, force the rest back onto
         // their own persisted values.
         return array_map(
-            fn (array $row): array => $this->freezeRow($row, $persisted, $products),
+            fn (array $row): array => $this->freezeRow($row, $persisted, $products, $prices),
             $rows,
         );
     }
@@ -117,34 +128,43 @@ final class SimplifiedOfferLineNormalizer
             ->exists();
     }
 
-    private function freezeLine(QuoteLineData $line, ?Product $product): QuoteLineData
+    /**
+     * @param  Collection<string, string>  $prices  supplier price keyed by "product_id:supplier_id"
+     */
+    private function freezeLine(QuoteLineData $line, ?Product $product, Collection $prices): QuoteLineData
     {
         return new QuoteLineData(
             productId: $line->productId,
             quantity: 1.0,
-            unitPrice: (float) ($product?->price ?? 0),
+            unitPrice: (float) $this->frozenPrice($product, $line->productId, $line->supplierId, $prices),
             vatRateId: $product?->vat_rate_id !== null ? (int) $product->vat_rate_id : null,
             sortOrder: $line->sortOrder,
             id: $line->id,
             commissions: $line->commissions,
+            supplierId: $line->supplierId,
+            hasSupplier: $line->hasSupplier,
         );
     }
 
     /**
      * @param  Collection<int, QuoteLine>  $persisted  keyed by quote_line id
      * @param  Collection<int, Product>  $products
+     * @param  Collection<string, string>  $prices  supplier price keyed by "product_id:supplier_id"
      * @param  array<string, mixed>  $row
      * @return array<string, mixed>
      */
-    private function freezeRow(array $row, Collection $persisted, Collection $products): array
+    private function freezeRow(array $row, Collection $persisted, Collection $products, Collection $prices): array
     {
         $id = isset($row['id']) ? (int) $row['id'] : null;
         $productId = (int) $row['product_id'];
         $existing = $id === null ? null : $persisted->get($id);
         $isNew = $existing === null;
         $productChanged = ! $isNew && (int) $existing->product_id !== $productId;
+        // Spec 0320, D-17: an omitted `supplier_id` on an existing row keeps the stored supplier.
+        $supplierId = array_key_exists('supplier_id', $row) ? $this->intOrNull($row['supplier_id']) : $existing?->supplier_id;
+        $supplierChanged = ! $isNew && $supplierId !== $existing->supplier_id;
 
-        if (! $isNew && ! $productChanged) {
+        if (! $isNew && ! $productChanged && ! $supplierChanged) {
             $row['quantity'] = $existing->quantity;
             $row['unit_price'] = $existing->unit_price;
             $row['vat_rate_id'] = $existing->vat_rate_id;
@@ -154,10 +174,44 @@ final class SimplifiedOfferLineNormalizer
 
         $product = $products->get($productId);
         $row['quantity'] = 1;
-        $row['unit_price'] = $product?->price ?? 0;
+        $row['unit_price'] = $this->frozenPrice($product, $productId, $supplierId, $prices);
         $row['vat_rate_id'] = $product?->vat_rate_id;
 
         return $row;
+    }
+
+    /**
+     * The row's supplier price when that supplier is one of the product's,
+     * else the standard price (a product without suppliers) — spec 0320, D-17.
+     *
+     * @param  Collection<string, string>  $prices
+     */
+    private function frozenPrice(?Product $product, int $productId, ?int $supplierId, Collection $prices): string|float|int
+    {
+        if ($supplierId !== null && $prices->has($productId.':'.$supplierId)) {
+            return $prices->get($productId.':'.$supplierId);
+        }
+
+        return $product?->price ?? 0;
+    }
+
+    private function intOrNull(mixed $value): ?int
+    {
+        return $value === null || $value === '' ? null : (int) $value;
+    }
+
+    /**
+     * One batched read of the suppliers' prices for a set of products.
+     *
+     * @param  array<int, int>  $productIds
+     * @return Collection<string, string> keyed by "product_id:supplier_id"
+     */
+    private function supplierPrices(array $productIds): Collection
+    {
+        return ProductSupplier::query()
+            ->whereIn('product_id', array_values(array_unique($productIds)))
+            ->get(['product_id', 'supplier_id', 'price'])
+            ->mapWithKeys(static fn (ProductSupplier $row): array => [$row->product_id.':'.$row->supplier_id => (string) $row->price]);
     }
 
     /**
@@ -165,7 +219,7 @@ final class SimplifiedOfferLineNormalizer
      */
     private function persistedLines(Quote $quote): Collection
     {
-        return $quote->offerLines()->get(['id', 'product_id', 'quantity', 'unit_price', 'vat_rate_id'])->keyBy('id');
+        return $quote->offerLines()->get(['id', 'product_id', 'supplier_id', 'quantity', 'unit_price', 'vat_rate_id'])->keyBy('id');
     }
 
     /**

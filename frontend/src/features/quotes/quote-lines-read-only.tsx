@@ -47,6 +47,7 @@ function ReadOnlyCommissions({ line, position, allocatedCostNet }: ReadOnlyCommi
           lineNumber={position}
           productName={line.product.name}
           productId={line.product_id}
+          supplierId={line.supplier_id ?? null}
           quantity={Number(line.quantity)}
           unitPrice={Number(line.unit_price)}
           allocatedCostNet={allocatedCostNet}
@@ -136,6 +137,9 @@ function ReadOnlyLine({ line, position, showCommissions, variant, associatedProd
           <ReadOnlyFact label={t('quotes.form.lineVatRateHeader')}>
             {line.vat_rate ? line.vat_rate.name : <DetailEmpty />}
           </ReadOnlyFact>
+          {line.supplier ? (
+            <ReadOnlyFact label={t('quotes.form.lineSupplierHeader')}>{line.supplier.name}</ReadOnlyFact>
+          ) : null}
           {variant === 'cost' ? (
             <ReadOnlyFact label={t('quotes.form.costsTab.associatedProductHeader')}>{associatedProductLabel}</ReadOnlyFact>
           ) : null}

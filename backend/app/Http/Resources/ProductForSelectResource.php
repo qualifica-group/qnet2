@@ -6,6 +6,7 @@ use App\Http\Resources\Abstracts\ForSelectResource;
 use App\Models\Product;
 use App\Models\ProductTypology;
 use App\Models\UnitOfMeasure;
+use App\Products\ProductSupplierPayload;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -51,6 +52,8 @@ class ProductForSelectResource extends ForSelectResource
                 'description' => $this->squishedDescription(),
                 'price' => $this->price,
                 'cost' => $this->cost,
+                // Spec 0320: the supplier list (default first); `cost` above stays the standard cost.
+                'suppliers' => ProductSupplierPayload::forSelect($this->resource),
                 'vat_rate_id' => $this->vat_rate_id,
                 'vat_rate_name' => $this->vatRate?->name,
                 'vat_rate' => $this->vatRate?->rate,

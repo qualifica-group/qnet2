@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Quotes;
 
 use App\Models\Product;
+use App\Models\ProductTypology;
 
 /**
  * Whether the typology of a product calculates the Supplier commission at all
@@ -36,5 +37,12 @@ final class SupplierCommissionEnablement
     public function enabledForProduct(int $productId): bool
     {
         return $this->enabledForProducts([$productId])[$productId] ?? false;
+    }
+
+    /** Typology-level answer, for a product that does not exist yet. */
+    public function enabledForTypology(?int $productTypologyId): bool
+    {
+        return $productTypologyId !== null
+            && (bool) ProductTypology::query()->whereKey($productTypologyId)->value('supplier_commission_enabled');
     }
 }

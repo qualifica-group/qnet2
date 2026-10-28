@@ -10,8 +10,7 @@ use Illuminate\Contracts\Validation\Validator;
 /**
  * Spec 0307, D-2/D-16: "Internal use" belongs to physical goods only, and a
  * product holding stock cannot stop being tracked. Runs on EFFECTIVE values
- * (the submitted ones over the persisted ones), like RequiresPricingForUsages,
- * whose effectiveUsages()/persistedProduct() it relies on.
+ * (the submitted ones over the persisted ones).
  */
 trait EnforcesStockTracking
 {
@@ -41,5 +40,35 @@ trait EnforcesStockTracking
         if ($persisted->stockBalances()->exists()) {
             $validator->errors()->add($isPhysical ? 'usages' : 'product_type', __('stock.product_has_stock'));
         }
+    }
+
+    /**
+     * Submitted `usages`, else the persisted ones, else the model default
+     * (Sellable only) when creating.
+     *
+     * @return array<int, ProductUsage>
+     */
+    protected function effectiveUsages(): array
+    {
+        if ($this->has('usages')) {
+            return array_values(array_filter(array_map(
+                static fn (mixed $usage): ?ProductUsage => is_string($usage) ? ProductUsage::tryFrom($usage) : null,
+                (array) $this->input('usages'),
+            )));
+        }
+
+        $persisted = $this->persistedProduct();
+
+        return $persisted !== null
+            ? ($persisted->usages?->all() ?? [])
+            : [ProductUsage::Sale];
+    }
+
+    /** The product being updated; null on create. */
+    protected function persistedProduct(): ?Product
+    {
+        $product = $this->route('product');
+
+        return $product instanceof Product ? $product : null;
     }
 }

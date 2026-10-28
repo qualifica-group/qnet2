@@ -63,6 +63,10 @@ export function linesToFormValues(lines: QuoteLine[], withCommissions = true): Q
       unit_of_measure: line.unit_of_measure,
       unit_price: Number(line.unit_price),
       vat_rate_id: line.vat_rate_id,
+      // Spec 0320 D-5: the saved supplier and its name (display); the product's
+      // option list is not on the line, the editor resolves it per product.
+      supplier_id: line.supplier_id ?? null,
+      supplier: line.supplier ?? null,
       // Spec 0144 D-1/D-4: `null` on every REVENUE row (D-2) and on a COST
       // row with no association; a real association derives the SAME
       // `line-<id>` scheme from the referenced OFFER row's own id.
@@ -135,6 +139,7 @@ export function toLineInputs(
     quantity: row.quantity as number,
     unit_price: row.unit_price as number,
     vat_rate_id: row.vat_rate_id,
+    ...(row.supplier_id !== undefined ? { supplier_id: row.supplier_id } : {}),
     ...(row.additional_description !== undefined
       ? { additional_description: row.additional_description?.trim() || null }
       : {}),
@@ -229,6 +234,7 @@ export function originalLineInputs(lines: QuoteLine[], withCommissions = true): 
       quantity: Number(line.quantity),
       unit_price: Number(line.unit_price),
       vat_rate_id: line.vat_rate_id,
+      supplier_id: line.supplier_id ?? null,
       ...(withCommissions ? { additional_description: line.additional_description ?? null } : {}),
       sort_order: index,
       // Spec 0144 D-2/D-4: `null`/`undefined` on a REVENUE row and on a
@@ -268,6 +274,7 @@ export function sameLines(a: QuoteLineInput[], b: QuoteLineInput[]): boolean {
       line.quantity === other.quantity &&
       line.unit_price === other.unit_price &&
       (line.vat_rate_id ?? null) === (other.vat_rate_id ?? null) &&
+      (line.supplier_id ?? null) === (other.supplier_id ?? null) &&
       (line.additional_description ?? null) === (other.additional_description ?? null) &&
       // Spec 0144: the association travels as EITHER key, never both — a
       // change from one to the other (e.g. a generic cost newly attributed

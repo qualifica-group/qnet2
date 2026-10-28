@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { defaultProductSupplierOf, productPriceFor } from '@/features/products/product-suppliers'
 import { QuoteProductSelect, type QuoteProductForSelectItem } from '@/features/quotes/quote-product-select'
 import type { NewLineFields } from '@/features/invoices/invoice-editor-lines'
 import type { VatRateRef } from '@/features/invoices/types'
@@ -33,7 +34,8 @@ export function InvoiceEditorAddLine({ onAdd, onRememberVat }: InvoiceEditorAddL
     onAdd({
       product_id: productId,
       description: item.label,
-      unit_price: Number(meta.price ?? 0),
+      // Rev.2 D-19: the default supplier's price, the standard one without suppliers.
+      unit_price: productPriceFor(meta, defaultProductSupplierOf(meta)?.supplier_id ?? null) ?? 0,
       ...(meta.vat_rate_id === null ? {} : { vat_rate_id: meta.vat_rate_id }),
     })
   }

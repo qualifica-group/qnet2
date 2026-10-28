@@ -1,69 +1,11 @@
 /**
- * Domini Attributi + Categorie Prodotto + Prodotti (spec 0017). Estratto in un
+ * Domini Categorie Prodotto + Prodotti (spec 0017). Estratto in un
  * file affiancato per mantenere `it.ts` entro i limiti dimensionali (vedi
  * `.claude/rules/engineering.md` §6); la forma pubblica di `it.ts` è invariata.
+ * Gli Attributi stanno in `it-attributes.ts`.
  */
 
-export const attributes = {
-  title: 'Attributi',
-  subtitle: 'Sfoglia, filtra e gestisci gli attributi dinamici riutilizzabili.',
-  forbidden: 'Non hai i permessi per visualizzare gli attributi.',
-  columns: {
-    code: 'Codice',
-    name: 'Nome',
-    type: 'Tipo',
-    created_at: 'Creato il',
-  },
-  detail: {
-    loadError: "Impossibile caricare l'attributo. Riprova.",
-    details: 'Dettagli',
-    created_at: 'Creato il',
-  },
-  form: {
-    newAttribute: 'Nuovo attributo',
-    createTitle: 'Crea attributo',
-    createSubtitle: 'Aggiungi un nuovo attributo dinamico riutilizzabile.',
-    code: 'Codice',
-    name: 'Nome',
-    save: 'Salva',
-    saving: 'Salvataggio…',
-    cancel: 'Annulla',
-    created: 'Attributo creato con successo.',
-    updated: 'Attributo aggiornato con successo.',
-    deleted: 'Attributo eliminato con successo.',
-    codeRequired: 'Il codice è obbligatorio.',
-    codeMax: 'Il codice deve avere al massimo 64 caratteri.',
-    codeInvalid: 'Il codice deve essere un identificatore snake_case minuscolo.',
-    nameRequired: 'Il nome è obbligatorio.',
-    nameMax: 'Il nome deve avere al massimo 191 caratteri.',
-    genericError: 'Qualcosa è andato storto. Riprova.',
-    deleteError: "Impossibile eliminare l'attributo. Riprova.",
-    deleteForbidden: 'Non puoi eliminare questo attributo.',
-    deleteInUse: 'Questo attributo è assegnato a una categoria o ha valori prodotto.',
-    leaveConfirm: {
-      title: 'Uscire senza salvare?',
-      description: "L'attributo non è ancora stato creato: i dati inseriti andranno persi.",
-      confirm: 'Esci senza salvare',
-      cancel: 'Continua a compilare',
-    },
-    optionValueRequired: 'Il valore è obbligatorio.',
-    optionValueMax: 'Il valore deve avere al massimo 191 caratteri.',
-    optionLabelRequired: "L'etichetta è obbligatoria.",
-    optionLabelMax: "L'etichetta deve avere al massimo 191 caratteri.",
-    optionsRequiredForEnum: 'Aggiungi almeno una opzione per un attributo a elenco.',
-    optionValuesDuplicate: 'I valori delle opzioni devono essere unici.',
-    relationEntityTypeRequired: 'Il modulo di destinazione della relazione è obbligatorio.',
-    relationForSelectResourceRequired: 'La risorsa del selettore è obbligatoria.',
-  },
-  layout: {
-    // Titolo della sezione sintetica "Altre informazioni" generata a runtime
-    // da `AttributeLayoutRenderer` (spec 0062) per gli attributi effettivi
-    // non piazzati in nessuna sezione del layout configurato — mai persistita.
-    otherInformation: 'Altre informazioni',
-    // Hint on a conditional section (spec 0288): the boolean attribute that shows it.
-    visibleWhen: 'Visibile se: {{name}}',
-  },
-}
+export { attributes } from './it-attributes'
 
 export const productCategories = {
   title: 'Categorie Prodotto',
@@ -384,6 +326,13 @@ export const products = {
     stock_quantity: 'Giacenza',
     created_at: 'Creato il',
   },
+  // Commissione Fornitore del prodotto (spec 0320 rev.3): avviso accanto al fornitore.
+  supplierCommission: {
+    PERCENTAGE: 'Commissione {{value}} {{direction}}',
+    FIXED_AMOUNT: 'Commissione fissa {{value}} {{direction}}',
+    direction: { PAID: 'pagata', RECEIVED: 'ricevuta' },
+    hint: 'Il costo di questo fornitore è la commissione Fornitore: il costo resta a 0.',
+  },
   bulkCostType: {
     bulkAction: 'Imposta tipo di costo',
     title: 'Imposta tipo di costo',
@@ -416,10 +365,10 @@ export const products = {
     nameRequired: 'Il nome è obbligatorio.',
     nameMax: 'Il nome deve avere al massimo 191 caratteri.',
     description: 'Descrizione',
-    cost: 'Costo',
+    cost: 'Costo standard',
     costInvalid: 'Il costo deve essere zero o un numero positivo.',
     costRequired: 'Il costo è obbligatorio.',
-    price: 'Prezzo',
+    price: 'Prezzo standard',
     priceInvalid: 'Il prezzo deve essere zero o un numero positivo.',
     priceRequired: 'Il prezzo è obbligatorio.',
     productType: 'Tipo',
@@ -438,11 +387,31 @@ export const products = {
     vatRateSearch: 'Cerca aliquote IVA…',
     vatRateEmpty: 'Nessuna aliquota IVA trovata.',
     vatRateError: 'Impossibile caricare le aliquote IVA.',
-    supplier: 'Fornitore',
-    supplierPlaceholder: 'Seleziona un fornitore…',
-    supplierSearch: 'Cerca fornitori…',
-    supplierEmpty: 'Nessun fornitore trovato.',
-    supplierError: 'Impossibile caricare i fornitori.',
+    suppliers: {
+      title: 'Fornitori',
+      supplier: 'Fornitore',
+      margin: 'Margine',
+      emptyTitle: 'Nessun fornitore',
+      emptyHint: 'Senza fornitori valgono il Prezzo standard e il Costo standard.',
+      add: 'Aggiungi fornitore',
+      supplierN: 'Fornitore {{n}}',
+      price: 'Prezzo',
+      cost: 'Costo',
+      priceN: 'Prezzo del fornitore {{n}}',
+      costN: 'Costo del fornitore {{n}}',
+      defaultN: 'Fornitore {{n}} predefinito',
+      removeN: 'Rimuovi fornitore {{n}}',
+      default: 'Predefinito',
+      placeholder: 'Seleziona un fornitore…',
+      search: 'Cerca fornitori…',
+      empty: 'Nessun fornitore trovato.',
+      loadError: 'Impossibile caricare i fornitori.',
+      supplierRequired: 'Seleziona il fornitore.',
+      priceRequired: 'Il prezzo è obbligatorio.',
+      costRequired: 'Il costo è obbligatorio.',
+      duplicate: 'Questo fornitore è già presente.',
+      defaultRequired: 'Indica un solo fornitore predefinito.',
+    },
     unitOfMeasure: 'Unita di misura',
     unitOfMeasurePlaceholder: "Seleziona un'unita di misura…",
     unitOfMeasureSearch: 'Cerca unita di misura…',

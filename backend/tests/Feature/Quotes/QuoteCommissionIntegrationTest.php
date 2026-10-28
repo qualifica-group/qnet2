@@ -45,11 +45,10 @@ it('initializes only recipient-backed revenue commissions and summarizes authori
     $category = ProductCategory::factory()->create([
         'business_function_id' => BusinessFunction::factory()->create()->id,
     ]);
-    $product = Product::factory()->create([
+    $product = productWithSupplier([
         'category_id' => $category->id,
-        'supplier_id' => $supplier->id,
         'product_typology_id' => ProductTypology::factory()->supplierCommission(),
-    ]);
+    ], $supplier);
     $opportunity = Opportunity::factory()->create(['commercial_id' => $commercial->id]);
 
     foreach ([CommissionRecipientRole::Commercial, CommissionRecipientRole::Reporter, CommissionRecipientRole::Supplier] as $role) {
@@ -70,11 +69,13 @@ it('initializes only recipient-backed revenue commissions and summarizes authori
         'opportunity_id' => $opportunity->id,
         'offer_lines' => [[
             'product_id' => $product->id,
+            'supplier_id' => $supplier->id,
             'quantity' => 2,
             'unit_price' => 100,
         ]],
         'cost_lines' => [[
             'product_id' => $product->id,
+            'supplier_id' => $supplier->id,
             'quantity' => 1,
             'unit_price' => 50,
         ]],

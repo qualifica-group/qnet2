@@ -10,6 +10,7 @@ import {
   ProductClassificationRecordSection,
   ProductIdentityRecordSection,
   ProductPricingRecordSection,
+  ProductSuppliersRecordSection,
 } from '@/features/products/product-record-sections'
 import { StockProductSection } from '@/features/stock/stock-product-section'
 import { STOCK_VIEW_PERMISSION } from '@/features/stock/types'
@@ -52,7 +53,7 @@ export function ProductDetailSections({ product, editor }: ProductDetailSections
     categories,
     onCategoryChange: state.onCategoryChange,
     newAttributes: inline.editingField === 'category_id' ? newAttributes : [],
-    persistedUsages: values.usages,
+    productId: product.id,
   }
 
   return (
@@ -60,6 +61,7 @@ export function ProductDetailSections({ product, editor }: ProductDetailSections
       <ProductIdentityRecordSection {...sectionProps} />
       <ProductClassificationRecordSection {...sectionProps} />
       <ProductPricingRecordSection {...sectionProps} />
+      <ProductSuppliersRecordSection {...sectionProps} />
       <ProductAttributesSection
         attributes={attributes}
         editable={editable}

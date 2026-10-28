@@ -140,6 +140,10 @@ final class CommissionRuleResolver
             return null;
         }
 
+        if ($scope === CommissionApplicationScope::Product && $context->productId === null) {
+            return null;
+        }
+
         $query = CommissionConfiguration::query()
             ->where('recipient_role', $role)
             ->where('application_scope', $scope)

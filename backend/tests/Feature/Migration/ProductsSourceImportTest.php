@@ -81,7 +81,7 @@ it('creates a product, remapping the required category_id via old_id', function 
         ->and($product->category_id)->toBe($category->id)
         ->and($product->product_type)->toBe(ProductType::Service)
         ->and($product->vat_rate_id)->toBeNull()
-        ->and($product->supplier_id)->toBeNull();
+        ->and($product->productSuppliers()->count())->toBe(0);
 
     $fresh = $run->fresh();
     expect($fresh->status)->toBe(MigrationStatus::Completed)
@@ -112,7 +112,7 @@ it('remaps vat_rate_id onto the migrated VAT rate via old_id', function () {
         ->and($run->fresh()->report)->toBeNull();
 });
 
-it('warns and nulls an unmigrated vat_rate_id and the un-remappable supplier_id', function () {
+it('warns and nulls an unmigrated vat_rate_id and never writes the legacy supplier', function () {
     seedMigrationsConfig();
     ProductCategory::factory()->create(['old_id' => 5]);
 
@@ -133,11 +133,11 @@ it('warns and nulls an unmigrated vat_rate_id and the un-remappable supplier_id'
     $product = Product::query()->where('old_id', 2)->first();
 
     expect($product->vat_rate_id)->toBeNull()
-        ->and($product->supplier_id)->toBeNull();
+        ->and($product->productSuppliers()->count())->toBe(0);
 
     $fresh = $run->fresh();
     expect($fresh->created_rows)->toBe(1)
-        ->and(collect($fresh->report)->where('level', 'warning'))->toHaveCount(2);
+        ->and(collect($fresh->report)->where('level', 'warning'))->toHaveCount(1);
 });
 
 it('defaults an absent product_type and warns on an unknown one', function () {

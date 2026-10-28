@@ -9,6 +9,7 @@ import {
 } from '@/features/request-management/attribute-values-schema'
 import { hiddenAttributeCodes } from '@/features/attributes/attribute-section-visibility'
 import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
+import { hasProductSuppliers } from '@/features/products/product-suppliers'
 import { isPristineLineRow } from '@/features/quotes/quote-line-values'
 import { isEmptyCustomFieldValue } from '@/features/custom-fields/custom-fields-values'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
@@ -122,6 +123,14 @@ export function quoteLineRowSchema(t: TFunction) {
         .optional(),
       unit_price: z.number().nullable(),
       vat_rate_id: z.number().nullable(),
+      // Spec 0320 D-5: the line's supplier, required when the product has any.
+      supplier_id: z.number().nullable().optional(),
+      // Display-only (never sent): the saved supplier's name, and the product's
+      // supplier options when the pick (not the persisted row) brought them.
+      supplier: z.object({ id: z.number(), name: z.string() }).nullable().optional(),
+      product_suppliers: z
+        .array(z.object({ supplier_id: z.number(), name: z.string(), price: z.string(), cost: z.string(), is_default: z.boolean() }))
+        .optional(),
       additional_description: z.string().max(ADDITIONAL_DESCRIPTION_MAX_LENGTH).nullable().optional(),
       // Spec 0144 D-1/D-4, COST rows only: the `client_key` of the associated
       // OFFER row, or `null` for a generic cost. Ignored on OFFER rows.
@@ -173,6 +182,14 @@ export function quoteLineRowSchema(t: TFunction) {
           code: z.ZodIssueCode.custom,
           path: ['product_id'],
           message: t('quotes.form.lineProductRequired'),
+        })
+      }
+
+      if (hasProductSuppliers({ suppliers: row.product_suppliers }) && (row.supplier_id ?? null) === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['supplier_id'],
+          message: t('quotes.form.lineSupplierRequired'),
         })
       }
 

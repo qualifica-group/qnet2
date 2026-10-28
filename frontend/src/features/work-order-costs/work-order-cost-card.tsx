@@ -11,6 +11,7 @@ import { VAT_RATES_FOR_SELECT_RESOURCE } from '@/features/vat-rates/for-select-a
 import { fromCents, lineAmounts } from '@/lib/amounts/line-amounts'
 import { errorAria } from '@/features/work-order-costs/cost-row-aria'
 import { CostRowError, type CostRowErrors } from '@/features/work-order-costs/cost-row-error'
+import { useCostRowCommission } from '@/features/work-order-costs/use-cost-row-commission'
 import { WorkOrderCostCardDetails } from '@/features/work-order-costs/work-order-cost-card-details'
 import type { WorkOrderCostRowValues } from '@/features/work-order-costs/work-order-costs-schema'
 
@@ -59,6 +60,8 @@ export function WorkOrderCostCard({ index, row, disabled, revenueOptions, error,
   const { t } = useTranslation()
   const rowId = useId()
   const n = index + 1
+  // Rev.3 D-23: a supplier that earns a commission makes the cost free of charge.
+  const priceLocked = useCostRowCommission(row).commissionOf(row.supplier_id) !== null
   const errorId = (field: string) => `${rowId}-${field}-error`
   const amounts = lineAmounts(row.quantity ?? 0, row.unit_price ?? 0, row.display.vat_percent, COST_QUANTITY_SCALE)
   const revenueSelectOptions = useMemo(
@@ -117,7 +120,7 @@ export function WorkOrderCostCard({ index, row, disabled, revenueOptions, error,
             step="0.01"
             min={0}
             aria-label={t('workOrders.costs.editor.unitPrice', { n })}
-            disabled={disabled}
+            disabled={disabled || priceLocked}
             value={numberInputValue(row.unit_price)}
             onChange={(event) => onChangeField({ unit_price: parseNumber(event.target.value) })}
             className={INPUT_CLASS}

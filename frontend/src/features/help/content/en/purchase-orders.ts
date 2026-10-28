@@ -83,7 +83,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Each line can have a catalogue **Product** or just a free **Description** (required). Choosing a product proposes the **description**, **U.m.**, **price** (the product purchase cost) and **VAT rate**: all stay editable. If the product has a default **cost type**, it is proposed only when the line has none yet. Each line can have its own **Work order**, proposed from the header one.',
+          text: 'Each line can have a catalogue **Product** or just a free **Description** (required). Choosing a product proposes the **description**, **U.m.**, **price** (the cost of the ODA supplier if it supplies the product, otherwise of the default supplier, otherwise the standard cost) and **VAT rate**: all stay editable. If the product has a default **cost type**, it is proposed only when the line has none yet. Each line can have its own **Work order**, proposed from the header one. Changing the ODA supplier does not reprice the lines already entered.',
         },
         {
           type: 'table',

@@ -79,8 +79,6 @@ export function productFixture(overrides: Partial<ProductDetailWithPermissions> 
     created_at: '2026-01-01T00:00:00Z',
     vat_rate_id: null,
     vat_rate: null,
-    supplier_id: null,
-    supplier: null,
     unit_of_measure_id: 1,
     unit_of_measure: { id: 1, name: 'Unit', symbol: 'pz' },
     product_typology_id: 1,
@@ -141,7 +139,7 @@ export function typeInRow(field: string, value: string, confirm: 'Done' | 'Save'
 /** The create rows a product needs besides its code: name, price (Sellable by default) and category (stub id 3). */
 export function completeRequiredCreateRows() {
   typeInRow('Name', 'ThinkPad X1')
-  typeInRow('Price', '1200')
+  typeInRow('Standard price', '1200')
   fireEvent.click(pencilOf('Category'))
   fireEvent.click(screen.getByTestId('category-select'))
   confirmOpenRow('Done')

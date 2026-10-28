@@ -5,10 +5,15 @@ import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { costTypeOptionRenderer } from '@/features/cost-types/cost-type-option-renderer'
 import { COST_TYPES_FOR_SELECT_RESOURCE } from '@/features/cost-types/for-select-api'
 import type { ForSelectItem } from '@/features/for-select/types'
+import { ProductSupplierSelect } from '@/features/products/product-supplier-select'
+import { productCostFor } from '@/features/products/product-suppliers'
+import { SupplierCommissionNote } from '@/features/products/supplier-commission-note'
 import { QuoteLineAdditionalDescription } from '@/features/quotes/quote-line-additional-description'
 import { REGISTRIES_FOR_SELECT_RESOURCE } from '@/features/registries/for-select-api'
 import { errorAria } from '@/features/work-order-costs/cost-row-aria'
 import { CostRowError, type CostRowErrors } from '@/features/work-order-costs/cost-row-error'
+import { useCostRowCommission } from '@/features/work-order-costs/use-cost-row-commission'
+import { useCostRowSuppliers } from '@/features/work-order-costs/use-cost-row-suppliers'
 import {
   DOCUMENT_REFERENCE_MAX_LENGTH,
   type WorkOrderCostRowValues,
@@ -40,6 +45,8 @@ export function WorkOrderCostCardDetails({ n, row, disabled, error, rowId, onCha
   const { t } = useTranslation()
   const costTypeCreate = useQuickCreateAction(COST_TYPES_FOR_SELECT_RESOURCE)
   const supplierCreate = useQuickCreateAction(REGISTRIES_FOR_SELECT_RESOURCE, SUPPLIER_PRESETS)
+  const productSuppliers = useCostRowSuppliers(row)
+  const { commissionOf } = useCostRowCommission(row)
   const errorId = (field: string) => `${rowId}-${field}-error`
 
   const costTypeItem: (ForSelectItem & { meta: { color: string | null } }) | null =
@@ -103,33 +110,59 @@ export function WorkOrderCostCardDetails({ n, row, disabled, error, rowId, onCha
       </div>
 
       <div className="flex flex-col gap-1">
-        <AsyncPaginatedSelect
-          resource={REGISTRIES_FOR_SELECT_RESOURCE}
-          params={SUPPLIER_PARAMS}
-          value={row.supplier_id}
-          onChange={() => {}}
-          onItemChange={(item) =>
-            onChangeField({ supplier_id: item?.id ?? null, display: { ...row.display, supplier_name: item?.label ?? null } })
-          }
-          selectedItem={supplierItem}
-          action={supplierCreate.renderAction(
-            (ref) => onChangeField({ supplier_id: ref.id, display: { ...row.display, supplier_name: ref.name } }),
-            disabled,
-          )}
-          disabled={disabled}
-          className="min-h-8 py-1"
-          {...errorAria(errorId('supplier'), error?.supplier_id)}
-          labels={{
-            placeholder: t('workOrders.costs.editor.supplierPlaceholder'),
-            searchPlaceholder: t('workOrders.costs.editor.supplierSearch'),
-            empty: t('workOrders.costs.editor.supplierEmpty'),
-            error: t('workOrders.costs.editor.supplierLoadError'),
-            clearLabel: t('common.clear'),
-            triggerLabel: t('workOrders.costs.editor.supplier', { n }),
-            retry: t('common.retry'),
-          }}
-        />
+        {productSuppliers.length > 0 ? (
+          <ProductSupplierSelect
+            suppliers={productSuppliers}
+            amount="cost"
+            value={row.supplier_id}
+            onChange={(supplierId, option) =>
+              onChangeField({
+                supplier_id: supplierId,
+                unit_price: commissionOf(supplierId) ? 0 : (productCostFor({ suppliers: productSuppliers }, supplierId) ?? row.unit_price),
+                display: { ...row.display, supplier_name: option.name },
+              })
+            }
+            fallback={supplierItem ? { id: supplierItem.id, name: supplierItem.label } : null}
+            disabled={disabled}
+            className="min-h-8 py-1"
+            {...errorAria(errorId('supplier'), error?.supplier_id)}
+            labels={{
+              placeholder: t('workOrders.costs.editor.supplierPlaceholder'),
+              searchPlaceholder: t('workOrders.costs.editor.supplierSearch'),
+              empty: t('workOrders.costs.editor.supplierEmpty'),
+              triggerLabel: t('workOrders.costs.editor.supplier', { n }),
+            }}
+          />
+        ) : (
+          <AsyncPaginatedSelect
+            resource={REGISTRIES_FOR_SELECT_RESOURCE}
+            params={SUPPLIER_PARAMS}
+            value={row.supplier_id}
+            onChange={() => {}}
+            onItemChange={(item) =>
+              onChangeField({ supplier_id: item?.id ?? null, display: { ...row.display, supplier_name: item?.label ?? null } })
+            }
+            selectedItem={supplierItem}
+            action={supplierCreate.renderAction(
+              (ref) => onChangeField({ supplier_id: ref.id, display: { ...row.display, supplier_name: ref.name } }),
+              disabled,
+            )}
+            disabled={disabled}
+            className="min-h-8 py-1"
+            {...errorAria(errorId('supplier'), error?.supplier_id)}
+            labels={{
+              placeholder: t('workOrders.costs.editor.supplierPlaceholder'),
+              searchPlaceholder: t('workOrders.costs.editor.supplierSearch'),
+              empty: t('workOrders.costs.editor.supplierEmpty'),
+              error: t('workOrders.costs.editor.supplierLoadError'),
+              clearLabel: t('common.clear'),
+              triggerLabel: t('workOrders.costs.editor.supplier', { n }),
+              retry: t('common.retry'),
+            }}
+          />
+        )}
         <CostRowError id={errorId('supplier')} error={error?.supplier_id} />
+        <SupplierCommissionNote commission={commissionOf(row.supplier_id)} id={errorId('commission-note')} />
       </div>
 
       <div className="flex flex-col gap-1">

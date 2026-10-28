@@ -42,7 +42,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Premi Nuovo prodotto: il modulo ha lo stesso aspetto della scheda, con le stesse sezioni e righe chiuse (il Codice è già proposto).',
-            "Fai clic su una riga (o sulla matita) per aprirla, compila e premi Fatto per tenere il valore o Ripristina per riportarlo com'era. Sezioni: Anagrafica, Classificazione, Prezzi e fornitura, Attributi.",
+            "Fai clic su una riga (o sulla matita) per aprirla, compila e premi Fatto per tenere il valore o Ripristina per riportarlo com'era. Sezioni: Anagrafica, Classificazione, Prezzi e fornitura, Fornitori, Attributi.",
             'In testa vedi crescere Prezzo, Costo e Margine mentre compili.',
             'Premi Salva: QNet controlla tutto e mostra "Prodotto creato con successo.". Se esci senza salvare ti viene chiesta conferma.',
           ],
@@ -177,15 +177,24 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Campo', 'Cosa indicare'],
           rows: [
-            ['Costo', "Quanto costa a te il prodotto. Obbligatorio se il prodotto è Utilizzabile come costo, zero o positivo; compare solo in quel caso."],
-            ['Prezzo', 'Il prezzo di vendita. Obbligatorio se il prodotto è Vendibile, zero o positivo; compare solo in quel caso.'],
+            ['Prezzo standard', 'Il prezzo del prodotto quando non ha fornitori. Obbligatorio, zero o positivo (default 0). Con dei fornitori non compare più.'],
+            ['Costo standard', 'Quanto costa a te il prodotto quando non ha fornitori. Obbligatorio, zero o positivo (default 0). Con dei fornitori non compare più.'],
             ['IVA', "L'aliquota IVA, dall'elenco IVA."],
-            ['Fornitore', 'Chi fornisce il prodotto.'],
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            "Ogni prodotto, qualunque sia l'utilizzo (Vendibile, Utilizzabile come costo, Interno), ha **Prezzo** e **Costo**: gli utilizzi decidono solo dove il prodotto si può scegliere.",
+            "Nella sezione **Fornitori** puoi indicare più fornitori, ognuno con il proprio **Prezzo** e il proprio **Costo** (obbligatori, default 0). Uno è il **Predefinito**: con un solo fornitore lo è in automatico, con più fornitori va scelto. Con dei fornitori il Prezzo standard e il Costo standard non compaiono più. La sezione Fornitori occupa tutta la larghezza: una tabella con fornitore, prezzo, costo e margine (in euro e in percentuale, in rosso se negativo), il badge Predefinito accanto al nome e, al posto del costo, la commissione se il fornitore ne ha una. Modificandola, ogni riga mostra il margine mentre scrivi.",
+            "Se il fornitore ha una commissione **Fornitore** su quel prodotto (la regola del Configuratore Commissioni che si applicherebbe oggi: dedicata al fornitore sul prodotto o sulla sua categoria, oppure generica del ruolo Fornitore; solo se la tipologia ha attivo **Calcolo commissione Fornitore**), il suo **Costo** è bloccato a 0 e compare l'avviso \"Commissione 10% pagata\" o \"ricevuta\" (o \"Commissione fissa ...\").",
+            "Le colonne **Prezzo** e **Costo** della griglia (anche filtri e ordinamento) e il riquadro **Prezzo**, **Costo** e **Margine** del prodotto mostrano i valori del fornitore predefinito; senza fornitori quelli standard.",
+            "Un'anagrafica che è fornitore di un prodotto non si può eliminare.",
           ],
         },
         {
           type: 'paragraph',
-          text: 'Se il prodotto è sia Vendibile sia Utilizzabile come costo, sotto costo e prezzo compare il Margine (prezzo meno costo) con la percentuale sul prezzo. Si aggiorna mentre scrivi. Se togli un utilizzo, il campo sparisce ma il valore già scritto resta: ricompare se lo rispunti.',
+          text: 'Sotto prezzo e costo compare il Margine (prezzo meno costo, con fornitori quelli del fornitore predefinito) con la percentuale sul prezzo. Si aggiorna mentre scrivi.',
         },
         {
           type: 'warning',
@@ -223,7 +232,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Dal menu Azioni scegli Visualizza per aprire la scheda. Trovi codice e nome, Prezzo, Costo e Margine in evidenza (ciascuno solo se pertinente: il Margine compare solo con entrambi gli utilizzi), le sezioni Anagrafica, Classificazione e Prezzi e fornitura, gli attributi (divisi nelle stesse sezioni impostate per la categoria, anche quelli vuoti), i campi personalizzati, lo storico delle modifiche (se hai il permesso) e la data Creato il.',
+          text: 'Dal menu Azioni scegli Visualizza per aprire la scheda. Trovi codice e nome, Prezzo, Costo e Margine in evidenza (del fornitore predefinito, o standard se non ci sono fornitori), le sezioni Anagrafica, Classificazione, Prezzi e fornitura e Fornitori, gli attributi (divisi nelle stesse sezioni impostate per la categoria, anche quelli vuoti), i campi personalizzati, lo storico delle modifiche (se hai il permesso) e la data Creato il.',
         },
         {
           type: 'steps',
@@ -235,7 +244,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Il Codice non si modifica dopo la creazione. Se cambi la Categoria, gli attributi che la nuova categoria aggiunge si compilano nello stesso riquadro; se attivi un Utilizzo, nello stesso riquadro ti viene chiesto il Prezzo o il Costo. Un campo senza matita è in sola lettura per il tuo ruolo.',
+          text: 'Il Codice non si modifica dopo la creazione. Se cambi la Categoria, gli attributi che la nuova categoria aggiunge si compilano nello stesso riquadro; se attivi un Utilizzo, nello stesso riquadro ti vengono chiesti il Prezzo e il Costo. Un campo senza matita è in sola lettura per il tuo ruolo.',
         },
         {
           type: 'paragraph',
@@ -254,7 +263,7 @@ const guide: HelpGuide = {
             'Lascia il Codice proposto e scrivi il Nome, per esempio "Trasferta in treno".',
             'Scegli la Categoria giusta.',
             'In Utilizzo in offerta togli Vendibile e spunta Utilizzabile come costo.',
-            "Inserisci il Costo, poi scegli l'IVA.",
+            "Inserisci il Costo (e il Prezzo), poi scegli l'IVA.",
             'Compila gli attributi richiesti e premi Salva.',
           ],
         },

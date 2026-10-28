@@ -7,7 +7,6 @@ namespace App\Http\Controllers\Quotes;
 use App\DataObjects\Commissions\CommissionRecipient;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Quotes\QuoteCommissionRecipientsRequest;
-use App\Models\Product;
 use App\Models\Quote;
 use App\Services\Commissions\CommissionRecipientResolver;
 use App\Services\Commissions\QuoteCommissionPayloadRedactor;
@@ -56,9 +55,8 @@ class QuoteCommissionRecipientsController extends BaseApiController
             );
 
             // Step 2: resolve the admissible recipient of every role.
-            $product = Product::findOrFail((int) $validated['product_id']);
             $recipients = $this->resolver->resolve(
-                $product,
+                $this->roleId($validated, 'supplier_id'),
                 $this->roleId($validated, 'commercial_id') ?? $quote?->commercial_id,
                 $this->roleId($validated, 'reporter_id') ?? $quote?->reporter_id,
                 $this->roleId($validated, 'supervisor_id') ?? $quote?->supervisor_id,

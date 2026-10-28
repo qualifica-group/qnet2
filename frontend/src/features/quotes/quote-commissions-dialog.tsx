@@ -16,8 +16,10 @@ interface Props {
   onOpenChange: (open: boolean) => void
   lineNumber: number
   productName: string
-  /** Half of the recipient lookup: the supplier role resolves off the line's product. */
+  /** Half of the recipient lookup (the other half is the line's supplier, spec 0320 D-7). */
   productId: number | null
+  /** Spec 0320 D-7: the line's supplier, the Supplier commission recipient. */
+  supplierId?: number | null
   quantity: number | null
   unitPrice: number | null
   /**

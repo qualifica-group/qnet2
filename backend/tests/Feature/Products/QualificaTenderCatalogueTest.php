@@ -7,6 +7,7 @@ use App\Models\Attribute;
 use App\Models\BusinessFunction;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductSupplier;
 use App\Services\ProductCategories\AttributeLayoutService;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Database\Seeders\QualificaCatalog\BranchProducts;
@@ -134,7 +135,7 @@ it('seeds the 33 listed products with their price, 22% VAT, the Consulenza typol
         ])
         ->and($products->pluck('productTypology.code')->unique()->values()->all())->toBe(['consultancy'])
         ->and($products->map(fn (Product $product): string => (string) $product->vatRate?->rate)->unique()->values()->all())->toBe(['22.00'])
-        ->and($products->pluck('supplier_id')->filter()->all())->toBe([])
+        ->and(ProductSupplier::query()->exists())->toBeFalse()
         ->and((float) $products->firstWhere('name', 'Adesione Consorzio Grade')->price)->toBe(3900.0)
         ->and((float) $products->firstWhere('name', 'MePa_ Iscrizione al Portale + Abilitazione a N°1 Bando')->price)->toBe(250.0)
         ->and($products->map(fn (Product $product): mixed => $product->custom_fields[BranchProducts::EXPIRATION_MONTHS_FIELD] ?? null)->unique()->values()->all())->toBe([0]);

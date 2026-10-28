@@ -1,8 +1,10 @@
 import { useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useFieldArray, useForm, useWatch, type Path } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { commissionedDefaultProductIds } from '@/features/products/supplier-commissions-api'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { costRowPatchFromProduct } from '@/features/work-order-costs/cost-row-product'
 import type { CostRowErrors } from '@/features/work-order-costs/cost-row-error'
@@ -39,6 +41,7 @@ const ROW_ERROR_FIELDS = [
  */
 export function useWorkOrderCostsEditor(workOrderId: number, lines: WorkOrderCostLine[]) {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const schema = useMemo(() => buildWorkOrderCostsSchema(t), [t])
   const values = useMemo<WorkOrderCostsFormValues>(() => ({ lines: rowsFromCostLines(lines) }), [lines])
   const form = useForm<WorkOrderCostsFormValues>({ resolver: zodResolver(schema), values })
@@ -54,14 +57,20 @@ export function useWorkOrderCostsEditor(workOrderId: number, lines: WorkOrderCos
       { shouldDirty: true, shouldValidate: isSubmitted },
     )
 
-  /** Spec 0270 D-4: one new row per catalogue product, dated today and precompiled as a pick always was. */
-  const addProducts = (items: QuoteCatalogProduct[]) =>
+  /**
+   * Spec 0270 D-4: one new row per catalogue product, dated today and precompiled as a pick always was.
+   * A product whose default supplier earns a commission opens at price 0 (spec 0320 rev.3 D-23).
+   */
+  const addProducts = async (items: QuoteCatalogProduct[]) => {
+    const freeOfCharge = await commissionedDefaultProductIds(queryClient, items)
     append(
       items.map((item) => {
         const row = createEmptyCostRow()
-        return { ...row, ...costRowPatchFromProduct(item, row) }
+        const patch = costRowPatchFromProduct(item, row)
+        return { ...row, ...patch, ...(freeOfCharge.has(item.id) ? { unit_price: 0 } : {}) }
       }),
     )
+  }
 
   const submit = form.handleSubmit(async (formValues) => {
     try {

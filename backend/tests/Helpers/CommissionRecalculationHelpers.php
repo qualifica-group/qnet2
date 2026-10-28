@@ -12,6 +12,7 @@ use App\Models\BusinessFunction;
 use App\Models\CommissionConfiguration;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductSupplier;
 use App\Models\ProductTypology;
 use App\Models\Quote;
 use App\Models\QuoteLine;
@@ -41,6 +42,35 @@ if (! function_exists('recalcActor')) {
     }
 }
 
+if (! function_exists('productWithSupplier')) {
+    /**
+     * Spec 0320: a product that has ONE supplier (its default, with a cost).
+     * Quote lines on it must name that supplier (`defaultSupplierId()`).
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    function productWithSupplier(array $attributes = [], ?Registry $supplier = null): Product
+    {
+        $product = Product::factory()->create($attributes);
+        ProductSupplier::factory()->default()->create([
+            'product_id' => $product->id,
+            'supplier_id' => ($supplier ?? Registry::factory()->supplier()->create())->id,
+        ]);
+
+        return $product;
+    }
+}
+
+if (! function_exists('defaultSupplierId')) {
+    /** Spec 0320: the product's default supplier id, null when it has no suppliers. */
+    function defaultSupplierId(Product $product): ?int
+    {
+        $supplierId = ProductSupplier::query()->where('product_id', $product->id)->where('is_default', true)->value('supplier_id');
+
+        return $supplierId === null ? null : (int) $supplierId;
+    }
+}
+
 if (! function_exists('recalcProduct')) {
     function recalcProduct(bool $supplierEnabled = false): Product
     {
@@ -49,9 +79,8 @@ if (! function_exists('recalcProduct')) {
         ]);
         $typology = $supplierEnabled ? ProductTypology::factory()->supplierCommission()->create() : ProductTypology::factory()->create();
 
-        return Product::factory()->create([
+        return productWithSupplier([
             'category_id' => $category->id,
-            'supplier_id' => Registry::factory()->create()->id,
             'product_typology_id' => $typology->id,
         ]);
     }
@@ -91,6 +120,7 @@ if (! function_exists('recalcQuote')) {
         $line = QuoteLine::factory()->create([
             'quote_id' => $quote->id,
             'product_id' => $product->id,
+            'supplier_id' => defaultSupplierId($product),
             'quantity' => 1,
             'unit_price' => 100,
             'net_amount' => 100,
@@ -109,7 +139,7 @@ if (! function_exists('recalcCommission')) {
             'commission_configuration_id' => $rule?->id,
             'recipient_role' => $role,
             'recipient_type' => $role === CommissionRecipientRole::Supplier ? 'registry' : 'referent',
-            'recipient_id' => $role === CommissionRecipientRole::Supplier ? $line->product->supplier_id : $line->quote->commercial_id,
+            'recipient_id' => $role === CommissionRecipientRole::Supplier ? $line->supplier_id : $line->quote->commercial_id,
             'commission_type' => CommissionType::Percentage,
             'value' => $value,
             'calculated_amount' => $value,

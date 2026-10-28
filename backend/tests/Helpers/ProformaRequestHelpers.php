@@ -58,11 +58,13 @@ if (! function_exists('proformaWorkOrder')) {
             $typology = $line[0] === null
                 ? ProductTypology::factory()->create()
                 : ProductTypology::query()->firstOrCreate(['code' => $line[0]], ['name' => $line[0], 'proforma_kind' => $line[0]]);
-            $product = Product::factory()->create([
-                'product_typology_id' => $typology->id,
+            $product = Product::factory()->create(['product_typology_id' => $typology->id]);
+            // Spec 0320, D-8: the supplier travels on the quote line, not on the product.
+            $quoteLine = QuoteLine::factory()->create([
+                'quote_id' => $quote->id,
+                'product_id' => $product->id,
                 'supplier_id' => ($line[1] ?? null)?->id,
             ]);
-            $quoteLine = QuoteLine::factory()->create(['quote_id' => $quote->id, 'product_id' => $product->id]);
             $workOrder->quoteLines()->attach($quoteLine->id);
         }
 

@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Check } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { defaultProductSupplierOf, productCostFor, productPriceFor } from '@/features/products/product-suppliers'
 import { formatEuro } from '@/features/invoices/invoice-format'
 import { ProductTypologyBadge } from '@/features/product-typologies/product-typology-badge'
 import type { QuoteLineVariant } from '@/features/quotes/use-quote-lines-field'
@@ -43,7 +44,8 @@ export function QuoteCatalogItem({
   const { t } = useTranslation()
   const blocked = alreadyAdded || disabled
   const { meta } = item
-  const price = formatEuro(variant === 'revenue' ? meta.price : meta.cost)
+  const defaultSupplierId = defaultProductSupplierOf(meta)?.supplier_id ?? null
+  const price = formatEuro(variant === 'revenue' ? productPriceFor(meta, defaultSupplierId) : productCostFor(meta, defaultSupplierId))
   const unit = meta.unit_of_measure?.symbol
 
   const activate = () => {

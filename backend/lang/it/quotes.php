@@ -19,4 +19,7 @@ return [
     'commission_recalculation' => [
         'closed' => "Le commissioni di un'offerta chiusa non si ricalcolano.",
     ],
+    // Spec 0320, D-5.
+    'supplier_required' => 'Il fornitore è obbligatorio per questo prodotto.',
+    'supplier_not_of_product' => 'Il fornitore selezionato non è tra i fornitori del prodotto.',
 ];

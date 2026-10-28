@@ -35,6 +35,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * product changes: RECEIVED|PAID, NULL = no Supplier commission (always NULL
  * on a COST row).
  *
+ * `supplier_id` (spec 0320, D-5): the Registry supplier chosen among the
+ * product's suppliers; NULL when the product has none. It is the recipient of
+ * the Supplier commission and the grouping key of proforma/invoice drafts.
+ *
  * `offer_line_id` (spec 0144, D-2): a self-reference to the REVENUE row (of
  * the SAME quote) a COST row is imputed to — NULL means a generic cost.
  * `nullOnDelete` (D-3): deleting the referenced product line, from any
@@ -46,6 +50,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'quote_id',
     'line_type',
     'product_id',
+    'supplier_id',
     'quantity',
     'unit_price',
     'vat_rate_id',
@@ -89,6 +94,11 @@ class QuoteLine extends BaseModel
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Registry::class, 'supplier_id');
     }
 
     public function vatRate(): BelongsTo

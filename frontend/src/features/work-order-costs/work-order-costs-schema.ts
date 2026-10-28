@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import { ADDITIONAL_DESCRIPTION_MAX_LENGTH, MAX_LINES_PER_TAB, QUANTITY_MAX, UNIT_PRICE_MAX } from '@/features/quotes/quote-schema'
+import type { ProductSupplierOption } from '@/features/products/product-suppliers'
 import { round2 } from '@/lib/amounts/line-amounts'
 import type { SyncWorkOrderCostsPayload, WorkOrderCostLine } from '@/features/work-order-costs/types'
 
@@ -20,6 +21,8 @@ const displaySchema = z.object({
   supplier_name: z.string().nullable(),
   cost_type_name: z.string().nullable(),
   cost_type_color: z.string().nullable(),
+  // Spec 0320: the product's suppliers; undefined = not looked up yet (a saved row), [] = none.
+  product_suppliers: z.custom<ProductSupplierOption[]>().optional(),
 })
 
 export type WorkOrderCostRowDisplay = z.infer<typeof displaySchema>
@@ -88,6 +91,8 @@ export function workOrderCostRowSchema(t: TFunction) {
       if (!ISO_DATE.test(row.incurred_on) || Number.isNaN(Date.parse(row.incurred_on))) {
         fail('incurred_on', 'incurredOnInvalid')
       }
+
+      if (row.supplier_id === null && (row.display.product_suppliers?.length ?? 0) > 0) fail('supplier_id', 'supplierRequired')
 
       if ((row.document_reference?.length ?? 0) > DOCUMENT_REFERENCE_MAX_LENGTH) {
         fail('document_reference', 'documentReferenceTooLong')

@@ -258,6 +258,7 @@ final class QuoteLineCommissionWriter
             reporterId: null,
             supervisorId: null,
             referenceDate: new DateTimeImmutable,
+            supplierId: $line->supplier_id,
         ), $line->supplier_commission_direction !== null);
     }
 

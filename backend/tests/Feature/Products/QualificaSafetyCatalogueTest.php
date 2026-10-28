@@ -37,7 +37,7 @@ beforeEach(function (): void {
 function safetyProducts(): Collection
 {
     return Product::query()
-        ->with(['category', 'productTypology', 'vatRate', 'supplier'])
+        ->with(['category', 'productTypology', 'vatRate', 'productSuppliers.supplier'])
         ->whereIn('category_id', ProductCategory::query()->whereIn('name', SafetyCatalogue::TARGET_CATEGORIES)->select('id'))
         ->get();
 }
@@ -174,8 +174,8 @@ it('links the F-gas products to GONDOLA SRLS and the welding ones to ND CONTROL,
 
     test()->seed(QualificaCatalogSeeder::class);
 
-    $bySupplier = safetyProducts()->filter(fn (Product $product): bool => $product->supplier_id !== null)
-        ->groupBy('supplier.name')
+    $bySupplier = safetyProducts()->filter(fn (Product $product): bool => $product->productSuppliers->isNotEmpty())
+        ->groupBy(fn (Product $product): string => $product->productSuppliers->sole()->supplier->name)
         ->map(fn (Collection $products): array => $products->pluck('name')->sort()->values()->all());
 
     expect($bySupplier->all())->toBe([
@@ -186,13 +186,13 @@ it('links the F-gas products to GONDOLA SRLS and the welding ones to ND CONTROL,
     $ndControl = Registry::factory()->supplier()->create(['name' => SafetyCatalogue::ND_CONTROL]);
     test()->seed(QualificaCatalogSeeder::class);
 
-    expect(safetyProducts()->where('supplier_id', $ndControl->id)->pluck('name')->sort()->values()->all())->toBe([
+    expect(safetyProducts()->filter(fn (Product $product): bool => $product->productSuppliers->contains('supplier_id', $ndControl->id))->pluck('name')->sort()->values()->all())->toBe([
         'Patentino Saldatori',
         'Prove iniziali di tipo ITT',
         'Qualifica dei processi di saldatura WPQR /WPS',
         'Qualifica dei processi di saldatura WPQR | Welding Procedure Qualification Record',
     ])
-        ->and(safetyProducts()->where('supplier_id', $gondola->id))->toHaveCount(2);
+        ->and(safetyProducts()->filter(fn (Product $product): bool => $product->productSuppliers->contains('supplier_id', $gondola->id)))->toHaveCount(2);
 });
 
 it('writes the listed "Mesi scadenza" in the products custom field, leaving blank the products the list leaves blank', function (): void {

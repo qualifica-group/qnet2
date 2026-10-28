@@ -6,8 +6,10 @@ namespace App\Http\Requests\WorkOrderCosts;
 
 use App\Models\WorkOrder;
 use App\Quotes\QuoteLineRules;
+use App\WorkOrders\WorkOrderCostSupplierRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 /**
  * Validates PUT /api/work-orders/{workOrder}/costs (spec 0190): the FULL set
@@ -65,6 +67,27 @@ class SyncWorkOrderCostsRequest extends FormRequest
             'lines.*.supplier_id' => ['nullable', 'integer', Rule::exists('registries', 'id')->where('is_supplier', true)],
             'lines.*.document_reference' => ['nullable', 'string', 'max:'.self::DOCUMENT_REFERENCE_MAX],
         ];
+    }
+
+    /**
+     * Spec 0320 D-9, after the base rules so a row whose supplier already
+     * failed (unknown / not a supplier) is not reported twice.
+     *
+     * @return array<int, callable(Validator): void>
+     */
+    public function after(): array
+    {
+        return [function (Validator $validator): void {
+            $rows = $this->input('lines');
+
+            if ($validator->errors()->isNotEmpty() || ! is_array($rows)) {
+                return;
+            }
+
+            foreach (WorkOrderCostSupplierRule::violations($this->workOrder(), $rows) as $index => $violation) {
+                $validator->errors()->add("lines.{$index}.supplier_id", __("work_order_costs.{$violation}"));
+            }
+        }];
     }
 
     /**

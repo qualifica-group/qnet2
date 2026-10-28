@@ -142,7 +142,7 @@ it('falls back to the role gradini when the personal rule is suspended or out of
 it('resolves every role independently — a personal SUPPLIER rule never influences the COMMERCIAL role (AC-007)', function () {
     $commercial = Referent::factory()->create();
     $supplier = Registry::factory()->create();
-    $product = Product::factory()->create(['supplier_id' => $supplier->id]);
+    $product = Product::factory()->create();
 
     CommissionConfiguration::factory()
         ->forRecipient('registry', $supplier->id)

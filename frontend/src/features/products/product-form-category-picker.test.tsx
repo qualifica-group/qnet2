@@ -148,8 +148,6 @@ function product(overrides: Partial<ProductDetailWithPermissions> = {}): Product
     created_at: '2026-01-01T00:00:00Z',
     vat_rate_id: null,
     vat_rate: null,
-    supplier_id: null,
-    supplier: null,
     unit_of_measure_id: 1,
     unit_of_measure: { id: 1, name: 'Unit', symbol: 'pz' },
     product_typology_id: 1,

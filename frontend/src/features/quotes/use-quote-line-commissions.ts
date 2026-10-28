@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { useOptionalConfirm } from '@/components/confirm-dialog-context'
+import { defaultProductSupplierOf, productPriceFor } from '@/features/products/product-suppliers'
 import { fetchQuoteCommissionDefaults, fetchQuoteCommissionRecipients } from '@/features/quotes/api'
 import type { QuoteLineFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteCommissionContext } from '@/features/quotes/types'
@@ -30,10 +31,11 @@ function toFormCommissions(defaults: CommissionDefaultsResponse): NonNullable<Qu
   }))
 }
 
-function roleScope(context: QuoteCommissionContext, productId: number) {
+function roleScope(context: QuoteCommissionContext, productId: number, supplierId: number | null) {
   return {
     ...(context.quoteId ? { quote_id: context.quoteId } : {}),
     product_id: productId,
+    supplier_id: supplierId,
     commercial_id: context.commercialId,
     reporter_id: context.reporterId,
     supervisor_id: context.supervisorId,
@@ -57,7 +59,7 @@ async function resyncRow(row: QuoteLineFormValues, context: QuoteCommissionConte
   if (row.product_id === null) {
     return row
   }
-  const scope = roleScope(context, row.product_id)
+  const scope = roleScope(context, row.product_id, row.supplier_id ?? null)
   const [recipients, defaults] = await Promise.all([
     fetchQuoteCommissionRecipients(scope),
     fetchQuoteCommissionDefaults({ ...scope, line_net_amount: (row.quantity ?? 0) * (row.unit_price ?? 0) }),
@@ -113,24 +115,26 @@ export function useQuoteLineCommissions({
   }, [commissionContext, onChange, t, value])
 
   return useMemo(() => {
-    const defaultsFor = async (productId: number, lineNetAmount: number): Promise<LineCommissionDefaults> => {
+    const defaultsFor = async (productId: number, lineNetAmount: number, supplierId: number | null): Promise<LineCommissionDefaults> => {
       if (!commissionContext) {
         return NO_DEFAULTS
       }
       const defaults = await fetchQuoteCommissionDefaults({
-        ...roleScope(commissionContext, productId),
+        ...roleScope(commissionContext, productId, supplierId),
         line_net_amount: lineNetAmount,
       })
       return { commissions: toFormCommissions(defaults), supplierCommissionDirection: defaults.supplier_commission_direction }
     }
-    const unitPriceOf = (item: QuoteCatalogProduct) => (item.meta.price === null ? 0 : Number(item.meta.price))
+    const defaultSupplierIdOf = (item: QuoteCatalogProduct) => defaultProductSupplierOf(item.meta)?.supplier_id ?? null
+    // The sale price the new row will carry: the default supplier's, else the standard one (rev.2 D-16).
+    const unitPriceOf = (item: QuoteCatalogProduct) => productPriceFor(item.meta, defaultSupplierIdOf(item)) ?? 0
 
     return {
       // Step 2: new rows, all or nothing (D-6).
       defaultsForNewRows: async (items) => {
         try {
           const resolved = await Promise.all(
-            items.map(async (item) => [item.id, await defaultsFor(item.id, DEFAULT_LINE_QUANTITY * unitPriceOf(item))] as const),
+            items.map(async (item) => [item.id, await defaultsFor(item.id, DEFAULT_LINE_QUANTITY * unitPriceOf(item), defaultSupplierIdOf(item))] as const),
           )
           return new Map(resolved)
         } catch {
@@ -154,7 +158,30 @@ export function useQuoteLineCommissions({
           if (!accepted) return null
         }
         try {
-          return await defaultsFor(item.id, (row.quantity ?? 0) * unitPriceOf(item))
+          return await defaultsFor(item.id, (row.quantity ?? 0) * unitPriceOf(item), defaultSupplierIdOf(item))
+        } catch {
+          toast.error(t('quotes.form.commissions.defaultsError'))
+          return null
+        }
+      },
+      // Step 4 (spec 0320 D-7): a supplier change on a revenue row regenerates
+      // its commissions like a product change does, confirmed when it has any.
+      defaultsForSupplier: async (row, supplierId) => {
+        if (row.product_id === null) return null
+        if ((row.commissions?.length ?? 0) > 0) {
+          const accepted =
+            confirm !== null &&
+            (await confirm({
+              tone: 'destructive',
+              title: t('quotes.form.commissions.regenerateTitle'),
+              description: t('quotes.form.commissions.regenerateSupplierDescription'),
+              confirmLabel: t('quotes.form.commissions.regenerateConfirm'),
+              cancelLabel: t('common.cancel'),
+            }))
+          if (!accepted) return null
+        }
+        try {
+          return await defaultsFor(row.product_id, (row.quantity ?? 0) * (row.unit_price ?? 0), supplierId)
         } catch {
           toast.error(t('quotes.form.commissions.defaultsError'))
           return null

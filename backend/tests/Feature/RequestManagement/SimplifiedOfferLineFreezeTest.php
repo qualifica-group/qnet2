@@ -119,10 +119,10 @@ it('AC-008: create freezes quantity/unit-price/VAT-rate from the product, ignori
         ->and($line->vat_rate_id)->toBe($vatRate->id);
 });
 
-it('AC-009: a product with a NULL price freezes unit-price to 0, no 422', function () {
+it('AC-009: a product with a zero price freezes unit-price to 0, no 422', function () {
     $actor = simplifiedLineActor(['create']);
     $category = simplifiedLineCategory();
-    $product = simplifiedLineProduct($category, null, null);
+    $product = simplifiedLineProduct($category, 0, null);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/request-management', [

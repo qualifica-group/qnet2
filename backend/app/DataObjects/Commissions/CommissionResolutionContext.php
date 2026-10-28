@@ -10,6 +10,8 @@ use DateTimeImmutable;
 final readonly class CommissionResolutionContext
 {
     /**
+     * @param  int|null  $productId  null for a product not saved yet (spec 0320, D-21): the
+     *                               product-scoped gradini cannot match, category and role ones still do.
      * @param  array<int, CommissionRecipientRole>  $roles
      * @param  array<string, CommissionRecipient|null>  $recipients  keyed by
      *                                                               CommissionRecipientRole value (spec 0089 D-5). Defaults to
@@ -17,7 +19,7 @@ final readonly class CommissionResolutionContext
      *                                                               rules unchanged (AC-019).
      */
     public function __construct(
-        public int $productId,
+        public ?int $productId,
         public ?int $productCategoryId,
         public array $roles,
         public DateTimeImmutable $referenceDate,

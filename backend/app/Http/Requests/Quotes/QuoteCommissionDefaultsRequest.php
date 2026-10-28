@@ -23,6 +23,7 @@ class QuoteCommissionDefaultsRequest extends FormRequest
             'reporter_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'supervisor_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
             'reference_date' => ['nullable', 'date'],
+            'supplier_id' => ['nullable', 'integer', Rule::exists('registries', 'id')],
         ];
     }
 

@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { FolderTree, Package, Wallet } from 'lucide-react'
+import { FolderTree, Package, Truck, Wallet } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
-import { RecordLink } from '@/components/detail/record-link'
 import { RecordField, RecordFieldList, RecordSection } from '@/components/detail/record-panel'
 import { RecordInlineField } from '@/components/record-form/record-inline-field'
 import { Badge } from '@/components/ui/badge'
@@ -19,13 +18,10 @@ import {
   ProductTypologyField,
   ProductUnitField,
 } from '@/features/products/product-fields'
-import {
-  ProductAmountField,
-  ProductSupplierField,
-  ProductUsagesEditor,
-  ProductVatRateField,
-} from '@/features/products/product-pricing-fields'
-import { productPricingVisibility } from '@/features/products/product-pricing-visibility'
+import { ProductAmountField, ProductVatRateField } from '@/features/products/product-pricing-fields'
+import { ProductSuppliersField } from '@/features/products/product-suppliers-editor'
+import { ProductUsageField } from '@/features/products/product-usage-field'
+import { ProductSuppliersTable } from '@/features/products/product-suppliers-table'
 import type { ProductRecordSectionProps, ProductRecordValues } from '@/features/products/product-record'
 
 function TextValue({ value }: { value: string | null }) {
@@ -81,10 +77,10 @@ function TypologyValue({ typology }: { typology: ProductRecordValues['product_ty
  * "Classificazione": where the product sits in the catalogue and where an
  * Offerta may use it. The business function is derived from the category
  * (spec 0023), read-only. A category change brings its new attributes into the
- * same editor, a newly enabled usage its amount (spec 0218 D-4).
+ * same editor (spec 0218 D-4).
  */
 export function ProductClassificationRecordSection(props: ProductRecordSectionProps) {
-  const { values, form, inline, categories, onCategoryChange, newAttributes, persistedUsages } = props
+  const { values, form, inline, categories, onCategoryChange, newAttributes } = props
   const { t } = useTranslation()
   const { control } = form
 
@@ -145,7 +141,7 @@ export function ProductClassificationRecordSection(props: ProductRecordSectionPr
           field="usages"
           label={t('products.form.usages')}
           inline={inline}
-          editor={<ProductUsagesEditor control={control} persistedUsages={persistedUsages} />}
+          editor={<ProductUsageField control={control} />}
         >
           {values.usages.length > 0 ? (
             <span className="flex flex-wrap gap-1">
@@ -165,19 +161,18 @@ export function ProductClassificationRecordSection(props: ProductRecordSectionPr
 }
 
 /**
- * "Prezzi e fornitura": the amounts the usages make relevant (spec 0191: the
- * cost only for a usable-as-cost product, the price only for a sellable one),
- * the VAT rate and the supplier.
+ * "Prezzi e fornitura": the Standard cost and price, shown only for a product
+ * WITHOUT suppliers and for every usage (spec 0320 rev.3 D-20), and the VAT rate.
+ * The suppliers have their own full-width section below.
  */
 export function ProductPricingRecordSection({ values, form, inline }: ProductRecordSectionProps) {
   const { t } = useTranslation()
   const { control } = form
-  const pricing = productPricingVisibility(values.usages)
 
   return (
     <RecordSection title={t('products.form.sections.pricing.title')} icon={<Wallet />}>
       <RecordFieldList>
-        {pricing.cost ? (
+        {values.suppliers.length === 0 ? (
           <RecordInlineField
             field="cost"
             label={t('products.form.cost')}
@@ -187,7 +182,7 @@ export function ProductPricingRecordSection({ values, form, inline }: ProductRec
             {formatDecimal(values.cost) || <DetailEmpty />}
           </RecordInlineField>
         ) : null}
-        {pricing.price ? (
+        {values.suppliers.length === 0 ? (
           <RecordInlineField
             field="price"
             label={t('products.form.price')}
@@ -205,21 +200,35 @@ export function ProductPricingRecordSection({ values, form, inline }: ProductRec
         >
           {values.vat_rate?.name ?? <DetailEmpty />}
         </RecordInlineField>
-        <RecordInlineField
-          field="supplier_id"
-          label={t('products.form.supplier')}
-          inline={inline}
-          editor={<ProductSupplierField control={control} selected={values.supplier} />}
-        >
-          {values.supplier ? (
-            <RecordLink domain="registries" id={values.supplier.id}>
-              {values.supplier.name}
-            </RecordLink>
-          ) : (
-            <DetailEmpty />
-          )}
-        </RecordInlineField>
       </RecordFieldList>
+    </RecordSection>
+  )
+}
+
+/**
+ * "Fornitori" (spec 0320): the product's price list per supplier across the full grid width — identity, price,
+ * cost (or the commission replacing it) and margin — with the supplier count next to the title. Edited in place.
+ */
+export function ProductSuppliersRecordSection({ values, form, inline, productId }: ProductRecordSectionProps) {
+  const { t } = useTranslation()
+  const count = values.suppliers.length
+
+  return (
+    <RecordSection
+      full
+      title={t('products.form.suppliers.title')}
+      icon={<Truck />}
+      action={count > 0 ? <Badge variant="secondary" className="px-1.5 py-0 text-[11px] tabular-nums">{count}</Badge> : null}
+    >
+      <RecordInlineField
+        field="suppliers"
+        label={t('products.form.suppliers.title')}
+        layout="block"
+        inline={inline}
+        editor={<ProductSuppliersField control={form.control} productId={productId} />}
+      >
+        <ProductSuppliersTable suppliers={values.suppliers} />
+      </RecordInlineField>
     </RecordSection>
   )
 }

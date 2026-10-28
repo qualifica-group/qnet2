@@ -7,7 +7,7 @@ use App\Enums\ProductType;
 use App\Enums\ProductUsage;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\EnforcesStockTracking;
-use App\Http\Requests\Concerns\RequiresPricingForUsages;
+use App\Http\Requests\Concerns\ValidatesProductSuppliers;
 use App\Models\Product;
 use App\Rules\SelectableProductCategory;
 use Illuminate\Contracts\Validation\Validator;
@@ -37,9 +37,11 @@ use Illuminate\Validation\Rules\Exists;
  */
 class UpdateProductRequest extends FormRequest
 {
-    use EnforcesFieldPermissions;
+    use EnforcesFieldPermissions, ValidatesProductSuppliers {
+        ValidatesProductSuppliers::currentFieldValue insteadof EnforcesFieldPermissions;
+        EnforcesFieldPermissions::currentFieldValue as protected defaultCurrentFieldValue;
+    }
     use EnforcesStockTracking;
-    use RequiresPricingForUsages;
 
     public function authorize(): bool
     {
@@ -53,10 +55,11 @@ class UpdateProductRequest extends FormRequest
     public function rules(): array
     {
         return [
+            ...$this->supplierRules(),
             'name' => ['sometimes', 'required', 'string', 'max:191'],
             'description' => ['sometimes', 'nullable', 'string'],
-            'cost' => ['sometimes', 'nullable', 'numeric'],
-            'price' => ['sometimes', 'nullable', 'numeric'],
+            'cost' => ['sometimes', 'nullable', 'numeric', 'min:0', 'decimal:0,2'],
+            'price' => ['sometimes', 'nullable', 'numeric', 'min:0', 'decimal:0,2'],
             // Spec 0074 D-3b: the product's CURRENT category is exempt, so a
             // partial update that resubmits it unchanged still passes once
             // that category has been made unselectable.
@@ -67,7 +70,6 @@ class UpdateProductRequest extends FormRequest
             'usages' => ['sometimes', 'array', 'min:1'],
             'usages.*' => ['distinct', Rule::enum(ProductUsage::class)],
             'vat_rate_id' => ['sometimes', 'nullable', 'integer', 'exists:vat_rates,id'],
-            'supplier_id' => ['sometimes', 'nullable', 'integer', 'exists:registries,id'],
             // Spec 0088, D-4: a submitted null resets to the default unit in
             // ProductService (the column is NOT NULL).
             'unit_of_measure_id' => ['sometimes', 'nullable', 'integer', 'exists:units_of_measure,id'],
@@ -83,7 +85,7 @@ class UpdateProductRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $this->enforceFieldPermissions($validator);
-            $this->enforcePricingForUsages($validator);
+            $this->enforceSingleDefaultSupplier($validator);
             $this->enforceStockTracking($validator);
         });
     }

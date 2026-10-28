@@ -52,6 +52,9 @@ class QuoteLineResource extends JsonResource
             'id' => $this->id,
             'product_id' => $this->product_id,
             'product' => $this->summarizeProduct(),
+            // Spec 0320, D-5: the product's supplier this row is bought from / paid to.
+            'supplier_id' => $this->supplier_id,
+            'supplier' => $this->summarizeByName($this->supplier),
             'quantity' => $this->quantity,
             // Spec 0088, D-5/AC-053: the FROZEN unit, or — for a historic line
             // predating the module (unit_of_measure_id NULL) — the product's

@@ -8,7 +8,6 @@ use App\Enums\QuoteLineType;
 use App\Migrations\Sources\QuotesSource;
 use App\Migrations\Support\CostProductCatalogue;
 use App\Models\Product;
-use App\Models\Registry;
 use App\Models\VatRate;
 use RuntimeException;
 
@@ -19,8 +18,8 @@ use RuntimeException;
  * `user_levels` for an employee cost). A cost is imputed to the revenue line the legacy pairs it
  * with (same service), by its position in the same create; that line absent
  * -> a generic cost. A cost without a usable migrated cost product fails the
- * whole offer (user decision 2026-10-14). The legacy supplier is never written (the
- * product carries it): a mismatch is only reported.
+ * whole offer (user decision 2026-10-14). The row's supplier is the product's default
+ * (AssignsDefaultProductSuppliers); the legacy supplier is only reported when it differs.
  *
  * @phpstan-require-extends QuotesSource
  */
@@ -52,8 +51,6 @@ trait MapsLegacyQuoteCostLines
         $lineRef = $externalLine['id'] ?? '?';
         $product = $this->costProduct($externalLine['product_source'] ?? CostProductCatalogue::EXPENSE_REPORTS, $externalLine['product_id'] ?? null, $lineRef);
 
-        $this->reportSupplierMismatch($product, $externalLine['supplier_id'] ?? null, $lineRef, $warnings);
-
         $description = trim((string) ($externalLine['description'] ?? ''));
 
         return new QuoteLineData(
@@ -78,7 +75,7 @@ trait MapsLegacyQuoteCostLines
         $product = Product::query()
             ->where('old_source', $source)
             ->where('old_id', $externalRef)
-            ->first(['id', 'usages', 'supplier_id']);
+            ->first(['id', 'usages']);
 
         if ($product === null) {
             throw new RuntimeException("Cost line {$lineRef}: cost product ({$source} legacy id {$externalRef}) not migrated; the quote is not imported.");
@@ -89,31 +86,6 @@ trait MapsLegacyQuoteCostLines
         }
 
         return $product;
-    }
-
-    /**
-     * The supplier lives on the product: a legacy line naming another one (or
-     * a product without any) is reported, never written.
-     *
-     * @param  array<int, string>  $warnings
-     */
-    private function reportSupplierMismatch(Product $product, mixed $externalSupplierId, int|string $lineRef, array &$warnings): void
-    {
-        if ($externalSupplierId === null || $externalSupplierId === '' || (int) $externalSupplierId === 0) {
-            return;
-        }
-
-        $productSupplierOldId = $product->supplier_id === null
-            ? null
-            : Registry::query()->whereKey($product->supplier_id)->value('old_id');
-
-        if ($productSupplierOldId !== null && (int) $productSupplierOldId === (int) $externalSupplierId) {
-            return;
-        }
-
-        $warnings[] = $productSupplierOldId === null
-            ? "Cost line {$lineRef}: legacy supplier (legacy id {$externalSupplierId}) differs from the product's: the product has no supplier."
-            : "Cost line {$lineRef}: legacy supplier (legacy id {$externalSupplierId}) differs from the product's (legacy id {$productSupplierOldId}).";
     }
 
     /**

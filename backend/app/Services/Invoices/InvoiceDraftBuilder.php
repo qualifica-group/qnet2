@@ -79,11 +79,11 @@ final class InvoiceDraftBuilder
             ->where('quote_lines.quote_id', $request->quote_id)
             ->where('line_type', QuoteLineType::Revenue->value)
             ->whereNotIn('quote_lines.id', InvoiceLine::query()->whereNotNull('quote_line_id')->select('quote_line_id'))
-            ->with('product:id,name,supplier_id,product_typology_id,vat_rate_id', 'product.productTypology:id,proforma_kind', 'product.vatRate:id,name,rate', 'vatRate:id,name,rate')
+            ->with('product:id,name,product_typology_id,vat_rate_id', 'product.productTypology:id,proforma_kind', 'product.vatRate:id,name,rate', 'vatRate:id,name,rate')
             ->get()
             ->filter(fn (QuoteLine $line): bool => $line->product?->productTypology?->proforma_kind === $request->kind)
             ->filter(fn (QuoteLine $line): bool => $request->kind === ProformaRequestKind::Consultancy
-                || $line->product->supplier_id === $request->supplier_id);
+                || $line->supplier_id === $request->supplier_id);
     }
 
     /**

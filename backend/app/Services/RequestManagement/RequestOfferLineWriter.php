@@ -130,7 +130,7 @@ final class RequestOfferLineWriter
      * query: Model::preventLazyLoading() is active outside production, and the
      * relation is deliberately unset between the two calls.
      *
-     * @return array<int, array{product_id: int, quantity: string, unit_price: string, vat_rate_id: int|null}>
+     * @return array<int, array{product_id: int, supplier_id: int|null, quantity: string, unit_price: string, vat_rate_id: int|null}>
      */
     private function snapshot(Quote $quote): array
     {
@@ -139,6 +139,7 @@ final class RequestOfferLineWriter
             ->get()
             ->map(static fn (QuoteLine $line): array => [
                 'product_id' => $line->product_id,
+                'supplier_id' => $line->supplier_id,
                 'quantity' => (string) $line->quantity,
                 'unit_price' => (string) $line->unit_price,
                 'vat_rate_id' => $line->vat_rate_id,

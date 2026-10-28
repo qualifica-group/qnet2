@@ -167,7 +167,7 @@ it('fills a missing "Mesi scadenza" on the re-run, without overriding one set by
     test()->seed(QualificaTemplateSeeder::class);
     test()->seed(QualificaCatalogSeeder::class);
 
-    $consulting = Product::query()->where('category_id', soaCategory(SoaCatalogue::CONSULTING_CATEGORY)->id)->get()->keyBy('name');
+    $consulting = Product::query()->with('productSuppliers')->where('category_id', soaCategory(SoaCatalogue::CONSULTING_CATEGORY)->id)->get()->keyBy('name');
     CustomFieldValue::query()->where('entity_type', 'products')->where('entity_id', $consulting->get('Consulenza Soa_II anno')->id)->delete();
     app(CustomFieldWriter::class)->write($consulting->get('Consulenza Soa_III anno'), 'products', [BranchProducts::EXPIRATION_MONTHS_FIELD => 36]);
 
@@ -217,18 +217,18 @@ it('seeds the 18 SOA products at 0 with 22% VAT, linking each attestation to its
 
     test()->seed(QualificaCatalogSeeder::class);
 
-    $certifying = Product::query()->where('category_id', soaCategory(SoaCatalogue::CERTIFYING_BODY_CATEGORY)->id)->get()->keyBy('name');
-    $consulting = Product::query()->where('category_id', soaCategory(SoaCatalogue::CONSULTING_CATEGORY)->id)->get();
+    $certifying = Product::query()->with('productSuppliers')->where('category_id', soaCategory(SoaCatalogue::CERTIFYING_BODY_CATEGORY)->id)->get()->keyBy('name');
+    $consulting = Product::query()->with('productSuppliers')->where('category_id', soaCategory(SoaCatalogue::CONSULTING_CATEGORY)->id)->get();
 
     expect($certifying)->toHaveCount(15)
         ->and($consulting->pluck('name')->sort()->values()->all())
         ->toBe(['Consulenza Soa_I anno', 'Consulenza Soa_II anno', 'Consulenza Soa_III anno'])
         ->and($certifying->merge($consulting)->map(fn (Product $product): float => (float) $product->price)->unique()->values()->all())->toBe([0.0])
         ->and($certifying->merge($consulting)->map(fn (Product $product): string => (string) $product->vatRate?->rate)->unique()->values()->all())->toBe(['22.00'])
-        ->and($certifying->get('Attestazione Soa_Argenta')->supplier_id)->toBe($argenta->id)
-        ->and($certifying->get('Soa_Variazione_Soatech')->supplier_id)->toBe($soatech->id)
-        ->and($certifying->get('Soa_Rinnovo_Dap')->supplier_id)->toBeNull()
-        ->and($consulting->pluck('supplier_id')->filter()->all())->toBe([]);
+        ->and($certifying->get('Attestazione Soa_Argenta')->productSuppliers->sole()->supplier_id)->toBe($argenta->id)
+        ->and($certifying->get('Soa_Variazione_Soatech')->productSuppliers->sole()->supplier_id)->toBe($soatech->id)
+        ->and($certifying->get('Soa_Rinnovo_Dap')->productSuppliers)->toBeEmpty()
+        ->and($consulting->flatMap->productSuppliers->all())->toBe([]);
 });
 
 it('links a supplier imported after the first seed on the re-run, without overriding one set by hand', function (): void {
@@ -236,12 +236,12 @@ it('links a supplier imported after the first seed on the re-run, without overri
 
     $category = soaCategory(SoaCatalogue::CERTIFYING_BODY_CATEGORY);
     $byHand = Registry::factory()->supplier()->create(['name' => 'Altro ente']);
-    Product::query()->where('category_id', $category->id)->where('name', 'Soa_Revisione_Dap')->sole()->update(['supplier_id' => $byHand->id]);
+    Product::query()->where('category_id', $category->id)->where('name', 'Soa_Revisione_Dap')->sole()->productSuppliers()->create(['supplier_id' => $byHand->id, 'cost' => 0, 'is_default' => true]);
     $dap = Registry::factory()->supplier()->create(['name' => SoaCatalogue::DAP]);
 
     test()->seed(QualificaCatalogSeeder::class);
 
-    $dapProducts = Product::query()->where('category_id', $category->id)->where('name', 'like', '%_Dap')->pluck('supplier_id', 'name');
+    $dapProducts = Product::query()->with('productSuppliers')->where('category_id', $category->id)->where('name', 'like', '%_Dap')->get()->mapWithKeys(fn (Product $product): array => [$product->name => $product->productSuppliers->first()?->supplier_id]);
 
     expect(Product::query()->where('category_id', $category->id)->count())->toBe(15)
         ->and($dapProducts->get('Soa_Revisione_Dap'))->toBe($byHand->id)

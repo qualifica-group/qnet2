@@ -60,10 +60,12 @@ interface LineSupplierSelectProps {
   selected: NamedRef | null
   disabled: boolean
   label: string
+  /** Fired after a pick, so the row can re-price from the supplier's cost (spec 0320 D-10). */
+  onSupplierPicked?: (supplierId: number | null) => void
 }
 
 /** Supplier of one RDA line, optional until the line is ordered (spec 0209 D-1/D-2). */
-export function LineSupplierSelect({ control, setValue, index, selected, disabled, label }: LineSupplierSelectProps) {
+export function LineSupplierSelect({ control, setValue, index, selected, disabled, label, onSupplierPicked }: LineSupplierSelectProps) {
   return (
     <FormField
       control={control}
@@ -79,6 +81,7 @@ export function LineSupplierSelect({ control, setValue, index, selected, disable
               onSelect={(supplier) => {
                 field.onChange(supplier?.id ?? null)
                 setValue(`lines.${index}.supplier_ref`, supplier, { shouldDirty: true })
+                onSupplierPicked?.(supplier?.id ?? null)
               }}
             />
           </FormControl>

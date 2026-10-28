@@ -20,6 +20,8 @@ final readonly class QuoteCommissionDefaultsData
         public ?int $reporterId,
         public ?int $supervisorId,
         public DateTimeImmutable $referenceDate,
+        /** Spec 0320, D-7: the line's supplier, the recipient of the Supplier role (null = none). */
+        public ?int $supplierId = null,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -33,6 +35,7 @@ final readonly class QuoteCommissionDefaultsData
             reporterId: isset($data['reporter_id']) ? (int) $data['reporter_id'] : null,
             supervisorId: isset($data['supervisor_id']) ? (int) $data['supervisor_id'] : null,
             referenceDate: new DateTimeImmutable($data['reference_date'] ?? 'now'),
+            supplierId: isset($data['supplier_id']) ? (int) $data['supplier_id'] : null,
         );
     }
 }

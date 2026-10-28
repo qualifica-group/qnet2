@@ -4,6 +4,7 @@ namespace Database\Seeders\QualificaCatalog;
 
 use App\CustomFields\CustomFieldWriter;
 use App\DataObjects\Products\CreateProductData;
+use App\DataObjects\Products\ProductSupplierData;
 use App\Enums\ProductType;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -42,6 +43,9 @@ final class BranchProducts
     public const string EXPIRATION_MONTHS_FIELD = 'expiration_months';
 
     private const string DEFAULT_TYPOLOGY_CODE = 'institution';
+
+    /** The list gives no supplier cost: filled in later through the products module (spec 0320). */
+    private const string SUPPLIER_COST = '0.00';
 
     public function __construct(
         private readonly ProductService $products,
@@ -102,18 +106,22 @@ final class BranchProducts
                 categoryId: $category->id,
                 productType: ProductType::Service,
                 vatRateId: $vatRateId,
-                supplierId: $supplierId,
                 productTypologyId: $typologyId,
+                suppliers: $supplierId === null ? null : [new ProductSupplierData($supplierId, bcadd((string) $price, '0', 2), self::SUPPLIER_COST, true)],
             ));
         }
 
         $existing->fill(array_filter([
-            'supplier_id' => $existing->supplier_id ?? $supplierId,
             'description' => blank($existing->description) ? $description : $existing->description,
             'product_typology_id' => $existing->product_typology_id === $defaultTypologyId
                 ? $typologyId
                 : $existing->product_typology_id,
         ], static fn (int|string|null $value): bool => $value !== null))->save();
+
+        // Only a product still without suppliers gets the list's one; never touched afterwards.
+        if ($supplierId !== null && ! $existing->productSuppliers()->exists()) {
+            $existing->productSuppliers()->create(['supplier_id' => $supplierId, 'price' => bcadd((string) $price, '0', 2), 'cost' => self::SUPPLIER_COST, 'is_default' => true]);
+        }
 
         return $existing;
     }

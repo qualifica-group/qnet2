@@ -17,8 +17,8 @@ uses(RefreshDatabase::class);
 
 function attachTypologyLine(WorkOrder $workOrder, ProductTypology $typology, ?Registry $supplier = null): QuoteLine
 {
-    $product = Product::factory()->create(['product_typology_id' => $typology->id, 'supplier_id' => $supplier?->id]);
-    $line = QuoteLine::factory()->create(['quote_id' => $workOrder->quote_id, 'product_id' => $product->id]);
+    $product = Product::factory()->create(['product_typology_id' => $typology->id]);
+    $line = QuoteLine::factory()->create(['quote_id' => $workOrder->quote_id, 'product_id' => $product->id, 'supplier_id' => $supplier?->id]);
     $workOrder->quoteLines()->attach($line->id);
 
     return $line;

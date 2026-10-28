@@ -92,11 +92,11 @@ final class CellValueValidator
 
     /**
      * @param  array<string, mixed>  $column  the raw column declaration (id/type/nullable/rules/options/relation/editableField)
-     * @param  array<int, int>  $exemptProductIds  products already persisted on the edited record, honoured by the `offer_lines` editor only (spec 0208 D-2)
+     * @param  array<int, array{product_id: int, supplier_id: int|null}>  $persistedLines  the lines already saved on the edited record keyed by id, honoured by the `offer_lines` editor only: their products are exempt from the inactive-category check (spec 0208 D-2) and an unchanged product/supplier pair from the supplier check (spec 0320 D-5)
      *
      * @throws ValidationException
      */
-    public function validate(array $column, mixed $value, array $exemptProductIds = []): mixed
+    public function validate(array $column, mixed $value, array $persistedLines = []): mixed
     {
         // Checked BEFORE the relation branch: a multiselect column declares
         // `relation` too (it is what names the resource whose ids it holds),
@@ -110,7 +110,7 @@ final class CellValueValidator
         }
 
         if (($column['editor'] ?? null) === self::OFFER_LINES_EDITOR) {
-            return $this->validateQuoteLineListValue($value, $exemptProductIds);
+            return $this->validateQuoteLineListValue($value, $persistedLines);
         }
 
         if (isset($column['relation'])) {
@@ -316,17 +316,22 @@ final class CellValueValidator
      * QuoteService::update()), exactly like the `select` editor's membership
      * rule.
      *
-     * @param  array<int, int>  $exemptProductIds
+     * @param  array<int, array{product_id: int, supplier_id: int|null}>  $persistedLines
      * @return array<int, array<string, mixed>>
      *
      * @throws ValidationException
      */
-    private function validateQuoteLineListValue(mixed $value, array $exemptProductIds): array
+    private function validateQuoteLineListValue(mixed $value, array $persistedLines): array
     {
         Validator::make(
             ['value' => $value],
             [
-                ...QuoteLineRules::fieldRules('value', withCommissions: false, exemptProductIds: $exemptProductIds),
+                ...QuoteLineRules::fieldRules(
+                    'value',
+                    withCommissions: false,
+                    exemptProductIds: array_values(array_column($persistedLines, 'product_id')),
+                    persistedLines: $persistedLines,
+                ),
                 // Overrides the shared `sometimes`: a cell PATCH always
                 // carries its value, and an absent one is a malformed request
                 // rather than an untouched collection.
@@ -338,6 +343,9 @@ final class CellValueValidator
         return array_map(static fn (array $row): array => [
             ...(isset($row['id']) ? ['id' => (int) $row['id']] : []),
             'product_id' => (int) $row['product_id'],
+            // Spec 0320, D-5: the key travels only when the cell sent it, so an
+            // omitting client keeps the stored supplier (QuoteLineData::hasSupplier).
+            ...(array_key_exists('supplier_id', $row) ? ['supplier_id' => isset($row['supplier_id']) ? (int) $row['supplier_id'] : null] : []),
             'quantity' => $row['quantity'],
             'unit_price' => $row['unit_price'],
             'vat_rate_id' => isset($row['vat_rate_id']) ? (int) $row['vat_rate_id'] : null,

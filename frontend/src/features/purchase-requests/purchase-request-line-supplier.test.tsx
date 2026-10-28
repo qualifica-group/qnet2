@@ -90,8 +90,8 @@ beforeEach(() => {
     unit_of_measure_id: 2,
     vat_rate_id: 1,
     vat_rate: { id: 1, name: 'IVA 22%', rate: 22 },
-    supplier_id: 12,
-    supplier: { id: 12, name: 'Rossi Srl' },
+    // Spec 0320: the product's suppliers replace its single supplier_id/supplier.
+    suppliers: [{ supplier_id: 12, name: 'Rossi Srl', price: '250.00', cost: '150.00', is_default: true }],
   } as unknown as ProductDetailWithPermissions)
 })
 
@@ -112,7 +112,7 @@ describe('line supplier (spec 0209 AC-012)', () => {
     expect(screen.getByRole('combobox', { name: 'Supplier 1' })).toHaveTextContent('Rossi Srl')
   })
 
-  it('proposes the supplier of the picked product, still editable', async () => {
+  it('proposes the default supplier of the picked product, still editable', async () => {
     renderCreate()
 
     fireEvent.click(screen.getByRole('combobox', { name: /Product 1/ }))

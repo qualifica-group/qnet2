@@ -129,18 +129,16 @@ describe('Product — offer usages (spec 0142)', () => {
     expect(createProductMock).not.toHaveBeenCalled()
   })
 
-  it('asks the cost in the usages editor when the cost usage is switched on (spec 0218 D-4)', async () => {
+  // REQUIREMENT CHANGED (rev.3 D-20): the cost is not asked when the cost usage is switched on; every product has it.
+  it('does not ask an amount when the cost usage is switched on (rev.3 D-20)', async () => {
     updateProductMock.mockResolvedValue(productFixture())
-    renderDetail(productFixture({ cost: null }))
+    renderDetail(productFixture())
 
     fireEvent.click(pencilOf('Offer usage'))
-    expect(screen.queryByLabelText(/^Cost/)).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('checkbox', { name: 'Usable as cost' }))
-    fireEvent.change(screen.getByLabelText(/^Cost/), { target: { value: '500' } })
+    expect(screen.queryByLabelText(/^Standard cost/)).not.toBeInTheDocument()
     confirmOpenRow('Save')
 
-    await waitFor(() =>
-      expect(updateProductMock).toHaveBeenCalledWith(5, { usages: ['SALE', 'COST'], cost: 500 }),
-    )
+    await waitFor(() => expect(updateProductMock).toHaveBeenCalledWith(5, { usages: ['SALE', 'COST'] }))
   })
 })

@@ -90,6 +90,8 @@ export async function deleteQuote(id: number): Promise<void> {
 export interface QuoteCommissionDefaultsPayload {
   quote_id?: number
   product_id: number
+  /** Spec 0320 D-7: the line's supplier, the Supplier commission recipient. */
+  supplier_id?: number | null
   line_net_amount: number
   commercial_id?: number | null
   reporter_id?: number | null
@@ -118,6 +120,7 @@ export function quoteCommissionDefaultsQueryKey(payload: QuoteCommissionDefaults
     'commission-defaults',
     payload.quote_id ?? null,
     payload.product_id,
+    payload.supplier_id ?? null,
     payload.line_net_amount,
     payload.commercial_id ?? null,
     payload.reporter_id ?? null,
@@ -149,6 +152,7 @@ export function quoteCommissionRecipientsQueryKey(payload: QuoteCommissionRecipi
     'commission-recipients',
     payload.quote_id ?? null,
     payload.product_id,
+    payload.supplier_id ?? null,
     payload.commercial_id ?? null,
     payload.reporter_id ?? null,
     payload.supervisor_id ?? null,

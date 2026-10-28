@@ -236,11 +236,10 @@ it('AC-007: the source is registered, ordered right after registries, and previe
 it('AC-008: after the import a new offer line of a supplier product in the covered category creates the supplier commission', function () {
     ['registry' => $registry, 'category' => $category] = migratedCommissionRuleTargets();
     $category->update(['business_function_id' => BusinessFunction::factory()->create()->id]);
-    $product = Product::factory()->create([
+    $product = productWithSupplier([
         'category_id' => $category->id,
-        'supplier_id' => $registry->id,
         'product_typology_id' => ProductTypology::factory()->supplierCommission()->create()->id,
-    ]);
+    ], $registry);
     runLegacyCommissionRulesImport([legacyCommissionRule(['value' => 12.5])]);
 
     QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
@@ -255,7 +254,7 @@ it('AC-008: after the import a new offer line of a supplier product in the cover
     $response = $this->postJson('/api/quotes', [
         'title' => 'Dopo migrazione',
         'opportunity_id' => $opportunity->id,
-        'offer_lines' => [['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 1000]],
+        'offer_lines' => [['product_id' => $product->id, 'supplier_id' => $registry->id, 'quantity' => 1, 'unit_price' => 1000]],
     ])->assertCreated();
 
     $commission = collect($response->json('data.offer_lines.0.commissions'))->firstWhere('recipient_role', 'SUPPLIER');

@@ -39,10 +39,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * `cost_type_id` (spec 0251) is the optional default cost type of a product
  * used as a cost: it pre-fills the type of order, invoice and commessa cost lines.
  *
+ * `cost` is the standard cost (spec 0320, D-3): it applies only while the
+ * product has no `productSuppliers()`, each of which carries its own cost
+ * (the one flagged `is_default` is proposed on lines).
+ *
  * `usages` (spec 0142) is the set of App\Enums\ProductUsage values deciding
  * which Offerta tab may pick the product; it defaults to Sellable only.
  */
-#[Fillable(['name', 'description', 'cost', 'price', 'category_id', 'product_type', 'usages', 'vat_rate_id', 'supplier_id', 'unit_of_measure_id', 'product_typology_id', 'cost_type_id'])]
+#[Fillable(['name', 'description', 'cost', 'price', 'category_id', 'product_type', 'usages', 'vat_rate_id', 'unit_of_measure_id', 'product_typology_id', 'cost_type_id'])]
 class Product extends BaseModel
 {
     /** @use HasFactory<ProductFactory> */
@@ -110,9 +114,12 @@ class Product extends BaseModel
         return $this->belongsTo(VatRate::class, 'vat_rate_id');
     }
 
-    public function supplier(): BelongsTo
+    /**
+     * @return HasMany<ProductSupplier, $this>
+     */
+    public function productSuppliers(): HasMany
     {
-        return $this->belongsTo(Registry::class, 'supplier_id');
+        return $this->hasMany(ProductSupplier::class);
     }
 
     public function unitOfMeasure(): BelongsTo

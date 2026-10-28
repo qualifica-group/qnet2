@@ -33,6 +33,8 @@ export interface QuoteCommissionsDraftInput {
   open: boolean
   disabled: boolean
   productId: number | null
+  /** Spec 0320 D-7: the line's supplier, the Supplier commission recipient. */
+  supplierId?: number | null
   quantity: number | null
   unitPrice: number | null
   allocatedCostNet?: number
@@ -89,6 +91,7 @@ export function useQuoteCommissionsDraft(input: QuoteCommissionsDraftInput) {
   const recipientsPayload = {
     ...(input.commissionContext?.quoteId ? { quote_id: input.commissionContext.quoteId } : {}),
     product_id: input.productId ?? 0,
+    supplier_id: input.supplierId ?? null,
     commercial_id: input.commissionContext?.commercialId ?? null,
     reporter_id: input.commissionContext?.reporterId ?? null,
     supervisor_id: input.commissionContext?.supervisorId ?? null,

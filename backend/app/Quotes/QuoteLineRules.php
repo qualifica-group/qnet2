@@ -43,15 +43,18 @@ final class QuoteLineRules
      * @param  string  $field  the payload key the rows travel under (`offer_lines`, `cost_lines`, or `value` for a single inline cell)
      * @param  bool  $withCommissions  whether the row may carry the provvigioni block at all
      * @param  array<int, int>  $exemptProductIds  products already persisted on the record being updated (spec 0208 D-2); empty on create
+     * @param  array<int, array{product_id: int, supplier_id: int|null}>  $persistedLines  the saved rows keyed by line id, to skip the supplier check on untouched rows (spec 0320, D-5); empty on create
      * @return array<string, array<int, mixed>>
      */
-    public static function fieldRules(string $field, bool $withCommissions, array $exemptProductIds = []): array
+    public static function fieldRules(string $field, bool $withCommissions, array $exemptProductIds = [], array $persistedLines = []): array
     {
         $allocatable = $field === self::ALLOCATABLE_FIELD;
 
         return [
             $field => ['sometimes', 'array', 'max:'.self::MAX_ROWS],
             "{$field}.*.product_id" => ['required', 'integer', new ActiveCategoryProduct($exemptProductIds)],
+            // Spec 0320, D-5: the supplier among the product's own (null when it has none).
+            "{$field}.*.supplier_id" => ['bail', 'nullable', 'integer', Rule::exists('registries', 'id'), new QuoteLineSupplierRule($field, $persistedLines)],
             "{$field}.*.id" => ['nullable', 'integer', Rule::exists('quote_lines', 'id')],
             // gt:0 (AC-034: 0 and negative rejected); decimal:0,2 caps the
             // input to <= 2 decimal places (AC-032), the SAME rounding scale

@@ -89,6 +89,7 @@ export const workOrderCosts = {
       unitPriceRequired: 'Inserisci il prezzo unitario.',
       unitPriceInvalid: 'Il prezzo unitario deve essere compreso tra 0 e 99999999,99.',
       decimals: 'Al massimo due decimali.',
+      supplierRequired: 'Seleziona uno dei fornitori del prodotto.',
       incurredOnInvalid: 'Inserisci una data valida.',
       documentReferenceTooLong: 'Al massimo 100 caratteri.',
       additionalDescriptionTooLong: 'Al massimo 5000 caratteri.',

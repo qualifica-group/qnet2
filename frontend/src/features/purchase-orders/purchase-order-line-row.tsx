@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { Control, UseFormSetValue } from 'react-hook-form'
+import { useWatch, type Control, type UseFormSetValue } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Calculator, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -57,7 +57,8 @@ export function PurchaseOrderLineRow({ index, control, setValue, line, readOnly,
   const { t } = useTranslation()
   const n = index + 1
   const amounts = previewLineAmounts(line)
-  const applyProduct = useOrderLineProductDefaults(index, setValue, line.cost_type_id)
+  const orderSupplierId = useWatch({ control, name: 'supplier_id' })
+  const applyProduct = useOrderLineProductDefaults(index, setValue, line.cost_type_id, orderSupplierId ?? null)
 
   const handleExtractVat = () => {
     try {

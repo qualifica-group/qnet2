@@ -14,6 +14,7 @@ import {
   ProductClassificationRecordSection,
   ProductIdentityRecordSection,
   ProductPricingRecordSection,
+  ProductSuppliersRecordSection,
 } from '@/features/products/product-record-sections'
 import type { ProductCategoryPicker } from '@/features/products/use-product-category-picker'
 import type { ProductFormValues } from '@/features/products/use-product-form'
@@ -74,7 +75,7 @@ export function ProductCreateSections({
     categories,
     onCategoryChange,
     newAttributes: [],
-    persistedUsages: null,
+    productId: null,
   }
 
   return (
@@ -82,6 +83,7 @@ export function ProductCreateSections({
       <ProductIdentityRecordSection {...sectionProps} />
       <ProductClassificationRecordSection {...sectionProps} />
       <ProductPricingRecordSection {...sectionProps} />
+      <ProductSuppliersRecordSection {...sectionProps} />
       {attributesLoading ? (
         <Skeleton className={`h-9 w-full ${FULL_WIDTH_SECTION_CLASS}`} />
       ) : (

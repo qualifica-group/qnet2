@@ -39,6 +39,12 @@ final readonly class QuoteLineData
         public bool $hasAdditionalDescription = false,
         public ?int $offerLineId = null,
         public ?int $offerLineIndex = null,
+        /** Spec 0320, D-5: the product's supplier this row is bought from / paid to. */
+        public ?int $supplierId = null,
+        /** `false` = the key was absent: the writer keeps the stored supplier of an untouched row (QuoteLineWriter::sync()). */
+        public bool $hasSupplier = false,
+        /** Spec 0320, D-23: a historical price (legacy import) is kept even for a supplier paid through a commission. */
+        public bool $keepsUnitPrice = false,
     ) {}
 
     /**
@@ -63,6 +69,8 @@ final readonly class QuoteLineData
             hasAdditionalDescription: array_key_exists('additional_description', $row),
             offerLineId: isset($row['offer_line_id']) ? (int) $row['offer_line_id'] : null,
             offerLineIndex: isset($row['offer_line_index']) ? (int) $row['offer_line_index'] : null,
+            supplierId: isset($row['supplier_id']) ? (int) $row['supplier_id'] : null,
+            hasSupplier: array_key_exists('supplier_id', $row),
         );
     }
 }

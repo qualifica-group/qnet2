@@ -7,6 +7,7 @@ use App\Models\Lead;
 use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductSupplier;
 use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\User;
@@ -113,4 +114,24 @@ it('a single-managed classification with 2+ products of interest from a lead -> 
 
     expect(Opportunity::where('lead_id', $this->lead->id)->exists())->toBeFalse();
     expect(Quote::count())->toBe(0);
+});
+
+it('spec 0320 AC-009: the generated lines carry the DEFAULT supplier of the product, null when it has none', function () {
+    $line = offerFormProductLine();
+    $withSuppliers = Product::factory()->create(['category_id' => $line['category_id']]);
+    $default = Registry::factory()->supplier()->create();
+    ProductSupplier::factory()->create(['product_id' => $withSuppliers->id]);
+    ProductSupplier::factory()->default()->create(['product_id' => $withSuppliers->id, 'supplier_id' => $default->id]);
+    $plain = Product::factory()->create(['category_id' => $line['category_id']]);
+
+    $response = $this->postJson('/api/opportunities', [
+        'lead_id' => $this->lead->id,
+        'product_lines' => $line['product_lines'],
+        'products_of_interest' => [$withSuppliers->id, $plain->id],
+    ])->assertCreated();
+
+    $suppliers = Quote::with('offerLines')->where('opportunity_id', $response->json('data.id'))->sole()
+        ->offerLines->pluck('supplier_id', 'product_id');
+    expect($suppliers[$withSuppliers->id])->toBe($default->id)
+        ->and($suppliers[$plain->id])->toBeNull();
 });

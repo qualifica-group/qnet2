@@ -14,6 +14,7 @@ use App\Services\ProductCategories\CategoryHierarchy;
 use App\Services\RequestManagement\RequestCreationService;
 use Database\Seeders\Concerns\PicksDemoOffers;
 use Database\Seeders\Concerns\PicksFreeRegistries;
+use Database\Seeders\Support\DefaultProductSupplier;
 use Faker\Factory as FakerFactory;
 use Faker\Generator;
 use Illuminate\Database\Seeder;
@@ -185,6 +186,7 @@ class QualificaSampleRequestSeeder extends Seeder
             unitPrice: (float) $product->price,
             vatRateId: $product->vat_rate_id,
             sortOrder: null,
+            supplierId: DefaultProductSupplier::idFor($product->id),
         );
     }
 

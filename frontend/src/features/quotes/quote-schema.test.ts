@@ -446,3 +446,22 @@ describe('manual Supplier commission direction (spec 0306 D-3)', () => {
     ).toBe(true)
   })
 })
+
+describe('supplier of a row (spec 0320 D-5)', () => {
+  const suppliers = [{ supplier_id: 5, name: 'Acme', price: '170.00', cost: '70.00', is_default: true }]
+  const supplierIssue = (lines: unknown[]) => {
+    const result = buildCreateQuoteSchema(i18n.t).safeParse(baseValues({ offer_lines: lines }))
+    return result.success ? undefined : result.error.issues.find((issue) => issue.path.join('.') === 'offer_lines.0.supplier_id')
+  }
+
+  it('requires a supplier when the product has suppliers', () => {
+    expect(supplierIssue([validLine({ product_suppliers: suppliers, supplier_id: null })])?.message).toBe(
+      i18n.t('quotes.form.lineSupplierRequired'),
+    )
+  })
+
+  it('accepts the row once a supplier is chosen, or when the product has none', () => {
+    expect(supplierIssue([validLine({ product_suppliers: suppliers, supplier_id: 5 })])).toBeUndefined()
+    expect(supplierIssue([validLine({ product_suppliers: [], supplier_id: null })])).toBeUndefined()
+  })
+})

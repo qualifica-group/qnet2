@@ -27,7 +27,7 @@ use Illuminate\Support\Collection;
 final class WorkOrderCostOverviewBuilder
 {
     /** Relations the QuoteLineResource reads per budget line. */
-    private const array BUDGET_LINE_RELATIONS = ['product.category', 'product.productTypology', 'product.unitOfMeasure', 'vatRate', 'unitOfMeasure', 'quote', 'commissions'];
+    private const array BUDGET_LINE_RELATIONS = ['product.category', 'product.productTypology', 'product.unitOfMeasure', 'vatRate', 'unitOfMeasure', 'quote', 'commissions', 'supplier:id,name'];
 
     public function __construct(
         private readonly LineEffectiveRevenue $effectiveRevenue,

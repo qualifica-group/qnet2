@@ -34,7 +34,6 @@ class ProductFactory extends Factory
             // (Sellable only) is exercised through saleOnly()/the Service.
             'usages' => [ProductUsage::Sale, ProductUsage::Cost],
             'vat_rate_id' => null,
-            'supplier_id' => null,
             'unit_of_measure_id' => UnitOfMeasure::factory(),
             'product_typology_id' => ProductTypology::factory(),
         ];

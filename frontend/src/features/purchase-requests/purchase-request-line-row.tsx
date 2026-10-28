@@ -22,7 +22,7 @@ import type {
 } from '@/features/purchase-requests/purchase-request-schema'
 import { LineStatusBadge } from '@/features/purchase-requests/purchase-request-status-badge'
 import { LineSupplierSelect } from '@/features/purchase-requests/purchase-request-supplier'
-import { useLineProductDefaults } from '@/features/purchase-requests/use-line-product-defaults'
+import { useLineProductDefaults, useLineSupplierCost } from '@/features/purchase-requests/use-line-product-defaults'
 
 interface PurchaseRequestLineRowProps {
   index: number
@@ -60,6 +60,7 @@ export function PurchaseRequestLineRow({
   const disabled = line.locked
   const amounts = previewLineAmounts(line)
   const applyProduct = useLineProductDefaults(index, setValue)
+  const applySupplierCost = useLineSupplierCost(index, setValue)
 
   const handleExtractVat = () => {
     try {
@@ -106,6 +107,7 @@ export function PurchaseRequestLineRow({
           selected={line.supplier_ref}
           disabled={disabled && !line.can_update_supplier}
           label={`${t('purchaseRequests.lines.supplier')} ${n}`}
+          onSupplierPicked={(supplierId) => void applySupplierCost(line.product_id, supplierId)}
         />
       </div>
       <LineUnitSelect control={control} index={index} disabled={disabled} label={`${t('purchaseRequests.lines.unit')} ${n}`} />

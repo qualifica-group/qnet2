@@ -17,11 +17,10 @@ import {
 import type { ProductDetailWithPermissions } from '@/features/products/types'
 
 /**
- * Spec 0191: the usages decide which amount applies — the price for a
- * Sellable product, the cost for a Usable-as-cost one, the margin only with
- * both. REQUIREMENT CHANGED (spec 0218): the amounts are closed rows that
- * follow the draft's usages, and the margin is the live KPI strip in the
- * create header (no side recap any more).
+ * Spec 0320 rev.3 D-20 / AC-031. REQUIREMENT CHANGED (it superseded spec 0191):
+ * price and cost apply to EVERY product, whatever its usages. Standard price
+ * and Standard cost are always there (default 0), the margin is always in the
+ * create header's KPI strip, and a product of any usage sends both numbers.
  */
 
 const createProductMock = vi.fn()
@@ -111,22 +110,21 @@ function toggleUsage(label: string) {
   confirmOpenRow('Done')
 }
 
-describe('Product — cost/price by usage (spec 0191)', () => {
-  it('AC-009: shows only the price row by default, adds the cost with the cost usage, drops the price without Sellable', async () => {
+describe('Product — price and cost for every usage (spec 0320 rev.3)', () => {
+  it('AC-031: Standard price and Standard cost stay visible whatever the usages', async () => {
     renderCreate()
     await screen.findByRole('button', { name: 'Edit Code' })
 
-    expect(pencilOf('Price')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Edit Cost' })).not.toBeInTheDocument()
+    expect(pencilOf('Standard price')).toBeInTheDocument()
+    expect(pencilOf('Standard cost')).toBeInTheDocument()
 
     toggleUsage('Usable as cost')
-    expect(pencilOf('Cost')).toBeInTheDocument()
-
     toggleUsage('Sellable')
-    expect(screen.queryByRole('button', { name: 'Edit Price' })).not.toBeInTheDocument()
+    expect(pencilOf('Standard price')).toBeInTheDocument()
+    expect(pencilOf('Standard cost')).toBeInTheDocument()
   })
 
-  it('AC-009: a cost-only product saves without a price, sending it as null', async () => {
+  it('AC-031: a cost-only product saves with its cost and the price at its default 0', async () => {
     createProductMock.mockResolvedValue(productFixture())
     renderCreate()
     await screen.findByRole('button', { name: 'Edit Code' })
@@ -134,27 +132,27 @@ describe('Product — cost/price by usage (spec 0191)', () => {
     typeInRow('Name', 'Service fee')
     toggleUsage('Usable as cost')
     toggleUsage('Sellable')
-    typeInRow('Cost', '40')
+    typeInRow('Standard cost', '40')
     fireEvent.click(pencilOf('Category'))
     fireEvent.click(screen.getByTestId('category-select'))
     confirmOpenRow('Done')
     clickCreateSave()
 
     await waitFor(() => expect(createProductMock).toHaveBeenCalledTimes(1))
-    expect(createProductMock.mock.calls[0][0]).toMatchObject({ usages: ['COST'], cost: 40, price: null })
+    expect(createProductMock.mock.calls[0][0]).toMatchObject({ usages: ['COST'], cost: 40, price: 0 })
   })
 
   it('AC-010: a typed price is still there after Sellable is unticked and ticked again', async () => {
     renderCreate()
     await screen.findByRole('button', { name: 'Edit Code' })
 
-    typeInRow('Price', '99')
+    typeInRow('Standard price', '99')
     toggleUsage('Usable as cost')
     toggleUsage('Sellable')
     toggleUsage('Sellable')
 
-    fireEvent.click(pencilOf('Price'))
-    expect(inputOf('Price')).toHaveValue(99)
+    fireEvent.click(pencilOf('Standard price'))
+    expect(inputOf('Standard price')).toHaveValue(99)
   })
 
   it('AC-010: dropping a usage on the detail does not put cost/price in the PATCH', async () => {
@@ -168,14 +166,13 @@ describe('Product — cost/price by usage (spec 0191)', () => {
     await waitFor(() => expect(updateProductMock).toHaveBeenCalledWith(5, { usages: ['SALE'] }))
   })
 
-  it('AC-012: the live margin in the create header follows the usages', async () => {
+  it('AC-031: the live margin in the create header is always there and follows the typed amounts', async () => {
     renderCreate()
     await screen.findByRole('button', { name: 'Edit Code' })
 
-    expect(screen.queryByText('Margin')).not.toBeInTheDocument()
-    toggleUsage('Usable as cost')
-    typeInRow('Price', '100')
-    typeInRow('Cost', '40')
+    expect(screen.getByText('Margin')).toBeInTheDocument()
+    typeInRow('Standard price', '100')
+    typeInRow('Standard cost', '40')
 
     expect(screen.getByText('Margin')).toBeInTheDocument()
     expect(screen.getByText('60.00')).toBeInTheDocument()

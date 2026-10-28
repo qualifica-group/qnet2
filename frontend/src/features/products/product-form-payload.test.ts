@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/products/product-form-payload'
-import type { ProductDetail } from '@/features/products/types'
+import type { ProductSupplierRow } from '@/features/products/product-supplier-rows'
+import type { ProductDetail, ProductUsage } from '@/features/products/types'
 import type { ProductFormValues } from '@/features/products/use-product-form'
 
 /**
@@ -27,8 +28,7 @@ function original(overrides: Partial<ProductDetail> = {}): ProductDetail {
     created_at: '2026-01-01T00:00:00Z',
     vat_rate_id: null,
     vat_rate: null,
-    supplier_id: null,
-    supplier: null,
+    suppliers: [],
     unit_of_measure_id: 1,
     unit_of_measure: { id: 1, name: 'Unit', symbol: 'pz' },
     product_typology_id: 1,
@@ -36,6 +36,10 @@ function original(overrides: Partial<ProductDetail> = {}): ProductDetail {
     ...overrides,
   }
 }
+
+const BOTH: ProductUsage[] = ['SALE', 'COST']
+const ACME_ROW: ProductSupplierRow = { supplier_id: 11, name: 'ACME Supplies', price: 110, cost: 10, is_default: true }
+const BETA_ROW: ProductSupplierRow = { supplier_id: 12, name: 'Beta', price: 112.5, cost: 12.5, is_default: false }
 
 function values(overrides: Partial<ProductFormValues> = {}): ProductFormValues {
   return {
@@ -48,7 +52,7 @@ function values(overrides: Partial<ProductFormValues> = {}): ProductFormValues {
     product_type: 'SERVICE',
     usages: ['SALE'],
     vat_rate_id: null,
-    supplier_id: null,
+    suppliers: [],
     // Match `original()`'s own defaults so the "nothing changed" PATCH
     // assertions below stay accurate; individual tests override them.
     unit_of_measure_id: 1,
@@ -61,10 +65,11 @@ function values(overrides: Partial<ProductFormValues> = {}): ProductFormValues {
 }
 
 describe('buildCreatePayload', () => {
-  it('spec 0191: sends the non-pertinent amount as null, as typed in the form', () => {
+  // REQUIREMENT CHANGED (rev.3 D-20): both amounts go for every usage; a hidden (null) standard one goes as 0.
+  it('rev.3 D-20: sends both amounts whatever the usages, a hidden null one as 0', () => {
     const payload = buildCreatePayload(values({ usages: ['COST'], price: null }), [])
 
-    expect(payload.price).toBeNull()
+    expect(payload.price).toBe(0)
     expect(payload.cost).toBe(800)
   })
 
@@ -78,7 +83,6 @@ describe('buildCreatePayload', () => {
       product_type: 'SERVICE',
       usages: ['SALE'],
       vat_rate_id: null,
-      supplier_id: null,
       unit_of_measure_id: 1,
       // Spec 0099, D-3: sent like `unit_of_measure_id` — a null here makes the
       // server resolve the default typology.
@@ -86,14 +90,31 @@ describe('buildCreatePayload', () => {
     })
   })
 
-  it('includes the selected VAT rate, supplier and unit of measure ids', () => {
-    expect(
-      buildCreatePayload(values({ vat_rate_id: 4, supplier_id: 11, unit_of_measure_id: 2 }), []),
-    ).toMatchObject({
+  it('includes the selected VAT rate and unit of measure ids', () => {
+    expect(buildCreatePayload(values({ vat_rate_id: 4, unit_of_measure_id: 2 }), [])).toMatchObject({
       vat_rate_id: 4,
-      supplier_id: 11,
       unit_of_measure_id: 2,
     })
+  })
+
+  it('spec 0320: sends the suppliers without their names, never a supplier_id, and omits an empty list', () => {
+    const payload = buildCreatePayload(values({ usages: ['SALE', 'COST'], suppliers: [ACME_ROW, BETA_ROW] }), [])
+
+    expect(payload.suppliers).toEqual([
+      { supplier_id: 11, price: 110, cost: 10, is_default: true },
+      { supplier_id: 12, price: 112.5, cost: 12.5, is_default: false },
+    ])
+    expect(payload).not.toHaveProperty('supplier_id')
+    expect(buildCreatePayload(values(), [])).not.toHaveProperty('suppliers')
+  })
+
+  // REQUIREMENT CHANGED (rev.3 D-20): no zeroing by usage any more.
+  it('rev.3 D-20: sends the real price and cost of each supplier for any usage', () => {
+    const sale = buildCreatePayload(values({ usages: ['SALE'], suppliers: [ACME_ROW] }), [])
+    const cost = buildCreatePayload(values({ usages: ['COST'], suppliers: [ACME_ROW] }), [])
+
+    expect(sale.suppliers).toEqual([{ supplier_id: 11, price: 110, cost: 10, is_default: true }])
+    expect(cost.suppliers).toEqual(sale.suppliers)
   })
 
   it('spec 0088 D-4: includes a null unit_of_measure_id so the server resolves the default unit', () => {
@@ -180,10 +201,28 @@ describe('buildUpdatePayload', () => {
     })
   })
 
-  it('includes only the changed supplier id', () => {
-    expect(buildUpdatePayload(values({ supplier_id: 11 }), original(), [])).toEqual({
-      supplier_id: 11,
+  it('spec 0320: sends the whole suppliers list only when it changed', () => {
+    expect(buildUpdatePayload(values({ usages: BOTH, suppliers: [ACME_ROW] }), original({ usages: BOTH }), [])).toEqual({
+      suppliers: [{ supplier_id: 11, price: 110, cost: 10, is_default: true }],
     })
+  })
+
+  it('spec 0320: sends an empty list when every supplier was removed', () => {
+    const withSuppliers = original({ usages: BOTH, suppliers: [{ supplier_id: 11, name: 'ACME Supplies', price: '110.00', cost: '10.00', is_default: true }] })
+
+    expect(buildUpdatePayload(values({ usages: BOTH, suppliers: [] }), withSuppliers, [])).toEqual({ suppliers: [] })
+  })
+
+  it('spec 0320: sends nothing when the list is the same, whatever its order', () => {
+    const withSuppliers = original({
+      usages: BOTH,
+      suppliers: [
+        { supplier_id: 11, name: 'ACME Supplies', price: '110.00', cost: '10.00', is_default: true },
+        { supplier_id: 12, name: 'Beta', price: '112.50', cost: '12.50', is_default: false },
+      ],
+    })
+
+    expect(buildUpdatePayload(values({ usages: BOTH, suppliers: [BETA_ROW, ACME_ROW] }), withSuppliers, [])).toEqual({})
   })
 
   it('spec 0088: includes only the changed unit of measure id', () => {

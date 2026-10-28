@@ -13,6 +13,7 @@ use App\Models\ProductTypology;
 use App\Models\StockMovement;
 use App\Models\UnitOfMeasure;
 use App\Products\ProductAttributeResolver;
+use App\Products\ProductSupplierSync;
 use App\RequestManagement\ApplicableAttribute;
 use App\RequestManagement\AttributeSectionVisibility;
 use App\RequestManagement\AttributeValueNormalizer;
@@ -59,7 +60,7 @@ class ProductService
      * (no application logic anywhere compares the string "Ente"), and what
      * lets the row be renamed from the module without breaking the default.
      */
-    private const string DEFAULT_PRODUCT_TYPOLOGY_CODE = 'institution';
+    public const string DEFAULT_PRODUCT_TYPOLOGY_CODE = 'institution';
 
     /**
      * Relations eager-loaded on every returned model, so ProductResource
@@ -67,7 +68,7 @@ class ProductService
      *
      * @var array<int, string>
      */
-    private const array HYDRATED_RELATIONS = ['category', 'vatRate', 'supplier', 'unitOfMeasure', 'productTypology', 'costType'];
+    private const array HYDRATED_RELATIONS = ['category', 'vatRate', 'productSuppliers.supplier', 'unitOfMeasure', 'productTypology', 'costType'];
 
     /**
      * Columns projected by the for-select standard (ADR 0011; spec 0065,
@@ -86,6 +87,7 @@ class ProductService
         private readonly AttributeValueNormalizer $attributeValueNormalizer,
         private readonly AttributeLayoutService $attributeLayoutService,
         private readonly AttributeSectionVisibility $attributeSectionVisibility,
+        private readonly ProductSupplierSync $supplierSync,
     ) {}
 
     /**
@@ -123,12 +125,12 @@ class ProductService
             $product = new Product([
                 'name' => $data->name,
                 'description' => $data->description,
-                'cost' => $data->cost,
-                'price' => $data->price,
+                // Spec 0320, D-20: every product has a price and a cost; absent = 0.
+                'cost' => $data->cost ?? 0,
+                'price' => $data->price ?? 0,
                 'category_id' => $data->categoryId,
                 'product_type' => $data->productType,
                 'vat_rate_id' => $data->vatRateId,
-                'supplier_id' => $data->supplierId,
                 'unit_of_measure_id' => $data->unitOfMeasureId,
                 'product_typology_id' => $data->productTypologyId,
                 'cost_type_id' => $data->costTypeId,
@@ -155,6 +157,10 @@ class ProductService
             // Spec 0099, D-3: same fallback for the typology.
             $product->product_typology_id ??= $this->resolveDefaultProductTypologyId();
             $product->save();
+
+            if ($data->suppliers !== null) {
+                $this->supplierSync->sync($product, $data->suppliers);
+            }
 
             return $product;
         });
@@ -191,10 +197,17 @@ class ProductService
         // Spec 0099, D-3: a submitted null resets to the default typology.
         $product->product_typology_id ??= $this->resolveDefaultProductTypologyId();
 
-        // Unconditional save: fire the model's saved event even when no native
-        // attribute changed, so the HasCustomFields write pipeline (spec 0021)
-        // persists a custom-fields-only edit. A clean save runs no UPDATE query.
-        $product->save();
+        DB::transaction(function () use ($product, $data): void {
+            // Unconditional save: fire the model's saved event even when no native
+            // attribute changed, so the HasCustomFields write pipeline (spec 0021)
+            // persists a custom-fields-only edit. A clean save runs no UPDATE query.
+            $product->save();
+
+            // Spec 0320: absent leaves the supplier list untouched, [] removes it all.
+            if ($data->suppliers !== null) {
+                $this->supplierSync->sync($product, $data->suppliers);
+            }
+        });
 
         return $product->fresh(self::HYDRATED_RELATIONS);
     }
@@ -341,7 +354,7 @@ class ProductService
         $page = $window->items;
 
         $items = $this->appendHydratedIds($page, $query);
-        $items->load(['category:id,name', 'vatRate:id,name,rate', 'unitOfMeasure:id,name,symbol', 'productTypology:id,name,color', 'costType:id,name,color']);
+        $items->load(['productSuppliers.supplier:id,name', 'category:id,name', 'vatRate:id,name,rate', 'unitOfMeasure:id,name,symbol', 'productTypology:id,name,color', 'costType:id,name,color']);
 
         return $window->withItems($items);
     }

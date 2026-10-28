@@ -187,6 +187,10 @@ class RegistryService
             abort(409, 'This registry has opportunities and cannot be deleted.');
         }
 
+        if ($registry->productSuppliers()->exists()) {
+            abort(409, 'This registry is a supplier of products and cannot be deleted.');
+        }
+
         $registry->delete();
     }
 

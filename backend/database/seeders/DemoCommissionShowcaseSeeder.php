@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\DataObjects\CommissionConfigurations\CreateCommissionConfigurationData;
 use App\DataObjects\Opportunities\CreateOpportunityData;
 use App\DataObjects\Products\CreateProductData;
+use App\DataObjects\Products\ProductSupplierData;
 use App\DataObjects\Products\UpdateProductData;
 use App\DataObjects\ProductTypologies\CreateProductTypologyData;
 use App\DataObjects\Quotes\CreateQuoteData;
@@ -41,6 +42,7 @@ use Database\Factories\PersonalDataFactory;
 use Database\Seeders\Concerns\ResolvesDemoCategories;
 use Database\Seeders\Concerns\SeedsWithoutMail;
 use Database\Seeders\DemoCatalog\DemoCommissionShowcaseCatalogue as Catalogue;
+use Database\Seeders\Support\DefaultProductSupplier;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -186,9 +188,9 @@ class DemoCommissionShowcaseSeeder extends Seeder
                 categoryId: $category->id,
                 productType: ProductType::Service,
                 vatRateId: $vatRateId,
-                supplierId: $hasSupplier ? $supplier->id : null,
                 productTypologyId: ProductTypology::query()->where('code', $typologyCode)->value('id'),
                 usages: [ProductUsage::Sale],
+                suppliers: $hasSupplier ? [new ProductSupplierData($supplier->id, bcadd((string) $price, '0', 2), '0.00', true)] : null,
             ));
         }
 
@@ -214,12 +216,10 @@ class DemoCommissionShowcaseSeeder extends Seeder
             return $this->products->create($data);
         }
 
-        // A DemoRegistrySeeder re-run deletes the supplier (nullOnDelete): relink it.
-        if ($product->supplier_id !== $data->supplierId) {
-            $product = $this->products->update($product, new UpdateProductData(
-                supplierId: $data->supplierId,
-                supplierIdSubmitted: true,
-            ));
+        // A DemoRegistrySeeder re-run deletes the supplier (cascade-restricted
+        // rows are recreated by it): relink the demo supplier if it is gone.
+        if ($data->suppliers !== null && ! $product->productSuppliers()->exists()) {
+            $product = $this->products->update($product, new UpdateProductData(suppliers: $data->suppliers));
         }
 
         return $product;
@@ -324,7 +324,7 @@ class DemoCommissionShowcaseSeeder extends Seeder
 
         foreach ($lines as $index => [$productName, $quantity, $unitPrice, $cost]) {
             $product = $products[$productName];
-            $offerLines[] = new QuoteLineData($product->id, $quantity, $unitPrice, $product->vat_rate_id, null);
+            $offerLines[] = new QuoteLineData($product->id, $quantity, $unitPrice, $product->vat_rate_id, null, supplierId: DefaultProductSupplier::idFor($product->id));
 
             if ($cost !== null) {
                 $costProduct = $products[Catalogue::COST_PRODUCT];

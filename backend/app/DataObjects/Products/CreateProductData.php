@@ -11,8 +11,8 @@ use App\Enums\ProductUsage;
  * (no "magic flying array") so the StoreProductRequest → ProductService
  * contract is explicit — see standards/architecture.md → Data Transfer
  * Objects. `productType` is required by the FormRequest and crosses as non-null;
- * `cost`/`price` (spec 0191) are nullable because each is mandatory only
- * for its usage (Sellable -> price, Usable as cost -> cost), absent = null. `code` is optional: absent/null/empty
+ * `cost`/`price` are optional and absent = 0 (spec 0320, D-20: every product has both,
+ * ProductService stores 0). `code` is optional: absent/null/empty
  * means the Service falls back to the sequential PRD-0001 generator.
  * `unitOfMeasureId` (spec 0088, D-4) is likewise optional: absent OR null
  * both collapse to the Service falling back to the default unit — on
@@ -28,6 +28,7 @@ final readonly class CreateProductData
     /**
      * @param  array<string, mixed>|null  $attributeValues
      * @param  array<int, ProductUsage>|null  $usages
+     * @param  array<int, ProductSupplierData>|null  $suppliers
      */
     public function __construct(
         public string $name,
@@ -37,13 +38,13 @@ final readonly class CreateProductData
         public int $categoryId,
         public ProductType $productType,
         public ?int $vatRateId = null,
-        public ?int $supplierId = null,
         public ?int $unitOfMeasureId = null,
         public ?int $productTypologyId = null,
         public ?array $attributeValues = null,
         public ?string $code = null,
         public ?array $usages = null,
         public ?int $costTypeId = null,
+        public ?array $suppliers = null,
     ) {}
 
     /**
@@ -61,12 +62,12 @@ final readonly class CreateProductData
             categoryId: (int) $data['category_id'],
             productType: ProductType::from((string) $data['product_type']),
             vatRateId: array_key_exists('vat_rate_id', $data) && $data['vat_rate_id'] !== null ? (int) $data['vat_rate_id'] : null,
-            supplierId: array_key_exists('supplier_id', $data) && $data['supplier_id'] !== null ? (int) $data['supplier_id'] : null,
             unitOfMeasureId: array_key_exists('unit_of_measure_id', $data) && $data['unit_of_measure_id'] !== null ? (int) $data['unit_of_measure_id'] : null,
             productTypologyId: array_key_exists('product_typology_id', $data) && $data['product_typology_id'] !== null ? (int) $data['product_typology_id'] : null,
             attributeValues: array_key_exists('attribute_values', $data) ? (array) $data['attribute_values'] : null,
             usages: array_key_exists('usages', $data) ? array_map(static fn (mixed $usage): ProductUsage => ProductUsage::from((string) $usage), (array) $data['usages']) : null,
             costTypeId: array_key_exists('cost_type_id', $data) && $data['cost_type_id'] !== null ? (int) $data['cost_type_id'] : null,
+            suppliers: array_key_exists('suppliers', $data) ? ProductSupplierData::listFromValidated((array) $data['suppliers']) : null,
             code: array_key_exists('code', $data) && $data['code'] !== null && $data['code'] !== '' ? (string) $data['code'] : null,
         );
     }

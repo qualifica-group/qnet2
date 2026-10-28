@@ -2,14 +2,15 @@
 
 namespace App\Http\Resources;
 
+use App\Authorization\AuthorizationRegistry;
 use App\Authorization\LegacyIdVisibility;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductTypology;
-use App\Models\Registry;
 use App\Models\UnitOfMeasure;
 use App\Models\VatRate;
 use App\Policies\StockPolicy;
+use App\Products\ProductSupplierPayload;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -62,8 +63,9 @@ class ProductResource extends JsonResource
             'stock_quantity' => $this->stockQuantity($request),
             'vat_rate_id' => $this->vat_rate_id,
             'vat_rate' => $this->vatRateSummary($this->vatRate),
-            'supplier_id' => $this->supplier_id,
-            'supplier' => $this->supplierSummary($this->supplier),
+            // Spec 0320: the product's suppliers with their own cost; the key
+            // is absent when the actor may not see the `suppliers` field.
+            'suppliers' => $this->when($this->mayViewSuppliers($request), fn (): array => ProductSupplierPayload::forDetail($this->resource)),
             // Spec 0088, D-4: always populated (NOT NULL, defaulted server-side).
             'unit_of_measure_id' => $this->unit_of_measure_id,
             'unit_of_measure' => $this->unitOfMeasureSummary($this->unitOfMeasure),
@@ -123,16 +125,11 @@ class ProductResource extends JsonResource
         return ['id' => $vatRate->id, 'name' => $vatRate->name, 'rate' => $vatRate->rate];
     }
 
-    /**
-     * @return array{id: int, name: string}|null
-     */
-    private function supplierSummary(?Registry $supplier): ?array
+    private function mayViewSuppliers(Request $request): bool
     {
-        if ($supplier === null) {
-            return null;
-        }
+        $permissions = app(AuthorizationRegistry::class)->resolve('products')->fieldPermissions($request->user(), $this->resource);
 
-        return ['id' => $supplier->id, 'name' => $supplier->name];
+        return ($permissions['suppliers'] ?? null)?->visible ?? true;
     }
 
     /**

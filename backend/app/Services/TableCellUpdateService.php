@@ -8,6 +8,7 @@ use App\Authorization\AuthorizationRegistry;
 use App\Authorization\FieldPermission;
 use App\Authorization\ResourceAuthorization;
 use App\Models\Quote;
+use App\Models\QuoteLine;
 use App\Models\User;
 use App\Services\Table\CellValueValidator;
 use App\Tables\TableDefinition;
@@ -96,7 +97,7 @@ class TableCellUpdateService
 
         // Step 5: value validation derived from the column's type (D-6), or
         // — for a relation column (spec 0054, D-2) — existence + scope.
-        $validated = $this->valueValidator->validate($column, $value, $this->persistedProductIds($column, $row));
+        $validated = $this->valueValidator->validate($column, $value, $this->persistedQuoteLines($column, $row));
 
         // Step 6: persist (D-7). Audit is automatic via LogsModelActivity
         // unless the definition overrides updateCell() to bypass Eloquent
@@ -111,19 +112,22 @@ class TableCellUpdateService
     }
 
     /**
-     * The products already on the row's quote lines, exempt from the
-     * inactive-category check on an `offer_lines` cell (spec 0208 D-2).
+     * The row's saved quote lines keyed by id: their products are exempt from
+     * the inactive-category check on an `offer_lines` cell (spec 0208 D-2) and
+     * an unchanged product/supplier pair from the supplier check (spec 0320 D-5).
      *
      * @param  array<string, mixed>  $column
-     * @return array<int, int>
+     * @return array<int, array{product_id: int, supplier_id: int|null}>
      */
-    private function persistedProductIds(array $column, Model $row): array
+    private function persistedQuoteLines(array $column, Model $row): array
     {
         if (($column['editor'] ?? null) !== CellValueValidator::OFFER_LINES_EDITOR || ! $row instanceof Quote) {
             return [];
         }
 
-        return $row->offerLines()->pluck('product_id')->map(static fn (mixed $id): int => (int) $id)->all();
+        return $row->offerLines()->get(['id', 'product_id', 'supplier_id'])
+            ->mapWithKeys(static fn (QuoteLine $line): array => [$line->id => ['product_id' => $line->product_id, 'supplier_id' => $line->supplier_id]])
+            ->all();
     }
 
     /**

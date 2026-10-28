@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { PRODUCTS_FOR_SELECT_RESOURCE } from '@/features/products/for-select-api'
 import type { ForSelectItem } from '@/features/for-select/types'
+import type { ProductSupplierOption } from '@/features/products/product-suppliers'
 import type { ProductUsage } from '@/features/products/types'
 import type { QuoteLineCategoryRef, QuoteLineUnitOfMeasureRef } from '@/features/quotes/types'
 
@@ -39,6 +40,8 @@ export interface QuoteProductForSelectMeta {
    * an input — the line stores no typology (D-5).
    */
   product_typology: QuoteLineCategoryRef | null
+  /** Spec 0320: the product's suppliers (default first), each with its cost; `cost` above is the standard cost. */
+  suppliers?: ProductSupplierOption[]
 }
 
 export interface QuoteProductForSelectItem extends ForSelectItem {

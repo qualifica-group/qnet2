@@ -9,6 +9,7 @@ use App\Models\Address;
 use App\Models\City;
 use App\Models\Contact;
 use App\Models\PersonalData;
+use App\Models\ProductSupplier;
 use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\Sector;
@@ -53,6 +54,8 @@ class DemoRegistrySeeder extends Seeder
         // Idempotent: per-model delete so HasPersonalData's deleting hook fires
         // and cascades each registry's card (and its contacts/addresses); the
         // 3 pivot tables cascade away via their own cascadeOnDelete FKs.
+        // Product suppliers restrict the registry delete (spec 0320); DemoCommissionShowcaseSeeder relinks them.
+        ProductSupplier::query()->delete();
         Registry::query()->get()->each(fn (Registry $registry) => $registry->delete());
 
         $sources = Source::query()->orderBy('name')->get();

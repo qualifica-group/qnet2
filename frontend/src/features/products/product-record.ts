@@ -4,6 +4,7 @@ import type { InlineEdit } from '@/components/record-form/record-inline-field'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { EffectiveAttribute } from '@/features/product-categories/types'
 import { DEFAULT_PRODUCT_USAGES } from '@/features/products/product-form-payload'
+import type { SupplierCommission } from '@/features/products/product-suppliers'
 import type { ProductCategoryPicker } from '@/features/products/use-product-category-picker'
 import type {
   ProductBusinessFunctionSummary,
@@ -15,6 +16,19 @@ import type {
   ProductUsage,
 } from '@/features/products/types'
 import type { ProductFormValues } from '@/features/products/use-product-form'
+
+/** One supplier line the record shows: the persisted option, or the draft row once its supplier is picked. */
+export interface ProductRecordSupplier {
+  supplier_id: number
+  name: string
+  price: string | number | null
+  cost: string | number | null
+  is_default: boolean
+  /** Read-only detail only (rev.3 D-22): the Fornitore commission, null when none. */
+  commission?: SupplierCommission | null
+}
+
+const NO_SUPPLIERS: ProductRecordSupplier[] = []
 
 /** What the record's rows show: the persisted product on the detail, the draft (with resolved labels) on create. */
 export interface ProductRecordValues {
@@ -33,7 +47,8 @@ export interface ProductRecordValues {
   cost_type: ProductCostTypeSummary | null
   usages: ProductUsage[]
   vat_rate: RelationFieldRef | null
-  supplier: RelationFieldRef | null
+  /** Spec 0320: default first; on a draft only the rows whose supplier is already picked. */
+  suppliers: ProductRecordSupplier[]
   custom_fields: Record<string, CustomFieldValue>
   attribute_values: Record<string, CustomFieldValue>
 }
@@ -51,8 +66,8 @@ export interface ProductRecordSectionProps {
   onCategoryChange: (categoryId: number) => void
   /** Detail only: the attributes a category change adds, filled in the category editor; empty on create. */
   newAttributes: EffectiveAttribute[]
-  /** Detail only: the usages the persisted product already has, so a newly-enabled one asks its amount. */
-  persistedUsages: ProductUsage[] | null
+  /** The saved product (detail); null on create, where supplier commissions are looked up by category. */
+  productId: number | null
 }
 
 /** The persisted product as the record's rows read it. */
@@ -71,7 +86,7 @@ export function persistedProductValues(product: ProductDetail): ProductRecordVal
     cost_type: product.cost_type ?? null,
     usages: product.usages ?? DEFAULT_PRODUCT_USAGES,
     vat_rate: product.vat_rate,
-    supplier: product.supplier,
+    suppliers: product.suppliers ?? NO_SUPPLIERS,
     custom_fields: product.custom_fields ?? {},
     attribute_values: product.attribute_values ?? {},
   }

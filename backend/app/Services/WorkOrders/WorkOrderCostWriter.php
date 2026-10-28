@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\VatRate;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderCost;
+use App\Products\SupplierCommissionLookup;
 use App\Support\Amounts\LineAmountCalculator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -23,7 +24,10 @@ final class WorkOrderCostWriter
 {
     private const int QUANTITY_SCALE = 2;
 
-    public function __construct(private readonly LineAmountCalculator $calculator) {}
+    public function __construct(
+        private readonly LineAmountCalculator $calculator,
+        private readonly SupplierCommissionLookup $supplierCommissions,
+    ) {}
 
     /**
      * @param  array<int, array<string, mixed>>  $rows  validated rows of SyncWorkOrderCostsRequest
@@ -65,9 +69,17 @@ final class WorkOrderCostWriter
         $cost ??= new WorkOrderCost(['work_order_id' => $workOrder->id]);
         $productChanged = ! $isNew && $cost->product_id !== (int) $row['product_id'];
         $vatRateId = $row['vat_rate_id'] ?? null;
+        $supplierId = isset($row['supplier_id']) ? (int) $row['supplier_id'] : null;
+        $supplierChanged = ! $isNew && $cost->supplier_id !== $supplierId;
+        // Spec 0320, D-23: a supplier paid through a commission costs 0 here
+        // (only new rows or rows whose product/supplier changed, so history is untouched).
+        $unitPrice = ($isNew || $productChanged || $supplierChanged) && $supplierId !== null
+            && $this->supplierCommissions->hasCommission((int) $row['product_id'], $supplierId)
+            ? 0
+            : $row['unit_price'];
         $amounts = $this->calculator->line(
             $row['quantity'],
-            $row['unit_price'],
+            $unitPrice,
             $vatRateId === null ? null : ($rates[$vatRateId] ?? null),
             self::QUANTITY_SCALE,
         );
@@ -78,13 +90,13 @@ final class WorkOrderCostWriter
             'cost_type_id' => $row['cost_type_id'] ?? null,
             'quantity' => $row['quantity'],
             'unit_of_measure_id' => $isNew || $productChanged ? ($units[$row['product_id']] ?? null) : $cost->unit_of_measure_id,
-            'unit_price' => $row['unit_price'],
+            'unit_price' => $unitPrice,
             'vat_rate_id' => $vatRateId,
             'net_amount' => $amounts['net'],
             'vat_amount' => $amounts['vat'],
             'total_amount' => $amounts['total'],
             'incurred_on' => $row['incurred_on'],
-            'supplier_id' => $row['supplier_id'] ?? null,
+            'supplier_id' => $supplierId,
             'document_reference' => $row['document_reference'] ?? null,
             'additional_description' => array_key_exists('additional_description', $row) ? $row['additional_description'] : $cost->additional_description,
             'sort_order' => $index,

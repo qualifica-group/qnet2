@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader } from '@/components/detail/record-panel'
 import { ProductStatsStrip } from '@/features/products/product-detail-header'
+import { effectiveAmountOfRows } from '@/features/products/product-supplier-rows'
 import type { ProductRecordValues } from '@/features/products/product-record'
 
 interface ProductFormHeaderProps {
@@ -73,7 +74,10 @@ export function ProductFormHeader({ values, formId, isSubmitting, submitError, o
         </div>
       ) : null}
 
-      <ProductStatsStrip cost={values.cost} price={values.price} usages={values.usages} />
+      <ProductStatsStrip
+        cost={effectiveAmountOfRows(values.suppliers, 'cost', values.cost)}
+        price={effectiveAmountOfRows(values.suppliers, 'price', values.price)}
+      />
     </>
   )
 }

@@ -151,6 +151,9 @@ export function QuoteLineEditor({
             vatRatePercentFor={vatRatePercentFor}
             rememberVatRatePercent={rememberVatRatePercent}
             onChangeField={(patch) => editor.setField(index, patch)}
+            suppliers={editor.suppliersOf(row)}
+            supplierAmount={variant === 'revenue' ? 'price' : 'cost'}
+            onChangeSupplier={(option) => void editor.changeSupplier(index, option)}
             onRemove={() => editor.removeRow(index)}
             slots={renderRowSlots?.(row, index, position + 1, product)}
           />

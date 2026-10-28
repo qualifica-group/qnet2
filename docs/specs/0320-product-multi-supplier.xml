@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0320-product-multi-supplier" status="approved" revision="3" owner="nicola" date="2026-10-28">
+
+  <goal>
+    Un prodotto puo' avere piu' fornitori, ognuno con il proprio costo, e uno di loro e' il predefinito. Quando si
+    sceglie un prodotto in Offerte, Costi offerta, Gestione Richieste, Iscritti e Costi commessa si sceglie anche il
+    fornitore tra quelli del prodotto: il costo si precompila da quel fornitore e la commissione Fornitore va a quel
+    fornitore. Richieste e Ordini d'acquisto precompilano il prezzo dal costo del fornitore quando e' tra quelli del
+    prodotto.
+  </goal>
+
+  <context>
+    Oggi (verificato 2026-10-28):
+    - `products.supplier_id` (FK `registries`, nullOnDelete) e `products.cost` decimal(15,2) nullable, singoli. Model
+      `Product` (#[Fillable] con `cost`, `supplier_id`; relazione `supplier()`), `StoreProductRequest` /
+      `UpdateProductRequest` (+ trait `RequiresPricingForUsages`: `cost` obbligatorio con uso COST),
+      `CreateProductData` / `UpdateProductData`, `ProductService`, `ProductResource` (`cost`, `supplier_id`,
+      `supplier {id,name}`), `ProductForSelectResource` (meta `cost`, `price`, ...), `ProductsAuthorization` (campi
+      `cost` mandatory, `supplier_id` select), `ProductColumnCatalog` / `ProductsTableDefinition` (colonna `cost`).
+      FE `features/products/` (`product-pricing-fields.tsx`, `product-record-sections.tsx`, schema, payload, form).
+    - Righe d'offerta: tabella unica `quote_lines` (`line_type` REVENUE/COST), salva solo `product_id` + importi
+      congelati. Scritte da `Services/Quotes/QuoteLineWriter` con validazione `Quotes/QuoteLineRules` +
+      `Http/Requests/Concerns/ValidatesQuoteLines` / `ValidatesQuoteLineCommissions`, condivise da
+      `StoreQuoteRequest` / `UpdateQuoteRequest`, `RequestManagement/StoreRequestRequest` / `UpdateRequestRequest`
+      (Gestione Richieste e Iscritti, `offer_lines`) e dalla modifica di cella (`TableCellUpdateService`,
+      `CellValueValidator`). Altri scrittori di righe: `Opportunities/LeadConversionOfferCreator`,
+      `Migrations/Support/QuoteLineDuplicator`, `Migrations/Sources/QuotesSource`. `QuoteLineData`,
+      `QuoteLineResource`. FE: `features/quotes/` (`use-quote-lines-field.ts::lineValuesFromProduct` precompila
+      `unit_price` da `meta.price` sulle righe REVENUE e da `meta.cost` sulle COST; `line-editor/`, `quote-costs-tab`,
+      `quote-lines-read-only`), `features/request-management/` (`offer-lines-dialog`, `offer-lines-cell-editor`,
+      `use-offer-lines-form`).
+    - Provvigioni: `Services/Commissions/CommissionRecipientResolver::resolve(Product, ...)` -> destinatario
+      Fornitore = `product->supplier_id`. Usato da `QuoteCommissionInitializer`, `ValidatesQuoteLineCommissions`
+      (guard 422 sul destinatario), `QuoteCommissionRecipientsController` (POST `quotes/commission-recipients`) e,
+      via initializer, `QuoteCommissionDefaultsController` (POST `quotes/commission-defaults`),
+      `QuoteLineCommissionWriter`, `QuoteCommissionRecalculator` (0308). `CommissionRuleResolver` gia' supporta regole
+      con destinatario specifico (ruolo SUPPLIER -> `recipient_type` registry, 0089): una regola dedicata a un
+      fornitore si applica da sola quando la riga porta quel fornitore.
+    - Proforma: `ProformaRequestService` crea una richiesta Ente per ogni `product->supplier_id` distinto;
+      `Invoices/InvoiceDraftBuilder` filtra le righe con `product->supplier_id === request->supplier_id`.
+    - Costi commessa: `work_order_costs.supplier_id` gia' esiste (libero, `is_supplier`), `SyncWorkOrderCostsRequest`,
+      `WorkOrderCostWriter`. FE `features/work-order-costs/` (`cost-row-product.ts`: "il fornitore non viene mai
+      toccato", spec 0190 D-8; `work-order-cost-card-details.tsx`).
+    - Acquisti: `purchase_request_lines.supplier_id` (libero) e FE `purchase-requests/use-line-product-defaults.ts`
+      (precompila `unit_price` da `product.price` e il fornitore da `product.supplier_id`, spec 0208 D-13 / 0209 D-8);
+      ordini con fornitore in testata, FE `purchase-orders/use-order-line-product-defaults.ts` (`unit_price` da
+      `product.cost`, spec 0210 D-13).
+    - Legacy: `ProductsSource` scrive `cost`; `ProductSuppliersSource` (0203 D-7) collega il fornitore legacy
+      (endpoint `products`, record con `supplier_id` e `cost`); `CostProductsSource` scrive `cost` e non collega mai il
+      fornitore. Il legacy ha un solo fornitore per prodotto e nessun fornitore per riga d'offerta.
+    - Seed di produzione: `QualificaCostProductSeeder` (prodotti costo con `cost`, senza fornitore),
+      `QualificaCatalog/BranchProducts` (imposta `supplier_id`). Demo: `DemoProductSeeder`,
+      `DemoCatalog/DemoProductCatalogue`, `DemoCommissionShowcaseSeeder` e altri che leggono `supplier_id`.
+    - DB sviluppo: 2467 prodotti, 0 con fornitore, 19 con costo &gt; 0, 0 righe d'offerta, 0 costi commessa, 0 regole
+      Fornitore. Nessun permesso di campo su `products.cost` / `products.supplier_id`.
+
+    Decisioni utente 2026-10-28, vincolanti:
+    D-1 — Nuova tabella `product_suppliers`: un prodotto ha 0..N fornitori, ciascuno con il proprio `cost` (obbligatorio,
+          &gt;= 0). Fornitore = anagrafica con `is_supplier` = true; lo stesso fornitore non si ripete sullo stesso prodotto.
+    D-2 — Fornitore predefinito: se il prodotto ha almeno un fornitore, esattamente uno e' `is_default`. Con un solo
+          fornitore e' predefinito in automatico (il server lo forza). Il predefinito viene proposto sulle righe.
+    D-3 — `products.supplier_id` si elimina: il valore attuale diventa la riga `product_suppliers` predefinita con
+          `cost` = `products.cost` (0 se null). `products.cost` RESTA come "Costo standard" (decisione utente sul
+          conflitto dei prodotti di costo senza fornitore): vale solo quando il prodotto non ha fornitori; il form lo
+          nasconde quando ce n'e' almeno uno, il valore si conserva. Con uso COST e' obbligatorio solo se il prodotto non
+          ha fornitori.
+    D-4 — Costo da precompilare per (prodotto, fornitore): `product_suppliers.cost` del fornitore scelto; prodotto senza
+          fornitori: `products.cost`. Il prezzo di vendita resta unico (`products.price`), non dipende dal fornitore.
+    D-5 — Righe d'offerta (REVENUE e COST, tutti i canali: Offerte, Costi offerta, Gestione Richieste, Iscritti, modifica
+          di cella): nuova colonna `quote_lines.supplier_id`. Prodotto con fornitori: obbligatorio e tra i fornitori
+          del prodotto. Prodotto senza fornitori: null. Il controllo vale solo per righe nuove o con `product_id` /
+          `supplier_id` cambiati rispetto al salvato: una riga storica resta valida se il prodotto cambia la propria
+          lista. Il prezzo unitario resta modificabile (nessun controllo server sul costo).
+    D-6 — Scrittori di sistema: conversione Lead (`LeadConversionOfferCreator`) e migrazione offerte (`QuotesSource`)
+          usano il fornitore predefinito del prodotto; la duplicazione (`QuoteLineDuplicator`) copia `supplier_id`.
+    D-7 — Provvigioni: il destinatario Fornitore e' `quote_lines.supplier_id` (non piu' il fornitore del prodotto).
+          Emenda 0306 scope/out "Destinatario Fornitore diverso da `products.supplier_id`". Cambiare fornitore su una
+          riga REVENUE richiede di nuovo i default commissioni della riga, come il cambio prodotto; la guardia 422
+          esistente rifiuta una commissione Fornitore con destinatario diverso dal fornitore della riga.
+    D-8 — Proforma Ente e bozza fattura raggruppano per `quote_lines.supplier_id`.
+    D-9 — Costi commessa: prodotto con fornitori -&gt; `supplier_id` obbligatorio e tra quelli del prodotto; scelto il
+          prodotto si propongono il predefinito e il suo costo; cambiando fornitore `unit_price` = costo del nuovo
+          fornitore. Senza prodotto o prodotto senza fornitori: campo libero di oggi (`is_supplier`). Stesso criterio
+          di D-5 per le righe storiche. Emenda 0190 D-8 ("il fornitore non viene mai toccato").
+    D-10 — Richieste d'acquisto (fornitore di riga, resta libero): scelto un prodotto con fornitori si propongono il
+          predefinito e il suo costo come `unit_price`; cambiando fornitore, se e' tra quelli del prodotto `unit_price`
+          = il suo costo. Prodotto senza fornitori: comportamento di oggi. Ordini d'acquisto (fornitore in testata):
+          scelto un prodotto, `unit_price` = costo del fornitore di testata se e' tra quelli del prodotto, altrimenti del
+          predefinito, altrimenti `products.cost`. Cambiare il fornitore di testata NON riprezza le righe gia' inserite.
+    D-11 — Dati esistenti (migrazione schema): copia D-3 e backfill `quote_lines.supplier_id` = `products.supplier_id`
+          per tutte le righe esistenti con prodotto che ha fornitore (commissioni e proforma storiche restano coerenti).
+          `work_order_costs` e `purchase_*` non si toccano. I permessi di campo `products.supplier_id` diventano
+          `products.suppliers`. Rollback: ripristina `products.supplier_id` dal predefinito.
+    D-12 — Migrazione legacy (solo qnet-2, il legacy manda gia' `supplier_id` e `cost`): `ProductSuppliersSource` crea
+          la riga fornitore predefinita (fornitore legacy, `cost` del record) solo se il prodotto non ha ancora
+          fornitori (idempotente, mai sovrascrive); `ProductsSource` e `CostProductsSource` continuano a scrivere
+          `products.cost` (Costo standard). `QuotesSource` dipende opzionalmente da `product-suppliers`.
+    D-13 — Eliminare un'anagrafica usata come fornitore di un prodotto: 409 (guardia in `RegistryService::delete`, FK
+          restrict), come le guardie esistenti.
+  </context>
+
+  <scope>
+    <in>
+      <item>Schema: `product_suppliers`, `quote_lines.supplier_id`, drop `products.supplier_id`, copia/backfill D-11, permessi di campo.</item>
+      <item>Modulo Prodotti BE+FE: lista fornitori con costo e predefinito nel form e nel dettaglio, "Costo standard" (D-3), resource, for-select, permessi di campo, guardia eliminazione anagrafica.</item>
+      <item>Righe d'offerta BE+FE su tutti i canali (Offerte, Costi offerta, Gestione Richieste, Iscritti, cella griglia richieste): scelta fornitore, precompilazione costo, vista in sola lettura.</item>
+      <item>Provvigioni sul fornitore della riga (initializer, endpoint defaults/recipients, guardia, ricalcolo 0308).</item>
+      <item>Proforma Ente e bozza fattura per fornitore di riga.</item>
+      <item>Costi commessa BE+FE (D-9).</item>
+      <item>Richieste e Ordini d'acquisto FE (D-10).</item>
+      <item>Migrazione legacy lato qnet-2 (D-12), seeder produzione/demo e factory adeguati.</item>
+      <item>Guide in-app IT/EN e manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Prezzo di vendita per fornitore.</item>
+      <item>Fatture passive: la riga continua a precompilare da `meta.cost` (Costo standard); da segnalare come evoluzione.</item>
+      <item>Collegamento del fornitore dei prodotti costo legacy (`CostProductsSource`): resta com'e'.</item>
+      <item>Modifiche al codice del legacy `../qnet`.</item>
+      <item>Nuove colonne della griglia Prodotti per i fornitori (la colonna `cost` resta e mostra il Costo standard).</item>
+      <item>Riprezzamento automatico di righe gia' salvate quando cambia il costo di un fornitore.</item>
+      <item>Cambi a `CommissionRuleResolver` e al configuratore regole (il destinatario fornitore specifico esiste gia').</item>
+      <item>Magazzino, ricevimenti, fatture attive oltre alla bozza da proforma.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST|PUT|PATCH" path="/api/products[/{product}]">
+      <request>Nuovo `suppliers`?: array (max 50) di `{ supplier_id: int (registries, is_supplier=true), cost: number
+        (&gt;=0, decimal:0,2), is_default: bool }`. Sostituzione completa: assente in update = invariato; `[]` = nessun
+        fornitore. Un solo `is_default` true; con un solo elemento il server forza true; con 2+ elementi e nessun default
+        -&gt; 422. `supplier_id` NON e' piu' accettato (prohibited). `cost` resta (Costo standard).</request>
+      <response status="200">ProductResource: rimossi `supplier_id` e `supplier`; aggiunto `suppliers: [{ supplier_id:
+        int, name: string, cost: "0.00", is_default: bool }]` ordinato predefinito primo poi nome. `cost` = Costo
+        standard. `suppliers` soggetto al permesso di campo `suppliers` (nascosto = chiave assente).</response>
+      <errors>422 `suppliers.N.supplier_id` non fornitore / duplicato; `suppliers.N.cost` mancante o negativo;
+        `suppliers` piu' di un predefinito o nessuno con 2+; `cost` mancante con uso COST e `suppliers` vuoto (D-3).
+        403 come oggi.</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/products/for-select">
+      <response status="200">`meta.cost` invariato (Costo standard); aggiunto `meta.suppliers: [{ supplier_id, name,
+        cost, is_default }]` (stessa shape e ordine della resource). Disponibile anche con `ids[]`.</response>
+    </endpoint>
+    <endpoint method="POST|PUT|PATCH" path="/api/quotes[/{quote}] , /api/{module}[/{id}] (module = request-management | enrollee-management, StoreRequestRequest/UpdateRequestRequest) , modifica di cella offer_lines">
+      <request>`offer_lines[]` e `cost_lines[]`: nuovo `supplier_id`?: int|null (D-5).</request>
+      <response status="200">QuoteLineResource: aggiunti `supplier_id: int|null`, `supplier: { id, name } | null`.</response>
+      <errors>422 `offer_lines.N.supplier_id` / `cost_lines.N.supplier_id`: chiave i18n `quotes.supplier_required`
+        (prodotto con fornitori, valore null) e `quotes.supplier_not_of_product` (fornitore non del prodotto, o valorizzato
+        su prodotto senza fornitori). Solo righe nuove o con prodotto/fornitore cambiati.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/quotes/commission-defaults , /api/quotes/commission-recipients">
+      <request>Nuovo `supplier_id`?: int|null (fornitore della riga). Il destinatario Fornitore = quel valore; null =
+        ruolo Fornitore senza destinatario.</request>
+      <response status="200">Shape invariata.</response>
+    </endpoint>
+    <endpoint method="PUT" path="/api/work-orders/{workOrder}/costs (SyncWorkOrderCostsRequest)">
+      <request>`lines.*.supplier_id` invariato come tipo; regola D-9 (obbligatorio e tra i fornitori del prodotto
+        quando il prodotto ne ha; solo righe nuove o con prodotto/fornitore cambiati).</request>
+      <errors>422 `lines.N.supplier_id` con le chiavi `work_order_costs.supplier_required` /
+        `work_order_costs.supplier_not_of_product`.</errors>
+    </endpoint>
+    <endpoint method="DELETE" path="/api/registries/{registry}">
+      <errors>409 "This registry is a supplier of products and cannot be deleted." se presente in `product_suppliers`.</errors>
+    </endpoint>
+    <schema>
+      `product_suppliers`: id, product_id FK products cascadeOnDelete, supplier_id FK registries restrictOnDelete,
+      cost decimal(15,2) NOT NULL, is_default bool default false, timestamps; unique(product_id, supplier_id);
+      index(supplier_id). Model `ProductSupplier`; `Product::productSuppliers()` HasMany (la relazione
+      `Product::supplier()` si elimina). `quote_lines.supplier_id` FK registries nullOnDelete, nullable, index.
+    </schema>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Migrazione: prodotto con `supplier_id`=S e `cost`=10 -&gt; riga `product_suppliers` (S, 10, predefinito); con `cost` null -&gt; cost 0; colonna `products.supplier_id` assente, `products.cost` invariato; righe d'offerta del prodotto con `supplier_id`=S; permessi di campo `supplier_id` diventati `suppliers`; rollback ripristina `products.supplier_id` dal predefinito.</criterion>
+    <criterion id="AC-002">Store/update prodotto con 2 fornitori e un predefinito -&gt; salvati e restituiti in `suppliers` (predefinito primo); un solo fornitore senza flag -&gt; predefinito forzato; 2 senza predefinito o 2 predefiniti -&gt; 422; fornitore duplicato o anagrafica non fornitore -&gt; 422; `supplier_id` inviato -&gt; 422; update senza `suppliers` -&gt; lista invariata; `[]` -&gt; lista vuota.</criterion>
+    <criterion id="AC-003">Uso COST: prodotto senza fornitori e `cost` null -&gt; 422 su `cost`; con almeno un fornitore e `cost` null -&gt; salvato.</criterion>
+    <criterion id="AC-004">For-select prodotti: `meta.suppliers` con shape e ordine del contratto, anche richiesto per `ids[]`; `meta.cost` = Costo standard.</criterion>
+    <criterion id="AC-005">Eliminazione anagrafica fornitore di un prodotto -&gt; 409 e nessuna cancellazione; senza legami resta il comportamento di oggi.</criterion>
+    <criterion id="AC-006">Offerta (store/update) riga REVENUE e COST: prodotto con fornitori e `supplier_id` null -&gt; 422 `supplier_required`; fornitore non del prodotto -&gt; 422 `supplier_not_of_product`; prodotto senza fornitori con `supplier_id` -&gt; 422; valido -&gt; salvato e restituito con `supplier {id,name}`. Stesso esito su Gestione Richieste (`offer_lines`) e modifica di cella.</criterion>
+    <criterion id="AC-007">Riga salvata con fornitore S; poi S viene tolto dal prodotto; un nuovo salvataggio dell'offerta senza cambiare prodotto/fornitore della riga -&gt; nessun 422 e `supplier_id` resta S.</criterion>
+    <criterion id="AC-008">Commissioni: riga REVENUE con fornitore B (non predefinito) e regola Fornitore con destinatario B -&gt; commissione Fornitore automatica a B con la regola di B; commission-defaults/recipients con `supplier_id`=B restituiscono destinatario B; commissione Fornitore con destinatario A su riga con fornitore B -&gt; 422; ricalcolo 0308 usa il fornitore della riga.</criterion>
+    <criterion id="AC-009">Conversione Lead e migrazione offerte: le righe nascono col fornitore predefinito del prodotto (null se il prodotto non ne ha); duplicazione offerta copia `supplier_id`.</criterion>
+    <criterion id="AC-010">Proforma: offerta con due righe Ente stesso prodotto, fornitori A e B -&gt; due richieste Ente (A e B); bozza fattura della richiesta A contiene solo la riga con fornitore A.</criterion>
+    <criterion id="AC-011">Costi commessa: prodotto con fornitori e `supplier_id` null o di altro fornitore -&gt; 422; prodotto senza fornitori o nessun prodotto -&gt; fornitore libero accettato; riga storica invariata non rivalidata.</criterion>
+    <criterion id="AC-012">Legacy `product-suppliers`: prodotto senza fornitori -&gt; creata riga predefinita (fornitore rimappato, `cost` del record); prodotto con fornitori -&gt; skipped e nessuna modifica; ri-esecuzione idempotente; fornitore non migrato -&gt; skipped con warning.</criterion>
+    <criterion id="AC-013">FE Prodotti: il form/dettaglio gestisce la lista fornitori (aggiungi, rimuovi, costo, predefinito unico via radio); "Costo standard" visibile solo con lista vuota; errori 422 per riga con triade ARIA; payload `suppliers` conforme al contratto; dettaglio in sola lettura mostra fornitori, costi e predefinito.</criterion>
+    <criterion id="AC-014">FE righe d'offerta (Offerte, Costi offerta, dialog e cella di Gestione Richieste/Iscritti): scelto un prodotto con fornitori compare il select Fornitore con le opzioni del prodotto (nome + costo) e il predefinito preselezionato; riga COST: `unit_price` = costo del fornitore, cambiandolo si aggiorna; riga REVENUE: `unit_price` = prezzo di vendita, il cambio fornitore richiede i default commissioni con il nuovo `supplier_id`; prodotto senza fornitori: nessun select, costo da `meta.cost`; vista in sola lettura mostra il fornitore.</criterion>
+    <criterion id="AC-015">FE Costi commessa: prodotto con fornitori -&gt; select limitato ai suoi fornitori, predefinito e costo proposti, cambio fornitore aggiorna `unit_price`; prodotto senza fornitori -&gt; picker libero di oggi.</criterion>
+    <criterion id="AC-016">FE Acquisti: richiesta d'acquisto, scelto un prodotto con fornitori -&gt; fornitore predefinito e suo costo; cambio fornitore tra quelli del prodotto -&gt; `unit_price` = suo costo; fornitore esterno -&gt; prezzo invariato. Ordine d'acquisto: `unit_price` = costo del fornitore di testata se tra quelli del prodotto, altrimenti del predefinito, altrimenti Costo standard; cambio fornitore di testata non riprezza righe.</criterion>
+    <criterion id="AC-017">Guide in-app IT/EN aggiornate (`products`, `quotes`, `request-management`, `enrollee-management`, `work-orders`, `purchase-requests`, `purchase-orders`), parity test verde; manuale Claude Docs aggiornato nelle sezioni corrispondenti.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Migrazioni nuove e reversibili; nessuna migrazione esistente modificata. Mai migrate:fresh/rollback/seed sul DB dev: le prove di migrate/rollback vanno su una copia.</item>
+    <item>Authz server-side invariata (policy esistenti); `suppliers` coperto dal permesso di campo omonimo; il FE nasconde, il backend autorizza.</item>
+    <item>Regola "fornitore del prodotto" in un solo punto BE riusato da righe d'offerta e costi commessa; helper FE unico per "costo per (prodotto, fornitore)" e per il select fornitore, riusato da quotes, request-management, work-order-costs, purchase-*.</item>
+    <item>Zero dead code: eliminare `Product::supplier()`, `supplier_id` dal prodotto in BE/FE/seeder/factory, i commenti obsoleti (0190 D-8, 0208/0209/0210 D-13 aggiornati).</item>
+    <item>File &lt;= 300 righe (500 hard); identificatori inglesi; stringhe UI via i18next IT/EN; UI compatta (ui-design.md).</item>
+    <item>Seeder: `DatabaseSeeder` resta pulito; seed Qualifica e demo idempotenti scrivono `product_suppliers` via servizio o `updateOrCreate`.</item>
+  </constraints>
+
+  <tasks>
+    <task id="T-01" owner="database" lane="sequenziale (primo)" depends="contratto" write="backend/database/migrations, app/Models/ProductSupplier.php, app/Models/Product.php (solo relazioni/fillable/cast), app/Models/QuoteLine.php, database/factories/ProductSupplierFactory.php, ProductFactory">Migrazioni D-11 (+ rollback), model e factory. AC-001.</task>
+    <task id="T-02" owner="backend" lane="parallelo con T-03/T-04 dopo T-01" depends="T-01" write="app/Http/Requests/Products, Concerns/RequiresPricingForUsages, DataObjects/Products, Services/ProductService (+ eventuale ProductSupplierSync), Resources/Product*, Authorization/ProductsAuthorization, Services/RegistryService, lang/*/products.php, database/seeders (Qualifica*, Demo*, QualificaCatalog, DemoCatalog)">Modulo prodotto, for-select, guardia anagrafica, seeder. AC-002..AC-005.</task>
+    <task id="T-03" owner="backend" lane="parallelo con T-02/T-04 dopo T-01" depends="T-01" write="app/Quotes, Requests/Concerns/ValidatesQuoteLines*, Requests/Quotes/QuoteCommission*, DataObjects/Quotes, Services/Quotes, Services/Commissions, Controllers/Quotes/QuoteCommission*, Resources/QuoteLineResource, Services/Opportunities/LeadConversionOfferCreator, Services/ProformaRequestService, Services/Invoices/InvoiceDraftBuilder, Services/Table (solo offer_lines), lang/*/quotes.php">Righe d'offerta, regola condivisa "fornitore del prodotto" (es. `app/Products/ProductSupplierRule`), provvigioni, proforma. AC-006..AC-010.</task>
+    <task id="T-04" owner="backend" lane="parallelo dopo T-01, gated su T-03 per la regola condivisa" depends="T-01,T-03" write="Requests/WorkOrderCosts/SyncWorkOrderCostsRequest, lang/*/work_order_costs.php">Costi commessa BE (riusa la regola di T-03). AC-011.</task>
+    <task id="T-05" owner="backend" lane="sequenziale" depends="T-02,T-03" write="app/Migrations/Sources/ProductSuppliersSource, QuotesSource, Migrations/Support/QuoteLineDuplicator, tests/Feature/Migrations">Migrazione legacy lato qnet-2. AC-009 (parte migrazione/duplicazione), AC-012.</task>
+    <task id="T-06" owner="frontend" lane="parallelo (da contratto)" depends="contratto" write="features/products, i18n it/en-products.ts">Prodotti FE: editor fornitori, Costo standard, tipi/schema/payload/dettaglio. AC-013.</task>
+    <task id="T-07" owner="frontend" lane="parallelo (da contratto)" depends="contratto" write="features/products/product-supplier-cost.ts + product-supplier-select.tsx (helper condivisi, creati qui), features/quotes, i18n it/en-quotes.ts">Righe d'offerta FE nel modulo Offerte (catalogo, editor, costi, sola lettura, default commissioni). AC-014 (parte Offerte).</task>
+    <task id="T-08" owner="frontend" lane="gated su T-07" depends="T-07" write="features/request-management, i18n it/en-request-management.ts, it/en-enrollee-management.ts">Dialog e cella offerte di Gestione Richieste / Iscritti. AC-014 (parte Richieste/Iscritti).</task>
+    <task id="T-09" owner="frontend" lane="gated su T-07, parallelo con T-08/T-10" depends="T-07" write="features/work-order-costs, i18n it/en-work-order-costs.ts">Costi commessa FE. AC-015.</task>
+    <task id="T-10" owner="frontend" lane="gated su T-07, parallelo con T-08/T-09" depends="T-07" write="features/purchase-requests, features/purchase-orders">Acquisti FE. AC-016.</task>
+    <task id="T-11" owner="frontend" lane="dopo T-06..T-10" depends="T-06,T-08,T-09,T-10" write="features/help/content/{it,en}, manuale Claude Docs">Guide in-app + manuale. AC-017.</task>
+    <task id="T-12" owner="verifier" lane="cancello finale" depends="T-01..T-11" write="nessuna">Pest mirato (Products, Quotes, RequestManagement, Commissions, ProformaRequests, WorkOrderCosts, Registries, Migrations) + Vitest + `tsc -b --force` + ESLint + Pint; migrate/rollback su copia DB. Tutti gli AC.</task>
+  </tasks>
+
+  <revision n="2" date="2026-10-28" status="approved">
+    <reason>Richiesta utente 2026-10-28: anche il prezzo di vendita dipende dal fornitore. Supera D-4 ("il prezzo di
+      vendita resta unico") e lo scope/out "Prezzo di vendita per fornitore".</reason>
+    <decisions>
+      D-14 — `product_suppliers.price` decimal(15,2) NOT NULL default 0, accanto a `cost` (anche `cost` default 0).
+             Il prodotto Vendibile usa `price` del fornitore, Utilizzabile come costo usa `cost`, entrambi usa entrambi.
+             Il campo pertinente all'utilizzo e' obbligatorio nel form (precompilato 0, "altrimenti 0"); quello non
+             pertinente non compare e resta 0. Migrazione: righe esistenti `price` = `products.price` (0 se null).
+      D-15 — `products.price` diventa "Prezzo standard", simmetrico al Costo standard (D-3): vale solo senza fornitori,
+             il form lo nasconde con almeno un fornitore (valore conservato); con uso Vendibile e' obbligatorio solo
+             se il prodotto non ha fornitori. Un prodotto solo Vendibile con fornitori propone il predefinito.
+      D-16 — Prezzo da precompilare per (prodotto, fornitore): `product_suppliers.price` del fornitore scelto; senza
+             fornitori `products.price`. Simmetrico a D-4 per il costo.
+      D-17 — Righe REVENUE (Offerte, Gestione Richieste, Iscritti, cella): scelto il prodotto `unit_price` = prezzo del
+             fornitore predefinito; cambiando fornitore `unit_price` = prezzo del nuovo fornitore (e commissioni
+             rigenerate come oggi). Server: `SimplifiedOfferLineNormalizer` congela il prezzo delle righe semplificate
+             dal fornitore della riga; `ProductOfferLineResolver` (conversione Lead) dal predefinito.
+      D-18 — Griglia Prodotti: la colonna `price` mostra il prezzo effettivo (predefinito, altrimenti standard) con sort
+             e filtro sullo stesso valore, come `cost`. Riquadro Prezzo/Margine del prodotto e catalogo righe: prezzo
+             effettivo. Margine = prezzo effettivo - costo effettivo.
+      D-19 — Fatture attive, riga manuale da prodotto (`invoice-editor-add-line`): prezzo del fornitore predefinito,
+             altrimenti standard. Migrazione legacy `product-suppliers`: `price` della riga = `price` del record legacy.
+    </decisions>
+    <data_contract_delta>
+      Write prodotto: `suppliers[].price`?: number &gt;= 0 decimal:0,2 (assente = 0). `suppliers[].cost` diventa
+      facoltativo (assente = 0). `price` obbligatorio con uso SALE solo se `suppliers` effettivo e' vuoto.
+      ProductResource.suppliers[] e for-select `meta.suppliers[]`: `{ supplier_id, name, price, cost, is_default }`
+      (price/cost stringhe decimali). Griglia: colonna `price` = prezzo effettivo. Nessun altro endpoint cambia shape.
+    </data_contract_delta>
+    <acceptance_criteria>
+      <criterion id="AC-018">Migrazione: righe `product_suppliers` esistenti ricevono `price` = `products.price` (0 se null); rollback elimina la colonna.</criterion>
+      <criterion id="AC-019">Store/update prodotto: `suppliers[].price` salvato e restituito (resource e meta); assente = 0; negativo -> 422; uso SALE con fornitori e `price` standard null -> salvato; senza fornitori e `price` null -> 422.</criterion>
+      <criterion id="AC-020">FE Prodotti: nell'editor fornitori compare Prezzo se Vendibile, Costo se Utilizzabile come costo, entrambi se entrambi (precompilati 0, obbligatori); Prezzo standard visibile solo senza fornitori; payload con `price`.</criterion>
+      <criterion id="AC-021">FE Offerte (scheda Offerta), Gestione Richieste e Iscritti: scelto un prodotto con fornitori `unit_price` = prezzo del predefinito; cambio fornitore -> prezzo del nuovo fornitore (e default commissioni con il nuovo `supplier_id` nelle Offerte); prodotto senza fornitori -> `meta.price`. Catalogo mostra il prezzo del predefinito.</criterion>
+      <criterion id="AC-022">Server: riga semplificata (Gestione Richieste/Iscritti) salvata con fornitore B -> `unit_price` = prezzo di B; conversione Lead -> prezzo del predefinito.</criterion>
+      <criterion id="AC-023">Griglia Prodotti: `price` mostra/ordina/filtra il prezzo effettivo; riquadro Prezzo e Margine del prodotto usano prezzo e costo effettivi.</criterion>
+      <criterion id="AC-024">Legacy `product-suppliers`: riga predefinita con `price` e `cost` del record. Fatture attive: riga da prodotto con fornitori -> prezzo del predefinito.</criterion>
+      <criterion id="AC-025">Guide in-app IT/EN e manuale Claude Docs aggiornati (prezzo per fornitore, Prezzo standard).</criterion>
+    </acceptance_criteria>
+    <tasks>
+      <task id="T-13" owner="database" lane="primo" depends="contratto rev.2" write="backend/database/migrations (nuova), Models/ProductSupplier, ProductSupplierFactory">Colonna `price` + backfill + rollback. AC-018.</task>
+      <task id="T-14" owner="backend" lane="dopo T-13" depends="T-13" write="Requests/Products, Concerns/ValidatesProductSuppliers, RequiresPricingForUsages, DataObjects/Products, Products/ProductSupplierSync, Products/ProductSupplierPayload, Tables/Products (ProductCostColumn generalizzata a prezzo effettivo), ProductsTableDefinition, Services/Quotes/ProductOfferLineResolver, Services/RequestManagement/SimplifiedOfferLineNormalizer, Migrations/Sources/ProductSuppliersSource, seeder toccati, test relativi">Tutto il BE della rev.2. AC-019, AC-022, AC-023 (BE), AC-024 (legacy).</task>
+      <task id="T-15" owner="frontend" lane="parallelo a T-13/T-14 (da contratto)" depends="contratto rev.2" write="features/products (product-suppliers.ts: productPriceFor, editor, schema, payload, KPI), features/quotes, features/request-management, features/invoices/invoice-editor-add-line, i18n products/quotes">Tutto il FE della rev.2. AC-020, AC-021, AC-023 (FE), AC-024 (fatture).</task>
+      <task id="T-16" owner="frontend" lane="dopo T-15" depends="T-15" write="features/help/content/{it,en}, manuale Claude Docs">Guide e manuale. AC-025.</task>
+      <task id="T-17" owner="verifier" lane="ultimo" depends="T-13..T-16" write="nessuna">Suite mirate + tsc -b + lint; AC-018..AC-025.</task>
+    </tasks>
+  </revision>
+
+  <revision n="3" date="2026-10-28" status="approved">
+    <reason>Richiesta utente 2026-10-28 ("cambio di rotta"): prezzo e costo valgono per ogni prodotto qualunque sia
+      l'utilizzo; il costo di un fornitore con commissione Fornitore su quel prodotto non si inserisce. Supera D-14
+      (campi visibili in base all'utilizzo) e il requisito per utilizzo di D-3/D-15.</reason>
+    <decisions>
+      D-20 — Ogni prodotto (Vendibile, Costo, Interno) ha sempre prezzo e costo. Senza fornitori: Prezzo standard e
+             Costo standard, entrambi visibili e obbligatori. Con fornitori: per ogni fornitore Prezzo e Costo, entrambi
+             visibili e obbligatori; gli standard spariscono dal form (valori conservati). Precompilati 0. Gli utilizzi
+             decidono solo dove il prodotto si sceglie (scheda Offerta, Costi, magazzino), non quali importi ha.
+             Dati: `products.price`/`products.cost` NOT NULL default 0 (nessun null in dev: 0/2467); il trait
+             `RequiresPricingForUsages` si elimina (zero dead code), sostituito da `numeric|min:0` (assente = 0).
+      D-21 — Commissione del fornitore su un prodotto = la regola Fornitore che il Configuratore applicherebbe oggi a
+             quel fornitore su quel prodotto (stesso `CommissionRuleResolver`: regole dedicate al fornitore su
+             prodotto, poi categoria e padri, poi regole generiche del ruolo Fornitore; attive e valide alla data di
+             oggi), e solo se la tipologia del prodotto ha "Calcolo commissione Fornitore" acceso (come in offerta).
+             Forma: `{ configuration_id, type: "PERCENTAGE"|"FIXED_AMOUNT" (enum CommissionType reale), value,
+             direction: "PAID"|"RECEIVED" }`.
+      D-22 — Form prodotto: se un fornitore ha commissione, il suo Costo e' disabilitato e mostra "Commissione X%
+             pagata/ricevuta" (o "importo fisso X"); il server salva costo 0 per quel fornitore qualunque valore arrivi.
+      D-23 — Righe di COSTO in offerta (scheda Costi) e Costi commessa: scelto un fornitore con commissione su quel
+             prodotto, `unit_price` = 0 bloccato con lo stesso avviso; il server forza 0 sulle righe nuove o con
+             prodotto/fornitore cambiati. Righe di vendita (Offerta, Gestione Richieste, Iscritti): solo l'avviso
+             accanto al fornitore. RDA, ODA e fatture: liberi, nessun blocco (acquisti reali).
+             [utente 2026-10-28] Esclusa la migrazione legacy offerte: le righe di costo importate tengono il prezzo
+             storico (`QuoteLineData::$keepsUnitPrice`). Authz endpoint supplier-commissions confermata: products.viewAny|
+             create|update, quotes.create|update, work-orders.manageCosts.
+    </decisions>
+    <data_contract_delta>
+      Write prodotto: `price`, `cost` numeric min:0 (assente/null = 0) per ogni utilizzo; `suppliers[].price` e
+      `suppliers[].cost` sempre considerati. ProductResource `suppliers[]` aggiunge `commission: {configuration_id,
+      type, value, direction} | null` (solo nel dettaglio, non nel for-select).
+      NUOVO `GET /api/products/supplier-commissions` — query `product_id`? (prodotto salvato) oppure `category_id`
+      (prodotto in creazione) + `supplier_ids[]` (1..50, registries is_supplier). Response `data: [{ supplier_id,
+      commission: {...} | null }]`. Authz: chi puo' creare/modificare prodotti OPPURE chi puo' scegliere prodotti
+      nelle righe (stessa regola del for-select prodotti). 422 su parametri invalidi.
+    </data_contract_delta>
+    <acceptance_criteria>
+      <criterion id="AC-026">Migrazione: `products.price`/`cost` NOT NULL default 0 (null -> 0); rollback torna nullable.</criterion>
+      <criterion id="AC-027">Store/update prodotto di qualunque utilizzo senza fornitori: `price`/`cost` assenti -> 0; negativi -> 422. Nessun 422 "obbligatorio per utilizzo".</criterion>
+      <criterion id="AC-028">Endpoint supplier-commissions: fornitore con regola dedicata sul prodotto -> commission di quella regola; solo regola generica Fornitore sulla categoria padre -> quella; tipologia con calcolo Fornitore spento -> null; regola sospesa o scaduta -> null; senza permesso -> 403.</criterion>
+      <criterion id="AC-029">Salvataggio prodotto con fornitore che ha commissione e `cost` 50 -> salvato 0; resource `suppliers[].commission` valorizzata.</criterion>
+      <criterion id="AC-030">Offerta: riga COST nuova con fornitore con commissione e `unit_price` 30 -> salvata 0; riga storica invariata non toccata. Costi commessa idem. RDA/ODA non toccati.</criterion>
+      <criterion id="AC-031">FE Prodotti: Prezzo e Costo sempre visibili (standard senza fornitori, per fornitore con fornitori) per ogni utilizzo; fornitore con commissione -> Costo disabilitato a 0 con avviso "Commissione 10% pagata".</criterion>
+      <criterion id="AC-032">FE righe: Costi offerta e Costi commessa con fornitore con commissione -> prezzo unitario 0 disabilitato + avviso; righe di vendita (Offerta, Richieste, Iscritti) -> solo avviso; RDA/ODA nessun cambio.</criterion>
+      <criterion id="AC-033">Guide in-app IT/EN e manuale Claude Docs aggiornati (rev.2 + rev.3).</criterion>
+    </acceptance_criteria>
+    <tasks>
+      <task id="T-18" owner="database" lane="primo" depends="contratto rev.3" write="backend/database/migrations (nuova)">NOT NULL default 0 su price/cost prodotti + rollback. AC-026.</task>
+      <task id="T-19" owner="backend" lane="dopo T-18" depends="T-18" write="Requests/Products, Concerns (elimina RequiresPricingForUsages), Products/ (nuovo SupplierCommissionLookup + sync costo 0), Resources/Product*, nuovo controller+request+rotta supplier-commissions, Quotes/QuoteLineWriter o rule cost lines, WorkOrders/WorkOrderCostWriter, test">Tutto il BE rev.3. AC-027..AC-030.</task>
+      <task id="T-20" owner="frontend" lane="parallelo a T-18/T-19 (da contratto)" depends="contratto rev.3" write="features/products (editor, schema, payload, api hook supplier-commissions), features/quotes (righe costo/vendita), features/work-order-costs, i18n products/quotes/work-order-costs">Tutto il FE rev.3. AC-031, AC-032.</task>
+      <task id="T-21" owner="frontend" lane="dopo T-20" depends="T-20" write="features/help/content/{it,en}, manuale Claude Docs">Guide e manuale (rev.2+rev.3). AC-025, AC-033.</task>
+      <task id="T-22" owner="verifier" lane="ultimo" depends="T-18..T-21" write="nessuna">Suite complete + tsc -b + lint; AC-018..AC-033.</task>
+    </tasks>
+  </revision>
+
+  <risks>
+    <r id="R-1">Produzione: righe d'offerta esistenti ricevono il fornitore del prodotto via backfill (D-11); se in produzione `products.supplier_id` e' stato cambiato dopo l'emissione di offerte, le righe vecchie prendono il fornitore attuale (lo stesso che usano oggi a runtime: nessun cambio di comportamento).</r>
+    <r id="R-2">Client FE vecchio in cache che invia `supplier_id` al prodotto: 422 esplicito invece di dato perso.</r>
+    <r id="R-3">Richieste d'acquisto: oggi precompilano dal prezzo di vendita (`product.price`, 0208 D-13); con D-10 i prodotti con fornitori passano al costo del fornitore, quelli senza restano sul prezzo. Incoerenza preesistente segnalata, non corretta qui.</r>
+  </risks>
+
+</spec>

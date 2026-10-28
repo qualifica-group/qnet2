@@ -19,6 +19,7 @@ use App\Services\ProductCategories\CategoryHierarchy;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Services\QuoteService;
 use Database\Seeders\Concerns\ResolvesSeedActor;
+use Database\Seeders\Support\DefaultProductSupplier;
 use Database\Seeders\Support\SampleCategoryCoverage;
 use Faker\Factory as FakerFactory;
 use Faker\Generator;
@@ -239,6 +240,7 @@ class QualificaSampleQuoteSeeder extends Seeder
                 unitPrice: (float) $product->price,
                 vatRateId: $product->vat_rate_id,
                 sortOrder: null,
+                supplierId: DefaultProductSupplier::idFor($product->id),
             ))
             ->values()
             ->all();

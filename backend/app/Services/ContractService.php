@@ -39,6 +39,7 @@ class ContractService
         'quote.supervisor',
         'quote.paymentMethod',
         'quote.offerLines.product.category',
+        'quote.offerLines.supplier:id,name',
         // Spec 0099, D-5: QuoteLineResource reads the typology live through the
         // product, so it is loaded alongside the category it sits next to.
         'quote.offerLines.product.productTypology',

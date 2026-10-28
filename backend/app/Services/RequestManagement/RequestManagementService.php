@@ -136,6 +136,7 @@ final class RequestManagementService
         // `vatRate`/`commissions.recipient` are what QuoteLineResource (the
         // projection this panel now shares with the Offerte module) reads.
         'offerLines.product.category',
+        'offerLines.supplier:id,name',
         // Spec 0099, D-5: QuoteLineResource reads the typology live through the
         // product, so it is loaded alongside the category it sits next to.
         'offerLines.product.productTypology',

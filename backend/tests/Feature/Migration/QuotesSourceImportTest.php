@@ -1,15 +1,20 @@
 <?php
 
+use App\Enums\CommissionApplicationScope;
 use App\Enums\CommissionRecipientRole;
 use App\Enums\CommissionType;
 use App\Enums\MigrationStatus;
+use App\Enums\ProductUsage;
 use App\Enums\WorkflowStatusGroup;
+use App\Models\CommissionConfiguration;
 use App\Models\CompanySite;
 use App\Models\Contract;
 use App\Models\ContractStatus;
 use App\Models\Opportunity;
 use App\Models\PaymentMethod;
 use App\Models\Product;
+use App\Models\ProductSupplier;
+use App\Models\ProductTypology;
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\QuoteWorkflowStatus;
@@ -405,10 +410,10 @@ it('keeps a cost whose offer line is not on the quote as a generic cost, with a 
         ->and(legacyQuoteWarnings($run))->toBe(['Cost line 1: its offer line (legacy id 901) was not imported, kept as a generic cost.']);
 });
 
-it('reports a legacy cost supplier other than the product one, never writing it', function () {
+it('reports a legacy cost supplier other than the product default one, never writing it', function () {
     legacyQuoteServiceProduct(10);
-    $supplier = Registry::factory()->create(['old_id' => 70]);
-    Product::factory()->costOnly()->create(['old_source' => 'expense_reports', 'old_id' => 3, 'supplier_id' => $supplier->id]);
+    $supplier = Registry::factory()->supplier()->create(['old_id' => 70]);
+    productWithSupplier(['old_source' => 'expense_reports', 'old_id' => 3, 'usages' => [ProductUsage::Cost]], $supplier);
     Product::factory()->costOnly()->create(['old_source' => 'expense_reports', 'old_id' => 4]);
 
     $run = runLegacyQuotesImport([legacyQuoteRecord([
@@ -421,7 +426,62 @@ it('reports a legacy cost supplier other than the product one, never writing it'
 
     expect(Quote::query()->where('old_id', 42)->sole()->costLines()->count())->toBe(3)
         ->and(legacyQuoteWarnings($run))->toBe([
-            "Cost line 2: legacy supplier (legacy id 71) differs from the product's (legacy id 70).",
-            "Cost line 3: legacy supplier (legacy id 70) differs from the product's: the product has no supplier.",
+            "Cost line 2: legacy supplier (legacy id 71) differs from the product's default (legacy id 70).",
+            "Cost line 3: legacy supplier (legacy id 70) differs from the product's: the product has no default supplier.",
         ]);
+});
+
+it('AC-009: lines of both tabs carry the default supplier of their product, null without suppliers', function () {
+    $supplier = Registry::factory()->supplier()->create();
+    $revenueProduct = legacyQuoteServiceProduct(10);
+    ProductSupplier::factory()->create(['product_id' => $revenueProduct->id, 'supplier_id' => Registry::factory()->supplier()->create()->id, 'is_default' => false]);
+    ProductSupplier::factory()->default()->create(['product_id' => $revenueProduct->id, 'supplier_id' => $supplier->id]);
+    legacyQuoteServiceProduct(11);
+    $costProduct = productWithSupplier(['old_source' => 'expense_reports', 'old_id' => 3, 'usages' => [ProductUsage::Cost]], $supplier);
+    Product::factory()->costOnly()->create(['old_source' => 'expense_reports', 'old_id' => 4]);
+
+    runLegacyQuotesImport([legacyQuoteRecord([
+        'lines' => [
+            ['id' => 900, 'product_id' => 10, 'quantity' => 1, 'unit_price' => 100],
+            ['id' => 901, 'product_id' => 11, 'quantity' => 1, 'unit_price' => 50],
+        ],
+        'cost_lines' => [
+            ['id' => 1, 'product_id' => 3, 'quantity' => 1, 'unit_price' => 10],
+            ['id' => 2, 'product_id' => 4, 'quantity' => 1, 'unit_price' => 10],
+        ],
+    ])]);
+
+    $quote = Quote::query()->where('old_id', 42)->sole();
+    $bySort = fn ($lines) => $lines->orderBy('sort_order')->pluck('supplier_id')->all();
+
+    expect($bySort($quote->offerLines()))->toBe([$supplier->id, null])
+        ->and($bySort($quote->costLines()))->toBe([$supplier->id, null])
+        ->and($costProduct->id)->not->toBeNull();
+});
+
+it('0320 D-23: a legacy cost line keeps its historical price even when its supplier is paid through a commission', function () {
+    legacyQuoteServiceProduct(10);
+    $supplier = Registry::factory()->supplier()->create();
+    $costProduct = productWithSupplier([
+        'old_source' => 'expense_reports',
+        'old_id' => 3,
+        'usages' => [ProductUsage::Cost],
+        'product_typology_id' => ProductTypology::factory()->supplierCommission()->create()->id,
+    ], $supplier);
+    CommissionConfiguration::factory()->create([
+        'recipient_role' => CommissionRecipientRole::Supplier,
+        'application_scope' => CommissionApplicationScope::Product,
+        'product_id' => $costProduct->id,
+        'recipient_type' => 'registry',
+        'recipient_id' => $supplier->id,
+    ]);
+
+    runLegacyQuotesImport([legacyQuoteRecord([
+        'cost_lines' => [['id' => 1, 'product_id' => 3, 'quantity' => 1, 'unit_price' => 40]],
+    ])]);
+
+    $line = Quote::query()->where('old_id', 42)->sole()->costLines()->sole();
+
+    expect($line->supplier_id)->toBe($supplier->id)
+        ->and((float) $line->unit_price)->toBe(40.0);
 });

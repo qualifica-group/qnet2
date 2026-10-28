@@ -1,69 +1,11 @@
 /**
- * Attributes + Product Categories + Products domains (spec 0017). Extracted
- * to a sibling file to keep `en.ts` within the engineering size limits (see
- * `.claude/rules/engineering.md` §6); its public shape is unchanged.
+ * Product Categories + Products domains (spec 0017). Extracted to a sibling
+ * file to keep `en.ts` within the engineering size limits (see
+ * `.claude/rules/engineering.md` §6); its public shape is unchanged. The
+ * Attributes domain lives in `en-attributes.ts`.
  */
 
-export const attributes = {
-  title: 'Attributes',
-  subtitle: 'Browse, filter and manage the reusable dynamic attributes.',
-  forbidden: "You don't have permission to view attributes.",
-  columns: {
-    code: 'Code',
-    name: 'Name',
-    type: 'Type',
-    created_at: 'Created at',
-  },
-  detail: {
-    loadError: 'Unable to load the attribute. Please try again.',
-    details: 'Details',
-    created_at: 'Created at',
-  },
-  form: {
-    newAttribute: 'New attribute',
-    createTitle: 'Create attribute',
-    createSubtitle: 'Add a new reusable dynamic attribute.',
-    code: 'Code',
-    name: 'Name',
-    save: 'Save',
-    saving: 'Saving…',
-    cancel: 'Cancel',
-    created: 'Attribute created successfully.',
-    updated: 'Attribute updated successfully.',
-    deleted: 'Attribute deleted successfully.',
-    codeRequired: 'Code is required.',
-    codeMax: 'Code must be at most 64 characters.',
-    codeInvalid: 'Code must be a lowercase snake_case identifier.',
-    nameRequired: 'Name is required.',
-    nameMax: 'Name must be at most 191 characters.',
-    genericError: 'Something went wrong. Please try again.',
-    deleteError: 'Unable to delete the attribute. Please try again.',
-    deleteForbidden: 'You cannot delete this attribute.',
-    deleteInUse: 'This attribute is assigned to a category or has product values.',
-    leaveConfirm: {
-      title: 'Leave without saving?',
-      description: 'The attribute has not been created yet: what you entered will be lost.',
-      confirm: 'Leave without saving',
-      cancel: 'Keep editing',
-    },
-    optionValueRequired: 'Value is required.',
-    optionValueMax: 'Value must be at most 191 characters.',
-    optionLabelRequired: 'Label is required.',
-    optionLabelMax: 'Label must be at most 191 characters.',
-    optionsRequiredForEnum: 'Add at least one option for a list attribute.',
-    optionValuesDuplicate: 'Option values must be unique.',
-    relationEntityTypeRequired: 'The relation target module is required.',
-    relationForSelectResourceRequired: 'The picker resource is required.',
-  },
-  layout: {
-    // Title of the synthetic "Other information" section `AttributeLayoutRenderer`
-    // (spec 0062) generates at runtime for effective attributes not placed in
-    // any section of the configured layout — never persisted.
-    otherInformation: 'Other information',
-    // Hint on a conditional section (spec 0288): the boolean attribute that shows it.
-    visibleWhen: 'Visible if: {{name}}',
-  },
-}
+export { attributes } from './en-attributes'
 
 export const productCategories = {
   title: 'Product Categories',
@@ -382,6 +324,13 @@ export const products = {
     stock_quantity: 'Stock',
     created_at: 'Created at',
   },
+  // Supplier commission on the product (spec 0320 rev.3): note next to the supplier.
+  supplierCommission: {
+    PERCENTAGE: 'Commission {{value}} {{direction}}',
+    FIXED_AMOUNT: 'Fixed commission {{value}} {{direction}}',
+    direction: { PAID: 'paid', RECEIVED: 'received' },
+    hint: "This supplier's cost is the Supplier commission: the cost stays at 0.",
+  },
   bulkCostType: {
     bulkAction: 'Set cost type',
     title: 'Set cost type',
@@ -414,10 +363,10 @@ export const products = {
     nameRequired: 'Name is required.',
     nameMax: 'Name must be at most 191 characters.',
     description: 'Description',
-    cost: 'Cost',
+    cost: 'Standard cost',
     costInvalid: 'Cost must be zero or a positive number.',
     costRequired: 'Cost is required.',
-    price: 'Price',
+    price: 'Standard price',
     priceInvalid: 'Price must be zero or a positive number.',
     priceRequired: 'Price is required.',
     productType: 'Type',
@@ -436,11 +385,31 @@ export const products = {
     vatRateSearch: 'Search VAT rates…',
     vatRateEmpty: 'No VAT rates found.',
     vatRateError: 'Unable to load VAT rates.',
-    supplier: 'Supplier',
-    supplierPlaceholder: 'Select a supplier…',
-    supplierSearch: 'Search suppliers…',
-    supplierEmpty: 'No suppliers found.',
-    supplierError: 'Unable to load suppliers.',
+    suppliers: {
+      title: 'Suppliers',
+      supplier: 'Supplier',
+      margin: 'Margin',
+      emptyTitle: 'No suppliers',
+      emptyHint: 'Without suppliers the Standard price and Standard cost apply.',
+      add: 'Add supplier',
+      supplierN: 'Supplier {{n}}',
+      price: 'Price',
+      cost: 'Cost',
+      priceN: 'Price of supplier {{n}}',
+      costN: 'Cost of supplier {{n}}',
+      defaultN: 'Supplier {{n}} is the default',
+      removeN: 'Remove supplier {{n}}',
+      default: 'Default',
+      placeholder: 'Select a supplier…',
+      search: 'Search suppliers…',
+      empty: 'No suppliers found.',
+      loadError: 'Unable to load suppliers.',
+      supplierRequired: 'Select the supplier.',
+      priceRequired: 'Price is required.',
+      costRequired: 'Cost is required.',
+      duplicate: 'This supplier is already listed.',
+      defaultRequired: 'Mark exactly one supplier as the default.',
+    },
     unitOfMeasure: 'Unit of measure',
     unitOfMeasurePlaceholder: 'Select a unit of measure…',
     unitOfMeasureSearch: 'Search units of measure…',

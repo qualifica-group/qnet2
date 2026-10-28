@@ -89,6 +89,7 @@ export const workOrderCosts = {
       unitPriceRequired: 'Enter the unit price.',
       unitPriceInvalid: 'Unit price must be between 0 and 99999999.99.',
       decimals: 'At most two decimals.',
+      supplierRequired: "Select one of the product's suppliers.",
       incurredOnInvalid: 'Enter a valid date.',
       documentReferenceTooLong: 'At most 100 characters.',
       additionalDescriptionTooLong: 'At most 5000 characters.',

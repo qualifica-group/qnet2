@@ -55,6 +55,8 @@ export interface QuoteFullCatalogSwitch {
 export interface QuoteLineCommissionsAdapter {
   defaultsForNewRows: (items: QuoteCatalogProduct[]) => Promise<Map<number, LineCommissionDefaults> | null>
   defaultsForReplacement: (row: QuoteLineFormValues, item: QuoteCatalogProduct) => Promise<LineCommissionDefaults | null>
+  /** Spec 0320 D-7: the row changed supplier; same `null` contract. */
+  defaultsForSupplier: (row: QuoteLineFormValues, supplierId: number) => Promise<LineCommissionDefaults | null>
 }
 
 /** What a channel adds to a row card: trailing actions, a level-2 field, a level-3 block. */

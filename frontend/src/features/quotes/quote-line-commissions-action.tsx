@@ -58,6 +58,7 @@ export function QuoteLineCommissionsAction({
           lineNumber={position}
           productName={productName ?? t('quotes.form.commissions.productFallback')}
           productId={row.product_id}
+          supplierId={row.supplier_id ?? null}
           commissionContext={commissionContext}
           quantity={row.quantity}
           unitPrice={row.unit_price}

@@ -7,9 +7,11 @@ namespace App\Http\Requests\Concerns;
 use App\Enums\CategoryManagementMode;
 use App\Models\Opportunity;
 use App\Models\Quote;
+use App\Models\QuoteLine;
 use App\Quotes\QuoteLineRules;
 use App\Services\Opportunities\OpportunityProductLineCoverage;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -155,33 +157,39 @@ trait ValidatesQuoteLines
      */
     private function quoteLineFieldRules(string $field): array
     {
+        $persisted = $this->persistedQuoteLines($field);
+
         // One definition for every channel (App\Quotes\QuoteLineRules): the
         // generic inline-edit engine validates the same rows without being a
         // FormRequest, and a second copy here would drift.
         return QuoteLineRules::fieldRules(
             $field,
             withCommissions: $field === 'offer_lines',
-            exemptProductIds: $this->persistedQuoteLineProductIds($field),
+            exemptProductIds: $persisted->pluck('product_id')->map(static fn (mixed $id): int => (int) $id)->all(),
+            persistedLines: $persisted
+                ->mapWithKeys(static fn (QuoteLine $line): array => [$line->id => ['product_id' => $line->product_id, 'supplier_id' => $line->supplier_id]])
+                ->all(),
         );
     }
 
     /**
-     * The products already on the quote's rows of this tab (spec 0208 D-2):
-     * resubmitting them stays valid even once their category is deactivated.
-     * Empty on create (no route model).
+     * The quote's saved rows of this tab (empty on create: no route model).
+     * Their products stay valid once their category is deactivated (spec 0208
+     * D-2) and an unchanged product/supplier pair is not re-checked (spec 0320
+     * D-5).
      *
-     * @return array<int, int>
+     * @return Collection<int, QuoteLine>
      */
-    private function persistedQuoteLineProductIds(string $field): array
+    private function persistedQuoteLines(string $field): Collection
     {
         $quote = $this->route('quote');
 
         if (! $quote instanceof Quote) {
-            return [];
+            return new Collection;
         }
 
         $lines = $field === 'offer_lines' ? $quote->offerLines() : $quote->costLines();
 
-        return $lines->pluck('product_id')->map(static fn (mixed $id): int => (int) $id)->all();
+        return $lines->get(['id', 'product_id', 'supplier_id']);
     }
 }

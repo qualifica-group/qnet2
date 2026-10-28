@@ -65,6 +65,23 @@ const CATALOG_PRODUCT = {
   },
 }
 
+/** A catalogue product with two suppliers (spec 0320): `meta.suppliers` default first. */
+const MULTI_SUPPLIER_PRODUCT = {
+  ...CATALOG_PRODUCT,
+  id: 902,
+  label: 'Corso Multi',
+  meta: {
+    ...CATALOG_PRODUCT.meta,
+    price: '80.00',
+    suppliers: [
+      { supplier_id: 5, name: 'Acme', price: '170.00', cost: '70.00', is_default: true },
+      { supplier_id: 6, name: 'Beta', price: '190.00', cost: '90.00', is_default: false },
+    ],
+  },
+}
+
+let catalogItems: unknown[] = [CATALOG_PRODUCT]
+
 const fetchForSelectMock = vi.fn()
 vi.mock('@/features/for-select/api', () => ({
   FOR_SELECT_PAGE_SIZE: 25,
@@ -100,6 +117,8 @@ const REMAPPED_ROW = { id: 4001, offer_lines: [{ id: 900, name: 'Fibra 1000' }] 
 const EXPECTED_ROWS = [{
   id: OFFER_LINE_FIBRA.id,
   product_id: OFFER_LINE_FIBRA.product_id,
+  // Spec 0320 D-5 (REQUIREMENT CHANGED): every row now travels with its supplier, null without suppliers.
+  supplier_id: null,
   quantity: 3,
   unit_price: 100,
   vat_rate_id: null,
@@ -117,9 +136,10 @@ beforeEach(() => {
   stopEditing.mockReset()
   categoryTreeMock.mockReset()
   categoryTreeMock.mockReturnValue([])
+  catalogItems = [CATALOG_PRODUCT]
   fetchForSelectMock.mockReset()
   fetchForSelectMock.mockImplementation((resource: string, params: ForSelectParams = {}) => {
-    const items = resource === 'products' && !params.ids?.length ? [CATALOG_PRODUCT] : []
+    const items = resource === 'products' && !params.ids?.length ? catalogItems : []
     return Promise.resolve({ items, pagination: { total: items.length, offset: 0, limit: 25, total_pages: 1, has_more: false }, export_link: null })
   })
 })
@@ -187,10 +207,73 @@ describe('Gestione Richieste — linee di prodotto in griglia', () => {
       column: 'offer_lines',
       value: [
         { ...EXPECTED_ROWS[0], quantity: 1 },
-        { product_id: 901, quantity: 1, unit_price: 49.9, vat_rate_id: 7, sort_order: 1 },
+        { product_id: 901, supplier_id: null, quantity: 1, unit_price: 49.9, vat_rate_id: 7, sort_order: 1 },
       ],
     })
     await waitFor(() => expect(setData).toHaveBeenCalledWith(REMAPPED_ROW))
+  })
+
+  // Spec 0320 AC-014: a product with suppliers brings the select, default preselected, and the pick travels.
+  it.each([
+    ['Gestione Richieste', REQUEST_MODULE],
+    ['Gestione Iscritti', ENROLLEE_MODULE],
+  ])('%s: a product with suppliers shows the supplier select and commits the chosen supplier', async (_label, module) => {
+    catalogItems = [MULTI_SUPPLIER_PRODUCT]
+    fetchRequestWorkPanelMock.mockResolvedValue(panel({ offer_lines: [] }))
+    updateTableCellMock.mockResolvedValue(REMAPPED_ROW)
+
+    renderEditor(module)
+
+    fireEvent.click(await screen.findByRole('option', { name: /Corso Multi/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Aggiungi 1 selezionato' }))
+
+    const trigger = await screen.findByRole('combobox', { name: 'Fornitore riga 1' })
+    expect(trigger).toHaveTextContent('Acme')
+    fireEvent.click(trigger)
+    fireEvent.click(screen.getByRole('option', { name: /Beta/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Salva' }))
+
+    await waitFor(() => expect(updateTableCellMock).toHaveBeenCalledTimes(1))
+    expect(updateTableCellMock.mock.calls[0][2]).toEqual({
+      column: 'offer_lines',
+      value: [{ product_id: 902, supplier_id: 6, quantity: 1, unit_price: 190, vat_rate_id: 7, sort_order: 0 }],
+    })
+  })
+
+  it('shows no supplier select for a product without suppliers', async () => {
+    fetchRequestWorkPanelMock.mockResolvedValue(panel({ offer_lines: [] }))
+
+    renderEditor()
+
+    fireEvent.click(await screen.findByRole('option', { name: /Fibra 2000/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Aggiungi 1 selezionato' }))
+
+    await screen.findByLabelText('Quantità riga 1')
+    expect(screen.queryByRole('combobox', { name: /Fornitore riga/ })).not.toBeInTheDocument()
+  })
+
+  it('maps a cell 422 on value.N.supplier_id onto the row with the accessible triad', async () => {
+    catalogItems = [MULTI_SUPPLIER_PRODUCT]
+    fetchRequestWorkPanelMock.mockResolvedValue(panel({ offer_lines: [] }))
+    updateTableCellMock.mockRejectedValue(
+      Object.assign(new Error('422'), {
+        isAxiosError: true,
+        response: { status: 422, data: { message: 'Invalid', errors: { 'value.0.supplier_id': ['Il fornitore non è del prodotto.'] } } },
+      }),
+    )
+
+    renderEditor()
+
+    fireEvent.click(await screen.findByRole('option', { name: /Corso Multi/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Aggiungi 1 selezionato' }))
+    await screen.findByRole('combobox', { name: 'Fornitore riga 1' })
+    fireEvent.click(screen.getByRole('button', { name: 'Salva' }))
+
+    const alert = await screen.findByText('Il fornitore non è del prodotto.')
+    expect(alert).toHaveAttribute('role', 'alert')
+    expect(screen.getByRole('combobox', { name: 'Fornitore riga 1' })).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('combobox', { name: 'Fornitore riga 1' })).toHaveAttribute('aria-describedby', alert.id)
+    expect(setData).not.toHaveBeenCalled()
   })
 
   it('closes without a request when nothing was touched', async () => {

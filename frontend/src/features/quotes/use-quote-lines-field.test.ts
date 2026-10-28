@@ -38,6 +38,35 @@ describe('lineValuesFromProduct', () => {
       unit_of_measure: { id: 1, name: 'Kilogram', symbol: 'kg' },
       unit_price: 120,
       vat_rate_id: 7,
+      // Spec 0320: no suppliers on the product -> none on the row.
+      supplier_id: null,
+      supplier: null,
+      product_suppliers: [],
+    })
+  })
+
+  describe('with suppliers (spec 0320 D-4)', () => {
+    const WITH_SUPPLIERS: QuoteProductForSelectItem = {
+      ...PRODUCT,
+      meta: {
+        ...PRODUCT.meta,
+        suppliers: [
+          { supplier_id: 5, name: 'Acme', price: '170.00', cost: '70.00', is_default: true },
+          { supplier_id: 6, name: 'Beta', price: '190.00', cost: '90.00', is_default: false },
+        ],
+      },
+    }
+
+    it('proposes the default supplier and prices a Cost row from its cost, not from the standard cost', () => {
+      expect(lineValuesFromProduct(WITH_SUPPLIERS, 'cost')).toMatchObject({
+        supplier_id: 5,
+        supplier: { id: 5, name: 'Acme' },
+        unit_price: 70,
+      })
+    })
+
+    it('prices a Revenue row from the default supplier price, not from the standard price (rev.2 D-17)', () => {
+      expect(lineValuesFromProduct(WITH_SUPPLIERS, 'revenue')).toMatchObject({ supplier_id: 5, unit_price: 170 })
     })
   })
 
@@ -114,5 +143,37 @@ describe('useQuoteLinesField.setProduct', () => {
         unit_price: 0,
       })
     })
+  })
+})
+
+describe('useQuoteLinesField.setSupplier (spec 0320 D-4/D-7)', () => {
+  const ROW: QuoteLineFormValues = {
+    product_id: 42,
+    quantity: 2,
+    unit_of_measure: null,
+    unit_price: 70,
+    vat_rate_id: null,
+    supplier_id: 5,
+    commissions: [],
+  }
+  const BETA = { supplier_id: 6, name: 'Beta', price: '190.00', cost: '90.00', is_default: false }
+
+  function changeSupplier(variant: 'revenue' | 'cost', defaults?: Parameters<ReturnType<typeof useQuoteLinesField>['setSupplier']>[2]) {
+    const onChange = vi.fn()
+    const { result } = renderHook(() =>
+      useQuoteLinesField({ value: [ROW], onChange, variant, rememberVatRatePercent: vi.fn() }),
+    )
+    act(() => result.current.setSupplier(0, BETA, defaults))
+    return onChange.mock.calls[0][0][0] as QuoteLineFormValues
+  }
+
+  it('reprices a Cost row with the new supplier cost', () => {
+    expect(changeSupplier('cost')).toMatchObject({ supplier_id: 6, supplier: { id: 6, name: 'Beta' }, unit_price: 90 })
+  })
+
+  it('reprices a Revenue row with the new supplier price and swaps in the commission defaults (rev.2 D-17)', () => {
+    const row = changeSupplier('revenue', { commissions: [], supplierCommissionDirection: 'RECEIVED' })
+
+    expect(row).toMatchObject({ supplier_id: 6, unit_price: 190, commissions: [], supplier_commission_direction: 'RECEIVED' })
   })
 })

@@ -8,8 +8,9 @@ use Laravel\Sanctum\Sanctum;
 uses(RefreshDatabase::class);
 
 /**
- * Spec 0191: price/cost are required per usage (Sellable -> price, Usable as
- * cost -> cost), evaluated on effective values.
+ * Spec 0320 D-20 / AC-027 (REQUIREMENT CHANGED vs spec 0191): every product has
+ * a price and a cost whatever its usages; both default to 0 when absent and
+ * are never negative. No "required by usage" rule remains.
  *
  * @param  array<string, mixed>  $overrides
  * @return array<string, mixed>
@@ -23,7 +24,7 @@ function pricingPayload(array $overrides = []): array
     ], $overrides);
 }
 
-function pricedProduct(array $usages, ?float $cost, ?float $price): Product
+function pricedProduct(array $usages, float $cost, float $price): Product
 {
     $product = Product::factory()->create(['cost' => $cost, 'price' => $price]);
     $product->usages = $usages;
@@ -34,88 +35,61 @@ function pricedProduct(array $usages, ?float $cost, ?float $price): Product
 
 beforeEach(fn () => Sanctum::actingAs(productUserWith(['create', 'update', 'view', 'viewAny'])));
 
-it('AC-001 create Sale only: cost optional (null), price required', function () {
-    $this->postJson('/api/products', pricingPayload(['usages' => ['SALE'], 'price' => 50]))
+it('AC-027 create: any usage without price and cost stores 0 and 0', function (array $usages) {
+    $this->postJson('/api/products', pricingPayload(['usages' => $usages]))
         ->assertCreated()
-        ->assertJsonPath('data.cost', null);
+        ->assertJsonPath('data.price', '0.00')
+        ->assertJsonPath('data.cost', '0.00');
+})->with([
+    'sale' => [['SALE']],
+    'cost' => [['COST']],
+    'both' => [['SALE', 'COST']],
+]);
 
-    $this->postJson('/api/products', pricingPayload(['usages' => ['SALE'], 'cost' => 5]))
-        ->assertStatus(422)
-        ->assertJsonValidationErrors(['price'])
-        ->assertJsonMissingValidationErrors(['cost']);
+it('AC-027 create: explicit null counts as 0 and given values are kept', function () {
+    $this->postJson('/api/products', pricingPayload(['price' => null, 'cost' => null]))
+        ->assertCreated()
+        ->assertJsonPath('data.price', '0.00')
+        ->assertJsonPath('data.cost', '0.00');
+
+    $this->postJson('/api/products', pricingPayload(['usages' => ['COST'], 'price' => 9, 'cost' => '5.50']))
+        ->assertCreated()
+        ->assertJsonPath('data.price', '9.00')
+        ->assertJsonPath('data.cost', '5.50');
 });
 
-it('AC-002 create Cost only: price optional (null), cost required', function () {
-    $this->postJson('/api/products', pricingPayload(['usages' => ['COST'], 'cost' => 30]))
-        ->assertCreated()
-        ->assertJsonPath('data.price', null);
-
-    $this->postJson('/api/products', pricingPayload(['usages' => ['COST'], 'price' => 5]))
+it('AC-027 create: a negative price or cost is 422', function () {
+    $this->postJson('/api/products', pricingPayload(['price' => -1, 'cost' => -0.5]))
         ->assertStatus(422)
-        ->assertJsonValidationErrors(['cost'])
-        ->assertJsonMissingValidationErrors(['price']);
+        ->assertJsonValidationErrors(['price', 'cost']);
 });
 
-it('AC-003 create Sale+Cost needs both; no usages needs price only', function () {
-    $this->postJson('/api/products', pricingPayload(['usages' => ['SALE', 'COST'], 'price' => 5]))
+it('AC-027 update: absent price and cost stay as they are, even when usages change', function () {
+    $product = pricedProduct(['SALE', 'COST'], 40, 100);
+
+    $this->patchJson("/api/products/{$product->id}", ['usages' => ['COST']])->assertOk();
+    $this->patchJson("/api/products/{$product->id}", ['name' => 'Renamed'])->assertOk();
+
+    expect((float) $product->fresh()->price)->toBe(100.0)
+        ->and((float) $product->fresh()->cost)->toBe(40.0);
+});
+
+it('AC-027 update: adding a usage to a product with zero cost needs nothing, submitted null resets to 0, negative is 422', function () {
+    $product = pricedProduct(['SALE'], 0, 100);
+
+    $this->patchJson("/api/products/{$product->id}", ['usages' => ['SALE', 'COST']])->assertOk();
+    $this->patchJson("/api/products/{$product->id}", ['price' => null])->assertOk();
+    expect((float) $product->fresh()->price)->toBe(0.0);
+
+    $this->patchJson("/api/products/{$product->id}", ['cost' => -3])
         ->assertStatus(422)->assertJsonValidationErrors(['cost']);
-    $this->postJson('/api/products', pricingPayload(['usages' => ['SALE', 'COST'], 'cost' => 5]))
-        ->assertStatus(422)->assertJsonValidationErrors(['price']);
-    $this->postJson('/api/products', pricingPayload(['usages' => ['SALE', 'COST'], 'cost' => 5, 'price' => 9]))
-        ->assertCreated();
-
-    $this->postJson('/api/products', pricingPayload())
-        ->assertStatus(422)
-        ->assertJsonValidationErrors(['price'])
-        ->assertJsonMissingValidationErrors(['cost']);
-    $this->postJson('/api/products', pricingPayload(['price' => 9]))->assertCreated();
-});
-
-it('create: an explicit null price on a Sellable product is rejected', function () {
-    $this->postJson('/api/products', pricingPayload(['price' => null]))
-        ->assertStatus(422)->assertJsonValidationErrors(['price']);
 });
 
 it('create: an invalid usages reports its own error without pricing noise', function () {
     $this->postJson('/api/products', pricingPayload(['usages' => ['BOGUS']]))
         ->assertStatus(422)
         ->assertJsonValidationErrors(['usages.0'])
-        ->assertJsonMissingValidationErrors(['price']);
-});
-
-it('AC-004 update: dropping Sale keeps the stored price', function () {
-    $product = pricedProduct(['SALE', 'COST'], 40, 100);
-
-    $this->patchJson("/api/products/{$product->id}", ['usages' => ['COST']])->assertOk();
-
-    expect((float) $product->fresh()->price)->toBe(100.0);
-});
-
-it('AC-005 update: adding Cost to a product with null cost needs a cost', function () {
-    $product = pricedProduct(['SALE'], null, 100);
-
-    $this->patchJson("/api/products/{$product->id}", ['usages' => ['SALE', 'COST']])
-        ->assertStatus(422)->assertJsonValidationErrors(['cost']);
-
-    $this->patchJson("/api/products/{$product->id}", ['usages' => ['SALE', 'COST'], 'cost' => 60])
-        ->assertOk();
-    expect((float) $product->fresh()->cost)->toBe(60.0);
-});
-
-it('AC-006 update: null price is rejected on Sale, accepted on Cost only', function () {
-    $sale = pricedProduct(['SALE'], null, 100);
-    $this->patchJson("/api/products/{$sale->id}", ['price' => null])
-        ->assertStatus(422)->assertJsonValidationErrors(['price']);
-
-    $costOnly = pricedProduct(['COST'], 40, 100);
-    $this->patchJson("/api/products/{$costOnly->id}", ['price' => null])->assertOk();
-    expect($costOnly->fresh()->price)->toBeNull();
-});
-
-it('update: an unrelated partial PATCH on a fully priced product passes', function () {
-    $product = pricedProduct(['SALE'], 10, 20);
-
-    $this->patchJson("/api/products/{$product->id}", ['name' => 'Renamed'])->assertOk();
+        ->assertJsonMissingValidationErrors(['price', 'cost']);
 });
 
 it('AC-008 grid: a Cost-only product still exposes its stored price', function () {

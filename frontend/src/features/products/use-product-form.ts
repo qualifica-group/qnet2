@@ -9,6 +9,7 @@ import { useEffectiveAttributes } from '@/features/product-categories/use-effect
 import type { EffectiveAttribute } from '@/features/product-categories/types'
 import { toEffectiveAttribute } from '@/features/request-management/applicable-attribute-adapter'
 import { DEFAULT_PRODUCT_USAGES, normalizeDecimal } from '@/features/products/product-form-payload'
+import { EMPTY_SUPPLIER_ROWS, rowsFromOptions } from '@/features/products/product-supplier-rows'
 import {
   buildCreateProductSchema,
   buildUpdateProductSchema,
@@ -53,7 +54,7 @@ export function editDefaults(
     product_type: product.product_type,
     usages: product.usages ?? DEFAULT_PRODUCT_USAGES,
     vat_rate_id: product.vat_rate_id,
-    supplier_id: product.supplier_id,
+    suppliers: rowsFromOptions(product.suppliers),
     unit_of_measure_id: product.unit_of_measure_id,
     product_typology_id: product.product_typology_id,
     cost_type_id: product.cost_type_id ?? null,
@@ -67,13 +68,13 @@ function createDefaults(customFields: Record<string, CustomFieldValue>, initialC
     code: initialCode ?? '',
     name: '',
     description: null,
-    cost: null,
-    price: null,
+    cost: 0,
+    price: 0,
     category_id: null,
     product_type: DEFAULT_PRODUCT_TYPE,
     usages: DEFAULT_PRODUCT_USAGES,
     vat_rate_id: null,
-    supplier_id: null,
+    suppliers: EMPTY_SUPPLIER_ROWS,
     unit_of_measure_id: null,
     product_typology_id: null,
     cost_type_id: null,

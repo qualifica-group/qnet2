@@ -147,3 +147,18 @@ describe('QuoteLinesReadOnlyList — Associated product (cost variant)', () => {
     expect(screen.getByText('Associated product')).toBeInTheDocument()
   })
 })
+
+describe('QuoteLinesReadOnlyList — fornitore (spec 0320)', () => {
+  it('shows the supplier of the line', () => {
+    render(<QuoteLinesReadOnlyList lines={[lineFixture({ supplier_id: 5, supplier: { id: 5, name: 'Acme Srl' } })]} />)
+
+    expect(screen.getByText(i18n.t('quotes.form.lineSupplierHeader'))).toBeInTheDocument()
+    expect(screen.getByText('Acme Srl')).toBeInTheDocument()
+  })
+
+  it('shows nothing for a line without supplier', () => {
+    render(<QuoteLinesReadOnlyList lines={[lineFixture({ supplier_id: null, supplier: null })]} />)
+
+    expect(screen.queryByText(i18n.t('quotes.form.lineSupplierHeader'))).not.toBeInTheDocument()
+  })
+})

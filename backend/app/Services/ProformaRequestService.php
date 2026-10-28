@@ -141,7 +141,7 @@ class ProformaRequestService
 
     /**
      * Per offer: one consultancy request for all its consultancy lines, one
-     * institution request per distinct supplier (null supplier = one shared
+     * institution request per distinct supplier of the LINE (spec 0320, D-8; null supplier = one shared
      * request). The product typology's proforma_kind decides the group (spec
      * 0247, D-6): lines whose typology has none are ignored (D-2). A request
      * never mixes offers (spec 0267, D-6).
@@ -151,7 +151,7 @@ class ProformaRequestService
     private function buildDrafts(WorkOrder $workOrder): array
     {
         $lines = $workOrder->quoteLines()
-            ->with('product:id,supplier_id,product_typology_id', 'product.productTypology:id,proforma_kind')
+            ->with('product:id,product_typology_id', 'product.productTypology:id,proforma_kind')
             ->get();
         $drafts = [];
 
@@ -161,7 +161,7 @@ class ProformaRequestService
             }
 
             $suppliers = $this->linesOfKind($quoteLines, ProformaRequestKind::Institution)
-                ->map(fn (QuoteLine $line): ?int => $line->product->supplier_id)
+                ->map(fn (QuoteLine $line): ?int => $line->supplier_id)
                 ->unique();
 
             foreach ($suppliers as $supplierId) {

@@ -9,8 +9,8 @@ use RuntimeException;
 /**
  * Field-mapping helpers shared by the migration sources that create products:
  * ProductsSource (legacy `services`) and CostProductsSource (the legacy cost
- * tables, spec 0174). Both carry the same optional VAT rate, the same
- * unmappable supplier and the same free-text cleanup.
+ * tables, spec 0174). Both carry the same optional VAT rate and
+ * free-text cleanup.
  *
  * @phpstan-require-extends AbstractMigrationSource
  */
@@ -57,24 +57,6 @@ trait MapsExternalProductRecord
         }
 
         return $id;
-    }
-
-    /**
-     * `supplier_id` cannot be remapped (`registries` carries no `old_id` and has
-     * no migration source). The external reference is dropped to null; a
-     * non-fatal warning records that the link was not carried.
-     *
-     * @param  array<int, string>  $warnings
-     */
-    private function unresolvableReference(string $field, mixed $externalRef, array &$warnings): ?int
-    {
-        if ($externalRef === null || $externalRef === '') {
-            return null;
-        }
-
-        $warnings[] = "{$field} (external id {$externalRef}) not remapped; the reference has no migration source and was left empty.";
-
-        return null;
     }
 
     /**

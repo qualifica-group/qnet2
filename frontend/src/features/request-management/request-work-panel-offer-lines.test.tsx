@@ -64,6 +64,8 @@ const CATALOG_PRODUCT = {
   },
 }
 
+let catalogProduct: typeof CATALOG_PRODUCT & { meta: Record<string, unknown> } = CATALOG_PRODUCT
+
 const fetchForSelectMock = vi.fn()
 vi.mock('@/features/for-select/api', () => ({
   FOR_SELECT_PAGE_SIZE: 25,
@@ -90,9 +92,10 @@ beforeEach(() => {
   updateRequestWorkMock.mockReset()
   categoryTreeMock.mockReset()
   categoryTreeMock.mockReturnValue([])
+  catalogProduct = CATALOG_PRODUCT
   fetchForSelectMock.mockReset()
   fetchForSelectMock.mockImplementation((resource: string, params: ForSelectParams = {}) => {
-    const items = resource === 'products' && !params.ids?.length ? [CATALOG_PRODUCT] : []
+    const items = resource === 'products' && !params.ids?.length ? [catalogProduct] : []
     return Promise.resolve({ items, pagination: { total: items.length, offset: 0, limit: 25, total_pages: 1, has_more: false }, export_link: null })
   })
 })
@@ -128,9 +131,11 @@ describe('work panel — Linee dell\'offerta', () => {
 
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
     expect(updateRequestWorkMock.mock.calls[0][2]).toEqual({
+      // Spec 0320 D-5 (REQUIREMENT CHANGED): every row now travels with its supplier, null without suppliers.
       offer_lines: [{
         id: OFFER_LINE_FIBRA.id,
         product_id: OFFER_LINE_FIBRA.product_id,
+        supplier_id: null,
         quantity: 3,
         unit_price: 100,
         vat_rate_id: null,
@@ -154,11 +159,45 @@ describe('work panel — Linee dell\'offerta', () => {
     await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
     expect(updateRequestWorkMock.mock.calls[0][2]).toEqual({
       offer_lines: [
-        { id: OFFER_LINE_FIBRA.id, product_id: OFFER_LINE_FIBRA.product_id, quantity: 1, unit_price: 100, vat_rate_id: null, sort_order: 0 },
+        { id: OFFER_LINE_FIBRA.id, product_id: OFFER_LINE_FIBRA.product_id, supplier_id: null, quantity: 1, unit_price: 100, vat_rate_id: null, sort_order: 0 },
         // A new row carries the empty block every new row always carried
         // (`createEmptyLineRow`, the autofill seed): `prohibited` accepts it.
-        { product_id: 901, quantity: 1, unit_price: 49.9, vat_rate_id: 7, sort_order: 1, commissions: [] },
+        { product_id: 901, supplier_id: null, quantity: 1, unit_price: 49.9, vat_rate_id: 7, sort_order: 1, commissions: [] },
       ],
+    })
+  })
+
+  // Spec 0320 AC-014: the default supplier is preselected and the chosen one travels on the panel's submit.
+  it('shows the supplier select for a product with suppliers and sends the chosen supplier', async () => {
+    const loaded = panel({ offer_lines: [] })
+    fetchRequestWorkPanelMock.mockResolvedValue(loaded)
+    updateRequestWorkMock.mockResolvedValue(loaded)
+    catalogProduct = {
+      ...CATALOG_PRODUCT,
+      id: 902,
+      label: 'Corso Multi',
+      meta: {
+        ...CATALOG_PRODUCT.meta,
+        suppliers: [
+          { supplier_id: 5, name: 'Acme', price: '170.00', cost: '70.00', is_default: true },
+          { supplier_id: 6, name: 'Beta', price: '190.00', cost: '90.00', is_default: false },
+        ],
+      },
+    }
+
+    renderPanel()
+
+    fireEvent.click(await screen.findByRole('option', { name: /Corso Multi/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Aggiungi 1 selezionato' }))
+    const trigger = await screen.findByRole('combobox', { name: 'Fornitore riga 1' })
+    expect(trigger).toHaveTextContent('Acme')
+    fireEvent.click(trigger)
+    fireEvent.click(screen.getByRole('option', { name: /Beta/ }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Salva' })[0])
+
+    await waitFor(() => expect(updateRequestWorkMock).toHaveBeenCalled())
+    expect(updateRequestWorkMock.mock.calls[0][2]).toMatchObject({
+      offer_lines: [expect.objectContaining({ product_id: 902, supplier_id: 6 })],
     })
   })
 
