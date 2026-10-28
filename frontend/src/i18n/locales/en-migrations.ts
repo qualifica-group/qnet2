@@ -42,6 +42,7 @@ export const migrations = {
     quotes: 'Quotes',
     'work-orders': 'Work orders',
     tasks: 'Tasks',
+    'work-order-progress': 'Work orders — progress',
     'product-suppliers': 'Products — link suppliers',
     'commission-configurations': 'Commission configurations',
     'purchase-requests': 'Purchase requests',

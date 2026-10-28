@@ -154,8 +154,10 @@ export interface WorkOrderDetail {
   title_is_manual: boolean
   type: WorkOrderType
   status: WorkOrderStatus
-  /** Spec 0149 D-5: mean completion of the non-cancelled root tasks, 0..100, computed server-side. */
+  /** Spec 0321 D-1: percentage of the latest manual progress entry, 0..100 (0 when none). */
   completion_percentage: number
+  /** Spec 0321: `Y-m-d` of that latest entry, `null` when none; optional like `registry`, so older fixtures stay valid. */
+  completion_recorded_on?: string | null
   is_force_closed: boolean
   force_close_reason: string | null
   /**
@@ -260,3 +262,20 @@ export type UpdateWorkOrderPayload = Partial<
 export type WorkOrderFormMode =
   | { type: 'create' }
   | { type: 'edit'; workOrder: WorkOrderDetailWithPermissions }
+
+/** One manual progress registration of a work order (spec 0321 `data_contract`). */
+export interface WorkOrderProgressEntry {
+  id: number
+  /** Cumulative percentage reached, 1..100. */
+  percentage: number
+  /** `Y-m-d`. */
+  recorded_on: string
+  created_by: { id: number; name: string } | null
+  created_at: string
+}
+
+/** Payload for POST /work-orders/{id}/progress-entries. */
+export interface CreateProgressEntryPayload {
+  percentage: number
+  recorded_on: string
+}

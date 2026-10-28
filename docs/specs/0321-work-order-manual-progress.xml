@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0321-work-order-manual-progress" status="done" owner="utente" date="2026-10-28">
+
+  <goal>
+    L'avanzamento della commessa si registra a mano, come nel QNet legacy: una serie di registrazioni
+    "percentuale raggiunta + data", sempre crescenti e al massimo 100%, consultabili e cancellabili.
+    La percentuale e lo stato della commessa derivano da queste registrazioni, non piu' dai task.
+  </goal>
+
+  <context>
+    - Legacy `../qnet`: tabella `avanzamento_commesse` (order_id, percentuale = DELTA, data); modali
+      `Livewire/Amministrazione/{AvanzamentoCommesseModale,ListaAvanzamentoCommesseModale}.php`: l'utente
+      digita la percentuale CUMULATA (1..100, maggiore del totale raggiunto) e la data, si salva il delta;
+      lista con cancellazione di qualsiasi riga. Colonna griglia `avanzamento_commessa` = SUM(percentuale) +
+      MAX(data). Dati reali: 18.783 righe su 6.889 commesse, 8 commesse con somma oltre 100.
+    - qnet-2 oggi (spec 0149): `Services/WorkOrders/WorkOrderStatusResolver` calcola stato e
+      `completion_percentage` dai task radice (badge, filtro `status`, ordinamento per completamento);
+      consumatori: `WorkOrderResource` (`status.value`, `completion_percentage`),
+      `Tables/WorkOrdersTableDefinition` (+ `Tables/WorkOrders/WorkOrderDerivedColumns`,
+      `WorkOrderColumnCatalog`), `Services/WorkOrders/WorkOrderProgress` (DTO). Enum `WorkOrderStatus`
+      (open, in_progress, completed, closed) mai persistito.
+    - FE: KPI "Completamento" in `work-order-detail-header.tsx` (`WorkOrderStatsStrip`, `CompletionBar`),
+      cella `completion_percentage` in `column-renderers.tsx` (`CompletionCell`), azioni riga in
+      `use-work-order-row-actions.tsx`, i18n `i18n/locales/{it,en}-work-orders.ts`, guida
+      `features/help/content/{it,en}/work-orders.ts`.
+    - Sotto-risorse commessa esistenti come modello: `WorkOrderStageController` (authorize sulla commessa:
+      `view` in lettura, `update` in scrittura), route in file dedicati `routes/api/work-order-*.php`.
+    - Migrazione: sorgenti in `config/migrations.php` (`AbstractMigrationSource`), modello
+      `ProductSuppliersSource` (righe figlie create solo se assenti); legacy `routes/apiV2-migration.php`,
+      controller `Api/V2/*MigrationController`, regola backend.md §9 (il legacy invia i dati pronti).
+    - La percentuale dei task resta dove vive gia': board task (`task-board-metrics.ts`) e dettaglio task.
+  </context>
+
+  <decisions>
+    D-1 (utente) La percentuale manuale SOSTITUISCE quella dai task in griglia commesse e dettaglio:
+        `completion_percentage` = percentuale dell'ultima registrazione, 0 se nessuna.
+    D-2 (utente) Lo stato segue l'avanzamento: `is_force_closed` -> closed (prioritario); 0 -> open;
+        1..99 -> in_progress; 100 -> completed. Sostituisce D-1..D-5 di spec 0149 (i task non contano piu').
+    D-3 (utente) Scrittura e cancellazione con il permesso di modifica della commessa (`WorkOrderPolicy::update`,
+        visibilita' inclusa); lettura con `view`. Nessun nuovo permesso.
+    D-4 (utente) Migrazione dei dati legacy nello stesso lavoro.
+    D-5 Si salva la percentuale CUMULATA (non il delta del legacy): la percentuale corrente e' MAX(percentage),
+        l'ultima data e' quella della registrazione col MAX. Il delta di un periodo resta calcolabile
+        (differenza tra cumulate), quindi un futuro "margine per periodo" non perde informazione.
+    D-6 Regole di inserimento: `percentage` intero 1..100 e strettamente maggiore della corrente;
+        `recorded_on` data non anteriore all'ultima registrazione (le cumulate restano crescenti anche nel tempo).
+        Piu' registrazioni nello stesso giorno sono ammesse.
+    D-7 Cancellazione di qualsiasi registrazione (come il legacy): togliere un punto da una serie crescente la
+        lascia crescente, nessun controllo necessario. Nessuna modifica di una registrazione: si cancella e si
+        reinserisce.
+    D-8 Commessa chiusa forzatamente: le registrazioni restano consultabili ma inserimento e cancellazione
+        rispondono 409 (lo stato resterebbe comunque "closed"; si riapre la commessa per aggiornarlo).
+    D-9 Audit: il model nuovo usa `LogsModelActivity`. La migrazione scrive senza activity log (come 0189).
+    D-10 Migrazione per COMMESSA: il legacy invia un record per ordine con le registrazioni gia' cumulate
+        (ordinate per data e id, delta sommati, limitate a 100, scartate quelle che non aumentano, registrazioni
+        dello stesso giorno fuse nell'ultima cumulata). qnet-2 risolve la commessa via `old_id` e crea le righe
+        solo se la commessa non ne ha (re-run idempotente, inserimenti fatti a mano in qnet-2 mai toccati).
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Tabella `work_order_progress_entries` + model `WorkOrderProgressEntry` + factory.</item>
+      <item>Endpoint list/create/delete annidati sotto la commessa.</item>
+      <item>`WorkOrderStatusResolver` riscritto sulla nuova regola (badge, filtro status, ordinamento), stesso
+            punto unico di calcolo; `WorkOrderProgress` con la data dell'ultima registrazione.</item>
+      <item>`completion_recorded_on` in `WorkOrderResource` e nelle righe della griglia commesse.</item>
+      <item>FE: dialog "Avanzamento commessa" (lista + nuova registrazione + cancellazione), aperto dal KPI
+            del dettaglio e da un'azione riga della griglia; cella e KPI mostrano percentuale e data.</item>
+      <item>Sorgente di migrazione `work-order-progress` (qnet-2) + endpoint legacy
+            `GET /api/v2/migration/work-order-progress`.</item>
+      <item>Guide in-app IT/EN `work-orders` e manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Margine di settore / ricavi e costi pro-quota per periodo (legacy MargineDiSettore, export
+            CommesseExport "ricavi economici %"): segnalato, spec successiva.</item>
+      <item>Avanzamento automatico da "stato consulenza" ISO (legacy `Manageorder::updateStatoConsulenza`).</item>
+      <item>Modifica di una registrazione esistente.</item>
+      <item>Percentuale dei task: board e dettaglio task invariati.</item>
+      <item>Nuovi permessi o modifiche al catalogo ruoli.</item>
+      <item>Notifiche.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    Schema `work_order_progress_entries`: id, work_order_id (FK work_orders, cascade on delete, indice),
+      percentage (unsigned tinyint 1..100), recorded_on (date), created_by (FK users nullable, null on delete),
+      timestamps. Indice (work_order_id, percentage).
+
+    Entry (shape comune):
+      { id: int, percentage: int, recorded_on: "YYYY-MM-DD",
+        created_by: { id: int, name: string } | null, created_at: ISO-8601 }
+
+    GET /api/work-orders/{workOrder}/progress-entries   (authorize view)
+      200 { success: true, data: Entry[] }  ordinate per percentage DESC (la piu' recente in testa).
+      403 senza view / fuori visibilita'; 404 commessa inesistente.
+
+    POST /api/work-orders/{workOrder}/progress-entries   (authorize update)
+      body { percentage: int (required, 1..100), recorded_on: "YYYY-MM-DD" (required, date) }
+      201 { success: true, data: Entry }
+      422 errori di campo: `percentage` -> "work_orders.progress.percentage_not_above_current"
+          (con :current), `recorded_on` -> "work_orders.progress.recorded_on_before_latest" (con :date);
+          regole base (required/integer/between/date) con i messaggi standard.
+      409 commessa chiusa forzatamente: message "work_orders.progress.work_order_closed".
+      403 senza update / fuori visibilita'.
+
+    DELETE /api/work-orders/{workOrder}/progress-entries/{progressEntry}   (authorize update, scopeBindings)
+      200 { success: true, data: null }
+      404 registrazione di un'altra commessa; 409 commessa chiusa forzatamente; 403 senza update.
+
+    WorkOrderResource (GET /api/work-orders/{id}) e righe SSRM griglia commesse:
+      `completion_percentage: int` (ora = ultima registrazione, 0 se nessuna)
+      `completion_recorded_on: "YYYY-MM-DD" | null` (NUOVO)
+      `status.value` secondo D-2. Filtro `status` e ordinamento `completion_percentage` coerenti con D-2/D-1.
+
+    Legacy GET /api/v2/migration/work-order-progress?offset&amp;limit&amp;search  (paginato come gli altri)
+      item { id: int (legacy order id), entries: [{ percentage: int (cumulata 1..100), recorded_on: "YYYY-MM-DD" }] }
+      solo ordini con almeno una registrazione; entries ordinate per recorded_on, crescenti strette.
+      Ordini inesistenti nel legacy -> inviati come orfani (LegacyOrphanRows), come le altre sorgenti.
+
+    Sorgente qnet-2 `work-order-progress` (label "Work order progress"; i18n "Commesse — avanzamento" /
+      "Work orders — progress"), dipendenza required `work-orders`, endpoint `work-order-progress`.
+      Esiti: commessa non migrata -> riga failed; commessa con registrazioni -> skipped; altrimenti created.
+      Entry ricevuta non valida (percentuale fuori 1..100 o non crescente) -> riga failed con il messaggio, nessuna
+      riparazione in qnet-2 (backend.md §9).
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Commessa senza registrazioni: `completion_percentage` 0, `completion_recorded_on` null, stato open (anche con task completati).</criterion>
+    <criterion id="AC-002">Registrazioni 30 (2026-10-01) e 60 (2026-10-10): `completion_percentage` 60, `completion_recorded_on` 2026-10-10, stato in_progress, in dettaglio e in griglia.</criterion>
+    <criterion id="AC-003">Ultima registrazione 100: stato completed; con `is_force_closed` stato closed qualunque percentuale.</criterion>
+    <criterion id="AC-004">Filtro griglia `status` restituisce esattamente le commesse col badge corrispondente per open/in_progress/completed/closed.</criterion>
+    <criterion id="AC-005">Ordinamento griglia per `completion_percentage` asc/desc segue la percentuale manuale (0 per le commesse senza registrazioni).</criterion>
+    <criterion id="AC-006">GET progress-entries con view: 200, ordinate per percentage desc, shape Entry; senza view o fuori visibilita' 403.</criterion>
+    <criterion id="AC-007">POST con update, percentage 70 su corrente 60 e data uguale o successiva all'ultima: 201, `created_by` = attore, activity log registrato.</criterion>
+    <criterion id="AC-008">POST con percentage uguale o inferiore alla corrente: 422 su `percentage`.</criterion>
+    <criterion id="AC-009">POST con recorded_on anteriore all'ultima registrazione: 422 su `recorded_on`.</criterion>
+    <criterion id="AC-010">POST con percentage 0, 101, non intera o mancante, recorded_on mancante o non data: 422.</criterion>
+    <criterion id="AC-011">POST/DELETE senza update (o fuori visibilita'): 403; su commessa chiusa forzatamente: 409.</criterion>
+    <criterion id="AC-012">DELETE di una registrazione della commessa: 200, la percentuale corrente torna alla precedente; DELETE di una registrazione di un'altra commessa: 404.</criterion>
+    <criterion id="AC-013">Migrazione: record legacy con entries per una commessa migrata senza registrazioni -> righe create con percentage/recorded_on identici, created_by null, senza activity log.</criterion>
+    <criterion id="AC-014">Migrazione: re-run o commessa che ha gia' registrazioni -> skipped, nulla cambia; commessa non migrata -> failed.</criterion>
+    <criterion id="AC-015">Migrazione: entry non crescente o fuori 1..100 -> riga failed, nessuna registrazione scritta per quella commessa.</criterion>
+    <criterion id="AC-016">Legacy: l'endpoint invia cumulate crescenti, limitate a 100, una per giorno, per un ordine con delta reali (verifica tinker sui dati reali, incluso uno degli 8 ordini oltre 100).</criterion>
+    <criterion id="AC-017">FE: KPI del dettaglio e cella griglia mostrano percentuale e data dell'ultima registrazione (trattino se nessuna).</criterion>
+    <criterion id="AC-018">FE: il dialog elenca le registrazioni, invia `{ percentage, recorded_on }` (data default oggi), mostra gli errori 422 sul campo, cancella con conferma; dopo ogni mutazione dettaglio e griglia si aggiornano.</criterion>
+    <criterion id="AC-019">FE: senza `update` sulla commessa (o commessa chiusa) il dialog e' in sola lettura: niente form, niente cancella; l'azione riga resta per consultare.</criterion>
+    <criterion id="AC-020">Guide in-app IT/EN `work-orders` aggiornate (avanzamento manuale, nuova regola dello stato); parity test verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Authz server-side su ogni endpoint (WorkOrderPolicy). FormRequest per POST.
+    - Il calcolo resta in UN punto (`WorkOrderStatusResolver`): badge, filtro e ordinamento usano la stessa
+      subquery (MAX(percentage)), nessun N+1 in griglia; identificatori SQL solo da costanti.
+    - Test esistenti di spec 0149 (`WorkOrderComputedStatusTest`, parti di `WorkOrderTableTest`) cambiano:
+      REQUIREMENT CHANGED (D-1/D-2), dichiarato nel riepilogo.
+    - Legacy: modifiche solo nel nuovo controller + rotta, verificate con tinker + `php -l`; git del legacy
+      soggetto a CLAUDE.md §3.6.
+    - Mai comandi distruttivi sul DB dev (solo `php artisan migrate` della nuova migrazione).
+  </constraints>
+
+</spec>

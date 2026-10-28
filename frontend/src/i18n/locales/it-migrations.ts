@@ -41,6 +41,7 @@ export const migrations = {
     quotes: 'Offerte',
     'work-orders': 'Commesse',
     tasks: 'Task',
+    'work-order-progress': 'Commesse — avanzamento',
     'product-suppliers': 'Prodotti — collega fornitori',
     'commission-configurations': 'Configuratore commissioni',
     'purchase-requests': 'Richieste di acquisto (RDA)',

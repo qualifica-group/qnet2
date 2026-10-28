@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\DB;
  * exactly like `Quote::code`.
  *
  * `is_force_closed`/`force_close_reason` (D-4) are the only client-writable
- * "state": the working status itself (`open`/`closed`) is ALWAYS computed at
+ * "state": the working status itself (open, in progress, completed or closed) is ALWAYS computed at
  * read time by `App\Services\WorkOrders\WorkOrderStatusResolver` (D-3), never
  * a column on this table.
  *
@@ -369,6 +369,17 @@ class WorkOrder extends BaseModel
     public function costs(): HasMany
     {
         return $this->hasMany(WorkOrderCost::class)->orderBy('sort_order');
+    }
+
+    /**
+     * The manual progress records of this commessa (spec 0321), latest first:
+     * cumulative and strictly increasing, so the highest percentage is the latest.
+     *
+     * @return HasMany<WorkOrderProgressEntry, $this>
+     */
+    public function progressEntries(): HasMany
+    {
+        return $this->hasMany(WorkOrderProgressEntry::class)->orderByDesc('percentage');
     }
 
     /**

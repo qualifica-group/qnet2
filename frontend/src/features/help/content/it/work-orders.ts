@@ -28,7 +28,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Commessa n., Offerta collegata, Modello di Task). Anagrafica cliente, Contratto (codice e titolo), Società e sedi derivano dall\'offerta, come la Scadenza contratto mostrata tra gli indicatori in alto (si modifica sul contratto); Stato e Completamento sono calcolati dai task.',
+          text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Commessa n., Offerta collegata, Modello di Task). Anagrafica cliente, Contratto (codice e titolo), Società e sedi derivano dall\'offerta, come la Scadenza contratto mostrata tra gli indicatori in alto (si modifica sul contratto); Stato e Avanzamento derivano dalle registrazioni di avanzamento (vedi la sezione dedicata).',
         },
         {
           type: 'note',
@@ -46,7 +46,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "La **Chiusura forzata** resta un'azione di riga (chiede il motivo), non una cella. La colonna **Anagrafica** mostra il cliente della commessa, ripreso dall'offerta collegata: si può filtrare e ordinare ma non modificare. Lo stesso vale per la colonna **Scadenza contratto**, la data di scadenza del contratto da cui nasce la commessa (filtro per data, vuota se il contratto non ha una scadenza). Restano in sola lettura Commessa n., Contratto n., Offerta collegata, Anagrafica, Scadenza contratto, Stato, Completamento, Creata il e Aggiornata il.",
+          text: "La **Chiusura forzata** resta un'azione di riga (chiede il motivo), non una cella. La colonna **Anagrafica** mostra il cliente della commessa, ripreso dall'offerta collegata: si può filtrare e ordinare ma non modificare. Lo stesso vale per la colonna **Scadenza contratto**, la data di scadenza del contratto da cui nasce la commessa (filtro per data, vuota se il contratto non ha una scadenza). Restano in sola lettura Commessa n., Contratto n., Offerta collegata, Anagrafica, Scadenza contratto, Stato, Avanzamento, Creata il e Aggiornata il.",
         },
       ],
     },
@@ -69,6 +69,38 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'Su una commessa chiusa forzatamente l\'azione diventa **Riapri**: dopo la conferma la chiusura viene annullata e il motivo cancellato. I task chiusi dalla chiusura forzata restano chiusi.',
+        },
+      ],
+    },
+    {
+      id: 'progress',
+      title: 'Avanzamento commessa',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "L'avanzamento si registra a mano: ogni registrazione indica la **percentuale raggiunta** (cumulata, da 1 a 100) e la **data**. La colonna **Avanzamento** della tabella e l'indicatore in alto nel dettaglio mostrano la percentuale e la data dell'ultima registrazione; senza registrazioni l'avanzamento è 0%.",
+        },
+        {
+          type: 'steps',
+          items: [
+            "Premi **Avanzamento commessa**: lo trovi in alto nel dettaglio della commessa, accanto a Chiusura forzata, e tra le azioni di riga della tabella Commesse. Si apre il popup con le registrazioni.",
+            'Scrivi la **percentuale raggiunta**: deve superare quella attuale. La data è oggi, modificabile ma non anteriore all\'ultima registrazione.',
+            'Premi **Registra**. Per correggere un errore elimina la registrazione e inseriscila di nuovo.',
+          ],
+        },
+        {
+          type: 'table',
+          headers: ['Avanzamento', 'Stato della commessa'],
+          rows: [
+            ['0% (nessuna registrazione)', 'Aperta'],
+            ['da 1% a 99%', 'In lavorazione'],
+            ['100%', 'Terminata'],
+            ['qualsiasi, con chiusura forzata', 'Chiusa'],
+          ],
+        },
+        {
+          type: 'note',
+          text: "Registri ed elimini le registrazioni se puoi modificare la commessa. Su una commessa chiusa forzatamente l'avanzamento è in sola lettura: riaprila per aggiornarlo. Lo stato dei task non cambia più lo stato della commessa; la percentuale dei task resta visibile nel task board.",
         },
       ],
     },

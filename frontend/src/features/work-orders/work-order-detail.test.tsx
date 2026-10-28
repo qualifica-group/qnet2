@@ -213,7 +213,7 @@ describe('WorkOrderDetailView — computed status and completion (spec 0149 AC-0
   it('shows the completion bar with its percentage in the KPI strip', () => {
     render(<WorkOrderDetailView workOrder={workOrder({ completion_percentage: 40 })} />)
 
-    expect(screen.getByRole('progressbar', { name: 'Completion' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'Progress' })).toBeInTheDocument()
     expect(screen.getByText('40%')).toHaveClass('text-warning')
   })
 })

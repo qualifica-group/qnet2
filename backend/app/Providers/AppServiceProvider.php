@@ -108,6 +108,7 @@ use App\Models\WorkOrder;
 use App\Models\WorkOrderCost;
 use App\Models\WorkOrderLinePayment;
 use App\Models\WorkOrderPaymentStatus;
+use App\Models\WorkOrderProgressEntry;
 use App\Models\WorkOrderStage;
 use App\Models\Workspace;
 use App\Services\Graph\GraphMailClient;
@@ -346,6 +347,8 @@ class AppServiceProvider extends ServiceProvider
             // Spec 0201: both use LogsModelActivity, same reasoning.
             'work_order_payment_status' => WorkOrderPaymentStatus::class,
             'work_order_line_payment' => WorkOrderLinePayment::class,
+            // Spec 0321: LogsModelActivity, same reasoning.
+            'work_order_progress_entry' => WorkOrderProgressEntry::class,
             // Spec 0175 (work-order emails module): EmailTemplate/DocumentBundle
             // both use LogsModelActivity, same reasoning as document_layout
             // above. DocumentBundle and OutboundEmail are also HasAttachments

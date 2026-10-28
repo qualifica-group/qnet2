@@ -71,3 +71,6 @@ require __DIR__.'/work-order-invoices.php';
 // Commessa contract data and line payments (spec 0201): same file-size-split
 // reasoning as above.
 require __DIR__.'/work-order-contract-data.php';
+
+// Manual progress entries (spec 0321).
+require __DIR__.'/work-order-progress.php';

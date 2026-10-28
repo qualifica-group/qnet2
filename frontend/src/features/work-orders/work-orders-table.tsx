@@ -30,6 +30,7 @@ export function WorkOrdersTable() {
     iconMap,
     sheet,
     forceCloseDialog,
+    progressDialog,
   } = useWorkOrderRowActions({ onMutated: refreshGrid })
 
   return (
@@ -53,6 +54,7 @@ export function WorkOrdersTable() {
 
       {sheet}
       {forceCloseDialog}
+      {progressDialog}
 
       <WorkOrderProformaDialog row={proformaRow} onClose={closeProforma} onSent={refreshGrid} />
 

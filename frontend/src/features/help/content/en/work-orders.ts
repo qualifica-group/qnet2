@@ -28,7 +28,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer, Task template). Client registry, Contract (code and title), Company and sites come from the offer, as does the Contract expiry shown among the indicators at the top (edited on the contract); Status and Completion are computed from the tasks.',
+          text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer, Task template). Client registry, Contract (code and title), Company and sites come from the offer, as does the Contract expiry shown among the indicators at the top (edited on the contract); Status and Progress come from the progress records (see the dedicated section).',
         },
         {
           type: 'note',
@@ -46,7 +46,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "**Force closing** stays a row action (it asks for a reason), not a cell. The **Registry** column shows the work order's client, taken from the linked offer: it can be filtered and sorted but not edited. The same goes for the **Contract expiry** column, the expiry date of the contract the work order comes from (date filter, empty when the contract has no expiry). Work order no., Contract no., Linked offer, Registry, Contract expiry, Status, Completion, Created at and Updated at stay read-only.",
+          text: "**Force closing** stays a row action (it asks for a reason), not a cell. The **Registry** column shows the work order's client, taken from the linked offer: it can be filtered and sorted but not edited. The same goes for the **Contract expiry** column, the expiry date of the contract the work order comes from (date filter, empty when the contract has no expiry). Work order no., Contract no., Linked offer, Registry, Contract expiry, Status, Progress, Created at and Updated at stay read-only.",
         },
       ],
     },
@@ -69,6 +69,38 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'On a force-closed work order the action becomes **Reopen**: after the confirmation the closure is undone and its reason cleared. Tasks the forced closure closed stay closed.',
+        },
+      ],
+    },
+    {
+      id: 'progress',
+      title: 'Work order progress',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Progress is recorded by hand: each record states the **percentage reached** (cumulative, from 1 to 100) and the **date**. The table's **Progress** column and the indicator at the top of the detail show the percentage and date of the latest record; with no records progress is 0%.",
+        },
+        {
+          type: 'steps',
+          items: [
+            'Press **Work order progress**: you find it at the top of the work order detail, next to Force close, and among the row actions of the Work orders table. The popup with the records opens.',
+            'Type the **percentage reached**: it must exceed the current one. The date is today, editable but not earlier than the latest record.',
+            'Press **Record**. To fix a mistake delete the record and enter it again.',
+          ],
+        },
+        {
+          type: 'table',
+          headers: ['Progress', 'Work order status'],
+          rows: [
+            ['0% (no records)', 'Open'],
+            ['1% to 99%', 'In progress'],
+            ['100%', 'Completed'],
+            ['any, when force-closed', 'Closed'],
+          ],
+        },
+        {
+          type: 'note',
+          text: 'You record and delete records if you may edit the work order. On a force-closed work order progress is read-only: reopen it to update it. Task statuses no longer change the work order status; the tasks percentage stays visible in the task board.',
         },
       ],
     },

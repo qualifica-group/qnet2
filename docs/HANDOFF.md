@@ -3,6 +3,31 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Spec 0321 Avanzamento manuale commessa — VERDE, NON COMMITTATO (2026-10-28)
+
+- Tabella `work_order_progress_entries` (work_order_id cascade, `percentage` 1..100 CUMULATA e strettamente
+  crescente, `recorded_on`, `created_by` null on delete), model `WorkOrderProgressEntry` (LogsModelActivity, morph
+  `work_order_progress_entry`), relazione `WorkOrder::progressEntries()` (percentage desc).
+- REQUIREMENT CHANGED su spec 0149: `WorkOrderStatusResolver` non legge piu' i task. `completion_percentage` = MAX
+  delle registrazioni (0 se nessuna), nuovo `completion_recorded_on` (Y-m-d|null) in `WorkOrderResource` e righe
+  griglia; stato: force-closed -> closed, 0 open, 1..99 in_progress, 100 completed. Badge, filtro e sort sulla stessa
+  subquery. La % dei task resta solo nel task board.
+- API: GET/POST `/api/work-orders/{wo}/progress-entries`, DELETE `.../{progressEntry}` (scopeBindings). view per
+  leggere, update per scrivere; 422 `work_orders.progress.percentage_not_above_current` / `recorded_on_before_latest`
+  (data non anteriore all'ultima), 409 `work_orders.progress.work_order_closed` su commessa chiusa forzatamente.
+  Azione riga griglia `progress` (permesso `work-orders.view`, icona `trending-up`).
+- Migrazione: sorgente `work-order-progress` (fase 12 con `tasks`, dipende da `work-orders`), crea le righe solo se la
+  commessa non ne ha. Legacy `GET /api/v2/migration/work-order-progress` (`WorkOrderProgressMigrationController`):
+  delta -> cumulate per data, max 100, una per giorno. Dati reali: 6.404 commesse + 485 orfane (ordini cancellati).
+- FE: `features/work-orders/{progress-api,work-order-progress-schema,use-work-order-progress,work-order-progress-dialog}`,
+  KPI "Avanzamento" con data nel dettaglio, `CompletionCell` con prop opzionale `dateField`, guide `work-orders`
+  sezione `progress` IT/EN. Manuale Claude Docs: sezione Commesse ancora "in fase di sviluppo", nessuna modifica.
+- Verifica: Pest mirato 1438/1445 (7 falliti = `.env` `EXTERNAL_MIGRATION_USERS_LINK_ONLY=true`, verdi con false),
+  Vitest 1300/1300 sulle aree toccate, Pint ok, `tsc -b --force` EXIT 0. Suite backend completa NON eseguita
+  (macchina sovraccarica): rilanciarla a macchina scarica.
+- Fuori scope, da fare: margine di settore / ricavi pro-quota per periodo (legacy MargineDiSettore), avanzamento da
+  "stato consulenza" ISO.
+
 ## Seeder di reset degli Ambiti di assegnazione — VERDE, COMMITTATO (2026-10-28)
 
 - Richiesta utente: oltre ai ruoli, reset degli "Ambito di assegnazione". Nuovo `QualificaAssignmentScopeResetSeeder`

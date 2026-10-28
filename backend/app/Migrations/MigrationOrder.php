@@ -100,8 +100,9 @@ final class MigrationOrder
         // Phase 12 — spec 0289: the legacy tasks. They link users (phase 2) and
         // the commessa and its stages (phase 11), and optionally registries,
         // referents and opportunities (phases 7, 9). `proforma-requests`
-        // (spec 0300) link the commessa and its quote, no task: same phase.
-        ['tasks', 'proforma-requests'],
+        // (spec 0300) link the commessa and its quote, no task: same phase, as
+        // `work-order-progress` (spec 0321), which only needs the commessa.
+        ['tasks', 'proforma-requests', 'work-order-progress'],
 
         // Phase 13 — spec 0294, start of the accounting part: the legacy RDA.
         // They link users, companies, company sites, operational sites and

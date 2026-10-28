@@ -18,7 +18,7 @@ use App\Enums\WorkOrderType;
  * relation (D-2, resolved by WorkOrdersTableDefinition) and declare
  * `hasFilterValues: false`: no real DB column on `work_orders` to
  * `SELECT DISTINCT` on. `status` and `completion_percentage` are COMPUTED
- * from the root tasks (spec 0149, resolved by WorkOrderStatusResolver):
+ * from the manual progress entries (spec 0321, resolved by WorkOrderStatusResolver):
  * `status` is `sortable: false` (no single sort key for a derived state) and
  * `set`-filterable over its 4 values; `completion_percentage` is sortable
  * but not filterable (D-10). `registry` (the Anagrafica) is DERIVED through
@@ -152,7 +152,7 @@ final class WorkOrderColumnCatalog
                 'filterType' => 'set',
             ],
             [
-                // Computed (spec 0149, D-5/D-10), never a real column.
+                // Computed (spec 0321, D-1), its date rides in the row as `completion_recorded_on`, never a real column.
                 'id' => 'completion_percentage',
                 'label' => 'workOrders.columns.completion_percentage',
                 'type' => 'number',
@@ -259,6 +259,16 @@ final class WorkOrderColumnCatalog
                 'type' => 'action',
                 'confirm' => false,
                 'permission' => 'proforma-requests.create',
+            ],
+            [
+                // Spec 0321: opens the manual progress dialog, read-only
+                // without `update` or on a force-closed work order.
+                'key' => 'progress',
+                'label' => 'workOrders.progress.title',
+                'icon' => 'trending-up',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'work-orders.view',
             ],
             [
                 'key' => 'delete',

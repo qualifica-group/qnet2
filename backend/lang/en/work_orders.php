@@ -12,4 +12,9 @@ return [
         'lines_single_quote' => 'The selected lines come from a single offer: a multi-offer work order needs lines from at least two offers. For a single offer use Program from the contract.',
         'lines_removal_only' => 'On a multi-offer work order you can only remove lines, keeping at least one: you cannot add new ones.',
     ],
+    'progress' => [
+        'percentage_not_above_current' => 'The percentage must be greater than the current progress (:current%).',
+        'recorded_on_before_latest' => 'The date cannot be earlier than the latest entry (:date).',
+        'work_order_closed' => 'The work order is closed: reopen it to update its progress.',
+    ],
 ];

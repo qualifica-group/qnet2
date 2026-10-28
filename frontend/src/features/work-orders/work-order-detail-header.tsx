@@ -1,12 +1,16 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CalendarClock, CalendarDays, CalendarX, CheckCircle2, Hammer } from 'lucide-react'
+import { CalendarClock, CalendarDays, CalendarX, CheckCircle2, Hammer, TrendingUp } from 'lucide-react'
 import { DetailEmpty, DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordCardHeader, RecordStat, RecordStatStrip } from '@/components/detail/record-panel'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { ACTION_BUTTON_VARIANT } from '@/features/table/action-tone'
 import { CompletionBar } from '@/components/completion-bar'
 import { BADGE_BASE, BADGE_COLOR_CLASSES } from '@/features/table/cell-renderers'
 import { formatDate } from '@/lib/formatting/date-display'
 import { cn } from '@/lib/utils'
+import { WorkOrderProgressDialog } from '@/features/work-orders/work-order-progress-dialog'
 import { WorkOrderClosureActions } from '@/features/work-orders/work-order-closure-actions'
 import type { WorkOrderDetailWithPermissions, WorkOrderStatusValue, WorkOrderType } from '@/features/work-orders/types'
 
@@ -82,14 +86,43 @@ export function WorkOrderDetailHeader({ workOrder, onChanged }: WorkOrderDetailH
           {workOrder.is_multi_quote ? <WorkOrderMultiQuoteBadge /> : null}
         </>
       }
-      actions={<WorkOrderClosureActions workOrder={workOrder} onChanged={onChanged} />}
+      actions={
+        <>
+          <WorkOrderProgressAction workOrder={workOrder} onChanged={onChanged} />
+          <WorkOrderClosureActions workOrder={workOrder} onChanged={onChanged} />
+        </>
+      }
     />
   )
 }
 
+/** Spec 0321: the "Avanzamento commessa" action, the same popup the grid row action opens. */
+function WorkOrderProgressAction({ workOrder, onChanged }: WorkOrderDetailHeaderProps) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant={ACTION_BUTTON_VARIANT.action}
+        className="bg-card"
+        size="sm"
+        onClick={() => setOpen(true)}
+      >
+        <TrendingUp aria-hidden="true" />
+        {t('workOrders.progress.title')}
+      </Button>
+      <WorkOrderProgressDialog workOrderId={open ? workOrder.id : null} onOpenChange={setOpen} onMutated={onChanged} />
+    </>
+  )
+}
+
 interface WorkOrderStatsStripProps {
-  /** Computed from the tasks (spec 0149 D-5); `null` on a work order not created yet. */
+  /** Latest manual progress (spec 0321); `null` on a work order not created yet. */
   completionPercentage: number | null
+  /** `Y-m-d` of that latest registration, `null` when none. */
+  completionRecordedOn?: string | null
   startDate: string | null
   callbackDate: string | null
   /** Expiry of the contract reached through the offer (read-only, edited on the contract). */
@@ -99,6 +132,7 @@ interface WorkOrderStatsStripProps {
 /** KPI strip: completion, start date, callback date and contract expiry — the detail's, and the create draft's live. */
 export function WorkOrderStatsStrip({
   completionPercentage,
+  completionRecordedOn = null,
   startDate,
   callbackDate,
   contractExpiryDate,
@@ -111,12 +145,13 @@ export function WorkOrderStatsStrip({
         label={t('workOrders.columns.completion_percentage')}
         icon={<CheckCircle2 aria-hidden="true" />}
         value={
-          completionPercentage !== null ? (
-            <CompletionBar value={completionPercentage} label={t('workOrders.columns.completion_percentage')} />
-          ) : (
+          completionPercentage === null ? (
             <DetailEmpty />
+          ) : (
+            <CompletionBar value={completionPercentage} label={t('workOrders.columns.completion_percentage')} />
           )
         }
+        hint={completionPercentage !== null ? formatDate(completionRecordedOn) || '—' : undefined}
       />
       <RecordStat
         label={t('workOrders.detail.startDate')}
@@ -141,6 +176,7 @@ export function WorkOrderDetailStats({ workOrder }: { workOrder: WorkOrderDetail
   return (
     <WorkOrderStatsStrip
       completionPercentage={workOrder.completion_percentage}
+      completionRecordedOn={workOrder.completion_recorded_on}
       startDate={workOrder.start_date}
       callbackDate={workOrder.callback_date}
       contractExpiryDate={workOrder.contract?.expiry_date ?? null}

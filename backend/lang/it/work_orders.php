@@ -12,4 +12,9 @@ return [
         'lines_single_quote' => 'Le righe scelte vengono da una sola offerta: una commessa multi-offerta richiede righe di almeno due offerte. Per una sola offerta usa Programma dal contratto.',
         'lines_removal_only' => 'In una commessa multi-offerta puoi solo togliere righe, lasciandone almeno una: non puoi aggiungerne di nuove.',
     ],
+    'progress' => [
+        'percentage_not_above_current' => 'La percentuale deve essere maggiore dell\'avanzamento attuale (:current%).',
+        'recorded_on_before_latest' => 'La data non può essere anteriore all\'ultima registrazione (:date).',
+        'work_order_closed' => 'La commessa è chiusa: riaprila per aggiornare l\'avanzamento.',
+    ],
 ];

@@ -33,8 +33,8 @@ use Illuminate\Support\Facades\Gate;
  * relation (D-2: `quotes.code`/`quotes.title`, never copied), `supervisors`
  * is a to-many derived through the `work_order_supervisor` pivot (spec 0096,
  * D-7), `registry` is the client reached through `quote.opportunity` and
- * `status`/`completion_percentage` are COMPUTED from the root tasks
- * (spec 0149) by WorkOrderStatusResolver — the `status` filter through
+ * `status`/`completion_percentage` are COMPUTED from the manual progress
+ * entries (spec 0321) by WorkOrderStatusResolver — the `status` filter through
  * WorkOrderDerivedColumns (file-size split, engineering.md §6), the
  * completion sort directly — so badge, filter and sort can never disagree.
  *
@@ -46,7 +46,7 @@ use Illuminate\Support\Facades\Gate;
  */
 class WorkOrdersTableDefinition extends AbstractTableDefinition
 {
-    /** Computed from the root tasks (spec 0149), sorted by WorkOrderStatusResolver. */
+    /** Computed from the manual progress entries (spec 0321), sorted by WorkOrderStatusResolver. */
     private const string COMPLETION_PERCENTAGE_COLUMN = 'completion_percentage';
 
     /** Spec 0193: the proforma request state, gated by its create permission. */
@@ -111,8 +111,8 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         // directive 2026-09-02).
         // `quote.opportunity.registry` feeds the Anagrafica column,
         // `quote.contract` the contract expiry date.
-        // The root-task aggregates feed `status`/`completion_percentage`
-        // (spec 0149, D-8) without one query per row.
+        // The progress subqueries feed `status`/`completion_percentage`/
+        // `completion_recorded_on` (spec 0321) without one query per row.
         $query = $this->statusResolver->withProgress(WorkOrder::query()->with([
             'quote.opportunity.registry',
             'quote.contract',
@@ -268,6 +268,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'is_force_closed' => $row->is_force_closed,
             'status' => $progress->status->value,
             'completion_percentage' => $progress->completionPercentage,
+            'completion_recorded_on' => $progress->recordedOn,
             'created_at' => $row->created_at,
             'updated_at' => $row->updated_at,
         ];
@@ -329,6 +330,11 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         // non-clickable state; `proforma_status` drives that on the client.
         if ($visible && $this->mayRequestProforma($actor)) {
             $allowed[] = 'proforma';
+        }
+
+        // Spec 0321: the progress dialog, writable only with `update`.
+        if ($visible) {
+            $allowed[] = 'progress';
         }
 
         if (! $row->hasAccountingDocuments() && Gate::forUser($actor)->allows('delete', $row)) {

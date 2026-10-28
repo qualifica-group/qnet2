@@ -8,9 +8,9 @@ use App\Enums\Concerns\HasMeta;
 
 /**
  * The 4 values `App\Services\WorkOrders\WorkOrderStatusResolver` ever
- * produces (spec 0149, D-1): NEVER persisted, NEVER a column, resolved in
- * read from `is_force_closed` and the progress of the commessa's own ROOT
- * tasks.
+ * produces (spec 0321, D-2): NEVER persisted, NEVER a column, resolved in
+ * read from `is_force_closed` and the commessa's manual progress entries
+ * (0 open, 1..99 in progress, 100 completed).
  *
  * HasMeta (mirrors WorkOrderType): `::options()` backs the `status` grid
  * column's badge metadata (WorkOrdersTableDefinition::badgesFor()/

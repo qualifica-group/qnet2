@@ -39,7 +39,7 @@ export const workOrderColumnRenderers: TableRendererMap = {
   contract_expiry_date: (params) => <DateCell {...params} />,
   supervisors: (params) => <UserStackCell {...params} />,
   completion_percentage: (params) => (
-    <CompletionCell {...params} label={i18n.t('workOrders.columns.completion_percentage')} />
+    <CompletionCell {...params} label={i18n.t('workOrders.columns.completion_percentage')} dateField="completion_recorded_on" />
   ),
   created_at: (params) => <DateTimeCell {...params} />,
   updated_at: (params) => <DateTimeCell {...params} />,

@@ -2,11 +2,13 @@ import { useCallback, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { toast } from 'sonner'
+import { TrendingUp } from 'lucide-react'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import type { ModuleCreateParams, OpenMode } from '@/features/modules/types'
 import { deleteWorkOrder, WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
 import type { ActionIconMap } from '@/features/table/action-icon-map'
 import { REOPEN_PAYLOAD, useWorkOrderClosure, WORK_ORDER_ACTION_ICONS } from '@/features/work-orders/use-work-order-closure'
+import { WorkOrderProgressDialog } from '@/features/work-orders/work-order-progress-dialog'
 import { WorkOrderForceCloseDialog } from '@/features/work-orders/work-order-force-close-dialog'
 import type { RowActionHandler, RowActionState } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
@@ -17,8 +19,12 @@ import {
   useProformaActionState,
 } from '@/features/work-orders/proforma-row-action'
 
-/** Every icon the Commesse row actions add to the shared map: closure (lock) and proforma (euro). */
-const ROW_ACTION_ICONS: ActionIconMap = { ...WORK_ORDER_ACTION_ICONS, ...PROFORMA_ACTION_ICONS }
+/** Every icon the Commesse row actions add to the shared map: closure (lock), proforma (euro) and progress (trending-up). */
+/** Row-action key and icon of the manual progress dialog (spec 0321). */
+const PROGRESS_ACTION_KEY = 'progress'
+const PROGRESS_ACTION_ICONS: ActionIconMap = { 'trending-up': TrendingUp }
+
+const ROW_ACTION_ICONS: ActionIconMap = { ...WORK_ORDER_ACTION_ICONS, ...PROFORMA_ACTION_ICONS, ...PROGRESS_ACTION_ICONS }
 
 export interface UseWorkOrderRowActionsOptions {
   /** Called after anything that changes the displayed rows: a save, a delete, a forced closure, a reopen. */
@@ -53,6 +59,8 @@ export interface UseWorkOrderRowActionsResult {
   sheet: ReactNode
   /** The "Chiusura forzata" reason dialog of the `force_close` row action: the host mounts it. */
   forceCloseDialog: ReactNode
+  /** The "Avanzamento" dialog of the `progress` row action (spec 0321): the host mounts it. */
+  progressDialog: ReactNode
 }
 
 /**
@@ -78,6 +86,7 @@ export function useWorkOrderRowActions({
   const [forceCloseId, setForceCloseId] = useState<number | null>(null)
   const [reopeningId, setReopeningId] = useState<number | null>(null)
   const [proformaRow, setProformaRow] = useState<TableRow | null>(null)
+  const [progressId, setProgressId] = useState<number | null>(null)
   const { mutateAsync: changeClosure } = useWorkOrderClosure()
   const resolveActionState = useProformaActionState()
 
@@ -143,6 +152,9 @@ export function useWorkOrderRowActions({
         case 'reopen':
           void runReopen(row)
           break
+        case PROGRESS_ACTION_KEY:
+          setProgressId(Number(row.id))
+          break
         case PROFORMA_ACTION_KEY:
           // Issued requests are inert (the button is disabled too): a guard
           // against a stale row firing the action anyway.
@@ -182,6 +194,18 @@ export function useWorkOrderRowActions({
     />
   )
 
+  const progressDialog = (
+    <WorkOrderProgressDialog
+      workOrderId={progressId}
+      onOpenChange={(open) => {
+        if (!open) {
+          setProgressId(null)
+        }
+      }}
+      onMutated={onMutated}
+    />
+  )
+
   return {
     handleAction,
     isBusy,
@@ -194,5 +218,6 @@ export function useWorkOrderRowActions({
     openCreateWith,
     sheet,
     forceCloseDialog,
+    progressDialog,
   }
 }
