@@ -1,0 +1,3545 @@
+{
+ "version": 1,
+ "page": {
+  "format": "A4",
+  "orientation": "portrait",
+  "margins": {
+   "top": 1656,
+   "right": 1134,
+   "bottom": 1134,
+   "left": 1134
+  },
+  "default_font": {
+   "family": "Tw Cen MT",
+   "size": 11,
+   "color": "000000"
+  }
+ },
+ "header": {
+  "blocks": [
+   {
+    "id": "letterhead-1",
+    "type": "image",
+    "attachment_id": "letterhead-956c2901d4a7.png",
+    "width": 594,
+    "height": 853,
+    "align": "center",
+    "wrap": "behind_page"
+   }
+  ]
+ },
+ "body": {
+  "blocks": [
+   {
+    "id": "text-1",
+    "type": "text",
+    "align": "left",
+    "space_before": 150,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Offerta n° {quote.code} del {quote.created_at}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-2",
+    "type": "text",
+    "align": "left",
+    "space_before": 150,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-3",
+    "type": "text",
+    "align": "right",
+    "space_before": 150,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Spett.le:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": "00AFEF"
+     }
+    ]
+   },
+   {
+    "id": "text-4",
+    "type": "text",
+    "align": "right",
+    "space_before": 150,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "{client.name}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-5",
+    "type": "text",
+    "align": "right",
+    "space_before": 150,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "{client.address}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-6",
+    "type": "text",
+    "align": "right",
+    "space_before": 150,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "P.Iva: {client.vat_number}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-7",
+    "type": "text",
+    "align": "right",
+    "space_before": 150,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-8",
+    "type": "text",
+    "align": "right",
+    "space_before": 150,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-9",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "PRESENTAZIONE AZIENDALE",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 12,
+      "color": "00AFEF"
+     }
+    ]
+   },
+   {
+    "id": "text-10",
+    "type": "text",
+    "align": "left",
+    "space_before": 55,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-11",
+    "type": "text",
+    "align": "left",
+    "space_before": 55,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "L’Agenzia per il lavoro ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": ", accreditata presso la Regione Campania (03008/04/19) e il Ministero del Lavoro e delle Politiche sociali (0000009-25-01-2021), favorisce l’incontro tra domanda e offerta di lavoro su tutto il territorio nazionale. Valorizziamo i talenti e supportiamo le aziende nella ricerca e selezione del personale con soluzioni su misura e servizi di politiche attive del lavoro.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-12",
+    "type": "text",
+    "align": "left",
+    "space_before": 55,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Trovare le figure più adatte alle esigenze della propria azienda richiede attenzione, tempo e competenze. In un mercato in costante trasformazione, è importante individuare rapidamente i migliori talenti attraverso un accurato processo di ricerca e selezione del personale. Qualifica Group Agenzia per il lavoro è il partner ideale per le aziende che vogliono integrare il loro organico",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-13",
+    "type": "text",
+    "align": "left",
+    "space_before": 6,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-14",
+    "type": "text",
+    "align": "left",
+    "space_before": 21,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• Orientamento I e II livello e assistenza personalizzata per la ricerca del lavoro",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-15",
+    "type": "text",
+    "align": "left",
+    "space_before": 88,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• Ricerca, selezione e valutazione di personale",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-16",
+    "type": "text",
+    "align": "left",
+    "space_before": 89,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• Progettazione e realizzazione di corsi di formazione",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-17",
+    "type": "text",
+    "align": "left",
+    "space_before": 88,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• Servizi di consulenza per l'organizzazione aziendale, lo sviluppo di carriere e l'outplacement.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "image-1",
+    "type": "image",
+    "attachment_id": "image-0bec6d992302.png",
+    "width": 194,
+    "height": 175,
+    "align": "center",
+    "wrap": "inline"
+   },
+   {
+    "id": "text-18",
+    "type": "text",
+    "align": "left",
+    "space_before": 90,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• Scouting aziendale e ricerca attiva del lavoro",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-19",
+    "type": "text",
+    "align": "left",
+    "space_before": 88,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• Incrocio domanda offerta e accompagnamento al lavoro",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-20",
+    "type": "text",
+    "align": "left",
+    "space_before": 89,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• Formazione professionalizzante",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-21",
+    "type": "text",
+    "align": "left",
+    "space_before": 89,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• Supporto all’ autoimpiego",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-22",
+    "type": "text",
+    "align": "left",
+    "space_before": 6,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-23",
+    "type": "text",
+    "align": "left",
+    "space_before": 55,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Prestazioni rivolte alle imprese:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-24",
+    "type": "text",
+    "align": "left",
+    "space_before": 6,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-25",
+    "type": "text",
+    "align": "left",
+    "space_before": 21,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• Incontro Domanda Offerta",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-26",
+    "type": "text",
+    "align": "left",
+    "space_before": 88,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• Attivazione dei tirocini extra-curriculare",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-27",
+    "type": "text",
+    "align": "left",
+    "space_before": 88,
+    "space_after": 0,
+    "line_height": 1.43,
+    "runs": [
+     {
+      "text": "• Incentivi e agevolazioni per le assunzioni, misure di politica attiva, forme contrattuali e di inserimento specifiche (apprendistato, tirocini, ecc.)",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-28",
+    "type": "text",
+    "align": "left",
+    "space_before": 88,
+    "space_after": 0,
+    "line_height": 1.43,
+    "runs": [
+     {
+      "text": "• Presentazione all’impresa di una rosa delle candidature pre-selezionate.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-29",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-30",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-31",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-32",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-33",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-34",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-35",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-36",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "SPECIFICA VALORI ECONOMICI",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": "00B0F0"
+     }
+    ]
+   },
+   {
+    "id": "quote-lines-1",
+    "type": "products_table",
+    "source": "offer_lines",
+    "width_pct": 100,
+    "borders": {
+     "size": 4,
+     "color": "000000"
+    },
+    "show_header": true,
+    "header_background": "9CC2E5",
+    "columns": [
+     {
+      "lines": [
+       {
+        "keys": [
+         "code",
+         "name"
+        ],
+        "separator": "-",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       },
+       {
+        "keys": [
+         "description"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       },
+       {
+        "keys": [
+         "additional_description"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Descrizione",
+      "width_pct": 40,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "quantity"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Quantità",
+      "width_pct": 17,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "unit_price"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Imponibile",
+      "width_pct": 19,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "vat_rate"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Iva",
+      "width_pct": 10,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "net_amount"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Totale",
+      "width_pct": 14,
+      "align": "right"
+     }
+    ],
+    "totals": {
+     "show": true,
+     "rows": [
+      {
+       "label": "Totali",
+       "variable": "{totals.revenue_net}",
+       "bold": false
+      },
+      {
+       "label": "IVA",
+       "variable": "{totals.revenue_vat}",
+       "bold": false
+      }
+     ]
+    },
+    "empty_text": "Nessuna riga presente in offerta."
+   },
+   {
+    "id": "text-37",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.07,
+    "runs": []
+   },
+   {
+    "id": "text-38",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.07,
+    "runs": [
+     {
+      "text": "Totale offerta :  {totals.revenue_gross}",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-39",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "table-1",
+    "type": "table",
+    "width_pct": 100,
+    "borders": {
+     "size": 4,
+     "color": "000000"
+    },
+    "columns": [
+     {
+      "width_pct": 54
+     },
+     {
+      "width_pct": 46
+     }
+    ],
+    "rows": [
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-40",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.08,
+          "runs": []
+         },
+         {
+          "id": "text-41",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.08,
+          "runs": [
+           {
+            "text": "Firma Committente",
+            "field": null,
+            "bold": false,
+            "italic": true,
+            "underline": false,
+            "font": "Calibri Light",
+            "size": 9,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": "9CC2E5",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-42",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.08,
+          "runs": []
+         },
+         {
+          "id": "text-43",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.08,
+          "runs": []
+         },
+         {
+          "id": "text-44",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.08,
+          "runs": []
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "text-45",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-46",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "DESCRIZIONE DEL SERVIZIO",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": "00B0F0"
+     }
+    ]
+   },
+   {
+    "id": "text-47",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Il processo di Ricerca & Selezione verrà svolto da ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": " secondo le seguenti modalità:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-48",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "A) Individuazione dell’esigenza aziendale:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": " Rilevazione del fabbisogno aziendale e definizione di Job Profile e Job Description.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-49",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "B) Ricerca dei candidati idonei: ",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": "Creazione di un annuncio di lavoro corrispondente alle specifiche richieste della Committente e pubblicazione dello stesso sui principali portali di ricerca finalizzato al reperimento delle candidature.  Nella ricerca dei candidati è sempre garantito l’anonimato dell’azienda laddove venga richiesto.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-50",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "C) Selezione dei possibili candidati: ",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": "Verrà eseguito uno screening curriculare mediante colloqui individuali tesi a valutare: a) coerenza del profilo professionale del candidato con la posizione oggetto di ricerca; - competenze professionali e trasversali; - esigenze e istanze motivazionali.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-51",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "D) Valutazione dei Candidati:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": " Verrà eseguita una scrematura delle candidature e selezionata una rosa dei candidati idonei. Dopo questa fase di valutazione verrà redatto, per ciascun candidato ritenuto idoneo, un sintetico profilo professionale e motivazionale da sottoporre alla Committente per una valutazione condivisa della candidatura.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-52",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "E) Presentazione rosa candidati:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": " Ci si occuperà dell’organizzazione e della gestione logistica dei colloqui di presentazione dei candidati valutati coerenti con le esigenze della posizione oggetto del presente incarico. I colloqui potranno essere organizzati sia presso la ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": " sia presso la sede della Committente.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-53",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "F) Scelta e assunzione dei candidati: ",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": "L’Azienda sarà supportata nella scelta del candidato più idoneo a ricoprire la posizione attraverso un’opera di consulenza diretta, durante le fasi di colloquio, e nei momenti successivi, attraverso un confronto ed una valutazione comparativa tra i candidati presentati.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": " ",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": "Se richiesto dalla Committente il Consulente potrà suggerire indicazioni e note per il miglior inserimento lavorativo, economico per i soggetti selezionati.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-54",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "CONDIZIONI DI PAGAMENTO",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": "00B0F0"
+     }
+    ]
+   },
+   {
+    "id": "text-55",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "A) Fee di attivazione/anticipo ricerca",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-56",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "La Fee di attivazione/anticipo ricerca, pari a ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": "€ 200,00 + IVA",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": ", sarà fatturata al momento del conferimento dell’incarico.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-57",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Tale Fee è finalizzata alla copertura dei costi e delle attività sostenuti per l’avvio della ricerca, inclusi, a titolo esemplificativo e non esaustivo: briefing iniziale, pianificazione del progetto, pubblicazione degli annunci, attività di networking e screening dei CV.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-58",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "B) Fee di completamento",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-59",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "La Fee di completamento sarà fatturata al momento della scelta del candidato da parte del Cliente e sarà pari all’importo previsto per il profilo professionale richiesto, come indicato nella tabella ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": "“Specifica Valori Economici”.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": "00B0F0"
+     }
+    ]
+   },
+   {
+    "id": "text-60",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Ai fini della maturazione della Fee di completamento, per “erogazione del servizio” si intende l’attività svolta da Qualifica Group Formazione e Lavoro Impresa Sociale S.r.l. finalizzata all’individuazione e alla selezione di uno o più candidati rispondenti al profilo professionale richiesto, nonché la successiva scelta del candidato da parte del Cliente ai fini del suo inserimento. L’avvenuta erogazione del servizio sarà tempestivamente comunicata da Qualifica Group Formazione e Lavoro Impresa Sociale S.r.l. al Cliente e costituirà presupposto per la fatturazione della Fee di completamento.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-61",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-62",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Qualora la ricerca del candidato si concluda con esito positivo e con l’effettivo inserimento del candidato individuato e selezionato, l’importo corrisposto a titolo di Fee di attivazione/anticipo ricerca sarà integralmente scalato dal compenso complessivo dovuto per il servizio di ricerca e selezione. Pertanto, tale importo non costituirà un costo aggiuntivo per il Cliente e sarà, di fatto, riconosciuto come ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": "anticipo sul compenso finale.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": "00B0F0"
+     }
+    ]
+   },
+   {
+    "id": "text-63",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-64",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-65",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-66",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-67",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-68",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-69",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Qualora, invece, il Cliente decidesse di non procedere con la selezione o con l’inserimento del candidato individuato da Qualifica Group Formazione e Lavoro Impresa Sociale S.r.l., la Fee di attivazione/anticipo ricerca resterà comunque dovuta ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": "e non sarà rimborsabile",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": "00B0F0"
+     },
+     {
+      "text": ", in quanto destinata alla copertura delle attività e dei costi già sostenuti per l’avvio e lo svolgimento della ricerca.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-70",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-71",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "La ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": "Fee di attivazione/anticipo ricerca",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": " ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": "avrà validità di ",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": "2 mesi",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": "00B0F0"
+     },
+     {
+      "text": " decorrenti dalla data di conferimento dell’incarico.",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-72",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-73",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Nel caso in cui, a seguito delle attività di ricerca e selezione, Qualifica Group Formazione e Lavoro Impresa Sociale S.r.l. non abbia individuato, entro il termine di 2 mesi dalla data del presente accordo, alcuna risorsa idonea e rispondente al profilo professionale oggetto della ricerca, il compenso previsto per il servizio di ricerca e selezione della figura richiesta non sarà dovuto dal Cliente, fermo restando quanto già corrisposto a titolo di Fee di attivazione/anticipo ricerca.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-74",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-75",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Qualora il Cliente intenda proseguire la ricerca della risorsa richiesta oltre il termine di 2 mesi, sarà necessario procedere al conferimento di un nuovo incarico e al pagamento di una nuova Fee di attivazione/anticipo ricerca,",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": " ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": "00B0F0"
+     },
+     {
+      "text": "alle condizioni economiche vigenti al momento della prosecuzione dell’attività.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-76",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-77",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-78",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-79",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-80",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "PROPOSTA E CONDIZIONI DI CONTRATTO",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-81",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-82",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "La Società {client.name} - {client.address} P.Iva: {client.vat_number} di seguito denominata anche Committente",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-83",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "e",
+      "field": null,
+      "bold": false,
+      "italic": true,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-84",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": ", autorizzata dall’ANPAL come Agenzia per il Lavoro (Cod. 0000009.25-01-2021) e dalla Regione Campania (Cod.03008/04/19, con sede legale in Roma (RM) alla Via Zoe Fontana, N.220.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-85",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-86",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Art 1) Obiettivi e Fasi di sviluppo della Consulenza",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-87",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": " accetta di svolgere per la Committente i servizi e le attività di consulenza come espressamente indicate nell’Offerta Economica, ivi annessa, che risulta essere parte integrante del presente Contratto. La Committente accetta che la società di consulenza abbia libero accesso allo staff e alle sue risorse nella misura necessaria a svolgere tutte le attività come elencate nella predetta Offerta Economica.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-88",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": ", a seguito dell'affidamento dell'incarico di cui all'oggetto, si occuperà di individuare e selezionare, fino all’inserimento lavorativo, un candidato idoneo a ricoprire la posizione definita e richiesta.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-89",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Nello specifico il servizio oggetto del presente incarico, è articolato nelle fasi e nei servizi di seguito descritti:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-90",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "A) Individuazione dell’esigenza aziendale",
+      "field": null,
+      "bold": false,
+      "italic": true,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-91",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Rilevazione del fabbisogno aziendale e definizione di Job Profile e Job Description.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-92",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "B) Ricerca dei candidati idonei",
+      "field": null,
+      "bold": false,
+      "italic": true,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-93",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Creazione di un annuncio di lavoro corrispondente alle specifiche richieste della Committente e pubblicazione dello stesso sui principali portali di ricerca finalizzato al Reperimento delle candidature.  Nella ricerca dei candidati è sempre garantito l’anonimato dell’azienda laddove venga richiesta.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-94",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "C) Selezione dei possibili candidati",
+      "field": null,
+      "bold": false,
+      "italic": true,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-95",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Verrà eseguito uno screening curriculare mediante colloqui individuali tesi a valutare: a) coerenza del profilo professionale del candidato con la posizione oggetto di ricerca; - competenze professionali e trasversali; - esigenze e istanze motivazionali.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-96",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "D) Valutazione dei Candidati",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-97",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Verrà eseguita una scrematura delle candidature e selezionata una rosa dei candidati idonei alla Profilazione richiesta dalla Committente. Dopo questa fase di valutazione verrà redatto, per ciascun candidato ritenuto idoneo, un sintetico profilo professionale e motivazionale da sottoporre alla Committente per una valutazione condivisa della candidatura.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-98",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "E) Presentazione rosa candidati",
+      "field": null,
+      "bold": false,
+      "italic": true,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-99",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Ci si occuperà dell’organizzazione e della gestione logistica dei colloqui di presentazione dei candidati valutati coerenti con le esigenze della posizione oggetto del presente incarico. I colloqui potranno essere organizzati sia presso ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": " e sia presso la sede della Committente.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-100",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "F) Scelta e assunzione dei candidati",
+      "field": null,
+      "bold": false,
+      "italic": true,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-101",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "L’Azienda sarà supportata nella scelta del candidato più idoneo a ricoprire la posizione attraverso un’opera di consulenza diretta, durante le fasi di colloquio, e nei momenti successivi, attraverso un confronto ed una valutazione comparativa tra i candidati presentati.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-102",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Se richiesto dalla Committente il Consulente potrà suggerire indicazioni e note per il miglior inserimento lavorativo, economico per i soggetti selezionati.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-103",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-104",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-105",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-106",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-107",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-108",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-109",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-110",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-111",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-112",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-113",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-114",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-115",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-116",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-117",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-118",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-119",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-120",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-121",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-122",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Art 2) TERMINI DI PAGAMENTO",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-123",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-124",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Tutti gli importi, come indicati nell’offerta economica, dovranno essere versati mediante Bonifico Bancario intestato a ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e lavoro Banca IntesaSanPaolo Iban IT73S0306939722100000014804",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-125",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Solo ad avvenuta ricezione della contabile o ad avvenuta visualizzazione dell’accredito dell’acconto/saldo sul conto corrente di ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": ", si potrà procedere all’inizio/conclusione dell’attività di consulenza. Pertanto in caso di ritardi nei pagamenti, ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": " non è responsabile di eventuali slittamenti o del mancato inizio o della mancata conclusione dell’attività di lavorazione della pratica.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-126",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "In caso di mancato pagamento ovvero di ritardo nel pagamento da parte della Committente delle somme di cui sopra, ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": " ha diritto ad esigere oltre a quanto dovuto anche il rimborso dei costi sostenuti per il recupero delle somme non tempestivamente",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-127",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "corrisposte, fatta salva la prova del maggior danno subito, ai sensi dell’art. 6 D.Lgs 231/2002 come modificato dl D.Lgs 192/2012.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-128",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Qualora, invece, il Cliente decidesse di non procedere con la selezione o con l’inserimento del candidato individuato da Qualifica Group Formazione e Lavoro Impresa Sociale S.r.l., la Fee di attivazione/anticipo ricerca resterà comunque dovuta e non sarà rimborsabile, in quanto destinata alla copertura delle attività e dei costi già sostenuti per l’avvio e lo svolgimento della ricerca.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-129",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Eventuali spese quali ad esempio: viaggio, vitto e alloggio, che ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": " dovesse sostenere in vigenza del presente accordo, previa autorizzazione del Cliente, saranno integralmente fatturate al Cliente.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-130",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Art 3) Durata del Contratto",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": true,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": ":",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": true,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-131",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Il presente contratto sarà impegnativo per le parti dal momento della sottoscrizione. La presente offerta avrà validità fino ad inserimento effettuato del candidato, o in alternativa fino a 2 mesi dalla data della stipula.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-132",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Art 4) Doveri della Committente:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": true,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-133",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "La Committente ha l’obbligo di far pervenire/inviare tempestivamente a ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": " tutta la documentazione necessaria all’espletamento del suo incarico, garantendone fin d’ora la completezza, l’esattezza e l’autenticità dei contenuti. La consegna della documentazione occorrente ai servizi oggetto del presente accordo, non sarà oggetto di sollecito o ritiro da parte di ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": " la quale declina sin da ora ogni responsabilità per mancata o tardiva esecuzione dei suoi servizi dovuta al ritardo, incuria o inerzia da parte della Committente. La Committente ha l’obbligo di informare tempestivamente ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": " su qualsivoglia variazione e modifica della realtà fattuale e giuridica che abbia inerenza sull‘incarico conferito.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-134",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "La Committente si impegna a rispettare, nella scelta dei candidati, la Job Profile definita con la ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-135",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "La Committente si impegna a versare l’intero importo di quanto dovuto alla ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": " qualora la mancata assunzione di uno dei candidati proposti, pur se del tutto (o quasi) corrispondenti a quanto riportato nella Job Profile, sia dovuto per ragioni di altra natura imputabile alla stessa Committente.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-136",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "La Committente si impegna a far presenziare sempre uno dei consulenti della ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": ", durante i colloqui dei candidati e di non svolgere gli stessi in autonomia.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-137",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Nel caso in cui ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": " venisse a conoscenza, che in corso di validità contrattuale la Committente instauri in autonomia un rapporto contrattuale con uno dei candidati presentati, avrà diritto non solo a pagamento di quanto dovuto, ma anche a titolo di penale dell’ulteriore somma di € 1.000,00 a candidato assunto in qualsiasi forma contrattuale.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-138",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Qualora la Committente o a società a lei collegata, decida di inserire, entro un anno dal termine del presente incarico, un candidato individuato tra le candidature proposte, è previsto in ogni caso a favore di ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": " il pagamento delle somme pattuite nel presente contratto, nonché il versamento di una penale pari ad euro 1.000,00 qualora non vi sia nessuna comunicazione dell’avvenuta assunzione tramite pec da parte della Committente.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-139",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-140",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-141",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-142",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-143",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-144",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-145",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Art 5) Responsabilità del Cliente. Manleva",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": true,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-146",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "La Committente si impegna a manlevare ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": ", i collaboratori e dipendenti della stessa, da qualsiasi responsabilità, pretesa risarcitoria cui fosse soggetta a causa del contratto in oggetto o dai dati o documenti provenienti dalla Committente, nonché alla non veridicità di quanto dichiarato e prodotto dalla stessa Committente o dallo stesso Candidato.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-147",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": " non garantisce il buon esito della ricerca dei candidati pertanto la Committente si impegna a manlevare ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": ", i collaboratori e dipendenti della stessa, da qualsiasi responsabilità, pretesa risarcitoria dovuta o scaturente dalla mancata assunzione o individuazione del candidato richiesto.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-148",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Gli obblighi, anche di manleva, della Committente sono assunti per sé e, ai sensi e per gli effetti dell’articolo 1381 del codice civile, per ciascun Soggetto a lei collegato e/o Titolare Effettivo.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-149",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Art 6) Rilavorazione:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": true,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-150",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "In caso di rilavorazioni dovute a mancate o errate informazioni comunicate dalla Committente o dai cambiamenti della Job Profile in corso di lavorazione (ad es titolo di studio differente, esperienza pregresse differenti, zona geografica differente etc..), verrà applicato un supplemento, di prezzo del 50%.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-151",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": ".",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": "FF0000"
+     }
+    ]
+   },
+   {
+    "id": "text-152",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Art 7) Recesso unilaterale dal Contratto:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": true,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-153",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "La Committente può recedere dal contratto mediante comunicazione da trasmettere ad ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": " con raccomandata a/r entro tre giorni dal conferimento dell’incarico.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-154",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Il suddetto recesso unilaterale, come dettato dall’art.1373 c.c., non ha effetto per le prestazioni già eseguite o in corso di esecuzione, e per tali ragioni, la Committente dovrà tenere indenne Qualifica Group Formazione e Lavoro Impresa Sociale srl  s.r.l. degli oneri e degli esborsi sostenuti per le attività già svolte o in corsi di esecuzione e versare una somma pari al 50% del valore del “pacchetto” scelto.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-155",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Art 8) Foro Competente. Deroga:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": true,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-156",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Per qualsiasi controversia che dovesse insorgere relativamente all’interpretazione, esecuzione del presente contratto, le parti dichiarano espressamente ai sensi dell’art. 28 del c.p.c., di voler ricorre al foro di Napoli Nord. In tutti i casi in cui ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": " avrà necessità di intraprendere delle azioni giudiziarie nei confronti della Committente, le relative spese legali saranno imputate alla stessa Committente",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-157",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Art 9)  Riservatezza:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": true,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-158",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Per la tutela della Committente, rispetto al trattamento dei dati personali, saranno osservate le disposizioni di cui Regolamento UE 2016/679.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-159",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-160",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Data",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-161",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-162",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "La Committente",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-163",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Firma per accettazione",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-164",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-165",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-166",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "image-2",
+    "type": "image",
+    "attachment_id": "image-cc8babd763f7.png",
+    "width": 151,
+    "height": 61,
+    "align": "left",
+    "wrap": "inline"
+   },
+   {
+    "id": "text-167",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-168",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Informativa breve per gli interessati:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-169",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     },
+     {
+      "text": "., in qualità di Titolare del Trattamento dei dati personali ai sensi del Regolamento (UE) 2016/679 (GDPR), La informa che il trattamento è svolto in conformità alla normativa sulla protezione dei dati personali e i dati raccolti saranno conservati nei propri archivi per le sole finalità previste dalla normativa.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-170",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Gli interessati possono esercitare i diritti a loro spettanti ai sensi degli artt. 15-22 e 77 del GDPR e possono consultare l’informativa sul trattamento dei dati personali completa e le eventuali modifiche ed integrazioni sul sito web del Titolare del Trattamento al link: https://qualificagroup.it/consulenza/wp-content/uploads/2022/11/Informativa-Qualifica-Group-Form_e_Lavoro-agenzia-per-il-lavoro.pdf",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 7,
+      "color": null
+     }
+    ]
+   }
+  ]
+ },
+ "footer": {
+  "blocks": []
+ }
+}

@@ -1,0 +1,1515 @@
+{
+ "version": 1,
+ "page": {
+  "format": "A4",
+  "orientation": "portrait",
+  "margins": {
+   "top": 1880,
+   "right": 992,
+   "bottom": 280,
+   "left": 1133
+  },
+  "default_font": {
+   "family": "Trebuchet MS",
+   "size": 11,
+   "color": "000000"
+  }
+ },
+ "header": {
+  "blocks": [
+   {
+    "id": "letterhead-1",
+    "type": "image",
+    "attachment_id": "letterhead-102641125752.png",
+    "width": 595,
+    "height": 841,
+    "align": "center",
+    "wrap": "behind_page"
+   }
+  ]
+ },
+ "body": {
+  "blocks": [
+   {
+    "id": "text-1",
+    "type": "text",
+    "align": "center",
+    "space_before": 85,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-2",
+    "type": "text",
+    "align": "center",
+    "space_before": 85,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "TIROCINI EXTRA-CURRICULARI",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-3",
+    "type": "text",
+    "align": "center",
+    "space_before": 85,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-4",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Offerta n° {quote.code} del {quote.created_at}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-5",
+    "type": "text",
+    "align": "right",
+    "space_before": 176,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Spett.Le",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-6",
+    "type": "text",
+    "align": "right",
+    "space_before": 176,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-7",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "{client.name}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-8",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "{client.address}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-9",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "P.Iva: {client.vat_number}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-10",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-11",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-12",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-13",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-14",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-15",
+    "type": "text",
+    "align": "left",
+    "space_before": 112,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-16",
+    "type": "text",
+    "align": "left",
+    "space_before": 177,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Oggetto",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": ": ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": "Attivazione del servizio di tirocinio extracurriculare",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-17",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": []
+   },
+   {
+    "id": "text-18",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-19",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "La presente proposta di collaborazione ha ad oggetto l’attivazione e la gestione di percorsi di tirocinio extracurriculare e comprende le seguenti attività:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-20",
+    "type": "text",
+    "align": "left",
+    "space_before": 96,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-21",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": [
+     {
+      "text": "• Supporto all’adempimento delle pratiche amministrative di presentazione progetto e comunicazione di avvio del percorso di tirocinio presso gli organi competenti;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-22",
+    "type": "text",
+    "align": "left",
+    "space_before": 160,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• Nomina del tutor del soggetto promotore;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-23",
+    "type": "text",
+    "align": "left",
+    "space_before": 176,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• Stesura del progetto formativo;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-24",
+    "type": "text",
+    "align": "left",
+    "space_before": 175,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• Preparazione del registro didattico e delle presenze;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-25",
+    "type": "text",
+    "align": "left",
+    "space_before": 176,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": [
+     {
+      "text": "• Elaborazione e gestione di tutta la documentazione necessaria al corretto svolgimento del percorso del tirocinante;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-26",
+    "type": "text",
+    "align": "left",
+    "space_before": 161,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• Monitoraggio delle attività di concerto con il tutor del soggetto ospitante.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-27",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-28",
+    "type": "text",
+    "align": "left",
+    "space_before": 95,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-29",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Condizioni Economiche",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-30",
+    "type": "text",
+    "align": "left",
+    "space_before": 176,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": [
+     {
+      "text": "Per le attività sopra indicate, viene proposto un corrispettivo pari a ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": "€ 300,00 per ciascun tirocinante",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": ".",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-31",
+    "type": "text",
+    "align": "left",
+    "space_before": 80,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Il suddetto importo comprende:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-32",
+    "type": "text",
+    "align": "left",
+    "space_before": 80,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• l’attivazione e la gestione del percorso di tirocinio;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-33",
+    "type": "text",
+    "align": "left",
+    "space_before": 80,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• la copertura assicurativa obbligatoria per la Responsabilità Civile verso Terzi (RCT).",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-34",
+    "type": "text",
+    "align": "left",
+    "space_before": 80,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Eventuali attività o servizi ulteriori rispetto a quelli espressamente indicati nella presente proposta saranno oggetto di separata valutazione e, ove necessario, di specifico accordo tra le parti.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-35",
+    "type": "text",
+    "align": "left",
+    "space_before": 80,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-36",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-37",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-38",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-39",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-40",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-41",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Modalità di pagamento",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-42",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Il corrispettivo complessivo dovuto dovrà essere versato mediante ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": "bonifico bancario",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": " alle seguenti coordinate:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-43",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": [
+     {
+      "text": "IBAN:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": " IT73S0306939722100000014804",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-44",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": [
+     {
+      "text": "Istituto bancario:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": " Banca Intesa Sanpaolo",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-45",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": []
+   },
+   {
+    "id": "text-46",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Monitoraggio",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-47",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": [
+     {
+      "text": "Il monitoraggio costituisce parte integrante dell’attività e della metodologia di lavoro adottata da Qualifica Group Formazione e Lavoro S.r.l.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-48",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": [
+     {
+      "text": "Tale attività sarà svolta attraverso periodici momenti di confronto, scambi di informazioni e feedback con il tirocinante e con il Soggetto Ospitante, al fine di verificare il corretto andamento del percorso, favorire un efficace inserimento del tirocinante e individuare tempestivamente eventuali criticità, intervenendo ove necessario con le opportune azioni correttive.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-49",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": []
+   },
+   {
+    "id": "text-50",
+    "type": "text",
+    "align": "left",
+    "space_before": 85,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Garanzie",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-51",
+    "type": "text",
+    "align": "left",
+    "space_before": 85,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Con riferimento alle attività oggetto della presente proposta, Qualifica Group Formazione e Lavoro S.r.l. si impegna a:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-52",
+    "type": "text",
+    "align": "left",
+    "space_before": 160,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• operare nel rispetto della normativa vigente in materia di protezione dei dati personali, Reg 679/16 sulla Privacy e della Legge 125/91 sulle pari opportunità;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-53",
+    "type": "text",
+    "align": "left",
+    "space_before": 85,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• garantire la massima riservatezza in relazione a tutte le informazioni, notizie, dati e documenti, comprese eventuali idee, progetti, procedure e know-how, di cui dovesse venire a conoscenza nell’ambito dell’esecuzione delle attività oggetto della presente proposta;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-54",
+    "type": "text",
+    "align": "left",
+    "space_before": 85,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "• utilizzare le informazioni e la documentazione ricevute esclusivamente per le finalità connesse all’esecuzione dei servizi concordati",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": ".",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-55",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-56",
+    "type": "text",
+    "align": "left",
+    "space_before": 1,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-57",
+    "type": "text",
+    "align": "left",
+    "space_before": 1,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Tutela dei dati personali",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-58",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Le parti dichiarano di aver ricevuto e preso visione dell’informativa relativa al trattamento dei dati personali e di averne compreso il contenuto. Dall’altra parte, ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": "Qualifica Group Formazione e Lavoro S.r.l.",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": "  nomina la società quale ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": "Responsabile del trattamento ai sensi dell’art. 28 del Regolamento (UE) 2016/679 (GDPR) ",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": "per tutti i dati personali di terzi che le verranno comunicate relativamente ai candidati presentati per l’esecuzione dei Servizi. La società si impegna a raccogliere e trattare i dati personali acquisiti nel pieno rispetto della normativa vigente in materia di protezione dei dati personali ed alla comunicazione degli incaricati destinati al trattamento dei dati.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-59",
+    "type": "text",
+    "align": "left",
+    "space_before": 82,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-60",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Durata e validità dell’offerta economica",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-61",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "La presente costituisce la proposta di incarico professionale e s’intende valida per un periodo di ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": "12 (dodici) mesi",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": ", con decorrenza dalla data di sottoscrizione per accettazione da parte del Cliente.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-62",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Eventuali proroghe o rinnovi dovranno essere concordati tra le parti.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-63",
+    "type": "text",
+    "align": "left",
+    "space_before": 81,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-64",
+    "type": "text",
+    "align": "left",
+    "space_before": 81,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-65",
+    "type": "text",
+    "align": "left",
+    "space_before": 81,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-66",
+    "type": "text",
+    "align": "left",
+    "space_before": 81,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-67",
+    "type": "text",
+    "align": "left",
+    "space_before": 81,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-68",
+    "type": "text",
+    "align": "left",
+    "space_before": 81,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-69",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Diritto di Recesso",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-70",
+    "type": "text",
+    "align": "left",
+    "space_before": 160,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Il Cliente potrà esercitare il diritto di recesso entro 10 (dieci) giorni dalla data di sottoscrizione della presente proposta, nei casi e secondo le modalità previste dalla normativa vigente.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-71",
+    "type": "text",
+    "align": "left",
+    "space_before": 160,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-72",
+    "type": "text",
+    "align": "left",
+    "space_before": 160,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Foro Competente",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-73",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Per qualsiasi controversia relativa all’interpretazione, esecuzione o risoluzione della presente proposta, le parti convengono che sarà competente, in via esclusiva, il Foro di Napoli, salvo quanto diversamente previsto da disposizioni inderogabili di legge.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-74",
+    "type": "text",
+    "align": "left",
+    "space_before": 96,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-75",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Frattamaggiore, {quote.created_at}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-76",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-77",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": [
+     {
+      "text": "La sottoscrizione della presente proposta comporta l’accettazione integrale delle condizioni e dei termini in essa contenuti.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-78",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": [
+     {
+      "text": "Per accettazione",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-79",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": []
+   },
+   {
+    "id": "text-80",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": [
+     {
+      "text": "Timbro e firma della Committente",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-81",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": []
+   },
+   {
+    "id": "text-82",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": []
+   },
+   {
+    "id": "text-83",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": []
+   },
+   {
+    "id": "text-84",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": []
+   },
+   {
+    "id": "text-85",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": []
+   },
+   {
+    "id": "text-86",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": [
+     {
+      "text": "______________________________________",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-87",
+    "type": "text",
+    "align": "left",
+    "space_before": 85,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": []
+   },
+   {
+    "id": "text-88",
+    "type": "text",
+    "align": "left",
+    "space_before": 85,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": []
+   },
+   {
+    "id": "text-89",
+    "type": "text",
+    "align": "left",
+    "space_before": 85,
+    "space_after": 0,
+    "line_height": 1.06,
+    "runs": [
+     {
+      "text": "Qualifica Group Formazione e Lavoro impresa sociale srl",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Cambria",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "image-1",
+    "type": "image",
+    "attachment_id": "image-f6efe4a3f0b2.jpg",
+    "width": 155,
+    "height": 68,
+    "align": "left",
+    "wrap": "inline"
+   }
+  ]
+ },
+ "footer": {
+  "blocks": []
+ }
+}

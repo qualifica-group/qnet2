@@ -1,0 +1,848 @@
+{
+ "version": 1,
+ "page": {
+  "format": "A4",
+  "orientation": "portrait",
+  "margins": {
+   "top": 2127,
+   "right": 1134,
+   "bottom": 1560,
+   "left": 1134
+  },
+  "default_font": {
+   "family": "Calibri",
+   "size": 11,
+   "color": "000000"
+  }
+ },
+ "header": {
+  "blocks": [
+   {
+    "id": "letterhead-1",
+    "type": "image",
+    "attachment_id": "letterhead-75cb7b747891.png",
+    "width": 595,
+    "height": 841,
+    "align": "center",
+    "wrap": "behind_page"
+   }
+  ]
+ },
+ "body": {
+  "blocks": [
+   {
+    "id": "rule-1",
+    "type": "divider",
+    "width_pct": 100,
+    "thickness": 8,
+    "color": "A5A5A5",
+    "space_before": 0,
+    "space_after": 120
+   },
+   {
+    "id": "text-1",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Viale delle Industrie, snc - 80027 Frattamaggiore (Na) - C.F. & P.IVA 09537471212",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-2",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Tel. 081.834.79.60 - Fax 081.010.41.08",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-3",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "www.qualificagroup.it - ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     },
+     {
+      "text": "commerciale@qualificagroup.it",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": true,
+      "font": null,
+      "size": 8,
+      "color": "0563C1"
+     }
+    ]
+   },
+   {
+    "id": "text-4",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "rule-2",
+    "type": "divider",
+    "width_pct": 100,
+    "thickness": 8,
+    "color": "A5A5A5",
+    "space_before": 0,
+    "space_after": 120
+   },
+   {
+    "id": "text-5",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Offerta n°",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Trebuchet MS",
+      "size": 9,
+      "color": "2B3B4C"
+     },
+     {
+      "text": " {quote.code} del {quote.created_at}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-6",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Spettabile:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-7",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "{client.name}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-8",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "{client.address}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-9",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "P.Iva: {client.vat_number}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-10",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-11",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "OFFERTA ECONOMICA SERVIZI MePA",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 14,
+      "color": "3B3838"
+     }
+    ]
+   },
+   {
+    "id": "quote-lines-1",
+    "type": "products_table",
+    "source": "offer_lines",
+    "width_pct": 100,
+    "borders": {
+     "size": 4,
+     "color": "000000"
+    },
+    "show_header": true,
+    "header_background": "323E4F",
+    "columns": [
+     {
+      "lines": [
+       {
+        "keys": [
+         "code",
+         "name"
+        ],
+        "separator": "-",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       },
+       {
+        "keys": [
+         "description"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       },
+       {
+        "keys": [
+         "additional_description"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Descrizione",
+      "width_pct": 40,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "quantity"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Quantità",
+      "width_pct": 17,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "unit_price"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Imponibile",
+      "width_pct": 19,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "vat_rate"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Iva",
+      "width_pct": 10,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "net_amount"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Totale",
+      "width_pct": 14,
+      "align": "right"
+     }
+    ],
+    "totals": {
+     "show": true,
+     "rows": [
+      {
+       "label": "Totali",
+       "variable": "{totals.revenue_net}",
+       "bold": false
+      },
+      {
+       "label": "IVA",
+       "variable": "{totals.revenue_vat}",
+       "bold": false
+      }
+     ]
+    },
+    "empty_text": "Nessuna riga presente in offerta."
+   },
+   {
+    "id": "text-12",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-13",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Totale offerta :  {totals.revenue_gross}",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "rule-3",
+    "type": "divider",
+    "width_pct": 100,
+    "thickness": 8,
+    "color": "A5A5A5",
+    "space_before": 0,
+    "space_after": 120
+   },
+   {
+    "id": "text-14",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "_ _ _ _ _ _ _ _ _ _ _ _ _ _ _        _ _ _ _ _ _ _ _ _ _",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Arial Narrow Italic",
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-15",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Per accettazione                                                                                                                                                  Qualifica Group srl",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Trebuchet MS",
+      "size": 8,
+      "color": "2B3B4C"
+     }
+    ]
+   },
+   {
+    "id": "text-16",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "rule-4",
+    "type": "divider",
+    "width_pct": 100,
+    "thickness": 8,
+    "color": "A5A5A5",
+    "space_before": 0,
+    "space_after": 120
+   },
+   {
+    "id": "text-17",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "QUALIFICA GROUP SRL  SI IMPEGNA:                                                                                                                                                                                                                                                                                                                 ",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     },
+     {
+      "text": "A) Valutare i requisiti aziendali, per l'iscrizione al portale;                                                                                                                                                                                                                                                                                    B) assistere e supportare l'azienda nella fase abilitativa.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-18",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "COSTI E TERMINI DI PAGAMENTO",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-19",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "L’importo totale sopra indicato sarà da versare mediante Bonifico Bancario a Qualifica Group srl Banca Intesa Sanpaolo Iban IT10A0306939722100000062172                                            ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     },
+     {
+      "text": "                                                                                                                                                                                                                                                                                   ",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 7,
+      "color": "262626"
+     },
+     {
+      "text": "                                                                                                                                                                                                                                                                        ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 7,
+      "color": "262626"
+     },
+     {
+      "text": "Gettone da erogare al momento della sottoscrizione della presente offerta.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-20",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "% In caso di aggiudicazione gare da corrispondere a Qualifica Group in un'unica soluzione a 30 g dalla sottoscrizione del contratto d’appalto per importi fino a €. 3.000,00; oltre tale importo le modalità posso subire variazioni ma solitamente se garantito da fideiussione bancaria e/o da titoli avallati anticipati, esso potrà essere suddiviso nelle seguenti rate: 34% dell’importo aggiudicato a 30 gg. dalla firma del contratto di appalto, 33% dell’importo aggiudicato a 60 gg. dalla firma del contratto di appalto e 33% dell’importo aggiudicato a 90 gg. dalla firma del contratto di appalto;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-21",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Da €. 0 a €.50.000,00 = 1.5%",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-22",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Da €. 50.000 a €. 100.000,00=1.4%",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-23",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Da €.100.000,00 a €. 150.000,00=1.1%",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-24",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Da €.150.000,00 a €. 200.000,00=0.9%",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-25",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Da €.200.000,00 a €. 250.000,00=0.8%",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-26",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Da €. 250.000,00 a €. 516.000,00=0.7%",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-27",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Da €. 516.000,00 a €. 1.033.000,00=0.6%",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-28",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Oltre €. 1.033.000,00=0.5%",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-29",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-30",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Informativa breve per gli interessati",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-31",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Qualifica Group s.r.l., in qualità di Titolare del Trattamento dei dati personali ai sensi del Regolamento (UE) 2016/679 (GDPR), La informa che il trattamento è svolto in conformità alla normativa sulla protezione dei dati personali e i dati raccolti saranno conservati nei propri archivi per le sole finalità previste dalla normativa.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-32",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Gli interessati possono esercitare i diritti a loro spettanti ai sensi degli artt. 15-22 e 77 del GDPR e possono consultare l’informativa sul trattamento dei dati personali completa e le eventuali modifiche ed integrazioni sul sito web del Titolare del Trattamento al link: https://www.qualificagroup.it/informativa-clienti/",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   }
+  ]
+ },
+ "footer": {
+  "blocks": []
+ }
+}

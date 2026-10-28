@@ -1,0 +1,3234 @@
+{
+ "version": 1,
+ "page": {
+  "format": "A4",
+  "orientation": "portrait",
+  "margins": {
+   "top": 2127,
+   "right": 1134,
+   "bottom": 1560,
+   "left": 1134
+  },
+  "default_font": {
+   "family": "Calibri",
+   "size": 11,
+   "color": "000000"
+  }
+ },
+ "header": {
+  "blocks": [
+   {
+    "id": "letterhead-1",
+    "type": "image",
+    "attachment_id": "letterhead-75cb7b747891.png",
+    "width": 595,
+    "height": 841,
+    "align": "center",
+    "wrap": "behind_page"
+   }
+  ]
+ },
+ "body": {
+  "blocks": [
+   {
+    "id": "rule-1",
+    "type": "divider",
+    "width_pct": 100,
+    "thickness": 8,
+    "color": "A5A5A5",
+    "space_before": 0,
+    "space_after": 120
+   },
+   {
+    "id": "text-1",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Viale delle Industrie, snc - 80027 Frattamaggiore (Na) - C.F. & P.IVA 09537471212",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-2",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Tel. 081.834.79.60 - Fax 081.010.41.08",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-3",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "www.qualificagroup.it - ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     },
+     {
+      "text": "commerciale@qualificagroup.it",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": true,
+      "font": null,
+      "size": 8,
+      "color": "0563C1"
+     }
+    ]
+   },
+   {
+    "id": "text-4",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "rule-2",
+    "type": "divider",
+    "width_pct": 100,
+    "thickness": 8,
+    "color": "A5A5A5",
+    "space_before": 0,
+    "space_after": 120
+   },
+   {
+    "id": "text-5",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Offerta n°",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Trebuchet MS",
+      "size": 9,
+      "color": "2B3B4C"
+     },
+     {
+      "text": " {quote.code} del {quote.created_at}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-6",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Spettabile:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-7",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "{client.name}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-8",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "{client.address}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-9",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "P.Iva: {client.vat_number}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-10",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-11",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-12",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-13",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "OFFERTA ECONOMICA E CONTRATTO DI AVVALIMENTO",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 14,
+      "color": "3B3838"
+     }
+    ]
+   },
+   {
+    "id": "text-14",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-15",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-16",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-17",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "quote-lines-1",
+    "type": "products_table",
+    "source": "offer_lines",
+    "width_pct": 100,
+    "borders": {
+     "size": 4,
+     "color": "000000"
+    },
+    "show_header": true,
+    "header_background": "323E4F",
+    "columns": [
+     {
+      "lines": [
+       {
+        "keys": [
+         "code",
+         "name"
+        ],
+        "separator": "-",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       },
+       {
+        "keys": [
+         "description"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       },
+       {
+        "keys": [
+         "additional_description"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Descrizione",
+      "width_pct": 40,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "quantity"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Quantità",
+      "width_pct": 17,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "unit_price"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Imponibile",
+      "width_pct": 19,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "vat_rate"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Iva",
+      "width_pct": 10,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "net_amount"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Totale",
+      "width_pct": 14,
+      "align": "right"
+     }
+    ],
+    "totals": {
+     "show": true,
+     "rows": [
+      {
+       "label": "Totali",
+       "variable": "{totals.revenue_net}",
+       "bold": false
+      },
+      {
+       "label": "IVA",
+       "variable": "{totals.revenue_vat}",
+       "bold": false
+      }
+     ]
+    },
+    "empty_text": "Nessuna riga presente in offerta."
+   },
+   {
+    "id": "text-18",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-19",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Totale offerta :  {totals.revenue_gross}",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-20",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-21",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "rule-3",
+    "type": "divider",
+    "width_pct": 100,
+    "thickness": 8,
+    "color": "A5A5A5",
+    "space_before": 0,
+    "space_after": 120
+   },
+   {
+    "id": "text-22",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "_ _ _ _ _ _ _ _ _ _ _ _ _ _ _        _ _ _ _ _ _ _ _ _ _",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Arial Narrow Italic",
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-23",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Per accettazione                                                                                                                                                  Qualifica Group srl",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Trebuchet MS",
+      "size": 8,
+      "color": "2B3B4C"
+     }
+    ]
+   },
+   {
+    "id": "rule-4",
+    "type": "divider",
+    "width_pct": 100,
+    "thickness": 8,
+    "color": "A5A5A5",
+    "space_before": 0,
+    "space_after": 120
+   },
+   {
+    "id": "text-24",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-25",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-26",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-27",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-28",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Condizioni generali ed essenziali del contratto",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Arial Narrow",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-29",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "PREMESSO CHE",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-30",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "a) L’avvalimento consiste nella possibilità, riconosciuta agli operatori economici, singoli o in raggruppamento, di soddisfare la richiesta relativa al possesso dei requisiti economico-finanziari o tecnico-organizzativi necessari per partecipare ad una procedura di gara, facendo affidamento sulle capacità di altri soggetti e ciò indipendentemente dai legami sussistenti con questi ultimi; Tramite tale istituto, un operatore economico che partecipa ad una procedura di gara per l’affidamento di un appalto pubblico per il quale è richiesto il possesso di determinati requisiti (di cui sopra), può dichiarare di avvalersi dei requisiti di un altro operatore economico; L’Impresa che \"presta\" i propri requisiti (Ausiliaria) a quella partecipante (Ausiliata) resta estranea sia alla gara che al successivo contratto, ma deve formalmente impegnarsi sia nei confronti dell’Impresa ausiliata, tramite un contratto di avvalimento, che nei confronti della Stazione appaltante, di cui è responsabile solidalmente, a mettere a disposizione della prima, per tutta la durata dell'appalto, tutte le risorse di cui questa risulta carente. Restano fermi i requisiti di ordine generale rif.art.80 codice dei contratti pubblici, che devono essere posseduti da entrambe",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-31",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "b) L’impresa Ausiliata è sprovvista di determinate categorie necessarie per la partecipazione alla gara oggetto dell’offerta economica e per tali ragioni intende avvalersi dei requisiti di un altro operatore economico;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-32",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "c) Qualifica si impegna a valutare tutti i documenti necessari per redigere, come previsto dall'art. 89 del Decreto Legislativo 18 aprile 2016, n. 50, tutta la documentazione utile per l'avvalimento nonchè ricercare imprese ausiliare dotate dei requisiti tecnico/economico di cui l’ausiliata risulta carente;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-33",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "CON LA PRESENTE SCRITTURA PRIVATA SI CONVIENE E SI STIPULA QUANTO SEGUE:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-34",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Art.1 Efficacia delle premesse e degli allegati.",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-35",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Le premesse e l’offerta economica sono parte integrante di questo contratto;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-36",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Art.2",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     },
+     {
+      "text": " ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     },
+     {
+      "text": "Oggetto del contratto",
+      "field": null,
+      "bold": true,
+      "italic": true,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-37",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "La Qualifica Group S.r.l. accetta di svolgere per l’Ausiliata i servizi e le attività di consulenza per la valutazione, predisposizione documentale, assistenza ai fini del prestito dei requisiti oggetto di gara, di cui in premessa.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-38",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Art. 3- Doveri della Ausiliata:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-39",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "L’Ausiliata ha l’obbligo di far pervenire/inviare tempestivamente a Qualifica Group s.r.l.  tutta la documentazione necessaria all’espletamento del suo incarico, garantendone fin d’ora la completezza, l’esattezza e l’autenticità, delle stesse. La consegna della documentazione occorrente ai servizi oggetto del presente accordo, non sarà oggetto di sollecito o ritiro da parte di Qualifica Group la quale declina sin da ora ogni responsabilità per mancata o tardiva esecuzione dei suoi servizi dovuta al ritardo, incuria o inerzia da parte della Ausiliata/ria nonché della veridicità e autenticità della documentazione pervenutagli. La Ausiliata ha l’obbligo di informare tempestivamente Qualifica Group s.r.l. su qualsivoglia variazione e modifica della realtà fattuale e giuridica che abbia inerenza sull‘incarico conferito.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-40",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "L’Ausiliata autorizza espressamente il Consulente ad apporre, in nome e per conto della stessa, i timbri e/o segni distintivi della società in calce e/o a margine di dichiarazioni, documenti e/o buste, aperte e/o sigillate inviate a mezzo mail dalla Ausiliaria o che siano, richiesti/e dalla legge e/o dalla lex specialis.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-41",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "L’incarico del consulente non comprende l’attività di richiesta e ottenimento di certificati alla camera di commercio, al tribunale, all’Agenzia delle Entrate, al concessionario, agli enti appaltanti, etc..",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-42",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "L’Ausiliata, inoltre, ha l’obbligo di comunicare tempestivamente, tramite email all’indirizzo ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     },
+     {
+      "text": "commerciale@qualificagroup.it",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": true,
+      "font": "Arial",
+      "size": 9,
+      "color": "0000FF"
+     },
+     {
+      "text": ", in caso di aggiudicazione della gara oggetto di avvalimento.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-43",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Art.4 – Termini di Pagamento",
+      "field": null,
+      "bold": true,
+      "italic": true,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-44",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Il compenso per le attività eseguite da Qualifica Group è così stabilito:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-45",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "- L’attività di mera ricerca da parte di Qualifica dell’impresa ausiliaria prevede il pagamento di un importo (gettone) come indicato nell’offerta economica che non è subordinato alla sottoscrizione del contratto di avvalimento tra l’ausiliata e l’ausiliaria. Il versamento dell’importo del gettone dovrà avvenire mediante bonifico intestato a Qualifica Group srl, Banca Intesa Sanpaolo Iban IT10A0306939722100000062172 entro 3 giorni dalla comunicazione dell’individuazione dell’impresa ausiliaria",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-46",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "- in caso di aggiudicazione della gara, l’ausiliata è tenuta a riconoscere a Qualifica una    % escluso I.V.A. sull’importo complessivo aggiudicato al netto del ribasso di gara e/o su tutte le categorie oggetto di avvalimento e gli eventuali aumenti che subirà l’appalto. Tale % verrà così calcolata:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "table-1",
+    "type": "table",
+    "width_pct": 77,
+    "borders": {
+     "size": 6,
+     "color": "000000"
+    },
+    "columns": [
+     {
+      "width_pct": 48
+     },
+     {
+      "width_pct": 8
+     },
+     {
+      "width_pct": 11
+     },
+     {
+      "width_pct": 6
+     },
+     {
+      "width_pct": 12
+     },
+     {
+      "width_pct": 5
+     },
+     {
+      "width_pct": 10
+     }
+    ],
+    "rows": [
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": "528CD4",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-47",
+          "type": "text",
+          "align": "left",
+          "space_before": 11,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": []
+         },
+         {
+          "id": "text-48",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Sogliedi partecipazione",
+            "field": null,
+            "bold": true,
+            "italic": false,
+            "underline": false,
+            "font": "Arial Black",
+            "size": 8,
+            "color": "FFFFFF"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 2,
+        "background": "528CD4",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-49",
+          "type": "text",
+          "align": "left",
+          "space_before": 11,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": []
+         },
+         {
+          "id": "text-50",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "%o €. Contratto Avvalimento",
+            "field": null,
+            "bold": true,
+            "italic": false,
+            "underline": false,
+            "font": "Arial Black",
+            "size": 8,
+            "color": "FFFFFF"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 2,
+        "background": "528CD4",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-51",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "%o €. Ausiliaria",
+            "field": null,
+            "bold": true,
+            "italic": false,
+            "underline": false,
+            "font": "Arial Black",
+            "size": 8,
+            "color": "FFFFFF"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 2,
+        "background": "528CD4",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-52",
+          "type": "text",
+          "align": "left",
+          "space_before": 11,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": []
+         },
+         {
+          "id": "text-53",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "%o €. QG",
+            "field": null,
+            "bold": true,
+            "italic": false,
+            "underline": false,
+            "font": "Arial Black",
+            "size": 8,
+            "color": "FFFFFF"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-54",
+          "type": "text",
+          "align": "left",
+          "space_before": 5,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Da €. 0 a €.1",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": "001F5F"
+           },
+           {
+            "text": "5",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": null
+           },
+           {
+            "text": "0.000",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-55",
+          "type": "text",
+          "align": "left",
+          "space_before": 5,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "€",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-56",
+          "type": "text",
+          "align": "left",
+          "space_before": 5,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "8.000,00",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-57",
+          "type": "text",
+          "align": "left",
+          "space_before": 5,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "€",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-58",
+          "type": "text",
+          "align": "left",
+          "space_before": 5,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "4.000,00",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-59",
+          "type": "text",
+          "align": "left",
+          "space_before": 5,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "€",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-60",
+          "type": "text",
+          "align": "left",
+          "space_before": 5,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "4.000,00",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-61",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Da €. 150.000 a€.5",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 7,
+            "color": "001F5F"
+           },
+           {
+            "text": "0",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 7,
+            "color": null
+           },
+           {
+            "text": "0.000",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 7,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 2,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-62",
+          "type": "text",
+          "align": "right",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "4.5%",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 7,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 2,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-63",
+          "type": "text",
+          "align": "right",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "2.25%",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 7,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 2,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-64",
+          "type": "text",
+          "align": "right",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "2.25%",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 7,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-65",
+          "type": "text",
+          "align": "left",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Da €. 5",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 7,
+            "color": "001F5F"
+           },
+           {
+            "text": "0",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 7,
+            "color": null
+           },
+           {
+            "text": "0.000 a€. 1.000.000",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 7,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 2,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-66",
+          "type": "text",
+          "align": "right",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "3.5%",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 7,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 2,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-67",
+          "type": "text",
+          "align": "right",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "1.75%",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 7,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 2,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-68",
+          "type": "text",
+          "align": "right",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "1.75%",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 7,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-69",
+          "type": "text",
+          "align": "left",
+          "space_before": 6,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "Da €. 1.",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": "001F5F"
+           },
+           {
+            "text": "0",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": null
+           },
+           {
+            "text": "0",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": "001F5F"
+           },
+           {
+            "text": "0",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": null
+           },
+           {
+            "text": ".000 a€. ",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": "001F5F"
+           },
+           {
+            "text": "3",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": null
+           },
+           {
+            "text": ".000.000",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 2,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-70",
+          "type": "text",
+          "align": "right",
+          "space_before": 6,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "3",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": null
+           },
+           {
+            "text": "%",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 2,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-71",
+          "type": "text",
+          "align": "right",
+          "space_before": 6,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "1.5",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": null
+           },
+           {
+            "text": "%",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 2,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-72",
+          "type": "text",
+          "align": "right",
+          "space_before": 6,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "1.5%",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-73",
+          "type": "text",
+          "align": "left",
+          "space_before": 6,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "€.",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": "001F5F"
+           },
+           {
+            "text": "3.0",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": null
+           },
+           {
+            "text": "00.000 ed oltre",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 2,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-74",
+          "type": "text",
+          "align": "right",
+          "space_before": 6,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "2.5%",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 2,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-75",
+          "type": "text",
+          "align": "right",
+          "space_before": 6,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "1,",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": "001F5F"
+           },
+           {
+            "text": "25",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": null
+           },
+           {
+            "text": "%",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 2,
+        "background": "DBE5F0",
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-76",
+          "type": "text",
+          "align": "right",
+          "space_before": 6,
+          "space_after": 0,
+          "line_height": 1.0,
+          "runs": [
+           {
+            "text": "1.25%",
+            "field": null,
+            "bold": false,
+            "italic": false,
+            "underline": false,
+            "font": "Tahoma",
+            "size": 6,
+            "color": "001F5F"
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "text-77",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-78",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "- Le percentuali di cui sopra potranno subire delle variazioni qualora l’impresa ausiliaria, idonea alle richieste dell’Azienda cliente, consista in un Consorzio.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-79",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "In tal caso verranno applicate le percentuali stabilite e comunicate dal Consorzio stesso sulle quali la stessa Qualifica Group è tenuta ad attenersi.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-80",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "L’ausiliata dovrà versare tale % mediante bonifico intestato a Qualifica Group srl al BANCA GENERALI SPA- FIL. DI CASERTA - IT16M0307502200CC8501028956 entro 15 giorni dalla stipula del contratto con la stazione appaltante.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-81",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Nel compenso non sono compresi versamenti, bolli, spese notarili che sono a carico dell’impresa Avvalente.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-82",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Eventuali costi di spedizione del plico della documentazione sono pari ad €. 15,00 e sono da sommare ai costi sopra indicati.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-83",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "In caso di acquisto pacchetti di avvalimento, questi avranno validità di un anno dal momento della sottoscrizione del presente contratto. Nel caso in cui l’ausliliaria disponibile, richieda un gettone di importo superiore a quello preventivato nell’offerta in oggetto, Qualifica Group comunicherà tale variazione all’azienda cliente richiedendo ai fini della compensazione della variazione di costo, la detrazione di uno o più gettoni.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-84",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Art.5 - Pagamenti",
+      "field": null,
+      "bold": true,
+      "italic": true,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-85",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Il pagamento del compenso di cui all’art. 4 dovrà essere erogato a QUALIFICA GROUP successivamente all’invio all’ausiliata della fattura/proforma per le attività eseguite, nelle modalità sopra indicate.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-86",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Art.6- Inadempimento",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-87",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "In caso di inosservanza delle modalità o dei termini di pagamento, all’Ausiliata verranno applicati gli interessi di mora come previsti dall’art 1224 c.c. nonché le disposizioni prescritte dagli artt. 1218, 1219 e 1223 del c.c..",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-88",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "In caso di inadempimento delle obbligazioni assunte con il contratto in oggetto, l’Ausiliata sarà tenuta ai sensi e per gli effetti di cui all’art. 1382 c.c., a titolo di penale a favore della Qualifica Group s.r.l. al pagamento della somma di €5.000,00 oltre a quanto dovuto, in caso di aggiudicazione di gara, come stabilito nella tabella di cui sopra oltre gli oneri e gli esborsi sostenuti per le attività già svolte o in corsi di esecuzione, con particolare riguardo allo studio, all’elaborazione anche parziale della documentazione, alle trasferte e spese sostenute per i professionisti incaricati, nonché del mancato guadagno.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-89",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Nel caso invece di semplice ritardo nell’adempimento della prestazione contrattuale da parte dell’Ausiliata, ai sensi e per gli effetti dell’art. 1382 c.c., la parte in mora sarà obbligata, oltre all’adempimento della prestazione, a versare all’altra, la somma di € 50,00 per ogni giorno di ritardo.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-90",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Qualifica Group si riserva la facoltà di addebitare al Cliente moroso le spese sostenute per eventuali azioni legali dirette ad ottenere il pagamento di quanto dovuto.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-91",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Art.7 - Decorrenza e durata",
+      "field": null,
+      "bold": true,
+      "italic": true,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-92",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "L'incarico decorre dalla data di sottoscrizione del presente contratto e termina al saldo dell’intero corrispettivo dovuto alla Qualifica Group s.r.l. da parte dell’impresa Ausiliata.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-93",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Art.8 - Recesso dal contratto",
+      "field": null,
+      "bold": true,
+      "italic": true,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-94",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Nel caso in cui l’impresa ausiliata decida di recedere dal contratto o di non volere proseguire con la sottoscrizione del contratto di avvalimento, Qualifica Group avrà diritto a titolo di risarcimento al pagamento da parte di quest’ultima della somma di €1000,00 oltre agli oneri e agli esborsi sostenuti per le attività già svolte o in corsi di esecuzione, con particolare riguardo allo studio, all’elaborazione anche parziale della documentazione, alle trasferte e spese sostenute per i professionisti incaricati, nonché del mancato guadagno.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-95",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Art.9 - Foro Competente. Deroga",
+      "field": null,
+      "bold": true,
+      "italic": true,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-96",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Per qualsiasi controversia che dovesse insorgere relativamente all’interpretazione, esecuzione del presente contratto, le parti dichiarano espressamente ai sensi dell’art. 28 del c.p.c., di voler ricorre al foro di Napoli Nord.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-97",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "In tutti i casi in cui Qualifica Group S.r.l. avrà necessità di intraprendere delle azioni giudiziarie nei confronti della Impresa Ausiliaria, le relative spese legali saranno imputate alla stessa ausiliata",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-98",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Art.10 - Non cedibilità del Contratto",
+      "field": null,
+      "bold": true,
+      "italic": true,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-99",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "È fatto divieto ad entrambe le parti di cedere il presente contratto a titolo gratuito o oneroso, temporaneamente o definitivamente a terzi, senza il consenso espresso e posto per iscritto, dell’altra parte.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-100",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Art. 11 - Responsabilità del Cliente. Manleva",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-101",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Le parti sono consapevoli e accettano formalmente che l'attività di Qualifica Group srl è di mera intermediazione e per tali ragioni, l’Azienda cliente si impegna a manlevare la Qualifica Group S.r.l, i collaboratori e dipendenti della stessa, da qualsiasi responsabilità, pretesa risarcitoria a cui fossero soggetti a causa di:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-102",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "- dichiarazioni e/o atti mendacei;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-103",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "- informazioni errate;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-104",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "- ritardi nelle comunicazioni;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-105",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "- violazione degli impegni assunti da parte dell’ausiliaria circa la disponibilità / capacità di prestare requisiti tecnici/economi o di sottoscrivere il contratto di avvalimento.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-106",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "L’azienda cliente si impegna infine a manlevare Qualifica Group da ogni richiesta di risarcimento o azione giudiziaria nei suoi confronti, nel caso di mancata individuazione dell’impresa ausiliaria, ritardi/mancata consegna della documentazione o di altro evento che impedisca all’azienda di partecipare al/ai bando/i di gara per i quali è stato richiesto l’intervento di Qualifica Group.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-107",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Art. 12 - Clausole finali",
+      "field": null,
+      "bold": true,
+      "italic": true,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-108",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Il Consulente si impegna a svolgere il proprio incarico sino al momento del rilascio dell’Avvalimento. Il contenuto del presente contratto invalida automaticamente e sostituisce qualsiasi accordo, intesa, negoziazione, verbale o scritta, esistente precedentemente tra le parti e concernente l’oggetto di cui al presente contratto. Qualsiasi accordo discusso in sede di trattative e non incorporato nel presente documento non ha effetti contrattuali o legali.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-109",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Variazioni al presente contratto avranno valore, pena la nullità, solo se confermate da entrambe le parti in forma scritta e firmate dai rispettivi legali rappresentanti.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-110",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "La presente scrittura non viene sottoposta a registrazione per espressa volontà delle parti restando stabilito che, ove ciò si rendessero necessario, tutte le spese e gli oneri conseguenti cederanno a carico della parte che con il proprio comportamento ne avrà resa necessaria la produzione in giudizio, essendo i corrispettivi del presente contratto assoggettati ad IVA, la registrazione sarà a tassa fissa ai sensi della vigente normativa.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-111",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "La circostanza che una delle parti non faccia valere tempestivamente i diritti riconosciutegli da una o più clausole di cui al presente contratto, non potrà mai essere intesa come rinuncia generale e tacita ai diritti e doveri nella clausola stabiliti, né impedirà a tale parte di pretendere successivamente la puntuale e rigorosa osservanza di ogni e qualsiasi clausola contrattuale. Qualora una o più clausole di cui al presente contratto, sia dichiarata nulla o inefficacie dalla competente autorità giurisdizionale, il restante contratto continuerà ad avere validità tra le parti, salvo che detta clausola abbia costituito motivo determinante nella conclusione del presente contratto.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-112",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Per quanto non espressamente convenuto e previsto nel presente contratto le parti fanno riferimento al codice civile (art. 2222 e seguenti) e alle norme che regolano i contratti e le prestazioni professionali in forma di scrittura privata.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-113",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Art.13 - Trattamento dati personali",
+      "field": null,
+      "bold": true,
+      "italic": true,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-114",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Per la tutela dell’Impresa ausiliaria, rispetto al trattamento dei dati personali, saranno osservate le disposizioni di cui Regolamento UE 2016/679, come specificato e accettato nell’Allegato A- Consenso all’informativa sulla privacy.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-115",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-116",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-117",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Letto, confermato e sottoscritto ________",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-118",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "table-2",
+    "type": "table",
+    "width_pct": 98,
+    "borders": null,
+    "columns": [
+     {
+      "width_pct": 49
+     },
+     {
+      "width_pct": 51
+     }
+    ],
+    "rows": [
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-119",
+          "type": "text",
+          "align": "center",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.5,
+          "runs": [
+           {
+            "text": "L’Ausiliata",
+            "field": null,
+            "bold": false,
+            "italic": true,
+            "underline": false,
+            "font": "Arial",
+            "size": 9,
+            "color": null
+           }
+          ]
+         },
+         {
+          "id": "text-120",
+          "type": "text",
+          "align": "center",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.5,
+          "runs": [
+           {
+            "text": "(timbro e firma)",
+            "field": null,
+            "bold": false,
+            "italic": true,
+            "underline": false,
+            "font": "Arial",
+            "size": 9,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-121",
+          "type": "text",
+          "align": "center",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.5,
+          "runs": [
+           {
+            "text": "Qualifica Group s.r.l.",
+            "field": null,
+            "bold": false,
+            "italic": true,
+            "underline": false,
+            "font": "Arial",
+            "size": 9,
+            "color": null
+           }
+          ]
+         },
+         {
+          "id": "text-122",
+          "type": "text",
+          "align": "center",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.5,
+          "runs": [
+           {
+            "text": "(timbro e firma)",
+            "field": null,
+            "bold": false,
+            "italic": true,
+            "underline": false,
+            "font": "Arial",
+            "size": 9,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "text-123",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-124",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-125",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Doppia sottoscrizione delle clausole:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-126",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Ai sensi e per gli effetti degli artt. 1341 e 1342 del codice civile, le parti unitamente alla sottoscrizione apposta in calce ala contratto, dichiarano espressamente di aver tenuto conto e di aver espressamente approvato, mediante una seconda sottoscrizione, le clausole contenute nei seguenti articoli: 6,8,9.11",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Arial",
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-127",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "table-3",
+    "type": "table",
+    "width_pct": 98,
+    "borders": null,
+    "columns": [
+     {
+      "width_pct": 49
+     },
+     {
+      "width_pct": 51
+     }
+    ],
+    "rows": [
+     {
+      "is_header": false,
+      "cells": [
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-128",
+          "type": "text",
+          "align": "center",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.5,
+          "runs": [
+           {
+            "text": "L’ Ausiliata",
+            "field": null,
+            "bold": false,
+            "italic": true,
+            "underline": false,
+            "font": "Arial",
+            "size": 9,
+            "color": null
+           }
+          ]
+         },
+         {
+          "id": "text-129",
+          "type": "text",
+          "align": "center",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.5,
+          "runs": [
+           {
+            "text": "(timbro e firma)",
+            "field": null,
+            "bold": false,
+            "italic": true,
+            "underline": false,
+            "font": "Arial",
+            "size": 9,
+            "color": null
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "col_span": 1,
+        "background": null,
+        "vertical_align": "top",
+        "blocks": [
+         {
+          "id": "text-130",
+          "type": "text",
+          "align": "center",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.5,
+          "runs": [
+           {
+            "text": "Qualifica Group s.r.l.",
+            "field": null,
+            "bold": false,
+            "italic": true,
+            "underline": false,
+            "font": "Arial",
+            "size": 9,
+            "color": null
+           }
+          ]
+         },
+         {
+          "id": "text-131",
+          "type": "text",
+          "align": "center",
+          "space_before": 0,
+          "space_after": 0,
+          "line_height": 1.5,
+          "runs": [
+           {
+            "text": "(timbro e firma)",
+            "field": null,
+            "bold": false,
+            "italic": true,
+            "underline": false,
+            "font": "Arial",
+            "size": 9,
+            "color": null
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "text-132",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-133",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-134",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-135",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-136",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-137",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-138",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-139",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Informativa breve per gli interessati",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-140",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Qualifica Group s.r.l., in qualità di Titolare del Trattamento dei dati personali ai sensi del Regolamento (UE) 2016/679 (GDPR), La informa che il trattamento è svolto in conformità alla normativa sulla protezione dei dati personali e i dati raccolti saranno conservati nei propri archivi per le sole finalità previste dalla normativa.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-141",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Gli interessati possono esercitare i diritti a loro spettanti ai sensi degli artt. 15-22 e 77 del GDPR e possono consultare l’informativa sul trattamento dei dati personali completa e le eventuali modifiche ed integrazioni sul sito web del Titolare del Trattamento al link: https://www.qualificagroup.it/informativa-clienti/",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 8,
+      "color": null
+     }
+    ]
+   }
+  ]
+ },
+ "footer": {
+  "blocks": []
+ }
+}

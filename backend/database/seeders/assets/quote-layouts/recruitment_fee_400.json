@@ -1,0 +1,1574 @@
+{
+ "version": 1,
+ "page": {
+  "format": "A4",
+  "orientation": "portrait",
+  "margins": {
+   "top": 1985,
+   "right": 1134,
+   "bottom": 1560,
+   "left": 1134
+  },
+  "default_font": {
+   "family": "Calibri",
+   "size": 11,
+   "color": "000000"
+  }
+ },
+ "header": {
+  "blocks": [
+   {
+    "id": "letterhead-1",
+    "type": "image",
+    "attachment_id": "letterhead-0142975dcc4a.png",
+    "width": 595,
+    "height": 841,
+    "align": "center",
+    "wrap": "behind_page"
+   }
+  ]
+ },
+ "body": {
+  "blocks": [
+   {
+    "id": "text-1",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Offerta n°",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Trebuchet MS",
+      "size": 9,
+      "color": "2B3B4C"
+     },
+     {
+      "text": " ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": null,
+      "color": null
+     },
+     {
+      "text": "{quote.code} del {quote.created_at}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Trebuchet MS",
+      "size": 9,
+      "color": "2B3B4C"
+     }
+    ]
+   },
+   {
+    "id": "text-2",
+    "type": "text",
+    "align": "left",
+    "space_before": 4,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-3",
+    "type": "text",
+    "align": "center",
+    "space_before": 4,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "QUALIFICA GROUP FORMAZIONE E LAVORO IMPRESA SOCIALE SRL",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-4",
+    "type": "text",
+    "align": "center",
+    "space_before": 4,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "PROPOSTA COMMERCIALE AGENZIA PER IL LAVORO",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-5",
+    "type": "text",
+    "align": "center",
+    "space_before": 4,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Il presente accordo commerciale intercorre tra le seguenti parti:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-6",
+    "type": "text",
+    "align": "center",
+    "space_before": 4,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-7",
+    "type": "text",
+    "align": "justify",
+    "space_before": 156,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "{client.name} - {client.address} P.Iva: {client.vat_number}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-8",
+    "type": "text",
+    "align": "justify",
+    "space_before": 156,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "in persona del r.p.t. ______________________ ;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-9",
+    "type": "text",
+    "align": "center",
+    "space_before": 156,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "di seguito denominata “Committente”",
+      "field": null,
+      "bold": false,
+      "italic": true,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-10",
+    "type": "text",
+    "align": "center",
+    "space_before": 4,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-11",
+    "type": "text",
+    "align": "right",
+    "space_before": 181,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "- Qualifica Group Formazione e Lavoro Impresa Sociale srl, con sede legale in Via Zoe Fontana 220-Edificio B3 (RM) P. IVA/C.F. 09075631219, in persona del r.p.t. Dott. Enrico Ferrante",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": " di seguito denominata “",
+      "field": null,
+      "bold": false,
+      "italic": true,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": "QUALIFICA GROUP FORMAZIONE E LAVORO IMPRESA SOCIALE SRL",
+      "field": null,
+      "bold": false,
+      "italic": true,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": "”;",
+      "field": null,
+      "bold": false,
+      "italic": true,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "image-1",
+    "type": "image",
+    "attachment_id": "image-3a7b0da49063.png",
+    "width": 316,
+    "height": 241,
+    "align": "center",
+    "wrap": "inline"
+   },
+   {
+    "id": "text-12",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-13",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-14",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-15",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-16",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "SERVIZIO DI RICERCA E SELEZIONE DI PERSONALE QUALIFICATO",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-17",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-18",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Per il servizio di Ricerca & Selezione, l’attività di Qualifica Group Formazione e Lavoro Impresa Sociale srl,  si svolgerà con le seguenti modalità:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-19",
+    "type": "text",
+    "align": "justify",
+    "space_before": 100,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "• Consulenza HR sull’implementazione del personale in base alle esigenze indicate dal Committente;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-20",
+    "type": "text",
+    "align": "justify",
+    "space_before": 100,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "• Attivazione dei canali di reclutamento e piattaforme digitali, canali social network, sulla base delle analisi del fabbisogno interno aziendale e sulle informazioni fornite dalla Committente (Job Description);",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-21",
+    "type": "text",
+    "align": "justify",
+    "space_before": 100,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "• Screening e Analisi delle risorse pervenute mediante candidatura volontaria sulle nostre piattaforme digitali e canali di reclutamento utilizzati, oltre alla ricerca attiva di personale e risorse qualificate contattate attraverso screening e valutazione della risorsa sulle nostre piattaforme di riferimento;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-22",
+    "type": "text",
+    "align": "justify",
+    "space_before": 100,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "• Attivazione servizio di selezione, colloquio conoscitivo telefonico, video call di approfondimento sulla risorsa, colloqui de visu;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-23",
+    "type": "text",
+    "align": "justify",
+    "space_before": 100,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "• Convocazione dei candidati in linea per il colloquio con il Committente, per la posizione lavorativa richiesta presso le sedi operative indicate dal Committente;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-24",
+    "type": "text",
+    "align": "justify",
+    "space_before": 100,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "• Presentazione Short List (n.3 profili) di candidati in linea con il profilo professionale richiesto;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-25",
+    "type": "text",
+    "align": "justify",
+    "space_before": 100,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "• Follow - Up durante la fase di negoziazione e presentazione della proposta lavorativa al Candidato da parte del Committente (match);",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-26",
+    "type": "text",
+    "align": "justify",
+    "space_before": 100,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "• Feedback alla risorsa selezionata e riscontro con la Committenza per tutte le comunicazioni ai fini del buon andamento della selezione richiesta fino alla chiusura del processo di ricerca & selezione;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-27",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-28",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-29",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-30",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-31",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "CONDIZIONI OFFERTA COMMERCIALE",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-32",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "La proposta di ricerca e selezione di Qualifica Group Formazione e Lavoro Impresa Sociale srl, Agenzia per il Lavoro autorizzata dal Ministero del Lavoro e delle Politiche Attive (aut.n.0000009.25-01-2021) ed accreditata in Regione Campania e in Regione Sicilia",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": " ",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": "ad esercitare l’attività di ricerca e selezione del personale, prevede un’attività di ricerca e selezione dei profili più attinenti alle indicazioni della Committente, alle seguenti condizioni economiche.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-33",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Il presente accordo è volto a regolare le condizioni di ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": "Ricerca e Selezione",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": " (R&S) riguardo le seguenti posizioni:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "quote-lines-1",
+    "type": "products_table",
+    "source": "offer_lines",
+    "width_pct": 100,
+    "borders": {
+     "size": 4,
+     "color": "000000"
+    },
+    "show_header": true,
+    "header_background": "323E4F",
+    "columns": [
+     {
+      "lines": [
+       {
+        "keys": [
+         "code",
+         "name"
+        ],
+        "separator": "-",
+        "bold": false,
+        "italic": false,
+        "size": 11
+       },
+       {
+        "keys": [
+         "description"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 11
+       },
+       {
+        "keys": [
+         "additional_description"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 11
+       }
+      ],
+      "label": "Descrizione",
+      "width_pct": 40,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "quantity"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 11
+       }
+      ],
+      "label": "Quantità",
+      "width_pct": 17,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "unit_price"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 11
+       }
+      ],
+      "label": "Imponibile",
+      "width_pct": 19,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "vat_rate"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 11
+       }
+      ],
+      "label": "Iva",
+      "width_pct": 10,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "net_amount"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 11
+       }
+      ],
+      "label": "Totale",
+      "width_pct": 14,
+      "align": "right"
+     }
+    ],
+    "totals": {
+     "show": true,
+     "rows": [
+      {
+       "label": "Totali",
+       "variable": "{totals.revenue_net}",
+       "bold": false
+      },
+      {
+       "label": "IVA",
+       "variable": "{totals.revenue_vat}",
+       "bold": false
+      }
+     ]
+    },
+    "empty_text": "Nessuna riga presente in offerta."
+   },
+   {
+    "id": "text-34",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-35",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Totale offerta",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": ":____________________",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-36",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Le parti stabiliscono che l’intera somma verrà corrisposta con le seguenti modalità:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-37",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "- ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": "Fee di attivazione",
+      "field": null,
+      "bold": true,
+      "italic": true,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": "FF0000"
+     },
+     {
+      "text": " ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": "FF0000"
+     },
+     {
+      "text": "dell’importo di euro 400€, per l’attivazione del servizio di ricerca & selezione di n. ____ figure professionali, da versare al momento della firma del presente accordo;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-38",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "- ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": "Saldo Fattura R&S",
+      "field": null,
+      "bold": true,
+      "italic": true,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": "FF0000"
+     },
+     {
+      "text": " ",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": "FF0000"
+     },
+     {
+      "text": "di euro__________ da versare entro e non oltre l’individuazione del profilo o dei profili professionali richiesti;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-39",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Per il caso in cui, a seguito di ricerca e selezione, Qualifica Group Formazione e Lavoro Impresa Sociale srl non abbia individuato alcuna risorsa idonea alla ricerca affidatale, il saldo fattura R&S non sarà dovuto.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-40",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "OBBLIGHI DELLE PARTI",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-41",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "La committente, altresì, è tenuta a fornire a Qualifica Group Formazione e Lavoro Impresa Sociale srl, in persona del recruiter di riferimento, entro e non oltre 3 giorni lavorativi, a mezzo e-mail, ogni tipo di comunicazione sulle risorse inviate, sui curriculum visionati, nonchè sui colloqui effettuati. La committente si obbliga, inoltre, a non farsi rilasciare alcun contatto personale da parte dei soggetti individuati a seguito di ricerca e selezione e conseguentemente segnalati, fino all’assunzione della figura professionale richiesta.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-42",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Durante la fase di ricerca e selezione, presentazione dei profili e per il riscontro post colloquio, il cliente entro e non oltre 3 giorni  lavorativi è tenuto a dare riscontro; se ciò non avviene la selezione e il processo di ricerca può ritenersi sospeso e/o cessato.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-43",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "CORRISPETTIVO DOVUTO IN CASO DI ASSUNZIONE",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-44",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Nel caso in cui la Committente assuma il profilo o i profili richiesti, è tenuta a darne notizia e a fornire idonea documentazione attestante l’avvenuta assunzione (con copia di UNILAV  oppure contratto di lavoro);",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-45",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "- In caso di mancata comunicazione dell’ avvenuta assunzione da parte della Committente, Qualifica Group Formazione e Lavoro Impresa Sociale srl avrà diritto di pretendere un importo di Euro _____________, a titolo di penale e la Commitente, sin da ora, ne riconosce il titolo.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-46",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "- Eventuali spese quali ad esempio: viaggio, vitto e/o alloggio, che Qualifica Group Formazione e Lavoro Impresa Sociale srl dovesse sostenere in vigenza del presente accordo, previa autorizzazione del Cliente, saranno integralmente fatturate al Committente.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-47",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-48",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "CLAUSOLA DI MANLEVA",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-49",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale S.r.l. non garantisce l’assunzione del lavoratore ma una professionale ricerca e selezione del personale.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-50",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "All’uopo, la Committente manleva sin da ora Qualifica Group Formazione e Lavoro Impresa Sociale S.r.l. da qualsiasi responsabilità e/o pretesa risarcitoria dovuta o scaturente dalla mancata assunzione o individuazione della risorsa richiesta.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-51",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "VALIDITA’ PROPOSTA COMMERCIALE",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-52",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "La presente Proposta Commerciale ha una validità di almeno 90 (novanta) giorni lavorativi con decorrenza dalla sottoscrizione del presente accordo, e pertanto la  presente proposta commerciale perde la sua efficacia dal 91 (novantunesimo) giorno lavorativo le parti si riterranno libere dai propri obblighi. Il processo di selezione si intenderà concluso all’atto dell’assunzione del profilo selezionato da parte del Committente ed, in tutti i casi, comunque non oltre i 90 giorni lavorativi (lun. – ven.), con decorrenza dalla                        sottoscrizione del presente accordo",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-53",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "e dalla data di erogazione dell’acconto. ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": null,
+      "color": null
+     },
+     {
+      "text": "Trascorso tale termine, la presente proposta commerciale si intenderà decaduta.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-54",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "CODICE ETICO",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-55",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa Sociale srl ha adottato un proprio Modello di organizzazione, gestione e controllo ed un proprio Codice Etico, ai sensi del D.lgs. 231/2001. Tutte le parti interessate (clienti, partner, consulenti, fornitori e chiunque altro venga in contatto con l’azienda) che intrattengono rapporti contrattuali con Qualifica Group Formazione e Lavoro Impresa Sociale srl, con la firma e/o accettazione del presente documento, si impegnano, per quanto di loro competenza, alla osservanza delle regole e dei comportamenti definiti nel sopracitato Modello di organizzazione e nel Codice Etico.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-56",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "FORO COMPETENTE",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-57",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Per ogni controversia che dovesse sorgere in ragione dell’applicazione, esecuzione, interpretazione del presente contratto, le parti espressamente stabiliscono che il foro competente sarà il Foro di Napoli Nord.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-58",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 240,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "RISERVATEZZA E TRATTAMENTO DEI DATI",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-59",
+    "type": "text",
+    "align": "justify",
+    "space_before": 2,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Le Parti si impegnano a trattare i dati personali esclusivamente per i fini strettamente connessi all’esecuzione delle obbligazioni contrattuali qui previste ed in conformità comunque dei disposti dal Regolamento UE 2016/679, come specificato e accettato nell’Allegato - Consenso all’informativa sulla privacy e del D.lgs 196/2003 e s.m.i. Le Parti si impegnano altresì a trattare i dati personali di cui venissero a conoscenza in occasione del presente rapporto in conformità di quanto previsto dal Regolamento UE 2016/679 e del D.lgs 196/2003 e s.m.i., con particolare ma non esclusivo riguardo alle finalità di trattamento dei dati ed al loro ambito di applicazione e diffusione ed indica quale Titolare del trattamento dei dati personali.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-60",
+    "type": "text",
+    "align": "justify",
+    "space_before": 2,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-61",
+    "type": "text",
+    "align": "justify",
+    "space_before": 2,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Pec e/o e-mail del Committente",
+      "field": null,
+      "bold": true,
+      "italic": true,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": " _____________________________;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-62",
+    "type": "text",
+    "align": "justify",
+    "space_before": 100,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Pec e/o e-mail di Qualifica Group Formazione e lavoro Impresa Sociale  srl",
+      "field": null,
+      "bold": true,
+      "italic": true,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-63",
+    "type": "text",
+    "align": "justify",
+    "space_before": 100,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-64",
+    "type": "text",
+    "align": "justify",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "_____________________________;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Times New Roman",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-65",
+    "type": "text",
+    "align": "justify",
+    "space_before": 2,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-66",
+    "type": "text",
+    "align": "justify",
+    "space_before": 2,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-67",
+    "type": "text",
+    "align": "justify",
+    "space_before": 2,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-68",
+    "type": "text",
+    "align": "left",
+    "space_before": 1,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-69",
+    "type": "text",
+    "align": "left",
+    "space_before": 1,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "DATA ________________",
+      "field": null,
+      "bold": true,
+      "italic": true,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-70",
+    "type": "text",
+    "align": "left",
+    "space_before": 1,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": []
+   },
+   {
+    "id": "text-71",
+    "type": "text",
+    "align": "right",
+    "space_before": 1,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "Timbro e Firma Committente",
+      "field": null,
+      "bold": true,
+      "italic": true,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-72",
+    "type": "text",
+    "align": "right",
+    "space_before": 1,
+    "space_after": 0,
+    "line_height": 1.5,
+    "runs": [
+     {
+      "text": "___________________________",
+      "field": null,
+      "bold": true,
+      "italic": true,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "image-2",
+    "type": "image",
+    "attachment_id": "image-9128549704f4.png",
+    "width": 142,
+    "height": 67,
+    "align": "left",
+    "wrap": "inline"
+   }
+  ]
+ },
+ "footer": {
+  "blocks": []
+ }
+}

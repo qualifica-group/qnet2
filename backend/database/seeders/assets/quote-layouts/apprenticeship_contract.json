@@ -1,0 +1,1408 @@
+{
+ "version": 1,
+ "page": {
+  "format": "A4",
+  "orientation": "portrait",
+  "margins": {
+   "top": 1985,
+   "right": 1134,
+   "bottom": 1560,
+   "left": 1134
+  },
+  "default_font": {
+   "family": "Calibri",
+   "size": 11,
+   "color": "000000"
+  }
+ },
+ "header": {
+  "blocks": [
+   {
+    "id": "letterhead-1",
+    "type": "image",
+    "attachment_id": "letterhead-0142975dcc4a.png",
+    "width": 595,
+    "height": 841,
+    "align": "center",
+    "wrap": "behind_page"
+   }
+  ]
+ },
+ "body": {
+  "blocks": [
+   {
+    "id": "text-1",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.07,
+    "runs": [
+     {
+      "text": "Offerta n°",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 12,
+      "color": "2B3B4C"
+     },
+     {
+      "text": " ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": "{quote.code} del {quote.created_at}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 12,
+      "color": "2B3B4C"
+     }
+    ]
+   },
+   {
+    "id": "text-2",
+    "type": "text",
+    "align": "center",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Contratto di Apprendistato Professionalizzante",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-3",
+    "type": "text",
+    "align": "center",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Tra",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-4",
+    "type": "text",
+    "align": "center",
+    "space_before": 100,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-5",
+    "type": "text",
+    "align": "center",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Con sede legale in Via Zoe Fontana 220 00131, Roma, P.IVA 09075631219 di seguito denominata \"Agenzia\"",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-6",
+    "type": "text",
+    "align": "center",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "e",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-7",
+    "type": "text",
+    "align": "center",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "{client.name} - {client.address} P.Iva: {client.vat_number}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-8",
+    "type": "text",
+    "align": "center",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "di seguito denominata \"Cliente\"",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-9",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Premesso che:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-10",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa sociale srl, ",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": null,
+      "color": null
+     },
+     {
+      "text": "ente di formazione professionale ed agenzia per il lavoro accreditata dal Ministero del Lavoro e delle Politiche sociali, è specializzata nell’erogazione della formazione professionale e dei servizi per il lavoro.                                                                                                                    Il ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": null,
+      "color": null
+     },
+     {
+      "text": "Cliente",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": null,
+      "color": null
+     },
+     {
+      "text": " desidera avvalersi dei servizi dell’Agenzia per la formazione obbligatoria prevista per il contratto di apprendistato professionalizzante.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-11",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Si conviene e si stipula quanto segue:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-12",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Articolo 1 - Oggetto del Contratto                                                                                                                                ",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": "4472C4"
+     },
+     {
+      "text": "L’Agenzia si impegna ad erogare in favore del Cliente i servizi di formazione previsti dalla normativa vigente in materia di apprendistato professionalizzante, secondo le modalità, i termini e le condizioni stabiliti nel presente contratto. L’Apprendista si impegna a svolgere le mansioni assegnate e a partecipare al percorso formativo previsto dal presente contratto, secondo le modalità stabilite dalla normativa vigente, dal CCNL applicato e dal piano formativo individuale.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-13",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Articolo 2 - Durata del Contratto                                                                                                                                               ",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": "4472C4"
+     },
+     {
+      "text": "Il presente contratto ha una durata triennale con decorrenza dalla data di sottoscrizione dello stesso. Alla scadenza, il contratto potrà essere rinnovato previo accordo scritto tra le parti.                  La durata del periodo di apprendistato è stabilita in relazione alla qualifica e al profilo professionale che l’Apprendista è destinato a conseguire e non potrà, in ogni caso, eccedere i limiti massimi previsti dalla legge e dalla contrattazione collettiva applicabile.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-14",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Articolo 3 - Tipologia di Apprendistato                                                                                                                   ",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": "4472C4"
+     },
+     {
+      "text": "Il presente contratto concerne la formazione nell’ambito del contratto di apprendistato professionalizzante, finalizzato al conseguimento di una qualificazione professionale ai fini contrattuali attraverso l’acquisizione di competenze di carattere trasversale e tecnico-professionale.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-15",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-16",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-17",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Articolo 4 – Destinatari                                                                                                                                                                         ",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": "4472C4"
+     },
+     {
+      "text": "Il contratto di apprendistato professionalizzante può essere stipulato con soggetti di età compresa tra i ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": "0D0D0D"
+     },
+     {
+      "text": "18 e i 29 anni",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": "0D0D0D"
+     },
+     {
+      "text": ", ai sensi della normativa vigente. Per i soggetti in possesso di una qualifica professionale, l’età minima per l’instaurazione del rapporto di apprendistato è fissata a ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": "0D0D0D"
+     },
+     {
+      "text": "17 anni",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": "0D0D0D"
+     },
+     {
+      "text": ". L’apprendistato professionalizzante può essere attivato nei diversi settori di attività, secondo quanto previsto dalla normativa vigente e dalla contrattazione collettiva applicabile.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": "0D0D0D"
+     }
+    ]
+   },
+   {
+    "id": "text-18",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Articolo 5 – Attività Formative                                                                                                                                                ",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": "4472C4"
+     },
+     {
+      "text": "La formazione prevista nell’ambito del percorso di apprendistato professionalizzante si articola, secondo quanto stabilito dalla normativa vigente e dalla disciplina applicabile, nelle seguenti aree:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-19",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "1. Area competenze base/trasversali",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": ": Competenze e conoscenze necessarie per rispondere alle richieste organizzative nell’ambiente di lavoro.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-20",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "2. Area delle competenze tecnico-professionali",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": ": Competenze e tecniche specifiche di una determinata area professionale, necessarie per la gestione di precisi processi/attività.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-21",
+    "type": "text",
+    "align": "left",
+    "space_before": 240,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Articolo 6 - Obblighi dell'Agenzia e del Cliente                                                                                           ",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": "4472C4"
+     },
+     {
+      "text": "L’Agenzia si impegna a:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-22",
+    "type": "text",
+    "align": "left",
+    "space_before": 240,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "1) Erogare la formazione obbligatoria prevista per l’apprendistato professionalizzante, secondo la normativa vigente e la disciplina applicabile;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-23",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "2) Pianificare, organizzare e monitorare il percorso formativo dell’apprendista;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-24",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "3) Fornire al Cliente l’assistenza necessaria alla corretta gestione del percorso formativo per tutta la durata del servizio;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-25",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Il Cliente si impegna a:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-26",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "1) Fornire all’Agenzia tutte le informazioni, i dati e la documentazione necessari per la corretta organizzazione e gestione del servizio;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-27",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "2) Garantire all’apprendista un ambiente di lavoro sicuro e conforme alla normativa vigente in materia di salute e sicurezza sul lavoro;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-28",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "3) Collaborare con l’Agenzia nell’organizzazione, nel monitoraggio e nella valutazione del percorso formativo;",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-29",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-30",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-31",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-32",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-33",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-34",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Articolo 8 - Corrispettivo e Modalità di Pagamento",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": "4472C4"
+     }
+    ]
+   },
+   {
+    "id": "text-35",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Il Cliente si impegna a corrispondere all’Agenzia il relativo corrispettivo, secondo gli importi, le modalità e le tempistiche di pagamento di seguito indicate:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "quote-lines-1",
+    "type": "products_table",
+    "source": "offer_lines",
+    "width_pct": 100,
+    "borders": {
+     "size": 4,
+     "color": "000000"
+    },
+    "show_header": true,
+    "header_background": "323E4F",
+    "columns": [
+     {
+      "lines": [
+       {
+        "keys": [
+         "code",
+         "name"
+        ],
+        "separator": "-",
+        "bold": false,
+        "italic": false,
+        "size": 12
+       },
+       {
+        "keys": [
+         "description"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 12
+       },
+       {
+        "keys": [
+         "additional_description"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 12
+       }
+      ],
+      "label": "Descrizione",
+      "width_pct": 40,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "quantity"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 12
+       }
+      ],
+      "label": "Quantità",
+      "width_pct": 17,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "unit_price"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 12
+       }
+      ],
+      "label": "Imponibile",
+      "width_pct": 19,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "vat_rate"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 12
+       }
+      ],
+      "label": "Iva",
+      "width_pct": 10,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "net_amount"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 12
+       }
+      ],
+      "label": "Totale",
+      "width_pct": 14,
+      "align": "right"
+     }
+    ],
+    "totals": {
+     "show": true,
+     "rows": [
+      {
+       "label": "Totali",
+       "variable": "{totals.revenue_net}",
+       "bold": false
+      },
+      {
+       "label": "IVA",
+       "variable": "{totals.revenue_vat}",
+       "bold": false
+      }
+     ]
+    },
+    "empty_text": "Nessuna riga presente in offerta."
+   },
+   {
+    "id": "text-36",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.07,
+    "runs": []
+   },
+   {
+    "id": "text-37",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.07,
+    "runs": [
+     {
+      "text": "Totale offerta :  {totals.revenue_gross}",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-38",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Il pagamento del corrispettivo relativo a ciascuna annualità dovrà essere effettuato ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": "all’avvio delle relative attività formative",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": " e, comunque, a seguito della ricezione della comunicazione di pianificazione delle attività formative trasmessa dall’Agenzia. A tal fine, l’Agenzia provvederà all’emissione della relativa ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": "fattura pro-forma per ciascuna annualità di riferimento",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": ", sulla base della quale il Cliente effettuerà il pagamento mediante bonifico bancario alle seguenti coordinate:                                      ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": "Intestatario:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": " Qualifica Group Formazione e Lavoro",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-39",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Istituto bancario:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": " Intesa Sanpaolo",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-40",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "IBAN:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": " IT73S0306939722100000014804",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-41",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Articolo 9 - Risoluzione del Contratto                                                                                                                            ",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": "4472C4"
+     },
+     {
+      "text": "Ciascuna Parte potrà recedere anticipatamente dal presente contratto mediante comunicazione scritta da trasmettere all’altra Parte con un ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": "preavviso di almeno 30 (trenta) giorni",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     },
+     {
+      "text": ", fatto salvo quanto diversamente previsto dalla legge o dal presente contratto. Il recesso non pregiudica il diritto dell’Agenzia a percepire i corrispettivi maturati per le attività formative e i servizi già erogati fino alla data di efficacia del recesso. In caso di cessazione anticipata del contratto, le Parti provvederanno alla determinazione e alla liquidazione degli importi eventualmente dovuti in relazione alle prestazioni già eseguite, alle attività formative già avviate e agli eventuali servizi già programmati o erogati.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-42",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-43",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-44",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-45",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-46",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Articolo 10 - Clausole Finali                                                                                                                               ",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 12,
+      "color": "4472C4"
+     },
+     {
+      "text": "Qualsiasi modifica, integrazione o variazione del presente contratto sarà valida esclusivamente se concordata tra le Parti in forma scritta e sottoscritta dai rispettivi rappresentanti. Per quanto non espressamente disciplinato dal presente contratto, si applicano le disposizioni della normativa nazionale e regionale vigente in materia di apprendistato, formazione professionale e servizi per il lavoro, nonché le ulteriori disposizioni applicabili al rapporto contrattuale.                                                                   Il presente contratto è disciplinato e interpretato secondo la legge italiana.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-47",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-48",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-49",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Letto, confermato e sottoscritto da:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-50",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Qualifica Group Formazione e Lavoro Impresa sociale srl",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "image-1",
+    "type": "image",
+    "attachment_id": "image-9128549704f4.png",
+    "width": 178,
+    "height": 84,
+    "align": "left",
+    "wrap": "inline"
+   },
+   {
+    "id": "text-51",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-52",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Per accettazione",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-53",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "Timbro e firma della committente:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 12,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-54",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-55",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-56",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-57",
+    "type": "text",
+    "align": "left",
+    "space_before": 100,
+    "space_after": 100,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "_______________________________",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Calibri Light",
+      "size": 12,
+      "color": null
+     }
+    ]
+   }
+  ]
+ },
+ "footer": {
+  "blocks": []
+ }
+}

@@ -1,0 +1,685 @@
+{
+ "version": 1,
+ "page": {
+  "format": "A4",
+  "orientation": "portrait",
+  "margins": {
+   "top": 2410,
+   "right": 1134,
+   "bottom": 1560,
+   "left": 1134
+  },
+  "default_font": {
+   "family": "Calibri",
+   "size": 11,
+   "color": "000000"
+  }
+ },
+ "header": {
+  "blocks": [
+   {
+    "id": "image-2",
+    "type": "image",
+    "attachment_id": "image-a69750122885.png",
+    "width": 481,
+    "height": 90,
+    "align": "left",
+    "wrap": "inline"
+   }
+  ]
+ },
+ "body": {
+  "blocks": [
+   {
+    "id": "rule-1",
+    "type": "divider",
+    "width_pct": 100,
+    "thickness": 8,
+    "color": "A5A5A5",
+    "space_before": 0,
+    "space_after": 120
+   },
+   {
+    "id": "text-1",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Viale delle Industrie, snc - 80027 Frattamaggiore (NA) - C.F. & P.IVA 09075631219",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-2",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Tel. 333.32.37.341",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-3",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "www.alfaacademy.info - commerciale@alfaacademy.info",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "rule-2",
+    "type": "divider",
+    "width_pct": 100,
+    "thickness": 8,
+    "color": "A5A5A5",
+    "space_before": 0,
+    "space_after": 120
+   },
+   {
+    "id": "text-4",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Offerta n°",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Trebuchet MS",
+      "size": 9,
+      "color": "2B3B4C"
+     },
+     {
+      "text": " ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": null,
+      "color": null
+     },
+     {
+      "text": "{quote.code} del {quote.created_at}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Trebuchet MS",
+      "size": 9,
+      "color": "2B3B4C"
+     }
+    ]
+   },
+   {
+    "id": "text-5",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-6",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Spettabile:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-7",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "{client.name}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-8",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "{client.address}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-9",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "P.Iva: {client.vat_number}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-10",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-11",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "quote-lines-1",
+    "type": "products_table",
+    "source": "offer_lines",
+    "width_pct": 100,
+    "borders": {
+     "size": 4,
+     "color": "000000"
+    },
+    "show_header": true,
+    "header_background": "323E4F",
+    "columns": [
+     {
+      "lines": [
+       {
+        "keys": [
+         "code",
+         "name"
+        ],
+        "separator": "-",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       },
+       {
+        "keys": [
+         "description"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       },
+       {
+        "keys": [
+         "additional_description"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Descrizione",
+      "width_pct": 40,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "quantity"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Quantità",
+      "width_pct": 17,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "unit_price"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Imponibile",
+      "width_pct": 19,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "vat_rate"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Iva",
+      "width_pct": 10,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "net_amount"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Totale",
+      "width_pct": 14,
+      "align": "right"
+     }
+    ],
+    "totals": {
+     "show": true,
+     "rows": [
+      {
+       "label": "Totali",
+       "variable": "{totals.revenue_net}",
+       "bold": false
+      },
+      {
+       "label": "IVA",
+       "variable": "{totals.revenue_vat}",
+       "bold": false
+      }
+     ]
+    },
+    "empty_text": "Nessuna riga presente in offerta."
+   },
+   {
+    "id": "text-12",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-13",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Totale offerta :  {totals.revenue_gross}",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "rule-3",
+    "type": "divider",
+    "width_pct": 100,
+    "thickness": 8,
+    "color": "A5A5A5",
+    "space_before": 0,
+    "space_after": 120
+   },
+   {
+    "id": "text-14",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "COSTI E TERMINI DI PAGAMENTO:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 7,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-15",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "L’importo totale sopra indicato sarà da versare mediante Bonifico Bancario IBAN IT73S0306939722100000014804 (Banca Intesa San Paolo filiale di Cardito) intestato ad ALFA ACADEMY SRL con causale: “Denominazione Corso + Nome Discente + Quota N° (o Saldo)” dilazionato in massimo tre rate mensili dalla data di sottoscrizione della presente offerta economica. Nel caso di mancato o ritardo nei pagamenti da parte del richiedente, il presente contratto rimarrà valido ma Alfa Academy non potrà considerare il richiedente come iscritto alla prima data utile del corso e/o non idoneo al sostenimento dell’esame finale propedeutico all’eventuale rilascio successivo dell’attestato. In caso di non superamento dell’esame regionale o in caso d’assenza, il Richiedente dovrà versare ad Alfa Academy €. 79,00 al fine di essere inserito in una nuova sessione d’esame.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 7,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-16",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Napoli ____/_____/_____                                                                                                                                                                          Firma Richiedente",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 7,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-17",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-18",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "DOPPIA SOTTOSCRIZIONE",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 7,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-19",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Ai sensi e per gli effetti degli artt. 1341 e 1342 del codice civile, le parti unitamente alla sottoscrizione apposta in calce alla Richiesta di Iscrizione, dichiarano espressamente di aver tenuto conto, compreso e di aver espressamente approvato, mediante una seconda sottoscrizione, le clausole dei “termini e condizioni dei corsi di formazione” presenti sul sito https://www.alfaacademy.info/formazione/termini-e-condizioni/, contenute nei seguenti articoli: 6, 7, 9, 10,13.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 7,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-20",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Napoli,   ____/_____/_____",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 7,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-21",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Firma Richiedente                                                                                                                                                                                                                                                    Alfa Academy s.r.l.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 7,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "image-1",
+    "type": "image",
+    "attachment_id": "image-cffbd749045c.png",
+    "width": 79,
+    "height": 34,
+    "align": "left",
+    "wrap": "inline"
+   },
+   {
+    "id": "text-22",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-23",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-24",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": [
+     {
+      "text": "INFORMATIVA BREVE PER GLI INTERESSATI",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 7,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-25",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.0,
+    "runs": []
+   },
+   {
+    "id": "text-26",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Alfa Academy s.r.l., in qualità di Titolare del Trattamento dei dati personali ai sensi del Regolamento (UE) 2016/679 (GDPR), La informa che il trattamento è svolto in conformità alla normativa sulla protezione dei dati personali e i dati raccolti saranno conservati nei propri archivi per le sole finalità previste dalla normativa.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 7,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-27",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Gli interessati possono esercitare i diritti a loro spettanti ai sensi degli artt. 15-22 e 77 del GDPR e possono consultare l’informativa sul trattamento dei dati personali completa e le eventuali modifiche ed integrazioni sul sito web del Titolare del Trattamento al link: (inserire link della pagina web del sito in cui è presente l’informativa completa): https://www.alfaacademy.info/formazione/informativa-formazione-e-lavoro",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 7,
+      "color": "262626"
+     }
+    ]
+   }
+  ]
+ },
+ "footer": {
+  "blocks": [
+   {
+    "id": "image-3",
+    "type": "image",
+    "attachment_id": "image-1541666dafcc.png",
+    "width": 481,
+    "height": 63,
+    "align": "left",
+    "wrap": "inline"
+   }
+  ]
+ }
+}

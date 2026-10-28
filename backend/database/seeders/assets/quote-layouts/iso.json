@@ -1,0 +1,824 @@
+{
+ "version": 1,
+ "page": {
+  "format": "A4",
+  "orientation": "portrait",
+  "margins": {
+   "top": 2127,
+   "right": 1134,
+   "bottom": 1560,
+   "left": 1134
+  },
+  "default_font": {
+   "family": "Calibri",
+   "size": 11,
+   "color": "000000"
+  }
+ },
+ "header": {
+  "blocks": [
+   {
+    "id": "letterhead-1",
+    "type": "image",
+    "attachment_id": "letterhead-75cb7b747891.png",
+    "width": 595,
+    "height": 841,
+    "align": "center",
+    "wrap": "behind_page"
+   }
+  ]
+ },
+ "body": {
+  "blocks": [
+   {
+    "id": "rule-1",
+    "type": "divider",
+    "width_pct": 100,
+    "thickness": 8,
+    "color": "A5A5A5",
+    "space_before": 0,
+    "space_after": 120
+   },
+   {
+    "id": "text-1",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Viale delle Industrie, snc - 80027 Frattamaggiore (Na) - C.F. & P.IVA 09537471212",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-2",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Tel. 081.834.79.60 - Fax 081.010.41.08",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-3",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "www.qualificagroup.it - commerciale@qualificagroup.it",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "rule-2",
+    "type": "divider",
+    "width_pct": 100,
+    "thickness": 8,
+    "color": "A5A5A5",
+    "space_before": 0,
+    "space_after": 120
+   },
+   {
+    "id": "text-4",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Offerta n°",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Trebuchet MS",
+      "size": 9,
+      "color": "2B3B4C"
+     },
+     {
+      "text": " ",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": null,
+      "color": null
+     },
+     {
+      "text": "{quote.code} del {quote.created_at}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Trebuchet MS",
+      "size": 9,
+      "color": "2B3B4C"
+     }
+    ]
+   },
+   {
+    "id": "text-5",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Spettabile:",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-6",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "{client.name}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-7",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "{client.address}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-8",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "P.Iva: {client.vat_number}",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 9,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-9",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-10",
+    "type": "text",
+    "align": "center",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "CONTRATTO ECONOMICO DI CERTIFICAZIONE",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 14,
+      "color": "3B3838"
+     }
+    ]
+   },
+   {
+    "id": "quote-lines-1",
+    "type": "products_table",
+    "source": "offer_lines",
+    "width_pct": 100,
+    "borders": {
+     "size": 4,
+     "color": "000000"
+    },
+    "show_header": true,
+    "header_background": "323E4F",
+    "columns": [
+     {
+      "lines": [
+       {
+        "keys": [
+         "code",
+         "name"
+        ],
+        "separator": "-",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       },
+       {
+        "keys": [
+         "description"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       },
+       {
+        "keys": [
+         "additional_description"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Descrizione",
+      "width_pct": 40,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "quantity"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Quantità",
+      "width_pct": 17,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "unit_price"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Imponibile",
+      "width_pct": 19,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "vat_rate"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Iva",
+      "width_pct": 10,
+      "align": "left"
+     },
+     {
+      "lines": [
+       {
+        "keys": [
+         "net_amount"
+        ],
+        "separator": "",
+        "bold": false,
+        "italic": false,
+        "size": 9
+       }
+      ],
+      "label": "Totale",
+      "width_pct": 14,
+      "align": "right"
+     }
+    ],
+    "totals": {
+     "show": true,
+     "rows": [
+      {
+       "label": "Totali",
+       "variable": "{totals.revenue_net}",
+       "bold": false
+      },
+      {
+       "label": "IVA",
+       "variable": "{totals.revenue_vat}",
+       "bold": false
+      }
+     ]
+    },
+    "empty_text": "Nessuna riga presente in offerta."
+   },
+   {
+    "id": "text-11",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-12",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-13",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-14",
+    "type": "text",
+    "align": "right",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Totale Offerta: {totals.revenue_gross}",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": null,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "rule-3",
+    "type": "divider",
+    "width_pct": 100,
+    "thickness": 8,
+    "color": "A5A5A5",
+    "space_before": 0,
+    "space_after": 120
+   },
+   {
+    "id": "text-15",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-16",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "_ _ _ _ _ _ _ _ _ _ _ _ _ _ _        _ _ _ _ _ _ _ _ _ _",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": "Arial Narrow Italic",
+      "size": 8,
+      "color": null
+     }
+    ]
+   },
+   {
+    "id": "text-17",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Per accettazione                                                                                                                                                  Qualifica Group srl",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": "Trebuchet MS",
+      "size": 8,
+      "color": "2B3B4C"
+     }
+    ]
+   },
+   {
+    "id": "rule-4",
+    "type": "divider",
+    "width_pct": 100,
+    "thickness": 8,
+    "color": "A5A5A5",
+    "space_before": 0,
+    "space_after": 120
+   },
+   {
+    "id": "text-18",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-19",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "COSTI E TERMINI DI PAGAMENTO:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-20",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "OGGETTO DEL CONTRATTO ECONOMICO DI CERTIFICAZIONE",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     },
+     {
+      "text": ":",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-21",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "La presente Offerta Economica ha la finalità di regolare l'attività di supporto gestionale in merito alle soluzioni scelte dall'Organizzazione e condizionatamente alle esigenze espresse  dal Cliente.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-22",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-23",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "RIEPILOGATIVO INTERVENTO DI CONSULENZA:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-24",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Le soluzioni proposte prevedono tutte una prima fase di analisi dei processi organizzativi attraverso l'acquisizione della documentazione esistente e le interviste effettuate ai responsabili di funzioni. Gli obiettivi di tale fase saranno: 1. Riscostruire il flusso delle attività aziendali; 2. Rilevare le principali difformità delle attuali procedure e prassi organizzative in relazione alle norme di riferimento; 3. Individuare le possibili migliorie da apportare al sistema di gestione Aziendale.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-25",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "COSTI E TERMINI DI PAGAMENTO:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     },
+     {
+      "text": "                                                                                                                                                                                                                                                                                                                                                                                                   *I termini di pagamento in merito alle attività di Qualifica Group s.r.l. sono così fissati: per la prima annualità 50% alla firma dell'Offerta economica e 50% prima della consegna del sistema, per la seconda, terza annualità e ri-certificazione 50% alla comunicazione dell'aggiornamento del sistema e il 50% all'atto della consegna dell'aggiornamento. L’importo totale sopra indicato sarà da versare mediante Bonifico Bancario a Qualifica Group srl Banca Intesa Sanpaolo Iban IT10A0306939722100000062172",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-26",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Tutte le attività sono quantificate su base oraria. **Per l'attività di supporto alla realizzazione della documentazione ad ogni ora di assistenza saranno associate: una di preparazione ed il tempo necessario di intervento sulla documentazione, che comunque qualora dovesse consistere in ore extra rispetto al piano di lavoro programmato saranno oggetto di approvazione da parte dell'Azienda. *** Per le attività che esulano da un sistema base, i tempi di preparazione, rendicontazione e supporto in remoto saranno indicati nel piano di lavoro ed ovviamente potranno subire variazioni se in accordo con il Cliente. **** Tutti i costi indicati non sono comprensivi di IVA. ***** I costi di tradferta sostenuti sono pari a € 0,50 per Km dalla sede operativa di Qualifica Group s.r.l. più vicina alla sede della vostra organizzazione, a cui verranno aggiunti i costi di vitto ed alloggio, se necessari.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-27",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "QUALIFICA GROUP SI IMPEGNA:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-28",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "A) A valutare tutta la documentazione necessaria all’azienda cliente per essere certificata nella norma di riferimento (Manuale Sistema, Flussogrammi di Processo, Procedure, Modelli, Nomine varie, Gestione personale ed attrezzature ecc.). B) A valutare le opportune modifiche del sistema fornito dall’azienda cliente; all’individuazione dell’Istituto di Certificazione accreditato ACCREDIA o mutualmente riconosciuto in allineamento alle esigenze effettive del cliente.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-29",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-30",
+    "type": "text",
+    "align": "left",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "L'AZIENDA CLIENTE SI IMPEGNA:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     },
+     {
+      "text": "                                                                                                                                                                                                                                                                                                                                                                                                      A fornire il proprio sistema per la revisione; a descrivere le modalità operative con le quali svolge le proprie attività oggetto della richiesta di certificazione; ad espletare concretamente, o comunque a consentire sopralluoghi e visione dei documenti aziendali (quali offerte, contratti, ordini di acquisto….) esclusivamente per le finalità del presente contratto; ad applicare i Modelli del Sistema, nonché delle tecniche di controllo dei processi e delle altre attività consigliate e valutate dal Qualifica Group s.r.l. . Pertanto l’Azienda Cliente resta responsabile per l’applicazione del Sistema di Gestione concordato valutato dal Qualifica Group s.r.l.; a non modificare l’Istituto di certificazione inizialmente scelto per tutta la durata triennale del contratto, previa applicazione di una penale indicata nel contratto dell'Ente di Certificazione.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-31",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": []
+   },
+   {
+    "id": "text-32",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 0,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "CLAUSOLE GENERALI:",
+      "field": null,
+      "bold": true,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     },
+     {
+      "text": "                                                                                                                                                                                                                                                                                                                                                                                                                          *I costi di certificazione, eventulamente riportati, di competenza dell’Ente di Certificazione sono indicativi, e calcolati in base a quanto espressamente dichiarato dalla Vostra Organizzazione (nello specifico: numero degli addetti equivalenti, settore EA, campo/scopo di applicazione, sedi legale ed operativa, fatturato degli ultimi tre anni), stando ad indicatori di mercato e tabelle IAF di riferimento. ** Nel caso in cui le informazioni dichiarate subiscano variazioni sostanziali durante il periodo contrattuale, (come estensione/modifica del campo di applicazione di natura fondamentale, oppure aumento del numero degli addetti), i dati economici concordati possono subire delle variazioni che saranno rivisti con il Cliente. *** Nel caso in cui le informazioni in sede di verifica da parte dell’Ente di Certificazione, da voi liberamente scelto, e/o da Qualifica Group s.r.l., siano diverse da quanto dichiarato dalla Vostra Organizzazione, gli stessi si riservano il diritto di riformulare l’offerta.                    La risoluzione del presente contratto è possibile solo a mezza lettera raccomandata. Se il contratto viene risoluto unilateralmente dall’Azienda Cliente, Qualifica Group s.r.l. applicherà una penale calcolabile nella misura pari al 30 % del costo complessivo di certificazione. Il presente contratto, per avere validità, va sottoscritto dall’azienda cliente entro 7 giorni lavorativi ed inviato via e mail all’indirizzo qualificagroup@pec.it o fax al numero 081.010.41.08.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   },
+   {
+    "id": "text-33",
+    "type": "text",
+    "align": "justify",
+    "space_before": 0,
+    "space_after": 160,
+    "line_height": 1.08,
+    "runs": [
+     {
+      "text": "Ai sensi degli art. 1341 – 1342 del Codice Civile, il sottoscritto conferma in maniera specifica le obbligazioni di cui agli articoli sopracitati, compreso art. 9 e 11, e acconsente espressamente al trattamento dei dati personali ad opera del Qualifica Group srl, e suoi affiliati ai sensi del ai sensi del D.Lgs 196/03 \"Codice in materia di protezione dei dati personali”.",
+      "field": null,
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "font": null,
+      "size": 6,
+      "color": "262626"
+     }
+    ]
+   }
+  ]
+ },
+ "footer": {
+  "blocks": []
+ }
+}

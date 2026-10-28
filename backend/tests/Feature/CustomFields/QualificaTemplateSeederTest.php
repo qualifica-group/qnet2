@@ -132,7 +132,7 @@ it('seeds no reference row: no source, category or product', function (): void {
     test()->seed(QualificaTemplateSeeder::class);
 
     // The client's reference data belongs to QualificaCatalogSeeder: this
-    // seeder defines fields, and provisions the one layout below.
+    // seeder defines fields, and provisions the quote layouts below.
     expect(Source::query()->count())->toBe(0)
         ->and(ProductCategory::query()->count())->toBe(0)
         ->and(Product::query()->count())->toBe(0);

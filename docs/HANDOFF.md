@@ -3,6 +3,29 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Layout preventivi del QNet legacy nel seed di produzione — VERDE, NON COMMITTATO (2026-10-28)
+
+- Richiesta utente: importare tutti i layout di https://www.qualificagroup.org/layoutquotes (legacy `layout_quotes`,
+  27 righe) + il `.docx` "Preventivi - Qualifica Group Academy Srl" fornito a parte = 28 layout `quotes`.
+- `QualificaQuoteDocumentLayoutSeeder` (step 4 di `QualificaTemplateSeeder`, quindi in `QualificaProductionDataSeeder`):
+  CREATE-ONLY (codice o nome gia' presenti -> salta), attivi, mai predefiniti (il default resta `qualifica_standard`).
+  Catalogo `QualificaCatalog/QuoteDocumentLayoutCatalogue` (chiave -> [titolo legacy, file sorgente]), codici
+  `qualifica_quote_<chiave>`; config in `database/seeders/assets/quote-layouts/<chiave>.json`, immagini deduplicate in
+  `assets/quote-layouts/images/` (i blocchi image portano il NOME FILE in `attachment_id`, il seeder lo sostituisce).
+- Config generati da un convertitore `.docx` -> contratto spec 0069 (script Python una-tantum, NON nel repo). Mappatura
+  placeholder nel docblock del catalogo (SLINE_TOTAL -> `net_amount`, SDESCRIPTION -> `description` +
+  `additional_description`, CLIENT_INFO -> nome/indirizzo/P.Iva). Limiti: seconda tabella "cartella 2" di
+  `services`/`iso` non riproducibile (una sola tabella con tutte le righe), sezioni a 2 colonne di `recruitment_contract`
+  rese a colonna singola, forme flottanti decorative omesse; rimosso a mano un refuso "ì" nell'header di
+  `recruitment_fee_200`.
+- Test: `tests/Feature/Seeding/QualificaQuoteDocumentLayoutSeederTest.php` (validator, immagini possedute, variabili
+  del catalogo, render `.docx` di tutti i 28, default invariato, create-only, nome occupato). Verdi anche Seeding (217),
+  DocumentLayouts, Unit/DocumentLayouts, Products, QualificaTemplateSeederTest, QuoteDocumentFidelityTest.
+- Da verificare a occhio in Word: resa reale dei 28 (verifica fatta solo con Quick Look su 6). Limite renderer
+  preesistente: intestazione `products_table` in grassetto nero anche su sfondo scuro (323E4F).
+- Manuale: guide in-app nessun impatto (non elencano i layout); manuale Claude Docs: eventualmente citare nella
+  sezione Layout che i layout del legacy sono disponibili.
+
 ## Spec 0321 Avanzamento manuale commessa (rev. "esattamente come il legacy") — VERDE, NON COMMITTATO (2026-10-28)
 
 - Come il legacy `avanzamento_commesse`: ogni riga di `work_order_progress_entries` salva l'INCREMENTO

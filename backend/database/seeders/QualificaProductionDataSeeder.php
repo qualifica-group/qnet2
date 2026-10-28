@@ -21,7 +21,8 @@ use Illuminate\Database\Seeder;
  *
  *   1. QualificaTemplateSeeder     — the installation's shape: the custom
  *                                    field definitions per module, and the
- *                                    document layout quotes are printed on.
+ *                                    document layouts quotes are printed on
+ *                                    (the standard one and the legacy ones).
  *   2. QualificaCatalogSeeder      — the hard-coded reference data: sources,
  *                                    reward types, the two product typologies
  *                                    ("Ente", "Consulenza", ProductTypologySeeder:

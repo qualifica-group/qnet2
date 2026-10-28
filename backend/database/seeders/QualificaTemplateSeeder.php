@@ -19,7 +19,9 @@ use Illuminate\Database\Seeder;
  *       - registries: the tags, a multi-select over the `tags` lookup;
  *   - the document layout they print quotes on, delegated to
  *     QualificaDocumentLayoutSeeder (a `document_layouts` row plus its
- *     letterhead binary — see that class for why it is not inlined here).
+ *     letterhead binary — see that class for why it is not inlined here),
+ *     then their other quote layouts, delegated to
+ *     QualificaQuoteDocumentLayoutSeeder.
  *
  * It creates no reference row of its own: no source, no reward type, no
  * product category, no product. Those are hard-coded data and live in
@@ -152,6 +154,10 @@ class QualificaTemplateSeeder extends Seeder
         // uploads a binary and owns the D-7 default invariant, neither of
         // which belongs in a custom-field template.
         $this->call(QualificaDocumentLayoutSeeder::class);
+
+        // Step 4: the client's other quote layouts, once the standard one
+        // holds the `quotes` default they must not take.
+        $this->call(QualificaQuoteDocumentLayoutSeeder::class);
     }
 
     /**
