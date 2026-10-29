@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Fix tab "Fatture" (Fatture attive) che tornava su "Tutte" — VERDE, NON COMMITTATO (2026-10-29)
+## Fix tab "Fatture" (Fatture attive) che tornava su "Tutte" — VERDE, COMMITTATO (2026-10-29)
 
 - Causa: il Set Filter di AG Grid tiene un valore del modello solo se e' nella sua lista valori, e la lista
   (`POST /tables/{domain}/values`) e' ristretta dagli ALTRI filtri (0004). Ottobre 2026 ha solo proforma ->
