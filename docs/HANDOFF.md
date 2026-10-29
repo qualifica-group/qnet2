@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Carico macchina durante le feature — workflow `.claude/` (2026-10-29)
+
+- Causa: per ogni microtask il verifier lanciava la suite completa (10 processi Pest + circa 9 worker Vitest + `tsc`),
+  e l'hook Stop `typecheck.sh` lanciava `tsc -b --force` (fino a 8 GB) a ogni fine turno, anche in parallelo tra teammate.
+- Ora: per microtask solo i test mirati; suite completa **una volta** a fine feature, BE poi FE in sequenza, con
+  `nice -n 10 composer test -- --processes=4` e `nice -n 10 npx vitest run --maxWorkers=4`. Non usare `vitest related`
+  (oltre 5 minuti su un solo file: costruisce il grafo di tutta la suite).
+- `typecheck.sh`: salta se niente in `frontend/src`, `tsconfig*` o `package*.json` e' piu' recente dello stamp
+  `frontend/node_modules/.cache/qnet-typecheck.stamp` (aggiornato solo a esito verde); lock `qnet-typecheck.lock`
+  (un solo tsc tra sessioni, lock vecchio oltre 15 min rimosso); `nice`. Quando gira resta `--force`.
+- `build-feature`: default subagent a stella, agent team solo con vero coordinamento continuo.
+- File: `.claude/hooks/typecheck.sh`, `.claude/agents/{verifier,backend,frontend,tester-debug}.md`,
+  `.claude/commands/build-feature.md`, `.claude/rules/backend.md §6`, `CLAUDE.md §HOOK`.
+
 ## Coda dedicata per i job di migrazione — VERDE, NON COMMITTATO (2026-10-29)
 
 - `RunMigrationJob`/`RunMassMigrationJob` vanno sulla coda `config('migrations.queue')` (env `MIGRATION_QUEUE`, default
