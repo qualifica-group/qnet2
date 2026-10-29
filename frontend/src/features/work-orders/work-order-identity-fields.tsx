@@ -19,6 +19,14 @@ import type { WorkOrderType } from '@/features/work-orders/types'
 
 const WORK_ORDER_TYPES: WorkOrderType[] = ['processing', 'project']
 
+/**
+ * Template options show name + description, which outgrow the form column:
+ * the popup takes a wider fixed width, never narrower than the trigger,
+ * never past the viewport edge.
+ */
+const TASK_TEMPLATE_POPUP_WIDTH_CLASS =
+  'w-[min(36rem,var(--radix-popover-content-available-width))] min-w-(--radix-popover-trigger-width)'
+
 interface FieldProps {
   control: Control<WorkOrderFormValues>
 }
@@ -189,6 +197,7 @@ export function WorkOrderTaskTemplateField({ control, selected }: TaskTemplateFi
       errorLabel={t('workOrders.form.taskTemplateError')}
       clearLabel={t('workOrders.form.taskTemplateClear')}
       retryLabel={t('common.retry')}
+      contentClassName={TASK_TEMPLATE_POPUP_WIDTH_CLASS}
     />
   )
 }

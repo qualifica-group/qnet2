@@ -75,11 +75,13 @@ function Harness({
   onSubmit = vi.fn(),
   depth,
   hint,
+  contentClassName,
 }: {
   defaultValues?: FormValues
   onSubmit?: (values: FormValues) => void
   depth?: number
   hint?: string
+  contentClassName?: string
 }) {
   const form = useForm<FormValues>({ defaultValues })
   const field = (
@@ -97,6 +99,7 @@ function Harness({
       errorLabel="Unable to load sources."
       clearLabel="Clear source"
       retryLabel="Retry"
+      contentClassName={contentClassName}
     />
   )
 
@@ -215,5 +218,15 @@ describe('RelationSelectField quick-create wiring', () => {
     expect(
       screen.queryByRole('button', { name: i18n.t('authorization.moreInfo') }),
     ).not.toBeInTheDocument()
+  })
+
+  it('forwards contentClassName to the popup, so a caller can widen it past the trigger', () => {
+    renderHarness({ contentClassName: 'w-[36rem]' })
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Source' }))
+
+    const popup = screen.getByRole('dialog')
+    expect(popup).toHaveClass('w-[36rem]')
+    expect(popup).not.toHaveClass('w-(--radix-popover-trigger-width)')
   })
 })

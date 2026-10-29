@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Popup "Modello di Task" piu' largo nel form Commessa — VERDE, COMMITTATO (2026-10-29)
+
+- `RelationSelectField` ha la prop `contentClassName` (inoltrata a `AsyncPaginatedSelect`). `WorkOrderTaskTemplateField`
+  la usa con `TASK_TEMPLATE_POPUP_WIDTH_CLASS` (36rem, mai piu' stretto del campo ne' oltre il viewport).
+- La stessa stringa di larghezza vive ora in 3 posti (`quote-product-select.tsx`, `category-popup-width.ts`,
+  `work-order-identity-fields.tsx`): candidata a una costante condivisa, non estratta (fuori scope).
+
 ## Errori 403 specifici (spec 0329) — VERDE, COMMITTATO (2026-10-29)
 
 - Ogni 403 di `/api/*` (tranne `GET /api/tasks/{task}` con `errors.access_contacts`) ha la shape
