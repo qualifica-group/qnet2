@@ -5,6 +5,7 @@
  */
 
 import type { ResourcePermissions } from '@/features/authorization/types'
+import type { CommissionType } from '@/features/commission-configurations/types'
 import type { ProformaRequestKind } from '@/features/proforma-requests/types'
 
 export const INVOICE_TYPES = ['proforma', 'invoice'] as const
@@ -171,6 +172,15 @@ export interface AvailableInvoiceLine {
   net_amount: string
   vat_amount: string
   total_amount: string
+  /** Institution requests only (spec 0288): the supplier commission the amounts bill; null on consultancy. */
+  commission: AvailableLineCommission | null
+}
+
+/** The supplier rule applied to a sold line; `type` null = no rule, the line bills zero. */
+export interface AvailableLineCommission {
+  type: CommissionType | null
+  value: string | null
+  base_amount: string
 }
 
 /** GET `/proforma-requests/{id}/invoice-draft` (envelope `data`). */

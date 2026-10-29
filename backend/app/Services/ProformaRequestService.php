@@ -140,36 +140,51 @@ class ProformaRequestService
     }
 
     /**
-     * Per offer: one consultancy request for all its consultancy lines, one
-     * institution request per distinct supplier of the LINE (spec 0320, D-8; null supplier = one shared
-     * request). The product typology's proforma_kind decides the group (spec
-     * 0247, D-6): lines whose typology has none are ignored (D-2). A request
-     * never mixes offers (spec 0267, D-6).
+     * One consultancy request per offer (spec 0267, D-6). One institution
+     * request per (line supplier, issuing company) across the whole work order
+     * (spec 0288, D-1; the supplier is the line's, spec 0320, D-8), raised on the group's lowest-code offer (D-2); a null
+     * supplier is a group of its own (spec 0193, D-2). The product typology's
+     * proforma_kind decides the group (spec 0247, D-6): lines whose typology
+     * has none are ignored.
      *
      * @return array<int, array{quote_id: int, kind: ProformaRequestKind, supplier_id: int|null}>
      */
     private function buildDrafts(WorkOrder $workOrder): array
     {
         $lines = $workOrder->quoteLines()
-            ->with('product:id,product_typology_id', 'product.productTypology:id,proforma_kind')
+            ->with('product:id,product_typology_id', 'product.productTypology:id,proforma_kind', 'quote:id,code,company_id')
             ->get();
-        $drafts = [];
 
-        foreach ($lines->groupBy('quote_id') as $quoteId => $quoteLines) {
-            if ($this->linesOfKind($quoteLines, ProformaRequestKind::Consultancy)->isNotEmpty()) {
-                $drafts[] = ['quote_id' => (int) $quoteId, 'kind' => ProformaRequestKind::Consultancy, 'supplier_id' => null];
-            }
+        return [...$this->consultancyDrafts($lines), ...$this->institutionDrafts($lines)];
+    }
 
-            $suppliers = $this->linesOfKind($quoteLines, ProformaRequestKind::Institution)
-                ->map(fn (QuoteLine $line): ?int => $line->supplier_id)
-                ->unique();
+    /**
+     * @param  Collection<int, QuoteLine>  $lines
+     * @return array<int, array{quote_id: int, kind: ProformaRequestKind, supplier_id: null}>
+     */
+    private function consultancyDrafts(Collection $lines): array
+    {
+        return $this->linesOfKind($lines, ProformaRequestKind::Consultancy)
+            ->pluck('quote_id')->unique()->sort()
+            ->map(fn (int $quoteId): array => ['quote_id' => $quoteId, 'kind' => ProformaRequestKind::Consultancy, 'supplier_id' => null])
+            ->values()->all();
+    }
 
-            foreach ($suppliers as $supplierId) {
-                $drafts[] = ['quote_id' => (int) $quoteId, 'kind' => ProformaRequestKind::Institution, 'supplier_id' => $supplierId];
-            }
-        }
-
-        return $drafts;
+    /**
+     * @param  Collection<int, QuoteLine>  $lines
+     * @return array<int, array{quote_id: int, kind: ProformaRequestKind, supplier_id: int|null}>
+     */
+    private function institutionDrafts(Collection $lines): array
+    {
+        return $this->linesOfKind($lines, ProformaRequestKind::Institution)
+            ->groupBy(fn (QuoteLine $line): string => $line->supplier_id.'|'.$line->quote->company_id)
+            ->map(fn (Collection $group): array => [
+                // natural order: QUO-10000 comes after QUO-9999
+                'quote_id' => $group->sortBy(fn (QuoteLine $line): string => (string) $line->quote->code, SORT_NATURAL)->first()->quote_id,
+                'kind' => ProformaRequestKind::Institution,
+                'supplier_id' => $group->first()->supplier_id,
+            ])
+            ->values()->all();
     }
 
     /**

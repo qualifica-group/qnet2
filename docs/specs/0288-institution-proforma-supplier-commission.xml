@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0288-institution-proforma-supplier-commission" status="approved" owner="ciro" date="2026-10-20">
+
+  <goal>
+    La richiesta proforma Ente fattura all'ente (fornitore) la provvigione che ci spetta sulla vendita dei suoi
+    servizi, non il prezzo di vendita al cliente. Una sola richiesta Ente per fornitore e per societa' emittente
+    sull'intera commessa. L'elenco dei servizi fatturabili resta filtrato per tipo e fornitore anche lato server
+    al salvataggio.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-10-20 (chat). Supera spec 0194 D-2 ("nessun calcolo provvigioni") e, per le sole
+    richieste Ente, spec 0267 D-6 ("una richiesta per offerta").
+
+    Stato attuale verificato:
+    - `App\Services\ProformaRequestService::buildDrafts()` raggruppa le righe `$workOrder->quoteLines()` per
+      `quote_id`: per offerta una richiesta `ProformaRequestKind::Consultancy` + una `Institution` per
+      `product.supplier_id` distinto (null = una richiesta condivisa, spec 0193 D-2). Classificazione via
+      `product_typologies.proforma_kind` (spec 0247 D-6). Generazione una sola volta (409, spec 0243 D-2).
+    - `proforma_requests.quote_id` NOT NULL (spec 0267). L'offerta della richiesta da' a `InvoiceDraftBuilder`
+      la societa' emittente (`quote.company`) e il metodo di pagamento (`quote.paymentMethod`, snapshot su
+      `proforma_requests.payment_method_id`). In una commessa multi-offerta le offerte possono avere societa'
+      diverse.
+    - `App\Services\Invoices\InvoiceDraftBuilder::availableLines()` filtra gia' per `proforma_kind` e, per
+      Institution, per `product.supplier_id === request.supplier_id`, limitato a `request.quote_id`.
+      `line()` restituisce il prezzo di vendita della riga d'offerta.
+    - `App\Services\Invoices\InvoiceLineGuard::assert($lines, $workOrderId, $quoteId, $ignoreInvoiceId)`
+      (chiamato da `InvoiceService::prepare()` in create e update) controlla solo commessa, offerta e riga gia'
+      fatturata: NON ricontrolla tipo e fornitore.
+    - Regole "% provvigioni" del fornitore (legacy `service_commissions`, importate da spec 0203) =
+      `commission_configurations` con `recipient_role = SUPPLIER`, risolte da
+      `App\Services\Commissions\CommissionRuleResolver::resolve(CommissionResolutionContext)` (catena spec 0089
+      D-4: prodotto -> categoria e antenati -> regola sul destinatario -> regole di ruolo prodotto -> categoria).
+      `CommissionType::Percentage` / `FixedAmount`. Il destinatario fornitore e'
+      `new CommissionRecipient(CommissionRecipientRole::Supplier->recipientType(), $supplierId)` come in
+      `CommissionRecipientResolver`.
+    - Riferimento legacy: `../qnet/app/Livewire/Proforma/GenerateProformaSupplier.php:124-196`
+      (percentuale sul prezzo; importo fisso = importo; nessuna regola = 0).
+  </context>
+
+  <decisions>
+    <decision id="D-1">Richieste Ente: una per coppia (fornitore, societa' emittente dell'offerta) sull'intera
+      commessa, non piu' per offerta. Le richieste Consulenza restano una per offerta (spec 0267 D-6 invariata).</decision>
+    <decision id="D-2">`quote_id` di una richiesta Ente = l'offerta di riferimento del gruppo: quella con `code`
+      piu' basso tra le offerte del gruppo. Da essa vengono societa' emittente e metodo di pagamento (snapshot).
+      Nessuna migrazione: la colonna resta NOT NULL.</decision>
+    <decision id="D-3">Righe fatturabili di una richiesta (unica fonte, condivisa da bozza e controllo al
+      salvataggio): righe `Revenue` della commessa con `proforma_kind = request.kind`, non gia' fatturate.
+      Consulenza: offerta = `request.quote_id`. Ente: offerte della commessa con la stessa societa' di
+      `request.quote` e `product.supplier_id = request.supplier_id` (null = null).</decision>
+    <decision id="D-4">Importo Ente = provvigione fornitore, ricalcolata dalle regole alla data di apertura della
+      bozza (oggi), senza leggere `quote_line_commissions` e ignorando `product_typologies.supplier_commission_enabled`.
+      Base = imponibile della riga (`quote_lines.net_amount` = prezzo x quantita').
+      Percentuale: quantita' 1, prezzo unitario = round(net_amount x valore / 100, 2).
+      Importo fisso: quantita' 1, prezzo unitario = valore della regola (per riga, come il legacy).
+      Nessuna regola: quantita' 1, prezzo unitario 0. IVA: quella della riga d'offerta, ricalcolata sul nuovo
+      imponibile.</decision>
+    <decision id="D-5">Il prezzo resta modificabile nell'editor della fattura come oggi. Il server non impone
+      l'importo della provvigione al salvataggio: controlla solo l'appartenenza delle righe (D-3).</decision>
+    <decision id="D-6">Il totale documento deve restare maggiore di zero (regola esistente): una fattura Ente fatta
+      solo di righe senza regola va corretta a mano prima di salvarla.</decision>
+    <decision id="D-7">Richieste e fatture gia' esistenti non vengono ricalcolate ne' accorpate.</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>`ProformaRequestService::buildDrafts()`: raggruppamento Ente per (supplier_id, quote.company_id) con
+        offerta di riferimento (D-1, D-2).</item>
+      <item>Nuova classe condivisa delle righe fatturabili di una richiesta (D-3), usata da
+        `InvoiceDraftBuilder::availableLines()` e dal controllo al salvataggio.</item>
+      <item>`InvoiceLineGuard`: per un documento legato a una richiesta proforma, rifiuta con 422 le righe fuori
+        dall'insieme D-3 (create e update).</item>
+      <item>Nuovo calcolatore della provvigione fornitore sul prezzo di vendita (D-4) e sua applicazione alle
+        righe Ente della bozza.</item>
+      <item>Contratto `available_lines[].commission` + UI: nella richiesta Ente l'elenco servizi mostra la
+        provvigione (tipo e valore) e l'avviso "Nessuna regola provvigionale" quando manca.</item>
+      <item>i18n IT/EN, guide in-app IT/EN `invoices` e `proforma-requests`.</item>
+    </in>
+    <out>
+      <item>Accorpamento delle richieste Consulenza tra offerte diverse.</item>
+      <item>Modifica di `quote_line_commissions`, del motore provvigioni dell'offerta e della base margine (spec 0145).</item>
+      <item>Nuove schermate per le regole "% provvigioni" (si usa il Configuratore Commissioni esistente).</item>
+      <item>Ricalcolo o migrazione di richieste e fatture esistenti; import legacy di proforma.</item>
+      <item>Fatture senza richiesta proforma: controllo righe invariato.</item>
+      <item>Nuove migrazioni o colonne.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/proforma-requests">
+      <request>Invariata.</request>
+      <response status="201">Shape invariata. Cambia solo il numero di richieste Institution (D-1) e il loro
+        `quote` (offerta di riferimento, D-2).</response>
+      <errors>Invariati: 403, 409 `already_pending`/`already_issued`, 422 `no_billable_lines`.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/proforma-requests/{proformaRequest}/invoice-draft">
+      <request>Invariata.</request>
+      <response status="200">
+        Envelope `{ success, message, data }`, shape invariata salvo `available_lines[]`:
+        {
+          quote_line_id: int, product: { id, name }, description: string,
+          quantity: string, unit_price: string, vat_rate: { id, name, rate } | null,
+          net_amount: string, vat_amount: string, total_amount: string,
+          commission: null | {
+            type: 'PERCENTAGE' | 'FIXED_AMOUNT' | null,   // null = nessuna regola trovata
+            value: string | null,                         // percentuale o importo della regola
+            base_amount: string                           // imponibile di vendita della riga (net_amount offerta)
+          }
+        }
+        Consulenza: `commission = null`, importi = riga d'offerta (invariato).
+        Ente: `commission` valorizzato; `quantity = "1.00"`, `unit_price`/`net_amount`/`vat_amount`/`total_amount`
+        = provvigione (D-4); `type = null` implica importi a "0.00".
+        Ente: righe da tutte le offerte della commessa con la stessa societa' e lo stesso fornitore (D-3).
+      </response>
+      <errors>Invariati.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/proforma-requests/{proformaRequest}/invoice">
+      <request>Invariata.</request>
+      <errors>Nuovo caso 422: `lines.{i}.quote_line_id` => __('invoices.line_not_in_request') se la riga non
+        appartiene all'insieme D-3 della richiesta (tipo, fornitore o societa' diversi).</errors>
+    </endpoint>
+    <endpoint method="PUT|PATCH" path="/api/invoices/{invoice}">
+      <errors>Stesso 422 di sopra quando il documento e' legato a una richiesta proforma.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato una commessa con 2 offerte della stessa societa', ciascuna con una riga Ente dello
+      stesso fornitore F, quando si generano le richieste, allora esiste una sola richiesta Institution per F,
+      con `quote_id` = offerta con code piu' basso e il suo metodo di pagamento.</criterion>
+    <criterion id="AC-002">Dato una commessa con 2 offerte di societa' diverse con righe Ente dello stesso
+      fornitore F, quando si generano le richieste, allora esistono 2 richieste Institution per F, una per societa'.</criterion>
+    <criterion id="AC-003">Dato una commessa multi-offerta con righe Consulenza in entrambe le offerte, allora le
+      richieste Consultancy restano una per offerta (regressione).</criterion>
+    <criterion id="AC-004">Dato una richiesta Ente del fornitore F su commessa multi-offerta stessa societa',
+      quando si apre la bozza, allora `available_lines` contiene le righe Ente di F di entrambe le offerte e
+      nessuna riga Consulenza o di altro fornitore.</criterion>
+    <criterion id="AC-005">Dato una regola SUPPLIER percentuale 10 per F sul prodotto e una riga di vendita
+      quantita' 2 x 500 (net 1000), quando si apre la bozza, allora la riga ha quantity 1, unit_price e net_amount
+      100.00, IVA ricalcolata su 100.00, commission { PERCENTAGE, "10.00", base_amount "1000.00" }.</criterion>
+    <criterion id="AC-006">Dato nessuna regola sul prodotto ma una regola sulla categoria (o categoria antenata)
+      per F, allora si applica quella di categoria (catena del resolver).</criterion>
+    <criterion id="AC-007">Dato una regola importo fisso 150 per F, con riga quantita' 3, allora la riga ha
+      quantity 1, unit_price 150.00, commission.type FIXED_AMOUNT.</criterion>
+    <criterion id="AC-008">Dato nessuna regola applicabile, allora la riga Ente ha importi 0.00 e commission.type
+      null; la tipologia con `supplier_commission_enabled = false` non cambia il risultato.</criterion>
+    <criterion id="AC-009">Dato una richiesta Consulenza, allora le righe hanno importi della riga d'offerta e
+      commission null (regressione).</criterion>
+    <criterion id="AC-010">Dato una richiesta Ente di F, quando si emette la fattura passando una riga Consulenza,
+      o una riga di un altro fornitore, o di un'offerta di altra societa', allora 422 su `lines.{i}.quote_line_id`
+      e nessuna fattura creata; lo stesso vale per una richiesta Consulenza con una riga Ente.</criterion>
+    <criterion id="AC-011">Dato una fattura emessa da richiesta, quando la si aggiorna aggiungendo una riga fuori
+      insieme D-3, allora 422; le righe gia' sue restano ammesse.</criterion>
+    <criterion id="AC-012">Frontend: nell'editor di una richiesta Ente, l'elenco servizi mostra per ogni riga la
+      provvigione ("10 %" o importo fisso) e, quando `commission.type` e' null, l'avviso
+      "Nessuna regola provvigionale"; nella Consulenza nessuna colonna provvigione.</criterion>
+    <criterion id="AC-013">Guide in-app IT/EN `invoices` e `proforma-requests` aggiornate con gli stessi id di
+      sezione; `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza, nessuna migrazione.</item>
+    <item>Autorizzazione invariata (policy esistenti di proforma-requests e invoices).</item>
+    <item>Calcoli monetari con bcmath / `MoneyNormalizer` esistente, arrotondamento a 2 decimali.</item>
+    <item>Nessuna query N+1: regole risolte per riga con `CommissionRuleResolver` (accettabile: poche righe per richiesta);
+      prodotti, categorie e offerte caricati in eager loading.</item>
+    <item>File sotto 300 righe; logica in classi dedicate, `InvoiceDraftBuilder` resta orchestratore.</item>
+    <item>Test REQUIREMENT CHANGED da dichiarare: test esistenti che si aspettano una richiesta Ente per offerta o
+      il prezzo di vendita sulle righe Ente della bozza.</item>
+  </constraints>
+
+</spec>

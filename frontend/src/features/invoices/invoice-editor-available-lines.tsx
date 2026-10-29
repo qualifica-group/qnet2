@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatQuoteAmount } from '@/features/quotes/quote-summary'
-import type { AvailableInvoiceLine } from '@/features/invoices/types'
+import type { AvailableInvoiceLine, AvailableLineCommission } from '@/features/invoices/types'
 
 interface InvoiceEditorAvailableLinesProps {
   lines: AvailableInvoiceLine[]
@@ -15,6 +15,7 @@ interface InvoiceEditorAvailableLinesProps {
 export function InvoiceEditorAvailableLines({ lines, addedQuoteLineIds, onAdd, onAddAll }: InvoiceEditorAvailableLinesProps) {
   const { t } = useTranslation()
   const allAdded = lines.every((line) => addedQuoteLineIds.has(line.quote_line_id))
+  const showsCommission = lines.some((line) => line.commission !== null)
 
   return (
     <section aria-labelledby="invoice-editor-available" className="grid gap-2 rounded-lg border bg-card p-3">
@@ -38,6 +39,9 @@ export function InvoiceEditorAvailableLines({ lines, addedQuoteLineIds, onAdd, o
                 <th scope="col" className="px-2 py-1 text-right font-medium">{t('invoiceEditor.available.columns.unit_price')}</th>
                 <th scope="col" className="px-2 py-1 text-right font-medium">{t('invoiceEditor.available.columns.vat_rate')}</th>
                 <th scope="col" className="px-2 py-1 text-right font-medium">{t('invoiceEditor.available.columns.total_amount')}</th>
+                {showsCommission ? (
+                  <th scope="col" className="px-2 py-1 text-right font-medium">{t('invoiceEditor.available.columns.commission')}</th>
+                ) : null}
                 <th scope="col" className="py-1 pl-2 text-right font-medium">{t('invoiceEditor.available.columns.actions')}</th>
               </tr>
             </thead>
@@ -49,6 +53,9 @@ export function InvoiceEditorAvailableLines({ lines, addedQuoteLineIds, onAdd, o
                   <td className="px-2 py-1 text-right tabular-nums">{formatQuoteAmount(Number(line.unit_price))}</td>
                   <td className="px-2 py-1 text-right">{line.vat_rate?.name ?? '-'}</td>
                   <td className="px-2 py-1 text-right tabular-nums">{formatQuoteAmount(Number(line.total_amount))}</td>
+                  {showsCommission ? (
+                    <td className="px-2 py-1 text-right">{line.commission === null ? '-' : <CommissionCell commission={line.commission} />}</td>
+                  ) : null}
                   <td className="py-1 pl-2 text-right">
                     {addedQuoteLineIds.has(line.quote_line_id) ? (
                       <Badge variant="secondary">{t('invoiceEditor.available.added')}</Badge>
@@ -67,5 +74,25 @@ export function InvoiceEditorAvailableLines({ lines, addedQuoteLineIds, onAdd, o
         </div>
       )}
     </section>
+  )
+}
+
+/** The supplier rule behind an institution line amount (spec 0288), or the warning that none applies. */
+function CommissionCell({ commission }: { commission: AvailableLineCommission }) {
+  const { t } = useTranslation()
+
+  if (commission.type === null) {
+    return <Badge variant="destructive">{t('invoiceEditor.available.commission.missing')}</Badge>
+  }
+
+  return commission.type === 'PERCENTAGE' ? (
+    <span className="tabular-nums">
+      {t('invoiceEditor.available.commission.percentage', {
+        value: Number(commission.value),
+        base: formatQuoteAmount(Number(commission.base_amount)),
+      })}
+    </span>
+  ) : (
+    <span>{t('invoiceEditor.available.commission.fixedAmount')}</span>
   )
 }

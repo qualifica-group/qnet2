@@ -45,12 +45,18 @@ export const invoiceEditor = {
     addLine: 'Aggiungi riga: {{description}}',
     addAll: 'Aggiungi tutte',
     added: 'Aggiunta',
+    commission: {
+      percentage: '{{value}} % di {{base}}',
+      fixedAmount: 'Importo fisso',
+      missing: 'Nessuna regola provvigionale',
+    },
     columns: {
       description: 'Descrizione',
       quantity: 'Quantità',
       unit_price: 'Prezzo',
       vat_rate: 'IVA',
       total_amount: 'Totale',
+      commission: 'Provvigione',
       actions: 'Azioni',
     },
   },

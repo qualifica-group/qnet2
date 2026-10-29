@@ -46,6 +46,7 @@ require_once __DIR__.'/Helpers/CampaignHelpers.php';
 require_once __DIR__.'/Helpers/RegistryHelpers.php';
 require_once __DIR__.'/Helpers/ProformaRequestHelpers.php';
 require_once __DIR__.'/Helpers/ProformaMultiQuoteHelpers.php';
+require_once __DIR__.'/Helpers/InstitutionProformaHelpers.php';
 require_once __DIR__.'/Helpers/PurchaseRequestHelpers.php';
 require_once __DIR__.'/Helpers/CostTypeHelpers.php';
 require_once __DIR__.'/Helpers/PurchaseOrderHelpers.php';
