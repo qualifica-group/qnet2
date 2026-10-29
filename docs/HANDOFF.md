@@ -3,6 +3,13 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Anno a 4 cifre negli input data — VERDE, COMMITTATO (2026-10-29)
+
+- `components/ui/input.tsx`: ogni `Input` `type` `date`/`datetime-local`/`month` senza `max` proprio riceve
+  `max` a fine anno 9999 (`FOUR_DIGIT_YEAR_MAX`): il browser ferma il segmento anno a 4 cifre. Un `max` esplicito
+  (es. `max={dayOf(new Date())}`) vince. Copre tutti i form, i campi flessibili (`native-input-field-control.tsx`),
+  `DateTimeField`, editor di cella AG Grid e filtri avanzati, perche' passano tutti da `Input`. Test: `input.test.tsx`.
+
 ## Popup "Modello di Task" piu' largo nel form Commessa — VERDE, COMMITTATO (2026-10-29)
 
 - `RelationSelectField` ha la prop `contentClassName` (inoltrata a `AsyncPaginatedSelect`). `WorkOrderTaskTemplateField`
