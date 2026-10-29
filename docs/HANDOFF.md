@@ -3,6 +3,19 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Scheda Contratto: Referente, Commerciale, Segnalatore come nell'Offerta — VERDE, COMMITTATO (2026-10-29)
+
+- Richiesta utente: la sezione "Cliente e opportunita'" del Contratto mostra le righe dell'Offerta: Anagrafica
+  (label rinominata da "Cliente"), Referente dell'opportunita' con Tipo referente (`ReferentValue`), Opportunita',
+  Offerta, Commerciale, Segnalatore (link a `referents`, sola lettura). Il Supervisore resta fuori (direttiva 2026-08-31).
+- BE: `ContractResource.referent` = `ReferentRef::summarize(quote.opportunity.referent)`; eager load
+  `quote.opportunity.referent.referentType` in `ContractService::DETAIL_RELATIONS`.
+- File: `ContractResource.php`, `ContractService.php`, `ContractShowTest.php`; FE `contracts/{types.ts,
+  contract-detail-fields.tsx}`, i18n `{it,en}-contracts.ts`, guide `help/content/{it,en}/contracts.ts`, 4 test contratti.
+- Test: `ContractShowTest` (referent + tipo), `contract-detail.test.tsx` (REQUIREMENT CHANGED: Commerciale/Segnalatore
+  ora visibili), fixture `referent: null` negli altri test contratto. Pest Contracts 177/177, Vitest contracts+i18n+help
+  verdi, tsc -b exit 0, ESLint/Pint puliti. Manuale Claude Docs (sezione Contratti) aggiornato; PDF da rigenerare.
+
 ## Tipo referente sotto il nome del Referente — VERDE, COMMITTATO (2026-10-29)
 
 - Richiesta utente: nelle card Referenti dell'anagrafica e ovunque compaia un Referente si legge il suo Tipo referente.

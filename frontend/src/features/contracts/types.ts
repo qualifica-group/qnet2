@@ -8,6 +8,7 @@
 
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { QuoteLine } from '@/features/quotes/types'
+import type { ReferentRef } from '@/features/referents/types'
 import type { WorkOrderType } from '@/features/work-orders/types'
 
 /** `App\Enums\ContractStatusGroup` (D-5): dedicated to this module, not shared with `QuoteStatusGroup`. */
@@ -74,6 +75,8 @@ export interface ContractDetail {
   quote_id: number
   quote: ContractQuoteRef
   registry: ContractRelationRef | null
+  /** The opportunity's Referente with its Tipo referente, as the Offerta shows it. */
+  referent: ReferentRef | null
   opportunity: ContractRelationRef | null
   company: ContractRelationRef | null
   company_site: ContractRelationRef | null

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Building2, CalendarClock, Contact, CreditCard } from 'lucide-react'
+import { Briefcase, Building2, CalendarClock, Contact, CreditCard, UserRound } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordLink } from '@/components/detail/record-link'
 import {
@@ -19,6 +19,7 @@ import {
 } from '@/features/contracts/contract-related-links'
 import type { ContractDetail, ContractRelationRef } from '@/features/contracts/types'
 import type { ContractDetailEditor } from '@/features/contracts/use-contract-inline-edit'
+import { ReferentValue } from '@/features/referents/referent-value'
 import { formatDate } from '@/lib/formatting/date-display'
 
 /** Spans both columns of `RecordSectionsGrid` — same rule `RecordSection`'s own `full` prop applies. */
@@ -98,10 +99,10 @@ interface ContractDetailSectionsProps {
  * offer's view): comments callout, Cliente e opportunita', Societa' e sedi,
  * Ciclo di vita, Documento e pagamento.
  *
- * Deliberately NOT shown here (same directive): the whole Team block —
- * Supervisore, Commerciale, Segnalatore. The values are not removed —
- * `commercial`/`reporter`/`supervisor` stay on the payload, this screen just
- * does not render them.
+ * "Cliente e opportunita'" carries the Offerta's "Anagrafica e contatti" rows
+ * (user request 2026-10-29): Anagrafica, Referente with its Tipo referente,
+ * Commerciale and Segnalatore — read only here, they belong to the Offerta.
+ * The Supervisore stays off this screen (user directive 2026-08-31).
  *
  * Every relation here is a LIVE projection through the quote (BR-7/AC-040):
  * nothing below is a persisted column on `contracts` — except the four the
@@ -131,6 +132,9 @@ export function ContractDetailSections({ contract, editor, canEdit }: ContractDe
       <RecordSection title={t('contracts.detail.sections.identity')} icon={<Contact />}>
         <RecordFieldList>
           <RelationField label={t('contracts.detail.registry')} relation={contract.registry} domain="registries" />
+          <RecordField label={t('contracts.detail.referent')}>
+            <ReferentValue referent={contract.referent} />
+          </RecordField>
           {/* I due record correlati sono raggiungibili DAL campo che li nomina
               (direttiva utente 2026-08-31), non da bottoni nella barra azioni.
               Aprono comunque una MODALE, mai un'altra pagina. */}
@@ -144,6 +148,18 @@ export function ContractDetailSections({ contract, editor, canEdit }: ContractDe
           <RecordField label={t('contracts.detail.quote')}>
             <ContractQuoteLink quoteId={contract.quote_id} title={contract.quote.title} />
           </RecordField>
+          <RelationField
+            label={t('contracts.detail.commercial')}
+            icon={<Briefcase />}
+            relation={contract.commercial}
+            domain="referents"
+          />
+          <RelationField
+            label={t('contracts.detail.reporter')}
+            icon={<UserRound />}
+            relation={contract.reporter}
+            domain="referents"
+          />
         </RecordFieldList>
       </RecordSection>
 

@@ -97,6 +97,7 @@ function contract(status: ContractStatusRef, actions: Partial<ResourcePermission
       margin_net: '600.00',
     },
     registry: { id: 10, name: 'Acme S.p.A.' },
+    referent: null,
     opportunity: null,
     company: null,
     company_site: null,

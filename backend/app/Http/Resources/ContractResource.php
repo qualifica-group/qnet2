@@ -9,6 +9,7 @@ use App\Models\Contract;
 use App\Models\Quote;
 use App\Services\Contracts\ContractAlertResolver;
 use App\Support\OperationalSiteLabel;
+use App\Support\ReferentRef;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -20,6 +21,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * MT-02). D-1: `contracts` owns NO client/opportunity/amount/code column —
  * every one of those is projected LIVE off the eager-loaded `quote` tree
  * (ContractService::DETAIL_RELATIONS having loaded `quote.opportunity.registry`,
+ * `quote.opportunity.referent.referentType`,
  * `quote.company`, `quote.companySite`, `quote.operationalSite.addresses.city`,
  * `quote.commercial`/`reporter`/`supervisor`/`paymentMethod`,
  * `quote.offerLines.product.category`/`vatRate`/`commissions.recipient`), so
@@ -54,6 +56,7 @@ class ContractResource extends JsonResource
             'quote_id' => $this->quote_id,
             'quote' => $this->summarizeQuote($quote),
             'registry' => $this->summarizeByName($quote->opportunity?->registry),
+            'referent' => ReferentRef::summarize($quote->opportunity?->referent),
             'opportunity' => $this->summarizeByName($quote->opportunity),
             'company' => $this->summarizeCompany($quote->company),
             'company_site' => $this->summarizeByName($quote->companySite),

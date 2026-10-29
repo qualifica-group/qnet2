@@ -13,6 +13,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "A contract is never created by hand: it is born when a quote moves to a **Closed (positive)** status, with an **Accepted at** date of that day and the **Default** status of **Contract Statuses**. It is not born if the product category is set to not generate contracts. If the quote leaves the positive status, the contract becomes **\"Sospeso\"** and QNet remembers the previous status.",
         },
+        {
+          type: 'paragraph',
+          text: "On the record, the **Client and opportunity** section shows the same data as the quote, read only: **Registry**, **Referent** (with its referent type under the name), **Opportunity**, **Offer**, **Commercial** and **Reporter**. They are changed from the quote.",
+        },
       ],
     },
     {

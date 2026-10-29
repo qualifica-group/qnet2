@@ -100,6 +100,7 @@ function contract(overrides: Partial<ContractDetailWithPermissions> = {}): Contr
       margin_net: '600.00',
     },
     registry: { id: 10, name: 'Acme S.p.A.' },
+    referent: { id: 15, name: 'Mario Bianchi', referent_type: { id: 3, name: 'Amministratore' } },
     opportunity: { id: 20, name: 'Fornitura 2026' },
     company: null,
     company_site: null,
@@ -190,10 +191,10 @@ function formatExpectedDate(value: string): string {
 }
 
 /**
- * Direttiva utente 2026-08-31 (resa CRM): la scheda NON mostra piu' il blocco
- * Team — Supervisore, Commerciale, Segnalatore — mentre Societa'/sedi resta. I
- * valori dei tre ruoli restano sul payload, la view semplicemente non li rende.
- * La sezione "Cliente e opportunita'" porta ora il link all'Offerta. Le date del ciclo
+ * Direttiva utente 2026-08-31 (resa CRM): la scheda NON mostra il Supervisore,
+ * mentre Societa'/sedi resta. Richiesta utente 2026-10-29: la sezione "Cliente
+ * e opportunita'" porta le righe dell'Offerta — Anagrafica, Referente con il
+ * suo Tipo referente, Commerciale, Segnalatore — oltre al link all'Offerta. Le date del ciclo
  * di vita, le note di pagamento e i commenti restano quelli di AC-043.
  */
 describe('ContractDetailView — fields (AC-043, rev. direttiva 2026-08-31)', () => {
@@ -237,7 +238,8 @@ describe('ContractDetailView — fields (AC-043, rev. direttiva 2026-08-31)', ()
     expect(screen.getByText('Nota interna di prova')).toBeInTheDocument()
   })
 
-  it('mostra Societa\' e sedi ma non il Team (Commerciale, Segnalatore, Supervisore)', () => {
+  // REQUIREMENT CHANGED 2026-10-29: Commerciale e Segnalatore tornano visibili (come nell'Offerta).
+  it('mostra Societa\' e sedi, Referente, Commerciale e Segnalatore ma non il Supervisore', () => {
     renderView(
       contract({
         company: { id: 60, name: 'Acme Holding S.r.l.' },
@@ -247,8 +249,12 @@ describe('ContractDetailView — fields (AC-043, rev. direttiva 2026-08-31)', ()
 
     expect(screen.getByText('Acme Holding S.r.l.')).toBeInTheDocument()
     expect(screen.getByText('Sede di Milano')).toBeInTheDocument()
-    expect(screen.queryByText('Luca Verdi')).not.toBeInTheDocument()
-    expect(screen.queryByText('Giulia Neri')).not.toBeInTheDocument()
+    expect(screen.getByText('Mario Bianchi')).toBeInTheDocument()
+    expect(screen.getByText('Amministratore')).toBeInTheDocument()
+    expect(screen.getByText('Commercial')).toBeInTheDocument()
+    expect(screen.getByText('Luca Verdi')).toBeInTheDocument()
+    expect(screen.getByText('Reporter')).toBeInTheDocument()
+    expect(screen.getByText('Giulia Neri')).toBeInTheDocument()
     expect(screen.queryByText('Paolo Blu')).not.toBeInTheDocument()
   })
 })

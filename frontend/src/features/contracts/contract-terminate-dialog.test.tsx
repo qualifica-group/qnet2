@@ -44,6 +44,7 @@ function contract(overrides: Partial<ContractDetail> = {}): ContractDetail {
       margin_net: '600.00',
     },
     registry: null,
+    referent: null,
     opportunity: null,
     company: null,
     company_site: null,

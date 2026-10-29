@@ -41,6 +41,7 @@ function contract(overrides: Partial<ContractDetailWithPermissions> = {}): Contr
     quote: { id: 10, code: 'OFF-1', title: 'Fornitura 2026', created_at: '2026-01-01T00:00:00Z' },
     opportunity: { id: 3, name: 'Accordo Acme' },
     registry: { id: 2, name: 'Acme' },
+    referent: null,
     company: null,
     company_site: null,
     operational_site: null,

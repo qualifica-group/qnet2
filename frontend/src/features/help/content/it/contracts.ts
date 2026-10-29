@@ -13,6 +13,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "Il contratto non si crea a mano: nasce quando un'offerta passa a uno stato **Chiuso con esito positivo**, con data di **Accettazione** del giorno e lo stato **Predefinito** di **Stati Contratto**. Non nasce se la categoria prodotto è impostata per non generare contratti. Se l'offerta esce dallo stato positivo, il contratto viene **Sospeso** e QNet ricorda lo stato precedente.",
         },
+        {
+          type: 'paragraph',
+          text: "Nella scheda, la sezione **Cliente e opportunità** riporta gli stessi dati dell'offerta, in sola lettura: **Anagrafica**, **Referente** (con il suo Tipo referente sotto il nome), **Opportunità**, **Offerta**, **Commerciale** e **Segnalatore**. Si modificano dall'offerta.",
+        },
       ],
     },
     {

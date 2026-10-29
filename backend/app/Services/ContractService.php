@@ -31,6 +31,8 @@ class ContractService
         'validatedBy',
         'terminatedBy',
         'quote.opportunity.registry',
+        // The opportunity's Referente with its Tipo referente (ContractResource::referent).
+        'quote.opportunity.referent.referentType',
         'quote.company',
         'quote.companySite',
         'quote.operationalSite.addresses.city',
