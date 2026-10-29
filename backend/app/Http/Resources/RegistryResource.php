@@ -5,8 +5,10 @@ namespace App\Http\Resources;
 use App\Authorization\LegacyIdVisibility;
 use App\Models\Contact;
 use App\Models\PersonalData;
+use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\Sector;
+use App\Support\ReferentRef;
 use App\Tables\Shared\PrimaryContactColumn;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -32,8 +34,8 @@ class RegistryResource extends JsonResource
             'sector_ids' => $this->sectors->pluck('id')->all(),
             'sectors' => $this->sectors->map(fn (Sector $sector): array => ['id' => $sector->id, 'name' => $sector->selectLabel()])->all(),
             'referent_ids' => $this->referents->pluck('id')->all(),
-            // Referents as person cards (name + primary contacts).
-            'referents' => $this->toPersonRefList($this->referents),
+            // Referents as person cards (name + Tipo referente + primary contacts).
+            'referents' => $this->toReferentRefList($this->referents),
             'manager_ids' => $this->managers->pluck('id')->all(),
             // Managers as ordered "G.A. n" person cards (name + position +
             // primary contacts); `manager_slots` is the gap-aware slot array
@@ -113,25 +115,27 @@ class RegistryResource extends JsonResource
     }
 
     /**
-     * A person list (referents) projected to {id, name, primary_contacts},
-     * mirroring toPersonRef for the multi relations.
+     * The referents projected to {id, name, referent_type, primary_contacts},
+     * mirroring toPersonRef for the multi relation plus each person's Tipo
+     * referente (the service eager-loads `referents.referentType`).
      *
-     * @param  iterable<int, Model>  $related
-     * @return array<int, array{id: int, name: string, primary_contacts: array<int, array{type: string, icon: string|null, label: string, value: string}>}>
+     * @param  iterable<int, Referent>  $related
+     * @return array<int, array{id: int, name: string, referent_type: array{id: int, name: string}|null, primary_contacts: array<int, array{type: string, icon: string|null, label: string, value: string}>}>
      */
-    private function toPersonRefList(iterable $related): array
+    private function toReferentRefList(iterable $related): array
     {
         return collect($related)
-            ->map(fn (Model $person): array => [
+            ->map(fn (Referent $person): array => [
                 'id' => $person->id,
                 'name' => $person->name,
+                'referent_type' => ReferentRef::typeOf($person),
                 'primary_contacts' => (new PrimaryContactColumn)->format($this->primaryContactsOf($person)),
             ])
             ->all();
     }
 
     /**
-     * Managers as ordered "G.A. n" person cards: like toPersonRefList plus the
+     * Managers as ordered "G.A. n" person cards: like toPersonRef plus the
      * pivot `position`. Already ordered by position (relation orderByPivot).
      *
      * @param  iterable<int, Model>  $managers

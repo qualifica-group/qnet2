@@ -6,6 +6,7 @@
  */
 
 import type { ResourcePermissions } from '@/features/authorization/types'
+import type { ReferentRef } from '@/features/referents/types'
 import type { TaskStatusGroupValue } from '@/features/status-reorder/types'
 import type { TaskRecurrenceDetail } from '@/features/tasks/task-recurrence-types'
 
@@ -41,7 +42,7 @@ export interface TaskStatusRef extends TaskLookupRef {
   completion_percentage: number
 }
 
-/** A `{id, name}` projection (registry, referent, opportunity, users). */
+/** A `{id, name}` projection (registry, opportunity, users). */
 export interface TaskNamedRef {
   id: number
   name: string
@@ -131,7 +132,7 @@ export interface TaskDetail {
   registry_id: number | null
   registry: TaskNamedRef | null
   referent_id: number | null
-  referent: TaskNamedRef | null
+  referent: ReferentRef | null
   parent_task_id: number | null
   parent_task: TaskParentRef | null
   task_type_id: number | null

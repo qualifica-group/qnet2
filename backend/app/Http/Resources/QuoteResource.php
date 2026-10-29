@@ -19,6 +19,7 @@ use App\Services\Quotes\QuoteManagerSyncMode;
 use App\Services\Quotes\QuoteTypologySummaryCalculator;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Support\OperationalSiteLabel;
+use App\Support\ReferentRef;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Attributes\PreserveKeys;
@@ -142,7 +143,7 @@ class QuoteResource extends JsonResource
             // propria su `quotes` e non sono scrivibili da qui — il dettaglio
             // Offerta le mostra soltanto, come fa la scheda Opportunita'.
             'registry' => $this->summarizeByName($this->opportunity?->registry),
-            'referent' => $this->summarizeByName($this->opportunity?->referent),
+            'referent' => ReferentRef::summarize($this->opportunity?->referent),
             'source' => $this->summarizeByName($this->opportunity?->source),
             'product_lines' => $this->summarizeProductLines($this->opportunity?->productLines ?? []),
             'general_notes' => $this->opportunity?->general_notes,

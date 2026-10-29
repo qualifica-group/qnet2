@@ -61,6 +61,7 @@ class RegistryService
         'commercial.personalData.contacts',
         'reporter.personalData.contacts',
         'referents.personalData.contacts',
+        'referents.referentType',
         'managers.personalData.contacts',
     ];
 

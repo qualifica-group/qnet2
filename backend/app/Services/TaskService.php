@@ -91,7 +91,7 @@ class TaskService
         'taskPriority',
         'taskImportance',
         'registry',
-        'referent',
+        'referent.referentType',
         'opportunity',
         'workOrder',
         'workOrderStage',

@@ -28,7 +28,7 @@ const guide: HelpGuide = {
           headers: ['Section', 'What it contains'],
           rows: [
             ['Personal details', 'The same fields as a registry, with Individual or Company.'],
-            ['Referent details', 'Referent type, Contact scope (Internal or External), Linked user (if the person uses QNet), **Supplier registry** and Notes.'],
+            ['Referent details', 'Referent type (the person’s role, shown under their name on the registry’s Referents cards and in the Contact field of opportunities, quotes and tasks), Contact scope (Internal or External), Linked user (if the person uses QNet), **Supplier registry** and Notes.'],
             ['Other fields', 'The custom fields of referents, grouped as in the form.'],
             ['Contacts', 'Contact details. The Phone is required at creation.'],
             ['Addresses', 'Sites and billing addresses.'],

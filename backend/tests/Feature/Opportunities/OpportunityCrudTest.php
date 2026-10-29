@@ -120,7 +120,11 @@ it('create: 201, response shape matches the frozen contract', function () {
         'success_probability' => 60,
     ]))->assertCreated()
         ->assertJsonPath('data.registry', ['id' => $registry->id, 'name' => 'Acme Spa'])
-        ->assertJsonPath('data.referent', ['id' => $referent->id, 'name' => 'Ada Contact'])
+        ->assertJsonPath('data.referent', [
+            'id' => $referent->id,
+            'name' => 'Ada Contact',
+            'referent_type' => ['id' => $referent->referent_type_id, 'name' => $referent->referentType->name],
+        ])
         ->assertJsonPath('data.supervisor', ['id' => $supervisor->id, 'name' => 'Sara Supervisor'])
         ->assertJsonPath('data.estimated_value', '12345.67')
         ->assertJsonPath('data.success_probability', 60)

@@ -191,6 +191,24 @@ describe('RegistryDetailView — record card (user directive 2026-09-11)', () =>
     expect(statValue('Employees')).toBe('42')
   })
 
+  it('shows each referent card with its referent type, and no type line when it has none', () => {
+    render(
+      <RegistryDetailView
+        registry={registry({
+          referents: [
+            { id: 1, name: 'Ada Lovelace', referent_type: { id: 7, name: 'Administrator' } },
+            { id: 2, name: 'Grace Hopper', referent_type: null },
+          ],
+        })}
+      />,
+    )
+
+    const adaCard = screen.getByRole('link', { name: 'Ada Lovelace' }).parentElement as HTMLElement
+    const graceCard = screen.getByRole('link', { name: 'Grace Hopper' }).parentElement as HTMLElement
+    expect(within(adaCard).getByText('Administrator')).toBeInTheDocument()
+    expect(within(graceCard).queryByText(/Referent type/)).not.toBeInTheDocument()
+  })
+
   it('puts the supervisor and the G.A. slots in ONE Team block, a row each', () => {
     render(
       <RegistryDetailView

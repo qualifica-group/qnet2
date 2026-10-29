@@ -64,7 +64,7 @@ const guide: HelpGuide = {
             ['Note generali', "Il riquadro giallo, lo stesso di Gestione richieste (nel dettaglio in cima ai dati dell'anagrafica, nella creazione in cima alla colonna di destra): un testo libero (fino a 5000 caratteri) con ciò che chi apre l'anagrafica deve leggere per primo."],
             ['Contatti', 'Email, Telefono (obbligatorio), PEC, Fax e Sito web; con Aggiungi contatto ne inserisci altri e indichi il Contatto principale.'],
             ['Indirizzi', 'Uno o più indirizzi, ciascuno con un Tipo sede: Sede legale, Consegna, Fatturazione o Sede operativa.'],
-            ['Referenti', 'Le persone di contatto del cliente, a tutta larghezza sotto le altre sezioni.'],
+            ['Referenti', 'Le persone di contatto del cliente, a tutta larghezza sotto le altre sezioni: ogni card mostra il nome, sotto il suo Tipo referente (per esempio Amministratore, Contabilità o Titolare) e i contatti principali.'],
             ['Altri campi', "I campi personalizzati delle anagrafiche, tra cui Tag: scegli uno o più tag dall'elenco gestito nel modulo Tag. Compaiono anche nel dettaglio, raggruppati come nel modulo."],
           ],
         },

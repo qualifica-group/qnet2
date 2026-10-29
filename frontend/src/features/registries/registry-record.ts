@@ -6,6 +6,7 @@ import type {
   ManagerRef,
   ReferenceRef,
   RegistryDetail,
+  RegistryReferentRef,
   SizeClass,
 } from '@/features/registries/types'
 import type { RegistryFormValues } from '@/features/registries/use-registry-form'
@@ -14,7 +15,7 @@ import type { RegistryFormValues } from '@/features/registries/use-registry-form
 export interface RegistryRecordValues {
   source: ReferenceRef | null
   sectors: ReferenceRef[]
-  referents: ReferenceRef[]
+  referents: RegistryReferentRef[]
   commercial: ReferenceRef | null
   reporter: ReferenceRef | null
   supervisor: ReferenceRef | null

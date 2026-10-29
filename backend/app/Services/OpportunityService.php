@@ -58,7 +58,7 @@ class OpportunityService
      */
     private const array DETAIL_RELATIONS = [
         'registry',
-        'referent',
+        'referent.referentType',
         'commercial',
         'reporter',
         'supervisor',

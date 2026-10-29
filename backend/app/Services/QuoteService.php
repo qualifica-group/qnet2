@@ -71,7 +71,7 @@ class QuoteService
         // (QuoteResource::registry/referent), che sono una PROIEZIONE
         // dell'Opportunita' — nessuna colonna propria su `quotes`.
         'opportunity.registry',
-        'opportunity.referent',
+        'opportunity.referent.referentType',
         // Richiesta utente 2026-08-31: fonte, funzioni aziendali/categorie
         // prodotto e note generali del record padre, mostrate nel Contesto
         // dell'Offerta. `productLines.productCategory` e' gia' sopra.

@@ -64,7 +64,7 @@ const guide: HelpGuide = {
             ['General notes', 'The yellow box, the same as in Request management (at the top of the registry data on the record view, at the top of the right-hand column when creating): free text (up to 5000 characters) with what whoever opens the registry should read first.'],
             ['Contacts', 'Email, Phone (required), PEC, Fax and Website; with Add contact you enter more and set the Primary contact.'],
             ['Addresses', 'One or more addresses, each with a Site type: Registered office, Delivery, Billing or Operational site.'],
-            ['Referents', "The client's contact people, full width below the other sections."],
+            ['Referents', "The client's contact people, full width below the other sections: each card shows the name, then its Referent type (for example Administrator, Accounting or Owner) and the primary contacts."],
             ['Other fields', 'The registry custom fields, including Tag: pick one or more tags from the list managed in the Tags module. They also appear on the detail, grouped as in the form.'],
           ],
         },

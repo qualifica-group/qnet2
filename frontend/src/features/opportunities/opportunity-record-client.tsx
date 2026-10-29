@@ -11,6 +11,7 @@ import { OpportunityReporterField } from '@/features/opportunities/opportunity-r
 import { useCascadeEditable } from '@/components/record-form/use-cascade-editable'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import type { OpportunityRecordSectionProps } from '@/features/opportunities/opportunity-record'
+import { ReferentValue } from '@/features/referents/referent-value'
 import {
   OpportunityCommercialField,
   OpportunityReferentField,
@@ -103,7 +104,7 @@ export function OpportunityClientRecordSection({
           canEdit={values.registry !== null && !lockedFields.has('referent_id')}
           editor={<OpportunityReferentField control={control} selected={values.referent} />}
         >
-          <ReferentLink value={values.referent} />
+          <ReferentValue referent={values.referent} />
         </RecordInlineField>
         <RecordInlineField
           field="commercial_id"

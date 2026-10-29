@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Tipo referente sotto il nome del Referente — VERDE, COMMITTATO (2026-10-29)
+
+- Richiesta utente: nelle card Referenti dell'anagrafica e ovunque compaia un Referente si legge il suo Tipo referente.
+- Contratto (additivo): il ref del referente e' `{id, name, referent_type: {id, name}|null}` in
+  `RegistryResource.referents[]` (oltre a `primary_contacts`), `OpportunityResource.referent`,
+  `QuoteResource.referent` (proiezione dall'opportunita'), `TaskResource.referent`. Helper `App\Support\ReferentRef`
+  (`summarize`/`typeOf`, mai query: eager-load `referentType` aggiunto in Registry/Opportunity/Quote/TaskService).
+- FE: `ReferentRef` in `features/referents/types.ts`; `features/referents/referent-value.tsx` (`ReferentValue`,
+  `ReferentTypeLine` con etichetta sr-only). Su un draft da picker `referent_type` manca: nessuna riga.
+- Fuori scope (non toccati): Commerciale/Segnalatore/Partner (anch'essi Referent) mostrano solo il nome.
+- Test: `RegistryCrudTest`, `TaskCrudTest`, `QuoteDerivedReferentTest`, `OpportunityCrudTest` (assert contratto
+  aggiornato: REQUIREMENT CHANGED), `referent-value.test.tsx`, `registry-detail.test.tsx`. Guide in-app IT/EN
+  registries + referents e manuale Claude Docs aggiornati.
+
 ## Anno a 4 cifre negli input data — VERDE, COMMITTATO (2026-10-29)
 
 - `components/ui/input.tsx`: ogni `Input` `type` `date`/`datetime-local`/`month` senza `max` proprio riceve

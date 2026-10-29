@@ -8,6 +8,7 @@
 
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { ProductLine } from '@/features/product-lines/types'
+import type { ReferentRef } from '@/features/referents/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 
 /** A hydrated `{id, name}` relation projection, shared by every plain single-relation field. */
@@ -121,7 +122,7 @@ export interface OpportunityDetail {
   /** Spec 0083: the status COMPUTED from the quotes (global default 'open' row as fallback). Read-only. */
   status: OpportunityStatusSummary
   referent_id: number | null
-  referent: OpportunityRelationRef | null
+  referent: ReferentRef | null
   commercial_id: number | null
   commercial: OpportunityRelationRef | null
   reporter_id: number | null

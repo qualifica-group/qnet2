@@ -2,11 +2,12 @@ import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordLink } from '@/components/detail/record-link'
 import { enumLabelOf } from '@/features/config/enum-label'
 import type { PrimaryContact } from '@/features/table/types'
-import type { ReferenceRef } from '@/features/registries/types'
+import { ReferentTypeLine } from '@/features/referents/referent-value'
+import type { ReferenceRef, RegistryReferentRef } from '@/features/registries/types'
 
 /**
  * The REFERENTI attached to an anagrafica, as compact cards carrying each
- * person's PRIMARY contacts.
+ * person's Tipo referente and PRIMARY contacts.
  *
  * Only the referenti: the Supervisore and the G.A. slots left this block for
  * `RegistryTeamSection` (user directive 2026-09-11), which renders them as the
@@ -53,20 +54,21 @@ export function PersonField({ person }: { person: ReferenceRef | null }) {
   )
 }
 
-/** Compact referente card: the linked name plus their primary contacts. */
-function PersonCard({ referent }: { referent: ReferenceRef }) {
+/** Compact referente card: the linked name, their Tipo referente and their primary contacts. */
+function PersonCard({ referent }: { referent: RegistryReferentRef }) {
   return (
     <div className="flex min-w-0 flex-col rounded-lg border p-2.5">
       <RecordLink domain="referents" id={referent.id} className="text-sm font-medium">
         {referent.name}
       </RecordLink>
+      <ReferentTypeLine type={referent.referent_type} />
       <PersonContactLines contacts={referent.primary_contacts} />
     </div>
   )
 }
 
 interface RegistryReferentsProps {
-  referents: ReferenceRef[]
+  referents: RegistryReferentRef[]
 }
 
 /** Responsive card grid: one column on a narrow record, two from `@md`, three from `@3xl`. */

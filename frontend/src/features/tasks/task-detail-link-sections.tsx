@@ -18,6 +18,7 @@ import {
 import { TaskRecurrenceFields } from '@/features/tasks/task-recurrence-section'
 import { TaskRecurrenceSummary } from '@/features/tasks/task-recurrence-summary'
 import { TaskReferentField, TaskRegistryField } from '@/features/tasks/task-registry-section'
+import { ReferentValue } from '@/features/referents/referent-value'
 import type { TaskDetailSectionProps } from '@/features/tasks/task-detail-sections'
 
 /**
@@ -74,13 +75,7 @@ export function TaskDetailLinksSection({ task, editor }: TaskDetailSectionProps)
           canEdit={task.registry_id !== null}
           editor={<TaskReferentField control={form.control} referent={task.referent} />}
         >
-          {task.referent ? (
-            <RecordLink domain="referents" id={task.referent.id}>
-              {task.referent.name}
-            </RecordLink>
-          ) : (
-            <DetailEmpty />
-          )}
+          <ReferentValue referent={task.referent} />
         </RecordInlineField>
         <RecordInlineField
           field="opportunity_id"

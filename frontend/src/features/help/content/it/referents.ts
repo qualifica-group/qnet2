@@ -28,7 +28,7 @@ const guide: HelpGuide = {
           headers: ['Sezione', 'Cosa contiene'],
           rows: [
             ['Dati anagrafici', "Gli stessi campi dell'anagrafica, con Persona fisica o Azienda."],
-            ['Dettagli referente', 'Tipo referente, Ambito contatto (Interno o Esterno), Utente collegato (se la persona usa QNet), **Anagrafica fornitore** e Note.'],
+            ['Dettagli referente', 'Tipo referente (il ruolo della persona, che compare sotto il suo nome nelle card Referenti dell’anagrafica e nel campo Referente di opportunità, offerte e attività), Ambito contatto (Interno o Esterno), Utente collegato (se la persona usa QNet), **Anagrafica fornitore** e Note.'],
             ['Altri campi', 'I campi personalizzati dei referenti, raggruppati come nel modulo.'],
             ['Contatti', 'I recapiti. Il Telefono è obbligatorio in creazione.'],
             ['Indirizzi', 'Sedi e indirizzi di fatturazione.'],

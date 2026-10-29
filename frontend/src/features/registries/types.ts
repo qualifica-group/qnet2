@@ -11,6 +11,7 @@ import type { PersonalDataPayload } from '@/features/personal-data/drafts'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
 import type { PrimaryContact } from '@/features/table/types'
+import type { ReferentRef } from '@/features/referents/types'
 
 /** Convention status of a registry (AgreementStatusEnum). */
 export const AGREEMENT_STATUSES = ['negotiating', 'rejected', 'agreed'] as const
@@ -34,6 +35,11 @@ export interface ReferenceRef {
    * person has no primary contact; absent on plain refs (source/sectors/...).
    */
   primary_contacts?: PrimaryContact[]
+}
+
+/** A referente card: the person ref plus its Tipo referente (absent on a draft). */
+export interface RegistryReferentRef extends ReferenceRef {
+  referent_type?: ReferentRef['referent_type']
 }
 
 /**
@@ -61,7 +67,7 @@ export interface RegistryDetail {
   sectors: ReferenceRef[]
   referent_ids: number[]
   /** Hydrates the "Referents" multiselect control. */
-  referents: ReferenceRef[]
+  referents: RegistryReferentRef[]
   /** Filled manager ids, ordered by G.A. position. */
   manager_ids: number[]
   /** Managers as ordered "G.A. n" cards (name + position + primary contacts). */

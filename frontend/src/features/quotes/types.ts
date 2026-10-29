@@ -14,6 +14,7 @@
 import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { ProductLine } from '@/features/product-lines/types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
+import type { ReferentRef } from '@/features/referents/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { ModuleCreateParams } from '@/features/modules/types'
@@ -149,7 +150,7 @@ export interface QuoteDetail {
    * below; treat a missing key the same as `null`/`[]`.
    */
   registry?: QuoteRelationRef | null
-  referent?: QuoteRelationRef | null
+  referent?: ReferentRef | null
   source?: QuoteRelationRef | null
   product_lines?: ProductLine[]
   general_notes?: string | null
