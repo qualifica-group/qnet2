@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Tasks\TaskBulkService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -83,8 +84,10 @@ class TaskBulkController extends BaseApiController
     {
         $permission = self::BASE_PERMISSIONS[$data->action] ?? null;
 
-        if ($permission === null || ! $actor->can($permission)) {
-            throw new AuthorizationException;
+        if ($permission === null) {
+            throw new AuthorizationException(__('This bulk action is not available.'));
         }
+
+        Gate::forUser($actor)->authorize($permission);
     }
 }

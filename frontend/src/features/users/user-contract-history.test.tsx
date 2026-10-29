@@ -302,7 +302,7 @@ describe('UserContractHistorySection — new condition', () => {
     await pickWorkingTime(dialog, 'Full time')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
 
-    await waitFor(() => expect(toastError).toHaveBeenCalledWith('You do not have permission for this action.'))
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(i18n.t('common.forbidden')))
   })
 })
 

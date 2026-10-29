@@ -3,6 +3,7 @@ import type { UseFormSetValue } from 'react-hook-form'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { fetchProduct, productDetailQueryKey } from '@/features/products/api'
 import { defaultProductSupplierOf, isProductSupplier, productCostFor } from '@/features/products/product-suppliers'
 import type { PurchaseRequestFormValues } from '@/features/purchase-requests/purchase-request-schema'
@@ -32,7 +33,7 @@ function useCachedProduct() {
  * product's own. They stay editable; a missing value keeps what is typed.
  */
 export function useLineProductDefaults(index: number, setValue: UseFormSetValue<PurchaseRequestFormValues>) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const loadProduct = useCachedProduct()
 
   return useCallback(
@@ -52,11 +53,11 @@ export function useLineProductDefaults(index: number, setValue: UseFormSetValue<
           setValue(`lines.${index}.supplier_id`, supplier.supplier_id, WRITE_OPTIONS)
           setValue(`lines.${index}.supplier_ref`, { id: supplier.supplier_id, name: supplier.name }, WRITE_OPTIONS)
         }
-      } catch {
-        toast.error(t('purchaseRequests.lines.productLoadError'))
+      } catch (error) {
+        toast.error(apiErrorMessage(error, t('purchaseRequests.lines.productLoadError'), i18n))
       }
     },
-    [index, loadProduct, setValue, t],
+    [index, loadProduct, setValue, t, i18n],
   )
 }
 
@@ -66,7 +67,7 @@ export function useLineProductDefaults(index: number, setValue: UseFormSetValue<
  * price as typed.
  */
 export function useLineSupplierCost(index: number, setValue: UseFormSetValue<PurchaseRequestFormValues>) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const loadProduct = useCachedProduct()
 
   return useCallback(
@@ -80,10 +81,10 @@ export function useLineSupplierCost(index: number, setValue: UseFormSetValue<Pur
         if (cost !== null) {
           setValue(`lines.${index}.unit_price`, cost, WRITE_OPTIONS)
         }
-      } catch {
-        toast.error(t('purchaseRequests.lines.productLoadError'))
+      } catch (error) {
+        toast.error(apiErrorMessage(error, t('purchaseRequests.lines.productLoadError'), i18n))
       }
     },
-    [index, loadProduct, setValue, t],
+    [index, loadProduct, setValue, t, i18n],
   )
 }

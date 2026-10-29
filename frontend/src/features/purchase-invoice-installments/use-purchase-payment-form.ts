@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import axios from 'axios'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import {
   addDaysIso,
@@ -38,7 +39,7 @@ function hasAccountError(error: unknown): boolean {
  * The document's installments tell whether "spread" is possible; its account is the proposed default.
  */
 export function usePurchasePaymentForm(detail: PurchaseInstallmentDetail, onDone: () => void) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const installmentAmount = Number(detail.amount)
   const canSpread = hasLaterUnpaidInstallments(detail.sequence, detail.purchase_invoice.installments)
   const schema = useMemo(
@@ -74,7 +75,7 @@ export function usePurchasePaymentForm(detail: PurchaseInstallmentDetail, onDone
           return
         }
         if (!applyServerValidationErrors(error, form.setError, [...FIELDS])) {
-          toast.error(t('purchaseInvoiceInstallments.payment.genericError'))
+          toast.error(apiErrorMessage(error, t('purchaseInvoiceInstallments.payment.genericError'), i18n))
         } else if (hasAccountError(error)) {
           form.setError('financial_account_id', { message: t('purchaseInvoiceInstallments.payment.errors.accountCompany') })
         }

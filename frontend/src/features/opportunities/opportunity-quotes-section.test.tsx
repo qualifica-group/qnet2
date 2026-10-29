@@ -350,17 +350,21 @@ describe('OpportunityQuotesSection — delete (AC-062/063)', () => {
     expect(screen.queryByLabelText('3 quotes')).not.toBeInTheDocument()
   })
 
-  it('shows the dedicated forbidden toast on a 403', async () => {
+  it('shows the specific permission sentence on a 403', async () => {
     const error = new axios.AxiosError('Forbidden', '403', undefined, undefined, {
       status: 403,
-      data: { success: false, message: 'Forbidden' },
+      data: {
+        success: false,
+        message: 'Forbidden',
+        authorization: { reason: 'missing_permission', permission: 'quotes.delete' },
+      },
     } as never)
     deleteQuoteMock.mockRejectedValue(error)
     renderPanel(3)
 
     await act(async () => screen.getByRole('button', { name: 'delete row' }).click())
 
-    expect(toastErrorMock).toHaveBeenCalledWith('You cannot delete this quote.')
+    expect(toastErrorMock).toHaveBeenCalledWith('You do not have the «Delete» permission on the «Quotes» module.')
   })
 })
 

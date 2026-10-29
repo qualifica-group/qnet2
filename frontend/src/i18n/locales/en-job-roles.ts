@@ -45,7 +45,6 @@ export const jobRoles = {
     descriptionMax: 'Description must be at most 1000 characters.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the job role. Please try again.',
-    deleteForbidden: 'You cannot delete this job role.',
     deleteInUse: 'Cannot delete: the job role is assigned to people.',
     sections: {
       identity: {

@@ -62,7 +62,6 @@ export const orgChart = {
     cancel: 'Cancel',
     confirm: 'Confirm the move',
     success: '{{name}} moved.',
-    forbidden: 'You do not have permission to make this move.',
     error: 'The move failed. Try again later.',
   },
 }

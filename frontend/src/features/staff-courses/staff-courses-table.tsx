@@ -13,8 +13,8 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { deleteStaffCourse } from '@/features/staff-courses/api'
 import { STAFF_COURSES_DOMAIN } from '@/features/staff-courses/types'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 
-const FORBIDDEN_STATUS = 403
 const UNPROCESSABLE_STATUS = 422
 
 /**
@@ -23,7 +23,7 @@ const UNPROCESSABLE_STATUS = 422
  * the table; 422 = trainings already use the course).
  */
 export function StaffCoursesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -42,8 +42,9 @@ export function StaffCoursesTable() {
         refreshGrid()
       } catch (error) {
         const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        if (status === FORBIDDEN_STATUS) {
-          toast.error(t('staffCourses.form.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden !== null) {
+          toast.error(forbidden)
         } else if (status === UNPROCESSABLE_STATUS) {
           toast.error(t('staffCourses.form.deleteInUse'))
         } else {
@@ -53,7 +54,7 @@ export function StaffCoursesTable() {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(

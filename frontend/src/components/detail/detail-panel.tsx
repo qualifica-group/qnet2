@@ -6,6 +6,7 @@ import { avatarColor } from '@/components/avatar-color'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { RecordUnavailable } from '@/components/detail/record-unavailable'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import { recordUnavailableReason } from '@/lib/record-unavailable-reason'
 import { cn } from '@/lib/utils'
 
@@ -181,7 +182,7 @@ interface DetailErrorProps {
  * error, 5xx) keeps the message plus the retry affordance.
  */
 export function DetailError({ error, message, retryLabel, onRetry }: DetailErrorProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const unavailableReason = recordUnavailableReason(error)
 
   if (unavailableReason) {
@@ -189,7 +190,10 @@ export function DetailError({ error, message, retryLabel, onRetry }: DetailError
       <RecordUnavailable
         reason={unavailableReason}
         title={t(`common.recordUnavailable.${unavailableReason}.title`)}
-        description={t(`common.recordUnavailable.${unavailableReason}.description`)}
+        description={
+          (unavailableReason === 'forbidden' ? forbiddenMessage(error, i18n) : null) ??
+          t(`common.recordUnavailable.${unavailableReason}.description`)
+        }
       />
     )
   }

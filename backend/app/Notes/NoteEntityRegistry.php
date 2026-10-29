@@ -56,7 +56,7 @@ final class NoteEntityRegistry
      */
     public function assertReadable(User $user, string $entityType, Model $record): void
     {
-        abort_unless($this->entityFor($entityType)->authorizeRead($user, $record), 403, 'This action is unauthorized.');
+        abort_unless($this->entityFor($entityType)->authorizeRead($user, $record), 403, __('You cannot read the notes of this record.'));
     }
 
     public function mentionableUsersQuery(string $entityType, Model $record): Builder

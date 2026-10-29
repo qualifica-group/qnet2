@@ -3,6 +3,7 @@ import type { UseFormSetValue } from 'react-hook-form'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { fetchProduct, productDetailQueryKey } from '@/features/products/api'
 import { defaultProductSupplierOf, isProductSupplier, productCostFor } from '@/features/products/product-suppliers'
 import type { PurchaseOrderFormValues } from '@/features/purchase-orders/purchase-order-schema'
@@ -26,7 +27,7 @@ export function useOrderLineProductDefaults(
   currentCostTypeId: number | null,
   orderSupplierId: number | null,
 ) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
 
   return useCallback(
@@ -51,10 +52,10 @@ export function useOrderLineProductDefaults(
         }
         setValue(`lines.${index}.vat_rate_id`, product.vat_rate_id, WRITE_OPTIONS)
         setValue(`lines.${index}.vat_rate_percent`, product.vat_rate ? Number(product.vat_rate.rate) : null)
-      } catch {
-        toast.error(t('purchaseOrderForm.lines.productLoadError'))
+      } catch (error) {
+        toast.error(apiErrorMessage(error, t('purchaseOrderForm.lines.productLoadError'), i18n))
       }
     },
-    [index, currentCostTypeId, orderSupplierId, queryClient, setValue, t],
+    [index, currentCostTypeId, orderSupplierId, queryClient, setValue, t, i18n],
   )
 }

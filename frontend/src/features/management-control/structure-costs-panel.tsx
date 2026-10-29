@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { SegmentedControl, type SegmentedControlOption } from '@/components/ui/segmented-control'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -108,9 +109,9 @@ function DimensionTable({ rows, dimension }: { rows: StructureDimensionRow[]; di
  * type and by company/site. Shares period, company and sites with the page filters.
  */
 export function StructureCostsPanel({ filters }: { filters: IncomeStatementFilters }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [groupBy, setGroupBy] = useState<StructureGroupBy>('company')
-  const { data, isPending, isError, refetch } = useStructureCosts(filters, groupBy)
+  const { data, isPending, isError, error, refetch } = useStructureCosts(filters, groupBy)
   const dimension = t(`managementControl.structure.groupBys.${groupBy}`)
   const hasData = data !== undefined && (data.by_cost_type.length > 0 || data.by_dimension.length > 0)
 
@@ -139,7 +140,7 @@ export function StructureCostsPanel({ filters }: { filters: IncomeStatementFilte
       ) : null}
       {isError ? (
         <div role="alert" className="flex items-center gap-3 text-sm text-destructive">
-          <span>{t('managementControl.structure.error')}</span>
+          <span>{apiErrorMessage(error, t('managementControl.structure.error'), i18n)}</span>
           <Button type="button" size="sm" variant="secondary" onClick={() => void refetch()}>
             {t('managementControl.retry')}
           </Button>

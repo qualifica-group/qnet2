@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import type { i18n as I18nInstance } from 'i18next'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import type { ApiErrorResponse } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
@@ -16,22 +18,18 @@ import { deleteEnasarcoParameter } from '@/features/enasarco-parameters/api'
 import { enasarcoParameterColumnRenderers } from '@/features/enasarco-parameters/column-renderers'
 import { ENASARCO_PARAMETERS_DOMAIN } from '@/features/enasarco-parameters/types'
 
-const FORBIDDEN_STATUS = 403
 const CONFLICT_STATUS = 409
 
 /** Maps a failed DELETE to a toast: 409 (year used by an issued settlement) shows the server message. */
-function deleteErrorMessage(error: unknown, t: (key: string) => string): string {
-  if (!axios.isAxiosError<ApiErrorResponse>(error)) {
-    return t('enasarcoParameters.form.deleteError')
+function deleteErrorMessage(error: unknown, t: (key: string) => string, i18n: I18nInstance): string {
+  const forbidden = forbiddenMessage(error, i18n)
+  if (forbidden) {
+    return forbidden
   }
-  switch (error.response?.status) {
-    case FORBIDDEN_STATUS:
-      return t('enasarcoParameters.form.deleteForbidden')
-    case CONFLICT_STATUS:
-      return error.response.data?.message ?? t('enasarcoParameters.form.deleteInUse')
-    default:
-      return t('enasarcoParameters.form.deleteError')
+  if (axios.isAxiosError<ApiErrorResponse>(error) && error.response?.status === CONFLICT_STATUS) {
+    return error.response.data?.message ?? t('enasarcoParameters.form.deleteInUse')
   }
+  return t('enasarcoParameters.form.deleteError')
 }
 
 /**
@@ -40,7 +38,7 @@ function deleteErrorMessage(error: unknown, t: (key: string) => string): string 
  * `useModuleOpener`; it owns the delete flow (confirm is asked by the table).
  */
 export function EnasarcoParametersTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -58,12 +56,12 @@ export function EnasarcoParametersTable() {
         toast.success(t('enasarcoParameters.form.deleted'))
         refreshGrid()
       } catch (error) {
-        toast.error(deleteErrorMessage(error, t))
+        toast.error(deleteErrorMessage(error, t, i18n))
       } finally {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(

@@ -96,10 +96,10 @@ function renderWith(node: ReactNode) {
   )
 }
 
-function axiosError(status: number, message = 'server message') {
+function axiosError(status: number, message = 'server message', authorization?: object) {
   return new AxiosError('error', String(status), undefined, undefined, {
     status,
-    data: { success: false, message },
+    data: { success: false, message, authorization },
   } as never)
 }
 
@@ -179,16 +179,29 @@ describe('PurchaseOrdersTable', () => {
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('Purchase order deleted.'))
   })
 
-  it('shows the backend message on a 409 and a forbidden text on a 403', async () => {
+  it('shows the backend message on a 409, the specific permission sentence on a 403 and the generic text on a 500', async () => {
     deletePurchaseOrderMock.mockRejectedValueOnce(axiosError(409, 'Order is approved.'))
     renderWith(<PurchaseOrdersTable />)
 
     fireEvent.click(screen.getByRole('button', { name: 'delete row' }))
     await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('Order is approved.'))
 
-    deletePurchaseOrderMock.mockRejectedValueOnce(axiosError(403))
+    deletePurchaseOrderMock.mockRejectedValueOnce(
+      axiosError(403, 'You do not have the «purchase-orders.delete» permission.', {
+        reason: 'missing_permission',
+        permission: 'purchase-orders.delete',
+      }),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'delete row' }))
-    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('You cannot delete this purchase order.'))
+    await waitFor(() =>
+      expect(toastErrorMock).toHaveBeenCalledWith(
+        'You do not have the «Delete» permission on the «Purchase orders (ODA)» module.',
+      ),
+    )
+
+    deletePurchaseOrderMock.mockRejectedValueOnce(axiosError(500))
+    fireEvent.click(screen.getByRole('button', { name: 'delete row' }))
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('Unable to delete the purchase order. Please try again.'))
   })
 
   it('downloads the PDF of the row with the `pdf` action', async () => {

@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { companyDetailQueryKey, createCompany, updateCompany } from '@/features/companies/api'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/companies/company-form-payload'
 import {
@@ -62,7 +63,7 @@ interface UseCompanyFormArgs {
  * schema and the server-error paths — the section itself owns rendering.
  */
 export function useCompanyForm({ mode, onSuccess }: UseCompanyFormArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -145,7 +146,7 @@ export function useCompanyForm({ mode, onSuccess }: UseCompanyFormArgs) {
       onSuccess(created)
     } catch (error) {
       if (!applyServerValidationErrors(error, form.setError, errorFields)) {
-        setServerError(t('companies.form.genericError'))
+        setServerError(apiErrorMessage(error, t('companies.form.genericError'), i18n))
       }
     }
   }

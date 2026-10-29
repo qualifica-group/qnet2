@@ -251,7 +251,11 @@ describe('RequestDashboardFilterBar', () => {
     createRequestManagementReportMock.mockRejectedValue(
       new AxiosError('Forbidden', '403', undefined, undefined, {
         status: 403,
-        data: { success: false, message: 'Forbidden' },
+        data: {
+          success: false,
+          message: 'Forbidden',
+          authorization: { reason: 'missing_permission', permission: 'request-management.export' },
+        },
       } as never),
     )
 
@@ -259,7 +263,7 @@ describe('RequestDashboardFilterBar', () => {
     generate('CSV')
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      "You don't have permission to generate this report.",
+      'You do not have the «Export» permission on the «Request Management» module.',
     )
   })
 

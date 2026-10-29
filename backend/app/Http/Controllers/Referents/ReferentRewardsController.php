@@ -7,6 +7,7 @@ use App\Http\Resources\RewardResource;
 use App\Models\Referent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -25,7 +26,7 @@ class ReferentRewardsController extends BaseApiController
     public function __invoke(Request $request, Referent $referent): JsonResponse
     {
         try {
-            abort_unless($request->user()->can('rewarded-referents.view'), 403);
+            Gate::forUser($request->user())->authorize('rewarded-referents.view');
 
             $rewards = $referent->rewards()
                 ->with(RewardResource::eagerLoad())

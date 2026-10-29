@@ -66,7 +66,7 @@ it('AC-003: the 403 for a user without contracts.program carries a translated me
 
     $this->getJson(MULTI_LINES_URL.'?'.http_build_query(['contract_ids' => [$a->id, $b->id]]), ['Accept-Language' => 'it'])
         ->assertForbidden()
-        ->assertJsonPath('message', __('This action is unauthorized.', [], 'it'));
+        ->assertJsonPath('message', 'Non hai il permesso «contracts.program».');
 });
 
 it('validates contract_ids: fewer than 2, duplicates, unknown ids and over the maximum', function () {

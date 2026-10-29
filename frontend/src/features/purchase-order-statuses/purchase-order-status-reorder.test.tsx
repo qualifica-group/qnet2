@@ -38,7 +38,6 @@ const LABELS = {
   dragHandleLabel: 'Drag to reorder',
   loadError: 'Unable to load.',
   saved: 'Saved.',
-  forbidden: 'Forbidden.',
   genericError: 'Error.',
 }
 

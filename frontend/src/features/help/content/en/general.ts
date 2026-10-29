@@ -193,6 +193,7 @@ const guide: HelpGuide = {
           headers: ['Question', 'Answer'],
           rows: [
             ["I don't see a menu item or button described in the manual.", 'The menu and actions depend on your role permissions. Ask the administrator to check the role in **Configuration › System › Roles**.'],
+            ['An operation is rejected with a message like **You do not have the "Delete" permission on the "Opportunities" module**.', 'The message says exactly what is missing: action and module are the name of the permission, the same ones the administrator finds in the role form under **Configuration › System › Roles**. Ask them to assign it to your role. If the message gives a reason instead (for example "You cannot edit this work order: you are neither a member nor the manager."), a permission is not enough: the record is outside your scope or in a state that does not allow it, and it is solved by being assigned to the record (for example being added as a member) or by waiting for the right state. **Section reserved to the super-admin** marks a section no permission unlocks.'],
             ['Opening a record shows **Record not found** or **Access denied**.', 'The record no longer exists (it was deleted or the link is wrong) or your role does not allow you to see it. Retrying does not help: check the link or ask the administrator or the record owners for access.'],
             ["I can't edit a field.", 'Your role may have it as read-only, or the field is inherited (for example from a project or a lead) or protected: for **Source**, propose a change from the **Change Requests** guide.'],
             ["I can't delete a configuration value.", "It is already used by some record. Turn off **Active** instead: it disappears from drop-downs without touching existing data."],
@@ -233,7 +234,7 @@ const guide: HelpGuide = {
             ['Task', 'An activity with a requester, assignees and a due date.'],
             ['Task template', 'A list of standard tasks generated when a work order is created.'],
             ['Voucher', 'A reward or incentive assigned to the referrer, with status Pending, Approved or Denied.'],
-            ['Role', 'A set of permissions assigned to users.'],
+            ['Role', 'A set of permissions assigned to users. If an operation is rejected, the message names the missing permission (see the FAQ above).'],
             ['Custom field', 'A field added by the administrator to a module.'],
             ['Attribute', 'An extra field defined by a product category for products, quotes or work orders.'],
           ],

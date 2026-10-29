@@ -2,10 +2,10 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { toast } from 'sonner'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import { downloadPurchaseOrderPdf } from '@/features/purchase-orders/api'
 import { serverMessage } from '@/features/purchase-requests/purchase-request-server-errors'
 
-const FORBIDDEN_STATUS = 403
 const UNPROCESSABLE_STATUS = 422
 
 /**
@@ -14,7 +14,7 @@ const UNPROCESSABLE_STATUS = 422
  * click is a no-op while a download runs.
  */
 export function usePurchaseOrderPdf() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [downloadingId, setDownloadingId] = useState<number | null>(null)
 
   const download = useCallback(
@@ -28,8 +28,9 @@ export function usePurchaseOrderPdf() {
         toast.success(t('purchaseOrderActions.pdf.ready'))
       } catch (error) {
         const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        if (status === FORBIDDEN_STATUS) {
-          toast.error(t('purchaseOrderActions.pdf.forbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden) {
+          toast.error(forbidden)
         } else if (status === UNPROCESSABLE_STATUS) {
           toast.error(serverMessage(error) ?? t('purchaseOrderActions.pdf.error'))
         } else {
@@ -39,7 +40,7 @@ export function usePurchaseOrderPdf() {
         setDownloadingId(null)
       }
     },
-    [downloadingId, t],
+    [downloadingId, t, i18n],
   )
 
   return { download, isDownloading: downloadingId !== null }

@@ -35,10 +35,7 @@ class IdentityDuplicateCheckController extends BaseApiController
     public function __invoke(CheckIdentityDuplicatesRequest $request): JsonResponse
     {
         try {
-            abort_unless(
-                Gate::allows('create', Registry::class) || Gate::allows('create', Referent::class),
-                403,
-            );
+            Gate::allowIf(Gate::allows('create', Registry::class) || Gate::allows('create', Referent::class));
 
             $matches = $this->finder->find($request->toCriteria());
 

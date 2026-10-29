@@ -371,9 +371,7 @@ class TableController extends BaseApiController
      */
     private function authorizeViewAny(bool $allowed): void
     {
-        if (! $allowed) {
-            throw new AuthorizationException;
-        }
+        Gate::allowIf($allowed);
     }
 
     /**
@@ -467,8 +465,8 @@ class TableController extends BaseApiController
         /** @var Model|null $parent */
         $parent = $modelClass::query()->find($parentId);
 
-        if ($parent !== null && ! Gate::forUser($actor)->allows('view', $parent)) {
-            throw new AuthorizationException;
+        if ($parent !== null) {
+            Gate::forUser($actor)->authorize('view', $parent);
         }
     }
 }

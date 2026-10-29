@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Form } from '@/components/ui/form'
@@ -94,8 +95,8 @@ interface SettlementApprovalDialogProps {
 
 /** "Approva": addresses the passive invoice to the agent's supplier registry and creates it with its installments. */
 export function SettlementApprovalDialog({ open, settlement, onChanged, onClose }: SettlementApprovalDialogProps) {
-  const { t } = useTranslation()
-  const { data, isError, refetch } = useApprovalDraft(settlement.id, open)
+  const { t, i18n } = useTranslation()
+  const { data, isError, error, refetch } = useApprovalDraft(settlement.id, open)
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
@@ -106,7 +107,7 @@ export function SettlementApprovalDialog({ open, settlement, onChanged, onClose 
         </DialogHeader>
         {isError ? (
           <div role="alert" className="flex flex-col gap-2 p-4 text-xs text-destructive">
-            {t('commissionSettlements.approvalDialog.loadError')}
+            {apiErrorMessage(error, t('commissionSettlements.approvalDialog.loadError'), i18n)}
             <Button type="button" variant="outline" size="sm" className="w-fit bg-card" onClick={() => void refetch()}>
               {t('common.retry')}
             </Button>

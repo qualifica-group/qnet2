@@ -7,6 +7,8 @@ use App\Models\User;
 use App\Policies\Abstracts\BasePolicy;
 use App\Services\Tasks\TaskAbilityResolver;
 use App\Services\Tasks\TaskVisibilityScope;
+use Closure;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -58,25 +60,25 @@ class TaskPolicy extends BasePolicy
         return 'tasks';
     }
 
-    public function view(User $user, Model $model): bool
+    public function view(User $user, Model $model): bool|Response
     {
-        return parent::view($user, $model) && $this->isInScope($user, $model);
+        return $this->withinPerimeter($user->can($this->permission('view')), fn (): bool => $this->isInScope($user, $model), 'task_out_of_scope');
     }
 
-    public function update(User $user, Model $model): bool
+    public function update(User $user, Model $model): bool|Response
     {
-        return parent::update($user, $model)
-            && $this->isInScope($user, $model)
-            && $model instanceof Task
-            && TaskAbilityResolver::canUpdate($user, $model);
+        return $this->withinRole($user, $model, 'update', TaskAbilityResolver::canUpdate(...), 'task_not_editable');
     }
 
-    public function delete(User $user, Model $model): bool
+    public function delete(User $user, Model $model): bool|Response
     {
-        return parent::delete($user, $model)
-            && $this->isInScope($user, $model)
-            && $model instanceof Task
-            && TaskAbilityResolver::canDelete($user, $model);
+        $role = $this->withinRole($user, $model, 'delete', TaskAbilityResolver::canUpdate(...), 'task_not_editable');
+
+        if (! $role->allowed()) {
+            return $role;
+        }
+
+        return TaskAbilityResolver::canDelete($user, $model) ? Response::allow() : $this->denyBecause('task_not_deletable_state');
     }
 
     /**
@@ -110,25 +112,19 @@ class TaskPolicy extends BasePolicy
         return $user->can($this->permission('manageAll'));
     }
 
-    public function complete(User $user, Task $task): bool
+    public function complete(User $user, Task $task): Response
     {
-        return $user->can($this->permission('complete'))
-            && $this->isInScope($user, $task)
-            && TaskAbilityResolver::canComplete($user, $task);
+        return $this->withinRole($user, $task, 'complete', TaskAbilityResolver::canComplete(...), 'task_not_editable');
     }
 
-    public function validate(User $user, Task $task): bool
+    public function validate(User $user, Task $task): Response
     {
-        return $user->can($this->permission('validate'))
-            && $this->isInScope($user, $task)
-            && TaskAbilityResolver::canValidate($user, $task);
+        return $this->withinRole($user, $task, 'validate', TaskAbilityResolver::canValidate(...), 'task_mandate_required');
     }
 
-    public function block(User $user, Task $task): bool
+    public function block(User $user, Task $task): Response
     {
-        return $user->can($this->permission('block'))
-            && $this->isInScope($user, $task)
-            && TaskAbilityResolver::canBlock($user, $task);
+        return $this->withinRole($user, $task, 'block', TaskAbilityResolver::canBlock(...), 'task_mandate_required');
     }
 
     /**
@@ -136,11 +132,9 @@ class TaskPolicy extends BasePolicy
      * and the only matrix row where the watcher is admitted alongside
      * creatore/richiedente/gestore — a plain assignee is not (AC-040).
      */
-    public function requestUpdate(User $user, Task $task): bool
+    public function requestUpdate(User $user, Task $task): Response
     {
-        return $user->can($this->permission('requestUpdate'))
-            && $this->isInScope($user, $task)
-            && TaskAbilityResolver::canRequestUpdate($user, $task);
+        return $this->withinRole($user, $task, 'requestUpdate', TaskAbilityResolver::canRequestUpdate(...), 'task_mandate_required');
     }
 
     /**
@@ -162,6 +156,25 @@ class TaskPolicy extends BasePolicy
     public static function abilities(): array
     {
         return [...parent::abilities(), 'viewAll', 'viewSite', 'manageAll', 'complete', 'validate', 'block', 'viewDocuments', 'requestUpdate'];
+    }
+
+    /**
+     * Permission, then the D-9 membership scope, then the record-role matrix
+     * row (spec 0116): each refusal carries its own reason.
+     *
+     * @param  Closure(User, Task): bool  $roleAllows
+     */
+    private function withinRole(User $user, Model $model, string $ability, Closure $roleAllows, string $roleReason): Response
+    {
+        if (! $user->can($this->permission($ability))) {
+            return Response::deny();
+        }
+
+        if (! $this->isInScope($user, $model)) {
+            return $this->denyBecause('task_out_of_scope');
+        }
+
+        return $model instanceof Task && $roleAllows($user, $model) ? Response::allow() : $this->denyBecause($roleReason);
     }
 
     private function isInScope(User $user, Model $model): bool

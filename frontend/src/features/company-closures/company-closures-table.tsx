@@ -13,8 +13,8 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { deleteCompanyClosure } from '@/features/company-closures/api'
 import { COMPANY_CLOSURES_DOMAIN } from '@/features/company-closures/types'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 
-const FORBIDDEN_STATUS = 403
 const CONFLICT_STATUS = 409
 
 /**
@@ -23,7 +23,7 @@ const CONFLICT_STATUS = 409
  * table; 409 = the closure already started).
  */
 export function CompanyClosuresTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -42,8 +42,9 @@ export function CompanyClosuresTable() {
         refreshGrid()
       } catch (error) {
         const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        if (status === FORBIDDEN_STATUS) {
-          toast.error(t('companyClosures.form.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden !== null) {
+          toast.error(forbidden)
         } else if (status === CONFLICT_STATUS) {
           toast.error(t('companyClosures.form.deleteStarted'))
         } else {
@@ -53,7 +54,7 @@ export function CompanyClosuresTable() {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(

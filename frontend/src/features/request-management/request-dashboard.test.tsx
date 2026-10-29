@@ -232,7 +232,6 @@ describe('RequestDashboard', () => {
 
   it.each([
     [undefined, 'Unable to reach the server'],
-    [403, 'You do not have permission to view the requests dashboard.'],
     [422, 'The applied filters are no longer valid'],
     [500, 'Unable to load the dashboard because of a server error.'],
   ])('explains a failed dashboard fetch by its HTTP status (%s)', async (status, message) => {
@@ -244,6 +243,27 @@ describe('RequestDashboard', () => {
     renderDashboard()
 
     expect(await screen.findByRole('alert')).toHaveTextContent(message)
+  })
+
+  it('names the missing permission when the dashboard answers 403 (spec 0327 AC-014)', async () => {
+    const response = {
+      status: 403,
+      data: {
+        success: false,
+        message: 'Forbidden',
+        authorization: { reason: 'missing_permission', permission: 'request-management.viewAny' },
+      },
+      statusText: '',
+      headers: {},
+      config: {},
+    }
+    fetchRequestManagementDashboardMock.mockRejectedValue(
+      new AxiosError('failed', undefined, undefined, undefined, response as never),
+    )
+
+    renderDashboard()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('You do not have the «View list» permission on the «')
   })
 
   it('explains that there is nothing to chart when no category has requests, without fetching', async () => {

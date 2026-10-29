@@ -119,10 +119,10 @@ function renderTable() {
   )
 }
 
-function axiosErrorWithStatus(status: number) {
+function axiosErrorWithStatus(status: number, data: Record<string, unknown> = { success: false, message: 'error' }) {
   return new AxiosError('failed', String(status), undefined, undefined, {
     status,
-    data: { success: false, message: 'error' },
+    data,
   } as never)
 }
 
@@ -195,14 +195,14 @@ describe('SectorsTable — adapter (AC-020)', () => {
     )
   })
 
-  it('maps a 403 delete failure to the forbidden message', async () => {
-    deleteSectorMock.mockRejectedValue(axiosErrorWithStatus(403))
+  it('maps a 403 delete failure to the specific permission sentence', async () => {
+    deleteSectorMock.mockRejectedValue(axiosErrorWithStatus(403, { success: false, message: 'Forbidden', authorization: { reason: 'missing_permission', permission: 'sectors.delete' } }))
     renderTable()
 
     fireEvent.click(screen.getByText('trigger-delete'))
 
     await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith('You cannot delete this sector.'),
+      expect(toast.error).toHaveBeenCalledWith('You do not have the «Delete» permission on the «Sectors» module.'),
     )
   })
 

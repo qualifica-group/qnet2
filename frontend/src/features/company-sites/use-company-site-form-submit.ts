@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import {
   describeAddressIssues,
   describeCardIssues,
@@ -67,7 +68,7 @@ export function useCompanySiteFormSubmit({
   customFieldErrorPaths,
   onSuccess,
 }: UseCompanySiteFormSubmitArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const personalDataFieldPermission = usePersonalDataFieldPermission()
   const [serverError, setServerError] = useState<string | null>(null)
@@ -154,7 +155,7 @@ export function useCompanySiteFormSubmit({
       if (personalDataMessage) {
         setServerError(personalDataMessage)
       } else if (!mappedScalar) {
-        setServerError(t('companySites.form.genericError'))
+        setServerError(apiErrorMessage(error, t('companySites.form.genericError'), i18n))
       }
     }
   }

@@ -37,7 +37,6 @@ export const attributes = {
     nameMax: 'Name must be at most 191 characters.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the attribute. Please try again.',
-    deleteForbidden: 'You cannot delete this attribute.',
     deleteInUse: 'This attribute is assigned to a category or has product values.',
     leaveConfirm: {
       title: 'Leave without saving?',

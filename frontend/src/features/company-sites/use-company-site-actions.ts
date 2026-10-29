@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import {
   companySiteDetailQueryKey,
   deleteCompanySiteLogo,
@@ -18,7 +19,7 @@ import type { CompanySiteDetailWithPermissions } from '@/features/company-sites/
  * record.
  */
 export function useCompanySiteActions(site: CompanySiteDetailWithPermissions, onChanged?: () => void) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [settingDefault, setSettingDefault] = useState(false)
 
@@ -36,8 +37,8 @@ export function useCompanySiteActions(site: CompanySiteDetailWithPermissions, on
     try {
       seed(await setDefaultCompanySite(site.id))
       toast.success(t('companySites.form.defaultSet'))
-    } catch {
-      toast.error(t('companySites.form.defaultError'))
+    } catch (error) {
+      toast.error(apiErrorMessage(error, t('companySites.form.defaultError'), i18n))
     } finally {
       setSettingDefault(false)
     }

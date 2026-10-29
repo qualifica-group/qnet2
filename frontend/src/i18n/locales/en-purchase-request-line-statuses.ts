@@ -40,7 +40,6 @@ export const purchaseRequestLineStatuses = {
     dragHandleLabel: 'Drag to reorder',
     loadError: 'Unable to load the list. Please retry.',
     saved: 'Order updated successfully.',
-    forbidden: 'You can’t reorder these rows.',
     genericError: 'Unable to update the order. Please retry.',
     inactiveBadge: 'Inactive',
   },

@@ -181,7 +181,11 @@ describe('RewardStatusesTable — delete (BR-4, AC-026)', () => {
     deleteRewardStatusMock.mockRejectedValue(
       new AxiosError('Forbidden', '403', undefined, undefined, {
         status: 403,
-        data: { success: false, message: 'Forbidden' },
+        data: {
+          success: false,
+          message: 'Forbidden',
+          authorization: { reason: 'missing_permission', permission: 'reward-statuses.delete' },
+        },
       } as never),
     )
 
@@ -189,7 +193,7 @@ describe('RewardStatusesTable — delete (BR-4, AC-026)', () => {
     screen.getByRole('button', { name: 'delete row' }).click()
 
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith('You cannot delete this reward status.'),
+      expect(toastErrorMock).toHaveBeenCalledWith('You do not have the «Delete» permission on the «Reward Statuses» module.'),
     )
   })
 

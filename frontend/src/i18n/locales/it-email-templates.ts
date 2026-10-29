@@ -66,7 +66,6 @@ export const emailTemplates = {
     descriptionMax: 'La descrizione può contenere al massimo 500 caratteri.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare il modello email. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questo modello email.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
       description: 'Il modello email non è ancora stato creato: i dati inseriti andranno persi.',

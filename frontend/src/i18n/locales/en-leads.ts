@@ -124,7 +124,6 @@ export const leads = {
       confirm: 'Leave without saving',
       cancel: 'Keep editing',
     },
-    deleteForbidden: 'You cannot delete this lead.',
   },
   assign: {
     tableButton: 'Assign operators',

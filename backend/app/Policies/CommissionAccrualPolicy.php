@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\User;
 use App\Policies\Abstracts\BasePolicy;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -26,18 +27,18 @@ class CommissionAccrualPolicy extends BasePolicy
         return ['viewAny', 'view', 'export'];
     }
 
-    public function create(User $user): bool
+    public function create(User $user): bool|Response
     {
-        return false;
+        return $this->denyBecause('commission_accrual_read_only');
     }
 
-    public function update(User $user, Model $model): bool
+    public function update(User $user, Model $model): bool|Response
     {
-        return false;
+        return $this->denyBecause('commission_accrual_read_only');
     }
 
-    public function delete(User $user, Model $model): bool
+    public function delete(User $user, Model $model): bool|Response
     {
-        return false;
+        return $this->denyBecause('commission_accrual_read_only');
     }
 }

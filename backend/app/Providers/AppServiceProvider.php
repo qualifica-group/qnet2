@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Authorization\Denials\AuthorizationDenialLog;
 use App\Authorization\FieldPermissionRepository;
 use App\CustomFields\CustomFieldEntityRegistry;
 use App\CustomFields\CustomFieldProvider;
@@ -117,7 +118,9 @@ use App\Services\Graph\GraphMailClient;
 use App\Services\Opportunities\OpportunityDefaultStatusResolver;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Support\QuoteWorkflows\CategoryBranchResolver;
+use Illuminate\Auth\Access\Events\GateEvaluated;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider;
@@ -193,6 +196,10 @@ class AppServiceProvider extends ServiceProvider
         // though it is consulted on every field-permission resolution
         // (ProtectedFieldAwareAuthorization) AND by permissions:sync.
         $this->app->singleton(ProtectedFieldRegistry::class);
+
+        // Scoped (spec 0327): the denied Gate evaluations of ONE request, read
+        // when that request ends in a 403 to say which permission was missing.
+        $this->app->scoped(AuthorizationDenialLog::class);
     }
 
     /**
@@ -375,6 +382,8 @@ class AppServiceProvider extends ServiceProvider
 
             return null;
         });
+
+        Event::listen(GateEvaluated::class, fn (GateEvaluated $event) => app(AuthorizationDenialLog::class)->record($event));
 
         // Registers the "microsoft-graph" Symfony transport (spec 0175, D-1):
         // config('mail.mailers.microsoft-graph') resolves through this

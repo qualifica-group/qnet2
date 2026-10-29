@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -99,9 +100,7 @@ trait GuardsImportRequests
      */
     private function authorizeImport(ImportDefinition $definition, User $actor): void
     {
-        if (! $definition->authorizeImport($actor)) {
-            throw new AuthorizationException;
-        }
+        Gate::allowIf($definition->authorizeImport($actor));
     }
 
     /**

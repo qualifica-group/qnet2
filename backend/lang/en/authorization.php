@@ -1,0 +1,25 @@
+<?php
+
+return [
+    'opportunity_out_of_scope' => 'You cannot access this opportunity: you are neither its supervisor nor one of its account managers.',
+    'quote_out_of_scope' => 'You cannot access this quote: it is neither yours nor from your operational site.',
+    'contract_out_of_scope' => 'You cannot access this contract: its quote is neither yours nor from your operational site.',
+    'task_out_of_scope' => 'You cannot access this task: you are not its creator, requester, assignee or watcher.',
+    'task_not_editable' => 'You cannot perform this action on the task: you are not its creator, requester, assignee or manager.',
+    'task_not_deletable_state' => 'You cannot delete this task: it is already closed or blocked.',
+    'task_mandate_required' => 'Only the creator, the requester or a manager of the task can perform this action.',
+    'work_order_out_of_scope' => 'You cannot access this work order: you are neither a member nor a manager of it.',
+    'purchase_request_out_of_scope' => 'You cannot access this purchase request: you are not its requester, function manager or author.',
+    'time_entry_not_owner' => 'You cannot access this time entry: it belongs to another user.',
+    'time_entry_task_not_manageable' => 'You cannot change this time entry: you cannot change the task it is linked to.',
+    'user_super_admin_protected' => 'Only a super-admin can act on a super-admin user.',
+    'user_self_delete' => 'You cannot delete your own account.',
+    'attachment_collection_closed' => 'These attachments are not accessible from this function.',
+    'attachment_owner_not_visible' => 'You cannot access this attachment: you have no access to the item it belongs to.',
+    'note_author_only_edit' => 'Only the author can edit this note.',
+    'note_author_only_delete' => 'Only the author can delete this note.',
+    'table_filter_view_not_owner' => 'You can only edit or delete your own views.',
+    'import_mapping_template_not_owner' => 'You can only delete your own mapping templates.',
+    'notification_not_owner' => 'This notification belongs to another user.',
+    'commission_accrual_read_only' => 'Commission accruals cannot be created, changed or deleted by hand.',
+];

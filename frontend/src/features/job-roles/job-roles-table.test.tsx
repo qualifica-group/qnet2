@@ -152,7 +152,7 @@ describe('JobRolesTable - delete', () => {
     renderWith(<JobRolesTable />)
     screen.getByRole('button', { name: 'delete row' }).click()
 
-    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('You cannot delete this job role.'))
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('server message'))
   })
 
   it('shows a distinct "in use" toast on a 409', async () => {

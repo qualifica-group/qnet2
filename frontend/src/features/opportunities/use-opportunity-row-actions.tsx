@@ -1,7 +1,7 @@
 import { useCallback, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { DocumentsDialog } from '@/features/attachments/documents-dialog'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
@@ -45,7 +45,7 @@ export function useOpportunityRowActions({
   onMutated,
   forceMode,
 }: UseOpportunityRowActionsOptions): UseOpportunityRowActionsResult {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
@@ -65,17 +65,12 @@ export function useOpportunityRowActions({
         toast.success(t('opportunities.form.deleted'))
         onMutated()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        if (status === 403) {
-          toast.error(t('opportunities.form.deleteForbidden'))
-        } else {
-          toast.error(t('opportunities.form.deleteError'))
-        }
+        toast.error(apiErrorMessage(error, t('opportunities.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }
     },
-    [onMutated, t],
+    [onMutated, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(

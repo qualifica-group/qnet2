@@ -83,8 +83,6 @@ describe('quotes document generation i18n (spec 0070)', () => {
     expect(itLocale.quotes.detail.generatingDocument).toBeTruthy()
     expect(en.quotes.detail.documentGenerated).toBeTruthy()
     expect(itLocale.quotes.detail.documentGenerated).toBeTruthy()
-    expect(en.quotes.detail.documentForbidden).toBeTruthy()
-    expect(itLocale.quotes.detail.documentForbidden).toBeTruthy()
     expect(en.quotes.detail.documentGenericError).toBeTruthy()
     expect(itLocale.quotes.detail.documentGenericError).toBeTruthy()
   })

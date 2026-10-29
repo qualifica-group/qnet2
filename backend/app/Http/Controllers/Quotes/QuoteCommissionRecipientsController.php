@@ -52,6 +52,7 @@ class QuoteCommissionRecipientsController extends BaseApiController
             abort_unless(
                 $permissions['commissions']->visible && $permissions['commission_recipient']->visible,
                 403,
+                __('You cannot see the commission recipients of this quote.'),
             );
 
             // Step 2: resolve the admissible recipient of every role.

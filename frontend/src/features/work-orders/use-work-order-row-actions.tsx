@@ -20,6 +20,7 @@ import {
   proformaStatusOf,
   useProformaActionState,
 } from '@/features/work-orders/proforma-row-action'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 
 /** Every icon the Commesse row actions add to the shared map: closure (lock), proforma (euro) and progress (trending-up). */
 /** Row-action key and icon of the manual progress dialog (spec 0321). */
@@ -83,7 +84,7 @@ export function useWorkOrderRowActions({
   onMutated,
   forceMode,
 }: UseWorkOrderRowActionsOptions): UseWorkOrderRowActionsResult {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
@@ -109,8 +110,9 @@ export function useWorkOrderRowActions({
         onMutated()
       } catch (error) {
         const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        if (status === 403) {
-          toast.error(t('workOrders.form.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden !== null) {
+          toast.error(forbidden)
         } else if (status === 409) {
           toast.error(t('workOrders.form.deleteConflict'))
         } else {
@@ -120,7 +122,7 @@ export function useWorkOrderRowActions({
         setDeletingId(null)
       }
     },
-    [onMutated, t],
+    [onMutated, t, i18n],
   )
 
   const runReopen = useCallback(

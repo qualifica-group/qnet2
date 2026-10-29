@@ -15,6 +15,7 @@ import type { ApiErrorResponse } from '@/api/types'
 import { taskImportanceColumnRenderers } from '@/features/task-importances/column-renderers'
 import { deleteTaskImportance } from '@/features/task-importances/api'
 import { StatusReorderToggle } from '@/features/status-reorder/status-reorder-toggle'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 
 /** Domain key used to mount the generic table for task importances. */
 const TASK_IMPORTANCES_DOMAIN = 'task-importances'
@@ -34,7 +35,7 @@ const TASK_IMPORTANCES_DOMAIN = 'task-importances'
  * re-authorizes each call.
  */
 export function TaskImportancesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -59,8 +60,9 @@ export function TaskImportancesTable() {
           return
         }
         const status = error.response?.status
-        if (status === 403) {
-          toast.error(t('taskImportances.form.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden !== null) {
+          toast.error(forbidden)
         } else if (status === 409) {
           // The row is still referenced by a Task. Surface the
           // backend's own message rather than a generic one.
@@ -72,7 +74,7 @@ export function TaskImportancesTable() {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(
@@ -112,7 +114,6 @@ export function TaskImportancesTable() {
                 inactiveBadge: t('taskImportances.reorder.inactiveBadge'),
                 loadError: t('taskImportances.reorder.loadError'),
                 saved: t('taskImportances.reorder.saved'),
-                forbidden: t('taskImportances.reorder.forbidden'),
                 genericError: t('taskImportances.reorder.genericError'),
               }}
               onReordered={refreshGrid}

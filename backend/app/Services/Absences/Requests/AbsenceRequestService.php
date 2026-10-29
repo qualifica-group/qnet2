@@ -154,7 +154,7 @@ final class AbsenceRequestService
     /** 403 for a stranger to the request, 409 once it left the draft state. */
     private function assertDraftEditable(AbsenceRequest $request, User $actor): void
     {
-        abort_unless($this->visibility->isOwnerOrManager($actor, $request), 403, 'This action is unauthorized.');
+        abort_unless($this->visibility->isOwnerOrManager($actor, $request), 403, __('Only the owner or a manager can act on this absence request.'));
         abort_unless($request->status === AbsenceRequestStatus::Draft, 409, __('absence_requests.not_draft'));
     }
 }

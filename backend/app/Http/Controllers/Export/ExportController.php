@@ -129,9 +129,7 @@ class ExportController extends BaseApiController
             ? $actor->can($module->permission('export'))
             : Gate::forUser($actor)->allows('export', $definition->modelClass());
 
-        if (! $allowed) {
-            throw new AuthorizationException;
-        }
+        Gate::allowIf($allowed);
     }
 
     /**

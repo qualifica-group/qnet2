@@ -174,7 +174,7 @@ describe('TaskTemplatesTable — delete (D-5: 409 "in use" guard, server message
     screen.getByRole('button', { name: 'delete row' }).click()
 
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith('You cannot delete this task template.'),
+      expect(toastErrorMock).toHaveBeenCalledWith('Forbidden'),
     )
   })
 

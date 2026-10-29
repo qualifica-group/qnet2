@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { createLead, leadDetailQueryKey, updateLead } from '@/features/leads/api'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/leads/lead-form-payload'
 import { editDefaults, type LeadFormValues } from '@/features/leads/use-lead-form'
@@ -34,7 +35,7 @@ interface UseLeadFormSubmitArgs {
  * the form is reset on the saved record, so the next row starts clean.
  */
 export function useLeadFormSubmit({ form, mode, onSuccess }: UseLeadFormSubmitArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -58,7 +59,7 @@ export function useLeadFormSubmit({ form, mode, onSuccess }: UseLeadFormSubmitAr
       onSuccess(created)
     } catch (error) {
       if (!applyServerValidationErrors(error, form.setError, SERVER_ERROR_FIELDS)) {
-        setServerError(t('leads.form.genericError'))
+        setServerError(apiErrorMessage(error, t('leads.form.genericError'), i18n))
       }
     }
   }

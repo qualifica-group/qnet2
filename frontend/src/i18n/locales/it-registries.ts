@@ -118,7 +118,6 @@ export const registries = {
     deleted: 'Anagrafica eliminata con successo.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: "Impossibile eliminare l'anagrafica. Riprova.",
-    deleteForbidden: 'Non puoi eliminare questa anagrafica.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
       description: "L'anagrafica non è ancora stata creata: i dati inseriti andranno persi.",

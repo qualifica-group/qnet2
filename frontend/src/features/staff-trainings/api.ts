@@ -1,6 +1,6 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
-import { filenameFromContentDisposition, normalizeBlobError } from '@/lib/download'
+import { filenameFromContentDisposition } from '@/lib/download'
 import {
   STAFF_TRAININGS_DOMAIN,
   type Compliance,
@@ -49,14 +49,10 @@ export interface StaffTrainingAttachmentFile {
 
 /** Authenticated download of the certificate (the endpoint streams the file). */
 export async function downloadStaffTrainingAttachment(id: number): Promise<StaffTrainingAttachmentFile> {
-  try {
-    const response = await apiClient.get<Blob>(`${ENDPOINT}/${id}/attachment`, { responseType: 'blob' })
-    return {
-      blob: response.data,
-      filename: filenameFromContentDisposition(response.headers['content-disposition']),
-    }
-  } catch (error) {
-    throw await normalizeBlobError(error)
+  const response = await apiClient.get<Blob>(`${ENDPOINT}/${id}/attachment`, { responseType: 'blob' })
+  return {
+    blob: response.data,
+    filename: filenameFromContentDisposition(response.headers['content-disposition']),
   }
 }
 

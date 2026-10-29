@@ -170,7 +170,11 @@ describe('DocumentLayoutsTable — delete (AC-132)', () => {
     deleteDocumentLayoutMock.mockRejectedValue(
       new AxiosError('Forbidden', '403', undefined, undefined, {
         status: 403,
-        data: { success: false, message: 'Forbidden' },
+        data: {
+          success: false,
+          message: 'Forbidden',
+          authorization: { reason: 'missing_permission', permission: 'document-layouts.delete' },
+        },
       } as never),
     )
 
@@ -179,6 +183,12 @@ describe('DocumentLayoutsTable — delete (AC-132)', () => {
 
     await waitFor(() => expect(toastErrorMock).toHaveBeenCalled())
     expect(toastErrorMock).not.toHaveBeenCalledWith('Forbidden')
+    expect(toastErrorMock).toHaveBeenCalledWith(
+      i18n.t('common.missingPermission', {
+        ability: i18n.t('permissions.abilities.delete'),
+        module: i18n.t('permissions.resources.document-layouts'),
+      }),
+    )
   })
 
   it('shows the backend message verbatim on a 422 from the D-7 predefined-layout guard', async () => {

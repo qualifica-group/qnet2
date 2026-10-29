@@ -52,7 +52,6 @@ export const companies = {
     vatNumberInvalid: 'La partita IVA non è valida.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare la società. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questa società.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
       description: 'La società non è ancora stata creata: i dati inseriti andranno persi.',

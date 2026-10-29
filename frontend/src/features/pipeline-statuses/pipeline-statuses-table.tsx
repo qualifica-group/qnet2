@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -32,7 +33,7 @@ const PROJECT_STATUSES_DOMAIN = 'pipeline-statuses'
  * backend re-authorizes each call.
  */
 export function PipelineStatusesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -57,8 +58,9 @@ export function PipelineStatusesTable() {
           return
         }
         const status = error.response?.status
-        if (status === 403) {
-          toast.error(t('pipelineStatuses.form.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden) {
+          toast.error(forbidden)
         } else if (status === 409) {
           // BR-4: the status is still referenced by a Project or a Campaign.
           // Surface the backend's own message rather than a generic one.
@@ -70,7 +72,7 @@ export function PipelineStatusesTable() {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(
@@ -109,7 +111,6 @@ export function PipelineStatusesTable() {
                 dragHandleLabel: t('pipelineStatuses.reorder.dragHandleLabel'),
                 loadError: t('pipelineStatuses.reorder.loadError'),
                 saved: t('pipelineStatuses.reorder.saved'),
-                forbidden: t('pipelineStatuses.reorder.forbidden'),
                 genericError: t('pipelineStatuses.reorder.genericError'),
               }}
               onReordered={refreshGrid}

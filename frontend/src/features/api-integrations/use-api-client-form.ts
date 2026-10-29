@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import type { Path } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import {
@@ -36,7 +37,7 @@ interface UseApiClientFormArgs {
 
 /** RHF/Zod wiring and the create/update submit of the API client dialog. */
 export function useApiClientForm({ client, onKeyIssued, onSaved }: UseApiClientFormArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [serverError, setServerError] = useState<string | null>(null)
   const createMutation = useCreateApiClient()
   const updateMutation = useUpdateApiClient(client?.id ?? 0)
@@ -68,7 +69,7 @@ export function useApiClientForm({ client, onKeyIssued, onSaved }: UseApiClientF
       onSaved()
     } catch (error) {
       if (!applyServerValidationErrors(error, form.setError, SERVER_ERROR_FIELDS)) {
-        setServerError(t('apiIntegrations.form.saveError'))
+        setServerError(apiErrorMessage(error, t('apiIntegrations.form.saveError'), i18n))
       }
     }
   }

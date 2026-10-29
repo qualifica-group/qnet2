@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { PURCHASE_INVOICES_DOMAIN } from '@/features/purchase-invoices/api'
 import { getPurchaseInstallment, purchaseInstallmentKeys } from '@/features/purchase-invoice-installments/api'
 import { useClearPurchasePayment } from '@/features/purchase-invoice-installments/use-purchase-installment-queries'
@@ -24,7 +25,7 @@ interface ClearTarget {
  * "Open document" goes to the passive invoice the row belongs to (spec 0250 D-10).
  */
 export function usePurchaseInstallmentRowActions(onChanged: () => void) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [payTarget, setPayTarget] = useState<PurchaseInstallmentDetail | null>(null)
@@ -44,11 +45,11 @@ export function usePurchaseInstallmentRowActions(onChanged: () => void) {
           throw new Error('amount not visible')
         }
         setPayTarget(detail)
-      } catch {
-        toast.error(t('purchaseInvoiceInstallments.lookupError'))
+      } catch (error) {
+        toast.error(apiErrorMessage(error, t('purchaseInvoiceInstallments.lookupError'), i18n))
       }
     },
-    [queryClient, t],
+    [queryClient, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(
@@ -82,15 +83,13 @@ export function usePurchaseInstallmentRowActions(onChanged: () => void) {
       },
       onError: (error) =>
         toast.error(
-          t(
-            error.response?.status === CONFLICT_STATUS
-              ? 'purchaseInvoiceInstallments.clearPayment.conflict'
-              : 'purchaseInvoiceInstallments.clearPayment.genericError',
-          ),
+          error.response?.status === CONFLICT_STATUS
+            ? t('purchaseInvoiceInstallments.clearPayment.conflict')
+            : apiErrorMessage(error, t('purchaseInvoiceInstallments.clearPayment.genericError'), i18n),
         ),
       onSettled: () => setClearTarget(null),
     })
-  }, [clearPayment, clearTarget, onChanged, t])
+  }, [clearPayment, clearTarget, onChanged, t, i18n])
 
   return {
     handleAction,

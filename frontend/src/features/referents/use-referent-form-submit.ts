@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { hasPhoneContact } from '@/features/personal-data/create-validation'
 import {
   describeAddressIssues,
@@ -66,7 +67,7 @@ export function useReferentFormSubmit({
   onSuccess,
   onRefused,
 }: UseReferentFormSubmitArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const invalidateStats = useInvalidateModuleStats(REFERENTS_DOMAIN)
   const personalDataFieldPermission = usePersonalDataFieldPermission()
@@ -154,7 +155,7 @@ export function useReferentFormSubmit({
       if (personalDataMessage) {
         setServerError(personalDataMessage)
       } else if (!mappedScalar) {
-        setServerError(t('referents.form.genericError'))
+        setServerError(apiErrorMessage(error, t('referents.form.genericError'), i18n))
       }
     }
   }

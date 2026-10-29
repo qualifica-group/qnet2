@@ -138,7 +138,7 @@ describe('AgentFiscalProfilesTable', () => {
 
     renderWith(<AgentFiscalProfilesTable />)
     screen.getByRole('button', { name: 'delete row' }).click()
-    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('You cannot delete this fiscal profile.'))
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('server message'))
 
     screen.getByRole('button', { name: 'delete row' }).click()
     await waitFor(() =>

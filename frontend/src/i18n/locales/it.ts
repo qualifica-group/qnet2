@@ -305,7 +305,6 @@ export const it: TranslationResources = {
       nameMax: 'Il nome può contenere al massimo 255 caratteri.',
       genericError: 'Si è verificato un errore. Riprova.',
       deleteError: 'Impossibile eliminare il ruolo. Riprova.',
-      deleteForbidden: 'Non puoi eliminare questo ruolo.',
       sections: {
         details: {
           title: 'Dettagli ruolo',

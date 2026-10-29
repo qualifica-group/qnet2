@@ -23,7 +23,6 @@ export const tasksBulk = {
   deleteConfirmDescription_other: 'The {{count}} selected tasks will be deleted. This action cannot be undone.',
   success_one: 'Task updated.',
   success_other: '{{count}} tasks updated.',
-  forbidden: "You don't have permission for this bulk action.",
   genericError: 'Something went wrong with the bulk action. Please try again.',
   incompatibleError_one: 'One task is not compatible with this action: nothing was changed.',
   incompatibleError_other: '{{count}} tasks are not compatible with this action: nothing was changed.',

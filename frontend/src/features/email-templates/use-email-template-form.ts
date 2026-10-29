@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import type { Path } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
@@ -42,7 +43,7 @@ interface UseEmailTemplateFormArgs {
  * (`onSubmit`).
  */
 export function useEmailTemplateForm({ mode, onSuccess }: UseEmailTemplateFormArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -103,7 +104,7 @@ export function useEmailTemplateForm({ mode, onSuccess }: UseEmailTemplateFormAr
       onSuccess(created)
     } catch (error) {
       if (!applyServerValidationErrors(error, form.setError, errorFields)) {
-        setServerError(t('emailTemplates.form.genericError'))
+        setServerError(apiErrorMessage(error, t('emailTemplates.form.genericError'), i18n))
       }
     }
   }

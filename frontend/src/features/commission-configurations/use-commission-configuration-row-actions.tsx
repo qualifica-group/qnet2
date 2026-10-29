@@ -2,6 +2,7 @@ import { useCallback, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import type { ModuleCreateParams, OpenMode } from '@/features/modules/types'
@@ -33,7 +34,7 @@ interface Result {
  * configurate" tab (spec 0204), so the two can never drift.
  */
 export function useCommissionConfigurationRowActions({ onMutated, forceMode }: Options): Result {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
   const { openCreate, openCreateWith, openView, sheet } = useModuleOpener(COMMISSION_CONFIGURATIONS_DOMAIN, {
@@ -52,13 +53,13 @@ export function useCommissionConfigurationRowActions({ onMutated, forceMode }: O
         if (axios.isAxiosError(error) && error.response?.status === 409) {
           toast.error(error.response.data?.message ?? t('commissionConfigurations.form.deleteReferenced'))
         } else {
-          toast.error(t('commissionConfigurations.form.deleteError'))
+          toast.error(apiErrorMessage(error, t('commissionConfigurations.form.deleteError'), i18n))
         }
       } finally {
         setDeletingId(null)
       }
     },
-    [onMutated, t],
+    [onMutated, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(

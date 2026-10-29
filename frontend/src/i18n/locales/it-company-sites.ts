@@ -52,7 +52,6 @@ export const companySites = {
     nameMax: 'Il nome può contenere al massimo 191 caratteri.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare la sede. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questa sede.',
     setDefault: 'Imposta come sede predefinita',
     settingDefault: 'Impostazione in corso…',
     defaultSet: 'Questa sede è ora quella predefinita.',

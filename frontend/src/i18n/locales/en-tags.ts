@@ -34,7 +34,6 @@ export const tags = {
     nameMax: 'Name must be at most 191 characters.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the tag. Please try again.',
-    deleteForbidden: 'You cannot delete this tag.',
     deleteInUse: 'Cannot delete: the tag is attached to at least one record.',
     leaveConfirm: {
       title: 'Leave without saving?',

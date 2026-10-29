@@ -30,6 +30,7 @@ use App\Services\RequestManagement\RequestManagementService;
 use App\Services\RequestManagement\RequestTransferService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -85,7 +86,7 @@ class RequestManagementController extends BaseApiController
     {
         try {
             $module = RequestModule::fromRequest($request);
-            abort_unless($request->user()->can($module->permission('create')), 403);
+            Gate::forUser($request->user())->authorize($module->permission('create'));
 
             return $this->ok(new RequestFormContextResource(
                 $this->attributeResolver->forCategories($request->productCategoryIds(), FormMode::Create),
@@ -104,7 +105,7 @@ class RequestManagementController extends BaseApiController
         try {
             $user = $request->user();
             $module = RequestModule::fromRequest($request);
-            abort_unless($user->can($module->permission('create')), 403);
+            Gate::forUser($user)->authorize($module->permission('create'));
 
             $data = $request->toData();
             // Assigning the team up front is a supervisory act (user
@@ -114,19 +115,17 @@ class RequestManagementController extends BaseApiController
             // nobody in particular — it resolves to the creating actor on the
             // OPERATOR slot (RequestCreationService), the same default an
             // absent key gets, so it stays open to every creator.
-            abort_unless(
-                $this->submittedManagerSlots($data) === [] || $user->can($module->permission('assignOperator')),
-                403,
-            );
+            if ($this->submittedManagerSlots($data) !== []) {
+                Gate::forUser($user)->authorize($module->permission('assignOperator'));
+            }
             // Same rule for the Sede operativa (user directive 2026-08-03),
             // gated by the ability its own field ceiling already hangs off
             // (RequestManagementAuthorization::fieldPermissionCeiling). The
             // field-permission matrix cannot cover creation — there is no
             // persisted model to resolve it against — so the guard lives here.
-            abort_unless(
-                $data->operationalSiteId === null || $user->can('operational-sites.viewAny'),
-                403,
-            );
+            if ($data->operationalSiteId !== null) {
+                Gate::forUser($user)->authorize('operational-sites.viewAny');
+            }
 
             $panel = $this->creationService->create($user, $data);
             /** @var Quote $quote */
@@ -165,7 +164,7 @@ class RequestManagementController extends BaseApiController
         try {
             $user = $request->user();
             $module = RequestModule::fromRequest($request);
-            abort_unless($user->can($module->permission('view')), 403);
+            Gate::forUser($user)->authorize($module->permission('view'));
             $this->scope->assertInScope($user, $quote, $module);
 
             return $this->okWithPermissions(
@@ -187,7 +186,7 @@ class RequestManagementController extends BaseApiController
         try {
             $user = $request->user();
             $module = RequestModule::fromRequest($request);
-            abort_unless($user->can($module->permission('update')), 403);
+            Gate::forUser($user)->authorize($module->permission('update'));
             $this->scope->assertInScope($user, $quote, $module);
 
             $panel = $this->service->updateWork(
@@ -271,7 +270,7 @@ class RequestManagementController extends BaseApiController
         try {
             $user = $request->user();
             $module = RequestModule::fromRequest($request);
-            abort_unless($user->can($module->permission('delete')), 403);
+            Gate::forUser($user)->authorize($module->permission('delete'));
             $this->scope->assertInScope($user, $quote, $module);
 
             $this->quoteService->delete($quote);
@@ -308,8 +307,8 @@ class RequestManagementController extends BaseApiController
         try {
             $user = $request->user();
             $module = RequestModule::fromRequest($request);
-            abort_unless($user->can($module->permission('update')), 403);
-            abort_unless($user->can($module->permission('assignOperator')), 403);
+            Gate::forUser($user)->authorize($module->permission('update'));
+            Gate::forUser($user)->authorize($module->permission('assignOperator'));
 
             $outcome = $this->assignmentService->assignOperators(
                 $request->requestIds(),
@@ -348,8 +347,8 @@ class RequestManagementController extends BaseApiController
         try {
             $user = $request->user();
             $module = RequestModule::fromRequest($request);
-            abort_unless($user->can($module->permission('update')), 403);
-            abort_unless($user->can($module->permission('assignManagerGa1')), 403);
+            Gate::forUser($user)->authorize($module->permission('update'));
+            Gate::forUser($user)->authorize($module->permission('assignManagerGa1'));
 
             $assigned = $this->assignmentService->assignManagerGa1(
                 $request->requestIds(),
@@ -382,8 +381,8 @@ class RequestManagementController extends BaseApiController
         try {
             $user = $request->user();
             $module = RequestModule::fromRequest($request);
-            abort_unless($user->can($module->permission('update')), 403);
-            abort_unless($user->can($module->permission('transferContact')), 403);
+            Gate::forUser($user)->authorize($module->permission('update'));
+            Gate::forUser($user)->authorize($module->permission('transferContact'));
 
             $transferred = $this->transferService->transfer(
                 $request->requestIds(),

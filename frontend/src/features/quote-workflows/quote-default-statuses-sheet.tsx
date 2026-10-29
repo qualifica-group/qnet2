@@ -16,7 +16,6 @@ export function QuoteDefaultStatusesSheet({ open, onOpenChange }: QuoteDefaultSt
     enabled: open,
     labels: {
       saved: t('quoteWorkflows.defaultStatuses.saved'),
-      forbidden: t('quoteWorkflows.defaultStatuses.forbidden'),
       genericError: t('quoteWorkflows.defaultStatuses.genericError'),
       nameRequired: t('quoteWorkflows.form.statuses.nameRequired'),
     },

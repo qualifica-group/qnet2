@@ -21,6 +21,7 @@ use App\Support\Cache\AggregateCache;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
@@ -68,7 +69,7 @@ class RequestManagementReportController extends BaseApiController
             $module = RequestModule::fromRequest($request);
             /** @var User $actor */
             $actor = $request->user();
-            abort_unless($actor->can(RequestModule::STATISTICS_PERMISSION), 403);
+            Gate::forUser($actor)->authorize(RequestModule::STATISTICS_PERMISSION);
 
             return $this->ok(['categories' => $this->cache->remember(
                 $this->availabilityKey('categories', $actor, $module),
@@ -91,7 +92,7 @@ class RequestManagementReportController extends BaseApiController
             $module = RequestModule::fromRequest($request);
             /** @var User $actor */
             $actor = $request->user();
-            abort_unless($actor->can(RequestModule::STATISTICS_PERMISSION), 403);
+            Gate::forUser($actor)->authorize(RequestModule::STATISTICS_PERMISSION);
 
             return $this->ok(['operators' => $this->cache->remember(
                 $this->availabilityKey('operators', $actor, $module),
@@ -115,7 +116,7 @@ class RequestManagementReportController extends BaseApiController
             $module = RequestModule::fromRequest($request);
             /** @var User $actor */
             $actor = $request->user();
-            abort_unless($actor->can(RequestModule::STATISTICS_PERMISSION), 403);
+            Gate::forUser($actor)->authorize(RequestModule::STATISTICS_PERMISSION);
 
             return $this->ok(['sites' => $this->cache->remember(
                 $this->availabilityKey('sites', $actor, $module),
@@ -137,7 +138,7 @@ class RequestManagementReportController extends BaseApiController
             $module = RequestModule::fromRequest($request);
             /** @var User $actor */
             $actor = $request->user();
-            abort_unless($actor->can(RequestModule::STATISTICS_PERMISSION), 403);
+            Gate::forUser($actor)->authorize(RequestModule::STATISTICS_PERMISSION);
 
             $dateFrom = $request->dateFrom();
             $dateTo = $request->dateTo();
@@ -186,7 +187,7 @@ class RequestManagementReportController extends BaseApiController
     {
         try {
             $module = RequestModule::fromRequest($request);
-            abort_unless($request->user()->can(RequestModule::STATISTICS_PERMISSION), 403);
+            Gate::forUser($request->user())->authorize(RequestModule::STATISTICS_PERMISSION);
             $this->assertOwnedRun($exportRun, $request->user(), $module);
 
             return $this->ok(['export_run' => new RequestManagementReportRunResource($exportRun)]);
@@ -203,7 +204,7 @@ class RequestManagementReportController extends BaseApiController
     {
         try {
             $module = RequestModule::fromRequest($request);
-            abort_unless($request->user()->can(RequestModule::STATISTICS_PERMISSION), 403);
+            Gate::forUser($request->user())->authorize(RequestModule::STATISTICS_PERMISSION);
             $this->assertOwnedRun($exportRun, $request->user(), $module);
             $this->assertHasFile($exportRun);
 

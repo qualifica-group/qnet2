@@ -48,7 +48,6 @@ export const workOrderWorkflows = {
     nameMax: 'Name can be at most 255 characters.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the work order status set. Please try again.',
-    deleteForbidden: 'You cannot delete this work order status set.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The work order status set has not been created yet: the data entered will be lost.',
@@ -93,7 +92,6 @@ export const workOrderWorkflows = {
     subtitle: 'Statuses applied to work orders that match no active set.',
     loadError: 'Unable to load the default statuses. Please try again.',
     saved: 'Default statuses updated successfully.',
-    forbidden: 'You cannot update the default statuses.',
     genericError: 'Unable to update the default statuses. Please try again.',
   },
 }

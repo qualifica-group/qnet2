@@ -1,6 +1,8 @@
 import axios from 'axios'
 import type { FieldPath, UseFormSetError } from 'react-hook-form'
 import { REQUEST_FIELD_KEYS } from '@/features/purchase-requests/purchase-request-permissions'
+import i18n from '@/i18n'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import type { PurchaseRequestFormValues } from '@/features/purchase-requests/purchase-request-schema'
 
 const LINE_FIELDS = ['product_id', 'description', 'reason', 'unit_of_measure_id', 'quantity', 'unit_price', 'vat_rate_id']
@@ -12,8 +14,12 @@ function isFormFieldPath(key: string): key is FieldPath<PurchaseRequestFormValue
   return (REQUEST_FIELD_KEYS as readonly string[]).includes(key) || LINE_FIELD_PATTERN.test(key)
 }
 
-/** The envelope's own message of a rejected request, when it carries one. */
+/** The envelope's own message of a rejected request (a 403 gets the specific sentence), when it carries one. */
 export function serverMessage(error: unknown): string | null {
+  const forbidden = forbiddenMessage(error, i18n)
+  if (forbidden) {
+    return forbidden
+  }
   const message = axios.isAxiosError(error)
     ? (error.response?.data as { message?: unknown } | undefined)?.message
     : undefined

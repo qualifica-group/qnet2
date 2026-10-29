@@ -166,7 +166,7 @@ describe('TaskCategoriesTable — delete', () => {
     screen.getByRole('button', { name: 'delete row' }).click()
 
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith(i18n.t('taskCategories.form.deleteForbidden')),
+      expect(toastErrorMock).toHaveBeenCalledWith('Forbidden'),
     )
   })
 

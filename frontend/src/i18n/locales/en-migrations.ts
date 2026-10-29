@@ -180,7 +180,6 @@ export const migrations = {
     failed: 'Failed',
   },
   errors: {
-    forbidden: "You don't have permission to access migrations.",
     notFound: 'This migration source does not exist.',
     validation: 'Invalid pagination parameters.',
     externalUnavailable: 'The external system is currently unavailable. Please try again.',

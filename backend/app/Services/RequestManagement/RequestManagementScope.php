@@ -72,7 +72,7 @@ final class RequestManagementScope
     public function assertInScope(User $user, Quote $quote, RequestModule $module = RequestModule::Requests): void
     {
         if (! self::isInStatusScope($quote, $module)) {
-            abort(403);
+            abort(403, __('This request is outside the scope of this section.'));
         }
 
         if ($user->can($module->permission('viewAll'))) {
@@ -87,7 +87,7 @@ final class RequestManagementScope
             return;
         }
 
-        abort(403);
+        abort(403, __('You cannot see this request: you are neither its operator nor a member of its site.'));
     }
 
     /**

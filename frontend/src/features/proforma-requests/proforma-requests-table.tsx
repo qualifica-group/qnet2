@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { FilePlus2, MessagesSquare } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { PageHeader } from '@/components/page-header'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
@@ -39,7 +39,7 @@ const PROFORMA_ACTION_ICONS: ActionIconMap = { 'messages-square': MessagesSquare
  * re-authorizes every call.
  */
 export function ProformaRequestsTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
 
@@ -60,13 +60,12 @@ export function ProformaRequestsTable() {
         toast.success(t('proformaRequests.form.deleted'))
         refreshGrid()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        toast.error(t(status === 403 ? 'proformaRequests.form.deleteForbidden' : 'proformaRequests.form.deleteError'))
+        toast.error(apiErrorMessage(error, t('proformaRequests.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(

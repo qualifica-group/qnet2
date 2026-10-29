@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { ColumnState } from 'ag-grid-community'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { toast } from 'sonner'
 import {
   resetTablePreferences,
@@ -81,7 +82,7 @@ export function toColumnPreferences(
  */
 export function useSaveTablePreferences(domain: string, scope?: TableConfigScope) {
   const queryClient = useQueryClient()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   return useMutation({
     mutationFn: (columns: ColumnPreferenceInput[]) =>
@@ -92,8 +93,8 @@ export function useSaveTablePreferences(domain: string, scope?: TableConfigScope
     },
     // Surface a rejected persist (e.g. a validation 422) instead of swallowing
     // it: without this the layout silently reverts to the default on reload.
-    onError: () => {
-      toast.error(t('table.layoutError'))
+    onError: (error) => {
+      toast.error(apiErrorMessage(error, t('table.layoutError'), i18n))
     },
   })
 }

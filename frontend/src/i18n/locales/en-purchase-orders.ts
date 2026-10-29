@@ -65,7 +65,6 @@ export const purchaseOrders = {
   },
   messages: {
     deleted: 'Purchase order deleted.',
-    deleteForbidden: 'You cannot delete this purchase order.',
     deleteBlocked: 'Only draft or in-validation purchase orders can be deleted.',
     deleteError: 'Unable to delete the purchase order. Please try again.',
   },

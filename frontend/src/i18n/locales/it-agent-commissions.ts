@@ -84,7 +84,6 @@ export const agentFiscalProfiles = {
     notesMax: 'Le note possono avere al massimo 2000 caratteri.',
     genericError: 'Qualcosa è andato storto. Riprova.',
     deleteError: 'Impossibile eliminare il profilo fiscale. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questo profilo fiscale.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
       description: 'Il profilo fiscale non è ancora stato creato: i dati inseriti andranno persi.',
@@ -187,7 +186,6 @@ export const enasarcoParameters = {
     notesMax: 'Le note possono avere al massimo 2000 caratteri.',
     genericError: 'Qualcosa è andato storto. Riprova.',
     deleteError: 'Impossibile eliminare i parametri ENASARCO. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questi parametri ENASARCO.',
     deleteInUse: 'Questi parametri sono usati da un estratto emesso e non si possono eliminare.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',

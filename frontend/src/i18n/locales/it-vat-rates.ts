@@ -40,7 +40,6 @@ export const vatRates = {
     rateInvalid: "L'aliquota deve essere zero o un numero positivo.",
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: "Impossibile eliminare l'aliquota IVA. Riprova.",
-    deleteForbidden: 'Non puoi eliminare questa aliquota IVA.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
       description: "L'aliquota IVA non è ancora stata creata: i dati inseriti andranno persi.",

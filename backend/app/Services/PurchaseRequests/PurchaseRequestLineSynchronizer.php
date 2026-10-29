@@ -10,8 +10,8 @@ use App\Models\PurchaseRequestLine;
 use App\Models\User;
 use App\Models\VatRate;
 use App\Support\Amounts\LineAmountCalculator;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -240,9 +240,7 @@ class PurchaseRequestLineSynchronizer
             return;
         }
 
-        if (! $actor->can('purchase-requests.deleteLine')) {
-            throw new AuthorizationException;
-        }
+        Gate::forUser($actor)->authorize('purchase-requests.deleteLine');
 
         if ($removed->contains(fn (PurchaseRequestLine $line): bool => ! in_array($line->status, self::DELETABLE_STATUSES, true))) {
             throw ValidationException::withMessages(['lines' => ['Only pending or rejected lines can be deleted.']]);

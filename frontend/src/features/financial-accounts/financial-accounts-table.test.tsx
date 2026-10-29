@@ -152,7 +152,7 @@ describe('FinancialAccountsTable: new button and delete (AC-024)', () => {
     renderWithProviders(<FinancialAccountsTable />)
     screen.getByRole('button', { name: 'delete row' }).click()
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith('You cannot delete this financial account.'),
+      expect(toastErrorMock).toHaveBeenCalledWith('Forbidden'),
     )
 
     deleteMock.mockRejectedValueOnce(new Error('network down'))

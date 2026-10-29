@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { toast } from 'sonner'
 import {
   resetTableFilters,
@@ -29,7 +30,7 @@ import type { TableConfig } from '@/features/table/types'
  */
 export function useSaveTableFilters(domain: string, scope?: TableConfigScope) {
   const queryClient = useQueryClient()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   return useMutation({
     mutationFn: (payload: SaveTableFiltersPayload) =>
@@ -40,8 +41,8 @@ export function useSaveTableFilters(domain: string, scope?: TableConfigScope) {
     },
     // A rejected save (e.g. a validation 422) must not pass silently: the
     // filters would otherwise vanish on the next reload with no warning.
-    onError: () => {
-      toast.error(t('table.filtersSaveError'))
+    onError: (error) => {
+      toast.error(apiErrorMessage(error, t('table.filtersSaveError'), i18n))
     },
   })
 }

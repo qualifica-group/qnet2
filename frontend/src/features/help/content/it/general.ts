@@ -193,6 +193,7 @@ const guide: HelpGuide = {
           headers: ['Domanda', 'Risposta'],
           rows: [
             ['Non vedo una voce di menu o un pulsante descritto nel manuale.', 'Il menu e le azioni dipendono dai permessi del tuo ruolo. Chiedi all’amministratore di verificare il ruolo in **Configurazione › Sistema › Ruoli**.'],
+            ['Un’operazione viene rifiutata con un messaggio tipo **Non hai il permesso «Elimina» sul modulo «Opportunità»**.', 'Il messaggio dice esattamente cosa manca: azione e modulo sono i nomi del permesso, gli stessi che l’amministratore trova nel form del ruolo in **Configurazione › Sistema › Ruoli**. Chiedigli di assegnarlo al tuo ruolo. Se invece il messaggio indica un motivo (per esempio «Non puoi modificare questa commessa: non ne sei membro né responsabile.»), il permesso non basta: il record è fuori dal tuo perimetro o in uno stato che non lo consente, e si risolve con l’assegnazione al record (per esempio essere aggiunto come membro) o aspettando lo stato giusto. **Sezione riservata al super-admin** indica una sezione che nessun permesso sblocca.'],
             ['Aprendo un record vedo **Record non trovato** o **Accesso negato**.', 'Il record non esiste più (è stato eliminato o il collegamento è sbagliato) oppure il tuo ruolo non ti consente di vederlo. Non serve riprovare: verifica il collegamento o chiedi l’accesso all’amministratore o ai responsabili del record.'],
             ['Non riesco a modificare un campo.', 'Il tuo ruolo può averlo in sola lettura, oppure il campo è ereditato (per esempio da un progetto o da un lead) o protetto: nel caso della **Fonte** proponi una modifica dalla guida **Richieste di modifica**.'],
             ['Non riesco a eliminare un valore di configurazione.', 'È già usato da qualche record. Disattivalo con **Attivo**: sparisce dai menu a tendina senza toccare i dati esistenti.'],
@@ -233,7 +234,7 @@ const guide: HelpGuide = {
             ['Task', 'Un’attività con richiedente, assegnatari e scadenza.'],
             ['Modello di Task', 'Elenco di task standard generati alla creazione di una commessa.'],
             ['Buono', 'Premio o incentivo assegnato al segnalatore, con stato In attesa, Approvato o Negato.'],
-            ['Ruolo', 'Insieme di permessi assegnato agli utenti.'],
+            ['Ruolo', 'Insieme di permessi assegnato agli utenti. Se un’operazione è rifiutata, il messaggio indica il permesso mancante (vedi le domande frequenti qui sopra).'],
             ['Campo personalizzato', 'Campo aggiunto dall’amministratore a un modulo.'],
             ['Attributo', 'Campo aggiuntivo stabilito da una categoria prodotto per prodotti, offerte o commesse.'],
           ],

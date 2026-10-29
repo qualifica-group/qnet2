@@ -259,14 +259,20 @@ describe('LeadsTable — Sheet-based CRUD (AC-024)', () => {
     expect(toast.success).toHaveBeenCalledWith('Lead deleted successfully.')
   })
 
-  it('maps a 403 delete failure to the forbidden message', async () => {
-    deleteLeadMock.mockRejectedValue(axiosErrorWithStatus(403))
+  it('maps a 403 delete failure to the specific permission sentence', async () => {
+    deleteLeadMock.mockRejectedValue(
+      axiosErrorWithStatus(403, {
+        success: false,
+        message: 'Forbidden',
+        authorization: { reason: 'missing_permission', permission: 'leads.delete' },
+      }),
+    )
     renderTable()
 
     fireEvent.click(screen.getByText('trigger-delete'))
 
     await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith('You cannot delete this lead.'),
+      expect(toast.error).toHaveBeenCalledWith('You do not have the «Delete» permission on the «Leads» module.'),
     )
   })
 

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -29,7 +30,7 @@ const UNITS_OF_MEASURE_DOMAIN = 'units-of-measure'
  * affordance only; the backend re-authorizes each call.
  */
 export function UnitsOfMeasureTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -50,8 +51,9 @@ export function UnitsOfMeasureTable() {
         refreshGrid()
       } catch (error) {
         const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        if (status === 403) {
-          toast.error(t('unitsOfMeasure.form.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden) {
+          toast.error(forbidden)
         } else if (status === 409) {
           toast.error(t('unitsOfMeasure.form.deleteInUse'))
         } else {
@@ -61,7 +63,7 @@ export function UnitsOfMeasureTable() {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(

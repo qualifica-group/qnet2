@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -15,7 +15,6 @@ import { deleteAgentFiscalProfile } from '@/features/agent-fiscal-profiles/api'
 import { agentFiscalProfileColumnRenderers } from '@/features/agent-fiscal-profiles/column-renderers'
 import { AGENT_FISCAL_PROFILES_DOMAIN } from '@/features/agent-fiscal-profiles/types'
 
-const FORBIDDEN_STATUS = 403
 
 /**
  * Thin agent fiscal profiles adapter over the generic table (domain
@@ -23,7 +22,7 @@ const FORBIDDEN_STATUS = 403
  * `useModuleOpener`; it owns the delete flow (confirm is asked by the table).
  */
 export function AgentFiscalProfilesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -41,17 +40,12 @@ export function AgentFiscalProfilesTable() {
         toast.success(t('agentFiscalProfiles.form.deleted'))
         refreshGrid()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        toast.error(
-          status === FORBIDDEN_STATUS
-            ? t('agentFiscalProfiles.form.deleteForbidden')
-            : t('agentFiscalProfiles.form.deleteError'),
-        )
+        toast.error(apiErrorMessage(error, t('agentFiscalProfiles.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(

@@ -41,7 +41,7 @@ final class MultiQuoteContractGate
 
         // Step 1: the actor may program every contract (403)
         foreach ($ordered as $contract) {
-            abort_unless(Gate::forUser($actor)->allows('program', $contract), 403, 'This action is unauthorized.');
+            Gate::forUser($actor)->authorize('program', $contract);
         }
 
         // Step 2: every contract must be in a status a work order is programmed from (422)

@@ -10,6 +10,7 @@ use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\RequestCategoryTabsResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -35,7 +36,7 @@ class ProductCategoryTabsController extends BaseApiController
         try {
             $user = $request->user();
             $module = RequestModule::fromRequest($request);
-            abort_unless($user->can($module->permission('viewAny')), 403);
+            Gate::forUser($user)->authorize($module->permission('viewAny'));
 
             $categories = $this->resolver->resolve($user, $module);
 

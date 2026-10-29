@@ -352,7 +352,6 @@ export const workOrders = {
     openTasksWarning_other: '{{count}} task aperti verranno chiusi con esito negativo.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare la commessa. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questa commessa.',
     deleteConflict: 'Impossibile eliminare: la commessa è utilizzata altrove.',
     sections: {
       offer: {

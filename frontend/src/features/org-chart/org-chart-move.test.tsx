@@ -171,7 +171,7 @@ describe('org chart move - "Sposta in…"', () => {
     await waitFor(() => expect(moveManagerMock).toHaveBeenCalledWith(2, { from_manager_id: 1, to_manager_id: 4 }))
   })
 
-  it('shows the server message on 422 and the i18n copy on 403, keeping the dialog open', async () => {
+  it("shows the server message on 422 and the server's reason on 403, keeping the dialog open", async () => {
     renderPage()
     moveParentMock.mockRejectedValueOnce(serverError(422, 'Spostamento non valido: ciclo.'))
     const dialog = await openMenuAndMove('Funzioni aziendali', /^Sales$/)
@@ -181,7 +181,7 @@ describe('org chart move - "Sposta in…"', () => {
 
     moveParentMock.mockRejectedValueOnce(serverError(403, 'Forbidden'))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Conferma lo spostamento' }))
-    await waitFor(() => expect(toastError).toHaveBeenLastCalledWith('Non hai i permessi per eseguire questo spostamento.'))
+    await waitFor(() => expect(toastError).toHaveBeenLastCalledWith('Forbidden'))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 })

@@ -148,7 +148,6 @@ export const purchaseRequests = {
     conflict: 'La richiesta è cambiata o è chiusa. Ricarica e riprova.',
     saveError: 'Impossibile salvare la richiesta di acquisto. Riprova.',
     deleted: 'Richiesta di acquisto eliminata.',
-    deleteForbidden: 'Non hai il permesso di eliminare questa richiesta di acquisto.',
     deleteBlocked: 'La richiesta ha righe ordinate o ricevute e non può essere eliminata.',
     deleteError: 'Impossibile eliminare la richiesta di acquisto. Riprova.',
     notifyError: 'Impossibile inviare la richiesta al responsabile.',

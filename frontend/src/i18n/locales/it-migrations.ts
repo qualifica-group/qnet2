@@ -181,7 +181,6 @@ export const migrations = {
     failed: 'Fallito',
   },
   errors: {
-    forbidden: 'Non hai i permessi per accedere alle migrazioni.',
     notFound: 'Questa sorgente di migrazione non esiste.',
     validation: 'Parametri di paginazione non validi.',
     externalUnavailable: 'Il sistema esterno non è al momento disponibile. Riprova.',

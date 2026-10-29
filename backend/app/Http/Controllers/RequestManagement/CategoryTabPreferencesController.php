@@ -14,6 +14,7 @@ use App\RequestManagement\RequestModule;
 use App\RequestManagement\ResolveDefaultCategoryTabPreference;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -55,7 +56,7 @@ class CategoryTabPreferencesController extends BaseApiController
     private function authorizedModule(Request $request): RequestModule
     {
         $module = RequestModule::fromRequest($request);
-        abort_unless($request->user()->can($module->permission('viewAny')), 403);
+        Gate::forUser($request->user())->authorize($module->permission('viewAny'));
 
         return $module;
     }

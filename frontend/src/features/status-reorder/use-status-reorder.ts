@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
 import { toast } from 'sonner'
-import type { ApiErrorResponse } from '@/api/types'
+import i18n from '@/i18n'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { forSelectKeys } from '@/features/for-select/query-keys'
 import { fetchStatusesForReorder, reorderStatuses } from '@/features/status-reorder/api'
 import { reconcileReorderedItems } from '@/features/status-reorder/reconcile-reordered-items'
@@ -15,7 +15,6 @@ function reorderListQueryKey(resource: string) {
 
 interface StatusReorderLabels {
   saved: string
-  forbidden: string
   genericError: string
 }
 
@@ -93,11 +92,7 @@ export function useStatusReorder({ resource, enabled, labels, onReordered, allRo
         .catch((error: unknown) => {
           // Step 3: revert to the pre-drag order and surface the failure
           setItems(previousItemsRef.current)
-          if (axios.isAxiosError<ApiErrorResponse>(error) && error.response?.status === 403) {
-            toast.error(labels.forbidden)
-          } else {
-            toast.error(labels.genericError)
-          }
+          toast.error(apiErrorMessage(error, labels.genericError, i18n))
         })
         .finally(() => setIsSaving(false))
     },

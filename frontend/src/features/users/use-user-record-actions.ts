@@ -1,6 +1,8 @@
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import i18n from '@/i18n'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useConfirm } from '@/components/confirm-dialog-context'
@@ -123,10 +125,14 @@ export function useUserRecordActions(user: UserDetailWithPermissions, callbacks:
   }
 }
 
-/** 403/422 = refused (policy, last super-admin), 409 = still referenced by leads/opportunities. */
+/** 403 = refused by policy (specific sentence), 422 = last super-admin, 409 = still referenced by leads/opportunities. */
 function deleteErrorMessage(t: (key: string) => string, error: unknown): string {
+  const forbidden = forbiddenMessage(error, i18n)
+  if (forbidden !== null) {
+    return forbidden
+  }
   const status = axios.isAxiosError(error) ? error.response?.status : undefined
-  if (status === 403 || status === 422) {
+  if (status === 422) {
     return t('users.form.deleteForbidden')
   }
   if (status === 409) {

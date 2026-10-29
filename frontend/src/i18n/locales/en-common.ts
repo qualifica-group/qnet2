@@ -25,6 +25,10 @@ export const common = {
   /** Sheet toolbar action that leaves the modal for the record's dedicated detail page. */
   openDetailPage: 'Open detail page',
   copySuffix: ' (copy)',
+  /** Last-resort 403 sentence (`lib/forbidden-message.ts`) when the server sent no reason. */
+  forbidden: 'You do not have permission for this operation.',
+  /** 403 with a missing permission: ability and module are the permission's localized labels. */
+  missingPermission: 'You do not have the «{{ability}}» permission on the «{{module}}» module.',
   /** Final state of a record fetch answered 404/403 (`DetailError`, `RecordUnavailable`): no retry. */
   recordUnavailable: {
     notFound: {

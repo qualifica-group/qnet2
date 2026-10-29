@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -29,7 +29,7 @@ const DOCUMENT_BUNDLES_DOMAIN = 'document-bundles'
  * gating is an affordance only; the backend re-authorizes each call.
  */
 export function DocumentBundlesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -49,15 +49,12 @@ export function DocumentBundlesTable() {
         toast.success(t('documentBundles.form.deleted'))
         refreshGrid()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        toast.error(
-          status === 403 ? t('documentBundles.form.deleteForbidden') : t('documentBundles.form.deleteError'),
-        )
+        toast.error(apiErrorMessage(error, t('documentBundles.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(

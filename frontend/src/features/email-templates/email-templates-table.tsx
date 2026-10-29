@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -29,7 +29,7 @@ const EMAIL_TEMPLATES_DOMAIN = 'email-templates'
  * an affordance only; the backend re-authorizes each call.
  */
 export function EmailTemplatesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -49,15 +49,12 @@ export function EmailTemplatesTable() {
         toast.success(t('emailTemplates.form.deleted'))
         refreshGrid()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        toast.error(
-          status === 403 ? t('emailTemplates.form.deleteForbidden') : t('emailTemplates.form.deleteError'),
-        )
+        toast.error(apiErrorMessage(error, t('emailTemplates.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(

@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import type { UseFieldArrayReturn, UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import type { VatRateRef } from '@/features/invoices/types'
 import { fetchPurchaseInvoiceDraft } from '@/features/purchase-invoices/api'
 import { lineFromDraft } from '@/features/purchase-invoices/purchase-invoice-editor-lines'
@@ -24,7 +25,7 @@ interface AddOrdersArgs {
  * on the form yet and links the order. Empty header fields take the draft's.
  */
 export function useAddOrderToInvoice({ form, lineArray, rememberVat }: AddOrdersArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { getValues, setValue } = form
   const { append } = lineArray
   const [notice, setNotice] = useState<OrdersNotice>(null)
@@ -68,9 +69,9 @@ export function useAddOrderToInvoice({ form, lineArray, rememberVat }: AddOrders
     (orderId: number) =>
       mutate(orderId, {
         onSuccess: apply,
-        onError: () => toast.error(t('purchaseInvoices.editor.orders.loadError')),
+        onError: (error) => toast.error(apiErrorMessage(error, t('purchaseInvoices.editor.orders.loadError'), i18n)),
       }),
-    [apply, mutate, t],
+    [apply, mutate, t, i18n],
   )
 
   return { addOrder, isAdding: isPending, notice }

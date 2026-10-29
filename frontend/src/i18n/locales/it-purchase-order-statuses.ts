@@ -38,7 +38,6 @@ export const purchaseOrderStatuses = {
     dragHandleLabel: 'Trascina per riordinare',
     loadError: 'Impossibile caricare l’elenco. Riprova.',
     saved: 'Ordine aggiornato correttamente.',
-    forbidden: 'Non puoi riordinare queste righe.',
     genericError: 'Impossibile aggiornare l’ordine. Riprova.',
   },
 }

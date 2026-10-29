@@ -50,7 +50,6 @@ export const proformaRequests = {
     updated: 'Request updated.',
     genericError: 'Unable to save the request. Please try again.',
     deleted: 'Request deleted.',
-    deleteForbidden: 'You do not have permission to delete this request.',
     deleteError: 'Unable to delete the request. Please try again.',
   },
   cell: {

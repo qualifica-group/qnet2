@@ -4,8 +4,8 @@ import { AxiosError, type AxiosResponse } from 'axios'
 import { DetailError } from '@/components/detail/detail-panel'
 import i18n from '@/i18n'
 
-function httpError(status: number): AxiosError {
-  return new AxiosError('failed', undefined, undefined, undefined, { status } as AxiosResponse)
+function httpError(status: number, data?: unknown): AxiosError {
+  return new AxiosError('failed', undefined, undefined, undefined, { status, data } as AxiosResponse)
 }
 
 function renderDetailError(error: unknown, onRetry = vi.fn()) {
@@ -26,6 +26,20 @@ describe('DetailError', () => {
     renderDetailError(httpError(403))
 
     expect(screen.getByText(i18n.t('common.recordUnavailable.forbidden.title'))).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
+  })
+
+  it('shows the specific forbidden sentence as the description, with no retry', () => {
+    renderDetailError(
+      httpError(403, {
+        success: false,
+        message: 'raw',
+        authorization: { reason: 'missing_permission', permission: 'opportunities.view' },
+      }),
+    )
+
+    expect(screen.getByText(i18n.t('common.recordUnavailable.forbidden.title'))).toBeInTheDocument()
+    expect(screen.getByText(/Non hai il permesso «.+» sul modulo «Opportunità»\./)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
   })
 

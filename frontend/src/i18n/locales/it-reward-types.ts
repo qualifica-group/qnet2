@@ -48,7 +48,6 @@ export const rewardTypes = {
     deleted: 'Tipologia di premio eliminata con successo.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare la tipologia di premio. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questa tipologia di premio.',
     deleteInUseFallback: 'Questa tipologia di premio è in uso e non può essere eliminata.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',

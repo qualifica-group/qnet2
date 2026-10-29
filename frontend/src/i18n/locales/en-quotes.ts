@@ -112,7 +112,6 @@ export const quotes = {
     },
     generatingDocument: 'Generating…',
     documentGenerated: 'PDF generated successfully.',
-    documentForbidden: "You don't have permission to generate this document.",
     documentGenericError: 'Unable to generate the document. Please try again.',
   },
   /**
@@ -244,7 +243,6 @@ export const quotes = {
     deleted: 'Quote deleted successfully.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the quote. Please try again.',
-    deleteForbidden: 'You cannot delete this quote.',
     sections: {
       dynamicFields: {
         title: 'Additional information',

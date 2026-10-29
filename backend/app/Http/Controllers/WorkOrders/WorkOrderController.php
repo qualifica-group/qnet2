@@ -19,6 +19,7 @@ use App\WorkOrders\WorkOrderAttributeResolver;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -57,7 +58,7 @@ class WorkOrderController extends BaseApiController
     {
         try {
             $user = $request->user();
-            abort_unless($user !== null && ($user->can('work-orders.create') || $user->can('work-orders.update')), 403);
+            Gate::allowIf($user !== null && ($user->can('work-orders.create') || $user->can('work-orders.update')));
 
             return $this->ok(new WorkOrderFormContextResource(
                 $this->attributeResolver->formContext($request->quoteLineIds(), FormMode::Create),

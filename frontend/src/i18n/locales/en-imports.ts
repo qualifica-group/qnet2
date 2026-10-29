@@ -83,7 +83,6 @@ export const imports = {
   },
   errors: {
     fileRequired: 'Please choose a CSV file.',
-    forbidden: "You don't have permission to import this data.",
     validation: 'The uploaded file could not be validated. Check the format and try again.',
     invalidState: 'This import can no longer be confirmed.',
     generic: 'Something went wrong. Please try again.',

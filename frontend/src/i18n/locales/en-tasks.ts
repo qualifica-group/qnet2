@@ -394,7 +394,6 @@ export const tasks = {
     deleted: 'Task deleted.',
     genericError: 'Could not save the task. Please try again.',
     deleteError: 'Could not delete the task. Please try again.',
-    deleteForbidden: "You don't have permission to delete this task.",
     deleteConflict: 'This task has sub-tasks and cannot be deleted.',
   },
   /**

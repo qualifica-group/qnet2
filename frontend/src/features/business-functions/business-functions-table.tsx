@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -17,6 +16,7 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { businessFunctionColumnRenderers } from '@/features/business-functions/column-renderers'
 import { deleteBusinessFunction } from '@/features/business-functions/api'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 
 /** Domain key used to mount the generic table for business functions. */
 const BUSINESS_FUNCTIONS_DOMAIN = 'business-functions'
@@ -31,7 +31,7 @@ const BUSINESS_FUNCTIONS_DOMAIN = 'business-functions'
  * the backend re-authorizes each call.
  */
 export function BusinessFunctionsTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const stats = useStatsPanel(BUSINESS_FUNCTIONS_DOMAIN)
   const invalidateStats = useInvalidateModuleStats(BUSINESS_FUNCTIONS_DOMAIN)
 
@@ -60,17 +60,12 @@ export function BusinessFunctionsTable() {
         refreshGrid()
         invalidateStats()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        toast.error(
-          status === 403
-            ? t('businessFunctions.form.deleteForbidden')
-            : t('businessFunctions.form.deleteError'),
-        )
+        toast.error(apiErrorMessage(error, t('businessFunctions.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t, invalidateStats],
+    [refreshGrid, t, i18n, invalidateStats],
   )
 
   const handleAction: RowActionHandler = useCallback(

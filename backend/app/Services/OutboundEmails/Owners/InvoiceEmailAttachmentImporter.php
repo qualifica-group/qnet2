@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\Invoices\InvoiceLayoutUnavailableException;
 use App\Services\Invoices\InvoicePdfRenderer;
 use App\Services\OutboundEmails\OutboundEmailAttachmentService;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -44,9 +45,7 @@ final class InvoiceEmailAttachmentImporter
 
     public function importPdf(Invoice $invoice, OutboundEmail $email, User $actor, ?int $layoutId = null): OutboundEmail
     {
-        if ($actor->cannot('view', $invoice)) {
-            abort(403);
-        }
+        Gate::forUser($actor)->authorize('view', $invoice);
 
         $layout = $layoutId === null ? null : DocumentLayout::query()
             ->where('module', DocumentLayoutModule::Invoices->value)
@@ -71,9 +70,7 @@ final class InvoiceEmailAttachmentImporter
      */
     private function importDocuments(Invoice $invoice, OutboundEmail $email, User $actor, array $attachmentIds): OutboundEmail
     {
-        if ($actor->cannot('viewDocuments', Registry::class)) {
-            abort(403);
-        }
+        Gate::forUser($actor)->authorize('viewDocuments', Registry::class);
 
         $sources = Attachment::query()
             ->whereIn('id', $attachmentIds)

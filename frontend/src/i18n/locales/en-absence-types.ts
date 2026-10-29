@@ -57,7 +57,6 @@ export const absenceTypes = {
     daysUnit: 'days',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the absence type. Please try again.',
-    deleteForbidden: 'You cannot delete this absence type.',
     deleteInUse: 'Cannot delete: the type is used by at least one request. Deactivate it instead.',
     sections: {
       identity: {

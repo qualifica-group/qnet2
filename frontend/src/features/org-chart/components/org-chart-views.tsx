@@ -22,7 +22,7 @@ export function FunctionsView() {
           nodes={nodes}
           isLoading={query.isLoading}
           isError={query.isError}
-          errorStatus={query.error?.response?.status ?? null}
+          error={query.error}
           ariaLabel={t('orgChart.tabs.functions')}
           emptyLabel={t('orgChart.emptyFunctions')}
         />
@@ -44,7 +44,7 @@ export function PeopleView() {
           nodes={nodes}
           isLoading={query.isLoading}
           isError={query.isError}
-          errorStatus={query.error?.response?.status ?? null}
+          error={query.error}
           ariaLabel={t('orgChart.tabs.people')}
           emptyLabel={t('orgChart.emptyPeople')}
         />

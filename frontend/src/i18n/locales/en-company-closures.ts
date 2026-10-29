@@ -67,7 +67,6 @@ export const companyClosures = {
     startedLocked: 'The closure has already started: it can no longer be edited or deleted.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the company closure. Please try again.',
-    deleteForbidden: 'You cannot delete this company closure.',
     deleteStarted: 'Unable to delete: the closure has already started.',
     sections: {
       details: 'Details',

@@ -67,7 +67,6 @@ export const requestManagement = {
   },
   delete: {
     success: 'Richiesta eliminata.',
-    forbidden: 'Non hai il permesso di eliminare questa richiesta.',
     error: 'Impossibile eliminare la richiesta. Riprova.',
   },
   assign: {
@@ -391,7 +390,6 @@ export const requestManagement = {
       // Spec 0112 AC-020: nessuna richiesta parte con zero sedi selezionate.
       sitesRequired: 'Seleziona almeno una sede.',
       sitesLoadFailed: 'Impossibile caricare le sedi. Riprova.',
-      forbidden: 'Non hai il permesso di generare questo report.',
       validation: 'Le date inserite non sono valide.',
       generic: 'Impossibile generare il report. Riprova.',
       jobFailed: 'La generazione del report non è riuscita. Riprova.',
@@ -436,7 +434,6 @@ export const requestManagement = {
       'Nessun dato da mostrare: non ci sono ancora richieste nelle categorie incluse nel report. La dashboard si popolerà non appena ne verrà registrata una.',
     errors: {
       network: 'Impossibile contattare il server: verifica la connessione e riprova.',
-      forbidden: 'Non hai il permesso di visualizzare la dashboard delle richieste.',
       invalidFilters:
         'I filtri applicati non sono più validi (ad esempio una categoria non è più disponibile). Aggiornali dal pulsante Filtri.',
       generic: 'Impossibile caricare la dashboard per un errore del server. Riprova tra qualche istante.',

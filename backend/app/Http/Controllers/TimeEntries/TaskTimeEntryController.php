@@ -15,6 +15,7 @@ use App\Services\TimeEntries\TimeEntryService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -48,7 +49,7 @@ class TaskTimeEntryController extends BaseApiController
 
             /** @var User $actor */
             $actor = $request->user();
-            abort_unless($actor->can('time-entries.viewAny'), 403);
+            Gate::forUser($actor)->authorize('time-entries.viewAny');
 
             $items = TimeEntry::query()
                 ->where('task_id', $task->id)
@@ -80,7 +81,7 @@ class TaskTimeEntryController extends BaseApiController
 
             /** @var User $actor */
             $actor = $request->user();
-            abort_unless($this->canCreate($actor, $task), 403);
+            abort_unless($this->canCreate($actor, $task), 403, __('You cannot log time on this task.'));
 
             $entry = $this->service->create($request->toData($task->id), $actor);
 

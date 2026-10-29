@@ -33,7 +33,6 @@ export interface StatusReorderSheetLabels {
   inactiveBadge?: string
   loadError: string
   saved: string
-  forbidden: string
   genericError: string
 }
 

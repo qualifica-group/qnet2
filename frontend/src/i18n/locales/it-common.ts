@@ -25,6 +25,10 @@ export const common = {
   openDetailPage: 'Apri pagina di dettaglio',
   /** Appended to the name when duplicating a record (row action "duplicate"); leading space by design. */
   copySuffix: ' (copia)',
+  /** Last-resort 403 sentence (`lib/forbidden-message.ts`) when the server sent no reason. */
+  forbidden: 'Non hai i permessi per questa operazione.',
+  /** 403 with a missing permission: ability and module are the permission's localized labels. */
+  missingPermission: 'Non hai il permesso «{{ability}}» sul modulo «{{module}}».',
   /** Final state of a record fetch answered 404/403 (`DetailError`, `RecordUnavailable`): no retry. */
   recordUnavailable: {
     notFound: {

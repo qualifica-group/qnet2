@@ -15,6 +15,7 @@ use App\Tables\TableDefinition;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -57,9 +58,7 @@ class TableCellUpdateService
         // Step 2: row-level authorization (D-4), separate from the column
         // checks below (covers both a bare lack of `{resource}.update` and a
         // domain-specific scope, e.g. RequestManagementTableDefinition).
-        if (! $definition->authorizeUpdate($actor, $row)) {
-            throw new AuthorizationException;
-        }
+        Gate::allowIf($definition->authorizeUpdate($actor, $row));
 
         // Step 3: structural allow-list (D-1/D-3/D-10) — 422, never a SQL
         // error: an unknown/undeclared column never reaches the query. For a
@@ -208,7 +207,7 @@ class TableCellUpdateService
         $permission = $authorization?->fieldPermissions($actor, $row)[$fieldKey] ?? null;
 
         if ($permission === null || ! $permission->editable) {
-            throw new AuthorizationException;
+            throw new AuthorizationException(__('You cannot edit this field.'));
         }
 
         return $permission;

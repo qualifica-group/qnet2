@@ -352,7 +352,6 @@ export const workOrders = {
     openTasksWarning_other: '{{count}} open tasks will be closed with a negative outcome.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the work order. Please try again.',
-    deleteForbidden: 'You cannot delete this work order.',
     deleteConflict: 'Cannot delete: the work order is used elsewhere.',
     sections: {
       offer: {

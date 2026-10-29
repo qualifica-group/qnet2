@@ -23,7 +23,6 @@ export const tasksBulk = {
   deleteConfirmDescription_other: 'I {{count}} task selezionati verranno eliminati. Azione non reversibile.',
   success_one: 'Task aggiornato.',
   success_other: '{{count}} task aggiornati.',
-  forbidden: 'Non hai i permessi per questa azione massiva.',
   genericError: "Si è verificato un errore nell'azione massiva. Riprova.",
   incompatibleError_one: 'Un task non è compatibile con questa azione: nessuna modifica applicata.',
   incompatibleError_other: '{{count}} task non sono compatibili con questa azione: nessuna modifica applicata.',

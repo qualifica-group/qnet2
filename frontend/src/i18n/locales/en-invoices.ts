@@ -95,7 +95,6 @@ export const invoices = {
   document: {
     pdfReady: 'PDF generated.',
     pdfError: 'Unable to generate the PDF. Try again.',
-    forbidden: 'You are not allowed to download this document.',
     emailError: 'Unable to prepare the email. Try again.',
   },
   detail: {
@@ -242,7 +241,6 @@ export const invoiceTags = {
     colorInvalid: 'Pick a color from the palette.',
     genericError: 'Something went wrong. Try again.',
     deleteError: 'Unable to delete the invoice tag. Try again.',
-    deleteForbidden: 'You cannot delete this invoice tag.',
     deleteInUse: 'This invoice tag is used by an invoice and cannot be deleted.',
     leaveConfirm: {
       title: 'Leave without saving?',
@@ -263,7 +261,6 @@ export const invoiceTags = {
     dragHandleLabel: 'Drag to reorder',
     loadError: 'Unable to load the list. Try again.',
     saved: 'Order updated successfully.',
-    forbidden: 'You cannot reorder these rows.',
     genericError: 'Unable to update the order. Try again.',
     inactiveBadge: 'Inactive',
   },

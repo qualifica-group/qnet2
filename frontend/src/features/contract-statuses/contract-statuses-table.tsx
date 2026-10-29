@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -32,7 +33,7 @@ const CONTRACT_STATUSES_DOMAIN = 'contract-statuses'
  * each call.
  */
 export function ContractStatusesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -57,8 +58,9 @@ export function ContractStatusesTable() {
           return
         }
         const status = error.response?.status
-        if (status === 403) {
-          toast.error(t('contractStatuses.form.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden) {
+          toast.error(forbidden)
         } else if (status === 409) {
           // The status is still referenced by a Contract. Surface the backend's
           // own message rather than a generic one.
@@ -72,7 +74,7 @@ export function ContractStatusesTable() {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(
@@ -111,7 +113,6 @@ export function ContractStatusesTable() {
                 dragHandleLabel: t('contractStatuses.reorder.dragHandleLabel'),
                 loadError: t('contractStatuses.reorder.loadError'),
                 saved: t('contractStatuses.reorder.saved'),
-                forbidden: t('contractStatuses.reorder.forbidden'),
                 genericError: t('contractStatuses.reorder.genericError'),
               }}
               onReordered={refreshGrid}

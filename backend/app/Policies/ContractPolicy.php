@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Policies\Abstracts\BasePolicy;
 use App\Services\Contracts\ContractVisibilityScope;
 use App\Services\Quotes\QuoteVisibilityScope;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -48,14 +49,14 @@ class ContractPolicy extends BasePolicy
         ];
     }
 
-    public function view(User $user, Model $model): bool
+    public function view(User $user, Model $model): bool|Response
     {
-        return parent::view($user, $model) && $this->isInScope($user, $model);
+        return $this->withinPerimeter($user->can($this->permission('view')), fn (): bool => $this->isInScope($user, $model), 'contract_out_of_scope');
     }
 
-    public function update(User $user, Model $model): bool
+    public function update(User $user, Model $model): bool|Response
     {
-        return parent::update($user, $model) && $this->isInScope($user, $model);
+        return $this->withinPerimeter($user->can($this->permission('update')), fn (): bool => $this->isInScope($user, $model), 'contract_out_of_scope');
     }
 
     /** Resource-level: lifts the record scoping to every contract. */
@@ -70,14 +71,14 @@ class ContractPolicy extends BasePolicy
         return $user->can($this->permission(QuoteVisibilityScope::VIEW_SITE_ABILITY));
     }
 
-    public function validate(User $user, Contract $contract): bool
+    public function validate(User $user, Contract $contract): Response
     {
-        return $user->can($this->permission('validate')) && ContractVisibilityScope::isVisibleTo($user, $contract);
+        return $this->withinPerimeter($user->can($this->permission('validate')), fn (): bool => ContractVisibilityScope::isVisibleTo($user, $contract), 'contract_out_of_scope');
     }
 
-    public function terminate(User $user, Contract $contract): bool
+    public function terminate(User $user, Contract $contract): Response
     {
-        return $user->can($this->permission('terminate')) && ContractVisibilityScope::isVisibleTo($user, $contract);
+        return $this->withinPerimeter($user->can($this->permission('terminate')), fn (): bool => ContractVisibilityScope::isVisibleTo($user, $contract), 'contract_out_of_scope');
     }
 
     /**
@@ -87,19 +88,19 @@ class ContractPolicy extends BasePolicy
      * (ContractProgrammableLinesController/ContractWorkOrderController), via
      * ContractActionAvailability::mayProgram().
      */
-    public function program(User $user, Contract $contract): bool
+    public function program(User $user, Contract $contract): Response
     {
-        return $user->can($this->permission('program')) && ContractVisibilityScope::isVisibleTo($user, $contract);
+        return $this->withinPerimeter($user->can($this->permission('program')), fn (): bool => ContractVisibilityScope::isVisibleTo($user, $contract), 'contract_out_of_scope');
     }
 
-    public function changeStatus(User $user, Contract $contract): bool
+    public function changeStatus(User $user, Contract $contract): Response
     {
-        return $user->can($this->permission('changeStatus')) && ContractVisibilityScope::isVisibleTo($user, $contract);
+        return $this->withinPerimeter($user->can($this->permission('changeStatus')), fn (): bool => ContractVisibilityScope::isVisibleTo($user, $contract), 'contract_out_of_scope');
     }
 
-    public function reactivate(User $user, Contract $contract): bool
+    public function reactivate(User $user, Contract $contract): Response
     {
-        return $user->can($this->permission('reactivate')) && ContractVisibilityScope::isVisibleTo($user, $contract);
+        return $this->withinPerimeter($user->can($this->permission('reactivate')), fn (): bool => ContractVisibilityScope::isVisibleTo($user, $contract), 'contract_out_of_scope');
     }
 
     private function isInScope(User $user, Model $model): bool

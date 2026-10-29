@@ -68,7 +68,7 @@ class StaffTrainingController extends BaseApiController
     {
         try {
             $this->visibility->assertCanView($request->user(), $staffTraining);
-            abort_unless($this->visibility->canManage($request->user()), 403, 'This action is unauthorized.');
+            abort_unless($this->visibility->canManage($request->user()), 403, __('You cannot manage staff trainings.'));
 
             $staffTraining->delete();
 

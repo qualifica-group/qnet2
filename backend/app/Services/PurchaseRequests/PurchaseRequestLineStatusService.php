@@ -110,7 +110,7 @@ class PurchaseRequestLineStatusService
 
         foreach ($ordered as $line) {
             if ($this->capabilities->capabilities($actor, $requests->get($line->purchase_request_id)) === []) {
-                throw new AuthorizationException;
+                throw new AuthorizationException(__('You do not hold a role on this purchase request that allows this change.'));
             }
         }
 

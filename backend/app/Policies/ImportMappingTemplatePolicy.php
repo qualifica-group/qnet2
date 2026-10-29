@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\ImportMappingTemplate;
 use App\Models\User;
+use Illuminate\Auth\Access\Response;
 
 /**
  * Owner-only authorization for a saved ImportMappingTemplate (spec 0035).
@@ -20,8 +21,10 @@ use App\Models\User;
  */
 class ImportMappingTemplatePolicy
 {
-    public function delete(User $user, ImportMappingTemplate $template): bool
+    public function delete(User $user, ImportMappingTemplate $template): Response
     {
-        return $template->user_id === $user->id;
+        return $template->user_id === $user->id
+            ? Response::allow()
+            : Response::deny(__('authorization.import_mapping_template_not_owner'));
     }
 }

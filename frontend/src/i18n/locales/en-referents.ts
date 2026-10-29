@@ -65,7 +65,6 @@ export const referents = {
       confirm: 'Leave without saving',
       cancel: 'Keep editing',
     },
-    deleteForbidden: 'You cannot delete this referent.',
     sections: {
       identity: {
         title: 'Personal details',
@@ -112,7 +111,6 @@ export const referentTypes = {
     nameMax: 'Name must be at most 191 characters.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the referent type. Please try again.',
-    deleteForbidden: 'You cannot delete this referent type.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The referent type has not been created yet: what you entered will be lost.',

@@ -52,7 +52,6 @@ export const companies = {
     vatNumberInvalid: 'The VAT number is not valid.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the company. Please try again.',
-    deleteForbidden: 'You cannot delete this company.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The company has not been created yet: the data you entered will be lost.',

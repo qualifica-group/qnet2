@@ -108,6 +108,5 @@ export const campaigns = {
       confirm: 'Leave without saving',
       cancel: 'Keep editing',
     },
-    deleteForbidden: 'You cannot delete this campaign.',
   },
 }

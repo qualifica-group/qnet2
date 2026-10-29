@@ -6,6 +6,7 @@ use App\Models\PurchaseRequest;
 use App\Models\User;
 use App\Policies\Abstracts\BasePolicy;
 use App\Services\PurchaseRequests\PurchaseRequestVisibilityScope;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -35,28 +36,28 @@ class PurchaseRequestPolicy extends BasePolicy
         return $user->can($this->permission('view'));
     }
 
-    public function view(User $user, Model $model): bool
+    public function view(User $user, Model $model): bool|Response
     {
-        return $user->can($this->permission('view')) && $this->visible($user, $model);
+        return $this->withinPerimeter($user->can($this->permission('view')), fn (): bool => $this->visible($user, $model), 'purchase_request_out_of_scope');
     }
 
-    public function update(User $user, Model $model): bool
+    public function update(User $user, Model $model): bool|Response
     {
-        return $user->can($this->permission('update')) && $this->visible($user, $model);
+        return $this->withinPerimeter($user->can($this->permission('update')), fn (): bool => $this->visible($user, $model), 'purchase_request_out_of_scope');
     }
 
-    public function delete(User $user, Model $model): bool
+    public function delete(User $user, Model $model): bool|Response
     {
-        return $user->can($this->permission('delete')) && $this->visible($user, $model);
+        return $this->withinPerimeter($user->can($this->permission('delete')), fn (): bool => $this->visible($user, $model), 'purchase_request_out_of_scope');
     }
 
-    public function close(User $user, PurchaseRequest $purchaseRequest): bool
+    public function close(User $user, PurchaseRequest $purchaseRequest): Response
     {
-        return $user->can($this->permission('close')) && $this->visible($user, $purchaseRequest);
+        return $this->withinPerimeter($user->can($this->permission('close')), fn (): bool => $this->visible($user, $purchaseRequest), 'purchase_request_out_of_scope');
     }
 
     /** "Invia al responsabile": whoever may edit the request may re-send it. */
-    public function notifyManager(User $user, PurchaseRequest $purchaseRequest): bool
+    public function notifyManager(User $user, PurchaseRequest $purchaseRequest): bool|Response
     {
         return $this->update($user, $purchaseRequest);
     }

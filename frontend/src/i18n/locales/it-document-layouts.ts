@@ -79,7 +79,6 @@ export const documentLayouts = {
     genericError: 'Si è verificato un errore. Riprova.',
     deleted: 'Layout eliminato con successo.',
     deleteError: 'Impossibile eliminare il layout. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questo layout.',
   },
   editor: {
     addBlock: 'Aggiungi blocco',

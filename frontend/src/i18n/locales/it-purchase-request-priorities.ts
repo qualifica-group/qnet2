@@ -50,7 +50,6 @@ export const purchaseRequestPriorities = {
     iconInvalid: 'Scegli un’icona dal catalogo.',
     genericError: 'Qualcosa è andato storto. Riprova.',
     deleteError: 'Impossibile eliminare la priorità RDA. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questa priorità RDA.',
     deleteInUse: 'Questa priorità è usata da una RDA e non può essere eliminata.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
@@ -71,7 +70,6 @@ export const purchaseRequestPriorities = {
     dragHandleLabel: 'Trascina per riordinare',
     loadError: 'Impossibile caricare l’elenco. Riprova.',
     saved: 'Ordine aggiornato correttamente.',
-    forbidden: 'Non puoi riordinare queste righe.',
     genericError: 'Impossibile aggiornare l’ordine. Riprova.',
     inactiveBadge: 'Disattivata',
   },

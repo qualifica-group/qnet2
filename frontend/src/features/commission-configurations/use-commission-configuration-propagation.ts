@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import {
   commissionConfigurationQuoteImpactKey,
   fetchCommissionConfigurationQuoteImpact,
@@ -24,7 +25,7 @@ export type PropagationChoice = CommissionRecalculationMode | 'NONE'
  * other answers queue the recalculation.
  */
 export function useCommissionConfigurationPropagation(configurationId: number) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [impact, setImpact] = useState<CommissionConfigurationQuoteImpact | null>(null)
 
@@ -37,8 +38,8 @@ export function useCommissionConfigurationPropagation(configurationId: number) {
         staleTime: 0,
       })
       setImpact(found.quotes_count > 0 && found.can_apply ? found : null)
-    } catch {
-      toast.error(t('commissionConfigurations.propagation.impactError'))
+    } catch (error) {
+      toast.error(apiErrorMessage(error, t('commissionConfigurations.propagation.impactError'), i18n))
     }
   }
 
@@ -48,7 +49,7 @@ export function useCommissionConfigurationPropagation(configurationId: number) {
       toast.success(t('commissionConfigurations.propagation.started'))
       setImpact(null)
     },
-    onError: () => toast.error(t('commissionConfigurations.propagation.error')),
+    onError: (error) => toast.error(apiErrorMessage(error, t('commissionConfigurations.propagation.error'), i18n)),
   })
 
   const answer = (choice: PropagationChoice) => {

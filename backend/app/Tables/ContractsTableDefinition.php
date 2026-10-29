@@ -315,7 +315,7 @@ class ContractsTableDefinition extends AbstractTableDefinition
      */
     public function deleteModel(Model $model): void
     {
-        abort(403);
+        abort(403, __('A contract cannot be deleted manually.'));
     }
 
     /**

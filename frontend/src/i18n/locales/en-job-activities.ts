@@ -38,7 +38,6 @@ export const jobActivities = {
     descriptionMax: 'Description must be at most 1000 characters.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the activity. Please try again.',
-    deleteForbidden: 'You cannot delete this activity.',
     deleteInUse: 'Cannot delete: the activity is linked to a job role.',
     sections: {
       identity: {

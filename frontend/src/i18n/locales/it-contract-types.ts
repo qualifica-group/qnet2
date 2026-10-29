@@ -33,7 +33,6 @@ export const contractTypes = {
     sortOrderInvalid: "L'ordine deve essere un numero intero maggiore o uguale a 0.",
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare la tipologia contrattuale. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questa tipologia contrattuale.',
     deleteInUse: 'Impossibile eliminare: la tipologia è usata da almeno una condizione contrattuale. Disattivala invece.',
     sections: {
       identity: {

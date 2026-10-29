@@ -33,7 +33,6 @@ export const sources = {
     nameMax: 'Name must be at most 191 characters.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the source. Please try again.',
-    deleteForbidden: 'You cannot delete this source.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The source has not been created yet: what you entered will be lost.',

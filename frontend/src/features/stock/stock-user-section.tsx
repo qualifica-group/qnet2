@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { PackageOpen, Undo2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { RecordSection } from '@/components/detail/record-panel'
 import { Button } from '@/components/ui/button'
@@ -16,7 +17,7 @@ import { useStockBalances } from '@/features/stock/use-stock-balances'
  * confirmation) for an actor with `stock.manage`. The caller mounts it only for `stock.viewAny`.
  */
 export function StockUserSection({ userId }: { userId: number }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const confirm = useConfirm()
   const { can } = useAbilities()
   const query = useStockBalances({ user_id: userId }, true)
@@ -45,8 +46,8 @@ export function StockUserSection({ userId }: { userId: number }) {
         quantity: balance.quantity,
       })
       toast.success(t('stock.userSection.returned'))
-    } catch {
-      toast.error(t('stock.userSection.returnError'))
+    } catch (error) {
+      toast.error(apiErrorMessage(error, t('stock.userSection.returnError'), i18n))
     }
   }
 

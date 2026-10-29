@@ -314,7 +314,6 @@ export const en = {
       nameMax: 'Name must be at most 255 characters.',
       genericError: 'Something went wrong. Please try again.',
       deleteError: 'Unable to delete the role. Please try again.',
-      deleteForbidden: 'You cannot delete this role.',
       sections: {
         details: {
           title: 'Role details',

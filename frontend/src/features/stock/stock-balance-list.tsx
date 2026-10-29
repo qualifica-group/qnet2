@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -42,7 +43,7 @@ interface StockBalanceListProps {
 
 /** Loading / error / empty / populated body shared by the product and the user sections (spec 0307). */
 export function StockBalanceList({ query, mode, renderAction }: StockBalanceListProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   if (query.isLoading) {
     return <Skeleton className="h-16 w-full" />
@@ -50,7 +51,7 @@ export function StockBalanceList({ query, mode, renderAction }: StockBalanceList
   if (query.isError) {
     return (
       <div className="flex items-center gap-2 text-sm text-destructive" role="alert">
-        {t('stock.list.loadError')}
+        {apiErrorMessage(query.error, t('stock.list.loadError'), i18n)}
         <Button type="button" variant="outline" size="sm" onClick={() => void query.refetch()}>
           {t('common.retry')}
         </Button>

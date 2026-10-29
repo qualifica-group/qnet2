@@ -6,6 +6,7 @@ namespace App\Services\TimeEntries;
 
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * THE single implementation of the "whose segnatempo/day note is this
@@ -33,7 +34,7 @@ final class TimeEntryOwnerResolver
             return $actor;
         }
 
-        abort_unless($actor->can('time-entries.manageAll'), 403);
+        Gate::forUser($actor)->authorize('time-entries.manageAll');
 
         return User::query()->findOrFail($userId);
     }

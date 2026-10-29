@@ -16,7 +16,6 @@ export function WorkOrderDefaultStatusesSheet({ open, onOpenChange }: WorkOrderD
     enabled: open,
     labels: {
       saved: t('workOrderWorkflows.defaultStatuses.saved'),
-      forbidden: t('workOrderWorkflows.defaultStatuses.forbidden'),
       genericError: t('workOrderWorkflows.defaultStatuses.genericError'),
       nameRequired: t('workOrderWorkflows.form.statuses.nameRequired'),
     },

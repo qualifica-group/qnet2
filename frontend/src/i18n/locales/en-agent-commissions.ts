@@ -84,7 +84,6 @@ export const agentFiscalProfiles = {
     notesMax: 'Notes must be at most 2000 characters.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the fiscal profile. Please try again.',
-    deleteForbidden: 'You cannot delete this fiscal profile.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The fiscal profile has not been created yet: the data entered will be lost.',
@@ -187,7 +186,6 @@ export const enasarcoParameters = {
     notesMax: 'Notes must be at most 2000 characters.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the ENASARCO parameters. Please try again.',
-    deleteForbidden: 'You cannot delete these ENASARCO parameters.',
     deleteInUse: 'These parameters are used by an issued statement and cannot be deleted.',
     leaveConfirm: {
       title: 'Leave without saving?',

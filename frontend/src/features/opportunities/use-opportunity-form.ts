@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { forSelectKeys } from '@/features/for-select/query-keys'
 import { useInvalidateModuleStats } from '@/features/stats/use-invalidate-module-stats'
 import { OPPORTUNITIES_FOR_SELECT_RESOURCE } from '@/features/opportunities/for-select-api'
@@ -166,7 +167,7 @@ export function useOpportunityFormSubmit({
   leadSubmission,
   onSuccess,
 }: UseOpportunityFormSubmitArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const invalidateStats = useInvalidateModuleStats(OPPORTUNITIES_DOMAIN)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -219,7 +220,7 @@ export function useOpportunityFormSubmit({
       }
 
       if (!applyServerValidationErrors(error, form.setError, errorFields)) {
-        setServerError(t('opportunities.form.genericError'))
+        setServerError(apiErrorMessage(error, t('opportunities.form.genericError'), i18n))
       }
     }
   }

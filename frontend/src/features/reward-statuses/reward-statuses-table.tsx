@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -34,7 +35,7 @@ const REWARD_STATUSES_DOMAIN = 'reward-statuses'
  * affordance only; the backend re-authorizes each call.
  */
 export function RewardStatusesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -59,8 +60,9 @@ export function RewardStatusesTable() {
           return
         }
         const status = error.response?.status
-        if (status === 403) {
-          toast.error(t('rewardStatuses.form.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden) {
+          toast.error(forbidden)
         } else if (status === 409) {
           // BR-4: the status is still referenced by a reward. Surface the
           // backend's own message rather than a generic one.
@@ -74,7 +76,7 @@ export function RewardStatusesTable() {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(
@@ -113,7 +115,6 @@ export function RewardStatusesTable() {
                 dragHandleLabel: t('rewardStatuses.reorder.dragHandleLabel'),
                 loadError: t('rewardStatuses.reorder.loadError'),
                 saved: t('rewardStatuses.reorder.saved'),
-                forbidden: t('rewardStatuses.reorder.forbidden'),
                 genericError: t('rewardStatuses.reorder.genericError'),
               }}
               onReordered={refreshGrid}

@@ -6,6 +6,7 @@ import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import {
   createMultiQuoteWorkOrder,
   fetchMultiProgrammableLines,
@@ -39,7 +40,7 @@ interface UseContractMultiProgramDialogArgs {
  * `quote_line_ids` mapping onto the lines panel. The component only renders.
  */
 export function useContractMultiProgramDialog({ contractIds, open, onOpenChange }: UseContractMultiProgramDialogArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const form = useForm<ContractProgramFormValues>({
@@ -98,7 +99,7 @@ export function useContractMultiProgramDialog({ contractIds, open, onOpenChange 
       const mapped = Object.entries(errors ?? {}).filter(([key]) => MULTI_ERROR_FIELDS.includes(toMultiErrorPath(key)))
       mapped.forEach(([key, messages]) => form.setError(toMultiErrorPath(key), { message: messages[0] }))
       if (mapped.length === 0) {
-        toast.error(t('contracts.actions.multiProgramDialog.genericError'))
+        toast.error(apiErrorMessage(error, t('contracts.actions.multiProgramDialog.genericError'), i18n))
       }
     }
   })

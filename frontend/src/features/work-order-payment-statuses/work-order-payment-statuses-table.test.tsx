@@ -189,7 +189,7 @@ describe('WorkOrderPaymentStatusesTable — delete (BR-4, AC-026)', () => {
     screen.getByRole('button', { name: 'delete row' }).click()
 
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith('You cannot delete this payment status.'),
+      expect(toastErrorMock).toHaveBeenCalledWith('Forbidden'),
     )
   })
 

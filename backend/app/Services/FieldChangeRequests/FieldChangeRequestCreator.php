@@ -13,6 +13,7 @@ use App\Notifications\FieldChangeRequestedNotification;
 use App\Services\Table\CellValueValidator;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 
 /**
@@ -67,7 +68,7 @@ final class FieldChangeRequestCreator
 
         // Step 2
         $definition = $this->resolver->definitionFor($data->resource);
-        abort_unless($actor->can("{$data->resource}.view"), 403);
+        Gate::forUser($actor)->authorize("{$data->resource}.view");
         $record = $this->resolver->record($definition, $data->subjectId);
 
         // Step 3

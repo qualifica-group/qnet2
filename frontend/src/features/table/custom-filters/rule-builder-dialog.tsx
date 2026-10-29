@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import axios from 'axios'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -82,7 +83,7 @@ export function RuleBuilderDialog({
   canPublish,
   onApply,
 }: RuleBuilderDialogProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const createView = useCreateFilterView(domain)
   const updateView = useUpdateFilterView(domain)
 
@@ -143,9 +144,10 @@ export function RuleBuilderDialog({
     } catch (error) {
       const isDuplicateName =
         axios.isAxiosError(error) && error.response?.status === 422 && Boolean(error.response.data?.errors?.name)
-      const isForbidden = axios.isAxiosError(error) && error.response?.status === 403
       toast.error(
-        t(isDuplicateName ? 'table.duplicateViewName' : isForbidden ? 'table.customFilters.publishForbidden' : 'table.viewSaveError'),
+        isDuplicateName
+          ? t('table.duplicateViewName')
+          : apiErrorMessage(error, t('table.viewSaveError'), i18n),
       )
     }
   })

@@ -143,11 +143,15 @@ describe('ExportDialog', () => {
     await waitFor(() => expect(downloadExportMock).toHaveBeenCalledWith('companies', 1))
   }, 10000)
 
-  it('surfaces a localized error on a 403 create response (AC-002)', async () => {
+  it('names the missing permission and module on a 403 create response (AC-002, AC-014)', async () => {
     createExportMock.mockRejectedValue(
       new AxiosError('Forbidden', '403', undefined, undefined, {
         status: 403,
-        data: { success: false, message: 'Forbidden' },
+        data: {
+          success: false,
+          message: 'Forbidden',
+          authorization: { reason: 'missing_permission', permission: 'companies.export' },
+        },
       } as never),
     )
 
@@ -155,8 +159,22 @@ describe('ExportDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: /^export$/i }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      "You don't have permission to export this data.",
+      'You do not have the «Export» permission on the «Companies» module.',
     )
+  })
+
+  it('keeps the generic message on a 500 create response (AC-014)', async () => {
+    createExportMock.mockRejectedValue(
+      new AxiosError('Server error', '500', undefined, undefined, {
+        status: 500,
+        data: { success: false, message: 'Boom' },
+      } as never),
+    )
+
+    renderDialog()
+    fireEvent.click(screen.getByRole('button', { name: /^export$/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(i18n.t('exports.errors.generic'))
   })
 
   it('surfaces a localized error on a 422 create response (AC-004)', async () => {

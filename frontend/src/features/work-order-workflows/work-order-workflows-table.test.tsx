@@ -169,7 +169,7 @@ describe('WorkOrderWorkflowsTable — delete ', () => {
 
     await waitFor(() => expect(deleteWorkOrderWorkflowMock).toHaveBeenCalledWith(1))
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith('You cannot delete this work order status set.'),
+      expect(toastErrorMock).toHaveBeenCalledWith('Forbidden'),
     )
   })
 

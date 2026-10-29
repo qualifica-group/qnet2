@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { toast } from 'sonner'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
 import { bulkDeleteTableRows } from '@/features/table/api'
@@ -31,7 +31,7 @@ const IMPORT_RUNS_DOMAIN = 'import-runs'
  * call.
  */
 export function LeadImportsTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const invalidateStats = useInvalidateModuleStats(IMPORT_RUNS_DOMAIN)
 
@@ -51,13 +51,12 @@ export function LeadImportsTable() {
           toast.error(t('leadImports.deleteError'))
         }
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        toast.error(status === 403 ? t('leadImports.deleteForbidden') : t('leadImports.deleteError'))
+        toast.error(apiErrorMessage(error, t('leadImports.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }
     },
-    [t, invalidateStats],
+    [t, i18n, invalidateStats],
   )
 
   const handleAction: RowActionHandler = useCallback(

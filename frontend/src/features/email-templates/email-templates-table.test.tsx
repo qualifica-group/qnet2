@@ -108,20 +108,18 @@ describe('EmailTemplatesTable — mount', () => {
 })
 
 describe('EmailTemplatesTable — delete', () => {
-  it('shows a forbidden toast on a 403', async () => {
+  it("shows the server's specific reason on a 403", async () => {
     deleteEmailTemplateMock.mockRejectedValue(
       new AxiosError('Forbidden', '403', undefined, undefined, {
         status: 403,
-        data: { success: false, message: 'Forbidden' },
+        data: { success: false, message: 'Forbidden', authorization: { reason: 'denied', permission: null } },
       } as never),
     )
 
     renderTable()
     screen.getByRole('button', { name: 'delete row' }).click()
 
-    await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith(i18n.t('emailTemplates.form.deleteForbidden')),
-    )
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('Forbidden'))
   })
 
   it('shows the success toast on a successful delete', async () => {

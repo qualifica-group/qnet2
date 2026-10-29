@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import axios from 'axios'
 import { useTranslation } from 'react-i18next'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import type { RequestDashboardData } from '@/features/request-management/dashboard-api'
 import type { DashboardDateRange } from '@/features/request-management/dashboard-period-presets'
@@ -40,7 +41,6 @@ const EMPTY_CATEGORIES: RequestReportCategory[] = []
 const EMPTY_SITES: RequestReportSite[] = []
 const EMPTY_OPERATORS: RequestReportOperator[] = []
 
-const HTTP_FORBIDDEN = 403
 const HTTP_UNPROCESSABLE = 422
 
 
@@ -55,9 +55,6 @@ function dashboardErrorKey(error: unknown): string {
   }
   if (!error.response) {
     return 'requestManagement.dashboard.errors.network'
-  }
-  if (error.response.status === HTTP_FORBIDDEN) {
-    return 'requestManagement.dashboard.errors.forbidden'
   }
   if (error.response.status === HTTP_UNPROCESSABLE) {
     return 'requestManagement.dashboard.errors.invalidFilters'
@@ -80,7 +77,7 @@ interface DashboardResultsProps {
  * dimmed, until the new ones land.
  */
 function DashboardResults({ query, previous, unassignedLabel }: DashboardResultsProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { data, error, isLoading, isError, isPlaceholderData, refetch } = query
   const categoryKeys = data ? data.categories.map((category) => category.key) : EMPTY_KEYS
   const { tab, setTab } = useRequestDashboardTab(categoryKeys)
@@ -90,7 +87,7 @@ function DashboardResults({ query, previous, unassignedLabel }: DashboardResults
       {isLoading ? <DashboardSkeleton /> : null}
 
       {isError ? (
-        <DashboardNotice tone="error" message={t(dashboardErrorKey(error))} onRetry={() => void refetch()} />
+        <DashboardNotice tone="error" message={forbiddenMessage(error, i18n) ?? t(dashboardErrorKey(error))} onRetry={() => void refetch()} />
       ) : null}
 
       {data ? (

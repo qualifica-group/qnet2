@@ -122,7 +122,6 @@ export const usersDetailEmployment = {
     created: 'Condizione contrattuale aggiunta.',
     deleted: 'Condizione contrattuale cancellata.',
     loadError: 'Impossibile caricare lo storico contrattuale.',
-    forbidden: 'Non hai i permessi per questa operazione.',
     notLast: 'Si può cancellare solo l\'ultima condizione.',
     genericError: 'Operazione non riuscita. Riprova.',
     expiresOn: 'Scadenza {{date}}',

@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { toast } from 'sonner'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import type { ApiErrorResponse } from '@/api/types'
 import { downloadInvoicePdf } from '@/features/invoices/invoice-pdf-api'
 
@@ -11,7 +12,7 @@ import { downloadInvoicePdf } from '@/features/invoices/invoice-pdf-api'
  * `downloadingId` makes a second click a no-op while one download is running.
  */
 export function useInvoicePdfDownload() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [downloadingId, setDownloadingId] = useState<number | null>(null)
 
   const download = useCallback(
@@ -25,8 +26,9 @@ export function useInvoicePdfDownload() {
         toast.success(t('invoices.document.pdfReady'))
       } catch (error) {
         const status = axios.isAxiosError<ApiErrorResponse>(error) ? error.response?.status : undefined
-        if (status === 403) {
-          toast.error(t('invoices.document.forbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden) {
+          toast.error(forbidden)
         } else if (status === 422 && axios.isAxiosError<ApiErrorResponse>(error)) {
           toast.error(error.response?.data?.message ?? t('invoices.document.pdfError'))
         } else {
@@ -36,7 +38,7 @@ export function useInvoicePdfDownload() {
         setDownloadingId(null)
       }
     },
-    [downloadingId, t],
+    [downloadingId, t, i18n],
   )
 
   return { download, isDownloading: downloadingId !== null }

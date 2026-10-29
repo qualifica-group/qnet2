@@ -81,7 +81,6 @@ function lookupBundle({ singular, Singular, plural }: LookupCopy) {
       iconInvalid: "Scegli un'icona dal catalogo.",
       genericError: 'Qualcosa è andato storto. Riprova.',
       deleteError: `Impossibile eliminare la ${singular}. Riprova.`,
-      deleteForbidden: `Non puoi eliminare questa ${singular}.`,
       // Solo FALLBACK: sul 409 il modulo mostra verbatim il messaggio del
       // backend, che nomina la risorsa. Questa si vede solo se il body non ne
       // porta uno.
@@ -109,7 +108,6 @@ function lookupBundle({ singular, Singular, plural }: LookupCopy) {
       dragHandleLabel: 'Trascina per riordinare',
       loadError: "Impossibile caricare l'elenco. Riprova.",
       saved: 'Ordine aggiornato correttamente.',
-      forbidden: 'Non puoi riordinare queste righe.',
       genericError: "Impossibile aggiornare l'ordine. Riprova.",
       // La sheet di riordino elenca ANCHE le righe che un admin ha
       // disattivato — deve farlo, perche' l'endpoint valida `ordered_ids`
@@ -274,7 +272,6 @@ export const taskStatuses = {
     iconInvalid: "Scegli un'icona dal catalogo.",
     genericError: 'Qualcosa è andato storto. Riprova.',
     deleteError: 'Impossibile eliminare lo stato task. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questo stato task.',
     deleteInUse: 'Questo stato task è usato da un task e non può essere eliminato.',
     completionPercentage: 'Percentuale di completamento',
     completionPercentageRequired: 'La percentuale di completamento è obbligatoria.',
@@ -304,7 +301,6 @@ export const taskStatuses = {
     dragHandleLabel: 'Trascina per riordinare',
     loadError: "Impossibile caricare l'elenco. Riprova.",
     saved: 'Ordine aggiornato correttamente.',
-    forbidden: 'Non puoi riordinare queste righe.',
     // Maschile: "Stato Task", a differenza dei quattro lookup femminili.
     genericError: "Impossibile aggiornare l'ordine. Riprova.",
     inactiveBadge: 'Disattivato',

@@ -1,7 +1,7 @@
 import { createElement, Fragment, useCallback, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { OPEN_MODE_MODAL, type ModuleCreateParams, type OpenMode } from '@/features/modules/types'
 import { deleteQuote, QUOTES_DOMAIN } from '@/features/quotes/api'
@@ -96,7 +96,7 @@ export function useQuoteRowActions({
   onMutated,
   forceMode,
 }: UseQuoteRowActionsOptions): UseQuoteRowActionsResult {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
@@ -123,13 +123,12 @@ export function useQuoteRowActions({
         toast.success(t('quotes.form.deleted'))
         onMutated()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        toast.error(status === 403 ? t('quotes.form.deleteForbidden') : t('quotes.form.deleteError'))
+        toast.error(apiErrorMessage(error, t('quotes.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }
     },
-    [onMutated, t],
+    [onMutated, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(

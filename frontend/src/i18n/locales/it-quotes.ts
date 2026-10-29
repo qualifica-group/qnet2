@@ -112,7 +112,6 @@ export const quotes = {
     },
     generatingDocument: 'Generazione…',
     documentGenerated: 'PDF generato con successo.',
-    documentForbidden: 'Non hai i permessi per generare questo documento.',
     documentGenericError: 'Impossibile generare il documento. Riprova.',
   },
   /**
@@ -244,7 +243,6 @@ export const quotes = {
     deleted: 'Offerta eliminata con successo.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: "Impossibile eliminare l'offerta. Riprova.",
-    deleteForbidden: 'Non puoi eliminare questa offerta.',
     sections: {
       dynamicFields: {
         title: 'Informazioni aggiuntive',

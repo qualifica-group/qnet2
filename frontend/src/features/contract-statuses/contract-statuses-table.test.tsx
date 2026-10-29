@@ -159,7 +159,11 @@ describe('ContractStatusesTable — delete', () => {
     deleteContractStatusMock.mockRejectedValue(
       new AxiosError('Forbidden', '403', undefined, undefined, {
         status: 403,
-        data: { success: false, message: 'Forbidden' },
+        data: {
+          success: false,
+          message: 'Forbidden',
+          authorization: { reason: 'missing_permission', permission: 'contract-statuses.delete' },
+        },
       } as never),
     )
 
@@ -167,7 +171,7 @@ describe('ContractStatusesTable — delete', () => {
     screen.getByRole('button', { name: 'delete row' }).click()
 
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith('You cannot delete this contract status.'),
+      expect(toastErrorMock).toHaveBeenCalledWith('You do not have the «Delete» permission on the «Contract Statuses» module.'),
     )
   })
 

@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Models\Note;
 use App\Models\User;
 use App\Policies\Abstracts\BasePolicy;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -46,9 +47,11 @@ class NotePolicy extends BasePolicy
      * — PHP's contravariance rules forbid narrowing it to Note here); the
      * instanceof guard is what makes that widened signature safe again.
      */
-    public function update(User $user, Model $model): bool
+    public function update(User $user, Model $model): bool|Response
     {
-        return $model instanceof Note && $model->user_id === $user->id;
+        return $model instanceof Note && $model->user_id === $user->id
+            ? Response::allow()
+            : $this->denyBecause('note_author_only_edit');
     }
 
     /**
@@ -58,9 +61,11 @@ class NotePolicy extends BasePolicy
      * actually deleting it, exactly like update() already does for its own
      * mutation.
      */
-    public function delete(User $user, Model $model): bool
+    public function delete(User $user, Model $model): bool|Response
     {
         return $model instanceof Note
-            && ($model->user_id === $user->id || $user->can($this->permission('deleteAny')));
+            && ($model->user_id === $user->id || $user->can($this->permission('deleteAny')))
+            ? Response::allow()
+            : $this->denyBecause('note_author_only_delete');
     }
 }

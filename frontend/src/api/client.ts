@@ -37,11 +37,29 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
+/**
+ * A failed `responseType: 'blob'` request carries its JSON error envelope as an
+ * opaque Blob, so callers (and `forbiddenMessage`) would read `undefined`.
+ * Rewrites the error's `data` in place once, here, for every blob request;
+ * a non-JSON body (e.g. an HTML 500 page) stays a Blob.
+ */
+async function normalizeBlobError(error: unknown): Promise<void> {
+  if (!axios.isAxiosError(error) || !(error.response?.data instanceof Blob)) {
+    return
+  }
+  try {
+    error.response.data = JSON.parse(await error.response.data.text())
+  } catch {
+    // Not a JSON body: leave the blob as-is.
+  }
+}
+
 // On 401 the token is invalid/expired: drop it and notify the app once.
 // A failed login is not a session expiry — let the form handle that response.
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    await normalizeBlobError(error)
     if (axios.isAxiosError(error) && error.response?.status === 401) {
       const isLoginRequest = error.config?.url?.endsWith('/auth/login')
       if (!isLoginRequest) {

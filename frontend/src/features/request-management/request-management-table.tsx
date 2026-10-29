@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation } from '@tanstack/react-query'
-import axios from 'axios'
 import { ArrowRightLeft, GraduationCap, MessagesSquare, Paperclip, Plus, UserCog } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
@@ -112,7 +112,7 @@ interface RequestNotesTarget {
  * (update) still stays on the work panel, never `opportunities.*`.
  */
 export function RequestManagementTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { can } = useAbilities()
   const module = useRequestModule()
 
@@ -153,17 +153,12 @@ export function RequestManagementTable() {
         toast.success(t('requestManagement.delete.success'))
         refreshGrid()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        toast.error(
-          status === 403
-            ? t('requestManagement.delete.forbidden')
-            : t('requestManagement.delete.error'),
-        )
+        toast.error(apiErrorMessage(error, t('requestManagement.delete.error'), i18n))
       } finally {
         setDeletingId(null)
       }
     },
-    [module.apiBasePath, refreshGrid, t],
+    [module.apiBasePath, refreshGrid, t, i18n],
   )
 
   // Transfer to another Sede + Operatore (spec 0079): row and bulk share ONE
@@ -258,11 +253,11 @@ export function RequestManagementTable() {
         // Spec 0113 removed the "this Sede has no operators" 422: a record with no
         // candidate is now reported as `skipped` inside a 200. Any 422 still reaching
         // here has a different cause, so naming that one would point at the wrong thing.
-        toast.error(t('requestManagement.assign.errors.generic'))
+        toast.error(apiErrorMessage(error, t('requestManagement.assign.errors.generic'), i18n))
         throw error
       }
     },
-    [assignMutation, assignIds, t],
+    [assignMutation, assignIds, t, i18n],
   )
 
   const openAssignDialog = useCallback((selection: TableSelection) => {

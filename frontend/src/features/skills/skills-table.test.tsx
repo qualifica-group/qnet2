@@ -108,13 +108,13 @@ describe('SkillsPage', () => {
   it('tells to deactivate when the skill has people (422), distinct from 403 and generic', async () => {
     renderPage()
     for (const [status, key] of [
-      [422, 'deleteInUse'],
-      [403, 'deleteForbidden'],
-      [500, 'deleteError'],
+      [422, 'skills.form.deleteInUse'],
+      [403, 'common.forbidden'],
+      [500, 'skills.form.deleteError'],
     ] as const) {
       deleteMock.mockRejectedValueOnce(rejection(status))
       fireEvent.click(screen.getByRole('button', { name: 'delete-row' }))
-      await waitFor(() => expect(toastErrorMock).toHaveBeenLastCalledWith(label(`skills.form.${key}`)))
+      await waitFor(() => expect(toastErrorMock).toHaveBeenLastCalledWith(label(key)))
     }
   })
 })

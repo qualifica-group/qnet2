@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { defaultLedgerFilters } from '@/features/ledger/api'
@@ -18,9 +19,9 @@ interface LedgerPanelProps {
  * caller (page selector or record tab), so no selector lives here.
  */
 export function LedgerPanel({ registryId }: LedgerPanelProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [filters, setFilters] = useState<LedgerFilters>(defaultLedgerFilters)
-  const { data, isPending, isError, refetch } = useLedger(registryId, filters)
+  const { data, isPending, isError, error, refetch } = useLedger(registryId, filters)
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
@@ -33,7 +34,7 @@ export function LedgerPanel({ registryId }: LedgerPanelProps) {
       ) : null}
       {isError ? (
         <div role="alert" className="flex items-center gap-3 text-sm text-destructive">
-          <span>{t('ledger.error')}</span>
+          <span>{apiErrorMessage(error, t('ledger.error'), i18n)}</span>
           <Button type="button" size="sm" variant="secondary" onClick={() => void refetch()}>
             {t('ledger.retry')}
           </Button>

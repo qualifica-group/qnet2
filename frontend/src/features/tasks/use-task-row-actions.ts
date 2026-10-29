@@ -7,6 +7,7 @@ import { deleteTask, TASKS_DOMAIN } from '@/features/tasks/api'
 import type { ModuleCreateParams, OpenMode } from '@/features/modules/types'
 import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 
 export interface UseTaskRowActionsOptions {
   /** Called after anything that changes the displayed rows: a create, an update or a delete. */
@@ -42,7 +43,7 @@ export function useTaskRowActions({
   onMutated,
   forceMode,
 }: UseTaskRowActionsOptions): UseTaskRowActionsResult {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
@@ -63,8 +64,9 @@ export function useTaskRowActions({
         onMutated()
       } catch (error) {
         const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        if (status === 403) {
-          toast.error(t('tasks.form.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden !== null) {
+          toast.error(forbidden)
         } else if (status === 409) {
           toast.error(t('tasks.form.deleteConflict'))
         } else {
@@ -74,7 +76,7 @@ export function useTaskRowActions({
         setDeletingId(null)
       }
     },
-    [onMutated, t],
+    [onMutated, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(

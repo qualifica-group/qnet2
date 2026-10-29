@@ -69,7 +69,6 @@ export const rewardStatuses = {
     colorMax: 'Il colore può contenere al massimo 32 caratteri.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare lo stato buono. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questo stato buono.',
     deleteInUseFallback: 'Questo stato buono è usato da un buono collegato e non può essere eliminato.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
@@ -90,7 +89,6 @@ export const rewardStatuses = {
     dragHandleLabel: 'Trascina per riordinare',
     loadError: 'Impossibile caricare gli stati. Riprova.',
     saved: 'Ordine aggiornato con successo.',
-    forbidden: 'Non puoi riordinare questi stati.',
     genericError: "Impossibile aggiornare l'ordine. Riprova.",
   },
 }

@@ -2,7 +2,8 @@ import { useCallback, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import type { TFunction } from 'i18next'
+import { forbiddenMessage } from '@/lib/forbidden-message'
+import type { TFunction, i18n as I18nInstance } from 'i18next'
 import axios from 'axios'
 import { toast } from 'sonner'
 import type { CellValueChangedEvent, IRowNode } from 'ag-grid-community'
@@ -32,7 +33,9 @@ interface CellPatchArgs {
 }
 
 /** Resolves the toast message for a failed cell PATCH: the server's own message (D-9), a generic fallback otherwise. */
-function resolveCellUpdateErrorMessage(error: unknown, t: TFunction): string {
+function resolveCellUpdateErrorMessage(error: unknown, t: TFunction, i18n: I18nInstance): string {
+  const forbidden = forbiddenMessage(error, i18n)
+  if (forbidden) return forbidden
   if (axios.isAxiosError<ApiErrorResponse>(error) && error.response?.data?.message) {
     return error.response.data.message
   }
@@ -207,7 +210,7 @@ export function useTableCellEdit(
   columns: TableColumn[],
   interceptCommit?: CellCommitInterceptor,
 ) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { requestFieldChange } = useRequestFieldChange()
   const [pendingNote, setPendingNote] = useState<PendingNoteEdit | null>(null)
 
@@ -230,11 +233,11 @@ export function useTableCellEdit(
         },
         onError: (error) => {
           node.setData(revertedData)
-          toast.error(resolveCellUpdateErrorMessage(error, t))
+          toast.error(resolveCellUpdateErrorMessage(error, t, i18n))
         },
       })
     },
-    [t, patchCell],
+    [t, i18n, patchCell],
   )
 
   // Step 1: ignore edits with no side effect — an unauthorized/unregistered

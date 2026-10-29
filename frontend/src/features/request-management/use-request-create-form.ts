@@ -7,6 +7,7 @@ import axios from 'axios'
 import { toast } from 'sonner'
 import { seedAttributeValues } from '@/features/attributes/attribute-values'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { hasPhoneContact } from '@/features/personal-data/create-validation'
 import {
   describeAddressIssues,
@@ -97,7 +98,7 @@ function collectPrefixedServerErrors(error: unknown, prefixes: string[]): string
  * navigation is the caller's concern (mirrors every other `ModuleFormScreen`).
  */
 export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [serverError, setServerError] = useState<string | null>(null)
   // Bumped on every refused save so the buffered identity card marks its own
   // missing fields (it takes no part in this form's submit).
@@ -285,7 +286,7 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       setProductLinesError(productLinesMessage)
       setRewardsError(rewardsMessage)
       if (!mappedScalar && !clientMessage && !productLinesMessage && !rewardsMessage) {
-        setServerError(t('requestManagement.form.create.errors.generic'))
+        setServerError(apiErrorMessage(error, t('requestManagement.form.create.errors.generic'), i18n))
       }
     }
   })

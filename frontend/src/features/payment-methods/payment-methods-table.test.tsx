@@ -188,7 +188,7 @@ describe('PaymentMethodsTable — delete (D-2: no 409 branch, AC-112)', () => {
     screen.getByRole('button', { name: 'delete row' }).click()
 
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith('You cannot delete this payment method.'),
+      expect(toastErrorMock).toHaveBeenCalledWith('Forbidden'),
     )
   })
 

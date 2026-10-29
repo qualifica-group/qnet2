@@ -171,7 +171,11 @@ describe('PipelineStatusesTable — delete (BR-4)', () => {
     deletePipelineStatusMock.mockRejectedValue(
       new AxiosError('Forbidden', '403', undefined, undefined, {
         status: 403,
-        data: { success: false, message: 'Forbidden' },
+        data: {
+          success: false,
+          message: 'Forbidden',
+          authorization: { reason: 'missing_permission', permission: 'pipeline-statuses.delete' },
+        },
       } as never),
     )
 
@@ -179,7 +183,7 @@ describe('PipelineStatusesTable — delete (BR-4)', () => {
     screen.getByRole('button', { name: 'delete row' }).click()
 
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith('You cannot delete this project status.'),
+      expect(toastErrorMock).toHaveBeenCalledWith('You do not have the «Delete» permission on the «Project/Campaign Statuses» module.'),
     )
   })
 

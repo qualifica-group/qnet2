@@ -116,7 +116,6 @@ export const registries = {
     deleted: 'Registry deleted successfully.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the registry. Please try again.',
-    deleteForbidden: 'You cannot delete this registry.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The registry has not been created yet: what you entered will be lost.',

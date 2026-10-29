@@ -179,6 +179,5 @@ export const opportunities = {
     deleted: 'Opportunity deleted successfully.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the opportunity. Please try again.',
-    deleteForbidden: 'You cannot delete this opportunity.',
   },
 }

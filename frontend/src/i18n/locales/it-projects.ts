@@ -128,7 +128,6 @@ export const projects = {
       confirm: 'Esci senza salvare',
       cancel: 'Continua a compilare',
     },
-    deleteForbidden: 'Non puoi eliminare questo progetto.',
     deleteHasCampaigns: 'Questo progetto non può essere eliminato: ha ancora campagne collegate.',
   },
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { toast } from 'sonner'
 import type { GridApi } from 'ag-grid-community'
 import { saveTableFilters, saveTablePreferences } from '@/features/table/api'
@@ -64,7 +65,7 @@ export function useTableLayoutPersistence({
   configFiltersCustomized,
   refetchConfig,
 }: UseTableLayoutPersistenceInput) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const savePreferences = useSaveTablePreferences(domain, scope)
   const resetPreferences = useResetTablePreferences(domain)
@@ -219,10 +220,10 @@ export function useTableLayoutPersistence({
       setCustomizedLocally(false)
       setLayoutVersion((version) => version + 1)
       toast.success(t('table.layoutReset'))
-    } catch {
-      toast.error(t('table.layoutError'))
+    } catch (error) {
+      toast.error(apiErrorMessage(error, t('table.layoutError'), i18n))
     }
-  }, [resetPreferences, refetchConfig, t])
+  }, [resetPreferences, refetchConfig, t, i18n])
 
   const handleResetFilters = useCallback(async () => {
     try {
@@ -238,10 +239,10 @@ export function useTableLayoutPersistence({
       setFiltersCustomizedLocally(false)
       setLayoutVersion((version) => version + 1)
       toast.success(t('table.filtersReset'))
-    } catch {
-      toast.error(t('table.filtersError'))
+    } catch (error) {
+      toast.error(apiErrorMessage(error, t('table.filtersError'), i18n))
     }
-  }, [resetFilters, refetchConfig, t])
+  }, [resetFilters, refetchConfig, t, i18n])
 
   return {
     layoutVersion,

@@ -3,6 +3,32 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Errori 403 specifici (spec 0329) — VERDE, COMMITTATO (2026-10-29)
+
+- Ogni 403 di `/api/*` (tranne `GET /api/tasks/{task}` con `errors.access_contacts`) ha la shape
+  `{success:false, message, authorization:{reason:'missing_permission'|'denied', permission:'res.ability'|null}}`.
+  Il frontend compone "Non hai il permesso «Elimina» sul modulo «Opportunità»." con `abilityLabel`/`resourceLabel`;
+  `message` del backend per missing_permission contiene la chiave grezza (fallback per i client API).
+- BE: `app/Authorization/Denials/{AuthorizationDenialLog,ForbiddenResponse}` (registro `scoped` + listener
+  `GateEvaluated`: i permessi negati durante una Policy sono le sue cause; messaggio esplicito vince sempre). Strada
+  controller: `BaseApiController::errorResponse()` (log/alert Teams dei 403 INVARIATI, decisione utente). Strada
+  pre-controller: render 403 in `bootstrap/app.php`. `EnsureSuperAdmin` -> "Sezione riservata al super-admin."
+- Motivi di perimetro: `BasePolicy` ora `bool|Response` + `withinPerimeter()`/`denyBecause()`; 14 Policy restituiscono
+  `Response::deny(__('authorization.<key>'))` (`lang/{it,en}/authorization.php`). **Mai usare il risultato di un metodo
+  di Policy come bool** (un Response di diniego e' truthy): passare da `Gate::allows/inspect` o `$user->can()`.
+- ~95 `abort(403)`/`AuthorizationException` convertiti (permesso -> `Gate::authorize/allowIf`; regola -> messaggio
+  in `lang/it.json`). `tests/Unit/Architecture/ForbiddenWithoutMessageTest.php` vieta nuovi 403 senza testo.
+- FE: `lib/forbidden-message.ts` (`forbiddenMessage`, `apiErrorMessage`), adottato in tutte le feature; `DetailError`
+  e `TableView` lo usano da soli; l'interceptor di `api/client.ts` converte i body Blob degli errori in JSON (prima
+  `lib/download.ts::normalizeBlobError`, rimossa dai moduli). Chiavi `*Forbidden`/`reorder.forbidden` cancellate;
+  `users.form.deleteForbidden` resta (422 ultimo super-admin). Nuovo codice: 403 -> `apiErrorMessage(error, fallback, i18n)`.
+- Test: BE `tests/Feature/Authorization` + `tests/Unit/Architecture` 158/158; suite completa solo i 15 rossi
+  preesistenti noti (+ `TaskVisibilityTest` AC-065 flaky sotto carico). Vitest 9514: unico rosso
+  `request-work-panel.test.tsx` corretto (REQUIREMENT CHANGED, 10/10); `leads-table-assign` flaky sotto carico.
+  tsc -b exit 0; ESLint: solo l'errore preesistente in `quotes/column-renderers.tsx:12`.
+- Manuale: FAQ in `help/content/{it,en}/general.ts` + manuale Claude Docs (FAQ). PDF derivato da rigenerare.
+- Aperti: `BaseApiController` 311 righe (soft limit); `i18n/locales/en.ts` 504 righe (preesistente, >500).
+
 ## Carico macchina durante le feature — workflow `.claude/` (2026-10-29)
 
 - Causa: per ogni microtask il verifier lanciava la suite completa (10 processi Pest + circa 9 worker Vitest + `tsc`),

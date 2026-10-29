@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\WorkOrder;
 use App\Policies\Abstracts\BasePolicy;
 use App\Services\WorkOrders\WorkOrderVisibilityScope;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -29,19 +30,19 @@ class WorkOrderPolicy extends BasePolicy
         return 'work-orders';
     }
 
-    public function view(User $user, Model $model): bool
+    public function view(User $user, Model $model): bool|Response
     {
-        return parent::view($user, $model) && $this->isInScope($user, $model);
+        return $this->withinPerimeter($user->can($this->permission('view')), fn (): bool => $this->isInScope($user, $model), 'work_order_out_of_scope');
     }
 
-    public function update(User $user, Model $model): bool
+    public function update(User $user, Model $model): bool|Response
     {
-        return parent::update($user, $model) && $this->isInScope($user, $model);
+        return $this->withinPerimeter($user->can($this->permission('update')), fn (): bool => $this->isInScope($user, $model), 'work_order_out_of_scope');
     }
 
-    public function delete(User $user, Model $model): bool
+    public function delete(User $user, Model $model): bool|Response
     {
-        return parent::delete($user, $model) && $this->isInScope($user, $model);
+        return $this->withinPerimeter($user->can($this->permission('delete')), fn (): bool => $this->isInScope($user, $model), 'work_order_out_of_scope');
     }
 
     /**
@@ -80,9 +81,9 @@ class WorkOrderPolicy extends BasePolicy
      * permission, since the tab surfaces other actors' sent/queued/failed
      * emails.
      */
-    public function viewEmails(User $user, WorkOrder $workOrder): bool
+    public function viewEmails(User $user, WorkOrder $workOrder): Response
     {
-        return $user->can($this->permission('viewEmails')) && $this->isInScope($user, $workOrder);
+        return $this->withinPerimeter($user->can($this->permission('viewEmails')), fn (): bool => $this->isInScope($user, $workOrder), 'work_order_out_of_scope');
     }
 
     /**
@@ -92,18 +93,18 @@ class WorkOrderPolicy extends BasePolicy
      * it) is a separate, per-record check the email endpoints enforce on the
      * OutboundEmail itself, not here.
      */
-    public function sendEmail(User $user, WorkOrder $workOrder): bool
+    public function sendEmail(User $user, WorkOrder $workOrder): Response
     {
-        return $user->can($this->permission('sendEmail')) && $this->isInScope($user, $workOrder);
+        return $this->withinPerimeter($user->can($this->permission('sendEmail')), fn (): bool => $this->isInScope($user, $workOrder), 'work_order_out_of_scope');
     }
 
     /**
      * Gates the "Costi" section and the budget/actual comparison (spec 0190,
      * D-4): permission plus the same membership scoping as view.
      */
-    public function viewCosts(User $user, WorkOrder $workOrder): bool
+    public function viewCosts(User $user, WorkOrder $workOrder): Response
     {
-        return $user->can($this->permission('viewCosts')) && $this->isInScope($user, $workOrder);
+        return $this->withinPerimeter($user->can($this->permission('viewCosts')), fn (): bool => $this->isInScope($user, $workOrder), 'work_order_out_of_scope');
     }
 
     /**
@@ -111,36 +112,36 @@ class WorkOrderPolicy extends BasePolicy
      * permission plus the same membership scoping as view, and deliberately
      * independent of invoices.viewAny / purchase-invoices.viewAny.
      */
-    public function viewInvoices(User $user, WorkOrder $workOrder): bool
+    public function viewInvoices(User $user, WorkOrder $workOrder): Response
     {
-        return $user->can($this->permission('viewInvoices')) && $this->isInScope($user, $workOrder);
+        return $this->withinPerimeter($user->can($this->permission('viewInvoices')), fn (): bool => $this->isInScope($user, $workOrder), 'work_order_out_of_scope');
     }
 
     /**
      * Gates entering/editing/deleting the commessa's actual costs (spec 0190,
      * D-4/D-7): deliberately independent of the commessa's open/closed state.
      */
-    public function manageCosts(User $user, WorkOrder $workOrder): bool
+    public function manageCosts(User $user, WorkOrder $workOrder): Response
     {
-        return $user->can($this->permission('manageCosts')) && $this->isInScope($user, $workOrder);
+        return $this->withinPerimeter($user->can($this->permission('manageCosts')), fn (): bool => $this->isInScope($user, $workOrder), 'work_order_out_of_scope');
     }
 
     /**
      * Gates the "Dati contrattuali" tab and its figures (spec 0201, D-10):
      * permission plus the same membership scoping as view.
      */
-    public function viewContractData(User $user, WorkOrder $workOrder): bool
+    public function viewContractData(User $user, WorkOrder $workOrder): Response
     {
-        return $user->can($this->permission('viewContractData')) && $this->isInScope($user, $workOrder);
+        return $this->withinPerimeter($user->can($this->permission('viewContractData')), fn (): bool => $this->isInScope($user, $workOrder), 'work_order_out_of_scope');
     }
 
     /**
      * Gates editing a line's payment status/agreement/unpaid flag (spec 0201,
      * D-10/D-12): independent of the commessa's open/closed state.
      */
-    public function managePayments(User $user, WorkOrder $workOrder): bool
+    public function managePayments(User $user, WorkOrder $workOrder): Response
     {
-        return $user->can($this->permission('managePayments')) && $this->isInScope($user, $workOrder);
+        return $this->withinPerimeter($user->can($this->permission('managePayments')), fn (): bool => $this->isInScope($user, $workOrder), 'work_order_out_of_scope');
     }
 
     /**

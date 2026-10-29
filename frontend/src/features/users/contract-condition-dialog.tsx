@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CONTRACT_TYPES_FOR_SELECT_RESOURCE } from '@/features/contract-types/for-select-api'
 import { COMPANIES_FOR_SELECT_RESOURCE } from '@/features/companies/for-select-api'
 import { classifyContractError } from '@/features/users/contract-history-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import {
   buildContractConditionSchema,
   toContractPayload,
@@ -58,7 +59,7 @@ interface ContractConditionDialogProps {
 
 /** "Nuova condizione" (spec 0272 D-1): appends a condition with its start date; conditions are never edited. */
 export function ContractConditionDialog({ userId, open, onOpenChange, canManageCompensation }: ContractConditionDialogProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const create = useCreateEmploymentContract(userId)
   const schema = useMemo(() => buildContractConditionSchema(t), [t])
   const form = useForm<ContractConditionFormValues>({ resolver: zodResolver(schema), defaultValues: DEFAULT_VALUES })
@@ -92,7 +93,7 @@ export function ContractConditionDialog({ userId, open, onOpenChange, canManageC
           return
         }
       }
-      toast.error(kind === 'forbidden' ? t('users.detail.employment.contractHistory.forbidden') : t('users.detail.employment.contractHistory.genericError'))
+      toast.error(apiErrorMessage(error, t('users.detail.employment.contractHistory.genericError'), i18n))
     }
   }
 

@@ -34,7 +34,6 @@ export const tags = {
     nameMax: 'Il nome può contenere al massimo 191 caratteri.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare il tag. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questo tag.',
     deleteInUse: 'Impossibile eliminare: il tag è associato ad almeno un record.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',

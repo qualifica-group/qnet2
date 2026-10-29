@@ -56,7 +56,6 @@ export const pipelineStatuses = {
     colorMax: 'Il colore può contenere al massimo 32 caratteri.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare lo stato progetto. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questo stato progetto.',
     deleteInUseFallback: 'Questo stato è usato da un progetto o una campagna e non può essere eliminato.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
@@ -77,7 +76,6 @@ export const pipelineStatuses = {
     dragHandleLabel: 'Trascina per riordinare',
     loadError: 'Impossibile caricare gli stati. Riprova.',
     saved: 'Ordine aggiornato con successo.',
-    forbidden: 'Non puoi riordinare questi stati.',
     genericError: "Impossibile aggiornare l'ordine. Riprova.",
   },
 }

@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -31,7 +31,7 @@ const COMPANY_SITES_DOMAIN = 'company-sites'
  * is an affordance only; the backend re-authorizes each call.
  */
 export function CompanySitesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const stats = useStatsPanel(COMPANY_SITES_DOMAIN)
   const invalidateStats = useInvalidateModuleStats(COMPANY_SITES_DOMAIN)
 
@@ -62,17 +62,12 @@ export function CompanySitesTable() {
         refreshGrid()
         invalidateStats()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        toast.error(
-          status === 403
-            ? t('companySites.form.deleteForbidden')
-            : t('companySites.form.deleteError'),
-        )
+        toast.error(apiErrorMessage(error, t('companySites.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t, invalidateStats],
+    [refreshGrid, t, i18n, invalidateStats],
   )
 
   const handleAction: RowActionHandler = useCallback(

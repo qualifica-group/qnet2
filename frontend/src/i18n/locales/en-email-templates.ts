@@ -66,7 +66,6 @@ export const emailTemplates = {
     descriptionMax: 'Description may contain at most 500 characters.',
     genericError: 'Something went wrong. Please retry.',
     deleteError: 'Unable to delete the email template. Please retry.',
-    deleteForbidden: 'You cannot delete this email template.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The email template has not been created yet: the data you entered will be lost.',

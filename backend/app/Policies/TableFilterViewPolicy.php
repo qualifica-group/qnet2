@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Models\TableFilterView;
 use App\Models\User;
 use App\Policies\Abstracts\BasePolicy;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -46,13 +47,17 @@ class TableFilterViewPolicy extends BasePolicy
         return $user->can($this->permission('publish'));
     }
 
-    public function update(User $user, Model $model): bool
+    public function update(User $user, Model $model): bool|Response
     {
-        return $model instanceof TableFilterView && $model->user_id === $user->id;
+        return $model instanceof TableFilterView && $model->user_id === $user->id
+            ? Response::allow()
+            : $this->denyBecause('table_filter_view_not_owner');
     }
 
-    public function delete(User $user, Model $model): bool
+    public function delete(User $user, Model $model): bool|Response
     {
-        return $model instanceof TableFilterView && $model->user_id === $user->id;
+        return $model instanceof TableFilterView && $model->user_id === $user->id
+            ? Response::allow()
+            : $this->denyBecause('table_filter_view_not_owner');
     }
 }

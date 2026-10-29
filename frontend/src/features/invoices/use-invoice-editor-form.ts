@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import axios from 'axios'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { serverMessage } from '@/features/purchase-requests/purchase-request-server-errors'
 import {
   buildWritePayload,
   isFormFieldPath,
@@ -26,14 +27,6 @@ interface UseInvoiceEditorFormArgs {
 }
 
 const CONFLICT_STATUS = 409
-
-/** The envelope's own message of a rejected save, when it carries one. */
-function serverMessage(error: unknown): string | null {
-  const message = axios.isAxiosError(error)
-    ? (error.response?.data as { message?: unknown } | undefined)?.message
-    : undefined
-  return typeof message === 'string' && message !== '' ? message : null
-}
 
 /** Puts each 422 field error on its input; true when at least one landed on a field. */
 function applyFieldErrors(error: unknown, setError: UseFormSetError<InvoiceWriteFormValues>): boolean {

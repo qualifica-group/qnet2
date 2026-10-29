@@ -51,7 +51,6 @@ export const operationalSites = {
     cityRequired: 'Il comune è obbligatorio.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare la sede operativa. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questa sede operativa.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
       description: 'La sede operativa non è ancora stata creata: i dati inseriti andranno persi.',

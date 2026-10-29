@@ -1,5 +1,6 @@
 <?php
 
+use App\Authorization\Denials\ForbiddenResponse;
 use App\Http\Middleware\CaptureCustomFields;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\LimitStatementDuration;
@@ -16,6 +17,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -98,6 +100,18 @@ return Application::configure(basePath: dirname(__DIR__))
                 'success' => false,
                 'message' => __('Resource not found.'),
             ], Response::HTTP_NOT_FOUND);
+        });
+
+        // Spec 0327: a 403 raised before the controller (FormRequest
+        // authorize(), middleware, abort(403)) answers with the same envelope
+        // as the controller path. AuthorizationException reaches here already
+        // converted to AccessDeniedHttpException (Handler::prepareException).
+        $exceptions->render(function (HttpExceptionInterface $exception, Request $request): ?JsonResponse {
+            if (! $request->is('api/*') || $exception->getStatusCode() !== Response::HTTP_FORBIDDEN) {
+                return null;
+            }
+
+            return app(ForbiddenResponse::class)->make($exception);
         });
 
         // A query killed by the per-session statement limit (MariaDB 1969 /

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Abstract;
 
+use App\Authorization\Denials\ForbiddenResponse;
 use App\CustomFields\CustomFieldEntityRegistry;
 use App\Enums\HttpStatusEnum;
 use App\Exceptions\ExternalApiException;
@@ -204,7 +205,7 @@ abstract class BaseApiController
         // logged, and a 5xx abort (e.g. ExternalApiException) still is.
         if ($exception instanceof HttpExceptionInterface
             && $status < HttpStatusEnum::INTERNAL_SERVER_ERROR->value) {
-            return $this->fail($message, $status);
+            return $this->errorResponse($exception, $message, $status);
         }
 
         $backendTimestamp = now()->toIso8601String();
@@ -252,7 +253,17 @@ abstract class BaseApiController
             );
         }
 
-        return $this->fail($message, $status);
+        return $this->errorResponse($exception, $message, $status);
+    }
+
+    /**
+     * Every 403 shares one body (spec 0327): the reason is derived centrally.
+     */
+    private function errorResponse(Throwable $exception, string $message, int $status): JsonResponse
+    {
+        return $status === HttpStatusEnum::FORBIDDEN->value
+            ? app(ForbiddenResponse::class)->make($exception)
+            : $this->fail($message, $status);
     }
 
     /**

@@ -51,7 +51,6 @@ export const skills = {
     jobRoleDuplicate: 'La stessa mansione non può comparire due volte.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare la competenza. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questa competenza.',
     deleteInUse: 'Impossibile eliminare: la competenza è assegnata ad almeno una persona. Disattivala invece.',
     sections: {
       identity: {

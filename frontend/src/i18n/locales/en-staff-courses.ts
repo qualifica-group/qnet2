@@ -51,7 +51,6 @@ export const staffCourses = {
     validityInvalid: 'The validity must be a whole number of months from 1 to 240.',
     genericError: 'Something went wrong. Try again.',
     deleteError: 'Unable to delete the course. Try again.',
-    deleteForbidden: 'You cannot delete this course.',
     deleteInUse: 'Cannot delete: the course has recorded trainings. Deactivate it instead.',
     sections: {
       identity: {

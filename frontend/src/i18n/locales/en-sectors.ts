@@ -51,7 +51,6 @@ export const sectors = {
     deleted: 'Sector deleted successfully.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the sector. Please try again.',
-    deleteForbidden: 'You cannot delete this sector.',
     deleteInUse: 'This sector has sub-sectors and cannot be deleted.',
     leaveConfirm: {
       title: 'Leave without saving?',

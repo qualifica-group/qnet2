@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -166,8 +167,6 @@ class ImportMappingTemplateController extends BaseApiController
      */
     private function authorizeImportGate(ImportDefinition $definition, User $actor): void
     {
-        if (! $definition->authorizeImport($actor)) {
-            throw new AuthorizationException;
-        }
+        Gate::allowIf($definition->authorizeImport($actor));
     }
 }

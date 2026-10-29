@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TrendChart } from '@/features/management-control/trend-chart'
@@ -19,8 +20,8 @@ function isEmptyTrend(data: MonthlyTrend): boolean {
  * the charts. Loading, error with retry and empty states are handled here.
  */
 export function TrendPanel({ filters }: { filters: TrendFilters }) {
-  const { t } = useTranslation()
-  const { data, isLoading, isError, refetch } = useMonthlyTrend(filters)
+  const { t, i18n } = useTranslation()
+  const { data, isLoading, isError, error, refetch } = useMonthlyTrend(filters)
   const [measure, setMeasure] = useState<TrendMeasure>('revenue')
 
   return (
@@ -33,7 +34,7 @@ export function TrendPanel({ filters }: { filters: TrendFilters }) {
       ) : null}
       {isError ? (
         <div role="alert" className="flex items-center gap-3 text-sm text-destructive">
-          <span>{t('managementControl.trend.error')}</span>
+          <span>{apiErrorMessage(error, t('managementControl.trend.error'), i18n)}</span>
           <Button type="button" size="sm" variant="secondary" onClick={() => void refetch()}>
             {t('managementControl.retry')}
           </Button>

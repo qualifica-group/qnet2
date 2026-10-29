@@ -55,7 +55,6 @@ export const quoteWorkflows = {
     nameMax: 'Il nome può contenere al massimo 191 caratteri.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare il workflow offerta. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questo workflow offerta.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
       description: 'Il workflow offerta non è ancora stato creato: i dati inseriti andranno persi.',
@@ -110,7 +109,6 @@ export const quoteWorkflows = {
     subtitle: 'Stati applicati alle offerte che non corrispondono a nessun workflow attivo.',
     loadError: 'Impossibile caricare gli stati di default. Riprova.',
     saved: 'Stati di default aggiornati con successo.',
-    forbidden: 'Non puoi aggiornare gli stati di default.',
     genericError: 'Impossibile aggiornare gli stati di default. Riprova.',
   },
 }

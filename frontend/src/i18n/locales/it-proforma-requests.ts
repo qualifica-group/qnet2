@@ -50,7 +50,6 @@ export const proformaRequests = {
     updated: 'Richiesta aggiornata.',
     genericError: 'Impossibile salvare la richiesta. Riprova.',
     deleted: 'Richiesta eliminata.',
-    deleteForbidden: 'Non hai il permesso di eliminare questa richiesta.',
     deleteError: 'Impossibile eliminare la richiesta. Riprova.',
   },
   cell: {

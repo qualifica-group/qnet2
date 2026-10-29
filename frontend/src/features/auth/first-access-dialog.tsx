@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
@@ -63,7 +64,7 @@ interface FirstAccessFormProps {
 }
 
 function FirstAccessForm({ name, onDismiss }: FirstAccessFormProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
 
   const schema = useMemo(
@@ -94,7 +95,7 @@ function FirstAccessForm({ name, onDismiss }: FirstAccessFormProps) {
     },
     onError: (error) => {
       if (!applyServerValidationErrors(error, form.setError, ['password'])) {
-        toast.error(t('auth.genericError'))
+        toast.error(apiErrorMessage(error, t('auth.genericError'), i18n))
       }
     },
   })

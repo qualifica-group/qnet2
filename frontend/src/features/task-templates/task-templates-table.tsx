@@ -13,6 +13,7 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { taskTemplateColumnRenderers } from '@/features/task-templates/column-renderers'
 import { deleteTaskTemplate } from '@/features/task-templates/api'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 
 /** Domain key used to mount the generic table for task templates. */
 const TASK_TEMPLATES_DOMAIN = 'task-templates'
@@ -29,7 +30,7 @@ const TASK_TEMPLATES_DOMAIN = 'task-templates'
  * re-authorizes each call. Mirrors `ProductTypologiesTable`.
  */
 export function TaskTemplatesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -51,8 +52,9 @@ export function TaskTemplatesTable() {
       } catch (error) {
         const status = axios.isAxiosError(error) ? error.response?.status : undefined
         const serverMessage = axios.isAxiosError(error) ? error.response?.data?.message : undefined
-        if (status === 403) {
-          toast.error(t('taskTemplates.form.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden !== null) {
+          toast.error(forbidden)
         } else if (status === 409) {
           toast.error(serverMessage ?? t('taskTemplates.form.deleteInUse'))
         } else {
@@ -62,7 +64,7 @@ export function TaskTemplatesTable() {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(

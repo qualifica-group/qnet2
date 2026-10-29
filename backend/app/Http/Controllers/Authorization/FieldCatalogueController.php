@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -66,8 +67,6 @@ class FieldCatalogueController extends BaseApiController
      */
     private function authorizeManagesRoles(User $actor): void
     {
-        if (! $actor->can('roles.create') && ! $actor->can('roles.update')) {
-            throw new AuthorizationException;
-        }
+        Gate::allowIf($actor->can('roles.create') || $actor->can('roles.update'));
     }
 }

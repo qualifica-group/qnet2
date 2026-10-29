@@ -6,6 +6,7 @@ use App\Models\Quote;
 use App\Models\User;
 use App\Policies\Abstracts\BasePolicy;
 use App\Services\Quotes\QuoteVisibilityScope;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -21,19 +22,19 @@ class QuotePolicy extends BasePolicy
         return 'quotes';
     }
 
-    public function view(User $user, Model $model): bool
+    public function view(User $user, Model $model): bool|Response
     {
-        return parent::view($user, $model) && $this->isInScope($user, $model);
+        return $this->withinPerimeter($user->can($this->permission('view')), fn (): bool => $this->isInScope($user, $model), 'quote_out_of_scope');
     }
 
-    public function update(User $user, Model $model): bool
+    public function update(User $user, Model $model): bool|Response
     {
-        return parent::update($user, $model) && $this->isInScope($user, $model);
+        return $this->withinPerimeter($user->can($this->permission('update')), fn (): bool => $this->isInScope($user, $model), 'quote_out_of_scope');
     }
 
-    public function delete(User $user, Model $model): bool
+    public function delete(User $user, Model $model): bool|Response
     {
-        return parent::delete($user, $model) && $this->isInScope($user, $model);
+        return $this->withinPerimeter($user->can($this->permission('delete')), fn (): bool => $this->isInScope($user, $model), 'quote_out_of_scope');
     }
 
     /** Resource-level: lifts the record scoping to every quote. */

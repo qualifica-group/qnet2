@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -24,6 +23,7 @@ import type {
 import { userColumnRenderers } from '@/features/users/column-renderers'
 import { deleteUser } from '@/features/users/api'
 import { useUserBulkActivation } from '@/features/users/use-user-bulk-activation'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 
 /** Domain key used to mount the generic table for users. */
 const USERS_DOMAIN = 'users'
@@ -38,7 +38,7 @@ const USERS_DOMAIN = 'users'
  * the backend re-authorizes each call.
  */
 export function UsersTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const stats = useStatsPanel(USERS_DOMAIN)
   const invalidateStats = useInvalidateModuleStats(USERS_DOMAIN)
@@ -72,19 +72,13 @@ export function UsersTable() {
         refreshGrid()
         invalidateStats()
       } catch (error) {
-        // 403 covers self-delete (and any other policy denial) surfaced as a
-        // dedicated message; everything else falls back to a generic error.
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        toast.error(
-          status === 403
-            ? t('users.form.deleteForbidden')
-            : t('users.form.deleteError'),
-        )
+        // A 403 (self-delete, policy denial) carries its own reason; everything else is generic.
+        toast.error(apiErrorMessage(error, t('users.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t, invalidateStats],
+    [refreshGrid, t, i18n, invalidateStats],
   )
 
   const runImpersonate = useCallback(

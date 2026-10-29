@@ -48,7 +48,6 @@ export const taskTemplates = {
     nameMax: 'Il nome può contenere al massimo 191 caratteri.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare il modello di task. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questo modello di task.',
     deleteInUse:
       'Questo modello di task è stato usato per generare commesse e non può essere eliminato. Disattivalo.',
     leaveConfirm: {

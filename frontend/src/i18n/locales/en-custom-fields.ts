@@ -177,7 +177,6 @@ export const customFields = {
     deleted: 'Custom field deleted successfully.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the custom field. Please try again.',
-    deleteForbidden: 'You cannot delete this custom field.',
     entityType: 'Module',
     entityTypePlaceholder: 'Select a module…',
     entityTypeRequired: 'Module is required.',

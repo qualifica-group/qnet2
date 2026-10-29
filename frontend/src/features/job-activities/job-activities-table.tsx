@@ -13,8 +13,8 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { deleteJobActivity } from '@/features/job-activities/api'
 import { JOB_ACTIVITIES_DOMAIN } from '@/features/job-activities/types'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 
-const FORBIDDEN_STATUS = 403
 const CONFLICT_STATUS = 409
 
 /**
@@ -24,7 +24,7 @@ const CONFLICT_STATUS = 409
  * job role).
  */
 export function JobActivitiesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -43,8 +43,9 @@ export function JobActivitiesTable() {
         refreshGrid()
       } catch (error) {
         const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        if (status === FORBIDDEN_STATUS) {
-          toast.error(t('jobActivities.form.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden !== null) {
+          toast.error(forbidden)
         } else if (status === CONFLICT_STATUS) {
           toast.error(t('jobActivities.form.deleteInUse'))
         } else {
@@ -54,7 +55,7 @@ export function JobActivitiesTable() {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(

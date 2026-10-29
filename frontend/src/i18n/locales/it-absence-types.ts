@@ -57,7 +57,6 @@ export const absenceTypes = {
     daysUnit: 'giorni',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare il tipo di assenza. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questo tipo di assenza.',
     deleteInUse: 'Impossibile eliminare: il tipo è usato da almeno una richiesta. Disattivalo invece.',
     sections: {
       identity: {

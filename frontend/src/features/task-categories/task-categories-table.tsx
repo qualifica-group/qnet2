@@ -15,6 +15,7 @@ import type { ApiErrorResponse } from '@/api/types'
 import { taskCategoryColumnRenderers } from '@/features/task-categories/column-renderers'
 import { deleteTaskCategory } from '@/features/task-categories/api'
 import { StatusReorderToggle } from '@/features/status-reorder/status-reorder-toggle'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 
 /** Domain key used to mount the generic table for task categories. */
 const TASK_CATEGORIES_DOMAIN = 'task-categories'
@@ -34,7 +35,7 @@ const TASK_CATEGORIES_DOMAIN = 'task-categories'
  * re-authorizes each call.
  */
 export function TaskCategoriesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -59,8 +60,9 @@ export function TaskCategoriesTable() {
           return
         }
         const status = error.response?.status
-        if (status === 403) {
-          toast.error(t('taskCategories.form.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden !== null) {
+          toast.error(forbidden)
         } else if (status === 409) {
           // The row is still referenced by a Task. Surface the
           // backend's own message rather than a generic one.
@@ -72,7 +74,7 @@ export function TaskCategoriesTable() {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(
@@ -112,7 +114,6 @@ export function TaskCategoriesTable() {
                 inactiveBadge: t('taskCategories.reorder.inactiveBadge'),
                 loadError: t('taskCategories.reorder.loadError'),
                 saved: t('taskCategories.reorder.saved'),
-                forbidden: t('taskCategories.reorder.forbidden'),
                 genericError: t('taskCategories.reorder.genericError'),
               }}
               onReordered={refreshGrid}

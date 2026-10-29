@@ -7,6 +7,7 @@ use App\Models\AbsenceRequest;
 use App\Services\Absences\Insight\AbsenceSummaryBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -20,7 +21,7 @@ class AbsenceSummaryController extends BaseApiController
     public function __invoke(Request $request): JsonResponse
     {
         try {
-            abort_unless($request->user()->can('viewAny', AbsenceRequest::class), 403, 'This action is unauthorized.');
+            Gate::forUser($request->user())->authorize('viewAny', AbsenceRequest::class);
 
             return $this->ok($this->summary->build($request->user()));
         } catch (Throwable $exception) {

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -50,7 +51,7 @@ export function BulkMoveCategoriesDialog({
   selectedIds,
   onMoved,
 }: BulkMoveCategoriesDialogProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const treeQuery = useProductCategoryTree()
   const [destination, setDestination] = useState<number>(ROOT_PARENT_VALUE)
   const [conflict, setConflict] = useState<BulkMoveConflictError | null>(null)
@@ -107,9 +108,9 @@ export function BulkMoveCategoriesDialog({
         return
       }
 
-      toast.error(t('productCategories.bulkMove.genericError'))
+      toast.error(apiErrorMessage(error, t('productCategories.bulkMove.genericError'), i18n))
     }
-  }, [moveMutation, selectedIds, destination, t])
+  }, [moveMutation, selectedIds, destination, t, i18n])
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

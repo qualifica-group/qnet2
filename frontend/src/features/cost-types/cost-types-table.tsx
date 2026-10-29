@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -16,7 +17,6 @@ import { deleteCostType } from '@/features/cost-types/api'
 import { costTypeColumnRenderers } from '@/features/cost-types/column-renderers'
 import { COST_TYPES_DOMAIN } from '@/features/cost-types/types'
 
-const FORBIDDEN_STATUS = 403
 const CONFLICT_STATUS = 409
 
 /**
@@ -25,7 +25,7 @@ const CONFLICT_STATUS = 409
  * delete flow (confirm is asked by the table; 409 = used by purchase order lines).
  */
 export function CostTypesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -44,8 +44,9 @@ export function CostTypesTable() {
         refreshGrid()
       } catch (error) {
         const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        if (status === FORBIDDEN_STATUS) {
-          toast.error(t('costTypes.form.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden) {
+          toast.error(forbidden)
         } else if (status === CONFLICT_STATUS) {
           toast.error(t('costTypes.form.deleteInUse'))
         } else {
@@ -55,7 +56,7 @@ export function CostTypesTable() {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(
@@ -95,7 +96,6 @@ export function CostTypesTable() {
                 inactiveBadge: t('costTypes.reorder.inactiveBadge'),
                 loadError: t('costTypes.reorder.loadError'),
                 saved: t('costTypes.reorder.saved'),
-                forbidden: t('costTypes.reorder.forbidden'),
                 genericError: t('costTypes.reorder.genericError'),
               }}
               onReordered={refreshGrid}

@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import axios from 'axios'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import {
   addDaysIso,
@@ -32,7 +33,7 @@ export function useInvoiceCollectionForm(
   installments: readonly InvoiceInstallment[],
   onDone: () => void,
 ) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const installmentAmount = Number(installment.amount)
   const canSpread = hasLaterOpenInstallments(installment, installments)
   const schema = useMemo(
@@ -75,7 +76,7 @@ export function useInvoiceCollectionForm(
             'residual_due_date',
           ])
           if (!mapped) {
-            toast.error(t('invoices.collection.genericError'))
+            toast.error(apiErrorMessage(error, t('invoices.collection.genericError'), i18n))
           }
         },
       },

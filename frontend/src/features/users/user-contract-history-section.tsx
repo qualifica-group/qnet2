@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { ContractConditionDialog } from '@/features/users/contract-condition-dialog'
-import { classifyContractError, type ContractErrorKind } from '@/features/users/contract-history-errors'
+import { classifyContractError } from '@/features/users/contract-history-errors'
 import {
   CONTRACTS_FIELD,
   MANAGE_COMPENSATION_PERMISSION,
@@ -19,14 +19,8 @@ import {
 } from '@/features/users/contract-history-types'
 import { useDeleteEmploymentContract, useEmploymentContracts } from '@/features/users/use-contract-history'
 import { formatDate } from '@/lib/formatting/date-display'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 
-/** i18n key (under `users.detail.employment.contractHistory`) telling why a delete was refused. */
-const DELETE_ERROR_KEYS: Record<ContractErrorKind, string> = {
-  conflict: 'notLast',
-  forbidden: 'forbidden',
-  validation: 'genericError',
-  unknown: 'genericError',
-}
 
 function ContractRow({
   contract,
@@ -83,7 +77,7 @@ function ContractRow({
  * `users.manageCompensation` (the server omits it otherwise).
  */
 export function UserContractHistorySection({ userId }: { userId: number }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const confirm = useConfirm()
   const { can } = useAbilities()
   const { field } = useResourcePermissions()
@@ -107,7 +101,12 @@ export function UserContractHistorySection({ userId }: { userId: number }) {
       await remove.mutateAsync(contract.id)
       toast.success(t('users.detail.employment.contractHistory.deleted'))
     } catch (error) {
-      toast.error(t(`users.detail.employment.contractHistory.${DELETE_ERROR_KEYS[classifyContractError(error).kind]}`))
+      const refusedAsNotLast = classifyContractError(error).kind === 'conflict'
+      toast.error(
+        refusedAsNotLast
+          ? t('users.detail.employment.contractHistory.notLast')
+          : apiErrorMessage(error, t('users.detail.employment.contractHistory.genericError'), i18n),
+      )
     }
   }
 

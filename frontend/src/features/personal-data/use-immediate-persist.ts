@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 
 /**
  * Shared orchestration for the managers' immediate-persistence path (edit of an
@@ -11,7 +12,7 @@ import { toast } from 'sonner'
  * the localized message keys.
  */
 export function useImmediatePersist() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [pending, setPending] = useState(false)
 
   const run = async (
@@ -24,8 +25,8 @@ export function useImmediatePersist() {
       await action()
       toast.success(t(successKey))
       return true
-    } catch {
-      toast.error(t(errorKey))
+    } catch (error) {
+      toast.error(apiErrorMessage(error, t(errorKey), i18n))
       return false
     } finally {
       setPending(false)

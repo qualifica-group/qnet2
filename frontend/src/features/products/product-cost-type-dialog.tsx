@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Tags } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -39,7 +40,7 @@ interface ProductCostTypeDialogProps {
  * is explicit (the confirm stays disabled until it is made).
  */
 export function ProductCostTypeDialog({ targets, onOpenChange, onApplied }: ProductCostTypeDialogProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [costTypeId, setCostTypeId] = useState<number | null>(null)
   const [removing, setRemoving] = useState(false)
@@ -54,7 +55,7 @@ export function ProductCostTypeDialog({ targets, onOpenChange, onApplied }: Prod
       toast.success(t('products.bulkCostType.done', { count: result.updated }))
       onApplied(result)
     },
-    onError: () => toast.error(t('products.bulkCostType.error')),
+    onError: (error) => toast.error(apiErrorMessage(error, t('products.bulkCostType.error'), i18n)),
   })
 
   return (

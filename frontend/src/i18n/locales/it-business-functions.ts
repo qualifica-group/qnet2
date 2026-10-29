@@ -87,7 +87,6 @@ export const businessFunctions = {
     nameMax: 'Il nome può contenere al massimo 191 caratteri.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare la funzione aziendale. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questa funzione aziendale.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
       description: 'La funzione aziendale non è ancora stata creata: i dati inseriti andranno persi.',

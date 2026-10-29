@@ -9,7 +9,6 @@
 
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,27 +26,25 @@ import { TaskTimeEntryEditor } from '@/features/time-entries/task/task-time-entr
 import { TaskTimeEntriesList } from '@/features/time-entries/task/task-time-entries-list'
 import { useTaskTimeEntries } from '@/features/time-entries/task/use-task-time-entries'
 import type { TimeEntry } from '@/features/time-entries/types'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 
 interface TaskTimeEntriesSectionProps {
   taskId: number
 }
 
-/** `403` (task not visible / `time-entries.create` missing on the resolver) gets the dashed forbidden box, never the generic retry banner. */
-function isForbiddenError(error: unknown): boolean {
-  return axios.isAxiosError(error) && error.response?.status === 403
-}
-
 export function TaskTimeEntriesSection({ taskId }: TaskTimeEntriesSectionProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const query = useTaskTimeEntries(taskId, true)
   const deleteMutation = useDeleteTimeEntry()
   const [editingEntryId, setEditingEntryId] = useState<number | null>(null)
   const [deletingEntry, setDeletingEntry] = useState<TimeEntry | null>(null)
 
-  if (isForbiddenError(query.error)) {
+  // A 403 (task not visible / `time-entries.create` missing) gets the dashed box with the server's reason, never the retry banner.
+  const forbidden = forbiddenMessage(query.error, i18n)
+  if (forbidden !== null) {
     return (
       <div className="rounded-md border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">
-        {t('timeEntries.task.forbidden')}
+        {forbidden}
       </div>
     )
   }

@@ -170,5 +170,5 @@ it('translates the shared envelope messages (403 and 404)', function () {
         'business_function_id' => 1,
         'product_category_id' => 1,
     ]])->assertStatus(403)
-        ->assertJsonPath('message', 'Non hai i permessi per questa azione.');
+        ->assertJsonPath('message', 'Non hai il permesso «request-management.update».');
 });

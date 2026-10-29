@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import type {
   AssignOperatorsDialogInput,
   AssignOperatorsDialogSite,
@@ -41,7 +42,7 @@ function resolveSharedOperationalSite(rows: TableRow[]): AssignOperatorsDialogSi
  * popup from the work panel on a single record.
  */
 export function useRequestTransferSelection(onTransferred: () => void) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const module = useRequestModule()
   const { can } = useAbilities()
   const [isOpen, setIsOpen] = useState(false)
@@ -78,11 +79,11 @@ export function useRequestTransferSelection(onTransferred: () => void) {
           operator_id: input.operator_id,
         })
       } catch (error) {
-        toast.error(t('requestManagement.transfer.errors.generic'))
+        toast.error(apiErrorMessage(error, t('requestManagement.transfer.errors.generic'), i18n))
         throw error
       }
     },
-    [transferMutation, ids, t],
+    [transferMutation, ids, t, i18n],
   )
 
   const open = useCallback((selection: TableSelection) => {

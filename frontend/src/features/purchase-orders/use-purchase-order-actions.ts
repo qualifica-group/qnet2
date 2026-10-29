@@ -3,11 +3,11 @@ import axios from 'axios'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import { deletePurchaseOrder, purchaseOrderKeys } from '@/features/purchase-orders/api'
 import { purchaseRequestKeys } from '@/features/purchase-requests/api'
 import { serverMessage } from '@/features/purchase-requests/purchase-request-server-errors'
 
-const FORBIDDEN_STATUS = 403
 const CONFLICT_STATUS = 409
 
 /**
@@ -16,7 +16,7 @@ const CONFLICT_STATUS = 409
  * Resolves true when the order is gone. The caller asks for confirmation.
  */
 export function usePurchaseOrderDelete() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
 
   return useCallback(
@@ -30,8 +30,9 @@ export function usePurchaseOrderDelete() {
         return true
       } catch (error) {
         const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        if (status === FORBIDDEN_STATUS) {
-          toast.error(t('purchaseOrders.messages.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden) {
+          toast.error(forbidden)
         } else if (status === CONFLICT_STATUS) {
           toast.error(serverMessage(error) ?? t('purchaseOrders.messages.deleteBlocked'))
         } else {
@@ -40,6 +41,6 @@ export function usePurchaseOrderDelete() {
         return false
       }
     },
-    [queryClient, t],
+    [queryClient, t, i18n],
   )
 }

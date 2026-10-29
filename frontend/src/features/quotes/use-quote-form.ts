@@ -8,6 +8,7 @@ import axios from 'axios'
 import { toast } from 'sonner'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { seedAttributeValues } from '@/features/attributes/attribute-values'
 import { createQuote, quoteDetailQueryKey, updateQuote } from '@/features/quotes/api'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/quotes/quote-form-payload'
@@ -78,7 +79,7 @@ interface UseQuoteFormArgs {
  * submit (with the spec 0087 D-6 promotion retry).
  */
 export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const confirm = useConfirm()
   const [serverError, setServerError] = useState<string | null>(null)
@@ -222,7 +223,7 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
 
   const reportFailure = (error: unknown) => {
     if (!applyServerValidationErrors(error, form.setError, [...SERVER_ERROR_FIELDS] as Path<QuoteFormValues>[])) {
-      setServerError(t('quotes.form.genericError'))
+      setServerError(apiErrorMessage(error, t('quotes.form.genericError'), i18n))
     }
   }
 

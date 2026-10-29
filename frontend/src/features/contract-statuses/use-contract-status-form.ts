@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import {
   createContractStatus,
   contractStatusDetailQueryKey, updateContractStatus,
@@ -51,7 +52,7 @@ interface UseContractStatusFormArgs {
  * The component stays UI-only; this hook is the orchestration point (`onSubmit`).
  */
 export function useContractStatusForm({ mode, onSuccess }: UseContractStatusFormArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -105,7 +106,7 @@ export function useContractStatusForm({ mode, onSuccess }: UseContractStatusForm
       onSuccess(created)
     } catch (error) {
       if (!applyServerValidationErrors(error, form.setError, errorFields)) {
-        setServerError(t('contractStatuses.form.genericError'))
+        setServerError(apiErrorMessage(error, t('contractStatuses.form.genericError'), i18n))
       }
     }
   }

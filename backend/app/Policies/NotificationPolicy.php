@@ -6,6 +6,7 @@ namespace App\Policies;
 
 use App\Models\Notification;
 use App\Models\User;
+use Illuminate\Auth\Access\Response;
 
 /**
  * Authorization for the `notifications` table domain (spec 0150).
@@ -33,14 +34,18 @@ class NotificationPolicy
         return true;
     }
 
-    public function view(User $user, Notification $notification): bool
+    public function view(User $user, Notification $notification): Response
     {
-        return $this->belongsTo($user, $notification);
+        return $this->belongsTo($user, $notification)
+            ? Response::allow()
+            : Response::deny(__('authorization.notification_not_owner'));
     }
 
-    public function update(User $user, Notification $notification): bool
+    public function update(User $user, Notification $notification): Response
     {
-        return $this->belongsTo($user, $notification);
+        return $this->belongsTo($user, $notification)
+            ? Response::allow()
+            : Response::deny(__('authorization.notification_not_owner'));
     }
 
     private function belongsTo(User $user, Notification $notification): bool

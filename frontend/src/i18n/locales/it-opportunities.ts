@@ -180,6 +180,5 @@ export const opportunities = {
     deleted: 'Opportunità eliminata con successo.',
     genericError: 'Qualcosa è andato storto. Riprova.',
     deleteError: "Impossibile eliminare l'opportunità. Riprova.",
-    deleteForbidden: 'Non puoi eliminare questa opportunità.',
   },
 }

@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -29,7 +30,7 @@ const TAGS_DOMAIN = 'tags'
  * call.
  */
 export function TagsTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -53,18 +54,16 @@ export function TagsTable() {
         refreshGrid()
       } catch (error) {
         const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        if (status === 403) {
-          toast.error(t('tags.form.deleteForbidden'))
-        } else if (status === 409 || status === 422) {
+        if (status === 409 || status === 422) {
           toast.error(t('tags.form.deleteInUse'))
         } else {
-          toast.error(t('tags.form.deleteError'))
+          toast.error(apiErrorMessage(error, t('tags.form.deleteError'), i18n))
         }
       } finally {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(

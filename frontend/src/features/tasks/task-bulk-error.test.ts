@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { AxiosError, AxiosHeaders } from 'axios'
 import i18n from '@/i18n'
+import { abilityLabel, resourceLabel } from '@/features/roles/permission-labels'
 import { taskBulkErrorDescription, taskBulkIncompatibleTasks } from '@/features/tasks/task-bulk-error'
 
 function axiosErrorWith(status: number, data: unknown): AxiosError {
@@ -60,11 +61,29 @@ describe('taskBulkErrorDescription', () => {
     ])
   })
 
-  it('falls back to the forbidden message on a 403, with no reasons', () => {
-    const { message, reasons } = taskBulkErrorDescription(i18n.t, axiosErrorWith(403, { success: false, message: 'x' }))
+  it('composes the specific sentence from the labels on a 403 missing_permission, with no reasons', () => {
+    const error = axiosErrorWith(403, {
+      success: false,
+      message: 'Forbidden',
+      authorization: { reason: 'missing_permission', permission: 'tasks.update' },
+    })
 
-    expect(message).toBe(i18n.t('tasks.bulk.forbidden'))
+    const { message, reasons } = taskBulkErrorDescription(i18n.t, error)
+
+    expect(message).toBe(
+      i18n.t('common.missingPermission', {
+        ability: abilityLabel('tasks.update', i18n),
+        module: resourceLabel('tasks', i18n),
+      }),
+    )
+    expect(message).not.toBe(i18n.t('tasks.bulk.genericError'))
     expect(reasons).toEqual([])
+  })
+
+  it('keeps the generic message on a 500', () => {
+    const { message } = taskBulkErrorDescription(i18n.t, axiosErrorWith(500, { success: false, message: 'boom' }))
+
+    expect(message).toBe(i18n.t('tasks.bulk.genericError'))
   })
 
   it('falls back to the generic message otherwise', () => {

@@ -1,0 +1,25 @@
+<?php
+
+return [
+    'opportunity_out_of_scope' => 'Non puoi accedere a questa opportunità: non ne sei supervisore né gestore account.',
+    'quote_out_of_scope' => 'Non puoi accedere a questa offerta: non è tua né della tua sede operativa.',
+    'contract_out_of_scope' => 'Non puoi accedere a questo contratto: l\'offerta collegata non è tua né della tua sede operativa.',
+    'task_out_of_scope' => 'Non puoi accedere a questo task: non ne sei creatore, richiedente, assegnatario od osservatore.',
+    'task_not_editable' => 'Non puoi eseguire questa azione sul task: non ne sei creatore, richiedente, assegnatario né gestore.',
+    'task_not_deletable_state' => 'Non puoi eliminare questo task: è già chiuso o bloccato.',
+    'task_mandate_required' => 'Solo il creatore, il richiedente o un gestore del task possono eseguire questa azione.',
+    'work_order_out_of_scope' => 'Non puoi accedere a questa commessa: non ne sei membro né responsabile.',
+    'purchase_request_out_of_scope' => 'Non puoi accedere a questa richiesta di acquisto: non ne sei richiedente, responsabile di funzione né autore.',
+    'time_entry_not_owner' => 'Non puoi accedere a questo segnatempo: appartiene a un altro utente.',
+    'time_entry_task_not_manageable' => 'Non puoi modificare questo segnatempo: non puoi modificare il task a cui è collegato.',
+    'user_super_admin_protected' => 'Solo un super-admin può operare su un utente super-admin.',
+    'user_self_delete' => 'Non puoi eliminare il tuo stesso account.',
+    'attachment_collection_closed' => 'Questi allegati non sono accessibili da questa funzione.',
+    'attachment_owner_not_visible' => 'Non puoi accedere a questo allegato: non hai accesso all\'elemento a cui appartiene.',
+    'note_author_only_edit' => 'Solo l\'autore può modificare questa nota.',
+    'note_author_only_delete' => 'Solo l\'autore può eliminare questa nota.',
+    'table_filter_view_not_owner' => 'Puoi modificare o eliminare solo le tue viste.',
+    'import_mapping_template_not_owner' => 'Puoi eliminare solo i tuoi modelli di mappatura.',
+    'notification_not_owner' => 'Questa notifica appartiene a un altro utente.',
+    'commission_accrual_read_only' => 'Le maturazioni di provvigione non si creano, modificano né eliminano a mano.',
+];

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { RecordFormSkeleton } from '@/components/record-form/record-form-skeleton'
 import { Button } from '@/components/ui/button'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
@@ -21,7 +22,7 @@ interface CommissionConfigurationFormProps {
  * create-context `ResourcePermissions` before rendering the body.
  */
 export function CommissionConfigurationForm({ supplierRegistryId, onSuccess, onCancel }: CommissionConfigurationFormProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const metaQuery = useResourceMeta('commission-configurations')
   // Stable: a fresh object per render would rebuild the form's defaults.
   const mode = useMemo(() => ({ type: 'create' as const, supplierRegistryId }), [supplierRegistryId])
@@ -30,7 +31,7 @@ export function CommissionConfigurationForm({ supplierRegistryId, onSuccess, onC
     return (
       <div className="flex flex-col items-start gap-3 p-4">
         <p role="alert" className="text-sm text-destructive">
-          {t('authorization.loadError')}
+          {apiErrorMessage(metaQuery.error, t('authorization.loadError'), i18n)}
         </p>
         <Button variant="outline" size="sm" className="bg-card" onClick={() => void metaQuery.refetch()}>
           {t('common.retry')}

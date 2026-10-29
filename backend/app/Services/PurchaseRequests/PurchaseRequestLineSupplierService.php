@@ -63,7 +63,7 @@ class PurchaseRequestLineSupplierService
             $request = $requests->get($line->purchase_request_id);
 
             if ($this->capabilities->capabilities($actor, $request) === [] && ! Gate::forUser($actor)->allows('update', $request)) {
-                throw new AuthorizationException;
+                throw new AuthorizationException(__('You do not hold a role on this purchase request that allows this change.'));
             }
         }
 

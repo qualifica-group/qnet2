@@ -45,7 +45,6 @@ export const jobRoles = {
     descriptionMax: 'La descrizione può contenere al massimo 1000 caratteri.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare la mansione. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questa mansione.',
     deleteInUse: 'Impossibile eliminare: la mansione è assegnata a delle persone.',
     sections: {
       identity: {

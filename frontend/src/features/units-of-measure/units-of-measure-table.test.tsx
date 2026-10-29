@@ -178,7 +178,7 @@ describe('UnitsOfMeasureTable — delete (D-7: 409 "in use" guard)', () => {
     screen.getByRole('button', { name: 'delete row' }).click()
 
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith('You cannot delete this unit of measure.'),
+      expect(toastErrorMock).toHaveBeenCalledWith('Forbidden'),
     )
   })
 

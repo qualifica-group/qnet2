@@ -2,7 +2,9 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
+import { AxiosError } from 'axios'
 import i18n from '@/i18n'
+import { abilityLabel, resourceLabel } from '@/features/roles/permission-labels'
 import OrgChartPage from '@/pages/org-chart-page'
 import { FUNCTIONS_FIXTURE, PEOPLE_FIXTURE } from '@/features/org-chart/fixtures.test-support'
 
@@ -217,8 +219,17 @@ describe('OrgChartPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/Impossibile caricare/)
     failed.unmount()
 
-    fetchFunctionsMock.mockRejectedValue({ response: { status: 403 } })
+    fetchFunctionsMock.mockRejectedValue(
+      new AxiosError('x', undefined, undefined, undefined, {
+        status: 403,
+        data: { success: false, message: 'Forbidden', authorization: { reason: 'missing_permission', permission: 'org-chart.view' } },
+      } as never),
+    )
     renderPage()
-    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/Non hai i permessi/))
+    const expected = i18n.t('common.missingPermission', {
+      ability: abilityLabel('org-chart.view', i18n),
+      module: resourceLabel('org-chart', i18n),
+    })
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(expected))
   })
 })

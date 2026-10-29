@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -18,7 +19,7 @@ interface ApiReferenceHeaderProps {
 
 /** Title, base URL, version, totals and the OpenAPI / Postman downloads. */
 export function ApiReferenceHeader({ baseUrl, version, endpointCount, moduleCount }: ApiReferenceHeaderProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const download = useApiDocDownload()
 
   const handleDownload = (kind: ApiDocKind) =>
@@ -28,7 +29,7 @@ export function ApiReferenceHeader({ baseUrl, version, endpointCount, moduleCoun
           toast.info(t('apiIntegrations.docs.downloadGenerating'))
         }
       },
-      onError: () => toast.error(t('apiIntegrations.docs.downloadError')),
+      onError: (error) => toast.error(apiErrorMessage(error, t('apiIntegrations.docs.downloadError'), i18n)),
     })
 
   return (

@@ -7,6 +7,8 @@
  */
 import axios from 'axios'
 import type { TFunction } from 'i18next'
+import i18n from '@/i18n'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import type { ApiErrorResponse } from '@/api/types'
 import type { TaskBulkIncompatibleTask } from '@/features/tasks/task-bulk-types'
 
@@ -26,7 +28,7 @@ export function taskBulkIncompatibleTasks(error: unknown): TaskBulkIncompatibleT
 
 /**
  * One toast for a failed bulk action: lists every incompatible task's own
- * reason when present, falls back to the shared 403/generic split otherwise.
+ * reason when present, falls back to the specific 403 sentence or the generic one otherwise.
  */
 export function taskBulkErrorDescription(t: TFunction, error: unknown): { message: string; reasons: string[] } {
   const incompatible = taskBulkIncompatibleTasks(error)
@@ -36,9 +38,8 @@ export function taskBulkErrorDescription(t: TFunction, error: unknown): { messag
       reasons: incompatible.map((task) => t('tasks.bulk.incompatibleReason', { id: task.id, reason: task.reason })),
     }
   }
-  const status = axios.isAxiosError(error) ? error.response?.status : undefined
   return {
-    message: status === 403 ? t('tasks.bulk.forbidden') : t('tasks.bulk.genericError'),
+    message: apiErrorMessage(error, t('tasks.bulk.genericError'), i18n),
     reasons: [],
   }
 }

@@ -1,5 +1,6 @@
 import { useId, useRef, useState, type ChangeEvent } from 'react'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { toast } from 'sonner'
 import { FileText, FolderOpen, Loader2, Paperclip, Trash2, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -38,7 +39,7 @@ export function OutboundEmailAttachmentsSection({
   composeContext,
   disabled,
 }: OutboundEmailAttachmentsSectionProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { upload, importAttachments, remove } = useOutboundEmailAttachments(owner, emailId)
   const [documentsDialogOpen, setDocumentsDialogOpen] = useState(false)
   const titleId = useId()
@@ -63,8 +64,8 @@ export function OutboundEmailAttachmentsSection({
         // one file per request, and the server checks the running total on
         // every single upload — a parallel burst would race that check.
         await upload.mutateAsync(file)
-      } catch {
-        toast.error(t('outboundEmails.composer.attachments.uploadError'))
+      } catch (error) {
+        toast.error(apiErrorMessage(error, t('outboundEmails.composer.attachments.uploadError'), i18n))
       }
     }
   }
@@ -77,40 +78,40 @@ export function OutboundEmailAttachmentsSection({
   const handleImportDocuments = async (attachmentIds: number[]) => {
     try {
       await importAttachments.mutateAsync({ source: 'documents', attachment_ids: attachmentIds })
-    } catch {
-      toast.error(t('outboundEmails.composer.attachments.importError'))
+    } catch (error) {
+      toast.error(apiErrorMessage(error, t('outboundEmails.composer.attachments.importError'), i18n))
     }
   }
 
   const handleImportBundle = async (documentBundleId: number) => {
     try {
       await importAttachments.mutateAsync({ source: 'document_bundle', document_bundle_id: documentBundleId })
-    } catch {
-      toast.error(t('outboundEmails.composer.attachments.importError'))
+    } catch (error) {
+      toast.error(apiErrorMessage(error, t('outboundEmails.composer.attachments.importError'), i18n))
     }
   }
 
   const handleImportQuotePdf = async () => {
     try {
       await importAttachments.mutateAsync({ source: 'quote_pdf' })
-    } catch {
-      toast.error(t('outboundEmails.composer.attachments.importError'))
+    } catch (error) {
+      toast.error(apiErrorMessage(error, t('outboundEmails.composer.attachments.importError'), i18n))
     }
   }
 
   const handleImportPurchaseOrderPdf = async () => {
     try {
       await importAttachments.mutateAsync({ source: PURCHASE_ORDER_PDF_SOURCE })
-    } catch {
-      toast.error(t('outboundEmails.composer.attachments.importError'))
+    } catch (error) {
+      toast.error(apiErrorMessage(error, t('outboundEmails.composer.attachments.importError'), i18n))
     }
   }
 
   const handleRemove = async (attachmentId: number) => {
     try {
       await remove.mutateAsync(attachmentId)
-    } catch {
-      toast.error(t('outboundEmails.composer.attachments.removeError'))
+    } catch (error) {
+      toast.error(apiErrorMessage(error, t('outboundEmails.composer.attachments.removeError'), i18n))
     }
   }
 

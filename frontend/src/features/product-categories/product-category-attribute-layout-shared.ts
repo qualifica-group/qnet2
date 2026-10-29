@@ -39,7 +39,6 @@ export function previewModeForScope(scope: LayoutFormScope): LayoutFormMode {
 export function buildAttributeLayoutLabels(t: TFunction): UseAttributeLayoutLabels {
   return {
     saved: t('section.saved'),
-    forbidden: t('section.forbidden'),
     saveError: t('section.saveError'),
     invalid: t('section.invalid'),
     reset: t('section.resetDone'),

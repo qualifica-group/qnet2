@@ -165,7 +165,7 @@ describe('CostTypesTable - delete', () => {
     renderWith(<CostTypesTable />)
     screen.getByRole('button', { name: 'delete row' }).click()
 
-    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('You cannot delete this cost type.'))
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('server message'))
   })
 
   it('shows a distinct "in use" toast on a 409', async () => {
