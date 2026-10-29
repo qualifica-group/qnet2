@@ -3,7 +3,23 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0323 D-11 Backfill stati commessa sui modelli task gia' importati — VERDE, NON COMMITTATO (2026-10-29)
+## Spec 0323 D-12 Backfill stato commessa sui task gia' importati — VERDE, COMMITTATO (2026-10-29)
+
+- Causa segnalata (COM-6427, WO 16312): i 18 task importati il 28/10 (prima della 0323) non hanno lo snapshot,
+  nel legacy si' (`tasks.stato_consulenza`) -> chiuderli non muove la commessa. La commessa non ha modello
+  (`work_orders.task_template_id` 0/16317: il legacy non salva il modello scelto; inferenza per titoli misurata:
+  41% univoca, COM-6427 ambigua 47/100/101) -> scartata, la % segue il task come nel legacy.
+- `TasksSource::processRow()`: task con old_id esistente -> `backfillWorkOrderStatus()` (solo se null, query update,
+  `created($warnings)` senza model). TaskTemplatesSource D-11 allineato: niente model sull'esito (i campi
+  personalizzati non si riscrivono al rilancio). TasksSource 302 righe (soft limit).
+- Test: `TasksWorkOrderStatusImportTest` +3 (AC-024). Migration 673/680 (7 noti users link-only), Tasks 650/650,
+  TaskTemplates 79/79, Vitest help/i18n/migrations 418/418, tsc EXIT 0, Pint/ESLint ok.
+- Testi: requisiti sorgente `tasks` e `task-templates` (IT/EN migration-requirements), guida `migrations` (Task).
+  Manuale Claude Docs aggiornato (paragrafo Task).
+- Da fare su dev: rilanciare `tasks` (~6,5 h, run 68 = 365620 righe) dopo `work-order-workflows`. Nessun effetto
+  retroattivo: i 4 task di COM-6427 chiusi il 29/10 vanno riaperti e richiusi.
+
+## Spec 0323 D-11 Backfill stati commessa sui modelli task gia' importati — VERDE, COMMITTATO 26e46491 (2026-10-29)
 
 - REQUIREMENT CHANGED su 0323 D-9 (utente): rilanciando `task-templates`, un modello gia' importato riceve gli
   stati mancanti. `Migrations/Support/LegacyTaskTemplateStatusBackfill::fill()` (azioni senza old_id: abbinamento per
@@ -26,7 +42,7 @@
   stato, ~139k non chiusi. Serve lo stesso backfill in `TasksSource` (per old_id, semplice) se si vuole l'automatismo
   sui task migrati.
 
-## Spec 0324 Stati di chiusura legacy delle commesse — VERDE, NON COMMITTATO (2026-10-29)
+## Spec 0324 Stati di chiusura legacy delle commesse — VERDE, COMMITTATO 26e46491 (2026-10-29)
 
 - Emenda 0322. Causa: la sorgente `work-order-workflows` creava tutti gli stati legacy `in_progress` e affiancava 3 righe
   di sistema; run 73 di `work-order-workflow-statuses` saltava 6925 commesse chiuse forzatamente.
@@ -77,7 +93,7 @@
 - Segnalato: `WorkOrderService.php` 438 righe (invariato), `WorkOrderWorkflowsSource.php` 278; il report di migrazione
   conta i set riallineati come "created".
 
-## Spec 0323 Modelli task -> Stato lavorazione commessa — VERDE, NON COMMITTATO (2026-10-28)
+## Spec 0323 Modelli task -> Stato lavorazione commessa — VERDE, COMMITTATO 26e46491 (2026-10-28)
 
 - Come il legacy (`TaskServizi::markasdoneupdate` / `Manageorder::updateStatoConsulenza`): riga del modello
   `task_template_items.work_order_workflow_status_id` (FK nullOnDelete, qualsiasi set) -> copiata dal

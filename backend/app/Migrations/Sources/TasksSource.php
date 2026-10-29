@@ -35,6 +35,10 @@ use RuntimeException;
  * status, the registry/referent/commessa coherence, stage-by-name on roots,
  * the series constraints (LegacyTaskRecurrenceWriter), HTML sanitization and
  * the title cap. A person, or the commessa, not migrated fails the row.
+ *
+ * A task already imported is never rewritten, with one exception (spec 0323
+ * D-12): a re-run fills its working status snapshot when it is still empty,
+ * `created` when filled, `skipped` otherwise. It never moves the commessa.
  */
 class TasksSource extends AbstractMigrationSource
 {
@@ -127,11 +131,37 @@ class TasksSource extends AbstractMigrationSource
             throw new RuntimeException('External id is required.');
         }
 
-        if ($this->existsByOldId(Task::class, $externalId)) {
-            return MigrationRowOutcome::skipped();
+        $existing = Task::query()->where('old_id', $externalId)->first(['id', 'work_order_workflow_status_id']);
+
+        if ($existing !== null) {
+            return $this->backfillWorkOrderStatus($existing, $record);
         }
 
         return activity()->withoutLogs(fn (): MigrationRowOutcome => $this->importRecord($externalId, $record));
+    }
+
+    /**
+     * Spec 0323 D-12: a plain query update (no activity log, no event), and
+     * no model on the outcome so the re-run never rewrites custom fields.
+     *
+     * @param  array<string, mixed>  $record
+     */
+    private function backfillWorkOrderStatus(Task $task, array $record): MigrationRowOutcome
+    {
+        if ($task->work_order_workflow_status_id !== null) {
+            return MigrationRowOutcome::skipped();
+        }
+
+        $warnings = [];
+        $statusId = $this->statusLink->resolve($record['work_order_workflow_status_old_id'] ?? null, $warnings);
+
+        if ($statusId === null) {
+            return MigrationRowOutcome::skipped($warnings);
+        }
+
+        Task::query()->whereKey($task->id)->update(['work_order_workflow_status_id' => $statusId]);
+
+        return MigrationRowOutcome::created($warnings);
     }
 
     /**

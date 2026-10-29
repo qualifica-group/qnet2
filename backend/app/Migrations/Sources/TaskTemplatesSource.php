@@ -221,8 +221,9 @@ class TaskTemplatesSource extends AbstractMigrationSource
         $warnings = [];
         $tree = $this->buildTree((array) ($record['stages'] ?? []), $warnings);
 
+        // No model on the outcome: a re-run never rewrites custom fields.
         if ($this->statusBackfill->fill($taskTemplate, $tree['items'], $warnings)) {
-            return MigrationRowOutcome::created($warnings, $taskTemplate);
+            return MigrationRowOutcome::created($warnings);
         }
 
         return MigrationRowOutcome::skipped($warnings);
