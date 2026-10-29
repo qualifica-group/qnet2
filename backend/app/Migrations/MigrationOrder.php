@@ -37,15 +37,13 @@ final class MigrationOrder
         // adopted/created by name and are referenced by `users` via old_id, so
         // they anchor here too; `payment-methods` is likewise a plain lookup,
         // referenced by its consumer modules (quotes first), not referencing;
-        // `task-templates` (spec 0172, D-13) remaps its stages/items ONLY
-        // within the single record being imported (no old_id of their own),
-        // so it references nothing else either. `email-templates` and
+        // `email-templates` and
         // `document-bundles` (spec 0175, D-13) are likewise plain, unlinked
         // lookups — `document-bundles` additionally copies its own files in,
         // referencing nothing outside the pair of legacy tables it reads.
         // `business-functions` carries user ids it cannot resolve yet (users
         // come in phase 2): `business-function-members` links them in phase 3.
-        ['business-functions', 'companies', 'operational-sites', 'referent-types', 'sources', 'tags', 'sectors', 'task-templates', 'vat-rates', 'payment-methods', 'roles', 'email-templates', 'document-bundles'],
+        ['business-functions', 'companies', 'operational-sites', 'referent-types', 'sources', 'tags', 'sectors', 'vat-rates', 'payment-methods', 'roles', 'email-templates', 'document-bundles'],
 
         // Phase 2 — entities that reference the phase 1 anchors via old_id:
         // users (companies/sites/roles), company-sites (companies) and
@@ -79,7 +77,11 @@ final class MigrationOrder
         // Phase 6 — category form layouts (spec 0181): AttributeLayoutValidator
         // only accepts codes the category has ALREADY linked for the context,
         // so this needs the phase 5 `product-category-attributes` pivot.
-        ['attribute-layouts'],
+        // `task-templates` (spec 0172, D-13; moved here by spec 0323, D-9): its
+        // stages/items remap only within the record being imported, but each
+        // action links a working status by the `old_id` of the phase 5
+        // `work-order-workflows`.
+        ['attribute-layouts', 'task-templates'],
 
         // Phases 7 and 9-11 — the legacy operational records (spec 0189), a strict
         // parent chain, one phase per link. Registries remap users, referents,

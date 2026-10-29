@@ -229,9 +229,28 @@ final class WorkOrderWorkflowStatusWriter
     }
 
     /**
+     * Re-creates the default row of every system key the set lacks (a legacy
+     * realignment can demote a row that held the key); resequence() places it.
+     */
+    public function restoreMissingSystemRows(?int $workflowId): void
+    {
+        $present = WorkOrderWorkflowStatus::query()
+            ->where('work_order_workflow_id', $workflowId)
+            ->whereNotNull('system_key')
+            ->pluck('system_key')
+            ->all();
+
+        foreach (WorkOrderWorkflowStatusSystemKey::cases() as $key) {
+            if (! in_array($key->value, $present, true)) {
+                $this->forceCreateSystemRow($workflowId, $key, 0);
+            }
+        }
+    }
+
+    /**
      * @param  array<int, int>  $orderedCustomIds
      */
-    private function resequence(?int $workflowId, array $orderedCustomIds): void
+    public function resequence(?int $workflowId, array $orderedCustomIds): void
     {
         WorkOrderWorkflowStatus::query()
             ->where('work_order_workflow_id', $workflowId)

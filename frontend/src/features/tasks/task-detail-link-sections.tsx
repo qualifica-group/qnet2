@@ -3,6 +3,7 @@ import { Contact, Link2, MessageSquareWarning, Repeat } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordField, RecordFieldList, RecordSection } from '@/components/detail/record-panel'
 import { RecordLink } from '@/components/detail/record-link'
+import { WorkflowStatusBadge } from '@/features/workflow-statuses/workflow-status-badge'
 import { useResourcePermissions } from '@/features/authorization/permissions'
 import { TaskClosureFlagField } from '@/features/tasks/task-closure-section'
 import { leadRefOf, workOrderRefOf, workOrderStageOf } from '@/features/tasks/task-form-hydration'
@@ -137,6 +138,21 @@ export function TaskDetailLinksSection({ task, editor }: TaskDetailSectionProps)
           >
             {task.work_order_stage?.name ?? <DetailEmpty />}
           </RecordInlineField>
+        ) : null}
+        {task.work_order_workflow_status ? (
+          <RecordField label={t('tasks.detail.workOrderWorkflowStatus')}>
+            <span className="flex min-w-0 flex-wrap items-center gap-2">
+              <WorkflowStatusBadge
+                name={task.work_order_workflow_status.name}
+                color={task.work_order_workflow_status.color}
+              />
+              {task.work_order_workflow_status.progress_percentage !== null ? (
+                <span className="text-xs text-muted-foreground">
+                  {`${task.work_order_workflow_status.progress_percentage}%`}
+                </span>
+              ) : null}
+            </span>
+          </RecordField>
         ) : null}
         <RecordInlineField
           field="lead_id"

@@ -75,6 +75,8 @@ class StoreWorkOrderRequest extends FormRequest
             // so `required_if` correctly rejects it when `is_force_closed`
             // is true.
             'force_close_reason' => ['nullable', 'string', 'required_if:is_force_closed,true'],
+            // Spec 0324 D-6: domain (set + `closed` group) is checked by the status assigner.
+            'force_close_status_id' => ['nullable', 'integer'],
             'quote_line_ids' => ['sometimes', 'array'],
             'quote_line_ids.*' => ['integer'],
             // Spec 0322: membership in the set resolved for the commessa is

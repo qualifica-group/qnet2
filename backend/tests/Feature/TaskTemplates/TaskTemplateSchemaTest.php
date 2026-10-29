@@ -42,6 +42,8 @@ it('task_template_items carries every column of the data_contract', function () 
         'task_template_stage_id',
         // spec 0172, D-1/D-6: the parent row this sub-item sits under, null for a root row.
         'parent_id',
+        // spec 0323, D-4: the commessa working status the generated Task advances to.
+        'work_order_workflow_status_id',
     ];
 
     expect(Schema::getColumnListing('task_template_items'))->toEqualCanonicalizing($expected);

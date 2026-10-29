@@ -86,7 +86,7 @@ it('AC-018: a status outside the resolved set leaves the work order unchanged an
         ->and(collect($run->report)->where('level', 'warning')->count())->toBe(1);
 });
 
-it('a force-closed work order keeps its closing status and warns', function () {
+it('AC-007: a force-closed work order keeps its closing status and warns when the legacy status is a working one', function () {
     $workOrder = statusWorkOrder(17);
     $workOrder->forceFill([
         'is_force_closed' => true,
@@ -101,6 +101,22 @@ it('a force-closed work order keeps its closing status and warns', function () {
         ->and($workOrder->fresh()->work_order_workflow_status_id)->toBe(globalWorkOrderStatus('closed')->id)
         ->and(collect($run->report)->where('level', 'warning')->count())->toBe(1);
 });
+
+it('AC-007: a force-closed work order receives a legacy status of the completed or closed group', function (string $group) {
+    $workOrder = statusWorkOrder(17);
+    $workOrder->forceFill([
+        'is_force_closed' => true,
+        'force_close_reason' => 'Legacy closed',
+        'work_order_workflow_status_id' => globalWorkOrderStatus('closed')->id,
+    ])->save();
+    $status = legacyWorkflowStatus(10, global: true);
+    $status->forceFill(['group' => $group])->save();
+
+    $run = runLegacyWorkOrderWorkflowStatusesImport([['id' => 17, 'status_id' => 10, 'warnings' => []]]);
+
+    expect($run->created_rows)->toBe(1)->and($run->failed_rows)->toBe(0)
+        ->and($workOrder->fresh()->work_order_workflow_status_id)->toBe($status->id);
+})->with(['completed', 'closed']);
 
 it('AC-018: a work order not migrated fails the row', function () {
     legacyWorkflowStatus(10, global: true);
@@ -126,4 +142,96 @@ it('AC-018: an orphan row fails with the legacy reason', function () {
 
     expect($run->failed_rows)->toBe(1)
         ->and(collect($run->report)->first()['message'])->toContain('Order 90 does not exist.');
+});
+
+/**
+ * Spec 0324 amendment, D-10: a force-closed work order follows the legacy outcome in `closing_group`.
+ */
+function forceClosedStatusWorkOrder(int $legacyId): WorkOrder
+{
+    $workOrder = statusWorkOrder($legacyId);
+    $workOrder->forceFill([
+        'is_force_closed' => true,
+        'force_close_reason' => 'Chiusa (legacy)',
+        'work_order_workflow_status_id' => globalWorkOrderStatus('closed')->id,
+    ])->save();
+
+    return $workOrder;
+}
+
+it('AC-019: outcome "completed" with a working or missing legacy status lands on the completed row', function (bool $withStatus) {
+    $workOrder = forceClosedStatusWorkOrder(17);
+    legacyWorkflowStatus(10, global: true);
+
+    $run = runLegacyWorkOrderWorkflowStatusesImport([
+        ['id' => 17, 'status_id' => $withStatus ? 10 : null, 'closing_group' => 'completed', 'warnings' => []],
+    ]);
+
+    expect($run->created_rows)->toBe(1)->and($run->failed_rows)->toBe(0)
+        ->and($workOrder->fresh()->work_order_workflow_status_id)->toBe(globalWorkOrderStatus('completed')->id);
+})->with(['working status' => true, 'no status' => false]);
+
+it('AC-019: outcome "completed" keeps a legacy status of the completed or closed group', function (string $group) {
+    $workOrder = forceClosedStatusWorkOrder(17);
+    $status = legacyWorkflowStatus(10, global: true);
+    $status->forceFill(['group' => $group])->save();
+
+    $run = runLegacyWorkOrderWorkflowStatusesImport([['id' => 17, 'status_id' => 10, 'closing_group' => 'completed', 'warnings' => []]]);
+
+    expect($run->created_rows)->toBe(1)
+        ->and($workOrder->fresh()->work_order_workflow_status_id)->toBe($status->id);
+})->with(['completed', 'closed']);
+
+it('AC-019: outcome "closed" moves a positive legacy status onto the closed row', function () {
+    $workOrder = forceClosedStatusWorkOrder(17);
+    $workOrder->forceFill(['work_order_workflow_status_id' => globalWorkOrderStatus('open')->id])->save();
+    $status = legacyWorkflowStatus(10, global: true);
+    $status->forceFill(['group' => 'completed'])->save();
+
+    $run = runLegacyWorkOrderWorkflowStatusesImport([['id' => 17, 'status_id' => 10, 'closing_group' => 'closed', 'warnings' => []]]);
+
+    expect($run->created_rows)->toBe(1)
+        ->and($workOrder->fresh()->work_order_workflow_status_id)->toBe(globalWorkOrderStatus('closed')->id)
+        ->and(collect($run->report)->where('level', 'warning')->count())->toBe(1);
+});
+
+it('AC-019: outcome "closed" keeps a legacy status of the closed group', function () {
+    $workOrder = forceClosedStatusWorkOrder(17);
+    $status = legacyWorkflowStatus(10, global: true);
+    $status->forceFill(['group' => 'closed'])->save();
+
+    $run = runLegacyWorkOrderWorkflowStatusesImport([['id' => 17, 'status_id' => 10, 'closing_group' => 'closed', 'warnings' => []]]);
+
+    expect($run->created_rows)->toBe(1)
+        ->and($workOrder->fresh()->work_order_workflow_status_id)->toBe($status->id);
+});
+
+it('AC-019: outcome "closed" without a legacy status on the closed row already is skipped', function () {
+    $workOrder = forceClosedStatusWorkOrder(17);
+
+    $run = runLegacyWorkOrderWorkflowStatusesImport([['id' => 17, 'status_id' => null, 'closing_group' => 'closed', 'warnings' => []]]);
+
+    expect($run->skipped_rows)->toBe(1)->and($run->failed_rows)->toBe(0)
+        ->and($workOrder->fresh()->work_order_workflow_status_id)->toBe(globalWorkOrderStatus('closed')->id);
+});
+
+it('AC-019: a work order not force-closed ignores the outcome and skips a missing status', function () {
+    $workOrder = statusWorkOrder(17);
+    $before = $workOrder->work_order_workflow_status_id;
+
+    $run = runLegacyWorkOrderWorkflowStatusesImport([['id' => 17, 'status_id' => null, 'closing_group' => 'completed', 'warnings' => []]]);
+
+    expect($run->skipped_rows)->toBe(1)->and($run->failed_rows)->toBe(0)
+        ->and($workOrder->fresh()->work_order_workflow_status_id)->toBe($before);
+});
+
+it('AC-019: an unknown outcome is ignored with a warning and falls back to D-5', function () {
+    $workOrder = forceClosedStatusWorkOrder(17);
+    legacyWorkflowStatus(10, global: true);
+
+    $run = runLegacyWorkOrderWorkflowStatusesImport([['id' => 17, 'status_id' => 10, 'closing_group' => 'lost', 'warnings' => []]]);
+
+    expect($run->created_rows)->toBe(0)->and($run->failed_rows)->toBe(0)
+        ->and($workOrder->fresh()->work_order_workflow_status_id)->toBe(globalWorkOrderStatus('closed')->id)
+        ->and(collect($run->report)->where('level', 'warning')->count())->toBe(2);
 });

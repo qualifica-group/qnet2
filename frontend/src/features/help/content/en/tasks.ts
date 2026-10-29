@@ -278,6 +278,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
+          text: "A task created from a **Task Template** may carry a **Work order processing status** (shown in the task detail). When you close it positively (**Complete**, or **Approve** when in validation), the work order moves to that status and its progress rises to the status percentage, if higher. Reopening or rejecting the task does not move the work order back.",
+        },
+        {
+          type: 'note',
           text: "In the Complete dialog the **Log the time entry for all assignees** checkbox is checked by default: the time entry is logged for every assignee, one identical entry each (yourself alone when the task has none). Uncheck it to log it for yourself only. The choice works wherever you complete the task: detail, list, kanban and Sub-tasks panel. On the work order task board (**Complete** on the selected tasks) the same checkbox is **unchecked** by default: the time entry is logged for you only unless you check it.",
         },
         {

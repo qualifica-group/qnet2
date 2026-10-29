@@ -5,9 +5,9 @@ import { MemoryRouter } from 'react-router-dom'
 import axios from 'axios'
 import i18n from '@/i18n'
 import { ConfirmContext } from '@/components/confirm-dialog-context'
-import { fetchWorkOrderFormContext, updateWorkOrder } from '@/features/work-orders/api'
+import { fetchWorkOrderFormContext, updateWorkOrder, workOrderDetailQueryKey } from '@/features/work-orders/api'
 import { WorkOrderDetailView } from '@/features/work-orders/work-order-detail'
-import { WORKFLOW_STATUS_FIELDS } from '@/features/work-orders/work-order-workflow-fixtures'
+import { OPEN_WORKFLOW_STATUS, WORKFLOW_STATUS_FIELDS } from '@/features/work-orders/work-order-workflow-fixtures'
 import type { FieldPermission } from '@/features/authorization/types'
 import type { ApplicableAttributeSummary, WorkOrderDetailWithPermissions } from '@/features/work-orders/types'
 
@@ -109,6 +109,8 @@ function workOrder(overrides: Partial<WorkOrderDetailWithPermissions> = {}): Wor
 
 function renderDetail(record: WorkOrderDetailWithPermissions, onChanged = vi.fn()) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  // The force-close dialog reads the closing statuses from the detail cache the page host fills.
+  client.setQueryData(workOrderDetailQueryKey(record.id), record)
   render(
     <MemoryRouter>
       <QueryClientProvider client={client}>
@@ -260,7 +262,10 @@ describe('WorkOrderDetailView — forced closure as an action (user directive 20
   })
 
   it('force-closes with the reason through the dialog, warning about the open tasks', async () => {
-    const record = workOrder()
+    const closedStatus = { ...OPEN_WORKFLOW_STATUS, id: 9, name: 'Chiusa', group: 'closed' as const, system_key: 'closed' as const }
+    const record = workOrder({
+      work_order_workflow_statuses: [...WORKFLOW_STATUS_FIELDS.work_order_workflow_statuses, closedStatus],
+    })
     vi.mocked(updateWorkOrder).mockResolvedValueOnce({
       ...record,
       is_force_closed: true,
@@ -270,14 +275,18 @@ describe('WorkOrderDetailView — forced closure as an action (user directive 20
     const { onChanged } = renderDetail(record)
 
     fireEvent.click(screen.getByRole('button', { name: label('actions.forceClose') }))
-    expect(screen.getByRole('alert')).toHaveTextContent('2 open tasks will be closed with a negative outcome.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('2 open tasks will be closed with a negative outcome.')
     fireEvent.change(screen.getByRole('textbox', { name: label('workOrders.form.forceCloseReason') }), {
       target: { value: 'Cliente insolvente' },
     })
     fireEvent.click(screen.getByRole('button', { name: label('workOrders.actions.forceClose.submit') }))
 
     await waitFor(() =>
-      expect(updateWorkOrder).toHaveBeenCalledWith(4, { is_force_closed: true, force_close_reason: 'Cliente insolvente' }),
+      expect(updateWorkOrder).toHaveBeenCalledWith(4, {
+        is_force_closed: true,
+        force_close_reason: 'Cliente insolvente',
+        force_close_status_id: 9,
+      }),
     )
     await waitFor(() => expect(onChanged).toHaveBeenCalledOnce())
   })

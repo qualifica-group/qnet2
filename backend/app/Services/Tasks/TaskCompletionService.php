@@ -12,6 +12,8 @@ use App\Models\User;
 use App\Services\Notifications\TaskNotifier;
 use App\Services\TaskService;
 use App\Services\TimeEntries\TimeEntryService;
+use App\Services\WorkOrders\WorkOrderProgressEntryService;
+use App\Services\WorkOrders\WorkOrderWorkflowStatusAssigner;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -55,6 +57,8 @@ final class TaskCompletionService
         private readonly TaskClosureFeedbackGuard $closureFeedbackGuard,
         private readonly TaskNotifier $notifier,
         private readonly TimeEntryService $timeEntryService,
+        private readonly WorkOrderWorkflowStatusAssigner $workOrderStatusAssigner,
+        private readonly WorkOrderProgressEntryService $workOrderProgress,
     ) {}
 
     /**
@@ -111,6 +115,7 @@ final class TaskCompletionService
                 // there is more than one — assertNotBlocked() above already
                 // guarantees `is_blocked` is false here (D-7).
                 $this->notifyClosure($task, $actor, $task->assignees()->count() > 1);
+                $this->advanceWorkOrder($task, $actor);
             }
         });
 
@@ -175,6 +180,7 @@ final class TaskCompletionService
             // goes to richiedente + osservatori alone.
             $this->notifier->validationApproved($task, $actor);
             $this->notifyClosure($task, $actor, includeAssignees: false);
+            $this->advanceWorkOrder($task, $actor);
         });
 
         return $this->taskService->loadDetail($task->fresh());
@@ -205,6 +211,21 @@ final class TaskCompletionService
         });
 
         return $this->taskService->loadDetail($task->fresh());
+    }
+
+    /**
+     * Spec 0323 D-6: a positive closure moves the commessa onto the status the
+     * task carries and lifts its progress to that status' percentage, inside
+     * the closing transaction. Needs no `work-orders.update`: it is a
+     * consequence of the authorised closure.
+     */
+    private function advanceWorkOrder(Task $task, User $actor): void
+    {
+        $status = $this->workOrderStatusAssigner->followCompletedTask($task, $actor);
+
+        if ($status !== null) {
+            $this->workOrderProgress->raiseTo($task->workOrder()->firstOrFail(), $status->progress_percentage, $actor);
+        }
     }
 
     /**

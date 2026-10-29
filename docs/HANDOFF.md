@@ -3,9 +3,114 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Spec 0322 Configuratore Stati Commessa + Stato lavorazione — VERDE, COMMITTATO 929156f6 (2026-10-28)
+## Spec 0323 D-11 Backfill stati commessa sui modelli task gia' importati — VERDE, NON COMMITTATO (2026-10-29)
 
-- Emendamento (VERDE, NON COMMITTATO): righe di sistema `completed`/`closed` rinominate "Chiusa con esito
+- REQUIREMENT CHANGED su 0323 D-9 (utente): rilanciando `task-templates`, un modello gia' importato riceve gli
+  stati mancanti. `Migrations/Support/LegacyTaskTemplateStatusBackfill::fill()` (azioni senza old_id: abbinamento per
+  posizione, ordine id = ordine legacy, solo se titoli e numero coincidono; altrimenti warning "not backfilled").
+  Riempie solo righe con stato null, query update senza activity log; `created` se ha collegato, `skipped` altrimenti.
+  `TaskTemplatesSource::processRow()` -> `backfillStatuses()` riusa `buildTree()`.
+- Test: `TaskTemplatesWorkOrderStatusImportTest` +3 (D-11, AC-023), il helper usa `Http::swap(new Factory)` per un
+  secondo payload nello stesso test. Migration 661/668: i 7 rossi sono i noti users link-only.
+- Dev 2026-10-29: run 76 `task-templates` 41 totali, 18 created, 23 skipped, 0 warning; 285/1314 azioni collegate,
+  confronto con il legacy 1314/1314 identiche.
+- Guide IT/EN `migrations` (nota Modelli di task); parity verde. Manuale Claude Docs rev 499 (paragrafo sorgente
+  Modelli di task).
+- Bug FE trovato in modifica (utente): le select "Stato lavorazione commessa" del board condividevano la cache
+  `useForSelect` (ids fuori dalla chiave) -> solo la prima riga idratava il valore, le altre vuote (305 stati, ISO
+  oltre la prima pagina da 25). Fix: `useWorkOrderStatusLabels(ids)` (wrapper di `useForSelectLabels` in
+  `work-order-status-for-select-api.ts`) + merge delle opzioni fuori pagina; `ids` tolto dalla lista. Test di
+  regressione con due righe nello stesso QueryClient; mock del nuovo hook in items/stages editor test. Vitest
+  task-templates/for-select/tasks 641/641, ESLint ok, tsc -b EXIT 0. Manuale: nessun impatto (bug fix).
+- Prossimo (non fatto): i task gia' importati (364219) non hanno lo snapshot; nel legacy 240402 task con commessa e
+  stato, ~139k non chiusi. Serve lo stesso backfill in `TasksSource` (per old_id, semplice) se si vuole l'automatismo
+  sui task migrati.
+
+## Spec 0324 Stati di chiusura legacy delle commesse — VERDE, NON COMMITTATO (2026-10-29)
+
+- Emenda 0322. Causa: la sorgente `work-order-workflows` creava tutti gli stati legacy `in_progress` e affiancava 3 righe
+  di sistema; run 73 di `work-order-workflow-statuses` saltava 6925 commesse chiuse forzatamente.
+- Legacy (`../qnet`): `app/Support/Migration/LegacyWorkOrderStatusRoles.php` (mappa per `progress.id` validata
+  dall'utente, D-2; primo stato del set = open) usata da `WorkOrderWorkflowMigrationController`: ogni `statuses[]` porta
+  `system_key` (open|completed|closed|null) e `group` (open|in_progress|completed|closed). Verificato con tinker (12 set,
+  nessuna chiave duplicata).
+- qnet-2: `Migrations/Support/LegacyWorkflowStatusAligner::align()` (un percorso per import nuovo e re-run, transaction
+  per set, niente activity log): lo stato legacy con chiave diventa la riga di sistema; la riga di default sostituita
+  viene cancellata dopo aver spostato `work_orders`/`task_template_items`/`tasks`; riga adottata non piu' marcata ->
+  custom; chiave senza riga -> default ripristinata (`WorkOrderWorkflowStatusWriter::restoreMissingSystemRows()`,
+  `resequence()` pubblico). Re-run cambiato = `created`, invariato = `skipped` (MigrationRowOutcome non ha "updated").
+  Nomi/percentuali gia' importati non cambiano. Set globale mai toccato.
+- `WorkOrderWorkflowStatusesSource` (D-5): commessa chiusa forzatamente riceve lo stato legacy se del set e gruppo
+  completed/closed; stato di lavoro -> skipped + warning.
+- Chiusura forzata (D-6): `force_close_status_id` (nullable|integer, Store+Update, DTO `forceCloseStatusId`) ->
+  `WorkOrderWorkflowStatusAssigner::followForceClose()`: stato del set con gruppo closed, altrimenti 422
+  `work_orders.workflow_status.force_close_status_invalid`; assente = riga chiave closed; ignorato senza transizione.
+  Riapertura (D-7) da qualsiasi stato closed -> open. Cambio set (D-8, `WorkOrderWorkflowResolver::targetStatus`):
+  custom completed/closed -> riga con la chiave del gruppo.
+- FE: `work-order-force-close-dialog.tsx` campo obbligatorio "Stato di chiusura" (stati `group === 'closed'` del dettaglio,
+  default `system_key === 'closed'`, form montato a dettaglio caricato), `forceClosePayload(reason, statusId)`; i18n
+  `workOrders.actions.forceClose.status|statusPlaceholder`, `workOrders.form.forceCloseStatusRequired`.
+- Manuale: guide IT/EN `work-orders` (force-close, processing-status) e `work-order-workflows`; Claude Docs rev 498
+  (paragrafo chiusura forzata/stati e sorgente "Commesse — workflow").
+- DB dev 2026-10-29: il DB era stato ripristinato a un dump del 26/10 lasciando le 3 tabelle workflow; registrate in
+  `migrations` (batch 9) e lanciato `migrate` (0322 work_orders + rename + 0323). Stati delle commesse del 28/10 persi.
+- AC-017 fatto su dev (2026-10-29): run 74 `work-order-workflows` 12/12 riallineati (28 righe di default tolte, restano
+  le `closed` di default in 8 set); run 75 `work-order-workflow-statuses` 8958: 3571 created, 4821 skipped (3322 chiuse
+  con stato di lavoro, 50 fuori set, 1449 gia' sullo stato), 566 failed (546 orfane legacy, 20 non migrate).
+  Commesse chiuse forzatamente: 3525 positive, 7155 negative (7109 sulla riga di default).
+- Emendamento D-9/D-10 (utente 2026-10-29): l'esito sta in legacy `orders.status` (3 Chiusa -> `closing_group`
+  completed, 4 Annullata/5 Disdetta -> closed). Legacy `WorkOrderWorkflowStatusMigrationController` parte da `orders`
+  (left join all'ultimo `orderisos` valido) e include le chiuse senza stato (`status_id` null). Sorgente:
+  `closingTarget()` (completed tiene stato legacy completed/closed, altrimenti riga chiave completed; closed tiene solo
+  closed, altrimenti riga chiave closed anche se positivo), `plainTarget()` = D-5 per `closing_group` null.
+  Verifier verde (feed 12708 = 10693 chiuse + 1469 + 546 orfane; test sorgente 18/18).
+  Run 77 su dev: 12708, 7269 created, 4851 skipped, 588 failed (546 orfane, 42 commesse non migrate). Chiuse forzatamente:
+  8407 positive, 2273 negative; 27 "Chiusa (legacy)" restano negative perche' nel legacy sono tornate in Lavorazione dopo
+  il dump del 26/10 (si sistemano reimportando le commesse).
+- Prossimo: modelli task e task per il collegamento 0323. Un'altra sessione sta modificando `TaskTemplatesSource.php`
+  (riempimento degli stati mancanti al re-run, manuale rev 499).
+- Verifier: BE 12844 test, 16 problemi tutti noti (users-source link-only, LibreOffice, ManagementControl,
+  TableBulkDelete) + `DemoOpportunitySeederTest` flaky (passa da solo); mirati 0324 45/45; Vitest 9471 test, unico
+  rosso `contract-program-dialog.test.tsx` (regressione 0323: `refresh-work-order-data.ts` leggeva `WORK_ORDERS_DOMAIN`
+  al caricamento del modulo, mock parziale) -> corretto spostando le chiavi dentro la funzione, 100 file/790 test verdi;
+  tsc EXIT 0, ESLint/Pint puliti. AC-001..016 PASS, AC-017 operativo in attesa.
+- Segnalato: `WorkOrderService.php` 438 righe (invariato), `WorkOrderWorkflowsSource.php` 278; il report di migrazione
+  conta i set riallineati come "created".
+
+## Spec 0323 Modelli task -> Stato lavorazione commessa — VERDE, NON COMMITTATO (2026-10-28)
+
+- Come il legacy (`TaskServizi::markasdoneupdate` / `Manageorder::updateStatoConsulenza`): riga del modello
+  `task_template_items.work_order_workflow_status_id` (FK nullOnDelete, qualsiasi set) -> copiata dal
+  `WorkOrderTaskGenerator` su `tasks.work_order_workflow_status_id` (snapshot, FUORI Fillable, ignorata da POST/PATCH task).
+- Automatismo (D-6): chiusura positiva (`TaskCompletionService::complete()` ramo chiusura + `approve()`, anche massiva)
+  -> `WorkOrderWorkflowStatusAssigner::followCompletedTask()` (salta: niente commessa/stato, commessa chiusa forzatamente,
+  stato fuori dal set risolto D-1; applica anche "all'indietro", log causer attore) + `WorkOrderProgressEntryService::raiseTo()`
+  (delta solo se % stato > SUM, oggi, attore). Stessa transaction. Uncomplete/reject: nulla.
+- Manuale (D-2/D-8): `WorkOrderService::update()` -> `applyManualStatusProgress()` solo se lo stato inviato cambia davvero:
+  % > 0 e <= avanzamento -> 422 `work_order_workflow_status_id` (lang `work_orders.workflow_status.progress_not_above_current`),
+  % > avanzamento -> delta; non su create, ricalcolo righe, followForceClose, commessa chiusa forzatamente.
+- API: `GET /api/work-order-workflow-statuses/for-select` (ADR 0011, solo auth; shape piatta id, name, color,
+  progress_percentage, system_key, work_order_workflow_id, work_order_workflow_name; default set prima, poi workflow per nome;
+  inattivi solo via `ids`). `TaskTemplateItemResource` + `work_order_workflow_status(_id)`; `TaskResource` +
+  `work_order_workflow_status` read-only.
+- Migrazione: legacy invia `work_order_workflow_status_old_id` (`LegacyProgressReference`: 0/''/1000/inesistente -> null,
+  provato con tinker) da TaskTemplateMigrationController e TaskMigrationController; qnet-2 `LegacyWorkOrderStatusLink`
+  (warning se old_id non migrato). `task-templates` spostata in fase 6 (dopo `work-order-workflows`). I 1314 modelli gia'
+  importati su qnet2 NON hanno il collegamento (idempotenza per modello): serve reimport se lo si vuole in dev.
+- FE: select raggruppata per workflow con % (`task-template-item-work-order-status-select.tsx`, senza swatch: SearchableSelect
+  non supporta gruppi/icone, eventuale estensione = ui-design), badge in dettaglio modello e task, refresh commessa dopo
+  complete/approve/bulk (`features/work-orders/refresh-work-order-data.ts`). EN label "Work order processing status".
+- Guide IT/EN task-templates, tasks, work-orders (processing-status), work-order-workflows; manuale Claude Docs aggiornato.
+- Verifica (verifier indipendente): artisan test --parallel 12803/12819, 15 fallimenti tutti noti (TableBulkDelete 1,
+  ManagementControl 4, users migration 7 per EXTERNAL_MIGRATION_USERS_LINK_ONLY, PDF 3); Vitest 9466/9467 (purchase-request
+  timeout sotto carico, passa da solo); tsc -b EXIT 0; ESLint/Pint ok; AC-001..022 PASS.
+- Segnalato: `TaskService.php` 492 righe (vicino al limite 500), `WorkOrderService.php` 438, `TaskCompletionService.php` 391,
+  `WorkOrderTaskGenerator.php` 313; il manuale cita "Nuovo task > Da modello..." che non esiste nel codice;
+  HANDOFF.md ~880 KB (oltre la soglia 50 KB: va archiviato).
+
+## Spec 0322 Configuratore Stati Commessa + Stato lavorazione — VERDE, COMMITTATO 929156f6 + a74e1bb1 (2026-10-28)
+
+- Emendamento (VERDE, COMMITTATO a74e1bb1): righe di sistema `completed`/`closed` rinominate "Chiusa con esito
   positivo"/"Chiusa con esito negativo" (migrazione 2026_10_28_100400, gia' applicata su qnet2). La chiusura forzata
   porta lo Stato lavorazione su `closed`, la riapertura torna su `open` se ancora su `closed`
   (`WorkOrderWorkflowStatusAssigner::followForceClose`); la sorgente stati salta le commesse chiuse forzatamente.
@@ -17,7 +122,7 @@
   `system_key` open|completed|closed, group = valori di `Enums\WorkOrderStatus`, set globale = `work_order_workflow_id`
   NULL con Aperta/Completata/Chiusa). `work_orders.work_order_workflow_status_id` NOT NULL FK restrict, fuori Fillable.
 - Lo stato calcolato (spec 0149/0321) NON cambia: "Stato lavorazione" e' un campo separato; `progress_percentage`
-  per ora non muove l'avanzamento (aggancio task -> avanzamento = spec successiva, legacy
+  muove l'avanzamento dalla spec 0323 (aggancio task -> avanzamento, legacy
   `TaskServizi::markasdoneupdate` / `Manageorder::updateStatoConsulenza`).
 - Risoluzione: `Services\WorkOrders\WorkOrderWorkflowResolver` su righe REVENUE programmate (`quoteLines`), funzione
   aziendale EFFETTIVA (`CategoryHierarchy`); criteri business_function_id / product_category_id /

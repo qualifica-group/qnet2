@@ -158,7 +158,7 @@ class TaskTemplateService
      */
     private function loadDetail(TaskTemplate $taskTemplate): TaskTemplate
     {
-        return $taskTemplate->load(['stages', 'items.taskStatus', 'items.attachments']);
+        return $taskTemplate->load(['stages', 'items.taskStatus', 'items.workOrderWorkflowStatus.workflow', 'items.attachments']);
     }
 
     /**

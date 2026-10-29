@@ -42,6 +42,7 @@ const guide: HelpGuide = {
             ['Estimated time (min)', 'Optional.'],
             ['Due (days from Commessa start)', "How many days after the Commessa's start date the task is due."],
             ['Initial status', 'The status the task is created with.'],
+            ['Work order processing status', "Optional. The processing status the work order takes when the generated task is closed positively. The options are the statuses of every set in the **Work Order Status Configurator**, grouped by set, with their progress %."],
             ['Attachments', 'Files to attach to the generated task.'],
           ],
         },
@@ -118,6 +119,10 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: "A template is picked with the **Schedule** action on the contract, when generating the Commessa: QNet creates the template's tasks and assigns them to the owners (without owners the tasks stay unassigned). You find them in the Commessa's Task section. The created tasks get the default type, priority and importance (set under **Task Types**, **Task Priorities** and **Task Importances**); you can change them on each task.",
+        },
+        {
+          type: 'note',
+          text: "Each task created from a row with a **Work order processing status** keeps a copy of it, shown in the task detail. When the task is closed positively (with **Complete**, or **Approve** when it needs validation), the work order moves to that **Processing status** and, if the status progress % is above the progress already reached, the progress rises to that percentage. If the status does not belong to the work order's set, or the work order is force-closed, the work order does not change. Editing the template row later does not change tasks already created.",
         },
       ],
     },

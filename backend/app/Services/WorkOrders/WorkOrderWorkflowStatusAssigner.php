@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\WorkOrders;
 
+use App\Enums\WorkOrderStatus;
 use App\Enums\WorkOrderWorkflowStatusSystemKey;
+use App\Models\Task;
+use App\Models\User;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderWorkflowStatus;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
@@ -23,6 +27,8 @@ use Illuminate\Validation\ValidationException;
 final class WorkOrderWorkflowStatusAssigner
 {
     private const string FIELD = 'work_order_workflow_status_id';
+
+    private const string FORCE_CLOSE_FIELD = 'force_close_status_id';
 
     private const string LOG_DESCRIPTION = 'Work order working status change';
 
@@ -85,12 +91,16 @@ final class WorkOrderWorkflowStatusAssigner
     }
 
     /**
-     * Follow a force-close transition (spec 0322 amendment): closing moves the
-     * commessa onto the `closed` row ("Chiusa con esito negativo") of its
-     * resolved set; reopening moves it back onto `open` only while it still
-     * sits on that `closed` row, so a status picked by hand meanwhile stays.
+     * Follow a force-close transition (spec 0322 amendment, spec 0324 D-6/D-7):
+     * closing moves the commessa onto $forceCloseStatusId when given (it must
+     * be a `closed`-group row of its resolved set, else a 422) or onto the
+     * `closed` system row; reopening moves it onto `open` when it sits on ANY
+     * `closed`-group row, so a positive or working status stays. The chosen
+     * status is ignored when there is no closing transition.
+     *
+     * @throws ValidationException $forceCloseStatusId is not a closed-group status of the set
      */
-    public function followForceClose(WorkOrder $workOrder, bool $wasForceClosed, bool $logChange): void
+    public function followForceClose(WorkOrder $workOrder, bool $wasForceClosed, bool $logChange, ?int $forceCloseStatusId = null): void
     {
         $isForceClosed = (bool) $workOrder->is_force_closed;
 
@@ -102,31 +112,104 @@ final class WorkOrderWorkflowStatusAssigner
         $workOrder->unsetRelation('quoteLines');
         $previousStatusId = $workOrder->work_order_workflow_status_id;
         $statuses = $this->resolver->statusesFor($this->resolver->resolve($workOrder));
-        $closedId = $statuses->firstWhere('system_key', WorkOrderWorkflowStatusSystemKey::Closed->value)?->id;
 
-        // Step 2: closing lands on `closed`; reopening leaves `closed` for `open`.
-        $targetKey = match (true) {
-            $isForceClosed => WorkOrderWorkflowStatusSystemKey::Closed,
-            $previousStatusId === $closedId => WorkOrderWorkflowStatusSystemKey::Open,
-            default => null,
-        };
-
-        if ($targetKey === null) {
-            return;
-        }
-
-        $target = $statuses->firstWhere('system_key', $targetKey->value);
+        // Step 2: closing lands on the chosen/keyed closed row; reopening leaves any closed row for `open`.
+        $target = $isForceClosed
+            ? $this->closingStatus($statuses, $forceCloseStatusId)
+            : $this->reopenStatus($statuses, $previousStatusId);
 
         if ($target === null) {
-            // Defense in depth: every set is seeded with its three system rows.
-            abort(500, 'The work order workflow status set has no '.$targetKey->value.' system row.');
+            return;
         }
 
         // Step 3: persist and trace.
         $this->persist($workOrder, $previousStatusId, $target->id, $logChange);
     }
 
-    private function persist(WorkOrder $workOrder, ?int $previousStatusId, int $targetId, bool $logChange): void
+    /**
+     * @param  Collection<int, WorkOrderWorkflowStatus>  $statuses
+     */
+    private function closingStatus(Collection $statuses, ?int $forceCloseStatusId): WorkOrderWorkflowStatus
+    {
+        if ($forceCloseStatusId === null) {
+            return $this->systemRow($statuses, WorkOrderWorkflowStatusSystemKey::Closed);
+        }
+
+        $chosen = $statuses->firstWhere('id', $forceCloseStatusId);
+
+        if ($chosen === null || $chosen->group !== WorkOrderStatus::Closed) {
+            throw ValidationException::withMessages([
+                self::FORCE_CLOSE_FIELD => [__('work_orders.workflow_status.force_close_status_invalid')],
+            ]);
+        }
+
+        return $chosen;
+    }
+
+    /**
+     * @param  Collection<int, WorkOrderWorkflowStatus>  $statuses
+     */
+    private function reopenStatus(Collection $statuses, ?int $previousStatusId): ?WorkOrderWorkflowStatus
+    {
+        $current = $statuses->firstWhere('id', $previousStatusId);
+
+        if ($current?->group !== WorkOrderStatus::Closed) {
+            return null;
+        }
+
+        return $this->systemRow($statuses, WorkOrderWorkflowStatusSystemKey::Open);
+    }
+
+    /**
+     * @param  Collection<int, WorkOrderWorkflowStatus>  $statuses
+     */
+    private function systemRow(Collection $statuses, WorkOrderWorkflowStatusSystemKey $key): WorkOrderWorkflowStatus
+    {
+        $row = $statuses->firstWhere('system_key', $key->value);
+
+        if ($row === null) {
+            // Defense in depth: every set is seeded with its three system rows.
+            abort(500, 'The work order workflow status set has no '.$key->value.' system row.');
+        }
+
+        return $row;
+    }
+
+    /**
+     * Spec 0323 D-6/D-1: a task that just closed positively moves its commessa
+     * onto the status it carries, even "backwards" (legacy). Returns the
+     * status applied, or null when nothing applies (no commessa/status, force
+     * closed, or a status outside the commessa's resolved set).
+     */
+    public function followCompletedTask(Task $task, User $actor): ?WorkOrderWorkflowStatus
+    {
+        // Step 1: the task must carry both a commessa and a status.
+        if ($task->work_order_id === null || $task->work_order_workflow_status_id === null) {
+            return null;
+        }
+
+        $workOrder = WorkOrder::query()->find($task->work_order_id);
+
+        if ($workOrder === null || $workOrder->is_force_closed) {
+            return null;
+        }
+
+        // Step 2: D-1, a status outside the resolved set is ignored.
+        $workOrder->unsetRelation('quoteLines');
+        $statuses = $this->resolver->statusesFor($this->resolver->resolve($workOrder));
+        $status = $statuses->firstWhere('id', $task->work_order_workflow_status_id);
+
+        if ($status === null) {
+            return null;
+        }
+
+        // Step 3: persist and trace, caused by the actor.
+        $this->persist($workOrder, $workOrder->work_order_workflow_status_id, $status->id, true, $actor);
+
+        return $status;
+    }
+
+    private function persist(WorkOrder $workOrder, ?int $previousStatusId, int $targetId, bool $logChange, ?User $causer = null): void
     {
         if ($targetId === $previousStatusId) {
             return;
@@ -136,15 +219,15 @@ final class WorkOrderWorkflowStatusAssigner
         $workOrder->unsetRelation('workOrderWorkflowStatus');
 
         if ($logChange) {
-            $this->logChange($workOrder, $previousStatusId, $targetId);
+            $this->logChange($workOrder, $previousStatusId, $targetId, $causer ?? Auth::user());
         }
     }
 
-    private function logChange(WorkOrder $workOrder, ?int $previousStatusId, int $currentStatusId): void
+    private function logChange(WorkOrder $workOrder, ?int $previousStatusId, int $currentStatusId, ?User $causer): void
     {
         activity($workOrder->getTable())
             ->performedOn($workOrder)
-            ->causedBy(Auth::user())
+            ->causedBy($causer)
             ->event('updated')
             ->withProperties([
                 'attributes' => [self::FIELD => $currentStatusId],

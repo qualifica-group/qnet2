@@ -93,6 +93,15 @@ class TaskResource extends JsonResource
             // longer owns.
             'work_order_stage_id' => $this->work_order_stage_id,
             'work_order_stage' => $this->nameRef($this->workOrderStage),
+            // Spec 0323, D-4: read-only snapshot copied by the generator.
+            'work_order_workflow_status' => $this->workOrderWorkflowStatus === null
+                ? null
+                : [
+                    'id' => $this->workOrderWorkflowStatus->id,
+                    'name' => $this->workOrderWorkflowStatus->name,
+                    'color' => $this->workOrderWorkflowStatus->color,
+                    'progress_percentage' => $this->workOrderWorkflowStatus->progress_percentage,
+                ],
             'requester_id' => $this->requester_id,
             'requester' => $this->nameRef($this->requester),
             'creator' => $this->nameRef($this->creator),

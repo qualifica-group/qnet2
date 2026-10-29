@@ -27,6 +27,9 @@ namespace App\DataObjects\TaskTemplates;
  * no stage on a sub-item, offset within the parent's) by Http\Requests\
  * TaskTemplates\Concerns\ValidatesTaskTemplateItemTree before this DTO is
  * trusted.
+ *
+ * `workOrderWorkflowStatusId` (spec 0323, D-4/D-5): the optional work order
+ * workflow status this row's generated task moves the Commessa to on close.
  */
 final readonly class TaskTemplateItemData
 {
@@ -40,6 +43,7 @@ final readonly class TaskTemplateItemData
         public ?string $stageKey = null,
         public ?string $key = null,
         public ?string $parentKey = null,
+        public ?int $workOrderWorkflowStatusId = null,
     ) {}
 
     /**
@@ -59,6 +63,7 @@ final readonly class TaskTemplateItemData
             stageKey: isset($row['stage_key']) ? (string) $row['stage_key'] : null,
             key: isset($row['key']) ? (string) $row['key'] : null,
             parentKey: isset($row['parent_key']) ? (string) $row['parent_key'] : null,
+            workOrderWorkflowStatusId: isset($row['work_order_workflow_status_id']) ? (int) $row['work_order_workflow_status_id'] : null,
         );
     }
 
@@ -92,6 +97,7 @@ final readonly class TaskTemplateItemData
             'title' => $this->title,
             'estimated_minutes' => $this->estimatedMinutes,
             'task_status_id' => $this->taskStatusId,
+            'work_order_workflow_status_id' => $this->workOrderWorkflowStatusId,
             'due_offset_days' => $this->dueOffsetDays,
             'sort_order' => $sortOrder,
             'task_template_stage_id' => $this->stageKey === null ? null : ($stageIdsByKey[$this->stageKey] ?? null),

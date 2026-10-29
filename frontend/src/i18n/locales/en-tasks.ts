@@ -148,6 +148,7 @@ export const tasks = {
     referent: 'Contact',
     opportunity: 'Opportunity',
     workOrder: 'Work order',
+    workOrderWorkflowStatus: 'Work order processing status',
     requiresClosureFeedback: 'Requires a closure feedback',
     requiresValidation: 'Requires validation',
     closureFeedback: 'Closure feedback',

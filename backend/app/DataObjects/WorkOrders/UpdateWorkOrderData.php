@@ -54,6 +54,7 @@ final readonly class UpdateWorkOrderData
         public ?array $participantSlots = null,
         public ?array $attributeValues = null,
         public ?int $workOrderWorkflowStatusId = null,
+        public ?int $forceCloseStatusId = null,
     ) {}
 
     /**
@@ -86,6 +87,7 @@ final readonly class UpdateWorkOrderData
             workOrderWorkflowStatusId: isset($data['work_order_workflow_status_id'])
                 ? (int) $data['work_order_workflow_status_id']
                 : null,
+            forceCloseStatusId: isset($data['force_close_status_id']) ? (int) $data['force_close_status_id'] : null,
         );
     }
 

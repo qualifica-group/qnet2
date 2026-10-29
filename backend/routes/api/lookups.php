@@ -34,6 +34,7 @@ use App\Http\Controllers\VatRates\VatRateForSelectController;
 use App\Http\Controllers\WorkOrderPaymentStatuses\WorkOrderPaymentStatusController;
 use App\Http\Controllers\WorkOrderPaymentStatuses\WorkOrderPaymentStatusForSelectController;
 use App\Http\Controllers\WorkOrderWorkflows\WorkOrderWorkflowController;
+use App\Http\Controllers\WorkOrderWorkflows\WorkOrderWorkflowStatusForSelectController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -127,6 +128,9 @@ Route::get('work-order-workflows/{workOrderWorkflow}', [WorkOrderWorkflowControl
 Route::post('work-order-workflows', [WorkOrderWorkflowController::class, 'store']);
 Route::match(['put', 'patch'], 'work-order-workflows/{workOrderWorkflow}', [WorkOrderWorkflowController::class, 'update']);
 Route::delete('work-order-workflows/{workOrderWorkflow}', [WorkOrderWorkflowController::class, 'destroy']);
+
+// Spec 0323: every workflow status, for the task template row picker. Only auth:sanctum (ADR 0011).
+Route::get('work-order-workflow-statuses/for-select', WorkOrderWorkflowStatusForSelectController::class);
 
 // Reward types CRUD (spec 0058): a pure anagraphic (name/color) describing
 // the TYPES of voucher/reward/incentive usable in the CRM (BR-3: no

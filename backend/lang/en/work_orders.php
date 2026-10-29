@@ -15,4 +15,8 @@ return [
     'progress' => [
         'percentage_not_above_current' => 'The total must be greater than the progress reached.',
     ],
+    'workflow_status' => [
+        'force_close_status_invalid' => 'The closing status must be a "Closed with negative outcome" status of the work order\'s working status set.',
+        'progress_not_above_current' => 'The status brings the progress to :percentage%, which does not exceed the progress already reached (:current%).',
+    ],
 ];

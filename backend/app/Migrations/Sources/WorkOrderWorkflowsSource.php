@@ -4,10 +4,12 @@ namespace App\Migrations\Sources;
 
 use App\DataObjects\WorkOrderWorkflows\CreateWorkOrderWorkflowData;
 use App\Enums\WorkOrderStatus;
+use App\Enums\WorkOrderWorkflowStatusSystemKey;
 use App\Migrations\AbstractMigrationSource;
 use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
+use App\Migrations\Support\LegacyWorkflowStatusAligner;
 use App\Models\BusinessFunction;
 use App\Models\ProductCategory;
 use App\Models\WorkOrderWorkflow;
@@ -23,19 +25,24 @@ use RuntimeException;
  * function and optional category as legacy ids, statuses in order). Each record
  * becomes ONE active workflow whose criteria are the business function and, when
  * sent, the category branch; its statuses are custom rows in the `in_progress`
- * group carrying the legacy `progress.id` as `old_id` (the writer adds the
- * system rows).
+ * group carrying the legacy `progress.id` as `old_id`. The legacy also sends each
+ * status `group` and, for at most one status per key, a `system_key`
+ * (open|completed|closed): that status IS the set's system row of the key
+ * (spec 0324, D-3); keys the legacy does not send keep the writer's default row.
  *
- * Only looked up and written: an unresolved function or category, or a
- * percentage outside 0..100, fails the row with nothing written. A workflow with
- * the same criteria signature, or whose statuses were already imported, is
- * skipped. Written without activity log.
+ * Only looked up and written: an unresolved function or category, a percentage
+ * outside 0..100 or an invalid `system_key`/`group` fails the row with nothing
+ * written. A workflow with the same criteria signature is skipped. A re-run on a
+ * set already imported realigns it to the legacy (D-4) and is skipped when
+ * nothing changes. Written without activity log.
  */
 class WorkOrderWorkflowsSource extends AbstractMigrationSource
 {
     private const int MIN_PERCENTAGE = 0;
 
     private const int MAX_PERCENTAGE = 100;
+
+    private ?LegacyWorkflowStatusAligner $aligner = null;
 
     public function key(): string
     {
@@ -109,9 +116,13 @@ class WorkOrderWorkflowsSource extends AbstractMigrationSource
         $statuses = $this->validatedStatuses($record['statuses'] ?? []);
         $warnings = array_map('strval', (array) ($record['warnings'] ?? []));
 
-        // Step 2: a re-run never touches statuses already imported
-        if ($statuses !== [] && WorkOrderWorkflowStatus::query()->whereIn('old_id', array_column($statuses, 'old_id'))->exists()) {
-            return MigrationRowOutcome::skipped($warnings);
+        // Step 2: a set already imported is realigned to the legacy, never recreated
+        $importedWorkflowId = $this->importedWorkflowId($statuses);
+
+        if ($importedWorkflowId !== null) {
+            return $this->aligner()->align($importedWorkflowId, $statuses)
+                ? MigrationRowOutcome::created($warnings)
+                : MigrationRowOutcome::skipped($warnings);
         }
 
         // Step 3: resolve the criteria; an unresolved one fails the row
@@ -127,7 +138,7 @@ class WorkOrderWorkflowsSource extends AbstractMigrationSource
             return MigrationRowOutcome::skipped($warnings);
         }
 
-        // Step 5: create the workflow and stamp the legacy ids, without activity log
+        // Step 5: create the workflow, stamp the legacy ids and adopt the system keys, without activity log
         activity()->withoutLogs(fn () => $this->createWorkflow($name, $criteria, $statuses));
 
         return MigrationRowOutcome::created($warnings);
@@ -154,8 +165,31 @@ class WorkOrderWorkflowsSource extends AbstractMigrationSource
         return $criteria;
     }
 
+    private function aligner(): LegacyWorkflowStatusAligner
+    {
+        return $this->aligner ??= app(LegacyWorkflowStatusAligner::class);
+    }
+
     /**
-     * @return list<array{old_id: int, name: string, progress_percentage: ?int}>
+     * The workflow already holding any of the legacy statuses, or null for a set never imported.
+     * Statuses of the global default set do not count: it is never touched.
+     *
+     * @param  list<array{old_id: int}>  $statuses
+     */
+    private function importedWorkflowId(array $statuses): ?int
+    {
+        if ($statuses === []) {
+            return null;
+        }
+
+        return WorkOrderWorkflowStatus::query()
+            ->whereIn('old_id', array_column($statuses, 'old_id'))
+            ->whereNotNull('work_order_workflow_id')
+            ->value('work_order_workflow_id');
+    }
+
+    /**
+     * @return list<array{old_id: int, name: string, progress_percentage: ?int, system_key: ?string, group: string}>
      */
     private function validatedStatuses(mixed $statuses): array
     {
@@ -164,6 +198,7 @@ class WorkOrderWorkflowsSource extends AbstractMigrationSource
         }
 
         $validated = [];
+        $usedKeys = [];
 
         foreach (array_values($statuses) as $position => $status) {
             $number = $position + 1;
@@ -178,7 +213,27 @@ class WorkOrderWorkflowsSource extends AbstractMigrationSource
                 throw new RuntimeException("Status {$number}: progress_percentage must be null or an integer between ".self::MIN_PERCENTAGE.' and '.self::MAX_PERCENTAGE.'.');
             }
 
-            $validated[] = ['old_id' => $status['id'], 'name' => $name, 'progress_percentage' => $percentage];
+            $systemKey = $status['system_key'] ?? null;
+            $group = $status['group'] ?? null;
+
+            if ($systemKey !== null && ! in_array($systemKey, WorkOrderWorkflowStatusSystemKey::values(), true)) {
+                throw new RuntimeException("Status {$number}: unknown system_key.");
+            }
+
+            if (! is_string($group) || WorkOrderStatus::tryFrom($group) === null) {
+                throw new RuntimeException("Status {$number}: unknown group.");
+            }
+
+            if ($systemKey !== null && $systemKey !== $group) {
+                throw new RuntimeException("Status {$number}: system_key must equal group.");
+            }
+
+            if ($systemKey !== null && in_array($systemKey, $usedKeys, true)) {
+                throw new RuntimeException("Status {$number}: system_key \"{$systemKey}\" is already used by another status of the set.");
+            }
+
+            $usedKeys[] = $systemKey;
+            $validated[] = ['old_id' => $status['id'], 'name' => $name, 'progress_percentage' => $percentage, 'system_key' => $systemKey, 'group' => $group];
         }
 
         return $validated;
@@ -195,7 +250,7 @@ class WorkOrderWorkflowsSource extends AbstractMigrationSource
 
     /**
      * @param  array<int, array{field: string, value_id: int}>  $criteria
-     * @param  list<array{old_id: int, name: string, progress_percentage: ?int}>  $statuses
+     * @param  list<array{old_id: int, name: string, progress_percentage: ?int, system_key: ?string, group: string}>  $statuses
      */
     private function createWorkflow(string $name, array $criteria, array $statuses): void
     {
@@ -207,7 +262,7 @@ class WorkOrderWorkflowsSource extends AbstractMigrationSource
                 'name' => $status['name'],
                 'description' => null,
                 'color' => null,
-                'group' => WorkOrderStatus::InProgress->value,
+                'group' => $status['group'],
                 'progress_percentage' => $status['progress_percentage'],
             ], $statuses),
         ]));
@@ -217,5 +272,7 @@ class WorkOrderWorkflowsSource extends AbstractMigrationSource
         foreach ($statuses as $index => $status) {
             $customs[$index]->forceFill(['old_id' => $status['old_id']])->save();
         }
+
+        $this->aligner()->align($workflow->id, $statuses);
     }
 }

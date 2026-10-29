@@ -50,15 +50,15 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Every set is created with three fixed statuses: **Open** first, **Closed (won)** and **Closed (lost)** last. In between you add statuses with **Add status** and reorder them by dragging. For each one you set **Status name**, **Group** (Open, In progress, Closed (won), Closed (lost)), **Status description** and **progress %** (0 to 100). For the fixed statuses you can change name, description, color and progress %, not the group. Force-closing a work order moves it to **Closed (lost)**; reopening it moves it back to **Open**.',
+          text: 'Every set is created with three fixed statuses: **Open** first, **Closed (won)** and **Closed (lost)** last. In between you add statuses with **Add status** and reorder them by dragging. For each one you set **Status name**, **Group** (Open, In progress, Closed (won), Closed (lost)), **Status description** and **progress %** (0 to 100). For the fixed statuses you can change name, description, color and progress %, not the group. You can have several statuses in the **Closed (won)** and **Closed (lost)** groups: the fixed status is the main one of its group. When you force-close a work order you pick one of the **Closed (lost)** statuses of its set (the fixed one is proposed); reopening it moves it back to **Open**.',
         },
         {
           type: 'paragraph',
-          text: 'Work orders with no active set use the **Global default statuses**, editable with **Default statuses**.',
+          text: 'Work orders with no active set use the **Global default statuses**, editable with **Default statuses**. In the sets imported from the legacy QNet the fixed statuses are legacy statuses: Open is the first status of the set, and the legacy positive and negative closings sit in their groups; where the legacy has no negative closing the fixed **Closed (lost)** status stays.',
         },
         {
           type: 'note',
-          text: 'In this release the **progress %** is only configured and displayed data: picking a work order status does not move its progress percentage.',
+          text: "The **progress %** moves the work order progress: when the work order moves to a status (by hand or when a task linked by a **Task Template** is closed), the progress rises to that percentage if it is higher than the one reached. By hand you cannot pick a status whose percentage is above zero but not above the progress reached. Statuses can be linked to **Task Template** rows.",
         },
       ],
     },

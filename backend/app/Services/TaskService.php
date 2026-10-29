@@ -95,6 +95,7 @@ class TaskService
         'opportunity',
         'workOrder',
         'workOrderStage',
+        'workOrderWorkflowStatus',
         'requester',
         'creator',
         'parentTask',

@@ -19,6 +19,7 @@ function itemRow(overrides: Partial<TaskTemplateItemFormRow> = {}): TaskTemplate
     description: null,
     estimated_minutes: 30,
     task_status_id: null,
+    work_order_workflow_status_id: null,
     due_offset_days: 2,
     stage_key: null,
     parent_key: null,
@@ -39,8 +40,8 @@ describe('buildCreatePayload (spec 0124/0146)', () => {
       description: 'Used for new clients',
       is_active: true,
       items: [
-        { title: 'First', description: null, estimated_minutes: 30, task_status_id: null, due_offset_days: 2, stage_key: null, key: 'row-1', parent_key: null },
-        { title: 'Second', description: null, estimated_minutes: 30, task_status_id: null, due_offset_days: 2, stage_key: null, key: 'row-2', parent_key: null },
+        { title: 'First', description: null, estimated_minutes: 30, task_status_id: null, work_order_workflow_status_id: null, due_offset_days: 2, stage_key: null, key: 'row-1', parent_key: null },
+        { title: 'Second', description: null, estimated_minutes: 30, task_status_id: null, work_order_workflow_status_id: null, due_offset_days: 2, stage_key: null, key: 'row-2', parent_key: null },
       ],
       stages: [],
     })
@@ -82,6 +83,7 @@ describe('buildBoardUpdatePayload (spec 0227 D-3, full sync of spec 0124/0146 D-
         description: null,
         estimated_minutes: 30,
         task_status_id: null,
+        work_order_workflow_status_id: null,
         due_offset_days: 2,
         stage_key: null,
         key: 'row-1',

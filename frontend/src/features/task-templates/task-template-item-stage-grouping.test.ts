@@ -14,6 +14,7 @@ function row(overrides: Partial<TaskTemplateItemFormRow> = {}): TaskTemplateItem
     description: null,
     estimated_minutes: null,
     task_status_id: null,
+    work_order_workflow_status_id: null,
     due_offset_days: 0,
     stage_key: null,
     parent_key: null,

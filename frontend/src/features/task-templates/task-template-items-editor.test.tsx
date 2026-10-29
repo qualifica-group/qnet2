@@ -22,6 +22,19 @@ vi.mock('@/features/task-statuses/for-select-api', () => ({
 vi.mock('@/features/attachments/documents-section', () => ({
   DocumentsSection: () => null,
 }))
+vi.mock('@/features/task-templates/work-order-status-for-select-api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/task-templates/work-order-status-for-select-api')>()),
+  useWorkOrderStatusesForSelect: () => ({
+    data: { pages: [{ items: [] }] },
+    isPending: false,
+    isError: false,
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    refetch: vi.fn(),
+    fetchNextPage: vi.fn(),
+  }),
+  useWorkOrderStatusLabels: () => new Map(),
+}))
 
 // Tiptap itself is covered end to end by rich-text-editor.test.tsx; only the
 // WIRING matters here, so a native control stands in — labelled via the same
@@ -54,6 +67,7 @@ const ROW: TaskTemplateItemFormRow = {
   description: null,
   estimated_minutes: null,
   task_status_id: null,
+  work_order_workflow_status_id: null,
   due_offset_days: 0,
   stage_key: null,
   parent_key: null,

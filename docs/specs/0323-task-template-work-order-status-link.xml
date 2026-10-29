@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<spec id="0323-task-template-work-order-status-link" status="draft" owner="utente" date="2026-10-28">
+<spec id="0323-task-template-work-order-status-link" status="done" owner="utente" date="2026-10-28">
 
   <goal>
     Ogni riga di un Modello di Task puo' essere collegata a uno stato di lavorazione commessa (configuratore
@@ -79,6 +79,13 @@
         I modelli gia' importati su qnet2 restano senza collegamento (idempotenza per modello, 0172 D-12):
         nessuna cancellazione o reimport automatico.
     D-10 I task migrati non innescano nulla all'import: l'effetto parte solo dalle chiusure future.
+    D-11 (utente 2026-10-29, REQUIREMENT CHANGED su D-9) Backfill dei modelli gia' importati: rilanciando
+        `task-templates`, un modello con `old_id` gia' presente non viene ricreato ma riceve gli stati mancanti
+        (`LegacyTaskTemplateStatusBackfill`). Le azioni non hanno `old_id`: abbinamento per posizione (ordine di
+        creazione = ordine legacy), valido solo se numero e titoli coincidono ancora con il legacy; altrimenti
+        warning e nessuna modifica. Si riempiono solo le righe senza stato (una scelta fatta in qnet-2 non si
+        sovrascrive). Esito `created` se almeno una riga e' stata collegata, `skipped` altrimenti. Nessun activity
+        log. I task gia' generati non cambiano (restano snapshot).
   </decisions>
 
   <scope>
@@ -99,7 +106,6 @@
       <item>Collegamento di uno stato su task creati a mano o modificabile dal task (solo snapshot dal modello).</item>
       <item>Annullare stato/avanzamento alla riapertura del task (D-7).</item>
       <item>Retroattivita': task gia' generati in qnet-2 non ricevono lo stato se il modello cambia dopo.</item>
-      <item>Reimport/backfill dei modelli gia' migrati su qnet2 (D-9).</item>
       <item>Modifiche allo stato calcolato commessa (0321 D-2) o alla regola delle registrazioni manuali.</item>
       <item>Spostamento di `QuoteWorkflowCriteriaEditor` e altri debiti segnalati in HANDOFF.</item>
     </out>
@@ -183,6 +189,8 @@
     <criterion id="AC-017">Migrazione modelli: la riga importata ha lo stato risolto da `work_order_workflow_status_old_id`; old_id non
       trovato -> null + warning; `MigrationOrder::phaseOf('task-templates')` > phaseOf('work-order-workflows').</criterion>
     <criterion id="AC-018">Migrazione task: stesso lookup sul task; l'import non crea registrazioni ne' cambia lo Stato lavorazione (D-10).</criterion>
+    <criterion id="AC-023">D-11: rilancio su un modello gia' importato senza stati -> righe collegate, nessun modello o riga
+      nuovi, esito created; riga con stato gia' scelto -> invariata; titoli cambiati -> invariato con warning.</criterion>
     <criterion id="AC-019">Legacy: i due endpoint restituiscono il campo valorizzato sui dati reali (tinker), null per 0/''/progress inesistente.</criterion>
     <criterion id="AC-020">FE editor modello: la select mostra gli stati raggruppati per workflow con la %, salva e reidrata il valore;
       payload invia `work_order_workflow_status_id` (null se svuotata). Vitest.</criterion>

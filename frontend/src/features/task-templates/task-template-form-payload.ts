@@ -23,6 +23,7 @@ function buildItemFields(row: TaskTemplateItemFormRow): CreateTaskTemplateItemPa
     description: row.description,
     estimated_minutes: row.estimated_minutes,
     task_status_id: row.task_status_id,
+    work_order_workflow_status_id: row.work_order_workflow_status_id,
     due_offset_days: row.due_offset_days,
     stage_key: row.stage_key,
     key: row.id,

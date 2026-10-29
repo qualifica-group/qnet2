@@ -102,6 +102,8 @@ export const workOrders = {
     forceClose: {
       title: 'Force close the work order',
       description: 'The work order is closed, stating the reason. You can reopen it later.',
+      status: 'Closing status',
+      statusPlaceholder: 'Select a status',
       submit: 'Close work order',
       success: 'Work order closed.',
     },
@@ -343,6 +345,7 @@ export const workOrders = {
     titleMax: 'Title must be at most 191 characters.',
     typeRequired: 'Work order type is required.',
     quoteRequired: 'Select the linked offer.',
+    forceCloseStatusRequired: 'The closing status is required.',
     forceCloseReasonRequired: 'The force close reason is required.',
     /** D-8/AC-032: shown in the force-close confirmation whenever `open_tasks_count > 0`. */
     openTasksWarning_one: '{{count}} open task will be closed with a negative outcome.',

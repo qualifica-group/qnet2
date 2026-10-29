@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\WorkOrders;
 
+use App\Enums\WorkOrderStatus;
 use App\Enums\WorkOrderWorkflowStatusSystemKey;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderWorkflow;
@@ -124,8 +125,10 @@ final class WorkOrderWorkflowResolver
     /**
      * The status $workOrder should carry within $workflow's resolved set: its
      * current status verbatim when it already belongs to the set; otherwise
-     * the set's row sharing the current status' system_key; otherwise the
-     * set's initial 'open' row.
+     * the set's row sharing the current status' system_key, or, for a custom
+     * `completed`/`closed`-group status (spec 0324 D-8), the row keyed by that
+     * group so a closed commessa stays closed; otherwise the set's initial
+     * 'open' row.
      */
     public function targetStatus(WorkOrder $workOrder, ?WorkOrderWorkflow $workflow): WorkOrderWorkflowStatus
     {
@@ -140,7 +143,7 @@ final class WorkOrderWorkflowResolver
             }
         }
 
-        $currentSystemKey = $this->currentSystemKey($workOrder, $currentStatusId);
+        $currentSystemKey = $this->mappingKey($workOrder, $currentStatusId);
 
         if ($currentSystemKey !== null) {
             $mapped = $statuses->firstWhere('system_key', $currentSystemKey);
@@ -222,14 +225,20 @@ final class WorkOrderWorkflowResolver
         return $this->fieldRegistry->branchDistances($workOrder)[$criterion->value_id] ?? 0;
     }
 
-    private function currentSystemKey(WorkOrder $workOrder, ?int $currentStatusId): ?string
+    private function mappingKey(WorkOrder $workOrder, ?int $currentStatusId): ?string
     {
         if ($currentStatusId === null) {
             return null;
         }
 
         $workOrder->loadMissing('workOrderWorkflowStatus');
+        $current = $workOrder->workOrderWorkflowStatus;
 
-        return $workOrder->workOrderWorkflowStatus?->system_key;
+        return $current?->system_key
+            ?? match ($current?->group) {
+                WorkOrderStatus::Completed => WorkOrderWorkflowStatusSystemKey::Completed->value,
+                WorkOrderStatus::Closed => WorkOrderWorkflowStatusSystemKey::Closed->value,
+                default => null,
+            };
     }
 }

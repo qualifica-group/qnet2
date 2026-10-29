@@ -62,6 +62,7 @@ final readonly class CreateWorkOrderData
         public ?int $taskTemplateId = null,
         public array $multiQuoteIds = [],
         public ?int $workOrderWorkflowStatusId = null,
+        public ?int $forceCloseStatusId = null,
     ) {}
 
     /**
@@ -96,6 +97,7 @@ final readonly class CreateWorkOrderData
             workOrderWorkflowStatusId: isset($data['work_order_workflow_status_id'])
                 ? (int) $data['work_order_workflow_status_id']
                 : null,
+            forceCloseStatusId: isset($data['force_close_status_id']) ? (int) $data['force_close_status_id'] : null,
         );
     }
 

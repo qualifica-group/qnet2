@@ -28,6 +28,7 @@ export const taskTemplates = {
     items: {
       dueOffsetDays: 'Due: +{{count}} days',
       estimatedMinutes: 'Estimate: {{value}} min',
+      workOrderStatus: 'Work order processing status:',
     },
   },
   form: {
@@ -92,6 +93,13 @@ export const taskTemplates = {
       statusEmpty: 'No status available.',
       statusError: 'Unable to load statuses.',
       statusClear: 'Clear selected status',
+      workOrderStatus: 'Work order processing status',
+      workOrderStatusPlaceholder: 'No work order status',
+      workOrderStatusSearchPlaceholder: 'Search status…',
+      workOrderStatusEmpty: 'No work order status available.',
+      workOrderStatusError: 'Unable to load work order statuses.',
+      workOrderStatusClear: 'Clear selected work order status',
+      workOrderStatusDefaultSet: 'Default set',
       attachments: 'Attachments',
       attachmentsAdd: 'Add attachment',
       attachmentsRemove: 'Remove attachment',

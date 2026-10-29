@@ -6,6 +6,7 @@ namespace App\Http\Requests\TaskTemplates\Concerns;
 
 use App\Rules\TaskTemplateItemStatus;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Shared `items.*` rules for Store/UpdateTaskTemplateRequest (spec 0124,
@@ -60,6 +61,7 @@ trait ValidatesTaskTemplateItems
             'items.*.description' => ['sometimes', 'nullable', 'string'],
             'items.*.estimated_minutes' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:'.self::ESTIMATED_MINUTES_MAX],
             'items.*.task_status_id' => ['sometimes', 'nullable', 'integer', new TaskTemplateItemStatus],
+            'items.*.work_order_workflow_status_id' => ['sometimes', 'nullable', 'integer', Rule::exists('work_order_workflow_statuses', 'id')],
             'items.*.due_offset_days' => ['required', 'integer', 'min:0', 'max:'.self::DUE_OFFSET_DAYS_MAX],
             'items.*.stage_key' => ['sometimes', 'nullable', 'string', 'max:'.self::ITEM_STAGE_KEY_MAX],
             'items.*.key' => ['sometimes', 'nullable', 'string', 'max:'.self::ITEM_KEY_MAX],

@@ -85,6 +85,18 @@ export function TaskTemplateItemsOverview({ taskTemplate }: { taskTemplate: Task
                     <WorkflowStatusBadge name={item.task_status.name} color={item.task_status.color} />
                   ) : null}
                 </div>
+                {item.work_order_workflow_status ? (
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <span>{t('taskTemplates.detail.items.workOrderStatus')}</span>
+                    <WorkflowStatusBadge
+                      name={item.work_order_workflow_status.name}
+                      color={item.work_order_workflow_status.color}
+                    />
+                    {item.work_order_workflow_status.progress_percentage !== null ? (
+                      <span>{`${item.work_order_workflow_status.progress_percentage}%`}</span>
+                    ) : null}
+                  </div>
+                ) : null}
                 {item.description ? (
                   <RichTextContent html={item.description} className="mt-1 text-xs text-muted-foreground" />
                 ) : null}

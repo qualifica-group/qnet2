@@ -19,6 +19,7 @@ import type {
   TaskSubtask,
 } from '@/features/tasks/types'
 import { timeEntryKeys } from '@/features/time-entries/query-keys'
+import { refreshWorkOrderData } from '@/features/work-orders/refresh-work-order-data'
 
 interface TaskMutationOptions {
   taskId: number
@@ -57,12 +58,18 @@ function seedAndNotify(
 function useTaskActionMutation(
   { taskId, onSuccess }: TaskMutationOptions,
   action: (id: number) => Promise<TaskDetailWithPermissions>,
+  refreshesWorkOrder = false,
 ) {
   const queryClient = useQueryClient()
 
   return useMutation<TaskDetailWithPermissions, AxiosError<ApiErrorResponse>, void>({
     mutationFn: () => action(taskId),
-    onSuccess: (task) => seedAndNotify(queryClient, taskId, task, onSuccess),
+    onSuccess: async (task) => {
+      seedAndNotify(queryClient, taskId, task, onSuccess)
+      if (refreshesWorkOrder) {
+        await refreshWorkOrderData(queryClient)
+      }
+    },
   })
 }
 
@@ -84,6 +91,8 @@ export function useCompleteTask({ taskId, onSuccess }: TaskMutationOptions) {
       // The segnatempo `/complete` creates is NOT in the response body (D-1):
       // the Task's own segnatempo query is invalidated explicitly (AC-040).
       await queryClient.invalidateQueries({ queryKey: timeEntryKeys.taskEntries(taskId) })
+      // Closing positively may move the commessa's Stato lavorazione and progress (spec 0323 D-6).
+      await refreshWorkOrderData(queryClient)
     },
   })
 }
@@ -93,7 +102,8 @@ export function useUncompleteTask(options: TaskMutationOptions) {
 }
 
 export function useApproveTask(options: TaskMutationOptions) {
-  return useTaskActionMutation(options, approveTask)
+  // Approval closes the task positively, so it can move the commessa like `complete` (spec 0323 D-6).
+  return useTaskActionMutation(options, approveTask, true)
 }
 
 export function useRejectTask(options: TaskMutationOptions) {

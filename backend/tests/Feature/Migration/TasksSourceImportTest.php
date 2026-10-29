@@ -353,7 +353,8 @@ it('AC-014 registers tasks after work-orders with the D-11 dependencies', functi
     expect($source->key())->toBe('tasks')
         ->and($source->endpoint())->toBe('tasks')
         ->and($dependencies)->toBe([
-            'users' => true, 'work-orders' => true, 'registries' => false, 'referents' => false, 'opportunities' => false,
+            'users' => true, 'work-orders' => true, // REQUIREMENT CHANGED (spec 0323): the task snapshot links a working status by `old_id`.
+            'registries' => false, 'referents' => false, 'opportunities' => false, 'work-order-workflows' => false,
         ])
         ->and(MigrationOrder::phaseOf('tasks'))->toBeGreaterThan(MigrationOrder::phaseOf('work-orders'));
 });

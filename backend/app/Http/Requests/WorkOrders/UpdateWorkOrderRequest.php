@@ -73,6 +73,8 @@ class UpdateWorkOrderRequest extends FormRequest
             // (its condition reads the REQUEST, not the DB), so a PATCH that
             // omits both keys entirely is unaffected either way.
             'force_close_reason' => ['nullable', 'string', 'required_if:is_force_closed,true'],
+            // Spec 0324 D-6: domain (set + `closed` group) is checked by the status assigner.
+            'force_close_status_id' => ['nullable', 'integer'],
             'quote_line_ids' => ['sometimes', 'array'],
             'quote_line_ids.*' => ['integer'],
             // Spec 0322: membership in the set resolved for the commessa is

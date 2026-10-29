@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0324-work-order-legacy-closing-statuses" status="done" owner="utente" date="2026-10-29" amends="0322">
+
+  <amendment date="2026-10-29" status="applied">
+    Direttive utente dopo il run 75. L'esito di una commessa chiusa nel legacy sta in `orders.status`
+    (3 Chiusa, 4 Annullata, 5 Disdetta), non in `progress`. Oggi: Chiusa 8479 (45 su stato negativo legacy, 3315 su
+    positivo, 5119 sulla riga negativa di default), Annullata 2164 (1 negativo legacy, 210 positivo legacy, 1953
+    default), Disdetta 37 (default).
+    - D-9 Legacy `WorkOrderWorkflowStatusMigrationController`: ogni record porta `closing_group`
+      ("completed" per status 3, "closed" per 4 e 5, null altrimenti); il feed include anche le commesse chiuse
+      (3/4/5) senza uno stato `progress` valido, con `status_id` null. Contratto record:
+      { id: int, status_id: int|null, closing_group: "completed"|"closed"|null, warnings: string[] }.
+    - D-10 (utente) Sorgente `work-order-workflow-statuses`, commessa chiusa forzatamente con `closing_group`:
+      - "completed" (Chiusa): stato legacy del set con gruppo completed o closed -> quello (le 45 restano negative);
+        altrimenti (stato di lavoro, fuori set o assente) -> riga con chiave `completed` del set.
+      - "closed" (Annullata/Disdetta): stato legacy del set con gruppo closed -> quello; altrimenti (anche se positivo,
+        vince l'annullamento) -> riga con chiave `closed` del set.
+      - `closing_group` null su commessa chiusa forzatamente: regola D-5 invariata. Commessa non chiusa: invariato
+        (`status_id` null -> skipped).
+      Sostituisce D-5 per i record con `closing_group`.
+    - AC-018 Legacy: tinker sui dati reali, conteggi per `closing_group` e record con `status_id` null.
+    - AC-019 Sorgente: i casi di D-10 (completed con stato di lavoro/assente -> chiave completed; completed con stato
+      closed -> tenuto; closed con stato positivo -> chiave closed; closed con stato closed -> tenuto; null -> D-5).
+    - AC-020 Guide IT/EN e manuale Claude Docs aggiornati; rilancio su dev della sola sorgente stati con i conteggi.
+  </amendment>
+
+  <goal>
+    Gli stati legacy delle commesse prendono il ruolo di sistema che hanno davvero (Aperta, Chiusa con esito
+    positivo, Chiusa con esito negativo) invece di affiancare tre righe di sistema aggiunte, e ci possono essere
+    piu' stati chiusi positivi e negativi per set. Le commesse chiuse forzatamente ricevono dal legacy il loro
+    stato di chiusura, e la chiusura forzata in qnet-2 fa scegliere quale stato negativo applicare.
+  </goal>
+
+  <context>
+    - Spec 0322 (+ emendamento 2026-10-28): `work_order_workflow_statuses` (gruppo `group` = enum `WorkOrderStatus`
+      open|in_progress|completed|closed; `system_key` open|completed|closed, UNICO per set via
+      `wow_statuses_workflow_system_key_unique`; `old_id` = legacy `progress.id`). Ogni set ha sempre le tre righe di
+      sistema (`WorkOrderWorkflowStatusWriter`: open in testa sort 0, coda completed poi closed). Il gruppo di una riga
+      custom e' gia' modificabile nel configuratore.
+    - Oggi la sorgente `work-order-workflows` (`WorkOrderWorkflowsSource`) crea ogni stato legacy come custom
+      `in_progress` e il writer aggiunge le tre righe di sistema; un re-run salta il set se un suo `old_id` esiste.
+      Legacy: `../qnet` `WorkOrderWorkflowMigrationController` (statuses ordinati per `progress.id`, senza ruolo:
+      `progress` = id, service_id, description, position, stato_avanzamento, nessun indicatore di chiusura).
+    - Oggi la sorgente `work-order-workflow-statuses` salta OGNI commessa chiusa forzatamente: run 73 del 2026-10-29
+      = 8958 righe, 1449 create, 6943 saltate (6925 chiuse forzatamente, 18 fuori set), 566 fallite (546 orfane
+      legacy, 20 commesse non migrate).
+    - Chiusura forzata: `WorkOrderService::create()/update()` -> `WorkOrderWorkflowStatusAssigner::followForceClose()`
+      (chiusura -> riga `closed`; riapertura -> `open` solo se ancora sulla riga `closed`). Request
+      `StoreWorkOrderRequest`/`UpdateWorkOrderRequest` (`is_force_closed`, `force_close_reason`), DTO
+      `CreateWorkOrderData`/`UpdateWorkOrderData`. Cambio set per righe: `WorkOrderWorkflowResolver::targetStatus()`
+      (stato tenuto se nel set, altrimenti stessa `system_key`, altrimenti open).
+    - FE: `features/work-orders/work-order-force-close-dialog.tsx` (motivo obbligatorio, legge gia' il dettaglio con
+      `fetchWorkOrder`), `use-work-order-closure.ts` (`forceClosePayload`). Il dettaglio commessa espone gia'
+      `work_order_workflow_statuses` (set risolto, `WorkOrderWorkflowStatusRef` con `group` e `system_key`).
+  </context>
+
+  <decisions>
+    D-1 (utente 2026-10-29) Gruppo, non chiave: piu' stati per set possono stare nei gruppi `completed` (Chiusa con
+        esito positivo) e `closed` (Chiusa con esito negativo); uno solo per gruppo porta la `system_key`.
+    D-2 (utente 2026-10-29, tabella confermata) Mappatura legacy, decisa NEL LEGACY (backend.md §9), per `progress.id`:
+        - `open` = il primo stato del set (id piu' basso), gruppo open.
+        - `completed` (chiave): 39 ISO "8.b _ Consegna Certificato/Report Ente e Conclusione Pratica", 56 SICUREZZA
+          "Pratica conclusa", 1050 GDPR "PRIV_8_ Controllo Saldo e Chiusura Pratica", 26 SOA "Emissione attestazione
+          SOA", 1185 GARE "Conclusa aggiudicata", 37 AVVALIMENTI "lavorazione conclusa", 1217 FINANZA AGEVOLATA
+          "Approvazione Progetto", 1176 APL "TIROCINI_COMMESSA CONCLUSA", 1189 ENTE DI CERTIFICAZIONE - SOA
+          "SOA_5_Conclusa _ OK Incassato Tutto", 1025 PARTNERSHIP/SEDI "F3_7_Accreditata", 1096 ISTRUZIONE
+          "8.2_Conclusa", 1165 FOR_Classi "22_ CONCLUSO".
+        - gruppo `completed` senza chiave: 18 "8.a _ Completato", 63 "U _ COMMESSA UNIFICATA_CONCLUSA", 1054 "COMPLETA",
+          1003 "Conclusa", 1119 "PAL_2.2.5_Conclusa", 1126 "PAL_3.3.5_Conclusa", 1131 "PAL_4.4.6_Conclusa",
+          1139 "R&amp;S_COMMESSA CONCLUSA", 1208 "R&amp;S_PLACEMENT_COMMESSA CONCLUSA", 1034 "E_ISO_6. Conclusa",
+          1040 "F4_GOL_6_Catalogo Autorizzato (START)", 1183 "SALDATO".
+        - `closed` (chiave): 1072 SICUREZZA "X_ANNULLATA", 1186 GARE "Conclusa persa", 1015 PARTNERSHIP/SEDI
+          "FZ_Esito Negativo", 1167 FOR_Classi "X_ANNULLATO".
+        - gruppo `closed` senza chiave: 1018 PARTNERSHIP/SEDI "Annullata".
+        - tutti gli altri: `in_progress` (sospesi e bloccati compresi; "7 _ Chiusura NC" resta in_progress).
+        Un set senza stato legacy per una chiave tiene la riga di sistema di default (es. "Chiusa con esito negativo"
+        in ISO): serve alla chiusura forzata.
+    D-3 qnet-2 adotta: lo stato legacy con `system_key` diventa la riga di sistema (stesso record, `old_id` legacy,
+        nome/percentuale legacy, gruppo = chiave); la riga di default di quella chiave non esiste (import nuovo) o
+        viene sostituita (re-run). Ordine: open sort 0, poi gli altri in ordine legacy, coda completed poi closed.
+    D-4 Re-run della sorgente `work-order-workflows` su un set gia' importato = riallineamento (non piu' skip):
+        gruppi degli stati legacy aggiornati; per ogni chiave inviata dal legacy, la riga di sistema attuale R e lo
+        stato legacy S: se R e' una riga di default (old_id null) i riferimenti a R (`work_orders`,
+        `task_template_items`, `tasks`) passano a S e R viene cancellata; se R ha un `old_id` (adottata prima) torna
+        custom col gruppo inviato; poi S prende chiave e gruppo. Nomi e percentuali gia' importati non cambiano.
+        Nessun cambiamento = skipped. Il set globale di default non si tocca. Una sola transaction per set.
+    D-5 (utente, punto 1) Sorgente `work-order-workflow-statuses`: una commessa chiusa forzatamente riceve lo stato
+        legacy se e' nel set risolto e ha gruppo `completed` o `closed`; con uno stato di lavoro resta dov'e'
+        (skipped + warning, come oggi). Le commesse non chiuse invariato.
+    D-6 (utente, punto 2) Chiusura forzata: campo `force_close_status_id`, uno stato del gruppo `closed` del set
+        risolto. Nella UI obbligatorio e preselezionato sulla riga con chiave `closed`; lato API facoltativo
+        (assente/null = riga `closed`, comportamento attuale). Usato solo nella transizione false->true (create
+        compresa), ignorato altrimenti; vince su `work_order_workflow_status_id` inviato insieme (come oggi).
+    D-7 (utente, punto 2) Riapertura: torna su `open` se la commessa e' su uno stato qualsiasi del gruppo `closed`;
+        su uno stato positivo o di lavoro resta.
+    D-8 Cambio set per righe (`targetStatus`): uno stato custom dei gruppi `completed`/`closed` non presente nel nuovo
+        set passa alla riga con la chiave del suo gruppo (prima: open), cosi' una commessa chiusa resta chiusa.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Legacy `WorkOrderWorkflowMigrationController`: `system_key` e `group` per ogni stato (D-2).</item>
+      <item>`WorkOrderWorkflowsSource`: adozione all'import (D-3) e riallineamento al re-run (D-4).</item>
+      <item>`WorkOrderWorkflowStatusesSource`: regola D-5.</item>
+      <item>Chiusura forzata con `force_close_status_id` (D-6), riapertura (D-7), cambio set (D-8): request, DTO,
+        `WorkOrderService`, `WorkOrderWorkflowStatusAssigner`, `WorkOrderWorkflowResolver`, lang IT/EN.</item>
+      <item>FE: campo "Stato di chiusura" nella finestra di chiusura forzata (dettaglio e griglia Commesse).</item>
+      <item>Guide in-app IT/EN (commesse, configuratore stati, migrazione se citata) e manuale Claude Docs.</item>
+      <item>Rilancio su dev di "Commesse — workflow" e poi "Stato lavorazione commesse" (gated, dopo il verde).</item>
+    </in>
+    <out>
+      <item>Scelta dello stato di chiusura nel form di creazione commessa (oggi non offre la chiusura forzata).</item>
+      <item>Riclassificazione del set globale di default o dei set creati a mano in qnet-2.</item>
+      <item>Aggiornamento di nomi/percentuali degli stati gia' importati al re-run.</item>
+      <item>Stati positivi nella finestra di chiusura forzata (solo gruppo closed).</item>
+      <item>Le 546 righe orfane legacy e le 20 commesse non migrate (comportamento invariato).</item>
+      <item>Nuove dipendenze, nuovi endpoint, migrazioni di schema.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="(legacy, routes/apiV2-migration.php) /work-order-workflows">
+      <response status="200">
+        Invariato tranne `statuses[]`, che diventa:
+        { id: int, name: string, progress_percentage: int|null,
+          system_key: "open"|"completed"|"closed"|null,
+          group: "open"|"in_progress"|"completed"|"closed" }
+        Per set al massimo una `system_key` per valore; `system_key` non null implica `group` = `system_key`.
+        Fixture dei test qnet-2 aggiornate (REQUIREMENT CHANGED).
+      </response>
+      <errors>qnet-2: `system_key`/`group` non validi o chiave duplicata nel set -> riga fallita (validazione difensiva, nessuna riparazione).</errors>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/work-orders/{workOrder}">
+      <request>
+        + force_close_status_id: int|null (facoltativo). Regole: `nullable|integer`; dominio nell'assigner.
+      </request>
+      <response status="200">Invariata (WorkOrderResource; `work_order_workflow_status` riflette lo stato scelto).</response>
+      <errors>422 `force_close_status_id` se, nella chiusura, lo stato non e' nel set risolto o non ha gruppo `closed` (lang `work_orders.workflow_status.force_close_status_invalid`). 403/404 invariati.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/work-orders">
+      <request>+ force_close_status_id: int|null, stesse regole (vale solo con `is_force_closed: true`).</request>
+      <errors>422 come sopra.</errors>
+    </endpoint>
+    <frontend>
+      `forceClosePayload(reason, statusId)` -> { is_force_closed: true, force_close_reason, force_close_status_id }.
+      Opzioni = `work_order_workflow_statuses` del dettaglio filtrate `group === 'closed'`; default = quella con
+      `system_key === 'closed'`. i18n: `workOrders.actions.forceClose.status` ("Stato di chiusura" / "Closing status")
+      + messaggio di obbligatorieta'.
+    </frontend>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Legacy: l'endpoint workflow invia per ogni stato `system_key`/`group` secondo D-2 (verifica tinker sui dati reali: i 12 set, id 1/39/1072/1018/1183 e uno stato qualsiasi in_progress; `php -l`).</criterion>
+    <criterion id="AC-002">Import nuovo: uno stato con `system_key` diventa la riga di sistema del set (old_id legacy, nome e % legacy, gruppo = chiave) e non esiste un'altra riga con quella chiave; le chiavi non inviate restano righe di default.</criterion>
+    <criterion id="AC-003">Import nuovo: gli stati con gruppo completed/closed senza chiave sono custom con quel gruppo; ordine open sort 0, altri in ordine legacy, coda completed poi closed.</criterion>
+    <criterion id="AC-004">Re-run su set importato con le vecchie regole: le righe di default sostituite sono cancellate, commesse/righe modello/task che le usavano passano allo stato legacy adottato, i gruppi sono aggiornati, nessun altro stato perso; esito created/updated.</criterion>
+    <criterion id="AC-005">Re-run identico subito dopo: skipped, nessuna scrittura. Una riga adottata che il legacy non marca piu' torna custom col gruppo inviato.</criterion>
+    <criterion id="AC-006">Validazione difensiva: `system_key` sconosciuta, `group` sconosciuto o due stati con la stessa chiave nel set -> riga fallita, nessuna scrittura.</criterion>
+    <criterion id="AC-007">Sorgente stati: commessa chiusa forzatamente con stato legacy del set nel gruppo closed o completed -> scritto; con stato in_progress -> skipped + warning, stato invariato; commessa non chiusa invariato rispetto a oggi.</criterion>
+    <criterion id="AC-008">PATCH chiusura con `force_close_status_id` di uno stato closed del set -> la commessa e' su quello stato; activity log del cambio come oggi.</criterion>
+    <criterion id="AC-009">PATCH chiusura senza `force_close_status_id` -> riga con chiave closed (comportamento 0322 invariato).</criterion>
+    <criterion id="AC-010">PATCH chiusura con stato fuori set, oppure del set ma di gruppo diverso da closed -> 422 su `force_close_status_id`, nulla salvato.</criterion>
+    <criterion id="AC-011">`force_close_status_id` inviato senza transizione di chiusura (gia' chiusa o non chiusa) -> ignorato.</criterion>
+    <criterion id="AC-012">POST con `is_force_closed: true` e `force_close_status_id` valido -> la commessa nasce su quello stato.</criterion>
+    <criterion id="AC-013">Riapertura da uno stato custom del gruppo closed -> open; da uno stato completed o in_progress -> invariato.</criterion>
+    <criterion id="AC-014">Cambio righe verso un altro set: stato custom completed/closed non presente -> riga con la chiave del suo gruppo; stato in_progress non presente -> open (invariato).</criterion>
+    <criterion id="AC-015">FE: la finestra di chiusura mostra "Stato di chiusura" con i soli stati closed del set, preselezionato sulla riga con chiave closed; l'invio manda `force_close_status_id`; un 422 sul campo appare sotto il campo; campo vuoto -> errore client.</criterion>
+    <criterion id="AC-016">Guide in-app IT/EN aggiornate con parity test verde; manuale Claude Docs aggiornato.</criterion>
+    <criterion id="AC-017">Operativo su dev (dopo approvazione): rilancio "Commesse — workflow" (riallineamento dei 12 set) e "Stato lavorazione commesse"; riporto created/skipped/failed e distribuzione per gruppo delle commesse chiuse.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza, nessuna migrazione di schema, nessun nuovo endpoint qnet-2.
+    - backend.md §9: la classificazione (D-2) sta nel legacy; qnet-2 valida e adotta, non deduce dai nomi.
+    - Riallineamento in transaction per set, senza activity log (come l'import), idempotente.
+    - Authz server-side invariata (WorkOrderPolicy update/create).
+    - File: `WorkOrderService.php` e' a 438 righe: la logica nuova va in assigner/sorgente o in una classe di
+      supporto in `app/Migrations/Support/`, non nel service.
+    - Mai comandi distruttivi sul DB di dev (migrate:fresh/rollback/seed); il rilancio degli import passa dalla
+      pagina /migration o dalle stesse sorgenti, mai da DELETE manuali.
+    - Git soggetto a CLAUDE.md §3.6 (qnet-2 e legacy).
+  </constraints>
+
+</spec>

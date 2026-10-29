@@ -50,15 +50,15 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Ogni set nasce con tre stati fissi: **Aperta** in testa, **Chiusa con esito positivo** e **Chiusa con esito negativo** in coda. In mezzo aggiungi stati con **Aggiungi stato** e li riordini trascinandoli. Per ognuno indichi **Nome stato**, **Gruppo** (Aperta, In lavorazione, Chiusa con esito positivo, Chiusa con esito negativo), **Descrizione dello stato** e **% avanzamento** (da 0 a 100). Per gli stati fissi puoi cambiare nome, descrizione, colore e % avanzamento, non il gruppo. La chiusura forzata di una commessa la porta su **Chiusa con esito negativo**; se la riapri torna su **Aperta**.',
+          text: 'Ogni set nasce con tre stati fissi: **Aperta** in testa, **Chiusa con esito positivo** e **Chiusa con esito negativo** in coda. In mezzo aggiungi stati con **Aggiungi stato** e li riordini trascinandoli. Per ognuno indichi **Nome stato**, **Gruppo** (Aperta, In lavorazione, Chiusa con esito positivo, Chiusa con esito negativo), **Descrizione dello stato** e **% avanzamento** (da 0 a 100). Per gli stati fissi puoi cambiare nome, descrizione, colore e % avanzamento, non il gruppo. Puoi avere più stati nei gruppi **Chiusa con esito positivo** e **Chiusa con esito negativo**: lo stato fisso è quello principale del gruppo. Alla chiusura forzata di una commessa scegli uno degli stati **Chiusa con esito negativo** del suo set (proposto quello fisso); se la riapri torna su **Aperta**.',
         },
         {
           type: 'paragraph',
-          text: 'Le commesse senza set attivo usano gli **Stati di default globali**, modificabili con **Stati di default**.',
+          text: 'Le commesse senza set attivo usano gli **Stati di default globali**, modificabili con **Stati di default**. Nei set importati dal QNet legacy gli stati fissi sono stati legacy: Aperta è il primo stato del set, e le chiusure positive e negative legacy sono nei rispettivi gruppi; dove il legacy non ha una chiusura negativa resta lo stato fisso **Chiusa con esito negativo**.',
         },
         {
           type: 'note',
-          text: 'In questa versione la **% avanzamento** è solo un dato configurato e mostrato: scegliere lo stato di una commessa non muove la sua percentuale di avanzamento.',
+          text: "La **% avanzamento** muove l'avanzamento della commessa: quando la commessa passa a uno stato (a mano o alla chiusura di un task collegato da un **Modello di Task**), l'avanzamento sale a quella percentuale se è più alta di quello raggiunto. A mano non puoi scegliere uno stato con percentuale maggiore di zero ma non superiore all'avanzamento raggiunto. Gli stati possono essere collegati alle righe dei **Modelli di Task**.",
         },
       ],
     },

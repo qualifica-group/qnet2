@@ -27,6 +27,7 @@ vi.mock('@/features/work-orders/api', async () => {
 })
 
 const label = (key: string, options?: Record<string, unknown>) => i18n.t(key, options)
+const CLOSED_STATUS = { id: 31, name: 'Closed', description: null, color: null, group: 'closed', system_key: 'closed', progress_percentage: null }
 const ROW = { id: 7, actions: ['force_close', 'reopen'] }
 
 function action(key: string): TableActionDefinition {
@@ -53,8 +54,9 @@ beforeEach(() => {
 
 describe('useWorkOrderRowActions — closure', () => {
   it('opens the force-close dialog, warns about the open tasks and PATCHes the reason', async () => {
-    vi.mocked(fetchWorkOrder).mockResolvedValue({ id: 7, open_tasks_count: 1 } as never)
-    vi.mocked(updateWorkOrder).mockResolvedValue({ id: 7 } as never)
+    const record = { id: 7, open_tasks_count: 1, work_order_workflow_statuses: [CLOSED_STATUS] }
+    vi.mocked(fetchWorkOrder).mockResolvedValue(record as never)
+    vi.mocked(updateWorkOrder).mockResolvedValue(record as never)
     const onMutated = vi.fn()
     const Wrapper = wrapper()
     const { result } = renderHook(() => useWorkOrderRowActions({ onMutated }), { wrapper: Wrapper })
@@ -76,7 +78,7 @@ describe('useWorkOrderRowActions — closure', () => {
     fireEvent.click(screen.getByRole('button', { name: label('workOrders.actions.forceClose.submit') }))
 
     await waitFor(() =>
-      expect(updateWorkOrder).toHaveBeenCalledWith(7, { is_force_closed: true, force_close_reason: 'Annullata dal cliente' }),
+      expect(updateWorkOrder).toHaveBeenCalledWith(7, { is_force_closed: true, force_close_reason: 'Annullata dal cliente', force_close_status_id: 31 }),
     )
     await waitFor(() => expect(onMutated).toHaveBeenCalledOnce())
   })

@@ -259,6 +259,8 @@ export interface CreateWorkOrderPayload {
   internal_notes?: string | null
   is_force_closed?: boolean
   force_close_reason?: string | null
+  /** Spec 0324 D-6: a `closed`-group status of the resolved set; used only when forcing the closure. */
+  force_close_status_id?: number
   quote_line_ids?: number[]
   /** Ordered, gap-aware slots; `null` is a deliberately empty one. */
   participant_slots?: (number | null)[]

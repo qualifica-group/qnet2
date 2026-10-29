@@ -196,6 +196,8 @@ final class WorkOrderTaskGenerator
             ...$lookupIds,
         ]);
         $task->creator_id = $actor->id;
+        // Spec 0323, D-4: snapshot of the row's link, outside #[Fillable] so no API can write it.
+        $task->work_order_workflow_status_id = $item->work_order_workflow_status_id;
         $task->task_status_id = $this->resolveInitialStatus($item, $supervisorIds, $actor);
         $task->stage_position = $stagePosition;
 

@@ -51,6 +51,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * App\Services\Tasks\TaskVisibilityScope to the Task's own membership only)
  * and `lead_id` (D-4, must belong to `registry_id` when the Task carries
  * one).
+ *
+ * `work_order_workflow_status_id` (spec 0323, D-4) is DELIBERATELY absent
+ * from #[Fillable]: a snapshot WorkOrderTaskGenerator copies from the
+ * template row, read when the Task closes positively to advance its
+ * commessa — never client input.
  */
 #[Fillable([
     'title',
@@ -110,6 +115,17 @@ class Task extends BaseModel
     public function taskStatus(): BelongsTo
     {
         return $this->belongsTo(TaskStatus::class);
+    }
+
+    /**
+     * The working status this Task moves its commessa onto when closed
+     * positively (spec 0323, D-6), null when it drives nothing.
+     *
+     * @return BelongsTo<WorkOrderWorkflowStatus, $this>
+     */
+    public function workOrderWorkflowStatus(): BelongsTo
+    {
+        return $this->belongsTo(WorkOrderWorkflowStatus::class);
     }
 
     /**

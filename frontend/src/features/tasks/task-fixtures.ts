@@ -182,6 +182,7 @@ export function taskDetail(overrides: Partial<TaskDetail> = {}): TaskDetail {
     work_order: null,
     work_order_stage_id: null,
     work_order_stage: null,
+    work_order_workflow_status: null,
     lead_id: null,
     lead: null,
     requester_id: 21,

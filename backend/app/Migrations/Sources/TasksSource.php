@@ -13,6 +13,7 @@ use App\Migrations\Support\ExternalApiClient;
 use App\Migrations\Support\LegacyTaskClassifier;
 use App\Migrations\Support\LegacyTaskLinks;
 use App\Migrations\Support\LegacyTaskRecurrenceWriter;
+use App\Migrations\Support\LegacyWorkOrderStatusLink;
 use App\Models\Task;
 use App\Models\User;
 use App\RichText\RichTextSanitizer;
@@ -47,6 +48,7 @@ class TasksSource extends AbstractMigrationSource
         private readonly LegacyTaskClassifier $classifier,
         private readonly LegacyTaskRecurrenceWriter $recurrenceWriter,
         private readonly RichTextSanitizer $sanitizer,
+        private readonly LegacyWorkOrderStatusLink $statusLink,
     ) {
         parent::__construct($client);
     }
@@ -77,6 +79,7 @@ class TasksSource extends AbstractMigrationSource
             MigrationDependency::optional('registries'),
             MigrationDependency::optional('referents'),
             MigrationDependency::optional('opportunities'),
+            MigrationDependency::optional('work-order-workflows'),
         ];
     }
 
@@ -177,6 +180,8 @@ class TasksSource extends AbstractMigrationSource
         $task->task_recurrence_id = $seriesId;
         $task->subtask_position = (int) ($record['subtask_position'] ?? 0);
         $task->stage_position = (int) ($record['stage_position'] ?? 0);
+        // Snapshot only (spec 0323, D-10): the import never moves the work order or its progress.
+        $task->forceFill(['work_order_workflow_status_id' => $this->statusLink->resolve($record['work_order_workflow_status_old_id'] ?? null, $warnings)]);
         $task->save();
 
         $task->assignees()->sync($assigneeIds);

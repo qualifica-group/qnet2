@@ -16,12 +16,12 @@ const TASKS_QUERY_PREFIX = ['tasks'] as const
 
 interface ClosureVariables {
   workOrderId: number
-  payload: Pick<UpdateWorkOrderPayload, 'is_force_closed' | 'force_close_reason'>
+  payload: Pick<UpdateWorkOrderPayload, 'is_force_closed' | 'force_close_reason' | 'force_close_status_id'>
 }
 
-/** "Chiusura forzata" with its reason (D-4/AC-073): the reason is required server-side too. */
-export function forceClosePayload(reason: string): ClosureVariables['payload'] {
-  return { is_force_closed: true, force_close_reason: reason }
+/** "Chiusura forzata" with its reason (D-4/AC-073) and the closed-group status to land on (spec 0324 D-6). */
+export function forceClosePayload(reason: string, statusId: number): ClosureVariables['payload'] {
+  return { is_force_closed: true, force_close_reason: reason, force_close_status_id: statusId }
 }
 
 /** "Riapri": the reason is meaningless once the closure is no longer forced (D-4). */

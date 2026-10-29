@@ -102,6 +102,8 @@ export const workOrders = {
     forceClose: {
       title: 'Chiusura forzata della commessa',
       description: 'La commessa viene chiusa indicandone il motivo. Potrai riaprirla in seguito.',
+      status: 'Stato di chiusura',
+      statusPlaceholder: 'Seleziona uno stato',
       submit: 'Chiudi commessa',
       success: 'Commessa chiusa.',
     },
@@ -343,6 +345,7 @@ export const workOrders = {
     titleMax: 'Il titolo può contenere al massimo 191 caratteri.',
     typeRequired: 'Il tipo commessa è obbligatorio.',
     quoteRequired: "Seleziona l'offerta collegata.",
+    forceCloseStatusRequired: 'Lo stato di chiusura è obbligatorio.',
     forceCloseReasonRequired: 'Il motivo della chiusura forzata è obbligatorio.',
     /** D-8/AC-032: mostrato nella conferma di chiusura forzata quando `open_tasks_count > 0`. */
     openTasksWarning_one: '{{count}} task aperto verrà chiuso con esito negativo.',

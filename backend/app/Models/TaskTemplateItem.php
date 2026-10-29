@@ -33,8 +33,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * `parent_id` (spec 0172, D-1): the row this one sits directly under, up to
  * 3 levels below a root row, null for a root row — a sub-item never has its
  * own `task_template_stage_id` (D-3), it follows its root's.
+ *
+ * `work_order_workflow_status_id` (spec 0323, D-4/D-5): the working status
+ * the generated Task moves its commessa onto when closed positively, any
+ * workflow's (the template is not bound to one), null for none.
  */
-#[Fillable(['title', 'description', 'estimated_minutes', 'task_status_id', 'due_offset_days', 'sort_order', 'task_template_stage_id', 'parent_id'])]
+#[Fillable(['title', 'description', 'estimated_minutes', 'task_status_id', 'due_offset_days', 'sort_order', 'task_template_stage_id', 'parent_id', 'work_order_workflow_status_id'])]
 class TaskTemplateItem extends BaseModel
 {
     /** @use HasFactory<TaskTemplateItemFactory> */
@@ -92,6 +96,16 @@ class TaskTemplateItem extends BaseModel
     public function children(): HasMany
     {
         return $this->hasMany(self::class, 'parent_id')->orderBy('sort_order');
+    }
+
+    /**
+     * The working status the generated Task carries (spec 0323, D-4).
+     *
+     * @return BelongsTo<WorkOrderWorkflowStatus, $this>
+     */
+    public function workOrderWorkflowStatus(): BelongsTo
+    {
+        return $this->belongsTo(WorkOrderWorkflowStatus::class);
     }
 
     /**

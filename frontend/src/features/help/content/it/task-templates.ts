@@ -42,6 +42,7 @@ const guide: HelpGuide = {
             ['Tempo stimato (min)', 'Facoltativo.'],
             ['Scadenza (giorni da inizio Commessa)', 'Quanti giorni dopo la data di inizio della Commessa scade il task.'],
             ['Stato iniziale', 'Lo stato con cui il task nasce.'],
+            ['Stato lavorazione commessa', "Facoltativo. Lo stato di lavorazione che la commessa prende quando il task generato viene chiuso con esito positivo. Le opzioni sono gli stati di tutti i set del **Configuratore Stati Commessa**, raggruppati per set, con la loro % avanzamento."],
             ['Allegati', 'File da allegare al task generato.'],
           ],
         },
@@ -118,6 +119,10 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: 'Un modello si sceglie con l\'azione **Programma** sul contratto, alla creazione della Commessa: QNet crea i task del modello e li assegna ai responsabili (senza responsabili i task restano da assegnare). Li trovi nella sezione **Task** della Commessa, raggruppati per fase. Tipologia, priorità e importanza dei task creati sono quelle predefinite (impostate in **Tipologie Task**, **Priorità Task** e **Importanza Task**); puoi cambiarle su ogni task.',
+        },
+        {
+          type: 'note',
+          text: "Ogni task creato da una riga con **Stato lavorazione commessa** ne conserva una copia, visibile nel dettaglio del task. Quando il task viene chiuso con esito positivo (con **Completa**, o con **Approva** se richiede validazione), la commessa passa a quello **Stato lavorazione** e, se la % avanzamento dello stato supera l'avanzamento già raggiunto, l'avanzamento sale a quella percentuale. Se lo stato non appartiene al set della commessa, o la commessa è chiusa forzatamente, la commessa non cambia. Modificare la riga del modello dopo non cambia i task già creati.",
         },
       ],
     },

@@ -14,6 +14,19 @@ import type { TaskTemplateItemFormRow, TaskTemplateStageFormRow } from '@/featur
  */
 
 vi.mock('@/features/attachments/documents-section', () => ({ DocumentsSection: () => null }))
+vi.mock('@/features/task-templates/work-order-status-for-select-api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/task-templates/work-order-status-for-select-api')>()),
+  useWorkOrderStatusesForSelect: () => ({
+    data: { pages: [{ items: [] }] },
+    isPending: false,
+    isError: false,
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    refetch: vi.fn(),
+    fetchNextPage: vi.fn(),
+  }),
+  useWorkOrderStatusLabels: () => new Map(),
+}))
 vi.mock('@/components/rich-text/rich-text-editor', () => ({
   RichTextEditor: (p: { id?: string; value: string | null; onChange: (html: string | null) => void }) => (
     <textarea id={p.id} value={p.value ?? ''} onChange={(event) => p.onChange(event.target.value || null)} />
@@ -42,6 +55,7 @@ function itemRow(overrides: Partial<TaskTemplateItemFormRow> = {}): TaskTemplate
     description: null,
     estimated_minutes: null,
     task_status_id: null,
+    work_order_workflow_status_id: null,
     due_offset_days: 0,
     stage_key: null,
     parent_key: null,

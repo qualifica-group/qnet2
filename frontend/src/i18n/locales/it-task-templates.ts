@@ -28,6 +28,7 @@ export const taskTemplates = {
     items: {
       dueOffsetDays: 'Scadenza: +{{count}} giorni',
       estimatedMinutes: 'Stima: {{value}} min',
+      workOrderStatus: 'Stato lavorazione commessa:',
     },
   },
   form: {
@@ -93,6 +94,13 @@ export const taskTemplates = {
       statusEmpty: 'Nessuno stato disponibile.',
       statusError: 'Impossibile caricare gli stati.',
       statusClear: 'Rimuovi stato selezionato',
+      workOrderStatus: 'Stato lavorazione commessa',
+      workOrderStatusPlaceholder: 'Nessuno stato lavorazione',
+      workOrderStatusSearchPlaceholder: 'Cerca stato…',
+      workOrderStatusEmpty: 'Nessuno stato di lavorazione disponibile.',
+      workOrderStatusError: 'Impossibile caricare gli stati di lavorazione.',
+      workOrderStatusClear: 'Rimuovi stato lavorazione commessa selezionato',
+      workOrderStatusDefaultSet: 'Set predefinito',
       attachments: 'Allegati',
       attachmentsAdd: 'Aggiungi allegato',
       attachmentsRemove: 'Rimuovi allegato',

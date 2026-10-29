@@ -281,6 +281,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
+          text: "Un task creato da un **Modello di Task** può portare uno **Stato lavorazione commessa** (lo vedi nel dettaglio del task). Quando lo chiudi con esito positivo (**Completa**, o **Approva** se è in validazione), la commessa passa a quello stato e il suo avanzamento sale alla percentuale dello stato, se è più alta. Riaprire o rifiutare il task non riporta indietro la commessa.",
+        },
+        {
+          type: 'note',
           text: 'Nella finestra Completa la casella **Registra il segnatempo per tutti gli assegnatari** è spuntata di default: il segnatempo viene registrato per tutti gli assegnatari, uno identico per ciascuno (per te soltanto se il task non ne ha). Togli la spunta per registrarlo solo per te. La scelta vale ovunque completi il task: dettaglio, elenco, kanban e pannello Sotto-task. Nella board task della commessa (**Completa** sui task selezionati) la stessa casella c\'è ma è **non spuntata** di default: il segnatempo viene registrato solo per te, a meno che non la spunti.',
         },
         {

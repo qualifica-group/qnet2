@@ -19,6 +19,7 @@ function formRowChain(depth: number): TaskTemplateItemFormRow[] {
       description: null,
       estimated_minutes: null,
       task_status_id: null,
+      work_order_workflow_status_id: null,
       due_offset_days: 0,
       stage_key: null,
       parent_key: level === 0 ? null : `row-${level - 1}`,
@@ -40,9 +41,9 @@ describe('computeItemDepths (spec 0172 D-1)', () => {
 
   it('treats siblings under the same parent independently', () => {
     const rows: TaskTemplateItemFormRow[] = [
-      { id: 'root', title: 'Root', description: null, estimated_minutes: null, task_status_id: null, due_offset_days: 0, stage_key: null, parent_key: null },
-      { id: 'child-a', title: 'A', description: null, estimated_minutes: null, task_status_id: null, due_offset_days: 0, stage_key: null, parent_key: 'root' },
-      { id: 'child-b', title: 'B', description: null, estimated_minutes: null, task_status_id: null, due_offset_days: 0, stage_key: null, parent_key: 'root' },
+      { id: 'root', title: 'Root', description: null, estimated_minutes: null, task_status_id: null, work_order_workflow_status_id: null, due_offset_days: 0, stage_key: null, parent_key: null },
+      { id: 'child-a', title: 'A', description: null, estimated_minutes: null, task_status_id: null, work_order_workflow_status_id: null, due_offset_days: 0, stage_key: null, parent_key: 'root' },
+      { id: 'child-b', title: 'B', description: null, estimated_minutes: null, task_status_id: null, work_order_workflow_status_id: null, due_offset_days: 0, stage_key: null, parent_key: 'root' },
     ]
     const depths = computeItemDepths(rows, FORM_ROW_TREE_ACCESSORS)
 
@@ -52,8 +53,8 @@ describe('computeItemDepths (spec 0172 D-1)', () => {
 
   it('works the same way over persisted items via numeric parent_id', () => {
     const items: TaskTemplateItem[] = [
-      { id: 1, title: 'Root', description: null, estimated_minutes: null, task_status_id: null, task_status: null, due_offset_days: 0, sort_order: 0, task_template_stage_id: null, parent_id: null, attachments: [] },
-      { id: 2, title: 'Child', description: null, estimated_minutes: null, task_status_id: null, task_status: null, due_offset_days: 0, sort_order: 1, task_template_stage_id: null, parent_id: 1, attachments: [] },
+      { id: 1, title: 'Root', description: null, estimated_minutes: null, task_status_id: null, work_order_workflow_status_id: null, task_status: null, work_order_workflow_status: null, due_offset_days: 0, sort_order: 0, task_template_stage_id: null, parent_id: null, attachments: [] },
+      { id: 2, title: 'Child', description: null, estimated_minutes: null, task_status_id: null, work_order_workflow_status_id: null, task_status: null, work_order_workflow_status: null, due_offset_days: 0, sort_order: 1, task_template_stage_id: null, parent_id: 1, attachments: [] },
     ]
     const depths = computeItemDepths(items, PERSISTED_ITEM_TREE_ACCESSORS)
 
@@ -91,10 +92,10 @@ describe('getSubtreeIds (spec 0172 AC-018: removing a row removes its whole subt
 
   it('collects a branching subtree depth-first, siblings in insertion order', () => {
     const rows: TaskTemplateItemFormRow[] = [
-      { id: 'root', title: 'Root', description: null, estimated_minutes: null, task_status_id: null, due_offset_days: 0, stage_key: null, parent_key: null },
-      { id: 'child-a', title: 'A', description: null, estimated_minutes: null, task_status_id: null, due_offset_days: 0, stage_key: null, parent_key: 'root' },
-      { id: 'grandchild-a1', title: 'A1', description: null, estimated_minutes: null, task_status_id: null, due_offset_days: 0, stage_key: null, parent_key: 'child-a' },
-      { id: 'child-b', title: 'B', description: null, estimated_minutes: null, task_status_id: null, due_offset_days: 0, stage_key: null, parent_key: 'root' },
+      { id: 'root', title: 'Root', description: null, estimated_minutes: null, task_status_id: null, work_order_workflow_status_id: null, due_offset_days: 0, stage_key: null, parent_key: null },
+      { id: 'child-a', title: 'A', description: null, estimated_minutes: null, task_status_id: null, work_order_workflow_status_id: null, due_offset_days: 0, stage_key: null, parent_key: 'root' },
+      { id: 'grandchild-a1', title: 'A1', description: null, estimated_minutes: null, task_status_id: null, work_order_workflow_status_id: null, due_offset_days: 0, stage_key: null, parent_key: 'child-a' },
+      { id: 'child-b', title: 'B', description: null, estimated_minutes: null, task_status_id: null, work_order_workflow_status_id: null, due_offset_days: 0, stage_key: null, parent_key: 'root' },
     ]
 
     expect(getSubtreeIds(rows, FORM_ROW_TREE_ACCESSORS, 'root')).toEqual([

@@ -8,9 +8,12 @@ use App\DataObjects\TaskTemplates\CreateTaskTemplateData;
 use App\DataObjects\TaskTemplates\TaskTemplateItemData;
 use App\DataObjects\TaskTemplates\TaskTemplateStageData;
 use App\Migrations\AbstractMigrationSource;
+use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
 use App\Migrations\MigrationRowOutcome;
 use App\Migrations\Support\ExternalApiClient;
+use App\Migrations\Support\LegacyTaskTemplateStatusBackfill;
+use App\Migrations\Support\LegacyWorkOrderStatusLink;
 use App\Models\TaskTemplate;
 use App\RichText\RichTextConverter;
 use App\Services\TaskTemplateService;
@@ -35,10 +38,12 @@ use RuntimeException;
  * hence the title/stage-name caps enforced here (spec 0172 M4).
  *
  * Idempotence is per MODEL only (D-12): `task_templates.old_id`; a model
- * already migrated is skipped whole — its stages/items carry no `old_id` of
- * their own, so a re-import cannot tell which row is "the same" one and
- * does not try. Fase 1 of MigrationOrder (D-13): this source references
- * nothing else.
+ * already migrated is never re-created — its stages/items carry no `old_id`
+ * of their own. Fase 6 of MigrationOrder (spec 0323, D-9): each action links
+ * its working status by the `old_id` of `work-order-workflows`; on a re-run a
+ * model imported before that link existed gets its empty links backfilled
+ * (spec 0323 D-11, LegacyTaskTemplateStatusBackfill): `created` when an action
+ * was linked, `skipped` otherwise.
  */
 class TaskTemplatesSource extends AbstractMigrationSource
 {
@@ -50,6 +55,8 @@ class TaskTemplatesSource extends AbstractMigrationSource
     public function __construct(
         ExternalApiClient $client,
         private readonly TaskTemplateService $service,
+        private readonly LegacyWorkOrderStatusLink $statusLink,
+        private readonly LegacyTaskTemplateStatusBackfill $statusBackfill,
     ) {
         parent::__construct($client);
     }
@@ -57,6 +64,14 @@ class TaskTemplatesSource extends AbstractMigrationSource
     public function key(): string
     {
         return 'task-templates';
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function dependencies(): array
+    {
+        return [MigrationDependency::optional('work-order-workflows')];
     }
 
     public function label(): string
@@ -110,6 +125,7 @@ class TaskTemplatesSource extends AbstractMigrationSource
                             'title' => 'Sample root action',
                             'description' => 'Sample description',
                             'estimated_minutes' => 90,
+                            'work_order_workflow_status_old_id' => null,
                         ],
                         [
                             'id' => 101,
@@ -160,8 +176,10 @@ class TaskTemplatesSource extends AbstractMigrationSource
             throw new RuntimeException('External id is required.');
         }
 
-        if ($this->existsByOldId(TaskTemplate::class, $externalId)) {
-            return MigrationRowOutcome::skipped();
+        $existing = TaskTemplate::query()->where('old_id', $externalId)->first();
+
+        if ($existing !== null) {
+            return $this->backfillStatuses($existing, $record);
         }
 
         $name = trim((string) ($record['name'] ?? ''));
@@ -193,6 +211,21 @@ class TaskTemplatesSource extends AbstractMigrationSource
         $taskTemplate->save();
 
         return MigrationRowOutcome::created($warnings, $taskTemplate);
+    }
+
+    /**
+     * @param  array<string, mixed>  $record
+     */
+    private function backfillStatuses(TaskTemplate $taskTemplate, array $record): MigrationRowOutcome
+    {
+        $warnings = [];
+        $tree = $this->buildTree((array) ($record['stages'] ?? []), $warnings);
+
+        if ($this->statusBackfill->fill($taskTemplate, $tree['items'], $warnings)) {
+            return MigrationRowOutcome::created($warnings, $taskTemplate);
+        }
+
+        return MigrationRowOutcome::skipped($warnings);
     }
 
     /**
@@ -244,6 +277,7 @@ class TaskTemplatesSource extends AbstractMigrationSource
                     description: RichTextConverter::plainTextToHtml((string) ($rawItem['description'] ?? ''), convertMentionTokens: false),
                     estimatedMinutes: isset($rawItem['estimated_minutes']) ? (int) $rawItem['estimated_minutes'] : null,
                     taskStatusId: null,
+                    workOrderWorkflowStatusId: $this->statusLink->resolve($rawItem['work_order_workflow_status_old_id'] ?? null, $warnings),
                     dueOffsetDays: 0,
                     stageKey: $parentId === null ? $stageKey : null,
                     key: 'i'.$rawItem['id'],

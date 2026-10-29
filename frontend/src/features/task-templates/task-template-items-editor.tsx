@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RichTextEditor } from '@/components/rich-text/rich-text-editor'
 import { TaskTemplateItemStatusSelect } from '@/features/task-templates/task-template-item-status-select'
+import { TaskTemplateItemWorkOrderStatusSelect } from '@/features/task-templates/task-template-item-work-order-status-select'
 import { TaskTemplateItemAttachments } from '@/features/task-templates/task-template-item-attachments'
 import type {
   TaskTemplateItemErrors,
@@ -60,6 +61,7 @@ export function TaskTemplateItemRowContent({
   const dueOffsetId = `task-template-item-${row.id}-due-offset`
   const dueOffsetErrorId = `${dueOffsetId}-error`
   const statusErrorId = `task-template-item-${row.id}-status-error`
+  const workOrderStatusErrorId = `task-template-item-${row.id}-work-order-status-error`
 
   return (
     <div className="flex flex-1 flex-col gap-2">
@@ -133,7 +135,7 @@ export function TaskTemplateItemRowContent({
         ) : null}
       </div>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <Label htmlFor={estimatedId} className="text-xs font-normal text-muted-foreground">
             {t('taskTemplates.form.items.estimatedMinutes')}
@@ -201,6 +203,24 @@ export function TaskTemplateItemRowContent({
           {errors.task_status_id ? (
             <span id={statusErrorId} role="alert" className="mt-1 block text-xs font-medium text-destructive">
               {errors.task_status_id}
+            </span>
+          ) : null}
+        </div>
+
+        <div>
+          <Label className="text-xs font-normal text-muted-foreground">
+            {t('taskTemplates.form.items.workOrderStatus')}
+          </Label>
+          <TaskTemplateItemWorkOrderStatusSelect
+            value={row.work_order_workflow_status_id}
+            onChange={(value) => onUpdateRow(row.id, { work_order_workflow_status_id: value })}
+            disabled={disabled}
+            aria-invalid={!!errors.work_order_workflow_status_id}
+            aria-describedby={errors.work_order_workflow_status_id ? workOrderStatusErrorId : undefined}
+          />
+          {errors.work_order_workflow_status_id ? (
+            <span id={workOrderStatusErrorId} role="alert" className="mt-1 block text-xs font-medium text-destructive">
+              {errors.work_order_workflow_status_id}
             </span>
           ) : null}
         </div>

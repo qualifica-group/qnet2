@@ -29,6 +29,16 @@ export interface TaskTemplateItemStatusRef {
   group: string
 }
 
+/** The work order working status a row links to (spec 0323 D-4/D-5), projected for display; `work_order_workflow_name` is `null` for the default set. */
+export interface TaskTemplateItemWorkOrderStatusRef {
+  id: number
+  name: string
+  color: string | null
+  progress_percentage: number | null
+  work_order_workflow_id: number | null
+  work_order_workflow_name: string | null
+}
+
 /** One "Fase" of a template (spec 0146 D-2), as returned by GET/POST/PUT/PATCH (ordered by `sort_order`). */
 export interface TaskTemplateStage {
   id: number
@@ -44,6 +54,9 @@ export interface TaskTemplateItem {
   estimated_minutes: number | null
   task_status_id: number | null
   task_status: TaskTemplateItemStatusRef | null
+  /** The work order working status the generated task carries and applies when it closes positively (spec 0323). */
+  work_order_workflow_status_id: number | null
+  work_order_workflow_status: TaskTemplateItemWorkOrderStatusRef | null
   due_offset_days: number
   sort_order: number
   /** The "Fase" this row sits in (spec 0146 D-2), `null` for "Senza fase". A sub-item (spec 0172 D-3) always has `null` here — it follows its root's own fase. */
@@ -80,6 +93,7 @@ export interface CreateTaskTemplateItemPayload {
   description: string | null
   estimated_minutes: number | null
   task_status_id: number | null
+  work_order_workflow_status_id: number | null
   due_offset_days: number
   /** The owning `stages.*.key` of the SAME request, `null` for "Senza fase" (spec 0146 D-2/AC-003). Always `null` on a sub-item (spec 0172 D-3). */
   stage_key: string | null
@@ -159,6 +173,7 @@ export interface TaskTemplateItemFormRow {
   description: string | null
   estimated_minutes: number | null
   task_status_id: number | null
+  work_order_workflow_status_id: number | null
   due_offset_days: number
   stage_key: string | null
   /** Another row's own `id` this row nests under, `null` for a root row (spec 0172 D-1, up to 3 levels below a root). */
@@ -169,7 +184,13 @@ export interface TaskTemplateItemFormRow {
 export type TaskTemplateItemRowPatch = Partial<
   Pick<
     TaskTemplateItemFormRow,
-    'title' | 'description' | 'estimated_minutes' | 'task_status_id' | 'due_offset_days' | 'stage_key'
+    | 'title'
+    | 'description'
+    | 'estimated_minutes'
+    | 'task_status_id'
+    | 'work_order_workflow_status_id'
+    | 'due_offset_days'
+    | 'stage_key'
   >
 >
 

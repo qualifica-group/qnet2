@@ -15,6 +15,7 @@ use App\Models\WorkOrder;
 use App\Services\Concerns\GeneratesSequentialCode;
 use App\Services\WorkOrders\WorkOrderAttributeValueWriter;
 use App\Services\WorkOrders\WorkOrderLineWriter;
+use App\Services\WorkOrders\WorkOrderProgressEntryService;
 use App\Services\WorkOrders\WorkOrderTaskForceCloser;
 use App\Services\WorkOrders\WorkOrderTaskGenerator;
 use App\Services\WorkOrders\WorkOrderTitleWriter;
@@ -94,6 +95,7 @@ class WorkOrderService
         private readonly WorkOrderTaskForceCloser $taskForceCloser,
         private readonly WorkOrderTitleWriter $titleWriter,
         private readonly WorkOrderWorkflowStatusAssigner $statusAssigner,
+        private readonly WorkOrderProgressEntryService $progressEntries,
     ) {}
 
     public function loadDetail(WorkOrder $workOrder): WorkOrder
@@ -230,7 +232,7 @@ class WorkOrderService
             // Step 2a-bis (spec 0322, D-8): the "Stato lavorazione" of the set the lines resolve to.
             $this->statusAssigner->assign($workOrder, $data->workOrderWorkflowStatusId, logChange: false);
             // A commessa BORN force-closed starts on "Chiusa con esito negativo" (spec 0322 amendment).
-            $this->statusAssigner->followForceClose($workOrder, wasForceClosed: false, logChange: false);
+            $this->statusAssigner->followForceClose($workOrder, wasForceClosed: false, logChange: false, forceCloseStatusId: $data->forceCloseStatusId);
 
             // Step 2b (spec 0098, D-6): "Informazioni aggiuntive" — written
             // AFTER the quote lines, so the applicable set validated against
@@ -292,6 +294,7 @@ class WorkOrderService
     {
         DB::transaction(function () use ($workOrder, $data): void {
             $wasForceClosed = $workOrder->is_force_closed;
+            $previousStatusId = $workOrder->work_order_workflow_status_id;
 
             $workOrder->fill($data->submittedAttributes());
             $this->enforceForceCloseInvariant($workOrder);
@@ -320,10 +323,11 @@ class WorkOrderService
             // explicit status must belong to it.
             if ($data->hasQuoteLineIds() || $data->workOrderWorkflowStatusId !== null) {
                 $this->statusAssigner->assign($workOrder, $data->workOrderWorkflowStatusId, logChange: true);
+                $this->applyManualStatusProgress($workOrder, $previousStatusId, $data->workOrderWorkflowStatusId);
             }
 
             // Spec 0322 amendment: a force-close transition drives the status (after any explicit choice).
-            $this->statusAssigner->followForceClose($workOrder, $wasForceClosed, logChange: true);
+            $this->statusAssigner->followForceClose($workOrder, $wasForceClosed, logChange: true, forceCloseStatusId: $data->forceCloseStatusId);
 
             // "Informazioni aggiuntive" (spec 0098, D-6): validated against
             // the applicable set as it is AFTER any submitted
@@ -390,6 +394,31 @@ class WorkOrderService
     private function allowedQuoteIds(WorkOrder $workOrder): array
     {
         return $workOrder->isMultiQuote() ? $workOrder->sourceQuoteIds() : [(int) $workOrder->quote_id];
+    }
+
+    /**
+     * Spec 0323 D-2/D-8: an explicitly submitted status that really changed
+     * moves the progress like the legacy: a positive percentage not above the
+     * progress reached is a 422 (the surrounding transaction rolls the status
+     * write back), a higher one adds the delta entry. Nothing for a
+     * force-closed commessa (spec 0321 D-8).
+     */
+    private function applyManualStatusProgress(WorkOrder $workOrder, ?int $previousStatusId, ?int $submittedStatusId): void
+    {
+        if ($submittedStatusId === null
+            || $workOrder->is_force_closed
+            || $workOrder->work_order_workflow_status_id === $previousStatusId) {
+            return;
+        }
+
+        $percentage = $workOrder->workOrderWorkflowStatus()->value('progress_percentage');
+        $percentage = $percentage === null ? null : (int) $percentage;
+
+        $this->progressEntries->assertStatusPercentageAboveCurrent($workOrder, $percentage);
+        // auth:sanctum guarantees a resolved actor on the update route.
+        /** @var User $actor */
+        $actor = Auth::user();
+        $this->progressEntries->raiseTo($workOrder, $percentage, $actor);
     }
 
     /**

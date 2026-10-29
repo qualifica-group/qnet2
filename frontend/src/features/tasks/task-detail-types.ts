@@ -77,6 +77,14 @@ export interface TaskWorkOrderStageRef {
   name: string
 }
 
+/** The work order working status the task applies to its commessa when it closes positively (spec 0323), read-only snapshot of the template row. */
+export interface TaskWorkOrderWorkflowStatusRef {
+  id: number
+  name: string
+  color: string | null
+  progress_percentage: number | null
+}
+
 /**
  * One child of the task, as exposed by `TaskResource.subtasks` (D-12): a lean
  * array already filtered by the visibility scope (AC-066). NO endpoint of its
@@ -151,6 +159,8 @@ export interface TaskDetail {
    */
   work_order_stage_id: number | null
   work_order_stage: TaskWorkOrderStageRef | null
+  /** Spec 0323 D-4: copied from the template row at generation, never writable through the task API. */
+  work_order_workflow_status: TaskWorkOrderWorkflowStatusRef | null
   requester_id: number | null
   requester: TaskNamedRef | null
   /** Server-side, immutable, never client-writable (D-10): no `creator_id` key exists here. */

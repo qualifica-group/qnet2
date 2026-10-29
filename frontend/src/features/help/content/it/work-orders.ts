@@ -63,12 +63,13 @@ const guide: HelpGuide = {
           items: [
             'Premi **Chiusura forzata**.',
             'Scrivi il **motivo** (obbligatorio). Se la commessa ha task ancora aperti, il dialog ti avvisa quanti verranno chiusi con esito negativo.',
-            'Premi **Chiudi commessa**: lo stato diventa Chiusa e il motivo compare tra i dati della commessa.',
+            'Scegli lo **Stato di chiusura** (obbligatorio): l\'elenco mostra gli stati **Chiusa con esito negativo** del set della commessa ed è già impostato su quello principale.',
+            'Premi **Chiudi commessa**: lo stato diventa Chiusa, lo Stato lavorazione diventa lo stato di chiusura scelto e il motivo compare tra i dati della commessa.',
           ],
         },
         {
           type: 'note',
-          text: 'Su una commessa chiusa forzatamente l\'azione diventa **Riapri**: dopo la conferma la chiusura viene annullata e il motivo cancellato. I task chiusi dalla chiusura forzata restano chiusi.',
+          text: 'Su una commessa chiusa forzatamente l\'azione diventa **Riapri**: dopo la conferma la chiusura viene annullata e il motivo cancellato; se lo Stato lavorazione è uno stato **Chiusa con esito negativo** torna su **Aperta**. I task chiusi dalla chiusura forzata restano chiusi.',
         },
       ],
     },
@@ -119,7 +120,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "In questa versione cambiare lo **Stato lavorazione** non sposta la percentuale di **Avanzamento** né lo stato calcolato: la **% avanzamento** configurata per ogni stato è solo informativa. Se i dati della commessa cambiano e il set applicabile è diverso, lo stato passa a quello equivalente (Aperta, Chiusa con esito positivo, Chiusa con esito negativo) oppure ad Aperta. La chiusura forzata porta lo Stato lavorazione su **Chiusa con esito negativo**; riaprendo la commessa torna su **Aperta**, se nel frattempo non l'hai cambiato a mano.",
+          text: "Scegliendo a mano uno **Stato lavorazione** con una **% avanzamento** maggiore di zero, l'avanzamento della commessa sale a quella percentuale (viene aggiunta una registrazione con data di oggi). Se la percentuale dello stato non supera l'avanzamento già raggiunto il cambio non è accettato e il campo mostra l'errore; gli stati senza percentuale cambiano solo lo stato. Lo stesso avviene in automatico quando si chiude con esito positivo un task creato da un modello che ha la riga collegata a uno stato (vedi **Modelli di Task**): in quel caso lo stato viene applicato anche se è precedente a quello attuale. Su una commessa chiusa forzatamente l'avanzamento non cambia. Se i dati della commessa cambiano e il set applicabile è diverso, lo stato passa a quello equivalente (Aperta, Chiusa con esito positivo, Chiusa con esito negativo, anche per gli altri stati di chiusura dello stesso gruppo) oppure ad Aperta. La chiusura forzata porta lo Stato lavorazione sullo **Stato di chiusura** scelto (uno stato **Chiusa con esito negativo**); riaprendo la commessa torna su **Aperta** se è ancora su uno stato negativo.",
         },
       ],
     },

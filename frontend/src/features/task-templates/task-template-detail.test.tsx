@@ -77,7 +77,9 @@ describe('TaskTemplateDetailView — description via RichTextContent (AC-024)', 
               description: '<p>Chiamare il cliente</p>',
               estimated_minutes: null,
               task_status_id: null,
+              work_order_workflow_status_id: null,
               task_status: null,
+              work_order_workflow_status: null,
               due_offset_days: 0,
               sort_order: 1,
               task_template_stage_id: null,
@@ -110,7 +112,9 @@ describe('TaskTemplateDetailView — items grouped by fase (spec 0146 D-2)', () 
               description: null,
               estimated_minutes: null,
               task_status_id: null,
+              work_order_workflow_status_id: null,
               task_status: null,
+              work_order_workflow_status: null,
               due_offset_days: 0,
               sort_order: 0,
               task_template_stage_id: null,
@@ -123,7 +127,9 @@ describe('TaskTemplateDetailView — items grouped by fase (spec 0146 D-2)', () 
               description: null,
               estimated_minutes: null,
               task_status_id: null,
+              work_order_workflow_status_id: null,
               task_status: null,
+              work_order_workflow_status: null,
               due_offset_days: 0,
               sort_order: 1,
               task_template_stage_id: 2,
@@ -157,7 +163,9 @@ describe('TaskTemplateDetailView — sub-items nest under their root (spec 0172 
               description: null,
               estimated_minutes: null,
               task_status_id: null,
+              work_order_workflow_status_id: null,
               task_status: null,
+              work_order_workflow_status: null,
               due_offset_days: 0,
               sort_order: 0,
               task_template_stage_id: 1,
@@ -170,7 +178,9 @@ describe('TaskTemplateDetailView — sub-items nest under their root (spec 0172 
               description: null,
               estimated_minutes: null,
               task_status_id: null,
+              work_order_workflow_status_id: null,
               task_status: null,
+              work_order_workflow_status: null,
               due_offset_days: 0,
               sort_order: 1,
               task_template_stage_id: null,
@@ -186,5 +196,51 @@ describe('TaskTemplateDetailView — sub-items nest under their root (spec 0172 
     expect(screen.queryByText('No phase')).not.toBeInTheDocument()
     expect(screen.getByText('Root task')).toBeInTheDocument()
     expect(screen.getByText('Sub-task')).toBeInTheDocument()
+  })
+})
+
+describe('TaskTemplateDetailView — linked work order status (spec 0323 AC-021)', () => {
+  it('shows the status a row links to, with its progress', () => {
+    renderView(
+      <TaskTemplateDetailView
+        taskTemplate={taskTemplate({
+          items_count: 1,
+          items: [
+            {
+              id: 30,
+              title: 'Collaudo impianto',
+              description: null,
+              estimated_minutes: null,
+              task_status_id: null,
+              task_status: null,
+              work_order_workflow_status_id: 7,
+              work_order_workflow_status: {
+                id: 7,
+                name: 'In collaudo',
+                color: null,
+                progress_percentage: 60,
+                work_order_workflow_id: 3,
+                work_order_workflow_name: 'Impianti',
+              },
+              due_offset_days: 0,
+              sort_order: 0,
+              task_template_stage_id: null,
+              parent_id: null,
+              attachments: [],
+            },
+          ],
+        })}
+      />,
+    )
+
+    expect(screen.getByText(i18n.t('taskTemplates.detail.items.workOrderStatus'))).toBeInTheDocument()
+    expect(screen.getByText('In collaudo')).toBeInTheDocument()
+    expect(screen.getByText('60%')).toBeInTheDocument()
+  })
+
+  it('shows nothing for a row without a link', () => {
+    renderView(<TaskTemplateDetailView taskTemplate={taskTemplate({ items_count: 0 })} />)
+
+    expect(screen.queryByText(i18n.t('taskTemplates.detail.items.workOrderStatus'))).not.toBeInTheDocument()
   })
 })

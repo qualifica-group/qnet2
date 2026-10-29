@@ -2,6 +2,7 @@
 
 namespace App\Migrations\Sources;
 
+use App\Enums\WorkOrderStatus;
 use App\Migrations\AbstractMigrationSource;
 use App\Migrations\MigrationDependency;
 use App\Migrations\MigrationImportContext;
@@ -9,6 +10,7 @@ use App\Migrations\MigrationRowOutcome;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderWorkflowStatus;
 use App\Services\WorkOrders\WorkOrderWorkflowResolver;
+use Illuminate\Support\Collection;
 use RuntimeException;
 
 /**
@@ -19,13 +21,28 @@ use RuntimeException;
  *
  * The status is written ONLY when it belongs to the set the resolver gives the
  * work order (its workflow, or the global one); otherwise the work order stays
- * on the status it has and the row returns a warning. A force-closed work order
- * keeps its closing status, with a warning. A work order or status
+ * on the status it has and the row returns a warning. A work order or status
  * not migrated fails the row. Written quietly, without activity log; a work
  * order already on that status is skipped.
+ *
+ * A force-closed work order follows the outcome the legacy sends in
+ * `closing_group` (spec 0324, D-10): "completed" (Chiusa) keeps a legacy
+ * status of the completed or closed group, otherwise lands on the set's
+ * `completed` row; "closed" (Annullata/Disdetta) keeps a legacy status of the
+ * closed group, otherwise lands on the set's `closed` row. Without an outcome
+ * it keeps its closing status unless the legacy status is of a closing group
+ * (D-5). Closed orders without a legacy status arrive with `status_id` null.
  */
 class WorkOrderWorkflowStatusesSource extends AbstractMigrationSource
 {
+    private const array CLOSING_GROUPS = [WorkOrderStatus::Completed, WorkOrderStatus::Closed];
+
+    /** The legacy statuses a force-closed work order keeps, per legacy outcome (D-10). */
+    private const array KEPT_GROUPS_BY_OUTCOME = [
+        'completed' => [WorkOrderStatus::Completed, WorkOrderStatus::Closed],
+        'closed' => [WorkOrderStatus::Closed],
+    ];
+
     private ?WorkOrderWorkflowResolver $resolver = null;
 
     public function key(): string
@@ -62,6 +79,7 @@ class WorkOrderWorkflowStatusesSource extends AbstractMigrationSource
         return [
             ['id' => 'id', 'label' => 'Work order (external id)', 'type' => 'number'],
             ['id' => 'status_id', 'label' => 'Status (external id)', 'type' => 'number'],
+            ['id' => 'closing_group', 'label' => 'Closing outcome', 'type' => 'string'],
         ];
     }
 
@@ -79,6 +97,7 @@ class WorkOrderWorkflowStatusesSource extends AbstractMigrationSource
         return [
             'id' => $record['id'] ?? null,
             'status_id' => $record['status_id'] ?? null,
+            'closing_group' => $record['closing_group'] ?? null,
         ];
     }
 
@@ -92,34 +111,106 @@ class WorkOrderWorkflowStatusesSource extends AbstractMigrationSource
 
         $warnings = array_map('strval', (array) ($record['warnings'] ?? []));
 
-        // Step 1: the work order and the status must already be migrated
+        // Step 1: the work order and the legacy status (when sent) must already be migrated
         $workOrder = WorkOrder::query()->with('quoteLines.product')->where('old_id', $externalId)->first()
             ?? throw new RuntimeException("Work order not migrated (legacy id {$externalId}); migrate work orders first.");
+        $status = $this->legacyStatus($record['status_id'] ?? null);
 
-        $status = WorkOrderWorkflowStatus::query()->where('old_id', $record['status_id'] ?? null)->first()
-            ?? throw new RuntimeException('Workflow status not migrated (legacy id '.($record['status_id'] ?? 'null').'); migrate work order workflows first.');
-
-        // Step 2: a force-closed work order keeps "Chiusa con esito negativo" (spec 0322 amendment)
-        if ($workOrder->is_force_closed) {
-            return MigrationRowOutcome::skipped([...$warnings, "Work order is force-closed: it keeps its closing status instead of \"{$status->name}\"."]);
-        }
-
-        // Step 3: only a status of the set resolved for this work order is written
+        // Step 2: the set resolved for this work order
         $resolver = $this->resolver ??= app(WorkOrderWorkflowResolver::class);
-        $allowedIds = $resolver->statusesFor($resolver->resolve($workOrder))->pluck('id');
+        $statuses = $resolver->statusesFor($resolver->resolve($workOrder));
+        $outcome = $workOrder->is_force_closed ? $this->closingOutcome($record, $warnings) : null;
 
-        if (! $allowedIds->contains($status->id)) {
-            return MigrationRowOutcome::skipped([...$warnings, "Status \"{$status->name}\" is not in the workflow resolved for this work order; left unchanged."]);
-        }
+        // Step 3: the target status, or a skip with its reason
+        $target = $outcome !== null
+            ? $this->closingTarget($statuses, $status, $outcome, $warnings)
+            : $this->plainTarget($workOrder, $statuses, $status, $warnings);
 
-        // Step 4: nothing to do when it is already the current status
-        if ($workOrder->work_order_workflow_status_id === $status->id) {
+        if ($target === null || $workOrder->work_order_workflow_status_id === $target->id) {
             return MigrationRowOutcome::skipped($warnings);
         }
 
-        // Step 5: quiet write, no activity log
-        activity()->withoutLogs(fn () => $workOrder->forceFill(['work_order_workflow_status_id' => $status->id])->saveQuietly());
+        // Step 4: quiet write, no activity log
+        activity()->withoutLogs(fn () => $workOrder->forceFill(['work_order_workflow_status_id' => $target->id])->saveQuietly());
 
         return MigrationRowOutcome::created($warnings);
+    }
+
+    private function legacyStatus(mixed $statusId): ?WorkOrderWorkflowStatus
+    {
+        if ($statusId === null) {
+            return null;
+        }
+
+        return WorkOrderWorkflowStatus::query()->where('old_id', $statusId)->first()
+            ?? throw new RuntimeException("Workflow status not migrated (legacy id {$statusId}); migrate work order workflows first.");
+    }
+
+    /**
+     * @param  array<string, mixed>  $record
+     * @param  list<string>  $warnings
+     */
+    private function closingOutcome(array $record, array &$warnings): ?string
+    {
+        $outcome = $record['closing_group'] ?? null;
+
+        if ($outcome !== null && ! array_key_exists($outcome, self::KEPT_GROUPS_BY_OUTCOME)) {
+            $warnings[] = "Unknown closing_group \"{$outcome}\": ignored.";
+
+            return null;
+        }
+
+        return $outcome;
+    }
+
+    /**
+     * D-10: the legacy status when its group fits the legacy outcome, else the
+     * set's system row of that outcome.
+     *
+     * @param  Collection<int, WorkOrderWorkflowStatus>  $statuses
+     * @param  list<string>  $warnings
+     */
+    private function closingTarget(Collection $statuses, ?WorkOrderWorkflowStatus $status, string $outcome, array &$warnings): ?WorkOrderWorkflowStatus
+    {
+        if ($status !== null && $statuses->contains('id', $status->id) && in_array($status->group, self::KEPT_GROUPS_BY_OUTCOME[$outcome], true)) {
+            return $status;
+        }
+
+        $target = $statuses->firstWhere('system_key', $outcome);
+
+        if ($status !== null && $target !== null) {
+            $warnings[] = "Work order is force-closed with outcome \"{$outcome}\": \"{$target->name}\" instead of \"{$status->name}\".";
+        }
+
+        return $target;
+    }
+
+    /**
+     * Records without a legacy outcome: a force-closed work order keeps its
+     * closing status unless the legacy status is of a closing group (D-5);
+     * only a status of the resolved set is written.
+     *
+     * @param  Collection<int, WorkOrderWorkflowStatus>  $statuses
+     * @param  list<string>  $warnings
+     */
+    private function plainTarget(WorkOrder $workOrder, Collection $statuses, ?WorkOrderWorkflowStatus $status, array &$warnings): ?WorkOrderWorkflowStatus
+    {
+        if ($status === null) {
+            return null;
+        }
+
+        if ($workOrder->is_force_closed && ! in_array($status->group, self::CLOSING_GROUPS, true)) {
+            $warnings[] = "Work order is force-closed: it keeps its closing status instead of \"{$status->name}\".";
+
+            return null;
+        }
+
+        if (! $statuses->contains('id', $status->id)) {
+            $warnings[] = "Status \"{$status->name}\" is not in the workflow resolved for this work order; left unchanged.";
+
+            return null;
+        }
+
+        return $status;
     }
 }
