@@ -2,6 +2,7 @@
 
 namespace App\DataObjects\PaymentMethods;
 
+use App\Enums\PaymentCondition;
 use App\Enums\VatAllocation;
 
 /**
@@ -40,6 +41,11 @@ final readonly class UpdatePaymentMethodData
         public ?int $endOfMonthExtraDays = null,
         public bool $endOfMonthExtraDaysSubmitted = false,
         public ?VatAllocation $vatAllocation = null,
+        public ?PaymentCondition $paymentCondition = null,
+        public ?int $excludedMonth1 = null,
+        public bool $excludedMonth1Submitted = false,
+        public ?int $excludedMonth2 = null,
+        public bool $excludedMonth2Submitted = false,
     ) {}
 
     /**
@@ -67,6 +73,11 @@ final readonly class UpdatePaymentMethodData
             endOfMonthExtraDays: isset($data['end_of_month_extra_days']) ? (int) $data['end_of_month_extra_days'] : null,
             endOfMonthExtraDaysSubmitted: array_key_exists('end_of_month_extra_days', $data),
             vatAllocation: isset($data['vat_allocation']) ? VatAllocation::from($data['vat_allocation']) : null,
+            paymentCondition: isset($data['payment_condition']) ? PaymentCondition::from($data['payment_condition']) : null,
+            excludedMonth1: isset($data['excluded_month_1']) ? (int) $data['excluded_month_1'] : null,
+            excludedMonth1Submitted: array_key_exists('excluded_month_1', $data),
+            excludedMonth2: isset($data['excluded_month_2']) ? (int) $data['excluded_month_2'] : null,
+            excludedMonth2Submitted: array_key_exists('excluded_month_2', $data),
         );
     }
 
@@ -122,6 +133,18 @@ final readonly class UpdatePaymentMethodData
 
         if ($this->vatAllocation !== null) {
             $attributes['vat_allocation'] = $this->vatAllocation;
+        }
+
+        if ($this->paymentCondition !== null) {
+            $attributes['payment_condition'] = $this->paymentCondition;
+        }
+
+        if ($this->excludedMonth1Submitted) {
+            $attributes['excluded_month_1'] = $this->excludedMonth1;
+        }
+
+        if ($this->excludedMonth2Submitted) {
+            $attributes['excluded_month_2'] = $this->excludedMonth2;
         }
 
         return $attributes;

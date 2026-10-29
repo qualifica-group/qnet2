@@ -76,6 +76,41 @@ it('counts the end-of-month offset in months per installment', function () {
     expect(schedule_dates($schedule))->toBe(['2026-03-31', '2026-04-30', '2026-05-31']);
 });
 
+// Spec 0325, D-2 — the legacy fixed day and excluded months.
+it('adds the extra days to the due date without end of month too', function () {
+    $schedule = (new InstallmentScheduleCalculator)->calculate(
+        CarbonImmutable::parse('2026-01-10'),
+        schedule_method(['payment_days' => 30, 'end_of_month_extra_days' => 16]),
+        '100.00', '22.00', '122.00',
+    );
+
+    expect(schedule_dates($schedule))->toBe(['2026-02-25']);
+});
+
+it('postpones by 10 days a due date falling in either excluded month', function () {
+    $calculator = new InstallmentScheduleCalculator;
+    $method = schedule_method([
+        'end_of_month' => true, 'installments_count' => 3, 'payment_days' => 30, 'days_between_installments' => 30,
+        'excluded_month_1' => 8, 'excluded_month_2' => 12,
+    ]);
+
+    $summer = $calculator->calculate(CarbonImmutable::parse('2026-06-15'), $method, '300.00', '0.00', '300.00');
+    $winter = $calculator->calculate(CarbonImmutable::parse('2026-10-15'), $method, '300.00', '0.00', '300.00');
+
+    expect(schedule_dates($summer))->toBe(['2026-07-31', '2026-09-10', '2026-09-30'])
+        ->and(schedule_dates($winter))->toBe(['2026-11-30', '2027-01-10', '2027-01-31']);
+});
+
+it('ignores the excluded months when the method has extra days', function () {
+    $schedule = (new InstallmentScheduleCalculator)->calculate(
+        CarbonImmutable::parse('2026-07-15'),
+        schedule_method(['end_of_month' => true, 'end_of_month_extra_days' => 10, 'excluded_month_1' => 8]),
+        '100.00', '22.00', '122.00',
+    );
+
+    expect(schedule_dates($schedule))->toBe(['2026-09-10']);
+});
+
 it('puts the whole VAT on the first or on the last installment', function () {
     $calculator = new InstallmentScheduleCalculator;
     $date = CarbonImmutable::parse('2026-01-10');

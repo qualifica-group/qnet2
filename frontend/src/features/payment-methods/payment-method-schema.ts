@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
-import { VAT_ALLOCATIONS, type VatAllocation } from '@/features/payment-methods/types'
+import { PAYMENT_CONDITIONS, VAT_ALLOCATIONS, type VatAllocation } from '@/features/payment-methods/types'
 
 /**
  * Zod schema for the payment method create/edit form, built as a factory so
@@ -35,6 +35,9 @@ const DAYS_BETWEEN_MIN = 0
 const DAYS_BETWEEN_MAX = 365
 const EXTRA_DAYS_MIN = 0
 const EXTRA_DAYS_MAX = 31
+/** Backend excluded month bounds (spec 0325 D-1). */
+const MONTH_MIN = 1
+const MONTH_MAX = 12
 
 /** Shared fields common to create and edit. */
 function baseFields(t: TFunction) {
@@ -84,7 +87,10 @@ function baseFields(t: TFunction) {
       .min(EXTRA_DAYS_MIN, t('paymentMethods.form.extraDaysMin'))
       .max(EXTRA_DAYS_MAX, t('paymentMethods.form.extraDaysMax'))
       .nullable(),
+    excluded_month_1: z.number().int().min(MONTH_MIN).max(MONTH_MAX).nullable(),
+    excluded_month_2: z.number().int().min(MONTH_MIN).max(MONTH_MAX).nullable(),
     vat_allocation: z.enum(VAT_ALLOCATIONS),
+    payment_condition: z.enum(PAYMENT_CONDITIONS),
     is_active: z.boolean(),
   }
 }

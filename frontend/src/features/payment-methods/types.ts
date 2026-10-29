@@ -17,6 +17,12 @@ export const VAT_ALLOCATIONS = ['split', 'first', 'last', 'vat_first'] as const
 /** How the invoice VAT is spread over the installments. */
 export type VatAllocation = (typeof VAT_ALLOCATIONS)[number]
 
+/** Closed set of FatturaPA payment conditions, in display order (spec 0325 D-1). */
+export const PAYMENT_CONDITIONS = ['TP01', 'TP02', 'TP03'] as const
+
+/** FatturaPA payment condition: installments, full, advance. */
+export type PaymentCondition = (typeof PAYMENT_CONDITIONS)[number]
+
 /**
  * Single payment method detail returned by GET/POST/PATCH /payment-methods
  * (envelope `data`). Matches `PaymentMethodResource`.
@@ -30,13 +36,18 @@ export interface PaymentMethodDetail {
   code: string
   /** Fiscal/legacy classification code (e.g. "MP01"), non-unique. */
   payment_method_code: string | null
+  payment_condition: PaymentCondition
   description: string | null
   payment_instructions: string | null
   payment_days: number | null
   installments_count: number
   days_between_installments: number
   end_of_month: boolean
+  /** Extra days added to every due date (legacy "fixed due day"), with or without end of month. */
   end_of_month_extra_days: number | null
+  /** Months (1..12) whose due dates are postponed by 10 days when there are no extra days. */
+  excluded_month_1: number | null
+  excluded_month_2: number | null
   vat_allocation: VatAllocation
   sort_order: number
   is_active: boolean
@@ -69,7 +80,10 @@ export interface CreatePaymentMethodPayload {
   days_between_installments?: number
   end_of_month?: boolean
   end_of_month_extra_days?: number | null
+  excluded_month_1?: number | null
+  excluded_month_2?: number | null
   vat_allocation?: VatAllocation
+  payment_condition?: PaymentCondition
   is_active?: boolean
 }
 

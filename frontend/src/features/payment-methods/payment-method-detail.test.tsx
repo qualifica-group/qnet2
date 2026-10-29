@@ -13,8 +13,8 @@ import type { PaymentMethodDetailWithPermissions } from '@/features/payment-meth
  * fiscal code, description, payment_instructions, payment_days, the
  * installment rules, status and both timestamps. Wave 3 of the "no edit
  * pages" plan (spec 0236): every row edits in place, each save a PATCH of
- * that row's field(s) alone; the schedule (count + gap) and the end of month
- * (switch + extra days) are one row each. The Activity Log gate is exercised
+ * that row's field(s) alone; the schedule (count + gap) and the two excluded
+ * months are one row each, the extra days a row of their own (spec 0325). The Activity Log gate is exercised
  * on the `permissions.actions.view_activity` prop.
  */
 
@@ -51,6 +51,9 @@ function paymentMethod(
     end_of_month: false,
     end_of_month_extra_days: null,
     vat_allocation: 'split',
+    payment_condition: 'TP02',
+    excluded_month_1: null,
+    excluded_month_2: null,
     sort_order: 10,
     is_active: true,
     created_at: '2026-01-01T09:00:00Z',
@@ -113,29 +116,33 @@ describe('PaymentMethodDetailView — detail fields (AC-107)', () => {
       />,
     )
 
-    expect(screen.getAllByText('—')).toHaveLength(4)
+    // REQUIREMENT CHANGED (spec 0325): the extra days row is always shown (null here).
+    expect(screen.getAllByText('—')).toHaveLength(5)
   })
 
   it('shows the inactive status', () => {
     render(<PaymentMethodDetailView paymentMethod={paymentMethod({ is_active: false })} />)
 
-    expect(screen.getByText('No', { selector: 'span' })).toBeInTheDocument()
+    // REQUIREMENT CHANGED (spec 0325): end of month is a switch row too, so "No" twice.
+    expect(screen.getAllByText('No', { selector: 'span' })).toHaveLength(2)
   })
 
-  it('summarises the schedule and the end of month on one row each', () => {
+  it('summarises the schedule, the payment terms and the excluded months on one row each', () => {
     render(
       <PaymentMethodDetailView
         paymentMethod={paymentMethod({
           installments_count: 3,
           days_between_installments: 30,
-          end_of_month: true,
-          end_of_month_extra_days: 10,
+          payment_condition: 'TP01',
+          excluded_month_1: 8,
+          excluded_month_2: 12,
         })}
       />,
     )
 
     expect(screen.getByText('3 installments, one every 30 days')).toBeInTheDocument()
-    expect(screen.getByText('Yes, +10 days')).toBeInTheDocument()
+    expect(screen.getByText('TP01 - Installment payment')).toBeInTheDocument()
+    expect(screen.getByText('August, December')).toBeInTheDocument()
   })
 })
 
@@ -226,19 +233,16 @@ describe('PaymentMethodDetailView — in-place editing', () => {
     expect(updatePaymentMethodMock).not.toHaveBeenCalled()
   })
 
-  it('the end-of-month row shows the extra days only while the switch is on, and saves both together', async () => {
+  // REQUIREMENT CHANGED (spec 0325 D-2): the extra days apply without end of month too, on their own row.
+  it('saves the extra days without end of month', async () => {
     updatePaymentMethodMock.mockResolvedValue(paymentMethod())
     render(<PaymentMethodDetailView paymentMethod={paymentMethod()} />)
 
-    fireEvent.click(pencilOf('paymentMethods.form.endOfMonth') as HTMLElement)
-    expect(screen.queryByLabelText(/^Days after end of month/)).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('switch', { name: /^End of month/ }))
-    fireEvent.change(await screen.findByLabelText(/^Days after end of month/), { target: { value: '10' } })
+    fireEvent.click(pencilOf('paymentMethods.form.endOfMonthExtraDays') as HTMLElement)
+    fireEvent.change(screen.getByLabelText(/^Extra days on due date/), { target: { value: '16' } })
     saveRow()
 
-    await waitFor(() =>
-      expect(updatePaymentMethodMock).toHaveBeenCalledWith(4, { end_of_month: true, end_of_month_extra_days: 10 }),
-    )
+    await waitFor(() => expect(updatePaymentMethodMock).toHaveBeenCalledWith(4, { end_of_month_extra_days: 16 }))
   })
 
   it('Cancel restores the row without calling the API', () => {

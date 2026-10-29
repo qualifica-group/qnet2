@@ -296,3 +296,38 @@ it('installments: 422 on vat_first with a single installment, on bounds, and on 
 
     $this->assertDatabaseMissing('payment_methods', ['code' => 'x1']);
 });
+
+// ---------------------------------------------------------------------------
+// legacy due date fields (spec 0325, AC-001)
+// ---------------------------------------------------------------------------
+
+it('legacy fields: payment condition and excluded months save, clear and read back', function () {
+    $actor = paymentMethodUserWith(['create', 'update', 'view']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/payment-methods', ['name' => 'Plain', 'code' => 'plain'])
+        ->assertCreated()
+        ->assertJsonPath('data.payment_condition', 'TP02')
+        ->assertJsonPath('data.excluded_month_1', null)
+        ->assertJsonPath('data.excluded_month_2', null);
+
+    $id = $this->postJson('/api/payment-methods', [
+        'name' => 'Ri.Ba.', 'code' => 'riba', 'payment_condition' => 'TP01', 'excluded_month_1' => 8, 'excluded_month_2' => 12,
+    ])->assertCreated()->json('data.id');
+
+    $this->patchJson("/api/payment-methods/{$id}", ['payment_condition' => 'TP03', 'excluded_month_2' => null])
+        ->assertOk()
+        ->assertJsonPath('data.payment_condition', 'TP03')
+        ->assertJsonPath('data.excluded_month_1', 8)
+        ->assertJsonPath('data.excluded_month_2', null);
+});
+
+it('legacy fields: 422 on an unknown payment condition and on a month outside 1..12', function () {
+    $actor = paymentMethodUserWith(['create']);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/payment-methods', ['name' => 'X', 'code' => 'x1', 'payment_condition' => 'TP09'])
+        ->assertUnprocessable()->assertJsonValidationErrors(['payment_condition']);
+    $this->postJson('/api/payment-methods', ['name' => 'X', 'code' => 'x2', 'excluded_month_1' => 0, 'excluded_month_2' => 13])
+        ->assertUnprocessable()->assertJsonValidationErrors(['excluded_month_1', 'excluded_month_2']);
+});

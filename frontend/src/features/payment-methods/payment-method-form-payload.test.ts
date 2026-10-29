@@ -18,6 +18,9 @@ const formValues: PaymentMethodFormValues = {
   end_of_month: false,
   end_of_month_extra_days: null,
   vat_allocation: 'split',
+  payment_condition: 'TP02',
+  excluded_month_1: null,
+  excluded_month_2: null,
   is_active: true,
 }
 
@@ -37,6 +40,9 @@ function original(
     end_of_month: false,
     end_of_month_extra_days: null,
     vat_allocation: 'split',
+    payment_condition: 'TP02',
+    excluded_month_1: null,
+    excluded_month_2: null,
     sort_order: 10,
     is_active: true,
     created_at: '2026-01-01T00:00:00Z',
@@ -64,6 +70,9 @@ describe('buildCreatePayload (spec 0068, AC-101)', () => {
       end_of_month: false,
       end_of_month_extra_days: null,
       vat_allocation: 'split',
+      payment_condition: 'TP02',
+      excluded_month_1: null,
+      excluded_month_2: null,
       is_active: true,
     })
   })
@@ -76,6 +85,15 @@ describe('buildCreatePayload (spec 0068, AC-101)', () => {
 describe('buildUpdatePayload (spec 0068, AC-101/AC-105)', () => {
   it('omits every field when nothing changed', () => {
     expect(buildUpdatePayload(formValues, original())).toEqual({})
+  })
+
+  it('carries the legacy due date fields that changed (spec 0325)', () => {
+    expect(
+      buildUpdatePayload(
+        { ...formValues, payment_condition: 'TP01', excluded_month_1: 8, end_of_month_extra_days: 16 },
+        original(),
+      ),
+    ).toEqual({ payment_condition: 'TP01', excluded_month_1: 8, end_of_month_extra_days: 16 })
   })
 
   it('includes only the changed name', () => {

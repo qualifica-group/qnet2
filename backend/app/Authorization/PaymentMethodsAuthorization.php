@@ -38,6 +38,7 @@ class PaymentMethodsAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('name', 'text', mandatory: true),
             new FieldDefinition('code', 'text', mandatory: true),
             new FieldDefinition('payment_method_code', 'text'),
+            new FieldDefinition('payment_condition', 'select'),
             new FieldDefinition('description', 'textarea'),
             new FieldDefinition('payment_instructions', 'textarea'),
             new FieldDefinition('payment_days', 'number'),
@@ -45,6 +46,8 @@ class PaymentMethodsAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('days_between_installments', 'number'),
             new FieldDefinition('end_of_month', 'boolean'),
             new FieldDefinition('end_of_month_extra_days', 'number'),
+            new FieldDefinition('excluded_month_1', 'number'),
+            new FieldDefinition('excluded_month_2', 'number'),
             new FieldDefinition('vat_allocation', 'select'),
             new FieldDefinition('is_active', 'boolean'),
         ];
@@ -73,6 +76,7 @@ class PaymentMethodsAuthorization extends AbstractResourceAuthorization
             // UpdatePaymentMethodRequest's own `prohibited` rule.
             'code' => $mayWrite && $model === null ? FieldPermission::visibleEditable(required: true) : FieldPermission::visibleReadonly(),
             'payment_method_code' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'payment_condition' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'description' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'payment_instructions' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'payment_days' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
@@ -80,6 +84,8 @@ class PaymentMethodsAuthorization extends AbstractResourceAuthorization
             'days_between_installments' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'end_of_month' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'end_of_month_extra_days' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'excluded_month_1' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'excluded_month_2' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'vat_allocation' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'is_active' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
         ];

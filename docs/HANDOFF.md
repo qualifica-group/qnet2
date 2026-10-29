@@ -3,6 +3,40 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Fix tab "Fatture" (Fatture attive) che tornava su "Tutte" — VERDE, NON COMMITTATO (2026-10-29)
+
+- Causa: il Set Filter di AG Grid tiene un valore del modello solo se e' nella sua lista valori, e la lista
+  (`POST /tables/{domain}/values`) e' ristretta dagli ALTRI filtri (0004). Ottobre 2026 ha solo proforma ->
+  lista `type` = `["proforma"]` -> `invoice` scartato in silenzio. Stesso difetto su mesi vuoti della striscia e
+  sul ripristino al mount (filtri salvati + `forcedFilterModel`), con effetto a cascata (cadeva anche l'anno).
+- Fix generico, nessun cambio di comportamento sui filtri aperti a mano: `components/data-table/preset-set-filter-values.ts`
+  (`registerPresetSetFilterValues` chiamata da `TableViewHandle.setFilterModel` prima di applicare il modello, ricarica la
+  lista dei filtri gia' costruiti; `withPresetSetFilterValues` nel getter di `column-filters.ts` unisce alla lista server i
+  valori del preset e quelli di `initialState`). Si appoggia al fatto che `AgPromise` risolve in modo sincrono.
+- Verifica: Vitest 1247 file / 9497 test, `tsc -b --force` EXIT 0, ESLint ok; riprodotto e verificato in Chrome via
+  Playwright (tab Proforma/Fatture/Tutte, mese Nov vuoto, reload con tab Fatture salvato).
+- Fuori scope segnalato: il chip del filtro mostra "Tipo: invoice" (valore grezzo, non tradotto).
+
+## Spec 0325 Modalita' di pagamento: campi legacy + migrazione sovrascrivibile — VERDE, NON COMMITTATO (2026-10-29)
+
+- Campi = legacy `payments`: nuove colonne `payment_condition` (enum `PaymentCondition` TP01/TP02/TP03, default TP02),
+  `excluded_month_1/2` (1..12 nullable); `end_of_month_extra_days` (nome invariato) = legacy `fixed_date`. Migrazione
+  `2026_11_08_100000_add_legacy_due_date_fields_to_payment_methods_table` (risultava gia' applicata su qnet2 a fine
+  sessione: non lanciata da me, origine da verificare).
+- D-2 `InstallmentScheduleCalculator`: giorni aggiuntivi anche senza fine mese; senza giorni aggiuntivi, scadenza in un
+  mese escluso +10 gg (`EXCLUDED_MONTH_SHIFT_DAYS`). Entrambi i mesi (il legacy per refuso usava solo il primo).
+- D-3 `PaymentMethodsSource`: re-run sovrascrive i campi legacy via `PaymentMethodService::update` senza activity log
+  (riga contata "saltata"); code/sort_order/is_active/description/payment_instructions restano di qnet-2. Anche il
+  metodo adottato dal catalogo viene sovrascritto. Enum/numero fuori dominio -> warning e campo non scritto.
+- Legacy `../qnet` `PaymentMethodMigrationController` invia tutti i campi normalizzati (D-4), verificato in tinker su
+  100 righe (TP01 18 / TP02 82, mesi esclusi 41, giorni fissi 22, rate>1 21). Modifica legacy non committata.
+- FE: nuovo `payment-method-due-date-rows.tsx` (condizioni, mesi esclusi; riusa `monthName` di tasks); "Fine mese" e
+  "Giorni aggiuntivi" ora righe separate; i18n IT/EN, guide in-app IT/EN, manuale Claude Docs (paragrafo Modalita' di
+  Pagamento).
+- Test: Pest PaymentMethods/Migration/Unit/Invoices/... ; Vitest payment-methods+help 212/212, invoices/quotes/quick-create/
+  table 929/929; `tsc -b --force` EXIT 0; ESLint, Pint ok. Test con lista congelata aggiornati (REQUIREMENT CHANGED).
+- Da fare: rilanciare su dev la sorgente `payment-methods` per sovrascrivere i 100 metodi (serve ok utente).
+
 ## Merge feature/amministrazione (spec 0288) in main — VERDE, COMMITTATO (2026-10-29)
 
 - Conflitto semantico con la 0320 D-8 (fornitore sulla RIGA, `products.supplier_id` eliminata): il codice 0288

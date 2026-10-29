@@ -20,6 +20,9 @@ final class InstallmentScheduleCalculator
     /** Days per "month" when an end-of-month term is expressed in days (legacy "30 gg DF FM"). */
     private const int DAYS_PER_MONTH = 30;
 
+    /** Postponement of a due date falling in an excluded month (legacy rule, spec 0325 D-2). */
+    private const int EXCLUDED_MONTH_SHIFT_DAYS = 10;
+
     /**
      * @param  string  $net  decimal string, e.g. "1000.00"
      * @param  string  $vat  decimal string
@@ -106,7 +109,26 @@ final class InstallmentScheduleCalculator
         return $amounts;
     }
 
+    /**
+     * Base due date (document date or end of month), then the legacy rule (spec
+     * 0325 D-2): the extra days apply with or without end of month; without them,
+     * a due date in an excluded month is postponed.
+     */
     private function dueDate(CarbonImmutable $documentDate, PaymentMethod $method, int $sequence): CarbonImmutable
+    {
+        $base = $this->baseDueDate($documentDate, $method, $sequence);
+        $extraDays = (int) ($method->end_of_month_extra_days ?? 0);
+
+        if ($extraDays > 0) {
+            return $base->addDays($extraDays);
+        }
+
+        $excludedMonths = [$method->excluded_month_1, $method->excluded_month_2];
+
+        return in_array($base->month, $excludedMonths, true) ? $base->addDays(self::EXCLUDED_MONTH_SHIFT_DAYS) : $base;
+    }
+
+    private function baseDueDate(CarbonImmutable $documentDate, PaymentMethod $method, int $sequence): CarbonImmutable
     {
         $firstDays = (int) ($method->payment_days ?? 0);
         $betweenDays = (int) ($method->days_between_installments ?? 0);
@@ -117,11 +139,7 @@ final class InstallmentScheduleCalculator
 
         $months = $this->ceilMonths($firstDays) + ($sequence - 1) * $this->ceilMonths($betweenDays);
 
-        return $documentDate
-            ->addMonthsNoOverflow($months)
-            ->endOfMonth()
-            ->startOfDay()
-            ->addDays((int) ($method->end_of_month_extra_days ?? 0));
+        return $documentDate->addMonthsNoOverflow($months)->endOfMonth()->startOfDay();
     }
 
     private function ceilMonths(int $days): int

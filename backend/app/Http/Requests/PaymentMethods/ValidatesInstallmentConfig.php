@@ -2,14 +2,15 @@
 
 namespace App\Http\Requests\PaymentMethods;
 
+use App\Enums\PaymentCondition;
 use App\Enums\VatAllocation;
 use App\Models\PaymentMethod;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Validation\Rule;
 
 /**
- * Validation of the installment configuration shared by the Store/Update
- * payment method requests (spec 0194, D-10).
+ * Validation of the installment and due date configuration shared by the
+ * Store/Update payment method requests (spec 0194, D-10; spec 0325, D-1).
  */
 trait ValidatesInstallmentConfig
 {
@@ -18,6 +19,10 @@ trait ValidatesInstallmentConfig
     private const int DAYS_BETWEEN_MAX = 365;
 
     private const int EXTRA_DAYS_MAX = 31;
+
+    private const int MONTH_MIN = 1;
+
+    private const int MONTH_MAX = 12;
 
     /**
      * @return array<string, array<int, mixed>>
@@ -32,7 +37,10 @@ trait ValidatesInstallmentConfig
             ],
             'end_of_month' => ['sometimes', 'boolean'],
             'end_of_month_extra_days' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:'.self::EXTRA_DAYS_MAX],
+            'excluded_month_1' => ['sometimes', 'nullable', 'integer', 'min:'.self::MONTH_MIN, 'max:'.self::MONTH_MAX],
+            'excluded_month_2' => ['sometimes', 'nullable', 'integer', 'min:'.self::MONTH_MIN, 'max:'.self::MONTH_MAX],
             'vat_allocation' => ['sometimes', Rule::enum(VatAllocation::class)],
+            'payment_condition' => ['sometimes', Rule::enum(PaymentCondition::class)],
         ];
     }
 
