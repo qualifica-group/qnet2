@@ -241,9 +241,10 @@ return [
     | authorize the component's endpoints.
     |
     | This is NOT the place for the indirect sub-entity permissions
-    | (addresses.*, contacts.*, personal_data.*): those are governed by the
-    | field-permission matrix of their parent form and must stay out of the
-    | Role form checkboxes.
+    | (personal_data.*): those are governed by the field-permission matrix of
+    | their parent form and must stay out of the Role form checkboxes.
+    | Contacts and addresses have no permission at all: they follow the
+    | record that owns their card (spec 0328, PersonalDataChildAuthorization).
     |
     | See App\Authorization\AssignablePermissionCatalogue
     */

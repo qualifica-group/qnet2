@@ -297,17 +297,16 @@ final class OperatorRoleCatalogue
     public const string USER_FORM_GATE = 'users.view';
 
     /**
-     * The personal-data stack the user form loads and edits outside the
-     * `users` endpoints: the card read (`GET /personal-data` by owner) and the
-     * contacts/addresses of an existing card, written immediately. Its own
-     * `personal_data.*` field matrix on `users` does not open these.
+     * The personal-data stack the user form loads outside the `users`
+     * endpoints: the card read (`GET /personal-data` by owner). Its own
+     * `personal_data.*` field matrix on `users` does not open it. The
+     * contacts/addresses of the card need no grant: they follow the user
+     * record (spec 0328).
      *
      * @var array<int, string>
      */
     public const array USER_FORM_MODULES = [
         'personal_data',
-        'contacts',
-        'addresses',
     ];
 
     /**

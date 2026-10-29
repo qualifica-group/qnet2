@@ -2,7 +2,6 @@
 
 use App\Enums\PersonalDataTypeEnum;
 use App\Models\Contact;
-use App\Models\PersonalData;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -103,9 +102,8 @@ it('create: a company card keeps its own casing and drops the IT prefix', functi
 
 it('contact create: stores a phone as digits whatever separators were typed', function (string $typed, string $stored) {
     $actor = formattingActor('personal_data', ['create', 'update']);
-    Permission::findOrCreate('contacts.create');
-    $actor->givePermissionTo('contacts.create');
-    $card = PersonalData::factory()->individual()->create();
+    $actor->givePermissionTo(Permission::findOrCreate('registries.update'));
+    $card = registryCard();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/contacts', [
@@ -122,9 +120,8 @@ it('contact create: stores a phone as digits whatever separators were typed', fu
 
 it('contact create: lowercases an email address', function () {
     $actor = formattingActor('personal_data', ['create']);
-    Permission::findOrCreate('contacts.create');
-    $actor->givePermissionTo('contacts.create');
-    $card = PersonalData::factory()->individual()->create();
+    $actor->givePermissionTo(Permission::findOrCreate('registries.update'));
+    $card = registryCard();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/contacts', [
@@ -137,9 +134,8 @@ it('contact create: lowercases an email address', function () {
 
 it('contact update: re-formats an existing value', function () {
     $actor = formattingActor('personal_data', ['update']);
-    Permission::findOrCreate('contacts.update');
-    $actor->givePermissionTo('contacts.update');
-    $card = PersonalData::factory()->individual()->create();
+    $actor->givePermissionTo(Permission::findOrCreate('registries.update'));
+    $card = registryCard();
     $contact = Contact::factory()->for($card, 'contactable')->create(['type' => 'phone', 'value' => '333 0000000']);
     Sanctum::actingAs($actor);
 

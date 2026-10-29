@@ -48,9 +48,10 @@ class ContactController extends BaseApiController
     public function store(StoreContactRequest $request): JsonResponse
     {
         try {
-            $this->authorize('create', Contact::class);
+            $owner = $request->owner();
+            $this->authorize('create', [Contact::class, $owner]);
 
-            $contact = $this->service->createFor($request->owner(), $request->toData());
+            $contact = $this->service->createFor($owner, $request->toData());
 
             return $this->created(new ContactResource($contact));
         } catch (Throwable $exception) {

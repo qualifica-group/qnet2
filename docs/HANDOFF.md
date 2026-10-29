@@ -17,6 +17,28 @@
 - File: `.claude/hooks/typecheck.sh`, `.claude/agents/{verifier,backend,frontend,tester-debug}.md`,
   `.claude/commands/build-feature.md`, `.claude/rules/backend.md §6`, `CLAUDE.md §HOOK`.
 
+## Contatti e indirizzi autorizzati dal record padre (spec 0328) — VERDE, COMMITTATO (2026-10-29)
+
+- Causa: `/api/addresses` e `/api/contacts` (salvataggio immediato nei dettagli di Utenti, Anagrafiche, Referenti,
+  Societa' sedi) chiedevano `addresses.*`/`contacts.*`, che il form Ruoli non puo' assegnare: un ruolo creato da UI
+  con `registries.update` riceveva 403.
+- Ora `AddressPolicy`/`ContactPolicy` (non piu' BasePolicy) delegano a `App\Authorization\PersonalDataChildAuthorization`:
+  scheda -> `personable` -> risorsa da `config('personal_data.owner_resources')` -> policy del padre (`view`/`update`)
+  + riga `personal_data.{addresses|contacts}` della matrice del padre (visibile / modificabile e non disabilitata).
+  Fail closed: proprietario non scheda, scheda senza padre, tipo non mappato. `store` autorizza `[Model::class, $owner]`.
+- Migrazione `2026_11_09_100000_prune_address_and_contact_permissions` elimina i permessi; tolti da `DemoRolesSeeder` e
+  da `OperatorRoleCatalogue::USER_FORM_MODULES` (resta `personal_data`). Nessun seeder di riallineamento serve: il
+  diritto si ricava dal padre. `personal_data.*` invariato (D-5, endpoint non usati per scrivere dalla UI).
+- Nuovo padre con scheda -> aggiungerlo a `owner_resources`, altrimenti i suoi contatti/indirizzi danno 403.
+- Test: helper `tests/Helpers/PersonalDataHelpers.php` (`registryCard`, `registryCardActor`), nuovo
+  `PersonalDataChildAuthorizationTest`; adattati CRUD contatti/indirizzi, formatting, unicita' telefono, HR AC-011,
+  DemoRolesSeederTest, PersonalDataPolicyTest (REQUIREMENT CHANGED: niente piu' `contacts.*`/`addresses.*`).
+- Manuale: nota in guida Ruoli IT/EN (`field-permissions`) e nel manuale Claude Docs (Permessi sui singoli campi).
+- Verifica 2026-10-29: suite completa 12930/12946; i 15 rossi non toccano questa modifica (users-source con
+  `EXTERNAL_MIGRATION_USERS_LINK_ONLY=true` nel `.env`, LibreOffice assente per QuoteDocumentPdf, 4 test Controllo di
+  gestione sul menu cambiato da `0407bfd7` spec 0318, TableBulkDeleteTest `guarded`/`forbidden` della spec 0327 in
+  corso). `tsc -b --force` pulito. Spec rinumerata 0327 -> 0328: la 0327 e' `specific-authorization-errors`.
+
 ## Coda dedicata per i job di migrazione — VERDE, NON COMMITTATO (2026-10-29)
 
 - `RunMigrationJob`/`RunMassMigrationJob` vanno sulla coda `config('migrations.queue')` (env `MIGRATION_QUEUE`, default

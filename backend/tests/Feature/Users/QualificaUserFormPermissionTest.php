@@ -12,8 +12,9 @@ use Laravel\Sanctum\Sanctum;
 uses(RefreshDatabase::class);
 
 // User directive 2026-09-25: whoever sees the users sees everything the user
-// form holds. The form reads the card by owner and writes the contacts and
-// addresses of an existing card on their own endpoints, outside `users.*`.
+// form holds. The form reads the card by owner (`personal_data.*`) and writes
+// the contacts and addresses of an existing card on their own endpoints,
+// authorized through the user record itself (spec 0328).
 it('lets the supervisor load and edit the personal-data stack of the user form', function () {
     $this->seed(QualificaOperatorSeeder::class);
 

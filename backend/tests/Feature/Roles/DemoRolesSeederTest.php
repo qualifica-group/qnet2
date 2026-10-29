@@ -21,9 +21,9 @@ it('creates the non-privileged application roles with coherent permission sets',
         ->and($admin->permissions->pluck('name'))->toContain('users.delete', 'roles.delete')
         ->and($manager->permissions->pluck('name'))->toContain('users.create', 'users.update', 'roles.view')
         ->and($manager->permissions->pluck('name'))->not->toContain('roles.delete', 'users.delete')
-        ->and($operator->permissions->pluck('name'))->toContain('contacts.update', 'addresses.update')
+        ->and($operator->permissions->pluck('name'))->toContain('personal_data.update')
         ->and($operator->permissions->pluck('name'))->not->toContain('roles.view')
-        ->and($user->permissions->pluck('name'))->toContain('personal_data.view', 'contacts.view', 'addresses.view')
+        ->and($user->permissions->pluck('name'))->toContain('personal_data.view')
         ->and($user->permissions->pluck('name'))->not->toContain('users.update', 'roles.view')
         ->and($viewer->permissions->pluck('name'))->toContain('users.viewAny', 'users.view', 'roles.viewAny', 'roles.view')
         ->and($viewer->permissions->pluck('name')->every(

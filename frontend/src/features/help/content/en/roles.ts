@@ -74,6 +74,7 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'note', text: "If you don't touch anything, a field stays visible, editable and not required. Some fields are essential and cannot be restricted. With multiple roles, the widest permission wins: one role that makes the field visible is enough." },
+        { type: 'note', text: '**Contacts** and **Addresses** of Users, Registries, Referents and Company Sites have no permissions of their own: they follow the record. Whoever can see the record sees them, whoever can edit it adds, edits and deletes them. To restrict them use the **Contacts** and **Addresses** rows among the module **Fields**: turn off **Visible** to hide them or **Editable** to make them read-only.' },
       ],
     },
     {

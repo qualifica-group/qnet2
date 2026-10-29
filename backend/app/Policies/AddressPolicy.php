@@ -2,19 +2,42 @@
 
 namespace App\Policies;
 
-use App\Policies\Abstracts\BasePolicy;
+use App\Authorization\PersonalDataChildAuthorization;
+use App\Models\Address;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 
 /**
- * Standard CRUD authorization for the Addresses resource.
- *
- * Maps every ability to the `addresses.{ability}` permission (registered by
- * `php artisan permissions:sync`). Authorization is enforced server-side on
- * every endpoint, regardless of what the frontend shows or hides.
+ * Authorization for the Addresses endpoints, derived from the record that
+ * owns the address's personal-data card (spec 0328): no `addresses.*`
+ * permission of its own, so nothing to assign on the Role form.
  */
-class AddressPolicy extends BasePolicy
+class AddressPolicy
 {
-    protected function resource(): string
+    private const string SECTION = 'addresses';
+
+    public function __construct(private readonly PersonalDataChildAuthorization $children) {}
+
+    public function view(User $user, Address $address): bool
     {
-        return 'addresses';
+        return $this->children->canView($user, $address->addressable, self::SECTION);
+    }
+
+    /**
+     * @param  Model  $card  the owner the new address is attached to
+     */
+    public function create(User $user, Model $card): bool
+    {
+        return $this->children->canWrite($user, $card, self::SECTION);
+    }
+
+    public function update(User $user, Address $address): bool
+    {
+        return $this->children->canWrite($user, $address->addressable, self::SECTION);
+    }
+
+    public function delete(User $user, Address $address): bool
+    {
+        return $this->children->canWrite($user, $address->addressable, self::SECTION);
     }
 }

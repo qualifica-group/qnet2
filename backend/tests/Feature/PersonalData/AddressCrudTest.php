@@ -2,45 +2,20 @@
 
 use App\Models\Address;
 use App\Models\City;
-use App\Models\PersonalData;
 use App\Models\Province;
 use App\Models\State;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
-
-if (! function_exists('userWithAddressAbilities')) {
-    /**
-     * A non super-admin actor granted exactly the given `addresses.*` abilities.
-     *
-     * @param  array<int, string>  $abilities
-     */
-    function userWithAddressAbilities(array $abilities): User
-    {
-        foreach (['viewAny', 'view', 'create', 'update', 'delete'] as $ability) {
-            Permission::findOrCreate("addresses.{$ability}");
-        }
-
-        $user = User::factory()->create();
-
-        foreach ($abilities as $ability) {
-            $user->givePermissionTo("addresses.{$ability}");
-        }
-
-        return $user;
-    }
-}
 
 // ---------------------------------------------------------------------------
 // view — GET /api/addresses/{address}
 // ---------------------------------------------------------------------------
 
 it('view: 200 re-exposes the hidden locating fields', function () {
-    $actor = userWithAddressAbilities(['view']);
-    $address = Address::factory()->create([
+    $actor = registryCardActor(['view']);
+    $address = Address::factory()->for(registryCard(), 'addressable')->create([
         'line1' => '10 Downing Street',
         'latitude' => '51.50334000',
         'longitude' => '-0.12768000',
@@ -55,16 +30,16 @@ it('view: 200 re-exposes the hidden locating fields', function () {
         ->assertJsonPath('data.longitude', '-0.12768000');
 });
 
-it('view: 403 without addresses.view', function () {
-    $actor = userWithAddressAbilities([]);
-    $address = Address::factory()->create();
+it('view: 403 without view on the owning record', function () {
+    $actor = registryCardActor([]);
+    $address = Address::factory()->for(registryCard(), 'addressable')->create();
     Sanctum::actingAs($actor);
 
     $this->getJson("/api/addresses/{$address->id}")->assertForbidden();
 });
 
 it('view: 404 for a non-existent address', function () {
-    $actor = userWithAddressAbilities(['view']);
+    $actor = registryCardActor(['view']);
     Sanctum::actingAs($actor);
 
     $this->getJson('/api/addresses/999999')->assertNotFound();
@@ -75,8 +50,8 @@ it('view: 404 for a non-existent address', function () {
 // ---------------------------------------------------------------------------
 
 it('create: 201 attaches an address to a personal-data owner', function () {
-    $actor = userWithAddressAbilities(['create']);
-    $card = PersonalData::factory()->create();
+    $actor = registryCardActor(['update']);
+    $card = registryCard();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/addresses', [
@@ -98,8 +73,8 @@ it('create: 201 attaches an address to a personal-data owner', function () {
 });
 
 it('create: 201 persists and re-exposes the full geo chain including province_id', function () {
-    $actor = userWithAddressAbilities(['create', 'view']);
-    $card = PersonalData::factory()->create();
+    $actor = registryCardActor(['update']);
+    $card = registryCard();
     $state = State::factory()->create();
     $province = Province::factory()->forState($state)->create();
     $city = City::factory()->forProvince($province)->create();
@@ -128,8 +103,8 @@ it('create: 201 persists and re-exposes the full geo chain including province_id
 });
 
 it('create: 422 when province_id does not exist', function () {
-    $actor = userWithAddressAbilities(['create']);
-    $card = PersonalData::factory()->create();
+    $actor = registryCardActor(['update']);
+    $card = registryCard();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/addresses', [
@@ -140,9 +115,9 @@ it('create: 422 when province_id does not exist', function () {
     ])->assertStatus(422)->assertJsonValidationErrors('province_id');
 });
 
-it('create: 403 without addresses.create', function () {
-    $actor = userWithAddressAbilities([]);
-    $card = PersonalData::factory()->create();
+it('create: 403 without update on the owning record', function () {
+    $actor = registryCardActor([]);
+    $card = registryCard();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/addresses', [
@@ -153,8 +128,8 @@ it('create: 403 without addresses.create', function () {
 });
 
 it('create: 201 exposes is_primary in the contract and auto-primes the first address', function () {
-    $actor = userWithAddressAbilities(['create']);
-    $card = PersonalData::factory()->create();
+    $actor = registryCardActor(['update']);
+    $card = registryCard();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/addresses', [
@@ -173,8 +148,8 @@ it('create: 201 exposes is_primary in the contract and auto-primes the first add
 });
 
 it('create: 422 when is_primary is not a boolean', function () {
-    $actor = userWithAddressAbilities(['create']);
-    $card = PersonalData::factory()->create();
+    $actor = registryCardActor(['update']);
+    $card = registryCard();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/addresses', [
@@ -186,8 +161,8 @@ it('create: 422 when is_primary is not a boolean', function () {
 });
 
 it('create: a second address marked primary demotes the first of the same owner', function () {
-    $actor = userWithAddressAbilities(['create']);
-    $card = PersonalData::factory()->create();
+    $actor = registryCardActor(['update']);
+    $card = registryCard();
     $first = Address::factory()->primary()->for($card, 'addressable')->create();
     Sanctum::actingAs($actor);
 
@@ -202,8 +177,8 @@ it('create: a second address marked primary demotes the first of the same owner'
 });
 
 it('create: 422 when line1 is missing', function () {
-    $actor = userWithAddressAbilities(['create']);
-    $card = PersonalData::factory()->create();
+    $actor = registryCardActor(['update']);
+    $card = registryCard();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/addresses', [
@@ -213,7 +188,7 @@ it('create: 422 when line1 is missing', function () {
 });
 
 it('create: 422 when the owner is missing', function () {
-    $actor = userWithAddressAbilities(['create']);
+    $actor = registryCardActor(['update']);
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/addresses', [
@@ -226,8 +201,8 @@ it('create: 422 when the owner is missing', function () {
 // ---------------------------------------------------------------------------
 
 it('create: 201 defaults site_type to billing when absent (behavior-preserving)', function () {
-    $actor = userWithAddressAbilities(['create']);
-    $card = PersonalData::factory()->create();
+    $actor = registryCardActor(['update']);
+    $card = registryCard();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/addresses', [
@@ -245,8 +220,8 @@ it('create: 201 defaults site_type to billing when absent (behavior-preserving)'
 });
 
 it('create: 201 persists an explicit site_type', function () {
-    $actor = userWithAddressAbilities(['create']);
-    $card = PersonalData::factory()->create();
+    $actor = registryCardActor(['update']);
+    $card = registryCard();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/addresses', [
@@ -265,8 +240,8 @@ it('create: 201 persists an explicit site_type', function () {
 });
 
 it('create: 422 when site_type is outside the enum', function () {
-    $actor = userWithAddressAbilities(['create']);
-    $card = PersonalData::factory()->create();
+    $actor = registryCardActor(['update']);
+    $card = registryCard();
     Sanctum::actingAs($actor);
 
     $this->postJson('/api/addresses', [
@@ -282,8 +257,8 @@ it('create: 422 when site_type is outside the enum', function () {
 // ---------------------------------------------------------------------------
 
 it('update: 200 replaces the address line', function () {
-    $actor = userWithAddressAbilities(['update']);
-    $address = Address::factory()->create(['line1' => 'Old Street']);
+    $actor = registryCardActor(['update']);
+    $address = Address::factory()->for(registryCard(), 'addressable')->create(['line1' => 'Old Street']);
     Sanctum::actingAs($actor);
 
     $this->putJson("/api/addresses/{$address->id}", [
@@ -293,9 +268,9 @@ it('update: 200 replaces the address line', function () {
     $this->assertDatabaseHas('addresses', ['id' => $address->id, 'line1' => 'New Street']);
 });
 
-it('update: 403 without addresses.update', function () {
-    $actor = userWithAddressAbilities([]);
-    $address = Address::factory()->create();
+it('update: 403 without update on the owning record', function () {
+    $actor = registryCardActor([]);
+    $address = Address::factory()->for(registryCard(), 'addressable')->create();
     Sanctum::actingAs($actor);
 
     $this->putJson("/api/addresses/{$address->id}", ['line1' => 'New Street'])->assertForbidden();
@@ -306,8 +281,8 @@ it('update: 403 without addresses.update', function () {
 // ---------------------------------------------------------------------------
 
 it('delete: 204 and removes the address', function () {
-    $actor = userWithAddressAbilities(['delete']);
-    $address = Address::factory()->create();
+    $actor = registryCardActor(['update']);
+    $address = Address::factory()->for(registryCard(), 'addressable')->create();
     Sanctum::actingAs($actor);
 
     $this->deleteJson("/api/addresses/{$address->id}")->assertNoContent();
@@ -315,9 +290,9 @@ it('delete: 204 and removes the address', function () {
     $this->assertDatabaseMissing('addresses', ['id' => $address->id]);
 });
 
-it('delete: 403 without addresses.delete', function () {
-    $actor = userWithAddressAbilities([]);
-    $address = Address::factory()->create();
+it('delete: 403 without update on the owning record', function () {
+    $actor = registryCardActor([]);
+    $address = Address::factory()->for(registryCard(), 'addressable')->create();
     Sanctum::actingAs($actor);
 
     $this->deleteJson("/api/addresses/{$address->id}")->assertForbidden();

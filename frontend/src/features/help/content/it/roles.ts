@@ -74,6 +74,7 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'note', text: 'Se non tocchi nulla, un campo resta visibile, modificabile e non obbligatorio. Alcuni campi sono indispensabili e non si possono limitare. Con più ruoli vale il permesso più ampio: basta un ruolo che rende visibile il campo.' },
+        { type: 'note', text: '**Contatti** e **Indirizzi** di Utenti, Anagrafiche, Referenti e Società sedi non hanno permessi propri: seguono la scheda. Chi può vedere la scheda li vede, chi può modificarla li aggiunge, modifica ed elimina. Per limitarli usa le righe **Contatti** e **Indirizzi** tra i **Campi** del modulo: spegni **Visibile** per nasconderli o **Modificabile** per lasciarli in sola lettura.' },
       ],
     },
     {
