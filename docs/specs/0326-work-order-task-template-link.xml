@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0326-work-order-task-template-link" status="done" owner="utente" date="2026-10-29" amends="0124,0172,0323">
+
+  <goal>
+    Le commesse migrate dal legacy ricevono il Modello di Task da cui sono nati i loro task, con una sorgente di
+    migrazione dedicata `work-order-task-templates` che collega soltanto e si puo' rilanciare.
+  </goal>
+
+  <context>
+    - Il legacy non salva il modello scelto: niente colonna su orders/orderservices/ordermilestones;
+      `tasks.generato_da_modello` e' solo un flag. Ogni task generato pero' riporta all'azione del modello per due
+      strade: (a) `tasks.unique_key` = `templatebtypemilestoneactions.unique_key` (modello caricato sulla commessa,
+      `RicaricaModelloCommessa`); (b) con chiave vuota, `tasks.id_attivita` -> copia dell'azione sull'offerta
+      (`spazio_attivitas`, stessa `quotation_id` della commessa) il cui `id_attivita` e' l'id dell'azione
+      (pianificazione, `ContractplanningFast`). Sulle copie con chiave, `id_attivita` coincide con l'azione nel
+      100% dei casi (323602/323602).
+    - Misura sul legacy (2026-10-29): 16392 commesse; solo (a) 10320 collegate, con (a)+(b) 15418, 1 warning
+      (8146: 53 e 58). COM-6427 (legacy 6427) passa da (b): modello 47, 11 azioni su 21. L'inferenza per titoli
+      (0323 D-12, 41% univoca) e' superata.
+    - qnet-2: `work_orders.task_template_id` (0124 D-5) nullable, restrictOnDelete, scritto solo da
+      `WorkOrderService::create()` che genera i task (D-7); l'import commesse crea senza modello (G-2) e i task
+      arrivano dalla sorgente `tasks`.
+  </context>
+
+  <decisions>
+    D-1 Sorgente separata `work-order-task-templates` (utente 2026-10-29), non un campo della sorgente `work-orders`:
+        non serve reimportare le commesse e l'endpoint commesse resta leggero. Fase 12, dipendenze obbligatorie
+        `work-orders` e `task-templates`.
+    D-2 Il modello e' calcolato nel legacy (backend.md §9), per commessa, sulle azioni di modelli esistenti
+        raggiunte dai suoi task per le strade (a) e (b). Vince, in ordine: piu' azioni raggiunte (id distinti);
+        copertura piu' alta (azioni raggiunte / azioni del modello); modello attivo (titolo senza "non attivo"); id
+        piu' basso. Modelli con le stesse azioni (stessa firma di unique_key) sono equivalenti.
+        Se i primi due pari merito su azioni e copertura hanno azioni diverse, il record porta un warning (oggi 1).
+    D-3 Si inviano solo le commesse esistenti con almeno un task da modello; nessuna riga orfana (i task di commesse
+        cancellate non hanno una commessa da collegare).
+    D-4 In qnet-2 la scrittura e' una forceFill + saveQuietly senza activity log e senza `WorkOrderService`: nessun
+        task generato. Il vincolo "immutabile dopo la creazione" (0124 D-5) resta sull'API, non sull'import.
+    D-5 Commessa o modello non migrati -> la riga fallisce. Commessa gia' su quel modello -> saltata. Commessa con un
+        modello diverso (scelto in qnet-2) -> non toccata, saltata con warning.
+  </decisions>
+
+  <data_contract>
+    <shape>
+      GET legacy /work-order-task-templates (paginato su orders.id, search su orders.title), record:
+        { id: int (orders.id), task_template_id: int (templatebtypes.id), matched_tasks: int (azioni raggiunte),
+          template_actions: int, warnings: string[] }
+    </shape>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Legacy: l'endpoint invia la shape del contratto con la regola di D-2; verificato con tinker sui dati reali (COM-6427 -> modello 47).</criterion>
+    <criterion id="AC-002">Sorgente: collega il modello senza activity log e senza generare task; un rilancio salta.</criterion>
+    <criterion id="AC-003">Commessa o modello non migrati -> riga fallita con il motivo.</criterion>
+    <criterion id="AC-004">Commessa con un modello diverso -> invariata, saltata con un warning.</criterion>
+    <criterion id="AC-005">Registro e ordine di migrazione aggiornati; requisiti sorgente e guida migrations IT/EN; manuale Claude Docs.</criterion>
+  </acceptance_criteria>
+</spec>

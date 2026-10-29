@@ -37,6 +37,24 @@
   table 929/929; `tsc -b --force` EXIT 0; ESLint, Pint ok. Test con lista congelata aggiornati (REQUIREMENT CHANGED).
 - Da fare: rilanciare su dev la sorgente `payment-methods` per sovrascrivere i 100 metodi (serve ok utente).
 
+## Spec 0326 Modello di task delle commesse migrate — VERDE, COMMITTATO (2026-10-29)
+
+- Il legacy non salva il modello della commessa; lo ricava `LegacyWorkOrderTaskTemplate` (../qnet
+  `app/Support/Migration/`) dai task generati: (a) `tasks.unique_key` = azione del modello, (b) chiave vuota ->
+  `tasks.id_attivita` -> copia sull'offerta `spazio_attivitas` (stessa quotation) -> `id_attivita` = id azione.
+  Regola D-2: piu' azioni raggiunte, poi copertura, poi attivo, poi id piu' basso. Endpoint legacy
+  `GET work-order-task-templates` (`WorkOrderTaskTemplateMigrationController`, route in `apiV2-migration.php`).
+  Verificato con tinker: 15418 commesse su 16392, 1 warning (8146: 53/58), COM-6427 -> 47 (11/21), ~3-7 s a pagina.
+- qnet-2: sorgente `work-order-task-templates` (`WorkOrderTaskTemplatesSource`, fase 12, dipende da `work-orders`
+  e `task-templates`): forceFill + saveQuietly senza activity log, MAI via `WorkOrderService` (genererebbe i task).
+  Commessa/modello non migrati -> fail; stesso modello -> skip; altro modello -> skip + warning.
+- Test: `WorkOrderTaskTemplatesSourceTest` 6/6, registry 42 sorgenti; Migration 683/690 (i 7 rossi noti users
+  link-only). Vitest help/i18n/migrations 418/418, tsc -b EXIT 0, ESLint e Pint ok.
+- Testi: etichetta + requisiti sorgente IT/EN, guida `migrations` (voce Commesse — modello di task), manuale Claude
+  Docs rev 503 (paragrafo dopo Commesse — workflow).
+- Da fare su dev: lanciare `work-order-task-templates` (dopo `task-templates`). Nota: un modello collegato a una
+  commessa non e' piu' eliminabile (restrictOnDelete, 409). Parte legacy committata in ../qnet.
+
 ## Merge feature/amministrazione (spec 0288) in main — VERDE, COMMITTATO (2026-10-29)
 
 - Conflitto semantico con la 0320 D-8 (fornitore sulla RIGA, `products.supplier_id` eliminata): il codice 0288

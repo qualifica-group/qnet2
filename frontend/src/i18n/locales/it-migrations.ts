@@ -44,6 +44,7 @@ export const migrations = {
     'work-order-progress': 'Commesse — avanzamento',
     'work-order-workflows': 'Commesse — workflow',
     'work-order-workflow-statuses': 'Commesse — stato di lavorazione',
+    'work-order-task-templates': 'Commesse — modello di task',
     'product-suppliers': 'Prodotti — collega fornitori',
     'commission-configurations': 'Configuratore commissioni',
     'purchase-requests': 'Richieste di acquisto (RDA)',

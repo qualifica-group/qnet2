@@ -64,6 +64,8 @@ export const migrationRequirements = {
     'Requires Business functions already imported (mandatory); Product categories too, when a workflow is tied to a category (such as SOA). Creates one active workflow per legacy progress category, with its statuses in order and their progress percentage. A business function or category not imported fails the row; a workflow with the same criteria, or whose statuses were already imported, is skipped. No notification is sent.',
   'work-order-workflow-statuses':
     'Requires Work orders and Work order workflows already imported (mandatory). Sets the current working status of each work order, only when that status belongs to the workflow that applies to the work order: otherwise the work order keeps its status and the row returns a warning. A work order or status not imported fails the row. Orders no longer in the legacy fail with the reason.',
+  'work-order-task-templates':
+    'Requires Work orders and Task templates already imported (mandatory). Creates no records: it links each work order to the Task template its tasks came from in the legacy system, which does not store it and infers it from the tasks generated from a template. No task is created. A work order or template not imported fails the row; a work order that already has that template is skipped, one with another template chosen in QNet is left untouched and returns a warning. Work orders without tasks from a template are not sent.',
   'product-suppliers':
     'Creates no records: it sets the supplier on the imported products. Without the product the row fails; a supplier not yet imported from Registries is skipped with a warning. A supplier already chosen in QNet is never overwritten.',
   'commission-configurations':

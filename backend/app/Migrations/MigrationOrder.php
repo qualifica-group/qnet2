@@ -107,8 +107,9 @@ final class MigrationOrder
         // (spec 0300) link the commessa and its quote, no task: same phase, as
         // `work-order-progress` (spec 0321), which only needs the commessa;
         // `work-order-workflow-statuses` (spec 0322) set the current status of
-        // the commessa from the phase 5 workflows.
-        ['tasks', 'proforma-requests', 'work-order-progress', 'work-order-workflow-statuses'],
+        // the commessa from the phase 5 workflows; `work-order-task-templates`
+        // (spec 0326) link the commessa to its phase 6 task template.
+        ['tasks', 'proforma-requests', 'work-order-progress', 'work-order-workflow-statuses', 'work-order-task-templates'],
 
         // Phase 13 — spec 0294, start of the accounting part: the legacy RDA.
         // They link users, companies, company sites, operational sites and

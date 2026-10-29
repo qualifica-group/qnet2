@@ -45,6 +45,7 @@ export const migrations = {
     'work-order-progress': 'Work orders — progress',
     'work-order-workflows': 'Work orders — workflows',
     'work-order-workflow-statuses': 'Work orders — workflow status',
+    'work-order-task-templates': 'Work orders — task template',
     'product-suppliers': 'Products — link suppliers',
     'commission-configurations': 'Commission configurations',
     'purchase-requests': 'Purchase requests',
