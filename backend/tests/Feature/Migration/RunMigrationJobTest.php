@@ -130,3 +130,12 @@ it('exposes tries = 1 and timeout = config migrations.job_timeout', function () 
     expect($job->tries)->toBe(1)
         ->and($job->timeout)->toBe(1234);
 });
+
+it('is pushed on the dedicated migrations queue, never on default', function () {
+    expect(config('migrations.queue'))->toBe('migrations')
+        ->and((new RunMigrationJob(1))->queue)->toBe('migrations');
+
+    config(['migrations.queue' => 'migrations-test']);
+
+    expect((new RunMigrationJob(1))->queue)->toBe('migrations-test');
+});

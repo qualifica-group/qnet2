@@ -83,6 +83,12 @@ return [
     // reclaims a migration still legitimately running on the first.
     'job_timeout' => (int) env('MIGRATION_JOB_TIMEOUT', 1800),
 
+    // Dedicated queue of RunMigrationJob/RunMassMigrationJob: a migration holds
+    // its worker for up to job_timeout, so on the shared `default` queue it
+    // would stall emails, exports and imports behind it. Served by its own
+    // worker (`queue:work --queue=migrations`), never by the default one.
+    'queue' => env('MIGRATION_QUEUE', 'migrations'),
+
     // Spec 0285: the `users` source only links the legacy users to the qnet
     // accounts that already exist (writes `old_id`, creates nothing), for an
     // installation whose accounts come from its own seeder.

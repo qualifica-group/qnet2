@@ -3,6 +3,17 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Coda dedicata per i job di migrazione — VERDE, NON COMMITTATO (2026-10-29)
+
+- `RunMigrationJob`/`RunMassMigrationJob` vanno sulla coda `config('migrations.queue')` (env `MIGRATION_QUEUE`, default
+  `migrations`), non piu' su `default`: una migrazione occupa il worker fino a `job_timeout` (1800 s) e bloccava email,
+  export, import e report. `runMassSync` (seeder) resta inline.
+- **Deploy (obbligatorio):** serve un worker dedicato `php artisan queue:work --queue=migrations` accanto a quello di
+  `default`, altrimenti le migrazioni restano `pending`. `composer dev` ne avvia gia' uno (`queue:listen --queue=migrations`).
+- Test: `tests/Feature/Migration` + `Spec0177`, 713 verdi con `EXTERNAL_MIGRATION_USERS_LINK_ONLY=false`. Con il `.env`
+  locale (`=true`) falliscono 7 test della sorgente `users`: preesistente, `phpunit.xml` non sovrascrive quella variabile.
+- Manuale: nessun impatto.
+
 ## Fix tab "Fatture" (Fatture attive) che tornava su "Tutte" — VERDE, COMMITTATO (2026-10-29)
 
 - Causa: il Set Filter di AG Grid tiene un valore del modello solo se e' nella sua lista valori, e la lista
