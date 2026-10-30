@@ -29,6 +29,16 @@
   d'ambiente, ManagementControl = indice menu, probabile navigazione spec 0334). Guide in-app `opportunities#category-tabs`,
   `quotes#category-tabs` IT/EN + manuale Claude Docs (Opportunita'/Offerte) aggiornati; PDF da rigenerare.
 - Fuori scope: barra sulle griglie Offerte annidate (master-detail, dettaglio Opportunita', tab Anagrafica).
+- rev.2 Contratti (D-8, AC-020..023), VERDE: `CategoryTabGrid::Contracts`; un contratto sta nelle tab delle
+  categorie delle righe di ricavo della SUA offerta (`contracts.quote_id`), conteggi su `ContractVisibilityScope`.
+  Nuovi `Tables\Contracts\ContractCategoryScopedTableDefinition` (outermost di `contracts`),
+  `Tables\CategoryTabs\RevenueCategoryQuoteIds` (subquery condivisa con quotes) e trait
+  `Tables\CategoryTabs\DelegatesRowScopedTableMethods` (passthrough condiviso con opportunities). Route
+  `contracts/product-categories`, `contracts/category-tab-preferences` prima di `{contract}`. Frontend
+  `contracts-table.tsx` (localStorage `contracts.category-tab`), guida `contracts#category-tabs` IT/EN, manuale
+  Claude Docs sezione Contratti. Verifica: Pest mirato 2138/2142 (4 estranei noti: PDF LibreOffice, bulk delete
+  super-admin), Pint ok, Vitest mirato 1614/1614, `tsc -b --force` 0, ESLint pulito. Nit aperto: docblock di
+  `TableRegistry::resolve()` non cita i wrapper di categoria.
 
 ## Assistenza tecnica (richiesta al reparto IT) — VERDE, COMMITTATO (2026-10-30, spec 0334)
 

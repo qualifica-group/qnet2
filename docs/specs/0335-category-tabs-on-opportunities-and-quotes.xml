@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<spec id="0335-category-tabs-on-opportunities-and-quotes" status="draft" owner="utente" date="2026-10-30">
+<spec id="0335-category-tabs-on-opportunities-and-quotes" status="approved" owner="utente" date="2026-10-30" revision="2">
+
+  <!-- rev.2 (2026-10-30, richiesta utente "aggiungilo anche in contratti"): griglia Contratti, D-8, AC-020..AC-023. -->
 
   <goal>
     Portare la barra delle tab per categoria di prodotto di Gestione Richieste ("Tutte | Categoria (N)",
@@ -51,6 +53,9 @@
       Account, config colonne/preferenze layout identiche su tutte le tab.</decision>
     <decision id="D-4">Preferiti separati per griglia (`module` = `opportunities` | `quotes`), con default
       dalle categorie di competenza dell'utente quando non ha mai salvato (stessa regola 0193).</decision>
+    <decision id="D-8">rev.2 — Contratti: un contratto compare nella tab di ogni categoria dei prodotti sulle righe di
+      ricavo della SUA offerta (`contracts.quote_id` -> stessa regola di D-1), conteggi sulla `ContractVisibilityScope`
+      della griglia, preferiti propri (`module` = `contracts`), stesso comportamento di D-3/D-4/D-5.</decision>
     <decision id="D-5">Pannello statistiche Opportunita' ed export NON seguono la tab (parita' con Gestione
       Richieste per l'export).</decision>
     <decision id="D-6">Conteggi tab = righe visibili all'attore nella griglia senza altri filtri: stessa
@@ -71,6 +76,7 @@
       <item>Frontend: i18n `requestManagement.categoryTabs.*` spostato in `categoryTabs.*` (nuovi `it-category-tabs.ts`/`en-category-tabs.ts`).</item>
       <item>Frontend: `OpportunitiesTable` e `QuotesTable` montano `CategoryTabs` sopra `TableView` (key per selezione, `scope={{ productCategoryId }}`), barra rinfrescata dopo ogni mutazione della griglia.</item>
       <item>Guide in-app IT+EN: nuova sezione `category-tabs` in `opportunities.ts` e `quotes.ts`; manuale Claude Docs: sezioni Opportunita' e Offerte.</item>
+      <item>rev.2 — Contratti (D-8): `CategoryTabGrid::Contracts = 'contracts'`; nuovo decoratore `App\Tables\Contracts\ContractCategoryScopedTableDefinition` (outermost per `contracts`); conteggi in `GridCategoryTabsResolver`; route in `routes/api/contracts.php` prima di `{contract}`; barra in `features/contracts/contracts-table.tsx` (source `{ key: 'contracts', apiBasePath: '/contracts' }`); guida in-app `contracts#category-tabs` IT/EN; manuale Claude Docs sezione Contratti.</item>
     </in>
     <out>
       <item>Colonne attributo per categoria e rinomina Gestori Account su Opportunita'/Offerte (D-3).</item>
@@ -83,7 +89,7 @@
   </scope>
 
   <data_contract>
-    <!-- {grid} in { opportunities, quotes }. Envelope di progetto { success, message, data }. -->
+    <!-- {grid} in { opportunities, quotes, contracts } (contracts da rev.2). Envelope di progetto { success, message, data }. -->
     <endpoint method="GET" path="/api/{grid}/product-categories">
       <request>nessun parametro; grid ricavato dalla route (route default `categoryTabGrid`), mai dall'input.</request>
       <response status="200">
@@ -140,6 +146,10 @@
     <criterion id="AC-016">Sulle due griglie la stellina aggiunge/toglie un preferito con PUT ottimistico verso /{grid}/category-tab-preferences; un errore ripristina lo stato e mostra il toast `categoryTabs.favoritesError`; "Mostra solo preferite" riduce le tab inline ai preferiti. (Vitest use-category-tab-strip / category-tabs tests)</criterion>
     <criterion id="AC-017">Dopo una mutazione della griglia (salvataggio da modale, eliminazione) la barra rilegge i conteggi (invalidazione `[grid, 'categories']`). (Vitest)</criterion>
     <criterion id="AC-018">Gestione Richieste: la barra si comporta come prima (stessi endpoint, stesse chiavi localStorage/query, stessi testi) dopo lo spostamento in `features/category-tabs/`; i test spostati passano con i soli import aggiornati. (Vitest request-management + category-tabs)</criterion>
+    <criterion id="AC-020">rev.2 — Dato contratti visibili la cui offerta ha righe di ricavo su A (un contratto con due righe A) e un contratto la cui offerta ha solo righe di costo su B, quando GET /api/contracts/product-categories, allora [A: numero di contratti distinti], B assente; un contratto non visibile (ContractVisibilityScope) non conta; senza `contracts.viewAny` 403. (Pest)</criterion>
+    <criterion id="AC-021">rev.2 — GET|PUT /api/contracts/category-tab-preferences: default da competenza, PUT salva su (user, 'contracts') senza toccare le preferenze delle altre griglie; 403 senza `contracts.viewAny`. (Pest)</criterion>
+    <criterion id="AC-022">rev.2 — POST /api/tables/contracts/rows (e /values) con productCategoryId = A restituisce solo i contratti la cui offerta ha righe di ricavo su A, una volta ciascuno; config colonne invariata. (Pest)</criterion>
+    <criterion id="AC-023">rev.2 — Pagina Contratti: barra sopra la griglia, scope `productCategoryId` alla griglia, selezione in localStorage `contracts.category-tab` con fallback a "Tutte", conteggi riletti dopo un salvataggio; guida `contracts#category-tabs` IT/EN con parity verde. (Vitest contracts-table-category-tabs.test.tsx + help)</criterion>
     <criterion id="AC-019">i18n: chiavi `categoryTabs.*` presenti in IT ed EN, nessuna chiave `requestManagement.categoryTabs.*` residua; guide in-app `opportunities#category-tabs` e `quotes#category-tabs` IT/EN con parity test verde. (Vitest i18n + help-content-parity)</criterion>
   </acceptance_criteria>
 

@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Services\CategoryTabs;
 
 use App\Enums\QuoteLineType;
+use App\Models\Contract;
 use App\Models\Opportunity;
 use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\User;
+use App\Services\Contracts\ContractVisibilityScope;
 use App\Services\Opportunities\OpportunityVisibilityScope;
 use App\Services\Quotes\QuoteVisibilityScope;
 use App\Support\Cache\AggregateCache;
@@ -17,7 +19,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
- * Resolves the category tab strip of the Opportunities and Offerte grids
+ * Resolves the category tab strip of the Opportunities, Offerte and Contratti grids
  * (spec 0335): the product categories present in the rows the actor sees,
  * each with the count of DISTINCT rows (D-1, D-2).
  *
@@ -58,6 +60,7 @@ final class GridCategoryTabsResolver
         $query = match ($grid) {
             CategoryTabGrid::Opportunities => $this->opportunityCounts($user),
             CategoryTabGrid::Quotes => $this->quoteCounts($user),
+            CategoryTabGrid::Contracts => $this->contractCounts($user),
         };
 
         return $query
@@ -94,5 +97,23 @@ final class GridCategoryTabsResolver
             ->groupBy('products.category_id');
 
         return QuoteVisibilityScope::scopeToActor($query, $user);
+    }
+
+    /**
+     * A contract takes the categories of the revenue lines of its own quote.
+     *
+     * @return Builder<Contract>
+     */
+    private function contractCounts(User $user): Builder
+    {
+        $query = Contract::query()
+            ->join('quote_lines', 'quote_lines.quote_id', '=', 'contracts.quote_id')
+            ->join('products', 'products.id', '=', 'quote_lines.product_id')
+            ->where('quote_lines.line_type', QuoteLineType::Revenue->value)
+            ->select('products.category_id as category_id')
+            ->selectRaw('count(distinct contracts.id) as records_count')
+            ->groupBy('products.category_id');
+
+        return ContractVisibilityScope::scopeToActor($query, $user);
     }
 }

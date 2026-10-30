@@ -124,6 +124,28 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'category-tabs',
+      title: "Filtrare per categoria prodotto",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Sopra l'elenco trovi la barra delle categorie: la tab **Tutte** e una tab per ogni categoria prodotto presente, con il numero di contratti. Cliccando una tab l'elenco mostra solo i contratti di quella categoria. La scelta resta anche dopo aver ricaricato la pagina.",
+        },
+        {
+          type: 'paragraph',
+          text: "Un contratto compare nella tab di ogni categoria dei prodotti presenti nelle **righe di ricavo dell'offerta del contratto** (conta una volta sola anche con più righe della stessa categoria). Le righe di costo non contano; un contratto la cui offerta non ha righe di ricavo compare solo in **Tutte**. Il numero accanto al nome è quanti contratti, tra quelli che puoi vedere, rientrano nella categoria.",
+        },
+        {
+          type: 'steps',
+          items: ["Se le tab non entrano nella riga, le altre finiscono nel menu **Altre**, dove puoi cercare una categoria per nome.","Clicca la **stellina** accanto a una categoria (nel menu) per aggiungerla alle **preferite**: le preferite compaiono per prime.","Attiva **Mostra solo preferite** per vedere in barra solo le preferite; le altre restano nel menu **Altre**."],
+        },
+        {
+          type: 'note',
+          text: "Le preferite sono separate per ogni elenco (Opportunità, Offerte, Contratti, Gestione Richieste). La prima volta ti vengono proposte in base alle categorie per cui sei abilitato; appena usi la stellina diventano le tue. L'esportazione non segue la tab: considera sempre tutti i contratti.",
+        },
+      ],
+    },
+    {
       id: 'visibility',
       title: "Quali contratti vedi",
       blocks: [

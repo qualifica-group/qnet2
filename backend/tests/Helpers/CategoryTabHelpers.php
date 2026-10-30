@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\BusinessFunction;
+use App\Models\Contract;
 use App\Models\Opportunity;
 use App\Models\OpportunityProductLine;
 use App\Models\Product;
@@ -68,5 +69,15 @@ if (! function_exists('categoryTabQuote')) {
         }
 
         return $quote;
+    }
+}
+
+if (! function_exists('categoryTabContract')) {
+    /**
+     * A Contract on a Quote with one REVENUE line per given category ($cost: COST lines instead).
+     */
+    function categoryTabContract(array $categories, bool $cost = false): Contract
+    {
+        return Contract::factory()->create(['quote_id' => categoryTabQuote($categories, $cost)->id]);
     }
 }

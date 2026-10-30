@@ -124,6 +124,28 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'category-tabs',
+      title: "Filtering by product category",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Above the list is the category bar: the **All** tab and one tab for each product category present, with the number of contracts. Clicking a tab shows only the contracts of that category. Your choice is kept after reloading the page.",
+        },
+        {
+          type: 'paragraph',
+          text: "A contract appears under the tab of every category among the products on the **revenue rows of the contract's quote** (it counts once even with several rows of the same category). Cost rows do not count; a contract whose quote has no revenue rows appears only under **All**. The number next to the name is how many contracts, among those you can see, fall under that category.",
+        },
+        {
+          type: 'steps',
+          items: ["If the tabs do not fit the row, the others move into the **More** menu, where you can search a category by name.","Click the **star** next to a category (in the menu) to add it to your **favorites**: favorites come first.","Turn on **Show only favorites** to see only the favorites in the bar; the others stay in the **More** menu."],
+        },
+        {
+          type: 'note',
+          text: "Favorites are separate for each list (Opportunities, Quotes, Contracts, Request Management). The first time they are suggested from the categories you are enabled for; as soon as you use the star they become yours. The export does not follow the tab: it always covers all the contracts.",
+        },
+      ],
+    },
+    {
       id: 'visibility',
       title: "Which contracts you see",
       blocks: [

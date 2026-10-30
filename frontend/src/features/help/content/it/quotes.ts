@@ -119,7 +119,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Le preferite sono separate per ogni elenco (Opportunità, Offerte, Gestione Richieste). La prima volta ti vengono proposte in base alle categorie per cui sei abilitato; appena usi la stellina diventano le tue. L'esportazione non segue la tab: considera sempre tutte le offerte.",
+          text: "Le preferite sono separate per ogni elenco (Opportunità, Offerte, Contratti, Gestione Richieste). La prima volta ti vengono proposte in base alle categorie per cui sei abilitato; appena usi la stellina diventano le tue. L'esportazione non segue la tab: considera sempre tutte le offerte.",
         },
       ],
     },

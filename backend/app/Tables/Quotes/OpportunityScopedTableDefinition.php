@@ -4,15 +4,14 @@ declare(strict_types=1);
 
 namespace App\Tables\Quotes;
 
-use App\Enums\QuoteLineType;
 use App\Models\User;
+use App\Tables\CategoryTabs\RevenueCategoryQuoteIds;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
 use App\Tables\ProductCategoryScopable;
 use App\Tables\RegistryScopable;
 use App\Tables\TableDefinition;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -87,17 +86,7 @@ class OpportunityScopedTableDefinition implements ProductCategoryScopable, Regis
         }
 
         if ($this->categoryScope !== null) {
-            $categoryScope = $this->categoryScope;
-
-            $query->whereIn(
-                'quotes.id',
-                static fn (QueryBuilder $lines) => $lines
-                    ->select('quote_lines.quote_id')
-                    ->from('quote_lines')
-                    ->join('products', 'products.id', '=', 'quote_lines.product_id')
-                    ->where('quote_lines.line_type', QuoteLineType::Revenue->value)
-                    ->where('products.category_id', $categoryScope),
-            );
+            $query->whereIn('quotes.id', RevenueCategoryQuoteIds::subquery($this->categoryScope));
         }
 
         return $query;

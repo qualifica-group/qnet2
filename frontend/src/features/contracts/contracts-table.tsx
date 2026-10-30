@@ -4,6 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/page-header'
 import { useAbilities } from '@/features/auth/use-abilities'
+import { CategoryTabs } from '@/features/category-tabs/category-tabs'
+import { useCategoryTabStrip } from '@/features/category-tabs/use-category-tab-strip'
+import type { CategoryTabSource } from '@/features/category-tabs/types'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
 import { useModuleOpener } from '@/features/modules/use-module-opener'
 import { TableView, type TableViewHandle } from '@/features/table/table-view'
@@ -43,6 +46,8 @@ const CONTRACT_ACTION_ICONS: ActionIconMap = {
   'rotate-ccw': RotateCcw,
 }
 
+const CATEGORY_TAB_SOURCE: CategoryTabSource = { key: CONTRACTS_DOMAIN, apiBasePath: `/${CONTRACTS_DOMAIN}` }
+
 const PROGRAM_PERMISSION = 'contracts.program'
 const MIN_MULTI_SELECTION = 2
 const NO_CONTRACT_IDS: number[] = []
@@ -62,8 +67,13 @@ export function ContractsTable() {
   const { can } = useAbilities()
   const canProgram = can(PROGRAM_PERMISSION)
   const [multiProgramIds, setMultiProgramIds] = useState(NO_CONTRACT_IDS)
+  const { selectedCategoryId, tabsProps, invalidateCategories } = useCategoryTabStrip(CATEGORY_TAB_SOURCE)
   const tableRef = useRef<TableViewHandle>(null)
-  const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
+  // A save can change the offer's revenue rows, so the strip counts are re-read with the rows.
+  const refreshGrid = useCallback(() => {
+    tableRef.current?.refresh()
+    invalidateCategories()
+  }, [invalidateCategories])
 
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
 
@@ -119,9 +129,15 @@ export function ContractsTable() {
     <div className="flex flex-1 flex-col gap-4">
       <PageHeader />
 
+      <CategoryTabs {...tabsProps} />
+
       <TableView
+        // Keyed by the selection: a tab change remounts the table so search,
+        // filters and layout restart from the scoped config.
+        key={selectedCategoryId ?? 'all'}
         ref={tableRef}
         domain={CONTRACTS_DOMAIN}
+        scope={selectedCategoryId !== null ? { productCategoryId: selectedCategoryId } : undefined}
         renderers={contractColumnRenderers}
         iconMap={CONTRACT_ACTION_ICONS}
         onAction={handleAction}

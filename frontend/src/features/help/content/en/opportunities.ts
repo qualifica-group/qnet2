@@ -101,7 +101,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Favorites are separate for each list (Opportunities, Quotes, Request Management). The first time they are suggested from the categories you are enabled for; as soon as you use the star they become yours. The statistics panel and the export do not follow the tab: they always cover all the opportunities.",
+          text: "Favorites are separate for each list (Opportunities, Quotes, Contracts, Request Management). The first time they are suggested from the categories you are enabled for; as soon as you use the star they become yours. The statistics panel and the export do not follow the tab: they always cover all the opportunities.",
         },
       ],
     },

@@ -15,6 +15,7 @@ enum CategoryTabGrid: string
 {
     case Opportunities = 'opportunities';
     case Quotes = 'quotes';
+    case Contracts = 'contracts';
 
     public const string ROUTE_DEFAULT = 'categoryTabGrid';
 

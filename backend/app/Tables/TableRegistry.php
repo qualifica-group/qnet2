@@ -4,6 +4,7 @@ namespace App\Tables;
 
 use App\CustomFields\CustomFieldEntityRegistry;
 use App\RequestManagement\RequestModule;
+use App\Tables\Contracts\ContractCategoryScopedTableDefinition;
 use App\Tables\Opportunities\OpportunityCategoryScopedTableDefinition;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\Referents\ReferentScopedTableDefinition;
@@ -47,6 +48,12 @@ class TableRegistry
      * (spec 0335), on top of its registry scope.
      */
     private const string OPPORTUNITIES_DOMAIN = 'opportunities';
+
+    /**
+     * The only domain wrapped in `ContractCategoryScopedTableDefinition`
+     * (spec 0335, D-8).
+     */
+    private const string CONTRACTS_DOMAIN = 'contracts';
 
     /**
      * Domains wrapped in `ReferentScopedTableDefinition` (spec 0336), each
@@ -104,7 +111,9 @@ class TableRegistry
         $definition = $this->wrapIfRegistryScoped($domain, $definition);
         $definition = $this->wrapIfReferentScoped($domain, $definition);
 
-        return $this->wrapIfOpportunityCategoryScoped($domain, $definition);
+        $definition = $this->wrapIfOpportunityCategoryScoped($domain, $definition);
+
+        return $this->wrapIfContractCategoryScoped($domain, $definition);
     }
 
     /**
@@ -264,6 +273,24 @@ class TableRegistry
 
         /** @var OpportunityCategoryScopedTableDefinition $wrapped */
         $wrapped = $this->container->make(OpportunityCategoryScopedTableDefinition::class, [
+            'inner' => $definition,
+        ]);
+
+        return $wrapped;
+    }
+
+    /**
+     * Wrap in `ContractCategoryScopedTableDefinition` (spec 0335, D-8) for
+     * `contracts` only; outermost, like the opportunities one.
+     */
+    private function wrapIfContractCategoryScoped(string $domain, TableDefinition $definition): TableDefinition
+    {
+        if ($domain !== self::CONTRACTS_DOMAIN) {
+            return $definition;
+        }
+
+        /** @var ContractCategoryScopedTableDefinition $wrapped */
+        $wrapped = $this->container->make(ContractCategoryScopedTableDefinition::class, [
             'inner' => $definition,
         ]);
 
