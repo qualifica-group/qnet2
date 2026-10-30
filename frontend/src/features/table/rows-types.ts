@@ -65,6 +65,11 @@ export interface TableRowsPayload {
    */
   productCategoryId?: number | null
   /**
+   * A ROOT Product Category tab (spec 0337): the rows of that category's whole branch. Mutually exclusive
+   * with `productCategoryId`; adds no `attr.*` column.
+   */
+  productCategoryBranchId?: number | null
+  /**
    * Row-set scope to one parent record (spec 0067 D-1, `TableRowScope`), e.g.
    * an Opportunity's Quotes panel. Sent only when the caller passes a
    * `rowScope` with a value; a no-op for every domain but `quotes`.
@@ -218,6 +223,8 @@ export interface TableColumnValuesPayload {
    * attributes. Omitted for every native/`custom.*` column.
    */
   productCategoryId?: number | null
+  /** A ROOT Product Category tab (spec 0337), same rule as in the rows payload. */
+  productCategoryBranchId?: number | null
   /** Row-set scope to one parent record (spec 0067 D-1), same rule as above. */
   opportunityId?: number | null
   /** Row-set scope to one Contract's Offerta (spec 0095 D-8), same rule as above. */

@@ -92,6 +92,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     // on this value, not on the `scope`/`rowScope` object identity (a caller
     // may pass a fresh object literal every render).
     const productCategoryId = scope?.productCategoryId
+    const productCategoryBranchId = scope?.productCategoryBranchId
     const opportunityId = rowScope?.opportunityId
     const quoteId = rowScope?.quoteId
     const registryId = rowScope?.registryId
@@ -103,6 +104,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
         domain,
         scope,
         productCategoryId,
+        productCategoryBranchId,
         opportunityId,
         quoteId,
         defaultFilterModel,
@@ -171,6 +173,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           key={view.layoutVersion}
           domain={domain}
           productCategoryId={productCategoryId}
+          productCategoryBranchId={productCategoryBranchId}
           opportunityId={opportunityId}
           quoteId={quoteId}
           registryId={registryId}

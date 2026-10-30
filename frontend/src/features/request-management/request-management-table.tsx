@@ -28,10 +28,11 @@ import { assignRequestOperators, deleteRequest, fetchRequestManagementCategories
 import { AssignManagerGa1Dialog } from '@/features/request-management/assign-manager-ga1-dialog'
 import { requestManagementColumnRenderers } from '@/features/request-management/column-renderers'
 import { OfferLinesDialogProvider } from '@/features/request-management/offer-lines-dialog'
+import { levelArgs } from '@/features/category-tabs/category-tab-level'
 import { CategoryTabs } from '@/features/category-tabs/category-tabs'
 import { useCategoryTabStrip } from '@/features/category-tabs/use-category-tab-strip'
 import { categoryTabItemsFromRequests } from '@/features/category-tabs/api'
-import type { CategoryTabItem } from '@/features/category-tabs/types'
+import type { CategoryTabItem, CategoryTabLevel } from '@/features/category-tabs/types'
 import { useInvalidateRequestDashboard } from '@/features/request-management/use-request-dashboard'
 import { useQuoteAssignmentScope } from '@/features/request-management/use-quote-assignment-scope'
 import { useRequestManagerGa1Assignment } from '@/features/request-management/use-request-manager-ga1-assignment'
@@ -61,8 +62,8 @@ const REQUEST_MANAGEMENT_ACTION_ICONS: ActionIconMap = {
  * an inline array would be a new reference on every render.
  */
 /** Gestione Richieste' endpoint names the strip's count `requests_count`; the shared strip reads `count`. Module-level so the query function stays stable. */
-async function fetchRequestManagementTabs(apiBasePath: string): Promise<CategoryTabItem[]> {
-  return categoryTabItemsFromRequests(await fetchRequestManagementCategories(apiBasePath))
+async function fetchRequestManagementTabs(apiBasePath: string, level: CategoryTabLevel = 'all'): Promise<CategoryTabItem[]> {
+  return categoryTabItemsFromRequests(await fetchRequestManagementCategories(apiBasePath, ...levelArgs(level)))
 }
 
 const NO_COMMON_OPERATOR_DISABLED_MODES: readonly AssignmentMode[] = ['single']
@@ -121,7 +122,7 @@ export function RequestManagementTable() {
   const { can } = useAbilities()
   const module = useRequestModule()
 
-  const { selectedCategoryId, tabsProps, invalidateCategories } = useCategoryTabStrip(
+  const { selectedCategoryId, scope, tableKey, tabsProps, invalidateCategories } = useCategoryTabStrip(
     { key: module.key, apiBasePath: module.apiBasePath },
     fetchRequestManagementTabs,
   )
@@ -274,6 +275,7 @@ export function RequestManagementTable() {
   // one chosen user onto every selected row, or `null` to clear the slot. Its
   // whole flow (gate, label, dialog state, mutation) lives in its own hook.
   const managerGa1 = useRequestManagerGa1Assignment({
+    // `null` on a root tab too (spec 0337 D-3): a branch has no single category to resolve labels for.
     categoryId: selectedCategoryId,
     onAssigned: clearSelectionAndRefresh,
   })
@@ -393,10 +395,10 @@ export function RequestManagementTable() {
           // Keyed by the selection (D-4): switching tabs remounts the whole
           // table so every client-side state (search, filters, layout) restarts
           // from the freshly-scoped config's defaults instead of carrying over.
-          key={selectedCategoryId ?? 'all'}
+          key={tableKey}
           ref={tableRef}
           domain={module.key}
-          scope={selectedCategoryId !== null ? { productCategoryId: selectedCategoryId } : undefined}
+          scope={scope}
           renderers={requestManagementColumnRenderers}
           onAction={handleAction}
           isBusy={isBusy}

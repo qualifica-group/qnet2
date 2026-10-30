@@ -47,7 +47,7 @@ export function OpportunitiesTable() {
   const stats = useStatsPanel(OPPORTUNITIES_DOMAIN)
   const invalidateStats = useInvalidateModuleStats(OPPORTUNITIES_DOMAIN)
 
-  const { selectedCategoryId, tabsProps, invalidateCategories } = useCategoryTabStrip(CATEGORY_TAB_SOURCE)
+  const { scope, tableKey, tabsProps, invalidateCategories } = useCategoryTabStrip(CATEGORY_TAB_SOURCE)
 
   const tableRef = useRef<TableViewHandle>(null)
 
@@ -89,10 +89,10 @@ export function OpportunitiesTable() {
       <TableView
         // Keyed by the selection: a tab change remounts the table so search,
         // filters and layout restart from the scoped config (as in Gestione Richieste).
-        key={selectedCategoryId ?? 'all'}
+        key={tableKey}
         ref={tableRef}
         domain={OPPORTUNITIES_DOMAIN}
-        scope={selectedCategoryId !== null ? { productCategoryId: selectedCategoryId } : undefined}
+        scope={scope}
         renderers={opportunityColumnRenderers}
         onAction={handleAction}
         isBusy={isBusy}

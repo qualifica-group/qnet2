@@ -41,6 +41,8 @@ export interface BuildColDefsParams {
   domain: string
   /** Selected Product Category scope (spec 0064), forwarded to the Set Filter values callback. */
   productCategoryId?: number
+  /** Root Product Category tab scope (spec 0337), forwarded to the Set Filter values callback. */
+  productCategoryBranchId?: number
   /** Opportunity row-set scope (spec 0067 D-1), forwarded to the Set Filter values callback. */
   opportunityId?: number
   /** Contract's Offerta row-set scope (spec 0095 D-8), forwarded to the Set Filter values callback. */
@@ -79,6 +81,7 @@ export interface BuildColDefsParams {
 export function buildColDefs({
   domain,
   productCategoryId,
+  productCategoryBranchId,
   opportunityId,
   quoteId,
   registryId,
@@ -118,6 +121,7 @@ export function buildColDefs({
       quoteId,
       registryId,
       referentId,
+      productCategoryBranchId,
     )
     return {
       colId: column.id,

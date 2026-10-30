@@ -67,7 +67,7 @@ export function ContractsTable() {
   const { can } = useAbilities()
   const canProgram = can(PROGRAM_PERMISSION)
   const [multiProgramIds, setMultiProgramIds] = useState(NO_CONTRACT_IDS)
-  const { selectedCategoryId, tabsProps, invalidateCategories } = useCategoryTabStrip(CATEGORY_TAB_SOURCE)
+  const { scope, tableKey, tabsProps, invalidateCategories } = useCategoryTabStrip(CATEGORY_TAB_SOURCE)
   const tableRef = useRef<TableViewHandle>(null)
   // A save can change the offer's revenue rows, so the strip counts are re-read with the rows.
   const refreshGrid = useCallback(() => {
@@ -134,10 +134,10 @@ export function ContractsTable() {
       <TableView
         // Keyed by the selection: a tab change remounts the table so search,
         // filters and layout restart from the scoped config.
-        key={selectedCategoryId ?? 'all'}
+        key={tableKey}
         ref={tableRef}
         domain={CONTRACTS_DOMAIN}
-        scope={selectedCategoryId !== null ? { productCategoryId: selectedCategoryId } : undefined}
+        scope={scope}
         renderers={contractColumnRenderers}
         iconMap={CONTRACT_ACTION_ICONS}
         onAction={handleAction}

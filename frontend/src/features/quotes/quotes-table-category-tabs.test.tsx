@@ -53,13 +53,13 @@ vi.mock('@/features/table/table-view', () => ({
     { refresh: () => void },
     {
       domain: string
-      scope?: { productCategoryId?: number }
+      scope?: { productCategoryId?: number; productCategoryBranchId?: number }
       onAction?: (action: TableActionDefinition, row: TableRow) => void
     }
   >(function TableViewStub({ domain, scope, onAction }, ref) {
     useImperativeHandle(ref, () => ({ refresh: vi.fn() }))
     return (
-      <div role="region" aria-label={`table-${domain}-${scope?.productCategoryId ?? 'all'}`}>
+      <div role="region" aria-label={`table-${domain}-${scope?.productCategoryBranchId != null ? `root-${scope.productCategoryBranchId}` : (scope?.productCategoryId ?? 'all')}`}>
         <button type="button" onClick={() => onAction?.(DELETE_ACTION, ROW)}>
           delete row
         </button>
@@ -72,6 +72,8 @@ const CATEGORIES = [
   { id: 12, name: 'ISO 9001', count: 5 },
   { id: 7, name: 'Formazione', count: 2 },
 ]
+
+const ROOT_CATEGORIES = [{ id: 3, name: 'Qualita', count: 9 }]
 
 function renderTable() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -91,7 +93,9 @@ beforeAll(async () => {
 beforeEach(() => {
   window.localStorage.clear()
   fetchCategoriesMock.mockReset()
-  fetchCategoriesMock.mockResolvedValue(CATEGORIES)
+  fetchCategoriesMock.mockImplementation(async (_basePath: string, level?: string) =>
+    level === 'root' ? ROOT_CATEGORIES : CATEGORIES,
+  )
   deleteQuoteMock.mockReset()
 })
 
@@ -146,5 +150,31 @@ describe('QuotesTable category tabs refresh (spec 0335 AC-017)', () => {
 
     await waitFor(() => expect(screen.getByRole('tab', { name: /ISO 9001/ })).toHaveTextContent('4'))
     expect(fetchCategoriesMock).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('QuotesTable root-level category tabs (spec 0337 AC-008)', () => {
+  it('the menu switch lists the root categories, scopes the grid by branch and survives a reload', async () => {
+    const first = renderTable()
+    await screen.findByRole('tab', { name: /ISO 9001/ })
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /ISO 9001/ }), { button: 0 })
+    await screen.findByRole('region', { name: 'table-quotes-12' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Categories and favorites' }))
+    fireEvent.click(await screen.findByRole('switch', { name: 'Parent categories' }))
+
+    expect(await screen.findByRole('tab', { name: /Qualita/ })).toHaveTextContent('9')
+    expect(fetchCategoriesMock).toHaveBeenCalledWith('/quotes', 'root')
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /Qualita/ }), { button: 0 })
+    expect(await screen.findByRole('region', { name: 'table-quotes-root-3' })).toBeInTheDocument()
+    expect(window.localStorage.getItem('quotes.category-tab-level')).toBe('root')
+
+    first.unmount()
+    renderTable()
+    expect(await screen.findByRole('region', { name: 'table-quotes-root-3' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Categories and favorites' }))
+    fireEvent.click(await screen.findByRole('switch', { name: 'Parent categories' }))
+    expect(await screen.findByRole('region', { name: 'table-quotes-12' })).toBeInTheDocument()
   })
 })

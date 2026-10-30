@@ -118,6 +118,10 @@ const guide: HelpGuide = {
           items: ["Se le tab non entrano nella riga, le altre finiscono nel menu **Altre**, dove puoi cercare una categoria per nome.","Clicca la **stellina** accanto a una categoria (nel menu) per aggiungerla alle **preferite**: le preferite compaiono per prime.","Attiva **Mostra solo preferite** per vedere in barra solo le preferite; le altre restano nel menu **Altre**."],
         },
         {
+          type: 'paragraph',
+          text: "Nel menu **Altre** l'interruttore **Categorie madri** limita la barra alle sole categorie di primo livello: la tab di una categoria madre raccoglie anche le sottocategorie (un record conta una volta sola). La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria tab e le **preferite** sono separate tra le due modalità. Spegnendolo torni a tutte le categorie.",
+        },
+        {
           type: 'note',
           text: "Le preferite sono separate per ogni elenco (Opportunità, Offerte, Contratti, Gestione Richieste). La prima volta ti vengono proposte in base alle categorie per cui sei abilitato; appena usi la stellina diventano le tue. L'esportazione non segue la tab: considera sempre tutte le offerte.",
         },

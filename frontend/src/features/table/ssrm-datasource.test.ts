@@ -196,6 +196,17 @@ describe('createSsrmDatasource', () => {
     expect(fetchRowsMock.mock.calls[0][1]).not.toHaveProperty('productCategoryId')
   })
 
+  // Spec 0337: a root category tab scopes the rows by branch, never as a single category.
+  it('includes productCategoryBranchId alone in the payload when given', async () => {
+    fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)
+
+    await createSsrmDatasource('quotes', { productCategoryBranchId: 3 }).getRows(stubParams({}))
+
+    const payload = fetchRowsMock.mock.calls[0][1]
+    expect(payload).toMatchObject({ productCategoryBranchId: 3 })
+    expect(payload).not.toHaveProperty('productCategoryId')
+  })
+
   // Spec 0067 D-1/AC-030: the Opportunity detail's Quotes panel scopes the
   // rows request the same way productCategoryId does above.
   it('includes opportunityId in the payload when given', async () => {

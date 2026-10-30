@@ -68,6 +68,8 @@ export interface SsrmDatasourceOptions {
   getCustomFilterRules?: () => FilterRules | null
   /** Product Category tab scope (spec 0064); a no-op for every domain but `request-management`. */
   productCategoryId?: number
+  /** Root Product Category tab scope (spec 0337): the rows of the whole branch. */
+  productCategoryBranchId?: number
   /** Row-set scope to one Opportunity's Quotes panel (spec 0067 D-1); a no-op for every domain but `quotes`. */
   opportunityId?: number
   /** Row-set scope to one Contract's Offerta (spec 0095 D-8); a no-op for every domain but `work-orders`. */
@@ -106,6 +108,7 @@ export function createSsrmDatasource(
     getAdvancedFilters,
     getCustomFilterRules,
     productCategoryId,
+    productCategoryBranchId,
     opportunityId,
     quoteId,
     registryId,
@@ -182,6 +185,7 @@ export function createSsrmDatasource(
         advancedFilters,
         customFilterRules,
         productCategoryId,
+        productCategoryBranchId,
         opportunityId,
         quoteId,
         registryId,
@@ -205,6 +209,7 @@ export function createSsrmDatasource(
           ...(Object.keys(advancedFilters).length > 0 ? { advancedFilters } : {}),
           ...(customFilterRules ? { customFilterRules } : {}),
           ...(productCategoryId != null ? { productCategoryId } : {}),
+          ...(productCategoryBranchId != null ? { productCategoryBranchId } : {}),
           ...(opportunityId != null ? { opportunityId } : {}),
           ...(quoteId != null ? { quoteId } : {}),
           ...(registryId != null ? { registryId } : {}),

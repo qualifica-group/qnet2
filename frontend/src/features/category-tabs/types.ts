@@ -1,3 +1,6 @@
+/** Which categories the strip lists (spec 0337): every one, or only the root (first-level) ones. */
+export type CategoryTabLevel = 'all' | 'root'
+
 /** One tab of the category strip: a Product Category and how many grid rows fall under it. */
 export interface CategoryTabItem {
   id: number

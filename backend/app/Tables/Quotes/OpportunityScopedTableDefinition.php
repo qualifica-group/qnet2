@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tables\Quotes;
 
 use App\Models\User;
+use App\Products\ProductCategoryBranches;
 use App\Tables\CategoryTabs\RevenueCategoryQuoteIds;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
 use App\Tables\ProductCategoryScopable;
@@ -56,7 +57,12 @@ class OpportunityScopedTableDefinition implements ProductCategoryScopable, Regis
 
     private ?int $categoryScope = null;
 
-    public function __construct(private readonly TableDefinition $inner) {}
+    private ?int $branchScope = null;
+
+    public function __construct(
+        private readonly TableDefinition $inner,
+        private readonly ProductCategoryBranches $branches,
+    ) {}
 
     /**
      * Narrows `baseQuery()` to one Opportunity's Offerte (null = no scope,
@@ -89,12 +95,21 @@ class OpportunityScopedTableDefinition implements ProductCategoryScopable, Regis
             $query->whereIn('quotes.id', RevenueCategoryQuoteIds::subquery($this->categoryScope));
         }
 
+        if ($this->branchScope !== null) {
+            $query->whereIn('quotes.id', RevenueCategoryQuoteIds::subquery($this->branches->branchIds($this->branchScope)));
+        }
+
         return $query;
     }
 
     public function scopeToProductCategory(?int $productCategoryId): void
     {
         $this->categoryScope = $productCategoryId;
+    }
+
+    public function scopeToProductCategoryBranch(?int $rootId): void
+    {
+        $this->branchScope = $rootId;
     }
 
     /**

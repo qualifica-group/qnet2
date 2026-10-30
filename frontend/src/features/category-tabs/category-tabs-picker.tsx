@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch'
 import { TABS_TRIGGER_CLASS } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { filterCategoriesByName } from '@/features/category-tabs/category-tab-fit'
-import type { CategoryTabItem } from '@/features/category-tabs/types'
+import type { CategoryTabItem, CategoryTabLevel } from '@/features/category-tabs/types'
 
 /**
  * The menu button reads as one more tab of the strip: same pill, same
@@ -63,6 +63,9 @@ interface CategoryTabsPickerProps {
   onSelect: (categoryId: number) => void
   onToggleFavorite: (categoryId: number) => void
   onShowOnlyFavoritesChange: (showOnlyFavorites: boolean) => void
+  /** Spec 0337: the strip level and its switch; the switch is absent when the parent gives no handler. */
+  level?: CategoryTabLevel
+  onLevelChange?: (level: CategoryTabLevel) => void
 }
 
 /**
@@ -73,7 +76,8 @@ interface CategoryTabsPickerProps {
  * taken when the menu opens, so a star clicked while it is open fills at once
  * but never moves the row from under the pointer. Arrow keys move from the
  * search into the list and through it; Enter in the search picks the first
- * match.
+ * match. The "Categorie madri" switch narrows the whole strip to the root
+ * categories (spec 0337).
  */
 export function CategoryTabsPicker({
   categories,
@@ -85,9 +89,12 @@ export function CategoryTabsPicker({
   onSelect,
   onToggleFavorite,
   onShowOnlyFavoritesChange,
+  level = 'all',
+  onLevelChange,
 }: CategoryTabsPickerProps) {
   const { t } = useTranslation()
   const switchId = useId()
+  const levelSwitchId = useId()
   const searchRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
@@ -187,6 +194,18 @@ export function CategoryTabsPicker({
             <ul aria-label={t('categoryTabs.pickerLabel')}>{renderRows(matches)}</ul>
           )}
         </div>
+        {onLevelChange ? (
+          <div className="flex items-center justify-between gap-2 border-t border-border px-2 py-2">
+            <Label htmlFor={levelSwitchId} className="text-xs font-normal">
+              {t('categoryTabs.rootLevel')}
+            </Label>
+            <Switch
+              id={levelSwitchId}
+              checked={level === 'root'}
+              onCheckedChange={(checked) => onLevelChange(checked ? 'root' : 'all')}
+            />
+          </div>
+        ) : null}
         <div className="flex items-center justify-between gap-2 border-t border-border px-2 py-2">
           <Label htmlFor={switchId} className="text-xs font-normal">
             {t('categoryTabs.showOnlyFavorites')}

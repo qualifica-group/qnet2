@@ -14,7 +14,7 @@ import {
   MEASURE_MORE,
   useCategoryTabFit,
 } from '@/features/category-tabs/use-category-tab-fit'
-import type { CategoryTabItem } from '@/features/category-tabs/types'
+import type { CategoryTabItem, CategoryTabLevel } from '@/features/category-tabs/types'
 
 /** The "Tutte" tab's Radix value; every category tab's value is its numeric id, stringified. */
 const ALL_TAB_VALUE = 'all'
@@ -38,6 +38,9 @@ interface CategoryTabsProps {
   favoritesAreDefault?: boolean
   onToggleFavorite: (categoryId: number) => void
   onShowOnlyFavoritesChange: (showOnlyFavorites: boolean) => void
+  /** Spec 0337: which categories the strip lists, and the switch in its menu that changes it. */
+  level?: CategoryTabLevel
+  onLevelChange?: (level: CategoryTabLevel) => void
 }
 
 /**
@@ -63,6 +66,8 @@ export function CategoryTabs({
   favoritesAreDefault = false,
   onToggleFavorite,
   onShowOnlyFavoritesChange,
+  level,
+  onLevelChange,
 }: CategoryTabsProps) {
   const { t } = useTranslation()
   const troughRef = useRef<HTMLDivElement>(null)
@@ -113,6 +118,8 @@ export function CategoryTabs({
             onSelect={onSelect}
             onToggleFavorite={onToggleFavorite}
             onShowOnlyFavoritesChange={onShowOnlyFavoritesChange}
+            level={level}
+            onLevelChange={onLevelChange}
           />
         </div>
       </Tabs>

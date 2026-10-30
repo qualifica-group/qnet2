@@ -2,8 +2,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { fetchCategoryTabPreferences, saveCategoryTabPreferences } from '@/features/category-tabs/api'
+import { levelArgs } from '@/features/category-tabs/category-tab-level'
 import { categoryTabKeys } from '@/features/category-tabs/query-keys'
 import type {
+  CategoryTabLevel,
   CategoryTabPreferences,
   CategoryTabPreferencesPayload,
   CategoryTabSource,
@@ -21,21 +23,22 @@ const NO_PREFERENCES: CategoryTabPreferences = {
  * Every change is optimistic — the star fills at once — and each write sends
  * the whole preference built on the cache, so quick successive clicks
  * accumulate instead of overwriting one another. A failed write restores the
- * previous state and says so.
+ * previous state and says so. Each level (spec 0337) keeps its own favourites,
+ * cache entry and server row.
  */
-export function useCategoryTabPreferences({ key, apiBasePath }: CategoryTabSource) {
+export function useCategoryTabPreferences({ key, apiBasePath }: CategoryTabSource, level: CategoryTabLevel = 'all') {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const queryKey = categoryTabKeys.preferences(key)
+  const queryKey = categoryTabKeys.preferences(key, level)
 
   const query = useQuery({
     queryKey,
-    queryFn: () => fetchCategoryTabPreferences(apiBasePath),
+    queryFn: () => fetchCategoryTabPreferences(apiBasePath, ...levelArgs(level)),
   })
 
   const mutation = useMutation({
     mutationKey: queryKey,
-    mutationFn: (next: CategoryTabPreferencesPayload) => saveCategoryTabPreferences(apiBasePath, next),
+    mutationFn: (next: CategoryTabPreferencesPayload) => saveCategoryTabPreferences(apiBasePath, next, ...levelArgs(level)),
     onMutate: async (next) => {
       await queryClient.cancelQueries({ queryKey })
       const previous = queryClient.getQueryData<CategoryTabPreferences>(queryKey)

@@ -115,6 +115,11 @@ class TableRowsRequest extends FormRequest
             // (D-2) — a no-op key for every other domain.
             'productCategoryId' => ['sometimes', 'nullable', 'integer', Rule::exists('product_categories', 'id')],
 
+            // Spec 0337: the rows of a root category's whole branch (category
+            // tab strip, "Categorie madri" level); a no-op key like
+            // productCategoryId, and never sent together with it.
+            'productCategoryBranchId' => ['sometimes', 'nullable', 'integer', Rule::exists('product_categories', 'id'), 'prohibits:productCategoryId'],
+
             // Spec 0067: scopes `quotes` to one Opportunity's Offerte — a
             // no-op key for every other domain (D-1: the allow-lists above
             // never depend on this scope, unlike productCategoryId).
@@ -332,6 +337,7 @@ class TableRowsRequest extends FormRequest
 
             if ($definition instanceof ProductCategoryScopable) {
                 $definition->scopeToProductCategory($this->productCategoryIdInput());
+                $definition->scopeToProductCategoryBranch($this->productCategoryBranchIdInput());
             }
 
             if ($definition instanceof OpportunityScopedTableDefinition) {
@@ -361,6 +367,17 @@ class TableRowsRequest extends FormRequest
     private function productCategoryIdInput(): ?int
     {
         $value = $this->input('productCategoryId');
+
+        return is_numeric($value) ? (int) $value : null;
+    }
+
+    /**
+     * The raw `productCategoryBranchId` request input (spec 0337), mirroring
+     * `productCategoryIdInput()`.
+     */
+    private function productCategoryBranchIdInput(): ?int
+    {
+        $value = $this->input('productCategoryBranchId');
 
         return is_numeric($value) ? (int) $value : null;
     }

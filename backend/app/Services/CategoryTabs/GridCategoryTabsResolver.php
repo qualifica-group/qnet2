@@ -16,6 +16,7 @@ use App\Services\Quotes\QuoteVisibilityScope;
 use App\Support\Cache\AggregateCache;
 use App\Tables\CategoryTabs\CategoryTabGrid;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
 /**
@@ -24,23 +25,38 @@ use Illuminate\Support\Collection;
  * each with the count of DISTINCT rows (D-1, D-2).
  *
  * The visibility scope is the grid's own (`scopeToActor`), so the strip can
- * never drift from what the grid lists (D-6). Mirrors
+ * never drift from what the grid lists (D-6). At the root level (spec 0337)
+ * the strip lists the root categories, each counting its whole branch. Mirrors
  * `RequestCategoryTabsResolver`, which stays dedicated to Gestione Richieste.
  */
 final class GridCategoryTabsResolver
 {
-    public function __construct(private readonly AggregateCache $cache) {}
+    /**
+     * Per grid: the category column the counts group on and the record id
+     * they count. Closed constants, the only SQL identifiers interpolated below.
+     */
+    private const array COLUMNS = [
+        'opportunities' => ['opportunity_product_lines.product_category_id', 'opportunities.id'],
+        'quotes' => ['products.category_id', 'quotes.id'],
+        'contracts' => ['products.category_id', 'contracts.id'],
+    ];
+
+    public function __construct(
+        private readonly AggregateCache $cache,
+        private readonly RootCategoryCounts $rootCounts,
+    ) {}
 
     /**
      * @return Collection<int, ProductCategory>
      */
-    public function resolve(User $user, CategoryTabGrid $grid): Collection
+    public function resolve(User $user, CategoryTabGrid $grid, CategoryTabLevel $level = CategoryTabLevel::All): Collection
     {
-        // Step 1: the per-category counts, cached per user and grid; always
-        // exact for the writer (AggregateCache).
+        // Step 1: the per-category (or per-root) counts, cached per user, grid
+        // and level; always exact for the writer (AggregateCache).
+        $root = $level === CategoryTabLevel::Root;
         $counts = $this->cache->remember(
-            "category-tabs:{$grid->value}:{$user->id}",
-            fn (): array => $this->countsInScope($user, $grid),
+            "category-tabs:{$grid->value}:{$user->id}".($root ? ':root' : ''),
+            fn (): array => $root ? $this->rootCountsInScope($user, $grid) : $this->countsInScope($user, $grid),
             $user,
         );
 
@@ -57,46 +73,59 @@ final class GridCategoryTabsResolver
      */
     private function countsInScope(User $user, CategoryTabGrid $grid): array
     {
-        $query = match ($grid) {
-            CategoryTabGrid::Opportunities => $this->opportunityCounts($user),
-            CategoryTabGrid::Quotes => $this->quoteCounts($user),
-            CategoryTabGrid::Contracts => $this->contractCounts($user),
-        };
+        [$categoryColumn, $recordColumn] = self::COLUMNS[$grid->value];
 
-        return $query
+        return $this->scopedQuery($user, $grid)
+            ->select("{$categoryColumn} as category_id")
+            ->selectRaw("count(distinct {$recordColumn}) as records_count")
+            ->groupBy($categoryColumn)
             ->pluck('records_count', 'category_id')
             ->map(static fn ($count): int => (int) $count)
             ->all();
     }
 
     /**
+     * @return array<int, int> root category id => distinct rows on its branch
+     */
+    private function rootCountsInScope(User $user, CategoryTabGrid $grid): array
+    {
+        [$categoryColumn, $recordColumn] = self::COLUMNS[$grid->value];
+
+        return $this->rootCounts->count($this->scopedQuery($user, $grid), $categoryColumn, $recordColumn);
+    }
+
+    /**
+     * The grid's rows joined to their categories, narrowed to what the actor sees.
+     *
+     * @return Builder<Model>
+     */
+    private function scopedQuery(User $user, CategoryTabGrid $grid): Builder
+    {
+        return match ($grid) {
+            CategoryTabGrid::Opportunities => OpportunityVisibilityScope::scopeToActor($this->opportunityRows(), $user),
+            CategoryTabGrid::Quotes => QuoteVisibilityScope::scopeToActor($this->quoteRows(), $user),
+            CategoryTabGrid::Contracts => ContractVisibilityScope::scopeToActor($this->contractRows(), $user),
+        };
+    }
+
+    /**
      * @return Builder<Opportunity>
      */
-    private function opportunityCounts(User $user): Builder
+    private function opportunityRows(): Builder
     {
-        $query = Opportunity::query()
-            ->join('opportunity_product_lines', 'opportunity_product_lines.opportunity_id', '=', 'opportunities.id')
-            ->select('opportunity_product_lines.product_category_id as category_id')
-            ->selectRaw('count(distinct opportunities.id) as records_count')
-            ->groupBy('opportunity_product_lines.product_category_id');
-
-        return OpportunityVisibilityScope::scopeToActor($query, $user);
+        return Opportunity::query()
+            ->join('opportunity_product_lines', 'opportunity_product_lines.opportunity_id', '=', 'opportunities.id');
     }
 
     /**
      * @return Builder<Quote>
      */
-    private function quoteCounts(User $user): Builder
+    private function quoteRows(): Builder
     {
-        $query = Quote::query()
+        return Quote::query()
             ->join('quote_lines', 'quote_lines.quote_id', '=', 'quotes.id')
             ->join('products', 'products.id', '=', 'quote_lines.product_id')
-            ->where('quote_lines.line_type', QuoteLineType::Revenue->value)
-            ->select('products.category_id as category_id')
-            ->selectRaw('count(distinct quotes.id) as records_count')
-            ->groupBy('products.category_id');
-
-        return QuoteVisibilityScope::scopeToActor($query, $user);
+            ->where('quote_lines.line_type', QuoteLineType::Revenue->value);
     }
 
     /**
@@ -104,16 +133,11 @@ final class GridCategoryTabsResolver
      *
      * @return Builder<Contract>
      */
-    private function contractCounts(User $user): Builder
+    private function contractRows(): Builder
     {
-        $query = Contract::query()
+        return Contract::query()
             ->join('quote_lines', 'quote_lines.quote_id', '=', 'contracts.quote_id')
             ->join('products', 'products.id', '=', 'quote_lines.product_id')
-            ->where('quote_lines.line_type', QuoteLineType::Revenue->value)
-            ->select('products.category_id as category_id')
-            ->selectRaw('count(distinct contracts.id) as records_count')
-            ->groupBy('products.category_id');
-
-        return ContractVisibilityScope::scopeToActor($query, $user);
+            ->where('quote_lines.line_type', QuoteLineType::Revenue->value);
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\CategoryTabs;
 
 use App\Http\Controllers\Abstract\BaseApiController;
+use App\Http\Requests\CategoryTabs\CategoryTabLevelRequest;
 use App\Http\Requests\RequestManagement\UpdateCategoryTabPreferencesRequest;
 use App\Http\Resources\CategoryTabPreferencesResource;
 use App\Models\UserCategoryTabPreference;
@@ -28,7 +29,7 @@ class GridCategoryTabPreferencesController extends BaseApiController
         private readonly GridCategoryTabsResolver $tabs,
     ) {}
 
-    public function show(Request $request): JsonResponse
+    public function show(CategoryTabLevelRequest $request): JsonResponse
     {
         try {
             $grid = $this->authorizedGrid($request);
@@ -38,6 +39,7 @@ class GridCategoryTabPreferencesController extends BaseApiController
                 $user,
                 $grid->value,
                 fn (): array => $this->tabs->resolve($user, $grid)->pluck('id')->map(static fn ($id): int => (int) $id)->all(),
+                $request->level(),
             ));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
@@ -53,6 +55,7 @@ class GridCategoryTabPreferencesController extends BaseApiController
                 $request->user(),
                 $grid->value,
                 $request->safe()->only(['favorite_category_ids', 'show_only_favorites']),
+                $request->level(),
             ));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);

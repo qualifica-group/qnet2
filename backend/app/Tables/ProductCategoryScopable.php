@@ -17,4 +17,11 @@ interface ProductCategoryScopable
      * Null = no scope (the "Tutte" tab).
      */
     public function scopeToProductCategory(?int $productCategoryId): void;
+
+    /**
+     * The rows of one root category's whole branch (the root and every
+     * descendant, spec 0337, D-1); null = no scope. Mutually exclusive with
+     * `scopeToProductCategory`: the callers never set both.
+     */
+    public function scopeToProductCategoryBranch(?int $rootId): void;
 }

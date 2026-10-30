@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\RequestManagement;
 
 use App\Models\User;
+use App\Products\ProductCategoryBranches;
 use App\Services\Assignment\OperatorCompetence;
 
 /**
@@ -15,7 +16,10 @@ use App\Services\Assignment\OperatorCompetence;
  */
 final class ResolveDefaultCategoryTabPreference
 {
-    public function __construct(private readonly OperatorCompetence $competence) {}
+    public function __construct(
+        private readonly OperatorCompetence $competence,
+        private readonly ProductCategoryBranches $branches,
+    ) {}
 
     /**
      * @param  array<int, int>  $stripCategoryIds  the categories on the strip for this actor
@@ -28,5 +32,21 @@ final class ResolveDefaultCategoryTabPreference
         sort($covered);
 
         return $covered;
+    }
+
+    /**
+     * The root-level default (spec 0337, D-4): the roots whose branch holds at
+     * least one covered category of the `all`-level strip.
+     *
+     * @param  array<int, int>  $stripCategoryIds  the categories on the `all`-level strip for this actor
+     * @return array<int, int> root category ids, ascending
+     */
+    public function handleForRoots(User $user, array $stripCategoryIds): array
+    {
+        $roots = array_unique(array_map($this->branches->rootIdOf(...), $this->handle($user, $stripCategoryIds)));
+
+        sort($roots);
+
+        return $roots;
     }
 }

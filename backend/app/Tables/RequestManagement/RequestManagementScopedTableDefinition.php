@@ -7,6 +7,7 @@ namespace App\Tables\RequestManagement;
 use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\User;
+use App\Products\ProductCategoryBranches;
 use App\Services\ProductCategoryService;
 use App\Services\RequestManagement\RequestManagementService;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
@@ -87,6 +88,12 @@ class RequestManagementScopedTableDefinition implements ProductCategoryScopable,
 
     private ?int $categoryScope = null;
 
+    /**
+     * Spec 0337, D-3: a root tab only filters the rows, so it leaves
+     * `categoryScope` null and carries no `attr.*` column nor GA relabel.
+     */
+    private ?int $branchScope = null;
+
     private bool $allowListUnion = false;
 
     /**
@@ -105,6 +112,7 @@ class RequestManagementScopedTableDefinition implements ProductCategoryScopable,
         private readonly ProductCategoryService $productCategoryService,
         private readonly AttributeGridColumns $attributeColumns,
         private readonly RequestManagementService $service,
+        private readonly ProductCategoryBranches $branches,
     ) {}
 
     /**
@@ -115,6 +123,15 @@ class RequestManagementScopedTableDefinition implements ProductCategoryScopable,
     public function scopeToProductCategory(?int $productCategoryId): void
     {
         $this->categoryScope = $productCategoryId;
+    }
+
+    /**
+     * Narrows `baseQuery()` ONLY to the rows of a root category's branch
+     * (spec 0337, D-3): no `attr.*` columns and no G.A. relabel.
+     */
+    public function scopeToProductCategoryBranch(?int $rootId): void
+    {
+        $this->branchScope = $rootId;
     }
 
     /**
@@ -134,11 +151,11 @@ class RequestManagementScopedTableDefinition implements ProductCategoryScopable,
     {
         $query = $this->inner->baseQuery();
 
-        if ($this->categoryScope === null) {
+        $categoryIds = $this->scopedCategoryIds();
+
+        if ($categoryIds === null) {
             return $query;
         }
-
-        $categoryScope = $this->categoryScope;
 
         // D-2: the offer's opportunity's OWN product lines (spec 0086: `quotes`
         // carries no product lines of its own) — a request with lines on
@@ -152,10 +169,22 @@ class RequestManagementScopedTableDefinition implements ProductCategoryScopable,
             static fn (QueryBuilder $lines) => $lines
                 ->select('opportunity_id')
                 ->from(self::PRODUCT_LINES_TABLE)
-                ->where('product_category_id', $categoryScope),
+                ->whereIn('product_category_id', $categoryIds),
         );
 
         return $query;
+    }
+
+    /**
+     * @return array<int, int>|null
+     */
+    private function scopedCategoryIds(): ?array
+    {
+        if ($this->branchScope !== null) {
+            return $this->branches->branchIds($this->branchScope);
+        }
+
+        return $this->categoryScope === null ? null : [$this->categoryScope];
     }
 
     /**

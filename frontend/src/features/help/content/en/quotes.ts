@@ -118,6 +118,10 @@ const guide: HelpGuide = {
           items: ["If the tabs do not fit the row, the others move into the **More** menu, where you can search a category by name.","Click the **star** next to a category (in the menu) to add it to your **favorites**: favorites come first.","Turn on **Show only favorites** to see only the favorites in the bar; the others stay in the **More** menu."],
         },
         {
+          type: 'paragraph',
+          text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. Turn it off to go back to all the categories.",
+        },
+        {
           type: 'note',
           text: "Favorites are separate for each list (Opportunities, Quotes, Contracts, Request Management). The first time they are suggested from the categories you are enabled for; as soon as you use the star they become yours. The export does not follow the tab: it always covers all the quotes.",
         },

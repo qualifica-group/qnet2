@@ -229,7 +229,8 @@ class TableController extends BaseApiController
 
             $payload = $request->validated();
             $productCategoryId = $payload['productCategoryId'] ?? null;
-            $this->scopeToProductCategory($definition, $productCategoryId === null ? null : (int) $productCategoryId);
+            $branchId = $payload['productCategoryBranchId'] ?? null;
+            $this->scopeToProductCategory($definition, $productCategoryId === null ? null : (int) $productCategoryId, $branchId === null ? null : (int) $branchId);
             $opportunityId = $payload['opportunityId'] ?? null;
             $this->scopeToOpportunity($definition, $opportunityId === null ? null : (int) $opportunityId);
             $quoteId = $payload['quoteId'] ?? null;
@@ -310,7 +311,7 @@ class TableController extends BaseApiController
             $this->authorizeViewAny($definition->authorizeViewAny($actor));
 
             $payload = $request->payload();
-            $this->scopeToProductCategory($definition, $payload['productCategoryId']);
+            $this->scopeToProductCategory($definition, $payload['productCategoryId'], $payload['productCategoryBranchId']);
             $this->scopeToOpportunity($definition, $payload['opportunityId']);
             $this->scopeToQuote($definition, $payload['quoteId']);
             $this->scopeToRegistry($definition, $payload['registryId']);
@@ -388,12 +389,14 @@ class TableController extends BaseApiController
      * Also called by `savePreferences()`/`saveFilters()` AFTER their write, on
      * the tab the client sent: those responses are read straight into the
      * client's per-tab config cache, so they must carry the same `attr.*`
-     * columns the GET does. It reaches nothing already persisted.
+     * columns the GET does. It reaches nothing already persisted. `$branchId`
+     * (spec 0337) comes only from rows/values: a root tab filters rows, never config.
      */
-    private function scopeToProductCategory(TableDefinition $definition, ?int $productCategoryId): void
+    private function scopeToProductCategory(TableDefinition $definition, ?int $productCategoryId, ?int $branchId = null): void
     {
         if ($definition instanceof ProductCategoryScopable) {
             $definition->scopeToProductCategory($productCategoryId);
+            $definition->scopeToProductCategoryBranch($branchId);
         }
     }
 

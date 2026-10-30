@@ -16,17 +16,19 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 final class RevenueCategoryQuoteIds
 {
     /**
-     * A `whereIn` subquery callback selecting `quote_lines.quote_id`.
+     * A `whereIn` subquery callback selecting `quote_lines.quote_id`, for one
+     * category or for a whole branch (spec 0337: the root and its descendants).
      *
+     * @param  int|array<int, int>  $categoryIds
      * @return Closure(QueryBuilder): QueryBuilder
      */
-    public static function subquery(int $categoryId): Closure
+    public static function subquery(int|array $categoryIds): Closure
     {
         return static fn (QueryBuilder $lines): QueryBuilder => $lines
             ->select('quote_lines.quote_id')
             ->from('quote_lines')
             ->join('products', 'products.id', '=', 'quote_lines.product_id')
             ->where('quote_lines.line_type', QuoteLineType::Revenue->value)
-            ->where('products.category_id', $categoryId);
+            ->whereIn('products.category_id', (array) $categoryIds);
     }
 }

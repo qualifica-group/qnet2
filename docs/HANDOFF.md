@@ -3,6 +3,33 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Barra tab categorie: modalita' "Categorie madri" (spec 0337) — VERDE, COMMITTATO (2026-10-30)
+
+- Decisioni utente: madri = radici (`parent_id` null), la tab raccoglie il ramo intero (record contati una volta);
+  livello salvato nel browser per modulo (`${key}.category-tab-level` all|root, tab per livello `${key}.category-tab`
+  e `${key}.category-tab.root`); in Gestione Richieste/Iscritti una tab radice filtra soltanto (niente `attr.*`,
+  niente rinomina GA, config = "Tutte"); preferiti separati per livello (riga `"{module}:root"`, default = radici
+  che contengono categorie coperte dalla competenza).
+- Backend: `App\Products\ProductCategoryBranches` (`rootIds`, `branchIds`, `rootIdOf`);
+  `ProductCategoryScopable::scopeToProductCategoryBranch()` sui 4 decoratori (`RevenueCategoryQuoteIds` ora accetta
+  piu' id); `productCategoryBranchId` su rows/values (`prohibits:productCategoryId`), mai su config/preferenze/
+  filtri/export; `?level=root` (`CategoryTabLevelRequest`, 422 se diverso) su `{module}/product-categories`
+  (`RootCategoryCounts`, cache `...:root`) e `{module}/category-tab-preferences`
+  (`ResolveDefaultCategoryTabPreference::handleForRoots`, `CategoryTabPreferenceStore` con `level`).
+- Frontend: `TableConfigScope.productCategoryBranchId` lungo `features/table/*` + `components/data-table/*`
+  (filtri locali chiave `branch-{id}`); `features/category-tabs/category-tab-level.ts`, switch "Categorie madri"
+  nel menu Altre; `useCategoryTabStrip` espone `scope` e `tableKey` (`root-{id}`) ai 4 montaggi.
+  `DataTableProps`/`RowActionsRenderer` estratti in `components/data-table/data-table-props.ts` (data-table.tsx era
+  a 503 righe, ora 362).
+- Verifica (verifier): AC-001..011 PASS; Pest mirato 3543/3548 (estranei: PDF LibreOffice, bulk delete super-admin,
+  `DemoOpportunitySeederTest` flaky); Pint ok; Vitest mirato 2404/2404; suite completa backend 13096/13112 (solo
+  estranei noti: Migration d'ambiente, ManagementControl indice menu, PDF, bulk delete), frontend 9647/9647 (11
+  unhandled noti da `form-errors.ts`); dopo l'estrazione Vitest data-table/table/category-tabs 602/602, `tsc -b`
+  0, ESLint pulito. Guide in-app IT/EN (request-management, opportunities, quotes, contracts) + manuale Claude
+  Docs aggiornati; PDF da rigenerare.
+- Attenzione file grandi: `TableController.php` 493 righe (hard limit 500): il prossimo parametro di scope va
+  estratto, non aggiunto.
+
 ## Barra tab categorie prodotto su Opportunita' e Offerte (spec 0335) — VERDE, COMMITTATO (2026-10-30)
 
 - Decisioni utente: Offerte classificate SOLO dalle righe di ricavo (`quote_lines` REVENUE -> `products.category_id`),

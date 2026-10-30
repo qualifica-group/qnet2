@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tables\Contracts;
 
+use App\Products\ProductCategoryBranches;
 use App\Tables\CategoryTabs\DelegatesRowScopedTableMethods;
 use App\Tables\CategoryTabs\RevenueCategoryQuoteIds;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
@@ -25,11 +26,21 @@ class ContractCategoryScopedTableDefinition implements ProductCategoryScopable, 
 
     private ?int $categoryScope = null;
 
-    public function __construct(private readonly TableDefinition $inner) {}
+    private ?int $branchScope = null;
+
+    public function __construct(
+        private readonly TableDefinition $inner,
+        private readonly ProductCategoryBranches $branches,
+    ) {}
 
     public function scopeToProductCategory(?int $productCategoryId): void
     {
         $this->categoryScope = $productCategoryId;
+    }
+
+    public function scopeToProductCategoryBranch(?int $rootId): void
+    {
+        $this->branchScope = $rootId;
     }
 
     /**
@@ -38,6 +49,10 @@ class ContractCategoryScopedTableDefinition implements ProductCategoryScopable, 
     public function baseQuery(): Builder
     {
         $query = $this->inner->baseQuery();
+
+        if ($this->branchScope !== null) {
+            return $query->whereIn('contracts.quote_id', RevenueCategoryQuoteIds::subquery($this->branches->branchIds($this->branchScope)));
+        }
 
         if ($this->categoryScope === null) {
             return $query;

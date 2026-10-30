@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tables\Opportunities;
 
+use App\Products\ProductCategoryBranches;
 use App\Tables\CategoryTabs\DelegatesRowScopedTableMethods;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
 use App\Tables\ProductCategoryScopable;
@@ -31,11 +32,21 @@ class OpportunityCategoryScopedTableDefinition implements ProductCategoryScopabl
 
     private ?int $categoryScope = null;
 
-    public function __construct(private readonly TableDefinition&RegistryScopable $inner) {}
+    private ?int $branchScope = null;
+
+    public function __construct(
+        private readonly TableDefinition&RegistryScopable $inner,
+        private readonly ProductCategoryBranches $branches,
+    ) {}
 
     public function scopeToProductCategory(?int $productCategoryId): void
     {
         $this->categoryScope = $productCategoryId;
+    }
+
+    public function scopeToProductCategoryBranch(?int $rootId): void
+    {
+        $this->branchScope = $rootId;
     }
 
     public function scopeToRegistry(?int $registryId): void
@@ -50,11 +61,11 @@ class OpportunityCategoryScopedTableDefinition implements ProductCategoryScopabl
     {
         $query = $this->inner->baseQuery();
 
-        if ($this->categoryScope === null) {
+        $categoryIds = $this->scopedCategoryIds();
+
+        if ($categoryIds === null) {
             return $query;
         }
-
-        $categoryScope = $this->categoryScope;
 
         // IN-subquery rather than whereHas: starts from the category's own index.
         return $query->whereIn(
@@ -62,7 +73,21 @@ class OpportunityCategoryScopedTableDefinition implements ProductCategoryScopabl
             static fn (QueryBuilder $lines) => $lines
                 ->select('opportunity_id')
                 ->from('opportunity_product_lines')
-                ->where('product_category_id', $categoryScope),
+                ->whereIn('product_category_id', $categoryIds),
         );
+    }
+
+    /**
+     * The categories the rows are narrowed to: one, a whole branch, or null.
+     *
+     * @return array<int, int>|null
+     */
+    private function scopedCategoryIds(): ?array
+    {
+        if ($this->branchScope !== null) {
+            return $this->branches->branchIds($this->branchScope);
+        }
+
+        return $this->categoryScope === null ? null : [$this->categoryScope];
     }
 }

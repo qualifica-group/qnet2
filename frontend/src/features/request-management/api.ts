@@ -12,7 +12,9 @@ import type {
   TransferRequestsResult,
   UpdateRequestWorkPayload,
 } from '@/features/request-management/request-write-types'
+import { levelRequestConfig } from '@/features/category-tabs/category-tab-level'
 import type { RequestsCategoryDto } from '@/features/category-tabs/api'
+import type { CategoryTabLevel } from '@/features/category-tabs/types'
 import type {
   ManagerLabels,
   RequestFormContext,
@@ -158,9 +160,11 @@ export async function transferRequests(
  */
 export async function fetchRequestManagementCategories(
   basePath: string,
+  level: CategoryTabLevel = 'all',
 ): Promise<RequestsCategoryDto[]> {
   const { data } = await apiClient.get<ApiResponse<{ categories: RequestsCategoryDto[] }>>(
     `${basePath}/product-categories`,
+    levelRequestConfig(level),
   )
   return data.data.categories
 }

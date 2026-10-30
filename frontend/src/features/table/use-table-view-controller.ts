@@ -22,6 +22,7 @@ export interface TableViewControllerArgs extends RowActionsOptions {
   domain: string
   scope?: TableConfigScope
   productCategoryId?: number
+  productCategoryBranchId?: number
   opportunityId?: number
   quoteId?: number
   defaultFilterModel?: Record<string, unknown>
@@ -96,6 +97,7 @@ export function useTableViewController(
     domain,
     scope,
     productCategoryId,
+    productCategoryBranchId,
     opportunityId,
     quoteId,
     defaultFilterModel,
@@ -125,6 +127,7 @@ export function useTableViewController(
     {
       domain,
       productCategoryId,
+      productCategoryBranchId,
       opportunityId,
       quoteId,
       defaultFilterModel,

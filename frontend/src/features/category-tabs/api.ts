@@ -1,6 +1,12 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
-import type { CategoryTabItem, CategoryTabPreferences, CategoryTabPreferencesPayload } from '@/features/category-tabs/types'
+import { levelRequestConfig } from '@/features/category-tabs/category-tab-level'
+import type {
+  CategoryTabItem,
+  CategoryTabLevel,
+  CategoryTabPreferences,
+  CategoryTabPreferencesPayload,
+} from '@/features/category-tabs/types'
 
 /** A category as the grids' endpoint returns it (spec 0335). */
 interface GridCategoryDto {
@@ -22,15 +28,25 @@ export function categoryTabItemsFromRequests(categories: RequestsCategoryDto[]):
 }
 
 /** GET {basePath}/product-categories for the Opportunities and Quotes grids. */
-export async function fetchGridCategoryTabs(basePath: string): Promise<CategoryTabItem[]> {
-  const { data } = await apiClient.get<ApiResponse<{ categories: GridCategoryDto[] }>>(`${basePath}/product-categories`)
+export async function fetchGridCategoryTabs(
+  basePath: string,
+  level: CategoryTabLevel = 'all',
+): Promise<CategoryTabItem[]> {
+  const { data } = await apiClient.get<ApiResponse<{ categories: GridCategoryDto[] }>>(
+    `${basePath}/product-categories`,
+    levelRequestConfig(level),
+  )
   return data.data.categories.map(({ id, name, records_count }) => ({ id, name, count: records_count }))
 }
 
 /** GET {basePath}/category-tab-preferences (spec 0184): the actor's favourite strip categories. */
-export async function fetchCategoryTabPreferences(basePath: string): Promise<CategoryTabPreferences> {
+export async function fetchCategoryTabPreferences(
+  basePath: string,
+  level: CategoryTabLevel = 'all',
+): Promise<CategoryTabPreferences> {
   const { data } = await apiClient.get<ApiResponse<{ preferences: CategoryTabPreferences }>>(
     `${basePath}/category-tab-preferences`,
+    levelRequestConfig(level),
   )
   return data.data.preferences
 }
@@ -39,6 +55,7 @@ export async function fetchCategoryTabPreferences(basePath: string): Promise<Cat
 export async function saveCategoryTabPreferences(
   basePath: string,
   preferences: CategoryTabPreferencesPayload,
+  level: CategoryTabLevel = 'all',
 ): Promise<CategoryTabPreferences> {
   const { data } = await apiClient.put<ApiResponse<{ preferences: CategoryTabPreferences }>>(
     `${basePath}/category-tab-preferences`,
@@ -46,6 +63,7 @@ export async function saveCategoryTabPreferences(
       favorite_category_ids: preferences.favorite_category_ids,
       show_only_favorites: preferences.show_only_favorites,
     },
+    levelRequestConfig(level),
   )
   return data.data.preferences
 }
