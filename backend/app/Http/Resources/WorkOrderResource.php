@@ -4,6 +4,8 @@ namespace App\Http\Resources;
 
 use App\Authorization\LegacyIdVisibility;
 use App\Enums\FormMode;
+use App\Http\Resources\Concerns\SummarizesProductLines;
+use App\Http\Resources\Concerns\SummarizesRewards;
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\User;
@@ -14,9 +16,11 @@ use App\Services\WorkOrders\WorkOrderStatusResolver;
 use App\Services\WorkOrders\WorkOrderTaskForceCloser;
 use App\Services\WorkOrders\WorkOrderWorkflowResolver;
 use App\Support\OperationalSiteLabel;
+use App\Support\ReferentRef;
 use App\WorkOrders\WorkOrderAttributeResolver;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -42,6 +46,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class WorkOrderResource extends JsonResource
 {
+    use SummarizesProductLines;
+    use SummarizesRewards;
+
     /**
      * @return array<string, mixed>
      */
@@ -87,6 +94,16 @@ class WorkOrderResource extends JsonResource
             'company' => $this->summarizeCompany(),
             'company_site' => $this->summarizeCompanySite(),
             'operational_site' => OperationalSiteLabel::summarize($this->quote?->operationalSite),
+            // Spec 0331: read-only projection of the single offer; a multi-offer
+            // commessa has no `quote`, so these are null / [].
+            'referent' => ReferentRef::summarize($this->quote?->opportunity?->referent),
+            'commercial' => $this->summarizeByName($this->quote?->commercial),
+            'reporter' => $this->summarizeByName($this->quote?->reporter),
+            'source' => $this->summarizeByName($this->quote?->opportunity?->source),
+            'product_lines' => $this->summarizeProductLines($this->quote?->opportunity?->productLines ?? []),
+            'rewards' => $this->summarizeRewards($this->quote?->rewards ?? []),
+            'layout' => $this->summarizeByName($this->quote?->layout),
+            'payment_method' => $this->summarizeByName($this->quote?->paymentMethod),
             'quote_lines' => $this->summarizeQuoteLines(),
             // Cast to object, non array: un array PHP vuoto serializza come
             // `[]`, e il form legge la chiave come una MAPPA (Zod
@@ -303,6 +320,14 @@ class WorkOrderResource extends JsonResource
         $company = $this->quote?->company;
 
         return $company === null ? null : ['id' => $company->id, 'name' => $company->denomination];
+    }
+
+    /**
+     * @return array{id: int, name: string}|null
+     */
+    private function summarizeByName(?Model $related): ?array
+    {
+        return $related === null ? null : ['id' => $related->id, 'name' => $related->name];
     }
 
     /**

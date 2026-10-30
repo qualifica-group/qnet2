@@ -29,6 +29,8 @@ final readonly class UpdateRegistryData
         public ?array $sectorIds = null,
         public ?array $referentIds = null,
         public ?array $managerSlots = null,
+        public ?int $primaryReferentId = null,
+        public bool $primaryReferentIdSubmitted = false,
         public ?int $supervisorId = null,
         public bool $supervisorIdSubmitted = false,
         public ?int $commercialId = null,
@@ -68,6 +70,8 @@ final readonly class UpdateRegistryData
             managerSlots: array_key_exists('manager_slots', $data)
                 ? array_map(static fn ($id): ?int => $id === null ? null : (int) $id, $data['manager_slots'])
                 : null,
+            primaryReferentId: array_key_exists('primary_referent_id', $data) && $data['primary_referent_id'] !== null ? (int) $data['primary_referent_id'] : null,
+            primaryReferentIdSubmitted: array_key_exists('primary_referent_id', $data),
             supervisorId: array_key_exists('supervisor_id', $data) && $data['supervisor_id'] !== null ? (int) $data['supervisor_id'] : null,
             supervisorIdSubmitted: array_key_exists('supervisor_id', $data),
             commercialId: array_key_exists('commercial_id', $data) && $data['commercial_id'] !== null ? (int) $data['commercial_id'] : null,
@@ -111,7 +115,8 @@ final readonly class UpdateRegistryData
     /**
      * Only the registry's own scalar attributes the client actually
      * submitted, ready for a partial mass-assignment update. Pivot id arrays
-     * and `name` (card-derived) are never included here.
+     * and `name` (card-derived) are never included here; the requested
+     * `primaryReferentId` is resolved by PrimaryReferentElector instead.
      *
      * @return array<string, mixed>
      */

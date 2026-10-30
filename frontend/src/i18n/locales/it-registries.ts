@@ -34,6 +34,8 @@ export const registries = {
     subtitle: "Visualizzazione in sola lettura dell'anagrafica selezionata.",
     loadError: "Impossibile caricare l'anagrafica. Riprova.",
     details: 'Dettagli',
+    // Badge sulla card del referente principale (spec 0330).
+    primaryReferentBadge: 'Principale',
     // Scheda in sola lettura dei documenti dell'anagrafica nei dettagli di
     // Opportunita', Offerte e Commesse (spec 0173).
     registryDocumentsTab: 'Documenti anagrafica',
@@ -75,6 +77,8 @@ export const registries = {
     referentsEmpty: 'Nessun referente trovato.',
     referentsError: 'Impossibile caricare i referenti.',
     referentsRemove: 'Rimuovi referente',
+    primaryReferent: 'Referente principale',
+    primaryReferentPlaceholder: 'Seleziona il referente principale…',
     managers: 'Gestori account',
     managersPlaceholder: 'Seleziona gestori account…',
     managersSearch: 'Cerca gestori account…',

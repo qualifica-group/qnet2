@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "On the record, the **Client and opportunity** section shows the same data as the quote, read only: **Registry**, **Referent** (with its referent type under the name), **Opportunity**, **Offer**, **Commercial** and **Reporter**. They are changed from the quote.",
+          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Contract data** (Offer, Opportunity, Offer date) and **Context**, then **Registry and contacts** (Registry, Referent with its type, Commercial, Reporter) and **Rewards**, then **Team** (the quote's Supervisor and Account managers) and **Company and sites**, then **Document and payment** and **Lifecycle**. The quote's data are read only and changed from the quote; Payment notes, Renewal, Expiry and Comments are edited here.",
         },
       ],
     },

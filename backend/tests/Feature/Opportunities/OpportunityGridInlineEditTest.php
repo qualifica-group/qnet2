@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\Opportunity;
 use App\Models\Referent;
 use App\Models\Registry;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
@@ -103,4 +104,56 @@ it('keeps status and business function read-only', function () {
 
     patchOpportunityCell($opportunity, 'status', 'won')->assertUnprocessable();
     patchOpportunityCell($opportunity, 'business_function', 'x')->assertUnprocessable();
+});
+
+it('a new anagrafica brings its principale as the referent when the actor may edit it (spec 0330 D-8)', function () {
+    Sanctum::actingAs(opportunityGridEditor());
+    $opportunity = Opportunity::factory()->create(['referent_id' => Referent::factory()]);
+    [$first, $second] = Referent::factory()->count(2)->create();
+    $registry = Registry::factory()->create();
+    $registry->referents()->sync([$first->id, $second->id]);
+    $registry->forceFill(['primary_referent_id' => $second->id])->save();
+
+    patchOpportunityCell($opportunity, 'registry', $registry->id)->assertOk();
+
+    expect($opportunity->fresh()->referent_id)->toBe($second->id);
+});
+
+it('a new anagrafica clears the referent when the actor cannot edit it (spec 0330 D-8)', function () {
+    $actor = opportunityGridEditor();
+    $role = Role::create(['name' => 'opportunity-no-referent-'.uniqid()]);
+    $role->givePermissionTo(['opportunities.viewAny', 'opportunities.update', 'opportunities.viewAll']);
+    $role->fieldPermissions()->create(['resource' => 'opportunities', 'field' => 'referent_id', 'visible' => true, 'editable' => false, 'required' => false]);
+    $actor->syncPermissions([]);
+    $actor->assignRole($role);
+    Sanctum::actingAs($actor);
+    $opportunity = Opportunity::factory()->create(['referent_id' => null]);
+    $referent = Referent::factory()->create();
+    $registry = Registry::factory()->create();
+    $registry->referents()->sync([$referent->id]);
+    $registry->forceFill(['primary_referent_id' => $referent->id])->save();
+
+    patchOpportunityCell($opportunity, 'registry', $registry->id)->assertOk();
+
+    expect($opportunity->fresh()->referent_id)->toBeNull();
+});
+
+it('a new anagrafica is refused while the actor cannot edit a referent set on the previous anagrafica (spec 0330 D-8)', function () {
+    $actor = opportunityGridEditor();
+    $role = Role::create(['name' => 'opportunity-no-referent-'.uniqid()]);
+    $role->givePermissionTo(['opportunities.viewAny', 'opportunities.update', 'opportunities.viewAll']);
+    $role->fieldPermissions()->create(['resource' => 'opportunities', 'field' => 'referent_id', 'visible' => true, 'editable' => false, 'required' => false]);
+    $actor->syncPermissions([]);
+    $actor->assignRole($role);
+    Sanctum::actingAs($actor);
+    $previous = Referent::factory()->create();
+    $opportunity = Opportunity::factory()->create(['referent_id' => $previous->id]);
+    $referent = Referent::factory()->create();
+    $registry = Registry::factory()->create();
+    $registry->referents()->sync([$referent->id]);
+    $registry->forceFill(['primary_referent_id' => $referent->id])->save();
+
+    patchOpportunityCell($opportunity, 'registry', $registry->id)->assertUnprocessable();
+
+    expect($opportunity->fresh()->referent_id)->toBe($previous->id);
 });

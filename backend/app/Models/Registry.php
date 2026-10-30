@@ -44,6 +44,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'supervisor_id',
     'commercial_id',
     'reporter_id',
+    'primary_referent_id',
     'employee_count',
 ])]
 class Registry extends BaseModel
@@ -94,6 +95,15 @@ class Registry extends BaseModel
     }
 
     /**
+     * The default Referente (spec 0330, INV-1): always one of `referents()`,
+     * null only when the registry has none.
+     */
+    public function primaryReferent(): BelongsTo
+    {
+        return $this->belongsTo(Referent::class, 'primary_referent_id');
+    }
+
+    /**
      * The sectors / competences this registry is classified under
      * ("Settore EA / Competenze", multi).
      */
@@ -104,11 +114,12 @@ class Registry extends BaseModel
 
     /**
      * The referents (contact people) associated with this registry
-     * ("Referenti per azienda", multi).
+     * ("Referenti per azienda", multi), in insertion order (spec 0330 D-2):
+     * the first one is the default principale.
      */
     public function referents(): BelongsToMany
     {
-        return $this->belongsToMany(Referent::class, 'referent_registry');
+        return $this->belongsToMany(Referent::class, 'referent_registry')->orderByPivot('id');
     }
 
     /**

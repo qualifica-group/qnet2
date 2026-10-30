@@ -25,8 +25,15 @@ describe('isTaskCascadeEditable (spec 0195)', () => {
   })
 
   it('closes the anagrafica when a linked record it would clear is locked', () => {
-    expect(isTaskCascadeEditable('registry_id', taskDetail(), permissionsLocking('referent_id'))).toBe(false)
     expect(isTaskCascadeEditable('registry_id', taskDetail(), permissionsLocking('opportunity_id'))).toBe(false)
+  })
+
+  // Spec 0330 D-7: the Referente is now set (main referent), not cleared, so it blocks even while empty.
+  it('closes the anagrafica when the Referente it prefills is locked, even while the task has none', () => {
+    const task = taskDetail({ referent_id: null, referent: null })
+
+    expect(isTaskCascadeEditable('registry_id', taskDetail(), permissionsLocking('referent_id'))).toBe(false)
+    expect(isTaskCascadeEditable('registry_id', task, permissionsLocking('referent_id'))).toBe(false)
   })
 
   it('ignores a locked dependent that is already empty: clearing it sends nothing', () => {

@@ -52,6 +52,8 @@ interface OpportunityClassificationRecordSectionProps extends OpportunityRecordS
    * hierarchy on the detail, the draft's category paths on create.
    */
   productLines: ReactNode
+  /** The detail card names the block "Contesto" (spec 0331 D-5); the create form keeps the default. */
+  title?: string
 }
 
 /**
@@ -68,13 +70,14 @@ export function OpportunityClassificationRecordSection({
   inline,
   lockedFields,
   productLines,
+  title,
 }: OpportunityClassificationRecordSectionProps) {
   const { t } = useTranslation()
   const { control } = form
   const cascadeEditable = useCascadeEditable(PRODUCT_LINES_CASCADE_FIELDS)
 
   return (
-    <RecordSection title={t('opportunities.form.sections.classification.title')} icon={<Building2 />}>
+    <RecordSection title={title ?? t('opportunities.form.sections.classification.title')} icon={<Building2 />}>
       <RecordFieldList>
         <RecordInlineField
           field="source_id"

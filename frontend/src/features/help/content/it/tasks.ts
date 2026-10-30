@@ -182,7 +182,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Cambiare l\'**Anagrafica** azzera Referente, Opportunità e Lead, e mantiene la Commessa solo se appartiene alla stessa anagrafica. Opportunità, Commessa e Lead mostrano solo i record dell\'anagrafica scelta, una volta che ne hai scelta una.',
+          text: 'Cambiare l\'**Anagrafica** azzera Opportunità e Lead, mette nel Referente il referente principale della nuova anagrafica (vuoto se non ne ha) e mantiene la Commessa solo se appartiene alla stessa anagrafica. Opportunità, Commessa e Lead mostrano solo i record dell\'anagrafica scelta, una volta che ne hai scelta una.',
         },
       ],
     },
@@ -209,7 +209,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Le regole sono quelle della creazione: cambiare l\'**Anagrafica** azzera Referente, Opportunità e Lead nello stesso salvataggio; scegliere una **Commessa** toglie l\'Opportunità e propone subito la Fase. Se uno dei campi che verrebbero cambiati insieme non è modificabile da te, anche il campo di partenza (Anagrafica, Commessa, Opportunità o Task padre) resta senza matita.',
+          text: 'Le regole sono quelle della creazione: cambiare l\'**Anagrafica** azzera Opportunità e Lead e mette il referente principale nel Referente nello stesso salvataggio; scegliere una **Commessa** toglie l\'Opportunità e propone subito la Fase. Se uno dei campi che verrebbero cambiati insieme (compreso il Referente) non è modificabile da te, anche il campo di partenza (Anagrafica, Commessa, Opportunità o Task padre) resta senza matita.',
         },
       ],
     },

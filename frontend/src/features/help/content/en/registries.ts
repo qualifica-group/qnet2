@@ -16,7 +16,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            'A registry can have several Referents, plus a Commercial referent and a Reporter.',
+            'A registry can have several Referents, plus a Commercial referent and a Reporter. One of the Referents is the **Main referent** (usually the first one added): it is the one opportunities and tasks suggest when you pick the registry.',
             'Supervisor and Account managers are QNet users, not referents.',
             'Every Company Site belongs to a Company; Operational Sites are independent and are chosen, for example, on opportunities.',
           ],
@@ -64,7 +64,7 @@ const guide: HelpGuide = {
             ['General notes', 'The yellow box, the same as in Request management (at the top of the registry data on the record view, at the top of the right-hand column when creating): free text (up to 5000 characters) with what whoever opens the registry should read first.'],
             ['Contacts', 'Email, Phone (required), PEC, Fax and Website; with Add contact you enter more and set the Primary contact.'],
             ['Addresses', 'One or more addresses, each with a Site type: Registered office, Delivery, Billing or Operational site.'],
-            ['Referents', "The client's contact people, full width below the other sections: each card shows the name, then its Referent type (for example Administrator, Accounting or Owner) and the primary contacts."],
+            ['Referents', "The client's contact people, full width below the other sections: each card shows the name, then its Referent type (for example Administrator, Accounting or Owner) and the primary contacts. The Main referent carries the Main badge and is picked from the **Main referent** row (only among the linked referents; if you remove the main one it moves to the first one left)."],
             ['Other fields', 'The registry custom fields, including Tag: pick one or more tags from the list managed in the Tags module. They also appear on the detail, grouped as in the form.'],
           ],
         },

@@ -179,7 +179,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Changing the **Account** clears Contact, Opportunity and Lead, and keeps the Work order only when it belongs to the same account. Opportunity, Work order and Lead only list the records of the chosen account once you picked one.',
+          text: 'Changing the **Account** clears Opportunity and Lead, puts the main referent of the new account in Contact (empty if it has none) and keeps the Work order only when it belongs to the same account. Opportunity, Work order and Lead only list the records of the chosen account once you picked one.',
         },
       ],
     },
@@ -206,7 +206,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'The rules are the same as on create: changing the **Registry** clears Referent, Opportunity and Lead in the same save; picking a **Work order** removes the Opportunity and offers the Stage right away. When one of the fields that would change along with it is not editable by you, the starting field (Registry, Work order, Opportunity or Parent task) has no pencil either.',
+          text: 'The rules are the same as on create: changing the **Registry** clears Opportunity and Lead and puts the main referent in Referent in the same save; picking a **Work order** removes the Opportunity and offers the Stage right away. When one of the fields that would change along with it (the Referent included) is not editable by you, the starting field (Registry, Work order, Opportunity or Parent task) has no pencil either.',
         },
       ],
     },

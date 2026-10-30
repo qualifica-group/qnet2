@@ -3,6 +3,49 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Schede Opportunita'/Offerta/Contratto/Commessa con lo stesso scheletro (spec 0331) — VERDE, NON COMMITTATO (2026-10-29)
+
+- Ordine unico in `components/detail/record-skeleton-sections.tsx` (`RecordSkeletonSections`, slot details/context/
+  contacts/rewards/team/company/document/specific, dentro `RecordSectionsGrid`): una scheda nuova o un riordino passa
+  SOLO da qui. Sezioni proiettate condivise in `features/quotes/quote-projection-sections.tsx` (`Projected*Section`).
+- BE additivo: `ContractResource` + source, product_lines, rewards, managers, manager_labels, layout; `WorkOrderResource`
+  + referent, commercial, reporter, source, product_lines, rewards, layout, payment_method (null/[] per multi-offerta,
+  `quote_id` null). Eager load in `ContractService`/`WorkOrderService::DETAIL_RELATIONS`. Helper test
+  `tests/Helpers/OfferProjectionHelpers.php` (registrato in `tests/Pest.php`).
+- `RewardChipsSection` prop `emptyLabel`: le schede dettaglio mostrano "Nessun buono"; il form di creazione no.
+- Titoli nuovi solo nel dettaglio (prop `title` sulle sezioni condivise col form di creazione): Commessa ha due chiavi
+  per il team (`sections.team` form, `sections.detailTeam` dettaglio). Team Contratto = Supervisore + G.A. offerta
+  (supera direttiva 2026-08-31). Contratto/Commessa usano le etichette `quotes.detail.*` ("Metodo di pagamento").
+- Verifica 2026-10-29 (verifier): BE 12951/12967, i 15 rossi tutti preesistenti noti; Vitest 9564/9564; tsc -b pulito;
+  ESLint/Pint puliti. Guide IT/EN dei 4 moduli + manuale Claude Docs (Parte 3) aggiornati; PDF da rigenerare.
+
+## Referente principale dell'anagrafica (spec 0330) — VERDE, NON COMMITTATO (2026-10-29)
+
+- Richiesta utente: scelta un'anagrafica, il Referente si precompila. Nuova colonna `registries.primary_referent_id`
+  (FK `referents` nullOnDelete). INV-1: e' sempre uno dei referenti collegati, null solo senza referenti; default e
+  rielezione = primo per id di `referent_registry` (`Registry::referents()` ora ordinata per id del pivot).
+- BE: `App\Services\Registries\PrimaryReferentElector` (unica regola, usata da `RegistryService::create/update` e
+  `ReferentService::delete`, ora in transazione); 422 di appartenenza nel trait
+  `Http/Requests/Concerns/ValidatesPrimaryReferent` (messaggi `lang/{it,en}/registries.php`); `RegistriesAuthorization`
+  field `primary_referent_id` (stesso permesso di `referent_ids`); `RegistryResource.primary_referent_id/primary_referent`;
+  `RegistryForSelectResource.meta.primary_referent`. `OpportunityCellWriter`: anagrafica cambiata -> Referente = principale
+  se l'attore puo' modificarlo (senza permesso e con Referente valorizzato resta il 422 preesistente, D-8).
+- Migrazioni `2026_11_10_100000` (schema) e `2026_11_10_100100` (backfill idempotente): provate solo in Pest.
+  **NON eseguite sul DB `qnet2`**: serve l'ok dell'utente.
+- FE: `features/registries/for-select-meta.ts` (`RegistryForSelectMeta`, `fetchRegistryForSelectMeta`) sostituisce
+  `opportunities/opportunity-relation-meta.ts` (cancellato). Prefill nei change handler: `useRegistryRoleInheritance`
+  (scelta a mano, dettaglio, preset da anagrafica), `useOpportunityLeadSelection` (D-6), attivita'
+  `use-task-registry-referent-prefill.ts` (in `task-inline-cascade.ts` `referent_id` passa a `sets` per `registry_id`).
+  Form anagrafica: `RegistryPrimaryReferentField` + `primary-referent.ts` (`nextPrimaryReferentId`), badge "Principale"
+  sulla card; `RelationMultiSelectField` ha il nuovo prop opzionale `onValueChange`.
+- Test: `RegistryPrimaryReferentTest` (AC-001..008), `OpportunityGridInlineEditTest` (AC-009), `RegistriesSourceImportTest`
+  (AC-010), `RegistryMetaTest` (REQUIREMENT CHANGED: nuovo campo nel catalogo); Vitest registries/opportunities/tasks/help.
+  Verifier: Pest mirato 273/273; suite completa 12951/12967 con i soli 15 rossi preesistenti noti; Vitest 9564/9564;
+  tsc -b exit 0; ESLint/Pint puliti sui file 0330.
+- Guide in-app IT/EN (registries, opportunities, tasks) e manuale Claude Docs (Anagrafiche, Opportunita', Task) aggiornati.
+- Al commit: `help/content/{it,en}/opportunities.ts` contiene anche righe della spec 0331 (altra sessione) e
+  `i18n/*-opportunities.ts` e' solo 0331: committare solo gli hunk della 0330.
+
 ## Scheda Contratto: Referente, Commerciale, Segnalatore come nell'Offerta — VERDE, COMMITTATO (2026-10-29)
 
 - Richiesta utente: la sezione "Cliente e opportunita'" del Contratto mostra le righe dell'Offerta: Anagrafica

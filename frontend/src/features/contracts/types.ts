@@ -7,8 +7,10 @@
  */
 
 import type { ResourcePermissions } from '@/features/authorization/types'
-import type { QuoteLine } from '@/features/quotes/types'
+import type { ProductLine } from '@/features/product-lines/types'
+import type { QuoteLine, QuoteManagerRef } from '@/features/quotes/types'
 import type { ReferentRef } from '@/features/referents/types'
+import type { RewardAssignmentRef } from '@/features/rewards/types'
 import type { WorkOrderType } from '@/features/work-orders/types'
 
 /** `App\Enums\ContractStatusGroup` (D-5): dedicated to this module, not shared with `QuoteStatusGroup`. */
@@ -85,6 +87,15 @@ export interface ContractDetail {
   reporter: ContractRelationRef | null
   supervisor: ContractRelationRef | null
   payment_method: ContractRelationRef | null
+  /** Spec 0331: read-only projections of the offer, shown in the same sections the Offerta detail has. */
+  source: ContractRelationRef | null
+  product_lines: ProductLine[]
+  rewards: RewardAssignmentRef[]
+  /** The offer's G.A., ordered by `position`; the Supervisore is `supervisor`. */
+  managers: QuoteManagerRef[]
+  /** Slot denominations resolved from the offer's product categories, keyed by position. */
+  manager_labels: Record<string, string>
+  layout: ContractRelationRef | null
   contract_status_id: number
   contract_status: ContractStatusRef
   /** date, nullable; written once at creation (D-7) and never rewritten by suspend/reactivate. */

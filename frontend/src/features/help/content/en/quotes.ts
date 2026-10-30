@@ -63,6 +63,10 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
+          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Quote data** and **Context**, then **Registry and contacts** and **Rewards**, then **Team** and **Company and sites**, then **Document and payment**. The Rewards section stays visible even when empty (\"No rewards\").",
+        },
+        {
+          type: 'paragraph',
           text: 'There is no separate edit page: a quote is edited **straight from its detail**, one field at a time, including the **Additional information** (each flexible field has its own row) and the **Offer** and **Costs** rows.',
         },
         {

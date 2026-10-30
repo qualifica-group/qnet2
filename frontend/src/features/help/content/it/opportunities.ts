@@ -54,6 +54,10 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
+          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati opportunità** e **Contesto** (Fonte, Linee prodotto, Prodotti di interesse), poi **Anagrafica e contatti** e **Buoni**, infine **Team**. La sezione Buoni resta visibile anche vuota (\"Nessun buono\").",
+        },
+        {
+          type: 'paragraph',
           text: "Non esiste una pagina di modifica separata: l'opportunità si modifica **direttamente dal suo dettaglio**, un campo alla volta.",
         },
         {
@@ -71,7 +75,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Alcuni campi si portano dietro altri valori nello stesso salvataggio: cambiando l'**Anagrafica** il Referente si svuota e Commerciale, Segnalatore, Supervisore e Gestori account vengono proposti da quelli dell'anagrafica (con conferma se sono diversi); cambiando le **Righe di classificazione** i Prodotti di interesse non più coperti vengono tolti; i **Buoni assegnati** si modificano dal campo **Segnalatore**, di cui sono il premio.",
+          text: "Alcuni campi si portano dietro altri valori nello stesso salvataggio: cambiando l'**Anagrafica** il Referente prende il referente principale della nuova anagrafica (resta vuoto se non ne ha; vale anche scegliendo un **Lead**, quando l'anagrafica cambia o il Referente è vuoto) e Commerciale, Segnalatore, Supervisore e Gestori account vengono proposti da quelli dell'anagrafica (con conferma se sono diversi); cambiando le **Righe di classificazione** i Prodotti di interesse non più coperti vengono tolti; i **Buoni assegnati** si modificano dal campo **Segnalatore**, di cui sono il premio.",
         },
         {
           type: 'note',
@@ -89,7 +93,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Cambiando l'**Anagrafica** dall'elenco il Referente si svuota e i ruoli **vuoti** (Commerciale, Segnalatore, Supervisore, Gestori account) prendono quelli della nuova anagrafica; i ruoli già compilati restano com'erano (dall'elenco non c'è la richiesta di conferma). Il Referente si sceglie tra quelli dell'anagrafica della riga; un Nome vuoto torna al titolo automatico.",
+          text: "Cambiando l'**Anagrafica** dall'elenco il Referente prende il referente principale della nuova anagrafica (vuoto se non ne ha; se non puoi modificare il Referente e la riga ne ha già uno, il cambio di anagrafica non è ammesso) e i ruoli **vuoti** (Commerciale, Segnalatore, Supervisore, Gestori account) prendono quelli della nuova anagrafica; i ruoli già compilati restano com'erano (dall'elenco non c'è la richiesta di conferma). Il Referente si sceglie tra quelli dell'anagrafica della riga; un Nome vuoto torna al titolo automatico.",
         },
         {
           type: 'paragraph',

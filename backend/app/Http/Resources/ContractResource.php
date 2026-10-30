@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Http\Resources\Concerns\SummarizesProductLines;
+use App\Http\Resources\Concerns\SummarizesRewards;
 use App\Models\Company;
 use App\Models\Contract;
 use App\Models\Quote;
 use App\Services\Contracts\ContractAlertResolver;
+use App\Services\Quotes\QuoteManagerLabelResolver;
 use App\Support\OperationalSiteLabel;
 use App\Support\ReferentRef;
 use Illuminate\Database\Eloquent\Model;
@@ -41,6 +44,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class ContractResource extends JsonResource
 {
+    use SummarizesProductLines;
+    use SummarizesRewards;
+
     /**
      * @return array<string, mixed>
      */
@@ -65,6 +71,13 @@ class ContractResource extends JsonResource
             'reporter' => $this->summarizeByName($quote->reporter),
             'supervisor' => $this->summarizeByName($quote->supervisor),
             'payment_method' => $this->summarizeByName($quote->paymentMethod),
+            // Spec 0331: read-only projection of the offer, same shapes as QuoteResource.
+            'source' => $this->summarizeByName($quote->opportunity?->source),
+            'product_lines' => $this->summarizeProductLines($quote->opportunity?->productLines ?? []),
+            'rewards' => $this->summarizeRewards($quote->rewards),
+            'managers' => $this->summarizeManagers($quote),
+            'manager_labels' => app(QuoteManagerLabelResolver::class)->resolve($quote),
+            'layout' => $this->summarizeByName($quote->layout),
             'contract_status_id' => $this->contract_status_id,
             'contract_status' => $this->summarizeStatus($this->contractStatus),
             'accepted_at' => $this->accepted_at,
@@ -110,6 +123,22 @@ class ContractResource extends JsonResource
             'cost_net' => $quote->cost_net,
             'margin_net' => $quote->margin_net,
         ];
+    }
+
+    /**
+     * The offer's account managers, ordered by their pivot `position`.
+     *
+     * @return array<int, array{id: int, name: string, position: int}>
+     */
+    private function summarizeManagers(Quote $quote): array
+    {
+        return $quote->managers
+            ->map(fn (Model $manager): array => [
+                'id' => $manager->id,
+                'name' => $manager->name,
+                'position' => (int) $manager->pivot->position,
+            ])
+            ->all();
     }
 
     /**

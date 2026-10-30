@@ -11,6 +11,10 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
+          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati commessa** (con il link al Contratto) e **Contesto**, poi **Anagrafica e contatti** (Anagrafica, Referente con il suo tipo, Commerciale, Segnalatore) e **Buoni**, poi **Team** (Supervisori e Partecipanti della commessa) e **Società e sedi**, poi **Documento e pagamento** e **Dati contrattuali**. Contesto, Anagrafica e contatti, Buoni, Società e sedi e Documento e pagamento vengono dall'offerta, in sola lettura; in una commessa con righe di più offerte non compaiono.",
+        },
+        {
+          type: 'paragraph',
           text: 'Non esiste una pagina di modifica separata: la commessa si modifica **direttamente dal suo dettaglio**, un campo alla volta, comprese le **Informazioni aggiuntive** (ogni campo flessibile ha la sua riga). Una sezione legata a un campo sì/no compare solo con il campo attivo: spegnendolo, i valori della sezione vengono svuotati.',
         },
         {
@@ -28,7 +32,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Commessa n., Offerta collegata, Modello di Task). Anagrafica cliente, Contratto (codice e titolo), Società e sedi derivano dall\'offerta, come la Scadenza contratto mostrata tra gli indicatori in alto (si modifica sul contratto); Stato e Avanzamento derivano dalle registrazioni di avanzamento (vedi la sezione dedicata).',
+          text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Commessa n., Offerta collegata, Modello di Task). Contratto (codice e titolo) e le sezioni prese dall\'offerta derivano dall\'offerta, come la Scadenza contratto mostrata tra gli indicatori in alto (si modifica sul contratto); Stato e Avanzamento derivano dalle registrazioni di avanzamento (vedi la sezione dedicata).',
         },
         {
           type: 'note',

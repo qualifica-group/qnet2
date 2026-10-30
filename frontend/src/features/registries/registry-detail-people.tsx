@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordLink } from '@/components/detail/record-link'
 import { enumLabelOf } from '@/features/config/enum-label'
@@ -55,12 +58,18 @@ export function PersonField({ person }: { person: ReferenceRef | null }) {
 }
 
 /** Compact referente card: the linked name, their Tipo referente and their primary contacts. */
-function PersonCard({ referent }: { referent: RegistryReferentRef }) {
+function PersonCard({ referent, isPrimary }: { referent: RegistryReferentRef; isPrimary: boolean }) {
+  const { t } = useTranslation()
   return (
-    <div className="flex min-w-0 flex-col rounded-lg border p-2.5">
+    <div className={cn('relative flex min-w-0 flex-col rounded-lg border p-2.5', isPrimary && 'pr-16')}>
       <RecordLink domain="referents" id={referent.id} className="text-sm font-medium">
         {referent.name}
       </RecordLink>
+      {isPrimary ? (
+        <Badge variant="secondary" className="absolute right-2 top-2.5">
+          {t('registries.detail.primaryReferentBadge')}
+        </Badge>
+      ) : null}
       <ReferentTypeLine type={referent.referent_type} />
       <PersonContactLines contacts={referent.primary_contacts} />
     </div>
@@ -69,12 +78,14 @@ function PersonCard({ referent }: { referent: RegistryReferentRef }) {
 
 interface RegistryReferentsProps {
   referents: RegistryReferentRef[]
+  /** Spec 0330: the card of this referent carries the "Principale" badge. */
+  primaryReferentId: number | null
 }
 
 /** Responsive card grid: one column on a narrow record, two from `@md`, three from `@3xl`. */
 const REFERENTS_GRID_CLASS = 'grid grid-cols-1 gap-2 @md:grid-cols-2 @3xl:grid-cols-3'
 
-export function RegistryReferents({ referents }: RegistryReferentsProps) {
+export function RegistryReferents({ referents, primaryReferentId }: RegistryReferentsProps) {
   if (referents.length === 0) {
     return <DetailEmpty />
   }
@@ -82,7 +93,7 @@ export function RegistryReferents({ referents }: RegistryReferentsProps) {
   return (
     <div className={REFERENTS_GRID_CLASS}>
       {referents.map((referent) => (
-        <PersonCard key={referent.id} referent={referent} />
+        <PersonCard key={referent.id} referent={referent} isPrimary={referent.id === primaryReferentId} />
       ))}
     </div>
   )

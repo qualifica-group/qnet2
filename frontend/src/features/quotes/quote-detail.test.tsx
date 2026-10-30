@@ -266,10 +266,11 @@ describe('QuoteDetailView — rewards', () => {
 
   // Richiesta utente 2026-08-31: i buoni sono una SEZIONE propria (la stessa
   // che rende la scheda Opportunita'), non piu' una riga di "Anagrafica e
-  // contatti" — e una sezione senza dati non si rende affatto.
-  it('renders no rewards section when the offer has no reward', () => {
+  // contatti". REQUIREMENT CHANGED spec 0331 D-4: senza buoni la sezione resta, con "Nessun buono".
+  it('keeps the rewards section with an empty label when the offer has no reward', () => {
     renderDetail(<QuoteDetailView quote={quoteFixture()} />)
-    expect(screen.queryByText('Rewards')).not.toBeInTheDocument()
+    expect(screen.getByText('Rewards')).toBeInTheDocument()
+    expect(screen.getByText('No rewards')).toBeInTheDocument()
   })
 })
 
@@ -428,5 +429,20 @@ describe('QuoteDetailView — Margine per prodotto', () => {
 
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Costs' }))
     expect(within(screen.getByRole('tabpanel', { name: 'Costs' })).getByText('Generic cost')).toBeInTheDocument()
+  })
+})
+
+// Spec 0331 AC-006: the shared record skeleton order and titles.
+describe('QuoteDetailView — record skeleton layout', () => {
+  it('renders data, Context, contacts, Rewards, Team, company and document in that order', () => {
+    renderDetail(<QuoteDetailView quote={quoteFixture()} />)
+
+    const titles = screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent?.toLowerCase())
+    const positions = ['context', 'registry and contacts', 'rewards', 'team', 'document and payment'].map((title) =>
+      titles.indexOf(title),
+    )
+
+    expect(positions.every((position) => position >= 0)).toBe(true)
+    expect(positions).toEqual([...positions].sort((a, b) => a - b))
   })
 })

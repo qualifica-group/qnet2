@@ -85,6 +85,16 @@ class WorkOrderService
         'quote.company',
         'quote.companySite',
         'quote.operationalSite.addresses.city',
+        // Spec 0331: the offer data WorkOrderResource projects read-only.
+        'quote.opportunity.referent.referentType',
+        'quote.opportunity.source',
+        'quote.opportunity.productLines.productCategory',
+        'quote.opportunity.productLines.businessFunction',
+        'quote.commercial',
+        'quote.reporter',
+        'quote.layout',
+        'quote.paymentMethod',
+        'quote.rewards.rewardType',
     ];
 
     public function __construct(

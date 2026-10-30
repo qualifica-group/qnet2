@@ -36,6 +36,8 @@ class RegistryResource extends JsonResource
             'referent_ids' => $this->referents->pluck('id')->all(),
             // Referents as person cards (name + Tipo referente + primary contacts).
             'referents' => $this->toReferentRefList($this->referents),
+            'primary_referent_id' => $this->primary_referent_id,
+            'primary_referent' => $this->toRef($this->primaryReferent),
             'manager_ids' => $this->managers->pluck('id')->all(),
             // Managers as ordered "G.A. n" person cards (name + position +
             // primary contacts); `manager_slots` is the gap-aware slot array

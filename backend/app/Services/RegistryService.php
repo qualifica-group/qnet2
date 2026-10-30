@@ -10,6 +10,7 @@ use App\DataObjects\Users\ProfileData;
 use App\Models\Registry;
 use App\Models\User;
 use App\Services\Notifications\AssignmentNotifier;
+use App\Services\Registries\PrimaryReferentElector;
 use App\Support\ManagerPositions;
 use App\Support\PositionalPivotSync;
 use Illuminate\Database\Eloquent\Builder;
@@ -40,6 +41,7 @@ class RegistryService
         'reporter',
         'sectors',
         'referents',
+        'primaryReferent',
         'managers',
         'personalData.contacts',
         'personalData.addresses',
@@ -68,6 +70,7 @@ class RegistryService
     public function __construct(
         private readonly RegistryProfileWriter $profileWriter,
         private readonly AssignmentNotifier $assignmentNotifier,
+        private readonly PrimaryReferentElector $primaryReferentElector,
     ) {}
 
     /**
@@ -104,6 +107,7 @@ class RegistryService
 
             $this->profileWriter->write($registry, $profile);
             $attachedManagers = $this->syncPivots($registry, $data);
+            $this->primaryReferentElector->elect($registry, $data->primaryReferentId);
             $this->normalizeQualifiedSupplier($registry);
 
             // spec 0081: notified after the name is derived from the card, so
@@ -151,6 +155,12 @@ class RegistryService
 
             $this->profileWriter->write($registry, $profile);
             $attachedManagers = $this->syncPivots($registry, $data);
+            // A submitted null re-elects the first referent (spec 0330 D-3);
+            // an omitted key keeps the current one while it is still linked.
+            $this->primaryReferentElector->elect(
+                $registry,
+                $data->primaryReferentIdSubmitted ? $data->primaryReferentId : $registry->primary_referent_id,
+            );
             $this->normalizeQualifiedSupplier($registry);
 
             $this->assignmentNotifier->notify(
@@ -198,7 +208,7 @@ class RegistryService
     /**
      * Minimal, searchable, paginated registry list for the for-select
      * standard (spec 0023, ADR 0011), mirroring SourceService::forSelect.
-     * commercial/reporter/supervisor are eager-loaded so
+     * commercial/reporter/supervisor/primaryReferent are eager-loaded so
      * RegistryForSelectResource's `meta` (spec 0040 BR-4) never N+1s.
      *
      * $onlySuppliers (product supplier picker) constrains the base query to
@@ -237,8 +247,8 @@ class RegistryService
     private function forSelectBaseQuery(): Builder
     {
         return Registry::query()
-            ->select(['id', 'name', 'is_qualified_supplier', 'commercial_id', 'reporter_id', 'supervisor_id'])
-            ->with(['commercial:id,name', 'reporter:id,name', 'supervisor:id,name', 'managers:id,name']);
+            ->select(['id', 'name', 'is_qualified_supplier', 'commercial_id', 'reporter_id', 'supervisor_id', 'primary_referent_id'])
+            ->with(['commercial:id,name', 'reporter:id,name', 'supervisor:id,name', 'primaryReferent:id,name', 'managers:id,name']);
     }
 
     /**

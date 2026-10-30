@@ -14,8 +14,8 @@ import type { OpportunityFormValues } from '@/features/opportunities/use-opportu
  * — once, so a later edit is never overwritten.
  */
 const fetchRegistryMetaMock = vi.fn()
-vi.mock('@/features/opportunities/opportunity-relation-meta', () => ({
-  fetchOpportunityRegistryMeta: (_client: unknown, registryId: number) => fetchRegistryMetaMock(registryId),
+vi.mock('@/features/registries/for-select-meta', () => ({
+  fetchRegistryForSelectMeta: (_client: unknown, registryId: number) => fetchRegistryMetaMock(registryId),
 }))
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -45,6 +45,8 @@ describe('useOpportunityRegistryPreset (spec 0199)', () => {
       reporter: { id: 81, name: 'Elio Fabbri' },
       supervisor: { id: 61, name: 'Ivo Bianchi' },
       managers: [],
+      is_qualified_supplier: false,
+      primary_referent: { id: 55, name: 'Rita Verdi' },
     })
     const { result, rerender } = renderPreset(30)
 
@@ -52,6 +54,7 @@ describe('useOpportunityRegistryPreset (spec 0199)', () => {
     await waitFor(() => expect(result.current.getValues('commercial_id')).toBe(71))
     expect(result.current.getValues('reporter_id')).toBe(81)
     expect(result.current.getValues('supervisor_id')).toBe(61)
+    expect(result.current.getValues('referent_id')).toBe(55)
 
     rerender({ id: 30 })
     expect(fetchRegistryMetaMock).toHaveBeenCalledTimes(1)

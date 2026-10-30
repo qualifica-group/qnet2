@@ -11,6 +11,10 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
+          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Work order data** (with the link to the Contract) and **Context**, then **Registry and contacts** (Registry, Referent with its type, Commercial, Reporter) and **Rewards**, then **Team** (the work order's Supervisors and Participants) and **Company and sites**, then **Document and payment** and **Contract data**. Context, Registry and contacts, Rewards, Company and sites and Document and payment come from the quote, read only; a work order with lines from several quotes does not show them.",
+        },
+        {
+          type: 'paragraph',
           text: 'There is no separate edit page: a work order is edited **directly from its detail**, one field at a time, **Additional information** included (every flexible field has its own row). A section tied to a yes/no field appears only while the field is on: switching it off clears the values of the section.',
         },
         {
@@ -28,7 +32,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer, Task template). Client registry, Contract (code and title), Company and sites come from the offer, as does the Contract expiry shown among the indicators at the top (edited on the contract); Status and Progress come from the progress records (see the dedicated section).',
+          text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer, Task template). Contract (code and title) and the sections taken from the quote come from the offer, as does the Contract expiry shown among the indicators at the top (edited on the contract); Status and Progress come from the progress records (see the dedicated section).',
         },
         {
           type: 'note',

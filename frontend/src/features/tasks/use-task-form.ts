@@ -24,6 +24,7 @@ import { buildTaskSchema, type TaskFormValues } from '@/features/tasks/task-sche
 import { applySubtaskServerErrors } from '@/features/tasks/task-subtask-rows'
 import { useTaskFormStageHandlers } from '@/features/tasks/use-task-form-stage-handlers'
 import { useTaskLookupDefaults } from '@/features/tasks/use-task-lookup-defaults'
+import { useTaskRegistryReferentPrefill } from '@/features/tasks/use-task-registry-referent-prefill'
 import { useTaskParentPrefill } from '@/features/tasks/use-task-parent-prefill'
 import { useTaskWorkOrderPrefill } from '@/features/tasks/use-task-work-order-prefill'
 import { useTaskWorkOrderRegistryId } from '@/features/tasks/use-task-work-order-registry'
@@ -197,10 +198,12 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
 
   // AC-081/spec 0154 D-11: the referent, opportunity and lead are all
   // anagrafica-scoped, so a value from the previous registry is no longer
-  // valid. The commessa survives ONLY when it belongs to the new registry
+  // valid (the referent is then replaced by the new anagrafica's main
+  // referent, spec 0330 D-7). The commessa survives ONLY when it belongs to the new registry
   // (an UNKNOWN commessa registry — still loading, or none linked at all —
   // never triggers a clear). Reset EXPLICITLY here, in the change handler —
   // never in an effect.
+  const prefillRegistryReferent = useTaskRegistryReferentPrefill(form.setValue, form.getValues)
   const handleRegistryChange = (nextRegistryId: number | null) => {
     form.setValue('referent_id', null, { shouldDirty: true })
     form.setValue('opportunity_id', null, { shouldDirty: true })
@@ -209,6 +212,8 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
       form.setValue('work_order_id', null, { shouldDirty: true })
       form.setValue('work_order_stage_id', null, { shouldDirty: true })
     }
+    // Spec 0330 D-7: then the Referente takes the new anagrafica's main referent.
+    void prefillRegistryReferent(nextRegistryId)
   }
 
   // Spec 0146 D-3: the "Fase" field's two reset handlers, split out for file size.

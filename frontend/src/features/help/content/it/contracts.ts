@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Nella scheda, la sezione **Cliente e opportunità** riporta gli stessi dati dell'offerta, in sola lettura: **Anagrafica**, **Referente** (con il suo Tipo referente sotto il nome), **Opportunità**, **Offerta**, **Commerciale** e **Segnalatore**. Si modificano dall'offerta.",
+          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati contratto** (Offerta, Opportunità, Data offerta) e **Contesto**, poi **Anagrafica e contatti** (Anagrafica, Referente con il suo tipo, Commerciale, Segnalatore) e **Buoni**, poi **Team** (Supervisore e Gestori account dell'offerta) e **Società e sedi**, poi **Documento e pagamento** e **Ciclo di vita**. I dati dell'offerta sono in sola lettura e si modificano dall'offerta; Note di pagamento, Rinnovo, Scadenza e Commenti si modificano qui.",
         },
       ],
     },

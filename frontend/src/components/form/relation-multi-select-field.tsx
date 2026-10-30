@@ -41,6 +41,8 @@ interface RelationMultiSelectFieldProps<
   excludeIds?: number[]
   /** Short hint rendered under the picker. */
   description?: string
+  /** Fired after the selection changes by a user pick, with the new id set — lets a caller keep a dependent field in step. */
+  onValueChange?: (next: number[]) => void
 }
 
 /** Renders `{id, name}` relation refs as the `ForSelectItem` shape `AsyncPaginatedMultiSelect` hydrates from. */
@@ -75,6 +77,7 @@ export function RelationMultiSelectField<
   showAvatar = false,
   excludeIds,
   description,
+  onValueChange,
 }: RelationMultiSelectFieldProps<TFieldValues, TName>) {
   const { quickCreated, renderAction } = useQuickCreateAction(resource)
 
@@ -101,7 +104,10 @@ export function RelationMultiSelectField<
             <AsyncPaginatedMultiSelect
               resource={resource}
               value={value}
-              onChange={(next) => field.onChange(next as FieldPathValue<TFieldValues, TName>)}
+              onChange={(next) => {
+                field.onChange(next as FieldPathValue<TFieldValues, TName>)
+                onValueChange?.(next)
+              }}
               selectedItems={toForSelectItems([...selected, ...extraSelected])}
               showAvatar={showAvatar}
               disabled={isDisabled}
@@ -119,7 +125,9 @@ export function RelationMultiSelectField<
                 if (value.includes(ref.id)) {
                   return
                 }
-                field.onChange([...value, ref.id] as FieldPathValue<TFieldValues, TName>)
+                const next = [...value, ref.id]
+                field.onChange(next as FieldPathValue<TFieldValues, TName>)
+                onValueChange?.(next)
               }, isDisabled)}
             />
           </FormControl>

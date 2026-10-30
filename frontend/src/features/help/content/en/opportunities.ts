@@ -54,6 +54,10 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
+          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Opportunity data** and **Context** (Source, Product lines, Products of interest), then **Registry and contacts** and **Rewards**, then **Team**. The Rewards section stays visible even when empty (\"No rewards\").",
+        },
+        {
+          type: 'paragraph',
           text: 'There is no separate edit page: the opportunity is edited **directly from its detail**, one field at a time.',
         },
         {
@@ -71,7 +75,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Some fields carry other values into the same save: changing the **Registry** clears the Contact and proposes the registry's Sales rep, Reporter, Supervisor and Account managers (asking first if they differ); changing the **Classification rows** removes the Products of interest they no longer cover; the **Assigned rewards** are edited from the **Reporter** field, whose reward they are.",
+          text: "Some fields carry other values into the same save: changing the **Registry** gives the Contact the new registry's main referent (it stays empty if the registry has none; the same happens when you pick a **Lead**, if the registry changes or the Contact is empty) and proposes the registry's Sales rep, Reporter, Supervisor and Account managers (asking first if they differ); changing the **Classification rows** removes the Products of interest they no longer cover; the **Assigned rewards** are edited from the **Reporter** field, whose reward they are.",
         },
         {
           type: 'note',
@@ -89,7 +93,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Changing the **Registry** from the list clears the Contact and fills the **empty** roles (Sales rep, Reporter, Supervisor, Account managers) with the new registry's ones; roles already set stay as they were (the list does not ask for confirmation). The Contact is picked among the row's registry contacts; an empty Name goes back to the automatic title.",
+          text: "Changing the **Registry** from the list gives the Contact the new registry's main referent (empty if it has none; if you cannot edit the Contact and the row already has one, the registry change is not allowed) and fills the **empty** roles (Sales rep, Reporter, Supervisor, Account managers) with the new registry's ones; roles already set stay as they were (the list does not ask for confirmation). The Contact is picked among the row's registry contacts; an empty Name goes back to the automatic title.",
         },
         {
           type: 'paragraph',

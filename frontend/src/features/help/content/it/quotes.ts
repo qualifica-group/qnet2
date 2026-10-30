@@ -63,6 +63,10 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
+          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati offerta** e **Contesto**, poi **Anagrafica e contatti** e **Buoni**, poi **Team** e **Società e sedi**, infine **Documento e pagamento**. La sezione Buoni resta visibile anche vuota (\"Nessun buono\").",
+        },
+        {
+          type: 'paragraph',
           text: "Non esiste una pagina di modifica separata: l'offerta si modifica **direttamente dal suo dettaglio**, un campo alla volta, comprese le **Informazioni aggiuntive** (ogni campo flessibile ha la sua riga) e le righe **Offerta** e **Costi**.",
         },
         {

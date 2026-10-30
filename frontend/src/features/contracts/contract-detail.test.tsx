@@ -109,6 +109,12 @@ function contract(overrides: Partial<ContractDetailWithPermissions> = {}): Contr
     reporter: { id: 40, name: 'Giulia Neri' },
     supervisor: { id: 50, name: 'Paolo Blu' },
     payment_method: null,
+    source: null,
+    product_lines: [],
+    rewards: [],
+    managers: [],
+    manager_labels: {},
+    layout: null,
     contract_status_id: 1,
     contract_status: { id: 1, name: 'Da validare', color: 'slate', group: 'open' },
     accepted_at: '2026-01-10',
@@ -191,8 +197,8 @@ function formatExpectedDate(value: string): string {
 }
 
 /**
- * Direttiva utente 2026-08-31 (resa CRM): la scheda NON mostra il Supervisore,
- * mentre Societa'/sedi resta. Richiesta utente 2026-10-29: la sezione "Cliente
+ * Societa'/sedi resta; il Supervisore torna nel Team (decisione utente
+ * 2026-10-29, spec 0331, supera la direttiva 2026-08-31). Richiesta utente 2026-10-29: la sezione "Cliente
  * e opportunita'" porta le righe dell'Offerta — Anagrafica, Referente con il
  * suo Tipo referente, Commerciale, Segnalatore — oltre al link all'Offerta. Le date del ciclo
  * di vita, le note di pagamento e i commenti restano quelli di AC-043.
@@ -238,8 +244,8 @@ describe('ContractDetailView — fields (AC-043, rev. direttiva 2026-08-31)', ()
     expect(screen.getByText('Nota interna di prova')).toBeInTheDocument()
   })
 
-  // REQUIREMENT CHANGED 2026-10-29: Commerciale e Segnalatore tornano visibili (come nell'Offerta).
-  it('mostra Societa\' e sedi, Referente, Commerciale e Segnalatore ma non il Supervisore', () => {
+  // REQUIREMENT CHANGED 2026-10-29 / spec 0331: anche il Supervisore e' visibile (Team dell'offerta).
+  it('mostra Societa\' e sedi, Referente, Commerciale, Segnalatore e il Supervisore', () => {
     renderView(
       contract({
         company: { id: 60, name: 'Acme Holding S.r.l.' },
@@ -255,7 +261,7 @@ describe('ContractDetailView — fields (AC-043, rev. direttiva 2026-08-31)', ()
     expect(screen.getByText('Luca Verdi')).toBeInTheDocument()
     expect(screen.getByText('Reporter')).toBeInTheDocument()
     expect(screen.getByText('Giulia Neri')).toBeInTheDocument()
-    expect(screen.queryByText('Paolo Blu')).not.toBeInTheDocument()
+    expect(screen.getByText('Paolo Blu')).toBeInTheDocument()
   })
 })
 

@@ -25,17 +25,22 @@ function DateValue({ value }: { value: string | null }) {
   return <>{formatDate(value) || <DetailEmpty />}</>
 }
 
+interface OpportunityDetailsSectionProps extends OpportunityRecordSectionProps {
+  /** The detail card names the block "Dati opportunita'" (spec 0331 D-5); the create form keeps the default. */
+  title?: string
+}
+
 /**
  * "Dettagli" of the opportunity record (spec 0198): the title and the
  * planning estimates (BR-5), every row editing in place on its own control.
  * The KPI strip above keeps showing the same four estimates at a glance.
  */
-export function OpportunityDetailsSection({ values, form, inline }: OpportunityRecordSectionProps) {
+export function OpportunityDetailsSection({ values, form, inline, title }: OpportunityDetailsSectionProps) {
   const { t } = useTranslation()
   const { control } = form
 
   return (
-    <RecordSection title={t('opportunities.detail.sections.details')} icon={<ClipboardList />}>
+    <RecordSection title={title ?? t('opportunities.detail.sections.details')} icon={<ClipboardList />}>
       <RecordFieldList>
         <RecordInlineField
           field="name"

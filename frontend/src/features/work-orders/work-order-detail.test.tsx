@@ -351,7 +351,8 @@ describe('WorkOrderDetailView — related records', () => {
   it("links the client registry reached through the commessa's offer", () => {
     render(<WorkOrderDetailView workOrder={workOrder({ registry: { id: 7, name: 'Acme S.p.A.' } })} />)
 
-    expect(screen.getByText('Client registry')).toBeInTheDocument()
+    // REQUIREMENT CHANGED spec 0331: the row sits in the shared "Registry and contacts" section.
+    expect(screen.getByText('Registry')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Acme S.p.A.' })).toHaveAttribute('href', '/registries/7')
   })
 
@@ -378,7 +379,8 @@ describe('WorkOrderDetailView — related records', () => {
   it('shows the empty placeholder when the commessa has no client registry', () => {
     render(<WorkOrderDetailView workOrder={workOrder({ registry: null })} />)
 
-    expect(screen.getByText('Client registry')).toBeInTheDocument()
+    // REQUIREMENT CHANGED spec 0331: the row sits in the shared "Registry and contacts" section.
+    expect(screen.getByText('Registry')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Acme S.p.A.' })).not.toBeInTheDocument()
   })
 
@@ -570,7 +572,8 @@ describe('WorkOrderDetailView — multi-offer work order (spec 0267 AC-016)', ()
     expect(within(items[0]).getByRole('link', { name: 'Rossi S.r.l.' })).toBeInTheDocument()
     expect(within(items[1]).getByRole('link', { name: 'Bianchi S.p.A.' })).toBeInTheDocument()
     expect(screen.getByText('Multi-offer')).toBeInTheDocument()
-    expect(screen.queryByText('Client registry')).not.toBeInTheDocument()
+    // REQUIREMENT CHANGED spec 0331: label renamed with the shared section.
+    expect(screen.queryByText('Registry')).not.toBeInTheDocument()
     expect(screen.queryByText('Company and sites')).not.toBeInTheDocument()
   })
 

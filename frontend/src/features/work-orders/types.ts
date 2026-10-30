@@ -8,6 +8,9 @@
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
+import type { ProductLine } from '@/features/product-lines/types'
+import type { ReferentRef } from '@/features/referents/types'
+import type { RewardAssignmentRef } from '@/features/rewards/types'
 
 /** `App\Enums\WorkOrderType` (D-10): "Lavorazione" / "Progetto" live only in i18n. */
 export type WorkOrderType = 'processing' | 'project'
@@ -222,6 +225,19 @@ export interface WorkOrderDetail {
   company?: { id: number; name: string } | null
   company_site?: { id: number; name: string } | null
   operational_site?: { id: number; label: string } | null
+  /**
+   * Spec 0331: the offer's data, read-only, projected through the single
+   * `quote` (null / `[]` on a multi-offer work order). Optional like
+   * `registry`: a missing key reads the same as null / `[]`.
+   */
+  referent?: ReferentRef | null
+  commercial?: { id: number; name: string } | null
+  reporter?: { id: number; name: string } | null
+  source?: { id: number; name: string } | null
+  product_lines?: ProductLine[]
+  rewards?: RewardAssignmentRef[]
+  layout?: { id: number; name: string } | null
+  payment_method?: { id: number; name: string } | null
   quote_lines: WorkOrderQuoteLine[]
   /** Spec 0124 D-9: `null` when the commessa was not generated from a Modello di Task. */
   task_template: WorkOrderTaskTemplateRef | null

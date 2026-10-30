@@ -341,9 +341,26 @@ describe('OpportunityDetailView — rewards', () => {
     expect(screen.getByText('Gift card')).toBeInTheDocument()
   })
 
-  it('omits the rewards section when there is none', () => {
+  // REQUIREMENT CHANGED spec 0331 D-4: the section stays, with its empty label.
+  it('keeps the rewards section with an empty label when there is none', () => {
     renderDetail(<OpportunityDetailView opportunity={opportunity({ rewards: [] })} />)
 
-    expect(screen.queryByText('Rewards')).not.toBeInTheDocument()
+    expect(screen.getByText('Rewards')).toBeInTheDocument()
+    expect(screen.getByText('No rewards')).toBeInTheDocument()
+  })
+})
+
+// Spec 0331 AC-006: the shared record skeleton order and titles.
+describe('OpportunityDetailView — record skeleton layout', () => {
+  it('renders Opportunity data, Context, contacts, Rewards and Team in that order', () => {
+    renderDetail(<OpportunityDetailView opportunity={opportunity()} />)
+
+    const titles = screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent?.toLowerCase())
+    const positions = ['opportunity data', 'context', 'registry & contacts', 'rewards', 'team'].map((title) =>
+      titles.indexOf(title),
+    )
+
+    expect(positions.every((position) => position >= 0)).toBe(true)
+    expect(positions).toEqual([...positions].sort((a, b) => a - b))
   })
 })

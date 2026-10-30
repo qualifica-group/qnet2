@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0331-record-detail-layout-alignment" status="draft" owner="utente" date="2026-10-29">
+
+  <goal>
+    Le schede dettaglio di Opportunita', Offerta, Contratto e Commessa mostrano le stesse sezioni nella stessa
+    posizione, seguendo lo scheletro dell'Offerta, cosi' chi passa da un record all'altro trova ogni informazione
+    sempre nello stesso punto.
+  </goal>
+
+  <context>
+    <!-- Decisioni utente 2026-10-29 -->
+    <decision id="D-1">Scheletro completo per tutte e 4 le schede. Le sezioni che Contratto e Commessa non hanno si
+      riempiono in sola lettura con i dati dell'offerta da cui nascono (proiezione live, nessuna colonna nuova).</decision>
+    <decision id="D-2">Team del Contratto = Supervisore e Gestori account dell'offerta, sola lettura. Supera la direttiva
+      2026-08-31 che lo nascondeva.</decision>
+    <!-- Proposte del piano, da validare in approvazione -->
+    <decision id="D-3">Ordine canonico in `RecordSectionsGrid` (2 colonne, riempimento riga per riga), dopo i callout note a
+      tutta larghezza:
+      1 Dati &lt;record&gt; | 2 Contesto ;
+      3 Anagrafica e contatti | 4 Buoni ;
+      5 Team | 6 Societa' e sedi ;
+      7 Documento e pagamento | 8 sezione specifica (Contratto: Ciclo di vita; Commessa: Dati contrattuali, a tutta larghezza
+      come oggi). Poi le bande gia' esistenti (righe prodotto, attributi) invariate.</decision>
+    <decision id="D-4">"Buoni" resta visibile anche vuota (segnaposto "Nessun buono") su tutte e 4 le schede: oggi
+      `RewardChipsSection` sparisce quando non ci sono buoni e farebbe slittare Team, Societa' e Documento.</decision>
+    <decision id="D-5">Titoli uguali per sezioni uguali: "Dati opportunita'/offerta/contratto/commessa", "Contesto",
+      "Anagrafica e contatti", "Buoni", "Team", "Societa' e sedi", "Documento e pagamento". Cambiano: Opportunita'
+      "Dettagli" -> "Dati opportunita'", "Classificazione" -> "Contesto"; Commessa "Dettagli" -> "Dati commessa",
+      "Responsabili e partecipanti" -> "Team"; Contratto "Cliente e opportunita'" sparisce (righe redistribuite).</decision>
+    <decision id="D-6">Dove la sezione non esiste per natura del record, manca e basta: l'Opportunita' non ha Societa' e
+      sedi ne' Documento e pagamento (sono in coda: nessuna sezione precedente slitta). La Commessa multi-offerta (spec
+      0267) continua a nascondere le sezioni proiettate dall'offerta (Contesto, Anagrafica e contatti, Buoni, Societa' e
+      sedi, Documento e pagamento): non ha un'offerta unica.</decision>
+    <decision id="D-7">Il Team della Commessa resta il suo (Supervisori, Partecipanti), nella posizione Team. Il Team
+      dell'offerta non si mostra sulla Commessa.</decision>
+
+    <!-- Fatti verificati nel codice -->
+    <fact>Offerta: `quotes/quote-detail-sections.tsx` (QuoteIdentitySection, QuoteContextSection, QuoteContactsSection,
+      RewardChipsSection, QuoteTeamSection, QuoteCompanySection, QuoteDocumentSection). QuoteResource espone gia'
+      source, product_lines (trait `SummarizesProductLines`), rewards (trait `SummarizesRewards`), supervisor,
+      managers {id,name,position}, manager_labels (`QuoteManagerLabelResolver`), layout, payment_method,
+      referent (`App\Support\ReferentRef`).</fact>
+    <fact>Opportunita': `opportunities/opportunity-detail-sections.tsx` ordina oggi Dettagli, Anagrafica e contatti,
+      Classificazione, Team, Buoni.</fact>
+    <fact>Contratto: `contracts/contract-detail-fields.tsx` ha Cliente e opportunita', Societa' e sedi, Ciclo di vita,
+      Documento e pagamento. `ContractResource` proietta dal `quote` (ContractService::DETAIL_RELATIONS); ha gia'
+      registry, referent, opportunity, commercial, reporter, supervisor, company, company_site, operational_site,
+      payment_method; NON ha source, product_lines, rewards, managers, manager_labels, layout.</fact>
+    <fact>Commessa: `work-orders/work-order-detail-sections.tsx` ha Dettagli, Responsabili e partecipanti, Contratto
+      (Anagrafica, Contratto), Societa' e sedi, Dati contrattuali (full), Attributi (full). `WorkOrderResource` (354 righe)
+      ha registry, contract, company, company_site, operational_site; NON ha referent, commercial, reporter, source,
+      product_lines, rewards, layout, payment_method.</fact>
+    <fact>I campi proiettati su Contratto/Commessa seguono la visibilita' del record che li mostra (precedente: AC-040
+      spec 0072, commercial/reporter/registry gia' proiettati), senza voci nuove nella matrice permessi ai campi.</fact>
+  </context>
+
+  <scope>
+    <in>
+      <item>Backend: nuove chiavi di sola lettura in ContractResource e WorkOrderResource + eager load relativi.</item>
+      <item>Frontend: un unico componente di scheletro con slot nominati, usato dalle 4 schede, cosi' l'ordine non puo'
+        divergere.</item>
+      <item>Frontend: sezioni di sola lettura condivise per i dati proiettati dall'offerta (Contesto, Anagrafica e
+        contatti, Team offerta, Documento e pagamento), usate da Contratto e Commessa.</item>
+      <item>Riordino e rinomina sezioni di Opportunita', Offerta, Contratto, Commessa secondo D-3/D-5.</item>
+      <item>"Buoni" sempre visibile (D-4).</item>
+      <item>Guide in-app IT/EN dei 4 moduli e manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Modifica dei dati proiettati da Contratto o Commessa: restano modificabili solo dall'offerta/opportunita'.</item>
+      <item>Form di creazione (Nuova opportunita', Nuova offerta, Nuova commessa): solo le schede dettaglio.</item>
+      <item>Header, barre azioni, strip KPI, tab di collaborazione, bande righe prodotto/attributi: invariati.</item>
+      <item>Nuove voci nella matrice permessi ai campi di Contratti/Commesse.</item>
+      <item>Tabelle (griglie AG Grid) ed export.</item>
+      <item>Lavoro in corso della spec 0330 (referente principale anagrafica).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/contracts/{contract}">
+      <request>invariata</request>
+      <response status="200">
+        `data` = shape attuale + chiavi ADDITIVE, tutte proiettate da `quote`:
+        source: {id:int, name:string} | null                       (quote.opportunity.source)
+        product_lines: ProductLine[]                                (quote.opportunity.productLines, trait SummarizesProductLines; [] se nessuna)
+        rewards: RewardAssignmentRef[]                              (quote.rewards, trait SummarizesRewards; [] se nessuno)
+        managers: {id:int, name:string, position:int}[]            (quote.managers, ordinati per position)
+        manager_labels: Record&lt;string,string&gt;                (QuoteManagerLabelResolver::resolve(quote))
+        layout: {id:int, name:string} | null                        (quote.layout)
+        Invariate: registry, referent, opportunity, commercial, reporter, supervisor, company, company_site,
+        operational_site, payment_method e il resto.
+        Stesse chiavi anche sulle risposte delle azioni che restituiscono ContractResource.
+      </response>
+      <errors>invariati (403 senza contracts.view o fuori perimetro, 404)</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/work-orders/{workOrder}">
+      <request>invariata</request>
+      <response status="200">
+        `data` = shape attuale + chiavi ADDITIVE, proiettate dall'offerta unica (`quote`); per una commessa
+        multi-offerta (is_multi_quote=true) o senza offerta: null / [].
+        referent: {id:int, name:string, referent_type: {id:int, name:string} | null} | null   (ReferentRef)
+        commercial: {id:int, name:string} | null
+        reporter: {id:int, name:string} | null
+        source: {id:int, name:string} | null
+        product_lines: ProductLine[]
+        rewards: RewardAssignmentRef[]
+        layout: {id:int, name:string} | null
+        payment_method: {id:int, name:string} | null
+        Stesse chiavi su ogni endpoint che restituisce WorkOrderResource.
+      </response>
+      <errors>invariati</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un contratto la cui offerta ha fonte, linee prodotto, un buono, due gestori account e un
+      layout, quando GET /api/contracts/{id}, allora data contiene source, product_lines, rewards, managers (ordinati per
+      position), manager_labels e layout con quei valori. Test: Pest ContractOfferProjectionTest.</criterion>
+    <criterion id="AC-002">Dato un contratto la cui offerta non ha fonte, buoni, gestori ne' layout, quando GET, allora
+      source=null, rewards=[], managers=[], layout=null. Test: Pest ContractOfferProjectionTest.</criterion>
+    <criterion id="AC-003">Dato una commessa con offerta unica (referente con tipo, commerciale, segnalatore, fonte, linee,
+      buono, layout, modalita' pagamento), quando GET /api/work-orders/{id}, allora data contiene quelle chiavi con quei
+      valori. Test: Pest WorkOrderOfferProjectionTest.</criterion>
+    <criterion id="AC-004">Dato una commessa multi-offerta, quando GET, allora referent/commercial/reporter/source/layout/
+      payment_method sono null e product_lines/rewards sono []. Test: Pest WorkOrderOfferProjectionTest.</criterion>
+    <criterion id="AC-005">Le letture di dettaglio di Contratto e Commessa non fanno lazy loading (preventLazyLoading
+      attivo nei test non lancia eccezioni). Test: gli stessi file Pest.</criterion>
+    <criterion id="AC-006">Le 4 schede rendono le sezioni nell'ordine D-3 con i titoli D-5: Opportunita' (Dati
+      opportunita', Contesto, Anagrafica e contatti, Buoni, Team), Offerta (Dati offerta, Contesto, Anagrafica e contatti,
+      Buoni, Team, Societa' e sedi, Documento e pagamento), Contratto (Dati contratto, Contesto, Anagrafica e contatti,
+      Buoni, Team, Societa' e sedi, Documento e pagamento, Ciclo di vita), Commessa (Dati commessa, Contesto, Anagrafica e
+      contatti, Buoni, Team, Societa' e sedi, Documento e pagamento, Dati contrattuali). Test: Vitest per scheda, ordine
+      dei titoli delle sezioni (heading).</criterion>
+    <criterion id="AC-007">Su tutte e 4 le schede, senza buoni la sezione Buoni compare con "Nessun buono". Test: Vitest
+      su RewardChipsSection + una scheda.</criterion>
+    <criterion id="AC-008">Contratto: Team mostra Supervisore e Gestori account dell'offerta con l'etichetta di slot
+      (manager_labels), in sola lettura (nessun pulsante di modifica). Contesto mostra Fonte e Linee prodotto; Documento e
+      pagamento mostra Layout, Modalita' di pagamento e Note di pagamento (questa resta modificabile come oggi). Test:
+      Vitest contract-detail.</criterion>
+    <criterion id="AC-009">Commessa con offerta unica: Anagrafica e contatti mostra Anagrafica, Referente con tipo,
+      Commerciale, Segnalatore; il link al Contratto sta in Dati commessa; nessun pulsante di modifica sui dati
+      proiettati. Commessa multi-offerta: le sezioni D-6 non compaiono. Test: Vitest nuovo file
+      work-order-detail-layout.test.tsx.</criterion>
+    <criterion id="AC-010">Opportunita' e Offerta: tutti i campi gia' modificabili sul posto restano modificabili
+      (nessuna regressione dei test inline-edit esistenti). Test: suite Vitest opportunities + quotes.</criterion>
+    <criterion id="AC-011">Guide in-app IT/EN dei 4 moduli aggiornate con le stesse sezioni; parity test verde.
+      Test: help-content-parity.test.ts.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Nessuna migrazione: solo proiezioni live da `quote`.</item>
+    <item>Riuso dei trait `SummarizesProductLines`/`SummarizesRewards`, di `ReferentRef`, `QuoteManagerLabelResolver`,
+      `RecordPerson`, `ReferentValue`, `ProductLinesReadOnlyList`, `RewardChip`: niente copie.</item>
+    <item>Ordine delle sezioni definito in UN solo componente (slot nominati): le 4 schede non possono divergere.</item>
+    <item>File sotto 500 righe (WorkOrderResource e' a 354: le nuove proiezioni vanno in un helper/trait se superano
+      la soglia). Test nuovi in file nuovi (work-order-detail.test.tsx e' a 582 righe).</item>
+    <item>i18n IT/EN per ogni etichetta nuova; nessuna stringa nel JSX.</item>
+    <item>Responsive: a 375px una colonna, stesso ordine.</item>
+  </constraints>
+
+</spec>

@@ -46,6 +46,8 @@ export const common = {
     collapse: 'Collapse side panel',
     expand: 'Expand side panel',
   },
+  /** Record detail "Buoni" section when nothing is assigned (spec 0331 D-4). */
+  noRewards: 'No rewards',
   /** Badge next to a record title: its legacy id, shown only to who may see it (`legacy-ids.view`). */
   legacyIdBadge: 'OLD ID #{{id}}',
   /** In-place editing of a record's rows (spec 0195): the pencil, and the open row's confirm/cancel. */

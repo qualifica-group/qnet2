@@ -84,6 +84,7 @@ require_once __DIR__.'/Helpers/StaffTrainingHelpers.php';
 require_once __DIR__.'/Helpers/SkillHelpers.php';
 require_once __DIR__.'/Helpers/StockHelpers.php';
 require_once __DIR__.'/Helpers/PersonalDataHelpers.php';
+require_once __DIR__.'/Helpers/OfferProjectionHelpers.php';
 
 /*
 |--------------------------------------------------------------------------

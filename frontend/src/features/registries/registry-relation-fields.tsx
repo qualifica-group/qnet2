@@ -1,9 +1,14 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Control } from 'react-hook-form'
+import { useWatch, type Control, type UseFormSetValue } from 'react-hook-form'
 import { ManagerSlotsField } from '@/components/form/manager-slots-field'
 import { RelationMultiSelectField } from '@/components/form/relation-multi-select-field'
 import { RelationSelectField, type RelationFieldRef } from '@/components/form/relation-select-field'
+import { FormControl } from '@/components/ui/form'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MetaField } from '@/features/authorization/MetaField'
+import { useForSelectLabels } from '@/features/for-select/use-for-select'
+import { nextPrimaryReferentId } from '@/features/registries/primary-referent'
 import { managerSlotLabels } from '@/features/shared/manager-position-label'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
 import { SECTORS_FOR_SELECT_RESOURCE } from '@/features/sectors/for-select-api'
@@ -71,9 +76,18 @@ export function RegistrySectorsField({ control, selected }: SelectedListFieldPro
   )
 }
 
-/** "Referenti": the anagrafica's contact people. */
-export function RegistryReferentsField({ control, selected }: SelectedListFieldProps) {
+interface ReferentsFieldProps extends SelectedListFieldProps {
+  setValue: UseFormSetValue<RegistryFormValues>
+  /** The current main referent, read at change time so the editor never goes stale. */
+  getPrimaryReferentId: () => number | null
+}
+
+/** "Referenti": the anagrafica's contact people. Keeps the main referent in step (spec 0330 D-9). */
+export function RegistryReferentsField({ control, selected, setValue, getPrimaryReferentId }: ReferentsFieldProps) {
   const { t } = useTranslation()
+  const syncPrimaryReferent = (referentIds: number[]) =>
+    setValue('primary_referent_id', nextPrimaryReferentId(getPrimaryReferentId(), referentIds), { shouldDirty: true })
+
   return (
     <RelationMultiSelectField
       control={control}
@@ -88,7 +102,55 @@ export function RegistryReferentsField({ control, selected }: SelectedListFieldP
       errorLabel={t('registries.form.referentsError')}
       removeLabel={t('registries.form.referentsRemove')}
       retryLabel={t('common.retry')}
+      onValueChange={syncPrimaryReferent}
     />
+  )
+}
+
+const NO_REFERENT_IDS: number[] = []
+
+/** "Referente principale": one of the referents currently in the Referenti field (spec 0330 D-9). */
+export function RegistryPrimaryReferentField({ control, selected }: SelectedListFieldProps) {
+  const { t } = useTranslation()
+  const referentIds = useWatch({ control, name: 'referent_ids' }) ?? NO_REFERENT_IDS
+  const labels = useForSelectLabels({ resource: REFERENTS_FOR_SELECT_RESOURCE, ids: referentIds })
+  const options = useMemo(
+    () =>
+      referentIds.map((id) => ({
+        id,
+        label: labels.get(id)?.label ?? selected.find((ref) => ref.id === id)?.name ?? `#${id}`,
+      })),
+    [referentIds, labels, selected],
+  )
+
+  return (
+    <MetaField
+      control={control}
+      name="primary_referent_id"
+      metaKey="primary_referent_id"
+      label={t('registries.form.primaryReferent')}
+    >
+      {({ field, disabled }) => (
+        <Select
+          value={field.value === null ? '' : String(field.value)}
+          onValueChange={(next) => field.onChange(Number(next))}
+          disabled={disabled || options.length === 0}
+        >
+          <FormControl>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={t('registries.form.primaryReferentPlaceholder')} />
+            </SelectTrigger>
+          </FormControl>
+          <SelectContent>
+            {options.map((option) => (
+              <SelectItem key={option.id} value={String(option.id)}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+    </MetaField>
   )
 }
 

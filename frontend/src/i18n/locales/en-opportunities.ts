@@ -50,6 +50,8 @@ export const opportunities = {
     loadError: 'Unable to load the opportunity. Please try again.',
     sections: {
       details: 'Details',
+      data: 'Opportunity data',
+      context: 'Context',
     },
     sourceLead: 'Originating lead',
     rewards: 'Rewards',

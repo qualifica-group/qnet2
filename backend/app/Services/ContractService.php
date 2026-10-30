@@ -47,6 +47,15 @@ class ContractService
         'quote.offerLines.product.productTypology',
         'quote.offerLines.vatRate',
         'quote.offerLines.commissions.recipient',
+        // Spec 0331: the offer data the detail projects read-only
+        // (source, product lines, rewards, account managers, layout); the
+        // manager labels read `opportunity.productLines.productCategory`.
+        'quote.opportunity.source',
+        'quote.opportunity.productLines.productCategory',
+        'quote.opportunity.productLines.businessFunction',
+        'quote.managers',
+        'quote.layout',
+        'quote.rewards.rewardType',
     ];
 
     public function loadDetail(Contract $contract): Contract

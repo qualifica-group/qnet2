@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { DEFAULT_MANAGER_SLOTS } from '@/features/opportunities/opportunity-schema'
-import { fetchOpportunityRegistryMeta, type RegistryMeta } from '@/features/opportunities/opportunity-relation-meta'
+import { fetchRegistryForSelectMeta, type RegistryForSelectMeta } from '@/features/registries/for-select-meta'
 import type { OpportunityFormValues } from '@/features/opportunities/use-opportunity-form'
 import { managerSlotsFromRefs, padManagerSlots, sameManagerSlots } from '@/lib/utils'
 
@@ -37,7 +37,7 @@ export const NO_INHERITED_ROLES: InheritedRoles = {
  */
 const inheritedByForm = new WeakMap<object, InheritedRoles>()
 
-export function rolesFromRegistryMeta(meta: RegistryMeta | null): InheritedRoles {
+export function rolesFromRegistryMeta(meta: RegistryForSelectMeta | null): InheritedRoles {
   return {
     commercial_id: meta?.commercial?.id ?? null,
     reporter_id: meta?.reporter?.id ?? null,
@@ -93,10 +93,11 @@ export function mergeInheritedRoles(
 }
 
 /**
- * Picking an anagrafica resets the (anagrafica-scoped) referent and hands
- * down Commerciale, Segnalatore, Supervisore and the G.A. slots. The team
- * section sits ABOVE the client section, so those fields are often filled
- * before the anagrafica is chosen: a value the user entered is never
+ * Picking an anagrafica replaces the (anagrafica-scoped) referent with its
+ * main referent (empty when it has none) and hands down Commerciale,
+ * Segnalatore, Supervisore and the G.A. slots. The team section sits ABOVE
+ * the client section, so those fields are often filled before the
+ * anagrafica is chosen: a value the user entered is never
  * overwritten silently — a confirmation asks first. Values handed down by the
  * previous anagrafica are not the user's, so they are replaced without asking.
  */
@@ -111,14 +112,17 @@ export function useRegistryRoleInheritance(
 
   return async (registryId: number | null) => {
     const request = ++requestRef.current
-    // Step 1: the referent belongs to the previous anagrafica (BR-4).
+    // Step 1: the referent belongs to the previous anagrafica (BR-4); cleared
+    // now, then replaced by the new anagrafica's main referent in Step 2.
     setValue('referent_id', null, { shouldDirty: true })
 
-    // Step 2: the new anagrafica's roles; a later pick supersedes this one.
-    const meta = registryId === null ? null : await fetchOpportunityRegistryMeta(queryClient, registryId)
+    // Step 2: the new anagrafica's main referent (spec 0330 D-5, always a
+    // replacement, never a confirmation) and roles; a later pick supersedes this one.
+    const meta = registryId === null ? null : await fetchRegistryForSelectMeta(queryClient, registryId)
     if (request !== requestRef.current) {
       return
     }
+    setValue('referent_id', meta?.primary_referent?.id ?? null, { shouldDirty: true })
     const next = rolesFromRegistryMeta(meta)
 
     // Step 3: ask before overwriting anything the user entered.

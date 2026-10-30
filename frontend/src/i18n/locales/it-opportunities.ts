@@ -50,6 +50,8 @@ export const opportunities = {
     loadError: "Impossibile caricare l'opportunità. Riprova.",
     sections: {
       details: 'Dettagli',
+      data: 'Dati opportunità',
+      context: 'Contesto',
     },
     sourceLead: 'Lead di origine',
     rewards: 'Premi',

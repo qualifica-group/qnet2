@@ -33,8 +33,8 @@ vi.mock('@/features/opportunities/api', async () => {
 })
 
 /** The anagrafica a pick hands down nothing: the role inheritance is covered by the create form's own suite. */
-vi.mock('@/features/opportunities/opportunity-relation-meta', () => ({
-  fetchOpportunityRegistryMeta: () => Promise.resolve(null),
+vi.mock('@/features/registries/for-select-meta', () => ({
+  fetchRegistryForSelectMeta: () => Promise.resolve(null),
 }))
 
 /** Every single relation picker, as a button per id (mirrors `opportunity-form-body.test.tsx`). */

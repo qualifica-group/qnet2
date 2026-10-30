@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { RecordSectionsGrid } from '@/components/detail/record-panel'
+import { RecordSkeletonSections } from '@/components/detail/record-skeleton-sections'
 import { ProductLinesReadOnlyList } from '@/features/product-lines/product-lines-read-only-list'
 import { RewardChipsSection } from '@/features/rewards/reward-chips-section'
 import { OpportunityClientRecordSection } from '@/features/opportunities/opportunity-record-client'
@@ -46,9 +47,9 @@ interface OpportunityDetailSectionsProps {
 /**
  * The opportunity record's `RecordSectionsGrid` body, every user-written
  * field editable in place (spec 0198): the general notes callout first, then
- * details, client and contacts, classification, team and the assigned
- * rewards (read-only, the block shared with the Offerta; they are edited
- * with the Segnalatore they belong to). The status is computed from the
+ * the shared record skeleton (spec 0331): data, context (the classification),
+ * client and contacts, the assigned rewards (read-only, the block shared with
+ * the Offerta; they are edited with the Segnalatore they belong to) and team. The status is computed from the
  * quotes (spec 0082): it stays the header pill.
  */
 export function OpportunityDetailSections({ opportunity, editor }: OpportunityDetailSectionsProps) {
@@ -66,21 +67,30 @@ export function OpportunityDetailSections({ opportunity, editor }: OpportunityDe
         className={FULL_WIDTH_SECTION_CLASS}
       />
 
-      <OpportunityDetailsSection {...sectionProps} />
-
-      <OpportunityClientRecordSection {...sectionProps} blockingOpportunity={blockingOpportunity} />
-
-      <OpportunityClassificationRecordSection
-        {...sectionProps}
-        productLines={<ProductLinesReadOnlyList lines={opportunity.product_lines} />}
+      <RecordSkeletonSections
+        details={<OpportunityDetailsSection {...sectionProps} title={t('opportunities.detail.sections.data')} />}
+        context={
+          <OpportunityClassificationRecordSection
+            {...sectionProps}
+            title={t('opportunities.detail.sections.context')}
+            productLines={<ProductLinesReadOnlyList lines={opportunity.product_lines} />}
+          />
+        }
+        contacts={<OpportunityClientRecordSection {...sectionProps} blockingOpportunity={blockingOpportunity} />}
+        rewards={
+          <RewardChipsSection
+            title={t('opportunities.detail.rewards')}
+            rewards={values.rewards}
+            emptyLabel={t('common.noRewards')}
+          />
+        }
+        team={
+          <OpportunityTeamRecordSection
+            {...sectionProps}
+            managersSynchronized={opportunity.managers_synchronized ?? false}
+          />
+        }
       />
-
-      <OpportunityTeamRecordSection
-        {...sectionProps}
-        managersSynchronized={opportunity.managers_synchronized ?? false}
-      />
-
-      <RewardChipsSection title={t('opportunities.detail.rewards')} rewards={values.rewards} />
     </RecordSectionsGrid>
   )
 }

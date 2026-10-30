@@ -44,7 +44,7 @@ it('200: field catalogue matches the frozen contract (14 registry + 13 personal_
 
     $keys = collect($response->json('data.fields'))->pluck('key')->all();
     expect($keys)->toBe([
-        'source_id', 'sector_ids', 'referent_ids', 'manager_slots',
+        'source_id', 'sector_ids', 'referent_ids', 'primary_referent_id', 'manager_slots',
         'supervisor_id', 'commercial_id', 'reporter_id',
         'vat_group', 'is_supplier', 'is_qualified_supplier',
         'agreement_status', 'agreement_notes', 'size_class', 'employee_count',
