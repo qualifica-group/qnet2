@@ -6,7 +6,7 @@ import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { TASK_TEMPLATES_FOR_SELECT_RESOURCE } from '@/features/task-templates/for-select-api'
+import { TASK_TEMPLATE_POPUP_WIDTH_CLASS, TASK_TEMPLATES_FOR_SELECT_RESOURCE } from '@/features/task-templates/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import type { ContractProgramFormValues } from '@/features/contracts/contract-program-schema'
 import type { WorkOrderType } from '@/features/work-orders/types'
@@ -87,6 +87,7 @@ export function ContractProgramSharedFields({ control, prefix, required }: Contr
                 onChange={field.onChange}
                 selectedItem={templateCreate.selectedItemFor(field.value)}
                 action={templateCreate.renderAction((ref) => field.onChange(ref.id))}
+                contentClassName={TASK_TEMPLATE_POPUP_WIDTH_CLASS}
                 labels={{
                   placeholder: t('contracts.actions.programDialog.taskTemplatePlaceholder'),
                   searchPlaceholder: t('contracts.actions.programDialog.taskTemplateSearchPlaceholder'),

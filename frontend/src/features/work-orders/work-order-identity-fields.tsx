@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { RelationSelectField, type RelationFieldRef } from '@/components/form/relation-select-field'
 import { MetaField } from '@/features/authorization/MetaField'
-import { TASK_TEMPLATES_FOR_SELECT_RESOURCE } from '@/features/task-templates/for-select-api'
+import { TASK_TEMPLATE_POPUP_WIDTH_CLASS, TASK_TEMPLATES_FOR_SELECT_RESOURCE } from '@/features/task-templates/for-select-api'
 import type { WorkOrderFormValues } from '@/features/work-orders/use-work-order-form'
 import type { WorkOrderType } from '@/features/work-orders/types'
 
@@ -18,14 +18,6 @@ import type { WorkOrderType } from '@/features/work-orders/types'
  */
 
 const WORK_ORDER_TYPES: WorkOrderType[] = ['processing', 'project']
-
-/**
- * Template options show name + description, which outgrow the form column:
- * the popup takes a wider fixed width, never narrower than the trigger,
- * never past the viewport edge.
- */
-const TASK_TEMPLATE_POPUP_WIDTH_CLASS =
-  'w-[min(36rem,var(--radix-popover-content-available-width))] min-w-(--radix-popover-trigger-width)'
 
 interface FieldProps {
   control: Control<WorkOrderFormValues>

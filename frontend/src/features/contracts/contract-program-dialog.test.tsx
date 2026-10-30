@@ -124,6 +124,16 @@ beforeEach(() => {
 })
 
 describe('ContractProgramDialog - lines (AC-028)', () => {
+  it('opens the task template picker wider than its grid cell', async () => {
+    renderDialog()
+    await screen.findByText('Consulenza')
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Task template' }))
+
+    const option = await screen.findByRole('option', { name: /Onboarding cliente/ })
+    expect(option.closest('[role="dialog"]')).toHaveClass('w-[48rem]')
+  })
+
   it('shows an occupied line as visible but not selectable, naming the occupying commessa', async () => {
     renderDialog()
 

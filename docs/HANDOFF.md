@@ -80,12 +80,17 @@
   (es. `max={dayOf(new Date())}`) vince. Copre tutti i form, i campi flessibili (`native-input-field-control.tsx`),
   `DateTimeField`, editor di cella AG Grid e filtri avanzati, perche' passano tutti da `Input`. Test: `input.test.tsx`.
 
-## Popup "Modello di Task" piu' largo nel form Commessa — VERDE, COMMITTATO (2026-10-29)
+## Popup "Modello di Task" grande nel form Commessa e nel dialog "Programma" — VERDE, COMMITTATO (2026-10-30)
 
-- `RelationSelectField` ha la prop `contentClassName` (inoltrata a `AsyncPaginatedSelect`). `WorkOrderTaskTemplateField`
-  la usa con `TASK_TEMPLATE_POPUP_WIDTH_CLASS` (36rem, mai piu' stretto del campo ne' oltre il viewport).
-- La stessa stringa di larghezza vive ora in 3 posti (`quote-product-select.tsx`, `category-popup-width.ts`,
-  `work-order-identity-fields.tsx`): candidata a una costante condivisa, non estratta (fuori scope).
+- `RelationSelectField` ha la prop `contentClassName` (inoltrata a `AsyncPaginatedSelect`).
+- `TASK_TEMPLATE_POPUP_WIDTH_CLASS` vive in `features/task-templates/for-select-api.ts` (unica fonte): `w-[48rem]`, mai
+  piu' stretto del trigger; esce dalla cella della griglia (popup portalizzato nel `DialogContent`, che non taglia
+  l'overflow), resta nel viewport via `max-w-[calc(100vw-2rem)]` base + shift Radix. Usata da
+  `WorkOrderTaskTemplateField` (form Commessa) e `ContractProgramSharedFields` (dialog "Programma" e "Programma
+  commessa unica", valori comuni e gruppi). Test: `contract-program-dialog.test.tsx` (popup `w-[48rem]`).
+- Restano con larghezze proprie `quote-product-select.tsx` e `category-popup-width.ts` (non toccati).
+- Verifica 2026-10-30: Vitest mirato 427/427 (contracts program, work-orders, task-templates, relation-select-field);
+  ESLint pulito; tsc -b pulito. Manuale: nessun impatto (solo larghezza del popup).
 
 ## Errori 403 specifici (spec 0329) — VERDE, COMMITTATO (2026-10-29)
 
