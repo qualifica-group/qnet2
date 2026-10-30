@@ -441,6 +441,10 @@ return [
         'quote_line_commission' => [
             'commission_configuration_id' => CommissionConfiguration::class,
         ],
+        // Logged by ContractReactivator when a reopening clears the validation stamp.
+        'contract' => [
+            'validated_by' => User::class,
+        ],
     ],
 
 ];

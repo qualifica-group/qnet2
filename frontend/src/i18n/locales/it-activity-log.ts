@@ -156,5 +156,7 @@ export const activityLog = {
     size: 'Dimensione',
     collection: 'Raccolta',
     uploaded_by: 'Caricato da',
+    validated_at: 'Data di validazione',
+    validated_by: 'Validato da',
   },
 }

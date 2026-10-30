@@ -15,6 +15,21 @@
   REQUIREMENT CHANGED), `QualificaQuoteLayoutSeederTest` 5/5, `QualificaProductionDataSeederTest` 3/3; Pint pulito.
   Seeder NON eseguito sul DB dev (vincolo utente). Manuale: il form ISO non vi e' descritto, nessun passaggio da toccare.
 
+## Contratti: "Valida" solo se mai validato — VERDE, NON COMMITTATO (2026-10-30)
+
+- Segnalazione utente: un contratto validato riproponeva "Valida". Causa: il gate guardava solo il gruppo dello stato,
+  e la migrazione legacy mette i contratti validati su righe `pending` (Da programmare 173, Programmato 4.691,
+  In scadenza 5.137 nel DB dev). Decisione utente: `mayValidate()`/`contractLifecycleActions().validate` richiedono anche
+  `validated_at === null`; `ContractActionService::assertNotClosed` risponde 422 anche con il timbro presente.
+- "Riapri contratto" da una chiusura (`ContractReactivator::reactivateClosed`) azzera anche `validated_at`/`validated_by`
+  (supera la regola "timbro di validazione conservato") e registra l'azzeramento come voce `updated` (old -> null) visibile
+  in Cronologia attivita'; `config/activity-log.php` foreign_keys `contract.validated_by` -> User per il nome. La riattivazione
+  da SOSPESO conserva il timbro. Etichette `activityLog.fields.validated_at/validated_by` IT/EN.
+- Verifica: Pest Contracts+ActivityLog 275/275, Vitest contracts/help/activity-log/i18n 566/566, tsc -b pulito, Pint/ESLint
+  puliti. Suite completa non eseguita. Guide IT/EN contratti + manuale Claude Docs (azioni contratto) aggiornati; PDF da rigenerare.
+- Aperti (segnalati, non fatti): i contratti validati su stati `pending` non mostrano "Programma" (solo `closed_won`); la voce
+  `contract.reactivated` arriva alla Cronologia con un evento fuori da `ActivityLogEvent` (badge senza etichetta, preesistente).
+
 ## Schede Opportunita'/Offerta/Contratto/Commessa con lo stesso scheletro (spec 0331) — VERDE, NON COMMITTATO (2026-10-29)
 
 - Ordine unico in `components/detail/record-skeleton-sections.tsx` (`RecordSkeletonSections`, slot details/context/

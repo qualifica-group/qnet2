@@ -63,6 +63,7 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
 
 const OPEN_STATUS: ContractStatusRef = { id: 1, name: 'Da validare', color: 'amber', group: 'open' }
 const WON_STATUS: ContractStatusRef = { id: 2, name: 'Validato', color: 'emerald', group: 'closed_won' }
+const PROGRAMMED_STATUS: ContractStatusRef = { id: 3, name: 'Programmato', color: 'blue', group: 'pending' }
 
 function permissions(actions: Partial<ResourcePermissions['actions']>): ResourcePermissions {
   return {
@@ -192,5 +193,18 @@ describe('ContractActionsBar — refresh delle azioni dopo un cambio di stato', 
     expect(screen.getByRole('button', { name: 'Terminate contract' })).toBeInTheDocument()
     // Il badge di stato nell'hero segue lo stesso aggiornamento.
     expect(screen.getByText('Validato')).toBeInTheDocument()
+  })
+
+  it('non ripropone "Valida" a un contratto gia\' validato su uno stato in attesa (migrazione legacy)', () => {
+    // Segnalazione utente 2026-10-30: anche se il server mandasse il flag,
+    // il gate di ciclo di vita guarda `validated_at`.
+    renderView({
+      ...contract(PROGRAMMED_STATUS, { validate: true, terminate: true, change_status: true }),
+      validated_at: '2026-03-01',
+    })
+
+    expect(screen.queryByRole('button', { name: 'Validate contract' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Terminate contract' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Change status' })).toBeInTheDocument()
   })
 })

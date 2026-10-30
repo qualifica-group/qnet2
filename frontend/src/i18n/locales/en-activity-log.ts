@@ -166,5 +166,7 @@ export const activityLog = {
     size: 'Size',
     collection: 'Collection',
     uploaded_by: 'Uploaded by',
+    validated_at: 'Validation date',
+    validated_by: 'Validated by',
   },
 }

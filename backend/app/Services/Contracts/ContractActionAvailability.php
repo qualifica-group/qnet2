@@ -30,12 +30,19 @@ use App\Models\Contract;
  * on the `pending` system row "Sospeso", so it KEEPS "Riapri contratto"
  * and loses "Valida" — the validate endpoint refuses a suspended contract
  * outright, so offering it would be a dead affordance.
+ *
+ * "Valida" also needs a contract that was NEVER validated (`validated_at`
+ * empty, user decision 2026-10-30): the legacy migration lands validated
+ * contracts on pending rows ("Da programmare", "Programmato", "In
+ * scadenza"), where the group alone would offer it again. Reopening a
+ * closed contract clears the stamp (ContractReactivator), so it is
+ * validatable again.
  */
 class ContractActionAvailability
 {
     public function mayValidate(Contract $contract): bool
     {
-        return $this->isWorking($contract) && ! $contract->isSuspended();
+        return $this->isWorking($contract) && ! $contract->isSuspended() && $contract->validated_at === null;
     }
 
     /**

@@ -144,18 +144,17 @@ class ContractActionService
 
     /**
      * A contract can only be validated while it is still working (open or
-     * pending). Refusing on the GROUP rather than on the `validated_at`
-     * stamp is what makes the flow of the 2026-08-31 rev.2 directive
-     * consistent: a contract disdetto and then riattivato lands back on an
-     * open/pending status and must be validatable again, even though it
-     * carries the stamp of its first validation.
+     * pending) and was never validated (user decision 2026-10-30): the
+     * legacy migration lands validated contracts on pending rows. A contract
+     * reopened from a closure is validatable again because
+     * ContractReactivator clears its validation stamp.
      */
     private function assertNotClosed(Contract $contract): void
     {
         $contract->loadMissing('contractStatus');
         $group = $contract->contractStatus?->group;
 
-        if ($group === ContractStatusGroup::ClosedWon) {
+        if ($group === ContractStatusGroup::ClosedWon || $contract->validated_at !== null) {
             abort(422, 'This contract has already been validated.');
         }
 

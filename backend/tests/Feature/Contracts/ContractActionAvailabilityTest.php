@@ -14,7 +14,8 @@ use Spatie\Permission\Models\Permission;
  * by `permissions.actions` on GET /api/contracts/{contract} plus the grid's
  * row actions:
  *
- * - open | pending → edit, change_status, validate, terminate
+ * - open | pending → edit, change_status, validate (only if never
+ *   validated, user decision 2026-10-30), terminate
  * - closed_won     → terminate, program, reactivate
  * - closed_lost    → reactivate
  *
@@ -88,6 +89,20 @@ it('behaves the same on a PENDING contract', function () {
         ->and($flags['reactivate'])->toBeFalse();
 });
 
+it('drops only validate on a PENDING contract that is already validated (legacy migration)', function () {
+    $pending = ContractStatus::where('name', 'Programmato')->sole();
+    $flags = contractActionFlags(Contract::factory()->create([
+        'contract_status_id' => $pending->id,
+        'validated_at' => now()->subMonth(),
+    ]));
+
+    expect($flags['validate'])->toBeFalse()
+        ->and($flags['terminate'])->toBeTrue()
+        ->and($flags['change_status'])->toBeTrue()
+        ->and($flags['program'])->toBeFalse()
+        ->and($flags['reactivate'])->toBeFalse();
+});
+
 it('offers terminate, program and reactivate on a CLOSED_WON contract', function () {
     // Directive 2026-08-31 rev.3: a positively closed contract must be
     // reopenable too, so `reactivate` joins the two it already had.
@@ -141,4 +156,21 @@ it('drops the lifecycle-refused keys from the grid row actions too', function ()
         ->and($row['actions'])->not->toContain('edit')
         ->and($row['actions'])->toContain('view')
         ->and($row['actions'])->toContain('reactivate');
+});
+
+it('drops validate from the grid row actions of an already validated pending contract', function () {
+    $validated = Contract::factory()->create([
+        'contract_status_id' => ContractStatus::where('name', 'Programmato')->sole()->id,
+        'validated_at' => now()->subMonth(),
+    ]);
+    Sanctum::actingAs(contractAvailabilityActor());
+
+    $response = $this->postJson('/api/tables/contracts/rows', ['startRow' => 0, 'endRow' => 50])->assertOk();
+
+    $row = collect($response->json('items'))->firstWhere('id', $validated->id);
+
+    expect($row)->not->toBeNull()
+        ->and($row['actions'])->not->toContain('validate')
+        ->and($row['actions'])->toContain('terminate')
+        ->and($row['actions'])->toContain('change_status');
 });
