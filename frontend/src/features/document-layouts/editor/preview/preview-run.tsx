@@ -1,9 +1,7 @@
-import type { CSSProperties } from 'react'
+import { use, type CSSProperties } from 'react'
+import { PreviewPageContext } from '@/features/document-layouts/editor/preview/preview-page-context'
 import { splitVariableSegments } from '@/features/document-layouts/editor/preview/variable-chip-utils'
-import type { DocumentLayoutRun, RunField } from '@/features/document-layouts/layout-config'
-
-/** Placeholder value shown in place of an actual computed Word field (AC-125: rendered as "1", not raw text). */
-const PAGE_FIELD_PLACEHOLDERS: Record<RunField, string> = { page: '1', total_pages: '1' }
+import type { DocumentLayoutRun } from '@/features/document-layouts/layout-config'
 
 interface PreviewRunProps {
   run: DocumentLayoutRun
@@ -21,14 +19,15 @@ function runStyle(run: DocumentLayoutRun): CSSProperties {
   }
 }
 
-/** Renders one formatted run: a computed-field placeholder (AC-125) or its text with variable chips (AC-127). */
+/** Renders one formatted run: a computed page field as the sheet's own number (AC-125) or its text with variable chips (AC-127). */
 export function PreviewRun({ run, labelFor }: PreviewRunProps) {
+  const pageNumbers = use(PreviewPageContext)
   const style = runStyle(run)
 
   if (run.field) {
     return (
       <span style={style} className="rounded bg-muted px-1 text-muted-foreground" aria-label={run.field}>
-        {PAGE_FIELD_PLACEHOLDERS[run.field]}
+        {run.field === 'page' ? pageNumbers.page : pageNumbers.totalPages}
       </span>
     )
   }

@@ -44,6 +44,7 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'note', text: 'The **Page** panel sets orientation (Portrait or Landscape), margins and default font.' },
+        { type: 'paragraph', text: 'The preview shows the document over several A4 sheets: when the **Body** no longer fits in the space between header and footer (margins included), the next block moves to the following sheet, as it does after a **Page break**. Each sheet repeats the **Behind the page** image, the **Header** and the **Footer**, with its own page number. A block taller than a whole sheet stays clipped in the preview; in the downloaded document it continues on the next sheet.' },
       ],
     },
     {

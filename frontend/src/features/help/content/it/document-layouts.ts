@@ -44,6 +44,7 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'note', text: 'Il pannello **Pagina** imposta orientamento (Verticale o Orizzontale), margini e font predefinito.' },
+        { type: 'paragraph', text: 'L’anteprima mostra il documento su più fogli A4: quando il **Corpo** non sta più nello spazio tra intestazione e piè di pagina (margini compresi), il blocco successivo passa al foglio dopo, così come dopo un’**Interruzione di pagina**. Ogni foglio ripete l’immagine **Dietro la pagina**, l’**Intestazione** e il **Piè di pagina**, con il suo numero di pagina. Un blocco più alto di un intero foglio resta tagliato in anteprima; nel documento scaricato prosegue sul foglio successivo.' },
       ],
     },
     {

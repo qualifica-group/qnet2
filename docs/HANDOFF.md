@@ -3,6 +3,23 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Anteprima layout su piu' fogli A4 — VERDE, COMMITTATO (2026-10-30)
+
+- Segnalazione utente (layout 27, anche in locale): l'anteprima era un solo foglio a altezza fissa, il corpo lungo
+  scriveva sopra il footer della carta intestata e veniva tagliato. Scelta utente: anteprima multipagina.
+- `editor/preview/`: `preview-pagination.ts` (`paginateBodyBlocks`, pura: blocco che non entra -> foglio dopo,
+  `page_break` chiude il foglio, blocco piu' alto del foglio da solo e tagliato), `use-preview-measurement.ts` (misura
+  i fogli disegnati: `data-preview-body` clientHeight + `data-preview-block` offsetHeight + row-gap; layout effect a
+  ogni render + ResizeObserver sui blocchi, stato invariato se la misura non cambia), `preview-sheet.tsx` (un foglio:
+  sfondo `behind_page`, header, quota di corpo `min-h-0 flex-1`, footer), `preview-page-context.ts` (numero/totale
+  pagine per i campi `page`/`total_pages` di `PreviewRun`). `document-layout-preview.tsx` orchestra.
+- Limite: si spostano blocchi interi (una tabella lunga non si spezza per righe). Non verificato in un browser vero
+  (jsdom non ha layout): da controllare a occhio sul layout 27.
+- Test: `preview-pagination.test.ts` (5), `document-layout-preview.test.tsx` +2 (fogli multipli, numeri pagina);
+  query del foglio per chiave i18n. Vitest document-layouts + help 311/311; ESLint e `tsc -b --force` puliti.
+- Manuale: guida in-app `document-layouts` IT/EN e manuale Claude Docs (sezione Layout, dopo la nota sul pannello
+  Pagina): paragrafo sull'anteprima a piu' fogli.
+
 ## Immagini dei layout sparite in produzione: comando di ripristino — VERDE, NON COMMITTATO (2026-10-30)
 
 - Causa: il DB di produzione e' un dump importato da un'altra macchina senza `storage/app/private/attachments/`:
@@ -715,8 +732,7 @@
   `recruitment_contract` (1134) avevano il margine inferiore sotto la fascia footer della carta intestata (misurata:
   `QuoteDocumentLayoutCatalogue::LETTERHEAD_FOOTER_TWIPS` = 1291) -> portati a 1560; test dedicato. Il seeder e'
   create-only: sul DB dev gia' seminato i due margini vanno aggiornati a mano (tinker) o cancellando e riseminando.
-  APERTO: l'anteprima A4 dell'editor non impagina (un solo foglio), sui layout lunghi il testo copre il footer
-  della carta intestata; in attesa di conferma utente per l'anteprima multipagina.
+  Anteprima A4 a un solo foglio: risolto 2026-10-30 con l'anteprima multipagina (voce in cima).
 - Test: `tests/Feature/Seeding/QualificaQuoteDocumentLayoutSeederTest.php` (validator, immagini possedute, variabili
   del catalogo, render `.docx` di tutti i 28, default invariato, create-only, nome occupato). Verdi anche Seeding (217),
   DocumentLayouts, Unit/DocumentLayouts, Products, QualificaTemplateSeederTest, QuoteDocumentFidelityTest.
