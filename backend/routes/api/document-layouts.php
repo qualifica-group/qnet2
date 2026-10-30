@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DocumentLayouts\DocumentLayoutCloneController;
 use App\Http\Controllers\DocumentLayouts\DocumentLayoutController;
 use App\Http\Controllers\DocumentLayouts\DocumentLayoutForSelectController;
 use App\Http\Controllers\DocumentLayouts\DocumentLayoutImageController;
@@ -55,6 +56,10 @@ Route::delete('document-layouts/{documentLayout}/images/{attachment}', [Document
 // — no ordering ambiguity exists here (different HTTP verb AND an extra path
 // segment already disambiguate it from the bound wildcard route).
 Route::post('document-layouts/{documentLayout}/preview', DocumentLayoutPreviewController::class);
+
+// A new layout copied from this one, images included (spec 0339), gated by
+// document-layouts.view on the source + document-layouts.create.
+Route::post('document-layouts/{documentLayout}/clone', DocumentLayoutCloneController::class);
 
 // Document layouts CRUD. Authorization (document-layouts.view/create/update/
 // delete) is enforced server-side in DocumentLayoutController via

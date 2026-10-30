@@ -13,7 +13,7 @@ import type {
   ModuleFormScreenProps,
   ModuleRegistryEntry,
 } from '@/features/modules/types'
-import type { DocumentLayoutDetail } from '@/features/document-layouts/types'
+import { DOCUMENT_LAYOUTS_BASE_PATH, type DocumentLayoutDetail } from '@/features/document-layouts/types'
 
 /**
  * Content-only `document-layouts` screens for the module registry (spec
@@ -97,7 +97,7 @@ export function DocumentLayoutFormScreen({ mode, onSuccess, onCancel }: ModuleFo
 /** Auto-registered in the module registry (spec 0042). */
 export const moduleScreen: ModuleRegistryEntry = {
   domain: 'document-layouts',
-  basePath: '/document-layouts',
+  basePath: DOCUMENT_LAYOUTS_BASE_PATH,
   defaultMode: OPEN_MODE_PAGE,
   labelKey: 'navigation.documentLayouts',
   DetailScreen: DocumentLayoutDetailScreen,

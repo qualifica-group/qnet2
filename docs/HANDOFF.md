@@ -3,6 +3,30 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Clona layout documento (spec 0339) — VERDE, NON COMMITTATO (2026-10-30)
+
+- Richiesta utente: pulsante "Clona" nel modulo Layout per riprendere un layout gia' fatto e continuare a modificarlo.
+- Contratto: `POST /api/document-layouts/{documentLayout}/clone` body `{name, code}` (name unico nel modulo del
+  sorgente, code unico + snake_case) -> 201 come POST create (nuovo layout + `permissions`). Authz: `view` sul sorgente
+  + `create`. 422 `images` se il file di un'immagine del sorgente manca (D-4, nessuna riga/file orfano).
+- La copia eredita module/description/is_active/config, mai `is_default`; immagini copiate con
+  `AttachmentService::copyTo()` e blocchi `image` ri-puntati ai nuovi `attachment_id` (copia server-side obbligata:
+  il validatore rifiuta attachment_id di altri layout, quindi `openDuplicate` lato client non e' applicabile).
+- Backend: `DocumentLayoutCloneController` (invokable), `CloneDocumentLayoutRequest`, `CloneDocumentLayoutData`,
+  `Services\DocumentLayouts\DocumentLayoutCloner`; azione di riga `clone` (catalogo + `actionsFor` con Gate create);
+  lang `document_layouts.clone_image_missing`.
+- Frontend: `cloneDocumentLayout` (api.ts), `buildCloneDocumentLayoutSchema` + `NAME_MAX_LENGTH`/`CODE_MAX_LENGTH`
+  esportati, `use-document-layout-clone-form.ts`, `document-layout-clone-dialog.tsx`, `DOCUMENT_LAYOUTS_BASE_PATH`
+  (types.ts, usato anche da moduleScreen); pulsante "Clona" nella testata del dettaglio (gate
+  `permissions.resource.create`), azione `clone` nella griglia; a copia riuscita naviga a `/document-layouts/{id}`.
+  i18n `documentLayouts.clone.*`, `actions.clone`; guida in-app sezione `clone-layout` IT/EN; manuale Claude Docs
+  aggiornato (sezione Layout, paragrafo "Clonare un layout").
+- Verifica: Pest DocumentLayouts 149/149 (10 nuovi); Vitest document-layouts 158/158, help 153/153;
+  `tsc -b --force` 0 errori; ESLint/Pint puliti. Suite completa: 13142/13158, i 15 rossi sono fuori scope e non
+  toccano il codice cambiato (Migration users: `.env` locale con `EXTERNAL_MIGRATION_USERS_LINK_ONLY`; QuoteDocumentPdf:
+  LibreOffice assente; ManagementControl permissions sync e TableBulkDelete super-admin guard: da indagare a parte).
+- Prossimo passo: commit su ordine dell'utente.
+
 ## Anteprima layout su piu' fogli A4 — VERDE, COMMITTATO (2026-10-30)
 
 - Segnalazione utente (layout 27, anche in locale): l'anteprima era un solo foglio a altezza fissa, il corpo lungo

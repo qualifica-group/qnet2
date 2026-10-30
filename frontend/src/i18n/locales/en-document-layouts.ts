@@ -86,6 +86,16 @@ export const documentLayouts = {
     deleted: 'Document layout deleted successfully.',
     deleteError: 'Unable to delete the document layout. Please try again.',
   },
+  clone: {
+    action: 'Clone',
+    title: 'Clone layout',
+    description: 'Creates a new layout with the same content, images and page settings. Choose the copy name and code.',
+    nameSuffix: '(copy)',
+    submit: 'Clone',
+    submitting: 'Cloning…',
+    success: 'Layout cloned: you can now keep editing it.',
+    error: 'Could not clone the layout. Please try again.',
+  },
   editor: {
     addBlock: 'Add block',
     removeBlock: 'Remove block',

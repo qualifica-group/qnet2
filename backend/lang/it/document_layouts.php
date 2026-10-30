@@ -29,6 +29,9 @@ return [
     // Image guard (spec 0069, MT-4).
     'image_in_use' => 'Questa immagine è referenziata da un blocco della configurazione corrente: rimuovi il blocco prima di eliminarla.',
 
+    // Clone (spec 0339, D-4).
+    'clone_image_missing' => 'Impossibile clonare: il file dell\'immagine ":name" non è più presente. Ricaricala nel layout e riprova.',
+
     'variables' => [
         'categories' => [
             'quote' => 'Preventivo',

@@ -126,6 +126,7 @@ export const en = {
     edit: 'Edit',
     delete: 'Delete',
     duplicate: 'Duplicate',
+    clone: 'Clone',
     activity: 'Activity',
     convertToOpportunity: 'Convert to Opportunity',
     documents: 'Documents',

@@ -119,6 +119,7 @@ export const it: TranslationResources = {
     edit: 'Modifica',
     delete: 'Elimina',
     duplicate: 'Duplica',
+    clone: 'Clona',
     activity: 'Attività',
     convertToOpportunity: 'Converti in Opportunità',
     documents: 'Documenti',

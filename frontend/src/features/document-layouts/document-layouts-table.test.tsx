@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { forwardRef, useImperativeHandle, type ReactNode } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
@@ -65,7 +65,15 @@ const DELETE_ACTION: TableActionDefinition = {
   confirm: true,
 }
 
-const ROW: TableRow = { id: 1, actions: ['delete'], name: 'Standard quote layout' }
+const CLONE_ACTION: TableActionDefinition = {
+  key: 'clone',
+  label: 'actions.clone',
+  icon: 'copy',
+  type: 'action',
+  confirm: false,
+}
+
+const ROW: TableRow = { id: 1, actions: ['delete', 'clone'], name: 'Standard quote layout', code: 'standard' }
 
 vi.mock('@/features/table/table-view', () => ({
   TableView: forwardRef<
@@ -77,6 +85,9 @@ vi.mock('@/features/table/table-view', () => ({
       <div role="region" aria-label={`table-${domain}`}>
         <button type="button" onClick={() => onAction?.(DELETE_ACTION, ROW)}>
           delete row
+        </button>
+        <button type="button" onClick={() => onAction?.(CLONE_ACTION, ROW)}>
+          clone row
         </button>
       </div>
     )
@@ -228,5 +239,17 @@ describe('document-layouts moduleScreen registry entry (AC-133)', () => {
     expect(moduleScreen.basePath).toBe('/document-layouts')
     expect(moduleScreen.defaultMode).toBe(OPEN_MODE_PAGE)
     expect(moduleScreen.generateRoutes).not.toBe(false)
+  })
+})
+
+describe('DocumentLayoutsTable — clone row action (spec 0339)', () => {
+  it('opens the clone dialog pre-filled from the row', () => {
+    renderTable()
+
+    fireEvent.click(screen.getByRole('button', { name: 'clone row' }))
+
+    expect(screen.getByRole('dialog', { name: i18n.t('documentLayouts.clone.title') })).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Standard quote layout (copy)')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('standard_copy')).toBeInTheDocument()
   })
 })

@@ -3,6 +3,7 @@ import type { ReactElement, ReactNode } from 'react'
 import { fireEvent, render as renderWithoutClient, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
+import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { DocumentLayoutDetailView } from '@/features/document-layouts/document-layout-detail'
@@ -260,5 +261,37 @@ describe('DocumentLayoutDetailView — in-place editing', () => {
 
     expect(pencilOf('documentLayouts.form.name')).not.toBeInTheDocument()
     expect(pencilOf('documentLayouts.form.tabs.content')).not.toBeInTheDocument()
+  })
+})
+
+describe('DocumentLayoutDetailView — clone (spec 0339, AC-007)', () => {
+  const cloneButton = () => screen.queryByRole('button', { name: i18n.t('documentLayouts.clone.action') })
+
+  it('opens the pre-filled clone dialog from the header when create is allowed', () => {
+    render(
+      <MemoryRouter>
+        <DocumentLayoutDetailView documentLayout={documentLayout()} />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(cloneButton() as HTMLElement)
+
+    expect(screen.getByRole('dialog', { name: i18n.t('documentLayouts.clone.title') })).toBeInTheDocument()
+    expect(screen.getByDisplayValue('standard_copy')).toBeInTheDocument()
+  })
+
+  it('offers no clone button without create', () => {
+    render(
+      <DocumentLayoutDetailView
+        documentLayout={documentLayout({
+          permissions: {
+            ...documentLayout().permissions,
+            resource: { ...documentLayout().permissions.resource, create: false },
+          },
+        })}
+      />,
+    )
+
+    expect(cloneButton()).not.toBeInTheDocument()
   })
 })

@@ -88,6 +88,17 @@ export const documentLayouts = {
     deleted: 'Layout eliminato con successo.',
     deleteError: 'Impossibile eliminare il layout. Riprova.',
   },
+  clone: {
+    action: 'Clona',
+    title: 'Clona layout',
+    description:
+      'Crea un nuovo layout con lo stesso contenuto, immagini e impostazioni di pagina. Scegli nome e codice della copia.',
+    nameSuffix: '(copia)',
+    submit: 'Clona',
+    submitting: 'Clonazione…',
+    success: 'Layout clonato: ora puoi continuare a modificarlo.',
+    error: 'Impossibile clonare il layout. Riprova.',
+  },
   editor: {
     addBlock: 'Aggiungi blocco',
     removeBlock: 'Rimuovi blocco',
