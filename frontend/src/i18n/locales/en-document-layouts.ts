@@ -42,6 +42,14 @@ export const documentLayouts = {
   },
   form: {
     newDocumentLayout: 'New layout',
+    createTitle: 'New layout',
+    createSubtitle: 'Fill in the details and the content, then save: the layout is then edited directly from its record.',
+    leaveConfirm: {
+      title: 'Leave without saving?',
+      description: 'The layout has not been created yet: what you entered will be lost.',
+      confirm: 'Leave without saving',
+      cancel: 'Keep editing',
+    },
     tabs: { details: 'Details', content: 'Content' },
     sections: {
       identity: {
@@ -207,7 +215,12 @@ export const documentLayouts = {
     },
     spacer: { height: 'Height (pt)' },
     pageBreak: { description: 'Forces a new page here. No properties to configure.' },
-    preview: { missingImage: 'Missing image', pageBreak: 'Page break', untitledColumn: 'Untitled column' },
+    preview: {
+      sheet: 'A4 preview',
+      missingImage: 'Missing image',
+      pageBreak: 'Page break',
+      untitledColumn: 'Untitled column',
+    },
     variables: {
       title: 'Variables',
       searchPlaceholder: 'Search variables…',

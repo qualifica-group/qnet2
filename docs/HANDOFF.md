@@ -20,6 +20,15 @@
 - Manuale: guida in-app `document-layouts` IT/EN e manuale Claude Docs (sezione Layout, dopo la nota sul pannello
   Pagina): paragrafo sull'anteprima a piu' fogli.
 
+## Layout documenti: traduzioni mancanti nel form di creazione — VERDE, COMMITTATO (2026-10-30)
+
+- `documentLayouts.form.createTitle`/`createSubtitle`/`leaveConfirm.{title,description,confirm,cancel}` erano usate
+  (`document-layout-form-body.tsx`, `document-layout-screens.tsx`) ma assenti in IT ed EN: a schermo la chiave grezza.
+  Aggiunte in `{it,en}-document-layouts.ts` col wording degli altri moduli. `aria-label` "A4 preview" hardcoded in
+  `preview-sheet.tsx` -> `documentLayouts.editor.preview.sheet` (anche in `editor-i18n-fixture.ts`).
+- Vitest document-layouts + i18n + help 545/545. `tsc -b --force` rosso solo per `waitFor` inutilizzato in
+  `document-layout-clone-dialog.test.tsx` (lavoro clone spec 0339, non toccato). Manuale: nessun impatto.
+
 ## Immagini dei layout sparite in produzione: comando di ripristino — VERDE, NON COMMITTATO (2026-10-30)
 
 - Causa: il DB di produzione e' un dump importato da un'altra macchina senza `storage/app/private/attachments/`:

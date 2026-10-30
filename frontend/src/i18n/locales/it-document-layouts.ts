@@ -44,6 +44,14 @@ export const documentLayouts = {
   },
   form: {
     newDocumentLayout: 'Nuovo layout',
+    createTitle: 'Nuovo layout',
+    createSubtitle: 'Compila i dettagli e il contenuto, poi salva: il layout si modifica poi direttamente dalla scheda.',
+    leaveConfirm: {
+      title: 'Uscire senza salvare?',
+      description: 'Il layout non è ancora stato creato: i dati inseriti andranno persi.',
+      confirm: 'Esci senza salvare',
+      cancel: 'Continua a compilare',
+    },
     tabs: { details: 'Dettagli', content: 'Contenuto' },
     sections: {
       identity: {
@@ -209,7 +217,12 @@ export const documentLayouts = {
     },
     spacer: { height: 'Altezza (pt)' },
     pageBreak: { description: 'Forza una nuova pagina in questo punto. Nessuna proprietà da configurare.' },
-    preview: { missingImage: 'Immagine mancante', pageBreak: 'Interruzione di pagina', untitledColumn: 'Colonna senza titolo' },
+    preview: {
+      sheet: 'Anteprima A4',
+      missingImage: 'Immagine mancante',
+      pageBreak: 'Interruzione di pagina',
+      untitledColumn: 'Colonna senza titolo',
+    },
     variables: {
       title: 'Variabili',
       searchPlaceholder: 'Cerca variabili…',

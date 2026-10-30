@@ -142,7 +142,7 @@ export const documentLayoutsEditorEn = {
     },
     spacer: { height: 'Height (pt)' },
     pageBreak: { description: 'Forces a new page here. No properties to configure.' },
-    preview: { missingImage: 'Missing image', pageBreak: 'Page break', untitledColumn: 'Untitled column' },
+    preview: { sheet: 'A4 preview', missingImage: 'Missing image', pageBreak: 'Page break', untitledColumn: 'Untitled column' },
     variables: {
       title: 'Variables',
       searchPlaceholder: 'Search variables…',
