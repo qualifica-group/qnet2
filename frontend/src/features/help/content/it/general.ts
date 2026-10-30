@@ -101,6 +101,7 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: 'Premi **Salva modifiche**. **Ripristina default** riporta tutti i moduli alla pagina singola.' },
         { type: 'paragraph', text: 'Accanto ai campi di scelta collegati a un modulo di QNet (anagrafiche, referenti, prodotti, aliquote IVA, metodi di pagamento, unità di misura, task, commesse, opportunità e così via) c’è un pulsante **+**, utile se il valore che cerchi non esiste ancora:' },
         { type: 'steps', items: ['Premi **+** accanto al campo.', 'Compila la finestra di creazione.', 'Salva: il nuovo valore viene inserito subito nel campo.'] },
+        { type: 'tip', text: 'Se un salvataggio non riesce, in cima allo schermo compare l’avviso **Impossibile salvare** con i motivi, per esempio "Questa anagrafica ha già un’opportunità aperta" (fino a quattro, poi "…e altri N errori"). Lo vedi anche se il campo interessato è più in alto o in un’altra sezione; il messaggio resta comunque sotto il campo da correggere.' },
         { type: 'note', text: 'Il pulsante compare solo se puoi creare quel tipo di record. Non compare nei filtri degli elenchi, dentro una finestra di creazione rapida già aperta e sui campi delle righe di fatture, offerte e costi che ricavano prezzo o aliquota dal valore scelto (prodotto, aliquota IVA): lì crea il record dal suo modulo e poi sceglilo.' },
       ],
     },

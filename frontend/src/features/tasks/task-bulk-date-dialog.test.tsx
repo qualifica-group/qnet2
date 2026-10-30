@@ -131,6 +131,11 @@ describe.each([
     fireEvent.click(screen.getByRole('button', { name: label('tasks.bulk.dateDialog.confirm') }))
 
     expect(await screen.findByText('La data non è valida.')).toBeInTheDocument()
-    expect(toast.error).not.toHaveBeenCalled()
+    // User directive 2026-10-30: the field-scoped 422 is also raised in the foreground, never the bulk generic toast.
+    expect(toast.error).toHaveBeenCalledTimes(1)
+    expect(toast.error).toHaveBeenCalledWith(
+      label('common.formErrors.title'),
+      expect.objectContaining({ description: 'La data non è valida.' }),
+    )
   })
 })

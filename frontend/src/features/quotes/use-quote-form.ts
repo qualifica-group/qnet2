@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useFormSubmitError } from '@/features/auth/use-form-submit-error'
 import { useForm, useWatch } from 'react-hook-form'
 import type { Path, Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -83,7 +84,7 @@ export function useQuoteForm({ mode, onSuccess, initialCode }: UseQuoteFormArgs)
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const confirm = useConfirm()
-  const [serverError, setServerError] = useState<string | null>(null)
+  const [serverError, setServerError] = useFormSubmitError()
   const isEdit = mode.type === 'edit'
   const original = mode.type === 'edit' ? mode.quote : null
 

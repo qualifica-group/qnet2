@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useFormSubmitError } from '@/features/auth/use-form-submit-error'
 import { useForm, useWatch } from 'react-hook-form'
 import type { Path, Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -68,7 +69,7 @@ export function useTaskForm({ mode, onSuccess }: UseTaskFormArgs) {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const { field: fieldPermission } = useResourcePermissions()
-  const [serverError, setServerError] = useState<string | null>(null)
+  const [serverError, setServerError] = useFormSubmitError()
 
   const isEdit = mode.type === 'edit'
   // Spec 0120 D-12: `recurrence` is ONE protected field gating the whole

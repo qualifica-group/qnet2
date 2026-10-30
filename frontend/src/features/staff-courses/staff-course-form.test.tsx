@@ -15,7 +15,7 @@ vi.mock('@/features/staff-courses/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/staff-courses/api')>()),
   createStaffCourse: (...args: unknown[]) => createMock(...args),
 }))
-vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const PERMISSIONS: ResourcePermissions = {
   resource: { view: true, create: true, update: true, delete: true, export: true, import: true },

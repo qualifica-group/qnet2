@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
+import { useFormSubmitError } from '@/features/auth/use-form-submit-error'
 import { managerSlotsFromRefs, padManagerSlots } from '@/lib/utils'
 import { useForm, useWatch } from 'react-hook-form'
 import type { Path, Resolver } from 'react-hook-form'
@@ -115,7 +116,7 @@ interface UseWorkOrderFormArgs {
 export function useWorkOrderForm({ mode, onSuccess, initialCode }: UseWorkOrderFormArgs) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const [serverError, setServerError] = useState<string | null>(null)
+  const [serverError, setServerError] = useFormSubmitError()
 
   const isEdit = mode.type === 'edit'
 

@@ -29,6 +29,12 @@ export const common = {
   forbidden: 'Non hai i permessi per questa operazione.',
   /** 403 with a missing permission: ability and module are the permission's localized labels. */
   missingPermission: 'Non hai il permesso «{{ability}}» sul modulo «{{module}}».',
+  /** Title of the toast `notifyFormErrors` raises for a refused save (every form): the reasons follow it. */
+  formErrors: {
+    title: 'Impossibile salvare',
+    more_one: '…e un altro errore',
+    more_other: '…e altri {{count}} errori',
+  },
   /** Final state of a record fetch answered 404/403 (`DetailError`, `RecordUnavailable`): no retry. */
   recordUnavailable: {
     notFound: {

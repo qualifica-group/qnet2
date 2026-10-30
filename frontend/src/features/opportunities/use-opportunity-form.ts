@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useFormSubmitError } from '@/features/auth/use-form-submit-error'
 import axios from 'axios'
 import { useForm } from 'react-hook-form'
 import type { Path } from 'react-hook-form'
@@ -6,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { applyServerValidationErrors, notifyFormErrors } from '@/features/auth/form-errors'
 import { apiErrorMessage } from '@/lib/forbidden-message'
 import { forSelectKeys } from '@/features/for-select/query-keys'
 import { useInvalidateModuleStats } from '@/features/stats/use-invalidate-module-stats'
@@ -169,7 +170,7 @@ export function useOpportunityFormSubmit({
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const invalidateStats = useInvalidateModuleStats(OPPORTUNITIES_DOMAIN)
-  const [serverError, setServerError] = useState<string | null>(null)
+  const [serverError, setServerError] = useFormSubmitError()
   const [blockingOpportunity, setBlockingOpportunity] = useState<BlockingOpportunity | null>(null)
 
   // The opportunity for-select `meta` is what a new Offerta copies its roles
@@ -214,6 +215,7 @@ export function useOpportunityFormSubmit({
 
       if (blocking !== null) {
         setBlockingOpportunity(blocking)
+        notifyFormErrors([blocking.message])
 
         return
       }

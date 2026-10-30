@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useFormSubmitError } from '@/features/auth/use-form-submit-error'
 import { useForm, useWatch } from 'react-hook-form'
 import type { Path, Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -99,7 +100,7 @@ function collectPrefixedServerErrors(error: unknown, prefixes: string[]): string
  */
 export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
   const { t, i18n } = useTranslation()
-  const [serverError, setServerError] = useState<string | null>(null)
+  const [serverError, setServerError] = useFormSubmitError()
   // Bumped on every refused save so the buffered identity card marks its own
   // missing fields (it takes no part in this form's submit).
   const [revalidateSignal, setRevalidateSignal] = useState(0)

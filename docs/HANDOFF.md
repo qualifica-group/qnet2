@@ -3,6 +3,41 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Errori di salvataggio sempre in primo piano, tutti i form — VERDE, NON COMMITTATO (2026-10-30)
+
+- Direttiva utente 2026-10-30: un salvataggio rifiutato deve essere ESPLICITO, mai solo sotto un campo fuori vista.
+- `features/auth/form-errors.ts`: `notifyFormErrors(messages)` = un toast `sonner` "Impossibile salvare" (id fisso
+  `form-errors`: un nuovo invio lo sostituisce), motivi distinti, max 4 + "…e altri N errori", 10 s.
+  `applyServerValidationErrors` lo chiama su OGNI 422 gestito (tutte le chiavi, anche quelle senza campo; senza
+  `errors` usa `message`): copre i ~110 form che usano l'helper. Non-422: resta del chiamante.
+- `features/auth/use-form-submit-error.ts`: `useFormSubmitError()` sostituisce `useState` per `serverError` nei 14
+  form a pagina intera (opportunita', offerte, anagrafiche, referenti, sedi, utenti, lead, progetti, campagne,
+  prodotti, categorie prodotto, commesse, task, richiesta): banner in testata + toast. `{ notify: false }` per un
+  banner derivato da un 422 gia' toastato (dati personali, linee prodotto), altrimenti la lista verrebbe sostituita.
+- Opportunita': il rifiuto "anagrafica con opportunita' aperta" (bypassa l'helper) chiama `notifyFormErrors`.
+- Ferie: tolto il toast dedicato su `user_id` (doppione del toast condiviso).
+- REQUIREMENT CHANGED nei test: `task-bulk-date-dialog`, `task-bulk-priority-dialog`, `task-request-update-dialog`
+  affermavano "nessun toast su 422 di campo" -> ora attendono il toast condiviso; `staff-course-form` mock sonner
+  senza `error`. Nuovo `form-errors.notify.test.ts`.
+- Verifica: Vitest completo 9578/9578;
+  `tsc -b --force` pulito; ESLint pulito sui file toccati. Guida in-app `general` IT/EN (tip in
+  `opening-records-and-quick-create`) + manuale Claude Docs (sottosezione "Se il salvataggio non riesce"); PDF da
+  rigenerare.
+- Non coperto (prossimo passo): errori di validazione CLIENT (Zod) nei form a pagina intera senza toast;
+  `apiErrorMessage` ignora il `message` del server su 4xx diversi da 403/422.
+
+## ISO: campo "Altro" testo libero + seeder mirato per la produzione — VERDE, COMMITTATO (2026-10-30)
+
+- `IsoCatalogue`: nuovo campo Offerta `iso_other_standard` ("Altro", `text`), nella sezione `iso-standards`
+  accanto a "Parità di genere + 30415". Non apre blocchi (nessun `visible_when` lo nomina).
+- `QualificaIsoQuoteFormSeeder` (NON in `QualificaProductionDataSeeder`): per installazioni gia' seedate,
+  `php artisan db:seed --class=QualificaIsoQuoteFormSeeder --force`. Campi additivi + form Offerta della radice
+  "ISO" RISCRITTO comunque (una modifica a mano del form ISO si perde; i valori delle offerte restano). Serve perche'
+  `QualificaQuoteLayoutSeeder` non sovrascrive un form gia' configurato.
+- Test: `QualificaIsoCatalogueTest` 9/9 (nuovo caso del seeder mirato; atteso di `iso-standards` aggiornato =
+  REQUIREMENT CHANGED), `QualificaQuoteLayoutSeederTest` 5/5, `QualificaProductionDataSeederTest` 3/3; Pint pulito.
+  Seeder NON eseguito sul DB dev (vincolo utente). Manuale: il form ISO non vi e' descritto, nessun passaggio da toccare.
+
 ## Fonte spostata dall'Opportunita' all'Offerta (spec 0332) — VERDE, NON COMMITTATO (2026-10-30)
 
 - Decisioni utente: Fonte solo su `quotes.source_id` (FK sources nullOnDelete); `opportunities.source_id` eliminata;
@@ -28,18 +63,6 @@
   request-management, quote-workflows, leads) e manuale Claude Docs aggiornati; PDF da rigenerare.
 - Al commit: nel working tree ci sono anche modifiche di altre sessioni (contratti "Valida", catalogo ISO, refactor
   `features/auth/form-errors` e `use-*-form-submit`): committare solo i file della 0332.
-
-## ISO: campo "Altro" testo libero + seeder mirato per la produzione — VERDE, COMMITTATO (2026-10-30)
-
-- `IsoCatalogue`: nuovo campo Offerta `iso_other_standard` ("Altro", `text`), nella sezione `iso-standards`
-  accanto a "Parità di genere + 30415". Non apre blocchi (nessun `visible_when` lo nomina).
-- `QualificaIsoQuoteFormSeeder` (NON in `QualificaProductionDataSeeder`): per installazioni gia' seedate,
-  `php artisan db:seed --class=QualificaIsoQuoteFormSeeder --force`. Campi additivi + form Offerta della radice
-  "ISO" RISCRITTO comunque (una modifica a mano del form ISO si perde; i valori delle offerte restano). Serve perche'
-  `QualificaQuoteLayoutSeeder` non sovrascrive un form gia' configurato.
-- Test: `QualificaIsoCatalogueTest` 9/9 (nuovo caso del seeder mirato; atteso di `iso-standards` aggiornato =
-  REQUIREMENT CHANGED), `QualificaQuoteLayoutSeederTest` 5/5, `QualificaProductionDataSeederTest` 3/3; Pint pulito.
-  Seeder NON eseguito sul DB dev (vincolo utente). Manuale: il form ISO non vi e' descritto, nessun passaggio da toccare.
 
 ## Contratti: "Valida" solo se mai validato — VERDE, NON COMMITTATO (2026-10-30)
 

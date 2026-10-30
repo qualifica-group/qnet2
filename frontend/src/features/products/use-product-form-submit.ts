@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useFormSubmitError } from '@/features/auth/use-form-submit-error'
 import type { Path } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -59,7 +59,7 @@ export function useProductFormSubmit({ state, mode, suggestedCode, onSuccess }: 
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const invalidateStats = useInvalidateModuleStats(PRODUCTS_DOMAIN)
-  const [serverError, setServerError] = useState<string | null>(null)
+  const [serverError, setServerError] = useFormSubmitError()
   const { form, productAttributes, customFieldErrorPaths } = state
 
   const onSubmit = async (values: ProductFormValues) => {

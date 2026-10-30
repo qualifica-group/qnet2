@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useFormSubmitError } from '@/features/auth/use-form-submit-error'
 import type { Path, UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -37,7 +37,7 @@ interface UseLeadFormSubmitArgs {
 export function useLeadFormSubmit({ form, mode, onSuccess }: UseLeadFormSubmitArgs) {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
-  const [serverError, setServerError] = useState<string | null>(null)
+  const [serverError, setServerError] = useFormSubmitError()
 
   const onSubmit = async (values: LeadFormValues) => {
     setServerError(null)

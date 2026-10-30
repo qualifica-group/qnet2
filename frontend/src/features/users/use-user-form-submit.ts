@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useFormSubmitError } from '@/features/auth/use-form-submit-error'
 import type { Path, UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -68,7 +69,7 @@ export function useUserFormSubmit({
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const personalDataFieldPermission = usePersonalDataFieldPermission()
-  const [serverError, setServerError] = useState<string | null>(null)
+  const [serverError, setServerError] = useFormSubmitError()
   const [revalidateSignal, setRevalidateSignal] = useState(0)
   const [blockedSection, setBlockedSection] = useState<BlockedSection | null>(null)
 
@@ -154,7 +155,7 @@ export function useUserFormSubmit({
     }
     const personalDataMessage = personalDataServerErrorMessage(error)
     if (personalDataMessage) {
-      setServerError(personalDataMessage)
+      setServerError(personalDataMessage, { notify: false })
     } else if (!mappedScalar && !productLinesMessage && !reportsToMessage && !membershipMessage && !managedMessage) {
       setServerError(t('users.form.genericError'))
     }

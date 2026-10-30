@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useFormSubmitError } from '@/features/auth/use-form-submit-error'
 import type { Path, UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -83,7 +83,7 @@ export function useCampaignFormSubmit({
 }: UseCampaignFormSubmitArgs) {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
-  const [serverError, setServerError] = useState<string | null>(null)
+  const [serverError, setServerError] = useFormSubmitError()
 
   const onSubmit = async (values: CampaignFormValues) => {
     setServerError(null)
@@ -110,7 +110,7 @@ export function useCampaignFormSubmit({
       ])
       const productLinesMessage = collectPrefixedServerErrors(error, PRODUCT_LINES_ERROR_PREFIXES)
       if (productLinesMessage) {
-        setServerError(productLinesMessage)
+        setServerError(productLinesMessage, { notify: false })
       } else if (!mappedScalar) {
         setServerError(apiErrorMessage(error, t('campaigns.form.genericError'), i18n))
       }

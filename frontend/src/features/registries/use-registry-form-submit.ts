@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useFormSubmitError } from '@/features/auth/use-form-submit-error'
 import type { Path, UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -88,7 +89,7 @@ export function useRegistryFormSubmit({
   const queryClient = useQueryClient()
   const invalidateStats = useInvalidateModuleStats(REGISTRIES_DOMAIN)
   const personalDataFieldPermission = usePersonalDataFieldPermission()
-  const [serverError, setServerError] = useState<string | null>(null)
+  const [serverError, setServerError] = useFormSubmitError()
   // Bumped on every refused save so the buffered card marks its own missing
   // fields (it takes no part in this form's submit — see PersonalDataCardForm).
   const [revalidateSignal, setRevalidateSignal] = useState(0)
@@ -171,7 +172,7 @@ export function useRegistryFormSubmit({
       ])
       const personalDataMessage = personalDataServerErrorMessage(error)
       if (personalDataMessage) {
-        setServerError(personalDataMessage)
+        setServerError(personalDataMessage, { notify: false })
       } else if (!mappedScalar) {
         setServerError(apiErrorMessage(error, t('registries.form.genericError'), i18n))
       }
