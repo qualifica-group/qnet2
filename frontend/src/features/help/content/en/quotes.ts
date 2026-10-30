@@ -68,7 +68,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'There is no separate edit page: a quote is edited **straight from its detail**, one field at a time, including the **Additional information** (each flexible field has its own row) and the **Offer** and **Costs** rows.',
+          text: 'There is no separate edit page: a quote is edited **straight from its detail**, one field at a time, including the **Additional information** (each flexible field has its own row) and the **Offer** and **Costs** rows. Clicking the **Additional information** title collapses or reopens the section: the choice is kept in the browser and applies to every quote, on the detail and on the create form.',
         },
         {
           type: 'steps',

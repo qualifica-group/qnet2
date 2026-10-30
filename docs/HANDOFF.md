@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## "Informazioni aggiuntive" collassabili in Offerte e Commesse — VERDE, COMMITTATO (2026-10-30)
+
+- Decisioni utente: solo Offerte e Commesse (Opportunita' e Contratti non hanno attributi: `AttributeContext` =
+  product/quote/work_order); stato aperto/chiuso nel browser, uno per modulo, condiviso da dettaglio e creazione.
+- `RecordSection` (`components/detail/record-panel.tsx`) ha `collapsible`/`open`/`onOpenChange` (titolo = trigger
+  con chevron, contenuto in `CollapsibleContent` con `form-section-collapsible-content`); senza `collapsible` markup
+  invariato.
+- `features/attributes/additional-information-section.tsx`: `AdditionalInformationSection` (+ `usePersistedOpen`
+  interno). Chiavi localStorage `quotes.additional-information` / `work-orders.additional-information`
+  (`QUOTE_/WORK_ORDER_ADDITIONAL_INFORMATION_STORAGE_KEY`), valore `closed`, assente = aperta. Usata da
+  `QuoteAttributesSection`, `WorkOrderAttributesSection` e dai rami "caricamento" dei due form di creazione.
+- Guide in-app IT/EN quotes + work-orders aggiornate; manuale Claude Docs: paragrafo dopo la tabella "Stesse
+  sezioni, stesso posto".
+- Verifica: Vitest attributes/quotes/work-orders/components/detail/help verdi, ESLint pulito, `tsc -b --force` EXIT=0.
+
 ## Board Task commessa: "Seleziona tutti" per fase e globale — VERDE, COMMITTATO (2026-10-30)
 
 - Richiesta utente: nel dettaglio commessa, checkbox che seleziona tutti i task per fase e per tutto. Solo frontend,

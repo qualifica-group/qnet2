@@ -68,7 +68,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Non esiste una pagina di modifica separata: l'offerta si modifica **direttamente dal suo dettaglio**, un campo alla volta, comprese le **Informazioni aggiuntive** (ogni campo flessibile ha la sua riga) e le righe **Offerta** e **Costi**.",
+          text: "Non esiste una pagina di modifica separata: l'offerta si modifica **direttamente dal suo dettaglio**, un campo alla volta, comprese le **Informazioni aggiuntive** (ogni campo flessibile ha la sua riga) e le righe **Offerta** e **Costi**. Cliccando il titolo **Informazioni aggiuntive** la sezione si chiude o si riapre: la scelta resta salvata nel browser e vale per tutte le offerte, nel dettaglio e nella creazione.",
         },
         {
           type: 'steps',

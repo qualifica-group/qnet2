@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: 'There is no separate edit page: a work order is edited **directly from its detail**, one field at a time, **Additional information** included (every flexible field has its own row). A section tied to a yes/no field appears only while the field is on: switching it off clears the values of the section.',
+          text: 'There is no separate edit page: a work order is edited **directly from its detail**, one field at a time, **Additional information** included (every flexible field has its own row). A section tied to a yes/no field appears only while the field is on: switching it off clears the values of the section. Clicking the **Additional information** title collapses or reopens the section: the choice is kept in the browser and applies to every work order, on the detail and on the create form.',
         },
         {
           type: 'steps',

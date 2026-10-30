@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { LegacyIdBadge } from '@/components/detail/legacy-id-badge'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { cn } from '@/lib/utils'
 
 /**
@@ -110,21 +112,72 @@ interface RecordSectionProps {
   full?: boolean
   children: ReactNode
   className?: string
+  /** When true, the title becomes a toggle collapsing the body (controlled through `open`/`onOpenChange`). */
+  collapsible?: boolean
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
+const SECTION_HEADING_CLASS =
+  'flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase [&>svg]:size-3.5'
+
 /** A titled group inside `RecordSectionsGrid`; micro-heading mirrors `DetailSection`'s so the two kits read as one family. */
-export function RecordSection({ title, icon, action, full, children, className }: RecordSectionProps) {
+export function RecordSection({
+  title,
+  icon,
+  action,
+  full,
+  children,
+  className,
+  collapsible = false,
+  open,
+  onOpenChange,
+}: RecordSectionProps) {
+  const sectionClassName = cn('flex min-w-0 flex-col gap-3', full && '@2xl:col-span-2', className)
+
+  if (!collapsible) {
+    return (
+      <section className={sectionClassName}>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className={SECTION_HEADING_CLASS}>
+            {icon}
+            {title}
+          </h3>
+          {action}
+        </div>
+        {children}
+      </section>
+    )
+  }
+
   return (
-    <section className={cn('flex min-w-0 flex-col gap-3', full && '@2xl:col-span-2', className)}>
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="flex items-center gap-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase [&>svg]:size-3.5">
-          {icon}
-          {title}
-        </h3>
-        {action}
-      </div>
-      {children}
-    </section>
+    <Collapsible open={open} onOpenChange={onOpenChange} asChild>
+      <section className={sectionClassName}>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="min-w-0">
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  SECTION_HEADING_CLASS,
+                  'group rounded-sm outline-none transition-colors hover:text-foreground focus-visible:ring-[2px] focus-visible:ring-ring/50',
+                )}
+              >
+                {icon}
+                {title}
+                <ChevronDown
+                  className="transition-transform motion-safe:duration-200 group-data-[state=open]:rotate-180"
+                  aria-hidden="true"
+                />
+              </button>
+            </CollapsibleTrigger>
+          </h3>
+          {action}
+        </div>
+        {/* The negative margin + padding pair keeps the fields' focus rings inside the clipping box. */}
+        <CollapsibleContent className="form-section-collapsible-content -m-1 p-1">{children}</CollapsibleContent>
+      </section>
+    </Collapsible>
   )
 }
 

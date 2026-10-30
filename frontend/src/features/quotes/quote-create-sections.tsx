@@ -1,9 +1,14 @@
 import { useTranslation } from 'react-i18next'
 import { useWatch } from 'react-hook-form'
 import { Loader2, SlidersHorizontal } from 'lucide-react'
-import { RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
+import { RecordSectionsGrid } from '@/components/detail/record-panel'
 import type { InlineEdit } from '@/components/record-form/record-inline-field'
-import { QuoteAttributesBand, QuoteAttributesSection } from '@/features/quotes/quote-attributes-section'
+import { AdditionalInformationSection } from '@/features/attributes/additional-information-section'
+import {
+  QUOTE_ADDITIONAL_INFORMATION_STORAGE_KEY,
+  QuoteAttributesBand,
+  QuoteAttributesSection,
+} from '@/features/quotes/quote-attributes-section'
 import { QuoteCompanySection, QuoteDocumentSection } from '@/features/quotes/quote-record-company'
 import { QuoteContextSection } from '@/features/quotes/quote-record-context'
 import { QuoteIdentitySection, QuoteInternalNotesRow } from '@/features/quotes/quote-record-identity'
@@ -132,12 +137,16 @@ export function QuoteCreateAttributes({ quoteForm, draft }: QuoteCreateAttribute
   return (
     <QuoteAttributesBand>
       {loading ? (
-        <RecordSection title={t('quotes.detail.additionalInformation')} icon={<SlidersHorizontal />}>
+        <AdditionalInformationSection
+          storageKey={QUOTE_ADDITIONAL_INFORMATION_STORAGE_KEY}
+          title={t('quotes.detail.additionalInformation')}
+          icon={<SlidersHorizontal />}
+        >
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
             {t('common.loading')}
           </p>
-        </RecordSection>
+        </AdditionalInformationSection>
       ) : (
         <QuoteAttributesSection
           attributes={attributeContext.applicable_attributes}

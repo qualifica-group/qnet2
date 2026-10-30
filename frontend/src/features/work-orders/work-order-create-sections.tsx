@@ -5,10 +5,14 @@ import { Boxes, Loader2, SlidersHorizontal } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
 import { RecordFieldList, RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
 import { RecordInlineField, type InlineEdit } from '@/components/record-form/record-inline-field'
+import { AdditionalInformationSection } from '@/features/attributes/additional-information-section'
 import { useForSelectLabels } from '@/features/for-select/use-for-select'
 import { TASK_TEMPLATES_FOR_SELECT_RESOURCE } from '@/features/task-templates/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
-import { WorkOrderAttributesSection } from '@/features/work-orders/work-order-attributes-section'
+import {
+  WORK_ORDER_ADDITIONAL_INFORMATION_STORAGE_KEY,
+  WorkOrderAttributesSection,
+} from '@/features/work-orders/work-order-attributes-section'
 import { QUOTE_OFFER_LINES_FOR_SELECT_RESOURCE } from '@/features/work-orders/work-order-quote-lines-field'
 import { WorkOrderIdentitySection, WorkOrderInternalNotesRow } from '@/features/work-orders/work-order-record-identity'
 import { WorkOrderTeamSection } from '@/features/work-orders/work-order-record-team'
@@ -165,7 +169,8 @@ export function WorkOrderCreateSections({ workOrderForm, draft, registryId = nul
       <WorkOrderOfferSection workOrderForm={workOrderForm} draft={draft} registryId={registryId} />
 
       {attributesLoading ? (
-        <RecordSection
+        <AdditionalInformationSection
+          storageKey={WORK_ORDER_ADDITIONAL_INFORMATION_STORAGE_KEY}
           title={t('workOrders.detail.additionalInformation')}
           icon={<SlidersHorizontal />}
           className={FULL_WIDTH_SECTION_CLASS}
@@ -174,7 +179,7 @@ export function WorkOrderCreateSections({ workOrderForm, draft, registryId = nul
             <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
             {t('common.loading')}
           </p>
-        </RecordSection>
+        </AdditionalInformationSection>
       ) : (
         <WorkOrderAttributesSection
           attributes={attributeContext.applicable_attributes}
