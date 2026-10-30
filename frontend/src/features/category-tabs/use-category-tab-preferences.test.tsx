@@ -4,14 +4,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
 import i18n from '@/i18n'
-import { useCategoryTabPreferences } from '@/features/request-management/use-category-tab-preferences'
-import { fetchCategoryTabPreferences, saveCategoryTabPreferences } from '@/features/request-management/api'
+import { useCategoryTabPreferences } from '@/features/category-tabs/use-category-tab-preferences'
+import { fetchCategoryTabPreferences, saveCategoryTabPreferences } from '@/features/category-tabs/api'
 
-vi.mock('@/features/request-management/api', () => ({
+vi.mock('@/features/category-tabs/api', () => ({
   fetchCategoryTabPreferences: vi.fn(),
   saveCategoryTabPreferences: vi.fn(),
 }))
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
+
+const SOURCE = { key: 'request-management', apiBasePath: '/request-management' }
 
 const fetchMock = vi.mocked(fetchCategoryTabPreferences)
 const saveMock = vi.mocked(saveCategoryTabPreferences)
@@ -36,7 +38,7 @@ beforeEach(() => {
 describe('useCategoryTabPreferences (spec 0184)', () => {
   it('starts with no favorites before anything loads', () => {
     fetchMock.mockReturnValue(new Promise(() => {}))
-    const { result } = renderHook(() => useCategoryTabPreferences(), { wrapper: wrapper() })
+    const { result } = renderHook(() => useCategoryTabPreferences(SOURCE), { wrapper: wrapper() })
 
     expect(result.current.preferences).toEqual({
       favorite_category_ids: [],
@@ -48,7 +50,7 @@ describe('useCategoryTabPreferences (spec 0184)', () => {
   it('adds and removes a favorite optimistically, sending the whole preference (AC-010)', async () => {
     fetchMock.mockResolvedValue({ favorite_category_ids: [3], show_only_favorites: true, is_default: false })
     saveMock.mockImplementation(async (_basePath, next) => ({ ...next, is_default: false }))
-    const { result } = renderHook(() => useCategoryTabPreferences(), { wrapper: wrapper() })
+    const { result } = renderHook(() => useCategoryTabPreferences(SOURCE), { wrapper: wrapper() })
     await waitFor(() => expect(result.current.preferences.favorite_category_ids).toEqual([3]))
 
     act(() => result.current.toggleFavorite(7))
@@ -65,7 +67,7 @@ describe('useCategoryTabPreferences (spec 0184)', () => {
   it('restores the previous state and warns when the save fails (AC-010)', async () => {
     fetchMock.mockResolvedValue({ favorite_category_ids: [3], show_only_favorites: false, is_default: false })
     saveMock.mockRejectedValue(new Error('network'))
-    const { result } = renderHook(() => useCategoryTabPreferences(), { wrapper: wrapper() })
+    const { result } = renderHook(() => useCategoryTabPreferences(SOURCE), { wrapper: wrapper() })
     await waitFor(() => expect(result.current.preferences.favorite_category_ids).toEqual([3]))
 
     act(() => result.current.setShowOnlyFavorites(true))
@@ -77,7 +79,7 @@ describe('useCategoryTabPreferences (spec 0184)', () => {
   it('toggling a star on competence defaults sends only the two saved fields and clears is_default (spec 0193 AC-008)', async () => {
     fetchMock.mockResolvedValue({ favorite_category_ids: [3, 5], show_only_favorites: true, is_default: true })
     saveMock.mockImplementation(async (_basePath, next) => ({ ...next, is_default: false }))
-    const { result } = renderHook(() => useCategoryTabPreferences(), { wrapper: wrapper() })
+    const { result } = renderHook(() => useCategoryTabPreferences(SOURCE), { wrapper: wrapper() })
     await waitFor(() => expect(result.current.preferences.is_default).toBe(true))
 
     act(() => result.current.toggleFavorite(5))

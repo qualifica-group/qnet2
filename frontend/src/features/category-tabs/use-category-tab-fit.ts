@@ -1,5 +1,5 @@
 import { useLayoutEffect, useState, type RefObject } from 'react'
-import { fitCategoryTabs } from '@/features/request-management/category-tab-fit'
+import { fitCategoryTabs } from '@/features/category-tabs/category-tab-fit'
 
 /** Only the id is measured: any strip of numerically keyed tabs can use the fit (the statistics tabs too, spec 0192). */
 type MeasuredCategory = { id: number }

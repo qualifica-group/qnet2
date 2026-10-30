@@ -2,8 +2,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import i18n from '@/i18n'
-import { RequestManagementCategoryTabs } from '@/features/request-management/request-management-category-tabs'
-import type { RequestManagementProductCategory } from '@/features/request-management/types'
+import { CategoryTabs } from '@/features/category-tabs/category-tabs'
+import type { CategoryTabItem } from '@/features/category-tabs/types'
 
 /**
  * Spec 0064 AC-019: "Tutte" always first, plus one trigger per Product
@@ -11,20 +11,20 @@ import type { RequestManagementProductCategory } from '@/features/request-manage
  * Spec 0184: favourites first, "only favourites" switch, star in the menu.
  */
 
-const CATEGORIES: RequestManagementProductCategory[] = [
-  { id: 12, name: 'GOL - Lombardia', requests_count: 128 },
-  { id: 7, name: 'Formazione', requests_count: 4 },
+const CATEGORIES: CategoryTabItem[] = [
+  { id: 12, name: 'GOL - Lombardia', count: 128 },
+  { id: 7, name: 'Formazione', count: 4 },
 ]
 
-const MANY: RequestManagementProductCategory[] = [
-  { id: 1, name: 'ISO 9001', requests_count: 10 },
-  { id: 2, name: 'ISO 14001', requests_count: 9 },
-  { id: 3, name: 'GOL - Lombardia', requests_count: 8 },
-  { id: 4, name: 'Formazione Città', requests_count: 7 },
-  { id: 5, name: 'Finanza agevolata', requests_count: 6 },
+const MANY: CategoryTabItem[] = [
+  { id: 1, name: 'ISO 9001', count: 10 },
+  { id: 2, name: 'ISO 14001', count: 9 },
+  { id: 3, name: 'GOL - Lombardia', count: 8 },
+  { id: 4, name: 'Formazione Città', count: 7 },
+  { id: 5, name: 'Finanza agevolata', count: 6 },
 ]
 
-type TabsProps = ComponentProps<typeof RequestManagementCategoryTabs>
+type TabsProps = ComponentProps<typeof CategoryTabs>
 
 function renderTabs(overrides: Partial<TabsProps> = {}) {
   const props: TabsProps = {
@@ -37,8 +37,8 @@ function renderTabs(overrides: Partial<TabsProps> = {}) {
     onShowOnlyFavoritesChange: vi.fn(),
     ...overrides,
   }
-  const { rerender } = render(<RequestManagementCategoryTabs {...props} />)
-  return { ...props, rerender: (next: Partial<TabsProps>) => rerender(<RequestManagementCategoryTabs {...props} {...next} />) }
+  const { rerender } = render(<CategoryTabs {...props} />)
+  return { ...props, rerender: (next: Partial<TabsProps>) => rerender(<CategoryTabs {...props} {...next} />) }
 }
 
 const inlineTabs = () => screen.getAllByRole('tab').map((tab) => tab.textContent)
@@ -48,7 +48,7 @@ beforeAll(async () => {
   await i18n.changeLanguage('en')
 })
 
-describe('RequestManagementCategoryTabs', () => {
+describe('CategoryTabs', () => {
   it('renders "All" first and selected by default, plus one tab per category with its count', () => {
     renderTabs()
 
@@ -91,7 +91,7 @@ describe('RequestManagementCategoryTabs', () => {
   })
 })
 
-describe('RequestManagementCategoryTabs favorites (spec 0184)', () => {
+describe('CategoryTabs favorites (spec 0184)', () => {
   it('shows the favorites before the other categories (AC-008)', () => {
     renderTabs({ categories: MANY, favoriteCategoryIds: [4, 2] })
 
@@ -172,7 +172,7 @@ describe('RequestManagementCategoryTabs favorites (spec 0184)', () => {
   })
 })
 
-describe('RequestManagementCategoryTabs competence default (spec 0193)', () => {
+describe('CategoryTabs competence default (spec 0193)', () => {
   it('shows "All" plus the default favorites and tells in the menu that they are suggested (AC-008)', () => {
     renderTabs({
       categories: MANY,
@@ -200,7 +200,7 @@ describe('RequestManagementCategoryTabs competence default (spec 0193)', () => {
  * at 100px and the strip at 400px — "All" plus two categories fit next to the
  * menu button, the other three fold into it.
  */
-describe('RequestManagementCategoryTabs overflow', () => {
+describe('CategoryTabs overflow', () => {
   beforeEach(() => {
     vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(100)
     vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(400)

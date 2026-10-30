@@ -13,7 +13,8 @@ import type { ForSelectItem } from '@/features/for-select/types'
 import type { RequestCreateFormValues } from '@/features/request-management/request-create-schema'
 import { useActiveCategoryManagerLabels } from '@/features/request-management/use-active-category-manager-labels'
 import { useRequestManagerLabels } from '@/features/request-management/use-request-manager-labels'
-import { useRequestManagementCategoryPreference } from '@/features/request-management/use-request-management-category-preference'
+import { useCategoryTabSelection } from '@/features/category-tabs/use-category-tab-selection'
+import { useRequestModule } from '@/features/request-management/request-module'
 
 /** Hoisted: a create form has no persisted pivot to hydrate the slot triggers from. */
 const EMPTY_SELECTED_ITEMS: ForSelectItem[] = []
@@ -78,7 +79,7 @@ export function RequestCreateTeamSection({
   onSlotItemChange,
 }: RequestCreateTeamSectionProps) {
   const { t } = useTranslation()
-  const { categoryId: activeCategoryId } = useRequestManagementCategoryPreference()
+  const { categoryId: activeCategoryId } = useCategoryTabSelection(useRequestModule().key)
   const { data: activeCategoryManagerLabels } = useActiveCategoryManagerLabels(activeCategoryId)
   const offerLines = useWatch({ control, name: 'offer_lines' })
   const productLines = useWatch({ control, name: 'product_lines' })

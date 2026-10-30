@@ -4,6 +4,7 @@ namespace App\Tables;
 
 use App\CustomFields\CustomFieldEntityRegistry;
 use App\RequestManagement\RequestModule;
+use App\Tables\Opportunities\OpportunityCategoryScopedTableDefinition;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\Registries\RegistryScopedTableDefinition;
 use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
@@ -39,6 +40,12 @@ class TableRegistry
      * table-framework one.
      */
     private const string WORK_ORDERS_DOMAIN = 'work-orders';
+
+    /**
+     * The only domain wrapped in `OpportunityCategoryScopedTableDefinition`
+     * (spec 0335), on top of its registry scope.
+     */
+    private const string OPPORTUNITIES_DOMAIN = 'opportunities';
 
     /**
      * Domains wrapped in `RegistryScopedTableDefinition` (spec 0199), each
@@ -82,7 +89,9 @@ class TableRegistry
         $definition = $this->wrapIfOpportunityScoped($domain, $definition);
         $definition = $this->wrapIfQuoteScoped($domain, $definition);
 
-        return $this->wrapIfRegistryScoped($domain, $definition);
+        $definition = $this->wrapIfRegistryScoped($domain, $definition);
+
+        return $this->wrapIfOpportunityCategoryScoped($domain, $definition);
     }
 
     /**
@@ -201,6 +210,25 @@ class TableRegistry
             'inner' => $definition,
             'registryColumn' => $column,
             'morphTypeColumn' => self::REGISTRY_SCOPE_MORPH_TYPE_COLUMNS[$domain] ?? null,
+        ]);
+
+        return $wrapped;
+    }
+
+    /**
+     * Wrap in `OpportunityCategoryScopedTableDefinition` (spec 0335) for
+     * `opportunities` only, OUTSIDE the registry decorator: it must be the
+     * outermost one, the one callers' `instanceof` checks see.
+     */
+    private function wrapIfOpportunityCategoryScoped(string $domain, TableDefinition $definition): TableDefinition
+    {
+        if ($domain !== self::OPPORTUNITIES_DOMAIN) {
+            return $definition;
+        }
+
+        /** @var OpportunityCategoryScopedTableDefinition $wrapped */
+        $wrapped = $this->container->make(OpportunityCategoryScopedTableDefinition::class, [
+            'inner' => $definition,
         ]);
 
         return $wrapped;

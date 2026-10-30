@@ -84,6 +84,28 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'category-tabs',
+      title: "Filtrare per categoria prodotto",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Sopra l'elenco trovi la barra delle categorie: la tab **Tutte** e una tab per ogni categoria prodotto presente, con il numero di opportunità. Cliccando una tab l'elenco mostra solo le opportunità di quella categoria. La scelta resta anche dopo aver ricaricato la pagina.",
+        },
+        {
+          type: 'paragraph',
+          text: "Un'opportunità compare nella tab di ogni categoria delle sue linee di prodotto (conta una volta sola anche se ha più linee della stessa categoria). Il numero accanto al nome è quante opportunità, tra quelle che puoi vedere, rientrano nella categoria.",
+        },
+        {
+          type: 'steps',
+          items: ["Se le tab non entrano nella riga, le altre finiscono nel menu **Altre**, dove puoi cercare una categoria per nome.","Clicca la **stellina** accanto a una categoria (nel menu) per aggiungerla alle **preferite**: le preferite compaiono per prime.","Attiva **Mostra solo preferite** per vedere in barra solo le preferite; le altre restano nel menu **Altre**."],
+        },
+        {
+          type: 'note',
+          text: "Le preferite sono separate per ogni elenco (Opportunità, Offerte, Gestione Richieste). La prima volta ti vengono proposte in base alle categorie per cui sei abilitato; appena usi la stellina diventano le tue. Il pannello delle statistiche e l'esportazione non seguono la tab: considerano sempre tutte le opportunità.",
+        },
+      ],
+    },
+    {
       id: 'list-editing',
       title: "Modifica rapida dall'elenco",
       blocks: [

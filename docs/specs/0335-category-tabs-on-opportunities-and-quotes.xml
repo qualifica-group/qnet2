@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0335-category-tabs-on-opportunities-and-quotes" status="draft" owner="utente" date="2026-10-30">
+
+  <goal>
+    Portare la barra delle tab per categoria di prodotto di Gestione Richieste ("Tutte | Categoria (N)",
+    menu "Altre", preferiti con stellina e "Mostra solo preferite") sopra le griglie Opportunita' e
+    Offerte, cosi' l'utente filtra le righe per categoria di prodotto anche li'.
+  </goal>
+
+  <context>
+    <!-- Fatti verificati nel codice (2026-10-30). -->
+    - Gestione Richieste (spec 0064, preferiti 0184, preferiti di default da competenza 0193):
+      frontend `features/request-management/request-management-category-tabs.tsx`
+      (`RequestManagementCategoryTabs`, presentazionale), `request-management-category-picker.tsx`,
+      `category-tab-fit.ts`, `use-category-tab-fit.ts`; hook legati al modulo via `useRequestModule()`:
+      `use-request-management-category-tab.ts`, `use-request-management-category-preference.ts`
+      (localStorage `${moduleKey}.category-tab`), `use-request-management-categories.ts`,
+      `use-category-tab-preferences.ts`; i18n `requestManagement.categoryTabs.*` (testi generici).
+    - Backend Gestione Richieste: `GET /api/{module}/product-categories` (`ProductCategoryTabsController`
+      -> `RequestCategoryTabsResolver`, cache `AggregateCache`), `GET|PUT /api/{module}/category-tab-preferences`
+      (`CategoryTabPreferencesController`, `UpdateCategoryTabPreferencesRequest`,
+      `ResolveDefaultCategoryTabPreference`, model `UserCategoryTabPreference`, tabella
+      `user_category_tab_preferences` con `module` string(40) e unique (user_id, module): NESSUNA migrazione serve).
+    - Scope di riga: `RequestManagementScopedTableDefinition::scopeToProductCategory()`; i chiamanti
+      (`TableController::scopeToProductCategory`, `TableRowsRequest`, `TableValuesRequest`) testano
+      `instanceof RequestManagementScopedTableDefinition`. Il frontend `TableView` gestisce gia'
+      `scope.productCategoryId` (config, righe, valori distinti, preferenze) per qualunque dominio.
+    - Composizione decoratori (`TableRegistry::resolve`): `quotes` -> outermost `OpportunityScopedTableDefinition`
+      (implementa `RegistryScopable`); `opportunities` -> outermost `RegistryScopedTableDefinition`
+      (generico, condiviso con `tasks`/`commission-configurations`). Lo scope deve stare sul decoratore
+      piu' esterno (stesso motivo documentato per `RegistryScopable`).
+    - Visibilita': `OpportunityVisibilityScope::scopeToActor()`, `QuoteVisibilityScope::scopeToActor()`
+      (usate da `baseQuery()` delle due griglie).
+    - Categoria di un'offerta (decisione utente 2026-10-30): le categorie dei prodotti sulle righe di
+      RICAVO dell'offerta: `quote_lines.line_type = 'REVENUE'` -> `products.category_id`.
+      Categoria di un'opportunita': `opportunity_product_lines.product_category_id`.
+    - `AggregateCache` + middleware `RecordActorWrite`: chi scrive rilegge conteggi esatti (spec 0178 D-4).
+    - Export (`CreateExportRequest`) non porta lo scope categoria neanche in Gestione Richieste.
+    - Il working tree contiene lavoro non committato della spec 0334 (richieste supporto IT) su
+      `it.ts`/`en.ts`, `routes/api.php` ecc.: le modifiche di questa spec si aggiungono senza toccarlo.
+  </context>
+
+  <decisions>
+    <decision id="D-1">Offerte: un'offerta compare nella tab di ogni categoria presente sulle sue righe di
+      ricavo (distinta: due righe della stessa categoria contano una volta). Offerta senza righe di ricavo:
+      solo in "Tutte". NON si applica il fallback sulle linee dell'Opportunita' usato da
+      `QuoteClassificationSource` (scelta utente).</decision>
+    <decision id="D-2">Opportunita': un'opportunita' compare nella tab di ogni categoria delle sue
+      `opportunity_product_lines` (distinta).</decision>
+    <decision id="D-3">Solo filtro righe + conteggio: nessuna colonna `attr.*`, nessuna rinomina Gestori
+      Account, config colonne/preferenze layout identiche su tutte le tab.</decision>
+    <decision id="D-4">Preferiti separati per griglia (`module` = `opportunities` | `quotes`), con default
+      dalle categorie di competenza dell'utente quando non ha mai salvato (stessa regola 0193).</decision>
+    <decision id="D-5">Pannello statistiche Opportunita' ed export NON seguono la tab (parita' con Gestione
+      Richieste per l'export).</decision>
+    <decision id="D-6">Conteggi tab = righe visibili all'attore nella griglia senza altri filtri: stessa
+      visibility scope della griglia, mai una regola parallela.</decision>
+    <decision id="D-7">I componenti della barra e i loro hook diventano condivisi in `features/category-tabs/`;
+      Gestione Richieste li consuma a parita' di comportamento (refactor senza cambi visibili).</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Backend: interfaccia `App\Tables\ProductCategoryScopable` (`scopeToProductCategory(?int)`), implementata da `RequestManagementScopedTableDefinition` (invariato), `OpportunityScopedTableDefinition` (quotes, D-1) e dal nuovo decoratore `App\Tables\Opportunities\OpportunityCategoryScopedTableDefinition` (outermost per `opportunities`, implementa anche `RegistryScopable` inoltrando all'interno, D-2).</item>
+      <item>Backend: `TableController`, `TableRowsRequest`, `TableValuesRequest` testano `instanceof ProductCategoryScopable` al posto della classe concreta; `scopeToAllProductCategories()` resta solo Gestione Richieste.</item>
+      <item>Backend: enum `App\Tables\CategoryTabs\CategoryTabGrid` (`Opportunities = 'opportunities'`, `Quotes = 'quotes'`; `ROUTE_DEFAULT`, `fromRequest()`, `permission()`).</item>
+      <item>Backend: `App\Services\CategoryTabs\GridCategoryTabsResolver::resolve(User, CategoryTabGrid)` (conteggi distinti in scope, cache `AggregateCache` per utente e griglia).</item>
+      <item>Backend: controller `App\Http\Controllers\CategoryTabs\GridCategoryTabsController` (invokable) e `GridCategoryTabPreferencesController` (show/update); logica preferenze condivisa con Gestione Richieste estratta in `App\Services\CategoryTabs\CategoryTabPreferenceStore`; `ResolveDefaultCategoryTabPreference` riceve gli id della barra invece del `RequestModule` (refactor a parita').</item>
+      <item>Backend: route in `routes/api/opportunities.php` e `routes/api/quotes.php`, dichiarate PRIMA dei wildcard `{opportunity}`/`{quote}`.</item>
+      <item>Frontend: nuova cartella `features/category-tabs/` con `category-tabs.tsx` (`CategoryTabs`), `category-tabs-picker.tsx`, `category-tab-fit.ts`, `use-category-tab-fit.ts`, `types.ts`, `api.ts`, `query-keys.ts`, `use-category-tab-strip.ts` (categorie + selezione persistita + preferiti, parametrizzato da `CategoryTabSource { key, apiBasePath }`); i file di Gestione Richieste spostati li' (con i loro test) e i suoi hook ridotti ad adattatori.</item>
+      <item>Frontend: i18n `requestManagement.categoryTabs.*` spostato in `categoryTabs.*` (nuovi `it-category-tabs.ts`/`en-category-tabs.ts`).</item>
+      <item>Frontend: `OpportunitiesTable` e `QuotesTable` montano `CategoryTabs` sopra `TableView` (key per selezione, `scope={{ productCategoryId }}`), barra rinfrescata dopo ogni mutazione della griglia.</item>
+      <item>Guide in-app IT+EN: nuova sezione `category-tabs` in `opportunities.ts` e `quotes.ts`; manuale Claude Docs: sezioni Opportunita' e Offerte.</item>
+    </in>
+    <out>
+      <item>Colonne attributo per categoria e rinomina Gestori Account su Opportunita'/Offerte (D-3).</item>
+      <item>Statistiche Opportunita' ed export filtrati per tab (D-5).</item>
+      <item>Barra sulla griglia Offerte annidata (master-detail nella riga Opportunita', sezione Offerte del dettaglio Opportunita', tab Anagrafica spec 0199): solo le due pagine lista `/opportunities` e `/quotes`.</item>
+      <item>Fallback sulle linee dell'Opportunita' per offerte senza righe (D-1).</item>
+      <item>Nuove migrazioni, nuove dipendenze, nuovi permessi (si usa `opportunities.viewAny` / `quotes.viewAny`).</item>
+      <item>Qualsiasi cambio visibile in Gestione Richieste / Gestione Iscritti / dashboard statistiche richieste.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- {grid} in { opportunities, quotes }. Envelope di progetto { success, message, data }. -->
+    <endpoint method="GET" path="/api/{grid}/product-categories">
+      <request>nessun parametro; grid ricavato dalla route (route default `categoryTabGrid`), mai dall'input.</request>
+      <response status="200">
+        data: { categories: Array&lt;{ id: int, name: string, records_count: int }&gt; }
+        - solo categorie con records_count &gt; 0 nello scope di visibilita' dell'attore (D-6), ordinate per name;
+        - records_count = numero DISTINTO di opportunita' (D-2) / offerte (D-1).
+      </response>
+      <errors>401 non autenticato; 403 senza `{grid}.viewAny`.</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/{grid}/category-tab-preferences">
+      <request>nessun parametro.</request>
+      <response status="200">
+        data: { preferences: { favorite_category_ids: int[], show_only_favorites: bool, is_default: bool } }
+        - stessa shape e stessa resource (`CategoryTabPreferencesResource`) di Gestione Richieste;
+        - mai salvato: favorite_category_ids = categorie della barra coperte dalla competenza, show_only_favorites = (lista non vuota), is_default = true; la GET non scrive.
+        - id di categorie cancellate esclusi dalla risposta.
+      </response>
+      <errors>401; 403 senza `{grid}.viewAny`.</errors>
+    </endpoint>
+    <endpoint method="PUT" path="/api/{grid}/category-tab-preferences">
+      <request>body: { favorite_category_ids: int[] (present, max 200, distinct, exists product_categories), show_only_favorites: bool (required) } — `UpdateCategoryTabPreferencesRequest`.</request>
+      <response status="200">come la GET, is_default = false. Upsert su (user_id, module = grid).</response>
+      <errors>401; 403 senza `{grid}.viewAny`; 422 validazione.</errors>
+    </endpoint>
+    <endpoint method="GET|POST" path="/api/tables/{opportunities|quotes}/... (config, rows, values)">
+      <request>parametro esistente `productCategoryId` (rows/values) / `product_category_id` (config/preferenze) ora onorato anche da questi due domini: restringe SOLO le righe (D-1/D-2). Nessun nuovo parametro.</request>
+      <response status="200">shape invariata; con productCategoryId le righe e i valori distinti sono solo quelli della categoria; config colonne identica con o senza categoria (D-3).</response>
+      <errors>422 se productCategoryId non esiste (regola gia' presente).</errors>
+    </endpoint>
+    <frontend_contract>
+      - `CategoryTabItem { id: number; name: string; count: number }` (mapping: `records_count` per le griglie, `requests_count` per Gestione Richieste, nel solo `api.ts`).
+      - `CategoryTabSource { key: string; apiBasePath: string }`: `{ key: 'opportunities', apiBasePath: '/opportunities' }`, `{ key: 'quotes', apiBasePath: '/quotes' }`, Gestione Richieste passa il proprio modulo.
+      - Selezione persistita in localStorage `${key}.category-tab` (chiave di Gestione Richieste invariata).
+      - Query keys: `[key, 'categories']`, `[key, 'category-tab-preferences']` (invariate per Gestione Richieste).
+    </frontend_contract>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente con `opportunities.viewAny` e opportunita' visibili con linee su categorie A (2 opportunita', una con due linee A) e B (1), quando chiama GET /api/opportunities/product-categories, allora riceve [A: 2, B: 1] ordinate per nome, senza categorie a conteggio zero. (Pest GridCategoryTabsTest)</criterion>
+    <criterion id="AC-002">Dato un'opportunita' NON visibile all'attore (OpportunityVisibilityScope) con linea su categoria C, quando chiama l'endpoint, allora C non compare e i conteggi non la includono. (Pest)</criterion>
+    <criterion id="AC-003">Dato offerte visibili con righe di ricavo su prodotti di categoria A (una offerta con due righe A) e un'offerta con solo righe di costo su B e un'offerta senza righe, quando chiama GET /api/quotes/product-categories, allora riceve solo [A: 1 per offerta distinta]; B e l'offerta senza righe non contano (D-1). (Pest)</criterion>
+    <criterion id="AC-004">Dato un'offerta non visibile (QuoteVisibilityScope), allora non entra nei conteggi di GET /api/quotes/product-categories. (Pest)</criterion>
+    <criterion id="AC-005">Dato un utente senza `{grid}.viewAny`, quando chiama product-categories o category-tab-preferences (GET/PUT) di quella griglia, allora 403 e nessuna riga scritta. (Pest, entrambe le griglie)</criterion>
+    <criterion id="AC-006">Dato un utente che non ha mai salvato preferenze su `quotes` e ha competenza su A (presente nella barra) ma non su B, quando GET /api/quotes/category-tab-preferences, allora favorite_category_ids = [A], show_only_favorites = true, is_default = true, e nessuna riga in user_category_tab_preferences. (Pest)</criterion>
+    <criterion id="AC-007">Quando PUT /api/opportunities/category-tab-preferences con [A] e show_only_favorites false, allora risposta con is_default false e riga (user, 'opportunities'); le preferenze dello stesso utente su 'quotes' e 'request-management' restano invariate (D-4). PUT con id inesistente -> 422. (Pest)</criterion>
+    <criterion id="AC-008">Dato POST /api/tables/opportunities/rows con productCategoryId = A, allora tornano solo le opportunita' con almeno una linea su A, ciascuna una sola volta, e il totale coincide con il conteggio di AC-001. Senza productCategoryId le righe sono quelle di oggi. (Pest)</criterion>
+    <criterion id="AC-009">Dato POST /api/tables/quotes/rows con productCategoryId = A, allora tornano solo le offerte con almeno una riga di ricavo su prodotti di A, una volta ciascuna. (Pest)</criterion>
+    <criterion id="AC-010">Con productCategoryId su `opportunities` combinato con registryId (tab Anagrafica, spec 0199), entrambi gli scope si applicano; registryId da solo funziona come oggi. Con productCategoryId su `quotes` combinato con opportunityId, entrambi si applicano. (Pest)</criterion>
+    <criterion id="AC-011">I valori distinti (POST /api/tables/{opportunities|quotes}/values) con productCategoryId sono calcolati solo sulle righe della categoria. (Pest)</criterion>
+    <criterion id="AC-012">GET config di `opportunities`/`quotes` con e senza product_category_id restituisce le stesse colonne (D-3). (Pest)</criterion>
+    <criterion id="AC-013">Regressione Gestione Richieste/Iscritti: le suite esistenti `tests/Feature/RequestManagement` (ProductCategoryTabsTest, CategoryTabPreferencesTest e affini) e i test di tabella passano senza modifiche alle asserzioni. (Pest)</criterion>
+    <criterion id="AC-014">Pagina Opportunita': sopra la griglia compare la barra "Tutte" + una tab per categoria con il conteggio; cliccando una tab la griglia richiede le righe con productCategoryId della tab e la selezione sopravvive al reload (localStorage `opportunities.category-tab`); un id salvato non piu' presente ricade su "Tutte". (Vitest opportunities-table-category-tabs.test.tsx)</criterion>
+    <criterion id="AC-015">Pagina Offerte: stesso comportamento di AC-014 con chiave `quotes.category-tab` ed endpoint /quotes/*. (Vitest quotes-table-category-tabs.test.tsx)</criterion>
+    <criterion id="AC-016">Sulle due griglie la stellina aggiunge/toglie un preferito con PUT ottimistico verso /{grid}/category-tab-preferences; un errore ripristina lo stato e mostra il toast `categoryTabs.favoritesError`; "Mostra solo preferite" riduce le tab inline ai preferiti. (Vitest use-category-tab-strip / category-tabs tests)</criterion>
+    <criterion id="AC-017">Dopo una mutazione della griglia (salvataggio da modale, eliminazione) la barra rilegge i conteggi (invalidazione `[grid, 'categories']`). (Vitest)</criterion>
+    <criterion id="AC-018">Gestione Richieste: la barra si comporta come prima (stessi endpoint, stesse chiavi localStorage/query, stessi testi) dopo lo spostamento in `features/category-tabs/`; i test spostati passano con i soli import aggiornati. (Vitest request-management + category-tabs)</criterion>
+    <criterion id="AC-019">i18n: chiavi `categoryTabs.*` presenti in IT ed EN, nessuna chiave `requestManagement.categoryTabs.*` residua; guide in-app `opportunities#category-tabs` e `quotes#category-tabs` IT/EN con parity test verde. (Vitest i18n + help-content-parity)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza, nessuna migrazione, nessun nuovo permesso.
+    - Authz server-side su ogni nuovo endpoint (`{grid}.viewAny` via Gate); grid dalla route, mai dall'input.
+    - Filtri per categoria come subquery `whereIn` parametrizzate (niente `whereRaw` con input), sulla falsariga di `RequestManagementScopedTableDefinition::baseQuery()`.
+    - Conteggi sulla stessa visibility scope della griglia (D-6); `count(distinct ...)` raggruppato sull'id categoria.
+    - File sotto 300 righe; mobile-first, barra compatta (ui-design.md §2) come quella esistente.
+    - Test backend mirati: `XDEBUG_MODE=off ./vendor/bin/pest tests/Feature/CategoryTabs tests/Feature/RequestManagement tests/Feature/Table`; frontend Vitest mirati + `npx tsc -b --force`; ESLint e Pint puliti.
+    - Nessun comando distruttivo sul DB dev; git soggetto a CLAUDE.md §3.6 (nessun commit senza ordine).
+  </constraints>
+
+</spec>

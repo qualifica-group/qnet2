@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tables\Quotes;
 
+use App\Enums\QuoteLineType;
 use App\Models\User;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
+use App\Tables\ProductCategoryScopable;
 use App\Tables\RegistryScopable;
 use App\Tables\TableDefinition;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -39,14 +42,20 @@ use Illuminate\Support\Facades\DB;
  * Offerta is its Opportunity's, so the scope is a `whereIn` on the client's
  * opportunities, in AND with the Opportunity scope. This is the outermost
  * decorator of the domain, hence the one `instanceof RegistryScopable` sees.
+ *
+ * And its `ProductCategoryScopable` (spec 0335, D-1): an Offerta shows in the
+ * tab of every category of its REVENUE lines' products, with no fallback on
+ * the Opportunity's lines (an Offerta without revenue lines is only in "Tutte").
  */
-class OpportunityScopedTableDefinition implements RegistryScopable, TableDefinition
+class OpportunityScopedTableDefinition implements ProductCategoryScopable, RegistryScopable, TableDefinition
 {
     use DelegatesUnaugmentedTableMethods;
 
     private ?int $opportunityScope = null;
 
     private ?int $registryScope = null;
+
+    private ?int $categoryScope = null;
 
     public function __construct(private readonly TableDefinition $inner) {}
 
@@ -77,7 +86,26 @@ class OpportunityScopedTableDefinition implements RegistryScopable, TableDefinit
             );
         }
 
+        if ($this->categoryScope !== null) {
+            $categoryScope = $this->categoryScope;
+
+            $query->whereIn(
+                'quotes.id',
+                static fn (QueryBuilder $lines) => $lines
+                    ->select('quote_lines.quote_id')
+                    ->from('quote_lines')
+                    ->join('products', 'products.id', '=', 'quote_lines.product_id')
+                    ->where('quote_lines.line_type', QuoteLineType::Revenue->value)
+                    ->where('products.category_id', $categoryScope),
+            );
+        }
+
         return $query;
+    }
+
+    public function scopeToProductCategory(?int $productCategoryId): void
+    {
+        $this->categoryScope = $productCategoryId;
     }
 
     /**

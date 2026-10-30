@@ -6,9 +6,9 @@ use App\Services\Table\AdvancedFilterApplier;
 use App\Services\Table\CustomFilterRuleValidator;
 use App\Services\Table\RowGroupQuery;
 use App\Services\Table\RowGroupValidator;
+use App\Tables\ProductCategoryScopable;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RegistryScopable;
-use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use App\Tables\WorkOrders\QuoteScopedTableDefinition;
@@ -326,7 +326,7 @@ class TableRowsRequest extends FormRequest
             $domain = (string) $this->route('domain');
             $definition = app(TableRegistry::class)->resolve($domain);
 
-            if ($definition instanceof RequestManagementScopedTableDefinition) {
+            if ($definition instanceof ProductCategoryScopable) {
                 $definition->scopeToProductCategory($this->productCategoryIdInput());
             }
 

@@ -12,12 +12,10 @@ import type {
   TransferRequestsResult,
   UpdateRequestWorkPayload,
 } from '@/features/request-management/request-write-types'
+import type { RequestsCategoryDto } from '@/features/category-tabs/api'
 import type {
-  CategoryTabPreferences,
-  CategoryTabPreferencesPayload,
   ManagerLabels,
   RequestFormContext,
-  RequestManagementProductCategory,
   RequestWorkPanel,
   RequestWorkPanelWithPermissions,
 } from '@/features/request-management/types'
@@ -160,34 +158,11 @@ export async function transferRequests(
  */
 export async function fetchRequestManagementCategories(
   basePath: string,
-): Promise<RequestManagementProductCategory[]> {
-  const { data } = await apiClient.get<ApiResponse<{ categories: RequestManagementProductCategory[] }>>(
+): Promise<RequestsCategoryDto[]> {
+  const { data } = await apiClient.get<ApiResponse<{ categories: RequestsCategoryDto[] }>>(
     `${basePath}/product-categories`,
   )
   return data.data.categories
-}
-
-/** GET {basePath}/category-tab-preferences (spec 0184): the actor's favourite strip categories. */
-export async function fetchCategoryTabPreferences(basePath: string): Promise<CategoryTabPreferences> {
-  const { data } = await apiClient.get<ApiResponse<{ preferences: CategoryTabPreferences }>>(
-    `${basePath}/category-tab-preferences`,
-  )
-  return data.data.preferences
-}
-
-/** PUT {basePath}/category-tab-preferences (spec 0184): replaces the whole preference; only the two saved fields travel. */
-export async function saveCategoryTabPreferences(
-  basePath: string,
-  preferences: CategoryTabPreferencesPayload,
-): Promise<CategoryTabPreferences> {
-  const { data } = await apiClient.put<ApiResponse<{ preferences: CategoryTabPreferences }>>(
-    `${basePath}/category-tab-preferences`,
-    {
-      favorite_category_ids: preferences.favorite_category_ids,
-      show_only_favorites: preferences.show_only_favorites,
-    },
-  )
-  return data.data.preferences
 }
 
 /**

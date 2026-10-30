@@ -3,6 +3,33 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Barra tab categorie prodotto su Opportunita' e Offerte (spec 0335) — VERDE, COMMITTATO (2026-10-30)
+
+- Decisioni utente: Offerte classificate SOLO dalle righe di ricavo (`quote_lines` REVENUE -> `products.category_id`),
+  nessun fallback sulle linee dell'Opportunita' (diverso da `QuoteClassificationSource`); Opportunita' dalle
+  `opportunity_product_lines`; solo filtro righe + conteggio (niente `attr.*`/rinomina GA); preferiti separati per
+  griglia con default da competenza (0193); statistiche ed export NON seguono la tab.
+- Backend: interfaccia `App\Tables\ProductCategoryScopable` (TableController/TableRowsRequest/TableValuesRequest testano
+  questa, non piu' la classe RM); implementata da `RequestManagementScopedTableDefinition`,
+  `Quotes\OpportunityScopedTableDefinition` e dal nuovo `Opportunities\OpportunityCategoryScopedTableDefinition`
+  (outermost di `opportunities`, inoltra anche `RegistryScopable`). Enum `Tables\CategoryTabs\CategoryTabGrid`
+  (route default `categoryTabGrid`), `Services\CategoryTabs\{GridCategoryTabsResolver,CategoryTabPreferenceStore}`,
+  `GridCategoryTabResource` (`{id,name,records_count}`), controller `CategoryTabs\GridCategoryTab{s,Preferences}Controller`.
+  Route `GET {opportunities|quotes}/product-categories`, `GET|PUT {opportunities|quotes}/category-tab-preferences`
+  (gate `{grid}.viewAny`, prima dei wildcard). `ResolveDefaultCategoryTabPreference` ora riceve gli id della barra.
+  Nessuna migrazione (`user_category_tab_preferences.module` = `opportunities`/`quotes`).
+- Frontend: barra condivisa in `features/category-tabs/` (`CategoryTabs`, picker, fit, `useCategoryTabStrip(source)`,
+  `useCategoryTabSelection`, preferiti ottimistici); Gestione Richieste la usa a parita' (stesse chiavi
+  localStorage/query). i18n `categoryTabs.*` (`{it,en}-category-tabs.ts`), via `requestManagement.categoryTabs.*`.
+  Montata in `opportunities-table.tsx`/`quotes-table.tsx` (localStorage `opportunities|quotes.category-tab`).
+- Verifica (verifier): Pest `tests/Feature/CategoryTabs` 17/17, mirati 1945/1949 (rossi estranei: bulk delete users
+  super-admin, PDF senza LibreOffice); Pint ok; Vitest mirato 1721/1721, completo 9625/9625 (11 unhandled
+  `toast.error is not a function` da `form-errors.ts`, feature errori form); `tsc -b --force` 0; ESLint pulito.
+  Pest completo 13030/13046: 15 rossi non attribuibili alla 0335 (Migration = `MigrationPlanService::isAvailable`
+  d'ambiente, ManagementControl = indice menu, probabile navigazione spec 0334). Guide in-app `opportunities#category-tabs`,
+  `quotes#category-tabs` IT/EN + manuale Claude Docs (Opportunita'/Offerte) aggiornati; PDF da rigenerare.
+- Fuori scope: barra sulle griglie Offerte annidate (master-detail, dettaglio Opportunita', tab Anagrafica).
+
 ## Assistenza tecnica (richiesta al reparto IT) — VERDE, COMMITTATO (2026-10-30, spec 0334)
 
 - Pulsante salvagente "Assistenza tecnica" nell'header prima del (?) (`features/support-requests/`, montato in

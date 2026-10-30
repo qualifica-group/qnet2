@@ -5,16 +5,16 @@ import { Tabs, TabsList, TabsTrigger, TABS_LIST_CLASS } from '@/components/ui/ta
 import { cn } from '@/lib/utils'
 import {
   CategoryMoreButton,
-  RequestManagementCategoryPicker,
-} from '@/features/request-management/request-management-category-picker'
-import { arrangeCategoryTabs } from '@/features/request-management/category-tab-fit'
+  CategoryTabsPicker,
+} from '@/features/category-tabs/category-tabs-picker'
+import { arrangeCategoryTabs } from '@/features/category-tabs/category-tab-fit'
 import {
   MEASURE_ALL,
   MEASURE_MANAGE,
   MEASURE_MORE,
   useCategoryTabFit,
-} from '@/features/request-management/use-category-tab-fit'
-import type { RequestManagementProductCategory } from '@/features/request-management/types'
+} from '@/features/category-tabs/use-category-tab-fit'
+import type { CategoryTabItem } from '@/features/category-tabs/types'
 
 /** The "Tutte" tab's Radix value; every category tab's value is its numeric id, stringified. */
 const ALL_TAB_VALUE = 'all'
@@ -26,8 +26,8 @@ const ALL_TAB_VALUE = 'all'
  */
 const INLINE_TAB_LIST_CLASS = 'w-auto min-w-0 flex-nowrap gap-1 rounded-none border-0 bg-transparent p-0 shadow-none'
 
-interface RequestManagementCategoryTabsProps {
-  categories: RequestManagementProductCategory[]
+interface CategoryTabsProps {
+  categories: CategoryTabItem[]
   /** `null` selects "Tutte". */
   selectedCategoryId: number | null
   onSelect: (categoryId: number | null) => void
@@ -41,7 +41,7 @@ interface RequestManagementCategoryTabsProps {
 }
 
 /**
- * Category tab strip above the Gestione Richieste grid (spec 0064): "Tutte"
+ * Category tab strip above the grid (spec 0064, shared with Opportunities and Quotes by spec 0335): "Tutte"
  * always first and selected by default, then one tab per Product Category
  * actually present in the operator's visible requests, each carrying its own
  * request count. Presentation only — the parent owns persistence and derives
@@ -54,7 +54,7 @@ interface RequestManagementCategoryTabsProps {
  * (spec 0184); the menu, which also manages them, is always reachable.
  * Compact per ui-design.md §2 (`text-xs`, `px-2.5 py-1`, `size-3.5` icons).
  */
-export function RequestManagementCategoryTabs({
+export function CategoryTabs({
   categories,
   selectedCategoryId,
   onSelect,
@@ -63,7 +63,7 @@ export function RequestManagementCategoryTabs({
   favoritesAreDefault = false,
   onToggleFavorite,
   onShowOnlyFavoritesChange,
-}: RequestManagementCategoryTabsProps) {
+}: CategoryTabsProps) {
   const { t } = useTranslation()
   const troughRef = useRef<HTMLDivElement>(null)
   const measureRef = useRef<HTMLDivElement>(null)
@@ -95,15 +95,15 @@ export function RequestManagementCategoryTabs({
           ref={troughRef}
           className={cn(TABS_LIST_CLASS, 'flex flex-nowrap')}
         >
-          <TabsList aria-label={t('requestManagement.categoryTabs.pickerLabel')} className={INLINE_TAB_LIST_CLASS}>
+          <TabsList aria-label={t('categoryTabs.pickerLabel')} className={INLINE_TAB_LIST_CLASS}>
             <TabsTrigger value={ALL_TAB_VALUE}>
-              {t('requestManagement.categoryTabs.all')}
+              {t('categoryTabs.all')}
             </TabsTrigger>
             {inlineIds.map((id) => (
               <CategoryTab key={id} category={byId.get(id)!} />
             ))}
           </TabsList>
-          <RequestManagementCategoryPicker
+          <CategoryTabsPicker
             categories={categories}
             favoriteCategoryIds={favoriteCategoryIds}
             showOnlyFavorites={showOnlyFavorites}
@@ -128,7 +128,7 @@ export function RequestManagementCategoryTabs({
         <Tabs value={value}>
           <TabsList className={INLINE_TAB_LIST_CLASS}>
             <TabsTrigger value={ALL_TAB_VALUE} data-tab-measure={MEASURE_ALL}>
-              {t('requestManagement.categoryTabs.all')}
+              {t('categoryTabs.all')}
             </TabsTrigger>
             {categories.map((category) => (
               <CategoryTab key={category.id} category={category} data-tab-measure={String(category.id)} />
@@ -143,7 +143,7 @@ export function RequestManagementCategoryTabs({
 }
 
 interface CategoryTabProps {
-  category: RequestManagementProductCategory
+  category: CategoryTabItem
   'data-tab-measure'?: string
 }
 
@@ -157,7 +157,7 @@ function CategoryTab({ category, 'data-tab-measure': measureKey }: CategoryTabPr
     >
       <span className="max-w-48 truncate">{category.name}</span>
       <Badge variant="secondary" className="px-1.5 py-0 text-[0.65rem]">
-        {category.requests_count}
+        {category.count}
       </Badge>
     </TabsTrigger>
   )

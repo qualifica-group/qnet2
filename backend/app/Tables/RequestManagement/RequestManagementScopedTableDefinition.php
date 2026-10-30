@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\ProductCategoryService;
 use App\Services\RequestManagement\RequestManagementService;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
+use App\Tables\ProductCategoryScopable;
 use App\Tables\RequestManagement\Concerns\WritesAttributeCells;
 use App\Tables\TableDefinition;
 use Illuminate\Database\Eloquent\Builder;
@@ -69,7 +70,7 @@ use Illuminate\Support\Collection;
  * existing caller of the `request-management` domain is byte-identical to
  * today.
  */
-class RequestManagementScopedTableDefinition implements TableDefinition
+class RequestManagementScopedTableDefinition implements ProductCategoryScopable, TableDefinition
 {
     use DelegatesUnaugmentedTableMethods, WritesAttributeCells {
         // Both traits declare editableColumnIds()/updateCell(): the

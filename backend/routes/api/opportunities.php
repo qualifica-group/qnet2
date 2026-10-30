@@ -1,7 +1,10 @@
 <?php
 
+use App\Http\Controllers\CategoryTabs\GridCategoryTabPreferencesController;
+use App\Http\Controllers\CategoryTabs\GridCategoryTabsController;
 use App\Http\Controllers\Opportunities\OpportunityController;
 use App\Http\Controllers\Opportunities\OpportunityForSelectController;
+use App\Tables\CategoryTabs\CategoryTabGrid;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -21,6 +24,16 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('opportunities/for-select', OpportunityForSelectController::class);
+
+// Spec 0335: the category tab strip of the grid (counts + the actor's
+// favourites). Declared BEFORE the wildcard, otherwise "product-categories"
+// is swallowed by its route model binding.
+Route::get('opportunities/product-categories', GridCategoryTabsController::class)
+    ->defaults(CategoryTabGrid::ROUTE_DEFAULT, CategoryTabGrid::Opportunities->value);
+Route::get('opportunities/category-tab-preferences', [GridCategoryTabPreferencesController::class, 'show'])
+    ->defaults(CategoryTabGrid::ROUTE_DEFAULT, CategoryTabGrid::Opportunities->value);
+Route::put('opportunities/category-tab-preferences', [GridCategoryTabPreferencesController::class, 'update'])
+    ->defaults(CategoryTabGrid::ROUTE_DEFAULT, CategoryTabGrid::Opportunities->value);
 
 // Opportunities CRUD. Authorization (opportunities.view/create/update/
 // delete) is enforced server-side in OpportunityController via

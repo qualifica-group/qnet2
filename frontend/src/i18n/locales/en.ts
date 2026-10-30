@@ -77,6 +77,7 @@ import { dashboard } from './en-dashboard'
 import { navigation } from './en-navigation'
 import { settings } from './en-settings'
 import { requestManagement } from './en-request-management'
+import { categoryTabs } from './en-category-tabs'
 import { enrolleeManagement } from './en-enrollee-management'
 import { notes } from './en-notes'
 import { richText } from './en-rich-text'
@@ -478,6 +479,7 @@ export const en = {
   timeEntries,
   commissionConfigurations,
   requestManagement,
+  categoryTabs,
   enrolleeManagement,
   // Shared validation messages of the `attribute_values` dynamic map (spec
   // 0084): a neutral namespace reused by every context that collects it

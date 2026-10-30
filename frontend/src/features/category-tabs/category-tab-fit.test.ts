@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { arrangeCategoryTabs, filterCategoriesByName, fitCategoryTabs } from '@/features/request-management/category-tab-fit'
+import { arrangeCategoryTabs, filterCategoriesByName, fitCategoryTabs } from '@/features/category-tabs/category-tab-fit'
 
 const IDS = [1, 2, 3, 4, 5]
 const WIDTHS = [100, 100, 100, 100, 100]

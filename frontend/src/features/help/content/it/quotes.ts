@@ -102,6 +102,28 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'category-tabs',
+      title: "Filtrare per categoria prodotto",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Sopra l'elenco trovi la barra delle categorie: la tab **Tutte** e una tab per ogni categoria prodotto presente, con il numero di offerte. Cliccando una tab l'elenco mostra solo le offerte di quella categoria. La scelta resta anche dopo aver ricaricato la pagina.",
+        },
+        {
+          type: 'paragraph',
+          text: "Un'offerta compare nella tab di ogni categoria dei prodotti presenti nelle sue **righe di ricavo** (conta una volta sola anche con più righe della stessa categoria). Le righe di costo non contano; un'offerta senza righe di ricavo compare solo in **Tutte**. Il numero accanto al nome è quante offerte, tra quelle che puoi vedere, rientrano nella categoria.",
+        },
+        {
+          type: 'steps',
+          items: ["Se le tab non entrano nella riga, le altre finiscono nel menu **Altre**, dove puoi cercare una categoria per nome.","Clicca la **stellina** accanto a una categoria (nel menu) per aggiungerla alle **preferite**: le preferite compaiono per prime.","Attiva **Mostra solo preferite** per vedere in barra solo le preferite; le altre restano nel menu **Altre**."],
+        },
+        {
+          type: 'note',
+          text: "Le preferite sono separate per ogni elenco (Opportunità, Offerte, Gestione Richieste). La prima volta ti vengono proposte in base alle categorie per cui sei abilitato; appena usi la stellina diventano le tue. L'esportazione non segue la tab: considera sempre tutte le offerte.",
+        },
+      ],
+    },
+    {
       id: 'list-editing',
       title: "Modifica rapida dall'elenco",
       blocks: [

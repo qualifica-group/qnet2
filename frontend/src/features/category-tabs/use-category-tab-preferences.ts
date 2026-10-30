@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { fetchCategoryTabPreferences, saveCategoryTabPreferences } from '@/features/request-management/api'
-import { requestManagementKeys } from '@/features/request-management/query-keys'
-import { useRequestModule } from '@/features/request-management/request-module'
-import type { CategoryTabPreferences, CategoryTabPreferencesPayload } from '@/features/request-management/types'
+import { fetchCategoryTabPreferences, saveCategoryTabPreferences } from '@/features/category-tabs/api'
+import { categoryTabKeys } from '@/features/category-tabs/query-keys'
+import type {
+  CategoryTabPreferences,
+  CategoryTabPreferencesPayload,
+  CategoryTabSource,
+} from '@/features/category-tabs/types'
 
 /** What the strip shows until the preferences load, or when none were ever saved. */
 const NO_PREFERENCES: CategoryTabPreferences = {
@@ -20,20 +23,19 @@ const NO_PREFERENCES: CategoryTabPreferences = {
  * accumulate instead of overwriting one another. A failed write restores the
  * previous state and says so.
  */
-export function useCategoryTabPreferences() {
+export function useCategoryTabPreferences({ key, apiBasePath }: CategoryTabSource) {
   const { t } = useTranslation()
-  const module = useRequestModule()
   const queryClient = useQueryClient()
-  const queryKey = requestManagementKeys.categoryTabPreferences(module.key)
+  const queryKey = categoryTabKeys.preferences(key)
 
   const query = useQuery({
     queryKey,
-    queryFn: () => fetchCategoryTabPreferences(module.apiBasePath),
+    queryFn: () => fetchCategoryTabPreferences(apiBasePath),
   })
 
   const mutation = useMutation({
     mutationKey: queryKey,
-    mutationFn: (next: CategoryTabPreferencesPayload) => saveCategoryTabPreferences(module.apiBasePath, next),
+    mutationFn: (next: CategoryTabPreferencesPayload) => saveCategoryTabPreferences(apiBasePath, next),
     onMutate: async (next) => {
       await queryClient.cancelQueries({ queryKey })
       const previous = queryClient.getQueryData<CategoryTabPreferences>(queryKey)
@@ -43,7 +45,7 @@ export function useCategoryTabPreferences() {
     },
     onError: (_error, _next, context) => {
       queryClient.setQueryData(queryKey, context?.previous)
-      toast.error(t('requestManagement.categoryTabs.favoritesError'))
+      toast.error(t('categoryTabs.favoritesError'))
     },
     onSuccess: (saved) => {
       // An older answer must not overwrite a newer optimistic state still in flight.

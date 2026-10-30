@@ -8,8 +8,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Switch } from '@/components/ui/switch'
 import { TABS_TRIGGER_CLASS } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-import { filterCategoriesByName } from '@/features/request-management/category-tab-fit'
-import type { RequestManagementProductCategory } from '@/features/request-management/types'
+import { filterCategoriesByName } from '@/features/category-tabs/category-tab-fit'
+import type { CategoryTabItem } from '@/features/category-tabs/types'
 
 /**
  * The menu button reads as one more tab of the strip: same pill, same
@@ -34,7 +34,7 @@ interface CategoryMoreButtonProps extends ComponentProps<'button'> {
  */
 export function CategoryMoreButton({ hiddenCount, className, ...props }: CategoryMoreButtonProps) {
   const { t } = useTranslation()
-  const menuLabel = t('requestManagement.categoryTabs.menuLabel')
+  const menuLabel = t('categoryTabs.menuLabel')
 
   return (
     <button
@@ -44,15 +44,15 @@ export function CategoryMoreButton({ hiddenCount, className, ...props }: Categor
       className={cn(MORE_BUTTON_CLASS, className)}
       {...props}
     >
-      {hiddenCount > 0 ? t('requestManagement.categoryTabs.more', { count: hiddenCount }) : <Star aria-hidden="true" />}
+      {hiddenCount > 0 ? t('categoryTabs.more', { count: hiddenCount }) : <Star aria-hidden="true" />}
       <ChevronDown aria-hidden="true" />
     </button>
   )
 }
 
-interface RequestManagementCategoryPickerProps {
+interface CategoryTabsPickerProps {
   /** Every category, in the server's order. */
-  categories: RequestManagementProductCategory[]
+  categories: CategoryTabItem[]
   favoriteCategoryIds: number[]
   showOnlyFavorites: boolean
   /** The favourites are the competence default, not saved yet (spec 0193): the menu says so. */
@@ -75,7 +75,7 @@ interface RequestManagementCategoryPickerProps {
  * search into the list and through it; Enter in the search picks the first
  * match.
  */
-export function RequestManagementCategoryPicker({
+export function CategoryTabsPicker({
   categories,
   favoriteCategoryIds,
   showOnlyFavorites,
@@ -85,7 +85,7 @@ export function RequestManagementCategoryPicker({
   onSelect,
   onToggleFavorite,
   onShowOnlyFavoritesChange,
-}: RequestManagementCategoryPickerProps) {
+}: CategoryTabsPickerProps) {
   const { t } = useTranslation()
   const switchId = useId()
   const searchRef = useRef<HTMLInputElement>(null)
@@ -95,8 +95,8 @@ export function RequestManagementCategoryPicker({
   const [groupedFavoriteIds, setGroupedFavoriteIds] = useState(favoriteCategoryIds)
 
   const matches = filterCategoriesByName(categories, search)
-  const isFavorite = (category: RequestManagementProductCategory) => favoriteCategoryIds.includes(category.id)
-  const isGroupedFavorite = (category: RequestManagementProductCategory) => groupedFavoriteIds.includes(category.id)
+  const isFavorite = (category: CategoryTabItem) => favoriteCategoryIds.includes(category.id)
+  const isGroupedFavorite = (category: CategoryTabItem) => groupedFavoriteIds.includes(category.id)
   const favorites = matches.filter(isGroupedFavorite)
   const others = matches.filter((category) => !isGroupedFavorite(category))
   const hasFavorites = categories.some(isFavorite)
@@ -139,7 +139,7 @@ export function RequestManagementCategoryPicker({
     }
   }
 
-  const renderRows = (rows: RequestManagementProductCategory[]) =>
+  const renderRows = (rows: CategoryTabItem[]) =>
     rows.map((category) => (
       <CategoryRow
         key={category.id}
@@ -161,8 +161,8 @@ export function RequestManagementCategoryPicker({
           <Input
             ref={searchRef}
             autoFocus
-            aria-label={t('requestManagement.categoryTabs.searchPlaceholder')}
-            placeholder={t('requestManagement.categoryTabs.searchPlaceholder')}
+            aria-label={t('categoryTabs.searchPlaceholder')}
+            placeholder={t('categoryTabs.searchPlaceholder')}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             onKeyDown={handleSearchKeyDown}
@@ -172,24 +172,24 @@ export function RequestManagementCategoryPicker({
         <div ref={listRef} onKeyDown={handleListKeyDown} className="max-h-72 overflow-y-auto p-1">
           {matches.length === 0 ? (
             <p className="px-2 py-4 text-center text-xs text-muted-foreground">
-              {t('requestManagement.categoryTabs.noMatch')}
+              {t('categoryTabs.noMatch')}
             </p>
           ) : favorites.length > 0 ? (
             <>
-              <CategoryGroup label={t('requestManagement.categoryTabs.favorites')}>{renderRows(favorites)}</CategoryGroup>
+              <CategoryGroup label={t('categoryTabs.favorites')}>{renderRows(favorites)}</CategoryGroup>
               {others.length > 0 ? (
-                <CategoryGroup label={t('requestManagement.categoryTabs.otherCategories')}>
+                <CategoryGroup label={t('categoryTabs.otherCategories')}>
                   {renderRows(others)}
                 </CategoryGroup>
               ) : null}
             </>
           ) : (
-            <ul aria-label={t('requestManagement.categoryTabs.pickerLabel')}>{renderRows(matches)}</ul>
+            <ul aria-label={t('categoryTabs.pickerLabel')}>{renderRows(matches)}</ul>
           )}
         </div>
         <div className="flex items-center justify-between gap-2 border-t border-border px-2 py-2">
           <Label htmlFor={switchId} className="text-xs font-normal">
-            {t('requestManagement.categoryTabs.showOnlyFavorites')}
+            {t('categoryTabs.showOnlyFavorites')}
           </Label>
           <Switch
             id={switchId}
@@ -202,8 +202,8 @@ export function RequestManagementCategoryPicker({
           <p className="px-2 pb-2 text-[0.65rem] text-muted-foreground">
             {t(
               hasFavorites
-                ? 'requestManagement.categoryTabs.favoritesDefaultHint'
-                : 'requestManagement.categoryTabs.favoritesHint',
+                ? 'categoryTabs.favoritesDefaultHint'
+                : 'categoryTabs.favoritesHint',
             )}
           </p>
         )}
@@ -226,7 +226,7 @@ function CategoryGroup({ label, children }: { label: string; children: ReactNode
 }
 
 interface CategoryRowProps {
-  category: RequestManagementProductCategory
+  category: CategoryTabItem
   favorite: boolean
   selected: boolean
   onPick: (categoryId: number) => void
@@ -243,7 +243,7 @@ function CategoryRow({ category, favorite, selected, onPick, onToggleFavorite }:
         onClick={() => onToggleFavorite(category.id)}
         aria-pressed={favorite}
         aria-label={t(
-          favorite ? 'requestManagement.categoryTabs.removeFavorite' : 'requestManagement.categoryTabs.addFavorite',
+          favorite ? 'categoryTabs.removeFavorite' : 'categoryTabs.addFavorite',
           { name: category.name },
         )}
         className="flex size-7 shrink-0 items-center justify-center rounded-sm text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-[2px] focus-visible:ring-ring/50"
@@ -265,7 +265,7 @@ function CategoryRow({ category, favorite, selected, onPick, onToggleFavorite }:
           {category.name}
         </span>
         <Badge variant="secondary" className="px-1.5 py-0 text-[0.65rem]">
-          {category.requests_count}
+          {category.count}
         </Badge>
         <Check className={cn('size-3.5 shrink-0', !selected && 'invisible')} aria-hidden="true" />
       </button>

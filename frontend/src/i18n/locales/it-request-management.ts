@@ -10,23 +10,6 @@ export const requestManagement = {
   title: 'Gestione Richieste',
   subtitle: "Lavora le opportunità: verifica i contatti e completa i campi dinamici.",
   forbidden: 'Non hai il permesso di visualizzare Gestione Richieste.',
-  categoryTabs: {
-    all: 'Tutte',
-    more: 'Altre ({{count}})',
-    pickerLabel: 'Categorie prodotto',
-    searchPlaceholder: 'Cerca categoria…',
-    noMatch: 'Nessuna categoria trovata.',
-    menuLabel: 'Categorie e preferite',
-    favorites: 'Preferite',
-    otherCategories: 'Altre categorie',
-    addFavorite: 'Aggiungi {{name}} alle preferite',
-    removeFavorite: 'Togli {{name}} dalle preferite',
-    showOnlyFavorites: 'Mostra solo preferite',
-    favoritesHint: 'Tocca la stella accanto a una categoria per aggiungerla alle preferite.',
-    favoritesDefaultHint:
-      'Le preferite sono proposte in base alle categorie per cui sei abilitato. Usa la stella per cambiarle.',
-    favoritesError: 'Impossibile salvare le categorie preferite.',
-  },
   columns: {
     source: 'Fonte',
     pendingChangeRequests: 'Richieste di modifica',

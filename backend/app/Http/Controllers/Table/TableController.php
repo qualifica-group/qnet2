@@ -18,6 +18,7 @@ use App\Services\TableFilterStateService;
 use App\Services\TablePreferenceService;
 use App\Services\TableService;
 use App\Support\Cache\AggregateCache;
+use App\Tables\ProductCategoryScopable;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RegistryScopable;
 use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
@@ -375,8 +376,9 @@ class TableController extends BaseApiController
     }
 
     /**
-     * Spec 0064: narrows a `RequestManagementScopedTableDefinition` (only
-     * `request-management`) to one product category — its rows, its `attr.*`
+     * Spec 0064/0335: narrows a `ProductCategoryScopable` definition
+     * (`request-management`, `opportunities`, `quotes`) to one product
+     * category — its rows and, for Gestione Richieste only, its `attr.*`
      * columns and the GA2 relabel. A no-op for every other domain.
      *
      * Also called by `savePreferences()`/`saveFilters()` AFTER their write, on
@@ -386,7 +388,7 @@ class TableController extends BaseApiController
      */
     private function scopeToProductCategory(TableDefinition $definition, ?int $productCategoryId): void
     {
-        if ($definition instanceof RequestManagementScopedTableDefinition) {
+        if ($definition instanceof ProductCategoryScopable) {
             $definition->scopeToProductCategory($productCategoryId);
         }
     }

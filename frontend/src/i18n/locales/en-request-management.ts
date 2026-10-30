@@ -9,23 +9,6 @@ export const requestManagement = {
   title: 'Request Management',
   subtitle: 'Work opportunities: verify contacts and complete dynamic fields.',
   forbidden: "You don't have permission to view Request Management.",
-  categoryTabs: {
-    all: 'All',
-    more: 'More ({{count}})',
-    pickerLabel: 'Product categories',
-    searchPlaceholder: 'Search category…',
-    noMatch: 'No category found.',
-    menuLabel: 'Categories and favorites',
-    favorites: 'Favorites',
-    otherCategories: 'Other categories',
-    addFavorite: 'Add {{name}} to favorites',
-    removeFavorite: 'Remove {{name}} from favorites',
-    showOnlyFavorites: 'Show favorites only',
-    favoritesHint: 'Tap the star next to a category to add it to your favorites.',
-    favoritesDefaultHint:
-      'Favorites are suggested from the categories you are enabled for. Use the star to change them.',
-    favoritesError: 'Could not save your favorite categories.',
-  },
   columns: {
     source: 'Source',
     pendingChangeRequests: 'Change requests',

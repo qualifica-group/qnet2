@@ -84,6 +84,28 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'category-tabs',
+      title: "Filtering by product category",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Above the list is the category bar: the **All** tab and one tab for each product category present, with the number of opportunities. Clicking a tab shows only the opportunities of that category. Your choice is kept after reloading the page.",
+        },
+        {
+          type: 'paragraph',
+          text: "An opportunity appears under the tab of every category among its product lines (it counts once even with several lines of the same category). The number next to the name is how many opportunities, among those you can see, fall under that category.",
+        },
+        {
+          type: 'steps',
+          items: ["If the tabs do not fit the row, the others move into the **More** menu, where you can search a category by name.","Click the **star** next to a category (in the menu) to add it to your **favorites**: favorites come first.","Turn on **Show only favorites** to see only the favorites in the bar; the others stay in the **More** menu."],
+        },
+        {
+          type: 'note',
+          text: "Favorites are separate for each list (Opportunities, Quotes, Request Management). The first time they are suggested from the categories you are enabled for; as soon as you use the star they become yours. The statistics panel and the export do not follow the tab: they always cover all the opportunities.",
+        },
+      ],
+    },
+    {
       id: 'list-editing',
       title: "Quick editing from the list",
       blocks: [

@@ -69,6 +69,7 @@ import { rewardedReferents } from './it-rewarded-referents'
 import { documentLayouts } from './it-document-layouts'
 import { dashboard } from './it-dashboard'
 import { requestManagement } from './it-request-management'
+import { categoryTabs } from './it-category-tabs'
 import { enrolleeManagement } from './it-enrollee-management'
 import { fieldChangeRequests } from './it-field-change-requests'
 import { notes } from './it-notes'
@@ -464,6 +465,7 @@ export const it: TranslationResources = {
   timeEntries,
   commissionConfigurations,
   requestManagement,
+  categoryTabs,
   enrolleeManagement,
   // Messaggi di validazione condivisi della mappa dinamica `attribute_values`
   // (spec 0084): namespace neutro riusato da ogni contesto che la raccoglie

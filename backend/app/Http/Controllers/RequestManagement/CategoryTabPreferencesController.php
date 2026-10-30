@@ -7,11 +7,10 @@ namespace App\Http\Controllers\RequestManagement;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\RequestManagement\UpdateCategoryTabPreferencesRequest;
 use App\Http\Resources\CategoryTabPreferencesResource;
-use App\Models\ProductCategory;
-use App\Models\User;
 use App\Models\UserCategoryTabPreference;
 use App\RequestManagement\RequestModule;
-use App\RequestManagement\ResolveDefaultCategoryTabPreference;
+use App\Services\CategoryTabs\CategoryTabPreferenceStore;
+use App\Services\RequestManagement\RequestCategoryTabsResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -24,14 +23,22 @@ use Throwable;
  */
 class CategoryTabPreferencesController extends BaseApiController
 {
-    public function __construct(private readonly ResolveDefaultCategoryTabPreference $defaults) {}
+    public function __construct(
+        private readonly CategoryTabPreferenceStore $store,
+        private readonly RequestCategoryTabsResolver $tabs,
+    ) {}
 
     public function show(Request $request): JsonResponse
     {
         try {
             $module = $this->authorizedModule($request);
+            $user = $request->user();
 
-            return $this->respond($this->preferenceOf($request->user(), $module));
+            return $this->respond($this->store->read(
+                $user,
+                $module->value,
+                fn (): array => $this->tabs->resolve($user, $module)->pluck('id')->map(static fn ($id): int => (int) $id)->all(),
+            ));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
@@ -42,12 +49,11 @@ class CategoryTabPreferencesController extends BaseApiController
         try {
             $module = $this->authorizedModule($request);
 
-            $preference = UserCategoryTabPreference::query()->updateOrCreate(
-                ['user_id' => $request->user()->id, 'module' => $module->value],
+            return $this->respond($this->store->save(
+                $request->user(),
+                $module->value,
                 $request->safe()->only(['favorite_category_ids', 'show_only_favorites']),
-            );
-
-            return $this->respond($preference);
+            ));
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
@@ -61,32 +67,8 @@ class CategoryTabPreferencesController extends BaseApiController
         return $module;
     }
 
-    /**
-     * The stored row, or an UNSAVED one carrying the competence default
-     * (spec 0193): the GET never writes, the row appears on the first PUT.
-     */
-    private function preferenceOf(User $user, RequestModule $module): UserCategoryTabPreference
-    {
-        $preference = UserCategoryTabPreference::query()->firstOrNew(['user_id' => $user->id, 'module' => $module->value]);
-
-        if (! $preference->exists) {
-            $favorites = $this->defaults->handle($user, $module);
-            $preference->favorite_category_ids = $favorites;
-            $preference->show_only_favorites = $favorites !== [];
-        }
-
-        return $preference;
-    }
-
-    /** A favourite whose category was deleted since is dropped from the answer (AC-007). */
     private function respond(UserCategoryTabPreference $preference): JsonResponse
     {
-        $preference->favorite_category_ids = ProductCategory::query()
-            ->whereKey($preference->favorite_category_ids)
-            ->orderBy('id')
-            ->pluck('id')
-            ->all();
-
         return $this->ok(['preferences' => new CategoryTabPreferencesResource($preference)]);
     }
 }
