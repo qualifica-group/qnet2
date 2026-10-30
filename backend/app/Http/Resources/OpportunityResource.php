@@ -118,8 +118,6 @@ class OpportunityResource extends JsonResource
             'reporter' => $this->summarizeByName($this->reporter),
             'supervisor_id' => $this->supervisor_id,
             'supervisor' => $this->summarizeByName($this->supervisor),
-            'source_id' => $this->source_id,
-            'source' => $this->summarizeByName($this->source),
             'operational_site_id' => $this->operational_site_id,
             'operational_site' => OperationalSiteLabel::summarize($this->operationalSite),
             'status' => app(OpportunityStatusResolver::class)->resolve($this->resource),

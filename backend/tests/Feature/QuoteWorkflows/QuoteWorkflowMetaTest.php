@@ -42,9 +42,10 @@ it('criterion-fields: 200 with the 4 allow-listed fields, correct for_select_res
     expect($data)->toHaveCount(4);
 
     $byField = collect($data)->keyBy('field');
+    // REQUIREMENT CHANGED: spec 0332 D-8 — source_id is the offer's own, not inherited.
     expect($byField['source_id']['for_select_resource'])->toBe('sources')
         ->and($byField['source_id']['source'])->toBe('native')
-        ->and($byField['source_id']['inherited'])->toBeTrue()
+        ->and($byField['source_id']['inherited'])->toBeFalse()
         ->and($byField['business_function_id']['for_select_resource'])->toBe('business-functions')
         ->and($byField['business_function_id']['multi_valued'])->toBeTrue()
         ->and($byField['business_function_id']['inherited'])->toBeFalse()

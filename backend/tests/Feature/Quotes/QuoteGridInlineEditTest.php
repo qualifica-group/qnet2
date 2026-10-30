@@ -50,9 +50,10 @@ it('declares every column the form edits as a single field', function () {
     $editable = collect($this->getJson('/api/tables/quotes/columns')->assertOk()->json('data.columns'))
         ->where('editable', true)->pluck('id')->sort()->values()->all();
 
+    // REQUIREMENT CHANGED: spec 0332 — `source` is an editable relation column.
     expect($editable)->toBe([
         'commercial', 'company', 'company_site', 'managers', 'operational_site',
-        'quote_workflow_status', 'reporter', 'supervisor', 'title',
+        'quote_workflow_status', 'reporter', 'source', 'supervisor', 'title',
     ]);
 });
 

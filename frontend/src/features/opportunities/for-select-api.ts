@@ -21,6 +21,8 @@ export interface OpportunityForSelectMeta {
   reporter: RelationFieldRef | null
   supervisor: RelationFieldRef | null
   operational_site: { id: number; label: string } | null
+  /** The Fonte of the opportunity's lead (spec 0332 D-6), `null` without a lead: prefills the Offerta's own Fonte. */
+  lead_source: RelationFieldRef | null
   /** The opportunity's own Gestori Account (spec 0087, D-5), ordered by position, `[]` when it has none. */
   managers: OpportunityManagerRef[]
 }

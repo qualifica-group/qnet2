@@ -72,10 +72,11 @@ class QuoteService
         // dell'Opportunita' — nessuna colonna propria su `quotes`.
         'opportunity.registry',
         'opportunity.referent.referentType',
-        // Richiesta utente 2026-08-31: fonte, funzioni aziendali/categorie
-        // prodotto e note generali del record padre, mostrate nel Contesto
+        // Spec 0332: la Fonte e' propria dell'Offerta.
+        'source',
+        // Richiesta utente 2026-08-31: funzioni aziendali/categorie prodotto
+        // e note generali del record padre, mostrate nel Contesto
         // dell'Offerta. `productLines.productCategory` e' gia' sopra.
-        'opportunity.source',
         'opportunity.productLines.businessFunction',
         'quoteWorkflowStatus',
         'commercial',

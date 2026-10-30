@@ -9,6 +9,7 @@ use App\Enums\ProductUsage;
 use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\Quote;
+use App\Models\Source;
 use App\Models\User;
 use App\Services\ProductCategories\CategoryHierarchy;
 use App\Services\QuoteService;
@@ -116,12 +117,13 @@ class DemoQuoteSeeder extends Seeder
             ->pluck('id')
             ->all();
         $users = User::query()->orderBy('id')->get();
+        $sources = Source::query()->orderBy('id')->pluck('id');
 
         $faker = FakerFactory::create('it_IT');
         $faker->seed(20260729);
 
         foreach ($opportunities as $index => $opportunity) {
-            $this->quotes->create($this->buildQuoteData($faker, $index, $opportunity, $costProductIds, $users), $actor);
+            $this->quotes->create($this->buildQuoteData($faker, $index, $opportunity, $costProductIds, $users, $sources), $actor);
         }
     }
 
@@ -163,8 +165,9 @@ class DemoQuoteSeeder extends Seeder
     /**
      * @param  array<int, int>  $costProductIds
      * @param  Collection<int, User>  $users
+     * @param  Collection<int, int>  $sources  Fonte ids, assigned round-robin to half of the offers (spec 0332) so the demo source workflows match deterministically
      */
-    private function buildQuoteData(Generator $faker, int $index, Opportunity $opportunity, array $costProductIds, Collection $users): CreateQuoteData
+    private function buildQuoteData(Generator $faker, int $index, Opportunity $opportunity, array $costProductIds, Collection $users, Collection $sources): CreateQuoteData
     {
         $offerLine = $this->offerLine($faker, $index);
 
@@ -201,6 +204,7 @@ class DemoQuoteSeeder extends Seeder
             attributeValues: $this->attributeValues($faker, $offerLine->productId),
             managerSlots: $this->managerSlots($faker, $users),
             promoteManagersToOpportunity: true,
+            sourceId: $sources->isEmpty() || $index % 2 === 1 ? null : $sources[$index % $sources->count()],
         );
     }
 

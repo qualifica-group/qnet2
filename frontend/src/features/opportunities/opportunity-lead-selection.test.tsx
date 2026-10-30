@@ -132,8 +132,8 @@ beforeEach(() => {
       return {
         lead_id: leadId,
         existing_opportunity_id: 777,
-        values: { referent_id: null, source_id: null, registry_id: null, operational_site_id: null },
-        references: { source: null, registry: null, operational_site: null },
+        values: { referent_id: null, registry_id: null, operational_site_id: null },
+        references: { registry: null, operational_site: null },
         locked_fields: [],
         product_lines: [],
         manager_slots: [],
@@ -146,17 +146,15 @@ beforeEach(() => {
       values: {
         // spec 0041 D-3/AC-050: no longer a derived field — the resolver never writes it.
         referent_id: null,
-        source_id: 20,
         registry_id: TEST_REGISTRY_ID,
         // Directive 2026-07-23: inherited on conversion, never locked.
         operational_site_id: TEST_OPERATIONAL_SITE_ID,
       },
       references: {
-        source: { id: 20, name: 'Web' },
         registry: { id: TEST_REGISTRY_ID, name: 'Acme S.p.A.' },
         operational_site: { id: TEST_OPERATIONAL_SITE_ID, label: 'Via Roma 1 - Milano' },
       },
-      locked_fields: ['source_id', 'registry_id'],
+      locked_fields: ['registry_id'],
       // Amendment rev.3 (AC-102/103): editable/removable seed row, never locked.
       product_lines: [
         {
@@ -207,8 +205,6 @@ describe('OpportunityFormBody — in-form Lead select (AC-086/087)', () => {
     // REQUIREMENT CHANGED (spec 0198 D-4, BR-2): the locked fields are closed
     // rows with NO pencil, no longer a disabled control.
     expect(queryPencil(ROW.registry)).not.toBeInTheDocument()
-    expect(await screen.findByText('Web')).toBeInTheDocument()
-    expect(queryPencil(ROW.source)).not.toBeInTheDocument()
     // AC-051: referent_id is no longer derived/locked by a picked lead — free
     // and editable, gated only by the registry now being chosen.
     openRow(ROW.referent)
@@ -280,7 +276,6 @@ describe('OpportunityFormBody — in-form Lead select (AC-086/087)', () => {
     // by the registry being unset again, not by the lead lock).
     await waitFor(() => expect(queryPencil(ROW.registry)).toBeInTheDocument())
     expect(screen.queryByRole('link', { name: /Acme S\.p\.A\./ })).not.toBeInTheDocument()
-    expect(queryPencil(ROW.source)).toBeInTheDocument()
     expect(queryPencil(ROW.referent)).not.toBeInTheDocument()
     // The derived product-line row is cleared away too (rev.3, "least surprising" whole-field reset).
     openRow(ROW.productLines)

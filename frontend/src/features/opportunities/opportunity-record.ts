@@ -24,7 +24,6 @@ export interface OpportunityRecordValues {
   reporter: RelationFieldRef | null
   /** Read-only origin; `null` on a create, whose lead has its own open picker. */
   lead: OpportunityLeadRef | null
-  source: RelationFieldRef | null
   supervisor: RelationFieldRef | null
   managers: OpportunityManagerRef[]
   /** The G.A. denominations (spec 0080): the record's own resolution, live from the rows on a create. */

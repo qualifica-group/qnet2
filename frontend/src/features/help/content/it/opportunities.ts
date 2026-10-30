@@ -30,7 +30,7 @@ const guide: HelpGuide = {
             ['Note generali', 'Testo libero'],
             ['Dettagli', '**Titolo** (facoltativo), **Data inizio**, **Data chiusura prevista**, **Valore stimato**, **Probabilità di successo (%)**'],
             ['Anagrafica e contatti', '**Anagrafica** (obbligatoria), **Referente**, **Commerciale**, **Segnalatore** con i **Buoni assegnati**'],
-            ['Classificazione', '**Fonte**, **Linee prodotto** (almeno una riga: categoria genitore, **Filtro** intermedio facoltativo, categoria prodotto), **Prodotti di interesse**'],
+            ['Classificazione', '**Linee prodotto** (almeno una riga: categoria genitore, **Filtro** intermedio facoltativo, categoria prodotto), **Prodotti di interesse**'],
             ['Team', '**Supervisore**, **Gestori account**'],
           ],
         },
@@ -54,7 +54,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati opportunità** e **Contesto** (Fonte, Linee prodotto, Prodotti di interesse), poi **Anagrafica e contatti** e **Buoni**, infine **Team**. La sezione Buoni resta visibile anche vuota (\"Nessun buono\").",
+          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati opportunità** e **Contesto** (Linee prodotto, Prodotti di interesse), poi **Anagrafica e contatti** e **Buoni**, infine **Team**. La sezione Buoni resta visibile anche vuota (\"Nessun buono\").",
         },
         {
           type: 'paragraph',
@@ -79,7 +79,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure è ereditato e bloccato dal lead di origine (Anagrafica, Fonte), oppure cambiarlo modificherebbe un campo che non puoi toccare. Il **Lead di origine** non si cambia e, se il tuo ruolo non lo vede, non compare né in creazione né nel dettaglio; lo **Stato** è calcolato dalle offerte.",
+          text: "Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure è ereditato e bloccato dal lead di origine (Anagrafica), oppure cambiarlo modificherebbe un campo che non puoi toccare. Il **Lead di origine** non si cambia e, se il tuo ruolo non lo vede, non compare né in creazione né nel dettaglio; lo **Stato** è calcolato dalle offerte.",
         },
       ],
     },
@@ -89,7 +89,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Un clic su una cella modificabile (Nome, Anagrafica, Referente, Commerciale, Supervisore, Gestori account, Fonte, Categoria prodotto, Prodotti di interesse, Valore stimato, Probabilità, Data inizio, Data chiusura prevista) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
+          text: "Un clic su una cella modificabile (Nome, Anagrafica, Referente, Commerciale, Supervisore, Gestori account, Categoria prodotto, Prodotti di interesse, Valore stimato, Probabilità, Data inizio, Data chiusura prevista) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
         },
         {
           type: 'note',
@@ -107,7 +107,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Se l'opportunità nasce da un lead, alcuni campi sono ereditati e bloccati: un avviso in alto lo segnala. I **Gestori account** sono sincronizzati con l'offerta collegata.",
+          text: "Se l'opportunità nasce da un lead, alcuni campi sono ereditati e bloccati: un avviso in alto lo segnala. I **Gestori account** sono sincronizzati con l'offerta collegata. L'opportunità non ha più la **Fonte**: è un campo dell'offerta e, creando un'offerta da un'opportunità nata da un lead, si precompila con la Fonte del lead.",
         },
         {
           type: 'warning',

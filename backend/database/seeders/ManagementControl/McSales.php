@@ -102,7 +102,6 @@ final class McSales
             commercialId: $deal['agent']->id,
             reporterId: $deal['reporter']?->id,
             supervisorId: $context->actor->id,
-            sourceId: null,
             leadId: null,
             managerSlots: null,
             productLines: [['business_function_id' => $categoryFunction['business_function_id'], 'product_category_id' => $product->category_id]],

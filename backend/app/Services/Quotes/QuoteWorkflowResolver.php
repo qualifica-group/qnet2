@@ -64,7 +64,7 @@ final class QuoteWorkflowResolver
         // product_category_id, D-7), opportunity.productLines (the fallback
         // classification of an offer with no revenue line, user directive
         // 2026-09-08) and opportunity(+customFieldValueRow) (the inherited
-        // source_id/custom.* criteria, D-7) are available without triggering
+        // custom.* criteria, D-7; source_id is the offer's own column, spec 0332) are available without triggering
         // a query per workflow candidate.
         $quote->loadMissing([
             'offerLines.product.category',

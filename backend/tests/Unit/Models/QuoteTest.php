@@ -288,47 +288,16 @@ it('uses HasFieldChangeRequests (D-10): the field-change-request subject is the 
     expect(class_uses(Quote::class))->toHaveKey(HasFieldChangeRequests::class);
 });
 
-it('source_id reads through to the underlying Opportunity\'s Fonte (D-10)', function () {
+// REQUIREMENT CHANGED: spec 0332 — `source_id` is a real, fillable `quotes` column
+// (the virtual read-through accessor of spec 0086 D-10 is gone).
+it('source_id is a fillable column with a BelongsTo source()', function () {
     $source = Source::factory()->create();
-    $opportunity = Opportunity::factory()->create(['source_id' => $source->id]);
-    $quote = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
-
-    expect($quote->source_id)->toBe($source->id);
-
-    // Safe with `opportunity` eager-loaded (the grid's own read path) too.
-    $loaded = Quote::query()->with('opportunity')->findOrFail($quote->id);
-    expect($loaded->source_id)->toBe($source->id);
-});
-
-it('source_id is null-safe when the Opportunity relation is unavailable', function () {
     $quote = Quote::factory()->create();
-    // Detach without a persisted change: exercises the accessor's own
-    // null-guard, not a real orphaned FK (opportunity_id stays NOT NULL).
-    $quote->setRelation('opportunity', null);
 
-    expect($quote->source_id)->toBeNull();
-});
+    $quote->update(['source_id' => $source->id]);
 
-it('source_id is get-only: it is absent from #[Fillable] and mass-assigning it never reaches the column (there is none)', function () {
-    $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
-    $otherSource = Source::factory()->create();
-
-    // `Quote::factory()->create()` mass-assigns through `Model::unguarded()`
-    // (Laravel core), which would bypass the very guard under test — so the
-    // attempted write goes through a plain `update()` on an ALREADY persisted
-    // instance instead, the real guarded path any FormRequest-driven
-    // controller write goes through (mirrors the existing 5-aggregates test
-    // above, same reasoning).
-    $quote = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
-
-    $quote->update(['source_id' => $otherSource->id]);
-    $quote->refresh();
-
-    // Mass-assigning `source_id` is silently ignored (not a real column, not
-    // fillable): the accessor keeps reflecting the Opportunity's own value,
-    // proving the only write path is `TableDefinition::updateCell()` on
-    // `opportunities.source_id`, never a direct Quote write.
-    expect($quote->source_id)->toBe($opportunity->source_id)
-        ->and($quote->source_id)->not->toBe($otherSource->id)
-        ->and(Schema::hasColumn('quotes', 'source_id'))->toBeFalse();
+    expect($quote->fresh()->source_id)->toBe($source->id)
+        ->and($quote->source())->toBeInstanceOf(BelongsTo::class)
+        ->and($quote->source()->getRelated())->toBeInstanceOf(Source::class)
+        ->and(Schema::hasColumn('quotes', 'source_id'))->toBeTrue();
 });

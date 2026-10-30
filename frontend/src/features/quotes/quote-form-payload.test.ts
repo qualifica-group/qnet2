@@ -23,6 +23,7 @@ function formValues(overrides: Partial<QuoteFormValues> = {}): QuoteFormValues {
     company_id: null,
     company_site_id: null,
     operational_site_id: null,
+    source_id: null,
     layout_id: null,
     payment_method_id: null,
     internal_notes: null,
@@ -59,6 +60,8 @@ function detail(overrides: Partial<QuoteDetail> = {}): QuoteDetail {
     company_site: null,
     operational_site_id: null,
     operational_site: null,
+    source_id: null,
+    source: null,
     layout_id: null,
     layout: null,
     payment_method_id: null,
@@ -133,6 +136,10 @@ describe('buildCreatePayload', () => {
     expect(payload.opportunity_id).toBe(42)
   })
 
+  it('sends the Fonte on create (spec 0332 D-4)', () => {
+    expect(buildCreatePayload(formValues({ source_id: 40 })).source_id).toBe(40)
+  })
+
   it('sends layout_id on create (AC-311)', () => {
     const payload = buildCreatePayload(formValues({ layout_id: 4 }))
     expect(payload.layout_id).toBe(4)
@@ -204,6 +211,14 @@ describe('buildCreatePayload', () => {
 })
 
 describe('buildUpdatePayload', () => {
+  it('sends source_id only when the Fonte changed, and null when it is cleared (spec 0332 D-4)', () => {
+    expect(buildUpdatePayload(formValues(), detail())).not.toHaveProperty('source_id')
+    expect(buildUpdatePayload(formValues({ source_id: 40 }), detail())).toMatchObject({ source_id: 40 })
+    expect(
+      buildUpdatePayload(formValues({ source_id: null }), detail({ source_id: 40, source: { id: 40, name: 'Web' } })),
+    ).toMatchObject({ source_id: null })
+  })
+
   it('never includes opportunity_id (immutable, AC-025)', () => {
     const payload = buildUpdatePayload(formValues({ title: 'Nuovo titolo' }), detail())
     expect('opportunity_id' in payload).toBe(false)

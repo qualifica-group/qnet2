@@ -80,8 +80,6 @@ function opportunity(overrides: Partial<OpportunityDetailWithPermissions> = {}):
     reporter: null,
     supervisor_id: null,
     supervisor: null,
-    source_id: 100,
-    source: { id: 100, name: 'Web' },
     operational_site_id: null,
     operational_site: null,
     product_lines: [

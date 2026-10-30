@@ -20,8 +20,8 @@ it('GET projects source, product lines, rewards, managers, labels and layout fro
     $response = $this->getJson("/api/contracts/{$contract->id}")->assertOk();
 
     $response
-        ->assertJsonPath('data.source.id', $quote->opportunity->source_id)
-        ->assertJsonPath('data.source.name', $quote->opportunity->source->name)
+        ->assertJsonPath('data.source.id', $quote->source_id)
+        ->assertJsonPath('data.source.name', $quote->source->name)
         ->assertJsonPath('data.layout.id', $quote->layout_id)
         ->assertJsonPath('data.layout.name', $quote->layout->name)
         ->assertJsonCount(1, 'data.product_lines')

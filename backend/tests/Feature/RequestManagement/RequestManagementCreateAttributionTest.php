@@ -60,7 +60,7 @@ it('creates with source_id, reporter_id and rewards -> 201, all persisted and th
     ])->assertCreated();
 
     $quote = Quote::with('rewards')->findOrFail($response->json('data.id'));
-    expect($quote->opportunity->source_id)->toBe($source->id);
+    expect($quote->source_id)->toBe($source->id);
     expect($quote->reporter_id)->toBe($reporter->id);
     expect($quote->rewards)->toHaveCount(1);
     $reward = $quote->rewards->first();

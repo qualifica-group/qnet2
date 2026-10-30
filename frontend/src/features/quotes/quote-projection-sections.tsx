@@ -16,8 +16,7 @@ import { managerPositionLabel } from '@/features/shared/manager-position-label'
 
 /**
  * Read-only sections of data an Offerta owns and other records only PROJECT
- * from it (spec 0331 D-1): the Offerta detail's Contesto, and the Contratto
- * and Commessa details' Contesto, Anagrafica e contatti, Team offerta and
+ * from it (spec 0331 D-1): the Contratto and Commessa details' Contesto, Anagrafica e contatti, Team offerta and
  * Documento e pagamento. They reuse the `quotes.detail.*` labels so the same
  * section reads the same everywhere.
  */
@@ -31,7 +30,7 @@ interface ProjectedContextSectionProps {
   productLines: ProductLine[] | undefined
 }
 
-/** Contesto: what the record inherits from the Opportunita' and does not own (Fonte, Linee prodotto). */
+/** Contesto: the Fonte of the Offerta it projects and the Opportunita''s Linee prodotto, read-only. */
 export function ProjectedContextSection({ source, productLines }: ProjectedContextSectionProps) {
   const { t } = useTranslation()
 

@@ -7,7 +7,6 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Referent;
 use App\Models\Registry;
-use App\Models\Source;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
@@ -96,7 +95,6 @@ it('create: with the mandatory fields only -> 201, every optional scalar null (A
         'referent_id' => null,
         'commercial_id' => null,
         'reporter_id' => null,
-        'source_id' => null,
         'lead_id' => null,
     ]));
     expect($response->json('data.product_lines'))->toHaveCount(1);
@@ -339,17 +337,16 @@ it('delete: 404 for a non-existent opportunity', function () {
 // response shape sanity for the remaining relation summaries
 // ---------------------------------------------------------------------------
 
-it('exposes source/product_lines summaries', function () {
+// REQUIREMENT CHANGED: spec 0332 — the Fonte is no longer part of the Opportunity shape.
+it('exposes product_lines summaries', function () {
     $actor = opportunityUserWith(['create']);
     $fks = mandatoryOpportunityFks();
     $businessFunction = BusinessFunction::factory()->create(['name' => 'Vendite']);
-    $source = Source::factory()->create(['name' => 'Fiera']);
     $productCategory = ProductCategory::factory()->create(['name' => 'Servizi Cloud', 'business_function_id' => $businessFunction->id]);
     Sanctum::actingAs($actor);
 
     $response = $this->postJson('/api/opportunities', array_merge($fks, [
         'name' => 'Full relations',
-        'source_id' => $source->id,
         'product_lines' => [
             ['business_function_id' => $businessFunction->id, 'product_category_id' => $productCategory->id],
         ],
@@ -357,8 +354,7 @@ it('exposes source/product_lines summaries', function () {
         // category, which this payload no longer declares — it would add a
         // second product line.
         'products_of_interest' => [Product::factory()->create(['category_id' => $productCategory->id])->id],
-    ]))->assertCreated()
-        ->assertJsonPath('data.source', ['id' => $source->id, 'name' => 'Fiera']);
+    ]))->assertCreated();
 
     $productLines = $response->json('data.product_lines');
     expect($productLines)->toHaveCount(1);

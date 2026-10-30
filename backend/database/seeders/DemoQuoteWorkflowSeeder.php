@@ -21,12 +21,12 @@ use Illuminate\Support\Collection;
  * same path POST /api/quote-workflows uses — so this exercises the real
  * write path (signature uniqueness, the 3 pinned system rows, criteria sync),
  * not a raw insert. Because DemoDataSeeder runs this BEFORE DemoOpportunitySeeder,
- * the demo opportunities whose source (a criterion below) matches a workflow
+ * the demo offers whose source (a criterion below) matches a workflow
  * pick up that workflow's own statuses at creation time (the resolver runs in
  * OpportunityService::create) — the "reference opportunities" that make the
  * feature concrete in the demo grid.
  *
- * Criteria key on `source_id` (a direct Opportunity column DemoOpportunitySeeder
+ * Criteria key on `source_id` (a direct Offerta column DemoQuoteSeeder
  * assigns round-robin, so matches are deterministic) plus one two-criteria
  * workflow (source + business_function) to exercise the specificity tie-break
  * (AC-011). Idempotent: existing workflows are cleared first (cascading their

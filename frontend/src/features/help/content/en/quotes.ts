@@ -17,7 +17,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Open **Quotes** and click **New quote** (or start from the opportunity record).',
-            'In **Quote data**, pick the **Opportunity**: Commercial, Reporter, Supervisor, Account managers and Operational site are prefilled from it (you can change them).',
+            'In **Quote data**, pick the **Opportunity**: Commercial, Reporter, Supervisor, Account managers and Operational site are prefilled from it (you can change them); the **Source** is prefilled when the opportunity was born from a lead.',
             'Fill in the other rows you need (see table).',
             'At the bottom, add the sold product rows on the **Offer** tab, picking them from the **Product catalogue**, and the cost rows on the **Costs** tab: the editors are already open and the summary updates as you type.',
             'Click **Save** (top or bottom): QNet checks every field and creates the quote; errors show under the rows to fix.',
@@ -32,6 +32,7 @@ const guide: HelpGuide = {
               '**Code**, **Title**, **Quote date**, **Opportunity**',
               "The quote date is proposed as today's date. The opportunity cannot change after creation.",
             ],
+            ['Context', '**Source**', "A field of the quote: prefilled with the lead's Source when the opportunity has one, otherwise empty; you can pick or change it."],
             ['Registry and contacts', '**Commercial**, **Reporter** (with their **Rewards**)', 'Prefilled from the opportunity.'],
             ['Team', '**Supervisor**, **Account managers**', 'Synced with the opportunity.'],
             ['Company and sites', '**Company**, **Company site**, **Operational site**', 'Pick the company first.'],
@@ -84,7 +85,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "A field without a pencil is not editable by you: your role's permissions make it read-only, or it is chosen at creation only (Code, Opportunity). Registry, Referent, Source, Product lines and General notes come from the opportunity and stay read-only.",
+          text: "A field without a pencil is not editable by you: your role's permissions make it read-only, or it is chosen at creation only (Code, Opportunity). Registry, Referent, Product lines and General notes come from the opportunity and stay read-only; the **Source** is a field of the quote and is edited here.",
         },
         {
           type: 'list',
@@ -106,7 +107,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Clicking an editable cell (Title, Status, Commercial, Reporter, Supervisor, Account managers, Company, Company site, Operational site) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
+          text: "Clicking an editable cell (Title, Status, Commercial, Reporter, Supervisor, Account managers, Company, Company site, Operational site, Source) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
         },
         {
           type: 'note',

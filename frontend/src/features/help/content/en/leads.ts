@@ -129,7 +129,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['In the opportunity', 'Where it comes from'],
           rows: [
-            ['Registry, Source, General notes', 'From the lead.'],
+            ['Registry, General notes', 'From the lead.'],
             ['Operational site', "The lead's site, editable."],
             ['Account managers', "The lead's operator becomes the second account manager."],
             ['Classification rows', "The campaign's (or its project's) business functions and categories."],

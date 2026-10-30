@@ -79,6 +79,8 @@ function quoteFixture(overrides: Partial<QuoteDetailWithPermissions> = {}): Quot
     company_site: null,
     operational_site_id: null,
     operational_site: null,
+    source_id: null,
+    source: null,
     layout_id: null,
     layout: null,
     payment_method_id: null,

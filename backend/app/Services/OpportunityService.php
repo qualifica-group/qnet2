@@ -62,7 +62,6 @@ class OpportunityService
         'commercial',
         'reporter',
         'supervisor',
-        'source',
         // Spec 0056: the site has no own name, its label is composed
         // server-side from its primary address' `line1`+city.
         'operationalSite.addresses.city',
@@ -73,7 +72,6 @@ class OpportunityService
         'managers',
         'lead.registry',
         'lead.operationalSite.addresses.city',
-        'lead.source',
         // Spec 0094, D-1/D-2: the campaign/project's classification is a
         // to-many `productLines` collection now, not the former single
         // `businessFunction`/`productCategory` pair — mirrors

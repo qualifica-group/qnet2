@@ -22,10 +22,9 @@ use Illuminate\Support\Collection;
  * drift apart.
  *
  * `registry_id` comes straight off the lead (spec 0041 D-3: `registry_id` is
- * now the LEAD's own, no longer the campaign's); `source_id` derives ONLY
- * from the lead's own source — the campaign-source fallback was removed
- * once Campaign stopped carrying a `source` (the campaign/project modules no
- * longer have a source_id/source at all). `referent_id` is NOT
+ * now the LEAD's own, no longer the campaign's). The Fonte is NOT derived
+ * any more (spec 0332: it lives on the Offerta, whose form reads the lead's
+ * source from the for-select `meta.lead_source`). `referent_id` is NOT
  * derived (spec 0041 D-3): it stays a plain field, scoped to the chosen
  * registry (BR-4, spec 0040).
  *
@@ -57,13 +56,11 @@ use Illuminate\Support\Collection;
 final class LeadOpportunityDefaultsResolver
 {
     /**
-     * The 2 BR-1-derivable/lockable field keys, in the contract's declared
-     * order.
+     * The BR-1-derivable/lockable field keys.
      *
      * @var array<int, string>
      */
     private const array DERIVED_FIELDS = [
-        'source_id',
         'registry_id',
     ];
 
@@ -84,7 +81,6 @@ final class LeadOpportunityDefaultsResolver
      */
     public const array REQUIRED_RELATIONS = [
         'registry',
-        'source',
         'operator',
         'operationalSite.addresses.city',
         'opportunity',
@@ -101,10 +97,7 @@ final class LeadOpportunityDefaultsResolver
 
         $campaign = $lead->campaign;
 
-        $effectiveSource = $lead->source;
-
         $values = [
-            'source_id' => $effectiveSource?->id,
             'registry_id' => $lead->registry_id,
             // User directive 2026-07-23: the Sede operativa is inherited on
             // conversion. NOT in DERIVED_FIELDS — a plain editable default,
@@ -118,7 +111,6 @@ final class LeadOpportunityDefaultsResolver
         ];
 
         $references = [
-            'source' => $this->summarizeByName($effectiveSource),
             'registry' => $this->summarizeByName($lead->registry),
             // The site has no `name` column: its identity is the composed
             // "{line1} - {city}" label (OperationalSiteLabel), so this entry

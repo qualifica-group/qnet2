@@ -138,17 +138,15 @@ describe('OpportunityFormBody — create from lead (BR-1/BR-2, AC-075)', () => {
             values: {
               // spec 0041 D-3/AC-050: no longer a derived field.
               referent_id: null,
-              source_id: 20,
               registry_id: 30,
               operational_site_id: null,
               general_notes: null,
             },
             references: {
-              source: { id: 20, name: 'Web' },
               registry: { id: 30, name: 'Acme S.p.A.' },
               operational_site: null,
             },
-            lockedFields: ['registry_id', 'source_id'],
+            lockedFields: ['registry_id'],
             productLines: [
               {
                 id: 900,
@@ -176,8 +174,6 @@ describe('OpportunityFormBody — create from lead (BR-1/BR-2, AC-075)', () => {
     // precompiled disabled control.
     expect(screen.getByRole('link', { name: /Acme S\.p\.A\./ })).toBeInTheDocument()
     expect(queryPencil(ROW.registry)).not.toBeInTheDocument()
-    expect(await screen.findByText('Web')).toBeInTheDocument()
-    expect(queryPencil(ROW.source)).not.toBeInTheDocument()
 
     // AC-051: referent_id is no longer derived/locked by the lead — free and
     // editable, gated only by the registry now being chosen (it is).
@@ -205,7 +201,6 @@ describe('OpportunityFormBody — create from lead (BR-1/BR-2, AC-075)', () => {
     await waitFor(() => expect(queryPencil(ROW.title)).toBeInTheDocument())
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
     expect(queryPencil(ROW.registry)).toBeInTheDocument()
-    expect(queryPencil(ROW.source)).toBeInTheDocument()
     openRow(ROW.registry)
     expect(screen.getByTestId('disabled-Registry')).toHaveTextContent('false')
   })

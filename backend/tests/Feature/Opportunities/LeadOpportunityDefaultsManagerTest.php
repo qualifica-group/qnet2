@@ -58,7 +58,7 @@ it('opportunity-defaults: a lead without an operator prefills empty manager slot
 // The manager prefill is never a lock: locked_fields stays untouched
 // ---------------------------------------------------------------------------
 
-it('opportunity-defaults: the operator prefill never enters locked_fields, which stays exactly [source_id, registry_id]', function () {
+it('opportunity-defaults: the operator prefill never enters locked_fields, which stays exactly [registry_id]', function () {
     $actor = opportunityFromLeadActor(['create'], ['view']);
     $lead = completeLead();
     $lead->update(['operator_id' => User::factory()->create()->id]);
@@ -67,7 +67,8 @@ it('opportunity-defaults: the operator prefill never enters locked_fields, which
     $response = $this->getJson("/api/leads/{$lead->id}/opportunity-defaults")->assertOk();
 
     expect($response->json('data.locked_fields'))->not->toContain('manager_slots');
-    expect($response->json('data.locked_fields'))->toEqualCanonicalizing(['source_id', 'registry_id']);
+    // REQUIREMENT CHANGED: spec 0332 — source_id is no longer derived.
+    expect($response->json('data.locked_fields'))->toEqualCanonicalizing(['registry_id']);
 });
 
 // ---------------------------------------------------------------------------

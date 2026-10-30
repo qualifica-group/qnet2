@@ -8,14 +8,14 @@ import type { OpportunityProductLine } from '@/features/opportunities/types'
 import type { OpportunityFormValues } from '@/features/opportunities/use-opportunity-form'
 
 /**
- * The 2 BR-1 fields a lead selection writes to (or clears from) the form.
+ * The BR-1 field a lead selection writes to (or clears from) the form.
  * `referent_id` is NOT among them (spec 0041 D-3): it stays a free,
  * anagrafica-scoped pick (BR-4 spec 0040), never derived/locked by the lead.
  * `business_function_id`/`product_category_id` are NOT single fields anymore
  * (spec 0040 amendment rev.3): the lead's derived function+category, when
  * both exist, seeds `product_lines` instead (handled separately below).
  */
-const DERIVED_FIELDS = ['source_id', 'registry_id'] as const
+const DERIVED_FIELDS = ['registry_id'] as const
 
 export interface OpportunityLeadSelectionState {
   leadId: number | null
@@ -177,7 +177,6 @@ export function useOpportunityLeadSelection(
 
       const previousRegistryId = getValues('registry_id')
       const hadReferent = getValues('referent_id') !== null
-      setValue('source_id', defaults.values.source_id, { shouldDirty: true })
       setValue('registry_id', defaults.values.registry_id, { shouldDirty: true })
       // Directive 2026-07-23: the Sede operativa is inherited from the lead,
       // editable afterwards like any plain field.

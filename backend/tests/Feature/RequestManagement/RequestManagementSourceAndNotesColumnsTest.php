@@ -106,7 +106,9 @@ it('rows: source surfaces as an {id, name} ref and general_notes as raw text', f
     $actor = worklistColumnsActor(['viewAny', 'view']);
     $source = Source::factory()->create(['name' => 'Fiera di settore']);
     $quote = worklistColumnsRequest($actor);
-    $quote->opportunity->update(['source_id' => $source->id, 'general_notes' => "riga 1\nriga 2"]);
+    // REQUIREMENT CHANGED: spec 0332 — the Fonte is the offer's, the notes stay the opportunity's.
+    $quote->update(['source_id' => $source->id]);
+    $quote->opportunity->update(['general_notes' => "riga 1\nriga 2"]);
     Sanctum::actingAs($actor);
 
     $row = collect($this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])
@@ -130,7 +132,7 @@ it('rows: a quote without a source projects a null ref', function () {
 
 // ---------------------------------------------------------------------------
 // The write path — through RequestManagementService::updateWork()'s
-// applyOpportunitySource(), never a plain $row->update()
+// RequestAttributionWriter::applyQuoteAttribution(), never a plain $row->update()
 // ---------------------------------------------------------------------------
 
 it('PATCH source persists the FK and returns the row with the new ref', function () {
@@ -144,7 +146,7 @@ it('PATCH source persists the FK and returns the row with the new ref', function
         'value' => $source->id,
     ])->assertOk()->json('data');
 
-    expect($quote->opportunity->fresh()->source_id)->toBe($source->id)
+    expect($quote->fresh()->source_id)->toBe($source->id)
         ->and($row['source'])->toBe(['id' => $source->id, 'name' => 'Passaparola']);
 });
 
@@ -155,7 +157,7 @@ it('PATCH source with null -> 422, the previous source untouched', function () {
     $actor = worklistColumnsActor(['viewAny', 'update', 'updateSource']);
     $source = Source::factory()->create();
     $quote = worklistColumnsRequest($actor);
-    $quote->opportunity->update(['source_id' => $source->id]);
+    $quote->update(['source_id' => $source->id]);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/tables/request-management/rows/{$quote->id}", [
@@ -163,7 +165,7 @@ it('PATCH source with null -> 422, the previous source untouched', function () {
         'value' => null,
     ])->assertStatus(422);
 
-    expect($quote->opportunity->fresh()->source_id)->toBe($source->id);
+    expect($quote->fresh()->source_id)->toBe($source->id);
 });
 
 it('PATCH source with an unknown id -> 422, nothing written', function () {
@@ -176,7 +178,7 @@ it('PATCH source with an unknown id -> 422, nothing written', function () {
         'value' => 999999,
     ])->assertStatus(422);
 
-    expect($quote->opportunity->fresh()->source_id)->toBeNull();
+    expect($quote->fresh()->source_id)->toBeNull();
 });
 
 // 422, not 403: the column is absent from the engine's editable allow-list
@@ -205,8 +207,8 @@ it('the source set filter matches by the related row name', function () {
     $actor = worklistColumnsActor(['viewAny', 'viewAll']);
     $wanted = Source::factory()->create(['name' => 'Fiera']);
     $other = Source::factory()->create(['name' => 'Telemarketing']);
-    $matching = Quote::factory()->for(Opportunity::factory()->state(['source_id' => $wanted->id]))->create();
-    $excluded = Quote::factory()->for(Opportunity::factory()->state(['source_id' => $other->id]))->create();
+    $matching = Quote::factory()->create(['source_id' => $wanted->id]);
+    $excluded = Quote::factory()->create(['source_id' => $other->id]);
     Sanctum::actingAs($actor);
 
     $ids = collect($this->postJson('/api/tables/request-management/rows', [
@@ -223,7 +225,7 @@ it('values: source enumerates the distinct related names in scope', function () 
     $actor = worklistColumnsActor(['viewAny', 'viewAll']);
     $used = Source::factory()->create(['name' => 'Fiera']);
     Source::factory()->create(['name' => 'Mai referenziata']);
-    Quote::factory()->for(Opportunity::factory()->state(['source_id' => $used->id]))->create();
+    Quote::factory()->create(['source_id' => $used->id]);
     Sanctum::actingAs($actor);
 
     $values = $this->postJson('/api/tables/request-management/values', ['columnId' => 'source'])

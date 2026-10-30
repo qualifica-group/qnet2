@@ -72,6 +72,7 @@ const OPPORTUNITY_WITH_MANAGERS: OpportunityForSelectItem = {
     reporter: null,
     supervisor: null,
     operational_site: null,
+    lead_source: null,
     managers: [
       { id: 21, name: 'Rita Neri', position: 1 },
       { id: 22, name: 'Ugo Verdi', position: 3 },
@@ -88,6 +89,21 @@ const OPPORTUNITY_WITH_ROLES: OpportunityForSelectItem = {
     reporter: { id: 81, name: 'Elio Fabbri' },
     supervisor: { id: 61, name: 'Ivo Bianchi' },
     operational_site: { id: 91, label: 'Via Ereditata 1 - Milano' },
+    lead_source: null,
+    managers: [],
+  },
+}
+
+/** Spec 0332 D-6: an opportunity born from a lead whose Fonte is Web. */
+const OPPORTUNITY_WITH_LEAD_SOURCE: OpportunityForSelectItem = {
+  id: 58,
+  label: 'OPP_58',
+  meta: {
+    commercial: null,
+    reporter: null,
+    supervisor: null,
+    operational_site: null,
+    lead_source: { id: 40, name: 'Web' },
     managers: [],
   },
 }
@@ -95,7 +111,7 @@ const OPPORTUNITY_WITH_ROLES: OpportunityForSelectItem = {
 const OPPORTUNITY_WITHOUT_ROLES: OpportunityForSelectItem = {
   id: 56,
   label: 'OPP_56',
-  meta: { commercial: null, reporter: null, supervisor: null, operational_site: null, managers: [] },
+  meta: { commercial: null, reporter: null, supervisor: null, operational_site: null, lead_source: null, managers: [] },
 }
 
 /**
@@ -126,7 +142,7 @@ vi.mock('@/components/ui/async-paginated-select', () => ({
       data-params={JSON.stringify(params ?? null)}
     >
       <span data-testid={`value-${labels.triggerLabel}`}>{value ?? ''}</span>
-      {[OPPORTUNITY_WITH_ROLES, OPPORTUNITY_WITHOUT_ROLES, OPPORTUNITY_WITH_MANAGERS].map((item) => (
+      {[OPPORTUNITY_WITH_ROLES, OPPORTUNITY_WITHOUT_ROLES, OPPORTUNITY_WITH_MANAGERS, OPPORTUNITY_WITH_LEAD_SOURCE].map((item) => (
         <button
           key={item.id}
           type="button"
@@ -280,5 +296,29 @@ describe('QuoteFormBody — role inheritance from the picked Opportunity', () =>
     await waitFor(() =>
       expect(screen.getByTestId('manager-slots-value')).toHaveTextContent('[null,null,null,null]'),
     )
+  })
+})
+
+describe('QuoteFormBody — Fonte prefill from the opportunity lead (spec 0332 D-6)', () => {
+  it('fills the Fonte from meta.lead_source, named on its closed row, and clears it with the opportunity', async () => {
+    renderCreateForm()
+
+    pickOpportunity(OPPORTUNITY_WITH_LEAD_SOURCE.id)
+    await waitFor(() => expect(rowValue('Source')).toContain('Web'))
+
+    openRow('Source')
+    expect(screen.getByTestId('value-Source')).toHaveTextContent('40')
+
+    pickOpportunity('clear')
+    await waitFor(() => expect(rowValue('Source')).not.toContain('Web'))
+  })
+
+  it('leaves the Fonte empty for an opportunity without a lead source', async () => {
+    renderCreateForm()
+
+    pickOpportunity(OPPORTUNITY_WITHOUT_ROLES.id)
+
+    await waitFor(() => expect(rowValue('Commercial')).not.toContain('Sara Conti'))
+    expect(rowValue('Source')).not.toContain('Web')
   })
 })

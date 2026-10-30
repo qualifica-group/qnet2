@@ -99,10 +99,10 @@ class RequestManagementResource extends JsonResource
             // Attribution block (user directive 2026-07-22): editable from
             // this panel, so each one ships BOTH its id (the form's value)
             // and its `{id, name}` projection (the picker's hydration).
-            // "Fonte" stays on the Opportunity (D-2); "Segnalatore" and the
-            // Sede operativa moved to the Quote (see below).
-            'source_id' => $opportunity->source_id,
-            'source' => $this->summarizeByName($opportunity->source),
+            // "Fonte" (spec 0332), "Segnalatore" and the Sede operativa all
+            // live on the Quote.
+            'source_id' => $quote->source_id,
+            'source' => $this->summarizeByName($quote->source),
             'reporter_id' => $quote->reporter_id,
             'reporter' => $this->summarizeByName($quote->reporter),
             // Spec 0086, D-4: the "abbinamento buono" chips, whose origin is

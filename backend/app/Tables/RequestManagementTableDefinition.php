@@ -201,11 +201,11 @@ class RequestManagementTableDefinition extends AbstractTableDefinition
     public function baseQuery(): Builder
     {
         $query = Quote::query()->with([
-            // `source`/`product_categories`/`general_notes`/
+            'source',
+            // `product_categories`/`general_notes`/
             // the client anagraphic columns (spec 0086, D-2): nested
             // dot-paths eager-load the WHOLE `opportunity` record in one
             // shot, not just the leaf relation.
-            'opportunity.source',
             'opportunity.productLines.productCategory', 'opportunity.productLines.businessFunction',
             'opportunity.registry.personalData.contacts',
             // `operator.avatar` (spec 0087, D-9): the "Operatore" (GA2)

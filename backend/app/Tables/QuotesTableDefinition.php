@@ -118,7 +118,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
             // "Gestori Account" (spec 0087, D-1/T-10): the Offerta's own team,
             // rendered as an avatar stack by the `managers` column.
             'managers.avatar',
-            'company', 'companySite',
+            'company', 'companySite', 'source',
             // The site has no own name: the composed label needs its primary
             // address + city (mirrors OpportunitiesTableDefinition).
             'operationalSite.addresses.city',
@@ -212,6 +212,7 @@ class QuotesTableDefinition extends AbstractTableDefinition
             'created_at' => $row->created_at,
             'company' => $this->summarizeCompany($row->company),
             'company_site' => $this->summarize($row->companySite),
+            'source' => $this->summarize($row->source),
             'operational_site' => $this->operationalSiteColumn->summarize($row->operationalSite),
             // "Prossimo richiamo" (user directive 2026-09-04): the Offerta's
             // own column, projected in the SAME wire format Gestione Richieste

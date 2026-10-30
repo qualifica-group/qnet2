@@ -9,6 +9,7 @@ import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-si
 import { OPPORTUNITIES_FOR_SELECT_RESOURCE, type OpportunityForSelectMeta } from '@/features/opportunities/for-select-api'
 import { PAYMENT_METHODS_FOR_SELECT_RESOURCE } from '@/features/payment-methods/for-select-api'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
+import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import { QUOTES_LAYOUT_MODULE_PARAM } from '@/features/quotes/quote-field-strings'
 import type { ForSelectItem } from '@/features/for-select/types'
@@ -87,6 +88,7 @@ export function useQuoteDraftLabels(control: Control<QuoteFormValues>, known: Qu
     resource: OPERATIONAL_SITES_FOR_SELECT_RESOURCE,
     ids: idsOf(values.operational_site_id),
   })
+  const sources = useForSelectLabels({ resource: SOURCES_FOR_SELECT_RESOURCE, ids: idsOf(values.source_id) })
   const layouts = useForSelectLabels({
     resource: DOCUMENT_LAYOUTS_FOR_SELECT_RESOURCE,
     ids: idsOf(values.layout_id),
@@ -126,6 +128,7 @@ export function useQuoteDraftLabels(control: Control<QuoteFormValues>, known: Qu
     company: refOf(companyId, companies),
     companySite: refOf(values.company_site_id, companySites),
     operationalSite: refOf(values.operational_site_id, operationalSites, inheritedSite),
+    source: refOf(values.source_id, sources, inheritedMeta?.lead_source),
     layout: refOf(values.layout_id, layouts, known.layout ? { id: known.layout.id, name: known.layout.label } : null),
     paymentMethod: refOf(values.payment_method_id, paymentMethods),
   }

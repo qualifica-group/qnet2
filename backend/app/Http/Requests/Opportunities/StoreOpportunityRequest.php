@@ -19,10 +19,9 @@ use Illuminate\Validation\Rule;
 /**
  * Validates the payload for POST /api/opportunities (spec 0040).
  * `registry_id` is required UNLESS `lead_id` derives
- * it (BR-1). The 2 BR-1-derivable fields (source_id/registry_id) become
- * `prohibited` when `lead_id` derives a non-null value for them —
- * LeadOpportunityDefaultsResolver is the single source of truth for which
- * ones, shared verbatim with OpportunityService's write-side derivation and
+ * it (BR-1). The BR-1-derivable field (registry_id) becomes
+ * `prohibited` when `lead_id` derives a non-null value for it —
+ * LeadOpportunityDefaultsResolver is the single source of truth for which, shared verbatim with OpportunityService's write-side derivation and
  * the GET /api/leads/{lead}/opportunity-defaults prefill. `referent_id` is
  * NOT derivable (spec 0041 D-1/D-3): it stays a plain, always-editable field
  * scoped to the chosen registry (BR-4, spec 0040).
@@ -80,12 +79,11 @@ class StoreOpportunityRequest extends FormRequest
 
         return array_merge([
             'name' => ['nullable', 'string', 'max:'.self::NAME_MAX_LENGTH],
-            'registry_id' => $this->derivableRule($locked, 'registry_id', required: true, table: 'registries'),
+            'registry_id' => $this->derivableRule($locked, 'registry_id', table: 'registries'),
             'referent_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'commercial_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'reporter_id' => ['nullable', 'integer', Rule::exists('referents', 'id')],
             'supervisor_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
-            'source_id' => $this->derivableRule($locked, 'source_id', required: false, table: 'sources'),
             // Spec 0056: a plain, optional relation — never derivable/locked.
             'operational_site_id' => ['nullable', 'integer', Rule::exists('operational_sites', 'id')],
             'opportunity_status_id' => ['prohibited'],
@@ -111,21 +109,19 @@ class StoreOpportunityRequest extends FormRequest
     }
 
     /**
-     * One of the 2 BR-1-derivable fields: `prohibited` when $locked derives a
-     * value for it, else the plain (required or nullable) relation rule.
+     * A BR-1-derivable field: `prohibited` when $locked derives a value for
+     * it, else the plain required relation rule.
      *
      * @param  array<int, string>  $locked
      * @return array<int, mixed>
      */
-    private function derivableRule(array $locked, string $field, bool $required, string $table): array
+    private function derivableRule(array $locked, string $field, string $table): array
     {
         if (in_array($field, $locked, true)) {
             return ['prohibited'];
         }
 
-        return $required
-            ? ['required', 'integer', Rule::exists($table, 'id')]
-            : ['nullable', 'integer', Rule::exists($table, 'id')];
+        return ['required', 'integer', Rule::exists($table, 'id')];
     }
 
     /**

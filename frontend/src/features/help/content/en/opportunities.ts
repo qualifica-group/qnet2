@@ -30,7 +30,7 @@ const guide: HelpGuide = {
             ['General notes', 'Free-form text'],
             ['Details', '**Title** (optional), **Start date**, **Expected close date**, **Estimated value**, **Success probability (%)**'],
             ['Registry and contacts', '**Registry** (required), **Contact**, **Sales rep**, **Reporter** with the **Assigned rewards**'],
-            ['Classification', '**Source**, **Product lines** (at least one row: parent category, optional intermediate **Filter**, product category), **Products of interest**'],
+            ['Classification', '**Product lines** (at least one row: parent category, optional intermediate **Filter**, product category), **Products of interest**'],
             ['Team', '**Supervisor**, **Account managers**'],
           ],
         },
@@ -54,7 +54,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Opportunity data** and **Context** (Source, Product lines, Products of interest), then **Registry and contacts** and **Rewards**, then **Team**. The Rewards section stays visible even when empty (\"No rewards\").",
+          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Opportunity data** and **Context** (Product lines, Products of interest), then **Registry and contacts** and **Rewards**, then **Team**. The Rewards section stays visible even when empty (\"No rewards\").",
         },
         {
           type: 'paragraph',
@@ -79,7 +79,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'A field with no pencil is not editable by you: your role makes it read-only, or it is inherited and locked by the originating lead (Registry, Source), or changing it would change a field you cannot touch. The **Originating lead** cannot be changed and, when your role cannot see it, it shows neither on create nor in the detail; the **Status** is computed from the quotes.',
+          text: 'A field with no pencil is not editable by you: your role makes it read-only, or it is inherited and locked by the originating lead (Registry), or changing it would change a field you cannot touch. The **Originating lead** cannot be changed and, when your role cannot see it, it shows neither on create nor in the detail; the **Status** is computed from the quotes.',
         },
       ],
     },
@@ -89,7 +89,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Clicking an editable cell (Name, Registry, Contact, Sales rep, Supervisor, Account managers, Source, Product category, Products of interest, Estimated value, Probability, Start date, Expected close date) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
+          text: "Clicking an editable cell (Name, Registry, Contact, Sales rep, Supervisor, Account managers, Product category, Products of interest, Estimated value, Probability, Start date, Expected close date) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
         },
         {
           type: 'note',
@@ -107,7 +107,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'If the opportunity is born from a lead, some fields are inherited and locked: a banner at the top signals it. **Account managers** are synced with the linked quote.',
+          text: 'If the opportunity is born from a lead, some fields are inherited and locked: a banner at the top signals it. **Account managers** are synced with the linked quote. The opportunity no longer has a **Source**: it is a field of the quote and, when you create a quote from an opportunity born from a lead, it is prefilled with the lead\'s Source.',
         },
         {
           type: 'warning',

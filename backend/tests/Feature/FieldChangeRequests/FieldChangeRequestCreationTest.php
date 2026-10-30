@@ -58,9 +58,9 @@ if (! function_exists('fcrActorWith')) {
 if (! function_exists('fcrQuoteWithSource')) {
     function fcrQuoteWithSource(): Quote
     {
-        $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
+        $opportunity = Opportunity::factory()->create();
 
-        return Quote::factory()->for($opportunity)->create();
+        return Quote::factory()->for($opportunity)->create(['source_id' => Source::factory()->create()->id]);
     }
 }
 
@@ -83,14 +83,14 @@ it('AC-013: POST creates a pending request with a server-computed snapshot', fun
     ])->assertCreated();
 
     $response->assertJsonPath('data.status', 'pending')
-        ->assertJsonPath('data.current_value', $quote->opportunity->source_id)
+        ->assertJsonPath('data.current_value', $quote->source_id)
         ->assertJsonPath('data.requested_value', $newSource->id)
         ->assertJsonPath('data.requested_by.id', $actor->id);
 
     $row = FieldChangeRequest::sole();
     expect($row->status->value)->toBe('pending')
         ->and($row->requested_by_id)->toBe($actor->id)
-        ->and($row->current_value)->toBe($quote->opportunity->source_id)
+        ->and($row->current_value)->toBe($quote->source_id)
         ->and($row->pending_key)->toBe("quote:{$quote->id}:source_id");
 });
 
@@ -135,7 +135,7 @@ it('AC-015: client-supplied current_value/status/requested_by_id/handled_by_id a
 
     $row = FieldChangeRequest::sole();
     expect($row->status->value)->toBe('pending')
-        ->and($row->current_value)->toBe($quote->opportunity->source_id)
+        ->and($row->current_value)->toBe($quote->source_id)
         ->and($row->requested_by_id)->toBe($actor->id)
         ->and($row->handled_by_id)->toBeNull();
 });
@@ -211,7 +211,7 @@ it('AC-019: requested_value equal to the current one -> 422, no row written', fu
         'resource' => 'request-management',
         'subject_id' => $quote->id,
         'field' => 'source_id',
-        'requested_value' => $quote->opportunity->source_id,
+        'requested_value' => $quote->source_id,
     ])->assertStatus(422);
 
     expect(FieldChangeRequest::query()->count())->toBe(0);

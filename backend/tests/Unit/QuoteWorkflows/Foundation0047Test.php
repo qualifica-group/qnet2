@@ -111,14 +111,12 @@ it('existsTable() rejects a field outside the allow-list', function () {
 
 // ============ quoteValues() — D-7: inherited vs. offer-line-derived ============
 
-it('quoteValues() reads the INHERITED value from the parent opportunity for source_id, empty when null (D-7)', function () {
+// REQUIREMENT CHANGED: spec 0332 D-8 — source_id is the offer's own column, not inherited.
+it('quoteValues() reads the offer own source_id, empty when null', function () {
     $source = Source::factory()->create();
-    $opportunity = Opportunity::factory()->create(['source_id' => $source->id]);
-    $quote = Quote::factory()->create(['opportunity_id' => $opportunity->id]);
-    $quote->load('opportunity');
+    $quote = Quote::factory()->create(['source_id' => $source->id]);
 
-    $bare = Quote::factory()->create(['opportunity_id' => Opportunity::factory()->create(['source_id' => null])->id]);
-    $bare->load('opportunity');
+    $bare = Quote::factory()->create();
 
     expect(criterionFieldRegistry()->quoteValues($quote, 'source_id'))->toBe([$source->id])
         ->and(criterionFieldRegistry()->quoteValues($bare, 'source_id'))->toBe([]);

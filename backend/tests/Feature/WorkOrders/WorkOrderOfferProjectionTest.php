@@ -22,7 +22,7 @@ it('GET projects referent, commercial, reporter, source, lines, rewards, layout 
         ->assertJsonPath('data.referent.referent_type.name', $quote->opportunity->referent->referentType->name)
         ->assertJsonPath('data.commercial.id', $quote->commercial_id)
         ->assertJsonPath('data.reporter.id', $quote->reporter_id)
-        ->assertJsonPath('data.source.id', $quote->opportunity->source_id)
+        ->assertJsonPath('data.source.id', $quote->source_id)
         ->assertJsonCount(1, 'data.product_lines')
         ->assertJsonPath('data.rewards.0.id', $quote->rewards->first()->id)
         ->assertJsonPath('data.layout.id', $quote->layout_id)

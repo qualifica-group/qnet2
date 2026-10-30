@@ -18,15 +18,12 @@ use Illuminate\Support\Facades\DB;
  * Mirrors `App\Tables\Contracts\ContractRelationColumns`' shape split for a
  * domain whose display data spans a relation chain:
  *
- *  - OPPORTUNITY_RELATIONS: `source` — the field lives on the row's
- *    OPPORTUNITY (`opportunities.source_id`); the relation path carries the
- *    `opportunity.` prefix and every subquery joins through `opportunities`,
- *    correlated via `opportunities.id = quotes.opportunity_id`.
  *  - AGGREGATED_RELATIONS: `product_categories` — to-many via
  *    `opportunity.productLines.productCategory`; filterable (`whereHas`
  *    dot-path, no SQL change needed) but never sortable.
- *  - QUOTE_RELATIONS: `quote_workflow_status` — an OWN FK on the row's own
- *    table (`quotes.quote_workflow_status_id`, user directive 2026-08-31):
+ *  - QUOTE_RELATIONS: `source` (spec 0332: the Fonte lives on the offer) and
+ *    `quote_workflow_status` — OWN FKs on the row's own
+ *    table (`quotes.source_id`, `quotes.quote_workflow_status_id`, user directive 2026-08-31):
  *    no `opportunity` hop at all, so both the `whereHas` and the correlated
  *    subquery address `quotes` directly, exactly as
  *    `App\Tables\Quotes\QuoteRelationColumns` does for the same relation on
@@ -67,19 +64,13 @@ final class RequestRelationColumns
     private const int MAX_FILTER_VALUES = 200;
 
     /**
-     * @var array<string, array{relation: string, table: string, fk: string}>
-     */
-    private const array OPPORTUNITY_RELATIONS = [
-        'source' => ['relation' => 'opportunity.source', 'table' => 'sources', 'fk' => 'source_id'],
-    ];
-
-    /**
      * Simple (single-hop) relation-name columns whose FK lives on `quotes`
      * itself — no `opportunity` hop (user directive 2026-08-31).
      *
      * @var array<string, array{relation: string, table: string, fk: string}>
      */
     private const array QUOTE_RELATIONS = [
+        'source' => ['relation' => 'source', 'table' => 'sources', 'fk' => 'source_id'],
         'quote_workflow_status' => ['relation' => 'quoteWorkflowStatus', 'table' => 'quote_workflow_statuses', 'fk' => 'quote_workflow_status_id'],
         RequestManagerColumns::OPERATOR_COLUMN_ID => ['relation' => 'operator', 'table' => 'users', 'fk' => 'operator_id'],
     ];
@@ -116,8 +107,7 @@ final class RequestRelationColumns
             return true;
         }
 
-        $config = self::OPPORTUNITY_RELATIONS[$columnId]
-            ?? self::QUOTE_RELATIONS[$columnId]
+        $config = self::QUOTE_RELATIONS[$columnId]
             ?? self::AGGREGATED_RELATIONS[$columnId]
             ?? null;
 
@@ -176,13 +166,7 @@ final class RequestRelationColumns
 
         $ownConfig = self::QUOTE_RELATIONS[$columnId] ?? null;
 
-        if ($ownConfig !== null) {
-            return $this->quoteRelationSubquery($ownConfig['table'], $ownConfig['fk']);
-        }
-
-        $throughConfig = self::OPPORTUNITY_RELATIONS[$columnId] ?? null;
-
-        return $throughConfig === null ? null : $this->opportunityRelationSubquery($throughConfig['table'], $throughConfig['fk']);
+        return $ownConfig === null ? null : $this->quoteRelationSubquery($ownConfig['table'], $ownConfig['fk']);
     }
 
     /**
@@ -197,15 +181,6 @@ final class RequestRelationColumns
             ->limit(1);
     }
 
-    private function opportunityRelationSubquery(string $table, string $fk): QueryBuilder
-    {
-        return DB::table($table)
-            ->select("{$table}.name")
-            ->join('opportunities', "opportunities.{$fk}", '=', "{$table}.id")
-            ->whereColumn('opportunities.id', 'quotes.opportunity_id')
-            ->limit(1);
-    }
-
     private function opportunityScalarSubquery(string $column): QueryBuilder
     {
         return DB::table('opportunities')
@@ -215,8 +190,8 @@ final class RequestRelationColumns
     }
 
     /**
-     * Excel-like distinct values (spec 0004/0005): `source`'s related row
-     * name, `quote_workflow_status`'s own-FK related row name, plus
+     * Excel-like distinct values (spec 0004/0005): `source`'s and
+     * `quote_workflow_status`'s own-FK related row names, plus
      * `product_categories` via a join through `opportunity_product_lines` —
      * scoped to the rows matching $query.
      * OPPORTUNITY_SCALAR_COLUMNS are never reached here (they declare
@@ -251,20 +226,6 @@ final class RequestRelationColumns
             );
         }
 
-        $throughConfig = self::OPPORTUNITY_RELATIONS[$columnId] ?? null;
-
-        if ($throughConfig !== null) {
-            $opportunityIds = (clone $query)->select('quotes.opportunity_id');
-            $relatedIds = DB::table('opportunities')->whereIn('id', $opportunityIds)->whereNotNull($throughConfig['fk'])->select($throughConfig['fk']);
-
-            return $this->withBlanks(
-                $this->distinctNames($throughConfig['table'], $relatedIds, $search, $limit),
-                $throughConfig['relation'],
-                $search,
-                $query,
-            );
-        }
-
         return $this->managerSlotColumn->distinctValues($columnId, $search, $query, $limit);
     }
 
@@ -290,7 +251,7 @@ final class RequestRelationColumns
      * `whereHas` on a relation's own `name`, bound and never raw — shared by
      * every DERIVED-column set filter (applyFilter) and its advanced-filter
      * twin (RequestManagementTableDefinition::applyAdvancedFilter). Dot-path
-     * relations (e.g. `opportunity.source`) are supported natively by
+     * relations (e.g. `opportunity.productLines.productCategory`) are supported natively by
      * Eloquent's own `whereHas()`.
      *
      * @param  Builder<Model>  $query

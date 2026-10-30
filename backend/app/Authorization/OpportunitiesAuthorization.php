@@ -65,7 +65,6 @@ class OpportunitiesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('commercial_id', 'select'),
             new FieldDefinition('reporter_id', 'select'),
             new FieldDefinition('supervisor_id', 'select'),
-            new FieldDefinition('source_id', 'select'),
             new FieldDefinition('operational_site_id', 'select'),
             new FieldDefinition('product_lines', 'multiselect', mandatory: true),
             // "Prodotti di interesse": OPTIONAL (user directive 2026-09-17,
@@ -104,7 +103,6 @@ class OpportunitiesAuthorization extends AbstractResourceAuthorization
             'commercial_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'reporter_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'supervisor_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
-            'source_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             // Spec 0056: readonly unless the actor ALSO holds
             // operational-sites.viewAny (see class docblock) — never `required`.
             'operational_site_id' => $mayWrite && $actor->can('operational-sites.viewAny') ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

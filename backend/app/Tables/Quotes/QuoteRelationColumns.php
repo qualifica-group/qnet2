@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
  * The GENERIC relation-derived column machinery for the `quotes` domain
  * (spec 0065, MT-05), extracted out of QuotesTableDefinition (file-size
  * split, engineering.md §6): `opportunity`/`quote_workflow_status`/
- * `commercial`/`reporter`/`supervisor`/`company`/`company_site` (own-FK,
+ * `commercial`/`reporter`/`supervisor`/`company`/`company_site`/`source` (own-FK,
  * simple relation-label columns) and `managers` (`quote_user` pivot,
  * to-many, spec 0087 D-1/T-10) — a `whereHas` set filter (allow-listed
  * columns only, never orderByRaw/whereRaw on raw input — backend.md §8), a
@@ -70,6 +70,7 @@ final class QuoteRelationColumns
         'supervisor' => ['relation' => 'supervisor', 'table' => 'users', 'fk' => 'supervisor_id'],
         'company' => ['relation' => 'company', 'table' => 'companies', 'fk' => 'company_id', 'label' => 'denomination'],
         'company_site' => ['relation' => 'companySite', 'table' => 'company_sites', 'fk' => 'company_site_id'],
+        'source' => ['relation' => 'source', 'table' => 'sources', 'fk' => 'source_id'],
     ];
 
     /**

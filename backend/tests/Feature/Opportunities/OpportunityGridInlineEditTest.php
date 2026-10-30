@@ -42,9 +42,10 @@ it('declares every column the form edits as a single field', function () {
     $editable = collect($this->getJson('/api/tables/opportunities/columns')->assertOk()->json('data.columns'))
         ->where('editable', true)->pluck('id')->sort()->values()->all();
 
+    // REQUIREMENT CHANGED: spec 0332 — `source` is no longer editable here.
     expect($editable)->toBe([
         'commercial', 'estimated_value', 'expected_close_date', 'managers', 'name', 'product_category',
-        'products_of_interest', 'referent', 'registry', 'source', 'start_date', 'success_probability', 'supervisor',
+        'products_of_interest', 'referent', 'registry', 'start_date', 'success_probability', 'supervisor',
     ]);
 });
 

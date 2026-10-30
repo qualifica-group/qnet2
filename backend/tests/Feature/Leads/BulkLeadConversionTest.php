@@ -112,7 +112,8 @@ it('AC-003: derives each Opportunity exactly like the contextual conversion does
     $opportunity->load('productLines');
 
     expect($opportunity->registry_id)->toBe($lead->registry_id);
-    expect($opportunity->source_id)->toBe($lead->source_id);
+    // REQUIREMENT CHANGED: spec 0332 — the Opportunity carries no Fonte.
+    expect($opportunity->getAttributes())->not->toHaveKey('source_id');
     expect($opportunity->productLines)->toHaveCount(1);
     expect($opportunity->productLines->first()->business_function_id)->toBe($campaignLine->business_function_id);
     expect($opportunity->productLines->first()->product_category_id)->toBe($campaignLine->product_category_id);

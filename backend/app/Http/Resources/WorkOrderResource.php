@@ -99,7 +99,7 @@ class WorkOrderResource extends JsonResource
             'referent' => ReferentRef::summarize($this->quote?->opportunity?->referent),
             'commercial' => $this->summarizeByName($this->quote?->commercial),
             'reporter' => $this->summarizeByName($this->quote?->reporter),
-            'source' => $this->summarizeByName($this->quote?->opportunity?->source),
+            'source' => $this->summarizeByName($this->quote?->source),
             'product_lines' => $this->summarizeProductLines($this->quote?->opportunity?->productLines ?? []),
             'rewards' => $this->summarizeRewards($this->quote?->rewards ?? []),
             'layout' => $this->summarizeByName($this->quote?->layout),

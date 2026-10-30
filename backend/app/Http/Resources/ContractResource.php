@@ -72,7 +72,7 @@ class ContractResource extends JsonResource
             'supervisor' => $this->summarizeByName($quote->supervisor),
             'payment_method' => $this->summarizeByName($quote->paymentMethod),
             // Spec 0331: read-only projection of the offer, same shapes as QuoteResource.
-            'source' => $this->summarizeByName($quote->opportunity?->source),
+            'source' => $this->summarizeByName($quote->source),
             'product_lines' => $this->summarizeProductLines($quote->opportunity?->productLines ?? []),
             'rewards' => $this->summarizeRewards($quote->rewards),
             'managers' => $this->summarizeManagers($quote),

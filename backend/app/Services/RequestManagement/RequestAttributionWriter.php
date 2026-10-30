@@ -48,28 +48,11 @@ final class RequestAttributionWriter
     ) {}
 
     /**
-     * "Fonte" (`source_id`), the one attribution scalar still on the
-     * Opportunity (D-2). IS in Opportunity::$fillable, so — unlike the
-     * operative fields of this panel — its change is picked up by the
-     * automatic activity log (LogsModelActivity::logFillable()); no explicit
-     * entry is added for it, which would double-log the same diff.
-     *
-     * @param  array<string, mixed>  $data
-     */
-    public function applySource(Opportunity $opportunity, array $data): void
-    {
-        if (! array_key_exists('source_id', $data)) {
-            return;
-        }
-
-        $opportunity->fill(['source_id' => $data['source_id']]);
-    }
-
-    /**
      * "Segnalatore" (`reporter_id`), "Sede operativa"
-     * (`operational_site_id`) and "Supervisore" (`supervisor_id`), user
-     * directive 2026-07-22/spec 0056/spec 0097 D-9 — all three on the Quote
-     * (D-3). The last one is a plain attribution SCALAR here, nothing more:
+     * (`operational_site_id`), "Supervisore" (`supervisor_id`) and "Fonte"
+     * (`source_id`, spec 0332: moved here from the Opportunity), user
+     * directive 2026-07-22/spec 0056/spec 0097 D-9 — all on the Quote
+     * (D-3). The supervisor is a plain attribution SCALAR here, nothing more:
      * it is the Offerta's commission recipient
      * (`CommissionRecipientRole::Supervisor`), it drives no pivot, no
      * assignment notification and no visibility scope, and it never touches
@@ -77,7 +60,7 @@ final class RequestAttributionWriter
      * operative ownership (AC-014). That is the whole difference from the
      * deleted RequestSupervisorWriter, which kept the two in lockstep.
      *
-     * All three ARE in Quote::$fillable, so this instance's own automatic
+     * All four ARE in Quote::$fillable, so this instance's own automatic
      * activity log is suspended (Quote::disableLogging(),
      * instance-scoped — mirrors RequestTransferService's own discipline) and
      * a genuine change is reported into $changed/$old instead, so the
@@ -92,7 +75,7 @@ final class RequestAttributionWriter
     {
         $submitted = [];
 
-        foreach (['reporter_id', 'operational_site_id', 'supervisor_id'] as $key) {
+        foreach (['reporter_id', 'operational_site_id', 'supervisor_id', 'source_id'] as $key) {
             if (! array_key_exists($key, $data)) {
                 continue;
             }

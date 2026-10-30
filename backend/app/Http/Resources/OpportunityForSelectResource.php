@@ -22,6 +22,9 @@ use Illuminate\Http\Request;
  * `{id, label}` ref (OperationalSiteLabel), not `{id, name}`: it has no name
  * column of its own.
  *
+ * `lead_source` (spec 0332) is the Fonte of the opportunity's originating lead
+ * (null without a lead): the Offerta form prefills its own Fonte from it.
+ *
  * `managers` (spec 0087, D-5) carries the opportunity's own Gestori Account as
  * `{id, name, position}`, ordered by position and `[]` when it has none — the
  * Offerta form prefills its team from them on selection, the same way the
@@ -51,6 +54,7 @@ class OpportunityForSelectResource extends ForSelectResource
                 'reporter' => $this->relationRef($this->reporter),
                 'supervisor' => $this->relationRef($this->supervisor),
                 'operational_site' => OperationalSiteLabel::summarize($this->operationalSite),
+                'lead_source' => $this->relationRef($this->lead?->source),
                 'managers' => $this->managers
                     ->map(static fn (User $manager): array => [
                         'id' => $manager->id,

@@ -277,7 +277,6 @@ class DemoCommissionShowcaseSeeder extends Seeder
             commercialId: $referents[0]->id,
             reporterId: $referents[1]->id,
             supervisorId: $actor->id,
-            sourceId: null,
             leadId: null,
             managerSlots: null,
             productLines: [['business_function_id' => $businessFunction['id'], 'product_category_id' => $category->id]],

@@ -47,6 +47,7 @@ export function buildCreatePayload(values: QuoteFormValues, suggestedCode?: stri
     company_id: values.company_id,
     company_site_id: values.company_site_id,
     operational_site_id: values.operational_site_id,
+    source_id: values.source_id,
     layout_id: values.layout_id,
     payment_method_id: values.payment_method_id,
     internal_notes: values.internal_notes,
@@ -140,6 +141,9 @@ export function buildUpdatePayload(values: QuoteFormValues, original: QuoteDetai
   }
   if (values.operational_site_id !== original.operational_site_id) {
     payload.operational_site_id = values.operational_site_id
+  }
+  if (values.source_id !== original.source_id) {
+    payload.source_id = values.source_id
   }
   if (values.layout_id !== original.layout_id) {
     payload.layout_id = values.layout_id

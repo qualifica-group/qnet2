@@ -74,8 +74,6 @@ function opportunity(categoryIds: number[]): OpportunityDetailWithPermissions {
     reporter: null,
     supervisor_id: null,
     supervisor: null,
-    source_id: null,
-    source: null,
     product_lines: categoryIds.map((id, index) => ({
       id: index + 1,
       business_function: { id: 40, name: 'BF' },

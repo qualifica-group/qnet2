@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Gate;
  *
  * `name`/`estimated_value`/`success_probability`/`start_date`/
  * `expected_close_date`/`created_at` are real columns handled entirely by the
- * generic engine. `registry`/`referent`/`commercial`/`supervisor`/`source`/
+ * generic engine. `registry`/`referent`/`commercial`/`supervisor`/
  * `managers`/`product_category`/`business_function` are
  * all relation-derived columns delegated to OpportunityRelationColumns (file-
  * size split, engineering.md §6): own-FK simple relations, the `managers`
@@ -105,7 +105,7 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
         // all start here, so the visibility rule lives in one place.
         $query = OpportunityVisibilityScope::scopeToActor(Opportunity::query(), Auth::user())
             ->with([
-                'registry', 'referent', 'commercial', 'supervisor.avatar', 'source',
+                'registry', 'referent', 'commercial', 'supervisor.avatar',
                 'managers.avatar', 'productLines.businessFunction', 'productLines.productCategory',
                 // Spec 0082: the computed `status` cell — eager-loaded so the
                 // resolver stays query-free across the page (AC-007).
@@ -228,7 +228,6 @@ class OpportunitiesTableDefinition extends AbstractTableDefinition
             'commercial' => $this->summarize($row->commercial),
             'supervisor' => $this->userSummary($row->supervisor),
             'managers' => $row->managers->map(fn (User $user): array => $this->userSummary($user))->all(),
-            'source' => $this->summarize($row->source),
             'operational_site' => $this->operationalSiteColumn->summarize($row->operationalSite),
             OpportunityStatusColumn::COLUMN_ID => $this->statusResolver->resolve($row),
             // Spec 0206, D-9: the pairs the `product_lines` editor edits.

@@ -71,6 +71,7 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             new FieldDefinition('company_id', 'select'),
             new FieldDefinition('company_site_id', 'select'),
             new FieldDefinition('operational_site_id', 'select'),
+            new FieldDefinition('source_id', 'select'),
             // Not mandatory (spec 0070, D-3): a preventivo is valid without a
             // layout, so a role may legitimately not see this field at all.
             new FieldDefinition('layout_id', 'select'),
@@ -121,6 +122,7 @@ class QuotesAuthorization extends AbstractResourceAuthorization
             'company_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'company_site_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'operational_site_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
+            'source_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'layout_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'payment_method_id' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),
             'internal_notes' => $mayWrite ? FieldPermission::visibleEditable() : FieldPermission::visibleReadonly(),

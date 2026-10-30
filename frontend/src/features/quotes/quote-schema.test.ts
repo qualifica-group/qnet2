@@ -36,6 +36,7 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     company_id: null,
     company_site_id: null,
     operational_site_id: null,
+    source_id: null,
     layout_id: null,
     payment_method_id: null,
     internal_notes: null,

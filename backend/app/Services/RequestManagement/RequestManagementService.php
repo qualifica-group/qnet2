@@ -93,10 +93,9 @@ final class RequestManagementService
         'opportunity.registry.personalData.addresses.country',
         'opportunity.referent.personalData.contacts',
         'opportunity.commercial',
-        // Attribution block (user directive 2026-07-22): "Fonte" stays on the
-        // Opportunity (D-2); "Segnalatore"/Sede operativa/GA2 Operatore ride on
-        // the Quote itself, below.
-        'opportunity.source',
+        // Attribution block (user directive 2026-07-22): "Fonte" (spec 0332),
+        // "Segnalatore"/Sede operativa/GA2 Operatore ride on the Quote itself.
+        'source',
         'opportunity.quotes.quoteWorkflowStatus',
         'opportunity.productLines.businessFunction',
         'opportunity.productLines.productCategory',
@@ -193,15 +192,13 @@ final class RequestManagementService
             // right now, so the contract sync below sees the real transition.
             $previousStatusId = $quote->quote_workflow_status_id;
 
-            // Step 0: attribution — "Fonte" on the Opportunity (D-2),
-            // "Segnalatore"/Sede operativa on the Quote (D-3/D-4).
-            $this->attributionWriter->applySource($opportunity, $data);
+            // Step 0: attribution — "Fonte"/"Segnalatore"/Sede operativa on
+            // the Quote (D-3/D-4; the Fonte moved there with spec 0332).
             $this->attributionWriter->applyQuoteAttribution($quote, $data, $changed, $old);
 
             // Step 0-bis: the Opportunity's own scalars written from this panel
             // ("Note generali", direttiva utente 2026-09-09; the forecast trio,
-            // spec 0313 D-4) — sparse: absent keys stay untouched. Like
-            // `source_id` above it IS in Opportunity::$fillable, so the
+            // spec 0313 D-4) — sparse: absent keys stay untouched. It IS in Opportunity::$fillable, so the
             // automatic activity log picks the diff up on save
             // (LogsModelActivity::logFillable()) and no explicit $changed entry
             // is added, which would double-log it. Persisted by the shared

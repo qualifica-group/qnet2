@@ -23,8 +23,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * nullable, UNIQUE — D-2: at most one opportunity per lead). `name`/
  * `registry_id` are mandatory (D-4); every other relation is optional.
  * `commercial`/`reporter` mirror Registry's own referent fields; `referent`
- * is NOT derivable (spec 0041 D-3), a plain always-editable field; `source`
- * is BR-1-derivable from the linked lead. Amendment rev.3: the former single
+ * is NOT derivable (spec 0041 D-3), a plain always-editable field. The Fonte
+ * lives on the Offerta since spec 0332. Amendment rev.3: the former single
  * `business_function_id`/`product_category_id` columns are REPLACED by
  * `productLines()`, a one-to-many collection (see OpportunityProductLine).
  * User directive 2026-07-17: `company_id`/`company_site_id`/
@@ -59,7 +59,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'commercial_id',
     'reporter_id',
     'supervisor_id',
-    'source_id',
     'operational_site_id',
     'lead_id',
     'start_date',
@@ -119,11 +118,6 @@ class Opportunity extends BaseModel
     public function supervisor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'supervisor_id');
-    }
-
-    public function source(): BelongsTo
-    {
-        return $this->belongsTo(Source::class);
     }
 
     /**

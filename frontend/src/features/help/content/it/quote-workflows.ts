@@ -36,7 +36,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Un workflow vale per le offerte che soddisfano tutti i suoi criteri (almeno uno): **Fonte**, **Funzione aziendale**, **Categoria prodotto**, **Categoria prodotto (ramo)** (include le sottocategorie) e i campi personalizzati di tipo Relazione delle Opportunità. Fonte e campi personalizzati vengono dall\'opportunità ("Ereditato dall\'opportunità").',
+          text: 'Un workflow vale per le offerte che soddisfano tutti i suoi criteri (almeno uno): **Fonte**, **Funzione aziendale**, **Categoria prodotto**, **Categoria prodotto (ramo)** (include le sottocategorie) e i campi personalizzati di tipo Relazione delle Opportunità. La Fonte è un campo dell\'offerta; i campi personalizzati vengono dall\'opportunità ("Ereditato dall\'opportunità").',
         },
         {
           type: 'paragraph',

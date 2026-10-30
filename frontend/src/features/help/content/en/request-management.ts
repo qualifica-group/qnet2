@@ -38,7 +38,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Column', 'Meaning'],
           rows: [
-            ['Source', 'The channel the request comes from.'],
+            ['Source', 'The channel the request comes from (a field of the quote).'],
             ['Change requests', 'Change proposals still awaiting a decision.'],
             ['Product lines', 'Products present in the quote; the cell opens the editor with the product catalogue.'],
             ['Operator', 'The person working the request.'],

@@ -25,13 +25,11 @@ function defaults(overrides: Partial<OpportunityDefaults> = {}): OpportunityDefa
     values: {
       // spec 0041 D-3/AC-050: no longer a derived field.
       referent_id: null,
-      source_id: 20,
       registry_id: 30,
       operational_site_id: null,
       general_notes: null,
     },
     references: {
-      source: { id: 20, name: 'Web' },
       registry: { id: 30, name: 'Acme S.p.A.' },
       operational_site: null,
     },

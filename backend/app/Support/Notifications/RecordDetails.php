@@ -46,7 +46,7 @@ final class RecordDetails
      * @var array<int, string>
      */
     private const array OPPORTUNITY_RELATIONS = [
-        'registry', 'source', 'supervisor', 'managers',
+        'registry', 'supervisor', 'managers',
         'quotes.quoteWorkflowStatus',
         'operationalSite.addresses.city',
     ];
@@ -55,7 +55,7 @@ final class RecordDetails
      * @var array<int, string>
      */
     private const array QUOTE_RELATIONS = [
-        'opportunity.registry', 'opportunity.source',
+        'opportunity.registry', 'source',
         'quoteWorkflowStatus', 'supervisor', 'operator',
         'operationalSite.addresses.city',
     ];
@@ -123,7 +123,6 @@ final class RecordDetails
             'notifications.fields.client' => $opportunity->registry?->name,
             'notifications.fields.operational_site' => $site === null ? null : OperationalSiteLabel::compose($site->primaryAddress),
             'notifications.fields.status' => self::statusLabel($opportunity),
-            'notifications.fields.source' => $opportunity->source?->name,
             'notifications.fields.supervisor' => $opportunity->supervisor?->name,
             'notifications.fields.operator' => $opportunity->operatorManager()?->name,
         ]);
@@ -131,9 +130,9 @@ final class RecordDetails
 
     /**
      * Spec 0186: the Offerta's OWN facts — its title, Sede, working status,
-     * Supervisore and GA2 Operatore (spec 0087, D-10: they can diverge from
-     * the parent Opportunity's) — plus the client and source, which only the
-     * Opportunity carries.
+     * Supervisore, Fonte (spec 0332) and GA2 Operatore (spec 0087, D-10: they can diverge from
+     * the parent Opportunity's) — plus the client, which only the Opportunity
+     * carries.
      *
      * @return array<string, string>
      */
@@ -148,7 +147,7 @@ final class RecordDetails
             'notifications.fields.client' => $quote->opportunity?->registry?->name,
             'notifications.fields.operational_site' => $site === null ? null : OperationalSiteLabel::compose($site->primaryAddress),
             'notifications.fields.status' => $quote->quoteWorkflowStatus?->name,
-            'notifications.fields.source' => $quote->opportunity?->source?->name,
+            'notifications.fields.source' => $quote->source?->name,
             'notifications.fields.supervisor' => $quote->supervisor?->name,
             'notifications.fields.operator' => $quote->operator?->name,
         ]);

@@ -142,7 +142,7 @@ export interface QuoteDetail {
   opportunity: QuoteRelationRef
   /**
    * Read-only projection of the parent Opportunity (user directive
-   * 2026-08-31): its anagrafica, referente, fonte, righe
+   * 2026-08-31): its anagrafica, referente, righe
    * funzione-aziendale/categoria-prodotto and note generali. `quotes` carries
    * no such column and none of them is writable from the offer — the detail
    * only displays them as the context of the record it belongs to. Optional
@@ -151,7 +151,6 @@ export interface QuoteDetail {
    */
   registry?: QuoteRelationRef | null
   referent?: ReferentRef | null
-  source?: QuoteRelationRef | null
   product_lines?: ProductLine[]
   general_notes?: string | null
   quote_workflow_status_id: number
@@ -196,6 +195,8 @@ export interface QuoteDetail {
   company_site: QuoteRelationRef | null
   operational_site_id: number | null
   operational_site: QuoteOperationalSiteRef | null
+  source_id: number | null
+  source: QuoteRelationRef | null
   /**
    * The document-generation layout (spec 0070 D-3): a snapshot picked at
    * create time from the `quotes` module's active default, freely editable,
@@ -297,6 +298,8 @@ export interface CreateQuotePayload {
   company_site_id?: number | null
   /** When omitted, inherited from the opportunity server-side (directive 2026-07-30), like the 3 roles above. */
   operational_site_id?: number | null
+  /** Spec 0332: the Fonte, prefilled client-side from the opportunity's lead; no server default. */
+  source_id?: number | null
   /** When omitted, resolved server-side to the `quotes` module's active default layout, if any (spec 0070 D-3). */
   layout_id?: number | null
   /** No server-side default: omitted means "no payment method" (directive 2026-07-30). */

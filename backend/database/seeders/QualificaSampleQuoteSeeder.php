@@ -13,6 +13,7 @@ use App\Models\Opportunity;
 use App\Models\Product;
 use App\Models\Quote;
 use App\Models\QuoteWorkflowStatus;
+use App\Models\Source;
 use App\Models\User;
 use App\Services\ProductCategories\CategoryActivity;
 use App\Services\ProductCategories\CategoryHierarchy;
@@ -121,6 +122,7 @@ class QualificaSampleQuoteSeeder extends Seeder
         $costProducts = $this->activeCostProducts();
         $modes = $this->hierarchy->rootManagementModesFor($saleProducts->keys()->all());
         $users = User::query()->orderBy('id')->get();
+        $sources = Source::query()->orderBy('id')->pluck('id');
         $faker = FakerFactory::create('it_IT');
 
         // Step 3: the batch itself; an opportunity whose categories hold no
@@ -135,7 +137,7 @@ class QualificaSampleQuoteSeeder extends Seeder
             }
 
             $quote = $this->quotes->create(
-                $this->buildQuoteData($faker, $seeded, $opportunity, $offerLines, $costProducts, $users),
+                $this->buildQuoteData($faker, $seeded, $opportunity, $offerLines, $costProducts, $users, $sources),
                 $actor,
             );
             $outcome = self::OUTCOMES[$seeded % count(self::OUTCOMES)];
@@ -178,6 +180,7 @@ class QualificaSampleQuoteSeeder extends Seeder
      * @param  array<int, QuoteLineData>  $offerLines
      * @param  Collection<int, Product>  $costProducts
      * @param  Collection<int, User>  $users
+     * @param  Collection<int, int>  $sources  Fonte ids, picked round-robin (spec 0332: the Fonte lives on the offer)
      */
     private function buildQuoteData(
         Generator $faker,
@@ -186,6 +189,7 @@ class QualificaSampleQuoteSeeder extends Seeder
         array $offerLines,
         Collection $costProducts,
         Collection $users,
+        Collection $sources,
     ): CreateQuoteData {
         return new CreateQuoteData(
             code: null,
@@ -206,6 +210,7 @@ class QualificaSampleQuoteSeeder extends Seeder
             costLines: $costProducts->isEmpty() ? [] : [$this->costLine($faker, $costProducts, $index)],
             managerSlots: $this->managerSlots($users, $index),
             promoteManagersToOpportunity: true,
+            sourceId: $sources->isEmpty() ? null : $sources[$index % $sources->count()],
         );
     }
 

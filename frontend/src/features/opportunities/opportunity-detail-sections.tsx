@@ -30,7 +30,6 @@ function persistedValues(opportunity: OpportunityDetailWithPermissions): Opportu
     commercial: opportunity.commercial,
     reporter: opportunity.reporter,
     lead: opportunity.lead,
-    source: opportunity.source,
     supervisor: opportunity.supervisor,
     managers: opportunity.managers,
     manager_labels: opportunity.manager_labels,

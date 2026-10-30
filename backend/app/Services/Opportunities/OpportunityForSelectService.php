@@ -55,7 +55,7 @@ final class OpportunityForSelectService
 
     /**
      * Base for-select query: opportunities with the three commercial roles
-     * AND the sede operativa eager-loaded, so OpportunityForSelectResource's
+     * the sede operativa AND the lead's source eager-loaded, so OpportunityForSelectResource's
      * `meta` (the Quote snapshot prefill, spec 0065 D-3 + directive
      * 2026-07-30) never N+1s.
      *
@@ -66,10 +66,12 @@ final class OpportunityForSelectService
         // Spec 0316: narrowed to the actor's visible opportunities; the ids[]
         // hydration reuses this base, so a hidden id never leaks through it.
         return OpportunityVisibilityScope::scopeToActor(Opportunity::query(), Auth::user())
-            ->select(['opportunities.id', 'opportunities.name', 'commercial_id', 'reporter_id', 'supervisor_id', 'operational_site_id'])
+            ->select(['opportunities.id', 'opportunities.name', 'commercial_id', 'reporter_id', 'supervisor_id', 'operational_site_id', 'lead_id'])
             ->with([
                 'commercial:id,name', 'reporter:id,name', 'supervisor:id,name',
                 'managers:id,name',
+                // Spec 0332: the originating lead's Fonte seeds the Offerta's.
+                'lead:id,source_id', 'lead.source:id,name',
                 // The sede operativa's label is composed from its primary
                 // address + city (it has no name column of its own).
                 'operationalSite.addresses.city',

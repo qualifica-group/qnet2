@@ -109,7 +109,6 @@ export function AsyncPaginatedMultiSelectDouble({
 export const FOR_SELECT_LABELS: Record<string, Record<number, string>> = {
   registries: { 10: 'Acme S.p.A.', 20: 'Beta Srl', 30: 'Gamma Spa' },
   referents: { 1: 'Contact One', 71: 'Sara Conti', 81: 'Elio Fabbri' },
-  sources: { 20: 'Web' },
   users: { 1: 'User One', 61: 'Ivo Bianchi', 91: 'Gina Manager', 93: 'Turi Manager', 300: 'Giulia Bianchi' },
 }
 
@@ -161,7 +160,6 @@ export const ROW = {
   referent: 'Contact',
   commercial: 'Sales rep',
   reporter: 'Reporter',
-  source: 'Source',
   productLines: 'Product lines',
   productsOfInterest: 'Products of interest',
   supervisor: 'Supervisor',

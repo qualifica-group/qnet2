@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0332-quote-source" status="approved" owner="utente" date="2026-10-30">
+
+  <goal>
+    La Fonte passa dall'Opportunita' all'Offerta: diventa un campo proprio dell'offerta
+    (`quotes.source_id`) e sparisce dall'opportunita'. I dati esistenti e la migrazione dal legacy
+    portano la Fonte dell'opportunita' sulla sua prima offerta.
+  </goal>
+
+  <context>
+    - Oggi la Fonte e' `opportunities.source_id` (FK `sources`, nullable, spec 0040). L'Offerta la legge
+      in proiezione: accessor virtuale `Quote::sourceId()` (spec 0086 D-10), `QuoteResource.source`,
+      `ContractResource.source`, `WorkOrderResource.source`, `RecordDetails` (notifiche).
+    - Gestione richieste / Gestione iscritti (righe = offerte, `RequestManagementTableDefinition`): colonna
+      `source` con relazione `opportunity.source`, creazione (`StoreRequestRequest` -> `RequestCreationService`,
+      Fonte obbligatoria), PATCH del pannello (`RequestAttributionWriter`, scrive sull'opportunita') e
+      campo protetto `source_id` (`config/field-change-requests.php`, soggetto = Quote).
+    - Workflow offerta: `QuoteCriterionFieldRegistry::NATIVE_FIELDS['source_id']` con `inherited: true`.
+      `OpportunityDefaultStatusResolver` risolve lo stato delle opportunita' senza offerte con un'offerta
+      sonda non salvata.
+    - Lead: `LeadOpportunityDefaultsResolver` deriva `source_id` (BR-1, campo bloccabile) per la
+      conversione (`ConvertLeadToOpportunity`) e per la scelta di un lead nel form opportunita'.
+    - Migrazione legacy: `App\Migrations\Sources\OpportunitiesSource` scrive `source_id` dal record;
+      `QuotesSource` no. Legacy `OpportunityMigrationController` emette `source_id`;
+      `QuoteMigrationController` no. Nel legacy un'opportunita' puo' avere piu' quotations.
+    - Dati di sviluppo `qnet2` (2026-10-30): 30622 opportunita', 820 con Fonte, di cui 61 senza offerte;
+      28352 offerte; 292 opportunita' con piu' offerte; 0 opportunita' da lead.
+    - Decisioni utente 2026-10-30: Fonte solo sull'offerta; backfill e migrazione legacy sulla PRIMA
+      offerta; lead -> precompila la nuova offerta; Opportunita' senza Fonte (form, griglia, filtro);
+      griglia Offerte con colonna Fonte filtrabile e modificabile in cella.
+  </context>
+
+  <decisions>
+    - D-1 (colonna): `quotes.source_id` FK `sources` nullable `nullOnDelete`, indicizzata. `opportunities.source_id`
+      viene eliminata. `Opportunity::source()` e `source_id` nel fillable spariscono; `Quote` ottiene
+      `source_id` fillable + `source()` BelongsTo; l'accessor virtuale `Quote::sourceId()` si cancella.
+    - D-2 (backfill "prima offerta"): per ogni opportunita' con Fonte, la Fonte va sull'offerta con id
+      minimo di quell'opportunita'; le altre offerte restano senza Fonte. Le opportunita' senza offerte
+      perdono la Fonte (61 nei dati di sviluppo). Il `down()` ricrea `opportunities.source_id` e la
+      riporta dalla prima offerta.
+    - D-3 (legacy): il legacy `QuoteMigrationController` emette `source_id` = Fonte dell'opportunita'
+      SOLO sulla quotation con id minimo della sua opportunita' (null sulle altre);
+      `OpportunityMigrationController` non emette piu' `source_id`. In qnet-2 `QuotesSource` fa il
+      lookup `old_id` (warning se non migrata, dipendenza opzionale `sources`); `OpportunitiesSource`
+      non scrive piu' la Fonte. Nessuna euristica in qnet-2 (backend.md §9).
+    - D-4 (Offerta CRUD): `StoreQuoteRequest`/`UpdateQuoteRequest` accettano `source_id`
+      (`nullable|integer|exists:sources,id`, update `sometimes`); `QuotesAuthorization` ha
+      `FieldDefinition('source_id', 'select')` con lo stesso permesso di `operational_site_id`.
+      `QuoteResource`: `source_id` + `source` ({id, name}|null) letti dall'offerta.
+    - D-5 (griglia Offerte): colonna `source` ("Fonte") in `QuoteColumnCatalog` con
+      `editableRelation('sources', 'source_id')`, relazione in `QuoteRelationColumns`, filtro set.
+    - D-6 (lead): `OpportunityForSelectResource.meta.lead_source` = Fonte del lead dell'opportunita'
+      ({id, name}|null). Il form di creazione offerta precompila `source_id` da `meta.lead_source`
+      insieme a Commerciale/Segnalatore/Supervisore (scelta opportunita' o opportunita' bloccata).
+      La conversione Lead -> Opportunita' e la scelta di un lead nel form opportunita' non trattano
+      piu' la Fonte (`source_id` esce dai default/derivabili del lead per l'opportunita').
+    - D-7 (Gestione richieste/iscritti): la colonna `source` legge/scrive `quotes.source_id`
+      (relazione `source`); la creazione scrive la Fonte sull'offerta creata; la PATCH del pannello
+      scrive `source_id` sull'offerta. Campo protetto e permesso `updateSource` invariati.
+      `RequestManagementResource.source_id/source` letti dall'offerta.
+    - D-8 (workflow offerta): `source_id` resta criterio nativo ma `inherited: false`; il matcher legge
+      la colonna dell'offerta. Un'opportunita' senza offerte non matcha piu' criteri sulla Fonte.
+    - D-9 (proiezioni): `ContractResource.source` e `WorkOrderResource.source` = `quote.source`;
+      `RecordDetails`: Fonte solo nel dettaglio offerta (da `quote.source`), tolta dall'opportunita'.
+      Eager load aggiornati (`quote.source` al posto di `quote.opportunity.source`).
+    - D-10 (Opportunita'): spariscono `source_id`/`source` da `OpportunityResource`, Store/Update request,
+      DTO, `OpportunitiesAuthorization`, colonna/filtro/relazione griglia, form e scheda frontend.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazione `2026_11_11_100000_add_source_id_to_quotes_table` (schema) e `2026_11_11_100100_move_opportunity_source_to_first_quote` (backfill D-2 + drop colonna, reversibile).</item>
+      <item>Backend qnet-2: D-1, D-3 (lato qnet-2), D-4..D-10, test Pest aggiornati (fixture con Fonte sull'offerta).</item>
+      <item>Legacy `../qnet`: `QuoteMigrationController` e `OpportunityMigrationController` (D-3), verificati con tinker.</item>
+      <item>Frontend: offerta (tipi, schema, payload, form/scheda con campo Fonte, prefill D-6), opportunita' (rimozione), gestione richieste (tipi invariati, origine dati), griglie via catalogo backend.</item>
+      <item>Guide in-app IT/EN (`opportunities`, `quotes`, `request-management` se cita la Fonte) e manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Esecuzione delle migrazioni sul DB `qnet2` (serve ok esplicito dell'utente).</item>
+      <item>Fonte sui Lead, sulle Anagrafiche, sulle Campagne: invariata.</item>
+      <item>Ricostruzione della Fonte per le opportunita' senza offerte.</item>
+      <item>Nuova Fonte di default lato server quando `source_id` manca nel create offerta (solo prefill client).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <schema>
+      quotes.source_id BIGINT UNSIGNED NULL, FK sources(id) ON DELETE SET NULL, index.
+      opportunities.source_id: rimossa.
+    </schema>
+    <endpoint method="POST|PATCH" path="/api/quotes[/{quote}]">
+      <request>+ source_id: int|null (PATCH: sometimes)</request>
+      <response status="200">data.source_id: int|null; data.source: {id, name}|null</response>
+      <errors>422 source_id inesistente; 403 campo non modificabile</errors>
+    </endpoint>
+    <endpoint method="GET" path="/api/opportunities/{opportunity}">
+      <response status="200">data.source_id e data.source RIMOSSI</response>
+    </endpoint>
+    <endpoint method="POST|PATCH" path="/api/opportunities[/{opportunity}]">
+      <request>source_id non piu' accettato (ignorato dalla validazione)</request>
+    </endpoint>
+    <endpoint method="GET" path="/api/for-select/opportunities">
+      <response status="200">items[].meta.lead_source: {id, name}|null (nuovo)</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/tables/quotes/config">
+      <response status="200">nuova colonna `source` (relation sources, editableField source_id, filtro set)</response>
+    </endpoint>
+    <endpoint method="GET" path="/api/tables/opportunities/config">
+      <response status="200">colonna e filtro avanzato `source` RIMOSSI</response>
+    </endpoint>
+    <endpoint method="*" path="/api/request-management, /api/enrollee-management">
+      <response status="200">shape invariata (`source_id`, `source`); il valore viene dall'offerta</response>
+    </endpoint>
+    <endpoint method="GET" path="legacy /api/v2/migration/quotes">
+      <response status="200">items[].source_id: int|null (solo sulla prima quotation dell'opportunita')</response>
+    </endpoint>
+    <endpoint method="GET" path="legacy /api/v2/migration/opportunities">
+      <response status="200">items[].source_id RIMOSSO</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un'opportunita' con Fonte e tre offerte, quando gira la migrazione di backfill, allora solo l'offerta con id minimo ha quella Fonte e `opportunities.source_id` non esiste piu'; il down la ripristina dalla prima offerta.</criterion>
+    <criterion id="AC-002">Creando/modificando un'offerta con `source_id` valido, la risposta riporta `source_id` e `source`; con id inesistente 422; senza permesso di modifica del campo 403.</criterion>
+    <criterion id="AC-003">La griglia Offerte espone la colonna `source`, filtrabile, e la modifica in cella scrive `quotes.source_id`.</criterion>
+    <criterion id="AC-004">OpportunityResource, config griglia opportunita' e filtri avanzati non contengono piu' la Fonte; un `source_id` inviato a store/update opportunita' non viene scritto.</criterion>
+    <criterion id="AC-005">Il for-select opportunita' espone `meta.lead_source` (Fonte del lead, null senza lead); il form di creazione offerta precompila la Fonte da li'.</criterion>
+    <criterion id="AC-006">Gestione richieste: la creazione salva la Fonte sull'offerta creata; la PATCH e la modifica in cella scrivono sull'offerta senza toccare le offerte sorelle; il campo protetto e la richiesta di modifica funzionano come prima.</criterion>
+    <criterion id="AC-007">Un workflow offerta con criterio `source_id` matcha in base alla Fonte dell'offerta (non di un'offerta sorella).</criterion>
+    <criterion id="AC-008">Contratto e Commessa mostrano la Fonte dell'offerta collegata.</criterion>
+    <criterion id="AC-009">Migrazione legacy: `QuotesSource` salva la Fonte rimappata (warning se la fonte non e' migrata); `OpportunitiesSource` non scrive Fonte.</criterion>
+    <criterion id="AC-010">Conversione Lead -> Opportunita' riuscita senza Fonte sull'opportunita'.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Migrazioni reversibili, mai eseguite su `qnet2` senza ok.
+    - Legacy: forma dei dati decisa nel legacy (backend.md §9); non toccare le modifiche locali dell'utente
+      (`app/Providers/AppServiceProvider.php`, `config/database.php`).
+    - Test modificati solo dove il requisito e' cambiato, dichiarandolo (REQUIREMENT CHANGED: spec 0332).
+  </constraints>
+
+</spec>

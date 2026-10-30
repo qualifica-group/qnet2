@@ -7,7 +7,6 @@ use App\Models\OpportunityProductLine;
 use App\Models\Quote;
 use App\Models\Referent;
 use App\Models\Registry;
-use App\Models\Source;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -32,9 +31,12 @@ it('creates the opportunities table with the expected columns', function () {
     expect(Schema::hasColumns('opportunities', [
         'id', 'name', 'registry_id',
         'referent_id', 'commercial_id', 'reporter_id', 'supervisor_id',
-        'source_id', 'lead_id', 'start_date', 'estimated_value',
+        'lead_id', 'start_date', 'estimated_value',
         'expected_close_date', 'success_probability', 'created_at', 'updated_at',
     ]))->toBeTrue();
+
+    // REQUIREMENT CHANGED: spec 0332 — the Fonte moved to the Offerta.
+    expect(Schema::hasColumn('opportunities', 'source_id'))->toBeFalse();
 
     // Amendment rev.3: the former single scalar columns are DROPPED.
     expect(Schema::hasColumn('opportunities', 'business_function_id'))->toBeFalse();
@@ -65,7 +67,7 @@ it('the 2 mandatory fields are NOT NULL, every other relation is nullable (AC-00
 
     $opportunity = Opportunity::factory()->create([
         'referent_id' => null, 'commercial_id' => null,
-        'reporter_id' => null, 'supervisor_id' => null, 'source_id' => null,
+        'reporter_id' => null, 'supervisor_id' => null,
         'lead_id' => null,
     ]);
 
@@ -198,8 +200,6 @@ it('every to-one relation is a BelongsTo to the expected model', function () {
         ->and($opportunity->registry()->getRelated())->toBeInstanceOf(Registry::class)
         ->and($opportunity->referent())->toBeInstanceOf(BelongsTo::class)
         ->and($opportunity->referent()->getRelated())->toBeInstanceOf(Referent::class)
-        ->and($opportunity->source())->toBeInstanceOf(BelongsTo::class)
-        ->and($opportunity->source()->getRelated())->toBeInstanceOf(Source::class)
         ->and($opportunity->lead())->toBeInstanceOf(BelongsTo::class)
         ->and($opportunity->lead()->getRelated())->toBeInstanceOf(Lead::class);
 });

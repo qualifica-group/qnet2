@@ -18,7 +18,7 @@ use Spatie\Permission\Models\Permission;
  * `source_id` field must all refuse a direct change from an actor without
  * `request-management.updateSource`, while the initial attribution at
  * creation (F-4a) stays free. Spec 0086, D-2: the write channels operate on
- * the Quote now — `source_id` itself still lives on the Opportunity.
+ * the Quote now; REQUIREMENT CHANGED: spec 0332 — `source_id` lives on the Quote too.
  */
 uses(RefreshDatabase::class);
 
@@ -45,10 +45,10 @@ if (! function_exists('sourceProtectedActor')) {
 if (! function_exists('quoteSupervisedBy')) {
     function quoteSupervisedBy(User $operator): Quote
     {
-        $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
+        $opportunity = Opportunity::factory()->create();
         $opportunity->managers()->sync([$operator->id => ['position' => Opportunity::OPERATOR_MANAGER_POSITION]]);
 
-        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id]);
+        return Quote::factory()->for($opportunity)->create(['operator_id' => $operator->id, 'source_id' => Source::factory()->create()->id]);
     }
 }
 
@@ -59,7 +59,7 @@ if (! function_exists('quoteSupervisedBy')) {
 it('AC-007: PATCH the work panel with a different source_id -> 422, value unchanged', function () {
     $actor = sourceProtectedActor();
     $quote = quoteSupervisedBy($actor);
-    $originalSourceId = $quote->opportunity->source_id;
+    $originalSourceId = $quote->source_id;
     $otherSource = Source::factory()->create();
     Sanctum::actingAs($actor);
 
@@ -67,7 +67,7 @@ it('AC-007: PATCH the work panel with a different source_id -> 422, value unchan
         ->assertStatus(422)
         ->assertJsonValidationErrors('source_id');
 
-    expect($quote->opportunity->fresh()->source_id)->toBe($originalSourceId);
+    expect($quote->fresh()->source_id)->toBe($originalSourceId);
 });
 
 // ---------------------------------------------------------------------------
@@ -80,11 +80,11 @@ it('AC-008: PATCH the work panel with the SAME source_id -> 200, other fields sa
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/request-management/{$quote->id}", [
-        'source_id' => $quote->opportunity->source_id,
+        'source_id' => $quote->source_id,
         'next_callback_at' => '2026-09-01',
     ])->assertOk();
 
-    expect($quote->opportunity->fresh()->source_id)->toBe($quote->opportunity->source_id)
+    expect($quote->fresh()->source_id)->toBe($quote->source_id)
         ->and($quote->fresh()->next_callback_at?->toDateString())->toBe('2026-09-01');
 });
 
@@ -95,7 +95,7 @@ it('AC-008: PATCH the work panel with the SAME source_id -> 200, other fields sa
 it('AC-009: PATCH the inline "source" cell with a different value -> 403, value unchanged', function () {
     $actor = sourceProtectedActor();
     $quote = quoteSupervisedBy($actor);
-    $originalSourceId = $quote->opportunity->source_id;
+    $originalSourceId = $quote->source_id;
     $otherSource = Source::factory()->create();
     Sanctum::actingAs($actor);
 
@@ -104,7 +104,7 @@ it('AC-009: PATCH the inline "source" cell with a different value -> 403, value 
         'value' => $otherSource->id,
     ])->assertStatus(403);
 
-    expect($quote->opportunity->fresh()->source_id)->toBe($originalSourceId);
+    expect($quote->fresh()->source_id)->toBe($originalSourceId);
 });
 
 // ---------------------------------------------------------------------------
@@ -126,8 +126,9 @@ it('AC-010: POST /api/request-management (creation) sets the Fonte freely regard
     ])->assertCreated();
 
     $quote = Quote::findOrFail($response->json('data.id'));
-    $this->assertDatabaseHas('opportunities', [
-        'id' => $quote->opportunity_id,
+    // REQUIREMENT CHANGED: spec 0332 — the Fonte is written on the offer.
+    $this->assertDatabaseHas('quotes', [
+        'id' => $quote->id,
         'source_id' => $source->id,
     ]);
 });
@@ -145,7 +146,7 @@ it('AC-011: an actor with updateSource can change the Fonte from the work panel'
     $this->patchJson("/api/request-management/{$quote->id}", ['source_id' => $newSource->id])
         ->assertOk();
 
-    expect($quote->opportunity->fresh()->source_id)->toBe($newSource->id);
+    expect($quote->fresh()->source_id)->toBe($newSource->id);
 });
 
 it('AC-011: an actor with updateSource can change the Fonte from the inline cell', function () {
@@ -159,7 +160,7 @@ it('AC-011: an actor with updateSource can change the Fonte from the inline cell
         'value' => $newSource->id,
     ])->assertOk();
 
-    expect($quote->opportunity->fresh()->source_id)->toBe($newSource->id);
+    expect($quote->fresh()->source_id)->toBe($newSource->id);
 });
 
 // ---------------------------------------------------------------------------
@@ -195,5 +196,5 @@ it('AC-012: a request reassigned to a new operator without updateSource still 42
         ->assertStatus(422)
         ->assertJsonValidationErrors('source_id');
 
-    expect($quote->opportunity->fresh()->source_id)->not->toBe($otherSource->id);
+    expect($quote->fresh()->source_id)->not->toBe($otherSource->id);
 });

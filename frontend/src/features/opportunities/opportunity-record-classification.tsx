@@ -13,7 +13,6 @@ import {
   OpportunityManagersField,
   OpportunityProductLinesFormField,
   OpportunityProductsOfInterestFormField,
-  OpportunitySourceField,
   OpportunitySupervisorField,
 } from '@/features/opportunities/opportunity-relation-fields'
 import type { OpportunityProductOfInterest } from '@/features/opportunities/types'
@@ -57,8 +56,7 @@ interface OpportunityClassificationRecordSectionProps extends OpportunityRecordS
 }
 
 /**
- * "Classificazione" of the opportunity record (spec 0198): the Fonte (never
- * editable when derived from a Lead, BR-2), the classification rows and the
+ * "Classificazione" of the opportunity record (spec 0198): the classification rows and the
  * products of interest they scope. The rows' editor prunes the products a
  * change no longer covers, so it opens only where that pruning may be saved.
  * Sede operativa stays hidden (user directive 2026-08-05): its value
@@ -68,7 +66,6 @@ export function OpportunityClassificationRecordSection({
   values,
   form,
   inline,
-  lockedFields,
   productLines,
   title,
 }: OpportunityClassificationRecordSectionProps) {
@@ -79,15 +76,6 @@ export function OpportunityClassificationRecordSection({
   return (
     <RecordSection title={title ?? t('opportunities.form.sections.classification.title')} icon={<Building2 />}>
       <RecordFieldList>
-        <RecordInlineField
-          field="source_id"
-          label={t('opportunities.form.source')}
-          inline={inline}
-          canEdit={!lockedFields.has('source_id')}
-          editor={<OpportunitySourceField control={control} selected={values.source} />}
-        >
-          {values.source?.name ?? <DetailEmpty />}
-        </RecordInlineField>
         <RecordInlineField
           field="product_lines"
           label={t('opportunities.form.sections.productLines.title')}

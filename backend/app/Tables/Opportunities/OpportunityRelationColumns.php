@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
  * The GENERIC relation-derived column machinery for the `opportunities`
  * domain (spec 0040, amendment rev.3), extracted out of
  * OpportunitiesTableDefinition (file-size split, engineering.md §6):
- * `registry`/`referent`/`commercial`/`supervisor`/`source` (own-FK, simple
+ * `registry`/`referent`/`commercial`/`supervisor` (own-FK, simple
  * relation-name columns), `managers`
  * (opportunity_user pivot, to-many) and `product_category`/
  * `business_function` (AGGREGATED to-many via `productLines`) — a
@@ -42,7 +42,7 @@ final class OpportunityRelationColumns
      * Simple (single-hop) relation-name derived columns: relation accessor,
      * related table and owning FK column, keyed by the derived column id.
      * `commercial`/`supervisor` both resolve to their own FK — never the
-     * plain `referent_id`/`source_id` used by other columns.
+     * plain `referent_id` used by other columns.
      *
      * @var array<string, array{relation: string, table: string, fk: string}>
      */
@@ -51,7 +51,6 @@ final class OpportunityRelationColumns
         'referent' => ['relation' => 'referent', 'table' => 'referents', 'fk' => 'referent_id'],
         'commercial' => ['relation' => 'commercial', 'table' => 'referents', 'fk' => 'commercial_id'],
         'supervisor' => ['relation' => 'supervisor', 'table' => 'users', 'fk' => 'supervisor_id'],
-        'source' => ['relation' => 'source', 'table' => 'sources', 'fk' => 'source_id'],
     ];
 
     /**
@@ -69,7 +68,7 @@ final class OpportunityRelationColumns
     ];
 
     /**
-     * Handle the `registry`/`referent`/`commercial`/`supervisor`/`source`
+     * Handle the `registry`/`referent`/`commercial`/`supervisor`
      * simple-relation set filters, the `managers`
      * (opportunity_user pivot, to-many) set filter, AND the
      * `product_category`/`business_function` AGGREGATED (to-many) set

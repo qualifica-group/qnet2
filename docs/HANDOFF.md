@@ -3,6 +3,32 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Fonte spostata dall'Opportunita' all'Offerta (spec 0332) — VERDE, NON COMMITTATO (2026-10-30)
+
+- Decisioni utente: Fonte solo su `quotes.source_id` (FK sources nullOnDelete); `opportunities.source_id` eliminata;
+  backfill e migrazione legacy sulla PRIMA offerta (id minimo) dell'opportunita'; lead -> precompila la Fonte della
+  nuova offerta (`OpportunityForSelectResource.meta.lead_source`, solo client); Opportunita' senza Fonte (form, griglia,
+  filtro, conversione lead: `LeadOpportunityDefaultsResolver` blocca solo `registry_id`); griglia Offerte con colonna
+  `source` filtrabile ed editabile.
+- Migrazioni `2026_11_11_100000_add_source_id_to_quotes_table` e `2026_11_11_100100_move_opportunity_source_to_first_quote`
+  (down: ricrea `opportunities.source_id` dalla prima offerta). Provate solo in Pest. **NON eseguite su `qnet2`**: serve
+  l'ok utente. Nel DB dev 61 opportunita' con Fonte e senza offerte la perdono.
+- Gestione richieste/iscritti: shape invariata, la Fonte si legge/scrive sull'offerta (`RequestAttributionWriter::
+  applyQuoteAttribution`); campo protetto `source_id` invariato. Workflow offerta: criterio `source_id` `inherited: false`.
+  `SourceService::delete` 409 se la Fonte e' usata da offerte (`Source::quotes()`).
+- FE: `QuoteSourceField` + `quote-record-context.tsx` (`QuoteContextSection`, Fonte editabile + Linee prodotto) nel
+  dettaglio e nella creazione; `ProjectedContextSection` resta per Contratto/Commessa.
+- Legacy `../qnet` (non committato): `QuoteMigrationController` emette `source_id` solo sulla quotation con id minimo
+  dell'opportunita' (verificato con tinker: opp 1 -> quote 372 = 4, quote 1808 = null); `OpportunityMigrationController`
+  non emette piu' `source_id`.
+- Verifica: Pest suite completa 12968/12984 (15 rossi preesistenti noti + 1 skipped); Pest mirati Quotes/Opportunities/
+  RequestManagement/Enrollee/FieldChangeRequests/QuoteWorkflows/Leads/Migration/Contracts/WorkOrders verdi salvo i
+  rossi noti (PDF LibreOffice, import Utenti, piano migrazione); Vitest completo 9572/9572; tsc -b exit 0; Pint pulito;
+  ESLint pulito salvo `quotes/column-renderers.tsx:12` preesistente. Guide IT/EN (opportunities, quotes,
+  request-management, quote-workflows, leads) e manuale Claude Docs aggiornati; PDF da rigenerare.
+- Al commit: nel working tree ci sono anche modifiche di altre sessioni (contratti "Valida", catalogo ISO, refactor
+  `features/auth/form-errors` e `use-*-form-submit`): committare solo i file della 0332.
+
 ## ISO: campo "Altro" testo libero + seeder mirato per la produzione — VERDE, COMMITTATO (2026-10-30)
 
 - `IsoCatalogue`: nuovo campo Offerta `iso_other_standard` ("Altro", `text`), nella sezione `iso-standards`

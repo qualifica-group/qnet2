@@ -92,8 +92,6 @@ function opportunity(
     reporter: { id: 80, name: 'Giulia Neri' },
     supervisor_id: 90,
     supervisor: { id: 90, name: 'Paolo Blu' },
-    source_id: 100,
-    source: { id: 100, name: 'Web' },
     operational_site_id: 8,
     operational_site: { id: 8, label: 'Warehouse A - Milan' },
     product_lines: [
@@ -147,7 +145,8 @@ describe('OpportunityDetailView — read-only (AC-077)', () => {
     expect(screen.getByText('Luca Verdi')).toBeInTheDocument()
     expect(screen.getByText('Giulia Neri')).toBeInTheDocument()
     expect(screen.getByText('Paolo Blu')).toBeInTheDocument()
-    expect(screen.getByText('Web')).toBeInTheDocument()
+    // REQUIREMENT CHANGED: spec 0332 — the opportunity no longer shows a Fonte.
+    expect(screen.queryByText('Web')).not.toBeInTheDocument()
     expect(screen.getByText(/Consulting/)).toBeInTheDocument()
     expect(screen.getByText('Anna Bianchi')).toBeInTheDocument()
     expect(screen.getByText('Marco Gialli')).toBeInTheDocument()
@@ -208,8 +207,6 @@ describe('OpportunityDetailView — read-only (AC-077)', () => {
           reporter: null,
           supervisor_id: null,
           supervisor: null,
-          source_id: null,
-          source: null,
           operational_site_id: null,
           operational_site: null,
           product_lines: [],

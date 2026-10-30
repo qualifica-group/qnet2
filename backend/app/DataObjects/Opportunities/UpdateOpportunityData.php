@@ -27,7 +27,7 @@ namespace App\DataObjects\Opportunities;
  *
  * Spec 0056: `operationalSiteId` is reintroduced as a plain, optional scalar,
  * following the SAME `*Submitted` convention as every other unlocked FK
- * (`sourceId`, etc.) — the pair is what lets a PATCH AZZERARE the field
+ * (`referentId`, etc.) — the pair is what lets a PATCH AZZERARE the field
  * (AC-004), appended at the very end of the constructor for the same
  * ArgumentCountError reason as CreateOpportunityData.
  *
@@ -69,8 +69,6 @@ final readonly class UpdateOpportunityData
         public bool $reporterIdSubmitted = false,
         public ?int $supervisorId = null,
         public bool $supervisorIdSubmitted = false,
-        public ?int $sourceId = null,
-        public bool $sourceIdSubmitted = false,
         public ?array $managerSlots = null,
         public ?array $productLines = null,
         public ?string $startDate = null,
@@ -109,8 +107,6 @@ final readonly class UpdateOpportunityData
             reporterIdSubmitted: array_key_exists('reporter_id', $data),
             supervisorId: self::nullableInt($data, 'supervisor_id'),
             supervisorIdSubmitted: array_key_exists('supervisor_id', $data),
-            sourceId: self::nullableInt($data, 'source_id'),
-            sourceIdSubmitted: array_key_exists('source_id', $data),
             managerSlots: array_key_exists('manager_slots', $data)
                 ? array_map(static fn ($id): ?int => $id === null ? null : (int) $id, $data['manager_slots'])
                 : null,
@@ -219,10 +215,6 @@ final readonly class UpdateOpportunityData
 
         if ($this->supervisorIdSubmitted) {
             $attributes['supervisor_id'] = $this->supervisorId;
-        }
-
-        if ($this->sourceIdSubmitted) {
-            $attributes['source_id'] = $this->sourceId;
         }
 
         if ($this->operationalSiteIdSubmitted) {

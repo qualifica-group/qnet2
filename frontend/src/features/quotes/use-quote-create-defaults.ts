@@ -45,6 +45,8 @@ export function useQuoteCreateDefaults(mode: QuoteCreateFormMode, quoteForm: Quo
       // Directive 2026-07-30: the sede operativa is inherited on the same terms
       // (the server applies the same rule when the key is absent).
       form.setValue('operational_site_id', meta?.operational_site?.id ?? null, { shouldDirty: true })
+      // Spec 0332 D-6: the Fonte of the opportunity's lead, when it has one.
+      form.setValue('source_id', meta?.lead_source?.id ?? null, { shouldDirty: true })
       // Spec 0087, D-5: the team is prefilled on the same terms, padded to the
       // standard card count so fewer managers still open a full set of slots.
       form.setValue('manager_slots', padManagerSlots(managerSlotsFromRefs(meta?.managers ?? []), DEFAULT_MANAGER_SLOTS), {

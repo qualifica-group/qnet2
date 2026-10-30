@@ -27,10 +27,11 @@ use Illuminate\Support\Collection;
  * global default set whatever its product category said. Here the Offer that
  * does not exist is stood in for by a transient, never-persisted Quote with
  * no offer line: the classification source then reads exactly the
- * Opportunity's own product lines, and the resolver's criteria (`source_id`
- * and the custom `relation` fields, both INHERITED from the Opportunity
- * anyway) resolve identically to how they would on a real Offer of that
- * Opportunity. Same probe shape as
+ * Opportunity's own product lines, and the resolver's custom `relation` criteria
+ * (INHERITED from the Opportunity) resolve identically to how they would on
+ * a real Offer of that Opportunity. `source_id` (the offer's own since spec
+ * 0332) is empty on the probe, so a quote-less Opportunity never matches a
+ * criterion on it. Same probe shape as
  * App\Http\Requests\Concerns\ValidatesQuoteWorkflowStatus' own resolution
  * quote — the rule is never re-implemented, only fed.
  *

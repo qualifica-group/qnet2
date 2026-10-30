@@ -38,7 +38,6 @@ const SERVER_ERROR_FIELDS = [
   'commercial_id',
   'reporter_id',
   'supervisor_id',
-  'source_id',
   'operational_site_id',
   'product_lines',
   'products_of_interest',

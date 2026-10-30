@@ -65,8 +65,9 @@ it('GET /api/tables/opportunities/columns: 200 with the declared columns, 403 wi
     // pivot, avatar stack) sits next to `supervisor`. Requirement changed (user
     // directive 2026-07-23): `products_of_interest` follows the two aggregated
     // classification columns.
+    // REQUIREMENT CHANGED: spec 0332 — no `source` column any more.
     expect($ids)->toBe([
-        'id', 'name', 'registry', 'referent', 'commercial', 'supervisor', 'managers', 'source', 'operational_site', 'status',
+        'id', 'name', 'registry', 'referent', 'commercial', 'supervisor', 'managers', 'operational_site', 'status',
         'product_category', 'business_function', 'products_of_interest', 'estimated_value', 'success_probability', 'start_date',
         'expected_close_date', 'created_at',
     ]);
@@ -260,7 +261,7 @@ it('rows: product_category carries the editable pairs, business_function stays a
     expect($ids->all())->toBe([$matching->id]);
 });
 
-it('rows: registry/referent/commercial/supervisor/source surface as {id, name} summaries', function () {
+it('rows: registry/referent/commercial/supervisor surface as {id, name} summaries', function () {
     $actor = opportunityTableUserWith(['viewAny']);
     $registry = Registry::factory()->create(['name' => 'Acme Spa']);
     $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);

@@ -53,9 +53,9 @@ if (! function_exists('fcrVisibilityActorWith')) {
 if (! function_exists('fcrVisibilityQuote')) {
     function fcrVisibilityQuote(): Quote
     {
-        $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
+        $opportunity = Opportunity::factory()->create();
 
-        return Quote::factory()->for($opportunity)->create();
+        return Quote::factory()->for($opportunity)->create(['source_id' => Source::factory()->create()->id]);
     }
 }
 

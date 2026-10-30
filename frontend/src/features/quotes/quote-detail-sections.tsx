@@ -6,13 +6,17 @@ import { RewardChipsSection } from '@/features/rewards/reward-chips-section'
 import { QuoteAttributesBand, QuoteAttributesSection } from '@/features/quotes/quote-attributes-section'
 import { QuoteCompanySection, QuoteDocumentSection } from '@/features/quotes/quote-record-company'
 import { QuoteIdentitySection, QuoteInternalNotesRow } from '@/features/quotes/quote-record-identity'
-import { ProjectedContextSection } from '@/features/quotes/quote-projection-sections'
+import { QuoteContextSection } from '@/features/quotes/quote-record-context'
 import { QuoteContactsSection, QuoteTeamSection } from '@/features/quotes/quote-record-people'
+import type { ProductLine } from '@/features/product-lines/types'
 import type { QuoteDetailEditor } from '@/features/quotes/use-quote-inline-edit'
 import type { QuoteDetailWithPermissions } from '@/features/quotes/types'
 
 /** Spans both columns of `RecordSectionsGrid` — same rule `RecordSection`'s own `full` prop applies. */
 const FULL_WIDTH_SECTION_CLASS = '@2xl:col-span-2'
+
+/** Stable empty default: a missing key on older payloads reads the same as `[]`. */
+const EMPTY_PRODUCT_LINES: ProductLine[] = []
 
 interface QuoteDetailSectionsProps {
   quote: QuoteDetailWithPermissions
@@ -64,7 +68,14 @@ export function QuoteDetailSections({ quote, editor }: QuoteDetailSectionsProps)
             status={{ statuses: quote.quote_workflow_statuses, originalStatusId: quote.quote_workflow_status_id }}
           />
         }
-        context={<ProjectedContextSection source={quote.source} productLines={quote.product_lines} />}
+        context={
+          <QuoteContextSection
+            source={quote.source}
+            productLines={quote.product_lines ?? EMPTY_PRODUCT_LINES}
+            form={form}
+            inline={inline}
+          />
+        }
         contacts={
           <QuoteContactsSection
             derived={{ registry: quote.registry ?? null, referent: quote.referent ?? null }}

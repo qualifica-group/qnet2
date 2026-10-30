@@ -15,8 +15,9 @@ use InvalidArgumentException;
  * FormRequest validating criteria payloads — `field`/`existsTable()` values
  * only ever come from THIS registry, never from raw request input.
  *
- * Native fields only: `source_id` and custom fields are inherited from the
- * opportunity and ambiguous on multi-offer commesse, so they are excluded.
+ * Native fields only: `source_id` (the offer's own since spec 0332) and
+ * custom fields (inherited from the opportunity) are ambiguous on
+ * multi-offer commesse, so they are excluded.
  * All three are multi-valued and evaluated on the REVENUE lines scheduled in
  * the commessa (WorkOrderClassificationSource).
  */

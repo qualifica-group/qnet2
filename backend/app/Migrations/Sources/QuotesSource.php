@@ -23,6 +23,7 @@ use App\Models\Opportunity;
 use App\Models\PaymentMethod;
 use App\Models\Quote;
 use App\Models\Referent;
+use App\Models\Source;
 use App\Models\User;
 use App\Services\Quotes\QuoteManagerInheritance;
 use App\Services\Quotes\QuoteManagerSyncMode;
@@ -50,6 +51,8 @@ use RuntimeException;
  * (G-15). The legacy "Info preliminari" land in the attribute values
  * applicable to the offer's own lines (G-17). Every line carries the default
  * supplier its product has at migration time, null without one (spec 0320, D-6).
+ * The Fonte (`source_id`, spec 0332) arrives only on the first quotation of an
+ * opportunity: remapped from `sources.old_id`, warning when not migrated.
  */
 class QuotesSource extends AbstractMigrationSource
 {
@@ -98,6 +101,7 @@ class QuotesSource extends AbstractMigrationSource
             MigrationDependency::optional('product-category-attributes'),
             MigrationDependency::optional('vat-rates'),
             MigrationDependency::optional('payment-methods'),
+            MigrationDependency::optional('sources'),
             MigrationDependency::optional('company-sites'),
             MigrationDependency::optional('operational-sites'),
             MigrationDependency::optional('users'),
@@ -259,6 +263,7 @@ class QuotesSource extends AbstractMigrationSource
             paymentMethodId: $this->remapLegacyId(PaymentMethod::class, $record['payment_method_id'] ?? null, 'payment_method_id', $warnings),
             managerSlots: [],
             quoteDate: $this->legacyTimestamp($record['quote_date'] ?? null)?->toDateString(),
+            sourceId: $this->remapLegacyId(Source::class, $record['source_id'] ?? null, 'source_id', $warnings),
         );
     }
 

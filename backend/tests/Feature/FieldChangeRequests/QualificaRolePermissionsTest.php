@@ -71,9 +71,9 @@ it('lets a commercial create and read field-change-requests on their own offers'
 
     // was: 'still lets a commercial read the request they proposed, page permissions aside'
     $reader = User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail();
-    $readOpportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
+    $readOpportunity = Opportunity::factory()->create();
     $readOpportunity->managers()->sync([$reader->id => ['position' => Opportunity::OPERATOR_MANAGER_POSITION]]);
-    $readQuote = Quote::factory()->for($readOpportunity)->create(['operator_id' => $reader->id]);
+    $readQuote = Quote::factory()->for($readOpportunity)->create(['source_id' => Source::factory()->create()->id, 'operator_id' => $reader->id]);
 
     Sanctum::actingAs($reader);
 
@@ -92,9 +92,9 @@ it('lets a commercial create and read field-change-requests on their own offers'
 
     // was: 'AC-052: a commercial gets 422 writing the Fonte directly and 201 proposing a change request'
     $writer = User::query()->where('email', 'marco.baldi@qualificagroup.com')->firstOrFail();
-    $writeOpportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
+    $writeOpportunity = Opportunity::factory()->create();
     $writeOpportunity->managers()->sync([$writer->id => ['position' => Opportunity::OPERATOR_MANAGER_POSITION]]);
-    $writeQuote = Quote::factory()->for($writeOpportunity)->create(['operator_id' => $writer->id]);
+    $writeQuote = Quote::factory()->for($writeOpportunity)->create(['source_id' => Source::factory()->create()->id, 'operator_id' => $writer->id]);
     $otherSource = Source::factory()->create();
 
     Sanctum::actingAs($writer);

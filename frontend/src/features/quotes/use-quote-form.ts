@@ -36,6 +36,7 @@ const SERVER_ERROR_FIELDS = [
   'company_id',
   'company_site_id',
   'operational_site_id',
+  'source_id',
   'layout_id',
   'payment_method_id',
   'internal_notes',

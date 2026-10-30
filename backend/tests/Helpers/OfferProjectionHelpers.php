@@ -26,12 +26,13 @@ if (! function_exists('offerProjectionFullQuote')) {
         $referent = Referent::factory()->create(['referent_type_id' => ReferentType::factory()->create()->id]);
         $opportunity = Opportunity::factory()->create([
             'referent_id' => $referent->id,
-            'source_id' => Source::factory()->create()->id,
         ]);
         OpportunityProductLine::factory()->create(['opportunity_id' => $opportunity->id]);
 
         $quote = Quote::factory()->create([
             'opportunity_id' => $opportunity->id,
+            // REQUIREMENT CHANGED: spec 0332 — the Fonte is the offer's own.
+            'source_id' => Source::factory()->create()->id,
             'commercial_id' => Referent::factory()->create()->id,
             'reporter_id' => Referent::factory()->create()->id,
             'layout_id' => DocumentLayout::factory()->create()->id,

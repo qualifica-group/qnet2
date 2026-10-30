@@ -50,7 +50,7 @@ class ContractService
         // Spec 0331: the offer data the detail projects read-only
         // (source, product lines, rewards, account managers, layout); the
         // manager labels read `opportunity.productLines.productCategory`.
-        'quote.opportunity.source',
+        'quote.source',
         'quote.opportunity.productLines.productCategory',
         'quote.opportunity.productLines.businessFunction',
         'quote.managers',

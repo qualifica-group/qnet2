@@ -13,8 +13,8 @@ use Spatie\Permission\Models\Permission;
 
 /**
  * Attribution block on the operative work panel (user directive 2026-07-22),
- * migrated onto the Quote by spec 0086, D-2/D-3: "Fonte" (`source_id`) stays
- * on the underlying Opportunity, "Segnalatore" (`reporter_id`) and "Sede
+ * migrated onto the Quote by spec 0086, D-2/D-3: "Fonte" (`source_id`) moved
+ * onto the Quote too with spec 0332 (REQUIREMENT CHANGED), "Segnalatore" (`reporter_id`) and "Sede
  * operativa" (`operational_site_id`) are now Quote columns, and the GA2
  * "Operatore" (`operator_id`) is the Offerta's own `quotes.operator_id`
  * (spec 0087, D-9), synced onto its OWN `quote_user` pivot at
@@ -73,7 +73,7 @@ it('GET exposes fonte, segnalatore and the GA2 operator', function () {
     $source = Source::factory()->create();
     $reporter = Referent::factory()->create();
     $quote = attributionQuote($actor);
-    $quote->opportunity->update(['source_id' => $source->id]);
+    $quote->update(['source_id' => $source->id]);
     $quote->update(['reporter_id' => $reporter->id]);
     Sanctum::actingAs($actor);
 
@@ -99,6 +99,19 @@ it('GET reports a null operator when there is none', function () {
         ->assertJsonPath('data.operator', null);
 });
 
+it('AC-006 (spec 0332): PATCH writes the Fonte on that offer only, never on its sibling offers', function () {
+    $actor = attributionActor();
+    $quote = attributionQuote($actor);
+    $sibling = Quote::factory()->create(['opportunity_id' => $quote->opportunity_id]);
+    $source = Source::factory()->create();
+    Sanctum::actingAs($actor);
+
+    $this->patchJson("/api/request-management/{$quote->id}", ['source_id' => $source->id])->assertOk();
+
+    expect($quote->fresh()->source_id)->toBe($source->id)
+        ->and($sibling->fresh()->source_id)->toBeNull();
+});
+
 it('PATCH persists fonte and segnalatore and echoes them back', function () {
     $actor = attributionActor();
     $quote = attributionQuote($actor);
@@ -114,12 +127,10 @@ it('PATCH persists fonte and segnalatore and echoes them back', function () {
         ->assertJsonPath('data.source.id', $source->id)
         ->assertJsonPath('data.reporter.id', $reporter->id);
 
-    $this->assertDatabaseHas('opportunities', [
-        'id' => $quote->opportunity_id,
-        'source_id' => $source->id,
-    ]);
+    // REQUIREMENT CHANGED: spec 0332 — the Fonte is written on the offer.
     $this->assertDatabaseHas('quotes', [
         'id' => $quote->id,
+        'source_id' => $source->id,
         'reporter_id' => $reporter->id,
     ]);
 });
@@ -128,7 +139,7 @@ it('PATCH clears segnalatore with an explicit null', function () {
     $actor = attributionActor();
     $quote = attributionQuote($actor);
     $quote->update(['reporter_id' => Referent::factory()->create()->id]);
-    $quote->opportunity->update(['source_id' => Source::factory()->create()->id]);
+    $quote->update(['source_id' => Source::factory()->create()->id]);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/request-management/{$quote->id}", ['reporter_id' => null])
@@ -149,21 +160,21 @@ it('PATCH refuses to clear the fonte with an explicit null', function () {
     $actor = attributionActor();
     $quote = attributionQuote($actor);
     $source = Source::factory()->create();
-    $quote->opportunity->update(['source_id' => $source->id]);
+    $quote->update(['source_id' => $source->id]);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/request-management/{$quote->id}", ['source_id' => null])
         ->assertStatus(422)
         ->assertJsonValidationErrors('source_id');
 
-    expect($quote->opportunity->fresh()->source_id)->toBe($source->id);
+    expect($quote->fresh()->source_id)->toBe($source->id);
 });
 
 it('PATCH leaves the attribution untouched when its keys are absent (sparse)', function () {
     $actor = attributionActor();
     $quote = attributionQuote($actor);
     $source = Source::factory()->create();
-    $quote->opportunity->update(['source_id' => $source->id]);
+    $quote->update(['source_id' => $source->id]);
     Sanctum::actingAs($actor);
 
     $this->patchJson("/api/request-management/{$quote->id}", ['next_callback_at' => null])
@@ -290,7 +301,7 @@ it('denies the attribution write to an actor outside the D-3 scope', function ()
     $this->patchJson("/api/request-management/{$quote->id}", ['source_id' => Source::factory()->create()->id])
         ->assertStatus(403);
 
-    expect($quote->opportunity->fresh()->source_id)->toBeNull();
+    expect($quote->fresh()->source_id)->toBeNull();
 });
 
 // ---------------------------------------------------------------------------

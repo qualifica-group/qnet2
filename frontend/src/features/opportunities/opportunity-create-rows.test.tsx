@@ -64,7 +64,7 @@ vi.mock('@/features/authorization/api', () => ({
 }))
 
 const TEST_REGISTRY_ID = 10
-const TEST_SOURCE_ID = 20
+const TEST_COMMERCIAL_ID = 71
 
 const fetchForSelectMock = vi.fn()
 vi.mock('@/features/for-select/api', async () => {
@@ -92,7 +92,7 @@ beforeEach(() => {
     delete SELECT_IDS[key]
   }
   SELECT_IDS.Registry = [TEST_REGISTRY_ID]
-  SELECT_IDS.Source = [TEST_SOURCE_ID]
+  SELECT_IDS['Sales rep'] = [TEST_COMMERCIAL_ID]
   createOpportunityMock.mockReset()
   fetchResourceMetaMock.mockReset()
   fetchResourceMetaMock.mockResolvedValue({ fields: [], permissions: FULL_PERMISSIONS })
@@ -119,29 +119,29 @@ describe('OpportunityFormBody — closed draft rows (spec 0198, AC-004)', () => 
     await renderCreateForm()
 
     expect(screen.queryByRole('textbox', { name: 'Title' })).not.toBeInTheDocument()
-    expect(screen.queryByTestId('select-Source')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('select-Sales rep')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Done' })).not.toBeInTheDocument()
 
-    openRow(ROW.source)
-    expect(screen.getByTestId('select-Source')).toBeInTheDocument()
+    openRow(ROW.commercial)
+    expect(screen.getByTestId('select-Sales rep')).toBeInTheDocument()
     // One open row at a time: opening another closes this one, keeping the draft.
     openRow(ROW.title)
     expect(titleInput()).toBeInTheDocument()
-    expect(screen.queryByTestId('select-Source')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('select-Sales rep')).not.toBeInTheDocument()
   })
 
   it('"Done" keeps the value in the draft and shows it on the closed row', async () => {
     await renderCreateForm()
 
-    openRow(ROW.source)
-    fireEvent.click(screen.getByRole('button', { name: `select Source ${TEST_SOURCE_ID}` }))
+    openRow(ROW.commercial)
+    fireEvent.click(screen.getByRole('button', { name: `select Sales rep ${TEST_COMMERCIAL_ID}` }))
     applyRow()
 
-    expect(screen.queryByTestId('select-Source')).not.toBeInTheDocument()
-    expect(await screen.findByText('Web')).toBeInTheDocument()
+    expect(screen.queryByTestId('select-Sales rep')).not.toBeInTheDocument()
+    expect(await screen.findByText('Sara Conti')).toBeInTheDocument()
     // The kept value is what the editor finds when the row opens again.
-    openRow(ROW.source)
-    expect(screen.getByTestId('value-Source')).toHaveTextContent(String(TEST_SOURCE_ID))
+    openRow(ROW.commercial)
+    expect(screen.getByTestId('value-Sales rep')).toHaveTextContent(String(TEST_COMMERCIAL_ID))
   })
 
   it('"Revert" restores the draft as it was when the row opened', async () => {
