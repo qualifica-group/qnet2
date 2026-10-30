@@ -24,6 +24,7 @@ interface TaskBoardKanbanViewProps {
   isReadOnly: boolean
   selectedTaskIds: Set<number>
   onToggleSelection: (taskId: number) => void
+  onSetSelection: (taskIds: number[], isSelected: boolean) => void
   onOpenTask: (taskId: number) => void
   onAddTask: (stageId: number | null) => void
   /** The commessa's `unstaged_logged_minutes` (spec 0163 AC-007), read only by the "Senza fase" column. */
@@ -38,6 +39,7 @@ export function TaskBoardKanbanView({
   isReadOnly,
   selectedTaskIds,
   onToggleSelection,
+  onSetSelection,
   onOpenTask,
   onAddTask,
   unstagedLoggedMinutes,
@@ -75,6 +77,7 @@ export function TaskBoardKanbanView({
             today={today}
             selectedTaskIds={selectedTaskIds}
             onToggleSelection={onToggleSelection}
+            onSetSelection={onSetSelection}
             onOpenTask={onOpenTask}
             onAddTask={onAddTask}
             unstagedLoggedMinutes={group.stage === null ? unstagedLoggedMinutes : undefined}

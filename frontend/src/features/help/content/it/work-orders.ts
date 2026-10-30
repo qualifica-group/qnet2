@@ -157,6 +157,28 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'task-board-selection',
+      title: 'Task: selezione multipla',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Nella scheda **Task** del dettaglio ogni task principale ha una casella di selezione: selezionandone uno o più compare in basso la barra con le azioni massive (Assegna, Completa, Riapri, Blocca, Priorità, Date). I sotto-task non si selezionano.',
+        },
+        {
+          type: 'list',
+          items: [
+            '**Seleziona tutti**, nella barra dei filtri, seleziona tutti i task visibili di tutte le fasi; cliccandola di nuovo li deseleziona.',
+            'La casella accanto al nome di ogni **fase** (anche **Senza fase**, e in testa a ogni colonna della vista Board) seleziona o deseleziona tutti i task di quella fase.',
+            'Se solo una parte dei task è selezionata la casella mostra un trattino: un clic completa la selezione.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Le caselle "seleziona tutti" considerano solo i task mostrati con i filtri attuali. Su una commessa chiusa il board è in sola lettura e le caselle non compaiono.',
+        },
+      ],
+    },
+    {
       id: 'costs',
       title: 'Costi',
       blocks: [

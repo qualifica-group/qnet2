@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Board Task commessa: "Seleziona tutti" per fase e globale — VERDE, COMMITTATO (2026-10-30)
+
+- Richiesta utente: nel dettaglio commessa, checkbox che seleziona tutti i task per fase e per tutto. Solo frontend,
+  nessun contratto API toccato (la barra azioni massive D-7 riceve gli stessi `selectedTaskIds`).
+- Nuovi `features/work-orders/task-board/task-board-selection.ts` (`selectAllState` tri-stato, `setIdsSelection`) e
+  `task-board-select-all-checkbox.tsx` (`TaskBoardSelectAllCheckbox`: parziale -> seleziona tutti, disabilitata se la
+  fase e' vuota). `useTaskBoardState` espone `visibleRootIds` (radici dei `groups` filtrati) e `setTasksSelection`.
+  Prop `onSetSelection(taskIds, isSelected)` lungo list view -> `TaskBoardStageGroup` (header, dopo il chevron) e
+  kanban view -> `TaskBoardKanbanColumn` (nuovo `leadingSlot` di `components/kanban/kanban-column-shell.tsx`).
+  Globale: `selectAllSlot` di `TaskBoardToolbar`, montato da `WorkOrderTaskBoard`. Tutto nascosto se `isReadOnly`.
+  Coprono solo i task radice visibili coi filtri attuali (come le caselle di riga).
+- i18n `workOrders.taskBoard.bulk.selectAll` / `selectStage` (IT/EN). Guida in-app `work-orders#task-board-selection`
+  IT/EN; manuale Claude Docs: paragrafo dopo la barra azioni massive della sezione Task (Commesse resta "in sviluppo").
+- Verifica: Vitest work-orders + kanban + tasks + help 958/958; ESLint pulito; `tsc -b --force` 0.
+
 ## Barra tab categorie: modalita' "Categorie madri" (spec 0337) — VERDE, COMMITTATO (2026-10-30)
 
 - Decisioni utente: madri = radici (`parent_id` null), la tab raccoglie il ramo intero (record contati una volta);

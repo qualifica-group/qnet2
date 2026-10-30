@@ -22,6 +22,7 @@ import { formatDate } from '@/lib/formatting/date-display'
 import type { BoardStageGroup } from '@/features/work-orders/task-board/task-board-filters'
 import { computeStageMetrics } from '@/features/work-orders/task-board/task-board-metrics'
 import type { StageAccent } from '@/features/work-orders/task-board/task-board-stage-accent'
+import { TaskBoardSelectAllCheckbox } from '@/features/work-orders/task-board/task-board-select-all-checkbox'
 import { TaskBoardStageMenu } from '@/features/work-orders/task-board/task-board-stage-menu'
 import { TaskBoardStageSummary } from '@/features/work-orders/task-board/task-board-task-meta'
 import { TaskBoardTaskRow } from '@/features/work-orders/task-board/task-board-task-row'
@@ -40,6 +41,7 @@ interface TaskBoardStageGroupProps {
   today: string
   selectedTaskIds: Set<number>
   onToggleSelection: (taskId: number) => void
+  onSetSelection: (taskIds: number[], isSelected: boolean) => void
   onOpenTask: (taskId: number) => void
   onAddTask: (stageId: number | null) => void
   /** The commessa's `unstaged_logged_minutes` (spec 0163 AC-007): read only when `group.stage === null`. */
@@ -61,6 +63,7 @@ export function TaskBoardStageGroup({
   today,
   selectedTaskIds,
   onToggleSelection,
+  onSetSelection,
   onOpenTask,
   onAddTask,
   unstagedLoggedMinutes,
@@ -82,6 +85,7 @@ export function TaskBoardStageGroup({
   const loggedMinutes = stage ? stage.logged_minutes : (unstagedLoggedMinutes ?? 0)
   const renameStage = useRenameWorkOrderStage(workOrderId)
   const isClosed = stage?.closed_at != null
+  const stageName = stage ? stage.name : t('workOrders.taskBoard.noStage')
 
   function startRename() {
     setDraftName(stage?.name ?? '')
@@ -118,6 +122,14 @@ export function TaskBoardStageGroup({
                 {isOpen ? <ChevronDown className="size-4" aria-hidden="true" /> : <ChevronRight className="size-4" aria-hidden="true" />}
               </button>
             </CollapsibleTrigger>
+            {!isReadOnly ? (
+              <TaskBoardSelectAllCheckbox
+                taskIds={roots.map((node) => node.task.id)}
+                selectedTaskIds={selectedTaskIds}
+                onSetSelection={onSetSelection}
+                label={t('workOrders.taskBoard.bulk.selectStage', { name: stageName })}
+              />
+            ) : null}
             <span aria-hidden="true" className={cn('size-2.5 shrink-0 rounded-full', accent.dot)} />
 
             {isRenaming ? (
@@ -136,9 +148,7 @@ export function TaskBoardStageGroup({
                 className="h-7 max-w-56 text-sm"
               />
             ) : (
-              <h3 className="min-w-0 truncate text-sm font-semibold text-foreground">
-                {stage ? stage.name : t('workOrders.taskBoard.noStage')}
-              </h3>
+              <h3 className="min-w-0 truncate text-sm font-semibold text-foreground">{stageName}</h3>
             )}
 
             <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">

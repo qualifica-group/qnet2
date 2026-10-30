@@ -26,6 +26,7 @@ interface TaskBoardListViewProps {
   isReadOnly: boolean
   selectedTaskIds: Set<number>
   onToggleSelection: (taskId: number) => void
+  onSetSelection: (taskIds: number[], isSelected: boolean) => void
   onOpenTask: (taskId: number) => void
   onAddTask: (stageId: number | null) => void
   /** The commessa's `unstaged_logged_minutes` (spec 0163 AC-007), read only by the "Senza fase" group. */
@@ -40,6 +41,7 @@ export function TaskBoardListView({
   isReadOnly,
   selectedTaskIds,
   onToggleSelection,
+  onSetSelection,
   onOpenTask,
   onAddTask,
   unstagedLoggedMinutes,
@@ -81,6 +83,7 @@ export function TaskBoardListView({
                 today={today}
                 selectedTaskIds={selectedTaskIds}
                 onToggleSelection={onToggleSelection}
+                onSetSelection={onSetSelection}
                 onOpenTask={onOpenTask}
                 onAddTask={onAddTask}
               />
@@ -95,6 +98,7 @@ export function TaskBoardListView({
                 today={today}
                 selectedTaskIds={selectedTaskIds}
                 onToggleSelection={onToggleSelection}
+                onSetSelection={onSetSelection}
                 onOpenTask={onOpenTask}
                 onAddTask={onAddTask}
                 unstagedLoggedMinutes={unstagedLoggedMinutes}
@@ -130,6 +134,7 @@ interface SortableStageGroupItemProps {
   today: string
   selectedTaskIds: Set<number>
   onToggleSelection: (taskId: number) => void
+  onSetSelection: (taskIds: number[], isSelected: boolean) => void
   onOpenTask: (taskId: number) => void
   onAddTask: (stageId: number | null) => void
 }

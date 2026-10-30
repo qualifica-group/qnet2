@@ -1,9 +1,10 @@
+import type { ReactNode } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { createWorkOrderStage, fetchTaskBoard } from '@/features/work-orders/task-board/api'
-import { taskBoardPayload, workOrderStage } from '@/features/work-orders/task-board/task-board-fixtures'
+import { boardTask, taskBoardPayload, workOrderStage } from '@/features/work-orders/task-board/task-board-fixtures'
 import type { BoardStageGroup } from '@/features/work-orders/task-board/task-board-filters'
 import { WorkOrderTaskBoard } from '@/features/work-orders/task-board/work-order-task-board'
 
@@ -31,9 +32,15 @@ vi.mock('@/features/work-orders/task-board/task-board-list-view', () => ({
   ),
 }))
 vi.mock('@/features/work-orders/task-board/task-board-kanban-view', () => ({ TaskBoardKanbanView: () => null }))
-vi.mock('@/features/work-orders/task-board/task-board-toolbar', () => ({ TaskBoardToolbar: () => null }))
+vi.mock('@/features/work-orders/task-board/task-board-toolbar', () => ({
+  TaskBoardToolbar: ({ selectAllSlot }: { selectAllSlot?: ReactNode }) => <div>{selectAllSlot}</div>,
+}))
 vi.mock('@/features/work-orders/task-board/task-board-kpis', () => ({ TaskBoardKpis: () => null }))
-vi.mock('@/features/work-orders/task-board/task-board-bulk-bar', () => ({ TaskBoardBulkBar: () => null }))
+vi.mock('@/features/work-orders/task-board/task-board-bulk-bar', () => ({
+  TaskBoardBulkBar: ({ selectedTaskIds }: { selectedTaskIds: number[] }) => (
+    <section aria-label="selected ids">{[...selectedTaskIds].sort().join(',')}</section>
+  ),
+}))
 
 const fetchTaskBoardMock = vi.mocked(fetchTaskBoard)
 const createWorkOrderStageMock = vi.mocked(createWorkOrderStage)
@@ -105,5 +112,37 @@ describe('WorkOrderTaskBoard — phases without tasks', () => {
     renderBoard()
 
     expect(await screen.findByText('Sopralluogo')).toBeInTheDocument()
+  })
+})
+
+describe('WorkOrderTaskBoard — board-wide "select all"', () => {
+  const payload = taskBoardPayload({
+    stages: [workOrderStage({ id: 1, name: 'Sopralluogo', sort_order: 0 })],
+    tasks: [
+      boardTask({ id: 100, work_order_stage_id: 1 }),
+      boardTask({ id: 101, work_order_stage_id: null }),
+      boardTask({ id: 102, parent_task_id: 100 }),
+    ],
+  })
+
+  it('selects every visible root task across phases, then clears them', async () => {
+    fetchTaskBoardMock.mockResolvedValue(payload)
+    renderBoard()
+
+    const checkbox = await screen.findByRole('checkbox', { name: 'Select all' })
+    fireEvent.click(checkbox)
+    expect(screen.getByRole('region', { name: 'selected ids' })).toHaveTextContent('100,101')
+    expect(checkbox).toHaveAttribute('data-state', 'checked')
+
+    fireEvent.click(checkbox)
+    expect(screen.getByRole('region', { name: 'selected ids' })).toHaveTextContent('')
+  })
+
+  it('is absent on a read-only board', async () => {
+    fetchTaskBoardMock.mockResolvedValue({ ...payload, is_read_only: true })
+    renderBoard()
+
+    expect(await screen.findByText('Sopralluogo')).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Select all' })).not.toBeInTheDocument()
   })
 })

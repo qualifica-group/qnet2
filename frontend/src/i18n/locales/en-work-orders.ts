@@ -247,6 +247,8 @@ export const workOrders = {
     bulk: {
       selectedCount_one: '{{count}} task selected',
       selectedCount_other: '{{count}} tasks selected',
+      selectAll: 'Select all',
+      selectStage: 'Select all tasks in phase {{name}}',
       action: {
         assign: 'Assign',
         complete: 'Complete',

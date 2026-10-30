@@ -70,6 +70,7 @@ describe('TaskBoardListView — grouping (AC-026)', () => {
         isReadOnly={false}
         selectedTaskIds={new Set()}
         onToggleSelection={noop}
+        onSetSelection={noop}
         onOpenTask={noop}
         onAddTask={noop}
         unstagedLoggedMinutes={0}
@@ -103,6 +104,7 @@ describe('TaskBoardListView — read-only (AC-029)', () => {
         isReadOnly
         selectedTaskIds={new Set()}
         onToggleSelection={noop}
+        onSetSelection={noop}
         onOpenTask={noop}
         onAddTask={noop}
         unstagedLoggedMinutes={0}
