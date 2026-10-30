@@ -59,6 +59,8 @@
   (chiave nav `management-control-section` inesistente), QuoteDocumentPdfTest (LibreOffice assente); Vitest: 11 unhandled
   `toast.error is not a function` in form test con mock sonner senza `error` (dopo 935b8c6a).
 - Da segnalare: `StoreAttachmentRequest` e `StoreWorkOrderEmailAttachmentRequest` non hanno `extensions:` (backend.md §8).
+- Fix icone: icona menu `life-buoy` mappata in `navigation/icon-map.ts` (prima cadeva sul
+  cerchio di ripiego); colonna Icona della tabella disegna l'icona (`support-topic-icon-cell.tsx`) invece del nome.
 
 ## Commessa "Dati contrattuali": azione massiva sul pagamento delle righe (spec 0333) — VERDE, COMMITTATO (2026-10-30)
 

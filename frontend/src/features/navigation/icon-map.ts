@@ -23,6 +23,7 @@ import {
   Handshake,
   Layers,
   Library,
+  LifeBuoy,
   Sparkles,
   LayoutDashboard,
   ListChecks,
@@ -155,6 +156,8 @@ const iconMap: Record<string, LucideIcon> = {
   sparkles: Sparkles,
   // Spec 0317: "App" under Develop.
   'layout-grid': LayoutGrid,
+  // Spec 0334: "Assistenza tecnica" under Configurazione > Task.
+  'life-buoy': LifeBuoy,
 }
 
 export function resolveIcon(name: string | null): LucideIcon {
