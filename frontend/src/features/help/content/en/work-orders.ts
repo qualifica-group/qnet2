@@ -237,6 +237,22 @@ const guide: HelpGuide = {
           ],
         },
         {
+          type: 'paragraph',
+          text: '**Bulk action**: if you may manage payments every line has a selection checkbox, and the one in the header selects every line. Use it to mark several products at once, for example all as **Paid** or as **Unpaid**.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Select the lines with their checkboxes (or all of them with the header checkbox): a bar with the number of selected lines appears above the table.',
+            'Press **Set payment**: in the popup choose the **payment status** (also **No status**) and/or the **unpaid** flag (Yes/No). A field left on **Keep unchanged** stays as it is on every line.',
+            'Press **Apply**: the values are saved on all the selected lines together (if one cannot be saved none changes) and the selection is cleared. **Clear selection** drops the selection without saving.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'The payment agreement is a different text on every line: it is edited only in the **Line payment** popup. When a bulk action makes several lines deliverable, supervisors and participants receive **a single notification** listing the products.',
+        },
+        {
           type: 'note',
           text: 'Payment statuses are configured in **Work order payment statuses**. When a line moves to a status flagged **Can be delivered**, the work order supervisors and participants are notified. Payment data can also be edited on a completed or closed work order.',
         },

@@ -83,6 +83,13 @@ export interface UpdateContractLinePayload {
   has_unpaid?: boolean
 }
 
+/** Bulk PATCH body (spec 0333): the same values on every listed line; an absent key leaves each line as it is. */
+export interface BulkUpdateContractLinesPayload {
+  quote_line_ids: number[]
+  work_order_payment_status_id?: number | null
+  has_unpaid?: boolean
+}
+
 /** A for-select item of `work-order-payment-statuses` (flat projection, spec 0201). */
 export interface PaymentStatusOption {
   id: number

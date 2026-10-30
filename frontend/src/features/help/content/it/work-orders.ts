@@ -237,6 +237,22 @@ const guide: HelpGuide = {
           ],
         },
         {
+          type: 'paragraph',
+          text: '**Azione massiva**: con il permesso di gestire i pagamenti ogni riga ha una casella di selezione, e quella nell\'intestazione seleziona tutte le righe. Serve per segnare in un colpo solo più prodotti, ad esempio tutti come **Saldato** o come **Insoluto**.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Seleziona le righe con le caselle (o tutte con la casella dell\'intestazione): sopra la tabella compare la barra con il numero di righe selezionate.',
+            'Premi **Imposta pagamento**: nel popup scegli lo **stato di pagamento** (anche **Nessuno stato**) e/o gli **insoluti** (Sì/No). Un campo lasciato su **Non modificare** resta com\'è su ogni riga.',
+            'Premi **Applica**: i valori vengono salvati su tutte le righe selezionate insieme (se una non può essere salvata non cambia nessuna) e la selezione si azzera. **Deseleziona** toglie la selezione senza salvare.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'L\'accordo sui pagamenti è un testo diverso per ogni riga: si modifica solo dal popup **Pagamento riga**. Se più righe diventano consegnabili con un\'azione massiva, supervisori e partecipanti ricevono **una sola notifica** con l\'elenco dei prodotti.',
+        },
+        {
           type: 'note',
           text: 'Gli stati di pagamento si configurano in **Stati pagamento commessa**. Quando una riga passa a uno stato con **Si può consegnare**, supervisori e partecipanti della commessa ricevono una notifica. I dati di pagamento si modificano anche su una commessa completata o chiusa.',
         },

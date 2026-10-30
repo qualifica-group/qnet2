@@ -3,6 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Commessa "Dati contrattuali": azione massiva sul pagamento delle righe (spec 0333) — VERDE, COMMITTATO (2026-10-30)
+
+- Richiesta utente: selezionare piu' prodotti di commessa e segnarli tutti come pagati, insoluto ecc.
+- Backend: `PATCH /api/work-orders/{workOrder}/contract-data/lines` `{quote_line_ids[1..200], work_order_payment_status_id?, has_unpaid?}`
+  (`BulkUpdateWorkOrderLinePaymentsRequest`: `managePayments`, ids via `exists:quote_line_work_order` della commessa,
+  solo stati attivi, `after()` "almeno un valore"), `WorkOrderContractDataController::bulkUpdateLines` risponde il
+  payload intero del GET. `WorkOrderLinePaymentWriter::handleMany` (transazione) + `apply()` condiviso con `handle()`;
+  UNA notifica `WorkOrderLineDeliverableNotification` per destinatario con i prodotti separati da virgola.
+  Lang `it.json`: "Choose at least one value to set.".
+- Frontend `features/work-order-contract-data/`: checkbox per riga + "seleziona tutte" (intestazione; riga dedicata
+  sotto `md`), `contract-data-bulk-bar.tsx`, `contract-payment-bulk-dialog.tsx` (+ `-schema.ts`, valori "Non
+  modificare"), `contract-payment-errors.ts` (`paymentServerMessage`, estratto dal dialog singolo),
+  `useBulkUpdateContractDataLines` (setQueryData), i18n `workOrders.contractData.bulk.*` IT/EN.
+- Fuori scope (D-1): accordo di pagamento in massa; azione massiva su piu' commesse dalla griglia.
+- Verifica: Pest `tests/Feature/WorkOrders` 413/413 (nuovo `WorkOrderLinePaymentBulkTest` 6); Pint ok; Vitest
+  work-orders + contract-data + i18n 73 file / 567, help 152/152; `tsc -b --force` 0; ESLint pulito. Suite completa
+  non eseguita. Guida in-app `work-orders#contract-data` IT/EN aggiornata; manuale Claude Docs: sezione Commesse
+  ancora "in fase di sviluppo", nessuna modifica.
+
 ## Errori di salvataggio sempre in primo piano, tutti i form — VERDE, NON COMMITTATO (2026-10-30)
 
 - Direttiva utente 2026-10-30: un salvataggio rifiutato deve essere ESPLICITO, mai solo sotto un campo fuori vista.

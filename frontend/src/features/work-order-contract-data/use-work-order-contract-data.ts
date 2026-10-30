@@ -4,9 +4,14 @@ import type { AxiosError } from 'axios'
 import type { ApiErrorResponse } from '@/api/types'
 import { useForSelect, flattenForSelectPages } from '@/features/for-select/use-for-select'
 import type { ForSelectItem } from '@/features/for-select/types'
-import { fetchWorkOrderContractData, updateContractDataLine } from '@/features/work-order-contract-data/api'
+import {
+  bulkUpdateContractDataLines,
+  fetchWorkOrderContractData,
+  updateContractDataLine,
+} from '@/features/work-order-contract-data/api'
 import { workOrderContractDataKeys } from '@/features/work-order-contract-data/query-keys'
 import type {
+  BulkUpdateContractLinesPayload,
   ContractDataLine,
   ContractPaymentStatusRef,
   PaymentStatusOption,
@@ -50,6 +55,17 @@ export function useUpdateContractDataLine(workOrderId: number) {
           ? { ...current, lines: current.lines.map((row) => (row.quote_line_id === line.quote_line_id ? line : row)) }
           : current,
       )
+    },
+  })
+}
+
+/** Bulk save (spec 0333): the response is the whole contract data, cached as is. */
+export function useBulkUpdateContractDataLines(workOrderId: number) {
+  const queryClient = useQueryClient()
+  return useMutation<WorkOrderContractData, AxiosError<ApiErrorResponse>, BulkUpdateContractLinesPayload>({
+    mutationFn: (payload) => bulkUpdateContractDataLines(workOrderId, payload),
+    onSuccess: (data) => {
+      queryClient.setQueryData<WorkOrderContractData>(workOrderContractDataKeys.detail(workOrderId), data)
     },
   })
 }

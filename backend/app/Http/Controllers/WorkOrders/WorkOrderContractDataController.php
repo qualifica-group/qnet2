@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\WorkOrders;
 
 use App\Http\Controllers\Abstract\BaseApiController;
+use App\Http\Requests\WorkOrderContractData\BulkUpdateWorkOrderLinePaymentsRequest;
 use App\Http\Requests\WorkOrderContractData\UpdateWorkOrderLinePaymentRequest;
 use App\Models\QuoteLine;
 use App\Models\User;
@@ -15,9 +16,10 @@ use Illuminate\Http\Request;
 use Throwable;
 
 /**
- * Read a commessa's contract data and save one line's payment data (spec
- * 0201). Gated on the OWNING commessa through WorkOrderPolicy::viewContractData
- * (GET) and managePayments (PATCH, in UpdateWorkOrderLinePaymentRequest).
+ * Read a commessa's contract data and save the payment data of one line (spec
+ * 0201) or of several lines at once (spec 0333). Gated on the OWNING commessa
+ * through WorkOrderPolicy::viewContractData (GET) and managePayments (PATCH,
+ * in the two FormRequests).
  */
 class WorkOrderContractDataController extends BaseApiController
 {
@@ -53,6 +55,21 @@ class WorkOrderContractDataController extends BaseApiController
             return $this->ok($this->builder->buildLine($workOrder, $quoteLine, $this->actor($request)), 'Payment data saved');
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['workOrder' => $workOrder->id, 'quoteLine' => $quoteLine->id]);
+        }
+    }
+
+    /**
+     * PATCH /api/work-orders/{workOrder}/contract-data/lines
+     */
+    public function bulkUpdateLines(BulkUpdateWorkOrderLinePaymentsRequest $request, WorkOrder $workOrder): JsonResponse
+    {
+        try {
+            $lines = $workOrder->quoteLines()->whereKey($request->lineIds())->get();
+            $this->writer->handleMany($workOrder, $lines, $request->toData(), $this->actor($request));
+
+            return $this->ok($this->builder->build($workOrder, $this->actor($request)), 'Payment data saved');
+        } catch (Throwable $exception) {
+            return $this->handleControllerException($exception, __FUNCTION__, ['workOrder' => $workOrder->id]);
         }
     }
 
