@@ -3,6 +3,18 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## ISO: campo "Altro" testo libero + seeder mirato per la produzione — VERDE, COMMITTATO (2026-10-30)
+
+- `IsoCatalogue`: nuovo campo Offerta `iso_other_standard` ("Altro", `text`), nella sezione `iso-standards`
+  accanto a "Parità di genere + 30415". Non apre blocchi (nessun `visible_when` lo nomina).
+- `QualificaIsoQuoteFormSeeder` (NON in `QualificaProductionDataSeeder`): per installazioni gia' seedate,
+  `php artisan db:seed --class=QualificaIsoQuoteFormSeeder --force`. Campi additivi + form Offerta della radice
+  "ISO" RISCRITTO comunque (una modifica a mano del form ISO si perde; i valori delle offerte restano). Serve perche'
+  `QualificaQuoteLayoutSeeder` non sovrascrive un form gia' configurato.
+- Test: `QualificaIsoCatalogueTest` 9/9 (nuovo caso del seeder mirato; atteso di `iso-standards` aggiornato =
+  REQUIREMENT CHANGED), `QualificaQuoteLayoutSeederTest` 5/5, `QualificaProductionDataSeederTest` 3/3; Pint pulito.
+  Seeder NON eseguito sul DB dev (vincolo utente). Manuale: il form ISO non vi e' descritto, nessun passaggio da toccare.
+
 ## Schede Opportunita'/Offerta/Contratto/Commessa con lo stesso scheletro (spec 0331) — VERDE, NON COMMITTATO (2026-10-29)
 
 - Ordine unico in `components/detail/record-skeleton-sections.tsx` (`RecordSkeletonSections`, slot details/context/

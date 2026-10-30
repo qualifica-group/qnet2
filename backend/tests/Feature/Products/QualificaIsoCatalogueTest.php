@@ -10,6 +10,7 @@ use App\Models\BusinessFunction;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductSupplier;
+use App\Models\Quote;
 use App\Models\Registry;
 use App\RequestManagement\AttributeSectionVisibility;
 use App\Services\ProductCategories\AttributeLayoutService;
@@ -22,6 +23,7 @@ use Database\Seeders\QualificaCatalog\IsoProductCatalogue;
 use Database\Seeders\QualificaCatalog\IsoSubcategories;
 use Database\Seeders\QualificaCatalog\IsoWorkOrderCatalogue;
 use Database\Seeders\QualificaCatalogSeeder;
+use Database\Seeders\QualificaIsoQuoteFormSeeder;
 use Database\Seeders\QualificaTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -116,10 +118,45 @@ it('gives a subcategory the root offer fields and a form whose group blocks open
         ->and($codesBySection['iso-standards'])->toBe([
             'iso_group_general', 'iso_group_food', 'iso_group_energy',
             'iso_group_anti_bribery', 'iso_group_road_safety', 'iso_group_gender_equality',
+            'iso_other_standard',
         ])
+        ->and(Attribute::query()->where('code', 'iso_other_standard')->sole()->only(['name', 'type', 'config']))
+        ->toBe(['name' => 'Altro', 'type' => 'text', 'config' => null])
         ->and(Attribute::query()->where('code', 'iso_group_general')->sole()->config)->toBe(['display' => 'checkbox'])
         ->and(Attribute::query()->where('code', 'iso_g1_certification_type')->sole()->options()->orderBy('sort_order')->pluck('label')->all())
         ->toBe(['Prima certificazione', 'Estensione di scopo', 'Estensione di sito', 'Ricertificazione', 'Trasferimento di certificato', 'Variazione di certificato']);
+});
+
+it('brings an installation already seeded up to the ISO offer fields and form, keeping the offer values', function (): void {
+    test()->seed(QualificaCatalogSeeder::class);
+
+    $layouts = app(AttributeLayoutService::class);
+    $root = isoCategory(IsoCatalogue::ROOT);
+    $quote = Quote::factory()->create(['attribute_values' => ['iso_group_general' => true, 'iso_g1_notes' => 'Kept']]);
+
+    // An installation seeded before "Altro": the same form without it, and no such field.
+    $older = $layouts->resolveExact($root, AttributeContext::Quote, LayoutFormScope::All);
+    $older['sections'][0]['rows'][3]['items'] = array_slice($older['sections'][0]['rows'][3]['items'], 0, 1);
+    $layouts->upsert($root, AttributeContext::Quote, LayoutFormScope::All, $older);
+    Attribute::query()->where('code', 'iso_other_standard')->sole()->delete();
+
+    // A plain re-seed brings the field back but leaves a configured form alone...
+    test()->seed(QualificaCatalogSeeder::class);
+    expect(isoSectionCodes($layouts->resolveExact($root, AttributeContext::Quote, LayoutFormScope::All)['sections'])['iso-standards'])
+        ->not->toContain('iso_other_standard');
+
+    // ...the targeted one rewrites it, twice to the same result.
+    test()->seed(QualificaIsoQuoteFormSeeder::class);
+    test()->seed(QualificaIsoQuoteFormSeeder::class);
+
+    $sections = $layouts->resolveExact($root, AttributeContext::Quote, LayoutFormScope::All)['sections'];
+
+    expect(array_column($sections, 'id'))->toBe(array_column(IsoCatalogue::QUOTE_SECTIONS, 0))
+        ->and(isoSectionCodes($sections)['iso-standards'])->toContain('iso_other_standard')
+        ->and(Attribute::query()->where('code', 'iso_other_standard')->count())->toBe(1)
+        ->and(app(CategoryHierarchy::class)->effectiveAttributes(isoCategory(ISO_SAMPLE_CATEGORY), AttributeContext::Quote)->pluck('code'))
+        ->toContain('iso_other_standard')
+        ->and($quote->fresh()->attribute_values)->toBe(['iso_group_general' => true, 'iso_g1_notes' => 'Kept']);
 });
 
 it('hides a group block, its certification type select included, until its checkbox is ticked', function (): void {

@@ -17,8 +17,9 @@ use App\Enums\LayoutSectionVariant;
  * opportunity. The legacy opens each norm-group block when ANY of its norms is
  * ticked; a section opens on ONE yes/no field (spec 0288), so the 19 norm
  * checkboxes became one checkbox per group, each opening its block (user
- * decision 2026-10-21). "Altro" opened nothing and the attachment has no field
- * type: neither is carried over.
+ * decision 2026-10-21). "Altro" opens nothing: it is a free-text field next to
+ * the checkboxes (user directive 2026-10-30). The attachment has no field type
+ * and is not carried over.
  *
  * The legacy codes (grp1_certification, check_9001...) stay on the "[OLD]"
  * categories as history: this branch uses English codes of its own, with the
@@ -78,6 +79,9 @@ final class IsoCatalogue
 
     private const string GROUP_GENDER_EQUALITY = 'iso_group_gender_equality';
 
+    /** The norms outside the six groups, written by hand. */
+    private const string OTHER_STANDARD = 'iso_other_standard';
+
     /**
      * The OFFERTA-context fields, assigned on the root and inherited by its
      * subcategory, in the legacy screen order.
@@ -91,6 +95,7 @@ final class IsoCatalogue
         ['code' => self::GROUP_ANTI_BRIBERY, 'name' => 'Standard 37001', 'type' => 'boolean', 'config' => self::CHECKBOX],
         ['code' => self::GROUP_ROAD_SAFETY, 'name' => 'Standard 39001', 'type' => 'boolean', 'config' => self::CHECKBOX],
         ['code' => self::GROUP_GENDER_EQUALITY, 'name' => 'Parità di genere + 30415', 'type' => 'boolean', 'config' => self::CHECKBOX],
+        ['code' => self::OTHER_STANDARD, 'name' => 'Altro', 'type' => 'text'],
         ['code' => 'iso_application_scope', 'name' => 'Campo di applicazione', 'type' => 'textarea'],
         ['code' => 'iso_active_sites', 'name' => 'N° cantieri/commesse attive', 'type' => 'text'],
         ['code' => 'iso_urgent', 'name' => 'Urgente', 'type' => 'boolean'],
@@ -155,8 +160,8 @@ final class IsoCatalogue
             [self::GROUP_GENERAL],
             [self::GROUP_FOOD, self::GROUP_ENERGY],
             [self::GROUP_ANTI_BRIBERY, self::GROUP_ROAD_SAFETY],
-            [self::GROUP_GENDER_EQUALITY],
-        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => 'Spunta i gruppi di norme richiesti: per ognuno si apre il blocco con le sue informazioni.']],
+            [self::GROUP_GENDER_EQUALITY, self::OTHER_STANDARD],
+        ], ['variant' => LayoutSectionVariant::Default, 'columns' => 2, 'description' => 'Spunta i gruppi di norme richiesti: per ognuno si apre il blocco con le sue informazioni. Le altre norme vanno in Altro.']],
         ['iso-certification', 'Informazioni relative alla certificazione', [
             ['iso_application_scope'],
             ['iso_active_sites', 'iso_urgent'],
