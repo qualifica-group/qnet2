@@ -4,6 +4,7 @@ namespace App\Http\Controllers\WorkOrders;
 
 use App\Authorization\AuthorizationRegistry;
 use App\Authorization\ResourcePermissionsBuilder;
+use App\Exceptions\Tasks\TaskBulkIncompatibleException;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\TaskBoard\BulkTaskBoardRequest;
 use App\Http\Requests\TaskBoard\MoveTaskBoardRequest;
@@ -134,6 +135,14 @@ class WorkOrderTaskBoardController extends BaseApiController
             $actor = $request->user();
 
             return $this->ok($this->bulkActionService->execute($workOrder, $request->toData(), $actor));
+        } catch (TaskBulkIncompatibleException $exception) {
+            // Same root-level shape as TaskBulkController (spec 0338, D-5).
+            return response()->json([
+                'success' => false,
+                'message' => __($exception->getMessage()),
+                'errors' => ['task_ids' => [__($exception->getMessage())]],
+                'incompatible_tasks' => $exception->incompatibleTasks,
+            ], 422);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['workOrder' => $workOrder->id]);
         }

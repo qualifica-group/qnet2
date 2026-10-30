@@ -90,6 +90,8 @@ describe('TaskBulkCompleteDialog', () => {
         task_ids: [5],
         closure_feedback: 'Consegnato',
         time_entry: expect.objectContaining({ minutes: 60 }),
+        // REQUIREMENT CHANGED (spec 0338): the segnatempo is a total, split by time_entry_shares.
+        time_entry_shares: [{ task_id: 5, minutes: 60 }],
       }),
     )
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith(label('tasks.bulk.success', { count: 1 })))
@@ -167,5 +169,78 @@ describe('TaskBulkCompleteDialog', () => {
     await waitFor(() => expect(bulkTaskAction).toHaveBeenCalled())
     const [payload] = vi.mocked(bulkTaskAction).mock.calls[0]
     expect(payload.time_entry).toBeUndefined()
+  })
+
+  /** Spec 0338 AC-010/AC-011/AC-013. */
+  describe('time split (spec 0338)', () => {
+    const titledRows: TableRow[] = [
+      { id: 5, actions: [], requires_time_entry: false, title: 'Alpha' },
+      { id: 6, actions: [], requires_time_entry: false, title: 'Beta' },
+      { id: 7, actions: [], requires_time_entry: false, title: 'Gamma' },
+    ]
+    const minutesField = () => screen.getByLabelText(new RegExp(`^${label('timeEntries.form.minutes')}`))
+    const quota = (title: string) => screen.getByLabelText(label('tasks.bulk.shares.minutesFor', { title }))
+
+    it('lists the tasks with an even split, recalculates on total change and tracks the assigned sum', () => {
+      renderDialog([5, 6, 7], titledRows)
+
+      expect(screen.getByText(label('tasks.bulk.completeDialog.description', { count: 3 }))).toBeInTheDocument()
+      fireEvent.change(minutesField(), { target: { value: '01:40' } })
+      expect(quota('Alpha')).toHaveValue(34)
+      expect(quota('Beta')).toHaveValue(33)
+      expect(quota('Gamma')).toHaveValue(33)
+
+      fireEvent.change(quota('Gamma'), { target: { value: '30' } })
+      expect(screen.getByText(label('tasks.bulk.shares.assigned', { assigned: 97, total: 100 }))).toBeInTheDocument()
+
+      fireEvent.change(minutesField(), { target: { value: '03:00' } })
+      expect(quota('Gamma')).toHaveValue(60)
+    })
+
+    it('blocks the submit with a message when the quotas do not add up', async () => {
+      renderDialog([5, 6, 7], titledRows)
+
+      fireEvent.change(minutesField(), { target: { value: '01:40' } })
+      fireEvent.change(quota('Gamma'), { target: { value: '30' } })
+
+      expect(screen.getByRole('alert')).toHaveTextContent(label('tasks.bulk.shares.mismatch', { total: 100 }))
+      fireEvent.click(screen.getByRole('button', { name: label('tasks.bulk.completeDialog.confirm') }))
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(bulkTaskAction).not.toHaveBeenCalled()
+    })
+
+    it('sends time_entry_shares in row order and shows the slots when a start time is set', async () => {
+      vi.mocked(bulkTaskAction).mockResolvedValueOnce({ affected: 3 })
+      renderDialog([5, 6, 7], titledRows)
+
+      fireEvent.change(screen.getByLabelText(new RegExp(`^${label('timeEntries.form.startTime')}`)), {
+        target: { value: '09:00' },
+      })
+      fireEvent.change(minutesField(), { target: { value: '03:00' } })
+      expect(screen.getByText(label('tasks.bulk.shares.slot', { start: '09:00', end: '10:00' }))).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: label('tasks.bulk.completeDialog.confirm') }))
+
+      await waitFor(() => expect(bulkTaskAction).toHaveBeenCalled())
+      const [payload] = vi.mocked(bulkTaskAction).mock.calls[0]
+      expect(payload.time_entry?.minutes).toBe(180)
+      expect(payload.time_entry_shares).toEqual([
+        { task_id: 5, minutes: 60 },
+        { task_id: 6, minutes: 60 },
+        { task_id: 7, minutes: 60 },
+      ])
+    })
+
+    it('hides the section and sends no shares with the switch off (AC-013)', async () => {
+      vi.mocked(bulkTaskAction).mockResolvedValueOnce({ affected: 3 })
+      renderDialog([5, 6, 7], titledRows)
+
+      fireEvent.click(screen.getByRole('switch', { name: label('tasks.actions.completeDialog.trackTime') }))
+      expect(screen.queryByText(label('tasks.bulk.shares.title'))).not.toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: label('tasks.bulk.completeDialog.confirm') }))
+
+      await waitFor(() => expect(bulkTaskAction).toHaveBeenCalled())
+      const [payload] = vi.mocked(bulkTaskAction).mock.calls[0]
+      expect(payload.time_entry_shares).toBeUndefined()
+    })
   })
 })

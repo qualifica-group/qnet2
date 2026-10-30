@@ -3,6 +3,27 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Completa massivo: segnatempo totale ripartito tra i task (spec 0338) — VERDE, NON COMMITTATO (2026-10-30)
+
+- Decisioni utente: il segnatempo del popup multiplo e' un TOTALE ripartito (parti uguali, resto ai primi task);
+  anteprima modificabile (somma = totale); con ora di inizio fasce consecutive; bacheca commessa `complete` ora
+  TUTTO O NIENTE (422 `incompatible_tasks`, stessa shape di `/api/tasks/bulk`; le altre azioni restano best-effort);
+  "per tutti gli assegnatari" = ogni assegnatario registra la quota dei propri task. Feedback copiato su ogni task.
+- Contratto: `time_entry_shares: [{task_id, minutes}]` su `POST /api/tasks/bulk` e `.../task-board/bulk` per
+  action=complete, obbligatorio con `time_entry`, vietato altrimenti; `time_entry.minutes` = totale; l'ultima fascia
+  non oltre le 23:59 (422 su `time_entry.minutes`: un end_time 24:00 non si risalverebbe dal form `H:i`).
+- Backend: `App\Http\Requests\TimeEntries\BulkTimeEntrySharesRules` (regole + `validateConsistency` + `normalize`),
+  `App\Services\Tasks\TaskBulkTimeEntrySplitter`; firme di `TaskBulkActionExecutor`/`TaskCompletionService` invariate.
+- Frontend: `features/tasks/time-entry-shares.ts` (`splitMinutesEvenly`, `shareSlots`, `validateShares`),
+  `use-task-bulk-time-entry-shares.ts`, `task-bulk-time-entry-shares-section.tsx`; i due dialog bulk con
+  DialogDescription; `TaskBoardBulkBar` riceve `tasksById` (gia' passato da `work-order-task-board.tsx`, committato
+  per errore dentro 3914eef1: HEAD non compila finche' non si committa questa feature).
+- Verifica: Pest mirati 110/110; Vitest tasks+task-board 642/642; `tsc -b --force` 0; ESLint/Pint puliti. Suite
+  completa (verifier): 9 rossi backend fuori scope (`Tests\Feature\Migration\*` x7, `QuoteDocumentPdfTest` senza
+  LibreOffice, `TableBulkDeleteTest:131` 'guarded' vs 'forbidden') — da indagare a parte.
+- Manuale: guide in-app tasks IT/EN; Claude Docs paragrafo "Completare piu' task insieme" dopo "Il segnatempo al
+  completamento e' obbligatorio".
+
 ## "Informazioni aggiuntive" collassabili in Offerte e Commesse — VERDE, COMMITTATO (2026-10-30)
 
 - Decisioni utente: solo Offerte e Commesse (Opportunita' e Contratti non hanno attributi: `AttributeContext` =

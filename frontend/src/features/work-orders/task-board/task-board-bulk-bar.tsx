@@ -33,10 +33,12 @@ const ACTIONS: BulkTaskAction[] = ['assign', 'complete', 'uncomplete', 'block', 
 interface TaskBoardBulkBarProps {
   workOrderId: number
   selectedTaskIds: number[]
+  /** Board tasks by id: the "Completa" pop-up lists the selected titles in its time split. */
+  tasksById: ReadonlyMap<number, { title: string }>
   onClear: () => void
 }
 
-export function TaskBoardBulkBar({ workOrderId, selectedTaskIds, onClear }: TaskBoardBulkBarProps) {
+export function TaskBoardBulkBar({ workOrderId, selectedTaskIds, tasksById, onClear }: TaskBoardBulkBarProps) {
   const { t } = useTranslation()
   const { activeAction, openDialog, closeDialog } = useTaskBoardBulkBar()
   const isVisible = selectedTaskIds.length > 0
@@ -99,7 +101,7 @@ export function TaskBoardBulkBar({ workOrderId, selectedTaskIds, onClear }: Task
       {activeAction === 'complete' ? (
         <TaskBoardBulkCompleteDialog
           workOrderId={workOrderId}
-          taskIds={selectedTaskIds}
+          tasks={selectedTaskIds.map((id) => ({ id, title: tasksById.get(id)?.title ?? `#${id}` }))}
           onClose={closeDialog}
           onSuccess={handleSuccess}
         />

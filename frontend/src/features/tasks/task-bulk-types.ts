@@ -3,6 +3,7 @@
  * from `types.ts` purely to stay under the engineering.md §6 size budget —
  * `types.ts` already sits at its own limit.
  */
+import type { TimeEntryShare } from '@/features/tasks/time-entry-shares'
 import type { CompleteTaskTimeEntryPayload } from '@/features/tasks/types'
 
 /** The eight bulk actions of spec 0156 D-6, matching `POST /api/tasks/bulk`'s `action` enum. */
@@ -34,6 +35,8 @@ export interface TaskBulkPayload {
   date?: string
   /** `complete` only, same shape `POST /tasks/{id}/complete` accepts. */
   time_entry?: CompleteTaskTimeEntryPayload
+  /** `complete` only (spec 0338): required with `time_entry` (whose `minutes` is the TOTAL), one quota per `task_ids` entry, in slot order. */
+  time_entry_shares?: TimeEntryShare[]
   /** `complete` only, optional. */
   closure_feedback?: string
   /** `complete` only, optional: the `in_validation` destination for tasks that require validation. */

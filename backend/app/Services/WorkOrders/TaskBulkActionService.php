@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Services\WorkOrders;
 
 use App\DataObjects\WorkOrders\BulkTaskBoardData;
+use App\Exceptions\Tasks\TaskBulkIncompatibleException;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Services\Tasks\TaskBulkActionExecutor;
+use App\Services\Tasks\TaskBulkTimeEntrySplitter;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -37,7 +39,10 @@ use Throwable;
  */
 final class TaskBulkActionService
 {
-    public function __construct(private readonly TaskBulkActionExecutor $executor) {}
+    public function __construct(
+        private readonly TaskBulkActionExecutor $executor,
+        private readonly TaskBulkTimeEntrySplitter $splitter,
+    ) {}
 
     /**
      * @return array{results: array<int, array{task_id: int, ok: bool, message: string|null}>, succeeded: int, failed: int}
@@ -46,6 +51,10 @@ final class TaskBulkActionService
     {
         WorkOrderClosedGuard::assertOpen($workOrder);
         $this->assertEveryTaskIsARootOf($workOrder, $data->taskIds);
+
+        if ($data->action === 'complete') {
+            return $this->completeAllOrNothing($data, $actor);
+        }
 
         $results = [];
         $succeeded = 0;
@@ -56,7 +65,7 @@ final class TaskBulkActionService
             $task = Task::query()->findOrFail($taskId);
 
             try {
-                DB::transaction(fn () => $this->applyAction($task, $data, $actor));
+                DB::transaction(fn () => $this->applyAction($task, $data, null, $actor));
                 $results[] = ['task_id' => $taskId, 'ok' => true, 'message' => null];
                 $succeeded++;
             } catch (AuthorizationException|ValidationException|HttpExceptionInterface $exception) {
@@ -68,13 +77,51 @@ final class TaskBulkActionService
         return ['results' => $results, 'succeeded' => $succeeded, 'failed' => $failed];
     }
 
-    private function applyAction(Task $task, BulkTaskBoardData $data, User $actor): void
+    /**
+     * Spec 0338, D-5: `complete` is ALL-OR-NOTHING here, like POST /api/tasks/bulk.
+     * Each task runs inside its own savepoint and one incompatible task rolls
+     * back the whole outer transaction: no task closed, no time entry, and the
+     * afterCommit notifications never fire.
+     *
+     * @return array{results: array<int, array{task_id: int, ok: bool, message: string|null}>, succeeded: int, failed: int}
+     */
+    private function completeAllOrNothing(BulkTaskBoardData $data, User $actor): array
+    {
+        return DB::transaction(function () use ($data, $actor): array {
+            $timeEntries = $this->splitter->split($data->timeEntry ?? [], $data->timeEntryShares ?? []);
+            $results = [];
+            $incompatible = [];
+
+            foreach ($data->taskIds as $taskId) {
+                /** @var Task $task */
+                $task = Task::query()->findOrFail($taskId);
+
+                try {
+                    DB::transaction(fn () => $this->applyAction($task, $data, $timeEntries[$taskId] ?? null, $actor));
+                    $results[] = ['task_id' => $taskId, 'ok' => true, 'message' => null];
+                } catch (AuthorizationException|ValidationException|HttpExceptionInterface $exception) {
+                    $incompatible[] = ['id' => $taskId, 'reason' => $this->messageFor($exception)];
+                }
+            }
+
+            if ($incompatible !== []) {
+                throw new TaskBulkIncompatibleException($incompatible);
+            }
+
+            return ['results' => $results, 'succeeded' => count($results), 'failed' => 0];
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $timeEntry  this task's share of the total (complete only)
+     */
+    private function applyAction(Task $task, BulkTaskBoardData $data, ?array $timeEntry, User $actor): void
     {
         match ($data->action) {
             'assign' => $this->executor->assign($task, $data->assigneeIds ?? [], $actor),
             // Never `validation_status_id` (docblock above); `for_all_assignees`
             // is the actor's own choice, false unless submitted (spec 0319).
-            'complete' => $this->executor->complete($task, $data->timeEntry ?? [], $data->closureFeedback, $data->closureFeedbackSubmitted, null, $data->forAllAssignees, $actor),
+            'complete' => $this->executor->complete($task, $timeEntry ?? [], $data->closureFeedback, $data->closureFeedbackSubmitted, null, $data->forAllAssignees, $actor),
             'uncomplete' => $this->executor->uncomplete($task, $actor),
             'block' => $this->executor->block($task, $actor),
             'priority' => $this->executor->priority($task, (int) $data->taskPriorityId, $actor),

@@ -39,13 +39,18 @@ use Throwable;
  */
 final class TaskBulkService
 {
-    public function __construct(private readonly TaskBulkActionExecutor $executor) {}
+    public function __construct(
+        private readonly TaskBulkActionExecutor $executor,
+        private readonly TaskBulkTimeEntrySplitter $splitter,
+    ) {}
 
     public function execute(BulkTaskData $data, User $actor): int
     {
         return DB::transaction(function () use ($data, $actor): int {
             $tasks = $this->resolveVisibleTasks($data->taskIds, $actor);
             $incompatible = [];
+            // Spec 0338: the submitted time entry is the TOTAL, split per task.
+            $timeEntries = $data->timeEntry === null ? [] : $this->splitter->split($data->timeEntry, $data->timeEntryShares ?? []);
 
             foreach ($data->taskIds as $id) {
                 $task = $tasks->get($id);
@@ -57,7 +62,7 @@ final class TaskBulkService
                 }
 
                 try {
-                    DB::transaction(fn () => $this->applyAction($data, $task, $actor));
+                    DB::transaction(fn () => $this->applyAction($data, $task, $timeEntries[$task->id] ?? null, $actor));
                 } catch (AuthorizationException|ValidationException|HttpExceptionInterface $exception) {
                     $incompatible[] = ['id' => $id, 'reason' => $this->messageFor($exception)];
                 }
@@ -71,7 +76,10 @@ final class TaskBulkService
         });
     }
 
-    private function applyAction(BulkTaskData $data, Task $task, User $actor): void
+    /**
+     * @param  array<string, mixed>|null  $timeEntry  this task's share of the total
+     */
+    private function applyAction(BulkTaskData $data, Task $task, ?array $timeEntry, User $actor): void
     {
         match ($data->action) {
             'assign' => $this->executor->assign($task, $data->assigneeIds ?? [], $actor),
@@ -86,7 +94,7 @@ final class TaskBulkService
             // a Task whose tipologia still requires one.
             'complete' => $this->executor->complete(
                 $task,
-                $data->timeEntry,
+                $timeEntry,
                 $data->closureFeedback,
                 $data->closureFeedbackSubmitted,
                 $data->validationStatusId ?? $this->defaultValidationStatusId($actor, $task),

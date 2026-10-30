@@ -10,16 +10,29 @@
  * selected rows requires the segnatempo — read off `rows` (the grid's own
  * selection, `requires_time_entry` per row), never decided here. A row
  * missing the flag is treated as requiring it (conservative fallback).
+ *
+ * Spec 0338: the segnatempo is a TOTAL split among the tasks ("Ripartizione"
+ * section, only while the segnatempo is active); the payload carries
+ * `time_entry_shares` in the rows' order, and a sum mismatch blocks the submit.
  */
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { TaskCompleteTimeEntryToggleSection } from '@/features/tasks/task-complete-time-entry-toggle'
 import { taskBulkErrorDescription } from '@/features/tasks/task-bulk-error'
+import { TaskBulkTimeEntrySharesSection } from '@/features/tasks/task-bulk-time-entry-shares-section'
+import { useTaskBulkTimeEntryShares, type TaskShareTarget } from '@/features/tasks/use-task-bulk-time-entry-shares'
 import { useTaskCompleteTimeEntryForm } from '@/features/tasks/use-task-complete-time-entry-form'
 import { useTaskBulkMutation } from '@/features/tasks/use-task-bulk-mutation'
 import type { TableRow } from '@/features/table/types'
@@ -41,6 +54,15 @@ function anySelectedTaskRequiresTimeEntry(rows: TableRow[]): boolean {
   return rows.some((row) => row.requires_time_entry !== false)
 }
 
+/** The grid row's `title` projection, with the id as a last-resort label. */
+function toShareTargets(taskIds: number[], rows: TableRow[]): TaskShareTarget[] {
+  const titles = new Map(rows.map((row) => [row.id, row.title]))
+  return taskIds.map((id) => {
+    const title = titles.get(id)
+    return { id, title: typeof title === 'string' && title !== '' ? title : `#${id}` }
+  })
+}
+
 export function TaskBulkCompleteDialog({ taskIds, rows, onClose, onSuccess }: TaskBulkCompleteDialogProps) {
   const { t } = useTranslation()
   const form = useForm<CompleteFormValues>({ defaultValues: { closure_feedback: '' } })
@@ -48,11 +70,16 @@ export function TaskBulkCompleteDialog({ taskIds, rows, onClose, onSuccess }: Ta
     taskTypeId: null,
     requiresTimeEntry: anySelectedTaskRequiresTimeEntry(rows),
   })
+  const sharesTargets = toShareTargets(taskIds, rows)
+  const shares = useTaskBulkTimeEntryShares(timeEntryForm, sharesTargets)
   const mutation = useTaskBulkMutation()
 
   const onSubmit = async (values: CompleteFormValues) => {
     const timeEntryPayload = await timeEntryForm.validate()
     if (timeEntryPayload === null) {
+      return
+    }
+    if (timeEntryPayload !== undefined && !shares.isValid) {
       return
     }
     try {
@@ -62,13 +89,14 @@ export function TaskBulkCompleteDialog({ taskIds, rows, onClose, onSuccess }: Ta
         task_ids: taskIds,
         closure_feedback: feedback === '' ? undefined : feedback,
         time_entry: timeEntryPayload,
+        time_entry_shares: timeEntryPayload === undefined ? undefined : shares.shares,
       })
       toast.success(t('tasks.bulk.success', { count: result.affected }))
       onClose()
       onSuccess(result.affected)
     } catch (error) {
       const timeEntryHandled = timeEntryForm.applyServerErrors(error)
-      if (timeEntryHandled) {
+      if (shares.applyServerError(error) || timeEntryHandled) {
         return
       }
       const { message, reasons } = taskBulkErrorDescription(t, error)
@@ -81,6 +109,7 @@ export function TaskBulkCompleteDialog({ taskIds, rows, onClose, onSuccess }: Ta
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('tasks.bulk.completeDialog.title', { count: taskIds.length })}</DialogTitle>
+          <DialogDescription>{t('tasks.bulk.completeDialog.description', { count: taskIds.length })}</DialogDescription>
         </DialogHeader>
 
         <div className="max-h-[70vh] overflow-y-auto">
@@ -113,6 +142,10 @@ export function TaskBulkCompleteDialog({ taskIds, rows, onClose, onSuccess }: Ta
               />
 
               <TaskCompleteTimeEntryToggleSection timeEntryForm={timeEntryForm} disabled={mutation.isPending} />
+
+              {timeEntryForm.enabled ? (
+                <TaskBulkTimeEntrySharesSection tasks={sharesTargets} state={shares} disabled={mutation.isPending} />
+              ) : null}
             </form>
           </Form>
         </div>

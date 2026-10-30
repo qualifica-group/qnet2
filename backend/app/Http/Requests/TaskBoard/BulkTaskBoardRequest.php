@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\TaskBoard;
 
 use App\DataObjects\WorkOrders\BulkTaskBoardData;
+use App\Http\Requests\TimeEntries\BulkTimeEntrySharesRules;
 use App\Http\Requests\TimeEntries\TimeEntryValidationRules;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -77,6 +78,9 @@ class BulkTaskBoardRequest extends FormRequest
             'end_date' => ['sometimes', 'nullable', 'date', 'prohibited_unless:action,dates'],
         ];
 
+        // Spec 0338: `time_entry.minutes` is the TOTAL, split per task by the shares.
+        $rules = array_merge($rules, BulkTimeEntrySharesRules::rules($this->all(), $this->input('action') === 'complete'));
+
         if ($this->input('action') === 'complete') {
             $rules['time_entry'] = ['required', 'array'];
 
@@ -91,6 +95,8 @@ class BulkTaskBoardRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            BulkTimeEntrySharesRules::validateConsistency($validator, $validator->getData());
+
             if ($this->input('action') !== 'dates') {
                 return;
             }

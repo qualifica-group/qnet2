@@ -7,6 +7,7 @@
 
 import type { ApiErrorResponse } from '@/api/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
+import type { TimeEntryShare } from '@/features/tasks/time-entry-shares'
 import type { CompleteTaskTimeEntryPayload, TaskLookupRef, TaskNamedRef, TaskStatusRef } from '@/features/tasks/types'
 
 /** A phase of the commessa (`work_order_stages`), Italian "Fase" (D-2/D-4). */
@@ -103,15 +104,18 @@ export interface BulkAssignPayload {
 
 /**
  * Bulk "completa": ONE `closure_feedback`/`time_entry` applied to every
- * selected task (D-7). A task requiring validation fails that row instead of
- * completing it — validation stays a single-task action. `for_all_assignees`
+ * selected task (D-7). All-or-nothing since spec 0338 D-5: one incompatible
+ * task makes the whole request 422 (`incompatible_tasks`) — validation stays a
+ * single-task action. `for_all_assignees`
  * (spec 0319) defaults to false server-side when omitted.
  */
 export interface BulkCompletePayload {
   action: 'complete'
   task_ids: number[]
   closure_feedback?: string | null
+  /** Spec 0338: `minutes` is the TOTAL, split among the tasks by `time_entry_shares`. */
   time_entry: CompleteTaskTimeEntryPayload
+  time_entry_shares: TimeEntryShare[]
   for_all_assignees?: boolean
 }
 

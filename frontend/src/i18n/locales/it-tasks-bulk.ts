@@ -34,9 +34,21 @@ export const tasksBulk = {
     confirm: 'Assegna',
   },
   completeDialog: {
+    description:
+      "Il feedback verrà applicato a ciascuno dei {{count}} task; il tempo inserito è il totale e verrà ripartito tra i task.",
     title_one: 'Completa il task selezionato',
     title_other: 'Completa {{count}} task',
     confirm: 'Completa',
+  },
+  shares: {
+    title: 'Ripartizione del tempo',
+    hint: 'Il tempo inserito è il totale: modifica le quote dei singoli task se non vuoi le parti uguali.',
+    equalSplit: 'Ripartisci in parti uguali',
+    assigned: 'Assegnati {{assigned}} di {{total}} min',
+    mismatch: 'La somma delle quote deve essere uguale al totale ({{total}} min).',
+    tooFewMinutes: 'Ogni task richiede almeno 1 minuto: aumenta il totale o riduci i task.',
+    slot: '{{start}} - {{end}}',
+    minutesFor: 'Quota di {{title}} (minuti)',
   },
   dateDialog: {
     title: '{{field}} — {{count}} task',

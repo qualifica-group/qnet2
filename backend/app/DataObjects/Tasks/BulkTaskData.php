@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\DataObjects\Tasks;
 
+use App\Http\Requests\TimeEntries\BulkTimeEntrySharesRules;
+
 /**
  * Validated payload for POST /api/tasks/bulk (spec 0156, D-6/contract).
  * `App\Http\Requests\Tasks\BulkTaskRequest` enforces the per-action shape
@@ -21,6 +23,7 @@ final readonly class BulkTaskData
      * @param  array<int, int>  $taskIds
      * @param  array<int, int>|null  $assigneeIds
      * @param  array<string, mixed>|null  $timeEntry
+     * @param  array<int, array{task_id: int, minutes: int}>|null  $timeEntryShares
      */
     public function __construct(
         public string $action,
@@ -32,6 +35,7 @@ final readonly class BulkTaskData
         public ?string $closureFeedback = null,
         public bool $closureFeedbackSubmitted = false,
         public ?int $validationStatusId = null,
+        public ?array $timeEntryShares = null,
     ) {}
 
     /**
@@ -51,6 +55,7 @@ final readonly class BulkTaskData
                 : null,
             closureFeedbackSubmitted: array_key_exists('closure_feedback', $data),
             validationStatusId: isset($data['validation_status_id']) ? (int) $data['validation_status_id'] : null,
+            timeEntryShares: isset($data['time_entry_shares']) ? BulkTimeEntrySharesRules::normalize((array) $data['time_entry_shares']) : null,
         );
     }
 }

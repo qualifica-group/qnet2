@@ -6,7 +6,9 @@ namespace App\Http\Requests\Tasks;
 
 use App\DataObjects\Tasks\BulkTaskData;
 use App\Enums\TaskStatusGroup;
+use App\Http\Requests\TimeEntries\BulkTimeEntrySharesRules;
 use App\Http\Requests\TimeEntries\TimeEntryValidationRules;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -88,6 +90,10 @@ class BulkTaskRequest extends FormRequest
             ],
         ];
 
+        // Spec 0338: the total time entry is split across the tasks through
+        // `time_entry_shares`, validated in one place shared with the board.
+        $rules = array_merge($rules, BulkTimeEntrySharesRules::rules($this->all(), $this->has('time_entry')));
+
         if ($this->input('action') === 'complete') {
             $rules['time_entry'] = ['sometimes', 'array'];
 
@@ -101,6 +107,11 @@ class BulkTaskRequest extends FormRequest
         $rules['time_entry'] = ['prohibited'];
 
         return $rules;
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(fn (Validator $validator) => BulkTimeEntrySharesRules::validateConsistency($validator, $validator->getData()));
     }
 
     public function toData(): BulkTaskData

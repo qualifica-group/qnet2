@@ -285,7 +285,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Nella finestra Completa la casella **Registra il segnatempo per tutti gli assegnatari** è spuntata di default: il segnatempo viene registrato per tutti gli assegnatari, uno identico per ciascuno (per te soltanto se il task non ne ha). Togli la spunta per registrarlo solo per te. La scelta vale ovunque completi il task: dettaglio, elenco, kanban e pannello Sotto-task. Nella board task della commessa (**Completa** sui task selezionati) la stessa casella c\'è ma è **non spuntata** di default: il segnatempo viene registrato solo per te, a meno che non la spunti.',
+          text: 'Nella finestra Completa la casella **Registra il segnatempo per tutti gli assegnatari** è spuntata di default: il segnatempo viene registrato per tutti gli assegnatari del task (per te soltanto se il task non ne ha). Togli la spunta per registrarlo solo per te. La scelta vale ovunque completi il task: dettaglio, elenco, kanban e pannello Sotto-task. Nella board task della commessa (**Completa** sui task selezionati) la stessa casella c\'è ma è **non spuntata** di default: il segnatempo viene registrato solo per te, a meno che non la spunti. Completando più task insieme, "per tutti gli assegnatari" significa che ogni assegnatario registra la quota dei **propri** task (chi è assegnato a tutti i task totalizza quindi il tempo inserito).',
         },
         {
           type: 'note',
@@ -293,7 +293,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Completando **più task insieme** (azione massiva), l\'interruttore **Registra il tempo** compare solo se nessuno dei task selezionati richiede il segnatempo. Se anche uno solo lo richiede, l\'azione è tutto o niente: senza segnatempo si ferma con un errore e nessun task viene completato.',
+          text: 'Completando **più task insieme** (azione massiva), il feedback viene applicato identico a ogni task, mentre il tempo inserito nel segnatempo è un **totale** che viene ripartito tra i task. Sotto il segnatempo la sezione **Ripartizione del tempo** mostra un\'anteprima modificabile: i minuti sono divisi in parti uguali (il resto, un minuto ciascuno, va ai primi task della selezione) e puoi correggere le singole quote, che devono sommare al totale e valere almeno 1 minuto ciascuna; **Ripartisci in parti uguali** ripristina la divisione. Cambiando il totale o l\'ora di inizio le quote si ricalcolano. Se indichi l\'ora di inizio, ogni task riceve una fascia oraria consecutiva (es. 09:00-09:30, 09:30-10:00). L\'interruttore **Registra il tempo** compare solo se nessuno dei task selezionati richiede il segnatempo; se è spento non c\'è ripartizione. Se anche uno solo dei task non è ammesso, l\'azione è tutto o niente: si ferma con un errore e nessun task viene completato. Lo stesso vale per **Completa** nella board task della commessa.',
         },
         {
           type: 'paragraph',
@@ -382,7 +382,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'Un\'azione massiva è **tutto o niente**: se anche un solo task selezionato non è ammesso (es. bloccato, o richiede validazione per Completa), l\'azione si ferma con un messaggio che elenca quali task e perché, e nessuno dei task selezionati viene modificato.',
+          text: 'Un\'azione massiva è **tutto o niente**: se anche un solo task selezionato non è ammesso (es. bloccato, o richiede validazione per Completa), l\'azione si ferma con un messaggio che elenca quali task e perché, e nessuno dei task selezionati viene modificato. Per **Completa** il tempo del segnatempo è un totale ripartito tra i task (sezione **Ripartizione del tempo**).',
         },
         {
           type: 'paragraph',
