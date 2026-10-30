@@ -105,7 +105,11 @@ use Illuminate\Database\Seeder;
  *  12. QualificaLegacyRoleSeeder   — the QNet legacy roles of the active people,
  *                                    merged by profile onto the qnet-2 modules,
  *                                    for whoever holds no role but the base one.
- *  13. QualificaSupportTopicSeeder — the IT support request types ("Assistenza
+ *  13. QualificaReporterCommissionSeeder — the client's reporters ("Segnalatori
+ *                                    2026") and their commission percentage per
+ *                                    category; a legacy reporter not migrated yet
+ *                                    is skipped with a warning.
+ *  14. QualificaSupportTopicSeeder — the IT support request types ("Assistenza
  *                                    tecnica", spec 0334), assigned to the IT
  *                                    contact. Create-only: a type edited from
  *                                    Configurazione is left alone.
@@ -134,7 +138,9 @@ use Illuminate\Database\Seeder;
  *     which recreates its operators' scopes on every run.
  *   - step 12 leaves alone whoever steps 4 to 7 gave a role, and needs the
  *     accounts step 10 creates from the legacy users.
- *   - step 13 needs step 3's Task lookups and step 4's IT contact account.
+ *   - step 13 needs step 2's categories, step 5's "Segnalatore" referent type
+ *     and step 4's super-admin.
+ *   - step 14 needs step 3's Task lookups and step 4's IT contact account.
  *
  * Every step stays runnable on its own and is idempotent, so this seeder is
  * too: re-running it converges instead of duplicating. Steps 5 and 10 are
@@ -180,6 +186,7 @@ class QualificaProductionDataSeeder extends Seeder
         $this->callWith(QualificaLegacyImportSeeder::class, ['sources' => QualificaLegacyImportSeeder::USER_SOURCES]);
         $this->call(QualificaFunctionCompetenceSeeder::class);
         $this->call(QualificaLegacyRoleSeeder::class);
+        $this->call(QualificaReporterCommissionSeeder::class);
         $this->call(QualificaSupportTopicSeeder::class);
     }
 }

@@ -62,6 +62,24 @@
 - Fix icone: icona menu `life-buoy` mappata in `navigation/icon-map.ts` (prima cadeva sul
   cerchio di ripiego); colonna Icona della tabella disegna l'icona (`support-topic-icon-cell.tsx`) invece del nome.
 
+## Segnalatori 2026: referenti + commissioni per categoria nel production seed — VERDE, COMMITTATO (2026-10-30)
+
+- Richiesta utente: dall'Excel "Segnalatori 2026_.xlsx" creare i segnalatori mancanti tra i referenti e inserire le
+  percentuali per categoria, nel `QualificaProductionDataSeeder` (step 13).
+- `database/seeders/QualificaCatalog/ReporterCommissionCatalogue.php` (dati, 93 righe) +
+  `QualificaReporterCommissionSeeder`: regole `REPORTER`/`PRODUCT_CATEGORY`/`PERCENTAGE`, destinatario referente,
+  `valid_from` 2026-10-30. Colonne -> categorie: ISO, SOA, Sicurezza, Gare (solo valori numerici, "VARIABILE" = nessuna
+  regola), GDPR, "Finanza Agevolata - FNC"; "UNI PDR 125 e SA 8000" -> 10% su "ISO - UNI PDR 125" e "ISO - SA8000"
+  (nota interna: mantenimento 5%, non gestito dal sistema). La colonna NOTE va solo in nota.
+- Decisioni utente: nome dalla colonna NOME (aziende come scheda azienda, referente in nota); GDPR riga 7 = 15%,
+  FNC riga 21 = 20%; riga 53 (doppione di Lagana', riga 78) scartata.
+- 70 segnalatori esistenti sono cercati per `old_id` e non vengono modificati; se non ancora migrati compare un
+  warning e lo step va rilanciato dopo la migrazione referenti. 23 nuovi: tipo "Segnalatore", esterni, email/telefono.
+  La regola esistente non viene toccata (le modifiche da UI sopravvivono).
+- Verifica: Pest `ReporterCommissionSeederTest` 4/4, `tests/Feature/CommissionConfigurations` 53/53, `tests/Feature/Seeding`
+  production/sample 5/5; Pint ok; prova a secco sul DB dev in transazione annullata: 23 referenti, 631 regole su 91
+  segnalatori, rilancio senza duplicati. Manuale: nessun impatto (solo dati).
+
 ## Commessa "Dati contrattuali": azione massiva sul pagamento delle righe (spec 0333) — VERDE, COMMITTATO (2026-10-30)
 
 - Richiesta utente: selezionare piu' prodotti di commessa e segnarli tutti come pagati, insoluto ecc.
