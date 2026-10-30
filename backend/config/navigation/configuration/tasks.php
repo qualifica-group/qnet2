@@ -30,6 +30,13 @@ return [
             'permission' => 'task-categories.view',
         ],
         [
+            'key' => 'support-topics',
+            'label' => 'navigation.supportTopics',
+            'icon' => 'life-buoy',
+            'route' => '/support-topics',
+            'permission' => 'support-topics.view',
+        ],
+        [
             'key' => 'task-priorities',
             'label' => 'navigation.taskPriorities',
             'icon' => 'flag',

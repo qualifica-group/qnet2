@@ -248,5 +248,9 @@
     "You cannot edit this field.": "Non puoi modificare questo campo.",
     "You do not hold a role on this purchase request that allows this change.": "Non hai un ruolo su questa richiesta d'acquisto che consenta questa modifica.",
     "You do not hold a role on this purchase request that allows ordering its lines.": "Non hai un ruolo su questa richiesta d'acquisto che consenta di ordinarne le righe.",
-    "This bulk action is not available.": "Questa azione massiva non è disponibile."
+    "This bulk action is not available.": "Questa azione massiva non è disponibile.",
+    "This support topic has no active assignee.": "Questo tipo di problema non ha assegnatari attivi.",
+    "Support request sent to the IT department": "Richiesta inviata al reparto IT",
+    "Page": "Pagina",
+    "Browser": "Browser"
 }

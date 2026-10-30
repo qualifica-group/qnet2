@@ -83,6 +83,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Allowed extensions
+    |--------------------------------------------------------------------------
+    |
+    | Extension allow-list matching `allowed_mime_types`. Used next to the MIME
+    | rule so a file whose declared MIME is allowed cannot smuggle in a
+    | different extension (spoof defence). Currently enforced by the IT support
+    | request upload only.
+    |
+    */
+
+    'allowed_extensions' => [
+        'jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'txt', 'csv',
+        'doc', 'docx', 'xls', 'xlsx', 'zip',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Attachable types (polymorphic allowlist)
     |--------------------------------------------------------------------------
     |

@@ -181,6 +181,7 @@ export const permissions = {
     'task-statuses': 'Stati Task',
     'task-types': 'Tipologie Task',
     'task-categories': 'Categorie Task',
+    'support-topics': 'Assistenza tecnica',
     'task-priorities': 'Priorità Task',
     'task-importances': 'Importanza Task',
     'task-templates': 'Modelli di Task',

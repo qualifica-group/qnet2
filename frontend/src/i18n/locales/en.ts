@@ -55,6 +55,8 @@ import { outboundEmails } from './en-outbound-emails'
 import { emailTemplates } from './en-email-templates'
 import { documentBundles } from './en-document-bundles'
 import { taskTemplates } from './en-task-templates'
+import { supportTopics } from './en-support-topics'
+import { supportRequests } from './en-support-requests'
 import { tasks } from './en-tasks'
 import { timeEntries } from './en-time-entries'
 import {
@@ -469,6 +471,8 @@ export const en = {
   taskStatuses,
   taskTypes,
   taskCategories,
+  supportTopics,
+  supportRequests,
   taskPriorities,
   taskImportances,
   timeEntries,

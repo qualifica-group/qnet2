@@ -126,6 +126,16 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'technical-support',
+      title: 'Chiedere assistenza tecnica',
+      blocks: [
+        { type: 'paragraph', text: 'Se qualcosa non funziona, premi il pulsante con il salvagente (**Assistenza tecnica**) nell’intestazione, accanto al punto interrogativo della guida. Qualsiasi utente può usarlo.' },
+        { type: 'steps', items: ['Scegli il **tipo di problema** che somiglia di più al tuo.', 'Scrivi cosa non va in **Descrivi il problema**.', 'Se non puoi lavorare, attiva **È urgente / sono bloccato**.', 'Se vuoi, premi **Aggiungi file** per allegare schermate o documenti (fino a 5).', 'Premi **Invia richiesta**.'] },
+        { type: 'paragraph', text: 'Alla fine compare **Richiesta n. … inviata**: il numero è quello del task creato per il reparto IT. Se hai il permesso di vedere i task trovi anche il link **Apri il task**.' },
+        { type: 'note', text: 'QNet aggiunge da solo la pagina in cui ti trovavi e il browser che usi, così il reparto IT capisce meglio il problema. Se compare "Assistenza non ancora configurata", contatta l’amministratore.' },
+      ],
+    },
+    {
       id: 'dashboard-and-statistics',
       title: 'Dashboard e statistiche',
       blocks: [

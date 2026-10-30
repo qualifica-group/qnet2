@@ -66,6 +66,7 @@ use App\Authorization\SourcesAuthorization;
 use App\Authorization\StaffCoursesAuthorization;
 use App\Authorization\StaffTrainingsAuthorization;
 use App\Authorization\StockAuthorization;
+use App\Authorization\SupportTopicsAuthorization;
 use App\Authorization\TagsAuthorization;
 use App\Authorization\TaskCategoriesAuthorization;
 use App\Authorization\TaskImportancesAuthorization;
@@ -219,6 +220,8 @@ return [
         'task-importances' => TaskImportancesAuthorization::class,
         // spec 0124: il modulo Modelli di Task.
         'task-templates' => TaskTemplatesAuthorization::class,
+        // spec 0334: i "Tipi di problema" dell'assistenza tecnica.
+        'support-topics' => SupportTopicsAuthorization::class,
     ],
 
     /*

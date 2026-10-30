@@ -50,6 +50,8 @@ import { outboundEmails } from './it-outbound-emails'
 import { emailTemplates } from './it-email-templates'
 import { documentBundles } from './it-document-bundles'
 import { taskTemplates } from './it-task-templates'
+import { supportTopics } from './it-support-topics'
+import { supportRequests } from './it-support-requests'
 import { tasks } from './it-tasks'
 import { timeEntries } from './it-time-entries'
 import {
@@ -455,6 +457,8 @@ export const it: TranslationResources = {
   taskStatuses,
   taskTypes,
   taskCategories,
+  supportTopics,
+  supportRequests,
   taskPriorities,
   taskImportances,
   timeEntries,

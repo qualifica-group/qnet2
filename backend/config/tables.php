@@ -70,6 +70,7 @@ use App\Tables\StaffCoursesTableDefinition;
 use App\Tables\StaffTrainings\StaffTrainingsTableDefinition;
 use App\Tables\Stock\StockBalancesTableDefinition;
 use App\Tables\Stock\StockMovementsTableDefinition;
+use App\Tables\SupportTopicsTableDefinition;
 use App\Tables\TagsTableDefinition;
 use App\Tables\TaskCategoriesTableDefinition;
 use App\Tables\TaskImportancesTableDefinition;
@@ -221,6 +222,8 @@ return [
         'task-importances' => TaskImportancesTableDefinition::class,
         // spec 0124: il modulo Modelli di Task.
         'task-templates' => TaskTemplatesTableDefinition::class,
+        // spec 0334: i "Tipi di problema" dell'assistenza tecnica.
+        'support-topics' => SupportTopicsTableDefinition::class,
         // spec 0150: la pagina "Notifiche", una riga per ciascuna delle
         // notifiche dell'attore (scoped in baseQuery, mai globale).
         'notifications' => NotificationsTableDefinition::class,

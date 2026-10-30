@@ -66,6 +66,7 @@ export const navigation = {
   taskStatuses: 'Task Statuses',
   taskTypes: 'Task Types',
   taskCategories: 'Task Categories',
+  supportTopics: 'Technical support',
   taskPriorities: 'Task Priorities',
   taskImportances: 'Task Importances',
   taskTemplates: 'Task Templates',

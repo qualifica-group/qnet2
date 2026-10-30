@@ -56,6 +56,7 @@ use App\Models\Skill;
 use App\Models\Source;
 use App\Models\StaffCourse;
 use App\Models\StaffTraining;
+use App\Models\SupportTopic;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\TaskCategory;
@@ -400,6 +401,10 @@ return [
         ],
         'task-categories' => [
             'model' => TaskCategory::class,
+        ],
+        // spec 0334: i "Tipi di problema" dell'assistenza tecnica.
+        'support-topics' => [
+            'model' => SupportTopic::class,
         ],
         'task-priorities' => [
             'model' => TaskPriority::class,

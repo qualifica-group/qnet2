@@ -126,6 +126,16 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'technical-support',
+      title: 'Asking for technical support',
+      blocks: [
+        { type: 'paragraph', text: 'If something does not work, press the lifebuoy button (**Technical support**) in the header, next to the question mark of the guide. Any user can use it.' },
+        { type: 'steps', items: ['Pick the **kind of problem** that looks most like yours.', 'Write what is wrong in **Describe the problem**.', 'If you cannot work, turn on **It is urgent / I am blocked**.', 'If you want, press **Add files** to attach screenshots or documents (up to 5).', 'Press **Send request**.'] },
+        { type: 'paragraph', text: 'At the end **Request n. … sent** appears: the number is the task created for the IT team. If you are allowed to see tasks you also get the **Open the task** link.' },
+        { type: 'note', text: 'QNet adds the page you were on and the browser you use by itself, so the IT team understands the problem better. If you see "Technical support is not configured yet", contact the administrator.' },
+      ],
+    },
+    {
       id: 'dashboard-and-statistics',
       title: 'Dashboard and statistics',
       blocks: [

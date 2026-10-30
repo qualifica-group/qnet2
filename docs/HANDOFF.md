@@ -3,6 +3,36 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Assistenza tecnica (richiesta al reparto IT) — VERDE, COMMITTATO (2026-10-30, spec 0334)
+
+- Pulsante salvagente "Assistenza tecnica" nell'header prima del (?) (`features/support-requests/`, montato in
+  `layouts/app-layout.tsx`): dialog con tipo di problema, descrizione, "E' urgente", max 5 allegati. Qualsiasi utente
+  autenticato (nessun permesso). Conferma col numero Task, link solo se `can_view_task`.
+- Config per tipo di problema: entita' `SupportTopic` (`support_topics` + pivot `support_topic_assignee`/`_watcher`),
+  CRUD `/api/support-topics`, tabella SSRM `support-topics`, permessi `support-topics.*`, menu Configurazione > Task >
+  Assistenza tecnica (`/support-topics`, frontend `features/support-topics/`). Icona validata su `BadgeTokens::icons()`.
+- Utente: `GET /api/support-requests/topics` (attivi con >= 1 assegnatario attivo; id/name/description/icon),
+  `POST /api/support-requests` multipart -> `SupportRequestService::handle()` -> `TaskService::create` +
+  `AttachmentService::storeFor` in una transazione (binari ripuliti se fallisce). Titolo "{tipo}: {inizio descrizione}"
+  (191), descrizione escapata + Pagina/Browser, priorita'/scadenza urgenti se `is_urgent`, watcher = richiedente escluso.
+  Upload: `mimetypes` + `extensions` (nuova `config('attachments.allowed_extensions')`, usata SOLO qui).
+- Test: Pest SupportTopics+SupportRequests 30/30; Vitest aree toccate 222/222; `tsc -b --force` pulito; ESLint/Pint
+  puliti. REQUIREMENT CHANGED: `FieldCatalogueEndpointTest` (+ support-topics), `help-guide-keys.test.ts` e
+  `workspaces-help.test.ts` (99 -> 100 chiavi guida).
+- DB dev: migrazione gia' eseguita (batch 11), `permissions:sync` eseguito (creati anche 8 `work-order-workflows.*` mancanti).
+- Seed di produzione, ultimo step `QualificaSupportTopicSeeder` (dati in `QualificaCatalog/SupportTopicCatalogue.php`): 8 tipi
+  (Stampante, PC o portatile, Password e accesso, Email, Rete e internet, Telefono, QNet, Altro), assegnatario
+  nicola.eliseo@qualificagroup.com, Ticket / Tecnico (informatico) / Media (urgente: Urgente) / importanza Media,
+  scadenza 2 giorni (urgente 0). Create-only per nome. Test `QualificaSupportTopicSeederTest` 3/3 +
+  `QualificaProductionDataSeederTest` verde. NON eseguito sul DB dev (regola: niente db:seed da agente).
+- Manuale: guide in-app `support-topics` IT/EN + sezione `technical-support` in `general`; manuale Claude Docs aggiornato
+  (riga header, "Chiedere assistenza tecnica" in Primi passi, "Assistenza tecnica" sotto Modelli di Task).
+- Rossi preesistenti nella suite completa (non 0334): `TableBulkDeleteTest` super-admin (`forbidden` vs `guarded` dopo
+  e6e79327), Migration/UsersSource* (`.env` `EXTERNAL_MIGRATION_USERS_LINK_ONLY=true`), ManagementControl/*Access
+  (chiave nav `management-control-section` inesistente), QuoteDocumentPdfTest (LibreOffice assente); Vitest: 11 unhandled
+  `toast.error is not a function` in form test con mock sonner senza `error` (dopo 935b8c6a).
+- Da segnalare: `StoreAttachmentRequest` e `StoreWorkOrderEmailAttachmentRequest` non hanno `extensions:` (backend.md §8).
+
 ## Commessa "Dati contrattuali": azione massiva sul pagamento delle righe (spec 0333) — VERDE, COMMITTATO (2026-10-30)
 
 - Richiesta utente: selezionare piu' prodotti di commessa e segnarli tutti come pagati, insoluto ecc.

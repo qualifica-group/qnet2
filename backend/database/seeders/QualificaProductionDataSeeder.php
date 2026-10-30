@@ -105,6 +105,10 @@ use Illuminate\Database\Seeder;
  *  12. QualificaLegacyRoleSeeder   — the QNet legacy roles of the active people,
  *                                    merged by profile onto the qnet-2 modules,
  *                                    for whoever holds no role but the base one.
+ *  13. QualificaSupportTopicSeeder — the IT support request types ("Assistenza
+ *                                    tecnica", spec 0334), assigned to the IT
+ *                                    contact. Create-only: a type edited from
+ *                                    Configurazione is left alone.
  *
  * The order is a contract, not a preference:
  *   - step 5 adopts step 2's sources and business functions by name instead
@@ -128,8 +132,9 @@ use Illuminate\Database\Seeder;
  *     would land on those.
  *   - step 11 reads the memberships of steps 5 and 9 and runs after step 6,
  *     which recreates its operators' scopes on every run.
- *   - step 12 runs last: it leaves alone whoever steps 4 to 7 gave a role,
- *     and needs the accounts step 10 creates from the legacy users.
+ *   - step 12 leaves alone whoever steps 4 to 7 gave a role, and needs the
+ *     accounts step 10 creates from the legacy users.
+ *   - step 13 needs step 3's Task lookups and step 4's IT contact account.
  *
  * Every step stays runnable on its own and is idempotent, so this seeder is
  * too: re-running it converges instead of duplicating. Steps 5 and 10 are
@@ -175,5 +180,6 @@ class QualificaProductionDataSeeder extends Seeder
         $this->callWith(QualificaLegacyImportSeeder::class, ['sources' => QualificaLegacyImportSeeder::USER_SOURCES]);
         $this->call(QualificaFunctionCompetenceSeeder::class);
         $this->call(QualificaLegacyRoleSeeder::class);
+        $this->call(QualificaSupportTopicSeeder::class);
     }
 }

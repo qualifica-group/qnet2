@@ -88,6 +88,7 @@ use App\Models\Skill;
 use App\Models\Source;
 use App\Models\StaffCourse;
 use App\Models\StaffTraining;
+use App\Models\SupportTopic;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\TaskCategory;
@@ -336,6 +337,7 @@ class AppServiceProvider extends ServiceProvider
             'task_status' => TaskStatus::class,
             'task_type' => TaskType::class,
             'task_category' => TaskCategory::class,
+            'support_topic' => SupportTopic::class,
             'task_priority' => TaskPriority::class,
             'task_importance' => TaskImportance::class,
             // Spec 0122 (time-entries module): TimeEntry/TimeEntryDayNote both
