@@ -3,6 +3,24 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Immagini dei layout sparite in produzione: comando di ripristino — VERDE, NON COMMITTATO (2026-10-30)
+
+- Causa: il DB di produzione e' un dump importato da un'altra macchina senza `storage/app/private/attachments/`:
+  le 58 righe `attachments` esistono, i file no (stesso stato sul DB dev `qnet2`). `ImageBlockRenderer` salta in
+  silenzio il file mancante -> PDF senza carta intestata/logo; l'editor mostra "immagine mancante".
+- `php artisan document-layouts:restore-images [--dry-run]` (`App\Console\Commands\RestoreDocumentLayoutImages`): per
+  ogni `layout_image` senza file riscrive l'asset di `database/seeders/assets` (+ `quote-layouts/images`) con stesso
+  `original_name` E stessa `size` nel `disk`/`path` della riga. Non tocca il DB ne' i file presenti; idempotente.
+- Eseguito sul dev: 45/45 ripristinate, secondo giro 0. Restano senza file i 13 `documents` dei Modelli documenti SOA
+  (migrazione `document-bundles`, idempotente su `old_id`: non ricopia): servono i file della macchina d'origine,
+  oppure cancellare i bundle e rimigrarli, oppure ricaricarli a mano.
+- Da fare in produzione (utente): dopo il deploy `--dry-run` e poi il comando. Deploy futuri: `storage/` persistente
+  e nei backup insieme al DB. APERTI (non verificati, segnalati): Calibri assente sul server Linux -> sostituzione
+  font in LibreOffice; export PDF con compressione di default; immagini in VML poco fedeli in LibreOffice.
+  `LIBREOFFICE_BINARY` del `.env` dev punta a un'app inesistente.
+- Test: `tests/Feature/DocumentLayouts/RestoreDocumentLayoutImagesCommandTest.php` 5/5; `tests/Feature/DocumentLayouts`
+  139/139; Pint pulito. Manuale: nessun impatto (comando di manutenzione, nessuna UI).
+
 ## Completa massivo: segnatempo totale ripartito tra i task (spec 0338) — VERDE, NON COMMITTATO (2026-10-30)
 
 - Decisioni utente: il segnatempo del popup multiplo e' un TOTALE ripartito (parti uguali, resto ai primi task);
