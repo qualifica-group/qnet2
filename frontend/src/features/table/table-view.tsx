@@ -95,6 +95,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     const opportunityId = rowScope?.opportunityId
     const quoteId = rowScope?.quoteId
     const registryId = rowScope?.registryId
+    const referentId = rowScope?.referentId
     const { data: config, error: configError, isPending, isError, refetch } = useTableConfig(domain, scope)
 
     const view = useTableViewController(
@@ -107,6 +108,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
         defaultFilterModel,
         forcedFilterModel,
         registryId,
+        referentId,
         onRowCountChanged,
         onAction,
         isBusy,
@@ -172,6 +174,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           opportunityId={opportunityId}
           quoteId={quoteId}
           registryId={registryId}
+          referentId={referentId}
           columns={config.columns}
           datasource={view.datasource}
           blockSize={config.defaultPagination.limit}
@@ -217,6 +220,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       opportunityId,
       quoteId,
       registryId,
+      referentId,
     })
 
     return (

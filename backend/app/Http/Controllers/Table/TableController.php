@@ -20,6 +20,7 @@ use App\Services\TableService;
 use App\Support\Cache\AggregateCache;
 use App\Tables\ProductCategoryScopable;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
+use App\Tables\ReferentScopable;
 use App\Tables\RegistryScopable;
 use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\TableDefinition;
@@ -235,6 +236,8 @@ class TableController extends BaseApiController
             $this->scopeToQuote($definition, $quoteId === null ? null : (int) $quoteId);
             $registryId = $payload['registryId'] ?? null;
             $this->scopeToRegistry($definition, $registryId === null ? null : (int) $registryId);
+            $referentId = $payload['referentId'] ?? null;
+            $this->scopeToReferent($definition, $referentId === null ? null : (int) $referentId);
             $this->authorizeTreeParent($definition, $actor, $payload['treeParentId'] ?? null);
 
             $result = $this->service->rows($definition, $actor, $payload);
@@ -311,6 +314,7 @@ class TableController extends BaseApiController
             $this->scopeToOpportunity($definition, $payload['opportunityId']);
             $this->scopeToQuote($definition, $payload['quoteId']);
             $this->scopeToRegistry($definition, $payload['registryId']);
+            $this->scopeToReferent($definition, $payload['referentId']);
 
             // Per actor always: grid visibility rules are evaluated per user (spec
             // 0178, D-5). The column id goes into the hash too: an `attr.*` id is
@@ -445,6 +449,18 @@ class TableController extends BaseApiController
     {
         if ($definition instanceof RegistryScopable) {
             $definition->scopeToRegistry($registryId);
+        }
+    }
+
+    /**
+     * Spec 0336: narrows a `ReferentScopable` definition
+     * (`commission-configurations`) to one Referente's rules, mirroring
+     * `scopeToRegistry()`.
+     */
+    private function scopeToReferent(TableDefinition $definition, ?int $referentId): void
+    {
+        if ($definition instanceof ReferentScopable) {
+            $definition->scopeToReferent($referentId);
         }
     }
 

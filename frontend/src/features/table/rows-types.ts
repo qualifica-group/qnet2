@@ -36,6 +36,8 @@ export interface TableRowScope {
    * for every domain but `opportunities`, `quotes`, `work-orders`, `tasks`.
    */
   registryId?: number
+  /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
+  referentId?: number
 }
 
 /** SSRM rows request payload (AG Grid IServerSideGetRowsRequest subset). */
@@ -72,6 +74,8 @@ export interface TableRowsPayload {
   quoteId?: number | null
   /** Row-set scope to one Anagrafica (spec 0199), same rule as above. */
   registryId?: number | null
+  /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
+  referentId?: number | null
   /**
    * Server-side tree data (spec 0157 D-1): `true` requests the domain's tree
    * shape instead of the flat one. Omitted/`false` ⇒ today's flat behavior,
@@ -220,6 +224,8 @@ export interface TableColumnValuesPayload {
   quoteId?: number | null
   /** Row-set scope to one Anagrafica (spec 0199), same rule as above. */
   registryId?: number | null
+  /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
+  referentId?: number | null
 }
 
 /** Response of POST /tables/{domain}/values (envelope `data`). */

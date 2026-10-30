@@ -14,6 +14,8 @@ import {
 import type { ReferentDetailWithPermissions } from '@/features/referents/types'
 
 // Spec 0312: the notes tab mounts the agnostic NotesSection, covered by `notes-section.test.tsx`.
+// Spec 0336: the commissions card has its own test (referent-related-records.test.tsx).
+vi.mock('@/features/referents/referent-related-records', () => ({ ReferentRelatedRecords: () => null }))
 vi.mock('@/features/notes/notes-section', () => ({
   NotesSection: (props: { entityType: string; entityId: number }) => (
     <div>{`notes-section:${props.entityType}:${props.entityId}`}</div>

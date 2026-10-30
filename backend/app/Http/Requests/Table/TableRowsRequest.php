@@ -131,6 +131,10 @@ class TableRowsRequest extends FormRequest
             // key for every other domain.
             'registryId' => ['sometimes', 'nullable', 'integer', Rule::exists('registries', 'id')],
 
+            // Spec 0336: scopes `commission-configurations` to the rules of one
+            // Referente (the Referente detail's card) — a no-op key for every other domain.
+            'referentId' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
+
             // Spec 0157, D-1: tree/hierarchical row scoping (Sintetica) — a
             // domain that does not override supportsTree() 422s either key
             // in withValidator() below. `treeParentId`'s existence is

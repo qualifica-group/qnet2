@@ -1,4 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { DetailError, DetailLoading } from '@/components/detail/detail-panel'
@@ -10,7 +11,12 @@ import type { ModuleDetailScreenProps, ModuleFormScreenProps, ModuleRegistryEntr
 import { commissionConfigurationDetailKey, fetchCommissionConfiguration } from './api'
 import { CommissionConfigurationForm } from './commission-configuration-form'
 import { CommissionConfigurationDetailView } from './commission-configuration-detail'
-import { COMMISSION_CREATE_REGISTRY_PARAM, type CommissionConfigurationDetail } from './types'
+import {
+  COMMISSION_CREATE_REFERENT_PARAM,
+  COMMISSION_CREATE_REGISTRY_PARAM,
+  type CommissionConfigurationDetail,
+  type CommissionRecipientPreset,
+} from './types'
 
 /** The detail edits its rows in place, so `onEdit` is never used; each save reports through `onChanged`. */
 export function CommissionConfigurationDetailScreen({ id, onChanged }: ModuleDetailScreenProps) {
@@ -48,6 +54,15 @@ export function CommissionConfigurationFormScreen({ mode, onSuccess, onCancel }:
     cancelLabel: t('commissionConfigurations.form.leaveConfirm.cancel'),
     tone: 'warning',
   })
+  const params = mode.type === 'create' ? mode.params : undefined
+  const registryId = parseEntityId(String(params?.[COMMISSION_CREATE_REGISTRY_PARAM] ?? ''))
+  const referentId = parseEntityId(String(params?.[COMMISSION_CREATE_REFERENT_PARAM] ?? ''))
+  // Stable: the form rebuilds its defaults whenever the preset identity changes.
+  const recipientPreset = useMemo<CommissionRecipientPreset | null>(() => {
+    if (registryId != null) return { role: 'SUPPLIER', recipientId: registryId }
+    if (referentId != null) return { role: 'REPORTER', recipientId: referentId }
+    return null
+  }, [registryId, referentId])
 
   if (mode.type !== 'create') {
     return null
@@ -72,7 +87,7 @@ export function CommissionConfigurationFormScreen({ mode, onSuccess, onCancel }:
     <>
       {leaveGuard.navigationGuard}
       <CommissionConfigurationForm
-        supplierRegistryId={parseEntityId(String(mode.params?.[COMMISSION_CREATE_REGISTRY_PARAM] ?? ''))}
+        recipientPreset={recipientPreset}
         onSuccess={handleSuccess}
         onCancel={handleCancel}
       />

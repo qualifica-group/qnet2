@@ -82,7 +82,12 @@ describe('commission configuration screens', () => {
 
   it('reads the supplier registry from the create params (spec 0204)', () => {
     render(<CommissionConfigurationFormScreen mode={{ type: 'create', params: { registry_id: 12 } }} onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper })
-    expect(formProps.current?.supplierRegistryId).toBe(12)
+    expect(formProps.current?.recipientPreset).toEqual({ role: 'SUPPLIER', recipientId: 12 })
+  })
+
+  it('reads the reporter referente from the create params (spec 0336)', () => {
+    render(<CommissionConfigurationFormScreen mode={{ type: 'create', params: { referent_id: 7 } }} onSuccess={vi.fn()} onCancel={vi.fn()} />, { wrapper })
+    expect(formProps.current?.recipientPreset).toEqual({ role: 'REPORTER', recipientId: 7 })
   })
 
   it('has no edit form: an edit mode renders nothing', () => {

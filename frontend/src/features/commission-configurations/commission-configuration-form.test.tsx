@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import i18n from '@/i18n'
 import { CommissionConfigurationForm } from './commission-configuration-form'
 import { configurationFixture, configurationWrapper, permissionsFor } from './commission-configuration-test-fixtures'
+import type { CommissionRecipientPreset } from './types'
 
 /**
  * Wave 4 of the "no edit pages" plan (spec 0241): the form is create-only, a
@@ -39,9 +40,9 @@ const openRow = (label: string) =>
 const applyRow = () => fireEvent.click(screen.getByRole('button', { name: i18n.t('common.inlineEdit.apply') }))
 const save = () => fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
-function renderForm(props: { supplierRegistryId?: number | null; onSuccess?: () => void; onCancel?: () => void } = {}) {
+function renderForm(props: { recipientPreset?: CommissionRecipientPreset | null; onSuccess?: () => void; onCancel?: () => void } = {}) {
   return render(
-    <CommissionConfigurationForm onSuccess={props.onSuccess ?? vi.fn()} onCancel={props.onCancel ?? vi.fn()} supplierRegistryId={props.supplierRegistryId} />,
+    <CommissionConfigurationForm onSuccess={props.onSuccess ?? vi.fn()} onCancel={props.onCancel ?? vi.fn()} recipientPreset={props.recipientPreset} />,
     { wrapper: configurationWrapper() },
   )
 }
@@ -140,7 +141,7 @@ describe('CommissionConfigurationForm create (spec 0241 AC-004)', () => {
   })
 
   it('opens on a personal SUPPLIER rule for the supplier a registry tab seeded (spec 0204)', () => {
-    renderForm({ supplierRegistryId: 12 })
+    renderForm({ recipientPreset: { role: 'SUPPLIER', recipientId: 12 } })
 
     expect(screen.getByText('Supplier')).toBeInTheDocument()
     expect(screen.getByText('Name 12')).toBeInTheDocument()

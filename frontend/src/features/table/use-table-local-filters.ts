@@ -13,6 +13,8 @@ interface UseTableLocalFiltersArgs {
   opportunityId?: number
   quoteId?: number
   registryId?: number
+  /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
+  referentId?: number
 }
 
 export interface UseTableLocalFiltersResult {
@@ -34,12 +36,13 @@ export function useTableLocalFilters({
   opportunityId,
   quoteId,
   registryId,
+  referentId,
 }: UseTableLocalFiltersArgs): UseTableLocalFiltersResult {
   const userId = useContext(AuthContext)?.user?.id
   const storageKey =
     userId === undefined
       ? null
-      : tableLocalFiltersKey({ userId, domain, productCategoryId, opportunityId, quoteId, registryId })
+      : tableLocalFiltersKey({ userId, domain, productCategoryId, opportunityId, quoteId, registryId, referentId })
 
   const [initial] = useState(() => readTableLocalFilters(storageKey))
 

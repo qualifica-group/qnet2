@@ -47,6 +47,8 @@ export interface BuildColDefsParams {
   quoteId?: number
   /** Row-set scope to one Anagrafica (spec 0199); a no-op for every domain but `opportunities`, `quotes`, `work-orders`, `tasks`. */
   registryId?: number
+  /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
+  referentId?: number
   columns: TableColumn[]
   cellRenderers?: Record<string, CellRenderer>
   renderRowActions?: (params: ICellRendererParams) => ReactNode
@@ -80,6 +82,7 @@ export function buildColDefs({
   opportunityId,
   quoteId,
   registryId,
+  referentId,
   columns,
   cellRenderers,
   renderRowActions,
@@ -114,6 +117,7 @@ export function buildColDefs({
       opportunityId,
       quoteId,
       registryId,
+      referentId,
     )
     return {
       colId: column.id,

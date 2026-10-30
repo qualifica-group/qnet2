@@ -78,6 +78,10 @@ class TableValuesRequest extends FormRequest
             // to one client's records (the Anagrafica detail tabs) — a no-op
             // key for every other domain.
             'registryId' => ['sometimes', 'nullable', 'integer', Rule::exists('registries', 'id')],
+
+            // Spec 0336: scopes `commission-configurations` to the rules of one
+            // Referente (the Referente detail's card) — a no-op key for every other domain.
+            'referentId' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
         ];
     }
 
@@ -108,7 +112,7 @@ class TableValuesRequest extends FormRequest
     /**
      * Validated payload with the `limit`/`filterModel` defaults applied.
      *
-     * @return array{columnId: string, search: string|null, limit: int, filterModel: array<string, array<string, mixed>>, productCategoryId: int|null, opportunityId: int|null, quoteId: int|null, registryId: int|null}
+     * @return array{columnId: string, search: string|null, limit: int, filterModel: array<string, array<string, mixed>>, productCategoryId: int|null, opportunityId: int|null, quoteId: int|null, registryId: int|null, referentId: int|null}
      */
     public function payload(): array
     {
@@ -123,6 +127,7 @@ class TableValuesRequest extends FormRequest
             'opportunityId' => isset($validated['opportunityId']) ? (int) $validated['opportunityId'] : null,
             'quoteId' => isset($validated['quoteId']) ? (int) $validated['quoteId'] : null,
             'registryId' => isset($validated['registryId']) ? (int) $validated['registryId'] : null,
+            'referentId' => isset($validated['referentId']) ? (int) $validated['referentId'] : null,
         ];
     }
 

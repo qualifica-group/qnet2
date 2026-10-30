@@ -36,8 +36,20 @@ describe('commission configuration form payload', () => {
     })
   })
 
-  it('seeds a SUPPLIER rule on the given registry and a role-wide COMMERCIAL default otherwise', () => {
-    expect(createDefaults(12)).toMatchObject({ recipient_role: 'SUPPLIER', application_scope: 'RECIPIENT', recipient_id: 12 })
+  it('seeds a personal rule on the preset recipient and a role-wide COMMERCIAL default otherwise', () => {
+    expect(createDefaults({ role: 'SUPPLIER', recipientId: 12 })).toMatchObject({
+      recipient_role: 'SUPPLIER',
+      application_scope: 'RECIPIENT',
+      recipient_type: 'registry',
+      recipient_id: 12,
+    })
+    // Spec 0336 D-4: from a referente's card, a personal REPORTER rule on that referente.
+    expect(createDefaults({ role: 'REPORTER', recipientId: 7 })).toMatchObject({
+      recipient_role: 'REPORTER',
+      application_scope: 'RECIPIENT',
+      recipient_type: 'referent',
+      recipient_id: 7,
+    })
     expect(createDefaults(null)).toMatchObject({ recipient_role: 'COMMERCIAL', application_scope: 'PRODUCT_CATEGORY', recipient_id: null })
   })
 

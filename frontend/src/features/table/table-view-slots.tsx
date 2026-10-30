@@ -27,6 +27,7 @@ interface TableViewSlotsArgs {
   opportunityId?: number
   quoteId?: number
   registryId?: number
+  referentId?: number
 }
 
 interface TableViewSlots {
@@ -59,6 +60,7 @@ export function buildTableViewSlots({
   opportunityId,
   quoteId,
   registryId,
+  referentId,
 }: TableViewSlotsArgs): TableViewSlots {
   const savedViewsSlot = (
     <SavedViewsSlot
@@ -102,6 +104,7 @@ export function buildTableViewSlots({
           opportunityId={opportunityId}
           quoteId={quoteId}
           registryId={registryId}
+          referentId={referentId}
         />
       ) : null}
 

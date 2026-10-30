@@ -21,6 +21,13 @@ export const referents = {
     subtitle: 'Details of the selected referent, editable in place.',
     loadError: 'Unable to load the referent. Please try again.',
     details: 'Details',
+    // The Configuratore commissioni rules whose recipient is the referent (spec 0336).
+    related: {
+      title: 'Related records',
+      commissionConfigurations: 'Configured commissions',
+      countLabel_one: '{{count}} related record',
+      countLabel_other: '{{count}} related records',
+    },
     // The KPI strip's own labels, not the side column's Contacts/Addresses
     // block titles, or the same word would mean two different things.
     stats: {

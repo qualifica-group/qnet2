@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0336-referent-configured-commissions-tab" status="implemented" owner="utente" date="2026-10-30">
+
+  <goal>
+    Il dettaglio del Referente guadagna in basso, come l'Anagrafica (spec 0204), la tabella "Commissioni configurate":
+    la griglia del Configuratore commissioni filtrata sulle regole che hanno questo referente come destinatario, con
+    "Nuova regola" che apre il form del Configuratore gia' legato al referente.
+  </goal>
+
+  <context>
+    - Richiesta utente 2026-10-30: "aggiungere (come in anagrafica) la tabella in basso al dettaglio con le commissioni",
+      dopo il caricamento delle regole dei segnalatori (QualificaReporterCommissionSeeder).
+    - D-1: perimetro = regole con destinatario questo referente (`recipient_type = 'referent'` AND
+      `recipient_id = :referent`). Niente regole dell'utente collegato ne' regole di ruolo senza destinatario
+      (stessa scelta della 0204 D-1).
+    - D-2: la card esiste su ogni referente se l'utente ha `commission-configurations.viewAny`; "Nuova regola" solo con
+      `commission-configurations.create`.
+    - D-3: stessa meccanica della 0204: `TableView` del dominio `commission-configurations` con `rowScope.referentId`,
+      renderer/azioni del modulo, sheet forzato; stessa card a tab dell'anagrafica, con la sola tab commissioni.
+    - D-4: "Nuova regola" apre il form con il create param `referent_id`: `recipient_role=REPORTER`,
+      `recipient_type=referent`, `recipient_id=:referent`, `application_scope=RECIPIENT` (tutto modificabile nel form).
+  </context>
+
+  <contract>
+    <backend>
+      Nuova interfaccia `ReferentScopable`; `commission-configurations` e' avvolto per ultimo in
+      `ReferentScopedTableDefinition` (colonna `commission_configurations.recipient_id` + tipo morph = alias di
+      `Referent`), che inoltra anche lo scope anagrafica al decoratore interno. Nuova chiave `referentId`
+      (`nullable|integer|exists:referents,id`) su rows/values/export, no-op per gli altri domini. Senza scope risposta
+      invariata; autorizzazione invariata.
+    </backend>
+    <frontend>
+      `TableRowScope.referentId` propagato come `registryId` (datasource, values, export, chiave filtri locali).
+      `RegistryRelatedGrid` riceve `rowScope` invece di `registryId`. Nuovo `ReferentRelatedRecords` in fondo a
+      `ReferentDetailView`. `CommissionConfigurationFormMode` create con `recipientPreset {role, recipientId}` al posto
+      di `supplierRegistryId`, letto da `registry_id` (SUPPLIER) o `referent_id` (REPORTER).
+    </frontend>
+  </contract>
+
+  <acceptance>
+    <ac id="AC-001">Rows/values/export di `commission-configurations` con `referentId` restituiscono solo le regole con
+      destinatario quel referente (non quelle di un'anagrafica/utente con lo stesso id); senza `referentId` invariato.</ac>
+    <ac id="AC-002">La card compare nel dettaglio referente con `commission-configurations.viewAny`, assente senza.</ac>
+    <ac id="AC-003">"Nuova regola" apre il form precompilato (Segnalatore, destinatario = referente); senza `create`
+      nessun pulsante.</ac>
+    <ac id="AC-004">Guide in-app IT/EN `referents` aggiornate.</ac>
+  </acceptance>
+</spec>

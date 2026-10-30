@@ -3,22 +3,22 @@ import {
   COMMISSION_ROLE_ALLOWED_RECIPIENT_TYPES,
   type CommissionConfigurationDetail,
   type CommissionConfigurationPayload,
+  type CommissionRecipientPreset,
   type CommissionRole,
   type UpdateCommissionConfigurationPayload,
 } from './types'
 
-/** A fresh rule: a role-wide COMMERCIAL default, or a personal SUPPLIER rule on `supplierRegistryId` (spec 0204 D-4). */
-export function createDefaults(supplierRegistryId: number | null | undefined): CommissionConfigurationFormValues {
-  const supplierPreset = supplierRegistryId != null
-  const role: CommissionRole = supplierPreset ? 'SUPPLIER' : 'COMMERCIAL'
+/** A fresh rule: a role-wide COMMERCIAL default, or a personal rule on the preset recipient (specs 0204/0336 D-4). */
+export function createDefaults(preset: CommissionRecipientPreset | null | undefined): CommissionConfigurationFormValues {
+  const role: CommissionRole = preset?.role ?? 'COMMERCIAL'
   return {
     name: '',
     recipient_role: role,
-    application_scope: supplierPreset ? 'RECIPIENT' : 'PRODUCT_CATEGORY',
+    application_scope: preset ? 'RECIPIENT' : 'PRODUCT_CATEGORY',
     product_category_id: null,
     product_id: null,
     recipient_type: COMMISSION_ROLE_ALLOWED_RECIPIENT_TYPES[role][0],
-    recipient_id: supplierRegistryId ?? null,
+    recipient_id: preset?.recipientId ?? null,
     commission_type: 'PERCENTAGE',
     supplier_commission_direction: null,
     value: 0,

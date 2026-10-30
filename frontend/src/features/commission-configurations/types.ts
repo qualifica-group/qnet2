@@ -113,12 +113,21 @@ export type UpdateCommissionConfigurationPayload = Partial<CommissionConfigurati
 /** The create param the anagrafica detail seeds the form with (spec 0204 D-4, same key as spec 0199). */
 export const COMMISSION_CREATE_REGISTRY_PARAM = 'registry_id'
 
+/** The create param the referente detail seeds the form with (spec 0336 D-4). */
+export const COMMISSION_CREATE_REFERENT_PARAM = 'referent_id'
+
 /**
- * `supplierRegistryId` (spec 0204 D-4): a create opened from a supplier's
- * "Commissioni configurate" tab starts as a SUPPLIER rule on that registry.
+ * The personal rule a create starts as, when opened from a recipient's
+ * "Commissioni configurate": SUPPLIER on an anagrafica (spec 0204 D-4),
+ * REPORTER on a referente (spec 0336 D-4). The recipient type is the role's default.
  */
+export interface CommissionRecipientPreset {
+  role: CommissionRole
+  recipientId: number
+}
+
 export type CommissionConfigurationFormMode =
-  | { type: 'create'; supplierRegistryId?: number | null }
+  | { type: 'create'; recipientPreset?: CommissionRecipientPreset | null }
   | { type: 'edit'; configuration: CommissionConfigurationDetailWithPermissions }
 
 /** How a recalculation treats the commissions changed by hand (spec 0308 D-2). */

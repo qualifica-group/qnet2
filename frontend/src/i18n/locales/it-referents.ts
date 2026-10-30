@@ -21,6 +21,13 @@ export const referents = {
     subtitle: 'Dettaglio del referente selezionato, modificabile sul posto.',
     loadError: 'Impossibile caricare il referente. Riprova.',
     details: 'Dettagli',
+    // Le regole del Configuratore commissioni con destinatario il referente (spec 0336).
+    related: {
+      title: 'Record collegati',
+      commissionConfigurations: 'Commissioni configurate',
+      countLabel_one: '{{count}} record collegato',
+      countLabel_other: '{{count}} record collegati',
+    },
     // Etichette della striscia KPI: sono SUE, non i titoli dei blocchi laterali
     // Contatti/Indirizzi, altrimenti la stessa parola direbbe due cose diverse.
     stats: {

@@ -12,6 +12,7 @@ use App\Models\ExportRun;
 use App\Models\User;
 use App\Services\Table\TableQueryBuilder;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
+use App\Tables\ReferentScopable;
 use App\Tables\RegistryScopable;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
@@ -39,7 +40,7 @@ class ExportService
     ) {}
 
     /**
-     * @param  array{columns: array<int, array{colId: string, header: string}>, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, advancedFilters?: array<string, mixed>, customFilterRules?: array<string, mixed>|null, search?: string|null, opportunityId?: int|null, quoteId?: int|null, registryId?: int|null}  $state
+     * @param  array{columns: array<int, array{colId: string, header: string}>, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, advancedFilters?: array<string, mixed>, customFilterRules?: array<string, mixed>|null, search?: string|null, opportunityId?: int|null, quoteId?: int|null, registryId?: int|null, referentId?: int|null}  $state
      */
     public function start(User $actor, TableDefinition $definition, array $state, ExportFormat $format): ExportRun
     {
@@ -83,7 +84,7 @@ class ExportService
         // The queue worker forgets the guards after every job.
         Auth::setUser($actor);
 
-        /** @var array{columns: array<int, array{colId: string, header: string}>, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, advancedFilters?: array<string, mixed>, customFilterRules?: array<string, mixed>|null, search?: string|null, opportunityId?: int|null, quoteId?: int|null, registryId?: int|null} $state */
+        /** @var array{columns: array<int, array{colId: string, header: string}>, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, advancedFilters?: array<string, mixed>, customFilterRules?: array<string, mixed>|null, search?: string|null, opportunityId?: int|null, quoteId?: int|null, registryId?: int|null, referentId?: int|null} $state */
         $state = $run->state;
         $columns = $state['columns'];
 
@@ -101,6 +102,10 @@ class ExportService
 
         if ($definition instanceof RegistryScopable && ($state['registryId'] ?? null) !== null) {
             $definition->scopeToRegistry($state['registryId']);
+        }
+
+        if ($definition instanceof ReferentScopable && ($state['referentId'] ?? null) !== null) {
+            $definition->scopeToReferent($state['referentId']);
         }
 
         // Step 3: build the query exactly as the grid would (allow-listed

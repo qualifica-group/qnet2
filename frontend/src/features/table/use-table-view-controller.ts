@@ -27,6 +27,8 @@ export interface TableViewControllerArgs extends RowActionsOptions {
   defaultFilterModel?: Record<string, unknown>
   forcedFilterModel?: Record<string, unknown>
   registryId?: number
+  /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
+  referentId?: number
   onRowCountChanged?: (count: number | null) => void
   onAction: RowActionHandler
   getBulkActions?: (selection: TableSelection) => BulkAction[]
@@ -99,6 +101,7 @@ export function useTableViewController(
     defaultFilterModel,
     forcedFilterModel,
     registryId,
+    referentId,
     onRowCountChanged,
     onAction,
     isBusy,
@@ -127,6 +130,7 @@ export function useTableViewController(
       defaultFilterModel,
       forcedFilterModel,
       registryId,
+      referentId,
       onRowCountChanged,
       getBulkActions,
       disableBuiltinDelete,

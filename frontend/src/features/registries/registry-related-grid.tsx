@@ -6,6 +6,7 @@ import type { ActionIconMap } from '@/features/table/action-icon-map'
 import type { AdvancedFilterValues } from '@/features/table/advanced-filters/types'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
 import type { RowActionHandler, RowActionState } from '@/features/table/row-actions'
+import type { TableRowScope } from '@/features/table/rows-types'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import type { CellCommitInterceptor } from '@/features/table/use-table-cell-edit'
 
@@ -16,7 +17,8 @@ export interface RegistryRelatedCreate {
 
 interface RegistryRelatedGridProps {
   domain: string
-  registryId: number
+  /** The parent record the grid is narrowed to: an anagrafica (spec 0199) or a referente (spec 0336). */
+  rowScope: TableRowScope
   renderers?: TableRendererMap
   iconMap?: ActionIconMap
   onAction: RowActionHandler
@@ -34,14 +36,14 @@ interface RegistryRelatedGridProps {
 /**
  * One tab of the anagrafica's related records (spec 0199): the module's OWN
  * grid (`TableView` with its renderers, row actions and icons) narrowed to
- * this client by `rowScope` — a row-set scope, never a user filter, so the
+ * its parent record by `rowScope` — a row-set scope, never a user filter, so the
  * module's preferences and saved filters are untouched — and the module's
  * "Nuovo" above it.
  */
 export const RegistryRelatedGrid = forwardRef<TableViewHandle, RegistryRelatedGridProps>(function RegistryRelatedGrid(
   {
     domain,
-    registryId,
+    rowScope,
     renderers,
     iconMap,
     onAction,
@@ -68,7 +70,7 @@ export const RegistryRelatedGrid = forwardRef<TableViewHandle, RegistryRelatedGr
       <TableView
         ref={ref}
         domain={domain}
-        rowScope={{ registryId }}
+        rowScope={rowScope}
         renderers={renderers}
         onAction={onAction}
         isBusy={isBusy}

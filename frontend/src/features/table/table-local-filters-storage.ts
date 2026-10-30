@@ -22,6 +22,8 @@ export interface TableLocalFiltersScope {
   opportunityId?: number
   quoteId?: number
   registryId?: number
+  /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
+  referentId?: number
 }
 
 export const EMPTY_TABLE_LOCAL_FILTERS: TableLocalFilters = { search: '', customFilter: null }
@@ -62,6 +64,7 @@ export function tableLocalFiltersKey(scope: TableLocalFiltersScope): string {
     scope.opportunityId ?? '',
     scope.quoteId ?? '',
     ...(scope.registryId != null ? [scope.registryId] : []),
+    ...(scope.referentId != null ? [`referent-${scope.referentId}`] : []),
   ].join(':')
 }
 

@@ -74,6 +74,8 @@ export interface SsrmDatasourceOptions {
   quoteId?: number
   /** Row-set scope to one Anagrafica (spec 0199); a no-op for every domain but `opportunities`, `quotes`, `work-orders`, `tasks`. */
   registryId?: number
+  /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
+  referentId?: number
   /** Reports each response's `meta.aggregates` (spec 0156 D-3); a no-op for a domain with no `aggregates()` override. */
   onAggregates?: (aggregates: TableRowsAggregates | undefined) => void
   /** Server-side tree data (spec 0157 D-1); a no-op for every domain but `tasks`. */
@@ -107,6 +109,7 @@ export function createSsrmDatasource(
     opportunityId,
     quoteId,
     registryId,
+    referentId,
     onAggregates,
     treeData,
     rowGrouping,
@@ -182,6 +185,7 @@ export function createSsrmDatasource(
         opportunityId,
         quoteId,
         registryId,
+        referentId,
         tree: treeData ?? false,
         treeParentId,
         rowGroupCols,
@@ -204,6 +208,7 @@ export function createSsrmDatasource(
           ...(opportunityId != null ? { opportunityId } : {}),
           ...(quoteId != null ? { quoteId } : {}),
           ...(registryId != null ? { registryId } : {}),
+          ...(referentId != null ? { referentId } : {}),
           ...(grouped ? { rowGroupCols, groupKeys } : {}),
           ...(treeData ? { tree: true } : {}),
           ...(treeParentId != null ? { treeParentId } : {}),

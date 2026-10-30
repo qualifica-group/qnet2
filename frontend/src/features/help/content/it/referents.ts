@@ -92,6 +92,28 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'configured-commissions',
+      title: 'Commissioni configurate',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "In fondo al dettaglio del referente, come nell'anagrafica, trovi **Commissioni configurate**: la tabella del Configuratore Commissioni con le sole regole che hanno questo referente come **Destinatario** (per esempio le percentuali per categoria di un segnalatore). Le regole valide per tutto un ruolo, senza destinatario, non compaiono qui.",
+        },
+        {
+          type: 'steps',
+          items: [
+            'Apri il referente e scorri fino a **Commissioni configurate**: il numero accanto al titolo conta le regole.',
+            'Usa **Visualizza** sulla riga per aprire la regola in un pannello sopra il referente, oppure **Elimina** se non è in uso.',
+            "Per una nuova regola premi **Nuova configurazione**: il modulo parte con Ruolo destinatario **Segnalatore**, ambito **Destinatario specifico** e questo referente come Destinatario. Cambia ruolo o ambito se serve, completa Calcolo e Validità e premi **Salva**.",
+          ],
+        },
+        {
+          type: 'tip',
+          text: 'La tabella compare solo se puoi consultare il Configuratore Commissioni; il pulsante Nuova configurazione solo se puoi crearne.',
+        },
+      ],
+    },
+    {
       id: 'linking-a-referent',
       title: 'Collegare un referente a un cliente',
       blocks: [

@@ -94,6 +94,10 @@ class CreateExportRequest extends FormRequest
             // Spec 0199: scopes an `opportunities`/`quotes`/`work-orders`/`tasks`
             // export to one client's records — a no-op key for every other domain.
             'registryId' => ['sometimes', 'nullable', 'integer', Rule::exists('registries', 'id')],
+
+            // Spec 0336: scopes `commission-configurations` to the rules of one
+            // Referente (the Referente detail's card) — a no-op key for every other domain.
+            'referentId' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
         ];
     }
 

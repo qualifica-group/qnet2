@@ -62,6 +62,25 @@
 - Fix icone: icona menu `life-buoy` mappata in `navigation/icon-map.ts` (prima cadeva sul
   cerchio di ripiego); colonna Icona della tabella disegna l'icona (`support-topic-icon-cell.tsx`) invece del nome.
 
+## Referente: card "Commissioni configurate" in fondo al dettaglio (spec 0336) — VERDE, COMMITTATO (2026-10-30)
+
+- Richiesta utente: "come in anagrafica" la tabella delle commissioni in basso al dettaglio referente.
+- Backend: `ReferentScopable` + `Tables/Referents/ReferentScopedTableDefinition` (outermost su
+  `commission-configurations`, inoltra `scopeToRegistry`), `TableRegistry::REFERENT_SCOPE_COLUMNS`. Chiave `referentId`
+  (`exists:referents,id`) su rows/values/export (`TableRowsRequest`, `TableValuesRequest`, `CreateExportRequest`,
+  `TableController::scopeToReferent`, `ExportController`, `ExportService`). Columns non toccato (shape invariata).
+- Frontend: `TableRowScope.referentId` propagato come `registryId` (datasource, values/column-filters, export dialog,
+  chiave filtri locali con segmento `referent-<id>`). `RegistryRelatedGrid` ora riceve `rowScope`. Nuovo
+  `features/referents/referent-related-records.tsx` montato in `ReferentDetailView`. Form commissioni:
+  `supplierRegistryId` sostituito da `recipientPreset {role, recipientId}` (`registry_id` -> SUPPLIER,
+  `referent_id` -> REPORTER, `COMMISSION_CREATE_REFERENT_PARAM`). i18n `referents.detail.related.*` IT/EN; guida
+  `referents#configured-commissions` IT/EN.
+- Verifica: Pest `ReferentCommissionConfigurationScopeTest` 7/7, `tests/Feature/Tables` 62/62, `Exports` 43/43,
+  `CommissionConfigurations` 53/53, `tests/Feature/Table` 303/304: fallisce
+  `TableBulkDeleteTest` "guards the last super-admin" ('forbidden' invece di 'guarded'), percorso users bulk-delete
+  non toccato da questa modifica, da indagare a parte. Vitest referents/registries/commission-configurations/table/
+  exports/data-table 99 file / 861, help 153/153; `tsc -b --force` 0; ESLint pulito (1 warning preesistente).
+
 ## Segnalatori 2026: referenti + commissioni per categoria nel production seed — VERDE, COMMITTATO (2026-10-30)
 
 - Richiesta utente: dall'Excel "Segnalatori 2026_.xlsx" creare i segnalatori mancanti tra i referenti e inserire le
