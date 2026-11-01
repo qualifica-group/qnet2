@@ -10,6 +10,7 @@ use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
+use App\Models\WorkOrder;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Permission\Models\Permission;
 
@@ -84,6 +85,29 @@ if (! function_exists('categoryTabContract')) {
     }
 }
 
+if (! function_exists('categoryTabWorkOrder')) {
+    /**
+     * A mono-offer WorkOrder on a Quote with one REVENUE line per given category ($cost: COST lines instead).
+     */
+    function categoryTabWorkOrder(array $categories, bool $cost = false): WorkOrder
+    {
+        return WorkOrder::factory()->create(['quote_id' => categoryTabQuote($categories, $cost)->id]);
+    }
+}
+
+if (! function_exists('categoryTabMultiWorkOrder')) {
+    /**
+     * A multi-offer WorkOrder (`quote_id` NULL, spec 0267) holding every line of the given Quotes.
+     */
+    function categoryTabMultiWorkOrder(Quote ...$quotes): WorkOrder
+    {
+        $workOrder = WorkOrder::factory()->create(['quote_id' => null]);
+        $workOrder->quoteLines()->attach(QuoteLine::query()->whereIn('quote_id', array_map(static fn (Quote $quote): int => $quote->id, $quotes))->pluck('id')->all());
+
+        return $workOrder;
+    }
+}
+
 // Shared by the root-level tests (spec 0337).
 
 if (! function_exists('categoryTabTree')) {
@@ -136,6 +160,7 @@ if (! function_exists('categoryTabRecord')) {
             'opportunities' => categoryTabOpportunity(...$categories),
             'quotes' => categoryTabQuote($categories),
             'contracts' => categoryTabContract($categories),
+            'work-orders' => categoryTabWorkOrder($categories),
         };
     }
 }
@@ -149,9 +174,9 @@ if (! function_exists('categoryTabCountKey')) {
 }
 
 if (! function_exists('categoryTabModules')) {
-    /** @return array<int, string> the five modules with a category tab strip */
+    /** @return array<int, string> the six modules with a category tab strip */
     function categoryTabModules(): array
     {
-        return ['request-management', 'enrollee-management', 'opportunities', 'quotes', 'contracts'];
+        return ['request-management', 'enrollee-management', 'opportunities', 'quotes', 'contracts', 'work-orders'];
     }
 }

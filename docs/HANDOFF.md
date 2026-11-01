@@ -3,6 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Tab categorie sulle Commesse (spec 0335 rev.3) — VERDE, NON COMMITTATO (2026-11-01)
+
+- Richiesta utente: barra delle categorie prodotto anche sulla griglia Commesse, "come in altri moduli" (D-9).
+- Regola: una commessa compare nella tab di ogni categoria delle righe di RICAVO delle sue offerte di origine
+  (`work_orders.quote_id` + offerte delle righe in `quote_line_work_order`, unica sorgente per la multi-offerta).
+- Backend: `CategoryTabGrid::WorkOrders = 'work-orders'`; `Tables\CategoryTabs\WorkOrderSourceQuotes` (coppie
+  commessa/offerta in UNION, `withRevenueCategory()` per lo scope); `WorkOrders\QuoteScopedTableDefinition` implementa
+  `ProductCategoryScopable` (categoria + ramo radice); `GridCategoryTabsResolver::workOrderRows()`; 3 route in
+  `routes/api/work-orders.php` prima di `{workOrder}`. Nessuna migrazione/permesso nuovo (`work-orders.viewAny`).
+- Test: `tests/Feature/CategoryTabs/WorkOrderCategoryTabsTest.php`; helper `categoryTabWorkOrder`/`categoryTabMultiWorkOrder`;
+  `categoryTabModules()` ora include `work-orders` (i test RootLevel* coprono anche le Commesse).
+- Frontend: `work-orders-table.tsx` monta `CategoryTabs` (source `{ key: 'work-orders', apiBasePath: '/work-orders' }`),
+  conteggi riletti in `onMutated`; test `work-orders-table-category-tabs.test.tsx`. Guida `work-orders#category-tabs` IT/EN;
+  nota preferite in opportunities/quotes/contracts ora cita le Commesse.
+- Verifica: Pest CategoryTabs 85/85 verdi; WorkOrders+Table+Tables+RequestManagement+Contracts 1827/1828, unico rosso
+  `TableBulkDeleteTest` "guards the last super-admin" (atteso `guarded`, ricevuto `forbidden`), area utenti non toccata.
+  Vitest 675/675, ESLint, Pint, `tsc -b --force` puliti.
+- Da fare: manuale Claude Docs sezione Commesse (connettore senza accesso al documento in questa sessione).
+
 ## Clona layout documento (spec 0339) — VERDE, NON COMMITTATO (2026-10-30)
 
 - Richiesta utente: pulsante "Clona" nel modulo Layout per riprendere un layout gia' fatto e continuare a modificarlo.

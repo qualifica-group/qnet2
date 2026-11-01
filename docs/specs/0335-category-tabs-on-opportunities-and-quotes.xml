@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<spec id="0335-category-tabs-on-opportunities-and-quotes" status="approved" owner="utente" date="2026-10-30" revision="2">
+<spec id="0335-category-tabs-on-opportunities-and-quotes" status="approved" owner="utente" date="2026-10-30" revision="3">
 
   <!-- rev.2 (2026-10-30, richiesta utente "aggiungilo anche in contratti"): griglia Contratti, D-8, AC-020..AC-023. -->
+  <!-- rev.3 (2026-11-01, richiesta utente "mettila come in altri moduli"): griglia Commesse, D-9, AC-024..AC-027. -->
 
   <goal>
     Portare la barra delle tab per categoria di prodotto di Gestione Richieste ("Tutte | Categoria (N)",
@@ -56,6 +57,12 @@
     <decision id="D-8">rev.2 — Contratti: un contratto compare nella tab di ogni categoria dei prodotti sulle righe di
       ricavo della SUA offerta (`contracts.quote_id` -> stessa regola di D-1), conteggi sulla `ContractVisibilityScope`
       della griglia, preferiti propri (`module` = `contracts`), stesso comportamento di D-3/D-4/D-5.</decision>
+    <decision id="D-9">rev.3 — Commesse: stessa regola dei Contratti sulle offerte di ORIGINE della commessa (spec 0267, D-4:
+      `work_orders.quote_id` per la mono-offerta, piu' le offerte delle righe collegate in `quote_line_work_order`, unica
+      sorgente per la multi-offerta): una commessa compare nella tab di ogni categoria dei prodotti sulle righe di ricavo
+      di quelle offerte. Conteggi sulla `WorkOrderVisibilityScope` della griglia, preferiti propri (`module` =
+      `work-orders`), stesso comportamento di D-3/D-4/D-5 e del livello "Categorie madri" (spec 0337). Solo la pagina
+      lista `/work-orders`: la tab "Commesse" del dettaglio Contratto resta senza barra.</decision>
     <decision id="D-5">Pannello statistiche Opportunita' ed export NON seguono la tab (parita' con Gestione
       Richieste per l'export).</decision>
     <decision id="D-6">Conteggi tab = righe visibili all'attore nella griglia senza altri filtri: stessa
@@ -77,6 +84,7 @@
       <item>Frontend: `OpportunitiesTable` e `QuotesTable` montano `CategoryTabs` sopra `TableView` (key per selezione, `scope={{ productCategoryId }}`), barra rinfrescata dopo ogni mutazione della griglia.</item>
       <item>Guide in-app IT+EN: nuova sezione `category-tabs` in `opportunities.ts` e `quotes.ts`; manuale Claude Docs: sezioni Opportunita' e Offerte.</item>
       <item>rev.2 — Contratti (D-8): `CategoryTabGrid::Contracts = 'contracts'`; nuovo decoratore `App\Tables\Contracts\ContractCategoryScopedTableDefinition` (outermost per `contracts`); conteggi in `GridCategoryTabsResolver`; route in `routes/api/contracts.php` prima di `{contract}`; barra in `features/contracts/contracts-table.tsx` (source `{ key: 'contracts', apiBasePath: '/contracts' }`); guida in-app `contracts#category-tabs` IT/EN; manuale Claude Docs sezione Contratti.</item>
+      <item>rev.3 — Commesse (D-9): `CategoryTabGrid::WorkOrders = 'work-orders'`; `App\Tables\CategoryTabs\WorkOrderSourceQuotes` (coppie commessa/offerta di origine, unica regola per conteggi e scope); `App\Tables\WorkOrders\QuoteScopedTableDefinition` (gia' outermost per `work-orders`) implementa `ProductCategoryScopable`; conteggi in `GridCategoryTabsResolver`; route in `routes/api/work-orders.php` prima di `{workOrder}`; barra in `features/work-orders/work-orders-table.tsx`; guida in-app `work-orders#category-tabs` IT/EN; manuale Claude Docs sezione Commesse.</item>
     </in>
     <out>
       <item>Colonne attributo per categoria e rinomina Gestori Account su Opportunita'/Offerte (D-3).</item>
@@ -89,7 +97,7 @@
   </scope>
 
   <data_contract>
-    <!-- {grid} in { opportunities, quotes, contracts } (contracts da rev.2). Envelope di progetto { success, message, data }. -->
+    <!-- {grid} in { opportunities, quotes, contracts, work-orders } (contracts da rev.2, work-orders da rev.3). Envelope di progetto { success, message, data }. -->
     <endpoint method="GET" path="/api/{grid}/product-categories">
       <request>nessun parametro; grid ricavato dalla route (route default `categoryTabGrid`), mai dall'input.</request>
       <response status="200">
@@ -150,6 +158,10 @@
     <criterion id="AC-021">rev.2 — GET|PUT /api/contracts/category-tab-preferences: default da competenza, PUT salva su (user, 'contracts') senza toccare le preferenze delle altre griglie; 403 senza `contracts.viewAny`. (Pest)</criterion>
     <criterion id="AC-022">rev.2 — POST /api/tables/contracts/rows (e /values) con productCategoryId = A restituisce solo i contratti la cui offerta ha righe di ricavo su A, una volta ciascuno; config colonne invariata. (Pest)</criterion>
     <criterion id="AC-023">rev.2 — Pagina Contratti: barra sopra la griglia, scope `productCategoryId` alla griglia, selezione in localStorage `contracts.category-tab` con fallback a "Tutte", conteggi riletti dopo un salvataggio; guida `contracts#category-tabs` IT/EN con parity verde. (Vitest contracts-table-category-tabs.test.tsx + help)</criterion>
+    <criterion id="AC-024">rev.3 — Dato commesse visibili: una mono-offerta la cui offerta ha due righe di ricavo su A, una multi-offerta (quote_id NULL) con righe collegate di due offerte con ricavo su A e su B, una la cui offerta ha solo righe di costo su C; quando GET /api/work-orders/product-categories, allora [A: 2, B: 1], C assente; una commessa non visibile (WorkOrderVisibilityScope) non conta; senza `work-orders.viewAny` 403. (Pest WorkOrderCategoryTabsTest)</criterion>
+    <criterion id="AC-025">rev.3 — GET|PUT /api/work-orders/category-tab-preferences: default da competenza, PUT salva su (user, 'work-orders') senza toccare le altre griglie; 403 senza `work-orders.viewAny`. Livello radice (spec 0337) coperto dai test RootLevel* parametrizzati sui moduli. (Pest)</criterion>
+    <criterion id="AC-026">rev.3 — POST /api/tables/work-orders/rows (e /values) con productCategoryId = A restituisce le sole commesse con un'offerta di origine con ricavo su A, una volta ciascuna, totale = conteggio della barra; combinato con quoteId (tab Commesse del Contratto) entrambi gli scope si applicano; config colonne invariata. (Pest)</criterion>
+    <criterion id="AC-027">rev.3 — Pagina Commesse: barra sopra la griglia, scope `productCategoryId` alla griglia, selezione in localStorage `work-orders.category-tab` con fallback a "Tutte", conteggi riletti dopo una mutazione; guida `work-orders#category-tabs` IT/EN con parity verde. (Vitest work-orders-table-category-tabs.test.tsx + help)</criterion>
     <criterion id="AC-019">i18n: chiavi `categoryTabs.*` presenti in IT ed EN, nessuna chiave `requestManagement.categoryTabs.*` residua; guide in-app `opportunities#category-tabs` e `quotes#category-tabs` IT/EN con parity test verde. (Vitest i18n + help-content-parity)</criterion>
   </acceptance_criteria>
 

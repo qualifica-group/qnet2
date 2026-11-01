@@ -18,6 +18,7 @@ const ROOT_SCOPE_VALUE_COLUMN = [
     'opportunities' => 'name',
     'quotes' => 'code',
     'contracts' => 'registry',
+    'work-orders' => 'code',
 ];
 
 it('returns the rows of the whole branch once each, matching the strip count (AC-005)', function (string $module) {

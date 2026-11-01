@@ -145,7 +145,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Favorites are separate for each list (Opportunities, Quotes, Contracts, Request Management). The first time they are suggested from the categories you are enabled for; as soon as you use the star they become yours. The export does not follow the tab: it always covers all the contracts.",
+          text: "Favorites are separate for each list (Opportunities, Quotes, Contracts, Work orders, Request Management). The first time they are suggested from the categories you are enabled for; as soon as you use the star they become yours. The export does not follow the tab: it always covers all the contracts.",
         },
       ],
     },

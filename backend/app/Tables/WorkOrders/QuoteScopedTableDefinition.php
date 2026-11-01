@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Tables\WorkOrders;
 
 use App\Models\User;
+use App\Products\ProductCategoryBranches;
+use App\Tables\CategoryTabs\WorkOrderSourceQuotes;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
+use App\Tables\ProductCategoryScopable;
 use App\Tables\RegistryScopable;
 use App\Tables\TableDefinition;
 use Illuminate\Database\Eloquent\Builder;
@@ -37,8 +40,11 @@ use Illuminate\Database\Eloquent\Model;
  * Commessa is its Offerta's Opportunity's, so the scope is a `whereIn` on the
  * client's Offerte, in AND with the Quote scope. This is the outermost
  * decorator of the domain, hence the one `instanceof RegistryScopable` sees.
+ *
+ * And its `ProductCategoryScopable` (spec 0335 rev.3, D-9): a Commessa shows in
+ * the tab of every category of the REVENUE lines of its source offers.
  */
-class QuoteScopedTableDefinition implements RegistryScopable, TableDefinition
+class QuoteScopedTableDefinition implements ProductCategoryScopable, RegistryScopable, TableDefinition
 {
     use DelegatesUnaugmentedTableMethods;
 
@@ -46,7 +52,14 @@ class QuoteScopedTableDefinition implements RegistryScopable, TableDefinition
 
     private ?int $registryScope = null;
 
-    public function __construct(private readonly TableDefinition $inner) {}
+    private ?int $categoryScope = null;
+
+    private ?int $branchScope = null;
+
+    public function __construct(
+        private readonly TableDefinition $inner,
+        private readonly ProductCategoryBranches $branches,
+    ) {}
 
     /**
      * Narrows `baseQuery()` to one Quote's own work orders (null = no scope,
@@ -74,7 +87,25 @@ class QuoteScopedTableDefinition implements RegistryScopable, TableDefinition
             $query->withQuoteLineOfRegistry($this->registryScope);
         }
 
+        if ($this->categoryScope !== null) {
+            $query->whereIn('work_orders.id', WorkOrderSourceQuotes::withRevenueCategory($this->categoryScope));
+        }
+
+        if ($this->branchScope !== null) {
+            $query->whereIn('work_orders.id', WorkOrderSourceQuotes::withRevenueCategory($this->branches->branchIds($this->branchScope)));
+        }
+
         return $query;
+    }
+
+    public function scopeToProductCategory(?int $productCategoryId): void
+    {
+        $this->categoryScope = $productCategoryId;
+    }
+
+    public function scopeToProductCategoryBranch(?int $rootId): void
+    {
+        $this->branchScope = $rootId;
     }
 
     /**

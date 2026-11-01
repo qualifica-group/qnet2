@@ -55,6 +55,32 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'category-tabs',
+      title: "Filtering by product category",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Above the list is the category bar: the **All** tab and one tab for each product category present, with the number of work orders. Clicking a tab shows only the work orders of that category. Your choice is kept after reloading the page.",
+        },
+        {
+          type: 'paragraph',
+          text: "A work order appears under the tab of every category among the products on the **revenue rows of the offers it comes from**: the linked offer and, for a multi-offer work order, the offers of the rows it holds (it counts once even with several rows of the same category). Cost rows do not count; a work order without revenue rows appears only under **All**. The number next to the name is how many work orders, among those you can see, fall under that category.",
+        },
+        {
+          type: 'steps',
+          items: ["If the tabs do not fit the row, the others move into the **More** menu, where you can search a category by name.","Click the **star** next to a category (in the menu) to add it to your **favorites**: favorites come first.","Turn on **Show only favorites** to see only the favorites in the bar; the others stay in the **More** menu."],
+        },
+        {
+          type: 'paragraph',
+          text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. Turn it off to go back to all the categories.",
+        },
+        {
+          type: 'note',
+          text: "Favorites are separate for each list (Opportunities, Quotes, Contracts, Work orders, Request Management). The first time they are suggested from the categories you are enabled for; as soon as you use the star they become yours. The export does not follow the tab: it always covers all the work orders. The **Work orders** tab of a contract's detail has no bar.",
+        },
+      ],
+    },
+    {
       id: 'force-close',
       title: 'Forced closure and reopening',
       blocks: [
