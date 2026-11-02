@@ -30,6 +30,9 @@ trait SyncsRoleMatrix
     /** The quote visibility widenings the two request modules mirror. */
     private const array QUOTE_VISIBILITY_TIERS = ['viewAll', 'viewSite'];
 
+    /** The modules whose `viewAll` also carries `viewCompetence` (spec 0340, user directive 2026-11-02). */
+    private const array COMPETENCE_SIGHT_RESOURCES = ['opportunities', 'quotes', 'contracts', 'work-orders'];
+
     /**
      * @param  Collection<int, string>  $permissions
      * @param  Collection<int, string>  $catalogue
@@ -60,9 +63,27 @@ trait SyncsRoleMatrix
         $role = Role::findOrCreate($name, Guard::getDefaultName(User::class));
         $role->description = $description;
         $role->save();
-        $role->syncPermissions($this->withRequestModulesSight($permissions)->all());
+        $role->syncPermissions($this->withRequestModulesSight($this->withCompetenceSight($permissions))->all());
 
         return $role;
+    }
+
+    /**
+     * Whoever sees every record of one of COMPETENCE_SIGHT_RESOURCES also gets
+     * that module's `viewCompetence` (user directive 2026-11-02, spec 0340),
+     * so the competence tier is already in place on the roles that see all.
+     *
+     * @param  Collection<int, string>  $permissions
+     * @return Collection<int, string>
+     */
+    private function withCompetenceSight(Collection $permissions): Collection
+    {
+        return $permissions
+            ->merge(collect(self::COMPETENCE_SIGHT_RESOURCES)
+                ->filter(fn (string $resource): bool => $permissions->contains("{$resource}.viewAll"))
+                ->map(fn (string $resource): string => "{$resource}.viewCompetence"))
+            ->unique()
+            ->values();
     }
 
     /**

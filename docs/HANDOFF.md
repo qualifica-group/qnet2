@@ -30,6 +30,11 @@
   `QuoteDocumentPdfTest`, `WorkOrderCategoryTabsTest` AC-024 ordine per nome, Migration/*, ManagementControl/*,
   `TableBulkDeleteTest`, `SettlementApprovalTest` legato alla data). Vitest 9696 verdi (12 unhandled error in
   vat-rates/auth, fuori feature), `tsc -b --force` e ESLint puliti, Pint pulito. `composer test` richiede `COMPOSER_PROCESS_TIMEOUT=0`.
+- rev.2 (2026-11-02, COMMITTATO): `SyncsRoleMatrix::withCompetenceSight()` in `syncRole()` -> nei seed di produzione e di
+  reset ruoli ogni ruolo con `viewAll` su opportunities/quotes/contracts/work-orders riceve `viewCompetence`; `viewCompetence`
+  in `OperatorRoleCatalogue::OWN_REQUESTS_DENIED_ABILITIES` (chi vede solo il suo non cambia). Test
+  `tests/Feature/Seeding/QualificaCompetenceSightSeederTest.php`; guide roles IT/EN e manuale aggiornati. Ruoli gia' nel DB:
+  cambiano solo rieseguendo i seeder dei ruoli (non eseguiti su dev).
 - Da sapere: `ContractsTableDefinition.php` e' a 497 righe (split alla prossima modifica). PDF del manuale da rigenerare.
 
 ## Tab categorie sulle Commesse (spec 0335 rev.3) — VERDE, NON COMMITTATO (2026-11-01)

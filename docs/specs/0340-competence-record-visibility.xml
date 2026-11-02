@@ -70,7 +70,12 @@
 
     Decisioni derivate proposte (da validare in approvazione):
     - D-4: nome ability `viewCompetence` identico sui 6 moduli; etichetta IT "Visualizza per competenza", EN
-      "View by competence". Nessun ruolo la riceve di default (seeder invariati): la assegna l'admin dal form Ruolo.
+      "View by competence". [rev.2, decisione utente 2026-11-02] Nei seeder di produzione (`QualificaProductionDataSeeder`) e di reset ruoli
+      (`QualificaRoleResetSeeder`) ogni ruolo con `{resource}.viewAll` su opportunities/quotes/contracts/work-orders riceve anche
+      `{resource}.viewCompetence` (derivazione unica in `SyncsRoleMatrix::withCompetenceSight()`, usata da `syncRole()`); i moduli
+      richieste/iscritti non la derivano. Chi vede solo i propri record (o quelli della sede) NON la riceve: `viewCompetence` entra
+      in `OperatorRoleCatalogue::OWN_REQUESTS_DENIED_ABILITIES` (blocco "solo le proprie richieste" di Commerciale e Supervisore
+      didattica). Negli altri ruoli la assegna l'admin dal form Ruolo.
     - D-5: il livello e' un gate di RIGA, non di azione (come `viewSite`, spec 0105 D-2): allarga QUALI record
       si vedono; ogni azione resta sulla propria ability (`update`, `delete`, `assignOperator`, ...).
     - D-6: l'interruttore "Assegnabile" NON influisce: riguarda la ricezione di assegnazioni, non la visibilita'.
@@ -105,7 +110,7 @@
       <item>Task, Richieste di acquisto, Lead, Progetti, Campagne e altri moduli con visibilita' propria.</item>
       <item>Combinazione competenza AND sede (D-1: esclusa).</item>
       <item>Nuove azioni concesse dal livello (D-5): nessuna.</item>
-      <item>Seeder ruoli (`QualificaLegacyRoleSeeder` ecc.): nessuna assegnazione automatica del nuovo permesso.</item>
+      <item>[rev.2] Ruoli gia' presenti nel DB (creati o modificati a mano): nessuna migrazione dati; il permesso arriva rieseguendo i seeder dei ruoli o dal form Ruolo.</item>
       <item>Invalidazione immediata delle cache per-utente quando cambia l'ambito di un utente: resta lo stale-while-revalidate attuale, come oggi per il cambio di sede.</item>
       <item>Nessuna migrazione di schema; nessun nuovo endpoint; nessun nuovo componente FE.</item>
       <item>Cambio della regola di assegnazione (`AssignmentCandidates`) e di `coveredCategoryIdsFor()`.</item>

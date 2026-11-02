@@ -434,8 +434,9 @@ final class OperatorRoleCatalogue
      * The request-management abilities a role scoped to its own requests must
      * NOT hold:
      *  - `delete` (user directive 2026-07-31);
-     *  - `viewAll` / `viewSite`: they see ONLY the requests they operate —
-     *    either grant widens the D-3 scoping (RequestManagementScope);
+     *  - `viewAll` / `viewSite` / `viewCompetence` (spec 0340): they see ONLY
+     *    the requests they operate — any of these widens the D-3 scoping
+     *    (RequestManagementScope);
      *  - `updateSource` (spec 0078, D-1): they propose the Fonte instead;
      *  - `assignOperator` (user directive 2026-08-03): the create form's
      *    Operatore and the bulk assign endpoint.
@@ -453,6 +454,7 @@ final class OperatorRoleCatalogue
         'delete',
         'viewAll',
         'viewSite',
+        'viewCompetence',
         'updateSource',
         'assignOperator',
     ];
