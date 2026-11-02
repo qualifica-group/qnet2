@@ -51,7 +51,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Premi **Nuova fattura passiva** e scegli **Fornitore**, **Società**, **Data documento** e **Modalità di pagamento** (e, se serve, conto, sedi, note).',
-            'Aggiungi le **righe**: dal catalogo prodotti oppure libere. Per ogni riga indica descrizione, quantità, prezzo, IVA, **tipo di costo** (obbligatorio) e **commessa**. Il tipo di costo e la commessa di testata sono solo il valore proposto alle nuove righe; per una riga dal catalogo, se la testata non ne ha uno, il tipo di costo si propone dal prodotto (se ne ha uno predefinito).',
+            'Aggiungi le **righe**: dal catalogo prodotti, libere oppure da un ODA. Se il fornitore ha ordini fatturabili per quella società, il riquadro **ODA fatturabili** li elenca con codice, data e totale: con la freccia apri le righe dell’ordine ancora da fatturare (descrizione, quantità **ordinata**, quantità **da fatturare**, prezzo) e con **Aggiungi** le porti nel documento, dove puoi correggere le quantità. Per ogni riga indica descrizione, quantità, prezzo, IVA, **tipo di costo** (obbligatorio) e **commessa**. Il tipo di costo e la commessa di testata sono solo il valore proposto alle nuove righe; per una riga dal catalogo, se la testata non ne ha uno, il tipo di costo si propone dal prodotto (se ne ha uno predefinito).',
             'Se serve, indica **Ritenuta d’acconto** ed **ENASARCO a carico** (opzionali, nella sezione **Trattenute**).',
             'Controlla i **totali**, compreso il **Netto da pagare**, e l’**anteprima delle scadenze**, generate dalla modalità di pagamento.',
             'Premi **Salva**.',
