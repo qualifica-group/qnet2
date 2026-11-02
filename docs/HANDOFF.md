@@ -3,6 +3,20 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Nota "Non trovi un documento? Controlla nel vecchio QNet" (spec 0343) — VERDE, COMMITTATO (2026-11-02)
+
+- `GET /api/attachments` aggiunge `meta.legacy_url` (additivo, `data` invariato), calcolato da
+  `App\Services\Attachments\LegacyRecordLink::forOwner()` dopo l'authz: owner con `old_id` + alias in
+  `config('migrations.legacy_record_paths')` (work_order, registry, purchase_request, purchase_order, purchase_invoice ->
+  pagina del record; opportunity, task -> elenco; purchase_request_line -> pagina della sua RDA) sotto
+  `legacy_files_base_url`; altrimenti null.
+- Frontend: `listAttachments` restituisce `AttachmentList` `{ documents, legacyUrl }`; `useAttachments` espone `legacyUrl`;
+  `features/attachments/legacy-documents-note.tsx` (safeUrl http/https, nuova scheda) montata in fondo a `DocumentsSection`,
+  quindi in ogni modulo e nel dialog Documenti delle righe. Mock `listAttachments` dei test aggiornati (REQUIREMENT CHANGED).
+- Test: `tests/Feature/Attachments/LegacyRecordLinkTest.php` (12), `documents-section.test.tsx` (+2). Attachments Pest 94/94;
+  Vitest 1.453 su moduli con documenti; help parity 153/153; tsc/ESLint/Pint puliti. Guida `general#notes-and-documents`
+  IT/EN e manuale Claude Docs aggiornati.
+
 ## Documenti legacy "solo link" (spec 0295) — VERDE, COMMITTATO (2026-11-02)
 
 - Il legacy invia solo metadati + URL del file (niente base64); qnet-2 salva una riga `attachments` senza file:

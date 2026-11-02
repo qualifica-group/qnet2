@@ -1,6 +1,6 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
-import type { Attachment } from '@/features/attachments/types'
+import type { Attachment, AttachmentList } from '@/features/attachments/types'
 
 /**
  * TanStack Query key for an attachable owner's document list, scoped by
@@ -8,6 +8,11 @@ import type { Attachment } from '@/features/attachments/types'
  */
 export function attachmentsQueryKey(resource: string, id: number, collection: string) {
   return ['attachments', resource, id, collection] as const
+}
+
+/** The list envelope carries `meta.legacy_url` beside the documents (spec 0343). */
+interface AttachmentListResponse extends ApiResponse<Attachment[]> {
+  meta?: { legacy_url: string | null }
 }
 
 /**
@@ -19,11 +24,11 @@ export async function listAttachments(
   resource: string,
   id: number,
   collection: string,
-): Promise<Attachment[]> {
-  const { data } = await apiClient.get<ApiResponse<Attachment[]>>('/attachments', {
+): Promise<AttachmentList> {
+  const { data } = await apiClient.get<AttachmentListResponse>('/attachments', {
     params: { attachable_type: resource, attachable_id: id, collection },
   })
-  return data.data
+  return { documents: data.data, legacyUrl: data.meta?.legacy_url ?? null }
 }
 
 export interface UploadAttachmentPayload {

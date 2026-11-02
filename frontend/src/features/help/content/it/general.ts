@@ -165,6 +165,7 @@ const guide: HelpGuide = {
         },
         { type: 'tip', text: 'Se l’anteprima non si apre, consenti le finestre pop-up per il sito di QNet.' },
         { type: 'note', text: 'I documenti migrati dal vecchio QNet compaiono come gli altri, ma il file resta sul vecchio QNet: **Anteprima** e **Scarica** passano da QNet e richiedono che il vecchio QNet sia raggiungibile, altrimenti compare un errore. **Elimina documento** rimuove solo il collegamento in QNet, non il file sul vecchio QNet. Se alleghi un documento migrato a un’email di una commessa, QNet ne salva una copia nell’email.' },
+        { type: 'tip', text: 'Su un record che viene dal vecchio QNet, sotto i documenti trovi **Non trovi un documento? Controlla nel vecchio QNet**: il link apre quel record nel vecchio QNet (per Opportunità e Task il loro elenco, dove cercarlo), in una nuova scheda. Il vecchio QNet può chiederti di accedere.' },
       ],
     },
     {

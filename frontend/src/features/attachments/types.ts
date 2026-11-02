@@ -25,5 +25,14 @@ export interface Attachment {
   created_at: string
 }
 
+/**
+ * One owner's document list, plus the legacy QNet page where the documents of
+ * a migrated record can still be looked up (spec 0343; null when not migrated).
+ */
+export interface AttachmentList {
+  documents: Attachment[]
+  legacyUrl: string | null
+}
+
 /** Default collection used by `<DocumentsSection>` when the caller omits one. */
 export const DOCUMENTS_COLLECTION = 'documents'

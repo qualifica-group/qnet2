@@ -10,6 +10,7 @@ use App\Models\Attachment;
 use App\Models\OutboundEmail;
 use App\RichText\RichText;
 use App\Services\Attachments\LegacyAttachmentFetcher;
+use App\Services\Attachments\LegacyRecordLink;
 use App\Services\AttachmentService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -35,6 +36,7 @@ class AttachmentController extends BaseApiController
     public function __construct(
         private readonly AttachmentService $service,
         private readonly LegacyAttachmentFetcher $legacyFetcher,
+        private readonly LegacyRecordLink $legacyRecordLink,
     ) {}
 
     /**
@@ -71,7 +73,15 @@ class AttachmentController extends BaseApiController
                 ->latest()
                 ->get();
 
-            return $this->ok(AttachmentResource::collection($attachments));
+            $response = $this->ok(AttachmentResource::collection($attachments));
+
+            // Spec 0343: where the owner's legacy documents can still be looked up.
+            return $response->setData([...$response->getData(true), 'meta' => [
+                'legacy_url' => $this->legacyRecordLink->forOwner(
+                    (string) $request->validated('attachable_type'),
+                    (int) $request->validated('attachable_id'),
+                ),
+            ]]);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }

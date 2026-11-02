@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { AttachmentTile } from '@/features/attachments/attachment-tile'
+import { LegacyDocumentsNote } from '@/features/attachments/legacy-documents-note'
 import { DOCUMENTS_COLLECTION } from '@/features/attachments/types'
 import { useAttachments } from '@/features/attachments/use-attachments'
 import type { Attachment } from '@/features/attachments/types'
@@ -41,7 +42,7 @@ export function DocumentsSection({
 }: DocumentsSectionProps) {
   const { t } = useTranslation()
   const confirm = useConfirm()
-  const { documents, isLoading, isError, refetch, upload, isUploading, remove } = useAttachments(
+  const { documents, legacyUrl, isLoading, isError, refetch, upload, isUploading, remove } = useAttachments(
     resource,
     id,
     collection,
@@ -197,6 +198,8 @@ export function DocumentsSection({
           ))}
         </ul>
       )}
+
+      <LegacyDocumentsNote url={legacyUrl} />
     </div>
   )
 }

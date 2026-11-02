@@ -104,6 +104,19 @@ return [
     'legacy_files_base_url' => env('EXTERNAL_MIGRATION_FILES_BASE_URL'),
     'legacy_files_timeout' => (int) env('EXTERNAL_MIGRATION_FILES_TIMEOUT', 30),
 
+    // Spec 0343 D-4: legacy QNet page of a migrated record, by attachable
+    // alias, under legacy_files_base_url; `{id}` = the record's old_id. The
+    // legacy has no detail page for opportunities and tasks: their list.
+    'legacy_record_paths' => [
+        'work_order' => 'manageorder/{id}',
+        'registry' => 'companyshow/{id}',
+        'purchase_request' => 'rda-manage/{id}',
+        'purchase_order' => 'amministrazione.genera-proforma-fornitori/{id}/view',
+        'purchase_invoice' => 'amministrazione.genera-proforma-fornitori/{id}/view',
+        'opportunity' => 'opportunities',
+        'task' => 'tasks',
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Generic, registry-driven migration source map
