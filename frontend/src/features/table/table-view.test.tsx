@@ -1,4 +1,5 @@
 import { createRef, type ComponentProps, type ReactNode } from 'react'
+import { AxiosError } from 'axios'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -350,5 +351,34 @@ describe('TableView — known total (spec 0178)', () => {
     await datasource.getRows(stubParams(25))
 
     expect(fetchTableRowsMock.mock.calls[2][1]).not.toHaveProperty('knownTotal')
+  })
+})
+
+describe('TableView — config load failure (spec 0328 AC-014)', () => {
+  function rejectConfigWith(status: number, data: Record<string, unknown>) {
+    fetchTableConfigMock.mockRejectedValue(
+      new AxiosError('failed', String(status), undefined, undefined, { status, data } as never),
+    )
+  }
+
+  it('shows the specific sentence on a 403 missing_permission, not the generic load error', async () => {
+    rejectConfigWith(403, {
+      success: false,
+      message: 'Forbidden',
+      authorization: { reason: 'missing_permission', permission: 'quotes.viewAny' },
+    })
+
+    renderTableView()
+
+    expect(await screen.findByText(/You do not have the «.+» permission on the «.+» module\./)).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('table.loadError'))).not.toBeInTheDocument()
+  })
+
+  it('shows the generic load error on a 500', async () => {
+    rejectConfigWith(500, { success: false, message: 'Server error' })
+
+    renderTableView()
+
+    expect(await screen.findByText(i18n.t('table.loadError'))).toBeInTheDocument()
   })
 })

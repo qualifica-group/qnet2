@@ -2,6 +2,7 @@
 
 use App\Enums\TaskStatusGroup;
 use App\Models\Referent;
+use App\Models\ReferentType;
 use App\Models\Registry;
 use App\Models\Role;
 use App\Models\Task;
@@ -401,4 +402,21 @@ it('AC-014: POST with a referent_id linked to the submitted registry_id is accep
     $this->postJson('/api/tasks', taskPayload(['registry_id' => $registry->id, 'referent_id' => $referent->id]))
         ->assertCreated()
         ->assertJsonPath('data.referent_id', $referent->id);
+});
+
+it('the task referent carries its Tipo referente', function () {
+    $actor = taskActorWith(['create', 'view']);
+    $registry = Registry::factory()->create();
+    $type = ReferentType::factory()->create(['name' => 'Titolare']);
+    $referent = Referent::factory()->create(['name' => 'Ada Alberti', 'referent_type_id' => $type->id]);
+    $referent->registries()->attach($registry->id);
+    Sanctum::actingAs($actor);
+
+    $this->postJson('/api/tasks', taskPayload(['registry_id' => $registry->id, 'referent_id' => $referent->id]))
+        ->assertCreated()
+        ->assertJsonPath('data.referent', [
+            'id' => $referent->id,
+            'name' => 'Ada Alberti',
+            'referent_type' => ['id' => $type->id, 'name' => 'Titolare'],
+        ]);
 });

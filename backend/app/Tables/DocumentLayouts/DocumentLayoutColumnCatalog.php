@@ -154,6 +154,14 @@ final class DocumentLayoutColumnCatalog
                 'permission' => 'document-layouts.delete',
             ],
             [
+                'key' => 'clone',
+                'label' => 'actions.clone',
+                'icon' => 'copy',
+                'type' => 'action',
+                'confirm' => false,
+                'permission' => 'document-layouts.create',
+            ],
+            [
                 'key' => 'activity',
                 'label' => 'actions.activity',
                 'icon' => 'history',

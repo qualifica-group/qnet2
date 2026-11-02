@@ -48,7 +48,6 @@ export const workOrderWorkflows = {
     nameMax: 'Il nome può contenere al massimo 255 caratteri.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare il set di stati commessa. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questo set di stati commessa.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
       description: 'Il set di stati commessa non è ancora stato creato: i dati inseriti andranno persi.',
@@ -93,7 +92,6 @@ export const workOrderWorkflows = {
     subtitle: 'Stati applicati alle commesse che non corrispondono a nessun set attivo.',
     loadError: 'Impossibile caricare gli stati di default. Riprova.',
     saved: 'Stati di default aggiornati con successo.',
-    forbidden: 'Non puoi aggiornare gli stati di default.',
     genericError: 'Impossibile aggiornare gli stati di default. Riprova.',
   },
 }

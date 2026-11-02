@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import type { Path } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
@@ -46,7 +47,7 @@ interface UseTagFormArgs {
  * (`onSubmit`).
  */
 export function useTagForm({ mode, onSuccess }: UseTagFormArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -108,7 +109,7 @@ export function useTagForm({ mode, onSuccess }: UseTagFormArgs) {
       onSuccess(created)
     } catch (error) {
       if (!applyServerValidationErrors(error, form.setError, errorFields)) {
-        setServerError(t('tags.form.genericError'))
+        setServerError(apiErrorMessage(error, t('tags.form.genericError'), i18n))
       }
     }
   }

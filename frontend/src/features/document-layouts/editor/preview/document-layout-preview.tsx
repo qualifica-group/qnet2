@@ -1,8 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { cn } from '@/lib/utils'
-import { PreviewBlock } from '@/features/document-layouts/editor/preview/preview-block'
-import { PreviewImageBlock } from '@/features/document-layouts/editor/preview/preview-image-block'
-import { pageSizePx, twipsToPx } from '@/features/document-layouts/editor/preview/preview-scale'
+import { paginateBodyBlocks } from '@/features/document-layouts/editor/preview/preview-pagination'
+import { PreviewSheet } from '@/features/document-layouts/editor/preview/preview-sheet'
+import { usePreviewMeasurement } from '@/features/document-layouts/editor/preview/use-preview-measurement'
 import { buildVariableLabelLookup } from '@/features/document-layouts/editor/preview/variable-chip-utils'
 import type { DocumentLayoutImage } from '@/features/document-layouts/editor/images/document-layout-images-api'
 import type { DocumentLayoutConfig, ImageBlock } from '@/features/document-layouts/layout-config'
@@ -22,61 +22,39 @@ function isBehindPageImage(block: DocumentLayoutConfig['header']['blocks'][numbe
 /**
  * Client-side A4 preview of the config (spec 0069 D-8/AC-127): same twips-
  * >px scale as `preview-scale.ts`'s single constant, margins rendered as
- * padding, variable tokens rendered as readable chips. Header/body/footer
- * stack top-to-bottom on one sheet (no multi-page pagination simulation —
- * D-8 explicitly does not promise pixel fidelity to Word, that is the
- * `.docx` preview endpoint of spec 0070). `behind_page` header images
- * (header-only, D-11) are pulled out of the normal flow and rendered as an
- * absolutely positioned full-page background layer.
- *
- * The sheet itself simulates physical paper (`.docx` output is always white
- * regardless of the app's theme, like any print/PDF preview): its
- * background is a deliberate, documented exception to the app surface-token
- * rule (`ui-design.md` §1-bis governs the app's own chrome, not simulated
- * document content).
+ * padding, variable tokens rendered as readable chips. The body flows over as
+ * many sheets as it needs, each repeating the `behind_page` background, the
+ * header and the footer like the generated document: the sheets drawn are
+ * measured and the body blocks re-split until they fit (whole blocks only —
+ * D-8 does not promise pixel fidelity to Word, that is the `.docx` of spec
+ * 0070).
  */
 export function DocumentLayoutPreview({ config, images, variablesCatalog, className }: DocumentLayoutPreviewProps) {
-  const { width, height } = pageSizePx(config.page.orientation)
+  const containerRef = useRef<HTMLDivElement>(null)
   const labelFor = useMemo(() => buildVariableLabelLookup(variablesCatalog), [variablesCatalog])
   const imagesById = useMemo(() => new Map(images.map((image) => [image.attachment_id, image])), [images])
+  const measurement = usePreviewMeasurement(containerRef)
 
+  const pages = paginateBodyBlocks(config.body.blocks, measurement)
   const backgroundImages = config.header.blocks.filter(isBehindPageImage)
   const headerFlowBlocks = config.header.blocks.filter((block) => !isBehindPageImage(block))
 
-  const padding = {
-    paddingTop: twipsToPx(config.page.margins.top),
-    paddingRight: twipsToPx(config.page.margins.right),
-    paddingBottom: twipsToPx(config.page.margins.bottom),
-    paddingLeft: twipsToPx(config.page.margins.left),
-  }
-
   return (
-    <div
-      role="img"
-      aria-label="A4 preview"
-      className={cn('relative mx-auto shrink-0 overflow-hidden border border-border shadow-sm', className)}
-      style={{ width, height, backgroundColor: '#FFFFFF' }}
-    >
-      {backgroundImages.map((block) => (
-        <PreviewImageBlock key={block.id} block={block} imagesById={imagesById} />
+    <div ref={containerRef} className={cn('flex flex-col gap-4', className)}>
+      {pages.map((bodyBlocks, index) => (
+        <PreviewSheet
+          key={index}
+          page={config.page}
+          backgroundImages={backgroundImages}
+          headerBlocks={headerFlowBlocks}
+          bodyBlocks={bodyBlocks}
+          footerBlocks={config.footer.blocks}
+          imagesById={imagesById}
+          labelFor={labelFor}
+          pageNumber={index + 1}
+          totalPages={pages.length}
+        />
       ))}
-      <div className="relative z-10 flex h-full flex-col gap-2" style={padding}>
-        <div className="flex flex-col gap-1">
-          {headerFlowBlocks.map((block) => (
-            <PreviewBlock key={block.id} block={block} imagesById={imagesById} labelFor={labelFor} />
-          ))}
-        </div>
-        <div className="flex flex-1 flex-col gap-1">
-          {config.body.blocks.map((block) => (
-            <PreviewBlock key={block.id} block={block} imagesById={imagesById} labelFor={labelFor} />
-          ))}
-        </div>
-        <div className="mt-auto flex flex-col gap-1">
-          {config.footer.blocks.map((block) => (
-            <PreviewBlock key={block.id} block={block} imagesById={imagesById} labelFor={labelFor} />
-          ))}
-        </div>
-      </div>
     </div>
   )
 }

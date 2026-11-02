@@ -40,7 +40,6 @@ export const vatRates = {
     rateInvalid: 'Rate must be zero or a positive number.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the VAT rate. Please try again.',
-    deleteForbidden: 'You cannot delete this VAT rate.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The VAT rate has not been created yet: what you entered will be lost.',

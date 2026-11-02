@@ -23,7 +23,6 @@ export const tasksBulk = {
   deleteConfirmDescription_other: 'The {{count}} selected tasks will be deleted. This action cannot be undone.',
   success_one: 'Task updated.',
   success_other: '{{count}} tasks updated.',
-  forbidden: "You don't have permission for this bulk action.",
   genericError: 'Something went wrong with the bulk action. Please try again.',
   incompatibleError_one: 'One task is not compatible with this action: nothing was changed.',
   incompatibleError_other: '{{count}} tasks are not compatible with this action: nothing was changed.',
@@ -35,9 +34,21 @@ export const tasksBulk = {
     confirm: 'Assign',
   },
   completeDialog: {
+    description:
+      'The feedback will be applied to each of the {{count}} tasks; the time entered is the total and will be split among the tasks.',
     title_one: 'Complete the selected task',
     title_other: 'Complete {{count}} tasks',
     confirm: 'Complete',
+  },
+  shares: {
+    title: 'Split among tasks',
+    hint: 'The time entered is the total: edit the single task quotas if you do not want equal parts.',
+    equalSplit: 'Split equally',
+    assigned: 'Assigned {{assigned}} of {{total}} min',
+    mismatch: 'The quotas must add up to the total ({{total}} min).',
+    tooFewMinutes: 'Each task needs at least 1 minute: raise the total or reduce the tasks.',
+    slot: '{{start}} - {{end}}',
+    minutesFor: 'Share of {{title}} (minutes)',
   },
   dateDialog: {
     title: '{{field}} — {{count}} tasks',

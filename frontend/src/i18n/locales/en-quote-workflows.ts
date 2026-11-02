@@ -55,7 +55,6 @@ export const quoteWorkflows = {
     nameMax: 'Name must be at most 191 characters.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the quote workflow. Please try again.',
-    deleteForbidden: 'You cannot delete this quote workflow.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The quote workflow has not been created yet: the data you entered will be lost.',
@@ -110,7 +109,6 @@ export const quoteWorkflows = {
     subtitle: 'Statuses applied to quotes that match no active workflow.',
     loadError: 'Unable to load the default statuses. Please try again.',
     saved: 'Default statuses updated successfully.',
-    forbidden: 'You cannot update the default statuses.',
     genericError: 'Unable to update the default statuses. Please try again.',
   },
 }

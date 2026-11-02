@@ -7,6 +7,7 @@ use App\Models\TaskStatus;
 use App\Models\User;
 use App\Models\WorkOrder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 
@@ -71,7 +72,10 @@ it('bulk assign: replaces assignees on each authorized task, an unauthorized one
     $this->assertDatabaseHas('task_assignee', ['task_id' => $ownTask->id, 'user_id' => $newAssignee->id]);
 });
 
-it('bulk complete: closes completable tasks and logs a time entry each; validation-required, blocked and open-subtask tasks fail without partial writes (AC-018)', function () {
+// REQUIREMENT CHANGED (spec 0338, D-5, replaces spec 0146 AC-018): `complete` is
+// all-or-nothing on the board, like POST /api/tasks/bulk.
+it('bulk complete is all-or-nothing: one blocked, validation-required or open-subtask task makes it 422 with nothing written (spec 0338 AC-006)', function () {
+    Notification::fake();
     $actor = taskBulkActor();
     $workOrder = WorkOrder::factory()->create();
     $openStatus = TaskStatus::factory()->group(TaskStatusGroup::Open)->create();
@@ -88,25 +92,22 @@ it('bulk complete: closes completable tasks and logs a time entry each; validati
 
     Sanctum::actingAs($actor);
 
+    $ids = [$simple->id, $requiringValidation->id, $blocked->id, $withOpenSubtask->id];
+
     $response = $this->postJson("/api/work-orders/{$workOrder->id}/task-board/bulk", [
         'action' => 'complete',
-        'task_ids' => [$simple->id, $requiringValidation->id, $blocked->id, $withOpenSubtask->id],
-        'time_entry' => validTimeEntryPayload(),
-    ])->assertOk();
+        'task_ids' => $ids,
+        'time_entry' => validTimeEntryPayload(['minutes' => 40]),
+        'time_entry_shares' => collect($ids)->map(fn (int $id) => ['task_id' => $id, 'minutes' => 10])->all(),
+    ])->assertStatus(422)->assertJsonPath('success', false);
 
-    expect($response->json('data.succeeded'))->toBe(1)
-        ->and($response->json('data.failed'))->toBe(3);
+    $incompatible = collect($response->json('incompatible_tasks'))->keyBy('id');
+    expect($incompatible->keys()->sort()->values()->all())->toBe(collect([$requiringValidation->id, $blocked->id, $withOpenSubtask->id])->sort()->values()->all())
+        ->and($incompatible[$blocked->id]['reason'])->not->toBeEmpty()
+        ->and($response->json('errors.task_ids'))->not->toBeEmpty();
 
-    $results = collect($response->json('data.results'))->keyBy('task_id');
-    expect($results[$simple->id]['ok'])->toBeTrue()
-        ->and($results[$requiringValidation->id]['ok'])->toBeFalse()
-        ->and($results[$blocked->id]['ok'])->toBeFalse()
-        ->and($results[$withOpenSubtask->id]['ok'])->toBeFalse();
-
-    $this->assertDatabaseHas('time_entries', ['task_id' => $simple->id]);
-    $this->assertDatabaseMissing('time_entries', ['task_id' => $requiringValidation->id]);
-    $this->assertDatabaseHas('tasks', ['id' => $blocked->id, 'is_blocked' => true]);
-    $this->assertDatabaseHas('tasks', ['id' => $withOpenSubtask->id, 'task_status_id' => $openStatus->id]);
+    $this->assertDatabaseCount('time_entries', 0);
+    $this->assertDatabaseHas('tasks', ['id' => $simple->id, 'task_status_id' => $openStatus->id]);
 });
 
 it('bulk complete without for_all_assignees logs the time entry for the actor only (spec 0319 AC-001)', function () {
@@ -123,7 +124,9 @@ it('bulk complete without for_all_assignees logs the time entry for the actor on
     $this->postJson("/api/work-orders/{$workOrder->id}/task-board/bulk", [
         'action' => 'complete',
         'task_ids' => [$task->id],
+        // REQUIREMENT CHANGED (spec 0338): time_entry.minutes is the TOTAL, split via time_entry_shares.
         'time_entry' => validTimeEntryPayload(),
+        'time_entry_shares' => [['task_id' => $task->id, 'minutes' => 60]],
     ])->assertOk();
 
     $this->assertDatabaseCount('time_entries', 1);
@@ -144,7 +147,9 @@ it('bulk complete with for_all_assignees true logs one time entry per assignee (
     $this->postJson("/api/work-orders/{$workOrder->id}/task-board/bulk", [
         'action' => 'complete',
         'task_ids' => [$task->id],
+        // REQUIREMENT CHANGED (spec 0338): time_entry.minutes is the TOTAL, split via time_entry_shares.
         'time_entry' => validTimeEntryPayload(),
+        'time_entry_shares' => [['task_id' => $task->id, 'minutes' => 60]],
         'for_all_assignees' => true,
     ])->assertOk();
 

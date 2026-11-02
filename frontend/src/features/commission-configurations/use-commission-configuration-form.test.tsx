@@ -147,7 +147,7 @@ describe('useCommissionConfigurationForm', () => {
 
   it('seeds a personal SUPPLIER rule on the registry a supplier tab opened it for (spec 0204)', () => {
     const { result } = renderHook(
-      () => useCommissionConfigurationForm({ mode: { type: 'create', supplierRegistryId: 12 }, onSuccess: vi.fn() }),
+      () => useCommissionConfigurationForm({ mode: { type: 'create', recipientPreset: { role: 'SUPPLIER', recipientId: 12 } }, onSuccess: vi.fn() }),
       { wrapper: wrapper() },
     )
     expect(result.current.form.getValues()).toMatchObject({
@@ -160,7 +160,7 @@ describe('useCommissionConfigurationForm', () => {
 
   it('keeps the role-wide COMMERCIAL default without a supplier', () => {
     const { result } = renderHook(
-      () => useCommissionConfigurationForm({ mode: { type: 'create', supplierRegistryId: null }, onSuccess: vi.fn() }),
+      () => useCommissionConfigurationForm({ mode: { type: 'create', recipientPreset: null }, onSuccess: vi.fn() }),
       { wrapper: wrapper() },
     )
     expect(result.current.form.getValues()).toMatchObject({

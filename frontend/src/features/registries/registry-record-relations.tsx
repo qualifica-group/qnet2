@@ -8,6 +8,7 @@ import { managerPositionLabel } from '@/features/shared/manager-position-label'
 import { PersonContactLines, PersonField, RegistryReferents } from '@/features/registries/registry-detail-people'
 import {
   RegistryManagersField,
+  RegistryPrimaryReferentField,
   RegistryReferentRoleField,
   RegistryReferentsField,
   RegistrySectorsField,
@@ -172,6 +173,7 @@ export function RegistryTeamRecordSection({ values, form, inline }: RegistryReco
  */
 export function RegistryReferentsRecordSection({ values, form, inline }: RegistryRecordSectionProps) {
   const { t } = useTranslation()
+  const { control, setValue, getValues } = form
 
   return (
     <RecordSection title={t('registries.form.referents')} icon={<Users />} className={FULL_WIDTH_SECTION_CLASS}>
@@ -180,10 +182,27 @@ export function RegistryReferentsRecordSection({ values, form, inline }: Registr
         label={t('registries.form.referents')}
         inline={inline}
         layout="block"
-        editor={<RegistryReferentsField control={form.control} selected={values.referents} />}
+        editor={
+          <RegistryReferentsField
+            control={control}
+            selected={values.referents}
+            setValue={setValue}
+            getPrimaryReferentId={() => getValues('primary_referent_id')}
+          />
+        }
       >
-        <RegistryReferents referents={values.referents} />
+        <RegistryReferents referents={values.referents} primaryReferentId={values.primary_referent?.id ?? null} />
       </RecordInlineField>
+      <RecordFieldList>
+        <RecordInlineField
+          field="primary_referent_id"
+          label={t('registries.form.primaryReferent')}
+          inline={inline}
+          editor={<RegistryPrimaryReferentField control={control} selected={values.referents} />}
+        >
+          {values.primary_referent?.name ?? <DetailEmpty />}
+        </RecordInlineField>
+      </RecordFieldList>
     </RecordSection>
   )
 }

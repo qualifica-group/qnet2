@@ -248,7 +248,6 @@ export const productCategories = {
     deleted: 'Category deleted successfully.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the category. Please try again.',
-    deleteForbidden: 'You cannot delete this category.',
     deleteInUse: 'This category has subcategories or products.',
     sections: {
       identity: {
@@ -439,7 +438,6 @@ export const products = {
       confirm: 'Leave without saving',
       cancel: 'Keep editing',
     },
-    deleteForbidden: 'You cannot delete this product.',
     sections: {
       identity: {
         title: 'Identity',

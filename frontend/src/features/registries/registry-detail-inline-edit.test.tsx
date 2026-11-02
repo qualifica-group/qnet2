@@ -141,6 +141,29 @@ describe('RegistryDetailView — in-place editing (spec 0200)', () => {
     vi.restoreAllMocks()
   })
 
+  // Spec 0330 AC-012: the "Main referent" row saves with a PATCH of that field alone.
+  it('PATCHes the main referent alone from its in-place row', async () => {
+    const referents = [
+      { id: 1, name: 'Ada Lovelace', referent_type: null },
+      { id: 2, name: 'Grace Hopper', referent_type: null },
+    ]
+    const base = {
+      referent_ids: [1, 2],
+      referents,
+      primary_referent_id: 1,
+      primary_referent: { id: 1, name: 'Ada Lovelace' },
+    }
+    updateRegistryMock.mockResolvedValue(registryFixture(base))
+    renderDetail(registryFixture(base))
+
+    fireEvent.click(pencilOf('Main referent'))
+    fireEvent.click(screen.getByRole('combobox', { name: /Main referent/ }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Grace Hopper' }))
+    saveOpenRow()
+
+    await waitFor(() => expect(updateRegistryMock).toHaveBeenCalledWith(7, { primary_referent_id: 2 }))
+  })
+
   it('shows "Qualified supplier" only on a supplier', () => {
     renderDetail(registryFixture({ is_supplier: false }))
     expect(screen.queryByText('Qualified supplier')).not.toBeInTheDocument()

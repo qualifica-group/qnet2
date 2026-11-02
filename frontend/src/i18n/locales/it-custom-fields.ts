@@ -177,7 +177,6 @@ export const customFields = {
     deleted: 'Campo personalizzato eliminato con successo.',
     genericError: 'Qualcosa è andato storto. Riprova.',
     deleteError: 'Impossibile eliminare il campo personalizzato. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questo campo personalizzato.',
     entityType: 'Modulo',
     entityTypePlaceholder: 'Seleziona un modulo…',
     entityTypeRequired: 'Il modulo è obbligatorio.',

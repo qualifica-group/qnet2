@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0328-personal-data-child-authorization" status="done" owner="utente" date="2026-10-29" amends="0006,0008">
+
+  <goal>
+    Indirizzi e contatti di una scheda anagrafica si autorizzano dal record padre (Utente, Anagrafica, Referente,
+    Sede aziendale) e dalla sua matrice dei campi, non da permessi `addresses.*`/`contacts.*` che il form Ruoli non
+    puo' assegnare.
+  </goal>
+
+  <context>
+    - `POST/PUT/DELETE /api/addresses` e `/api/contacts` (salvataggio immediato dai dettagli di Utenti, Anagrafiche,
+      Referenti, Sedi aziendali) controllavano `addresses.*`/`contacts.*`. Questi permessi sono esclusi dal form
+      Ruoli (AssignablePermissionCatalogue): un ruolo creato da interfaccia con `registries.update` vedeva la sezione
+      modificabile (matrice `personal_data.addresses`) ma riceveva 403 al salvataggio.
+    - Il frontend abilita gia' le sezioni dalla voce `personal_data.addresses`/`personal_data.contacts` della
+      matrice del form padre (`fieldPermission` dei manager): il backend la rispecchia.
+    - I form di creazione (buffer) e il profilo personale scrivono contatti e indirizzi dentro il payload del padre:
+      non passano da questi endpoint e non cambiano.
+  </context>
+
+  <decisions>
+    D-1 Padre = `personable` della scheda (`addressable`/`contactable` di tipo `personal_data`). La risorsa del padre
+        viene da `config('personal_data.owner_resources')` (alias morph -> chiave di autorizzazione):
+        user -> users, registry -> registries, referent -> referents, company_site -> company-sites.
+    D-2 Lettura: `view` sul padre E voce `personal_data.{addresses|contacts}` visibile nella matrice del padre.
+        Scrittura (create/update/delete): `update` sul padre E voce modificabile e non disabilitata.
+    D-3 Fail closed: proprietario non `personal_data`, scheda senza padre, tipo di padre non mappato -> 403.
+    D-4 I permessi `addresses.*` e `contacts.*` spariscono: le policy non estendono piu' BasePolicy (niente piu'
+        `permissions:sync`), una migrazione elimina le righe esistenti, i seeder non li assegnano piu'.
+    D-5 Fuori scope: `personal_data.*` (endpoint `/api/personal-data`, non usati per scrivere dall'interfaccia)
+        resta com'e'.
+  </decisions>
+
+  <data_contract>
+    <shape>
+      Nessun cambio di request/response. Cambia solo l'autorizzazione (403) degli endpoint
+      GET/POST/PUT/PATCH/DELETE `/api/addresses` e `/api/contacts`. POST autorizza sul padre della scheda indicata da
+      `addressable_id`/`contactable_id`.
+    </shape>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Un ruolo con `registries.update` (o `users`/`referents`/`company-sites`) crea, modifica ed elimina indirizzi e contatti della scheda di quel padre senza altri permessi.</criterion>
+    <criterion id="AC-002">Con solo `view` sul padre: lettura 200, scrittura 403.</criterion>
+    <criterion id="AC-003">Matrice del padre con la voce nascosta -> 403 anche in lettura; in sola lettura -> 403 in scrittura.</criterion>
+    <criterion id="AC-004">Indirizzo di un proprietario diverso da una scheda, o scheda senza padre -> 403.</criterion>
+    <criterion id="AC-005">`addresses.*`/`contacts.*` non esistono piu' nel catalogo permessi dopo migrazione e `permissions:sync`.</criterion>
+  </acceptance_criteria>
+</spec>

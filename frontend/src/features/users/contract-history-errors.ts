@@ -1,7 +1,7 @@
 import axios from 'axios'
 
-/** How a rejected history write is told to the user (spec 0272): forbidden, not-the-last, field errors or other. */
-export type ContractErrorKind = 'forbidden' | 'conflict' | 'validation' | 'unknown'
+/** How a rejected history write is told to the user (spec 0272): not-the-last, field errors or other. */
+export type ContractErrorKind = 'conflict' | 'validation' | 'unknown'
 
 export interface ContractError {
   kind: ContractErrorKind
@@ -9,7 +9,6 @@ export interface ContractError {
   fieldErrors: Record<string, string[]>
 }
 
-const HTTP_FORBIDDEN = 403
 const HTTP_CONFLICT = 409
 const HTTP_UNPROCESSABLE = 422
 
@@ -19,8 +18,6 @@ export function classifyContractError(error: unknown): ContractError {
   }
   const data = error.response?.data as { errors?: Record<string, string[]> } | undefined
   switch (error.response?.status) {
-    case HTTP_FORBIDDEN:
-      return { kind: 'forbidden', fieldErrors: {} }
     case HTTP_CONFLICT:
       return { kind: 'conflict', fieldErrors: {} }
     case HTTP_UNPROCESSABLE:

@@ -7,7 +7,7 @@
  * the mounting panel owns the value.
  */
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Search, SlidersHorizontal, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -47,15 +47,25 @@ interface TaskBoardToolbarProps {
   options: TaskBoardFilterOptions
   viewMode: TaskBoardViewMode
   onViewModeChange: (mode: TaskBoardViewMode) => void
+  /** The board-wide "select all" control, first in the controls row; omitted on a read-only board. */
+  selectAllSlot?: ReactNode
 }
 
-export function TaskBoardToolbar({ filters, onFiltersChange, options, viewMode, onViewModeChange }: TaskBoardToolbarProps) {
+export function TaskBoardToolbar({
+  filters,
+  onFiltersChange,
+  options,
+  viewMode,
+  onViewModeChange,
+  selectAllSlot,
+}: TaskBoardToolbarProps) {
   const { t } = useTranslation()
   const [isSheetOpen, setIsSheetOpen] = useState(false)
 
   return (
     <div className={BAR_CLASS}>
       <div className="flex flex-wrap items-center gap-2">
+        {selectAllSlot}
         <div className="relative min-w-0 flex-1 sm:max-w-64">
           <Search
             className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"

@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -16,6 +15,7 @@ import type {
 } from '@/features/table/types'
 import { roleColumnRenderers } from '@/features/roles/column-renderers'
 import { deleteRole } from '@/features/roles/api'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 
 /** Domain key used to mount the generic table for roles. */
 const ROLES_DOMAIN = 'roles'
@@ -33,7 +33,7 @@ const SYSTEM_ROLE = 'super-admin'
  * the backend re-authorizes each call.
  */
 export function RolesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -58,17 +58,12 @@ export function RolesTable() {
         toast.success(t('roles.form.deleted'))
         refreshGrid()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        toast.error(
-          status === 403
-            ? t('roles.form.deleteForbidden')
-            : t('roles.form.deleteError'),
-        )
+        toast.error(apiErrorMessage(error, t('roles.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(

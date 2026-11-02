@@ -70,9 +70,11 @@ class QualificaLegacyRoleSeeder extends Seeder
     {
         $permissions = $catalogue->filter(static function (string $permission) use ($matrix): bool {
             $abilities = $matrix[Str::beforeLast($permission, '.')] ?? [];
+            $ability = Str::afterLast($permission, '.');
 
             return $abilities === LegacyRoleCatalogue::ALL
-                || in_array(Str::afterLast($permission, '.'), (array) $abilities, true);
+                || ($abilities === LegacyRoleCatalogue::ALL_BUT_VIEW_ALL && $ability !== 'viewAll')
+                || in_array($ability, (array) $abilities, true);
         })->values();
 
         return $this->withUserFormStack($permissions, $catalogue);

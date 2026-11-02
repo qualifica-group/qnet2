@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { useClearCollection } from '@/features/invoices/use-invoice-queries'
 import type { InvoiceInstallment } from '@/features/invoices/types'
 
@@ -8,7 +9,7 @@ const CONFLICT_STATUS = 409
 
 /** Dialog targets + confirmed "Annulla incasso" mutation shared by every surface listing installments. */
 export function useInvoiceCollectionActions(onChanged?: () => void) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [collectTarget, setCollectTarget] = useState<InvoiceInstallment | null>(null)
   const [clearTarget, setClearTarget] = useState<InvoiceInstallment | null>(null)
   const clearMutation = useClearCollection()
@@ -28,15 +29,13 @@ export function useInvoiceCollectionActions(onChanged?: () => void) {
       },
       onError: (error) =>
         toast.error(
-          t(
-            error.response?.status === CONFLICT_STATUS
-              ? 'invoices.detail.clearCollectionConflict'
-              : 'invoices.collection.genericError',
-          ),
+          error.response?.status === CONFLICT_STATUS
+            ? t('invoices.detail.clearCollectionConflict')
+            : apiErrorMessage(error, t('invoices.collection.genericError'), i18n),
         ),
       onSettled: () => setClearTarget(null),
     })
-  }, [clearCollection, clearTarget, onChanged, t])
+  }, [clearCollection, clearTarget, onChanged, t, i18n])
 
   return {
     collectTarget,

@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Models\User;
 use App\Policies\Abstracts\BasePolicy;
 use App\Services\RoleAssignmentGuard;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
 
 class UserPolicy extends BasePolicy
@@ -25,9 +26,9 @@ class UserPolicy extends BasePolicy
      * only by another super-admin. Gate::before grants a super-admin actor
      * every ability, so reaching this method means the actor is not one.
      */
-    public function update(User $user, Model $model): bool
+    public function update(User $user, Model $model): bool|Response
     {
-        return ! $this->isPrivilegedTarget($model) && parent::update($user, $model);
+        return $this->withinPerimeter($user->can($this->permission('update')), fn (): bool => ! $this->isPrivilegedTarget($model), 'user_super_admin_protected');
     }
 
     /**
@@ -35,13 +36,17 @@ class UserPolicy extends BasePolicy
      * delete their own account (it would lock them, or the last admin, out),
      * and only a super-admin deletes a super-admin.
      */
-    public function delete(User $user, Model $model): bool
+    public function delete(User $user, Model $model): bool|Response
     {
-        if ($user->is($model) || $this->isPrivilegedTarget($model)) {
-            return false;
+        if (! $user->can($this->permission('delete'))) {
+            return Response::deny();
         }
 
-        return parent::delete($user, $model);
+        if ($user->is($model)) {
+            return $this->denyBecause('user_self_delete');
+        }
+
+        return $this->isPrivilegedTarget($model) ? $this->denyBecause('user_super_admin_protected') : Response::allow();
     }
 
     /**
@@ -71,13 +76,9 @@ class UserPolicy extends BasePolicy
      * only be guaranteed unconditionally in ImpersonationService, which is
      * where they live.
      */
-    public function impersonate(User $user, Model $model): bool
+    public function impersonate(User $user, Model $model): Response
     {
-        if (! $user->can($this->permission('impersonate'))) {
-            return false;
-        }
-
-        return ! $this->isPrivilegedTarget($model);
+        return $this->withinPerimeter($user->can($this->permission('impersonate')), fn (): bool => ! $this->isPrivilegedTarget($model), 'user_super_admin_protected');
     }
 
     /**

@@ -28,7 +28,6 @@ class OpportunityFactory extends Factory
             'commercial_id' => null,
             'reporter_id' => null,
             'supervisor_id' => null,
-            'source_id' => null,
             'operational_site_id' => null,
             'lead_id' => null,
             'start_date' => fake()->optional()->date(),

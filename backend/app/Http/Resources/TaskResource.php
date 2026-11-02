@@ -8,6 +8,7 @@ use App\Models\TaskRecurrence;
 use App\Services\Tasks\TaskActionAvailability;
 use App\Services\Tasks\TaskStatusResolver;
 use App\Services\Tasks\TaskTimeEntryRequirement;
+use App\Support\ReferentRef;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -65,7 +66,7 @@ class TaskResource extends JsonResource
             'registry_id' => $this->registry_id,
             'registry' => $this->nameRef($this->registry),
             'referent_id' => $this->referent_id,
-            'referent' => $this->nameRef($this->referent),
+            'referent' => ReferentRef::summarize($this->referent),
             'parent_task_id' => $this->parent_task_id,
             'parent_task' => $this->parentTask === null
                 ? null

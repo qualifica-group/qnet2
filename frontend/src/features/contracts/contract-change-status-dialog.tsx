@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -44,7 +45,7 @@ export function ContractChangeStatusDialog({
   contract,
   onChanged,
 }: ContractChangeStatusDialogProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const schema = buildChangeContractStatusSchema(t)
   const defaultValues: ChangeContractStatusFormValues = { contract_status_id: contract.contract_status_id }
 
@@ -67,7 +68,7 @@ export function ContractChangeStatusDialog({
       await changeStatusMutation.mutateAsync(buildChangeStatusPayload(values))
     } catch (error) {
       if (!applyServerValidationErrors(error, form.setError, [...SERVER_ERROR_FIELDS])) {
-        toast.error(t('contracts.actions.changeStatusDialog.genericError'))
+        toast.error(apiErrorMessage(error, t('contracts.actions.changeStatusDialog.genericError'), i18n))
       }
     }
   }

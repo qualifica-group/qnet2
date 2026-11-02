@@ -38,7 +38,7 @@ final class AbsenceRequestTransitions
         return DB::transaction(function () use ($request, $actor): AbsenceRequest {
             // Step 1: lock, then the person or the HR office only (403)
             $request = $this->locked($request);
-            abort_unless($this->visibility->isOwnerOrManager($actor, $request), 403, 'This action is unauthorized.');
+            abort_unless($this->visibility->isOwnerOrManager($actor, $request), 403, __('Only the owner or a manager can act on this absence request.'));
 
             // Step 2: only a submitted or approved request can be cancelled (409)
             abort_unless($this->capabilities->isCancellableStatus($request), 409, __('absence_requests.not_cancellable'));
@@ -71,7 +71,7 @@ final class AbsenceRequestTransitions
         return DB::transaction(function () use ($request, $actor, $to, $reason): AbsenceRequest {
             // Step 1: lock, then only an approver snapshotted at submission or the HR office decides (403)
             $request = $this->locked($request);
-            abort_unless($this->visibility->canDecide($actor, $request), 403, 'This action is unauthorized.');
+            abort_unless($this->visibility->canDecide($actor, $request), 403, __('You cannot decide this absence request.'));
 
             // Step 2: only a submitted request can be decided (409)
             abort_unless($request->status === AbsenceRequestStatus::Submitted, 409, __('absence_requests.not_submitted'));

@@ -55,6 +55,7 @@ export function useRegistryDraftValues(control: Control<RegistryFormValues>): Re
     source: refOf(sources, draft.source_id),
     sectors: sectorIds.map((id) => ({ id, name: sectors.get(id)?.label ?? PENDING_LABEL })),
     referents: listedReferentIds.map((id) => ({ id, name: referents.get(id)?.label ?? PENDING_LABEL })),
+    primary_referent: refOf(referents, draft.primary_referent_id),
     commercial: refOf(referents, draft.commercial_id),
     reporter: refOf(referents, draft.reporter_id),
     supervisor: refOf(users, draft.supervisor_id),

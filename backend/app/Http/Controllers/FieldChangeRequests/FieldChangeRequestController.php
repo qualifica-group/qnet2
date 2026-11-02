@@ -22,6 +22,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -49,7 +50,7 @@ class FieldChangeRequestController extends BaseApiController
         try {
             /** @var User $user */
             $user = $request->user();
-            abort_unless($user->can('field-change-requests.create'), HttpStatusEnum::FORBIDDEN->value);
+            Gate::forUser($user)->authorize('field-change-requests.create');
 
             $fieldChangeRequest = $this->creator->handle($request->toData(), $user);
 
@@ -98,7 +99,7 @@ class FieldChangeRequestController extends BaseApiController
 
             if (! $user->can('field-change-requests.viewAny')) {
                 $query->where('requested_by_id', $user->id);
-                abort_unless($query->exists(), HttpStatusEnum::FORBIDDEN->value);
+                abort_unless($query->exists(), HttpStatusEnum::FORBIDDEN->value, __('You cannot view the change requests of this record.'));
             }
 
             return $this->ok(FieldChangeRequestResource::collection($this->pendingFirst($query)));
@@ -115,7 +116,7 @@ class FieldChangeRequestController extends BaseApiController
         try {
             /** @var User $user */
             $user = $request->user();
-            abort_unless($user->can('field-change-requests.manage'), HttpStatusEnum::FORBIDDEN->value);
+            Gate::forUser($user)->authorize('field-change-requests.manage');
 
             $handled = $this->approver->handle($fieldChangeRequest, $user, $request->note());
 
@@ -133,7 +134,7 @@ class FieldChangeRequestController extends BaseApiController
         try {
             /** @var User $user */
             $user = $request->user();
-            abort_unless($user->can('field-change-requests.manage'), HttpStatusEnum::FORBIDDEN->value);
+            Gate::forUser($user)->authorize('field-change-requests.manage');
 
             $handled = $this->rejecter->handle($fieldChangeRequest, $user, $request->note());
 

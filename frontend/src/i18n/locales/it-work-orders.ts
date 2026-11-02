@@ -68,7 +68,6 @@ export const workOrders = {
     startDate: 'Data inizio',
     supervisors: 'Responsabili',
     participants: 'Partecipanti',
-    registry: 'Anagrafica cliente',
     contract: 'Contratto',
     contractExpiryDate: 'Scadenza contratto',
     company: 'Società',
@@ -87,8 +86,10 @@ export const workOrders = {
     updated_at: 'Aggiornata il',
     sections: {
       identity: 'Dettagli',
-      contract: 'Contratto',
+      data: 'Dati commessa',
       team: 'Responsabili e partecipanti',
+      detailTeam: 'Team',
+      rewards: 'Buoni',
       company: 'Società e sedi',
       closure: 'Chiusura',
     },
@@ -246,6 +247,8 @@ export const workOrders = {
     bulk: {
       selectedCount_one: '{{count}} task selezionato',
       selectedCount_other: '{{count}} task selezionati',
+      selectAll: 'Seleziona tutti',
+      selectStage: 'Seleziona tutti i task della fase {{name}}',
       action: {
         assign: 'Assegna',
         complete: 'Completa',
@@ -352,7 +355,6 @@ export const workOrders = {
     openTasksWarning_other: '{{count}} task aperti verranno chiusi con esito negativo.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare la commessa. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questa commessa.',
     deleteConflict: 'Impossibile eliminare: la commessa è utilizzata altrove.',
     sections: {
       offer: {

@@ -1,5 +1,6 @@
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { toast } from 'sonner'
 import { AlertCircle, Clock, Download, Loader2, Mail, Paperclip, RotateCw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -31,7 +32,7 @@ export interface OutboundEmailDetailDialogProps {
  * "Reinvia" straight from here — no need to reopen the composer.
  */
 export function OutboundEmailDetailDialog({ owner, emailId, open, onOpenChange }: OutboundEmailDetailDialogProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { data: email, isLoading, isError, refetch } = useOutboundEmail(owner, emailId)
   const resend = useSendOutboundEmail(owner, emailId)
   const attachmentsTitleId = useId()
@@ -40,15 +41,15 @@ export function OutboundEmailDetailDialog({ owner, emailId, open, onOpenChange }
     try {
       await resend.mutateAsync()
       toast.success(t('outboundEmails.composer.sent'))
-    } catch {
-      toast.error(t('outboundEmails.composer.genericError'))
+    } catch (error) {
+      toast.error(apiErrorMessage(error, t('outboundEmails.composer.genericError'), i18n))
     }
   }
 
   const handleDownload = (attachment: OutboundEmailAttachment) => {
     downloadOutboundEmailAttachment(owner, emailId, attachment.id)
       .then((blob) => saveBlob(blob, attachment.original_name))
-      .catch(() => toast.error(t('outboundEmails.detail.downloadError')))
+      .catch((error: unknown) => toast.error(apiErrorMessage(error, t('outboundEmails.detail.downloadError'), i18n)))
   }
 
   return (

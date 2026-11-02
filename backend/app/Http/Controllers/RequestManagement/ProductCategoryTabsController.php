@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Controllers\RequestManagement;
 
 use App\Http\Controllers\Abstract\BaseApiController;
+use App\Http\Requests\CategoryTabs\CategoryTabLevelRequest;
 use App\Http\Resources\ProductCategoryTabResource;
 use App\RequestManagement\RequestModule;
 use App\Services\RequestManagement\RequestCategoryTabsResolver;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -30,14 +31,14 @@ class ProductCategoryTabsController extends BaseApiController
 {
     public function __construct(private readonly RequestCategoryTabsResolver $resolver) {}
 
-    public function __invoke(Request $request): JsonResponse
+    public function __invoke(CategoryTabLevelRequest $request): JsonResponse
     {
         try {
             $user = $request->user();
             $module = RequestModule::fromRequest($request);
-            abort_unless($user->can($module->permission('viewAny')), 403);
+            Gate::forUser($user)->authorize($module->permission('viewAny'));
 
-            $categories = $this->resolver->resolve($user, $module);
+            $categories = $this->resolver->resolve($user, $module, $request->level());
 
             return $this->ok(['categories' => ProductCategoryTabResource::collection($categories)]);
         } catch (Throwable $exception) {

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { LayoutTemplate, Trash2, Wand2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -127,7 +128,7 @@ interface SavedTemplatesMenuProps {
  * would violate the structure-identity guarantee (spec 0035 `<out>`).
  */
 export function SavedTemplatesMenu({ domain }: SavedTemplatesMenuProps) {
-  const { t } = useTranslation('importWizard')
+  const { t, i18n } = useTranslation('importWizard')
   const { user } = useAuth()
   const confirm = useConfirm()
   const { data: templates } = useMappingTemplates(domain)
@@ -148,8 +149,8 @@ export function SavedTemplatesMenu({ domain }: SavedTemplatesMenuProps) {
     try {
       await deleteTemplate.mutateAsync(template.id)
       toast.success(t('mapping.templates.deleteSuccess'))
-    } catch {
-      toast.error(t('mapping.templates.deleteError'))
+    } catch (error) {
+      toast.error(apiErrorMessage(error, t('mapping.templates.deleteError'), i18n))
     }
   }
 

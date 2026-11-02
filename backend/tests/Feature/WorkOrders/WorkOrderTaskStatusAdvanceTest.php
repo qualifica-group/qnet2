@@ -142,7 +142,9 @@ it('AC-011: bulk complete applies each closure, the total is the max and never g
     $this->postJson("/api/work-orders/{$workOrder->id}/task-board/bulk", [
         'task_ids' => [$first->id, $second->id],
         'action' => 'complete',
+        // REQUIREMENT CHANGED (spec 0338): time_entry.minutes is the TOTAL, split via time_entry_shares.
         'time_entry' => validTimeEntryPayload(),
+        'time_entry_shares' => [['task_id' => $first->id, 'minutes' => 30], ['task_id' => $second->id, 'minutes' => 30]],
     ])->assertOk();
 
     expect(progressTotal($workOrder))->toBe(70)

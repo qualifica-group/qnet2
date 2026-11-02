@@ -36,6 +36,8 @@ export interface TableRowScope {
    * for every domain but `opportunities`, `quotes`, `work-orders`, `tasks`.
    */
   registryId?: number
+  /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
+  referentId?: number
 }
 
 /** SSRM rows request payload (AG Grid IServerSideGetRowsRequest subset). */
@@ -63,6 +65,11 @@ export interface TableRowsPayload {
    */
   productCategoryId?: number | null
   /**
+   * A ROOT Product Category tab (spec 0337): the rows of that category's whole branch. Mutually exclusive
+   * with `productCategoryId`; adds no `attr.*` column.
+   */
+  productCategoryBranchId?: number | null
+  /**
    * Row-set scope to one parent record (spec 0067 D-1, `TableRowScope`), e.g.
    * an Opportunity's Quotes panel. Sent only when the caller passes a
    * `rowScope` with a value; a no-op for every domain but `quotes`.
@@ -72,6 +79,8 @@ export interface TableRowsPayload {
   quoteId?: number | null
   /** Row-set scope to one Anagrafica (spec 0199), same rule as above. */
   registryId?: number | null
+  /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
+  referentId?: number | null
   /**
    * Server-side tree data (spec 0157 D-1): `true` requests the domain's tree
    * shape instead of the flat one. Omitted/`false` ⇒ today's flat behavior,
@@ -214,12 +223,16 @@ export interface TableColumnValuesPayload {
    * attributes. Omitted for every native/`custom.*` column.
    */
   productCategoryId?: number | null
+  /** A ROOT Product Category tab (spec 0337), same rule as in the rows payload. */
+  productCategoryBranchId?: number | null
   /** Row-set scope to one parent record (spec 0067 D-1), same rule as above. */
   opportunityId?: number | null
   /** Row-set scope to one Contract's Offerta (spec 0095 D-8), same rule as above. */
   quoteId?: number | null
   /** Row-set scope to one Anagrafica (spec 0199), same rule as above. */
   registryId?: number | null
+  /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
+  referentId?: number | null
 }
 
 /** Response of POST /tables/{domain}/values (envelope `data`). */

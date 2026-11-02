@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -35,7 +35,7 @@ const OPERATIONAL_SITES_DOMAIN = 'operational-sites'
  * re-authorizes each call.
  */
 export function OperationalSitesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const stats = useStatsPanel(OPERATIONAL_SITES_DOMAIN)
   const invalidateStats = useInvalidateModuleStats(OPERATIONAL_SITES_DOMAIN)
 
@@ -66,17 +66,12 @@ export function OperationalSitesTable() {
         refreshGrid()
         invalidateStats()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        toast.error(
-          status === 403
-            ? t('operationalSites.form.deleteForbidden')
-            : t('operationalSites.form.deleteError'),
-        )
+        toast.error(apiErrorMessage(error, t('operationalSites.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t, invalidateStats],
+    [refreshGrid, t, i18n, invalidateStats],
   )
 
   const handleAction: RowActionHandler = useCallback(

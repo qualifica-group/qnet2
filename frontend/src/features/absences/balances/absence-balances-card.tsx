@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SegmentedControl } from '@/components/ui/segmented-control'
@@ -15,9 +14,9 @@ import { balanceYearOptions } from '@/features/absences/balances/balance-format'
 import { BalanceTile } from '@/features/absences/balances/balance-tile'
 import { useAbsenceBalances } from '@/features/absences/balances/use-absence-balances'
 import type { AbsenceBalanceRow } from '@/features/absences/types'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 
 const MANAGE_ALL = 'absence-requests.manageAll'
-const FORBIDDEN_STATUS = 403
 
 interface AbsenceBalancesCardProps {
   /** Fixed person; omitted, the actor's own balances (with a person picker for who may manage all). */
@@ -26,7 +25,7 @@ interface AbsenceBalancesCardProps {
 
 /** Yearly balance tiles per absence type, with allowance editing for who holds `absence-requests.manageAll`. */
 export function AbsenceBalancesCard({ userId }: AbsenceBalancesCardProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { can } = useAbilities()
   const canManage = can(MANAGE_ALL)
   const currentYear = new Date().getFullYear()
@@ -38,7 +37,7 @@ export function AbsenceBalancesCard({ userId }: AbsenceBalancesCardProps) {
   const targetUserId = userId ?? pickedUserId ?? undefined
   const query = useAbsenceBalances({ year, user_id: targetUserId })
 
-  if (axios.isAxiosError(query.error) && query.error.response?.status === FORBIDDEN_STATUS) {
+  if (forbiddenMessage(query.error, i18n) !== null) {
     return null
   }
 

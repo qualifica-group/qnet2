@@ -39,8 +39,10 @@ it('seeds every legacy-derived role with its matrix and the Lead row only', func
             ->toBe([['resource' => 'opportunities', 'field' => 'lead_id', 'visible' => false]]);
     }
 
+    // REQUIREMENT CHANGED (spec 0340 rev.3): the operations role sees work orders by competence, not all.
     $operations = Role::findByName(Legacy::OPERATIONS_ROLE);
-    expect($operations->hasPermissionTo('work-orders.viewAll'))->toBeTrue()
+    expect($operations->hasPermissionTo('work-orders.viewAll'))->toBeFalse()
+        ->and($operations->hasPermissionTo('work-orders.viewCompetence'))->toBeTrue()
         ->and($operations->hasPermissionTo('contracts.program'))->toBeTrue()
         ->and($operations->hasPermissionTo('invoices.view'))->toBeFalse();
 
@@ -123,8 +125,10 @@ it('converges on the roster when re-run', function () {
 it('opens the request modules read-only to whoever sees opportunities and quotes, as wide as their quotes', function () {
     $this->seed(QualificaLegacyRoleSeeder::class);
 
+    // REQUIREMENT CHANGED (spec 0340 rev.3, user directive 2026-11-02): the operations role sees by
+    // competence, and the request modules mirror that tier like the quotes' viewAll/viewSite.
     $expected = [
-        Legacy::OPERATIONS_ROLE => 'viewAll',
+        Legacy::OPERATIONS_ROLE => 'viewCompetence',
         Legacy::ACCOUNTING_ROLE => 'viewAll',
         CommercialBackOfficeRoleCatalogue::ROLE => 'viewAll',
         Legacy::TRAINING_OFFICE_ROLE => null,
@@ -138,6 +142,7 @@ it('opens the request modules read-only to whoever sees opportunities and quotes
             expect($role->hasPermissionTo($module->permission('viewAny')))->toBeTrue("{$name} {$module->value}")
                 ->and($role->hasPermissionTo($module->permission('view')))->toBeTrue("{$name} {$module->value}")
                 ->and($role->hasPermissionTo($module->permission('viewAll')))->toBe($widening === 'viewAll', "{$name} {$module->value}")
+                ->and($role->hasPermissionTo($module->permission('viewCompetence')))->toBe($widening !== null, "{$name} {$module->value}")
                 ->and($role->hasPermissionTo($module->permission('update')))->toBeFalse("{$name} {$module->value}");
         }
     }

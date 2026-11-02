@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import type { ApiErrorResponse } from '@/api/types'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { fetchDefaultStatuses, updateDefaultStatuses } from '@/features/quote-workflows/api'
 import { buildDefaultStatusesPayload } from '@/features/quote-workflows/quote-workflow-form-payload'
 import { newCustomRow, statusRowsFromItems } from '@/features/quote-workflows/quote-status-rows'
@@ -21,7 +21,6 @@ function defaultStatusesQueryKey() {
 
 interface UseDefaultStatusesLabels {
   saved: string
-  forbidden: string
   genericError: string
   nameRequired: string
 }
@@ -41,6 +40,7 @@ interface UseDefaultStatusesArgs {
  * just order).
  */
 export function useDefaultStatuses({ enabled, labels }: UseDefaultStatusesArgs) {
+  const { i18n } = useTranslation()
   const queryClient = useQueryClient()
   const query = useQuery({
     queryKey: defaultStatusesQueryKey(),
@@ -93,11 +93,7 @@ export function useDefaultStatuses({ enabled, labels }: UseDefaultStatusesArgs) 
       toast.success(labels.saved)
       return true
     } catch (caughtError) {
-      if (axios.isAxiosError<ApiErrorResponse>(caughtError) && caughtError.response?.status === 403) {
-        toast.error(labels.forbidden)
-      } else {
-        toast.error(labels.genericError)
-      }
+      toast.error(apiErrorMessage(caughtError, labels.genericError, i18n))
       return false
     } finally {
       setIsSaving(false)

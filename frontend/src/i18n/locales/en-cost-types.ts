@@ -50,7 +50,6 @@ export const costTypes = {
     colorInvalid: 'Pick one of the available colors.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the cost type. Please try again.',
-    deleteForbidden: 'You cannot delete this cost type.',
     deleteInUse: 'Cannot delete: the cost type is used by purchase order lines.',
     hints: {
       nature:
@@ -75,7 +74,6 @@ export const costTypes = {
     dragHandleLabel: 'Drag to reorder',
     loadError: 'Unable to load the list. Please retry.',
     saved: 'Order updated successfully.',
-    forbidden: 'You cannot reorder these rows.',
     genericError: 'Unable to update the order. Please retry.',
     inactiveBadge: 'Inactive',
   },

@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { toast } from 'sonner'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import { useDeleteApiClient, useRotateApiClientKey } from '@/features/api-integrations/use-api-clients'
@@ -16,7 +17,7 @@ interface UseApiClientActionsOptions {
  * caller's local state. The key is never read from the mutation result again.
  */
 export function useApiClientActions({ onKeyIssued, onChanged }: UseApiClientActionsOptions) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const confirm = useConfirm()
   const rotateMutation = useRotateApiClientKey()
   const deleteMutation = useDeleteApiClient()
@@ -39,11 +40,11 @@ export function useApiClientActions({ onKeyIssued, onChanged }: UseApiClientActi
         rotateMutation.reset()
         onKeyIssued({ clientName: result.client.name, plainTextKey: result.plain_text_key, rotated: true })
         onChanged()
-      } catch {
-        toast.error(t('apiIntegrations.actions.rotateError'))
+      } catch (error) {
+        toast.error(apiErrorMessage(error, t('apiIntegrations.actions.rotateError'), i18n))
       }
     },
-    [confirm, onChanged, onKeyIssued, rotateMutation, t],
+    [confirm, onChanged, onKeyIssued, rotateMutation, t, i18n],
   )
 
   const revoke = useCallback(
@@ -61,11 +62,11 @@ export function useApiClientActions({ onKeyIssued, onChanged }: UseApiClientActi
         await deleteMutation.mutateAsync(id)
         toast.success(t('apiIntegrations.actions.revoked'))
         onChanged()
-      } catch {
-        toast.error(t('apiIntegrations.actions.revokeError'))
+      } catch (error) {
+        toast.error(apiErrorMessage(error, t('apiIntegrations.actions.revokeError'), i18n))
       }
     },
-    [confirm, deleteMutation, onChanged, t],
+    [confirm, deleteMutation, onChanged, t, i18n],
   )
 
   return { rotate, revoke }

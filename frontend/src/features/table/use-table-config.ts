@@ -5,6 +5,11 @@ import { fetchTableConfig } from '@/features/table/api'
 export interface TableConfigScope {
   /** The selected Product Category tab. Absent/`undefined` ⇒ the "Tutte" tab. */
   productCategoryId?: number
+  /**
+   * A ROOT Product Category tab (spec 0337). Rows and distinct values follow it, but the config, saved layout,
+   * saved filters and export stay those of "Tutte": it never enters the config key or the requests.
+   */
+  productCategoryBranchId?: number
 }
 
 /** Query keys for the generic table feature, namespaced by domain (and scope, when given). */

@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import type { InlineEdit } from '@/components/record-form/record-inline-field'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { buildEditContractSchema, type EditContractFormValues } from '@/features/contracts/contract-schema'
@@ -43,7 +44,7 @@ export function useContractInlineEdit(
   contract: ContractDetailWithPermissions,
   onChanged: (contract: ContractDetailWithPermissions) => void,
 ) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [editingField, setEditingField] = useState<string | null>(null)
   const values = useMemo(() => contractValues(contract), [contract])
   const form = useForm<EditContractFormValues>({
@@ -81,7 +82,7 @@ export function useContractInlineEdit(
       await updateMutation.mutateAsync(buildUpdatePayload(next, values))
     } catch (error) {
       if (!applyServerValidationErrors(error, form.setError, [...SERVER_ERROR_FIELDS])) {
-        toast.error(t('contracts.actions.edit.genericError'))
+        toast.error(apiErrorMessage(error, t('contracts.actions.edit.genericError'), i18n))
       }
     }
   }

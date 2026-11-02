@@ -67,7 +67,6 @@ export const companyClosures = {
     startedLocked: 'La chiusura è già iniziata: non si può più modificare né eliminare.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare la chiusura aziendale. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questa chiusura aziendale.',
     deleteStarted: 'Impossibile eliminare: la chiusura è già iniziata.',
     sections: {
       details: 'Dettagli',

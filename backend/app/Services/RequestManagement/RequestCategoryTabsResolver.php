@@ -8,7 +8,10 @@ use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\User;
 use App\RequestManagement\RequestModule;
+use App\Services\CategoryTabs\CategoryTabLevel;
+use App\Services\CategoryTabs\RootCategoryCounts;
 use App\Support\Cache\AggregateCache;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
@@ -30,22 +33,33 @@ use Illuminate\Support\Collection;
  */
 final class RequestCategoryTabsResolver
 {
-    public function __construct(private readonly AggregateCache $cache) {}
+    private const string CATEGORY_COLUMN = 'opportunity_product_lines.product_category_id';
+
+    public function __construct(
+        private readonly AggregateCache $cache,
+        private readonly RootCategoryCounts $rootCounts,
+    ) {}
 
     /**
      * @param  RequestModule  $module  spec 0130: governs the D-2/D-3 scope
      *                                 (row-state filter + visibility tiers).
      *                                 Defaults to `Requests`, at parity for
      *                                 every pre-0130 caller.
+     * @param  CategoryTabLevel  $level  spec 0337: `Root` lists the root categories,
+     *                                   each counting the offers of its whole branch
      * @return Collection<int, ProductCategory>
      */
-    public function resolve(User $user, RequestModule $module = RequestModule::Requests): Collection
+    public function resolve(User $user, RequestModule $module = RequestModule::Requests, CategoryTabLevel $level = CategoryTabLevel::All): Collection
     {
-        // Step 1: the per-category counts, the expensive part, cached per
-        // visibility scope (spec 0178 D-5) and always exact for the writer (D-4).
+        // Step 1: the per-category (or per-root) counts, the expensive part,
+        // cached per visibility scope (spec 0178 D-5) and always exact for the
+        // writer (D-4).
+        $root = $level === CategoryTabLevel::Root;
         $counts = $this->cache->remember(
-            'rm-tabs:'.RequestManagementScope::scopeFingerprint($user, $module),
-            fn (): array => $this->countsInScope($user, $module),
+            'rm-tabs:'.RequestManagementScope::scopeFingerprint($user, $module).($root ? ':root' : ''),
+            fn (): array => $root
+                ? $this->rootCounts->count($this->scopedQuery($user, $module), self::CATEGORY_COLUMN, 'quotes.id')
+                : $this->countsInScope($user, $module),
             $user,
         );
 
@@ -69,15 +83,26 @@ final class RequestCategoryTabsResolver
      */
     private function countsInScope(User $user, RequestModule $module): array
     {
-        $query = Quote::query()
-            ->join('opportunity_product_lines', 'opportunity_product_lines.opportunity_id', '=', 'quotes.opportunity_id')
-            ->select('opportunity_product_lines.product_category_id')
+        return $this->scopedQuery($user, $module)
+            ->select(self::CATEGORY_COLUMN)
             ->selectRaw('count(distinct quotes.id) as requests_count')
-            ->groupBy('opportunity_product_lines.product_category_id');
-
-        return RequestManagementScope::scopeToActor($query, $user, $module)
+            ->groupBy(self::CATEGORY_COLUMN)
             ->pluck('requests_count', 'product_category_id')
             ->map(static fn ($count): int => (int) $count)
             ->all();
+    }
+
+    /**
+     * The offers joined to their opportunity's product lines, narrowed to the
+     * actor's scope in the module.
+     *
+     * @return Builder<Quote>
+     */
+    private function scopedQuery(User $user, RequestModule $module): Builder
+    {
+        $query = Quote::query()
+            ->join('opportunity_product_lines', 'opportunity_product_lines.opportunity_id', '=', 'quotes.opportunity_id');
+
+        return RequestManagementScope::scopeToActor($query, $user, $module);
     }
 }

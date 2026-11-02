@@ -21,6 +21,13 @@ export const referents = {
     subtitle: 'Dettaglio del referente selezionato, modificabile sul posto.',
     loadError: 'Impossibile caricare il referente. Riprova.',
     details: 'Dettagli',
+    // Le regole del Configuratore commissioni con destinatario il referente (spec 0336).
+    related: {
+      title: 'Record collegati',
+      commissionConfigurations: 'Commissioni configurate',
+      countLabel_one: '{{count}} record collegato',
+      countLabel_other: '{{count}} record collegati',
+    },
     // Etichette della striscia KPI: sono SUE, non i titoli dei blocchi laterali
     // Contatti/Indirizzi, altrimenti la stessa parola direbbe due cose diverse.
     stats: {
@@ -65,7 +72,6 @@ export const referents = {
       confirm: 'Esci senza salvare',
       cancel: 'Continua a compilare',
     },
-    deleteForbidden: 'Non puoi eliminare questo referente.',
     sections: {
       identity: {
         title: 'Dati anagrafici',
@@ -112,7 +118,6 @@ export const referentTypes = {
     nameMax: 'Il nome può contenere al massimo 191 caratteri.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare il tipo referente. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questo tipo referente.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
       description: 'Il tipo referente non è ancora stato creato: i dati inseriti andranno persi.',

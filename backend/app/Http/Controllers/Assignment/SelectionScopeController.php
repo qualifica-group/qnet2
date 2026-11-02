@@ -24,6 +24,7 @@ use App\Services\Assignment\QuoteCompetence;
 use App\Services\RequestManagement\RequestManagementScope;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -182,7 +183,7 @@ class SelectionScopeController extends BaseApiController
     {
         /** @var RequestModule $module */
         $module = $request->domain()->requestModule();
-        abort_unless($actor->can($module->permission('viewAny')), 403);
+        Gate::forUser($actor)->authorize($module->permission('viewAny'));
 
         // D-2/D-3, restated as a read rule: an offer outside the actor's
         // scope (wrong module perimeter, or — for Enrollees — the wrong

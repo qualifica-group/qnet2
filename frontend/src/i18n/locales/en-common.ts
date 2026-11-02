@@ -25,6 +25,16 @@ export const common = {
   /** Sheet toolbar action that leaves the modal for the record's dedicated detail page. */
   openDetailPage: 'Open detail page',
   copySuffix: ' (copy)',
+  /** Last-resort 403 sentence (`lib/forbidden-message.ts`) when the server sent no reason. */
+  forbidden: 'You do not have permission for this operation.',
+  /** 403 with a missing permission: ability and module are the permission's localized labels. */
+  missingPermission: 'You do not have the «{{ability}}» permission on the «{{module}}» module.',
+  /** Title of the toast `notifyFormErrors` raises for a refused save (every form): the reasons follow it. */
+  formErrors: {
+    title: 'Unable to save',
+    more_one: '…and one more error',
+    more_other: '…and {{count}} more errors',
+  },
   /** Final state of a record fetch answered 404/403 (`DetailError`, `RecordUnavailable`): no retry. */
   recordUnavailable: {
     notFound: {
@@ -42,6 +52,8 @@ export const common = {
     collapse: 'Collapse side panel',
     expand: 'Expand side panel',
   },
+  /** Record detail "Buoni" section when nothing is assigned (spec 0331 D-4). */
+  noRewards: 'No rewards',
   /** Badge next to a record title: its legacy id, shown only to who may see it (`legacy-ids.view`). */
   legacyIdBadge: 'OLD ID #{{id}}',
   /** In-place editing of a record's rows (spec 0195): the pencil, and the open row's confirm/cancel. */

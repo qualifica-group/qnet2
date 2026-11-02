@@ -61,7 +61,6 @@ export const orgChart = {
     cancel: 'Annulla',
     confirm: 'Conferma lo spostamento',
     success: '{{name}} spostato.',
-    forbidden: 'Non hai i permessi per eseguire questo spostamento.',
     error: 'Spostamento non riuscito. Riprova più tardi.',
   },
 }

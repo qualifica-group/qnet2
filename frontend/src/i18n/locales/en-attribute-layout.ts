@@ -90,7 +90,6 @@ export const attributeLayout = {
     saved: 'Layout saved.',
     loadError: 'Unable to load the layout.',
     saveError: 'Unable to save the layout.',
-    forbidden: 'You do not have permission to edit this layout.',
     invalid: 'The layout is invalid — check the placed attributes and field limits.',
     empty: 'No layout configured: the plain attribute list is used instead.',
     retry: 'Retry',

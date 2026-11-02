@@ -169,10 +169,10 @@ function renderTable() {
   }
 }
 
-function axiosErrorWithStatus(status: number) {
+function axiosErrorWithStatus(status: number, data: Record<string, unknown> = { success: false, message: 'error' }) {
   return new AxiosError('failed', String(status), undefined, undefined, {
     status,
-    data: { success: false, message: 'error' },
+    data,
   } as never)
 }
 
@@ -247,14 +247,14 @@ describe('CampaignsTable — Sheet-based CRUD (AC-024)', () => {
     expect(toast.success).toHaveBeenCalledWith('Campaign deleted successfully.')
   })
 
-  it('maps a 403 delete failure to the forbidden message', async () => {
-    deleteCampaignMock.mockRejectedValue(axiosErrorWithStatus(403))
+  it('maps a 403 delete failure to the specific permission sentence', async () => {
+    deleteCampaignMock.mockRejectedValue(axiosErrorWithStatus(403, { success: false, message: 'Forbidden', authorization: { reason: 'missing_permission', permission: 'campaigns.delete' } }))
     renderTable()
 
     fireEvent.click(screen.getByText('trigger-delete'))
 
     await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith('You cannot delete this campaign.'),
+      expect(toast.error).toHaveBeenCalledWith('You do not have the «Delete» permission on the «Campaigns» module.'),
     )
   })
 

@@ -24,7 +24,11 @@ interface TaskCascade {
  * D-3). The diff PATCH carries those keys too, so each must be editable.
  */
 const TASK_CASCADES: Readonly<Partial<Record<string, TaskCascade>>> = {
-  registry_id: { clears: ['referent_id', 'opportunity_id', 'lead_id', 'work_order_id', 'work_order_stage_id'] },
+  // `referent_id` is SET (spec 0330 D-7): the registry's main referent replaces it, even from empty.
+  registry_id: {
+    clears: ['opportunity_id', 'lead_id', 'work_order_id', 'work_order_stage_id'],
+    sets: ['referent_id'],
+  },
   work_order_id: { clears: ['work_order_stage_id', 'opportunity_id'], sets: ['registry_id'] },
   opportunity_id: { clears: ['work_order_id', 'work_order_stage_id'] },
   parent_task_id: { clears: ['work_order_stage_id'] },

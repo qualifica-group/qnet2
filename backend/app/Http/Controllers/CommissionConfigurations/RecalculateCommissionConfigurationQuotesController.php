@@ -10,9 +10,9 @@ use App\Http\Requests\Commissions\RecalculateCommissionsRequest;
 use App\Jobs\RecalculateCommissionConfigurationQuotesJob;
 use App\Models\CommissionConfiguration;
 use App\Services\Commissions\CommissionRecalculationImpact;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -33,9 +33,7 @@ class RecalculateCommissionConfigurationQuotesController extends BaseApiControll
 
             $actor = $request->user();
 
-            if (! $actor->can('quotes.update')) {
-                throw new AuthorizationException;
-            }
+            Gate::forUser($actor)->authorize('quotes.update');
 
             $quotesCount = $this->impact->forConfiguration($commissionConfiguration)['quotes_count'];
 

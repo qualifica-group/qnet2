@@ -8,7 +8,6 @@ use App\Models\Opportunity;
 use App\Models\ProductCategory;
 use App\Models\Referent;
 use App\Models\Registry;
-use App\Models\Source;
 use App\Models\User;
 use App\Services\Opportunities\RegistryOpenOpportunityGuard;
 use App\Services\OpportunityService;
@@ -52,6 +51,7 @@ function opportunitiesSourceRegistry(int $oldId): Registry
     return $registry;
 }
 
+// REQUIREMENT CHANGED: spec 0332 (AC-009) — the legacy opportunity carries no source_id and OpportunitiesSource writes no Fonte.
 it('imports an opportunity with every field remapped, without notifications or activity log', function () {
     Notification::fake();
     $registry = opportunitiesSourceRegistry(10);
@@ -62,8 +62,6 @@ it('imports an opportunity with every field remapped, without notifications or a
     [$supervisor, $manager] = User::factory()->count(2)->create();
     $supervisor->forceFill(['old_id' => 601])->save();
     $manager->forceFill(['old_id' => 602])->save();
-    $source = Source::factory()->create();
-    $source->forceFill(['old_id' => 5])->save();
     $site = OperationalSite::factory()->create();
     $site->forceFill(['old_id' => 7])->save();
     $category = ProductCategory::factory()->create(['business_function_id' => BusinessFunction::factory()->create()->id]);
@@ -74,7 +72,7 @@ it('imports an opportunity with every field remapped, without notifications or a
     fakeLegacyOpportunities([[
         'id' => 900, 'registry_id' => 10, 'title' => '  Rinnovo certificazione  ', 'referent_id' => 801,
         'commercial_referent_id' => 802, 'reporter_referent_id' => 803, 'supervisor_user_id' => 601,
-        'manager_user_ids' => [602], 'source_id' => 5, 'operational_site_id' => 7, 'product_category_ids' => [33],
+        'manager_user_ids' => [602], 'operational_site_id' => 7, 'product_category_ids' => [33],
         'start_date' => '2020-01-15', 'expected_close_date' => '2020-06-30', 'estimated_value' => 12500.5,
         'general_notes' => "Cliente storico\n\nNote riservate:\nSconto max 10%", 'status_label' => 'Chiusa',
         'created_at' => '2020-01-10 09:00:00', 'updated_at' => '2020-07-01 18:30:00',
@@ -93,7 +91,6 @@ it('imports an opportunity with every field remapped, without notifications or a
         ->and($opportunity->reporter_id)->toBe($reporter->id)
         ->and($opportunity->supervisor_id)->toBe($supervisor->id)
         ->and($opportunity->managers->pluck('pivot.position', 'id')->all())->toBe([$manager->id => 1])
-        ->and($opportunity->source_id)->toBe($source->id)
         ->and($opportunity->operational_site_id)->toBe($site->id)
         ->and($opportunity->productLines->pluck('product_category_id')->all())->toBe([$category->id])
         ->and($opportunity->start_date->toDateString())->toBe('2020-01-15')
@@ -140,7 +137,7 @@ it('warns on unresolved optional references and keeps manager positions', functi
     $manager->forceFill(['old_id' => 603])->save();
     fakeLegacyOpportunities([[
         'id' => 904, 'registry_id' => 12, 'referent_id' => 1, 'supervisor_user_id' => 2,
-        'manager_user_ids' => [3, 603], 'source_id' => 4, 'operational_site_id' => 5,
+        'manager_user_ids' => [3, 603], 'operational_site_id' => 5,
     ]]);
 
     $run = runOpportunitiesMigration();
@@ -151,7 +148,6 @@ it('warns on unresolved optional references and keeps manager positions', functi
         ->and(collect($run->report)->pluck('message')->all())->toEqualCanonicalizing([
             'Unresolved referent_id (legacy id 1).',
             'Unresolved supervisor_user_id (legacy id 2).',
-            'Unresolved source_id (legacy id 4).',
             'Unresolved manager_user_ids (legacy id 3).',
             'Unresolved operational_site_id (legacy id 5).',
         ]);
@@ -286,7 +282,7 @@ it('back-fills the missing Info preliminari notes of an imported opportunity on 
 it('refuses a lead on the import path', function () {
     $data = new CreateOpportunityData(
         registryId: Registry::factory()->create()->id, referentId: null, commercialId: null, reporterId: null,
-        supervisorId: null, sourceId: null, leadId: 1, managerSlots: null, productLines: null, startDate: null,
+        supervisorId: null, leadId: 1, managerSlots: null, productLines: null, startDate: null,
         estimatedValue: null, expectedCloseDate: null, successProbability: null,
     );
 

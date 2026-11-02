@@ -1,6 +1,6 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
-import { normalizeBlobError, saveBlob } from '@/lib/download'
+import { saveBlob } from '@/lib/download'
 import type {
   ApiClient,
   ApiClientPayload,
@@ -68,14 +68,10 @@ export async function fetchOpenApiDocument(): Promise<OpenApiFetchResult> {
  * filename; 'generating' when the server answered 202 and there is no file yet.
  */
 export async function downloadApiDoc(kind: ApiDocKind): Promise<ApiDocDownloadResult> {
-  try {
-    const response = await apiClient.get<Blob>(`/api-clients/docs/${kind}`, { responseType: 'blob' })
-    if (response.status === GENERATING_STATUS) {
-      return 'generating'
-    }
-    saveBlob(response.data, API_DOC_FILENAMES[kind])
-    return 'saved'
-  } catch (error) {
-    throw await normalizeBlobError(error)
+  const response = await apiClient.get<Blob>(`/api-clients/docs/${kind}`, { responseType: 'blob' })
+  if (response.status === GENERATING_STATUS) {
+    return 'generating'
   }
+  saveBlob(response.data, API_DOC_FILENAMES[kind])
+  return 'saved'
 }

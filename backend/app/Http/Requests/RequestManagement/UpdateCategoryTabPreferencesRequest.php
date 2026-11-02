@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\RequestManagement;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\CategoryTabs\CategoryTabLevelRequest;
 use Illuminate\Validation\Rule;
 
 /**
@@ -13,18 +13,14 @@ use Illuminate\Validation\Rule;
  * favourites" switch. `favorite_category_ids` is `present`, so an empty list
  * clears the favourites while a missing key is rejected.
  *
+ * The optional `level` query (spec 0337) selects the root-level favourites row.
  * Authorization stays in the controller (`{module}.viewAny`), same convention
  * as the module's other requests.
  */
-class UpdateCategoryTabPreferencesRequest extends FormRequest
+class UpdateCategoryTabPreferencesRequest extends CategoryTabLevelRequest
 {
     /** Upper bound on the stored list: far above any real strip, well below an abusive payload. */
     private const int MAX_FAVORITES = 200;
-
-    public function authorize(): bool
-    {
-        return true;
-    }
 
     /**
      * @return array<string, array<int, mixed>>
@@ -32,6 +28,7 @@ class UpdateCategoryTabPreferencesRequest extends FormRequest
     public function rules(): array
     {
         return [
+            ...parent::rules(),
             'favorite_category_ids' => ['present', 'array', 'max:'.self::MAX_FAVORITES],
             'favorite_category_ids.*' => ['integer', 'distinct', Rule::exists('product_categories', 'id')],
             'show_only_favorites' => ['required', 'boolean'],

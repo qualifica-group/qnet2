@@ -57,9 +57,10 @@ class AddressController extends BaseApiController
     public function store(StoreAddressRequest $request): JsonResponse
     {
         try {
-            $this->authorize('create', Address::class);
+            $owner = $request->owner();
+            $this->authorize('create', [Address::class, $owner]);
 
-            $address = $this->service->createFor($request->owner(), $request->toData());
+            $address = $this->service->createFor($owner, $request->toData());
 
             return $this->created(new AddressResource($address->load(self::GEO_RELATIONS)));
         } catch (Throwable $exception) {

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/page-header'
@@ -17,7 +18,7 @@ type FormTarget = { type: 'create' } | { type: 'edit'; workspace: Workspace }
 
 /** "Apps" configuration page of the Develop section (spec 0317): super-admin only, enforced server-side. */
 export default function WorkspacesPage() {
-  const { t } = useTranslation('workspaces')
+  const { t, i18n } = useTranslation('workspaces')
   const confirm = useConfirm()
   const workspaces = useWorkspaces()
   const deleteMutation = useDeleteWorkspace()
@@ -38,8 +39,8 @@ export default function WorkspacesPage() {
     try {
       await deleteMutation.mutateAsync(workspace.id)
       toast.success(t('page.deleted'))
-    } catch {
-      toast.error(t('page.deleteError'))
+    } catch (error) {
+      toast.error(apiErrorMessage(error, t('page.deleteError'), i18n))
     }
   }
 

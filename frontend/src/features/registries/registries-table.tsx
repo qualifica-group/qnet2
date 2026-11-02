@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { MessagesSquare, Paperclip, Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { FilterTabs } from '@/components/ui/filter-tabs'
 import { PageHeader } from '@/components/page-header'
@@ -54,7 +54,7 @@ const REGISTRIES_ACTION_ICONS: ActionIconMap = {
  * Aziende tabs are a preset of the `registry_type` grid filter.
  */
 export function RegistriesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const stats = useStatsPanel(REGISTRIES_DOMAIN)
   const invalidateStats = useInvalidateModuleStats(REGISTRIES_DOMAIN)
 
@@ -90,15 +90,12 @@ export function RegistriesTable() {
         refreshGrid()
         invalidateStats()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        toast.error(
-          status === 403 ? t('registries.form.deleteForbidden') : t('registries.form.deleteError'),
-        )
+        toast.error(apiErrorMessage(error, t('registries.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t, invalidateStats],
+    [refreshGrid, t, i18n, invalidateStats],
   )
 
   const handleAction: RowActionHandler = useCallback(

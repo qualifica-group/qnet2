@@ -54,7 +54,6 @@ const LABELS = {
   dragHandleLabel: 'Drag to reorder',
   loadError: 'Unable to load the statuses.',
   saved: 'Order updated successfully.',
-  forbidden: 'You cannot reorder these statuses.',
   genericError: 'Unable to update the order.',
 }
 
@@ -169,7 +168,7 @@ describe('StatusReorderSheet (spec 0039 AC-011)', () => {
 
     await dragFirstCustomDown()
 
-    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith(LABELS.forbidden))
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('Forbidden'))
     const rows = screen.getAllByRole('listitem')
     expect(rows.map((row) => row.textContent)).toEqual(['New', 'Alpha', 'Bravo', 'Closed'])
   })

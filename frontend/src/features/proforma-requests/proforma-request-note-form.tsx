@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
@@ -18,7 +19,7 @@ interface ProformaRequestNoteFormProps {
 
 /** Edit form of a proforma request: the note is the only writable field. */
 export function ProformaRequestNoteForm({ proformaRequest, onSuccess, onCancel }: ProformaRequestNoteFormProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const form = useProformaNoteForm(proformaRequest.note)
 
@@ -31,7 +32,7 @@ export function ProformaRequestNoteForm({ proformaRequest, onSuccess, onCancel }
     },
     onError: (error) => {
       if (!applyServerValidationErrors(error, form.setError, ['note'])) {
-        toast.error(t('proformaRequests.form.genericError'))
+        toast.error(apiErrorMessage(error, t('proformaRequests.form.genericError'), i18n))
       }
     },
   })

@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import axios from 'axios'
 import { apiClient } from '@/api/client'
 import { saveBlob } from '@/lib/download'
 import { generateQuoteDocument } from '@/features/quotes/quote-document-api'
@@ -54,30 +53,5 @@ describe('generateQuoteDocument', () => {
     await generateQuoteDocument(9, 'QUO-0009')
 
     expect(saveBlob).toHaveBeenCalledWith(blob, 'QUO-0009.pdf')
-  })
-
-  it('parses a blob-shaped 422 error body so the message survives (AC-303)', async () => {
-    const errorBody = { success: false, message: 'No layout is available to generate this document.' }
-    const blob = new Blob([JSON.stringify(errorBody)], { type: 'application/json' })
-    const error = new axios.AxiosError('Unprocessable', '422', undefined, undefined, {
-      status: 422,
-      data: blob,
-    } as never)
-    postMock.mockRejectedValue(error)
-
-    await expect(generateQuoteDocument(9, 'QUO-0009')).rejects.toBe(error)
-    expect(error.response?.data).toEqual(errorBody)
-  })
-
-  it('leaves a non-JSON blob error body untouched', async () => {
-    const blob = new Blob(['<html>500</html>'], { type: 'text/html' })
-    const error = new axios.AxiosError('Server Error', '500', undefined, undefined, {
-      status: 500,
-      data: blob,
-    } as never)
-    postMock.mockRejectedValue(error)
-
-    await expect(generateQuoteDocument(9, 'QUO-0009')).rejects.toBe(error)
-    expect(error.response?.data).toBe(blob)
   })
 })

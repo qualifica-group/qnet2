@@ -95,7 +95,6 @@ export const invoices = {
   document: {
     pdfReady: 'PDF generato.',
     pdfError: 'Impossibile generare il PDF. Riprova.',
-    forbidden: 'Non hai i permessi per scaricare il documento.',
     emailError: "Impossibile preparare l'email. Riprova.",
   },
   detail: {
@@ -242,7 +241,6 @@ export const invoiceTags = {
     colorInvalid: 'Scegli un colore dalla palette.',
     genericError: 'Qualcosa è andato storto. Riprova.',
     deleteError: 'Impossibile eliminare il tag fattura. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questo tag fattura.',
     deleteInUse: 'Questo tag fattura è usato da una fattura e non può essere eliminato.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
@@ -263,7 +261,6 @@ export const invoiceTags = {
     dragHandleLabel: 'Trascina per riordinare',
     loadError: 'Impossibile caricare l’elenco. Riprova.',
     saved: 'Ordine aggiornato correttamente.',
-    forbidden: 'Non puoi riordinare queste righe.',
     genericError: 'Impossibile aggiornare l’ordine. Riprova.',
     inactiveBadge: 'Disattivato',
   },

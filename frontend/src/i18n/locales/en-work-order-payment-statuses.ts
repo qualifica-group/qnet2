@@ -61,7 +61,6 @@ export const workOrderPaymentStatuses = {
     colorMax: 'Color must be at most 32 characters.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the payment status. Please try again.',
-    deleteForbidden: 'You cannot delete this payment status.',
     deleteInUseFallback: 'This payment status is used by a work order line and cannot be deleted.',
     leaveConfirm: {
       title: 'Leave without saving?',
@@ -86,7 +85,6 @@ export const workOrderPaymentStatuses = {
     dragHandleLabel: 'Drag to reorder',
     loadError: 'Unable to load the statuses. Please try again.',
     saved: 'Order updated successfully.',
-    forbidden: 'You cannot reorder these statuses.',
     genericError: 'Unable to update the order. Please try again.',
   },
 }

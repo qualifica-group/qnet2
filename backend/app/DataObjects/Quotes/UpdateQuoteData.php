@@ -105,6 +105,10 @@ final readonly class UpdateQuoteData
         // positional-compat reason. Never null once submitted (the rule refuses it).
         public ?string $quoteDate = null,
         public bool $quoteDateSubmitted = false,
+        // Appended after the pre-existing parameters (spec 0332): the Fonte,
+        // same submitted/persisted toggle as every other optional FK here.
+        public ?int $sourceId = null,
+        public bool $sourceIdSubmitted = false,
     ) {}
 
     /**
@@ -148,6 +152,8 @@ final readonly class UpdateQuoteData
             promoteManagersToOpportunity: (bool) ($data['promote_managers_to_opportunity'] ?? false),
             quoteDate: $data['quote_date'] ?? null,
             quoteDateSubmitted: array_key_exists('quote_date', $data),
+            sourceId: self::nullableInt($data, 'source_id'),
+            sourceIdSubmitted: array_key_exists('source_id', $data),
         );
     }
 
@@ -241,6 +247,10 @@ final readonly class UpdateQuoteData
 
         if ($this->operationalSiteIdSubmitted) {
             $attributes['operational_site_id'] = $this->operationalSiteId;
+        }
+
+        if ($this->sourceIdSubmitted) {
+            $attributes['source_id'] = $this->sourceId;
         }
 
         if ($this->layoutIdSubmitted) {

@@ -5,9 +5,9 @@ import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tabs, TabsList, TabsTrigger, TABS_LIST_CLASS } from '@/components/ui/tabs'
 import type { RequestDashboardCategory } from '@/features/request-management/dashboard-api'
-import { filterCategoriesByName } from '@/features/request-management/category-tab-fit'
-import { CategoryMoreButton } from '@/features/request-management/request-management-category-picker'
-import { MEASURE_ALL, MEASURE_MORE, useCategoryTabFit } from '@/features/request-management/use-category-tab-fit'
+import { filterCategoriesByName } from '@/features/category-tabs/category-tab-fit'
+import { CategoryMoreButton } from '@/features/category-tabs/category-tabs-picker'
+import { MEASURE_ALL, MEASURE_MORE, useCategoryTabFit } from '@/features/category-tabs/use-category-tab-fit'
 import { OVERVIEW_TAB } from '@/features/request-management/use-request-dashboard-tab'
 import { cn } from '@/lib/utils'
 
@@ -56,14 +56,14 @@ function DashboardCategoryMenu({ categories, hiddenCount, selectedKey, onSelect 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        <CategoryMoreButton hiddenCount={hiddenCount} title={t('requestManagement.categoryTabs.pickerLabel')} />
+        <CategoryMoreButton hiddenCount={hiddenCount} title={t('categoryTabs.pickerLabel')} />
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 max-w-[calc(100vw-2rem)] p-1">
         <div className="p-1">
           <Input
             autoFocus
-            aria-label={t('requestManagement.categoryTabs.searchPlaceholder')}
-            placeholder={t('requestManagement.categoryTabs.searchPlaceholder')}
+            aria-label={t('categoryTabs.searchPlaceholder')}
+            placeholder={t('categoryTabs.searchPlaceholder')}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             onKeyDown={handleSearchKeyDown}
@@ -73,10 +73,10 @@ function DashboardCategoryMenu({ categories, hiddenCount, selectedKey, onSelect 
         <div className="max-h-72 overflow-y-auto p-1">
           {matches.length === 0 ? (
             <p className="px-2 py-4 text-center text-xs text-muted-foreground">
-              {t('requestManagement.categoryTabs.noMatch')}
+              {t('categoryTabs.noMatch')}
             </p>
           ) : (
-            <ul aria-label={t('requestManagement.categoryTabs.pickerLabel')}>
+            <ul aria-label={t('categoryTabs.pickerLabel')}>
               {matches.map((category) => {
                 const selected = category.key === selectedKey
 

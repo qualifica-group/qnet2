@@ -52,22 +52,24 @@ it('delete: re-resolves every impacted quote onto the global set, remapped by sy
         ->system('closed_won')
         ->create(['quote_workflow_id' => $workflow->id]);
 
-    // `source_id` is inherited from the Quote's parent Opportunity (D-7).
-    $openOpportunity = Opportunity::factory()->create(['source_id' => $source->id]);
+    // REQUIREMENT CHANGED: spec 0332 — `source_id` is the Quote's own column.
+    $openOpportunity = Opportunity::factory()->create();
     $openQuote = Quote::factory()->create([
         'opportunity_id' => $openOpportunity->id,
+        'source_id' => $source->id,
         'quote_workflow_status_id' => $openStatus->id,
     ]);
-    $closedOpportunity = Opportunity::factory()->create(['source_id' => $source->id]);
+    $closedOpportunity = Opportunity::factory()->create();
     $closedQuote = Quote::factory()->create([
         'opportunity_id' => $closedOpportunity->id,
+        'source_id' => $source->id,
         'quote_workflow_status_id' => $closedStatus->id,
     ]);
     $globalOpenBefore = QuoteWorkflowStatus::whereNull('quote_workflow_id')->where('system_key', 'open')->sole();
     // Never referencing the deleted workflow's own statuses (a plain
     // factory row, not run through QuoteService, so this is set explicitly
     // rather than resolver-derived) — must stay untouched.
-    $unrelatedOpportunity = Opportunity::factory()->create(['source_id' => null]);
+    $unrelatedOpportunity = Opportunity::factory()->create();
     $unrelatedQuote = Quote::factory()->create([
         'opportunity_id' => $unrelatedOpportunity->id,
         'quote_workflow_status_id' => $globalOpenBefore->id,
@@ -119,9 +121,10 @@ it('delete via table bulk-delete also re-resolves impacted quotes (AC-018)', fun
         ->system('closed_won')
         ->create(['quote_workflow_id' => $workflow->id]);
 
-    $opportunity = Opportunity::factory()->create(['source_id' => $source->id]);
+    $opportunity = Opportunity::factory()->create();
     $quote = Quote::factory()->create([
         'opportunity_id' => $opportunity->id,
+        'source_id' => $source->id,
         'quote_workflow_status_id' => $openStatus->id,
     ]);
 

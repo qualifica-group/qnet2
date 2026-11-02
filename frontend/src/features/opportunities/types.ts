@@ -8,6 +8,7 @@
 
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { ProductLine } from '@/features/product-lines/types'
+import type { ReferentRef } from '@/features/referents/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 
 /** A hydrated `{id, name}` relation projection, shared by every plain single-relation field. */
@@ -121,15 +122,13 @@ export interface OpportunityDetail {
   /** Spec 0083: the status COMPUTED from the quotes (global default 'open' row as fallback). Read-only. */
   status: OpportunityStatusSummary
   referent_id: number | null
-  referent: OpportunityRelationRef | null
+  referent: ReferentRef | null
   commercial_id: number | null
   commercial: OpportunityRelationRef | null
   reporter_id: number | null
   reporter: OpportunityRelationRef | null
   supervisor_id: number | null
   supervisor: OpportunityRelationRef | null
-  source_id: number | null
-  source: OpportunityRelationRef | null
   /**
    * Spec 0056: the operational site, facoltativa, never lead-derived (no BR-1
    * inheritance, no `locked_fields` entry). Optional for
@@ -242,7 +241,6 @@ export interface CreateOpportunityPayload {
   commercial_id?: number | null
   reporter_id?: number | null
   supervisor_id: number
-  source_id?: number | null
   /** Spec 0056: facoltativa, never BR-2-locked (no server-side inheritance from another entity). */
   operational_site_id?: number | null
   lead_id?: number | null
@@ -288,8 +286,8 @@ export type UpdateOpportunityPayload = Partial<
 }
 
 /**
- * BR-1: the fields a Lead's campaign can derive — only `source_id` and
- * `registry_id`. `null` = the derivation itself is null — the field then
+ * BR-1: the field a Lead can derive — only `registry_id` (spec 0332: the
+ * Fonte no longer lives on the opportunity). `null` = the derivation itself is null — the field then
  * stays free, per BR-2, and is NOT part of `locked_fields`. Amendment rev.3:
  * `business_function_id`/`product_category_id` are REMOVED from here — the
  * lead's derived function+category, when both exist, is exposed instead as
@@ -297,7 +295,6 @@ export type UpdateOpportunityPayload = Partial<
  */
 export interface OpportunityDefaultValues {
   referent_id: number | null
-  source_id: number | null
   registry_id: number | null
   /**
    * User directive 2026-07-23: the lead's Sede operativa, inherited on
@@ -319,7 +316,6 @@ export interface OpportunityDefaultValues {
  * D-3): the lead's identity is its anagrafica now, not its referent.
  */
 export interface OpportunityDefaultReferences {
-  source: OpportunityRelationRef | null
   registry: OpportunityRelationRef | null
   /** The inherited Sede operativa's `{id,label}` ref (no `name` column server-side), for the picker's trigger label. */
   operational_site: OpportunityOperationalSiteRef | null

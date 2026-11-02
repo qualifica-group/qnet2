@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- renderer registry module: cells are AG Grid render functions, not route/page components */
 import type { ICellRendererParams } from 'ag-grid-community'
-import { Briefcase, Building2, MapPin, Radio, UserRound } from 'lucide-react'
+import { Briefcase, Building2, MapPin, UserRound } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
 import { BADGE_COLOR_CLASSES, DateTimeCell, EmptyCell } from '@/features/table/cell-renderers'
@@ -103,7 +103,6 @@ export const opportunityColumnRenderers: TableRendererMap = {
   commercial: (params) => <RelationCell {...params} icon={Briefcase} />,
   supervisor: (params) => <UserCell {...params} />,
   managers: (params) => <UserStackCell {...params} />,
-  source: (params) => <RelationCell {...params} icon={Radio} />,
   operational_site: (params) => <RelationCell {...params} icon={MapPin} />,
   product_category: (params) => <ProductCategoriesCell {...params} />,
   business_function: (params) => <NamesCell {...params} />,

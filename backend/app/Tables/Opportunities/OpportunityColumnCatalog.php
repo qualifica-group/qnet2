@@ -11,9 +11,9 @@ use App\Tables\Shared\ProductsOfInterestColumn;
  *
  * `name`/`estimated_value`/`success_probability`/`start_date`/
  * `expected_close_date`/`created_at` are real DB columns handled entirely by
- * the generic engine. `registry`/`referent`/`commercial`/`supervisor`/
- * `source` are STANDARD relation-name derived columns (own FK on the
- * opportunity), resolved by OpportunitiesTableDefinition — all 5 sortable (a
+ * the generic engine. `registry`/`referent`/`commercial`/`supervisor`
+ * are STANDARD relation-name derived columns (own FK on the
+ * opportunity), resolved by OpportunitiesTableDefinition — all 4 sortable (a
  * correlated subquery), mirroring LeadColumnCatalog. Amendment rev.3:
  * `product_category`/`business_function` are AGGREGATED to-many columns
  * (via `productLines`) — filterable (`set`, `whereHas`) but NOT sortable (no
@@ -86,7 +86,6 @@ final class OpportunityColumnCatalog
                 'relation' => ['resource' => 'users'],
                 'editableField' => 'manager_slots',
             ],
-            [...self::derivedColumn('source', 'opportunities.columns.source'), ...self::editableRelation('sources', 'source_id')],
             self::derivedColumn('operational_site', 'opportunities.columns.operationalSite'),
             OpportunityStatusColumn::declaration('opportunities.columns.status'),
             [

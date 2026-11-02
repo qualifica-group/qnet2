@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -27,7 +27,7 @@ const SOURCES_DOMAIN = 'sources'
  * affordance only; the backend re-authorizes each call.
  */
 export function SourcesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -50,15 +50,12 @@ export function SourcesTable() {
         toast.success(t('sources.form.deleted'))
         refreshGrid()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        toast.error(
-          status === 403 ? t('sources.form.deleteForbidden') : t('sources.form.deleteError'),
-        )
+        toast.error(apiErrorMessage(error, t('sources.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(

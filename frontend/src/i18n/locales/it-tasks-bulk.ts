@@ -23,7 +23,6 @@ export const tasksBulk = {
   deleteConfirmDescription_other: 'I {{count}} task selezionati verranno eliminati. Azione non reversibile.',
   success_one: 'Task aggiornato.',
   success_other: '{{count}} task aggiornati.',
-  forbidden: 'Non hai i permessi per questa azione massiva.',
   genericError: "Si è verificato un errore nell'azione massiva. Riprova.",
   incompatibleError_one: 'Un task non è compatibile con questa azione: nessuna modifica applicata.',
   incompatibleError_other: '{{count}} task non sono compatibili con questa azione: nessuna modifica applicata.',
@@ -35,9 +34,21 @@ export const tasksBulk = {
     confirm: 'Assegna',
   },
   completeDialog: {
+    description:
+      "Il feedback verrà applicato a ciascuno dei {{count}} task; il tempo inserito è il totale e verrà ripartito tra i task.",
     title_one: 'Completa il task selezionato',
     title_other: 'Completa {{count}} task',
     confirm: 'Completa',
+  },
+  shares: {
+    title: 'Ripartizione del tempo',
+    hint: 'Il tempo inserito è il totale: modifica le quote dei singoli task se non vuoi le parti uguali.',
+    equalSplit: 'Ripartisci in parti uguali',
+    assigned: 'Assegnati {{assigned}} di {{total}} min',
+    mismatch: 'La somma delle quote deve essere uguale al totale ({{total}} min).',
+    tooFewMinutes: 'Ogni task richiede almeno 1 minuto: aumenta il totale o riduci i task.',
+    slot: '{{start}} - {{end}}',
+    minutesFor: 'Quota di {{title}} (minuti)',
   },
   dateDialog: {
     title: '{{field}} — {{count}} task',

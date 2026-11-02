@@ -149,6 +149,10 @@ class DocumentLayoutsTableDefinition extends AbstractTableDefinition
             $allowed[] = 'delete';
         }
 
+        if (Gate::forUser($actor)->allows('create', DocumentLayout::class)) {
+            $allowed[] = 'clone';
+        }
+
         if (Gate::forUser($actor)->allows('viewActivity', $row)) {
             $allowed[] = 'activity';
         }

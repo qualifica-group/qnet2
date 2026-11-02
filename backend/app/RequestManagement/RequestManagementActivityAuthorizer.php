@@ -10,6 +10,7 @@ use App\Models\Quote;
 use App\Models\User;
 use App\Services\RequestManagement\RequestManagementScope;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Read-gate of the `request-management` activity resource (spec 0049 D-7,
@@ -46,11 +47,11 @@ class RequestManagementActivityAuthorizer implements ActivityLogAuthorizer
     {
         $module = $this->module();
 
-        abort_unless($record instanceof Opportunity, 403);
-        abort_unless($user->can($module->permission('viewActivity')), 403);
+        abort_unless($record instanceof Opportunity, 403, __('The activity is not available for this record.'));
+        Gate::forUser($user)->authorize($module->permission('viewActivity'));
 
         $query = Quote::query()->where('opportunity_id', $record->getKey());
 
-        abort_unless(RequestManagementScope::scopeToActor($query, $user, $module)->exists(), 403);
+        abort_unless(RequestManagementScope::scopeToActor($query, $user, $module)->exists(), 403, __('You cannot see the activity of this request.'));
     }
 }

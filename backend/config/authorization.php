@@ -66,6 +66,7 @@ use App\Authorization\SourcesAuthorization;
 use App\Authorization\StaffCoursesAuthorization;
 use App\Authorization\StaffTrainingsAuthorization;
 use App\Authorization\StockAuthorization;
+use App\Authorization\SupportTopicsAuthorization;
 use App\Authorization\TagsAuthorization;
 use App\Authorization\TaskCategoriesAuthorization;
 use App\Authorization\TaskImportancesAuthorization;
@@ -219,6 +220,8 @@ return [
         'task-importances' => TaskImportancesAuthorization::class,
         // spec 0124: il modulo Modelli di Task.
         'task-templates' => TaskTemplatesAuthorization::class,
+        // spec 0334: i "Tipi di problema" dell'assistenza tecnica.
+        'support-topics' => SupportTopicsAuthorization::class,
     ],
 
     /*
@@ -241,9 +244,10 @@ return [
     | authorize the component's endpoints.
     |
     | This is NOT the place for the indirect sub-entity permissions
-    | (addresses.*, contacts.*, personal_data.*): those are governed by the
-    | field-permission matrix of their parent form and must stay out of the
-    | Role form checkboxes.
+    | (personal_data.*): those are governed by the field-permission matrix of
+    | their parent form and must stay out of the Role form checkboxes.
+    | Contacts and addresses have no permission at all: they follow the
+    | record that owns their card (spec 0328, PersonalDataChildAuthorization).
     |
     | See App\Authorization\AssignablePermissionCatalogue
     */

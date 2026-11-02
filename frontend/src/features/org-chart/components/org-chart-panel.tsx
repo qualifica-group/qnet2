@@ -10,15 +10,15 @@ import { OrgMembersSheet } from '@/features/org-chart/components/org-members-she
 import type { OrgTreeNode } from '@/features/org-chart/tree-nodes'
 import { findByKey } from '@/features/org-chart/tree-utils'
 import { useOrgTreeState } from '@/features/org-chart/use-org-tree-state'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 
-const FORBIDDEN_STATUS = 403
 const SKELETON_ROWS = 6
 
 interface OrgChartPanelProps extends OrgRowRenderers {
   nodes: OrgTreeNode[]
   isLoading: boolean
-  /** HTTP status of the failed request, when there was one. */
-  errorStatus: number | null
+  /** The failed request's error, when there was one. */
+  error: unknown
   isError: boolean
   ariaLabel: string
   emptyLabel: string
@@ -45,13 +45,13 @@ export function OrgChartPanel({
   nodes: allNodes,
   isLoading,
   isError,
-  errorStatus,
+  error,
   ariaLabel,
   emptyLabel,
   renderRowActions,
   wrapRow,
 }: OrgChartPanelProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const state = useOrgTreeState(allNodes)
   const [membersKey, setMembersKey] = useState<string | null>(null)
   const membersNode = membersKey === null ? null : findByKey(state.nodes, membersKey)
@@ -67,7 +67,7 @@ export function OrgChartPanel({
   }
 
   if (isError) {
-    const message = errorStatus === FORBIDDEN_STATUS ? t('orgChart.forbidden') : t('orgChart.loadError')
+    const message = apiErrorMessage(error, t('orgChart.loadError'), i18n)
     return (
       <Card>
         <PanelMessage tone="destructive">{message}</PanelMessage>

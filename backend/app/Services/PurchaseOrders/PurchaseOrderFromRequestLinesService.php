@@ -99,7 +99,7 @@ class PurchaseOrderFromRequestLinesService
             $held = $this->capabilities->capabilities($actor, $requests->get($line->purchase_request_id));
 
             if (array_filter($held, static fn (PurchaseRequestCapability $capability): bool => in_array($capability, self::ORDERING_CAPABILITIES, true)) === []) {
-                throw new AuthorizationException;
+                throw new AuthorizationException(__('You do not hold a role on this purchase request that allows ordering its lines.'));
             }
         }
 

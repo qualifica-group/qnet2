@@ -62,7 +62,6 @@ export function PurchaseRequestLineStatusesTable() {
               inactiveBadge: t('purchaseRequestLineStatuses.reorder.inactiveBadge'),
               loadError: t('purchaseRequestLineStatuses.reorder.loadError'),
               saved: t('purchaseRequestLineStatuses.reorder.saved'),
-              forbidden: t('purchaseRequestLineStatuses.reorder.forbidden'),
               genericError: t('purchaseRequestLineStatuses.reorder.genericError'),
             }}
             onReordered={refreshAll}

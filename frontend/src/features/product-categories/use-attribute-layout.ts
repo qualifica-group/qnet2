@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import type { ApiErrorResponse } from '@/api/types'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { attributeLayoutBlobSchema } from '@/features/attributes/attribute-layout-schema'
 import type { LayoutBlob, LayoutFormScope } from '@/features/attributes/attribute-layout-types'
 import { fetchAttributeLayout, saveAttributeLayout } from '@/features/product-categories/api'
@@ -38,7 +38,6 @@ function isEditable(
 
 export interface UseAttributeLayoutLabels {
   saved: string
-  forbidden: string
   saveError: string
   invalid: string
   reset: string
@@ -69,6 +68,7 @@ interface UseAttributeLayoutArgs {
  * the inverse: it deletes the persisted override right away.
  */
 export function useAttributeLayout({ categoryId, context, scope, labels }: UseAttributeLayoutArgs) {
+  const { i18n } = useTranslation()
   const queryClient = useQueryClient()
   const queryKey = productCategoryKeys.attributeLayout(categoryId, context, scope)
   const query = useQuery({ queryKey, queryFn: () => fetchAttributeLayout(categoryId, context, scope) })
@@ -103,11 +103,7 @@ export function useAttributeLayout({ categoryId, context, scope, labels }: UseAt
   }
 
   const reportWriteFailure = (caughtError: unknown) => {
-    if (axios.isAxiosError<ApiErrorResponse>(caughtError) && caughtError.response?.status === 403) {
-      toast.error(labels.forbidden)
-    } else {
-      toast.error(labels.saveError)
-    }
+    toast.error(apiErrorMessage(caughtError, labels.saveError, i18n))
   }
 
   const save = async (): Promise<boolean> => {

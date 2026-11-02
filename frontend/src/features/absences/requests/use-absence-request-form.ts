@@ -27,7 +27,7 @@ import { useAbsenceRequestPreview } from '@/features/absences/requests/use-absen
 import { useAbsenceRefresh } from '@/features/absences/requests/use-absence-refresh'
 import type { AbsenceRequest } from '@/features/absences/types'
 
-/** Server-side field names mapped onto the form for 422 handling (`is_full_day` is the mode, `user_id` has its own toast). */
+/** Server-side field names mapped onto the form for 422 handling (`is_full_day` is the mode, `user_id` has no input: the shared 422 toast names it). */
 const SERVER_ERROR_FIELDS = [
   'absence_type_id',
   'day_part',
@@ -109,11 +109,8 @@ export function useAbsenceRequestForm({ request, prefill, refreshGrid, onSaved }
       if (modeError !== null) {
         form.setError('mode', { message: modeError })
       }
-      // `user_id` (no approver for the person) has no input: it goes to a toast
-      const unmapped = fieldError(error, 'user_id')
-      if (unmapped !== null) {
-        toast.error(unmapped)
-      } else if (!handled) {
+      // `user_id` (no approver for the person) has no input: the shared 422 toast already names it.
+      if (!handled) {
         toast.error(serverMessage(error) ?? t('absences.requests.form.error'))
       }
     } finally {

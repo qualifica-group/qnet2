@@ -8,6 +8,7 @@ use App\Enums\SizeClassEnum;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesPhoneUniqueness;
+use App\Http\Requests\Concerns\ValidatesPrimaryReferent;
 use App\Http\Requests\Concerns\ValidatesRequiredPhoneContact;
 use App\Http\Requests\Concerns\ValidatesUserProfile;
 use App\Models\Registry;
@@ -38,6 +39,7 @@ class StoreRegistryRequest extends FormRequest
     use EnforcesFieldPermissions;
     use ValidatesManagerSlots;
     use ValidatesPhoneUniqueness;
+    use ValidatesPrimaryReferent;
     use ValidatesRequiredPhoneContact;
     use ValidatesUserProfile;
 
@@ -90,6 +92,7 @@ class StoreRegistryRequest extends FormRequest
             'sector_ids.*' => ['integer', new ActiveSector],
             'referent_ids' => ['sometimes', 'array'],
             'referent_ids.*' => ['integer', Rule::exists('referents', 'id')],
+            'primary_referent_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             // Supervisor is an INTERNAL user (like managers); commercial/reporter
             // stay external referents.
             'supervisor_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
@@ -118,8 +121,19 @@ class StoreRegistryRequest extends FormRequest
             $this->validateRequiredPhoneContact($validator);
             $this->validatePhoneUniqueness($validator);
             $this->validateManagerSlots($validator);
+            $this->validatePrimaryReferent($validator);
             $this->enforceFieldPermissions($validator);
         });
+    }
+
+    /**
+     * A new registry has only the referents submitted with it.
+     *
+     * @return array<int, int>
+     */
+    protected function resultingReferentIds(): array
+    {
+        return $this->submittedReferentIds();
     }
 
     protected function authorizationResource(): string

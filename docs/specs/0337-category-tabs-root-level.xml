@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0337-category-tabs-root-level" status="approved" owner="utente" date="2026-10-30">
+
+  <goal>
+    Su ogni barra delle tab per categoria prodotto (Gestione Richieste, Gestione Iscritti, Opportunita', Offerte,
+    Contratti) l'utente sceglie se vedere le tab delle sole categorie madri (primo livello) oppure di tutte le
+    categorie come oggi. La tab di una madre raccoglie i record della madre e di tutte le sue discendenti.
+  </goal>
+
+  <context>
+    <!-- Fatti verificati (2026-10-30, dopo i commit 34bad994 e 36c3cb62). -->
+    - Albero categorie: `product_categories.parent_id` (profondita' illimitata, `ProductCategory::parent()/children()`).
+      Nessun helper esistente restituisce i discendenti di una categoria (`CategoryBranchResolver` risale solo agli antenati).
+    - Barra condivisa `frontend/src/features/category-tabs/` (`CategoryTabs`, `category-tabs-picker.tsx` con lo switch
+      "Mostra solo preferite", `useCategoryTabStrip(source, fetchCategories?)`, `useCategoryTabSelection` con localStorage
+      `${key}.category-tab`). Montata in `request-management-table.tsx` (anche Iscritti), `opportunities-table.tsx`,
+      `quotes-table.tsx`, `contracts-table.tsx`.
+    - Conteggi: `RequestCategoryTabsResolver` (RM/Iscritti, cache `rm-tabs:`) e `GridCategoryTabsResolver`
+      (opportunities/quotes/contracts, cache `category-tabs:`), entrambi count(distinct) raggruppato per id categoria.
+    - Scope righe: `ProductCategoryScopable::scopeToProductCategory(?int)` implementata da
+      `RequestManagementScopedTableDefinition` (che con una categoria aggiunge anche `attr.*` e rinomina GA),
+      `Quotes\OpportunityScopedTableDefinition` e `Contracts\ContractCategoryScopedTableDefinition` (via
+      `CategoryTabs\RevenueCategoryQuoteIds`), `Opportunities\OpportunityCategoryScopedTableDefinition`.
+      Il parametro `productCategoryId` attraversa `TableRowsRequest`/`TableValuesRequest`/`TableController` e, lato
+      frontend, `features/table/*` + `components/data-table/*` (stesso percorso di `registryId`, spec 0199).
+    - Preferiti: `user_category_tab_preferences` unique (user_id, module), `module` string(40), logica in
+      `CategoryTabPreferenceStore`, default da competenza `ResolveDefaultCategoryTabPreference` (riceve gli id della barra).
+  </context>
+
+  <decisions>
+    <decision id="D-1">"Categorie madri" = categorie radice (`parent_id` null). Tab di una radice = record con almeno una
+      linea/riga su una categoria del suo ramo (radice inclusa), contati una volta sola. Il criterio per modulo resta quello
+      di oggi (RM/Iscritti e Opportunita': linee dell'Opportunita'; Offerte e Contratti: righe di ricavo dell'offerta).</decision>
+    <decision id="D-2">La scelta del livello e' salvata nel browser, separata per modulo: localStorage `${key}.category-tab-level`
+      (`all` | `root`, default `all`). Ogni livello ricorda la propria tab: `${key}.category-tab` (invariata, livello `all`)
+      e `${key}.category-tab.root`.</decision>
+    <decision id="D-3">Gestione Richieste/Iscritti: una tab radice filtra soltanto. Nessuna colonna `attr.*`, nessuna rinomina
+      Gestori Account; config colonne e layout uguali alla tab "Tutte".</decision>
+    <decision id="D-4">Preferiti separati per livello: il livello radice usa la riga preferenze `module = "{module}:root"`
+      (es. `quotes:root`, sta in string(40), nessuna migrazione). Default da competenza al livello radice = radici il cui ramo
+      contiene almeno una categoria della barra coperta dalla competenza (stessa regola 0193 applicata alle radici).</decision>
+    <decision id="D-5">Export e pannello statistiche non seguono la tab (invariato). La barra della pagina Statistiche
+      richieste (`request-dashboard-category-strip.tsx`) e' fuori scope.</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Backend: helper `App\Products\ProductCategoryBranches` (una query `id, parent_id` per richiesta): `branchIds(int $rootId): int[]` (radice inclusa), `rootIdOf(int $categoryId): int`.</item>
+      <item>Backend: `ProductCategoryScopable::scopeToProductCategoryBranch(?int $rootId)` implementato dai 4 decoratori (filtro su `whereIn(category, branchIds)` con la stessa subquery di oggi; RM senza `attr.*`/rinomina, D-3).</item>
+      <item>Backend: parametro `productCategoryBranchId` in `TableRowsRequest`, `TableValuesRequest` e `TableController` (rows, values), mutuamente esclusivo con `productCategoryId`.</item>
+      <item>Backend: `?level=root` su `GET {module|grid}/product-categories` (entrambi i resolver, cache con chiave distinta) e su `GET|PUT {module|grid}/category-tab-preferences` (riga `"{module}:root"`, default D-4).</item>
+      <item>Frontend: scope `productCategoryBranchId` in `TableConfigScope` e nel percorso di `productCategoryId` dentro `features/table/*` e `components/data-table/*` (righe, valori distinti, filtri locali per scope); MAI inviato a config/preferenze/filtri salvati (D-3).</item>
+      <item>Frontend: `features/category-tabs/`: livello persistito (D-2), fetch con `level`, preferiti per livello, interruttore "Categorie madri / Tutte le categorie" nel menu "Altre" accanto a "Mostra solo preferite"; i 4 punti di montaggio passano `productCategoryBranchId` quando il livello e' `root`.</item>
+      <item>i18n `categoryTabs.*` IT/EN; guide in-app IT/EN (`request-management`, `opportunities`, `quotes`, `contracts`, sezione/paragrafo della barra); manuale Claude Docs (Gestione Richieste, Opportunita', Offerte, Contratti).</item>
+    </in>
+    <out>
+      <item>Barra della pagina Statistiche richieste; export filtrato per tab; statistiche Opportunita' per tab.</item>
+      <item>Livelli intermedi (solo radici o tutte, nessuna profondita' scelta dall'utente).</item>
+      <item>Salvataggio del livello sull'account; migrazioni; nuove dipendenze; nuovi permessi.</item>
+      <item>Cambi al comportamento del livello `all` (oggi): endpoint senza `level` e `productCategoryId` invariati.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/{request-management|enrollee-management|opportunities|quotes|contracts}/product-categories">
+      <request>query `level` opzionale: assente = oggi; `root` = solo radici. Altri valori -> 422.</request>
+      <response status="200">shape invariata per modulo (`requests_count` per RM/Iscritti, `records_count` per le griglie); con
+        `level=root` solo radici con conteggio &gt; 0, conteggio = record distinti sul ramo (D-1), ordinate per name.</response>
+      <errors>403 senza `{module}.viewAny`; 422 `level` non valido.</errors>
+    </endpoint>
+    <endpoint method="GET|PUT" path="/api/{module}/category-tab-preferences">
+      <request>query `level` opzionale (`root`). PUT body invariato.</request>
+      <response status="200">shape invariata; con `level=root` legge/scrive la riga `module = "{module}:root"`, default D-4.</response>
+      <errors>403; 422 come oggi + `level` non valido.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/{domain}/rows | /values">
+      <request>nuovo `productCategoryBranchId` (int, exists product_categories, solo per i domini ProductCategoryScopable; ignorato dagli altri come `productCategoryId`); 422 se inviato insieme a `productCategoryId`.</request>
+      <response status="200">shape invariata; righe/valori del solo ramo (D-1).</response>
+    </endpoint>
+    <frontend_contract>
+      - `CategoryTabLevel = 'all' | 'root'`; `TableConfigScope` += `productCategoryBranchId?: number`.
+      - localStorage: `${key}.category-tab-level`, `${key}.category-tab` (all), `${key}.category-tab.root`.
+      - Query keys: `[key, 'categories', level]`, `[key, 'category-tab-preferences', level]` (le chiavi di livello `all` restano compatibili: invalidazioni per prefisso `[key, 'categories']`).
+      - `TableView` key per tab radice: `root-{id}` (rimonta come oggi).
+    </frontend_contract>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">`ProductCategoryBranches::branchIds(R)` restituisce R e tutti i discendenti a ogni profondita'; `rootIdOf` di un nipote restituisce la radice. (Pest unit)</criterion>
+    <criterion id="AC-002">Dato radice R con figlia F e nipote N, record A con linee su F e N, record B su N, record C su altra radice S: GET product-categories?level=root (per ciascuno dei 5 moduli) restituisce R: 2 e S: 1, nessuna categoria non radice; senza `level` la risposta e' quella di oggi. (Pest, dataset sui 5 moduli)</criterion>
+    <criterion id="AC-003">I conteggi al livello radice rispettano la visibility scope del modulo: un record non visibile non conta. (Pest)</criterion>
+    <criterion id="AC-004">`level=foo` -> 422; senza `{module}.viewAny` -> 403 anche con `level=root`. (Pest)</criterion>
+    <criterion id="AC-005">POST rows con `productCategoryBranchId = R` restituisce A e B (una volta ciascuno) per ogni dominio; con anche `productCategoryId` -> 422; i valori distinti seguono lo stesso scope. (Pest)</criterion>
+    <criterion id="AC-006">Gestione Richieste: con `productCategoryBranchId` la config/righe non contengono colonne `attr.*` ne' etichette GA rinominate. (Pest)</criterion>
+    <criterion id="AC-007">Preferenze `level=root`: GET senza riga salvata propone le radici coperte (D-4) con `is_default` true; PUT scrive `"{module}:root"` senza toccare la riga del livello `all`. (Pest)</criterion>
+    <criterion id="AC-008">Barra: nel menu "Altre" l'interruttore passa da "Tutte le categorie" a "Categorie madri"; la barra rilegge le categorie con `level=root`, la griglia riceve `productCategoryBranchId` della tab cliccata e il livello resta al reload (`${key}.category-tab-level`); tornando a "Tutte le categorie" riappare la tab scelta prima a quel livello. (Vitest, su almeno una griglia + test hook)</criterion>
+    <criterion id="AC-009">Preferiti al livello radice: stellina e "Mostra solo preferite" usano `?level=root` e non cambiano i preferiti del livello `all`. (Vitest)</criterion>
+    <criterion id="AC-010">Regressione: con livello `all` le barre si comportano come oggi (test esistenti di category-tabs, request-management, opportunities, quotes, contracts e Pest CategoryTabs/RequestManagement verdi senza cambi alle asserzioni). (Pest + Vitest)</criterion>
+    <criterion id="AC-011">i18n IT/EN delle nuove etichette; guide in-app aggiornate con parity verde. (Vitest)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna migrazione, dipendenza o permesso nuovo. Authz invariata (`{module}.viewAny`).
+    - Subquery parametrizzate (`whereIn` con binding); un eventuale CASE di mappatura categoria -> radice solo con binding, mai interpolazione.
+    - Conteggi radice in cache `AggregateCache` con chiave distinta dal livello `all`.
+    - File &lt; 300 righe; barra compatta (ui-design.md §2); nessun dead code.
+    - Test mirati Pest/Vitest + `tsc -b --force`; Pint/ESLint puliti; nessun commit senza ordine (CLAUDE.md §3.6).
+  </constraints>
+
+</spec>

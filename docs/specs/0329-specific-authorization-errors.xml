@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0329-specific-authorization-errors" status="done" owner="utente" date="2026-10-29">
+
+  <goal>
+    Quando un utente non e' autorizzato (HTTP 403) vede un messaggio specifico: quale permesso gli manca, con
+    azione e modulo ("Non hai il permesso «Elimina» sul modulo «Opportunità».") oppure, se il permesso ce l'ha ma
+    il record e' fuori dal suo perimetro, il motivo ("Non puoi modificare questa commessa: non ne sei membro né
+    responsabile."). Mai piu' "Non hai i permessi per questa azione." o "Si è verificato un errore imprevisto"
+    su un 403.
+  </goal>
+
+  <context>
+    - Backend, oggi. Le Policy (`app/Policies/*`, quasi tutte `extends Abstracts\BasePolicy`) rispondono `bool`;
+      ogni ability e' il permesso Spatie `{resource}.{ability}` (`BasePolicy::permission()`), con condizioni di
+      perimetro in AND/OR in 13 Policy (Attachment, Contract, FieldChangeRequest, Opportunity, PurchaseRequest,
+      Quote, Stock, StaffTraining, Task, TimeEntry, UserSkill, User, WorkOrder; da riverificare in build).
+    - Due strade producono il 403:
+      (a) dentro i controller: `BaseApiController::handleControllerException()` (667 usi) ->
+          `resolveExceptionStatus()`/`resolveExceptionMessage()` -> `fail($message, 403)`. Il messaggio e' quello
+          dell'eccezione tradotto: "This action is unauthorized." -> `lang/it.json:65` "Non hai i permessi per
+          questa azione."; un `abort(403)` senza testo diventa "An unexpected error occurred.".
+          AuthorizationException qui viene loggata come errore + alert Teams.
+      (b) prima del controller (FormRequest `authorize()`, middleware `super-admin` = `EnsureSuperAdmin`): render di
+          Laravel, oggi `{ "message": ... }` senza envelope (`bootstrap/app.php` ha render custom solo per 404 da
+          model e statement timeout).
+    - Punti che rifiutano senza Policy: 50 `abort/abort_unless/abort_if(..., 403)` in `app/` (molti senza
+      messaggio, alcuni con 'This action is unauthorized.' esplicito), 29 `AuthorizationException` lanciate a
+      mano in service/guard. Nessun `Response::deny` nel codebase.
+    - Spatie registra i permessi con `Gate::before`; ogni `$user->can('x.y')` e ogni ability di Policy passano dal
+      Gate, che emette `Illuminate\Auth\Access\Events\GateEvaluated` (user, ability, result, arguments).
+      `AppServiceProvider` ha gia' il `Gate::before` del super-admin.
+    - Lingua: `SetLocale` (prepend sul gruppo api) traduce i messaggi nella lingua del client (`Accept-Language`).
+    - Frontend, oggi. Etichette di moduli e azioni solo lato client: `permissions.resources.*` /
+      `permissions.abilities.*` (`i18n/locales/{it,en}-permissions.ts`), lette da `resourceLabel()` /
+      `abilityLabel()` in `features/roles/permission-labels.ts`. `ApiErrorResponse` in `api/types.ts`.
+      85 file hanno un ramo `status === 403` con testo fisso (`*.deleteForbidden`, `*.forbidden`), 137 file / 248
+      chiamate `toast.error(t(...))` con testo fisso anche quando la causa e' un 403; ~10 helper per feature
+      (`resolveExportErrorMessage`, `actionErrorMessage`, `backendErrorMessage`, ...).
+      `lib/record-unavailable-reason.ts` + `components/detail/record-unavailable.tsx` gestiscono 404/403 sui
+      dettagli; `app/query-client.ts` non ritenta 404/403.
+    - Manuale: `features/help/content/{it,en}/general.ts` ha la FAQ "Non vedo una voce di menu o un pulsante".
+  </context>
+
+  <decisions>
+    D-1 Contenuto (utente 2026-10-29): permesso mancante (azione + modulo) oppure motivo di perimetro. Niente
+        contatti (il 403 con contatti resta solo nel dettaglio Task, spec 0155 D-7).
+    D-2 Copertura (utente 2026-10-29): base centrale backend per tutti i 403 + helper frontend condiviso adottato in
+        tutti i punti che oggi mostrano un testo fisso.
+    D-3 Log/alert (utente 2026-10-29): invariati. Un 403 nei controller resta loggato come oggi (errore + Teams).
+    D-4 Le etichette restano nel frontend: il backend manda la chiave del permesso (`opportunities.delete`), il
+        frontend compone la frase con `abilityLabel`/`resourceLabel`. Il `message` del backend per questo caso
+        contiene la chiave grezza ed e' il fallback per chi consuma l'API senza la UI (client API, spec 0210).
+        Niente duplicazione del catalogo etichette nel backend.
+    D-5 Individuazione centrale del permesso mancante: un listener di `GateEvaluated` registra, per richiesta
+        (servizio `scoped`), le valutazioni negate. Quando una ability di Policy (senza punto, es. `delete`) viene
+        negata, le valutazioni di permessi (con punto) negate DURANTE quella valutazione sono le sue cause. Il
+        permesso riportato e' `{resource}.{ability}` se fra le cause, altrimenti la prima causa. Un `can('x.y')`
+        negato fuori da una Policy e' causa di se stesso. Si usa SOLO per AuthorizationException col messaggio
+        di default; un messaggio esplicito vince sempre.
+    D-6 Motivi di perimetro: le Policy con condizioni oltre al permesso restituiscono
+        `Illuminate\Auth\Access\Response` - `Response::deny(__('authorization.<chiave>'))` sul ramo di perimetro,
+        `Response::deny()` (default) sul ramo del permesso, `Response::allow()` altrimenti. Testi in
+        `lang/{it,en}/authorization.php`.
+    D-7 Nessun 403 senza testo: ogni `abort*(..., 403)` diventa `Gate::authorize`/`$this->authorize` (se il controllo
+        e' un permesso) oppure porta un messaggio di dominio; ogni `throw new AuthorizationException` porta un
+        messaggio. 'This action is unauthorized.' scritto a mano conta come "senza testo". Un test di architettura
+        lo impone.
+    D-8 Envelope 403 unico per le due strade (controller e pre-controller), con il blocco `authorization` sotto.
+        Il 403 di `GET /api/tasks/{task}` (errors.access_contacts) e `SetFirstPasswordRequest::failedAuthorization`
+        restano come sono; ricevono il blocco `authorization` solo se passano dal costruttore comune (non
+        richiesto).
+    D-9 Frontend: due funzioni pure in `lib/forbidden-message.ts`. Un 403 senza blocco `authorization` (forma
+        vecchia) mostra il `message` del server; senza neppure quello, `common.forbidden` ("Non hai i permessi per
+        questa operazione.") come ultima difesa. Le chiavi i18n `*Forbidden`/`*.forbidden` rese inutili si
+        cancellano (IT+EN).
+  </decisions>
+
+  <scope>
+    <in>
+      <item>BE: registro per-richiesta delle negazioni (listener GateEvaluated) e costruttore unico della risposta 403.</item>
+      <item>BE: `BaseApiController` (strada a) e render in `bootstrap/app.php` per AuthorizationException/AccessDeniedHttpException su api/* (strada b), stessa shape.</item>
+      <item>BE: motivi di perimetro nelle Policy con condizioni oltre al permesso (D-6), testi IT+EN.</item>
+      <item>BE: conversione dei 50 abort 403 e delle 29 AuthorizationException manuali (D-7); 403 di `EnsureSuperAdmin` con envelope e motivo.</item>
+      <item>BE: test di architettura che vieta 403 senza testo in `app/`.</item>
+      <item>FE: `forbiddenMessage` / `apiErrorMessage`, tipo `ApiErrorResponse.authorization`, chiave `common.forbidden` e `common.missingPermission`.</item>
+      <item>FE: adozione in tutti i rami 403 e nei `toast.error`/stati di errore che possono ricevere un 403 (tabelle, azioni di riga, form, dialog, bulk, export/import, PDF), helper per feature inclusi; `RecordUnavailable` forbidden mostra il motivo specifico.</item>
+      <item>FE: cancellazione delle chiavi i18n e dei rami resi morti, IT+EN, parity test verdi.</item>
+      <item>Manuale: FAQ nella guida `general` IT+EN; sezione corrispondente del manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Contatti di chi puo' concedere l'accesso (D-1).</item>
+      <item>Cambi a log/alert Teams dei 403 (D-3).</item>
+      <item>Cambi a cosa e' autorizzato: nessuna Policy concede o nega qualcosa di diverso da oggi; cambia solo il testo.</item>
+      <item>401 (sessione scaduta), 404, 409, 422: invariati.</item>
+      <item>Etichette dei permessi nel backend (D-4).</item>
+      <item>Il 403 con contatti del dettaglio Task (spec 0155 D-7).</item>
+      <item>Nascondere pulsanti in base ai permessi: resta com'e' (`can_*`, `<Can>`).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Vale per OGNI risposta 403 di /api/* tranne GET /api/tasks/{task} (invariata, D-8). -->
+    <endpoint method="ANY" path="/api/*">
+      <errors>
+        <error status="403" reason="missing_permission">
+          {
+            "success": false,
+            "message": "Non hai il permesso «opportunities.delete».",   // it; en: "You do not have the «opportunities.delete» permission."
+            "authorization": {
+              "reason": "missing_permission",
+              "permission": "opportunities.delete"                      // string, sempre "{resource}.{ability}"
+            }
+          }
+        </error>
+        <error status="403" reason="denied">
+          {
+            "success": false,
+            "message": "Non puoi modificare questa commessa: non ne sei membro né responsabile.",  // motivo di dominio, tradotto
+            "authorization": {
+              "reason": "denied",
+              "permission": null
+            }
+          }
+        </error>
+      </errors>
+    </endpoint>
+
+    <frontend_api file="frontend/src/lib/forbidden-message.ts">
+      // ApiErrorResponse (api/types.ts) guadagna:
+      //   authorization?: { reason: 'missing_permission' | 'denied'; permission: string | null }
+      export function forbiddenMessage(error: unknown, i18n: I18nInstance): string | null
+      //   non-axios / status != 403          -> null
+      //   reason missing_permission           -> t('common.missingPermission', { ability: abilityLabel(p), module: resourceLabel(resource(p)) })
+      //                                          it: "Non hai il permesso «{{ability}}» sul modulo «{{module}}»."
+      //   reason denied / blocco assente      -> response.data.message se non vuoto
+      //   altrimenti                          -> t('common.forbidden')
+      export function apiErrorMessage(error: unknown, fallback: string, i18n: I18nInstance): string
+      //   forbiddenMessage(error, i18n) ?? fallback
+    </frontend_api>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Backend: tests/Feature/Authorization/ForbiddenResponseTest.php salvo dove indicato. -->
+    <criterion id="AC-001">Dato un utente senza `opportunities.delete`, quando chiama DELETE /api/opportunities/{id} con Accept-Language it, allora 403 con la shape missing_permission e `authorization.permission` = "opportunities.delete".</criterion>
+    <criterion id="AC-002">Dato un utente senza `users.update`, quando chiama l'endpoint di attivazione massiva utenti (autorizzazione nel FormRequest `UserBulkActivationRequest`, strada pre-controller), allora 403 con la stessa shape di AC-001 e `permission` = "users.update".</criterion>
+    <criterion id="AC-003">Dato un utente con `opportunities.update` su un'opportunita' fuori dal suo perimetro, quando chiama PATCH /api/opportunities/{id}, allora 403 reason "denied", `permission` null e `message` = il motivo IT di `authorization.php`.</criterion>
+    <criterion id="AC-004">Per ogni Policy con condizioni di perimetro (D-6), un caso di dataset in `tests/Feature/Authorization/PolicyDenialReasonsTest.php` verifica che il ramo di perimetro produca reason "denied" col suo motivo e il ramo del permesso produca reason "missing_permission".</criterion>
+    <criterion id="AC-005">Dato un permesso negato in precedenza nella stessa richiesta (es. `opportunities.viewAll` valutato per il blocco permissions) e un rifiuto finale di perimetro, allora il messaggio e' il motivo di perimetro, non il permesso precedente (nessuna causa "stantia").</criterion>
+    <criterion id="AC-006">Con Accept-Language en, AC-001 e AC-003 restituiscono i testi inglesi.</criterion>
+    <criterion id="AC-007">Dato un utente non super-admin, quando chiama un endpoint col middleware `super-admin` (es. GET /api/system-health), allora 403 con envelope, reason "denied" e il motivo "sezione riservata al super-admin" tradotto.</criterion>
+    <criterion id="AC-008">`tests/Unit/Architecture/ForbiddenWithoutMessageTest.php`: fallisce se in `app/` esiste un `abort`/`abort_if`/`abort_unless` con 403 senza messaggio o con 'This action is unauthorized.', o un `new AuthorizationException()` senza messaggio.</criterion>
+    <criterion id="AC-009">Invariati e verdi: i test del 403 con `errors.access_contacts` di GET /api/tasks/{task}, di `SetFirstPasswordRequest`, del bypass super-admin e del log/alert dei 403 nei controller.</criterion>
+    <criterion id="AC-010">Nessun cambio di esito: l'intera suite Pest esistente resta verde senza modificare asserzioni di status (cambiano solo asserzioni sul testo del 403, dichiarate come REQUIREMENT CHANGED).</criterion>
+    <!-- Frontend -->
+    <criterion id="AC-011">`lib/forbidden-message.test.ts`: missing_permission "opportunities.delete" -> "Non hai il permesso «Elimina» sul modulo «Opportunità»."; denied -> il `message` del server; 403 senza blocco con message -> il message; 403 vuoto -> `common.forbidden`; 404, 500, errore di rete, valore non axios -> null.</criterion>
+    <criterion id="AC-012">`apiErrorMessage` restituisce il messaggio di AC-011 sul 403 e il fallback passato su ogni altro errore.</criterion>
+    <criterion id="AC-013">`RecordUnavailable` col motivo forbidden mostra come descrizione il testo di `forbiddenMessage` (test componente) e resta senza "Riprova".</criterion>
+    <criterion id="AC-014">Test componente/hook rappresentativi per area adottata (almeno: eliminazione opportunita', azione bulk task, eliminazione ODA, export, griglia di un modulo con viewAny negato): su un 403 missing_permission il toast/stato mostra la frase specifica, su un 500 il testo generico di prima.</criterion>
+    <criterion id="AC-015">Nessun ramo `status === 403` / `FORBIDDEN_STATUS` con testo fisso resta in `frontend/src` fuori da `lib/forbidden-message.ts`, `lib/record-unavailable-reason.ts` e il 403 con contatti dei Task (verifica grep del verifier); le chiavi i18n rimosse non sono piu' referenziate e i parity test IT/EN sono verdi.</criterion>
+    <criterion id="AC-016">Guida in-app `general` IT+EN: FAQ sul messaggio di permesso mancante / motivo; `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Solo Laravel Gate/Events e i18next gia' presenti.
+    - Nessun cambio di autorizzazione: le Policy convertite a `Response` devono dare lo stesso allow/deny di prima
+      (stessa tabella di verita'); `$user->can()` sulle Policy continua a restituire bool.
+    - Il registro delle negazioni e' `scoped` (una richiesta = un registro), mai statico; nessuna fuga fra worker di coda/Octane.
+    - Il messaggio non espone classi, model o SQL; i motivi di perimetro non rivelano dati del record oltre a cio'
+      che l'utente vede gia' (niente nomi di membri/responsabili).
+    - File entro 300/500 righe; `BaseApiController` e `bootstrap/app.php` chiamano il costruttore comune, la logica
+      non sta li'.
+    - Test backend mirati con `XDEBUG_MODE=off ./vendor/bin/pest tests/Feature/Authorization tests/Unit/Architecture`;
+      frontend Vitest + ESLint + `npx tsc -b --force`.
+  </constraints>
+
+</spec>

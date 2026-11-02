@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -31,7 +31,7 @@ const CAMPAIGNS_DOMAIN = 'campaigns'
  * the backend re-authorizes each call.
  */
 export function CampaignsTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const stats = useStatsPanel(CAMPAIGNS_DOMAIN)
   const invalidateStats = useInvalidateModuleStats(CAMPAIGNS_DOMAIN)
 
@@ -62,17 +62,12 @@ export function CampaignsTable() {
         refreshGrid()
         invalidateStats()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        if (status === 403) {
-          toast.error(t('campaigns.form.deleteForbidden'))
-        } else {
-          toast.error(t('campaigns.form.deleteError'))
-        }
+        toast.error(apiErrorMessage(error, t('campaigns.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t, invalidateStats],
+    [refreshGrid, t, i18n, invalidateStats],
   )
 
   const handleAction: RowActionHandler = useCallback(

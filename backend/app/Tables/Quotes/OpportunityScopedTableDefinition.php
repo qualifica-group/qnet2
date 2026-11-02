@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Tables\Quotes;
 
 use App\Models\User;
+use App\Products\ProductCategoryBranches;
+use App\Tables\CategoryTabs\RevenueCategoryQuoteIds;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
+use App\Tables\ProductCategoryScopable;
 use App\Tables\RegistryScopable;
 use App\Tables\TableDefinition;
 use Illuminate\Database\Eloquent\Builder;
@@ -39,8 +42,12 @@ use Illuminate\Support\Facades\DB;
  * Offerta is its Opportunity's, so the scope is a `whereIn` on the client's
  * opportunities, in AND with the Opportunity scope. This is the outermost
  * decorator of the domain, hence the one `instanceof RegistryScopable` sees.
+ *
+ * And its `ProductCategoryScopable` (spec 0335, D-1): an Offerta shows in the
+ * tab of every category of its REVENUE lines' products, with no fallback on
+ * the Opportunity's lines (an Offerta without revenue lines is only in "Tutte").
  */
-class OpportunityScopedTableDefinition implements RegistryScopable, TableDefinition
+class OpportunityScopedTableDefinition implements ProductCategoryScopable, RegistryScopable, TableDefinition
 {
     use DelegatesUnaugmentedTableMethods;
 
@@ -48,7 +55,14 @@ class OpportunityScopedTableDefinition implements RegistryScopable, TableDefinit
 
     private ?int $registryScope = null;
 
-    public function __construct(private readonly TableDefinition $inner) {}
+    private ?int $categoryScope = null;
+
+    private ?int $branchScope = null;
+
+    public function __construct(
+        private readonly TableDefinition $inner,
+        private readonly ProductCategoryBranches $branches,
+    ) {}
 
     /**
      * Narrows `baseQuery()` to one Opportunity's Offerte (null = no scope,
@@ -77,7 +91,25 @@ class OpportunityScopedTableDefinition implements RegistryScopable, TableDefinit
             );
         }
 
+        if ($this->categoryScope !== null) {
+            $query->whereIn('quotes.id', RevenueCategoryQuoteIds::subquery($this->categoryScope));
+        }
+
+        if ($this->branchScope !== null) {
+            $query->whereIn('quotes.id', RevenueCategoryQuoteIds::subquery($this->branches->branchIds($this->branchScope)));
+        }
+
         return $query;
+    }
+
+    public function scopeToProductCategory(?int $productCategoryId): void
+    {
+        $this->categoryScope = $productCategoryId;
+    }
+
+    public function scopeToProductCategoryBranch(?int $rootId): void
+    {
+        $this->branchScope = $rootId;
     }
 
     /**

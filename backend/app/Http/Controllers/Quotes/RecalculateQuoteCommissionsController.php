@@ -45,7 +45,7 @@ class RecalculateQuoteCommissionsController extends BaseApiController
             $resource = $this->authorization->resolve('quotes');
 
             if (! $resource->fieldPermissions($actor, $quote)['commissions']->editable) {
-                throw new AuthorizationException;
+                throw new AuthorizationException(__('You cannot edit the commissions of this quote.'));
             }
 
             if ($this->impact->isClosed($quote)) {

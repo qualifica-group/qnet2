@@ -288,7 +288,6 @@ export const importWizard = {
     failed: 'Failed',
   },
   errors: {
-    forbidden: "You don't have permission to import leads.",
     notFound: 'This import run does not exist.',
     validation: 'Some values are not valid. Please check and try again.',
     invalidState: 'This action is not available at this step.',

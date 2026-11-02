@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -228,9 +229,7 @@ class TableFilterViewController extends BaseApiController
      */
     private function authorizeViewAny(bool $allowed): void
     {
-        if (! $allowed) {
-            throw new AuthorizationException;
-        }
+        Gate::allowIf($allowed);
     }
 
     /**

@@ -127,6 +127,9 @@ final readonly class CreateQuoteData
         // Appended after the pre-existing parameters (spec 0228) for the
         // same positional-compat reason. Null = today, set by QuoteService.
         public ?string $quoteDate = null,
+        // Appended after the pre-existing parameters (spec 0332): the Fonte, a
+        // plain optional value with nothing to inherit from the Opportunity.
+        public ?int $sourceId = null,
     ) {}
 
     /**
@@ -165,6 +168,7 @@ final readonly class CreateQuoteData
             managerSlots: array_key_exists('manager_slots', $data) ? self::normalizeManagerSlots($data['manager_slots']) : null,
             promoteManagersToOpportunity: (bool) ($data['promote_managers_to_opportunity'] ?? false),
             quoteDate: $data['quote_date'] ?? null,
+            sourceId: isset($data['source_id']) ? (int) $data['source_id'] : null,
         );
     }
 
@@ -254,6 +258,7 @@ final readonly class CreateQuoteData
             'company_id' => $this->companyId,
             'company_site_id' => $this->companySiteId,
             'operational_site_id' => $this->operationalSiteId,
+            'source_id' => $this->sourceId,
             'payment_method_id' => $this->paymentMethodId,
             'internal_notes' => $this->internalNotes,
         ];

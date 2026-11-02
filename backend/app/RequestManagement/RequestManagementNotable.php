@@ -8,6 +8,7 @@ use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\User;
 use App\Notes\Contracts\NotableEntity;
+use App\Services\Assignment\OperatorCompetence;
 use App\Services\RequestManagement\RequestManagementScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -98,7 +99,9 @@ class RequestManagementNotable implements NotableEntity
      * are known and the actors are queried — the same rule read from the other
      * end. Without it a site-scoped colleague could read the thread and never
      * be mentioned in it. Spec 0165 D-4 adds the physical-Sede twin of that
-     * tier, on the modules that have it.
+     * tier, on the modules that have it. Spec 0340 adds the competence tier
+     * the same way: holders of `viewCompetence` whose competence reaches the
+     * Opportunity's product lines, once it has at least one Offerta.
      */
     public function mentionableUsersQuery(Model $record): Builder
     {
@@ -130,14 +133,16 @@ class RequestManagementNotable implements NotableEntity
                 : null,
         ]);
 
+        $competence = $this->competenceTier($record);
+
         return User::query()
             ->excludingServiceAccounts()
             ->where('is_active', true)
-            ->where(function (Builder $query) use ($module, $operatorIds, $siteIds, $siteTiers): void {
+            ->where(function (Builder $query) use ($module, $operatorIds, $siteIds, $siteTiers, $competence): void {
                 $query->whereHas('roles', fn (Builder $role) => $role->where('name', 'super-admin'))
-                    ->orWhere(function (Builder $canRead) use ($module, $operatorIds, $siteIds, $siteTiers): void {
+                    ->orWhere(function (Builder $canRead) use ($module, $operatorIds, $siteIds, $siteTiers, $competence): void {
                         $canRead->permission($module->permission('view'))
-                            ->where(function (Builder $access) use ($module, $operatorIds, $siteIds, $siteTiers): void {
+                            ->where(function (Builder $access) use ($module, $operatorIds, $siteIds, $siteTiers, $competence): void {
                                 $access->whereIn('id', $operatorIds)
                                     ->orWhere(function (Builder $viewAll) use ($module): void {
                                         $viewAll->permission($module->permission('viewAll'));
@@ -149,9 +154,38 @@ class RequestManagementNotable implements NotableEntity
                                             ->whereHas($relation, fn (Builder $sites) => $sites->whereIn('operational_sites.id', $siteIds));
                                     });
                                 }
+
+                                if ($competence !== null) {
+                                    $access->orWhere(fn (Builder $byCompetence) => $byCompetence
+                                        ->permission($competence['permission'])
+                                        ->whereIn('id', $competence['user_ids']));
+                                }
                             });
                     });
             });
+    }
+
+    /**
+     * The competence tier of mentionableUsersQuery() (spec 0340): the
+     * `viewCompetence` permission and the users whose competence reaches the
+     * Opportunity's product lines; null when the permission row does not exist
+     * (same never-500 rule as the site tiers) or the Opportunity has no Offerta
+     * (no row of the module to reach).
+     *
+     * @return array{permission: string, user_ids: array<int, int>}|null
+     */
+    private function competenceTier(Model $record): ?array
+    {
+        $permission = $this->existingPermission($this->module()->permission('viewCompetence'));
+
+        if ($permission === null || ! Quote::query()->where('opportunity_id', $record->getKey())->exists()) {
+            return null;
+        }
+
+        /** @var Opportunity $record */
+        $categoryIds = $record->productLines()->pluck('product_category_id')->filter()->map(intval(...))->all();
+
+        return ['permission' => $permission, 'user_ids' => app(OperatorCompetence::class)->reachingUserIds($categoryIds)];
     }
 
     /**

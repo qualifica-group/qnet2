@@ -85,6 +85,8 @@ interface RelationSelectFieldProps<
   isItemDisabled?: (item: ForSelectItem) => boolean
   /** Custom trigger/option content, forwarded verbatim to `AsyncPaginatedSelect.renderItem`. */
   renderItem?: (item: ForSelectItem) => ReactNode
+  /** Widens the popup past the trigger, forwarded verbatim to `AsyncPaginatedSelect.contentClassName`. */
+  contentClassName?: string
   /** Initial values the "+" quick-create form starts with (e.g. a supplier-only registry picker). */
   quickCreatePresets?: QuickCreatePresets
 }
@@ -136,6 +138,7 @@ export function RelationSelectField<
   showAvatar = false,
   isItemDisabled,
   renderItem,
+  contentClassName,
   quickCreatePresets,
 }: RelationSelectFieldProps<TFieldValues, TName>) {
   const { quickCreated, renderAction } = useQuickCreateAction(resource, quickCreatePresets)
@@ -173,6 +176,7 @@ export function RelationSelectField<
               disabled={isDisabled}
               isItemDisabled={isItemDisabled}
               renderItem={renderItem}
+              contentClassName={contentClassName}
               params={params}
               labels={{
                 placeholder,

@@ -7,6 +7,7 @@ import { MetaField } from '@/features/authorization/MetaField'
 import { COMPANIES_FOR_SELECT_RESOURCE } from '@/features/companies/for-select-api'
 import { COMPANY_SITES_FOR_SELECT_RESOURCE } from '@/features/company-sites/for-select-api'
 import { OPERATIONAL_SITES_FOR_SELECT_RESOURCE } from '@/features/operational-sites/for-select-api'
+import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
 import { managerSlotLabels } from '@/features/shared/manager-position-label'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
@@ -172,6 +173,23 @@ export function QuoteOperationalSiteField({ control, selected }: RelationFieldPr
       hint={t('quotes.form.hints.operationalSite')}
       resource={OPERATIONAL_SITES_FOR_SELECT_RESOURCE}
       searchPlaceholder={t('quotes.form.operationalSiteSearch')}
+      selected={selected}
+      {...quoteRelationLabels(t)}
+    />
+  )
+}
+
+/** "Fonte": the offer's own field; on create prefilled from the Opportunita's lead (spec 0332 D-6), then free. */
+export function QuoteSourceField({ control, selected }: RelationFieldProps) {
+  const { t } = useTranslation()
+  return (
+    <RelationSelectField
+      control={control}
+      name="source_id"
+      metaKey="source_id"
+      label={t('quotes.form.source')}
+      resource={SOURCES_FOR_SELECT_RESOURCE}
+      searchPlaceholder={t('quotes.form.sourceSearch')}
       selected={selected}
       {...quoteRelationLabels(t)}
     />

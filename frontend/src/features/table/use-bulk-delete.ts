@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import type { GridApi } from 'ag-grid-community'
 import { toast } from 'sonner'
 import { useConfirm } from '@/components/confirm-dialog-context'
@@ -38,7 +39,7 @@ export function useBulkDelete({
   gridApi,
   refresh,
 }: UseBulkDeleteArgs): UseBulkDeleteResult {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const confirm = useConfirm()
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -76,14 +77,14 @@ export function useBulkDelete({
         gridApi?.deselectAll()
         refresh()
         return true
-      } catch {
-        toast.error(t('table.bulkDeleteError'))
+      } catch (error) {
+        toast.error(apiErrorMessage(error, t('table.bulkDeleteError'), i18n))
         return false
       } finally {
         setIsDeleting(false)
       }
     },
-    [domain, gridApi, refresh, confirm, t],
+    [domain, gridApi, refresh, confirm, t, i18n],
   )
 
   return { runBulkDelete, isDeleting }

@@ -87,7 +87,6 @@ export const attributeLayout = {
     saved: 'Layout salvato.',
     loadError: 'Impossibile caricare il layout.',
     saveError: 'Impossibile salvare il layout.',
-    forbidden: 'Non hai il permesso di modificare questo layout.',
     invalid: 'Il layout non è valido: controlla gli attributi posizionati e i limiti dei campi.',
     empty: 'Nessun layout configurato: verrà usato l’elenco piatto degli attributi.',
     retry: 'Riprova',

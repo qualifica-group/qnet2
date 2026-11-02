@@ -13,7 +13,6 @@ import { ProductsOfInterestField } from '@/features/products/products-of-interes
 import { useProductsOfInterestCoherence } from '@/features/products/use-products-of-interest-coherence'
 import { REFERENTS_FOR_SELECT_RESOURCE } from '@/features/referents/for-select-api'
 import { managerSlotLabels } from '@/features/shared/manager-position-label'
-import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import { OpportunityContactRecap } from '@/features/opportunities/opportunity-contact-recap'
 import { useOpportunityManagerLabels } from '@/features/opportunities/use-opportunity-manager-labels'
@@ -92,23 +91,6 @@ export function OpportunityCommercialField({ control, selected }: SelectedFieldP
       />
       <OpportunityContactRecap referentId={commercialId} />
     </div>
-  )
-}
-
-export function OpportunitySourceField({ control, selected }: SelectedFieldProps) {
-  const { t } = useTranslation()
-  const selectLabels = useSelectLabels()
-  return (
-    <RelationSelectField
-      control={control}
-      name="source_id"
-      metaKey="source_id"
-      label={t('opportunities.form.source')}
-      resource={SOURCES_FOR_SELECT_RESOURCE}
-      searchPlaceholder={t('opportunities.form.sourceSearch')}
-      selected={selected}
-      {...selectLabels}
-    />
   )
 }
 

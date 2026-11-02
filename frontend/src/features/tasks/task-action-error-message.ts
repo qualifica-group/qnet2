@@ -1,5 +1,7 @@
 import axios from 'axios'
 import type { TFunction } from 'i18next'
+import i18n from '@/i18n'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 
 /**
  * Maps the shared 409 (bloccato)/422 (fase sbagliata) split to its toast
@@ -17,5 +19,5 @@ export function actionErrorMessage(t: TFunction, error: unknown): string {
   if (status === 422) {
     return t('tasks.actions.errors.wrongPhase')
   }
-  return t('tasks.actions.errors.generic')
+  return apiErrorMessage(error, t('tasks.actions.errors.generic'), i18n)
 }

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
-import type { TFunction } from 'i18next'
+import type { TFunction, i18n as I18nInstance } from 'i18next'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { toast } from 'sonner'
@@ -43,7 +44,9 @@ interface FieldChangeRequestDialogProps {
 }
 
 /** Resolves the toast message for a failed submission: the server's own message, a generic fallback otherwise. */
-function resolveSubmitErrorMessage(error: unknown, t: TFunction): string {
+function resolveSubmitErrorMessage(error: unknown, t: TFunction, i18n: I18nInstance): string {
+  const forbidden = forbiddenMessage(error, i18n)
+  if (forbidden) return forbidden
   if (axios.isAxiosError<ApiErrorResponse>(error) && error.response?.data?.message) {
     return error.response.data.message
   }
@@ -59,7 +62,7 @@ function resolveSubmitErrorMessage(error: unknown, t: TFunction): string {
  * `useRequestFieldChange().requestFieldChange(...)`.
  */
 export function FieldChangeRequestDialog({ prompt, onClose }: FieldChangeRequestDialogProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const schema = buildFieldChangeRequestSchema(t)
 
@@ -84,7 +87,7 @@ export function FieldChangeRequestDialog({ prompt, onClose }: FieldChangeRequest
       onClose()
     },
     onError: (error) => {
-      toast.error(resolveSubmitErrorMessage(error, t))
+      toast.error(resolveSubmitErrorMessage(error, t, i18n))
     },
   })
 

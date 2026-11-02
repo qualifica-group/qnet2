@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useFormSubmitError } from '@/features/auth/use-form-submit-error'
 import type { Path } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { useInvalidateModuleStats } from '@/features/stats/use-invalidate-module-stats'
 import { createProduct, productDetailQueryKey, updateProduct } from '@/features/products/api'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/products/product-form-payload'
@@ -55,10 +56,10 @@ interface UseProductFormSubmitArgs {
  * form is reset on the saved record, so the next row starts clean.
  */
 export function useProductFormSubmit({ state, mode, suggestedCode, onSuccess }: UseProductFormSubmitArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const invalidateStats = useInvalidateModuleStats(PRODUCTS_DOMAIN)
-  const [serverError, setServerError] = useState<string | null>(null)
+  const [serverError, setServerError] = useFormSubmitError()
   const { form, productAttributes, customFieldErrorPaths } = state
 
   const onSubmit = async (values: ProductFormValues) => {
@@ -90,7 +91,7 @@ export function useProductFormSubmit({ state, mode, suggestedCode, onSuccess }: 
       onSuccess(created)
     } catch (error) {
       if (!applyServerValidationErrors(error, form.setError, errorFields)) {
-        setServerError(t('products.form.genericError'))
+        setServerError(apiErrorMessage(error, t('products.form.genericError'), i18n))
       }
     }
   }

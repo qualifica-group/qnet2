@@ -26,20 +26,21 @@ describe('buildUpdatePayload', () => {
     expect(payload).toEqual({ supervisor_id: null })
   })
 
+  // REQUIREMENT CHANGED: spec 0332 — the Fonte left the opportunity, so these cases use commercial_id.
   it('includes a relation cleared back to null', () => {
     const payload = buildUpdatePayload(
-      values({ source_id: null }),
-      original({ source_id: 4, source: { id: 4, name: 'Web' } }),
+      values({ commercial_id: null }),
+      original({ commercial_id: 4, commercial: { id: 4, name: 'Web' } }),
     )
-    expect(payload).toEqual({ source_id: null })
+    expect(payload).toEqual({ commercial_id: null })
   })
 
   it('includes multiple changed fields together', () => {
     const payload = buildUpdatePayload(
-      values({ referent_id: 11, source_id: 7 }),
+      values({ referent_id: 11, commercial_id: 7 }),
       original(),
     )
-    expect(payload).toEqual({ referent_id: 11, source_id: 7 })
+    expect(payload).toEqual({ referent_id: 11, commercial_id: 7 })
   })
 
   it('omits estimated_value when the server decimal string round-trips to the same number', () => {

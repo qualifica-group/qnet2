@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { LogIn } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/features/auth/use-auth'
@@ -12,7 +13,7 @@ import { useAuth } from '@/features/auth/use-auth'
  * the session's `me` already resolves to the target while impersonating.
  */
 export function ImpersonationBanner() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { user, impersonator, stopImpersonation } = useAuth()
   const [isExiting, setIsExiting] = useState(false)
 
@@ -24,8 +25,8 @@ export function ImpersonationBanner() {
     setIsExiting(true)
     try {
       await stopImpersonation()
-    } catch {
-      toast.error(t('impersonation.stopError'))
+    } catch (error) {
+      toast.error(apiErrorMessage(error, t('impersonation.stopError'), i18n))
     } finally {
       setIsExiting(false)
     }

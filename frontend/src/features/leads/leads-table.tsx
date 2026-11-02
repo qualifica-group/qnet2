@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
 import { ArrowRightLeft, FileUp, Plus, UserCog } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -62,7 +62,7 @@ const LEADS_ACTION_ICONS: ActionIconMap = { 'arrow-right-left': ArrowRightLeft }
  * gating is an affordance only; the backend re-authorizes each call.
  */
 export function LeadsTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { can } = useAbilities()
   const stats = useStatsPanel(LEADS_DOMAIN)
@@ -98,17 +98,12 @@ export function LeadsTable() {
         refreshGrid()
         invalidateStats()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        if (status === 403) {
-          toast.error(t('leads.form.deleteForbidden'))
-        } else {
-          toast.error(t('leads.form.deleteError'))
-        }
+        toast.error(apiErrorMessage(error, t('leads.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t, invalidateStats],
+    [refreshGrid, t, i18n, invalidateStats],
   )
 
   const handleAction: RowActionHandler = useCallback(
@@ -190,11 +185,11 @@ export function LeadsTable() {
         // Spec 0113 removed the "this Sede has no operators" 422: a record with no
         // candidate is now reported as `skipped` inside a 200. Any 422 still reaching
         // here has a different cause, so naming that one would point at the wrong thing.
-        toast.error(t('leads.assign.errors.generic'))
+        toast.error(apiErrorMessage(error, t('leads.assign.errors.generic'), i18n))
         throw error
       }
     },
-    [assignMutation, assignIds, t],
+    [assignMutation, assignIds, t, i18n],
   )
 
   const openAssignDialog = useCallback((selection: TableSelection) => {

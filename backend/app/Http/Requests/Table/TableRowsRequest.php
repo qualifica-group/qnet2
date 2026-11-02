@@ -6,9 +6,9 @@ use App\Services\Table\AdvancedFilterApplier;
 use App\Services\Table\CustomFilterRuleValidator;
 use App\Services\Table\RowGroupQuery;
 use App\Services\Table\RowGroupValidator;
+use App\Tables\ProductCategoryScopable;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RegistryScopable;
-use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use App\Tables\WorkOrders\QuoteScopedTableDefinition;
@@ -115,6 +115,11 @@ class TableRowsRequest extends FormRequest
             // (D-2) — a no-op key for every other domain.
             'productCategoryId' => ['sometimes', 'nullable', 'integer', Rule::exists('product_categories', 'id')],
 
+            // Spec 0337: the rows of a root category's whole branch (category
+            // tab strip, "Categorie madri" level); a no-op key like
+            // productCategoryId, and never sent together with it.
+            'productCategoryBranchId' => ['sometimes', 'nullable', 'integer', Rule::exists('product_categories', 'id'), 'prohibits:productCategoryId'],
+
             // Spec 0067: scopes `quotes` to one Opportunity's Offerte — a
             // no-op key for every other domain (D-1: the allow-lists above
             // never depend on this scope, unlike productCategoryId).
@@ -130,6 +135,10 @@ class TableRowsRequest extends FormRequest
             // to one client's records (the Anagrafica detail tabs) — a no-op
             // key for every other domain.
             'registryId' => ['sometimes', 'nullable', 'integer', Rule::exists('registries', 'id')],
+
+            // Spec 0336: scopes `commission-configurations` to the rules of one
+            // Referente (the Referente detail's card) — a no-op key for every other domain.
+            'referentId' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
 
             // Spec 0157, D-1: tree/hierarchical row scoping (Sintetica) — a
             // domain that does not override supportsTree() 422s either key
@@ -326,8 +335,9 @@ class TableRowsRequest extends FormRequest
             $domain = (string) $this->route('domain');
             $definition = app(TableRegistry::class)->resolve($domain);
 
-            if ($definition instanceof RequestManagementScopedTableDefinition) {
+            if ($definition instanceof ProductCategoryScopable) {
                 $definition->scopeToProductCategory($this->productCategoryIdInput());
+                $definition->scopeToProductCategoryBranch($this->productCategoryBranchIdInput());
             }
 
             if ($definition instanceof OpportunityScopedTableDefinition) {
@@ -357,6 +367,17 @@ class TableRowsRequest extends FormRequest
     private function productCategoryIdInput(): ?int
     {
         $value = $this->input('productCategoryId');
+
+        return is_numeric($value) ? (int) $value : null;
+    }
+
+    /**
+     * The raw `productCategoryBranchId` request input (spec 0337), mirroring
+     * `productCategoryIdInput()`.
+     */
+    private function productCategoryBranchIdInput(): ?int
+    {
+        $value = $this->input('productCategoryBranchId');
 
         return is_numeric($value) ? (int) $value : null;
     }

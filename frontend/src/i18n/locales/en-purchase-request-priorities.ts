@@ -50,7 +50,6 @@ export const purchaseRequestPriorities = {
     iconInvalid: 'Pick an icon from the catalogue.',
     genericError: 'Something went wrong. Please retry.',
     deleteError: 'Unable to delete the RDA priority. Please retry.',
-    deleteForbidden: 'You cannot delete this RDA priority.',
     deleteInUse: 'This priority is used by a purchase request and cannot be deleted.',
     leaveConfirm: {
       title: 'Leave without saving?',
@@ -71,7 +70,6 @@ export const purchaseRequestPriorities = {
     dragHandleLabel: 'Drag to reorder',
     loadError: 'Unable to load the list. Please retry.',
     saved: 'Order updated successfully.',
-    forbidden: 'You cannot reorder these rows.',
     genericError: 'Unable to update the order. Please retry.',
     inactiveBadge: 'Inactive',
   },

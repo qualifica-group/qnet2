@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { createSector, updateSector } from '@/features/sectors/api'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/sectors/sector-form-payload'
 import {
@@ -35,7 +36,7 @@ interface UseSectorFormArgs {
  * component stays UI-only; this hook is the orchestration point (`onSubmit`).
  */
 export function useSectorForm({ mode, onSuccess }: UseSectorFormArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -108,7 +109,7 @@ export function useSectorForm({ mode, onSuccess }: UseSectorFormArgs) {
       onSuccess(created)
     } catch (error) {
       if (!applyServerValidationErrors(error, form.setError, errorFields)) {
-        setServerError(t('sectors.form.genericError'))
+        setServerError(apiErrorMessage(error, t('sectors.form.genericError'), i18n))
       }
     }
   }

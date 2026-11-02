@@ -33,7 +33,6 @@ export const sources = {
     nameMax: 'Il nome può contenere al massimo 191 caratteri.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare la fonte. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questa fonte.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
       description: 'La fonte non è ancora stata creata: i dati inseriti andranno persi.',

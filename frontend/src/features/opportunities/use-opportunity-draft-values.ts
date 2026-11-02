@@ -14,7 +14,6 @@ import {
   REWARD_TYPES_FOR_SELECT_RESOURCE,
   type RewardTypeForSelectItem,
 } from '@/features/reward-types/for-select-api'
-import { SOURCES_FOR_SELECT_RESOURCE } from '@/features/sources/for-select-api'
 import { USERS_FOR_SELECT_RESOURCE } from '@/features/users/for-select-api'
 import { useOpportunityManagerLabels } from '@/features/opportunities/use-opportunity-manager-labels'
 import type { OpportunityRecordValues } from '@/features/opportunities/opportunity-record'
@@ -76,7 +75,6 @@ export function useOpportunityDraftValues(
     resource: REFERENTS_FOR_SELECT_RESOURCE,
     ids: idsOf(draft.referent_id, draft.commercial_id, draft.reporter_id),
   })
-  const sources = useForSelectLabels({ resource: SOURCES_FOR_SELECT_RESOURCE, ids: idsOf(draft.source_id) })
   const users = useForSelectLabels({ resource: USERS_FOR_SELECT_RESOURCE, ids: userIds })
   const products = useForSelectLabels({ resource: PRODUCTS_FOR_SELECT_RESOURCE, ids: productIds, params: productParams })
   const rewardTypes = useForSelectLabels({ resource: REWARD_TYPES_FOR_SELECT_RESOURCE, ids: rewardTypeIds })
@@ -96,7 +94,6 @@ export function useOpportunityDraftValues(
     commercial: refOf(referents, draft.commercial_id),
     reporter: refOf(referents, draft.reporter_id),
     lead: null,
-    source: refOf(sources, draft.source_id),
     supervisor: refOf(users, draft.supervisor_id),
     managers: slots.flatMap((id, index) =>
       id != null ? [{ id, name: users.get(id)?.label ?? PENDING_LABEL, position: index + 1 }] : [],

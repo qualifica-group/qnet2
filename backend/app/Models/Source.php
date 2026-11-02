@@ -56,13 +56,14 @@ class Source extends BaseModel
     }
 
     /**
-     * The opportunities against this source (spec 0040, BR-3: restrict-on-
-     * delete — SourceService::delete() guards on this before deleting).
+     * The quotes against this source (spec 0332: the Fonte moved from the
+     * opportunity to the quote; SourceService::delete() guards on this before
+     * deleting).
      *
-     * @return HasMany<Opportunity, $this>
+     * @return HasMany<Quote, $this>
      */
-    public function opportunities(): HasMany
+    public function quotes(): HasMany
     {
-        return $this->hasMany(Opportunity::class);
+        return $this->hasMany(Quote::class);
     }
 }

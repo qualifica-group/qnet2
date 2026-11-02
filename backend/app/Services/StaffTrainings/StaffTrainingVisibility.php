@@ -57,7 +57,7 @@ final class StaffTrainingVisibility
     /** 403 without any access, 404 (never 403) on a training the actor cannot see. */
     public function assertCanView(User $actor, StaffTraining $training): void
     {
-        abort_if(StaffTrainingScope::forActor($actor) === null, 403, 'This action is unauthorized.');
+        abort_if(StaffTrainingScope::forActor($actor) === null, 403, __('You cannot access staff trainings.'));
         abort_unless($this->canView($actor, $training), 404, 'Resource not found.');
     }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\TimeEntries;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Rule R (spec 0122, data_contract "AUTORIZZAZIONE LETTURA"): resolves WHOSE
@@ -26,7 +27,7 @@ final class TimeEntryReadAuthorizer
 
     public function resolveSelectedUser(?int $filterUserId, User $actor): User
     {
-        abort_unless($actor->can('time-entries.viewAny'), 403);
+        Gate::forUser($actor)->authorize('time-entries.viewAny');
 
         if ($filterUserId === null || $filterUserId === $actor->id) {
             return $actor;
@@ -37,6 +38,7 @@ final class TimeEntryReadAuthorizer
                 || $actor->can('time-entries.viewAll')
                 || $this->subordinates->isDescendantOf($filterUserId, $actor->id),
             403,
+            __('You cannot see the time entries of this person.'),
         );
 
         return User::query()->findOrFail($filterUserId);

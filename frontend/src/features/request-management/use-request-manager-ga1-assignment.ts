@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { assignRequestManagerGa1 } from '@/features/request-management/api'
 import { useRequestModule } from '@/features/request-management/request-module'
@@ -31,7 +32,7 @@ export function useRequestManagerGa1Assignment({
   categoryId,
   onAssigned,
 }: UseRequestManagerGa1AssignmentOptions) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const module = useRequestModule()
   const { can } = useAbilities()
 
@@ -65,11 +66,11 @@ export function useRequestManagerGa1Assignment({
       try {
         await mutation.mutateAsync({ request_ids: ids, manager_ga1_id: userId })
       } catch (error) {
-        toast.error(t('requestManagement.assignManagerGa1.errors.generic'))
+        toast.error(apiErrorMessage(error, t('requestManagement.assignManagerGa1.errors.generic'), i18n))
         throw error
       }
     },
-    [mutation, ids, t],
+    [mutation, ids, t, i18n],
   )
 
   const openDialog = useCallback((selectedIds: number[]) => {

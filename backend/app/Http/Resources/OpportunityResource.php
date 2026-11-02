@@ -12,6 +12,7 @@ use App\Services\Opportunities\OpportunityQuoteLimit;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Services\Quotes\QuoteManagerSyncMode;
 use App\Support\OperationalSiteLabel;
+use App\Support\ReferentRef;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Attributes\PreserveKeys;
@@ -110,15 +111,13 @@ class OpportunityResource extends JsonResource
             'registry_id' => $this->registry_id,
             'registry' => $this->summarizeByName($this->registry),
             'referent_id' => $this->referent_id,
-            'referent' => $this->summarizeByName($this->referent),
+            'referent' => ReferentRef::summarize($this->referent),
             'commercial_id' => $this->commercial_id,
             'commercial' => $this->summarizeByName($this->commercial),
             'reporter_id' => $this->reporter_id,
             'reporter' => $this->summarizeByName($this->reporter),
             'supervisor_id' => $this->supervisor_id,
             'supervisor' => $this->summarizeByName($this->supervisor),
-            'source_id' => $this->source_id,
-            'source' => $this->summarizeByName($this->source),
             'operational_site_id' => $this->operational_site_id,
             'operational_site' => OperationalSiteLabel::summarize($this->operationalSite),
             'status' => app(OpportunityStatusResolver::class)->resolve($this->resource),

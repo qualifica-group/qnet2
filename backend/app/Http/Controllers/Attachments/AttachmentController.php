@@ -9,6 +9,8 @@ use App\Http\Resources\AttachmentResource;
 use App\Models\Attachment;
 use App\Models\OutboundEmail;
 use App\RichText\RichText;
+use App\Services\Attachments\LegacyAttachmentFetcher;
+use App\Services\Attachments\LegacyRecordLink;
 use App\Services\AttachmentService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -31,7 +33,11 @@ class AttachmentController extends BaseApiController
 {
     use AuthorizesRequests;
 
-    public function __construct(private readonly AttachmentService $service) {}
+    public function __construct(
+        private readonly AttachmentService $service,
+        private readonly LegacyAttachmentFetcher $legacyFetcher,
+        private readonly LegacyRecordLink $legacyRecordLink,
+    ) {}
 
     /**
      * GET /api/attachments — list the files owned by one polymorphic owner,
@@ -67,7 +73,15 @@ class AttachmentController extends BaseApiController
                 ->latest()
                 ->get();
 
-            return $this->ok(AttachmentResource::collection($attachments));
+            $response = $this->ok(AttachmentResource::collection($attachments));
+
+            // Spec 0343: where the owner's legacy documents can still be looked up.
+            return $response->setData([...$response->getData(true), 'meta' => [
+                'legacy_url' => $this->legacyRecordLink->forOwner(
+                    (string) $request->validated('attachable_type'),
+                    (int) $request->validated('attachable_id'),
+                ),
+            ]]);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
@@ -119,6 +133,10 @@ class AttachmentController extends BaseApiController
         try {
             $this->authorize('view', $attachment);
 
+            if ($attachment->isLegacyLink()) {
+                return $this->legacyFetcher->stream($attachment, 'attachment');
+            }
+
             $disk = Storage::disk($attachment->disk);
 
             if (! $disk->exists($attachment->path)) {
@@ -143,6 +161,10 @@ class AttachmentController extends BaseApiController
     {
         try {
             $this->authorize('view', $attachment);
+
+            if ($attachment->isLegacyLink()) {
+                return $this->legacyFetcher->stream($attachment, 'inline');
+            }
 
             $disk = Storage::disk($attachment->disk);
 

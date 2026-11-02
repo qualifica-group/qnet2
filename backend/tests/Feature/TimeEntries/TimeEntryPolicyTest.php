@@ -25,11 +25,9 @@ it('grants view/update/delete to the owner holding the base permission, without 
     $owner->givePermissionTo(['time-entries.view', 'time-entries.update', 'time-entries.delete']);
     $entry = TimeEntry::factory()->forUser($owner)->create();
 
-    $policy = new TimeEntryPolicy;
-
-    expect($policy->view($owner, $entry))->toBeTrue()
-        ->and($policy->update($owner, $entry))->toBeTrue()
-        ->and($policy->delete($owner, $entry))->toBeTrue();
+    expect($owner->can('view', $entry))->toBeTrue()
+        ->and($owner->can('update', $entry))->toBeTrue()
+        ->and($owner->can('delete', $entry))->toBeTrue();
 });
 
 it('denies view/update/delete on another user\'s entry without manageAll', function () {
@@ -38,11 +36,9 @@ it('denies view/update/delete on another user\'s entry without manageAll', funct
     $other->givePermissionTo(['time-entries.view', 'time-entries.update', 'time-entries.delete']);
     $entry = TimeEntry::factory()->forUser($owner)->create();
 
-    $policy = new TimeEntryPolicy;
-
-    expect($policy->view($other, $entry))->toBeFalse()
-        ->and($policy->update($other, $entry))->toBeFalse()
-        ->and($policy->delete($other, $entry))->toBeFalse();
+    expect($other->can('view', $entry))->toBeFalse()
+        ->and($other->can('update', $entry))->toBeFalse()
+        ->and($other->can('delete', $entry))->toBeFalse();
 });
 
 it('grants view/update/delete on another user\'s entry to a manageAll holder', function () {
@@ -51,22 +47,18 @@ it('grants view/update/delete on another user\'s entry to a manageAll holder', f
     $admin->givePermissionTo(['time-entries.view', 'time-entries.update', 'time-entries.delete', 'time-entries.manageAll']);
     $entry = TimeEntry::factory()->forUser($owner)->create();
 
-    $policy = new TimeEntryPolicy;
-
-    expect($policy->view($admin, $entry))->toBeTrue()
-        ->and($policy->update($admin, $entry))->toBeTrue()
-        ->and($policy->delete($admin, $entry))->toBeTrue();
+    expect($admin->can('view', $entry))->toBeTrue()
+        ->and($admin->can('update', $entry))->toBeTrue()
+        ->and($admin->can('delete', $entry))->toBeTrue();
 });
 
 it('still requires the base permission even for the owner', function () {
     $owner = User::factory()->create(); // no permission granted
     $entry = TimeEntry::factory()->forUser($owner)->create();
 
-    $policy = new TimeEntryPolicy;
-
-    expect($policy->view($owner, $entry))->toBeFalse()
-        ->and($policy->update($owner, $entry))->toBeFalse()
-        ->and($policy->delete($owner, $entry))->toBeFalse();
+    expect($owner->can('view', $entry))->toBeFalse()
+        ->and($owner->can('update', $entry))->toBeFalse()
+        ->and($owner->can('delete', $entry))->toBeFalse();
 });
 
 it('exposes viewAny/create/export/exportMonthly/viewAll as plain resource-level permission checks', function () {

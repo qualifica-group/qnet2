@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import type { Path } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { useCreateWorkspace, useUpdateWorkspace } from '@/features/workspaces/use-workspaces'
@@ -31,7 +32,7 @@ const SERVER_ERROR_FIELDS: Path<WorkspaceFormValues>[] = [
  * address follows the name until it is typed by hand; clearing it resumes.
  */
 export function useWorkspaceForm({ workspace, onSaved }: { workspace: Workspace | null; onSaved: () => void }) {
-  const { t } = useTranslation('workspaces')
+  const { t, i18n } = useTranslation('workspaces')
   const [serverError, setServerError] = useState<string | null>(null)
   const createMutation = useCreateWorkspace()
   const updateMutation = useUpdateWorkspace(workspace?.id ?? 0)
@@ -67,7 +68,7 @@ export function useWorkspaceForm({ workspace, onSaved }: { workspace: Workspace 
       onSaved()
     } catch (error) {
       if (!applyServerValidationErrors(error, form.setError, SERVER_ERROR_FIELDS)) {
-        setServerError(t('form.saveError'))
+        setServerError(apiErrorMessage(error, t('form.saveError'), i18n))
       }
     }
   }

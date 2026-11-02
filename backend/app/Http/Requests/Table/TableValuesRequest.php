@@ -2,9 +2,9 @@
 
 namespace App\Http\Requests\Table;
 
+use App\Tables\ProductCategoryScopable;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\RegistryScopable;
-use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use App\Tables\WorkOrders\QuoteScopedTableDefinition;
@@ -66,6 +66,11 @@ class TableValuesRequest extends FormRequest
             // domain.
             'productCategoryId' => ['sometimes', 'nullable', 'integer', Rule::exists('product_categories', 'id')],
 
+            // Spec 0337: the rows of a root category's whole branch (category
+            // tab strip, "Categorie madri" level); a no-op key like
+            // productCategoryId, and never sent together with it.
+            'productCategoryBranchId' => ['sometimes', 'nullable', 'integer', Rule::exists('product_categories', 'id'), 'prohibits:productCategoryId'],
+
             // Spec 0067: scopes `quotes` distinct-values to one Opportunity's
             // Offerte — a no-op key for every other domain.
             'opportunityId' => ['sometimes', 'nullable', 'integer', Rule::exists('opportunities', 'id')],
@@ -78,6 +83,10 @@ class TableValuesRequest extends FormRequest
             // to one client's records (the Anagrafica detail tabs) — a no-op
             // key for every other domain.
             'registryId' => ['sometimes', 'nullable', 'integer', Rule::exists('registries', 'id')],
+
+            // Spec 0336: scopes `commission-configurations` to the rules of one
+            // Referente (the Referente detail's card) — a no-op key for every other domain.
+            'referentId' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
         ];
     }
 
@@ -108,7 +117,7 @@ class TableValuesRequest extends FormRequest
     /**
      * Validated payload with the `limit`/`filterModel` defaults applied.
      *
-     * @return array{columnId: string, search: string|null, limit: int, filterModel: array<string, array<string, mixed>>, productCategoryId: int|null, opportunityId: int|null, quoteId: int|null, registryId: int|null}
+     * @return array{columnId: string, search: string|null, limit: int, filterModel: array<string, array<string, mixed>>, productCategoryId: int|null, productCategoryBranchId: int|null, opportunityId: int|null, quoteId: int|null, registryId: int|null, referentId: int|null}
      */
     public function payload(): array
     {
@@ -120,9 +129,11 @@ class TableValuesRequest extends FormRequest
             'limit' => $validated['limit'] ?? self::DEFAULT_LIMIT,
             'filterModel' => $validated['filterModel'] ?? [],
             'productCategoryId' => isset($validated['productCategoryId']) ? (int) $validated['productCategoryId'] : null,
+            'productCategoryBranchId' => isset($validated['productCategoryBranchId']) ? (int) $validated['productCategoryBranchId'] : null,
             'opportunityId' => isset($validated['opportunityId']) ? (int) $validated['opportunityId'] : null,
             'quoteId' => isset($validated['quoteId']) ? (int) $validated['quoteId'] : null,
             'registryId' => isset($validated['registryId']) ? (int) $validated['registryId'] : null,
+            'referentId' => isset($validated['referentId']) ? (int) $validated['referentId'] : null,
         ];
     }
 
@@ -137,8 +148,9 @@ class TableValuesRequest extends FormRequest
             $domain = (string) $this->route('domain');
             $definition = app(TableRegistry::class)->resolve($domain);
 
-            if ($definition instanceof RequestManagementScopedTableDefinition) {
+            if ($definition instanceof ProductCategoryScopable) {
                 $definition->scopeToProductCategory($this->productCategoryIdInput());
+                $definition->scopeToProductCategoryBranch($this->productCategoryBranchIdInput());
             }
 
             if ($definition instanceof OpportunityScopedTableDefinition) {
@@ -166,6 +178,17 @@ class TableValuesRequest extends FormRequest
     private function productCategoryIdInput(): ?int
     {
         $value = $this->input('productCategoryId');
+
+        return is_numeric($value) ? (int) $value : null;
+    }
+
+    /**
+     * The raw `productCategoryBranchId` request input (spec 0337), mirroring
+     * `productCategoryIdInput()`.
+     */
+    private function productCategoryBranchIdInput(): ?int
+    {
+        $value = $this->input('productCategoryBranchId');
 
         return is_numeric($value) ? (int) $value : null;
     }

@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -32,8 +33,8 @@ function isEmptyExposure(data: Exposure): boolean {
  * of the period for the rest. Loading, error with retry and empty states are handled here.
  */
 export function ExposurePanel({ filters }: { filters: ExposureFilters }) {
-  const { t } = useTranslation()
-  const { data, isPending, isError, refetch } = useExposure(filters)
+  const { t, i18n } = useTranslation()
+  const { data, isPending, isError, error, refetch } = useExposure(filters)
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
@@ -45,7 +46,7 @@ export function ExposurePanel({ filters }: { filters: ExposureFilters }) {
       ) : null}
       {isError ? (
         <div role="alert" className="flex items-center gap-3 text-sm text-destructive">
-          <span>{t('managementControl.exposure.error')}</span>
+          <span>{apiErrorMessage(error, t('managementControl.exposure.error'), i18n)}</span>
           <Button type="button" size="sm" variant="secondary" onClick={() => void refetch()}>
             {t('managementControl.retry')}
           </Button>

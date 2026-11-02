@@ -16,6 +16,7 @@ import { workOrderWorkflowColumnRenderers } from '@/features/work-order-workflow
 import { deleteWorkOrderWorkflow } from '@/features/work-order-workflows/api'
 import { WorkOrderDefaultStatusesSheet } from '@/features/work-order-workflows/work-order-default-statuses-sheet'
 import { DefaultStatusesToggle } from '@/features/workflow-statuses/default-statuses-toggle'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 
 /** Domain key used to mount the generic table for work order workflows. */
 const WORK_ORDER_WORKFLOWS_DOMAIN = 'work-order-workflows'
@@ -30,7 +31,7 @@ const WORK_ORDER_WORKFLOWS_DOMAIN = 'work-order-workflows'
  * is an affordance only; the backend re-authorizes each call.
  */
 export function WorkOrderWorkflowsTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -54,9 +55,9 @@ export function WorkOrderWorkflowsTable() {
           toast.error(t('workOrderWorkflows.form.deleteError'))
           return
         }
-        const status = error.response?.status
-        if (status === 403) {
-          toast.error(t('workOrderWorkflows.form.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden !== null) {
+          toast.error(forbidden)
         } else {
           toast.error(error.response?.data?.message ?? t('workOrderWorkflows.form.deleteError'))
         }
@@ -64,7 +65,7 @@ export function WorkOrderWorkflowsTable() {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(

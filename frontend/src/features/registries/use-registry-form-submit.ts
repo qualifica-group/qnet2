@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useFormSubmitError } from '@/features/auth/use-form-submit-error'
 import type { Path, UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { hasPhoneContact } from '@/features/personal-data/create-validation'
 import {
   describeAddressIssues,
@@ -34,6 +36,7 @@ const SERVER_ERROR_FIELDS = [
   'source_id',
   'sector_ids',
   'referent_ids',
+  'primary_referent_id',
   'manager_slots',
   'supervisor_id',
   'commercial_id',
@@ -82,11 +85,11 @@ export function useRegistryFormSubmit({
   onSuccess,
   onRefused,
 }: UseRegistryFormSubmitArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const invalidateStats = useInvalidateModuleStats(REGISTRIES_DOMAIN)
   const personalDataFieldPermission = usePersonalDataFieldPermission()
-  const [serverError, setServerError] = useState<string | null>(null)
+  const [serverError, setServerError] = useFormSubmitError()
   // Bumped on every refused save so the buffered card marks its own missing
   // fields (it takes no part in this form's submit — see PersonalDataCardForm).
   const [revalidateSignal, setRevalidateSignal] = useState(0)
@@ -169,9 +172,9 @@ export function useRegistryFormSubmit({
       ])
       const personalDataMessage = personalDataServerErrorMessage(error)
       if (personalDataMessage) {
-        setServerError(personalDataMessage)
+        setServerError(personalDataMessage, { notify: false })
       } else if (!mappedScalar) {
-        setServerError(t('registries.form.genericError'))
+        setServerError(apiErrorMessage(error, t('registries.form.genericError'), i18n))
       }
     }
   }

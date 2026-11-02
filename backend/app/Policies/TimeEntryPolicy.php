@@ -7,6 +7,7 @@ use App\Models\TimeEntry;
 use App\Models\User;
 use App\Policies\Abstracts\BasePolicy;
 use App\Services\Tasks\TaskAbilityResolver;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -32,19 +33,19 @@ class TimeEntryPolicy extends BasePolicy
         return 'time-entries';
     }
 
-    public function view(User $user, Model $model): bool
+    public function view(User $user, Model $model): bool|Response
     {
-        return parent::view($user, $model) && $this->isOwnedOrManaged($user, $model);
+        return $this->withinPerimeter($user->can($this->permission('view')), fn (): bool => $this->isOwnedOrManaged($user, $model), 'time_entry_not_owner');
     }
 
-    public function update(User $user, Model $model): bool
+    public function update(User $user, Model $model): bool|Response
     {
-        return parent::update($user, $model) && $this->isAuthorizedToWrite($user, $model);
+        return $this->withinWrite($user, $model, 'update');
     }
 
-    public function delete(User $user, Model $model): bool
+    public function delete(User $user, Model $model): bool|Response
     {
-        return parent::delete($user, $model) && $this->isAuthorizedToWrite($user, $model);
+        return $this->withinWrite($user, $model, 'delete');
     }
 
     /**
@@ -83,6 +84,17 @@ class TimeEntryPolicy extends BasePolicy
     public static function abilities(): array
     {
         return ['viewAny', 'view', 'create', 'update', 'delete', 'export', 'exportMonthly', 'manageAll', 'viewAll'];
+    }
+
+    private function withinWrite(User $user, Model $model, string $ability): Response
+    {
+        $hasTask = $model instanceof TimeEntry && $model->task_id !== null;
+
+        return $this->withinPerimeter(
+            $user->can($this->permission($ability)),
+            fn (): bool => $this->isAuthorizedToWrite($user, $model),
+            $hasTask ? 'time_entry_task_not_manageable' : 'time_entry_not_owner',
+        );
     }
 
     private function isOwnedOrManaged(User $user, Model $model): bool

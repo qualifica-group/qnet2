@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useFormSubmitError } from '@/features/auth/use-form-submit-error'
 import type { Path, UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -81,7 +81,7 @@ export function useProjectFormSubmit({
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const invalidateStats = useInvalidateModuleStats(PROJECTS_DOMAIN)
-  const [serverError, setServerError] = useState<string | null>(null)
+  const [serverError, setServerError] = useFormSubmitError()
 
   const onSubmit = async (values: ProjectFormValues) => {
     setServerError(null)
@@ -110,7 +110,7 @@ export function useProjectFormSubmit({
       ])
       const productLinesMessage = collectPrefixedServerErrors(error, PRODUCT_LINES_ERROR_PREFIXES)
       if (productLinesMessage) {
-        setServerError(productLinesMessage)
+        setServerError(productLinesMessage, { notify: false })
       } else if (!mappedScalar) {
         setServerError(t('projects.form.genericError'))
       }

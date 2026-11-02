@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { contractTypeKeys, createContractType, updateContractType } from '@/features/contract-types/api'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/contract-types/contract-type-form-payload'
 import { buildContractTypeSchema, type ContractTypeFormValues } from '@/features/contract-types/contract-type-schema'
@@ -38,7 +39,7 @@ interface UseContractTypeFormArgs {
  * in-place rows (diff PATCH).
  */
 export function useContractTypeForm({ mode, onSuccess }: UseContractTypeFormArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
   const isEdit = mode.type === 'edit'
@@ -76,7 +77,7 @@ export function useContractTypeForm({ mode, onSuccess }: UseContractTypeFormArgs
       onSuccess(created)
     } catch (error) {
       if (!applyServerValidationErrors(error, form.setError, SERVER_ERROR_FIELDS)) {
-        setServerError(t('contractTypes.form.genericError'))
+        setServerError(apiErrorMessage(error, t('contractTypes.form.genericError'), i18n))
       }
     }
   }

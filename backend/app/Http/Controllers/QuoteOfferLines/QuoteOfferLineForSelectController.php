@@ -7,6 +7,7 @@ use App\Http\Requests\QuoteOfferLines\QuoteOfferLineForSelectRequest;
 use App\Http\Resources\QuoteOfferLineForSelectResource;
 use App\Services\QuoteOfferLines\QuoteOfferLineForSelectService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -32,9 +33,7 @@ class QuoteOfferLineForSelectController extends BaseApiController
         try {
             $actor = $request->user();
 
-            if (! $actor->can('work-orders.view') && ! $actor->can('quotes.view')) {
-                abort(403);
-            }
+            Gate::allowIf($actor->can('work-orders.view') || $actor->can('quotes.view'));
 
             $result = $this->service->forSelect($request->toData());
 

@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\DataObjects\Opportunities\CreateOpportunityData;
 use App\Models\OperationalSite;
 use App\Models\Registry;
-use App\Models\Source;
 use App\Models\User;
 use App\Services\Opportunities\RegistryOpenOpportunityGuard;
 use App\Services\OpportunityService;
@@ -101,7 +100,6 @@ class QualificaSampleOpportunitySeeder extends Seeder
         $faker = FakerFactory::create('it_IT');
 
         $lookups = [
-            'sources' => Source::query()->orderBy('id')->get(),
             'sites' => OperationalSite::query()->orderBy('id')->get(),
             'managers' => User::query()->orderBy('id')->get(),
         ];
@@ -128,7 +126,7 @@ class QualificaSampleOpportunitySeeder extends Seeder
 
     /**
      * @param  Collection<int, Registry>  $registries
-     * @param  array{sources: Collection<int, Source>, sites: Collection<int, OperationalSite>, managers: Collection<int, User>}  $lookups
+     * @param  array{sites: Collection<int, OperationalSite>, managers: Collection<int, User>}  $lookups
      * @return int how many registries the coverage deals took, from the head of $registries
      */
     private function seedCoverage(Generator $faker, Collection $registries, array $lookups, int $sinceOpportunityId): int
@@ -158,7 +156,7 @@ class QualificaSampleOpportunitySeeder extends Seeder
     }
 
     /**
-     * @param  array{sources: Collection<int, Source>, sites: Collection<int, OperationalSite>, managers: Collection<int, User>}  $lookups
+     * @param  array{sites: Collection<int, OperationalSite>, managers: Collection<int, User>}  $lookups
      * @param  array{product_lines: list<array{business_function_id: int, product_category_id: int}>, products_of_interest: list<int>}  $offer
      */
     private function seedOpportunity(
@@ -176,7 +174,6 @@ class QualificaSampleOpportunitySeeder extends Seeder
             commercialId: null,
             reporterId: null,
             supervisorId: $this->pick($lookups['managers'], $index)?->id,
-            sourceId: $this->pick($lookups['sources'], $index)?->id,
             // The whole point of this batch: no lead behind the deal, so
             // nothing is BR-1-derived and nothing is locked.
             leadId: null,

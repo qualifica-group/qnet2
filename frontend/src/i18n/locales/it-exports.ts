@@ -37,7 +37,6 @@ export const exports = {
   rowCount_one: '{{count}} riga esportata',
   rowCount_other: '{{count}} righe esportate',
   errors: {
-    forbidden: 'Non hai i permessi per esportare questi dati.',
     validation: "La richiesta di esportazione non è valida. Riprova.",
     rateLimited: 'Troppe richieste. Attendi un momento e riprova.',
     generic: 'Si è verificato un errore. Riprova.',

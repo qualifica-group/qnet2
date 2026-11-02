@@ -45,6 +45,7 @@ export const migrations = {
     'work-order-progress': 'Work orders — progress',
     'work-order-workflows': 'Work orders — workflows',
     'work-order-workflow-statuses': 'Work orders — workflow status',
+    'work-order-task-templates': 'Work orders — task template',
     'product-suppliers': 'Products — link suppliers',
     'commission-configurations': 'Commission configurations',
     'purchase-requests': 'Purchase requests',
@@ -55,6 +56,9 @@ export const migrations = {
     invoices: 'Invoices',
     collections: 'Collections',
     notes: 'Notes',
+    attachments: 'Documents',
+    'time-entries': 'Time entries',
+    'time-entry-day-notes': 'Time entries — day notes',
   },
   state: {
     notMigrated: 'Not migrated',
@@ -179,7 +183,6 @@ export const migrations = {
     failed: 'Failed',
   },
   errors: {
-    forbidden: "You don't have permission to access migrations.",
     notFound: 'This migration source does not exist.',
     validation: 'Invalid pagination parameters.',
     externalUnavailable: 'The external system is currently unavailable. Please try again.',

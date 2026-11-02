@@ -74,6 +74,7 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'note', text: 'Se non tocchi nulla, un campo resta visibile, modificabile e non obbligatorio. Alcuni campi sono indispensabili e non si possono limitare. Con più ruoli vale il permesso più ampio: basta un ruolo che rende visibile il campo.' },
+        { type: 'note', text: '**Contatti** e **Indirizzi** di Utenti, Anagrafiche, Referenti e Società sedi non hanno permessi propri: seguono la scheda. Chi può vedere la scheda li vede, chi può modificarla li aggiunge, modifica ed elimina. Per limitarli usa le righe **Contatti** e **Indirizzi** tra i **Campi** del modulo: spegni **Visibile** per nasconderli o **Modificabile** per lasciarli in sola lettura.' },
       ],
     },
     {
@@ -103,8 +104,8 @@ const guide: HelpGuide = {
       title: "Livelli di visibilità dei record",
       blocks: [
         { type: 'paragraph', text: "Per **Opportunità**, **Offerte**, **Commesse** e **Contratti** la visibilità si sceglie con tre permessi, uno per modulo, che si sommano:" },
-        { type: 'list', items: ["**Visualizza**: solo i record in cui la persona fa parte del team (ad esempio Supervisore o Gestore account).", "**Visualizza per sede**: in più i record della propria sede operativa (non previsto per le Opportunità).", "**Visualizza tutti**: tutti i record."] },
-        { type: 'note', text: "I livelli sono per modulo: dare **Visualizza tutti** sulle Offerte non lo dà sui Contratti. Serve sempre anche **Visualizza**. Vedere un record non dà il diritto di modificarlo o eliminarlo." },
+        { type: 'list', items: ["**Visualizza**: solo i record in cui la persona fa parte del team (ad esempio Supervisore o Gestore account).", "**Visualizza per sede**: in più i record della propria sede operativa (non previsto per le Opportunità, che non hanno ancora questo livello).", "**Visualizza per competenza**: in più i record che rientrano nel tuo ambito di assegnazione (funzione aziendale e categoria), in qualunque sede. Con **Ambito su tutte le categorie** vedi tutti i record del modulo. Previsto su Opportunità, Offerte, Contratti, Commesse, Gestione Richieste e Gestione Iscritti.", "**Visualizza tutti**: tutti i record."] },
+        { type: 'note', text: "I livelli sono per modulo: dare **Visualizza tutti** sulle Offerte non lo dà sui Contratti. Serve sempre anche **Visualizza**. I ruoli predefiniti di QNet che hanno **Visualizza tutti** su Opportunità, Offerte, Contratti o Commesse hanno anche **Visualizza per competenza** sullo stesso modulo; negli altri ruoli va assegnato a mano. Vedere un record non dà il diritto di modificarlo o eliminarlo." },
       ],
     },
   ],

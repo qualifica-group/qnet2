@@ -52,7 +52,6 @@ export const companySites = {
     nameMax: 'Name must be at most 191 characters.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the company site. Please try again.',
-    deleteForbidden: 'You cannot delete this company site.',
     setDefault: 'Set as default site',
     settingDefault: 'Setting as default…',
     defaultSet: 'This site is now the default one.',

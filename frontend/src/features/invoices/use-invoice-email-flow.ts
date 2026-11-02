@@ -1,9 +1,8 @@
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
 import { toast } from 'sonner'
-import type { ApiErrorResponse } from '@/api/types'
+import { serverMessage } from '@/features/purchase-requests/purchase-request-server-errors'
 import {
   createOutboundEmailDraft,
   createOutboundEmailReminder,
@@ -51,8 +50,7 @@ export function useInvoiceEmailFlow() {
       setTarget({ invoiceId, emailId: email.id, justCreated: kind === 'email' })
     },
     onError: (error) => {
-      const message = axios.isAxiosError<ApiErrorResponse>(error) ? error.response?.data?.message : undefined
-      toast.error(message ?? t('invoices.document.emailError'))
+      toast.error(serverMessage(error) ?? t('invoices.document.emailError'))
     },
   })
 

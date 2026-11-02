@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { toast } from 'sonner'
 import { attachmentBinaryQueryKey, fetchAttachmentBinary } from '@/features/attachments/api'
 import type { Attachment } from '@/features/attachments/types'
@@ -49,7 +50,7 @@ export function useAttachmentThumbnail(id: number, enabled: boolean): string | n
  * can be a plain anchor.
  */
 export function useAttachmentBinaryActions(attachment: Attachment) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   // The tab is opened synchronously on the click: opening it after the await
   // would have lost the user gesture and be swallowed by the popup blocker.
@@ -66,16 +67,16 @@ export function useAttachmentBinaryActions(attachment: Attachment) {
         tab.location.href = url
         window.setTimeout(() => URL.revokeObjectURL(url), PREVIEW_URL_LIFETIME_MS)
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         tab.close()
-        toast.error(t('attachments.errors.preview'))
+        toast.error(apiErrorMessage(error, t('attachments.errors.preview'), i18n))
       })
   }
 
   const download = () => {
     fetchAttachmentBinary(attachment.id, 'download')
       .then((blob) => saveBlob(blob, attachment.original_name))
-      .catch(() => toast.error(t('attachments.errors.download')))
+      .catch((error: unknown) => toast.error(apiErrorMessage(error, t('attachments.errors.download'), i18n)))
   }
 
   return { openPreview, download }

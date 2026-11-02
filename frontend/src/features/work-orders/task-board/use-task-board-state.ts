@@ -15,6 +15,7 @@ import {
   filterBoardTasks,
   groupRootsByStage,
 } from '@/features/work-orders/task-board/task-board-filters'
+import { setIdsSelection } from '@/features/work-orders/task-board/task-board-selection'
 import { computeBoardMetrics } from '@/features/work-orders/task-board/task-board-metrics'
 import { useTaskBoard } from '@/features/work-orders/task-board/use-task-board'
 import type { BoardTask, TaskBoardFilters } from '@/features/work-orders/task-board/types'
@@ -58,6 +59,8 @@ export function useTaskBoardState(workOrderId: number) {
     () => (payload ? groupRootsByStage(payload.stages, buildBoardTree(filteredTasks)) : []),
     [payload, filteredTasks],
   )
+  /** The roots the toolbar's "select all" covers: exactly the rows on screen carrying a checkbox. */
+  const visibleRootIds = useMemo(() => groups.flatMap((group) => group.roots.map((node) => node.task.id)), [groups])
   /**
    * The SAME grouping, filters aside: `use-task-board-dnd.ts` computes a
    * drop's `position` against this one, never against the filtered `groups`
@@ -89,6 +92,7 @@ export function useTaskBoardState(workOrderId: number) {
     filters,
     setFilters,
     groups,
+    visibleRootIds,
     allGroups,
     metrics,
     filterOptions,
@@ -97,6 +101,8 @@ export function useTaskBoardState(workOrderId: number) {
     hasVisibleTask,
     selectedTaskIds,
     toggleTaskSelection: (taskId: number) => setSelectedTaskIds((current) => toggleId(current, taskId)),
+    setTasksSelection: (taskIds: number[], isSelected: boolean) =>
+      setSelectedTaskIds((current) => setIdsSelection(current, taskIds, isSelected)),
     clearSelection: () => setSelectedTaskIds(new Set()),
   }
 }

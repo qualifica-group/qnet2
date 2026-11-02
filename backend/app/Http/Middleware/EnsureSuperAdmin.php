@@ -28,7 +28,7 @@ class EnsureSuperAdmin
         }
 
         if (! $user->hasRole(UserService::PRIVILEGED_ROLE)) {
-            throw new AuthorizationException;
+            throw new AuthorizationException(__('This section is reserved to the super-admin.'));
         }
 
         return $next($request);

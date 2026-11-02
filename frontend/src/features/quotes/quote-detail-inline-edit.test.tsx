@@ -117,6 +117,8 @@ function quote(overrides: Partial<QuoteDetailWithPermissions> = {}): QuoteDetail
     company_site: null,
     operational_site_id: null,
     operational_site: null,
+    source_id: null,
+    source: null,
     layout_id: 41,
     layout: { id: 41, name: 'Layout disattivato' },
     payment_method_id: 7,
@@ -249,6 +251,27 @@ describe('QuoteDetailView — in-place editing (spec 0197)', () => {
     editTitle('Nuovo titolo')
 
     await waitFor(() => expect(vi.mocked(updateQuote)).toHaveBeenCalledTimes(1))
+  })
+
+  // Spec 0332: the Fonte is the offer's own field, edited in place like the others.
+  it('shows the persisted Fonte on its own row, editable and gated by the source_id field permission', () => {
+    renderDetail(quote({ source_id: 40, source: { id: 40, name: 'Web' } }))
+
+    expect(rowValue('Source')).toContain('Web')
+    expect(queryPencil('Source')).toBeInTheDocument()
+  })
+
+  it('offers no pencil on the Fonte without the source_id permission', () => {
+    renderDetail(
+      quote({
+        source_id: 40,
+        source: { id: 40, name: 'Web' },
+        permissions: { ...PERSISTED_PERMISSIONS, fields: { ...PERSISTED_PERMISSIONS.fields, source_id: READ_ONLY_FIELD } },
+      }),
+    )
+
+    expect(rowValue('Source')).toContain('Web')
+    expect(queryPencil('Source')).not.toBeInTheDocument()
   })
 
   it('opens the status on its own row, the persisted pill as its value', () => {

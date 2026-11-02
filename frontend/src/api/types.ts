@@ -15,6 +15,8 @@ export interface ApiErrorResponse {
   success: false
   message: string
   errors?: Record<string, string[]>
+  /** Present on every 403 (spec 0327): the missing permission key, or a perimeter denial. */
+  authorization?: { reason: 'missing_permission' | 'denied'; permission: string | null }
 }
 
 /**

@@ -108,6 +108,5 @@ export const campaigns = {
       confirm: 'Esci senza salvare',
       cancel: 'Continua a compilare',
     },
-    deleteForbidden: 'Non puoi eliminare questa campagna.',
   },
 }

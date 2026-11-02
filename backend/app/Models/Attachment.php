@@ -25,11 +25,21 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property string $disk
  * @property string $path
  * @property string $original_name
+ * @property string|null $external_url
+ * @property string|null $old_source
+ * @property int|null $old_id
  */
 class Attachment extends BaseModel
 {
     /** @use HasFactory<AttachmentFactory> */
     use HasFactory, LogsModelActivity;
+
+    /**
+     * Pseudo-disk of a link-only legacy document (spec 0295 D-10): no
+     * filesystem disk carries this name, so a binary read that forgets
+     * isLegacyLink() fails loudly instead of reading a wrong file.
+     */
+    public const string LEGACY_DISK = 'legacy';
 
     protected $fillable = [
         'collection',
@@ -51,7 +61,19 @@ class Attachment extends BaseModel
         'extension' => 'string',
         'size' => 'int',
         'uploaded_by' => 'int',
+        'external_url' => 'string',
+        'old_source' => 'string',
+        'old_id' => 'int',
     ];
+
+    /**
+     * A migrated legacy document whose file stays on the legacy QNet and is
+     * streamed through LegacyAttachmentFetcher (spec 0295 D-2).
+     */
+    public function isLegacyLink(): bool
+    {
+        return $this->external_url !== null;
+    }
 
     /*
     |--------------------------------------------------------------------------

@@ -69,4 +69,13 @@ describe('AppLayout header (spec 0143 AC-001)', () => {
 
     expect(helpButton.compareDocumentPosition(bellButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
+
+  it('renders the "Assistenza tecnica" button before the help button (spec 0334 AC-014)', () => {
+    renderAppLayout()
+
+    const supportButton = screen.getByRole('button', { name: 'Assistenza tecnica' })
+    const helpButton = screen.getByRole('button', { name: 'Guida' })
+
+    expect(supportButton.compareDocumentPosition(helpButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
 })

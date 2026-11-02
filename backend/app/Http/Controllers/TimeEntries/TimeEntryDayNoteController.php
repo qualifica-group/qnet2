@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\TimeEntries\TimeEntryDayNoteService;
 use App\Services\TimeEntries\TimeEntryOwnerResolver;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -44,7 +45,7 @@ class TimeEntryDayNoteController extends BaseApiController
         try {
             /** @var User $actor */
             $actor = $request->user();
-            abort_unless($actor->can('time-entries.update'), 403);
+            Gate::forUser($actor)->authorize('time-entries.update');
 
             $data = $request->toData();
             $owner = $this->ownerResolver->resolve($data->userId, $actor);

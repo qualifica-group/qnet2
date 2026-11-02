@@ -250,7 +250,6 @@ export const productCategories = {
     deleted: 'Categoria eliminata con successo.',
     genericError: 'Qualcosa è andato storto. Riprova.',
     deleteError: 'Impossibile eliminare la categoria. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questa categoria.',
     deleteInUse: 'Questa categoria ha sottocategorie o prodotti.',
     sections: {
       identity: {
@@ -441,7 +440,6 @@ export const products = {
       confirm: 'Esci senza salvare',
       cancel: 'Continua a compilare',
     },
-    deleteForbidden: 'Non puoi eliminare questo prodotto.',
     sections: {
       identity: {
         title: 'Anagrafica',

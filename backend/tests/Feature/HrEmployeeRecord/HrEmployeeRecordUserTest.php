@@ -4,7 +4,6 @@ use App\Enums\RelationshipTypeEnum;
 use App\Models\Company;
 use App\Models\Contact;
 use App\Models\EmploymentContract;
-use App\Models\PersonalData;
 use App\Models\User;
 use App\Services\RoleAssignmentGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -256,11 +255,8 @@ it('0272 AC-011: a user contact saved with is_work true returns it, absent means
 });
 
 it('0272 AC-011: the generic contact endpoint accepts is_work for any owner and an update without it keeps it', function () {
-    Permission::findOrCreate('contacts.create');
-    Permission::findOrCreate('contacts.update');
-    $actor = User::factory()->create();
-    $actor->givePermissionTo(['contacts.create', 'contacts.update']);
-    $card = PersonalData::factory()->create();
+    $actor = registryCardActor(['update']);
+    $card = registryCard();
     Sanctum::actingAs($actor);
 
     $id = $this->postJson('/api/contacts', [

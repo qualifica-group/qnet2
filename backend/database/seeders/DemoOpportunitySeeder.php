@@ -9,7 +9,6 @@ use App\Models\Opportunity;
 use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\RewardType;
-use App\Models\Source;
 use App\Models\User;
 use App\Services\OpportunityService;
 use App\Services\ProductCategories\CategoryHierarchy;
@@ -87,7 +86,6 @@ class DemoOpportunitySeeder extends Seeder
         $lookups = [
             'referents' => Referent::query()->orderBy('id')->get(),
             'supervisors' => User::query()->orderBy('id')->get(),
-            'sources' => Source::query()->orderBy('id')->get(),
             'sites' => OperationalSite::query()->orderBy('id')->get(),
         ];
 
@@ -108,7 +106,7 @@ class DemoOpportunitySeeder extends Seeder
     }
 
     /**
-     * @param  array{referents: Collection<int, Referent>, supervisors: Collection<int, User>, sources: Collection<int, Source>, sites: Collection<int, OperationalSite>}  $lookups
+     * @param  array{referents: Collection<int, Referent>, supervisors: Collection<int, User>, sites: Collection<int, OperationalSite>}  $lookups
      * @param  array<int, int>  $rewardTypeIds
      */
     private function createStandalone(
@@ -127,7 +125,6 @@ class DemoOpportunitySeeder extends Seeder
             commercialId: $this->maybePick($lookups['referents'], $index + 5, $faker, 40)?->id,
             reporterId: $reporterId,
             supervisorId: $this->maybePick($lookups['supervisors'], $index + 7, $faker, 60)?->id,
-            sourceId: $this->maybePick($lookups['sources'], $index + 8, $faker, 50)?->id,
             leadId: null,
             managerSlots: $this->maybeManagerSlots($lookups['supervisors'], $faker),
             productLines: $offer['product_lines'],
@@ -151,14 +148,14 @@ class DemoOpportunitySeeder extends Seeder
      * A handful of opportunities generated FROM existing leads that do not
      * already have one (BR-1) — exercises the derivation path and the
      * `lead`/`locked_fields` detail shape the standalone batch above never
-     * touches. Registry/source come from the lead; the two mandatory
+     * touches. Registry comes from the lead; the two mandatory
      * collections do NOT derive from it and are drawn here like everywhere else.
      *
      * Only leads whose anagrafica is still free are converted, one per
      * anagrafica: the standalone batch has already claimed $claimedRegistryIds,
      * and two leads of the SAME registry would collide on the second one.
      *
-     * @param  array{referents: Collection<int, Referent>, supervisors: Collection<int, User>, sources: Collection<int, Source>, sites: Collection<int, OperationalSite>}  $lookups
+     * @param  array{referents: Collection<int, Referent>, supervisors: Collection<int, User>, sites: Collection<int, OperationalSite>}  $lookups
      * @param  array<int, true>  $claimedRegistryIds
      */
     private function createFromLeads(Generator $faker, array $lookups, array $claimedRegistryIds): void
@@ -181,7 +178,6 @@ class DemoOpportunitySeeder extends Seeder
                 commercialId: null,
                 reporterId: null,
                 supervisorId: $this->maybePick($lookups['supervisors'], $index, $faker, 50)?->id,
-                sourceId: null,
                 leadId: $lead->id,
                 managerSlots: $this->maybeManagerSlots($lookups['supervisors'], $faker),
                 productLines: $offer['product_lines'],

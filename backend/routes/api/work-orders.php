@@ -1,8 +1,11 @@
 <?php
 
+use App\Http\Controllers\CategoryTabs\GridCategoryTabPreferencesController;
+use App\Http\Controllers\CategoryTabs\GridCategoryTabsController;
 use App\Http\Controllers\QuoteOfferLines\QuoteOfferLineForSelectController;
 use App\Http\Controllers\WorkOrders\WorkOrderController;
 use App\Http\Controllers\WorkOrders\WorkOrderForSelectController;
+use App\Tables\CategoryTabs\CategoryTabGrid;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -27,6 +30,15 @@ use Illuminate\Support\Facades\Route;
 // the rows are narrowed by WorkOrderVisibilityScope inside the Service, the
 // same scope WorkOrdersTableDefinition::baseQuery() applies to the grid.
 Route::get('work-orders/for-select', WorkOrderForSelectController::class);
+
+// Spec 0335 rev.3 (D-9): the category tab strip of the grid (counts + the
+// actor's favourites), ABOVE the wildcard like the routes above.
+Route::get('work-orders/product-categories', GridCategoryTabsController::class)
+    ->defaults(CategoryTabGrid::ROUTE_DEFAULT, CategoryTabGrid::WorkOrders->value);
+Route::get('work-orders/category-tab-preferences', [GridCategoryTabPreferencesController::class, 'show'])
+    ->defaults(CategoryTabGrid::ROUTE_DEFAULT, CategoryTabGrid::WorkOrders->value);
+Route::put('work-orders/category-tab-preferences', [GridCategoryTabPreferencesController::class, 'update'])
+    ->defaults(CategoryTabGrid::ROUTE_DEFAULT, CategoryTabGrid::WorkOrders->value);
 
 Route::get('work-orders/next-code', [WorkOrderController::class, 'nextCode']);
 

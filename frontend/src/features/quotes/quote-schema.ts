@@ -293,6 +293,8 @@ function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[]) {
     company_id: z.number().nullable(),
     company_site_id: z.number().nullable(),
     operational_site_id: z.number().nullable(),
+    // Spec 0332: the Fonte is the offer's own field; on create it is only prefilled from the opportunity's lead.
+    source_id: z.number().nullable(),
     // Document-generation layout (spec 0070 D-3): optional, no cross-field
     // refine — an inactive/mismatched layout is a server-side 422
     // (`ValidatesQuoteLayout`), the picker here is only an affordance.

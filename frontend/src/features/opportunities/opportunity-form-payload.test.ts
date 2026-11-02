@@ -19,7 +19,6 @@ describe('buildCreatePayload', () => {
       commercial_id: null,
       reporter_id: null,
       supervisor_id: 9,
-      source_id: null,
       operational_site_id: null,
       product_lines: [],
       products_of_interest: [],
@@ -94,6 +93,7 @@ describe('buildCreatePayload', () => {
     })
   })
 
+  // REQUIREMENT CHANGED: spec 0332 — the Fonte left the opportunity, so these cases use other fields.
   /** AC-075: creating from a Lead appends `lead_id` and OMITS every locked field entirely (BR-1/BR-2), never merely repeats it. */
   describe('create-from-lead (BR-1/BR-2, AC-075)', () => {
     it('appends lead_id and omits every locked field from the payload', () => {
@@ -101,27 +101,25 @@ describe('buildCreatePayload', () => {
         createValues({
           registry_id: 30,
           referent_id: 10,
-          source_id: 20,
         }),
         {
           leadId: 9,
-          lockedFields: ['registry_id', 'referent_id', 'source_id'],
+          lockedFields: ['registry_id', 'referent_id'],
         },
       )
 
       expect(payload.lead_id).toBe(9)
       expect(payload).not.toHaveProperty('registry_id')
       expect(payload).not.toHaveProperty('referent_id')
-      expect(payload).not.toHaveProperty('source_id')
     })
 
     it('sends a field whose derivation is null (BR-2: not locked, stays free) even from a lead', () => {
       const payload = buildCreatePayload(
-        createValues({ source_id: 70 }),
+        createValues({ operational_site_id: 70 }),
         { leadId: 9, lockedFields: ['registry_id', 'referent_id'] },
       )
 
-      expect(payload.source_id).toBe(70)
+      expect(payload.operational_site_id).toBe(70)
       expect(payload).not.toHaveProperty('registry_id')
       expect(payload).not.toHaveProperty('referent_id')
     })

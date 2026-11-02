@@ -1,6 +1,6 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
-import { filenameFromContentDisposition, normalizeBlobError } from '@/lib/download'
+import { filenameFromContentDisposition } from '@/lib/download'
 import type {
   AbsenceBalanceOverviewFilters,
   AbsenceBalanceOverviewPage,
@@ -80,14 +80,10 @@ export interface AbsenceAttachmentFile {
 
 /** Authenticated download of the attachment (the endpoint streams the file). */
 export async function downloadAbsenceAttachment(id: number): Promise<AbsenceAttachmentFile> {
-  try {
-    const response = await apiClient.get<Blob>(`${REQUESTS}/${id}/attachment`, { responseType: 'blob' })
-    return {
-      blob: response.data,
-      filename: filenameFromContentDisposition(response.headers['content-disposition']),
-    }
-  } catch (error) {
-    throw await normalizeBlobError(error)
+  const response = await apiClient.get<Blob>(`${REQUESTS}/${id}/attachment`, { responseType: 'blob' })
+  return {
+    blob: response.data,
+    filename: filenameFromContentDisposition(response.headers['content-disposition']),
   }
 }
 
@@ -121,17 +117,13 @@ export async function exportAbsenceBalanceOverview(
   filters: AbsenceBalanceOverviewFilters,
   format: BalanceExportFormat,
 ): Promise<AbsenceAttachmentFile> {
-  try {
-    const response = await apiClient.get<Blob>('/absence-balances/overview/export', {
-      params: { ...filters, format },
-      responseType: 'blob',
-    })
-    return {
-      blob: response.data,
-      filename: filenameFromContentDisposition(response.headers['content-disposition']),
-    }
-  } catch (error) {
-    throw await normalizeBlobError(error)
+  const response = await apiClient.get<Blob>('/absence-balances/overview/export', {
+    params: { ...filters, format },
+    responseType: 'blob',
+  })
+  return {
+    blob: response.data,
+    filename: filenameFromContentDisposition(response.headers['content-disposition']),
   }
 }
 

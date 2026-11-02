@@ -11,17 +11,17 @@ uses(RefreshDatabase::class);
 // the 15 RequestManagementPolicy exposes minus `create`, plus spec 0165's
 // `viewPrimarySite`; 16 since `receiveTransferNotifications` was dropped,
 // decisione utente 2026-09-29; 15 since spec 0185 moved `report` to the
-// `request-statistics` module) plus the FCR
+// `request-statistics` module; 16 since spec 0340 added `viewCompetence`) plus the FCR
 // field-protection permission `enrollee-management.updateSource`
 // (config/field-change-requests.php), and NEVER `enrollee-management.create`
 // (D-8: no creation surface at all). request-management.* stays untouched.
 
-it('permissions:sync creates the 15 enrollee-management abilities, no create (AC-001)', function () {
+it('permissions:sync creates the 16 enrollee-management abilities, no create (AC-001)', function () {
     $this->artisan('permissions:sync')->assertSuccessful();
 
     $abilities = RequestModule::Enrollees->abilities();
 
-    expect($abilities)->toHaveCount(15)->not->toContain('create', 'report');
+    expect($abilities)->toHaveCount(16)->toContain('viewCompetence')->not->toContain('create', 'report');
 
     foreach ($abilities as $ability) {
         expect(Permission::where('name', "enrollee-management.{$ability}")->exists())->toBeTrue();

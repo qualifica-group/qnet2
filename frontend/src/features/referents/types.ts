@@ -21,6 +21,17 @@ export interface ReferentTypeRef {
   name: string
 }
 
+/**
+ * A referent shown as "Referente" on another record (anagrafica cards,
+ * Opportunita', Offerta, Attivita'): `{id, name}` plus its Tipo referente.
+ * `referent_type` is absent on a draft built from a picker selection.
+ */
+export interface ReferentRef {
+  id: number
+  name: string
+  referent_type?: ReferentTypeRef | null
+}
+
 /** The linked user reference as hydrated in the referent resource ({id, name}, spec 0090). */
 export interface ReferentUserRef {
   id: number

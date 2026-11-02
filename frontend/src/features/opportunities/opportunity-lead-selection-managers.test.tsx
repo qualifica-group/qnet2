@@ -110,16 +110,14 @@ beforeEach(() => {
     existing_opportunity_id: null,
     values: {
       referent_id: null,
-      source_id: 20,
       registry_id: TEST_REGISTRY_ID,
       operational_site_id: TEST_OPERATIONAL_SITE_ID,
     },
     references: {
-      source: { id: 20, name: 'Web' },
       registry: { id: TEST_REGISTRY_ID, name: 'Acme S.p.A.' },
       operational_site: { id: TEST_OPERATIONAL_SITE_ID, label: 'Via Roma 1 - Milano' },
     },
-    locked_fields: ['source_id', 'registry_id'],
+    locked_fields: ['registry_id'],
     product_lines: [
       {
         id: 900,
@@ -161,7 +159,7 @@ describe('OpportunityFormBody — in-form Lead select, Gestori Account (directiv
     expect(screen.getByTestId('value-Account manager 2')).toHaveTextContent(String(TEST_OPERATOR_ID))
     // G.A. 1 is materialized but empty.
     expect(screen.getByTestId('value-Account manager 1')).toHaveTextContent('')
-    // Precompiled, never locked: the user can still change it (unlike Registry/Source).
+    // Precompiled, never locked: the user can still change it (unlike Registry).
     expect(screen.getByTestId('disabled-Account manager 2')).toHaveTextContent('false')
     // The trigger label is hydrated too — `setValue` alone writes the id, not the name.
     expect(screen.getByTestId('label-Account manager 2')).toHaveTextContent('Giulia Bianchi')

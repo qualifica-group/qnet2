@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useFormSubmitError } from '@/features/auth/use-form-submit-error'
 import type { Path, UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import {
   describeAddressIssues,
   describeCardIssues,
@@ -67,10 +69,10 @@ export function useCompanySiteFormSubmit({
   customFieldErrorPaths,
   onSuccess,
 }: UseCompanySiteFormSubmitArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const personalDataFieldPermission = usePersonalDataFieldPermission()
-  const [serverError, setServerError] = useState<string | null>(null)
+  const [serverError, setServerError] = useFormSubmitError()
   // Bumped on every refused save so the buffered card marks its own missing
   // fields (it takes no part in this form's submit — see PersonalDataCardForm).
   const [revalidateSignal, setRevalidateSignal] = useState(0)
@@ -152,9 +154,9 @@ export function useCompanySiteFormSubmit({
       ])
       const personalDataMessage = personalDataServerErrorMessage(error)
       if (personalDataMessage) {
-        setServerError(personalDataMessage)
+        setServerError(personalDataMessage, { notify: false })
       } else if (!mappedScalar) {
-        setServerError(t('companySites.form.genericError'))
+        setServerError(apiErrorMessage(error, t('companySites.form.genericError'), i18n))
       }
     }
   }

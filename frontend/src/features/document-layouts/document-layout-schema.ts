@@ -19,9 +19,9 @@ import { DOCUMENT_LAYOUT_MODULES } from '@/features/document-layouts/types'
  */
 
 /** Backend `name` column limit (`max:191`). */
-const NAME_MAX_LENGTH = 191
+export const NAME_MAX_LENGTH = 191
 /** Backend `code` column limit (`max:64`). */
-const CODE_MAX_LENGTH = 64
+export const CODE_MAX_LENGTH = 64
 /** Backend `code` shape: snake_case identifier (spec engineering.md §1.2). */
 const CODE_PATTERN = /^[a-z][a-z0-9_]*$/
 /** Backend `description` column limit (`max:500`). */
@@ -62,9 +62,16 @@ export function buildUpdateDocumentLayoutSchema(t: TFunction) {
   return z.object(baseFields(t))
 }
 
+/** Clone dialog schema (spec 0339): the copy's own identity, same rules as on create. */
+export function buildCloneDocumentLayoutSchema(t: TFunction) {
+  const { name, code } = baseFields(t)
+  return z.object({ name, code })
+}
+
 export type CreateDocumentLayoutFormValues = z.infer<
   ReturnType<typeof buildCreateDocumentLayoutSchema>
 >
 export type UpdateDocumentLayoutFormValues = z.infer<
   ReturnType<typeof buildUpdateDocumentLayoutSchema>
 >
+export type CloneDocumentLayoutFormValues = z.infer<ReturnType<typeof buildCloneDocumentLayoutSchema>>

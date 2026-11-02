@@ -56,7 +56,6 @@ export const pipelineStatuses = {
     colorMax: 'Color must be at most 32 characters.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the project status. Please try again.',
-    deleteForbidden: 'You cannot delete this project status.',
     deleteInUseFallback: 'This status is used by a project or a campaign and cannot be deleted.',
     leaveConfirm: {
       title: 'Leave without saving?',
@@ -77,7 +76,6 @@ export const pipelineStatuses = {
     dragHandleLabel: 'Drag to reorder',
     loadError: 'Unable to load the statuses. Please try again.',
     saved: 'Order updated successfully.',
-    forbidden: 'You cannot reorder these statuses.',
     genericError: 'Unable to update the order. Please try again.',
   },
 }

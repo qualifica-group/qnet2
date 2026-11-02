@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -14,6 +15,8 @@ import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import type { ApiErrorResponse } from '@/api/types'
 import { documentLayoutColumnRenderers } from '@/features/document-layouts/column-renderers'
 import { deleteDocumentLayout } from '@/features/document-layouts/api'
+import { DocumentLayoutCloneDialog } from '@/features/document-layouts/document-layout-clone-dialog'
+import type { DocumentLayoutCloneSource } from '@/features/document-layouts/types'
 
 /** Domain key used to mount the generic table for document layouts. */
 const DOCUMENT_LAYOUTS_DOMAIN = 'document-layouts'
@@ -25,20 +28,22 @@ const DOCUMENT_LAYOUTS_DOMAIN = 'document-layouts'
  * dedicated page by default, D-9) of view/edit/create to `useModuleOpener`.
  * It still owns the delete flow (confirming + running the delete mutation)
  * and refreshing the SSRM grid after every mutation via the table's
- * imperative handle. A 422 surfaces the D-7 "predefined layout" guard
+ * imperative handle. The `clone` row action opens the clone dialog (spec
+ * 0339), which navigates to the new layout on success. A 422 surfaces the D-7 "predefined layout" guard
  * message straight from the backend (AC-132) instead of a generic string —
  * `default_cannot_be_deleted` is a business rule explained server-side, not
  * a shape the frontend should paraphrase. Permission gating is an affordance
  * only; the backend re-authorizes each call.
  */
 export function DocumentLayoutsTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
 
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [activityRow, setActivityRow] = useState<TableRow | null>(null)
+  const [cloneSource, setCloneSource] = useState<DocumentLayoutCloneSource | null>(null)
 
   const { openCreate, openView, sheet } = useModuleOpener(DOCUMENT_LAYOUTS_DOMAIN, {
     onSaved: refreshGrid,
@@ -52,23 +57,17 @@ export function DocumentLayoutsTable() {
         toast.success(t('documentLayouts.form.deleted'))
         refreshGrid()
       } catch (error) {
-        if (!axios.isAxiosError<ApiErrorResponse>(error)) {
-          toast.error(t('documentLayouts.form.deleteError'))
-          return
-        }
-        const status = error.response?.status
-        if (status === 403) {
-          toast.error(t('documentLayouts.form.deleteForbidden'))
-        } else if (status === 422) {
-          toast.error(error.response?.data?.message ?? t('documentLayouts.form.deleteError'))
+        const fallback = t('documentLayouts.form.deleteError')
+        if (axios.isAxiosError<ApiErrorResponse>(error) && error.response?.status === 422) {
+          toast.error(error.response.data?.message ?? fallback)
         } else {
-          toast.error(t('documentLayouts.form.deleteError'))
+          toast.error(apiErrorMessage(error, fallback, i18n))
         }
       } finally {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(
@@ -82,6 +81,9 @@ export function DocumentLayoutsTable() {
           break
         case 'activity':
           setActivityRow(row)
+          break
+        case 'clone':
+          setCloneSource({ id: Number(row.id), name: String(row.name ?? ''), code: String(row.code ?? '') })
           break
         default:
           break
@@ -114,6 +116,8 @@ export function DocumentLayoutsTable() {
       />
 
       {sheet}
+
+      <DocumentLayoutCloneDialog source={cloneSource} onClose={() => setCloneSource(null)} />
 
       <ResourceActivityDialog
         resource={DOCUMENT_LAYOUTS_DOMAIN}

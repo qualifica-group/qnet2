@@ -9,6 +9,7 @@ import { lazyRoute } from '@/routes/lazy-route'
 const TasksPage = lazyRoute(() => import('@/pages/tasks-page'))
 const TaskStatusesPage = lazyRoute(() => import('@/pages/task-statuses-page'))
 const TaskTypesPage = lazyRoute(() => import('@/pages/task-types-page'))
+const SupportTopicsPage = lazyRoute(() => import('@/pages/support-topics-page'))
 const TaskCategoriesPage = lazyRoute(() => import('@/pages/task-categories-page'))
 const TaskPrioritiesPage = lazyRoute(() => import('@/pages/task-priorities-page'))
 const TaskImportancesPage = lazyRoute(() => import('@/pages/task-importances-page'))
@@ -19,6 +20,7 @@ export const TASK_ROUTES: RouteObject[] = [
   { path: 'task-statuses', element: <TaskStatusesPage /> },
   { path: 'task-types', element: <TaskTypesPage /> },
   { path: 'task-categories', element: <TaskCategoriesPage /> },
+  { path: 'support-topics', element: <SupportTopicsPage /> },
   { path: 'task-priorities', element: <TaskPrioritiesPage /> },
   { path: 'task-importances', element: <TaskImportancesPage /> },
   { path: 'task-templates', element: <TaskTemplatesPage /> },

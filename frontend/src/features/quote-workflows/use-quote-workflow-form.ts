@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import {
   createQuoteWorkflow,
   quoteWorkflowDetailQueryKey,
@@ -67,7 +68,7 @@ interface UseQuoteWorkflowFormArgs {
  * hook is the orchestration point (`onSubmit`).
  */
 export function useQuoteWorkflowForm({ mode, onSuccess }: UseQuoteWorkflowFormArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -129,7 +130,7 @@ export function useQuoteWorkflowForm({ mode, onSuccess }: UseQuoteWorkflowFormAr
       const handled = applyServerValidationErrors(error, form.setError, errorFields)
       applyNestedServerErrors(error, form.setError)
       if (!handled) {
-        setServerError(t('quoteWorkflows.form.genericError'))
+        setServerError(apiErrorMessage(error, t('quoteWorkflows.form.genericError'), i18n))
       }
     }
   }

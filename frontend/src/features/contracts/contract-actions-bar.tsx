@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { BadgeCheck, CalendarClock, RotateCcw, Shuffle, XOctagon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useConfirm } from '@/components/confirm-dialog-context'
@@ -57,7 +58,7 @@ interface ContractActionsBarProps {
  * inclusa, che non e' un esito ma un ritorno in lavorazione (rev.3).
  */
 export function ContractActionsBar({ contract, onChanged, onWorkOrderCreated }: ContractActionsBarProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const confirm = useConfirm()
   const [openDialog, setOpenDialog] = useState<OpenDialog>('none')
   const lifecycle = contractLifecycleActions(contract)
@@ -82,8 +83,8 @@ export function ContractActionsBar({ contract, onChanged, onWorkOrderCreated }: 
     }
     try {
       await reactivateMutation.mutateAsync({})
-    } catch {
-      toast.error(t('contracts.actions.reactivateDialog.genericError'))
+    } catch (error) {
+      toast.error(apiErrorMessage(error, t('contracts.actions.reactivateDialog.genericError'), i18n))
     }
   }
 

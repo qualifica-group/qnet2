@@ -170,7 +170,6 @@ class QualificaSampleBulkRequestSeeder extends Seeder
             'id' => $opportunityId,
             'name' => $this->titles->compose($this->titles->opportunityCode($opportunityId), $template->productNames),
             'registry_id' => $registryId,
-            'source_id' => $this->pick($lookups['sources'], $index),
             'operational_site_id' => $siteId,
             'general_notes' => $faker->boolean(60) ? $faker->sentence(12) : null,
             ...$timestamps,
@@ -192,6 +191,7 @@ class QualificaSampleBulkRequestSeeder extends Seeder
             'opportunity_id' => $opportunityId,
             'operator_id' => $users[$template->quote['operator_id']] ?? $template->quote['operator_id'],
             'operational_site_id' => $siteId,
+            'source_id' => $this->pick($lookups['sources'], $index),
             'next_callback_at' => $faker->boolean(50) ? $this->workingHourTimestamp($faker, '+1 day', '+2 months') : null,
             ...$timestamps,
         ];

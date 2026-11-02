@@ -68,7 +68,6 @@ export const workOrders = {
     startDate: 'Start date',
     supervisors: 'Supervisors',
     participants: 'Participants',
-    registry: 'Client registry',
     contract: 'Contract',
     contractExpiryDate: 'Contract expiry',
     company: 'Company',
@@ -87,8 +86,10 @@ export const workOrders = {
     updated_at: 'Updated at',
     sections: {
       identity: 'Details',
-      contract: 'Contract',
+      data: 'Work order data',
       team: 'Supervisors and participants',
+      detailTeam: 'Team',
+      rewards: 'Rewards',
       company: 'Company and sites',
       closure: 'Closure',
     },
@@ -246,6 +247,8 @@ export const workOrders = {
     bulk: {
       selectedCount_one: '{{count}} task selected',
       selectedCount_other: '{{count}} tasks selected',
+      selectAll: 'Select all',
+      selectStage: 'Select all tasks in phase {{name}}',
       action: {
         assign: 'Assign',
         complete: 'Complete',
@@ -352,7 +355,6 @@ export const workOrders = {
     openTasksWarning_other: '{{count}} open tasks will be closed with a negative outcome.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the work order. Please try again.',
-    deleteForbidden: 'You cannot delete this work order.',
     deleteConflict: 'Cannot delete: the work order is used elsewhere.',
     sections: {
       offer: {

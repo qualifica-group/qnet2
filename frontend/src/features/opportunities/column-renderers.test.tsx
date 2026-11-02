@@ -26,14 +26,15 @@ beforeAll(async () => {
 })
 
 describe('opportunityColumnRenderers relation columns', () => {
-  it.each(['registry', 'referent', 'commercial', 'source'])('renders the %s relation name with a kind icon', (columnId) => {
+  // REQUIREMENT CHANGED: spec 0332 — the Fonte column left the opportunity grid.
+  it.each(['registry', 'referent', 'commercial'])('renders the %s relation name with a kind icon', (columnId) => {
     const { container } = renderCell(columnId, { id: 1, name: 'Acme Spa' })
     expect(screen.getByText('Acme Spa')).toBeInTheDocument()
     // The leading lucide icon names the relation kind.
     expect(container.querySelector('svg')).not.toBeNull()
   })
 
-  it.each(['registry', 'referent', 'commercial', 'source'])('renders an em dash for %s when unset', (columnId) => {
+  it.each(['registry', 'referent', 'commercial'])('renders an em dash for %s when unset', (columnId) => {
     renderCell(columnId, null)
     expect(screen.getByText('—')).toBeInTheDocument()
   })

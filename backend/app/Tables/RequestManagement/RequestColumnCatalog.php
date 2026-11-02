@@ -14,9 +14,8 @@ use App\Tables\Shared\OfferLinesColumn;
  * domain (spec 0086: an OPERATIVE view over `quotes` rows, D-1 — migrated
  * off the former `opportunities`-rooted grid, spec 0049). The visible
  * columns are the operator's worklist:
- *  - `source` ("Fonte", user directive 2026-07-31) — RE-DERIVED through
- *    `quote.opportunity.source` (spec 0086: the field lives on the
- *    Opportunity), sortable + set-filterable like every other relation-by-name
+ *  - `source` ("Fonte", user directive 2026-07-31) — the offer's own
+ *    `quotes.source_id` (spec 0332), sortable + set-filterable like every other relation-by-name
  *    column here, and inline-editable over `sources/for-select`.
  *  - `general_notes` ("Note generali", user directive 2026-07-31) — a real
  *    `opportunities` text column, reached through `quote.opportunity`

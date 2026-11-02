@@ -19,6 +19,12 @@ import type { ContractDetail, ContractStatusGroupValue } from '@/features/contra
  * BR-2/D-3 deve continuare a funzionare: un contratto sospeso sta sulla riga
  * `pending` "Sospeso", quindi tiene "Riapri contratto" e perde "Valida"
  * (l'endpoint lo rifiuta comunque).
+ *
+ * "Valida" chiede anche un contratto MAI validato (`validated_at` vuoto,
+ * decisione utente 2026-10-30): la migrazione dal legacy porta i contratti
+ * gia' validati su righe `pending` ("Da programmare", "Programmato", "In
+ * scadenza"), dove il solo gruppo lo riproporrebbe. "Riapri contratto" da
+ * una chiusura azzera la validazione, quindi il contratto torna validabile.
  */
 export interface ContractLifecycleActions {
   validate: boolean
@@ -60,7 +66,7 @@ export function contractLifecycleActions(contract: ContractDetail): ContractLife
   const closedWon = contract.contract_status.group === 'closed_won'
 
   return {
-    validate: working && !contract.is_suspended,
+    validate: working && !contract.is_suspended && contract.validated_at === null,
     program: closedWon,
     terminate: working || closedWon,
     edit: working,

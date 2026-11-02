@@ -115,7 +115,6 @@ describe('OpportunityFormBody — fields render (AC-071)', () => {
       'select-Contact',
       'select-Sales rep',
       'select-Reporter',
-      'select-Source',
       'select-Supervisor',
       'select-Parent category 1',
     ]) {
@@ -140,7 +139,6 @@ describe('OpportunityFormBody — fields render (AC-071)', () => {
     for (const [row, testId] of [
       [ROW.commercial, 'select-Sales rep'],
       [ROW.reporter, 'select-Reporter'],
-      [ROW.source, 'select-Source'],
       [ROW.supervisor, 'select-Supervisor'],
     ] as const) {
       openRow(row)
@@ -196,14 +194,23 @@ describe('OpportunityFormBody — field permissions (AC-074)', () => {
   it('renders a non-editable field as a plain row with no pencil, rather than hiding it', async () => {
     fetchResourceMetaMock.mockResolvedValue(
       permissionsWith({
-        source_id: { visible: true, hidden: false, editable: false, readonly: true, required: false, disabled: false },
+        start_date: { visible: true, hidden: false, editable: false, readonly: true, required: false, disabled: false },
       }),
     )
 
     renderCreateForm()
 
     await waitFor(() => expect(queryPencil(ROW.registry)).toBeInTheDocument())
-    expect(screen.getByText(ROW.source)).toBeInTheDocument()
-    expect(queryPencil(ROW.source)).not.toBeInTheDocument()
+    expect(screen.getAllByText('Start date').length).toBeGreaterThan(0)
+    expect(queryPencil('Start date')).not.toBeInTheDocument()
+  })
+
+  // Spec 0332: the Fonte left the opportunity; it is a field of the quote.
+  it('has no Fonte row at all', async () => {
+    renderCreateForm()
+
+    await waitFor(() => expect(queryPencil(ROW.title)).toBeInTheDocument())
+    expect(queryPencil('Source')).not.toBeInTheDocument()
+    expect(screen.queryByText('Source')).not.toBeInTheDocument()
   })
 })

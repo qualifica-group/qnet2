@@ -20,7 +20,7 @@ interface LinkedValueProps {
 }
 
 /** A linked record as the row's value, or the kit's empty placeholder. */
-function LinkedValue({ domain, record }: LinkedValueProps) {
+export function LinkedValue({ domain, record }: LinkedValueProps) {
   return record ? (
     <RecordLink domain={domain} id={record.id}>
       {record.name}

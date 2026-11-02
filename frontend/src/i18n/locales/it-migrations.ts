@@ -44,6 +44,7 @@ export const migrations = {
     'work-order-progress': 'Commesse — avanzamento',
     'work-order-workflows': 'Commesse — workflow',
     'work-order-workflow-statuses': 'Commesse — stato di lavorazione',
+    'work-order-task-templates': 'Commesse — modello di task',
     'product-suppliers': 'Prodotti — collega fornitori',
     'commission-configurations': 'Configuratore commissioni',
     'purchase-requests': 'Richieste di acquisto (RDA)',
@@ -54,6 +55,9 @@ export const migrations = {
     invoices: 'Fatture attive',
     collections: 'Incassi',
     notes: 'Note',
+    attachments: 'Documenti',
+    'time-entries': 'Segnatempo',
+    'time-entry-day-notes': 'Segnatempo — note di giornata',
   },
   state: {
     notMigrated: 'Non migrata',
@@ -180,7 +184,6 @@ export const migrations = {
     failed: 'Fallito',
   },
   errors: {
-    forbidden: 'Non hai i permessi per accedere alle migrazioni.',
     notFound: 'Questa sorgente di migrazione non esiste.',
     validation: 'Parametri di paginazione non validi.',
     externalUnavailable: 'Il sistema esterno non è al momento disponibile. Riprova.',

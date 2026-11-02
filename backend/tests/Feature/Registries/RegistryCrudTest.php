@@ -6,6 +6,7 @@ use App\Models\Country;
 use App\Models\PersonalData;
 use App\Models\Province;
 use App\Models\Referent;
+use App\Models\ReferentType;
 use App\Models\Registry;
 use App\Models\Sector;
 use App\Models\Source;
@@ -324,6 +325,22 @@ it('show: the sector refs carry the "code — name" label (spec 0213)', function
     $this->getJson("/api/registries/{$registry->id}")
         ->assertOk()
         ->assertJsonPath('data.sectors.0.name', '33 — Tecnologia');
+});
+
+it('show: each referent card carries its Tipo referente, null when the referent has none', function () {
+    $actor = registryUserWith(['view']);
+    $registry = Registry::factory()->create();
+    $type = ReferentType::factory()->create(['name' => 'Amministratore']);
+    $typed = Referent::factory()->create(['referent_type_id' => $type->id]);
+    $untyped = Referent::factory()->create(['referent_type_id' => null]);
+    $registry->referents()->sync([$typed->id, $untyped->id]);
+    Sanctum::actingAs($actor);
+
+    $referents = collect($this->getJson("/api/registries/{$registry->id}")->assertOk()->json('data.referents'))
+        ->keyBy('id');
+
+    expect($referents[$typed->id]['referent_type'])->toBe(['id' => $type->id, 'name' => 'Amministratore'])
+        ->and($referents[$untyped->id]['referent_type'])->toBeNull();
 });
 
 it('show: 403 without registries.view', function () {

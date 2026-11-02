@@ -11,6 +11,7 @@ use App\Models\QuoteWorkflowStatus;
 use App\Models\User;
 use App\Services\Notes\NoteService;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -137,9 +138,7 @@ final class QuoteWorkflowStatusWriter
             ]);
         }
 
-        if (! $actor->can('notes.create')) {
-            throw new AuthorizationException;
-        }
+        Gate::forUser($actor)->authorize('notes.create');
 
         $this->noteService->create($actor, new CreateNoteData(
             entityType: self::NOTE_ENTITY_TYPE,

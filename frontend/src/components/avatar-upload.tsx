@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { toast } from 'sonner'
 import { Loader2, Trash2, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -48,7 +49,7 @@ type AvatarUploadProps = (ImmediateModeProps | DeferredModeProps) & {
  * mode).
  */
 export function AvatarUpload(props: AvatarUploadProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { name, label } = props
   const inputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
@@ -123,8 +124,8 @@ export function AvatarUpload(props: AvatarUploadProps) {
     setPending(true)
     try {
       await props.onUpload(file)
-    } catch {
-      const message = t('avatar.avatarUploadError')
+    } catch (error) {
+      const message = apiErrorMessage(error, t('avatar.avatarUploadError'), i18n)
       setError(message)
       toast.error(message)
     } finally {
@@ -147,8 +148,8 @@ export function AvatarUpload(props: AvatarUploadProps) {
     setPending(true)
     try {
       await props.onRemove()
-    } catch {
-      const message = t('avatar.avatarUploadError')
+    } catch (error) {
+      const message = apiErrorMessage(error, t('avatar.avatarUploadError'), i18n)
       setError(message)
       toast.error(message)
     } finally {

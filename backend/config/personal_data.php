@@ -39,4 +39,25 @@ return [
         'personal_data' => PersonalData::class,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Card owner -> authorization resource
+    |--------------------------------------------------------------------------
+    |
+    | Morph alias of a card's owner (`personable`) mapped to the authorization
+    | resource of config/authorization.php that governs it. The contacts and
+    | addresses of a card are authorized through that resource: its policy and
+    | its `personal_data.contacts` / `personal_data.addresses` field rows
+    | (spec 0328, PersonalDataChildAuthorization). An owner type missing here
+    | is never authorized.
+    |
+    */
+
+    'owner_resources' => [
+        'user' => 'users',
+        'registry' => 'registries',
+        'referent' => 'referents',
+        'company_site' => 'company-sites',
+    ],
+
 ];

@@ -45,7 +45,9 @@ it('AC-002: the created Opportunity has the lead.operator as its second Gestore 
     expect($opportunity->managers->first()->pivot->position)->toBe(2);
 });
 
-it('AC-003: the created Opportunity has registry_id/source_id derived from the lead', function () {
+// REQUIREMENT CHANGED: spec 0332 (AC-010) — the conversion derives registry_id only;
+// the Fonte is no longer an Opportunity field.
+it('AC-003: the created Opportunity has registry_id derived from the lead, with no Fonte', function () {
     $actor = leadConversionActor(['create'], ['create']);
     $fixture = convertibleLeadFixture();
     Sanctum::actingAs($actor);
@@ -54,7 +56,7 @@ it('AC-003: the created Opportunity has registry_id/source_id derived from the l
 
     $opportunity = Opportunity::where('lead_id', $response->json('data.id'))->firstOrFail();
     expect($opportunity->registry_id)->toBe($fixture['registry']->id);
-    expect($opportunity->source_id)->toBe($fixture['source']->id);
+    expect($opportunity->getAttributes())->not->toHaveKey('source_id');
 });
 
 // User directive 2026-07-23: the converted Opportunity inherits the lead's

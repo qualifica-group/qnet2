@@ -13,8 +13,8 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { deleteAbsenceType } from '@/features/absence-types/api'
 import { ABSENCE_TYPES_DOMAIN } from '@/features/absence-types/types'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 
-const FORBIDDEN_STATUS = 403
 const CONFLICT_STATUS = 409
 
 /**
@@ -23,7 +23,7 @@ const CONFLICT_STATUS = 409
  * the table; 409 = a request already uses the type).
  */
 export function AbsenceTypesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -42,8 +42,9 @@ export function AbsenceTypesTable() {
         refreshGrid()
       } catch (error) {
         const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        if (status === FORBIDDEN_STATUS) {
-          toast.error(t('absenceTypes.form.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden !== null) {
+          toast.error(forbidden)
         } else if (status === CONFLICT_STATUS) {
           toast.error(t('absenceTypes.form.deleteInUse'))
         } else {
@@ -53,7 +54,7 @@ export function AbsenceTypesTable() {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(

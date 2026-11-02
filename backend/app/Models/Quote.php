@@ -10,7 +10,6 @@ use App\Models\Concerns\LogsModelActivity;
 use Carbon\CarbonImmutable;
 use Database\Factories\QuoteFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -113,6 +112,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'company_id',
     'company_site_id',
     'operational_site_id',
+    'source_id',
     'layout_id',
     'payment_method_id',
     'internal_notes',
@@ -161,27 +161,6 @@ class Quote extends BaseModel
     public function opportunity(): BelongsTo
     {
         return $this->belongsTo(Opportunity::class);
-    }
-
-    /**
-     * `source_id`: the underlying Opportunity's Fonte, as a virtual
-     * READ-ONLY attribute (spec 0086, D-10). NOT a column and NOT a
-     * duplicate of `opportunities.source_id` — it exists because
-     * `FieldChangeRequestValueResolver::currentValue()` reads
-     * `$record->getAttribute('source_id')` off the field-change-request
-     * SUBJECT, which is this Quote (D-10): without this accessor that read
-     * would silently return null (no exception, an empty "current value" on
-     * the change request) instead of the Fonte actually shown on the grid.
-     * Get-only, mirroring `Opportunity::operatorId()`'s own virtual-attribute
-     * pattern: the one write path stays `TableDefinition::updateCell()` on
-     * the `source` column, which writes through to `quote.opportunity`. Null
-     * when `opportunity` is missing (defensive; the FK is NOT NULL so this
-     * only guards a not-yet-loaded/not-yet-persisted edge case), and safe
-     * whether or not `opportunity` is eager-loaded.
-     */
-    protected function sourceId(): Attribute
-    {
-        return Attribute::get(fn (): ?int => $this->opportunity?->source_id);
     }
 
     /**
@@ -280,6 +259,15 @@ class Quote extends BaseModel
     public function operationalSite(): BelongsTo
     {
         return $this->belongsTo(OperationalSite::class);
+    }
+
+    /**
+     * The Fonte of the offer (spec 0332), optional, nullOnDelete. Moved here
+     * from the Opportunity: only the offer carries it.
+     */
+    public function source(): BelongsTo
+    {
+        return $this->belongsTo(Source::class);
     }
 
     /**

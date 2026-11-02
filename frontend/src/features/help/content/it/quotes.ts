@@ -17,7 +17,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             "Apri **Offerte** e clicca **Nuova offerta** (oppure parti dalla scheda dell'opportunità).",
-            "Nei **Dati offerta** scegli l'**Opportunità**: Commerciale, Segnalatore, Supervisore, Gestori account e Sede operativa vengono precompilati dall'opportunità (puoi cambiarli).",
+            "Nei **Dati offerta** scegli l'**Opportunità**: Commerciale, Segnalatore, Supervisore, Gestori account e Sede operativa vengono precompilati dall'opportunità (puoi cambiarli); la **Fonte** si precompila se l'opportunità è nata da un lead.",
             'Compila le altre righe che ti servono (vedi tabella).',
             'In fondo, nella scheda **Offerta** aggiungi le righe dei prodotti venduti scegliendoli dal **Catalogo prodotti** e nella scheda **Costi** le righe di costo: gli editor sono già aperti e il riepilogo si aggiorna mentre scrivi.',
             'Clicca **Salva** (in alto o in fondo): QNet controlla tutti i campi e crea l\'offerta; gli errori compaiono sotto le righe da correggere.',
@@ -32,6 +32,7 @@ const guide: HelpGuide = {
               '**Codice**, **Titolo**, **Data offerta**, **Opportunità**',
               "La data offerta è proposta con la data di oggi. L'opportunità non si cambia dopo la creazione.",
             ],
+            ['Contesto', '**Fonte**', "Campo dell'offerta: precompilata con la Fonte del lead se l'opportunità ne ha uno, altrimenti vuota; puoi sceglierla o cambiarla."],
             ['Anagrafica e contatti', '**Commerciale**, **Segnalatore** (con i suoi **Buoni**)', "Precompilati dall'opportunità."],
             ['Team', '**Supervisore**, **Gestori account**', "Sincronizzati con l'opportunità."],
             ['Società e sedi', '**Società**, **Società sede**, **Sede operativa**', 'Scegli prima la società.'],
@@ -63,7 +64,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Non esiste una pagina di modifica separata: l'offerta si modifica **direttamente dal suo dettaglio**, un campo alla volta, comprese le **Informazioni aggiuntive** (ogni campo flessibile ha la sua riga) e le righe **Offerta** e **Costi**.",
+          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati offerta** e **Contesto**, poi **Anagrafica e contatti** e **Buoni**, poi **Team** e **Società e sedi**, infine **Documento e pagamento**. La sezione Buoni resta visibile anche vuota (\"Nessun buono\").",
+        },
+        {
+          type: 'paragraph',
+          text: "Non esiste una pagina di modifica separata: l'offerta si modifica **direttamente dal suo dettaglio**, un campo alla volta, comprese le **Informazioni aggiuntive** (ogni campo flessibile ha la sua riga) e le righe **Offerta** e **Costi**. Cliccando il titolo **Informazioni aggiuntive** la sezione si chiude o si riapre: la scelta resta salvata nel browser e vale per tutte le offerte, nel dettaglio e nella creazione.",
         },
         {
           type: 'steps',
@@ -80,7 +85,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Codice, Opportunità). Anagrafica, Referente, Fonte, Linee prodotto e Note generali vengono dall'opportunità e restano in sola lettura.",
+          text: "Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Codice, Opportunità). Anagrafica, Referente, Linee prodotto e Note generali vengono dall'opportunità e restano in sola lettura; la **Fonte** è un campo dell'offerta e si modifica qui.",
         },
         {
           type: 'list',
@@ -97,12 +102,38 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'category-tabs',
+      title: "Filtrare per categoria prodotto",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Sopra l'elenco trovi la barra delle categorie: la tab **Tutte** e una tab per ogni categoria prodotto presente, con il numero di offerte. Cliccando una tab l'elenco mostra solo le offerte di quella categoria. La scelta resta anche dopo aver ricaricato la pagina.",
+        },
+        {
+          type: 'paragraph',
+          text: "Un'offerta compare nella tab di ogni categoria dei prodotti presenti nelle sue **righe di ricavo** (conta una volta sola anche con più righe della stessa categoria). Le righe di costo non contano; un'offerta senza righe di ricavo compare solo in **Tutte**. Il numero accanto al nome è quante offerte, tra quelle che puoi vedere, rientrano nella categoria.",
+        },
+        {
+          type: 'steps',
+          items: ["Se le tab non entrano nella riga, le altre finiscono nel menu **Altre**, dove puoi cercare una categoria per nome.","Clicca la **stellina** accanto a una categoria (nel menu) per aggiungerla alle **preferite**: le preferite compaiono per prime.","Attiva **Mostra solo preferite** per vedere in barra solo le preferite; le altre restano nel menu **Altre**."],
+        },
+        {
+          type: 'paragraph',
+          text: "Nel menu **Altre** l'interruttore **Categorie madri** limita la barra alle sole categorie di primo livello: la tab di una categoria madre raccoglie anche le sottocategorie (un record conta una volta sola). La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria tab e le **preferite** sono separate tra le due modalità. Spegnendolo torni a tutte le categorie.",
+        },
+        {
+          type: 'note',
+          text: "Le preferite sono separate per ogni elenco (Opportunità, Offerte, Contratti, Commesse, Gestione Richieste). La prima volta ti vengono proposte in base alle categorie per cui sei abilitato; appena usi la stellina diventano le tue. L'esportazione non segue la tab: considera sempre tutte le offerte.",
+        },
+      ],
+    },
+    {
       id: 'list-editing',
       title: "Modifica rapida dall'elenco",
       blocks: [
         {
           type: 'paragraph',
-          text: "Un clic su una cella modificabile (Titolo, Stato, Commerciale, Segnalatore, Supervisore, Gestori account, Società, Società sede, Sede operativa) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
+          text: "Un clic su una cella modificabile (Titolo, Stato, Commerciale, Segnalatore, Supervisore, Gestori account, Società, Società sede, Sede operativa, Fonte) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
         },
         {
           type: 'note',
@@ -204,9 +235,9 @@ const guide: HelpGuide = {
       title: "Quali offerte vedi",
       blocks: [
         { type: 'paragraph', text: "Cosa vedi dipende dal tuo ruolo. Serve sempre il permesso **Visualizza**; i livelli si sommano:" },
-        { type: 'table', headers: ["Permesso", "Offerte visibili"], rows: [["**Visualizza**", "Quelle di cui sei **Supervisore** o **Gestore account**."], ["**Visualizza per sede**", "Le tue e quelle della tua **Sede operativa** (fisica o remota). Un'offerta senza sede operativa conta solo per il suo team."], ["**Visualizza tutti**", "Tutte."]] },
+        { type: 'table', headers: ["Permesso", "Offerte visibili"], rows: [["**Visualizza**", "Quelle di cui sei **Supervisore** o **Gestore account**."], ["**Visualizza per sede**", "Le tue e quelle della tua **Sede operativa** (fisica o remota). Un'offerta senza sede operativa conta solo per il suo team."], ["**Visualizza per competenza**", "Le tue e quelle con almeno un prodotto dei ricavi in una categoria del tuo ambito di assegnazione, in qualunque sede. Con **Ambito su tutte le categorie** tutte."], ["**Visualizza tutti**", "Tutte."]] },
         { type: 'paragraph', text: "Il filtro vale per elenco, scheda, filtri, esportazioni, statistiche e dashboard, selettori e documenti. Aprire il link di un'offerta che non puoi vedere mostra un errore di accesso. Vedere un'offerta non permette di modificarla o eliminarla: servono i permessi **Modifica** ed **Elimina**, e si modifica solo ciò che si vede." },
-        { type: 'note', text: "Se crei un'offerta senza far parte del suo team, non la vedrai più a meno di avere **Visualizza tutti** o **Visualizza per sede** (con la sede operativa giusta)." },
+        { type: 'note', text: "Se crei un'offerta senza far parte del suo team, non la vedrai più a meno di avere **Visualizza tutti**, **Visualizza per sede** (con la sede operativa giusta) o **Visualizza per competenza** (con la categoria giusta nel tuo ambito)." },
       ],
     },
   ],

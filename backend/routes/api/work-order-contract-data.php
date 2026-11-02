@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Work Order Contract Data (spec 0201)
+| Work Order Contract Data (spec 0201, bulk payment spec 0333)
 |--------------------------------------------------------------------------
 |
 | Required from routes/api/work-orders.php, so it inherits the same
@@ -16,5 +16,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('work-orders/{workOrder}/contract-data', [WorkOrderContractDataController::class, 'show']);
+// Spec 0333: the same payment values on several lines; ownership checked in the FormRequest.
+Route::patch('work-orders/{workOrder}/contract-data/lines', [WorkOrderContractDataController::class, 'bulkUpdateLines']);
 Route::patch('work-orders/{workOrder}/contract-data/lines/{quoteLine}', [WorkOrderContractDataController::class, 'updateLine'])
     ->scopeBindings();

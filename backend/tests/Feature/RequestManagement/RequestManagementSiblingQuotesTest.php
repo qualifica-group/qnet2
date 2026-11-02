@@ -49,10 +49,10 @@ if (! function_exists('siblingQuotesActor')) {
 if (! function_exists('siblingQuotes')) {
     /**
      * ONE Opportunity carrying two Offerte, deliberately diverging on every
-     * per-Quote dimension the row projects — the shared fields (source,
-     * product_categories, client anagraphic) come from the SAME Opportunity
+     * per-Quote dimension the row projects — the shared fields
+     * (product_categories, client anagraphic) come from the SAME Opportunity
      * by construction; only what is explicitly set below (operator/site/
-     * lines/next_callback_at) differs between the two. REQUIREMENT CHANGED
+     * lines/next_callback_at, and since spec 0332 the Fonte) differs between the two. REQUIREMENT CHANGED
      * (user directive 2026-09-04): the planned callback left the shared set
      * — it is a `quotes` column now, so the two siblings plan their own.
      *
@@ -65,7 +65,6 @@ if (! function_exists('siblingQuotes')) {
         $category = ProductCategory::factory()->create();
         $opportunity = Opportunity::factory()->create([
             'registry_id' => $registry->id,
-            'source_id' => Source::factory()->create()->id,
         ]);
         OpportunityProductLine::factory()->for($opportunity)->create([
             'product_category_id' => $category->id,
@@ -80,11 +79,13 @@ if (! function_exists('siblingQuotes')) {
         $first = Quote::factory()->for($opportunity)->create([
             'operator_id' => User::factory()->create()->id,
             'operational_site_id' => $firstSite->id,
+            'source_id' => Source::factory()->create()->id,
         ]);
         $first->forceFill(['next_callback_at' => now()->addDay()])->save();
         $second = Quote::factory()->for($opportunity)->create([
             'operator_id' => User::factory()->create()->id,
             'operational_site_id' => $secondSite->id,
+            'source_id' => Source::factory()->create()->id,
         ]);
         $second->forceFill(['next_callback_at' => now()->addDays(5)])->save();
         // `is_transferred` is not fillable (D-6 system flag): set directly,
@@ -119,13 +120,14 @@ it('AC-006: two sibling offers share the opportunity-level fields and diverge on
     expect($firstRow)->not->toBeNull()->and($secondRow)->not->toBeNull();
 
     // Shared: read through the SAME Opportunity, byte-identical on both rows.
-    expect($firstRow['source'])->toBe($secondRow['source'])
-        ->and($firstRow['product_categories'])->toBe($secondRow['product_categories'])
+    // REQUIREMENT CHANGED: spec 0332 — the Fonte is per offer, not shared.
+    expect($firstRow['product_categories'])->toBe($secondRow['product_categories'])
         ->and($firstRow['first_name'])->toBe($secondRow['first_name'])
         ->and($firstRow['last_name'])->toBe($secondRow['last_name']);
 
     // Independent: each Quote's own columns, never mirrored across siblings.
     expect($firstRow['operator_ga2']['id'])->not->toBe($secondRow['operator_ga2']['id'])
+        ->and($firstRow['source']['id'])->not->toBe($secondRow['source']['id'])
         ->and($firstRow['operational_site']['id'])->not->toBe($secondRow['operational_site']['id'])
         ->and($firstRow['next_callback_at'])->not->toBe($secondRow['next_callback_at'])
         ->and($firstRow['is_transferred'])->toBeFalse()
@@ -134,8 +136,10 @@ it('AC-006: two sibling offers share the opportunity-level fields and diverge on
         ->not->toBe(collect($secondRow['offer_lines'])->pluck('id')->all());
 });
 
-it('AC-015: an inline source edit on one offer propagates to its sibling', function () {
+// REQUIREMENT CHANGED: spec 0332 — the Fonte lives on the offer, so an edit no longer reaches the sibling.
+it('AC-015: an inline source edit on one offer leaves its sibling untouched', function () {
     ['first' => $first, 'second' => $second] = siblingQuotes();
+    $siblingSourceId = $second->source_id;
     $newSource = Source::factory()->create();
     Sanctum::actingAs(siblingQuotesActor(['viewAny', 'viewAll', 'view', 'update', 'updateSource']));
 
@@ -144,9 +148,10 @@ it('AC-015: an inline source edit on one offer propagates to its sibling', funct
     ])->assertOk()->assertJsonPath('data.source.id', $newSource->id);
 
     $siblingPanel = $this->getJson("/api/request-management/{$second->id}")->assertOk();
-    expect($siblingPanel->json('data.source.id'))->toBe($newSource->id);
+    expect($siblingPanel->json('data.source.id'))->toBe($siblingSourceId);
 
     $rows = collect($this->postJson('/api/tables/request-management/rows', ['startRow' => 0, 'endRow' => 25])
         ->assertOk()->json('items'));
-    expect($rows->firstWhere('id', $second->id)['source']['id'])->toBe($newSource->id);
+    expect($rows->firstWhere('id', $second->id)['source']['id'])->toBe($siblingSourceId)
+        ->and($rows->firstWhere('id', $first->id)['source']['id'])->toBe($newSource->id);
 });

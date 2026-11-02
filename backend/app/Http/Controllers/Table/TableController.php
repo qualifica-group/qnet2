@@ -18,7 +18,9 @@ use App\Services\TableFilterStateService;
 use App\Services\TablePreferenceService;
 use App\Services\TableService;
 use App\Support\Cache\AggregateCache;
+use App\Tables\ProductCategoryScopable;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
+use App\Tables\ReferentScopable;
 use App\Tables\RegistryScopable;
 use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\TableDefinition;
@@ -227,13 +229,16 @@ class TableController extends BaseApiController
 
             $payload = $request->validated();
             $productCategoryId = $payload['productCategoryId'] ?? null;
-            $this->scopeToProductCategory($definition, $productCategoryId === null ? null : (int) $productCategoryId);
+            $branchId = $payload['productCategoryBranchId'] ?? null;
+            $this->scopeToProductCategory($definition, $productCategoryId === null ? null : (int) $productCategoryId, $branchId === null ? null : (int) $branchId);
             $opportunityId = $payload['opportunityId'] ?? null;
             $this->scopeToOpportunity($definition, $opportunityId === null ? null : (int) $opportunityId);
             $quoteId = $payload['quoteId'] ?? null;
             $this->scopeToQuote($definition, $quoteId === null ? null : (int) $quoteId);
             $registryId = $payload['registryId'] ?? null;
             $this->scopeToRegistry($definition, $registryId === null ? null : (int) $registryId);
+            $referentId = $payload['referentId'] ?? null;
+            $this->scopeToReferent($definition, $referentId === null ? null : (int) $referentId);
             $this->authorizeTreeParent($definition, $actor, $payload['treeParentId'] ?? null);
 
             $result = $this->service->rows($definition, $actor, $payload);
@@ -306,10 +311,11 @@ class TableController extends BaseApiController
             $this->authorizeViewAny($definition->authorizeViewAny($actor));
 
             $payload = $request->payload();
-            $this->scopeToProductCategory($definition, $payload['productCategoryId']);
+            $this->scopeToProductCategory($definition, $payload['productCategoryId'], $payload['productCategoryBranchId']);
             $this->scopeToOpportunity($definition, $payload['opportunityId']);
             $this->scopeToQuote($definition, $payload['quoteId']);
             $this->scopeToRegistry($definition, $payload['registryId']);
+            $this->scopeToReferent($definition, $payload['referentId']);
 
             // Per actor always: grid visibility rules are evaluated per user (spec
             // 0178, D-5). The column id goes into the hash too: an `attr.*` id is
@@ -371,25 +377,26 @@ class TableController extends BaseApiController
      */
     private function authorizeViewAny(bool $allowed): void
     {
-        if (! $allowed) {
-            throw new AuthorizationException;
-        }
+        Gate::allowIf($allowed);
     }
 
     /**
-     * Spec 0064: narrows a `RequestManagementScopedTableDefinition` (only
-     * `request-management`) to one product category — its rows, its `attr.*`
+     * Spec 0064/0335: narrows a `ProductCategoryScopable` definition
+     * (`request-management`, `opportunities`, `quotes`) to one product
+     * category — its rows and, for Gestione Richieste only, its `attr.*`
      * columns and the GA2 relabel. A no-op for every other domain.
      *
      * Also called by `savePreferences()`/`saveFilters()` AFTER their write, on
      * the tab the client sent: those responses are read straight into the
      * client's per-tab config cache, so they must carry the same `attr.*`
-     * columns the GET does. It reaches nothing already persisted.
+     * columns the GET does. It reaches nothing already persisted. `$branchId`
+     * (spec 0337) comes only from rows/values: a root tab filters rows, never config.
      */
-    private function scopeToProductCategory(TableDefinition $definition, ?int $productCategoryId): void
+    private function scopeToProductCategory(TableDefinition $definition, ?int $productCategoryId, ?int $branchId = null): void
     {
-        if ($definition instanceof RequestManagementScopedTableDefinition) {
+        if ($definition instanceof ProductCategoryScopable) {
             $definition->scopeToProductCategory($productCategoryId);
+            $definition->scopeToProductCategoryBranch($branchId);
         }
     }
 
@@ -449,6 +456,18 @@ class TableController extends BaseApiController
     }
 
     /**
+     * Spec 0336: narrows a `ReferentScopable` definition
+     * (`commission-configurations`) to one Referente's rules, mirroring
+     * `scopeToRegistry()`.
+     */
+    private function scopeToReferent(TableDefinition $definition, ?int $referentId): void
+    {
+        if ($definition instanceof ReferentScopable) {
+            $definition->scopeToReferent($referentId);
+        }
+    }
+
+    /**
      * Spec 0157, D-1: 403 when `treeParentId` names a row the actor cannot
      * see. Existence is already guaranteed by `TableRowsRequest`'s
      * `Rule::exists` (422 otherwise, before this ever runs); this is the
@@ -467,8 +486,8 @@ class TableController extends BaseApiController
         /** @var Model|null $parent */
         $parent = $modelClass::query()->find($parentId);
 
-        if ($parent !== null && ! Gate::forUser($actor)->allows('view', $parent)) {
-            throw new AuthorizationException;
+        if ($parent !== null) {
+            Gate::forUser($actor)->authorize('view', $parent);
         }
     }
 }

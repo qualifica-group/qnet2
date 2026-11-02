@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\Absences\Calendar\PersonNonWorkingDays;
 use App\Services\Absences\Calendar\PersonWorkCalendar;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * GET /api/time-entries/stats/team (spec 0122, D-10, AC-019/AC-020): WHO the
@@ -88,14 +89,14 @@ final class TimeEntryTeamPulseService
      */
     private function resolveMemberIds(User $actor): array
     {
-        abort_unless($actor->can('time-entries.viewAny'), 403);
+        Gate::forUser($actor)->authorize('time-entries.viewAny');
 
         if ($actor->can('time-entries.viewAll')) {
             return [User::query()->where('is_active', true)->pluck('id')->all(), true];
         }
 
         $descendantIds = $this->subordinates->descendantIds($actor->id);
-        abort_if($descendantIds === [], 403);
+        abort_if($descendantIds === [], 403, __('You have no team members to show.'));
 
         return [$descendantIds, false];
     }

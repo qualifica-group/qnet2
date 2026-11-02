@@ -35,6 +35,7 @@ class RunMigrationJob implements ShouldQueue
     public function __construct(private readonly int $migrationRunId)
     {
         $this->timeout = (int) config('migrations.job_timeout');
+        $this->onQueue(config('migrations.queue'));
     }
 
     public function handle(MigrationService $service): void

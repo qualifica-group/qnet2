@@ -35,6 +35,7 @@ export function editDefaults(quote: QuoteDetail): QuoteFormValues {
     company_id: quote.company_id,
     company_site_id: quote.company_site_id,
     operational_site_id: quote.operational_site_id,
+    source_id: quote.source_id,
     layout_id: quote.layout_id,
     payment_method_id: quote.payment_method_id,
     internal_notes: quote.internal_notes,
@@ -87,6 +88,7 @@ export function createDefaults(mode: QuoteCreateFormMode, initialCode: string | 
     company_id: null,
     company_site_id: null,
     operational_site_id: null,
+    source_id: null,
     // Precompiled with the module's active default layout by
     // `useQuoteCreateDefaults` (spec 0070 D-3/AC-310), not here: resolving it
     // needs a network round trip, out of scope for a synchronous default.

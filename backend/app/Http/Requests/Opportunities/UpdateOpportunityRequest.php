@@ -25,13 +25,13 @@ use Illuminate\Validation\Rule;
  * workflow-status override field is GONE too — no working-state override
  * exists any more on the Opportunity).
  * `lead_id` is ALWAYS `prohibited` (BR-2,
- * immutable once set). When $opportunity carries a `lead_id`, its 2
- * BR-1-derivable fields are re-resolved against the CURRENT lead/campaign
+ * immutable once set). When $opportunity carries a `lead_id`, its
+ * BR-1-derivable field is re-resolved against the CURRENT lead/campaign
  * state (LeadOpportunityDefaultsResolver — same source as create): a
- * submission of one of them must equal that current derived value
+ * submission of it must equal that current derived value
  * (`Rule::in`) — a DIFFERENT value 422s, the SAME value is a no-op (BR-2).
- * `source_id` stays optional even unlocked. An opportunity with no lead has
- * none of these fields locked. `referent_id` is NOT derivable (spec 0041
+ * An opportunity with no lead has
+ * no field locked. `referent_id` is NOT derivable (spec 0041
  * D-1/D-3): it stays a plain, always-editable field scoped to the chosen
  * registry (BR-4, spec 0040).
  *
@@ -83,7 +83,6 @@ class UpdateOpportunityRequest extends FormRequest
             'commercial_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             'reporter_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             'supervisor_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
-            'source_id' => $this->lockableRule($locked, 'source_id', 'sources'),
             // Spec 0056: a plain, optional relation — never derivable/locked.
             'operational_site_id' => ['sometimes', 'nullable', 'integer', Rule::exists('operational_sites', 'id')],
             'opportunity_status_id' => ['prohibited'],
@@ -108,10 +107,10 @@ class UpdateOpportunityRequest extends FormRequest
     }
 
     /**
-     * One of the 2 BR-1-derivable fields: when $locked carries a value for
+     * A BR-1-derivable field: when $locked carries a value for
      * it, the submission must match EXACTLY (`Rule::in`, BR-2); otherwise the
      * plain relation rule applies — `required` only for `registry_id`'s own
-     * unlocked case, `nullable` for `source_id` (never forced on an unlocked,
+     * unlocked case, `nullable` otherwise (never forced on an unlocked,
      * previously-empty field).
      *
      * @param  array<string, int>  $locked

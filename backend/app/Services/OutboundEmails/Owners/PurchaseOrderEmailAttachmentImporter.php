@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\OutboundEmails\OutboundEmailAttachmentService;
 use App\Services\PurchaseOrders\PurchaseOrderLayoutUnavailableException;
 use App\Services\PurchaseOrders\PurchaseOrderPdfRenderer;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -44,9 +45,7 @@ final class PurchaseOrderEmailAttachmentImporter
 
     public function importPdf(PurchaseOrder $order, OutboundEmail $email, User $actor, ?int $layoutId = null): OutboundEmail
     {
-        if ($actor->cannot('view', $order)) {
-            abort(403);
-        }
+        Gate::forUser($actor)->authorize('view', $order);
 
         $layout = $layoutId === null ? null : DocumentLayout::query()
             ->where('module', DocumentLayoutModule::PurchaseOrders->value)
@@ -71,9 +70,7 @@ final class PurchaseOrderEmailAttachmentImporter
      */
     private function importDocuments(PurchaseOrder $order, OutboundEmail $email, User $actor, array $attachmentIds): OutboundEmail
     {
-        if ($actor->cannot('viewDocuments', Registry::class)) {
-            abort(403);
-        }
+        Gate::forUser($actor)->authorize('viewDocuments', Registry::class);
 
         $sources = Attachment::query()
             ->whereIn('id', $attachmentIds)

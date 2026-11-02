@@ -50,6 +50,8 @@ import { outboundEmails } from './it-outbound-emails'
 import { emailTemplates } from './it-email-templates'
 import { documentBundles } from './it-document-bundles'
 import { taskTemplates } from './it-task-templates'
+import { supportTopics } from './it-support-topics'
+import { supportRequests } from './it-support-requests'
 import { tasks } from './it-tasks'
 import { timeEntries } from './it-time-entries'
 import {
@@ -67,6 +69,7 @@ import { rewardedReferents } from './it-rewarded-referents'
 import { documentLayouts } from './it-document-layouts'
 import { dashboard } from './it-dashboard'
 import { requestManagement } from './it-request-management'
+import { categoryTabs } from './it-category-tabs'
 import { enrolleeManagement } from './it-enrollee-management'
 import { fieldChangeRequests } from './it-field-change-requests'
 import { notes } from './it-notes'
@@ -116,6 +119,7 @@ export const it: TranslationResources = {
     edit: 'Modifica',
     delete: 'Elimina',
     duplicate: 'Duplica',
+    clone: 'Clona',
     activity: 'Attività',
     convertToOpportunity: 'Converti in Opportunità',
     documents: 'Documenti',
@@ -305,7 +309,6 @@ export const it: TranslationResources = {
       nameMax: 'Il nome può contenere al massimo 255 caratteri.',
       genericError: 'Si è verificato un errore. Riprova.',
       deleteError: 'Impossibile eliminare il ruolo. Riprova.',
-      deleteForbidden: 'Non puoi eliminare questo ruolo.',
       sections: {
         details: {
           title: 'Dettagli ruolo',
@@ -456,11 +459,14 @@ export const it: TranslationResources = {
   taskStatuses,
   taskTypes,
   taskCategories,
+  supportTopics,
+  supportRequests,
   taskPriorities,
   taskImportances,
   timeEntries,
   commissionConfigurations,
   requestManagement,
+  categoryTabs,
   enrolleeManagement,
   // Messaggi di validazione condivisi della mappa dinamica `attribute_values`
   // (spec 0084): namespace neutro riusato da ogni contesto che la raccoglie

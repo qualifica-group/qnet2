@@ -1,6 +1,7 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
 import type {
+  BulkUpdateContractLinesPayload,
   ContractDataLine,
   UpdateContractLinePayload,
   WorkOrderContractData,
@@ -22,6 +23,18 @@ export async function updateContractDataLine(
 ): Promise<ContractDataLine> {
   const { data } = await apiClient.patch<ApiResponse<ContractDataLine>>(
     `/work-orders/${workOrderId}/contract-data/lines/${quoteLineId}`,
+    payload,
+  )
+  return data.data
+}
+
+/** `PATCH /work-orders/{id}/contract-data/lines` (spec 0333): returns the whole refreshed contract data. */
+export async function bulkUpdateContractDataLines(
+  workOrderId: number,
+  payload: BulkUpdateContractLinesPayload,
+): Promise<WorkOrderContractData> {
+  const { data } = await apiClient.patch<ApiResponse<WorkOrderContractData>>(
+    `/work-orders/${workOrderId}/contract-data/lines`,
     payload,
   )
   return data.data

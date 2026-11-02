@@ -4,6 +4,7 @@ use App\Enums\AssignmentRoleEnum;
 use App\Enums\AssignmentTargetEnum;
 use App\Enums\TransferRecipientRoleEnum;
 use App\Models\Opportunity;
+use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\Source;
 use App\Models\User;
@@ -65,12 +66,10 @@ it('builds the anagrafica detail card from the record, skipping empty fields', f
 
 it('builds the opportunity detail card from the record', function () {
     $registry = Registry::factory()->create(['name' => 'Acme S.p.A.']);
-    $source = Source::factory()->create(['name' => 'Fiera 2026']);
     $operator = User::factory()->create(['name' => 'Mario Rossi']);
     $opportunity = Opportunity::factory()->create([
         'name' => 'OPP_1',
         'registry_id' => $registry->id,
-        'source_id' => $source->id,
     ]);
     $opportunity->managers()->attach($operator->id, ['position' => Opportunity::OPERATOR_MANAGER_POSITION]);
 
@@ -78,8 +77,18 @@ it('builds the opportunity detail card from the record', function () {
 
     expect($details['notifications.fields.title'])->toBe('OPP_1')
         ->and($details['notifications.fields.client'])->toBe('Acme S.p.A.')
-        ->and($details['notifications.fields.source'])->toBe('Fiera 2026')
+        // REQUIREMENT CHANGED: spec 0332 — the Fonte is shown on the offer card only.
+        ->and($details)->not->toHaveKey('notifications.fields.source')
         ->and($details['notifications.fields.operator'])->toBe('Mario Rossi');
+});
+
+it('builds the offer detail card with its own Fonte', function () {
+    $source = Source::factory()->create(['name' => 'Fiera 2026']);
+    $quote = Quote::factory()->create(['source_id' => $source->id]);
+
+    $details = RecordDetails::for($quote->fresh());
+
+    expect($details['notifications.fields.source'])->toBe('Fiera 2026');
 });
 
 it('renders the detail card as a markdown table that survives MailMessage line formatting', function () {

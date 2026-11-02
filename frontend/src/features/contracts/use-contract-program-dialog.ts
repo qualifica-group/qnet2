@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
 import { createContractWorkOrdersBatch } from '@/features/contracts/api'
 import { failingGroupIndices, groupErrorPaths } from '@/features/contracts/contract-program-errors'
@@ -35,7 +36,7 @@ interface UseContractProgramDialogArgs {
  * that uses it only renders.
  */
 export function useContractProgramDialog({ contractId, open, onOpenChange, onCreated }: UseContractProgramDialogArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const form = useForm<ContractProgramFormValues>({
     resolver: zodResolver(buildContractProgramSchema(t)),
     defaultValues: contractProgramDefaultValues(),
@@ -95,7 +96,7 @@ export function useContractProgramDialog({ contractId, open, onOpenChange, onCre
       const failing = failingGroupIndices(error)
       expandGroups(failing)
       if (!handled || failing.length === 0) {
-        toast.error(t('contracts.actions.programDialog.genericError'))
+        toast.error(apiErrorMessage(error, t('contracts.actions.programDialog.genericError'), i18n))
       }
     }
   }

@@ -14,6 +14,9 @@ export const attachments = {
   download: 'Scarica',
   deleteAction: 'Elimina documento',
   deleteConfirm: 'Eliminare "{{name}}"? L\'operazione non è reversibile.',
+  legacyNote: 'Non trovi un documento?',
+  legacyLink: 'Controlla nel vecchio QNet',
+  legacyLinkNewTab: '(si apre in una nuova scheda)',
   errors: {
     load: 'Impossibile caricare i documenti. Riprova.',
     upload: 'Impossibile caricare il file. Riprova.',

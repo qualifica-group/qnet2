@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { toast } from 'sonner'
 import i18n from '@/i18n'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { workOrderStage } from '@/features/work-orders/task-board/task-board-fixtures'
+import { boardTask, workOrderStage } from '@/features/work-orders/task-board/task-board-fixtures'
 import { TaskBoardStageGroup } from '@/features/work-orders/task-board/task-board-stage-group'
 import { stageAccentAt } from '@/features/work-orders/task-board/task-board-stage-accent'
 import type { BoardStageGroup } from '@/features/work-orders/task-board/task-board-filters'
@@ -42,6 +42,7 @@ function renderGroup(group: BoardStageGroup, overrides: Partial<{ isReadOnly: bo
           today="2026-09-22"
           selectedTaskIds={new Set()}
           onToggleSelection={noop}
+          onSetSelection={noop}
           onOpenTask={noop}
           onAddTask={noop}
         />
@@ -164,6 +165,7 @@ describe('TaskBoardStageGroup — "Senza fase" and read-only (AC-029)', () => {
             today="2026-09-22"
             selectedTaskIds={new Set()}
             onToggleSelection={noop}
+            onSetSelection={noop}
             onOpenTask={noop}
             onAddTask={onAddTask}
           />
@@ -173,5 +175,94 @@ describe('TaskBoardStageGroup — "Senza fase" and read-only (AC-029)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Task' }))
     expect(onAddTask).toHaveBeenCalledWith(1)
+  })
+})
+
+describe('TaskBoardStageGroup — phase "select all"', () => {
+  function faseWithTasks(): BoardStageGroup {
+    return {
+      ...fase(),
+      roots: [
+        { task: boardTask({ id: 100, title: 'Primo' }), children: [] },
+        { task: boardTask({ id: 101, title: 'Secondo' }), children: [] },
+      ],
+    }
+  }
+
+  function renderSelectable(selectedTaskIds: Set<number>, onSetSelection: (ids: number[], isSelected: boolean) => void) {
+    render(
+      <TooltipProvider>
+        <ul>
+          <TaskBoardStageGroup
+            workOrderId={9}
+            group={faseWithTasks()}
+            accent={stageAccentAt(0)}
+            isReadOnly={false}
+            isDragOver={false}
+            today="2026-09-22"
+            selectedTaskIds={selectedTaskIds}
+            onToggleSelection={noop}
+            onSetSelection={onSetSelection}
+            onOpenTask={noop}
+            onAddTask={noop}
+          />
+        </ul>
+      </TooltipProvider>,
+    )
+    return screen.getByRole('checkbox', { name: 'Select all tasks in phase Sopralluogo' })
+  }
+
+  it('selects every task of the phase when none is selected', () => {
+    const onSetSelection = vi.fn()
+    const checkbox = renderSelectable(new Set(), onSetSelection)
+
+    expect(checkbox).toHaveAttribute('data-state', 'unchecked')
+    fireEvent.click(checkbox)
+    expect(onSetSelection).toHaveBeenCalledWith([100, 101], true)
+  })
+
+  it('is indeterminate on a partial selection and completes it on click', () => {
+    const onSetSelection = vi.fn()
+    const checkbox = renderSelectable(new Set([100]), onSetSelection)
+
+    expect(checkbox).toHaveAttribute('data-state', 'indeterminate')
+    fireEvent.click(checkbox)
+    expect(onSetSelection).toHaveBeenCalledWith([100, 101], true)
+  })
+
+  it('deselects the phase when every task is selected', () => {
+    const onSetSelection = vi.fn()
+    const checkbox = renderSelectable(new Set([100, 101]), onSetSelection)
+
+    expect(checkbox).toHaveAttribute('data-state', 'checked')
+    fireEvent.click(checkbox)
+    expect(onSetSelection).toHaveBeenCalledWith([100, 101], false)
+  })
+
+  it('is disabled on an empty phase and absent on a read-only board', () => {
+    const { unmount } = render(
+      <TooltipProvider>
+        <ul>
+          <TaskBoardStageGroup
+            workOrderId={9}
+            group={fase()}
+            accent={stageAccentAt(0)}
+            isReadOnly={false}
+            isDragOver={false}
+            today="2026-09-22"
+            selectedTaskIds={new Set()}
+            onToggleSelection={noop}
+            onSetSelection={noop}
+            onOpenTask={noop}
+            onAddTask={noop}
+          />
+        </ul>
+      </TooltipProvider>,
+    )
+    expect(screen.getByRole('checkbox', { name: 'Select all tasks in phase Sopralluogo' })).toBeDisabled()
+    unmount()
+
+    renderGroup(faseWithTasks(), { isReadOnly: true })
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
   })
 })

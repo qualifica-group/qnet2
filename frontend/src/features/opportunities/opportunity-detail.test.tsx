@@ -92,8 +92,6 @@ function opportunity(
     reporter: { id: 80, name: 'Giulia Neri' },
     supervisor_id: 90,
     supervisor: { id: 90, name: 'Paolo Blu' },
-    source_id: 100,
-    source: { id: 100, name: 'Web' },
     operational_site_id: 8,
     operational_site: { id: 8, label: 'Warehouse A - Milan' },
     product_lines: [
@@ -147,7 +145,8 @@ describe('OpportunityDetailView — read-only (AC-077)', () => {
     expect(screen.getByText('Luca Verdi')).toBeInTheDocument()
     expect(screen.getByText('Giulia Neri')).toBeInTheDocument()
     expect(screen.getByText('Paolo Blu')).toBeInTheDocument()
-    expect(screen.getByText('Web')).toBeInTheDocument()
+    // REQUIREMENT CHANGED: spec 0332 — the opportunity no longer shows a Fonte.
+    expect(screen.queryByText('Web')).not.toBeInTheDocument()
     expect(screen.getByText(/Consulting/)).toBeInTheDocument()
     expect(screen.getByText('Anna Bianchi')).toBeInTheDocument()
     expect(screen.getByText('Marco Gialli')).toBeInTheDocument()
@@ -208,8 +207,6 @@ describe('OpportunityDetailView — read-only (AC-077)', () => {
           reporter: null,
           supervisor_id: null,
           supervisor: null,
-          source_id: null,
-          source: null,
           operational_site_id: null,
           operational_site: null,
           product_lines: [],
@@ -341,9 +338,26 @@ describe('OpportunityDetailView — rewards', () => {
     expect(screen.getByText('Gift card')).toBeInTheDocument()
   })
 
-  it('omits the rewards section when there is none', () => {
+  // REQUIREMENT CHANGED spec 0331 D-4: the section stays, with its empty label.
+  it('keeps the rewards section with an empty label when there is none', () => {
     renderDetail(<OpportunityDetailView opportunity={opportunity({ rewards: [] })} />)
 
-    expect(screen.queryByText('Rewards')).not.toBeInTheDocument()
+    expect(screen.getByText('Rewards')).toBeInTheDocument()
+    expect(screen.getByText('No rewards')).toBeInTheDocument()
+  })
+})
+
+// Spec 0331 AC-006: the shared record skeleton order and titles.
+describe('OpportunityDetailView — record skeleton layout', () => {
+  it('renders Opportunity data, Context, contacts, Rewards and Team in that order', () => {
+    renderDetail(<OpportunityDetailView opportunity={opportunity()} />)
+
+    const titles = screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent?.toLowerCase())
+    const positions = ['opportunity data', 'context', 'registry & contacts', 'rewards', 'team'].map((title) =>
+      titles.indexOf(title),
+    )
+
+    expect(positions.every((position) => position >= 0)).toBe(true)
+    expect(positions).toEqual([...positions].sort((a, b) => a - b))
   })
 })

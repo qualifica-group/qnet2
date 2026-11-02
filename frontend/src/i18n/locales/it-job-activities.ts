@@ -38,7 +38,6 @@ export const jobActivities = {
     descriptionMax: 'La descrizione può contenere al massimo 1000 caratteri.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare l’attività. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questa attività.',
     deleteInUse: 'Impossibile eliminare: l’attività è collegata a una mansione.',
     sections: {
       identity: {

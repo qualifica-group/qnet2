@@ -8,6 +8,7 @@ use App\Enums\SizeClassEnum;
 use App\Http\Requests\Concerns\EnforcesFieldPermissions;
 use App\Http\Requests\Concerns\ValidatesManagerSlots;
 use App\Http\Requests\Concerns\ValidatesPhoneUniqueness;
+use App\Http\Requests\Concerns\ValidatesPrimaryReferent;
 use App\Http\Requests\Concerns\ValidatesUserProfile;
 use App\Models\Registry;
 use App\Rules\ActiveSector;
@@ -32,6 +33,7 @@ class UpdateRegistryRequest extends FormRequest
     use EnforcesFieldPermissions;
     use ValidatesManagerSlots;
     use ValidatesPhoneUniqueness;
+    use ValidatesPrimaryReferent;
     use ValidatesUserProfile;
 
     public function authorize(): bool
@@ -72,6 +74,7 @@ class UpdateRegistryRequest extends FormRequest
             'sector_ids.*' => ['integer', new ActiveSector($this->linkedSectorIds())],
             'referent_ids' => ['sometimes', 'array'],
             'referent_ids.*' => ['integer', Rule::exists('referents', 'id')],
+            'primary_referent_id' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
             // Supervisor is an INTERNAL user (like managers); commercial/reporter
             // stay external referents.
             'supervisor_id' => ['sometimes', 'nullable', 'integer', Rule::exists('users', 'id')],
@@ -116,8 +119,27 @@ class UpdateRegistryRequest extends FormRequest
             $this->validateProfile($validator);
             $this->validatePhoneUniqueness($validator);
             $this->validateManagerSlots($validator);
+            $this->validatePrimaryReferent($validator);
             $this->enforceFieldPermissions($validator);
         });
+    }
+
+    /**
+     * The submitted list wins; without one the registry keeps its linked
+     * referents.
+     *
+     * @return array<int, int>
+     */
+    protected function resultingReferentIds(): array
+    {
+        if ($this->has('referent_ids')) {
+            return $this->submittedReferentIds();
+        }
+
+        /** @var Registry $registry */
+        $registry = $this->route('registry');
+
+        return $registry->referents()->pluck('referents.id')->map(static fn ($id): int => (int) $id)->all();
     }
 
     protected function authorizationResource(): string

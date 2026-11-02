@@ -57,10 +57,12 @@ final class OpportunityCellWriter
     }
 
     /**
-     * D-4 (user decision): a different anagrafica clears the referent (it
-     * belongs to the previous one, BR-4) and fills every EMPTY role the actor
-     * may edit with the new anagrafica's own — a role already set is never
-     * overwritten from the grid, which has no confirmation step.
+     * D-4 (user decision): a different anagrafica replaces the referent (it
+     * belongs to the previous one, BR-4) with the new anagrafica's principale
+     * when the actor may edit the Referente (spec 0330 D-8), else clears it,
+     * and fills every EMPTY role the actor may edit with the new anagrafica's
+     * own — a role already set is never overwritten from the grid, which has
+     * no confirmation step.
      *
      * @return array<string, mixed>
      */
@@ -80,6 +82,10 @@ final class OpportunityCellWriter
         }
 
         $editable = $this->editableFields($opportunity, $actor);
+
+        if (in_array('referent_id', $editable, true)) {
+            $payload['referent_id'] = $registry->primary_referent_id;
+        }
 
         foreach (self::INHERITED_ROLE_FIELDS as $field) {
             if ($opportunity->{$field} === null && $registry->{$field} !== null && in_array($field, $editable, true)) {

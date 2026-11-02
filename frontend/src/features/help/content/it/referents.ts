@@ -28,7 +28,7 @@ const guide: HelpGuide = {
           headers: ['Sezione', 'Cosa contiene'],
           rows: [
             ['Dati anagrafici', "Gli stessi campi dell'anagrafica, con Persona fisica o Azienda."],
-            ['Dettagli referente', 'Tipo referente, Ambito contatto (Interno o Esterno), Utente collegato (se la persona usa QNet), **Anagrafica fornitore** e Note.'],
+            ['Dettagli referente', 'Tipo referente (il ruolo della persona, che compare sotto il suo nome nelle card Referenti dell’anagrafica e nel campo Referente di opportunità, offerte e attività), Ambito contatto (Interno o Esterno), Utente collegato (se la persona usa QNet), **Anagrafica fornitore** e Note.'],
             ['Altri campi', 'I campi personalizzati dei referenti, raggruppati come nel modulo.'],
             ['Contatti', 'I recapiti. Il Telefono è obbligatorio in creazione.'],
             ['Indirizzi', 'Sedi e indirizzi di fatturazione.'],
@@ -88,6 +88,28 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'Dopo l’approvazione di un estratto dell’agente il campo è **bloccato su quel fornitore**: non si può cambiare con un altro. Si può scegliere solo un’anagrafica che sia un fornitore.',
+        },
+      ],
+    },
+    {
+      id: 'configured-commissions',
+      title: 'Commissioni configurate',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "In fondo al dettaglio del referente, come nell'anagrafica, trovi **Commissioni configurate**: la tabella del Configuratore Commissioni con le sole regole che hanno questo referente come **Destinatario** (per esempio le percentuali per categoria di un segnalatore). Le regole valide per tutto un ruolo, senza destinatario, non compaiono qui.",
+        },
+        {
+          type: 'steps',
+          items: [
+            'Apri il referente e scorri fino a **Commissioni configurate**: il numero accanto al titolo conta le regole.',
+            'Usa **Visualizza** sulla riga per aprire la regola in un pannello sopra il referente, oppure **Elimina** se non è in uso.',
+            "Per una nuova regola premi **Nuova configurazione**: il modulo parte con Ruolo destinatario **Segnalatore**, ambito **Destinatario specifico** e questo referente come Destinatario. Cambia ruolo o ambito se serve, completa Calcolo e Validità e premi **Salva**.",
+          ],
+        },
+        {
+          type: 'tip',
+          text: 'La tabella compare solo se puoi consultare il Configuratore Commissioni; il pulsante Nuova configurazione solo se puoi crearne.',
         },
       ],
     },

@@ -21,14 +21,14 @@ uses(RefreshDatabase::class);
 
 const CONTACT_TAKEN_PHONE = '3339876543';
 
+/**
+ * Writes the contacts of registry and company-site cards: they follow the
+ * owning record (spec 0328).
+ */
 function contactPhoneActor(): User
 {
-    foreach (['create', 'update'] as $ability) {
-        Permission::findOrCreate("contacts.{$ability}");
-    }
-
     $actor = User::factory()->create();
-    $actor->givePermissionTo(['contacts.create', 'contacts.update']);
+    $actor->givePermissionTo(Permission::findOrCreate('registries.update'), Permission::findOrCreate('company-sites.update'));
 
     return $actor;
 }

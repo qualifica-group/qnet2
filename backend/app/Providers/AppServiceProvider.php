@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Authorization\Denials\AuthorizationDenialLog;
 use App\Authorization\FieldPermissionRepository;
 use App\CustomFields\CustomFieldEntityRegistry;
 use App\CustomFields\CustomFieldProvider;
@@ -87,6 +88,7 @@ use App\Models\Skill;
 use App\Models\Source;
 use App\Models\StaffCourse;
 use App\Models\StaffTraining;
+use App\Models\SupportTopic;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\TaskCategory;
@@ -113,11 +115,14 @@ use App\Models\WorkOrderStage;
 use App\Models\WorkOrderWorkflow;
 use App\Models\WorkOrderWorkflowStatus;
 use App\Models\Workspace;
+use App\Services\Assignment\ActorCompetenceReach;
 use App\Services\Graph\GraphMailClient;
 use App\Services\Opportunities\OpportunityDefaultStatusResolver;
 use App\Services\Opportunities\OpportunityStatusResolver;
 use App\Support\QuoteWorkflows\CategoryBranchResolver;
+use Illuminate\Auth\Access\Events\GateEvaluated;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider;
@@ -180,6 +185,12 @@ class AppServiceProvider extends ServiceProvider
         // must not be resolved against a stale tree forever on a worker.
         $this->app->scoped(CategoryBranchResolver::class);
 
+        // Scoped so the `viewCompetence` visibility tier (spec 0340) resolves
+        // an actor's competence reach once per request, not once per table
+        // row; scoped, not singleton, so a changed competence is never
+        // shadowed on a long-running worker.
+        $this->app->scoped(ActorCompetenceReach::class);
+
         // Scoped so an import run resolves each DISTINCT campaign code once
         // (spec 0108): StagedRowBuilder resolves every recognizer through the
         // container once per staged row, so a fresh instance would turn one
@@ -193,6 +204,10 @@ class AppServiceProvider extends ServiceProvider
         // though it is consulted on every field-permission resolution
         // (ProtectedFieldAwareAuthorization) AND by permissions:sync.
         $this->app->singleton(ProtectedFieldRegistry::class);
+
+        // Scoped (spec 0327): the denied Gate evaluations of ONE request, read
+        // when that request ends in a 403 to say which permission was missing.
+        $this->app->scoped(AuthorizationDenialLog::class);
     }
 
     /**
@@ -329,6 +344,7 @@ class AppServiceProvider extends ServiceProvider
             'task_status' => TaskStatus::class,
             'task_type' => TaskType::class,
             'task_category' => TaskCategory::class,
+            'support_topic' => SupportTopic::class,
             'task_priority' => TaskPriority::class,
             'task_importance' => TaskImportance::class,
             // Spec 0122 (time-entries module): TimeEntry/TimeEntryDayNote both
@@ -375,6 +391,8 @@ class AppServiceProvider extends ServiceProvider
 
             return null;
         });
+
+        Event::listen(GateEvaluated::class, fn (GateEvaluated $event) => app(AuthorizationDenialLog::class)->record($event));
 
         // Registers the "microsoft-graph" Symfony transport (spec 0175, D-1):
         // config('mail.mailers.microsoft-graph') resolves through this

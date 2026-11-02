@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AccountsChart } from '@/features/management-control/accounts-chart'
@@ -14,8 +15,8 @@ function isEmptyAccountFlows(data: AccountFlows): boolean {
 
 /** Body of the Accounts page (spec 0271): loading, error with retry and empty states are handled here. */
 export function AccountsPanel({ filters }: { filters: AccountFlowsFilters }) {
-  const { t } = useTranslation()
-  const { data, isPending, isError, refetch } = useAccountFlows(filters)
+  const { t, i18n } = useTranslation()
+  const { data, isPending, isError, error, refetch } = useAccountFlows(filters)
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
@@ -27,7 +28,7 @@ export function AccountsPanel({ filters }: { filters: AccountFlowsFilters }) {
       ) : null}
       {isError ? (
         <div role="alert" className="flex items-center gap-3 text-sm text-destructive">
-          <span>{t('managementControl.accounts.error')}</span>
+          <span>{apiErrorMessage(error, t('managementControl.accounts.error'), i18n)}</span>
           <Button type="button" size="sm" variant="secondary" onClick={() => void refetch()}>
             {t('managementControl.retry')}
           </Button>

@@ -1,6 +1,6 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
-import { filenameFromContentDisposition, normalizeBlobError, saveBlob } from '@/lib/download'
+import { filenameFromContentDisposition, saveBlob } from '@/lib/download'
 import {
   PURCHASE_ORDERS_DOMAIN,
   type CreatedPurchaseOrder,
@@ -120,13 +120,9 @@ export async function reopenLineResidual(orderId: number, lineId: number): Promi
  * binary response, not the envelope. 422 when no layout is active for the module.
  */
 export async function downloadPurchaseOrderPdf(id: number): Promise<void> {
-  try {
-    const response = await apiClient.get<Blob>(`${ENDPOINT}/${id}/pdf`, { responseType: 'blob' })
-    saveBlob(
-      response.data,
-      filenameFromContentDisposition(response.headers['content-disposition']) ?? `purchase_order_${id}.pdf`,
-    )
-  } catch (error) {
-    throw await normalizeBlobError(error)
-  }
+  const response = await apiClient.get<Blob>(`${ENDPOINT}/${id}/pdf`, { responseType: 'blob' })
+  saveBlob(
+    response.data,
+    filenameFromContentDisposition(response.headers['content-disposition']) ?? `purchase_order_${id}.pdf`,
+  )
 }

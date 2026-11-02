@@ -9,6 +9,14 @@ import type {
 /** Resource segment for the task-templates for-select endpoint. */
 export const TASK_TEMPLATES_FOR_SELECT_RESOURCE = 'task-templates'
 
+/**
+ * Template options show name + description, which outgrow a form column: every
+ * task template picker opens a wide popup, past the grid cell it sits in, never
+ * narrower than its trigger. The base `max-w-[calc(100vw-2rem)]` of the select
+ * keeps it inside the viewport, and Radix shifts it left near the right edge.
+ */
+export const TASK_TEMPLATE_POPUP_WIDTH_CLASS = 'w-[48rem] min-w-(--radix-popover-trigger-width)'
+
 /** The presentation bag this resource projects alongside `{id, label}` (`label` = name, `subtitle` = description). */
 export interface TaskTemplateForSelectMeta {
   items_count: number

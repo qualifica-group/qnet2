@@ -22,6 +22,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -249,9 +250,7 @@ class ProductCategoryController extends BaseApiController
             || $actor->can('products.create')
             || $actor->can('products.update');
 
-        if (! $allowed) {
-            throw new AuthorizationException;
-        }
+        Gate::allowIf($allowed);
     }
 
     /**

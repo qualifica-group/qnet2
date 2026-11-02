@@ -56,7 +56,6 @@ export function PurchaseOrderStatusesTable() {
               dragHandleLabel: t('purchaseOrderStatuses.reorder.dragHandleLabel'),
               loadError: t('purchaseOrderStatuses.reorder.loadError'),
               saved: t('purchaseOrderStatuses.reorder.saved'),
-              forbidden: t('purchaseOrderStatuses.reorder.forbidden'),
               genericError: t('purchaseOrderStatuses.reorder.genericError'),
             }}
             onReordered={refreshGrid}

@@ -48,10 +48,11 @@ it('AC-069c: GET /api/tables/quotes/columns declares code as sortable, filterabl
     // three for the same reason — it arrived last. `alert` (spec 0102,
     // AC-035) is appended after THAT, for the same reason again.
     $ids = $columns->pluck('id')->all();
+    // REQUIREMENT CHANGED: spec 0332 — `source` joins the catalogue after `operational_site`.
     expect($ids)->toBe([
         'id', 'code', 'title', 'opportunity', 'offer_lines', 'root_categories', 'quote_workflow_status', 'commercial',
         'reporter', 'supervisor', 'managers', 'revenue_net', 'cost_net', 'margin_net',
-        'created_at', 'company', 'company_site', 'operational_site', 'next_callback_at',
+        'created_at', 'company', 'company_site', 'operational_site', 'source', 'next_callback_at',
         'alert',
     ]);
 });

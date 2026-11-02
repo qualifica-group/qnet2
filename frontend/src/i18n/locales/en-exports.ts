@@ -44,7 +44,6 @@ export const exports = {
   rowCount_one: '{{count}} row exported',
   rowCount_other: '{{count}} rows exported',
   errors: {
-    forbidden: "You don't have permission to export this data.",
     validation: 'The export request could not be validated. Please try again.',
     rateLimited: 'Too many requests. Please wait a moment and try again.',
     generic: 'Something went wrong. Please try again.',

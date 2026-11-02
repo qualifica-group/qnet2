@@ -2,6 +2,8 @@ import { useCallback, useMemo, useState } from 'react'
 import { useForm, type Path, type UseFormSetError } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
+import type { i18n as I18nInstance } from 'i18next'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import axios from 'axios'
 import { z } from 'zod'
 import type { IRowNode } from 'ag-grid-community'
@@ -103,7 +105,7 @@ export function useOfferLinesForm(
   panel: RequestWorkPanelWithPermissions,
   { node, onDone }: UseOfferLinesFormOptions,
 ) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { key: moduleKey } = useRequestModule()
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -173,7 +175,7 @@ export function useOfferLinesForm(
         onDone()
       } catch (error) {
         if (!applyCellValidationErrors(error, form.setError)) {
-          setSubmitError(resolveErrorMessage(error, t('table.cellUpdateError')))
+          setSubmitError(resolveErrorMessage(error, t('table.cellUpdateError'), i18n))
         }
       }
     },
@@ -198,7 +200,11 @@ export function useOfferLinesForm(
  * shown inside the dialog instead: the operator is looking at the rows that
  * were refused, not at the grid behind them.
  */
-function resolveErrorMessage(error: unknown, fallback: string): string {
+function resolveErrorMessage(error: unknown, fallback: string, i18n: I18nInstance): string {
+  const forbidden = forbiddenMessage(error, i18n)
+  if (forbidden) {
+    return forbidden
+  }
   if (axios.isAxiosError<ApiErrorResponse>(error) && error.response?.data?.message) {
     return error.response.data.message
   }

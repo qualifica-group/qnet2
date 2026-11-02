@@ -21,7 +21,7 @@ use Illuminate\Validation\ValidationException;
  * outer transaction.
  *
  * Reuses LeadOpportunityDefaultsResolver (the single BR-1 derivation point,
- * spec 0040) for registry_id/source_id/product lines, and
+ * spec 0040) for registry_id/product lines, and
  * OpportunityService::create() for the actual persistence (product lines
  * sync, the `OPP_{id}` name derivation of spec 0057 D-5, and — spec 0140 —
  * the collegata Offerta through LeadConversionOfferCreator, since `lead_id`
@@ -43,7 +43,7 @@ final class ConvertLeadToOpportunity
      */
     public function handle(Lead $lead, ?User $actor = null): Opportunity
     {
-        // Step 1: derive the BR-1 values (registry_id/source_id), the
+        // Step 1: derive the BR-1 values (registry_id), the
         // campaign/project's N product lines (spec 0094, AC-060), and the
         // lead's own products of interest (AC-061) — REQUIRED_RELATIONS
         // already eager-loaded productsOfInterest, so this never lazy-loads.
@@ -74,7 +74,6 @@ final class ConvertLeadToOpportunity
             // the Supervisor — it seeds a "Gestore Account" slot below, and the
             // Supervisor is left empty.
             supervisorId: null,
-            sourceId: $defaults->values['source_id'],
             leadId: $lead->id,
             // User directive 2026-07-22: the Operator becomes G.A. 2; G.A. 1 is
             // still materialized, but empty (a null leading slot, gap-aware).

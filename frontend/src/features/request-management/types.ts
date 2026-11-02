@@ -303,27 +303,3 @@ export interface RequestFormContext {
   applicable_attributes: ApplicableAttributeSummary[]
   attribute_layout: LayoutBlob | null
 }
-
-/**
- * One Product Category tab (spec 0064), as returned by
- * `GET /api/request-management/product-categories`: only categories with at
- * least one request in the actor's own scope, ordered by `name`.
- * `requests_count` may sum to more than the "Tutte" total, since a request
- * with several product lines counts under every one of its categories (D-2).
- */
-export interface RequestManagementProductCategory {
-  id: number
-  name: string
-  requests_count: number
-}
-
-/** The actor's favourite categories on the module's tab strip (spec 0184), saved on the account. */
-export interface CategoryTabPreferences {
-  favorite_category_ids: number[]
-  show_only_favorites: boolean
-  /** True while nothing was saved: the values are the ones proposed from the actor's competence (spec 0193). */
-  is_default: boolean
-}
-
-/** What the PUT sends: the two saved fields, never `is_default` (spec 0193). */
-export type CategoryTabPreferencesPayload = Omit<CategoryTabPreferences, 'is_default'>

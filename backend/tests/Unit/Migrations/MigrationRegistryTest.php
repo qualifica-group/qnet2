@@ -1,6 +1,7 @@
 <?php
 
 use App\Migrations\MigrationRegistry;
+use App\Migrations\Sources\AttachmentsSource;
 use App\Migrations\Sources\AttributeLayoutsSource;
 use App\Migrations\Sources\AttributesSource;
 use App\Migrations\Sources\BusinessFunctionMembersSource;
@@ -36,10 +37,13 @@ use App\Migrations\Sources\SourcesSource;
 use App\Migrations\Sources\TagsSource;
 use App\Migrations\Sources\TasksSource;
 use App\Migrations\Sources\TaskTemplatesSource;
+use App\Migrations\Sources\TimeEntriesSource;
+use App\Migrations\Sources\TimeEntryDayNotesSource;
 use App\Migrations\Sources\UsersSource;
 use App\Migrations\Sources\VatRatesSource;
 use App\Migrations\Sources\WorkOrderProgressSource;
 use App\Migrations\Sources\WorkOrdersSource;
+use App\Migrations\Sources\WorkOrderTaskTemplatesSource;
 use App\Migrations\Sources\WorkOrderWorkflowsSource;
 use App\Migrations\Sources\WorkOrderWorkflowStatusesSource;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -98,6 +102,7 @@ it('config/migrations.php registers every source (spec 0013 Increment 2)', funct
         'work-order-progress' => WorkOrderProgressSource::class,
         'work-order-workflows' => WorkOrderWorkflowsSource::class,
         'work-order-workflow-statuses' => WorkOrderWorkflowStatusesSource::class,
+        'work-order-task-templates' => WorkOrderTaskTemplatesSource::class,
         'product-suppliers' => ProductSuppliersSource::class,
         'commission-configurations' => CommissionConfigurationsSource::class,
         'purchase-requests' => PurchaseRequestsSource::class,
@@ -109,20 +114,25 @@ it('config/migrations.php registers every source (spec 0013 Increment 2)', funct
         'collections' => CollectionsSource::class,
         // REQUIREMENT CHANGED (spec 0311): the legacy notes source.
         'notes' => NotesSource::class,
+        // REQUIREMENT CHANGED (spec 0295): the legacy link-only documents source.
+        'attachments' => AttachmentsSource::class,
+        // REQUIREMENT CHANGED (spec 0341): the legacy segnatempo sources.
+        'time-entries' => TimeEntriesSource::class,
+        'time-entry-day-notes' => TimeEntryDayNotesSource::class,
     ]);
 });
 
 it('all() resolves every registered source', function () {
     $sources = app(MigrationRegistry::class)->all();
 
-    expect($sources)->toHaveCount(41)
+    expect($sources)->toHaveCount(45)
         ->and(array_map(fn ($source) => $source->key(), $sources))->toBe([
             'roles', 'users', 'business-functions', 'companies', 'company-sites', 'operational-sites',
             'business-function-members', 'referent-types', 'referents',
             'sources', 'tags', 'sectors', 'task-templates', 'vat-rates', 'payment-methods', 'attributes', 'product-categories',
             'product-category-attributes', 'attribute-layouts', 'products', 'cost-products', 'email-templates', 'document-bundles',
-            'registries', 'opportunities', 'quotes', 'work-orders', 'tasks', 'work-order-progress', 'work-order-workflows', 'work-order-workflow-statuses',
+            'registries', 'opportunities', 'quotes', 'work-orders', 'tasks', 'work-order-progress', 'work-order-workflows', 'work-order-workflow-statuses', 'work-order-task-templates',
             'product-suppliers', 'commission-configurations', 'purchase-requests', 'purchase-orders', 'financial-accounts', 'purchase-invoices', 'proforma-requests', 'invoices', 'collections',
-            'notes',
+            'notes', 'attachments', 'time-entries', 'time-entry-day-notes',
         ]);
 });

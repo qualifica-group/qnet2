@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0340-competence-record-visibility" status="approved" owner="utente" date="2026-11-02">
+
+  <goal>
+    Un nuovo permesso di visibilita' "Visualizza per competenza" (`viewCompetence`) su Opportunita', Offerte,
+    Contratti, Commesse, Gestione richieste e Gestione iscritti: chi lo ha vede, oltre ai propri record (e a
+    quelli della sede, se ha anche `viewSite`), anche i record di altri che ricadono nel suo ambito di
+    assegnazione (competenza: funzione aziendale + categoria prodotto della scheda utente).
+  </goal>
+
+  <context>
+    Stato verificato nel repo (2026-11-02):
+    - Livelli di visibilita' oggi, tutti "restringono e non allargano" (serve sempre `{resource}.view`) e
+      sono UNION tra loro:
+      | Modulo              | Tutto     | Sede                              | Propri                          |
+      | Opportunita'        | viewAll   | (non esiste)                      | supervisor_id / managers        |
+      | Offerte             | viewAll   | viewSite (quotes.operational_site_id) | supervisor_id / managers    |
+      | Contratti           | viewAll   | viewSite (via offerta)            | via offerta                     |
+      | Commesse            | viewAll   | viewSite (offerte di origine)     | supervisors / participants      |
+      | Gestione richieste  | viewAll   | viewSite                          | quotes.operator_id              |
+      | Gestione iscritti   | viewAll   | viewSite + viewPrimarySite        | quotes.operator_id              |
+    - Unica implementazione per modulo (statica, stateless, fail-closed su actor null; policy zero-argument
+      constructible per `permissions:sync`):
+      `App\Services\Opportunities\OpportunityVisibilityScope` (`VIEW_ALL_PERMISSION`, `scopeToActor()`,
+      `isVisibleTo()`); `App\Services\Quotes\QuoteVisibilityScope` (parametrizzata su `$resource`,
+      `VIEW_SITE_ABILITY`/`VIEW_ALL_ABILITY`, riusata dai Contratti); `App\Services\Contracts\ContractVisibilityScope`
+      (`RESOURCE = 'contracts'`, `whereHas('quote', ...)`); `App\Services\WorkOrders\WorkOrderVisibilityScope`
+      (`VIEW_SITE_PERMISSION`, `isInSitesInMemory()`); `App\Services\RequestManagement\RequestManagementScope`
+      (`assertInScope()`, `isInActorSites()`, `visibleSiteIds()`, `scopeToActor()`, `reachesOpportunity()`,
+      `scopeFingerprint()`, parametrizzata su `App\RequestManagement\RequestModule`).
+    - Abilities dichiarate in: `OpportunityPolicy::abilities()` ('viewAll','viewDocuments'),
+      `QuotePolicy::abilities()` (VIEW_SITE/VIEW_ALL), `ContractPolicy::abilities()`, `WorkOrderPolicy::abilities()`,
+      `RequestManagementPolicy::abilities()`, `RequestModule::abilities()` (Iscritti = Richieste - create +
+      viewPrimarySite). Le permission nascono da `php artisan permissions:sync` (`SyncPermissions`).
+    - Copie inline della regola di Gestione richieste (da allineare): `OpportunitiesTableDefinition::allowsNotes()`
+      + EXISTS `site_scoped_quote_exists` / `actorRequestSiteIds()`; `App\Tables\Quotes\QuoteRowActions::allowsNotes()`.
+      Tutti gli altri consumatori (tabelle, stats, for-select, category tabs, export, notable, documenti,
+      report, assegnazione/trasferimento, SelectionScopeController) delegano a `scopeToActor()`/`isVisibleTo()`.
+    - Cache: `App\Support\Cache\AggregateCache`; chiavi per utente (`category-tabs:{grid}:{user}`, stats,
+      values) e `RequestManagementScope::scopeFingerprint()` (dashboard/report/category tabs di Gestione
+      richieste), che "DEVE cambiare insieme a scopeToActor()".
+    - Competenza ("ambito di assegnazione" in UI): `employment_product_lines` (business_function_id,
+      product_category_id nullable = tutte le categorie della funzione), flag
+      `employment_profiles.covers_all_product_categories`, chiusura discendente sulle madri. Regola unica in
+      `App\Services\Assignment\OperatorCompetence` + `CompetenceProfile::covers()`.
+      `OperatorCompetence::coveredCategoryIdsFor()` (usata da `ResolveDefaultCategoryTabPreference`) restituisce
+      [] per il jolly: NON va riusata cosi' com'e' per la visibilita'.
+    - Categorie di un record, come le schede categoria: Offerte = `RevenueCategoryQuoteIds::subquery()` (righe
+      di RICAVO, `products.category_id`); Contratti = via `contracts.quote_id`; Commesse =
+      `WorkOrderSourceQuotes::withRevenueCategory()`; Opportunita' = `opportunity_product_lines.product_category_id`
+      (`OpportunityCategoryScopedTableDefinition`); Gestione richieste/iscritti = `opportunity_product_lines`
+      dell'opportunita' dell'offerta (`RequestCategoryTabsResolver`, `QuoteCompetence`).
+    - Messaggi di diniego (spec 0329): `lang/{it,en}/authorization.php` chiavi `opportunity_out_of_scope`,
+      `quote_out_of_scope`, `contract_out_of_scope`, `work_order_out_of_scope`; Gestione richieste in
+      `RequestManagementScope::assertInScope()` (`lang/it.json` "You cannot see this request: ...").
+    - FE: etichette ability in `frontend/src/i18n/locales/{it,en}-permissions.ts` (`abilities.*`, parity test
+      `permissions-i18n-parity.test.ts`), lette da `features/roles/permission-labels.ts::abilityLabel()`; il form
+      ruolo elenca le ability dal catalogo backend (nessun componente nuovo). Guide in-app che descrivono la
+      visibilita': `roles`, `opportunities`, `quotes`, `contracts`, `work-orders`, `request-management`,
+      `enrollee-management` (IT+EN).
+
+    Decisioni utente (2026-11-02):
+    - D-1: il livello competenza NON considera la sede: vale su tutte le sedi. E' un livello separato e
+      cumulabile (UNION con propri e sede), come `viewSite`.
+    - D-2: categorie del record per Offerte/Contratti/Commesse = come le schede categoria (righe di ricavo;
+      Contratti tramite l'offerta; Commesse tramite le offerte di origine). Per Opportunita', Gestione
+      richieste e Gestione iscritti = `opportunity_product_lines`.
+    - D-3: un record senza categorie entra nel livello competenza solo per chi ha il flag "Ambito su tutte le
+      categorie". Ne consegue: flag + `viewCompetence` = tutti i record del modulo.
+
+    Decisioni derivate proposte (da validare in approvazione):
+    - D-4: nome ability `viewCompetence` identico sui 6 moduli; etichetta IT "Visualizza per competenza", EN
+      "View by competence". [rev.2, decisione utente 2026-11-02] Nei seeder di produzione (`QualificaProductionDataSeeder`) e di reset ruoli
+      (`QualificaRoleResetSeeder`) ogni ruolo con `{resource}.viewAll` su opportunities/quotes/contracts/work-orders riceve anche
+      `{resource}.viewCompetence` (derivazione unica in `SyncsRoleMatrix::withCompetenceSight()`, usata da `syncRole()`); i moduli
+      richieste/iscritti non la derivano. Chi vede solo i propri record (o quelli della sede) NON la riceve: `viewCompetence` entra
+      in `OperatorRoleCatalogue::OWN_REQUESTS_DENIED_ABILITIES` (blocco "solo le proprie richieste" di Commerciale e Supervisore
+      didattica). Negli altri ruoli la assegna l'admin dal form Ruolo.
+      [rev.3, decisione utente 2026-11-02] Il ruolo `coordinamento-operativo` (`LegacyRoleCatalogue::OPERATIONS_ROLE`) perde
+      `viewAll` su opportunities/quotes/contracts/work-orders e tiene `viewCompetence` (nuovo valore di matrice
+      `LegacyRoleCatalogue::ALL_BUT_VIEW_ALL`); Gestione richieste/iscritti specchiano anche `viewCompetence` delle Offerte
+      (`SyncsRoleMatrix::QUOTE_VISIBILITY_TIERS`). `admin`, `back-office-commerciale`, `contabilita` restano su `viewAll`.
+    - D-5: il livello e' un gate di RIGA, non di azione (come `viewSite`, spec 0105 D-2): allarga QUALI record
+      si vedono; ogni azione resta sulla propria ability (`update`, `delete`, `assignOperator`, ...).
+    - D-6: l'interruttore "Assegnabile" NON influisce: riguarda la ricezione di assegnazioni, non la visibilita'.
+      Conta solo la competenza configurata (righe + flag).
+    - D-7: copertura = la stessa di `CompetenceProfile::covers()`: un record e' di competenza se ALMENO UNA delle
+      sue categorie e' coperta (madri -> discendenti, riga "Tutte" -> categorie con quella funzione effettiva,
+      categoria senza funzione effettiva -> coperta sotto qualunque funzione).
+    - D-8: un solo calcolo per richiesta dell'insieme coperto dall'attore: nuova classe
+      `App\Services\Assignment\CompetenceReach` (value object: `all: bool`, `categoryIds: list&lt;int&gt;`) prodotta
+      da un nuovo metodo `OperatorCompetence::reachOf(User): CompetenceReach`, esposta alle scope statiche da
+      `App\Services\Assignment\ActorCompetenceReach` (binding `scoped`, precedente `CategoryBranchResolver`) con
+      metodo statico `for(User): CompetenceReach`.
+    - D-9: i messaggi di diniego dei 5 moduli citano anche l'ambito di assegnazione (requisito cambiato,
+      dichiarato: si aggiornano i test che ne verificano il testo).
+  </context>
+
+  <scope>
+    <in>
+      <item>`CompetenceReach` + `OperatorCompetence::reachOf()` + `ActorCompetenceReach` (scoped) — D-7, D-8.</item>
+      <item>Ability `viewCompetence` in `OpportunityPolicy`, `QuotePolicy`, `ContractPolicy`, `WorkOrderPolicy`, `RequestManagementPolicy` (e quindi `RequestModule::Enrollees`) + metodi policy `viewCompetence(User)` dove esistono gli omologhi `viewSite`/`viewAll`.</item>
+      <item>Livello competenza in `scopeToActor()` e `isVisibleTo()` di `OpportunityVisibilityScope`, `QuoteVisibilityScope` (quindi Contratti), `WorkOrderVisibilityScope`; in `RequestManagementScope::assertInScope()`, `scopeToActor()`, `reachesOpportunity()` (via scopeToActor), `scopeFingerprint()`; nuovo `RequestManagementScope::isInActorCompetence(User, Quote, RequestModule)`.</item>
+      <item>Allineamento delle copie inline: `OpportunitiesTableDefinition::allowsNotes()` (EXISTS unico `request_scoped_quote_exists` = `RequestManagementScope::scopeToActor()` sulle offerte, sostituisce `site_scoped_quote_exists`), `QuoteRowActions::allowsNotes()` (+ `isInActorCompetence()`).</item>
+      <item>[rev.1, lacuna trovata in build] `RequestManagementNotable::mentionableUsersQuery()`: il livello competenza entra anche tra i menzionabili (come il livello sede, spec 0105 D-9), via nuovo `OperatorCompetence::reachingUserIds()` (stessa regola di `reachOf()`, ignora `is_assignable`).</item>
+      <item>Verdetto per riga delle tabelle senza query per riga: le TableDefinition dei 6 moduli proiettano il verdetto competenza (EXISTS/attributo) letto da `isVisibleTo()`; fallback a una sola `exists()` fuori dalle tabelle.</item>
+      <item>Messaggi di diniego IT/EN aggiornati (D-9).</item>
+      <item>FE: `abilities.viewCompetence` in `it-permissions.ts`/`en-permissions.ts`; guide in-app IT+EN `roles`, `opportunities`, `quotes`, `contracts`, `work-orders`, `request-management`, `enrollee-management` (riga "Visualizza per competenza" nelle tabelle di visibilita').</item>
+      <item>Test Pest per AC + Vitest parity/help parity.</item>
+      <item>Manuale Claude Docs "Manuale Utente QNet": sezioni Ruoli e permessi + visibilita' dei 6 moduli.</item>
+    </in>
+    <out>
+      <item>Livello sede per le Opportunita' (oggi assente): non richiesto.</item>
+      <item>Task, Richieste di acquisto, Lead, Progetti, Campagne e altri moduli con visibilita' propria.</item>
+      <item>Combinazione competenza AND sede (D-1: esclusa).</item>
+      <item>Nuove azioni concesse dal livello (D-5): nessuna.</item>
+      <item>[rev.2] Ruoli gia' presenti nel DB (creati o modificati a mano): nessuna migrazione dati; il permesso arriva rieseguendo i seeder dei ruoli o dal form Ruolo.</item>
+      <item>Invalidazione immediata delle cache per-utente quando cambia l'ambito di un utente: resta lo stale-while-revalidate attuale, come oggi per il cambio di sede.</item>
+      <item>Nessuna migrazione di schema; nessun nuovo endpoint; nessun nuovo componente FE.</item>
+      <item>Cambio della regola di assegnazione (`AssignmentCandidates`) e di `coveredCategoryIdsFor()`.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+
+    <endpoint method="GET" path="/api/authorization/permission-catalogue (catalogo esistente, shape invariata)">
+      <request>Invariata.</request>
+      <response status="200">Le risorse `opportunities`, `quotes`, `contracts`, `work-orders`, `request-management`, `enrollee-management` espongono in piu' la permission `{resource}.viewCompetence`. Shape del catalogo invariata.</response>
+      <errors>Invariati.</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST" path="Tutti gli endpoint esistenti dei 6 moduli (SSRM rows/count/values, stats, show, for-select, category tabs, export, note, documenti, report/dashboard di Gestione richieste)">
+      <request>Invariata.</request>
+      <response status="200">
+        Shape invariata. Cambia solo l'insieme di record visibili: per un attore con `{resource}.view` e
+        `{resource}.viewCompetence` si aggiunge in UNION il livello competenza:
+        - reach.all (flag `covers_all_product_categories`) -> ogni record del modulo (D-3);
+        - altrimenti record con almeno una categoria in reach.categoryIds (regola categorie D-2);
+        - reach vuota (nessuna riga, nessun flag) -> nessun record in piu'.
+        Gestione iscritti: il filtro di stato del modulo resta applicato a monte, anche al livello competenza.
+      </response>
+      <errors>
+        403 con messaggio di diniego aggiornato (D-9) quando il record non e' proprio, ne' di sede (se viewSite),
+        ne' di competenza (se viewCompetence). 403 invariato senza `{resource}.view`.
+      </errors>
+    </endpoint>
+
+    <schema table="permissions">
+      + 6 righe via `permissions:sync`: `opportunities.viewCompetence`, `quotes.viewCompetence`,
+      `contracts.viewCompetence`, `work-orders.viewCompetence`, `request-management.viewCompetence`,
+      `enrollee-management.viewCompetence`. Nessuna migrazione.
+    </schema>
+
+    <php_contract>
+      final readonly class CompetenceReach { public bool $all; /** @var list&lt;int&gt; */ public array $categoryIds;
+        public function isEmpty(): bool; }
+      OperatorCompetence::reachOf(User $user): CompetenceReach   // ignora is_assignable (D-6)
+      ActorCompetenceReach::for(User $user): CompetenceReach     // statico, memo per richiesta
+      RequestManagementScope::isInActorCompetence(User, Quote, RequestModule = Requests): bool
+      scopeFingerprint(): aggiunge ":comp:" . ("all" | sha1(ids ordinati) | "") se l'attore ha viewCompetence.
+    </php_contract>
+
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un attore con riga ambito (F, C) e con `quotes.view` + `quotes.viewCompetence`, quando legge le righe SSRM delle Offerte, allora vede un'offerta altrui (non sua, di altra sede) con una riga di ricavo su un prodotto di categoria C, e non vede un'offerta altrui con sole righe di ricavo di categoria D non coperta.</criterion>
+    <criterion id="AC-002">Dato lo stesso attore senza `quotes.viewCompetence`, quando legge le righe e apre `GET` dell'offerta di AC-001, allora la riga non c'e' e la show risponde 403 con il messaggio `quote_out_of_scope` aggiornato.</criterion>
+    <criterion id="AC-003">Dato un attore con riga (F, Madre) e un'offerta con riga di ricavo su categoria Figlia di Madre con funzione effettiva F, quando legge le Offerte con `viewCompetence`, allora la vede; con riga (F, null) vede le offerte la cui categoria ha funzione effettiva F e non quelle di altra funzione (D-7).</criterion>
+    <criterion id="AC-004">Dato un'offerta che ha la categoria C solo su una riga di COSTO (non di ricavo), quando l'attore con ambito su C e `viewCompetence` legge le Offerte, allora non la vede (D-2).</criterion>
+    <criterion id="AC-005">Dato un'offerta senza righe di ricavo, quando la leggono un attore con `viewCompetence` e righe ambito e un attore con `viewCompetence` e flag "tutte le categorie", allora il primo non la vede e il secondo si' (D-3).</criterion>
+    <criterion id="AC-006">Dato un contratto la cui offerta e' di competenza (AC-001), quando l'attore ha `contracts.view` + `contracts.viewCompetence` (e NON `quotes.viewCompetence`), allora vede il contratto; con `quotes.viewCompetence` ma senza `contracts.viewCompetence` non lo vede.</criterion>
+    <criterion id="AC-007">Dato una commessa multi-offerta in cui solo una delle offerte di origine (pivot `quote_line_work_order`) ha ricavo in C, quando l'attore con ambito su C ha `work-orders.view` + `work-orders.viewCompetence`, allora la commessa e' visibile in griglia e in show; una commessa con offerte di origine fuori ambito resta 403 `work_order_out_of_scope`.</criterion>
+    <criterion id="AC-008">Dato un'opportunita' altrui con `opportunity_product_lines` su C, quando l'attore con ambito su C ha `opportunities.view` + `opportunities.viewCompetence`, allora la vede in griglia, in show e in `opportunities/for-select`; senza la ability resta 403 `opportunity_out_of_scope`.</criterion>
+    <criterion id="AC-009">Dato una richiesta (offerta) di altro operatore e altra sede la cui opportunita' ha riga prodotto su C, quando l'attore con ambito su C ha `request-management.view` + `request-management.viewCompetence`, allora la vede in griglia, in dettaglio (`assertInScope` non abortisce) e nei conteggi delle schede categoria; senza la ability `assertInScope` risponde 403 con il messaggio aggiornato.</criterion>
+    <criterion id="AC-010">Dato Gestione iscritti con `enrollee-management.viewCompetence` e un'offerta di competenza in stato fuori dai gruppi del modulo, quando l'attore legge gli iscritti, allora non la vede (filtro di stato a monte); la stessa offerta in stato `validated` e' visibile.</criterion>
+    <criterion id="AC-011">Dato un attore con `viewCompetence` e "Assegnabile" spento ma righe ambito su C, quando legge le Offerte, allora vede le offerte in C (D-6).</criterion>
+    <criterion id="AC-012">Dato un attore con `viewCompetence` ma senza alcuna riga ambito ne' flag, quando legge i 6 moduli, allora vede esattamente gli stessi record che vedeva senza la ability.</criterion>
+    <criterion id="AC-013">Dato un attore con `viewCompetence`, quando prova `update`/`delete` (o `assignOperator` in Gestione richieste) su un record visibile solo per competenza senza la relativa ability, allora riceve 403 (D-5); con la ability l'azione passa.</criterion>
+    <criterion id="AC-014">Dato i livelli combinati (proprio + sede + competenza), quando l'attore legge le righe con un filtro di griglia attivo, allora il risultato e' l'UNION dei tre livelli intersecata col filtro (l'OR non sfugge ai filtri del chiamante).</criterion>
+    <criterion id="AC-015">Dato due attori con stesso id-operatore/sedi ma ambito diverso (stesso attore prima/dopo il cambio di ambito), quando si calcola `RequestManagementScope::scopeFingerprint()`, allora le fingerprint differiscono; senza `viewCompetence` la fingerprint e' identica a quella attuale.</criterion>
+    <criterion id="AC-016">Dato una pagina SSRM di Offerte, Commesse, Opportunita' e Gestione richieste con 20 righe visibili solo per competenza, quando si leggono le righe, allora il numero di query non cresce con il numero di righe (stesso conteggio con 5 e con 20 righe).</criterion>
+    <criterion id="AC-017">Dato la griglia Opportunita' e la griglia Offerte, quando l'attore ha `request-management.view` + `request-management.viewCompetence` e una riga e' di competenza, allora l'azione Note e' offerta su quella riga (allineamento `allowsNotes`) e non su una riga fuori ambito; [rev.1] il collega per competenza compare tra i menzionabili del thread che puo' leggere e non di un altro.</criterion>
+    <criterion id="AC-018">Dato il catalogo permessi, quando lo si legge dopo `permissions:sync`, allora le 6 risorse espongono `{resource}.viewCompetence`; il form Ruolo mostra l'etichetta "Visualizza per competenza" / "View by competence" (Vitest su `abilityLabel`, parity IT/EN verde).</criterion>
+    <criterion id="AC-019">Dato le guide in-app, quando si esegue `help-content-parity.test.ts`, allora resta verde e le 7 guide citano "Visualizza per competenza" nelle sezioni di visibilita' IT ed EN.</criterion>
+    <criterion id="AC-020">Dato un attore null (non autenticato) passato alle scope, quando si applica `scopeToActor()`, allora nessun record e' restituito (fail-closed invariato).</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; nessuna migrazione di schema.</item>
+    <item>Una sola regola per modulo: il livello vive SOLO nelle scope class; le copie inline (`allowsNotes`) delegano o leggono un flag proiettato, mai una terza riscrittura del predicato.</item>
+    <item>Query e record shape sono lo stesso predicato: `isVisibleTo()` e `scopeToActor()` non possono divergere (test su entrambi).</item>
+    <item>La disgiunzione resta dentro la closure `where()` di ogni scope (mai `orWhere` sulla root).</item>
+    <item>Sottoquery `whereIn` con id interi da `CompetenceReach` (nessun input utente nel predicato); niente `whereRaw`.</item>
+    <item>Scope statiche e policy zero-argument constructible: il reach si ottiene da `ActorCompetenceReach::for()`, non per DI nel costruttore.</item>
+    <item>Test in parallelo: helper condivisi in `tests/Helpers/CompetenceVisibilityHelpers.php`. Mai comandi distruttivi sul DB di dev (`migrate:fresh`, `rollback`, `db:seed`): solo `permissions:sync`.</item>
+    <item>Pint, ESLint, `tsc -b --force`, Pest mirati + suite completa a fine feature, Vitest.</item>
+  </constraints>
+
+</spec>

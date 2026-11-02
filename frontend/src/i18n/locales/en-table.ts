@@ -206,7 +206,6 @@ export const table = {
     editRules: 'Edit rules',
     rulesViewIndicator: 'Custom filter',
     unnamed: 'Custom filter',
-    publishForbidden: 'You do not have permission to publish shared views.',
     favoriteError: 'Unable to update favorites.',
     activeFiltersLabel: 'Active filters',
     removeChip: 'Remove {{label}}',

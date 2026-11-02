@@ -82,7 +82,6 @@ function lookupBundle({ singular, plural }: LookupCopy) {
       iconInvalid: 'Pick an icon from the catalogue.',
       genericError: 'Something went wrong. Please retry.',
       deleteError: `Unable to delete the ${singular}. Please retry.`,
-      deleteForbidden: `You cannot delete this ${singular}.`,
       // Fallback only: on a 409 the module shows the backend message verbatim,
       // which names the resource. This shows only if the body carries none.
       deleteInUse: `This ${singular} is used by a task and cannot be deleted.`,
@@ -108,7 +107,6 @@ function lookupBundle({ singular, plural }: LookupCopy) {
       dragHandleLabel: 'Drag to reorder',
       loadError: 'Unable to load the list. Please retry.',
       saved: 'Order updated successfully.',
-      forbidden: 'You cannot reorder these rows.',
       genericError: 'Unable to update the order. Please retry.',
       // The reorder sheet also lists rows an admin deactivated — it must,
       // since the endpoint validates `ordered_ids` against the COMPLETE
@@ -257,7 +255,6 @@ export const taskStatuses = {
     iconInvalid: 'Pick an icon from the catalogue.',
     genericError: 'Something went wrong. Please retry.',
     deleteError: 'Unable to delete the task status. Please retry.',
-    deleteForbidden: 'You cannot delete this task status.',
     deleteInUse: 'This task status is used by a task and cannot be deleted.',
     completionPercentage: 'Completion percentage',
     completionPercentageRequired: 'Completion percentage is required.',
@@ -287,7 +284,6 @@ export const taskStatuses = {
     dragHandleLabel: 'Drag to reorder',
     loadError: 'Unable to load the list. Please retry.',
     saved: 'Order updated successfully.',
-    forbidden: 'You cannot reorder these rows.',
     genericError: 'Unable to update the order. Please retry.',
     inactiveBadge: 'Inactive',
   },

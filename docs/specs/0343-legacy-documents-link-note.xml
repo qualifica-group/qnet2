@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0343-legacy-documents-link-note" status="draft" owner="nicola" date="2026-11-02">
+
+  <goal>
+    Nella sezione Documenti di un record migrato dal vecchio QNet, mostrare la nota "Non trovi un documento?
+    Controlla nel vecchio QNet" con il link che apre quel record (o il suo elenco) nel vecchio QNet, in tutti i
+    moduli con documenti.
+  </goal>
+
+  <context>
+    Segue la spec 0295 (documenti legacy "solo link"): un documento il cui file mancava nel legacy, o di un tipo non
+    migrato, resta consultabile solo nel vecchio QNet. Verificato sul codice il 2026-11-02.
+
+    Decisioni utente 2026-11-02:
+    D-1 Il link porta al record nel vecchio QNet dove esiste una pagina di dettaglio; per Opportunita' e Task (nessuna
+        pagina di dettaglio nel legacy) porta al loro elenco nel vecchio QNet.
+    D-2 La nota la vede chiunque veda la sezione Documenti del record (stessa autorizzazione dell'elenco documenti),
+        non solo chi ha il permesso ID legacy.
+
+    Decisioni tecniche (proposte):
+    D-3 Un record "viene dal legacy" quando ha `old_id`. Il link e' calcolato dal backend sull'elenco documenti
+        esistente: `GET /api/attachments` aggiunge `meta.legacy_url` (additivo: `data` invariato). Cosi' la nota
+        compare ovunque si monti `DocumentsSection` (schede di dettaglio, azione Documenti delle righe, scheda
+        Documenti anagrafica in sola lettura) senza toccare i singoli moduli.
+    D-4 Pagine legacy (verificate in `routes/web.php` del legacy), in config `migrations.legacy_record_paths`
+        (alias `attachable_type` -> percorso con `{id}` = `old_id`):
+        work_order `manageorder/{id}`; registry `companyshow/{id}` (CompanyShow carica `Company::find`);
+        purchase_request `rda-manage/{id}`; purchase_request_line -> `old_id` della sua RDA, stessa pagina;
+        purchase_order e purchase_invoice `amministrazione.genera-proforma-fornitori/{id}/view` (testata
+        `proformfora_heads`, spec 0296/0298); opportunity `opportunities`; task `tasks` (elenchi, senza `{id}`).
+        Altri alias (contract, user, note, ...) o record senza `old_id` -> `legacy_url` null, nessuna nota.
+        Offerte e Contratti mostrano i documenti dell'opportunita' (alias `opportunity`): il link porta all'elenco
+        opportunita' del legacy.
+    D-5 Host: `config('migrations.legacy_files_base_url')` (spec 0295, gia' il dominio web del legacy). Vuoto ->
+        `legacy_url` null.
+    D-6 Frontend: `DocumentsSection` mostra la nota (testo piccolo, icona `ExternalLink`, link in nuova scheda con
+        `rel="noopener noreferrer"`, URL filtrato da `safeUrl`) quando `legacyUrl` non e' null, anche a elenco vuoto.
+
+    Fatti verificati: `AttachmentController::index` (authorize viewAny + accessOwner, poi `ok()` con
+    `AttachmentResource::collection`); `BaseApiController::ok()` envelope `{ success, message, data }`;
+    frontend `features/attachments/api.ts::listAttachments` unico chiamante, usato solo da `use-attachments.ts`;
+    `DocumentsSection` montata in work-orders, opportunities, quotes, contracts, registries, tasks,
+    purchase-requests, purchase-orders, purchase-invoices, request-management, document-bundles,
+    task-templates, `documents-dialog`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Backend: `config/migrations.php` chiave `legacy_record_paths`; servizio
+        `App\Services\Attachments\LegacyRecordLink` (owner -> URL o null); `AttachmentController::index` aggiunge
+        `meta.legacy_url`; test feature.</item>
+      <item>Frontend: `listAttachments` restituisce anche `legacyUrl`; `use-attachments` lo espone;
+        `DocumentsSection` mostra la nota; chiavi i18n IT/EN in `{it,en}-attachments.ts`; test Vitest.</item>
+      <item>Manuale: guida in-app `general#notes-and-documents` IT/EN e manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Pagine di dettaglio per Opportunita' e Task nel legacy (non esistono).</item>
+      <item>Link al legacy fuori dalla sezione Documenti (intestazioni, badge OLD ID invariato).</item>
+      <item>Login automatico sul vecchio QNet: il link apre la pagina, il login lo chiede il legacy.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/attachments" change="additive">
+      <request>Invariata (`attachable_type`, `attachable_id`, `collection?`).</request>
+      <response status="200">
+        { success: true, message: string, data: Attachment[] (invariato), meta: { legacy_url: string | null } }
+        `legacy_url` = `{legacy_files_base_url}/{percorso D-4}` per un proprietario con `old_id` e alias mappato,
+        altrimenti null.
+      </response>
+      <errors>Invariati (403 come oggi, prima di calcolare il link).</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un proprietario con `old_id` per ciascun alias di D-4, `GET /api/attachments`
+      restituisce in `meta.legacy_url` l'URL atteso (con `{id}` = `old_id`; per la riga RDA l'`old_id` della RDA;
+      elenchi per opportunity e task) e `data` invariato.</criterion>
+    <criterion id="AC-002">Proprietario senza `old_id`, alias non mappato (es. contract) o
+      `legacy_files_base_url` vuoto -> `meta.legacy_url` null.</criterion>
+    <criterion id="AC-003">Utente senza permesso o senza `view` sul proprietario owner-scoped -> 403 come oggi,
+      nessun `legacy_url` esposto.</criterion>
+    <criterion id="AC-004">`DocumentsSection` con `legacyUrl` valorizzato mostra "Non trovi un documento?" e il link
+      "Controlla nel vecchio QNet" con `href` = URL, `target="_blank"`, `rel="noopener noreferrer"`, anche a elenco
+      vuoto; con null (o URL non http/https) nessuna nota.</criterion>
+    <criterion id="AC-005">Test esistenti `tests/Feature/Attachments` e `features/attachments` verdi; parity test delle
+      guide verde; `tsc -b --force`, ESLint e Pint puliti.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza; authz invariata; percorsi legacy in config, non nel codice.</item>
+    <item>UI compatta (`text-xs`, icona `size-3.5`), token del design system, accessibile da tastiera.</item>
+  </constraints>
+
+</spec>

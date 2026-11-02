@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0334-it-support-requests" status="approved" owner="utente" date="2026-10-30">
+
+  <goal>
+    Un pulsante "Assistenza tecnica" nell'header, accanto al (?), apre un modulo semplicissimo con cui qualsiasi
+    utente segnala un problema al reparto IT: sceglie il tipo di problema, scrive cosa non va, opzionalmente
+    segnala l'urgenza e allega screenshot. L'invio crea un Task gia' completo, con tutti gli altri campi
+    precompilati da una configurazione gestita dall'amministratore.
+  </goal>
+
+  <context>
+    - Header: `frontend/src/layouts/app-layout.tsx`, blocco `ml-auto` con `HelpButton` (`features/help/components/help-button.tsx`,
+      icon button `size-7`, `CircleHelp`), `NotificationBell`, `ThemeToggle`. Il nuovo pulsante va PRIMA di `HelpButton`.
+    - Task (spec 0101): model `App\Models\Task`, creazione unica via `App\Services\TaskService::create(CreateTaskData, User $creator)`.
+      Obbligatori a livello di dato: `title`, `requester_id`, `end_date`, `assignee_ids` (min 1). Pivot `task_assignee`/`task_watcher`.
+      Lookup: `task_types`, `task_categories`, `task_priorities`, `task_importances` (shape comune: name, color, icon, sort_order, is_active).
+      Stato iniziale derivato da `TaskInitialStatusResolver`; notifica assegnatari via `CreateTaskData::notifyAssignedUsers`.
+      Descrizione = rich text HTML sanificato (`TaskDescriptionWriter::applyOnCreate`).
+    - Visibilita' Task (`TaskVisibilityScope`): richiedente/creatore vedono il proprio Task SOLO se hanno anche `tasks.view`.
+    - Allegati: `App\Services\AttachmentService::storeFor(Model $owner, UploadedFile $file, ?string $collection)`,
+      limiti in `config/attachments.php` (`max_size`, `allowed_mime_types`).
+    - Configurazione: menu `config/navigation/configuration/tasks.php` (Configurazione > Task), entita' lookup con
+      `TableDefinition` (`app/Tables/TaskCategoriesTableDefinition.php`), `ResourceAuthorization` registrata in
+      `config/authorization.php`, frontend `features/task-categories/` come modello di pagina lista/dettaglio/form.
+    - Guide in-app (spec 0143): `features/help/content/{it,en}/`, `HELP_GUIDE_KEYS`.
+    - Non esiste oggi un concetto di "reparto IT" ne' una tabella di impostazioni generiche: la configurazione e' una
+      nuova entita' lookup.
+  </context>
+
+  <decisions>
+    - D-1 (configurazione per tipo di problema, risposta utente 2026-10-30): nuova entita' `SupportTopic` ("Tipo di
+      problema", es. Stampante, Password/account, PC lento, Altro). Ogni tipo porta i propri valori precompilati del Task
+      e i propri assegnatari, scelti dall'amministratore.
+    - D-2 (destinatari, risposta utente): assegnatari (>= 1) e osservatori (0..n) sono UTENTI scelti nella configurazione
+      del tipo. Nessun legame con Funzioni aziendali/organigramma.
+    - D-3 (campi utente, risposta utente): tipo di problema (obbligatorio, scelto tra i tipi attivi), descrizione
+      (obbligatoria), "E' urgente / sono bloccato" (interruttore, default no), screenshot/allegati (opzionali, max 5).
+    - D-4 (urgenza): se `is_urgent` e il tipo ha `urgent_task_priority_id` valorizzato, il Task usa quella priorita'
+      al posto di `task_priority_id`; la scadenza diventa `urgent_due_days` se valorizzato, altrimenti `due_days`.
+    - D-5 (titolo generato): "{nome tipo}: {prime parole della descrizione}", troncato a 191 caratteri (limite di `tasks.title`).
+    - D-6 (contesto automatico): il frontend invia pagina corrente (`page_url`, path + query, senza origin) e
+      `user_agent`; il backend li aggiunge in coda alla descrizione in un paragrafo "Pagina / Browser". Il testo
+      dell'utente e' trattato come testo semplice (escape HTML, a capo -> `<br>`), mai come HTML.
+    - D-7 (accesso, risposta utente): QUALSIASI utente autenticato apre una richiesta, anche senza `tasks.create`.
+      Richiedente e creatore = l'utente stesso. Dopo l'invio vede solo una conferma con il numero del Task; il link
+      "Apri il task" compare solo se ha `tasks.view`.
+    - D-8 (scadenza): `end_date` = oggi + giorni configurati (giorni di calendario). Default `due_days` = 2.
+    - D-9 (notifica): gli assegnatari ricevono la notifica standard di assegnazione (notifyAssignedUsers = true).
+    - D-10 (tipo non configurabile dall'utente): tipo/categoria/priorita'/importanza/privato/feedback di chiusura del
+      Task vengono SOLO dalla configurazione; il payload utente non li accetta (`prohibited`).
+    - D-11 (nessun tipo attivo): il pulsante resta visibile; il modulo mostra "Assistenza non ancora configurata,
+      contatta l'amministratore" e non invia nulla.
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazione `support_topics` + pivot `support_topic_assignee`, `support_topic_watcher`.</item>
+      <item>Model `SupportTopic` (LogsModelActivity), CRUD configurazione via TableDefinition `support-topics`, permessi `support-topics.view/create/update/delete`.</item>
+      <item>Voce di menu "Assistenza tecnica" in Configurazione > Task (`/support-topics`).</item>
+      <item>Endpoint per l'utente: elenco tipi attivi + invio richiesta (crea Task + allegati).</item>
+      <item>Pulsante header + dialog semplificato (responsive, mobile-first).</item>
+      <item>Pagine frontend lista/dettaglio/form dei tipi di problema.</item>
+      <item>Guide in-app IT+EN: nuova guida `support-topics` + sezione in `general` sul pulsante; segnalazione manuale Claude Docs.</item>
+      <item>i18n backend (`lang/it.json`) e frontend.</item>
+    </in>
+    <out>
+      <item>Lista "Le mie richieste" / stato del ticket per chi non ha `tasks.view`.</item>
+      <item>Assegnazione per Funzione aziendale, round-robin, orari/SLA lavorativi, escalation automatica.</item>
+      <item>Cattura automatica dello screenshot della pagina (l'utente allega file propri).</item>
+      <item>Nuovo permesso per aprire richieste (D-7: tutti gli autenticati).</item>
+      <item>Modifiche al modulo Task esistente (form, dettaglio, policy, visibilita').</item>
+      <item>Email esterne / integrazioni helpdesk.</item>
+      <item>Seeder demo (opzionale, non richiesto).</item>
+    </out>
+  </scope>
+
+  <data_model>
+    support_topics:
+      id, name string(191) unique, description string(500) nullable (testo d'aiuto mostrato all'utente),
+      icon string(64) nullable (nome icona lucide, come task_categories), sort_order int default 0,
+      is_active bool default true,
+      task_type_id FK nullable -> task_types, task_category_id FK nullable -> task_categories,
+      task_priority_id FK nullable -> task_priorities, urgent_task_priority_id FK nullable -> task_priorities,
+      task_importance_id FK nullable -> task_importances,
+      due_days unsigned smallint default 2, urgent_due_days unsigned smallint nullable,
+      is_private bool default false, requires_closure_feedback bool default false,
+      timestamps; index (is_active, sort_order). FK verso le lookup: restrictOnDelete (una lookup usata da un
+      tipo non si cancella).
+    support_topic_assignee: support_topic_id FK cascade, user_id FK cascade, PK composta.
+    support_topic_watcher: support_topic_id FK cascade, user_id FK cascade, PK composta.
+  </data_model>
+
+  <data_contract>
+    <!-- Configurazione (admin): stesso pattern CRUD delle lookup Task (envelope { success, message, data }). -->
+    <endpoint method="GET" path="/api/support-topics/{supportTopic}">
+      <response status="200">
+        data: { id, name, description|null, icon|null, sort_order, is_active,
+                task_type: {id,name}|null, task_category: {id,name}|null, task_priority: {id,name}|null,
+                urgent_task_priority: {id,name}|null, task_importance: {id,name}|null,
+                due_days: int, urgent_due_days: int|null, is_private: bool, requires_closure_feedback: bool,
+                assignees: [{id,name}], watchers: [{id,name}], created_at, updated_at }
+      </response>
+      <errors>403 senza `support-topics.view`; 404.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/support-topics">
+      <request>
+        { name: string(1..191, unique), description?: string|null (max 500), icon?: string|null (max 64),
+          sort_order?: int, is_active?: bool,
+          task_type_id?: int|null, task_category_id?: int|null, task_priority_id?: int|null,
+          urgent_task_priority_id?: int|null, task_importance_id?: int|null (tutti exists),
+          due_days: int (0..365), urgent_due_days?: int|null (0..365),
+          is_private?: bool, requires_closure_feedback?: bool,
+          assignee_ids: int[] (min 1, utenti attivi esistenti), watcher_ids?: int[] (esistenti, disgiunti da assignee_ids) }
+      </request>
+      <response status="201">data: come GET show.</response>
+      <errors>403 senza `support-topics.create`; 422 validazione (incl. watcher anche assegnatario).</errors>
+    </endpoint>
+    <endpoint method="PATCH" path="/api/support-topics/{supportTopic}">
+      <request>Stesse chiavi del POST, tutte `sometimes`; assignee_ids se presente min 1.</request>
+      <response status="200">data: come GET show.</response>
+      <errors>403 senza `support-topics.update`; 404; 422.</errors>
+    </endpoint>
+    <endpoint method="DELETE" path="/api/support-topics/{supportTopic}">
+      <response status="200">{ success: true, message }</response>
+      <errors>403 senza `support-topics.delete`; 404. I Task gia' creati non sono toccati (nessuna FK Task -> topic).</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/tables/support-topics/rows">
+      <request>SSRM standard del framework tabellare (TableDefinition `support-topics`, colonne: name, icon, task_priority, assignees, due_days, sort_order, is_active).</request>
+      <errors>403 senza `support-topics.view`.</errors>
+    </endpoint>
+
+    <!-- Utente finale: qualsiasi utente autenticato. -->
+    <endpoint method="GET" path="/api/support-requests/topics">
+      <response status="200">
+        data: [{ id: int, name: string, description: string|null, icon: string|null }]
+        Solo `is_active = true` con almeno un assegnatario attivo, ordinati per sort_order, name.
+        Nessun altro campo di configurazione esposto (niente assegnatari, priorita', ecc.).
+      </response>
+      <errors>401 non autenticato.</errors>
+    </endpoint>
+    <endpoint method="POST" path="/api/support-requests" content-type="multipart/form-data">
+      <request>
+        support_topic_id: int (required, tipo attivo),
+        description: string (required, 1..5000, testo semplice),
+        is_urgent?: bool (default false),
+        attachments?: file[] (max 5; ciascuno `max:config('attachments.max_size')`, mimetypes da
+                      `config('attachments.allowed_mime_types')`),
+        page_url?: string|null (max 2048), user_agent?: string|null (max 500).
+        `prohibited`: title, assignee_ids, watcher_ids, requester_id, task_type_id, task_category_id,
+                      task_priority_id, task_importance_id, end_date, is_private.
+      </request>
+      <response status="201">
+        { success: true, message: "Richiesta inviata al reparto IT",
+          data: { task_id: int, can_view_task: bool } }
+      </response>
+      <errors>
+        401 non autenticato; 422 validazione (tipo inesistente/non attivo, descrizione vuota, troppi/grandi file,
+        tipo senza assegnatari attivi -> errore su `support_topic_id`). Transazione unica: un allegato che fallisce
+        non lascia un Task orfano.
+      </errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <!-- Backend: tests/Feature/SupportTopics/SupportTopicCrudTest.php, tests/Feature/SupportRequests/SupportRequestTest.php -->
+    <criterion id="AC-001">Dato un admin con `support-topics.create`, quando fa POST /api/support-topics con assegnatari e lookup validi, allora 201 e la show restituisce gli stessi valori, assegnatari e osservatori.</criterion>
+    <criterion id="AC-002">Dato un utente senza i permessi `support-topics.*`, quando chiama show/store/update/destroy o le righe SSRM, allora 403.</criterion>
+    <criterion id="AC-003">Dato un POST/PATCH con `assignee_ids` vuoto, o un utente sia assegnatario sia osservatore, allora 422 sul campo relativo e nessuna scrittura.</criterion>
+    <criterion id="AC-004">Dati tre tipi (due attivi, uno disattivo, uno attivo senza assegnatari attivi), quando un utente qualsiasi chiama GET /api/support-requests/topics, allora riceve solo il tipo attivo con assegnatari, con le sole chiavi id/name/description/icon.</criterion>
+    <criterion id="AC-005">Dato un utente SENZA alcun permesso Task, quando invia POST /api/support-requests valido, allora 201 e esiste un Task con requester e creator = utente, assegnatari/osservatori = quelli del tipo, type/category/priority/importance/is_private/requires_closure_feedback = quelli del tipo, end_date = oggi + due_days.</criterion>
+    <criterion id="AC-006">Dato `is_urgent: true` e un tipo con `urgent_task_priority_id` e `urgent_due_days`, allora il Task usa quella priorita' e quella scadenza; se i campi urgenti sono vuoti, usa quelli normali.</criterion>
+    <criterion id="AC-007">Il titolo del Task e' "{nome tipo}: {inizio descrizione}" e non supera 191 caratteri anche con descrizione di 5000.</criterion>
+    <criterion id="AC-008">Una descrizione contenente `&lt;script&gt;` o tag HTML viene salvata con escape (nessun tag eseguibile nella descrizione); `page_url` e `user_agent` compaiono in coda alla descrizione.</criterion>
+    <criterion id="AC-009">Con 2 allegati validi, il Task ha 2 Attachment; con 6 allegati o un file oltre `max_size` o di tipo non ammesso, allora 422 e nessun Task creato.</criterion>
+    <criterion id="AC-010">Un payload che contiene `assignee_ids`, `task_priority_id`, `title` o `requester_id` riceve 422 (prohibited).</criterion>
+    <criterion id="AC-011">Un tipo disattivo o inesistente in `support_topic_id` da' 422 e nessun Task.</criterion>
+    <criterion id="AC-012">Gli assegnatari ricevono la notifica di assegnazione del Task creato.</criterion>
+    <criterion id="AC-013">`can_view_task` e' true per un utente con `tasks.view`, false per uno senza.</criterion>
+    <!-- Frontend: Vitest -->
+    <criterion id="AC-014">L'header mostra il pulsante "Assistenza tecnica" (icona, aria-label) prima del pulsante (?), per ogni utente autenticato.</criterion>
+    <criterion id="AC-015">Il dialog mostra i tipi attivi come pulsanti grandi selezionabili; senza tipo scelto o con descrizione vuota "Invia" e' disabilitato o mostra l'errore accessibile (aria-invalid + role=alert).</criterion>
+    <criterion id="AC-016">All'invio riuscito il dialog mostra la conferma con il numero del Task; il link "Apri il task" compare solo se `can_view_task`. Un 422 mostra l'errore tramite il toast condiviso `notifyFormErrors` e il dialog resta aperto con i dati inseriti.</criterion>
+    <criterion id="AC-017">Senza tipi attivi il dialog mostra il messaggio "Assistenza non ancora configurata" e nessun pulsante Invia.</criterion>
+    <criterion id="AC-018">La pagina Configurazione > Task > Assistenza tecnica elenca i tipi (SSRM) e permette crea/modifica/elimina con form RHF+Zod che rispecchia la validazione server.</criterion>
+    <criterion id="AC-019">Guide in-app: `support-topics` IT/EN aggiunta a `HELP_GUIDE_KEYS`, sezione sul pulsante in `general` IT/EN; `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Solo librerie gia' presenti (shadcn Dialog, RHF+Zod, TanStack Query, lucide, sonner).
+    - Il Task si crea SOLO tramite `TaskService::create` (nessuna scrittura diretta su `tasks`), dentro una transazione
+      con gli allegati.
+    - Authz server-side: configurazione via ResourceAuthorization/Policy `support-topics`; endpoint utente con solo
+      `auth:sanctum` (D-7). Nessun `throttle` (backend.md §2).
+    - Upload: `mimetypes`/`extensions` coerenti con `config/attachments.php`.
+    - Identificatori in inglese; testi UI via i18n (IT/EN).
+    - UI compatta (ui-design.md §2): pulsante header `size-7` come gli altri; dialog `max-w-lg`, a 375px a tutta larghezza.
+  </constraints>
+
+</spec>
