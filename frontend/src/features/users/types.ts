@@ -65,6 +65,8 @@ export interface EmploymentProductLine {
   id: number
   business_function: ProductLineRelationRef
   product_category: ProductLineRelationRef | null
+  /** Spec 0346: the person's informative share on the row, 1..100. */
+  share_percentage: number
 }
 
 /**
@@ -136,6 +138,7 @@ export interface EmploymentDetail {
 export interface EmploymentProductLineInput {
   business_function_id: number
   product_category_id: number | null
+  share_percentage: number
 }
 
 /**

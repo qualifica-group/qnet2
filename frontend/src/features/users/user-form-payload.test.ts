@@ -253,8 +253,8 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
         employment: {
           ...emptyEmployment,
           product_lines: [
-            { business_function_id: 4, product_category_id: 21 },
-            { business_function_id: 4, product_category_id: 22 },
+            { business_function_id: 4, product_category_id: 21, share_percentage: 70 },
+            { business_function_id: 4, product_category_id: 22, share_percentage: 30 },
           ],
         },
       },
@@ -262,8 +262,8 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
     )
 
     expect(payload.employment.product_lines).toEqual([
-      { business_function_id: 4, product_category_id: 21 },
-      { business_function_id: 4, product_category_id: 22 },
+      { business_function_id: 4, product_category_id: 21, share_percentage: 70 },
+      { business_function_id: 4, product_category_id: 22, share_percentage: 30 },
     ])
   })
 
@@ -275,7 +275,7 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
         employment: {
           ...emptyEmployment,
           product_lines: [
-            { business_function_id: 4, product_category_id: 21 },
+            { business_function_id: 4, product_category_id: 21, share_percentage: 100 },
             { business_function_id: 4, product_category_id: null },
             { business_function_id: null, product_category_id: 22 },
           ],
@@ -285,7 +285,7 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
     )
 
     expect(payload.employment.product_lines).toEqual([
-      { business_function_id: 4, product_category_id: 21 },
+      { business_function_id: 4, product_category_id: 21, share_percentage: 100 },
     ])
   })
 
@@ -330,14 +330,16 @@ describe('buildCreatePayload — employment (spec 0015)', () => {
         ...formValues,
         employment: {
           ...emptyEmployment,
-          product_lines: [{ business_function_id: 4, product_category_id: null, all_categories: true }],
+          product_lines: [{ business_function_id: 4, product_category_id: null, all_categories: true, share_percentage: 100 }],
         },
       },
       draft(),
     )
 
     expect(payload.employment.covers_all_product_categories).toBe(false)
-    expect(payload.employment.product_lines).toEqual([{ business_function_id: 4, product_category_id: null }])
+    expect(payload.employment.product_lines).toEqual([
+      { business_function_id: 4, product_category_id: null, share_percentage: 100 },
+    ])
   })
 
   // REQUIREMENT CHANGED (spec 0276 D-2): the manager flag is gone, so reports_to_ids is never force-emptied.

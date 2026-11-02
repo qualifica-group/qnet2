@@ -71,7 +71,7 @@ it('0015 AC-001: create with a full employment block persists the row and resolv
             // Spec 0111: the competence is written as a row,
             // not as a column of the profile.
             'product_lines' => [
-                ['business_function_id' => $function->id, 'product_category_id' => $category->id],
+                ['business_function_id' => $function->id, 'product_category_id' => $category->id, 'share_percentage' => 100],
             ],
             'primary_operational_site_id' => $site->id,
             'hired_at' => '2024-01-15',

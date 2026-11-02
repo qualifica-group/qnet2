@@ -74,6 +74,7 @@
       copre ogni categoria richiesta la cui funzione EFFETTIVA (spec 0023) e' quella della riga.
       Non copre categorie prive di funzione effettiva.
     - D-4: ridondanza = 422 sulla riga: (F, null) insieme a (F, C) e' rifiutato sulla riga (F, C).
+      REVOCATA dalla spec 0346 D-4 (2026-11-02): le righe sovrapposte sono ammesse, ognuna con la sua percentuale.
     - D-5: nel form utente "tutte le categorie" si sceglie con una CHECKBOX per riga ("Tutte"),
       che disabilita e svuota il select categoria.
     - D-6 (richiesta utente in corso di pianificazione): se il flag non e' attivo, nella riga si
@@ -90,6 +91,7 @@
       `CompetenceProfile::covers()`).
     - D-8: la ridondanza D-4 si estende per coerenza alla chiusura: (F, K_madre) insieme a
       (F, K_discendente) e' 422 sulla riga discendente. Stesso messaggio.
+      REVOCATA dalla spec 0346 D-4 (2026-11-02), insieme a D-4 e agli AC-013/AC-014.
     - D-9: il contratto delle righe di offerte/progetti/campagne/richieste NON cambia:
       `ProductLineSetValidator` resta invariato; le regole della competenza vivono in un
       validatore dedicato (nuovo) che riusa `CategoryHierarchy`. `ProductLineWriter` resta

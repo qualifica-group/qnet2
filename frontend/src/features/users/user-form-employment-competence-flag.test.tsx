@@ -209,6 +209,7 @@ const BASE_EMPLOYMENT: EmploymentDetail = {
       id: 91,
       business_function: { id: SALES_FUNCTION, name: 'Sales' },
       product_category: { id: PHOTOVOLTAIC_CATEGORY, name: 'Photovoltaic' },
+      share_percentage: 100,
     },
   ],
   reports_to: [],
@@ -269,7 +270,9 @@ describe('UserDetailView — is_assignable row (spec 0194)', () => {
     const employment = await submittedEmployment()
     expect(employment.is_assignable).toBe(false)
     expect(employment.covers_all_product_categories).toBe(false)
-    expect(employment.product_lines).toEqual([{ business_function_id: SALES_FUNCTION, product_category_id: PHOTOVOLTAIC_CATEGORY }])
+    expect(employment.product_lines).toEqual([
+      { business_function_id: SALES_FUNCTION, product_category_id: PHOTOVOLTAIC_CATEGORY, share_percentage: 100 },
+    ])
   })
 })
 
@@ -311,8 +314,9 @@ describe('UserDetailView — covers_all_product_categories & "all categories" ro
 
     confirmOpenRow('Save')
 
+    // Spec 0346 D-7: the first row opens on the whole 100%.
     expect((await submittedEmployment()).product_lines).toEqual([
-      { business_function_id: SALES_FUNCTION, product_category_id: null },
+      { business_function_id: SALES_FUNCTION, product_category_id: null, share_percentage: 100 },
     ])
   })
 
@@ -329,7 +333,7 @@ describe('UserDetailView — covers_all_product_categories & "all categories" ro
       'Assignment scope',
       userWithCompetence({
         ...BASE_EMPLOYMENT,
-        product_lines: [{ id: 93, business_function: { id: SALES_FUNCTION, name: 'Sales' }, product_category: null }],
+        product_lines: [{ id: 93, business_function: { id: SALES_FUNCTION, name: 'Sales' }, product_category: null, share_percentage: 100 }],
       }),
     )
 

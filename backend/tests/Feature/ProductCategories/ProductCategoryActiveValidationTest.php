@@ -243,14 +243,14 @@ it('AC-012: competence row on an inactive category is rejected; the saved one pa
     $saved = ProductCategory::factory()->create(['business_function_id' => $function->id]);
     $target = User::factory()->create();
     EmploymentProfile::factory()->for($target)->competentIn($function, $saved)->memberOf($function)->create();
-    $row = fn (ProductCategory $category): array => ['business_function_id' => $function->id, 'product_category_id' => $category->id];
+    $row = fn (ProductCategory $category, int $share = 100): array => ['business_function_id' => $function->id, 'product_category_id' => $category->id, 'share_percentage' => $share];
 
     $saved->update(['is_active' => false]);
 
     $this->patchJson("/api/users/{$target->id}", ['employment' => ['product_lines' => [$row($saved)]]])->assertOk();
 
     $inactiveChild = ProductCategory::factory()->childOf($saved)->create();
-    $this->patchJson("/api/users/{$target->id}", ['employment' => ['product_lines' => [$row($saved), $row($inactiveChild)]]])
+    $this->patchJson("/api/users/{$target->id}", ['employment' => ['product_lines' => [$row($saved, 50), $row($inactiveChild, 50)]]])
         ->assertStatus(422)
         ->assertJsonValidationErrors(['employment.product_lines.1.product_category_id' => __('This product category is not active.')]);
 

@@ -8,6 +8,8 @@
  * `KnownProductLine`), never the edit-row shape.
  */
 
+import { CHART_SERIES_COLORS } from '@/components/ui/stat-chart-tokens'
+
 /** A hydrated `{id, name}` relation projection (business function or product category). */
 export interface ProductLineRelationRef {
   id: number
@@ -58,6 +60,8 @@ export interface CompetenceLineRow {
    * unfinished pick.
    */
   all_categories?: boolean
+  /** Spec 0346: the person's informative share on the row, 1..100; null while being typed. */
+  share_percentage?: number | null
 }
 
 /**
@@ -73,6 +77,8 @@ export interface ProductLineLike {
   product_category: ProductLineRelationRef | null
   /** See {@link ProductLine.root_category}: drives the card vs. competence rendering in `ProductLinesReadOnlyList`. */
   root_category?: ProductLineRelationRef
+  /** Spec 0346: a competence row's share, rendered after the category. */
+  share_percentage?: number
 }
 
 /**
@@ -95,6 +101,23 @@ export function emptyProductLineRow(): ProductLineRow {
 }
 
 /** A fresh empty COMPETENCE row — mirrors {@link emptyProductLineRow} for the separate competence contract. */
-export function emptyCompetenceLineRow(): CompetenceLineRow {
-  return { business_function_id: null, product_category_id: null }
+export function emptyCompetenceLineRow(sharePercentage: number | null = null): CompetenceLineRow {
+  return { business_function_id: null, product_category_id: null, share_percentage: sharePercentage }
+}
+
+/** Spec 0346 D-2: the total a person's competence shares add up to. */
+export const COMPETENCE_SHARE_TOTAL = 100
+
+/** Spec 0346: the sum of the rows' shares, a blank share counting as 0. */
+export function competenceShareTotal(rows: readonly CompetenceLineRow[]): number {
+  return rows.reduce((total, row) => total + (row.share_percentage ?? 0), 0)
+}
+
+/**
+ * The color tying a competence row to its segment of the share bar, in the
+ * editor and in the read-only list alike. Rows past the fifth reuse the
+ * palette: the row number, not the color, identifies a row.
+ */
+export function competenceShareColor(index: number): string {
+  return CHART_SERIES_COLORS[index % CHART_SERIES_COLORS.length]
 }

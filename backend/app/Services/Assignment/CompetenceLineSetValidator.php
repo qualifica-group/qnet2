@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Assignment;
 
+use App\Models\EmploymentProductLine;
 use App\Rules\ActiveBusinessFunction;
 use App\Rules\ActiveProductCategory;
 use App\Services\ProductCategories\CategoryHierarchy;
@@ -17,7 +18,7 @@ use App\Services\ProductLines\ProductLineSetValidator;
  * D-4 for this one collection) and its `product_category_id` may be null
  * (D-3, "every category of this row's function").
  *
- * Two invariants beyond the per-row rules:
+ * The invariants beyond the per-row rules:
  *  - no repeated pair, INCLUDING two (function, null) rows — reuses
  *    ProductLineSetValidator::DUPLICATE_PAIR_MESSAGE, the same message a
  *    repeated (function, category) pair gets elsewhere;
@@ -26,10 +27,12 @@ use App\Services\ProductLines\ProductLineSetValidator;
  *    DESCENDANT effectively belongs to F (a "neutral" container spanning
  *    several functions) — reuses
  *    ProductLineSetValidator::BUSINESS_FUNCTION_MISMATCH_MESSAGE;
- *  - redundancy (D-4/D-8): a row (F, K) is rejected when another row of the
- *    SAME function already covers K — either (F, null) or (F, ancestor of
- *    K). Order-independent: the error always lands on the more specific
- *    (covered) row, never on the general one, regardless of array position.
+ *  - the shares (spec 0346 D-2): a non-empty set adds up to exactly 100.
+ *
+ * Spec 0346 D-4 revoked spec 0129 D-4/D-8: a row covered by another row of
+ * the same function ((F, null) + (F, K), or (F, parent) + (F, child)) is
+ * admitted, since each row now carries its own share. The matching reads the
+ * union of the rows, so the overlap changes nothing there.
  *
  * Every check is resolved in batch off CategoryHierarchy's own memoized
  * projections (parentIdMap/effectiveBusinessFunctionSummaries) — never a
@@ -38,11 +41,8 @@ use App\Services\ProductLines\ProductLineSetValidator;
  */
 final class CompetenceLineSetValidator
 {
-    /**
-     * A row's category already covered by another row of the same function
-     * (D-4/D-8): (function, null) or an ancestor of it.
-     */
-    public const string REDUNDANT_LINE_MESSAGE = 'This product category is already covered by another row on the same business function.';
+    /** Spec 0346 D-2: the shares of a non-empty set add up to exactly 100. */
+    public const string SHARE_TOTAL_MESSAGE = 'The assignment scope percentages must add up to 100%.';
 
     /**
      * D-2: the wildcard flag and non-empty competence rows are mutually
@@ -72,14 +72,15 @@ final class CompetenceLineSetValidator
         return [
             $attribute.'.*.business_function_id' => ['required', 'integer', new ActiveBusinessFunction($exemptFunctionIds)],
             $attribute.'.*.product_category_id' => ['nullable', 'integer', new ActiveProductCategory($exemptCategoryIds)],
+            $attribute.'.*.share_percentage' => ['required', 'integer', 'min:1', 'max:'.EmploymentProductLine::SHARE_TOTAL],
         ];
     }
 
     /**
-     * The cross-row invariants (duplicates, function mismatch, redundancy),
-     * keyed `<attribute>.<index>.<field>` for merging into the FormRequest's
-     * own validator errors. Malformed rows are skipped: the per-row rules
-     * already report them.
+     * The cross-row invariants (duplicates, function mismatch) keyed
+     * `<attribute>.<index>.<field>`, plus the share total keyed `<attribute>`,
+     * for merging into the FormRequest's own validator errors. Malformed rows
+     * are skipped: the per-row rules already report them.
      *
      * @param  array<int, mixed>  $lines
      * @return array<string, string>
@@ -92,11 +93,36 @@ final class CompetenceLineSetValidator
             return [];
         }
 
-        $effectiveFunctionByCategory = $this->effectiveFunctionByCategory();
+        return array_merge(
+            $this->duplicateAndMismatchErrors($rows, $attribute, $this->effectiveFunctionByCategory()),
+            $this->shareTotalErrors($lines, $attribute),
+        );
+    }
 
-        $errors = $this->duplicateAndMismatchErrors($rows, $attribute, $effectiveFunctionByCategory);
+    /**
+     * Spec 0346 D-2: checked only when EVERY row carries a valid share, so a
+     * missing or out-of-range one is reported once, on its row, by rules().
+     *
+     * @param  array<int, mixed>  $lines
+     * @return array<string, string>
+     */
+    private function shareTotalErrors(array $lines, string $attribute): array
+    {
+        $total = 0;
 
-        return array_merge($errors, $this->redundancyErrors($rows, $attribute, $errors));
+        foreach ($lines as $line) {
+            $share = is_array($line) ? filter_var($line['share_percentage'] ?? null, FILTER_VALIDATE_INT, [
+                'options' => ['min_range' => 1, 'max_range' => EmploymentProductLine::SHARE_TOTAL],
+            ]) : false;
+
+            if ($share === false) {
+                return [];
+            }
+
+            $total += $share;
+        }
+
+        return $total === EmploymentProductLine::SHARE_TOTAL ? [] : [$attribute => __(self::SHARE_TOTAL_MESSAGE)];
     }
 
     /**
@@ -127,58 +153,6 @@ final class CompetenceLineSetValidator
         }
 
         return $errors;
-    }
-
-    /**
-     * D-4/D-8: a row is redundant when another row of the SAME function
-     * already covers its category — a (function, null) row, or a row on one
-     * of its ancestors. A row already flagged by the duplicate/mismatch pass
-     * above is skipped (one message per row is enough).
-     *
-     * @param  array<int, array{business_function_id: int, product_category_id: int|null}>  $rows
-     * @param  array<string, string>  $existingErrors
-     * @return array<string, string>
-     */
-    private function redundancyErrors(array $rows, string $attribute, array $existingErrors): array
-    {
-        $errors = [];
-
-        foreach ($rows as $index => $row) {
-            if ($row['product_category_id'] === null) {
-                continue;
-            }
-
-            if (isset($existingErrors["{$attribute}.{$index}.product_category_id"])) {
-                continue;
-            }
-
-            if ($this->coveredByAnotherRow($index, $row, $rows)) {
-                $errors["{$attribute}.{$index}.product_category_id"] = __(self::REDUNDANT_LINE_MESSAGE);
-            }
-        }
-
-        return $errors;
-    }
-
-    /**
-     * @param  array{business_function_id: int, product_category_id: int|null}  $row
-     * @param  array<int, array{business_function_id: int, product_category_id: int|null}>  $rows
-     */
-    private function coveredByAnotherRow(int $ownIndex, array $row, array $rows): bool
-    {
-        $ancestors = $this->ancestorIdSet((int) $row['product_category_id']);
-
-        foreach ($rows as $otherIndex => $other) {
-            if ($otherIndex === $ownIndex || $other['business_function_id'] !== $row['business_function_id']) {
-                continue;
-            }
-
-            if ($other['product_category_id'] === null || isset($ancestors[$other['product_category_id']])) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /**
@@ -221,28 +195,6 @@ final class CompetenceLineSetValidator
             static fn (?array $summary): ?int => $summary === null ? null : (int) $summary['id'],
             $this->hierarchy->effectiveBusinessFunctionSummaries(),
         );
-    }
-
-    /**
-     * $categoryId's ancestor ids (excludes itself), walked off the same
-     * memoized `parentIdMap()` projection every lookup below shares.
-     *
-     * @return array<int, true>
-     */
-    private function ancestorIdSet(int $categoryId): array
-    {
-        $parentIdMap = $this->hierarchy->parentIdMap();
-        $ancestors = [];
-        $currentId = $parentIdMap[$categoryId] ?? null;
-        $depth = 0;
-
-        while ($currentId !== null && $depth < 100) {
-            $ancestors[$currentId] = true;
-            $currentId = $parentIdMap[$currentId] ?? null;
-            $depth++;
-        }
-
-        return $ancestors;
     }
 
     /**

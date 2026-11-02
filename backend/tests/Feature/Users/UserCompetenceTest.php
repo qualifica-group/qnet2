@@ -111,8 +111,8 @@ it('0111 AC-001: submitting product_lines persists exactly those rows and echoes
 
     $response = $this->patchJson("/api/users/{$target->id}", [
         'employment' => ['product_lines' => [
-            ['business_function_id' => $functionA->id, 'product_category_id' => $categoryA->id],
-            ['business_function_id' => $functionB->id, 'product_category_id' => $categoryB->id],
+            ['business_function_id' => $functionA->id, 'product_category_id' => $categoryA->id, 'share_percentage' => 60],
+            ['business_function_id' => $functionB->id, 'product_category_id' => $categoryB->id, 'share_percentage' => 40],
         ]],
     ])->assertOk();
 
@@ -228,7 +228,7 @@ it('0129 D-6: a non-selectable MOTHER category is accepted on a competence row, 
     Sanctum::actingAs($actor);
 
     $payload = ['employment' => ['product_lines' => [
-        ['business_function_id' => $function->id, 'product_category_id' => $container->id],
+        ['business_function_id' => $function->id, 'product_category_id' => $container->id, 'share_percentage' => 100],
     ]]];
 
     $this->patchJson("/api/users/{$newcomer->id}", $payload)->assertOk();
@@ -258,8 +258,8 @@ it('0111 AC-007: two categories under single-mode roots are accepted (no card ca
 
     $this->patchJson("/api/users/{$target->id}", [
         'employment' => ['product_lines' => [
-            ['business_function_id' => $function->id, 'product_category_id' => $rootA->id],
-            ['business_function_id' => $function->id, 'product_category_id' => $rootB->id],
+            ['business_function_id' => $function->id, 'product_category_id' => $rootA->id, 'share_percentage' => 50],
+            ['business_function_id' => $function->id, 'product_category_id' => $rootB->id, 'share_percentage' => 50],
         ]],
     ])->assertOk();
 
@@ -300,7 +300,7 @@ it('0111: a CHANGED competence on a non-editable field is rejected (422) and not
 
     $this->patchJson("/api/users/{$target->id}", [
         'employment' => ['product_lines' => [
-            ['business_function_id' => $function->id, 'product_category_id' => $other->id],
+            ['business_function_id' => $function->id, 'product_category_id' => $other->id, 'share_percentage' => 100],
         ]],
     ])->assertStatus(422)->assertJsonValidationErrors('employment.product_lines');
 
@@ -331,6 +331,7 @@ it('0111 AC-026: re-submitting the SAME rows on a non-editable field is a no-op 
                 'id' => $line->id,
                 'business_function_id' => $line->business_function_id,
                 'product_category_id' => $line->product_category_id,
+                'share_percentage' => $line->share_percentage,
             ])
             ->all()],
     ])->assertOk();

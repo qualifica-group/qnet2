@@ -30,13 +30,13 @@ it('every relation is a BelongsTo to the expected model', function () {
  * would make a resubmit of unchanged rows look "changed" on a readonly
  * field. The HasMany relation sets it anyway.
  */
-it('is mass assignable on the pair only, the owner FK coming from the relation', function () {
+it('is mass assignable on the pair and its share only (spec 0346), the owner FK coming from the relation', function () {
     $profile = EmploymentProfile::factory()->create();
     $businessFunction = BusinessFunction::factory()->create();
     $productCategory = ProductCategory::factory()->create();
 
     expect((new EmploymentProductLine)->getFillable())
-        ->toBe(['business_function_id', 'product_category_id']);
+        ->toBe(['business_function_id', 'product_category_id', 'share_percentage']);
 
     $line = $profile->productLines()->create([
         'employment_profile_id' => $profile->id + 1,

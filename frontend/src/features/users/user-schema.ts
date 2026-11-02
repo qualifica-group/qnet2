@@ -1,6 +1,11 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
 import {
+  COMPETENCE_SHARE_TOTAL,
+  competenceShareTotal,
+  type CompetenceLineRow,
+} from '@/features/product-lines/types'
+import {
   asCustomFieldsField,
   type CustomFieldsSchema,
 } from '@/features/custom-fields/build-custom-fields-schema'
@@ -21,6 +26,29 @@ const MAX_DAILY_MINUTES = 1440
 const MAX_IBAN_HOLDER_LENGTH = 191
 
 const localeSchema = z.enum(['en', 'it'])
+
+/**
+ * Spec 0346 D-2/D-6: with at least one row, every row carries a whole share
+ * in 1..100 and the shares add up to exactly 100. Raised on the COLLECTION,
+ * like the completeness issue, since the editor is one `MetaField`.
+ */
+function competenceShareIssue(t: TFunction, rows: readonly CompetenceLineRow[]): string | null {
+  if (rows.length === 0) {
+    return null
+  }
+  const hasInvalidShare = rows.some(
+    (row) =>
+      row.share_percentage == null ||
+      !Number.isInteger(row.share_percentage) ||
+      row.share_percentage < 1 ||
+      row.share_percentage > COMPETENCE_SHARE_TOTAL,
+  )
+  if (hasInvalidShare) {
+    return t('users.form.employment.productLineShareInvalid')
+  }
+  const total = competenceShareTotal(rows)
+  return total === COMPETENCE_SHARE_TOTAL ? null : t('users.form.employment.productLineShareTotal', { total })
+}
 
 /**
  * Employment sub-schema (spec 0015). Text/date fields mirror the personal-data
@@ -54,6 +82,8 @@ function buildEmploymentSchema(t: TFunction) {
           business_function_id: z.number().nullable(),
           product_category_id: z.number().nullable(),
           all_categories: z.boolean().optional(),
+          // Spec 0346: informative share, 1..100; checked on the collection below.
+          share_percentage: z.number().nullable().optional(),
         }),
       ),
       // Payment account (spec 0272 D-6): format and mod-97 are the server's (422 on `iban`).
@@ -90,6 +120,11 @@ function buildEmploymentSchema(t: TFunction) {
           path: ['product_lines'],
           message: t('users.form.employment.productLineIncomplete'),
         })
+        return
+      }
+      const shareIssue = competenceShareIssue(t, values.product_lines)
+      if (shareIssue !== null) {
+        ctx.addIssue({ code: 'custom', path: ['product_lines'], message: shareIssue })
       }
     })
 }

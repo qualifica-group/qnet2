@@ -23,12 +23,37 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * would make a resubmit of the SAME rows on a readonly field look "changed"
  * and 422 spuriously (spec 0008 AC-013). The HasMany relation sets the FK
  * by itself on create.
+ *
+ * `share_percentage` (spec 0346) is the person's informative share of
+ * commitment on the row, 1..100; a profile's rows add up to 100
+ * (CompetenceLineSetValidator). Fillable, so a changed share on a readonly
+ * field is a change like any other.
  */
-#[Fillable(['business_function_id', 'product_category_id'])]
+#[Fillable(['business_function_id', 'product_category_id', 'share_percentage'])]
 class EmploymentProductLine extends BaseModel
 {
     /** @use HasFactory<EmploymentProductLineFactory> */
     use HasFactory;
+
+    /** The share a profile's rows add up to (spec 0346 D-2). */
+    public const int SHARE_TOTAL = 100;
+
+    /**
+     * Mirrors the column default, so a row created without a share reads the
+     * same in memory as after a refresh.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'share_percentage' => self::SHARE_TOTAL,
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'share_percentage' => 'integer',
+        ];
+    }
 
     public function employmentProfile(): BelongsTo
     {

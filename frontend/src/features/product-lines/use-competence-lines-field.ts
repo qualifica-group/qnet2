@@ -2,7 +2,13 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { fetchForSelect } from '@/features/for-select/api'
 import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
-import { emptyCompetenceLineRow, type CompetenceLineRow, type KnownProductLine } from '@/features/product-lines/types'
+import {
+  COMPETENCE_SHARE_TOTAL,
+  competenceShareTotal,
+  emptyCompetenceLineRow,
+  type CompetenceLineRow,
+  type KnownProductLine,
+} from '@/features/product-lines/types'
 
 type LabelMap = Record<number, string>
 
@@ -60,8 +66,12 @@ export function useCompetenceLinesField({ value, onChange, knownLines }: UseComp
     return label
   }
 
+  const shareTotal = competenceShareTotal(value)
+
+  /** Spec 0346 D-7: the new row opens on whatever share is still missing to 100, blank when none is. */
   const addRow = () => {
-    onChange([...value, emptyCompetenceLineRow()])
+    const remainder = COMPETENCE_SHARE_TOTAL - shareTotal
+    onChange([...value, emptyCompetenceLineRow(remainder > 0 ? remainder : null)])
   }
 
   const removeRow = (index: number) => {
@@ -75,7 +85,7 @@ export function useCompetenceLinesField({ value, onChange, knownLines }: UseComp
     // previous function.
     const next = value.map((row, rowIndex) =>
       rowIndex === index
-        ? { business_function_id: businessFunctionId, product_category_id: null, all_categories: false }
+        ? { ...row, business_function_id: businessFunctionId, product_category_id: null, all_categories: false }
         : row,
     )
     onChange(next)
@@ -103,12 +113,21 @@ export function useCompetenceLinesField({ value, onChange, knownLines }: UseComp
     onChange(next)
   }
 
+  /** Spec 0346: the share as typed in the row's number input; blank (or not a number) reads as no share yet. */
+  const setRowSharePercentage = (index: number, rawValue: string) => {
+    const parsed = rawValue.trim() === '' ? Number.NaN : Number(rawValue)
+    const sharePercentage = Number.isFinite(parsed) ? parsed : null
+    onChange(value.map((row, rowIndex) => (rowIndex === index ? { ...row, share_percentage: sharePercentage } : row)))
+  }
+
   return {
     addRow,
     removeRow,
     setRowBusinessFunction,
     setRowProductCategory,
     setRowAllCategories,
+    setRowSharePercentage,
+    shareTotal,
     businessFunctionLabel,
   }
 }

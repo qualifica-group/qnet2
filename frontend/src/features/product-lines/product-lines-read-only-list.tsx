@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { DetailEmpty } from '@/components/detail/detail-panel'
+import { CompetenceShareValue } from '@/features/product-lines/competence-share-meter'
 import type { ProductLineLike } from '@/features/product-lines/types'
 
 /**
@@ -22,7 +23,8 @@ function categoryHierarchyLabel(line: ProductLineLike): string {
  * - CARD row (has `root_category`): "Root > Category — funzione: Function".
  * - COMPETENCE row (no `root_category`, spec 0132 D-4, unchanged): "Function
  *   — Category", or "Function — all categories" for a null `product_category`
- *   (spec 0129 D-3).
+ *   (spec 0129 D-3), with the row's share as a mini bar and figure at the
+ *   end of the line when the row carries one (spec 0346).
  * Falls back to the kit's empty placeholder when there is no row.
  */
 export function ProductLinesReadOnlyList({ lines }: { lines: ProductLineLike[] }) {
@@ -34,7 +36,7 @@ export function ProductLinesReadOnlyList({ lines }: { lines: ProductLineLike[] }
 
   return (
     <ul className="flex flex-col gap-1">
-      {lines.map((line) =>
+      {lines.map((line, index) =>
         line.root_category !== undefined ? (
           <li key={line.id} className="min-w-0">
             <span className="truncate font-medium" title={categoryHierarchyLabel(line)}>
@@ -46,12 +48,20 @@ export function ProductLinesReadOnlyList({ lines }: { lines: ProductLineLike[] }
             </span>
           </li>
         ) : (
-          <li key={line.id}>
-            <span className="font-medium">{line.business_function.name}</span>
-            <span className="text-muted-foreground">
-              {' '}
-              — {line.product_category?.name ?? t('productLines.allCategoriesReadOnly')}
+          <li key={line.id} className="flex min-w-0 items-center gap-3">
+            <span
+              className="min-w-0 flex-1 truncate"
+              title={`${line.business_function.name} — ${line.product_category?.name ?? t('productLines.allCategoriesReadOnly')}`}
+            >
+              <span className="font-medium">{line.business_function.name}</span>
+              <span className="text-muted-foreground">
+                {' '}
+                — {line.product_category?.name ?? t('productLines.allCategoriesReadOnly')}
+              </span>
             </span>
+            {line.share_percentage !== undefined ? (
+              <CompetenceShareValue share={line.share_percentage} index={index} />
+            ) : null}
           </li>
         ),
       )}

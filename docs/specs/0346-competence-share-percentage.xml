@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0346-competence-share-percentage" status="approved" owner="utente" date="2026-11-02">
+
+  <goal>
+    Ogni riga dell'ambito di assegnazione di una persona (funzione aziendale + categoria prodotto,
+    oppure funzione + "Tutte") porta la percentuale di impegno della persona su quell'ambito
+    (es. 50% Formazione, 20% Consulenza, 30% Finanza agevolata). La percentuale e' informativa:
+    si inserisce nel form utente e si legge nella scheda.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-11-02 (risposte in chat):
+    - D-1: percentuale SOLO informativa "al momento". Non cambia l'abbinamento
+      (App\Services\Assignment\OperatorCompetence / CompetenceProfile) ne' lo smistamento equo
+      (App\Services\LeadOperatorDistributor, LeadAssignmentService, RequestAssignmentService,
+      ImportBulkAssigner).
+    - D-2: se la persona ha almeno una riga, la somma delle percentuali e' ESATTAMENTE 100.
+    - D-3: pregresso: la migrazione ripartisce 100 in parti uguali tra le righe gia' esistenti di
+      ogni profilo, in ordine di id; il resto della divisione va +1 alle prime righe
+      (3 righe = 34/33/33; 1 riga = 100).
+    - D-4: REVOCA spec 0129 D-4/D-8 (riga ridondante). Sono ammesse sulla stessa funzione la riga
+      (F, Tutte) insieme a (F, K) e la riga (F, madre) insieme a (F, figlia): ognuna porta la sua
+      percentuale. Restano vietati i duplicati identici (F, K)+(F, K) e (F, Tutte)+(F, Tutte)
+      (ProductLineSetValidator::DUPLICATE_PAIR_MESSAGE) e la mancata corrispondenza
+      funzione/categoria (spec 0129 D-7). L'abbinamento resta l'unione delle righe: invariato,
+      OperatorCompetence fonde gia' le chiusure per funzione.
+    - D-5: l'interruttore `employment_profiles.covers_all_product_categories` (spec 0129 D-1/D-2)
+      resta com'e': nessuna riga, nessuna percentuale (100% implicito), nessun controllo di somma.
+    Proposte di questa spec (da validare):
+    - D-6: percentuale intera, da 1 a 100 per riga (una riga a 0% non ha senso: si toglie la riga).
+    - D-7: nel form, "Aggiungi riga" precompila la nuova riga con la quota che manca al 100
+      (vuota se il totale e' gia' 100); sotto le righe un totale "Totale N%" sempre visibile,
+      che diventa errore se le righe ci sono e il totale non e' 100.
+
+    Fatti verificati nel repo:
+    - Tabella `employment_product_lines` (migrazioni 2026_09_09_100000 e 2026_09_15_130000):
+      id, employment_profile_id, business_function_id, product_category_id (nullable = "Tutte"),
+      timestamps; unique (employment_profile_id, business_function_id, product_category_id).
+    - Model App\Models\EmploymentProductLine, #[Fillable(['business_function_id', 'product_category_id'])];
+      relazione EmploymentProfile::productLines(). La matrice dei permessi di campo proietta ogni
+      riga sui fillable (EnforcesFieldPermissions::readNestedPath()): la nuova colonna entra nel
+      confronto del campo `employment.product_lines` (stesso permesso, nessun campo nuovo).
+    - Validazione: ValidatesEmployment (rules `employment.product_lines`,
+      validateEmploymentProductLines(), submittedProductLines()) + App\Services\Assignment\
+      CompetenceLineSetValidator (rules(), crossRowErrors(), redundancyErrors(),
+      coveredByAnotherRow(), ancestorIdSet(), REDUNDANT_LINE_MESSAGE).
+    - Scrittura: EmploymentWriter::syncProductLines() -> ProductLines\ProductLineWriter::sync()
+      (una riga di competenza passa invariata: la nuova chiave arriva al DB senza modifiche al writer).
+    - Lettura: EmploymentResource::summarizeProductLines() -> `employment.product_lines[]`
+      { id, business_function, product_category }.
+    - Endpoint: POST /api/users (UserController@store), PUT|PATCH /api/users/{user}
+      (UserController@update), StoreUserRequest / UpdateUserRequest.
+    - Frontend: features/product-lines/{competence-lines-field.tsx, use-competence-lines-field.ts,
+      types.ts (CompetenceLineRow, ProductLineLike), product-lines-read-only-list.tsx};
+      features/users/{types.ts, user-schema.ts, user-form-defaults.ts, user-form-payload.ts,
+      user-form-server-errors.ts, user-employment-fields.tsx, user-assignment-record-section.tsx}.
+    - Seeder che creano righe: DemoEmploymentProfileSeeder, QualificaFunctionCompetenceSeeder
+      (aggiunge una riga (F, Tutte) per funzione); factory EmploymentProductLineFactory.
+    - Import dal legacy: UsersSource non scrive righe di competenza (nessun impatto).
+    - Guida in-app: frontend/src/features/help/content/{it,en}/users.ts, sezione assegnazione.
+  </context>
+
+  <scope>
+    <in>
+      <item>Colonna `employment_product_lines.share_percentage` (unsigned tinyint, NOT NULL, default 100) con backfill D-3; down() elimina la colonna. Il default (D-8, decisione di build) fa valere come ambito intero una riga scritta fuori dal form (fixture, seeder a riga singola): il form e l'API inviano e validano sempre il valore.</item>
+      <item>Validazione per riga (intero 1..100, obbligatorio) e somma = 100 quando le righe sono presenti e non vuote.</item>
+      <item>Rimozione della regola di ridondanza (D-4): codice, messaggio in backend/lang/it.json, test che la fissavano (REQUIREMENT CHANGED dichiarato).</item>
+      <item>`share_percentage` in EmploymentResource per ogni riga.</item>
+      <item>Editor delle righe nel form e nella modifica in scheda: campo percentuale per riga, totale, precompilazione D-7, errori server mappati sulla riga.</item>
+      <item>Lista in sola lettura della scheda: "Funzione — Categoria · 50%".</item>
+      <item>Seeder demo/Qualifica e factory aggiornati perche' producano somme da 100.</item>
+      <item>Guida in-app IT+EN (sezione assegnazione utenti) e manuale Claude Docs (sezione utenti).</item>
+      <item>Nota di revoca D-4/D-8 nella spec 0129.</item>
+    </in>
+    <out>
+      <item>Qualsiasi effetto della percentuale su abbinamento, candidati, smistamento equo, carichi (D-1).</item>
+      <item>Colonna percentuale nella griglia utenti, statistiche o report sulle percentuali.</item>
+      <item>Percentuale sull'interruttore "Ambito su tutte le categorie" (D-5).</item>
+      <item>Percentuali sulle product line di offerte/opportunita'/progetti/campagne (ProductLineSetValidator invariato).</item>
+      <item>Activity log delle righe di competenza (oggi non loggate: invariato).</item>
+      <item>Pulsante "ripartisci in parti uguali" nel form.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/users">
+      <request>
+        employment.product_lines?: Array&lt;{
+          business_function_id: int,
+          product_category_id: int | null,   // null = tutte le categorie della funzione
+          share_percentage: int              // NUOVO, obbligatorio, 1..100
+        }&gt;
+        employment.covers_all_product_categories?: bool   // invariato; true => product_lines vuoto
+        Regola di insieme: se product_lines e' un array non vuoto, somma(share_percentage) == 100.
+      </request>
+      <response status="201">
+        Envelope invariato { success, message, data: User }; data.employment.product_lines[]:
+        { id: int, business_function: { id, name }, product_category: { id, name } | null,
+          share_percentage: int }
+      </response>
+      <errors>
+        422 `employment.product_lines.{i}.share_percentage`: mancante, non intero, &lt; 1 o &gt; 100
+            (messaggi standard Laravel tradotti).
+        422 `employment.product_lines`: "The assignment scope percentages must add up to 100%."
+            (it: "Le percentuali dell'ambito di assegnazione devono fare 100%.") — solo se nessuna
+            riga ha gia' un errore di percentuale.
+        422 `employment.product_lines`: ALL_CATEGORIES_WITH_LINES_MESSAGE invariato (flag + righe).
+        422 `employment.product_lines.{i}.product_category_id`: DUPLICATE_PAIR_MESSAGE invariato.
+        422 su `employment.product_lines` per i permessi di campo invariati (`employment.product_lines` readonly e valori cambiati, come gia' oggi per le coppie).
+      </errors>
+    </endpoint>
+    <endpoint method="PUT|PATCH" path="/api/users/{user}">
+      <request>Identico a POST. `employment.product_lines` assente = righe intatte; [] = righe svuotate (nessun controllo di somma).</request>
+      <response status="200">Come POST.</response>
+      <errors>Come POST.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un profilo con 3 righe preesistenti, quando si esegue la migrazione, allora le righe in ordine di id hanno share_percentage 34/33/33; un profilo con 1 riga ha 100; un profilo senza righe resta senza righe. (Pest, test della migrazione/backfill)</criterion>
+    <criterion id="AC-002">Dato un utente con permesso di modifica, quando invia tre righe 50/20/30, allora risponde 200, le righe sono salvate con quelle percentuali e data.employment.product_lines[].share_percentage le restituisce. (Pest)</criterion>
+    <criterion id="AC-003">Quando invia righe con somma 90 o 110, allora 422 su `employment.product_lines` col messaggio di somma e nessuna riga cambia nel DB. (Pest)</criterion>
+    <criterion id="AC-004">Quando una riga ha share_percentage mancante, 0, 101 o non intero, allora 422 su `employment.product_lines.{i}.share_percentage` e nessun errore di somma aggiuntivo. (Pest)</criterion>
+    <criterion id="AC-005">Quando invia (F, Tutte) 50% + (F, K figlia di F) 20% + (G, Tutte) 30%, oppure (F, madre) + (F, figlia), allora 200 (la ridondanza non e' piu' un errore). (Pest; sostituisce i test di ridondanza di UserCompetenceScopeTest — REQUIREMENT CHANGED)</criterion>
+    <criterion id="AC-006">Quando invia due righe identiche (F, K)+(F, K) o (F, Tutte)+(F, Tutte), allora 422 DUPLICATE_PAIR_MESSAGE come oggi. (Pest, test esistente invariato)</criterion>
+    <criterion id="AC-007">Con covers_all_product_categories true e product_lines [] o assente, allora 200 senza controllo di somma e nessuna riga salvata; product_lines [] senza flag svuota le righe senza errore di somma. (Pest)</criterion>
+    <criterion id="AC-008">Data una persona con righe sovrapposte (F, Tutte)+(F, K), allora il pool di candidati di un record su categoria di F e' identico a quello con la sola (F, Tutte), e le percentuali non cambiano l'ordine di distribuzione dello smistamento equo. (Pest, OperatorCompetence/distribuzione)</criterion>
+    <criterion id="AC-009">Con `employment.product_lines` readonly, quando si rinvia le stesse righe con le stesse percentuali allora 200; quando cambia una percentuale allora 422 su `employment.product_lines`, come per gli altri cambi del campo. (Pest)</criterion>
+    <criterion id="AC-010">Nel form, ogni riga mostra un campo percentuale (accessibile, etichetta "Percentuale riga N"); sotto le righe compare "Totale N%"; con righe presenti e totale diverso da 100 il submit e' bloccato e l'errore e' annunciato (role="alert"). (Vitest competence-lines-field + user-schema)</criterion>
+    <criterion id="AC-011">Con righe a totale 70, "Aggiungi riga" crea una riga precompilata a 30; a totale 100 la nuova riga ha percentuale vuota. (Vitest use-competence-lines-field)</criterion>
+    <criterion id="AC-012">Il payload inviato contiene share_percentage per ogni riga completa; i default del form leggono share_percentage dal server; un errore server su `employment.product_lines.{i}.share_percentage` o sul totale compare sotto l'editor delle righe (stesso canale di raccolta degli altri errori per riga, invariato). (Vitest user-form-payload, user-form-employment-competence)</criterion>
+    <criterion id="AC-013">Nella scheda utente la lista in sola lettura mostra "Funzione — Categoria · 50%" per le righe di competenza; le product line delle schede offerta/progetto/campagna restano invariate. (Vitest product-lines-read-only-list)</criterion>
+    <criterion id="AC-014">Guida in-app IT ed EN aggiornate con la percentuale e la nuova regola sulle righe sovrapposte; help-content-parity.test.ts verde. (Vitest)</criterion>
+    <criterion id="AC-015">DemoDataSeeder e QualificaFunctionCompetenceSeeder producono profili con somma 100 per ogni profilo con righe. (Pest)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Nessun nuovo endpoint, nessun nuovo permesso di campo.
+    - Authz invariata: UserPolicy + matrice permessi di campo su `employment.product_lines`.
+    - La migrazione e' additiva e reversibile; il backfill in SQL/Query Builder dentro la migrazione (nessuna dipendenza da classi applicative). Su dev si esegue solo `php artisan migrate` previa conferma utente; mai fresh/rollback/seed.
+    - Nessun effetto della percentuale in Services/Assignment, LeadOperatorDistributor, servizi di smistamento (D-1).
+    - UI compatta (ui-design.md §2): campo numerico stretto (`w-16`, `text-xs`) con suffisso "%", responsive a 375px (la riga va a capo, nessuna scrollbar orizzontale).
+    - Stringhe via i18next IT+EN; messaggi backend in backend/lang/it.json.
+    - File entro 300/500 righe; test eseguiti (Pest mirati + Vitest + tsc -b --force + Pint/ESLint).
+  </constraints>
+
+</spec>

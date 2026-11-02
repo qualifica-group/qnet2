@@ -10,6 +10,7 @@ use App\Models\ProductCategory;
 use App\Models\User;
 use Database\Seeders\Concerns\ResolvesCategoryBusinessFunction;
 use Database\Seeders\Concerns\SeedsDevelopmentUsers;
+use Database\Seeders\Concerns\SpreadsCompetenceShares;
 use Faker\Factory as FakerFactory;
 use Faker\Generator;
 use Illuminate\Database\Seeder;
@@ -35,7 +36,7 @@ use Illuminate\Support\Collection;
  */
 class DemoEmploymentProfileSeeder extends Seeder
 {
-    use ResolvesCategoryBusinessFunction, SeedsDevelopmentUsers;
+    use ResolvesCategoryBusinessFunction, SeedsDevelopmentUsers, SpreadsCompetenceShares;
 
     private const int MANAGER_COUNT = 2;
 
@@ -198,8 +199,8 @@ class DemoEmploymentProfileSeeder extends Seeder
      * covers everything, so there is nothing to keep in sync with it.
      * $allCategoriesRow (D-3) demoes one (function, null) row, on the FIRST
      * pair's function, with the random rows on that same function excluded
-     * so the two demo states never collide on spec 0129's own redundancy
-     * rule (D-4).
+     * so the demo keeps the two states apart. The rows split 100 evenly
+     * (spec 0346).
      */
     private function assignProductLines(Generator $faker, EmploymentProfile $employment, bool $coversAll = false, bool $allCategoriesRow = false): void
     {
@@ -222,6 +223,8 @@ class DemoEmploymentProfileSeeder extends Seeder
                 'product_category_id' => null,
             ]);
         }
+
+        $this->spreadCompetenceShares($employment);
     }
 
     /**

@@ -229,13 +229,14 @@ class EmploymentResource extends JsonResource
 
     /**
      * The competence rows in the shape shared by every owner of the
-     * collection (spec 0111): `{id, business_function, product_category}`,
+     * collection (spec 0111): `{id, business_function, product_category,
+     * share_percentage}` (the share: spec 0346),
      * each reference `{id, name}` — deliberately NOT the `{id, label}`
      * reference() shape used by this resource's other relations, so the
      * frontend reads a user's rows exactly as it reads an opportunity's.
      *
      * @param  iterable<int, Model>  $lines
-     * @return array<int, array{id: int, business_function: array{id: int, name: string}|null, product_category: array{id: int, name: string}|null}>
+     * @return array<int, array{id: int, business_function: array{id: int, name: string}|null, product_category: array{id: int, name: string}|null, share_percentage: int}>
      */
     private function summarizeProductLines(iterable $lines): array
     {
@@ -244,6 +245,7 @@ class EmploymentResource extends JsonResource
                 'id' => $line->id,
                 'business_function' => $this->summarizeByName($line->businessFunction),
                 'product_category' => $this->summarizeByName($line->productCategory),
+                'share_percentage' => (int) $line->getAttribute('share_percentage'),
             ])
             ->values()
             ->all();

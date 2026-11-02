@@ -166,7 +166,7 @@ it('0129 AC-011: a row with a null category is persisted and read back as produc
 
     $response = $this->patchJson("/api/users/{$target->id}", [
         'employment' => ['product_lines' => [
-            ['business_function_id' => $function->id, 'product_category_id' => null],
+            ['business_function_id' => $function->id, 'product_category_id' => null, 'share_percentage' => 100],
         ]],
     ])->assertOk();
 
@@ -186,7 +186,7 @@ it('0129 AC-012: two (function, null) rows are rejected as a duplicate pair on t
     $target = scopeTargetWith();
     Sanctum::actingAs($actor);
 
-    $row = ['business_function_id' => $function->id, 'product_category_id' => null];
+    $row = ['business_function_id' => $function->id, 'product_category_id' => null, 'share_percentage' => 50];
 
     $this->patchJson("/api/users/{$target->id}", [
         'employment' => ['product_lines' => [$row, $row]],
@@ -197,47 +197,35 @@ it('0129 AC-012: two (function, null) rows are rejected as a duplicate pair on t
     expect(scopeRowsOf($target))->toBe([]);
 });
 
-it('0129 AC-013: (function, null) plus (function, category) is 422 redundancy on the specific row, regardless of order', function () {
+it('0346 AC-005 (REQUIREMENT CHANGED, was 0129 AC-013): (function, null) plus (function, category) is admitted, in any order', function () {
     $actor = scopeActor(['update']);
     $function = BusinessFunction::factory()->create();
     $category = scopeCategoryUnder($function);
     $target = scopeTargetWith();
     Sanctum::actingAs($actor);
 
-    $wildcardRow = ['business_function_id' => $function->id, 'product_category_id' => null];
-    $specificRow = ['business_function_id' => $function->id, 'product_category_id' => $category->id];
+    $wildcardRow = ['business_function_id' => $function->id, 'product_category_id' => null, 'share_percentage' => 70];
+    $specificRow = ['business_function_id' => $function->id, 'product_category_id' => $category->id, 'share_percentage' => 30];
 
     $this->patchJson("/api/users/{$target->id}", [
         'employment' => ['product_lines' => [$wildcardRow, $specificRow]],
-    ])->assertStatus(422)->assertJsonValidationErrors([
-        'employment.product_lines.1.product_category_id' => __(CompetenceLineSetValidator::REDUNDANT_LINE_MESSAGE),
-    ]);
+    ])->assertOk();
 
-    // Order swapped: the error still lands on the SPECIFIC row (now index 0),
-    // never on the general (function, null) one.
     $this->patchJson("/api/users/{$target->id}", [
         'employment' => ['product_lines' => [$specificRow, $wildcardRow]],
-    ])->assertStatus(422)->assertJsonValidationErrors([
-        'employment.product_lines.0.product_category_id' => __(CompetenceLineSetValidator::REDUNDANT_LINE_MESSAGE),
-    ]);
-
-    // A different function's category does not collide.
-    $otherFunction = BusinessFunction::factory()->create();
-    $otherCategory = scopeCategoryUnder($otherFunction);
-
-    $this->patchJson("/api/users/{$target->id}", [
-        'employment' => ['product_lines' => [
-            $wildcardRow,
-            ['business_function_id' => $otherFunction->id, 'product_category_id' => $otherCategory->id],
-        ]],
     ])->assertOk();
+
+    expect(scopeRowsOf($target))->toBe([
+        ['business_function_id' => $function->id, 'product_category_id' => $category->id],
+        ['business_function_id' => $function->id, 'product_category_id' => null],
+    ]);
 });
 
 // ---------------------------------------------------------------------------
-// AC-014..AC-016 — a row on a non-selectable MOTHER (D-6/D-7/D-8).
+// AC-014..AC-016 — a row on a non-selectable MOTHER (D-6/D-7; D-8 revoked by spec 0346).
 // ---------------------------------------------------------------------------
 
-it('0129 AC-014: a row on the MOTHER plus a row on one of its children is 422 redundancy on the CHILD row (D-8)', function () {
+it('0346 AC-005 (REQUIREMENT CHANGED, was 0129 AC-014): a row on the MOTHER plus a row on one of its children is admitted', function () {
     $actor = scopeActor(['update']);
     $function = BusinessFunction::factory()->create();
     $mother = ProductCategory::factory()->create(['business_function_id' => $function->id]);
@@ -247,12 +235,12 @@ it('0129 AC-014: a row on the MOTHER plus a row on one of its children is 422 re
 
     $this->patchJson("/api/users/{$target->id}", [
         'employment' => ['product_lines' => [
-            ['business_function_id' => $function->id, 'product_category_id' => $mother->id],
-            ['business_function_id' => $function->id, 'product_category_id' => $child->id],
+            ['business_function_id' => $function->id, 'product_category_id' => $mother->id, 'share_percentage' => 60],
+            ['business_function_id' => $function->id, 'product_category_id' => $child->id, 'share_percentage' => 40],
         ]],
-    ])->assertStatus(422)->assertJsonValidationErrors([
-        'employment.product_lines.1.product_category_id' => __(CompetenceLineSetValidator::REDUNDANT_LINE_MESSAGE),
-    ]);
+    ])->assertOk();
+
+    expect(scopeRowsOf($target))->toHaveCount(2);
 });
 
 it('0129 AC-015: a non-selectable MOTHER row passes here, but the same category on an opportunity product line stays 422 (non-regression)', function () {
@@ -279,7 +267,7 @@ it('0129 AC-015: a non-selectable MOTHER row passes here, but the same category 
 
     $this->patchJson("/api/users/{$target->id}", [
         'employment' => ['product_lines' => [
-            ['business_function_id' => $function->id, 'product_category_id' => $mother->id],
+            ['business_function_id' => $function->id, 'product_category_id' => $mother->id, 'share_percentage' => 100],
         ]],
     ])->assertOk();
 
@@ -312,7 +300,7 @@ it('0129 AC-016: a NEUTRAL mother (no own function, one child at F) admits F but
 
     $this->patchJson("/api/users/{$target->id}", [
         'employment' => ['product_lines' => [
-            ['business_function_id' => $matchingFunction->id, 'product_category_id' => $mother->id],
+            ['business_function_id' => $matchingFunction->id, 'product_category_id' => $mother->id, 'share_percentage' => 100],
         ]],
     ])->assertOk();
 
@@ -322,7 +310,7 @@ it('0129 AC-016: a NEUTRAL mother (no own function, one child at F) admits F but
 
     $this->patchJson("/api/users/{$target->id}", [
         'employment' => ['product_lines' => [
-            ['business_function_id' => $mismatchingFunction->id, 'product_category_id' => $mother->id],
+            ['business_function_id' => $mismatchingFunction->id, 'product_category_id' => $mother->id, 'share_percentage' => 100],
         ]],
     ])->assertStatus(422)->assertJsonValidationErrors([
         'employment.product_lines.0.business_function_id' => __(ProductLineSetValidator::BUSINESS_FUNCTION_MISMATCH_MESSAGE),

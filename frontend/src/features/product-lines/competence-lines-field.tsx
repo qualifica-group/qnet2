@@ -1,19 +1,31 @@
+import type { ChangeEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Boxes, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import { BUSINESS_FUNCTIONS_FOR_SELECT_RESOURCE } from '@/features/business-functions/for-select-api'
 import { PRODUCT_CATEGORIES_FOR_SELECT_RESOURCE } from '@/features/product-categories/for-select-api'
 import { ProductCategoryTreeSelect } from '@/features/product-lines/product-category-tree-select'
 import { useCompetenceLinesField } from '@/features/product-lines/use-competence-lines-field'
-import type { CompetenceLineRow, KnownProductLine } from '@/features/product-lines/types'
+import { CompetenceShareMeter } from '@/features/product-lines/competence-share-meter'
+import {
+  COMPETENCE_SHARE_TOTAL,
+  competenceShareColor,
+  type CompetenceLineRow,
+  type KnownProductLine,
+} from '@/features/product-lines/types'
 
 export type { CompetenceLineRow }
 
 /** Stable empty default: avoids a fresh array reference (and reference-equality churn) on every render (engineering.md §10). */
 const EMPTY_KNOWN_LINES: KnownProductLine[] = []
+
+/** Compact share field: right-aligned figure, room for the inner "%" and no browser spinner. */
+const SHARE_INPUT_CLASS =
+  'h-8 w-16 pl-2 pr-5 text-right text-xs tabular-nums md:text-xs [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
 
 interface CompetenceLinesFieldProps {
   value: CompetenceLineRow[]
@@ -34,7 +46,8 @@ interface CompetenceLinesFieldProps {
  * several single-mode categories) and each row carries an "all categories of
  * the function" checkbox (spec 0129 D-5). A container category
  * (`is_selectable=false`) is pickable when it matches the row's function
- * (D-6/D-7). All non-render logic lives in `useCompetenceLinesField` — this
+ * (D-6/D-7). Each row also carries the person's informative share, with the
+ * running total under the rows (spec 0346). All non-render logic lives in `useCompetenceLinesField` — this
  * component only renders it.
  */
 export function CompetenceLinesField({
@@ -44,8 +57,16 @@ export function CompetenceLinesField({
   disabled = false,
 }: CompetenceLinesFieldProps) {
   const { t } = useTranslation()
-  const { addRow, removeRow, setRowBusinessFunction, setRowProductCategory, setRowAllCategories, businessFunctionLabel } =
-    useCompetenceLinesField({ value, onChange, knownLines })
+  const {
+    addRow,
+    removeRow,
+    setRowBusinessFunction,
+    setRowProductCategory,
+    setRowAllCategories,
+    setRowSharePercentage,
+    shareTotal,
+    businessFunctionLabel,
+  } = useCompetenceLinesField({ value, onChange, knownLines })
   // One quick-create wiring per resource, shared by every row: the refs it
   // tracks are matched by id, so a function created from row 2 also labels
   // row 5 if picked there (spec 0028).
@@ -141,6 +162,36 @@ export function CompetenceLinesField({
                 {t('productLines.allCategoriesShort')}
               </label>
 
+              {/* Spec 0346: the person's informative share on this row; the dot
+                  ties it to its segment of the bar under the rows. */}
+              <div className="flex shrink-0 items-center gap-1.5">
+                <span
+                  aria-hidden="true"
+                  className="size-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: competenceShareColor(index) }}
+                />
+                <div className="relative">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={COMPETENCE_SHARE_TOTAL}
+                    step={1}
+                    value={row.share_percentage ?? ''}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) => setRowSharePercentage(index, event.target.value)}
+                    disabled={disabled}
+                    aria-label={t('productLines.sharePercentage', { n: index + 1 })}
+                    className={SHARE_INPUT_CLASS}
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-xs text-muted-foreground"
+                  >
+                    %
+                  </span>
+                </div>
+              </div>
+
               <div className="flex shrink-0 gap-1">
                 <Button
                   type="button"
@@ -169,6 +220,10 @@ export function CompetenceLinesField({
         <Plus aria-hidden="true" className="size-3.5" />
         {t('productLines.add')}
       </Button>
+
+      {value.length > 0 ? (
+        <CompetenceShareMeter shares={value.map((row) => row.share_percentage ?? null)} total={shareTotal} />
+      ) : null}
 
       <p className="text-xs text-muted-foreground">{t('productLines.hint')}</p>
     </div>

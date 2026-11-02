@@ -307,4 +307,45 @@ describe('CompetenceLinesField (spec 0111 D-5, spec 0129, spec 0132 AC-021)', ()
     expect(screen.getByRole('button', { name: 'Add product line' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Remove product line' })).toBeDisabled()
   })
+
+  it('spec 0346 AC-011 — "Add" prefills the share still missing to 100, blank once the total is reached', () => {
+    renderHarness()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
+    expect(screen.getByLabelText('Row 1 percentage')).toHaveValue(100)
+    expect(screen.getByText('Total 100%')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Row 1 percentage'), { target: { value: '70' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
+    expect(screen.getByLabelText('Row 2 percentage')).toHaveValue(30)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add product line' }))
+    expect(screen.getByLabelText('Row 3 percentage')).toHaveValue(null)
+    expect(screen.getByText('Total 100%')).toBeInTheDocument()
+  })
+
+  it('spec 0346 — changing a row\'s function keeps its share; a cleared share counts as 0 in the total', async () => {
+    renderHarness({ defaultValue: [{ business_function_id: null, product_category_id: null, share_percentage: 40 }] })
+
+    fireEvent.click(screen.getByRole('button', { name: `select Business function 1 ${TEST_BUSINESS_FUNCTION_A}` }))
+    await waitFor(() => expect(screen.getByLabelText('Row 1 percentage')).toHaveValue(40))
+
+    fireEvent.change(screen.getByLabelText('Row 1 percentage'), { target: { value: '' } })
+    expect(screen.getByLabelText('Row 1 percentage')).toHaveValue(null)
+    expect(screen.getByText('Total 0%')).toBeInTheDocument()
+  })
+
+  it('spec 0346 — the total says what is missing or exceeding 100%, and nothing more once it is 100%', () => {
+    renderHarness({ defaultValue: [{ business_function_id: null, product_category_id: null, share_percentage: 70 }] })
+
+    expect(screen.getByText('Total 70%')).toBeInTheDocument()
+    expect(screen.getByText(/30% missing/)).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Row 1 percentage'), { target: { value: '110' } })
+    expect(screen.getByText(/10% over/)).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Row 1 percentage'), { target: { value: '100' } })
+    expect(screen.getByText('Total 100%')).toBeInTheDocument()
+    expect(screen.queryByText(/missing|over/)).not.toBeInTheDocument()
+  })
 })

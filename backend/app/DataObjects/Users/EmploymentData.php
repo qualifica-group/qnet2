@@ -83,7 +83,7 @@ final readonly class EmploymentData
      * @param  array<int, int>  $businessFunctionIds
      * @param  array<int, int>  $managedBusinessFunctionIds
      * @param  array<int, int>  $remoteOperationalSiteIds
-     * @param  array<int, array{business_function_id: int, product_category_id: int|null}>  $productLines
+     * @param  array<int, array{business_function_id: int, product_category_id: int|null, share_percentage: int}>  $productLines
      * @param  array<string, string|int|null>  $contractData  column => value, only the provided CONTRACT_DATA_COLUMNS
      */
     public function __construct(

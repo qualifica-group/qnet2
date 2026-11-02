@@ -16,11 +16,15 @@ use Illuminate\Support\Str;
  * categories otherwise, and every category of
  * OperatorRoster::UNASSIGNABLE_FUNCTION for a row with neither.
  *
+ * Several category rows split 100 evenly (spec 0346).
+ *
  * NEVER fatal: a category with no effective business function, or a missing
  * business function, is skipped with a warning.
  */
 trait SyncsRosterCompetence
 {
+    use SpreadsCompetenceShares;
+
     /** @var array<string, array{product_category_id: int, business_function_id: int}> */
     private array $competenceByCategoryName = [];
 
@@ -76,6 +80,8 @@ trait SyncsRosterCompetence
 
             $employment->productLines()->create($pair);
         }
+
+        $this->spreadCompetenceShares($employment);
     }
 
     private function createFunctionWideLine(EmploymentProfile $employment, string $email, string $functionName): void

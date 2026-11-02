@@ -1,6 +1,6 @@
 // REQUIREMENT CHANGED (spec 0286 D-1): the UI label "Competence" is now "Assignment scope"; keys, fields and API are unchanged.
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import i18n from '@/i18n'
 import { UserDetailView } from '@/features/users/user-detail'
 import { userWrapper } from '@/features/users/user-test-fixtures'
@@ -139,11 +139,13 @@ describe('UserDetailView — competence pairs (spec 0111 AC-025)', () => {
             id: 91,
             business_function: { id: 4, name: 'Sales' },
             product_category: { id: 21, name: 'Photovoltaic' },
+            share_percentage: 60,
           },
           {
             id: 92,
             business_function: { id: 5, name: 'Marketing' },
             product_category: { id: 200, name: 'Campaigns' },
+            share_percentage: 40,
           },
         ]),
       }),
@@ -156,6 +158,9 @@ describe('UserDetailView — competence pairs (spec 0111 AC-025)', () => {
     expect(pairs[0]).toHaveTextContent('Photovoltaic')
     expect(pairs[1]).toHaveTextContent('Marketing')
     expect(pairs[1]).toHaveTextContent('Campaigns')
+    // Spec 0346 AC-013 (REQUIREMENT CHANGED, user 2026-11-02): each competence row ends with its share figure.
+    expect(within(pairs[0]).getByText('60%')).toBeInTheDocument()
+    expect(within(pairs[1]).getByText('40%')).toBeInTheDocument()
   })
 
   it('falls back to the empty marker for a user with no competence row', async () => {
@@ -169,7 +174,7 @@ describe('UserDetailView — competence pairs (spec 0111 AC-025)', () => {
     renderDetail(
       user({
         employment: employment([
-          { id: 91, business_function: { id: 4, name: 'Sales' }, product_category: null },
+          { id: 91, business_function: { id: 4, name: 'Sales' }, product_category: null, share_percentage: 100 },
         ]),
       }),
     )

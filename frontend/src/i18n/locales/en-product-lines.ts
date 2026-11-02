@@ -38,6 +38,16 @@ export const productLines = {
   allCategories: 'All categories, row {{n}}',
   /** Visible label next to the checkbox. */
   allCategoriesShort: 'All',
+  /** Spec 0346: accessible name, per row, of the share input (CompetenceLinesField). */
+  sharePercentage: 'Row {{n}} percentage',
+  /** Spec 0346: running total of the shares under the rows. */
+  shareTotal: 'Total {{total}}%',
+  /** Spec 0346: share still missing to 100% under the bar. */
+  shareMissing: '{{n}}% missing',
+  /** Spec 0346: share over 100% under the bar. */
+  shareExceeding: '{{n}}% over',
+  /** Spec 0346: a competence row's share in the read-only rendering. */
+  shareReadOnly: '{{n}}%',
   /** Spec 0129 D-3: read-only rendering of a row with a null category. */
   allCategoriesReadOnly: 'All categories',
   /** Spec 0132 D-5: derived-function label in a CARD row's detail rendering. */

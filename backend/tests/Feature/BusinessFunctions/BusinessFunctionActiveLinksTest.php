@@ -74,10 +74,10 @@ it('AC-004: competence rows follow the same rule', function () {
     $saved->update(['is_active' => false]);
     Sanctum::actingAs(userWithUserAbilities(['update']));
 
-    $kept = [['business_function_id' => $saved->id, 'product_category_id' => null]];
+    $kept = [['business_function_id' => $saved->id, 'product_category_id' => null, 'share_percentage' => 100]];
     $this->patchJson("/api/users/{$target->id}", ['employment' => ['product_lines' => $kept]])->assertOk();
 
-    $added = [...$kept, ['business_function_id' => $other->id, 'product_category_id' => null]];
+    $added = [...$kept, ['business_function_id' => $other->id, 'product_category_id' => null, 'share_percentage' => 100]];
     $this->patchJson("/api/users/{$target->id}", ['employment' => ['product_lines' => $added]])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['employment.product_lines.1.business_function_id' => INACTIVE_FUNCTION_MESSAGE]);

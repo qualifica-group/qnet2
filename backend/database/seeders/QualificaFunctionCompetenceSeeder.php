@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\EmploymentProductLine;
 use App\Models\EmploymentProfile;
 use App\Models\User;
+use Database\Seeders\Concerns\SpreadsCompetenceShares;
 use Illuminate\Database\Seeder;
 
 /**
@@ -13,8 +14,8 @@ use Illuminate\Database\Seeder;
  * one (function, null) row, spec 0129 D-3.
  *
  * ADDITIVE: the rows of the other functions are kept. The function's own
- * category rows are replaced, since the function-wide row already covers them
- * and the user form would refuse them as redundant (spec 0129 D-4). A profile
+ * category rows are replaced, since the function-wide row already covers them.
+ * A profile that gained a row has its shares re-split evenly (spec 0346). A profile
  * on "Ambito su tutte le categorie" is left alone: it already covers
  * everything and must keep no row (D-2). A member without a profile gets one.
  *
@@ -24,6 +25,8 @@ use Illuminate\Database\Seeder;
  */
 class QualificaFunctionCompetenceSeeder extends Seeder
 {
+    use SpreadsCompetenceShares;
+
     public function run(): void
     {
         $activeFunctions = static fn ($query) => $query->where('is_active', true);
@@ -42,9 +45,17 @@ class QualificaFunctionCompetenceSeeder extends Seeder
                 continue;
             }
 
+            $addedHere = 0;
+
             foreach ($user->businessFunctions as $function) {
-                $added += (int) $this->addFunctionWideLine($employment, $function->id);
+                $addedHere += (int) $this->addFunctionWideLine($employment, $function->id);
             }
+
+            if ($addedHere > 0) {
+                $this->spreadCompetenceShares($employment);
+            }
+
+            $added += $addedHere;
         }
 
         $this->command?->info(sprintf('%d function-wide assignment scopes added.', $added));

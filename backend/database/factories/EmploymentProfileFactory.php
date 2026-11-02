@@ -6,6 +6,7 @@ use App\Enums\RelationshipTypeEnum;
 use App\Enums\SalaryPeriodEnum;
 use App\Models\BusinessFunction;
 use App\Models\EmploymentContract;
+use App\Models\EmploymentProductLine;
 use App\Models\EmploymentProfile;
 use App\Models\OperationalSite;
 use App\Models\ProductCategory;
@@ -81,15 +82,21 @@ class EmploymentProfileFactory extends Factory
      * (spec 0111): same `afterCreating` timing as the site states above, and
      * freely combinable with them. The function is explicit, not derived
      * from the category, so a caller can build both the matching case and
-     * the mismatching one (AC-011/AC-012).
+     * the mismatching one (AC-011/AC-012). The rows split 100 evenly (spec
+     * 0346), so resubmitting them as read is a valid payload.
      */
     public function competentIn(BusinessFunction $function, ProductCategory ...$categories): static
     {
         return $this->afterCreating(function (EmploymentProfile $profile) use ($function, $categories): void {
-            foreach ($categories as $category) {
+            $count = max(count($categories), 1);
+
+            foreach (array_values($categories) as $index => $category) {
                 $profile->productLines()->firstOrCreate([
                     'business_function_id' => $function->id,
                     'product_category_id' => $category->id,
+                ], [
+                    'share_percentage' => intdiv(EmploymentProductLine::SHARE_TOTAL, $count)
+                        + ($index < EmploymentProductLine::SHARE_TOTAL % $count ? 1 : 0),
                 ]);
             }
         });

@@ -239,6 +239,7 @@ const BASE_EMPLOYMENT: EmploymentDetail = {
       id: 91,
       business_function: { id: SALES_FUNCTION, name: 'Sales' },
       product_category: { id: PHOTOVOLTAIC_CATEGORY, name: 'Photovoltaic' },
+      share_percentage: 100,
     },
   ],
   reports_to: [],
@@ -346,12 +347,30 @@ describe('UserForm — competence rows (spec 0111 AC-023)', () => {
     fireEvent.click(
       screen.getByRole('button', { name: `select Product category 2 ${CAMPAIGNS_CATEGORY}` }),
     )
+    // Spec 0346: the existing row already holds 100%, so the shares are split by hand.
+    fireEvent.change(screen.getByLabelText('Row 1 percentage'), { target: { value: '60' } })
+    fireEvent.change(screen.getByLabelText('Row 2 percentage'), { target: { value: '40' } })
     save()
 
     expect((await submittedEmployment()).product_lines).toEqual([
-      { business_function_id: SALES_FUNCTION, product_category_id: PHOTOVOLTAIC_CATEGORY },
-      { business_function_id: MARKETING_FUNCTION, product_category_id: CAMPAIGNS_CATEGORY },
+      { business_function_id: SALES_FUNCTION, product_category_id: PHOTOVOLTAIC_CATEGORY, share_percentage: 60 },
+      { business_function_id: MARKETING_FUNCTION, product_category_id: CAMPAIGNS_CATEGORY, share_percentage: 40 },
     ])
+  })
+
+  it('spec 0346 AC-010 — refuses the save while the shares do not add up to 100, showing the total', async () => {
+    await renderEditForm()
+
+    fireEvent.change(screen.getByLabelText('Row 1 percentage'), { target: { value: '80' } })
+    expect(screen.getByText('Total 80%')).toBeInTheDocument()
+    save()
+
+    await waitFor(() =>
+      expect(
+        screen.getByText('The assignment scope percentages must add up to 100% (now 80%).'),
+      ).toBeInTheDocument(),
+    )
+    expect(updateUserMock).not.toHaveBeenCalled()
   })
 
   it('removes a row, and the pair leaves the payload with it', async () => {
@@ -402,6 +421,7 @@ describe('UserForm — competence rows (spec 0111 AC-023)', () => {
             id: 92,
             business_function: { id: SALES_FUNCTION, name: 'Sales' },
             product_category: { id: AUDIT_CATEGORY, name: 'Audit' },
+            share_percentage: 100,
           },
         ],
       }),

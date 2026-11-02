@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import i18n from '@/i18n'
 import { ProductLinesReadOnlyList } from '@/features/product-lines/product-lines-read-only-list'
 
@@ -44,6 +44,20 @@ describe('ProductLinesReadOnlyList', () => {
 
     expect(screen.getByRole('listitem')).toHaveTextContent('Sales')
     expect(screen.getByRole('listitem')).toHaveTextContent('All categories')
+  })
+
+  // REQUIREMENT CHANGED (user 2026-11-02, "migliora la grafica della percentuale"): the share
+  // moved from a " · 50%" suffix to a figure with a mini bar at the end of the row.
+  it('spec 0346 AC-013 — renders a competence row\'s share at the end of the row', () => {
+    render(
+      <ProductLinesReadOnlyList
+        lines={[{ id: 91, business_function: { id: 4, name: 'Sales' }, product_category: null, share_percentage: 50 }]}
+      />,
+    )
+
+    const row = screen.getByRole('listitem')
+    expect(row).toHaveTextContent('Sales — All categories')
+    expect(within(row).getByText('50%')).toBeInTheDocument()
   })
 
   it('AC-022 — renders "root > category — function: name" for a CARD row', () => {

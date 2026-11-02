@@ -15,6 +15,43 @@
 - Aperto (fuori scope, segnalato): gli eventi `contract.validated|status_changed|terminated|reactivated` dei contratti
   non hanno etichetta nella timeline (stessa classe di bug; oggi 0 righe su dev).
 
+## Percentuale sull'ambito di assegnazione (spec 0346) — VERDE, NON COMMITTATO (2026-11-02)
+
+- Grafica della percentuale (richiesta utente dopo la build): nuovo `product-lines/competence-share-meter.tsx`
+  (`CompetenceShareMeter`: barra a segmenti colorati per riga + "Totale N%" con icona e "mancano N%" / "N% in piu'";
+  `CompetenceShareValue`: mini barra + cifra a fine riga nella scheda). Colore per riga `competenceShareColor(index)`
+  in `types.ts` (palette `CHART_SERIES_COLORS`), pallino accanto al campo; campo con "%" interno e senza spinner.
+  Chiavi `productLines.shareMissing`/`shareExceeding` IT/EN. Test AC-013 aggiornati (REQUIREMENT CHANGED: niente
+  piu' suffisso " · 50%") in `product-lines-read-only-list.test.tsx` e `user-detail.test.tsx`; nuovo test sul totale.
+  Guida `users` IT/EN e manuale Claude Docs aggiornati. Vitest product-lines+users+help 431/431, ESLint, tsc -b puliti.
+- Ogni riga di `employment_product_lines` ha `share_percentage` (intero 1..100, colonna NOT NULL default 100):
+  solo informativa (D-1), non entra in OperatorCompetence ne' nello smistamento equo. Con righe presenti la somma
+  deve fare esattamente 100 (D-2); il flag `covers_all_product_categories` resta senza righe ne' percentuale (D-5).
+- Contratto: `employment.product_lines[].share_percentage` in input (obbligatorio) e output (`EmploymentResource`)
+  su `POST /users` e `PUT|PATCH /users/{user}`. Errori: per riga `employment.product_lines.{i}.share_percentage`;
+  totale su `employment.product_lines` (`CompetenceLineSetValidator::SHARE_TOTAL_MESSAGE`, solo se ogni riga ha
+  una percentuale valida). `EmploymentProductLine::SHARE_TOTAL`, fillable con `share_percentage`.
+- D-4: REVOCATA la ridondanza della spec 0129 (D-4/D-8): (F, Tutte)+(F, K) e (F, madre)+(F, figlia) ammesse;
+  rimossi `REDUNDANT_LINE_MESSAGE`, `redundancyErrors()`, `coveredByAnotherRow()`, `ancestorIdSet()` e la stringa
+  in `lang/it.json`. Duplicati identici e mismatch di funzione restano 422.
+- Migrazione `2026_11_15_100000_add_share_percentage_to_employment_product_lines_table` (backfill: 100 diviso in
+  parti uguali per profilo in ordine di id, resto +1 alle prime righe): **NON ancora eseguita su dev**.
+- Seeder: trait `Database\Seeders\Concerns\SpreadsCompetenceShares` usato da `SyncsRosterCompetence`,
+  `DemoEmploymentProfileSeeder`, `QualificaFunctionCompetenceSeeder`; factory `competentIn()` divide 100.
+- Frontend: `CompetenceLinesField` campo % per riga ("Percentuale riga N") + "Totale N%"; "Aggiungi riga prodotto"
+  precompila la quota mancante (D-7); schema Zod: `productLineShareInvalid` / `productLineShareTotal` sulla
+  collezione; lista in sola lettura "Funzione — Categoria · 50%". Helper `competenceShareTotal`,
+  `COMPETENCE_SHARE_TOTAL` in `features/product-lines/types.ts`.
+- Test: `UserCompetenceShareTest` (AC-001..009, 015) + test esistenti aggiornati al contratto (REQUIREMENT
+  CHANGED: payload con `share_percentage`, 0129 AC-013/AC-014 ora ammessi). Vitest `competence-lines-field`,
+  `product-lines-read-only-list`, `user-form-employment-competence`, `user-detail`, `user-form-payload`.
+- Manuale: guida in-app `users#assignment-configuration` IT/EN; Claude Docs sezione utenti (tabella campi + nota).
+  Il PDF derivato del manuale va rigenerato.
+- Gate finale (verifier): Vitest completo 9715/9715, tsc -b pulito, ESLint e Pint puliti; Pest completo
+  13322/13338: i 15 rossi sono fuori dalla feature (Migration UsersSource/plan, ManagementControl, PDF LibreOffice,
+  `SettlementApprovalTest` legato alla data, `TableBulkDeleteTest:131`). AC-008: nessun test sull'ordine dello
+  smistamento, l'assenza di effetto e' strutturale (nessun servizio di assegnazione legge `share_percentage`).
+
 ## Migrazione incrementale dal legacy (spec 0345) — VERDE, COMMITTATO (2026-11-02)
 
 - Campo facoltativo "Importa solo i record creati o modificati dal" in import singolo e "Importa tutto", per TUTTE

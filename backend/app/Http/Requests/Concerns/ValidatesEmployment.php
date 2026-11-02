@@ -377,7 +377,7 @@ trait ValidatesEmployment
      * this checks key PRESENCE (`array_key_exists`), not `isset()`, which would
      * silently drop a null value.
      *
-     * @return array<int, array{business_function_id: int, product_category_id: int|null}>
+     * @return array<int, array{business_function_id: int, product_category_id: int|null, share_percentage: int}>
      */
     private function submittedProductLines(): array
     {
@@ -388,6 +388,7 @@ trait ValidatesEmployment
             ->map(fn (array $line): array => [
                 'business_function_id' => (int) $line['business_function_id'],
                 'product_category_id' => $line['product_category_id'] === null ? null : (int) $line['product_category_id'],
+                'share_percentage' => (int) $line['share_percentage'],
             ])
             ->values()
             ->all();

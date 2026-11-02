@@ -38,6 +38,16 @@ export const productLines = {
   allCategories: 'Tutte le categorie, riga {{n}}',
   /** Etichetta visibile accanto alla checkbox. */
   allCategoriesShort: 'Tutte',
+  /** Spec 0346: nome accessibile per riga del campo percentuale (CompetenceLinesField). */
+  sharePercentage: 'Percentuale riga {{n}}',
+  /** Spec 0346: totale delle percentuali sotto le righe. */
+  shareTotal: 'Totale {{total}}%',
+  /** Spec 0346: quota che manca al 100% sotto la barra. */
+  shareMissing: 'mancano {{n}}%',
+  /** Spec 0346: quota oltre il 100% sotto la barra. */
+  shareExceeding: '{{n}}% in più',
+  /** Spec 0346: percentuale di una riga di competenza nella resa in sola lettura. */
+  shareReadOnly: '{{n}}%',
   /** Spec 0129 D-3: resa in sola lettura di una riga con categoria nulla. */
   allCategoriesReadOnly: 'Tutte le categorie',
   /** Spec 0132 D-5: etichetta della funzione derivata nella resa di dettaglio di una riga CARD. */
