@@ -115,6 +115,7 @@ use App\Models\WorkOrderStage;
 use App\Models\WorkOrderWorkflow;
 use App\Models\WorkOrderWorkflowStatus;
 use App\Models\Workspace;
+use App\Services\Assignment\ActorCompetenceReach;
 use App\Services\Graph\GraphMailClient;
 use App\Services\Opportunities\OpportunityDefaultStatusResolver;
 use App\Services\Opportunities\OpportunityStatusResolver;
@@ -183,6 +184,12 @@ class AppServiceProvider extends ServiceProvider
         // second per-quote memo. Scoped, not singleton: a reparented category
         // must not be resolved against a stale tree forever on a worker.
         $this->app->scoped(CategoryBranchResolver::class);
+
+        // Scoped so the `viewCompetence` visibility tier (spec 0340) resolves
+        // an actor's competence reach once per request, not once per table
+        // row; scoped, not singleton, so a changed competence is never
+        // shadowed on a long-running worker.
+        $this->app->scoped(ActorCompetenceReach::class);
 
         // Scoped so an import run resolves each DISTINCT campaign code once
         // (spec 0108): StagedRowBuilder resolves every recognizer through the

@@ -20,6 +20,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
+          text: 'Cosa vedi dipende dai permessi. Senza altri permessi vedi le richieste di cui sei operatore. **Visualizza per sede** aggiunge quelle delle tue sedi; **Visualizza per competenza** quelle con un prodotto in una categoria del tuo ambito di assegnazione, in qualunque sede (con **Ambito su tutte le categorie**, tutte); **Visualizza tutti** tutte. Se crei una richiesta fuori dal tuo ambito, non la vedrai più a meno di avere uno di questi permessi.',
+        },
+        {
+          type: 'paragraph',
           text: 'Per avere sempre a portata le categorie che usi, segnale come preferite: nel menu (**Altre (N)**, oppure la stella a destra delle schede quando entrano tutte) tocca la stella accanto alla categoria. Le preferite compaiono per prime tra le schede e in cima al menu. Attiva **Mostra solo preferite** per vedere tra le schede solo quelle (più la categoria che stai guardando); le altre restano nel menu. Le preferite sono salvate sul tuo utente, anche cambiando computer, e sono separate per Gestione Richieste e Gestione Iscritti.',
         },
         {

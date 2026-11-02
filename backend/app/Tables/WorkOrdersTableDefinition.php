@@ -115,7 +115,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         // `quote.contract` the contract expiry date.
         // The progress subqueries feed `status`/`completion_percentage`/
         // `completion_recorded_on` (spec 0321) without one query per row.
-        $query = $this->statusResolver->withProgress(WorkOrder::query()->with([
+        $query = $this->statusResolver->withProgress(WorkOrderVisibilityScope::withCompetenceVerdict(WorkOrder::query(), Auth::user())->with([
             'quote.opportunity.registry',
             'quote.contract',
             'supervisors.avatar',

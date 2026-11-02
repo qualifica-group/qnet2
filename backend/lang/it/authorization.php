@@ -1,14 +1,14 @@
 <?php
 
 return [
-    'opportunity_out_of_scope' => 'Non puoi accedere a questa opportunità: non ne sei supervisore né gestore account.',
-    'quote_out_of_scope' => 'Non puoi accedere a questa offerta: non è tua né della tua sede operativa.',
-    'contract_out_of_scope' => 'Non puoi accedere a questo contratto: l\'offerta collegata non è tua né della tua sede operativa.',
+    'opportunity_out_of_scope' => 'Non puoi accedere a questa opportunità: non ne sei supervisore né gestore account e non rientra nel tuo ambito di assegnazione.',
+    'quote_out_of_scope' => 'Non puoi accedere a questa offerta: non è tua, non è della tua sede operativa e non rientra nel tuo ambito di assegnazione.',
+    'contract_out_of_scope' => 'Non puoi accedere a questo contratto: l\'offerta collegata non è tua, non è della tua sede operativa e non rientra nel tuo ambito di assegnazione.',
     'task_out_of_scope' => 'Non puoi accedere a questo task: non ne sei creatore, richiedente, assegnatario od osservatore.',
     'task_not_editable' => 'Non puoi eseguire questa azione sul task: non ne sei creatore, richiedente, assegnatario né gestore.',
     'task_not_deletable_state' => 'Non puoi eliminare questo task: è già chiuso o bloccato.',
     'task_mandate_required' => 'Solo il creatore, il richiedente o un gestore del task possono eseguire questa azione.',
-    'work_order_out_of_scope' => 'Non puoi accedere a questa commessa: non ne sei membro né responsabile.',
+    'work_order_out_of_scope' => 'Non puoi accedere a questa commessa: non ne sei membro né responsabile e non rientra nel tuo ambito di assegnazione.',
     'purchase_request_out_of_scope' => 'Non puoi accedere a questa richiesta di acquisto: non ne sei richiedente, responsabile di funzione né autore.',
     'time_entry_not_owner' => 'Non puoi accedere a questo segnatempo: appartiene a un altro utente.',
     'time_entry_task_not_manageable' => 'Non puoi modificare questo segnatempo: non puoi modificare il task a cui è collegato.',

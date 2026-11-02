@@ -65,7 +65,8 @@ final class QuoteRowActions
      * Spec 0105: the third tier is delegated to RequestManagementScope rather
      * than re-spelled here — `operational_site_id` is a real column on the
      * row, so the check costs no query, and the actor's own Sedi are resolved
-     * once per request by the scope's loadMissing.
+     * once per request by the scope's loadMissing. Spec 0340: the competence
+     * tier reads `opportunity.productLines`, eager-loaded by the Offerte grid.
      */
     private function allowsNotes(User $actor, Quote $quote): bool
     {
@@ -75,7 +76,8 @@ final class QuoteRowActions
 
         return $actor->can('request-management.viewAll')
             || $quote->operator_id === $actor->id
-            || RequestManagementScope::isInActorSites($actor, $quote);
+            || RequestManagementScope::isInActorSites($actor, $quote)
+            || RequestManagementScope::isInActorCompetence($actor, $quote);
     }
 
     /**

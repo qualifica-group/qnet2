@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import i18n from '@/i18n'
-import { fieldPermissionLabel } from '@/features/roles/permission-labels'
+import { abilityLabel, fieldPermissionLabel } from '@/features/roles/permission-labels'
 
 /**
  * Spec 0008 AC-010: the role field-permissions matrix must show readable
@@ -41,5 +41,16 @@ describe('fieldPermissionLabel — personal_data.* keys (spec 0008)', () => {
     expect(fieldPermissionLabel('users', 'personal_data.first_name', i18n)).toBe(
       i18n.t('personalData.form.firstName'),
     )
+  })
+})
+
+describe('abilityLabel — viewCompetence (spec 0340 AC-018)', () => {
+  it.each([
+    ['it', 'Visualizza per competenza'],
+    ['en', 'View by competence'],
+  ])('labels quotes.viewCompetence in %s', async (lang, expected) => {
+    await i18n.changeLanguage(lang)
+
+    expect(abilityLabel('quotes.viewCompetence', i18n)).toBe(expected)
   })
 })

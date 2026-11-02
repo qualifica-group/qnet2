@@ -35,7 +35,7 @@ class OpportunityPolicy extends BasePolicy
 
     /**
      * Spec 0316, D-8: record-level abilities need the resource permission AND
-     * the record to be visible to the actor (viewAll, supervisor or manager).
+     * the record to be visible to the actor (viewAll, supervisor, manager or, spec 0340, competence).
      */
     public function view(User $user, Model $model): bool|Response
     {
@@ -49,6 +49,16 @@ class OpportunityPolicy extends BasePolicy
     public function viewAll(User $user): bool
     {
         return $user->can($this->permission('viewAll'));
+    }
+
+    /**
+     * Resource-level gate for the competence visibility level (spec 0340): the
+     * actor also sees the opportunities in their assignment competence. A ROW
+     * gate, it grants no action (D-5).
+     */
+    public function viewCompetence(User $user): bool
+    {
+        return $user->can($this->permission('viewCompetence'));
     }
 
     public function update(User $user, Model $model): bool|Response
@@ -71,6 +81,6 @@ class OpportunityPolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll', 'viewDocuments'];
+        return [...parent::abilities(), 'viewAll', 'viewCompetence', 'viewDocuments'];
     }
 }

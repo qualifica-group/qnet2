@@ -29,7 +29,7 @@ const guide: HelpGuide = {
             ['Permessi', 'Ha permessi propri, separati da quelli di Gestione Richieste.'],
             [
               'Chi vede cosa',
-              'Senza altri permessi vedi solo le richieste di cui sei operatore. **Visualizza sede fisica** aggiunge quelle della tua sede fisica (non delle sedi remote); **Visualizza per sede** quelle di tutte le tue sedi; **Visualizza tutti** tutte.',
+              'Senza altri permessi vedi solo le richieste di cui sei operatore. **Visualizza sede fisica** aggiunge quelle della tua sede fisica (non delle sedi remote); **Visualizza per sede** quelle di tutte le tue sedi; **Visualizza per competenza** quelle con un prodotto in una categoria del tuo ambito di assegnazione, in qualunque sede (con **Ambito su tutte le categorie**, tutte); **Visualizza tutti** tutte. Resta comunque il filtro sugli stati del modulo.',
             ],
             [
               'Notifiche di trasferimento',

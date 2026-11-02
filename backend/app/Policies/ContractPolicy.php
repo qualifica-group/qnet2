@@ -45,7 +45,7 @@ class ContractPolicy extends BasePolicy
     {
         return [
             'viewAny', 'view', 'update', 'export', 'viewActivity', 'validate', 'terminate', 'program', 'changeStatus', 'reactivate',
-            QuoteVisibilityScope::VIEW_SITE_ABILITY, QuoteVisibilityScope::VIEW_ALL_ABILITY,
+            QuoteVisibilityScope::VIEW_SITE_ABILITY, QuoteVisibilityScope::VIEW_ALL_ABILITY, QuoteVisibilityScope::VIEW_COMPETENCE_ABILITY,
         ];
     }
 
@@ -69,6 +69,12 @@ class ContractPolicy extends BasePolicy
     public function viewSite(User $user): bool
     {
         return $user->can($this->permission(QuoteVisibilityScope::VIEW_SITE_ABILITY));
+    }
+
+    /** Resource-level (spec 0340): adds the contracts whose quote falls in the actor's competence. */
+    public function viewCompetence(User $user): bool
+    {
+        return $user->can($this->permission(QuoteVisibilityScope::VIEW_COMPETENCE_ABILITY));
     }
 
     public function validate(User $user, Contract $contract): Response

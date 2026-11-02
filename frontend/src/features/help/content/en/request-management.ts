@@ -20,6 +20,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
+          text: 'What you see depends on your permissions. With no other permission you see the requests you operate. **View by site** adds those of your sites; **View by competence** those with a product in a category of your assignment scope, in any site (with **Scope on all categories**, every one); **View all** every one. If you create a request outside your scope, you will no longer see it unless you have one of these permissions.',
+        },
+        {
+          type: 'paragraph',
           text: 'To keep the categories you use at hand, mark them as favorites: in the menu (**More (N)**, or the star to the right of the tabs when they all fit) tap the star next to the category. Favorites come first among the tabs and at the top of the menu. Turn on **Show favorites only** to keep only them among the tabs (plus the category you are viewing); the others stay in the menu. Favorites are saved on your user, even on another computer, and are separate for Request Management and Enrollee Management.',
         },
         {

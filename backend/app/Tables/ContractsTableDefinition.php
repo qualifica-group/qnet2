@@ -11,12 +11,14 @@ use App\Models\User;
 use App\Services\Contracts\ContractActionAvailability;
 use App\Services\Contracts\ContractAlertResolver;
 use App\Services\Contracts\ContractVisibilityScope;
+use App\Services\Quotes\QuoteVisibilityScope;
 use App\Tables\Contracts\ContractAdvancedFilterCatalog;
 use App\Tables\Contracts\ContractColumnCatalog;
 use App\Tables\Contracts\ContractRelationColumns;
 use App\Tables\Shared\OfferLinesColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -89,6 +91,9 @@ class ContractsTableDefinition extends AbstractTableDefinition
         // own `contractStatus` (contract_status_id is a real FK on
         // `contracts` itself).
         $query = Contract::query()->with([
+            // Spec 0340: the quote carries the competence verdict, so the
+            // Gate's per-row isVisibleTo() stays query-free.
+            'quote' => fn (Relation $quote) => QuoteVisibilityScope::withCompetenceVerdict($quote->getQuery(), Auth::user(), ContractVisibilityScope::RESOURCE),
             'quote.opportunity.registry',
             'quote.commercial',
             'quote.reporter',

@@ -160,9 +160,9 @@ const guide: HelpGuide = {
       title: "Quali opportunità vedi",
       blocks: [
         { type: 'paragraph', text: "Cosa vedi dipende dal tuo ruolo. Serve sempre il permesso **Visualizza**; poi:" },
-        { type: 'list', items: ["Con **Visualizza** vedi solo le opportunità in cui sei **Supervisore** o tra i **Gestori account**.", "Con **Visualizza tutti** le vedi tutte."] },
+        { type: 'list', items: ["Con **Visualizza** vedi solo le opportunità in cui sei **Supervisore** o tra i **Gestori account**.", "Con **Visualizza per competenza** vedi anche quelle con almeno un prodotto in una categoria del tuo ambito di assegnazione, in qualunque sede. Con **Ambito su tutte le categorie** le vedi tutte.", "Con **Visualizza tutti** le vedi tutte."] },
         { type: 'paragraph', text: "Il filtro vale per elenco, scheda, filtri, esportazioni, statistiche e dashboard, selettori e documenti. Aprire il link di un'opportunità che non puoi vedere mostra un errore di accesso. Vedere un'opportunità non permette di modificarla o eliminarla: servono i permessi **Modifica** ed **Elimina**, e si modifica solo ciò che si vede." },
-        { type: 'note', text: "Se crei un'opportunità senza far parte del suo team, non la vedrai più a meno di avere **Visualizza tutti**. Nel riquadro **Offerte** di un'opportunità compaiono solo le offerte che puoi vedere." },
+        { type: 'note', text: "Se crei un'opportunità senza far parte del suo team, non la vedrai più a meno di avere **Visualizza tutti** o **Visualizza per competenza** (con la categoria giusta nel tuo ambito). Nel riquadro **Offerte** di un'opportunità compaiono solo le offerte che puoi vedere." },
       ],
     },
   ],

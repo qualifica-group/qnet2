@@ -113,7 +113,11 @@ class QuotesTableDefinition extends AbstractTableDefinition
         // gate now reads the OFFERTA's own `operator_id` column directly (no
         // relation to eager-load for it any more — was `opportunity.managers`
         // before this migration).
-        return QuoteVisibilityScope::scopeToActor(Quote::query(), Auth::user())->with([
+        // Spec 0340: the competence verdict is projected per row, so the Gate's
+        // isVisibleTo() never queries for a row visible by competence only.
+        $query = QuoteVisibilityScope::withCompetenceVerdict(Quote::query(), Auth::user());
+
+        return QuoteVisibilityScope::scopeToActor($query, Auth::user())->with([
             'opportunity', 'quoteWorkflowStatus', 'commercial', 'reporter', 'supervisor.avatar',
             // "Gestori Account" (spec 0087, D-1/T-10): the Offerta's own team,
             // rendered as an avatar stack by the `managers` column.

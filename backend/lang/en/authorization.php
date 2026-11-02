@@ -1,14 +1,14 @@
 <?php
 
 return [
-    'opportunity_out_of_scope' => 'You cannot access this opportunity: you are neither its supervisor nor one of its account managers.',
-    'quote_out_of_scope' => 'You cannot access this quote: it is neither yours nor from your operational site.',
-    'contract_out_of_scope' => 'You cannot access this contract: its quote is neither yours nor from your operational site.',
+    'opportunity_out_of_scope' => 'You cannot access this opportunity: you are neither its supervisor nor one of its account managers, and it is outside your assignment scope.',
+    'quote_out_of_scope' => 'You cannot access this quote: it is not yours, not from your operational site and outside your assignment scope.',
+    'contract_out_of_scope' => 'You cannot access this contract: its quote is not yours, not from your operational site and outside your assignment scope.',
     'task_out_of_scope' => 'You cannot access this task: you are not its creator, requester, assignee or watcher.',
     'task_not_editable' => 'You cannot perform this action on the task: you are not its creator, requester, assignee or manager.',
     'task_not_deletable_state' => 'You cannot delete this task: it is already closed or blocked.',
     'task_mandate_required' => 'Only the creator, the requester or a manager of the task can perform this action.',
-    'work_order_out_of_scope' => 'You cannot access this work order: you are neither a member nor a manager of it.',
+    'work_order_out_of_scope' => 'You cannot access this work order: you are neither a member nor a manager of it, and it is outside your assignment scope.',
     'purchase_request_out_of_scope' => 'You cannot access this purchase request: you are not its requester, function manager or author.',
     'time_entry_not_owner' => 'You cannot access this time entry: it belongs to another user.',
     'time_entry_task_not_manageable' => 'You cannot change this time entry: you cannot change the task it is linked to.',

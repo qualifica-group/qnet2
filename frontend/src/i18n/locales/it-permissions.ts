@@ -36,6 +36,8 @@ export const permissions = {
     // Spec 0165: solo Gestione Iscritti — gli iscritti della propria sede
     // fisica (non delle sedi remote), oltre a quelli di cui si è operatore.
     viewPrimarySite: 'Visualizza sede fisica',
+    // Spec 0340: i record che rientrano nell'ambito di assegnazione, in qualunque sede.
+    viewCompetence: 'Visualizza per competenza',
     viewDocuments: 'Visualizza documenti',
     // Oltre il CRUD di BasePolicy: l'atto da supervisore di assegnare
     // l'Operatore (GA2) in creazione (direttiva utente 2026-07-29).

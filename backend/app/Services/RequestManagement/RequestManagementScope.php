@@ -7,6 +7,9 @@ namespace App\Services\RequestManagement;
 use App\Models\Quote;
 use App\Models\User;
 use App\RequestManagement\RequestModule;
+use App\Services\Assignment\ActorCompetenceReach;
+use App\Services\Assignment\CompetenceReach;
+use App\Services\Opportunities\OpportunityVisibilityScope;
 use Illuminate\Database\Eloquent\Builder;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -51,6 +54,12 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  * (D-3). `quotes.supervisor_id` is no longer read here or anywhere else for
  * authorization (INV-5): `isSupervisorOf` -> `isOperatorOf`.
  *
+ * Spec 0340 adds tier 4, `{module}.viewCompetence`: the offer's opportunity
+ * carries a product line in a category of the actor's assignment competence
+ * (every offer when the competence covers all categories), on every Sede (D-1).
+ * UNION with tiers 2, 3 and 3b, a ROW gate that grants no action (D-5); an
+ * actor with no competence gets exactly what they got without the ability.
+ *
  * Spec 0130: parameterized by `RequestModule` so "Gestione Iscritti" reuses
  * every shape UNCHANGED rather than forking them — the permission prefix
  * (`$module->permission(...)`) AND the row-state filter
@@ -87,7 +96,11 @@ final class RequestManagementScope
             return;
         }
 
-        abort(403, __('You cannot see this request: you are neither its operator nor a member of its site.'));
+        if (self::isInActorCompetence($user, $quote, $module)) {
+            return;
+        }
+
+        abort(403, __('You cannot see this request: you are neither its operator nor a member of its site, and it is outside your assignment scope.'));
     }
 
     /**
@@ -118,6 +131,37 @@ final class RequestManagementScope
         }
 
         return in_array($quote->operational_site_id, self::visibleSiteIds($user, $module), true);
+    }
+
+    /**
+     * The tier-4 predicate (spec 0340, D-2/D-3/D-7): $quote's opportunity has a
+     * product line in the actor's competence reach, or the reach covers all
+     * categories. Reads the loaded `opportunity.productLines` (the grid
+     * eager-loads them, so no query per row, AC-016) and loads them once
+     * otherwise. MT-7 callers (note affordances) reuse this verdict.
+     */
+    public static function isInActorCompetence(User $user, Quote $quote, RequestModule $module = RequestModule::Requests): bool
+    {
+        $reach = self::competenceReachOf($user, $module);
+
+        if ($reach->isEmpty() || $reach->all) {
+            return $reach->all;
+        }
+
+        $lines = $quote->loadMissing('opportunity.productLines')->opportunity?->productLines;
+
+        return $lines !== null && $reach->reaches($lines->pluck('product_category_id')->all());
+    }
+
+    /**
+     * The actor's competence reach when they hold the module's
+     * `viewCompetence`, none otherwise (spec 0340).
+     */
+    private static function competenceReachOf(User $user, RequestModule $module): CompetenceReach
+    {
+        return $user->can($module->permission('viewCompetence'))
+            ? ActorCompetenceReach::for($user)
+            : CompetenceReach::none();
     }
 
     /**
@@ -228,14 +272,28 @@ final class RequestManagementScope
         }
 
         $siteIds = self::visibleSiteIds($user, $module);
+        $reach = self::competenceReachOf($user, $module);
 
-        if ($siteIds === []) {
+        // Tier 4 with the all-categories flag opens every offer (D-3); the
+        // status filter above has already narrowed the module's rows (AC-010).
+        if ($reach->all) {
+            return $query;
+        }
+
+        if ($siteIds === [] && $reach->isEmpty()) {
             return $query->where('quotes.operator_id', $user->id);
         }
 
-        return $query->where(function (Builder $scoped) use ($user, $siteIds): void {
-            $scoped->where('quotes.operator_id', $user->id)
-                ->orWhereIn('quotes.operational_site_id', $siteIds);
+        return $query->where(function (Builder $scoped) use ($user, $siteIds, $reach): void {
+            $scoped->where('quotes.operator_id', $user->id);
+
+            if ($siteIds !== []) {
+                $scoped->orWhereIn('quotes.operational_site_id', $siteIds);
+            }
+
+            if (! $reach->isEmpty()) {
+                $scoped->orWhereIn('quotes.opportunity_id', OpportunityVisibilityScope::competenceOpportunityIds($reach));
+            }
         });
     }
 
@@ -267,7 +325,7 @@ final class RequestManagementScope
      * which never equals a real actor's fingerprint.
      *
      * It MUST change together with scopeToActor(): both encode the same
-     * tiers (viewAll / operator / visibleSiteIds()) and a drift would let a
+     * tiers (viewAll / operator / visibleSiteIds() / competence reach) and a drift would let a
      * cached aggregate leak rows across scopes.
      */
     public static function scopeFingerprint(?User $user, RequestModule $module): string
@@ -285,7 +343,15 @@ final class RequestManagementScope
 
         // Hashed: the fingerprint ends up in a cache key capped at 255 chars,
         // and an actor may belong to any number of Sedi.
-        return "{$module->value}:op:{$user->id}:sites:".($siteIds === [] ? '' : sha1(implode(',', $siteIds)));
+        $fingerprint = "{$module->value}:op:{$user->id}:sites:".($siteIds === [] ? '' : sha1(implode(',', $siteIds)));
+
+        // Spec 0340: appended only for a viewCompetence holder, so every other
+        // actor keeps the exact fingerprint (and cache entries) they had.
+        if ($user->can($module->permission('viewCompetence'))) {
+            $fingerprint .= ':comp:'.ActorCompetenceReach::for($user)->fingerprint();
+        }
+
+        return $fingerprint;
     }
 
     /**

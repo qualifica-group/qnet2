@@ -235,9 +235,9 @@ const guide: HelpGuide = {
       title: "Which quotes you see",
       blocks: [
         { type: 'paragraph', text: "What you see depends on your role. You always need the **View** permission; the levels are cumulative:" },
-        { type: 'table', headers: ["Permission", "Visible quotes"], rows: [["**View**", "Those where you are the **Supervisor** or an **Account manager**."], ["**View by site**", "Your own plus those of your **Operating site** (physical or remote). A quote with no operating site only counts for its team."], ["**View all**", "All of them."]] },
+        { type: 'table', headers: ["Permission", "Visible quotes"], rows: [["**View**", "Those where you are the **Supervisor** or an **Account manager**."], ["**View by site**", "Your own plus those of your **Operating site** (physical or remote). A quote with no operating site only counts for its team."], ["**View by competence**", "Your own plus those with at least one revenue product in a category of your assignment scope, in any site. With **Scope on all categories**, all of them."], ["**View all**", "All of them."]] },
         { type: 'paragraph', text: "The filter applies to the list, the detail, filters, exports, statistics and dashboard, selectors and documents. Opening a link to a quote you cannot see shows an access error. Seeing a quote does not let you edit or delete it: that takes the **Edit** and **Delete** permissions, and you can only edit what you can see." },
-        { type: 'note', text: "If you create a quote without being in its team, you will no longer see it unless you have **View all** or **View by site** (with the right operating site)." },
+        { type: 'note', text: "If you create a quote without being in its team, you will no longer see it unless you have **View all**, **View by site** (with the right operating site) or **View by competence** (with the right category in your scope)." },
       ],
     },
   ],

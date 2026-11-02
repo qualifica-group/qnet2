@@ -49,12 +49,18 @@ class QuotePolicy extends BasePolicy
         return $user->can($this->permission(QuoteVisibilityScope::VIEW_SITE_ABILITY));
     }
 
+    /** Resource-level (spec 0340): adds the quotes whose revenue categories fall in the actor's competence. */
+    public function viewCompetence(User $user): bool
+    {
+        return $user->can($this->permission(QuoteVisibilityScope::VIEW_COMPETENCE_ABILITY));
+    }
+
     /**
      * @return array<int, string>
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), QuoteVisibilityScope::VIEW_SITE_ABILITY, QuoteVisibilityScope::VIEW_ALL_ABILITY];
+        return [...parent::abilities(), QuoteVisibilityScope::VIEW_SITE_ABILITY, QuoteVisibilityScope::VIEW_ALL_ABILITY, QuoteVisibilityScope::VIEW_COMPETENCE_ABILITY];
     }
 
     private function isInScope(User $user, Model $model): bool

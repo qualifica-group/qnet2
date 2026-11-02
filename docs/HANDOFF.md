@@ -3,6 +3,35 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Visibilita' "per competenza" su 6 moduli (spec 0340 rev.1) — VERDE, COMMITTATO (2026-11-02)
+
+- Nuova ability `viewCompetence` ("Visualizza per competenza") su `opportunities`, `quotes`, `contracts`, `work-orders`,
+  `request-management`, `enrollee-management`: UNION con propri/sede, gate di RIGA (D-5), senza sede (D-1),
+  `is_assignable` ignorato (D-6), flag `covers_all_product_categories` = tutto il modulo anche senza categorie (D-3).
+  Nessun ruolo la riceve di default; `permissions:sync` gia' eseguito sul DB di dev (6 create).
+- Base: `App\Services\Assignment\CompetenceReach` (all/categoryIds, `reaches()`, `fingerprint()`),
+  `OperatorCompetence::reachOf(User)` e `::reachingUserIds(array)` (+ `profilesQuery()` condivisa con `configuredProfiles()`),
+  `ActorCompetenceReach::for(User)` (binding `scoped`). Helper test `tests/Helpers/CompetenceVisibilityHelpers.php`.
+- Categorie del record (D-2): Offerte/Contratti/Commesse = righe di RICAVO (`RevenueCategoryQuoteIds`,
+  `WorkOrderSourceQuotes::withRevenueCategory`); Opportunita'/Richieste/Iscritti = `opportunity_product_lines`
+  (`OpportunityVisibilityScope::competenceOpportunityIds()`, riusato da `RequestManagementScope`).
+- Verdetto per riga senza query: `QuoteVisibilityScope`/`WorkOrderVisibilityScope::withCompetenceVerdict()` (attributo
+  `competence_scoped`); Opportunita' da `productLines` caricate; `RequestManagementScope::isInActorCompetence()`.
+  `scopeFingerprint()` aggiunge `:comp:` solo con l'ability.
+- Note: `OpportunitiesTableDefinition` usa ora un solo EXISTS `request_scoped_quote_exists` (= `RequestManagementScope::scopeToActor`
+  sulle offerte; sostituisce `site_scoped_quote_exists`); `QuoteRowActions::allowsNotes()` + competenza;
+  `RequestManagementNotable::mentionableUsersQuery()` include il livello competenza (lacuna trovata in build, rev.1).
+- Messaggi di diniego IT/EN aggiornati (`lang/*/authorization.php`, `lang/it.json` per Gestione richieste).
+- FE: `abilities.viewCompetence` IT/EN; guide in-app IT+EN roles/opportunities/quotes/contracts/work-orders/
+  request-management/enrollee-management. Manuale Claude Docs aggiornato (tabelle permessi + note); PDF derivato da rigenerare.
+- Test esistenti cambiati (REQUIREMENT CHANGED): `WorkOrderSecurityTest` (18->19), `PermissionCatalogueEndpointTest`
+  (ordine ability contratti), `EnrolleeManagementPermissionsSyncTest` (15->16).
+- Verifica (verifier): Pest completo 13230, 13212 verdi; 17 rossi identici su HEAD pulito (LibreOffice assente in
+  `QuoteDocumentPdfTest`, `WorkOrderCategoryTabsTest` AC-024 ordine per nome, Migration/*, ManagementControl/*,
+  `TableBulkDeleteTest`, `SettlementApprovalTest` legato alla data). Vitest 9696 verdi (12 unhandled error in
+  vat-rates/auth, fuori feature), `tsc -b --force` e ESLint puliti, Pint pulito. `composer test` richiede `COMPOSER_PROCESS_TIMEOUT=0`.
+- Da sapere: `ContractsTableDefinition.php` e' a 497 righe (split alla prossima modifica). PDF del manuale da rigenerare.
+
 ## Tab categorie sulle Commesse (spec 0335 rev.3) — VERDE, NON COMMITTATO (2026-11-01)
 
 - Richiesta utente: barra delle categorie prodotto anche sulla griglia Commesse, "come in altri moduli" (D-9).
