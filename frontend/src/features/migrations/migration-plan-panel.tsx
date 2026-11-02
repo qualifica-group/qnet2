@@ -32,6 +32,11 @@ function reorderBy(items: PlanRow[], orderedIds: string[]): PlanRow[] {
     .filter((item): item is PlanRow => item !== undefined)
 }
 
+/** Includes or excludes every source at once; an unavailable source stays untouched. */
+function setAllEnabled(items: PlanRow[], enabled: boolean): PlanRow[] {
+  return items.map((item) => (item.available ? { ...item, enabled } : item))
+}
+
 /**
  * Configure the mass-import plan (spec 0046): a drag & drop list of every
  * migration source with an "include" checkbox, saved once to the backend
@@ -63,6 +68,10 @@ export function MigrationPlanPanel({ open, onOpenChange }: MigrationPlanPanelPro
     )
   }
 
+  const availableRows = rows.filter((row) => row.available)
+  const allEnabled = availableRows.every((row) => row.enabled)
+  const noneEnabled = availableRows.every((row) => !row.enabled)
+
   const handleSave = () => {
     save(rows.map(({ source, enabled }) => ({ source, enabled })))
   }
@@ -87,25 +96,47 @@ export function MigrationPlanPanel({ open, onOpenChange }: MigrationPlanPanelPro
               {t('plan.loadError')}
             </p>
           ) : (
-            <SortableList
-              items={rows}
-              dragHandleLabel={t('plan.dragHandle')}
-              onReorder={(orderedIds) => setRows((current) => reorderBy(current, orderedIds))}
-              renderItem={(row) => (
-                <label className="flex min-w-0 items-center gap-2">
-                  <Checkbox
-                    checked={row.enabled}
-                    disabled={!row.available}
-                    onCheckedChange={() => toggleEnabled(row.source)}
-                    aria-label={t('plan.enabledLabel', { source: label(row.source, row.label) })}
-                  />
-                  <span className="truncate">{label(row.source, row.label)}</span>
-                  {row.available ? null : (
-                    <span className="shrink-0 text-xs text-muted-foreground">{t('plan.unavailable')}</span>
-                  )}
-                </label>
-              )}
-            />
+            <>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="xs"
+                  onClick={() => setRows((current) => setAllEnabled(current, true))}
+                  disabled={allEnabled}
+                >
+                  {t('plan.selectAll')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="xs"
+                  onClick={() => setRows((current) => setAllEnabled(current, false))}
+                  disabled={noneEnabled}
+                >
+                  {t('plan.deselectAll')}
+                </Button>
+              </div>
+              <SortableList
+                items={rows}
+                dragHandleLabel={t('plan.dragHandle')}
+                onReorder={(orderedIds) => setRows((current) => reorderBy(current, orderedIds))}
+                renderItem={(row) => (
+                  <label className="flex min-w-0 items-center gap-2">
+                    <Checkbox
+                      checked={row.enabled}
+                      disabled={!row.available}
+                      onCheckedChange={() => toggleEnabled(row.source)}
+                      aria-label={t('plan.enabledLabel', { source: label(row.source, row.label) })}
+                    />
+                    <span className="truncate">{label(row.source, row.label)}</span>
+                    {row.available ? null : (
+                      <span className="shrink-0 text-xs text-muted-foreground">{t('plan.unavailable')}</span>
+                    )}
+                  </label>
+                )}
+              />
+            </>
           )}
         </div>
 

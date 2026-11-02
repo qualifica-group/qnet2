@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
@@ -10,6 +11,7 @@ import {
 // Side effect: registers the `migrations` i18next namespace before this
 // dialog's own `t()` calls run.
 import '@/features/migrations/i18n'
+import { MigrationUpdatedSinceField } from '@/features/migrations/migration-updated-since-field'
 import { MassImportProgress } from '@/features/migrations/mass-import-progress'
 import { useMassMigration } from '@/features/migrations/use-mass-migration'
 import { useMigrationPlan } from '@/features/migrations/use-migration-plan'
@@ -32,6 +34,7 @@ export function MassImportDialog({ open, onOpenChange }: MassImportDialogProps) 
   const { t } = useTranslation('migrations')
   const massState = useMassMigration()
   const { plan } = useMigrationPlan()
+  const [updatedSince, setUpdatedSince] = useState('')
 
   const enabledSources = (plan?.sources ?? []).filter((item) => item.enabled)
   const sourceLabel = (source: string, fallback: string) =>
@@ -40,6 +43,7 @@ export function MassImportDialog({ open, onOpenChange }: MassImportDialogProps) 
   const handleOpenChange = (next: boolean) => {
     if (!next) {
       massState.reset()
+      setUpdatedSince('')
     }
     onOpenChange(next)
   }
@@ -61,6 +65,12 @@ export function MassImportDialog({ open, onOpenChange }: MassImportDialogProps) 
             <div className="flex flex-col gap-4">
               <p className="text-sm text-muted-foreground">{t('massImport.confirmDescription')}</p>
 
+              <MigrationUpdatedSinceField
+                value={updatedSince}
+                onChange={setUpdatedSince}
+                error={massState.startError}
+              />
+
               {enabledSources.length === 0 ? (
                 <p className="text-sm text-destructive" role="alert">
                   {t('massImport.empty')}
@@ -75,16 +85,10 @@ export function MassImportDialog({ open, onOpenChange }: MassImportDialogProps) 
                 </ol>
               )}
 
-              {massState.startError ? (
-                <p className="text-sm text-destructive" role="alert">
-                  {massState.startError}
-                </p>
-              ) : null}
-
               <div className="flex justify-end">
                 <Button
                   type="button"
-                  onClick={() => massState.start()}
+                  onClick={() => massState.start(updatedSince || null)}
                   disabled={massState.isStarting || enabledSources.length === 0}
                 >
                   {massState.isStarting ? t('massImport.starting') : t('massImport.start')}

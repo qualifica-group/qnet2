@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Migration;
 
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Migration\MigrationPreviewRequest;
+use App\Http\Requests\Migration\StartMigrationImportRequest;
 use App\Http\Resources\Migration\MigrationRunResource;
 use App\Http\Resources\Migration\MigrationSourceResource;
 use App\Migrations\MigrationDependency;
@@ -120,7 +121,7 @@ class MigrationController extends BaseApiController
      * POST /api/migrations/{source}/import — phase 2, creates the
      * MigrationRun (pending) and dispatches the background job.
      */
-    public function import(Request $request, string $source): JsonResponse
+    public function import(StartMigrationImportRequest $request, string $source): JsonResponse
     {
         try {
             $this->registry->resolve($source); // 404 if unknown
@@ -128,7 +129,7 @@ class MigrationController extends BaseApiController
             /** @var User $actor */
             $actor = $request->user();
 
-            $run = $this->service->start($actor, $source);
+            $run = $this->service->start($actor, $source, $request->updatedSince());
 
             return $this->created(['migration_run' => new MigrationRunResource($run)]);
         } catch (Throwable $exception) {

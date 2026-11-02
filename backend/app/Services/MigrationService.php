@@ -10,6 +10,7 @@ use App\Migrations\MigrationRegistry;
 use App\Models\MassMigrationRun;
 use App\Models\MigrationRun;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -37,7 +38,7 @@ class MigrationService
         private readonly MigrationPlanService $planService,
     ) {}
 
-    public function start(User $actor, string $source): MigrationRun
+    public function start(User $actor, string $source, ?CarbonInterface $updatedSince = null): MigrationRun
     {
         abort_unless($this->registry->resolve($source)->isAvailable(), 422, 'This source is not available on this installation.');
 
@@ -51,6 +52,7 @@ class MigrationService
             'skipped_rows' => 0,
             'failed_rows' => 0,
             'report' => null,
+            'updated_since' => $updatedSince,
         ]));
 
         RunMigrationJob::dispatch($run->id);
@@ -87,9 +89,9 @@ class MigrationService
      * Start a mass import from the saved plan: snapshot the enabled sources (in
      * order) onto a MassMigrationRun (pending) and dispatch the orchestrator.
      */
-    public function startMass(User $actor): MassMigrationRun
+    public function startMass(User $actor, ?CarbonInterface $updatedSince = null): MassMigrationRun
     {
-        $run = $this->createMassRun($actor, $this->planService->enabledSources());
+        $run = $this->createMassRun($actor, $this->planService->enabledSources(), $updatedSince);
 
         RunMassMigrationJob::dispatch($run->id);
 
@@ -146,13 +148,14 @@ class MigrationService
     /**
      * @param  list<string>  $sources
      */
-    private function createMassRun(User $actor, array $sources): MassMigrationRun
+    private function createMassRun(User $actor, array $sources, ?CarbonInterface $updatedSince = null): MassMigrationRun
     {
         /** @var MassMigrationRun $run */
         $run = DB::transaction(fn (): MassMigrationRun => MassMigrationRun::create([
             'user_id' => $actor->id,
             'sources' => $sources,
             'status' => MigrationStatus::Pending,
+            'updated_since' => $updatedSince,
         ]));
 
         return $run;

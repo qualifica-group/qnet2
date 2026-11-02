@@ -3,6 +3,38 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Migrazione incrementale dal legacy (spec 0345) — VERDE, COMMITTATO (2026-11-02)
+
+- Campo facoltativo "Importa solo i record creati o modificati dal" in import singolo e "Importa tutto", per TUTTE
+  le sorgenti (D-8, decisione utente dopo la prima build: niente flag per sorgente); vuoto = completo.
+  Body `{ updated_since: "YYYY-MM-DD" | null }` su `POST /migrations/{source}/import` e `POST /migrations/mass-runs`
+  (FormRequest unica `StartMigrationImportRequest`, `nullable|date_format:Y-m-d|before_or_equal:today`); al legacy
+  arriva come query `updated_since`. Resource: `updated_since` su run, run di massa e ogni figlio (lo eredita).
+- `AbstractMigrationSource`: proprieta' `updatedSince` impostata in `import()` dalla run, azzerata nel `finally`,
+  letta da `fetchPage()`; la preview non la invia mai. `RunMassMigrationJob::handle(MigrationService)` invariato.
+- Migrazione `2026_11_14_100000_add_updated_since_to_migration_runs_tables`: **NON ancora eseguita su dev** (serve
+  `php artisan migrate` prima di usare la funzione).
+- Legacy `../qnet` (committato, branch develop): helper `app/Support/Migration/LegacyUpdatedSince` (`rule()`, `from()`, `apply()`
+  con piu' colonne in OR, `linked()` per righe collegate via whereExists) + tutti i 41 `Api/V2/*MigrationController`
+  + `LegacyPurchaseInvoiceGroups::all()`. Derivate (D-9): stato workflow = `orders` OR ultima `orderisos`; modello di
+  task = `orders` OR `tasks`; avanzamento = `avanzamento_commesse`. Ignorano la data (cataloghi statici):
+  `Attribute`, `EaSector`; `FinancialAccount` invia sempre le banche senza conto (`company_banks` senza date).
+  Con data niente orfani (spec 0303, D-7) e niente utente segnaposto. Verificato via tinker (2026-10-01 e
+  2024-01-01): total = conteggio diretto ovunque. Nota dati: da ottobre 2026 ~9.600 `orders` risultano aggiornati,
+  quindi le sorgenti commessa risparmiano poco.
+- Test: `IncrementalMigrationTest` (12, AC-003/005/007 REQUIREMENT CHANGED D-8); Migration 749/749 (con
+  `EXTERNAL_MIGRATION_USERS_LINK_ONLY=false`), Unit/Migrations 20/20, Vitest migrations+help 189/189 (suite completa
+  9709/9709 prima di D-8), tsc -b pulito, Pint/ESLint puliti. Suite backend completa (prima di D-8) 13.310/13.326:
+  rossi non legati (UsersSource .env, QuoteDocumentPdf LibreOffice, 4 ManagementControl, `SettlementApprovalTest`
+  AC-006 not_due/overdue dipendente dalla data, `TableBulkDeleteTest` guarded/forbidden).
+- Manuale: guida in-app `migrations#incremental-import` IT/EN; Claude Docs sezione Migrazioni aggiornata.
+- Aggiunta fuori spec (richiesta utente): pannello "Configura ordine" con **Seleziona tutto** / **Deseleziona
+  tutto** (`migration-plan-panel.tsx`, helper `setAllEnabled`, solo sorgenti disponibili, chiavi `plan.selectAll`/
+  `plan.deselectAll`); si salva con "Salva ordine" come prima. Test in `migration-plan-panel.test.tsx`; guida
+  `mass-import` IT/EN e manuale aggiornati.
+- Fuori scope (spec): aggiornare record gia' migrati, cancellazioni, indice `updated_at` sul DB legacy.
+- Fuori scope segnalato: `docs/HANDOFF.md` ~965 KB, molto oltre i 50 KB: va archiviato in `docs/handoff-archive/`.
+
 ## Ruolo "Commerciale Senior" (spec 0344) — VERDE, COMMITTATO (2026-11-02)
 
 - Ruolo `commerciale-senior` assegnato IN AGGIUNTA alla mansione (oggi `commerciale`) a 8 persone elencate per email

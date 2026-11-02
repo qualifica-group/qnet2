@@ -4,7 +4,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { MassImportDialog } from '@/features/migrations/mass-import-dialog'
-import type { MassMigrationRun, MigrationPlan, MigrationRun } from '@/features/migrations/types'
+import type {
+  MassMigrationRun,
+  MigrationPlan,
+  MigrationRun,
+} from '@/features/migrations/types'
 
 /**
  * Spec 0046 AC-014: the "Import all" dialog confirms the enabled sources (from
@@ -41,13 +45,21 @@ function childRun(source: string, overrides: Partial<MigrationRun> = {}): Migrat
     skipped_rows: 0,
     failed_rows: 0,
     report: null,
+    updated_since: null,
     created_at: '2026-07-20T00:00:00Z',
     ...overrides,
   }
 }
 
 function pendingRun(sources: string[]): MassMigrationRun {
-  return { id: 7, status: 'pending', sources, created_at: '2026-07-20T00:00:00Z', runs: [] }
+  return {
+    id: 7,
+    status: 'pending',
+    sources,
+    updated_since: null,
+    created_at: '2026-07-20T00:00:00Z',
+    runs: [],
+  }
 }
 
 beforeAll(async () => {
@@ -85,9 +97,38 @@ describe('MassImportDialog', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Start import' }))
 
-    await waitFor(() => expect(startMassMigrationMock).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(startMassMigrationMock).toHaveBeenCalledWith(null))
     // Terminal state: the Close button appears once the run completes.
     expect(await screen.findByRole('button', { name: 'Close' })).toBeInTheDocument()
+  })
+
+  it('AC-013: starts with the chosen day for every source', async () => {
+    startMassMigrationMock.mockResolvedValue({
+      ...pendingRun(['companies', 'users']),
+      updated_since: '2026-10-01',
+    })
+    fetchMassMigrationRunMock.mockResolvedValue({
+      ...pendingRun(['companies', 'users']),
+      status: 'completed',
+      updated_since: '2026-10-01',
+      runs: [
+        childRun('companies'),
+        childRun('users', { updated_since: '2026-10-01' }),
+      ],
+    })
+
+    render(<MassImportDialog open onOpenChange={vi.fn()} />, { wrapper: wrapper() })
+
+    await screen.findByText('Companies')
+    fireEvent.change(screen.getByLabelText('Import only records created or modified since'), {
+      target: { value: '2026-10-01' },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start import' }))
+    await waitFor(() => expect(startMassMigrationMock).toHaveBeenCalledWith('2026-10-01'))
+
+    // AC-014: the aggregate and the child show the start day.
+    expect((await screen.findAllByText(/Since /, {}, { timeout: 3000 })).length).toBeGreaterThan(0)
   })
 
   it('renders stop-on-failure: the source after the failing one is "Not run"', async () => {

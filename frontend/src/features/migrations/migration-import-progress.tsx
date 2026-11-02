@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Badge, type badgeVariants } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { BackgroundJobNotice } from '@/components/background-job-notice'
+import { formatDate } from '@/lib/formatting/date-display'
 import type { MigrationRun, MigrationRunStatus } from '@/features/migrations/types'
 import type { VariantProps } from 'class-variance-authority'
 
@@ -50,6 +51,11 @@ export function MigrationImportProgress({
         <Badge variant={STATUS_BADGE_VARIANT[run.status]}>
           {t(`status.${run.status}`)}
         </Badge>
+        {run.updated_since ? (
+          <span className="text-xs text-muted-foreground">
+            {t('updatedSince.since', { date: formatDate(run.updated_since) })}
+          </span>
+        ) : null}
       </div>
 
       <div

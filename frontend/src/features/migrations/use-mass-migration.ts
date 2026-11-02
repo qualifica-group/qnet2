@@ -32,7 +32,7 @@ export function useMassMigration() {
   const [runId, setRunId] = useState<number | null>(null)
 
   const startMutation = useMutation({
-    mutationFn: () => startMassMigration(),
+    mutationFn: (updatedSince: string | null) => startMassMigration(updatedSince),
     onSuccess: (run) => {
       setRunId(run.id)
       queryClient.setQueryData<MassMigrationRun>(migrationKeys.massRun(run.id), run)

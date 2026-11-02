@@ -31,6 +31,7 @@ function migrationRunFromCreated(created: MigrationRunCreated): MigrationRun {
     skipped_rows: created.skipped_rows,
     failed_rows: created.failed_rows,
     report: null,
+    updated_since: created.updated_since,
     created_at: created.created_at,
   }
 }
@@ -52,7 +53,7 @@ export function useMigrationImport({ source }: UseMigrationImportArgs) {
   const [runId, setRunId] = useState<number | null>(null)
 
   const startMutation = useMutation({
-    mutationFn: () => startMigrationImport(source),
+    mutationFn: (updatedSince: string | null) => startMigrationImport(source, updatedSince),
     onSuccess: (created) => {
       setRunId(created.id)
       queryClient.setQueryData<MigrationRun>(

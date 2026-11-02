@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Migration;
 
 use App\Enums\HttpStatusEnum;
 use App\Http\Controllers\Abstract\BaseApiController;
+use App\Http\Requests\Migration\StartMigrationImportRequest;
 use App\Http\Resources\Migration\MassMigrationRunResource;
 use App\Models\MassMigrationRun;
 use App\Models\User;
@@ -32,7 +33,7 @@ class MassMigrationController extends BaseApiController
     /**
      * POST /api/migrations/mass-runs — start the mass import from the plan.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StartMigrationImportRequest $request): JsonResponse
     {
         try {
             /** @var User $actor */
@@ -45,7 +46,7 @@ class MassMigrationController extends BaseApiController
                 );
             }
 
-            $run = $this->service->startMass($actor);
+            $run = $this->service->startMass($actor, $request->updatedSince());
 
             return $this->created(['mass_migration_run' => new MassMigrationRunResource($run->load('runs'))]);
         } catch (Throwable $exception) {

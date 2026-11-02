@@ -31,6 +31,7 @@ class MigrationRun extends BaseModel
         'skipped_rows',
         'failed_rows',
         'report',
+        'updated_since',
     ];
 
     protected $casts = [
@@ -41,6 +42,7 @@ class MigrationRun extends BaseModel
         'skipped_rows' => 'int',
         'failed_rows' => 'int',
         'report' => 'array',
+        'updated_since' => 'date',
     ];
 
     public function user(): BelongsTo

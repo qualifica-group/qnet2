@@ -149,6 +149,8 @@ export const migrations = {
       'Scegli quali sorgenti include “Importa tutto” e trascina per ordinarle. Le sorgenti successive dipendono dalle precedenti.',
     dragHandle: 'Riordina sorgente',
     enabledLabel: 'Includi {{source}} nell’import massivo',
+    selectAll: 'Seleziona tutto',
+    deselectAll: 'Deseleziona tutto',
     unavailable: 'Non disponibile',
     save: 'Salva ordine',
     saving: 'Salvataggio…',
@@ -171,6 +173,11 @@ export const migrations = {
     },
     perSourceCounts: '{{created}} creati · {{skipped}} saltati · {{failed}} falliti',
   },
+  updatedSince: {
+    label: 'Importa solo i record creati o modificati dal',
+    help: 'Facoltativo. Lascia vuoto per importare tutto.',
+    since: 'Dal {{date}}',
+  },
   background: {
     hint: 'L’operazione prosegue sul server anche se chiudi questa finestra.',
     stalled:
@@ -185,7 +192,7 @@ export const migrations = {
   },
   errors: {
     notFound: 'Questa sorgente di migrazione non esiste.',
-    validation: 'Parametri di paginazione non validi.',
+    validation: 'Parametri non validi. Controlla i valori inseriti e riprova.',
     externalUnavailable: 'Il sistema esterno non è al momento disponibile. Riprova.',
     generic: 'Si è verificato un errore. Riprova.',
     jobFailed: "L'import è fallito. Riprova.",

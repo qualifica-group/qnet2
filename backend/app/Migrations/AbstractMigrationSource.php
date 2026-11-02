@@ -33,6 +33,9 @@ abstract class AbstractMigrationSource implements MigrationSource
     /** @var list<array{old_id: int|string|null, level: string, message: string}> */
     private array $pendingReport = [];
 
+    /** Day (Y-m-d) the running import is restricted to; null outside import() and for full imports (spec 0345). */
+    private ?string $updatedSince = null;
+
     public function __construct(protected readonly ExternalApiClient $client) {}
 
     /**
@@ -144,6 +147,9 @@ abstract class AbstractMigrationSource implements MigrationSource
 
     public function import(MigrationImportContext $context): void
     {
+        // Set per import (never kept): registry instances can be reused across runs.
+        $this->updatedSince = $context->run->updated_since?->format('Y-m-d');
+
         try {
             // Step 1: create/skip every row in its own per-row transaction.
             $this->eachRecord(fn (array $record): mixed => $this->importRow($context, $record));
@@ -155,6 +161,7 @@ abstract class AbstractMigrationSource implements MigrationSource
             // Step 3: persist the report entries still buffered, even when the
             // run aborts, so the history shows what happened up to the failure.
             $this->flushReport($context->run);
+            $this->updatedSince = null;
         }
     }
 
@@ -263,6 +270,7 @@ abstract class AbstractMigrationSource implements MigrationSource
         return $this->client->get($this->endpoint(), [
             'offset' => ($page - 1) * $perPage,
             'limit' => $perPage,
+            ...($this->updatedSince !== null ? ['updated_since' => $this->updatedSince] : []),
         ]);
     }
 

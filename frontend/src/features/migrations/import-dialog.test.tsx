@@ -50,6 +50,7 @@ function createdRun(overrides: Partial<MigrationRunCreated> = {}): MigrationRunC
     skipped_rows: 0,
     failed_rows: 0,
     has_report: false,
+    updated_since: null,
     created_at: '2026-07-03T00:00:00Z',
     ...overrides,
   }
@@ -65,6 +66,7 @@ function polledRun(overrides: Partial<MigrationRun> = {}): MigrationRun {
     skipped_rows: 0,
     failed_rows: 0,
     report: null,
+    updated_since: null,
     created_at: '2026-07-03T00:00:00Z',
     ...overrides,
   }
@@ -72,7 +74,12 @@ function polledRun(overrides: Partial<MigrationRun> = {}): MigrationRun {
 
 function renderDialog(onOpenChange = vi.fn()) {
   render(
-    <ImportDialog source="roles" sourceLabel="Roles" open onOpenChange={onOpenChange} />,
+    <ImportDialog
+      source="roles"
+      sourceLabel="Roles"
+      open
+      onOpenChange={onOpenChange}
+    />,
     { wrapper: wrapper() },
   )
 }
@@ -93,7 +100,7 @@ describe('ImportDialog (migrations)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^start import$/i }))
 
-    await waitFor(() => expect(startMigrationImportMock).toHaveBeenCalledWith('roles'))
+    await waitFor(() => expect(startMigrationImportMock).toHaveBeenCalledWith('roles', null))
     await waitFor(() => expect(fetchMigrationRunMock).toHaveBeenCalledWith('roles', 1), {
       timeout: 3000,
     })
@@ -102,6 +109,50 @@ describe('ImportDialog (migrations)', () => {
     expect(screen.getByText('Parent role not found.')).toBeInTheDocument()
     expect(screen.getByText('Warnings and errors')).toBeInTheDocument()
   }, 10000)
+
+  it('AC-011: any source shows the date field and starts with the chosen day', async () => {
+    startMigrationImportMock.mockResolvedValue(createdRun({ updated_since: '2026-10-01' }))
+    fetchMigrationRunMock.mockResolvedValue(polledRun({ updated_since: '2026-10-01' }))
+
+    renderDialog()
+
+    fireEvent.change(screen.getByLabelText('Import only records created or modified since'), {
+      target: { value: '2026-10-01' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /^start import$/i }))
+
+    await waitFor(() =>
+      expect(startMigrationImportMock).toHaveBeenCalledWith('roles', '2026-10-01'),
+    )
+    // AC-014: the progress view shows the start day.
+    expect(await screen.findByText(/^Since /)).toBeInTheDocument()
+  })
+
+  it('AC-011: an empty date starts a full import', async () => {
+    startMigrationImportMock.mockResolvedValue(createdRun())
+    fetchMigrationRunMock.mockResolvedValue(polledRun())
+
+    renderDialog()
+    fireEvent.click(screen.getByRole('button', { name: /^start import$/i }))
+
+    await waitFor(() => expect(startMigrationImportMock).toHaveBeenCalledWith('roles', null))
+  })
+
+  it('wires a server start error to the date field', async () => {
+    startMigrationImportMock.mockRejectedValue(
+      new AxiosError('Unprocessable', '422', undefined, undefined, {
+        status: 422,
+        data: { success: false, message: 'x', errors: { updated_since: ['bad'] } },
+      } as never),
+    )
+
+    renderDialog()
+    fireEvent.click(screen.getByRole('button', { name: /^start import$/i }))
+
+    const field = screen.getByLabelText('Import only records created or modified since')
+    expect(await screen.findByRole('alert')).toHaveTextContent(/invalid parameters/i)
+    expect(field).toHaveAttribute('aria-invalid', 'true')
+  })
 
   it('tells the user the run keeps going server-side while it is still active', async () => {
     startMigrationImportMock.mockResolvedValue(createdRun())

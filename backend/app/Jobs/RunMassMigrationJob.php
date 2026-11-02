@@ -101,6 +101,7 @@ class RunMassMigrationJob implements ShouldQueue
             'skipped_rows' => 0,
             'failed_rows' => 0,
             'report' => null,
+            'updated_since' => $massRun->updated_since,
         ]);
     }
 }

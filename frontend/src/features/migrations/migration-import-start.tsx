@@ -1,8 +1,11 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { MigrationUpdatedSinceField } from '@/features/migrations/migration-updated-since-field'
 
 interface MigrationImportStartProps {
-  onStart: () => void
+  /** Receives the chosen start day (YYYY-MM-DD) or null for a full import. */
+  onStart: (updatedSince: string | null) => void
   isStarting: boolean
   startError: string | null
 }
@@ -18,19 +21,20 @@ export function MigrationImportStart({
   startError,
 }: MigrationImportStartProps) {
   const { t } = useTranslation('migrations')
+  const [updatedSince, setUpdatedSince] = useState('')
 
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">{t('import.confirmDescription')}</p>
 
-      {startError ? (
-        <p className="text-sm text-destructive" role="alert">
-          {startError}
-        </p>
-      ) : null}
+      <MigrationUpdatedSinceField
+        value={updatedSince}
+        onChange={setUpdatedSince}
+        error={startError}
+      />
 
       <div className="flex justify-end">
-        <Button type="button" onClick={onStart} disabled={isStarting}>
+        <Button type="button" onClick={() => onStart(updatedSince || null)} disabled={isStarting}>
           {isStarting ? t('import.starting') : t('import.start')}
         </Button>
       </div>

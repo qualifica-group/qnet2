@@ -101,6 +101,8 @@ export interface MigrationRunCreated {
   skipped_rows: number
   failed_rows: number
   has_report: boolean
+  /** Start day (YYYY-MM-DD) of an import limited to recent records; null for a full one. */
+  updated_since: string | null
   created_at: string
 }
 
@@ -145,6 +147,7 @@ export interface MassMigrationRun {
   id: number
   status: MigrationRunStatus
   sources: string[]
+  updated_since: string | null
   created_at: string
   runs: MigrationRun[]
 }
@@ -159,5 +162,6 @@ export interface MigrationRun {
   skipped_rows: number
   failed_rows: number
   report: MigrationReportEntry[] | null
+  updated_since: string | null
   created_at: string
 }

@@ -25,6 +25,7 @@ class MassMigrationRun extends BaseModel
         'user_id',
         'sources',
         'status',
+        'updated_since',
     ];
 
     /**
@@ -35,6 +36,7 @@ class MassMigrationRun extends BaseModel
         return [
             'sources' => 'array',
             'status' => MigrationStatus::class,
+            'updated_since' => 'date',
         ];
     }
 

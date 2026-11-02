@@ -44,6 +44,7 @@ class MigrationRunResource extends JsonResource
             'created_rows' => $run->created_rows,
             'skipped_rows' => $run->skipped_rows,
             'failed_rows' => $run->failed_rows,
+            'updated_since' => $run->updated_since?->format('Y-m-d'),
             'created_at' => $run->created_at,
         ];
 

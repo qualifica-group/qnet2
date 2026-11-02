@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0345-incremental-legacy-migration" status="approved" owner="nicola" date="2026-11-02">
+
+  <goal>
+    Il super-admin puo' lanciare dalla pagina Migrazioni un import "incrementale": sceglie un giorno di partenza e
+    il QNet legacy invia solo le righe create o modificate da quel giorno in poi, cosi' un riallineamento non
+    richiede piu' di rileggere tutto lo storico (oggi circa 2 giorni). Senza data l'import resta completo come oggi.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-11-02 (domande in sessione):
+    D-1 Il filtro e' su "creati o modificati": il legacy restituisce le righe con `updated_at >= giorno 00:00:00`.
+    D-2 I record gia' migrati restano saltati come oggi (stesso `old_id`); le sorgenti che oggi aggiornano un record
+        esistente (es. `tasks` che completa lo stato commessa mancante) continuano a farlo, nient'altro cambia.
+    D-3 Campo data opzionale sia nel dialog "Importa tutto" sia nell'import della singola sorgente. Vuoto = import
+        completo, identico a oggi.
+    D-4 (SUPERATA da D-8) Il filtro valeva solo per le sorgenti pesanti.
+    D-8 (decisione utente 2026-11-02, dopo la prima build) Il filtro vale per TUTTE le sorgenti: tre sorgenti
+        derivate per commessa superavano le 10.000 righe (modello di task 15.418, stato workflow 12.708,
+        avanzamento 6.889). Niente piu' sorgenti "sempre complete": spariscono il flag per sorgente, il 422 e
+        l'indicazione "completa" nella UI. Un controller legacy senza alcuna colonna data (catalogo statico) accetta
+        il parametro e lo ignora, inviando tutto: e' elencato in D-9.
+    D-9 Regola di filtro per le sorgenti derivate: la riga resta se la sua entita' O una riga collegata da cui e'
+        costruita ha `updated_at >= giorno` (es. stato workflow: `orders` o l'ultima `orderisos`; modello di task:
+        `orders` o i suoi `tasks`; avanzamento: `avanzamento_commesse`). Controller che ignorano il parametro:
+        elenco riportato dal legacy in build (sezione HANDOFF).
+    D-5 Colonna data legacy filtrata per le sorgenti pesanti (le altre: la tabella principale, o D-9):
+        `notes` -> `activity_log.updated_at` (2.090.226 righe), `tasks` -> `tasks.updated_at` (422.839),
+        `time-entries` -> `working_activity_intervals.updated_at` (162.880), `quotes` -> `quotations.updated_at`
+        (47.858), `opportunities` -> `opportunities.updated_at` (30.599), `registries` -> `companies.updated_at`
+        (29.452), `attachments` -> `updated_at` di ogni tabella della union (31.516 in tutto), `work-orders` ->
+        `orders.updated_at` (16.392), `referents` -> `contacts.updated_at` (14.432), `proforma-requests` ->
+        `orderrequestproformas.updated_at` (10.432), `invoices` -> `proformas.updated_at` e
+        `proforma_ente.updated_at` (i due rami della union, 10.643).
+    D-7 (emersa in build, legacy) Con `updated_since` valorizzato le righe orfane (spec 0303) non vengono inviate:
+        `time-entries` (giornate senza intervalli) e `invoices` (`schedules` senza proforma) non sono record del
+        periodo e ricomparirebbero come righe fallite a ogni import incrementale. Senza data restano come oggi.
+    D-6 (proposta) La data e' un giorno (`Y-m-d`), non un istante; non puo' essere nel futuro.
+
+    qnet-2, verificato:
+    - Contratto `App\Migrations\MigrationSource` (key, label, columns, dependencies, isAvailable, endpoint,
+      preview, import); default in `AbstractMigrationSource`. `fetchPage(int $page, int $perPage)` e' l'unico
+      punto che chiama `ExternalApiClient::get(endpoint, [offset, limit])`, usato da `preview()` e da
+      `eachRecord()` (import + `afterImport()`). Nessuna sorgente sovrascrive `fetchPage`/`eachRecord` ne' chiama
+      il client direttamente.
+    - `MigrationService::start(User, string)`, `startMass(User)`, `runMassSync(User, list)` (seeder
+      `QualificaLegacyImportSeeder`, resta senza data), `runSource(MigrationRun)`. `RunMassMigrationJob::
+      makeChildRun()` crea i figli.
+    - `MigrationController::import(Request, string)` e `MassMigrationController::store(Request)` non hanno
+      FormRequest (body vuoto oggi). Gate unico `super-admin` (EnsureSuperAdmin) sul gruppo di route.
+    - Tabelle `migration_runs` / `mass_migration_runs` (spec 0013/0046); model `MigrationRun` (`$fillable`,
+      `$casts`), `MassMigrationRun`. Resource `MigrationRunResource`, `MassMigrationRunResource`,
+      `MigrationSourceResource` (key, label, phase, available, last_run, migrated_at).
+    - Frontend `features/migrations/`: `api.ts` (`startMigrationImport(source)`, `startMassMigration()`),
+      `types.ts` (`MigrationSourceSummary`, `MigrationRunCreated`, `MigrationRun`, `MassMigrationRun`),
+      `use-migration-import.ts`, `use-mass-migration.ts`, `import-dialog.tsx` + `migration-import-start.tsx`,
+      `mass-import-dialog.tsx`, `migration-import-progress.tsx`, `mass-import-progress.tsx`, `migrations-page.tsx`
+      (monta i due dialog). Namespace i18n `migrations` (`i18n/locales/{it,en}-migrations.ts`). Data nativa:
+      `Input type="date"` come in `purchase-invoice-installments/purchase-payment-dialog.tsx`.
+    - Guida in-app `features/help/content/{it,en}/migrations.ts` (sezioni `import-step`, `mass-import`, ...).
+
+    Legacy (`/Users/Repository/qnet`), verificato sui dati reali il 2026-11-02: i controller
+    `Api/V2/*MigrationController::index` validano `search/offset/limit` e costruiscono ognuno la propria query;
+    tutte le tabelle di D-5 hanno `updated_at` (nullo solo su 1 riga di `companies`: esclusa dal filtro, e' una
+    riga vecchia gia' migrata). `updated_at` non e' indicizzato (activity_log ha indice su `created_at`): il
+    filtro riduce le righe trasferite e importate, non la scansione lato MySQL.
+  </context>
+
+  <scope>
+    <in>
+      <item>qnet-2: colonna `updated_since` (date, nullable) su `migration_runs` e `mass_migration_runs`; cast date.</item>
+      <item>qnet-2: `AbstractMigrationSource::import()` invia `updated_since` al legacy in ogni pagina quando la run
+        ce l'ha (qualsiasi sorgente, D-8); `preview()` non lo invia mai.</item>
+      <item>qnet-2: FormRequest `StartMigrationImportRequest` (condivisa da import singolo e di massa: stesse regole); `MigrationService::start`
+        e `startMass` ricevono la data; ogni figlio dell'import di massa la eredita.</item>
+      <item>qnet-2: Resource con `updated_since` (run, run di massa e figli).</item>
+      <item>Legacy: parametro `updated_since` (Y-m-d) in TUTTI i `Api/V2/*MigrationController`, con l'helper unico
+        `app/Support/Migration/LegacyUpdatedSince`; colonne di D-5, regola D-9 per le derivate.</item>
+      <item>Frontend: campo data condiviso nei due dialog, etichetta "Dal ..." nelle viste di avanzamento, i18n IT/EN.</item>
+      <item>Guida in-app `migrations` IT/EN (nuova sezione `incremental-import`) e manuale Claude Docs (sezione Migrazioni).</item>
+    </in>
+    <out>
+      <item>Aggiornamento dei record gia' migrati e modificati nel legacy (D-2): spec separata se servira'.</item>
+      <item>Cancellazioni nel legacy: un record cancellato non viene ne' rilevato ne' rimosso in qnet-2.</item>
+      <item>Filtro data nell'anteprima (fase 1) e nel seeder `QualificaLegacyImportSeeder`.</item>
+      <item>Indici sul DB legacy (`updated_at`): schema legacy di produzione, non si tocca.</item>
+      <item>Precompilazione automatica della data con l'ultima migrazione completata (possibile miglioria futura).</item>
+      <item>Salvataggio della data nel piano di import di massa (`migration_plans`): la data si sceglie a ogni lancio.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/migrations/{source}/import">
+      <request>
+        Body JSON opzionale: `{ "updated_since": "YYYY-MM-DD" | null }`. Assente o null = import completo (oggi).
+        Regole: `nullable`, `date_format:Y-m-d`, `before_or_equal:today`.
+      </request>
+      <response status="201">
+        `data.migration_run` = shape attuale + `updated_since: "YYYY-MM-DD" | null`.
+      </response>
+      <errors>
+        403 non super-admin (invariato). 404 sorgente sconosciuta (invariato). 422 sorgente non disponibile
+        (invariato). 422 `errors.updated_since` data non valida o futura.
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/migrations/{source}/runs/{migrationRun}">
+      <response status="200">`data.migration_run` aggiunge `updated_since: "YYYY-MM-DD" | null`.</response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/migrations/mass-runs">
+      <request>
+        Body JSON opzionale: `{ "updated_since": "YYYY-MM-DD" | null }`, stesse regole dell'import singolo.
+      </request>
+      <response status="201">
+        `data.mass_migration_run` = shape attuale + `updated_since: "YYYY-MM-DD" | null`; ogni `runs[]` porta il
+        proprio `updated_since`, uguale a quello di massa.
+      </response>
+      <errors>403 non super-admin. 422 piano senza sorgenti abilitate (invariato). 422 `errors.updated_since`.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/migrations/mass-runs/{massMigrationRun}">
+      <response status="200">Come sopra: `updated_since` sulla run di massa e su ogni figlio.</response>
+    </endpoint>
+
+    <endpoint method="GET" path="(legacy, routes/apiV2-migration.php) migration/* (tutte le rotte di migrazione)">
+      <request>
+        Nuovo parametro query opzionale `updated_since=YYYY-MM-DD` (`sometimes|nullable|date_format:Y-m-d`), insieme
+        a `offset`/`limit` invariati. Valorizzato: la query (conteggio `pagination.total` compreso) tiene solo le
+        righe con `<colonna D-5 / regola D-9> >= 'YYYY-MM-DD 00:00:00'` (o tutto, per i controller di D-9 senza data); righe con `updated_at` nullo escluse. Ordinamento e
+        shape degli `items` invariati.
+      </request>
+      <response status="200">Envelope invariato `{items, pagination}`.</response>
+      <errors>422 se `updated_since` non e' una data Y-m-d.</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un import singolo di `notes` con `updated_since=2026-10-01`, quando la run gira, allora
+      ogni richiesta al legacy porta `updated_since=2026-10-01` insieme a offset/limit e la run salva
+      `updated_since=2026-10-01`.</criterion>
+    <criterion id="AC-002">Dato un import singolo senza body (o con `updated_since: null`), allora nessuna richiesta al
+      legacy porta `updated_since` e la run ha `updated_since=null` (regressione: comportamento di oggi).</criterion>
+    <criterion id="AC-003">(REQUIREMENT CHANGED D-8) Dato `updated_since` su una sorgente piccola (es. `roles`), allora
+      la run viene creata con la data e ogni richiesta al legacy porta il parametro.</criterion>
+    <criterion id="AC-004">Dato `updated_since` non valido ("01/10/2026") o futuro (domani), allora 422 su
+      `errors.updated_since`, sia per l'import singolo sia per quello di massa.</criterion>
+    <criterion id="AC-005">(REQUIREMENT CHANGED D-8) Dato un import di massa con `updated_since`, allora la run di massa
+      salva la data e ogni figlio la eredita e invia il parametro.</criterion>
+    <criterion id="AC-006">L'anteprima (`GET /migrations/{source}/preview`) non invia mai `updated_since`.</criterion>
+    <criterion id="AC-007">(REQUIREMENT CHANGED D-8) `GET /migrations` non espone piu' alcun flag per sorgente: shape
+      invariata rispetto a prima della spec.</criterion>
+    <criterion id="AC-008">Le resource di run e run di massa (creazione e polling) espongono `updated_since` in formato
+      `YYYY-MM-DD` o null.</criterion>
+    <criterion id="AC-009">Un utente non super-admin riceve 403 su import singolo e di massa anche con `updated_since`.</criterion>
+    <criterion id="AC-010">Dato un import incrementale, una riga il cui `old_id` esiste gia' viene saltata come oggi
+      (contatore `skipped_rows`), una riga nuova viene creata.</criterion>
+    <criterion id="AC-011">(Frontend) Nel dialog di import singolo di qualsiasi sorgente c'e' il campo
+      "Importa solo i record creati o modificati dal" (opzionale, max oggi); confermando con una data, la chiamata
+      parte con `updated_since`; vuoto parte senza.</criterion>
+    <criterion id="AC-012">(RIMOSSO, D-8) Non esistono piu' sorgenti senza filtro.</criterion>
+    <criterion id="AC-013">(Frontend) Nel dialog "Importa tutto" c'e' lo stesso campo, nessuna sorgente marcata
+      "completa"; confermando, la chiamata parte con `updated_since`.</criterion>
+    <criterion id="AC-014">(Frontend) Le viste di avanzamento (singola e di massa, per ogni figlio) mostrano
+      "Dal gg/mm/aaaa" quando la run ha `updated_since`.</criterion>
+    <criterion id="AC-015">(Legacy, verifica tinker) Ogni endpoint di migrazione con `updated_since` restituisce
+      `pagination.total` uguale al conteggio diretto secondo D-5/D-9 (tutto per i controller di D-9 senza data), e
+      senza parametro il totale di oggi; formato errato -> 422.</criterion>
+    <criterion id="AC-016">Guida in-app `migrations` IT/EN con la sezione `incremental-import`; parity test verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Data nativa `Input type="date"` dal design system, niente date picker nuovo.</item>
+    <item>Authz invariata: gate unico `super-admin` sul gruppo di route; validazione nelle FormRequest
+      (`$request->validated()`), mai `$request->input()` grezzo.</item>
+    <item>Migrazione qnet-2 nuova e reversibile (`2026_11_14_100000_add_updated_since_to_migration_runs_tables`);
+      mai modificare quelle esistenti. Nessun comando distruttivo sul DB dev (solo `migrate` in avanti, su ordine).</item>
+    <item>Legacy: la logica di filtro sta nel legacy (backend.md §9), in un helper unico; nessun parser in qnet-2.
+      Verifica con `php -l` + tinker; git del legacy soggetto a CLAUDE.md §3.6.</item>
+    <item>Test qnet-2 con `Http::fake` sul client esterno: asserzione sui parametri delle richieste, non sui dati.</item>
+    <item>File entro 300/500 righe; i18n via namespace `migrations`, nessuna stringa hard-coded.</item>
+  </constraints>
+
+</spec>

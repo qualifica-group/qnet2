@@ -43,8 +43,17 @@ const guide: HelpGuide = {
       title: 'Step 2: importing',
       blocks: [
         { type: 'steps', items: ['After checking the preview, click **Import this source**.', 'Read the confirmation window and click **Start import**.', 'Follow the progress. At the end you see the summary: **Total rows**, **Created**, **Skipped** and **Failed**.', 'Check **Warnings and errors** for rows with problems.'] },
-        { type: 'tip', text: 'The import keeps running even if you close the window. Records already imported are skipped, so you can repeat the import without creating duplicates.' },
+        { type: 'tip', text: 'The import keeps running even if you close the window. Records already imported are skipped, so you can repeat the import without creating duplicates. To read only recent records see **Importing only recent records**.' },
         { type: 'paragraph', text: 'In addresses the municipality is recognized even when the legacy QNet spells it differently (capital letters, accents, apostrophes, a trailing province code, a postal code instead of the municipality), and a missing province, region and country are filled in. The country arrives for every legacy nation. If the municipality is not recognized, the address is imported without it, with a warning.' },
+      ],
+    },
+    {
+      id: 'incremental-import',
+      title: 'Importing only recent records',
+      blocks: [
+        { type: 'paragraph', text: 'In **Import this source** and in **Import all** there is the optional field **Import only records created or modified since**. When left empty the import is complete, as usual. When you pick a day, only the records created or modified from that day onward are read from the external system; the summary shows **Since dd/mm/yyyy**.' },
+        { type: 'note', text: 'Records already migrated stay skipped: later changes to a record already imported are not carried over to QNet, and deletions in the external system are not detected.' },
+        { type: 'paragraph', text: 'The filter applies to every source. The few configuration tables without a modification date are still read in full.' },
       ],
     },
     {
@@ -176,8 +185,8 @@ const guide: HelpGuide = {
       id: 'mass-import',
       title: 'Importing everything at once',
       blocks: [
-        { type: 'steps', items: ['Click **Configure order**.', 'Choose the sources to include, drag them into the right order and click **Save order**.', 'Click **Import all** and then **Start import**.'] },
-        { type: 'paragraph', text: 'Sources are imported one after another. If one fails, the import stops and the following ones show as **Not run**.' },
+        { type: 'steps', items: ['Click **Configure order**.', 'Choose the sources to include (**Select all** and **Deselect all** include or exclude them all in one click), drag them into the right order and click **Save order**.', 'Click **Import all** and then **Start import**.'] },
+        { type: 'paragraph', text: 'Sources are imported one after another; the optional date applies to all of them. If one fails, the import stops and the following ones show as **Not run**.' },
         { type: 'tip', text: 'Put first the data the others depend on: roles before users, companies before sites.' },
       ],
     },

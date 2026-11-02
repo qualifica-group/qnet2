@@ -43,8 +43,17 @@ const guide: HelpGuide = {
       title: 'Fase 2: importazione',
       blocks: [
         { type: 'steps', items: ['Dopo aver controllato l’anteprima, fai clic su **Importa questa sorgente**.', 'Leggi la finestra di conferma e fai clic su **Avvia import**.', 'Segui l’avanzamento. Alla fine vedi il riepilogo: **Righe totali**, **Creati**, **Saltati** e **Falliti**.', 'Controlla **Avvisi ed errori** per le righe con problemi.'] },
-        { type: 'tip', text: 'L’import continua anche se chiudi la finestra. Le schede già importate vengono saltate, quindi puoi ripetere l’import senza creare doppioni.' },
+        { type: 'tip', text: 'L’import continua anche se chiudi la finestra. Le schede già importate vengono saltate, quindi puoi ripetere l’import senza creare doppioni. Per rileggere solo i record recenti vedi **Importare solo i record recenti**.' },
         { type: 'paragraph', text: 'Negli indirizzi il comune viene riconosciuto anche se nel QNet legacy è scritto in modo diverso (maiuscole, accenti, apostrofi, sigla della provincia in coda, CAP al posto del comune) e la provincia, la regione e lo stato mancanti vengono completati. Lo stato arriva per tutte le nazioni del legacy. Se il comune non si riconosce, l’indirizzo si importa senza comune, con un avviso.' },
+      ],
+    },
+    {
+      id: 'incremental-import',
+      title: 'Importare solo i record recenti',
+      blocks: [
+        { type: 'paragraph', text: 'In **Importa questa sorgente** e in **Importa tutto** c’è il campo facoltativo **Importa solo i record creati o modificati dal**. Se lo lasci vuoto l’import è completo, come sempre. Se scegli un giorno vengono letti dal sistema esterno solo i record creati o modificati da quel giorno in poi; nel riepilogo compare **Dal gg/mm/aaaa**.' },
+        { type: 'note', text: 'I record già migrati restano saltati: le modifiche fatte dopo a un record già importato non vengono riportate in QNet, e le cancellazioni nel sistema esterno non vengono rilevate.' },
+        { type: 'paragraph', text: 'Il filtro vale per tutte le sorgenti. Le poche tabelle di configurazione senza data di modifica vengono comunque lette per intero.' },
       ],
     },
     {
@@ -176,8 +185,8 @@ const guide: HelpGuide = {
       id: 'mass-import',
       title: 'Importare tutto insieme',
       blocks: [
-        { type: 'steps', items: ['Fai clic su **Configura ordine**.', 'Scegli le sorgenti da includere, trascinale nell’ordine giusto e fai clic su **Salva ordine**.', 'Fai clic su **Importa tutto** e poi su **Avvia import**.'] },
-        { type: 'paragraph', text: 'Le sorgenti vengono importate una dopo l’altra. Se una fallisce, l’import si ferma e le successive risultano **Non eseguita**.' },
+        { type: 'steps', items: ['Fai clic su **Configura ordine**.', 'Scegli le sorgenti da includere (con **Seleziona tutto** e **Deseleziona tutto** le includi o le escludi tutte in un clic), trascinale nell’ordine giusto e fai clic su **Salva ordine**.', 'Fai clic su **Importa tutto** e poi su **Avvia import**.'] },
+        { type: 'paragraph', text: 'Le sorgenti vengono importate una dopo l’altra; la data facoltativa vale per tutte. Se una fallisce, l’import si ferma e le successive risultano **Non eseguita**.' },
         { type: 'tip', text: 'Metti prima i dati da cui dipendono gli altri: i ruoli prima degli utenti, le società prima delle sedi.' },
       ],
     },

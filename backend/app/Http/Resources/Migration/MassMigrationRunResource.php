@@ -29,6 +29,7 @@ class MassMigrationRunResource extends JsonResource
             'id' => $run->id,
             'status' => $run->status->value,
             'sources' => $run->sources,
+            'updated_since' => $run->updated_since?->format('Y-m-d'),
             'created_at' => $run->created_at,
             'runs' => $run->runs
                 ->sortBy('id')

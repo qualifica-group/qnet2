@@ -117,6 +117,41 @@ describe('MigrationPlanPanel', () => {
     ])
   })
 
+  it('selects and deselects every available source at once, leaving an unavailable one untouched', async () => {
+    fetchMigrationPlanMock.mockResolvedValue({
+      sources: [
+        { source: 'companies', label: 'Companies', enabled: true, available: true },
+        { source: 'users', label: 'Users', enabled: false, available: true },
+        { source: 'business-function-members', label: 'Members', enabled: false, available: false },
+      ],
+    })
+    render(<MigrationPlanPanel open onOpenChange={vi.fn()} />, { wrapper: wrapper() })
+
+    await screen.findByText('Companies')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select all' }))
+    let checkboxes = screen.getAllByRole('checkbox')
+    expect(checkboxes[0]).toBeChecked()
+    expect(checkboxes[1]).toBeChecked()
+    expect(checkboxes[2]).not.toBeChecked()
+    expect(screen.getByRole('button', { name: 'Select all' })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Deselect all' }))
+    checkboxes = screen.getAllByRole('checkbox')
+    expect(checkboxes[0]).not.toBeChecked()
+    expect(checkboxes[1]).not.toBeChecked()
+    expect(screen.getByRole('button', { name: 'Deselect all' })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save order' }))
+
+    await waitFor(() => expect(saveMigrationPlanMock).toHaveBeenCalledTimes(1))
+    expect(saveMigrationPlanMock.mock.calls[0][0]).toEqual([
+      { source: 'companies', enabled: false },
+      { source: 'users', enabled: false },
+      { source: 'business-function-members', enabled: false },
+    ])
+  })
+
   it('disables the include checkbox of a source this installation may not import', async () => {
     fetchMigrationPlanMock.mockResolvedValue({
       sources: [

@@ -12,6 +12,7 @@ function run(overrides: Partial<MigrationLastRun> = {}): MigrationLastRun {
     skipped_rows: 0,
     failed_rows: 0,
     has_report: false,
+    updated_since: null,
     created_at: '2026-10-12T09:00:00.000000Z',
     ...overrides,
   }

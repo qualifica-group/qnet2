@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Badge, type badgeVariants } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { BackgroundJobNotice } from '@/components/background-job-notice'
+import { formatDate } from '@/lib/formatting/date-display'
 import type {
   MassMigrationRun,
   MigrationRun,
@@ -72,6 +73,11 @@ export function MassImportProgress({
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
         <Badge variant={STATE_BADGE_VARIANT[run.status]}>{t(`status.${run.status}`)}</Badge>
+        {run.updated_since ? (
+          <span className="text-xs text-muted-foreground">
+            {t('updatedSince.since', { date: formatDate(run.updated_since) })}
+          </span>
+        ) : null}
       </div>
 
       <div
@@ -116,6 +122,9 @@ export function MassImportProgress({
                     skipped: child.skipped_rows,
                     failed: child.failed_rows,
                   })}
+                  {child.updated_since
+                    ? ` · ${t('updatedSince.since', { date: formatDate(child.updated_since) })}`
+                    : ''}
                 </span>
               ) : null}
             </li>

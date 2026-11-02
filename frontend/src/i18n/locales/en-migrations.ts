@@ -149,6 +149,8 @@ export const migrations = {
       'Choose which sources “Import all” includes and drag to set the order. Later sources depend on the earlier ones.',
     dragHandle: 'Reorder source',
     enabledLabel: 'Include {{source}} in the mass import',
+    selectAll: 'Select all',
+    deselectAll: 'Deselect all',
     unavailable: 'Not available',
     save: 'Save order',
     saving: 'Saving…',
@@ -170,6 +172,11 @@ export const migrations = {
     },
     perSourceCounts: '{{created}} created · {{skipped}} skipped · {{failed}} failed',
   },
+  updatedSince: {
+    label: 'Import only records created or modified since',
+    help: 'Optional. Leave empty to import everything.',
+    since: 'Since {{date}}',
+  },
   background: {
     hint: 'The operation keeps running on the server even if you close this dialog.',
     stalled:
@@ -184,7 +191,7 @@ export const migrations = {
   },
   errors: {
     notFound: 'This migration source does not exist.',
-    validation: 'Invalid pagination parameters.',
+    validation: 'Invalid parameters. Check the values entered and try again.',
     externalUnavailable: 'The external system is currently unavailable. Please try again.',
     generic: 'Something went wrong. Please try again.',
     jobFailed: 'The import failed. Please try again.',
