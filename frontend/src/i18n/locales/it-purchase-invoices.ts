@@ -109,6 +109,18 @@ export const purchaseInvoices = {
         empty: 'Nessuna quantità da fatturare sull’ordine: le righe sono già fatturate.',
       },
       addOrder: 'Aggiungi le righe dell’ODA {{code}}',
+      showLines: 'Mostra le righe dell’ODA {{code}}',
+      hideLines: 'Nascondi le righe dell’ODA {{code}}',
+      lines: {
+        caption: 'Righe dell’ODA {{code}}',
+        description: 'Descrizione',
+        ordered: 'Ordinata',
+        available: 'Da fatturare',
+        unitPrice: 'Prezzo',
+        loading: 'Caricamento delle righe...',
+        loadError: 'Impossibile caricare le righe dell’ODA.',
+        empty: 'Nessuna riga da fatturare.',
+      },
     },
     installments: {
       sequence: 'N.',

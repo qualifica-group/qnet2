@@ -18,6 +18,25 @@
   che non vedono i dati contrattuali; guide in-app nessun impatto.
 - Rollout su DB esistente (NON eseguito su dev): `php artisan db:seed --class=QualificaSeniorSalesSeeder`.
 
+## Righe ODA visibili nel riquadro "ODA fatturabili" dell'editor fattura passiva — VERDE, COMMITTATO 36d525d3 (2026-11-02)
+
+- Richiesta utente: creando una fattura passiva da zero, il riquadro ODA fatturabili mostrava solo codice/data/totale
+  dell'ordine; prima di premere Aggiungi non si vedevano le righe ne' le quantita'. Scelta utente: righe espandibili in
+  sola lettura (descrizione, quantita' ordinata, quantita' da fatturare, prezzo); Aggiungi invariato.
+- BE: `PurchaseInvoiceDraftBuilder::line()` aggiunge `ordered_quantity` (quantita' della riga ODA, 3 decimali) alle
+  righe della bozza `GET /purchase-invoices/draft`; contratto annotato in spec 0254 (response draft). Test AC-009 di
+  `PurchaseInvoiceDraftTest` esteso. Nessun nuovo endpoint: il riquadro usa la bozza del singolo ODA.
+- FE: nuovo `purchase-invoices/purchase-invoice-editor-order-lines.tsx` (tabella righe via `usePurchaseInvoiceDraft([id])`,
+  caricata solo quando l'ODA e' espanso: Radix Collapsible non monta il contenuto chiuso);
+  `purchase-invoice-editor-orders-section.tsx` ora ha `OrderEntry` con Collapsible (un solo ODA aperto per volta) e
+  Aggiungi accanto al toggle. Tipo `PurchaseInvoiceLine.ordered_quantity?`. Chiavi i18n IT/EN
+  `purchaseInvoices.editor.orders.{showLines,hideLines,lines.*}`. Nuovo test `purchase-invoice-editor-orders-section.test.tsx`.
+- Verifica: Pint ok; Pest Draft+Quantity 22 test verdi; Vitest purchase-invoices + help 26 file/218 test verdi; ESLint
+  pulito; `tsc -b --force` EXIT=0.
+- Manuale: guide in-app `purchase-invoices` IT/EN (sezione Registrare un documento, passo righe) aggiornate; manuale
+  Claude Docs NON aggiornato (il documento non e' condiviso con la sessione: accesso negato in lettura); da
+  aggiornare a mano la sezione Fatture passive > Registrare un documento (riquadro ODA fatturabili con righe espandibili).
+
 ## Nota "Non trovi un documento? Controlla nel vecchio QNet" (spec 0343) — VERDE, COMMITTATO (2026-11-02)
 
 - `GET /api/attachments` aggiunge `meta.legacy_url` (additivo, `data` invariato), calcolato da

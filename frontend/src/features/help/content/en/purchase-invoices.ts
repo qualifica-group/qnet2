@@ -51,7 +51,7 @@ const guide: HelpGuide = {
           type: 'steps',
           items: [
             'Press **New passive invoice** and choose **Supplier**, **Company**, **Document date** and **Payment method** (and, if needed, account, sites, notes).',
-            'Add the **lines**: from the product catalog or free ones. For each line set description, quantity, price, VAT, **cost type** (required) and **work order**. The header cost type and work order are only the value proposed to new lines; for a catalog line, if the header has none, the cost type is proposed from the product (when it has a default one).',
+            'Add the **lines**: from the product catalog, free ones or from an ODA. If the supplier has invoiceable orders for that company, the **Invoiceable purchase orders** box lists them with code, date and total: the arrow opens the order rows still to invoice (description, **ordered** quantity, quantity **to invoice**, price) and **Add** brings them into the document, where you can adjust the quantities. For each line set description, quantity, price, VAT, **cost type** (required) and **work order**. The header cost type and work order are only the value proposed to new lines; for a catalog line, if the header has none, the cost type is proposed from the product (when it has a default one).',
             'If needed, enter **Withholding tax** and **ENASARCO charged to the company** (optional, in the **Withholdings** section).',
             'Check the **totals**, including the **Net payable**, and the **installment preview**, generated from the payment method.',
             'Press **Save**.',

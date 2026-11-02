@@ -160,7 +160,7 @@ it('AC-009: proposes only the quantity left to bill and excludes the order lines
     $lines = $this->getJson(draftUrl([$order]))->assertOk()->json('data.lines');
 
     expect(array_column($lines, 'purchase_order_line_id'))->toBe([$order->lines[1]->id, $order->lines[2]->id])
-        ->and($lines[0])->toMatchArray(['quantity' => '3.000', 'available_quantity' => '3.000', 'net_amount' => '300.00', 'vat_amount' => '66.00', 'total_amount' => '366.00']);
+        ->and($lines[0])->toMatchArray(['quantity' => '3.000', 'available_quantity' => '3.000', 'ordered_quantity' => '4.000', 'net_amount' => '300.00', 'vat_amount' => '66.00', 'total_amount' => '366.00']);
 });
 
 it('AC-003: lists the invoiceable orders of a supplier and company', function () {

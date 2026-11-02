@@ -44,6 +44,8 @@ export interface PurchaseInvoiceLine {
   sort_order: number
   /** Billable remainder (3 decimals); only on draft rows that come from an ODA row (spec 0254). */
   available_quantity?: string
+  /** Quantity of the ODA row (3 decimals); only on draft rows. */
+  ordered_quantity?: string
 }
 
 /** Installment of the document, as `PurchaseInvoiceInstallmentResource` (gated fields may be absent). */

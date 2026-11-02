@@ -152,7 +152,7 @@ final class PurchaseInvoiceDraftBuilder
     }
 
     /**
-     * @param  string  $available  quantity a document can still bill: the proposed one
+     * @param  string  $available  quantity a document can still bill: the proposed one; ordered_quantity is the order row's own
      * @param  Collection<int, string>  $codes  order id => "n/year"
      * @return array<string, mixed>
      */
@@ -168,6 +168,7 @@ final class PurchaseInvoiceDraftBuilder
             'description' => $line->description,
             'quantity' => $amounts['quantity'],
             'available_quantity' => $amounts['quantity'],
+            'ordered_quantity' => $line->quantity,
             'unit_price' => $amounts['unit_price'],
             'vat_rate' => $line->vatRate === null ? null : ['id' => $line->vatRate->id, 'name' => $line->vatRate->name, 'rate' => $line->vatRate->rate],
             'cost_type' => ['id' => $line->costType->id, 'name' => $line->costType->name, 'color' => $line->costType->color],

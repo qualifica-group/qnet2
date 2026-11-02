@@ -148,7 +148,7 @@
     </endpoint>
 
     <endpoint method="GET" path="/api/purchase-invoices/draft?purchase_order_ids[]=">
-      <response status="200">shape 0250 invariata; ogni riga quantity = disponibile (tetto - fatturato_totale), importi ricalcolati sulla quantita', in piu' available_quantity: string(3 dec). Righe con disponibile 0 escluse; nessuna riga disponibile -&gt; 200 con lines: [] e purchase_order_ids valorizzato.</response>
+      <response status="200">shape 0250 invariata; ogni riga quantity = disponibile (tetto - fatturato_totale), importi ricalcolati sulla quantita', in piu' available_quantity: string(3 dec) e ordered_quantity: string(3 dec) (quantita' ordinata della riga ODA, mostrata nel riquadro ODA fatturabili dell'editor; aggiunta 2026-11-02). Righe con disponibile 0 escluse; nessuna riga disponibile -&gt; 200 con lines: [] e purchase_order_ids valorizzato.</response>
       <errors>422 come 0250.</errors>
     </endpoint>
     <endpoint method="GET" path="/api/purchase-invoices/invoiceable-orders?supplier_id=&amp;company_id=">

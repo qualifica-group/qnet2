@@ -109,6 +109,18 @@ export const purchaseInvoices = {
         empty: 'Nothing left to bill on the order: its rows are already invoiced.',
       },
       addOrder: 'Add the rows of order {{code}}',
+      showLines: 'Show the rows of order {{code}}',
+      hideLines: 'Hide the rows of order {{code}}',
+      lines: {
+        caption: 'Rows of order {{code}}',
+        description: 'Description',
+        ordered: 'Ordered',
+        available: 'To invoice',
+        unitPrice: 'Price',
+        loading: 'Loading the rows...',
+        loadError: 'Unable to load the order rows.',
+        empty: 'No row left to invoice.',
+      },
     },
     installments: {
       sequence: 'No.',
