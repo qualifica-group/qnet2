@@ -76,6 +76,10 @@
       richieste/iscritti non la derivano. Chi vede solo i propri record (o quelli della sede) NON la riceve: `viewCompetence` entra
       in `OperatorRoleCatalogue::OWN_REQUESTS_DENIED_ABILITIES` (blocco "solo le proprie richieste" di Commerciale e Supervisore
       didattica). Negli altri ruoli la assegna l'admin dal form Ruolo.
+      [rev.3, decisione utente 2026-11-02] Il ruolo `coordinamento-operativo` (`LegacyRoleCatalogue::OPERATIONS_ROLE`) perde
+      `viewAll` su opportunities/quotes/contracts/work-orders e tiene `viewCompetence` (nuovo valore di matrice
+      `LegacyRoleCatalogue::ALL_BUT_VIEW_ALL`); Gestione richieste/iscritti specchiano anche `viewCompetence` delle Offerte
+      (`SyncsRoleMatrix::QUOTE_VISIBILITY_TIERS`). `admin`, `back-office-commerciale`, `contabilita` restano su `viewAll`.
     - D-5: il livello e' un gate di RIGA, non di azione (come `viewSite`, spec 0105 D-2): allarga QUALI record
       si vedono; ogni azione resta sulla propria ability (`update`, `delete`, `assignOperator`, ...).
     - D-6: l'interruttore "Assegnabile" NON influisce: riguarda la ricezione di assegnazioni, non la visibilita'.

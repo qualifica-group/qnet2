@@ -27,8 +27,8 @@ trait SyncsRoleMatrix
         'opportunities' => ['lead_id'],
     ];
 
-    /** The quote visibility widenings the two request modules mirror. */
-    private const array QUOTE_VISIBILITY_TIERS = ['viewAll', 'viewSite'];
+    /** The quote visibility widenings the two request modules mirror (spec 0340 rev.3: the competence tier too). */
+    private const array QUOTE_VISIBILITY_TIERS = ['viewAll', 'viewSite', 'viewCompetence'];
 
     /** The modules whose `viewAll` also carries `viewCompetence` (spec 0340, user directive 2026-11-02). */
     private const array COMPETENCE_SIGHT_RESOURCES = ['opportunities', 'quotes', 'contracts', 'work-orders'];

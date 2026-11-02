@@ -35,6 +35,10 @@
   in `OperatorRoleCatalogue::OWN_REQUESTS_DENIED_ABILITIES` (chi vede solo il suo non cambia). Test
   `tests/Feature/Seeding/QualificaCompetenceSightSeederTest.php`; guide roles IT/EN e manuale aggiornati. Ruoli gia' nel DB:
   cambiano solo rieseguendo i seeder dei ruoli (non eseguiti su dev).
+- rev.3 (2026-11-02, COMMITTATO): `coordinamento-operativo` vede per competenza, non tutto (`ALL_BUT_VIEW_ALL` in
+  `LegacyRoleCatalogue`, letto da `QualificaLegacyRoleSeeder::permissionsOf()`); richieste/iscritti specchiano `viewCompetence`
+  delle Offerte. REQUIREMENT CHANGED in `QualificaLegacyRoleSeederTest`. Effetto solo dopo `QualificaRoleResetSeeder`
+  (non eseguito su dev): chi ha anche `admin` o `contabilita` continua a vedere tutto.
 - Da sapere: `ContractsTableDefinition.php` e' a 497 righe (split alla prossima modifica). PDF del manuale da rigenerare.
 
 ## Tab categorie sulle Commesse (spec 0335 rev.3) — VERDE, NON COMMITTATO (2026-11-01)
