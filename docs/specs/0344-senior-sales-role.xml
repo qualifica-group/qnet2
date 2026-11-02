@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0344-senior-sales-role" status="approved" owner="nicola" date="2026-11-02">
+
+  <goal>
+    Nel seed di produzione e nel reset ruoli otto commerciali (Marco Baldi, Marco Fedele, Anna Garofalo, Antonio
+    Alvoni, Constantin Popa, Vincenzo Crisci, Biagio Fusco, Antimo Dalvini) ricevono un ruolo "Commerciale Senior"
+    che, oltre al ruolo che hanno, apre Anagrafiche, Opportunita', Offerte e Commesse complete.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-11-02:
+    D-1 Ruolo `commerciale-senior` ("Commerciale Senior"), assegnato IN AGGIUNTA al ruolo che la persona ha gia'
+        (oggi la mansione `commerciale`, che resta). Persone elencate per email, come la spec 0299 D-1.
+    D-2 "Con tutti i dovuti permessi" = ogni ability del modulo, come la spec 0299 D-2: vedere tutto (`viewAll`,
+        e quindi `viewCompetence`, spec 0340 rev.2), creare, modificare, eliminare, importare, esportare, attivita',
+        documenti e, sulle Commesse, costi, fatture, pagamenti, dati contrattuali, email.
+    D-3 Moduli completi: `registries`, `referents` (i referenti delle anagrafiche), `opportunities`, `quotes`,
+        `work-orders`. Contratti, Proforma, Configuratore Stati Offerta restano fuori.
+    D-4 Sola lettura di supporto (`viewAny`), come la spec 0299 D-4: `product-categories` e `operational-sites`.
+    D-5 Nessuna riga nella matrice dei permessi di campo oltre a quella comune (Lead): restano quelle della mansione.
+    D-6 Antimo Dalvini ha oggi solo un account disattivato: riceve il ruolo come gli altri (un account esistente
+        lo riceve, attivo o no), un'email senza account viene saltata con un warning.
+    Conseguenza nota (non una scelta nuova): chi vede Opportunita' e Offerte vede anche Gestione Richieste e
+    Gestione Iscritti in sola lettura, larghe quanto le offerte (`SyncsRoleMatrix::withRequestModulesSight`).
+  </context>
+
+  <scope>
+    <in>
+      <item>Nuovo `QualificaCatalog/SeniorSalesRoleCatalogue` (ruolo, moduli, sola lettura, email).</item>
+      <item>`QualificaRoleSeeder`: step che sincronizza il ruolo; i permessi di back office e commerciale senior
+        condividono lo stesso calcolo (moduli completi + extra + sola lettura).</item>
+      <item>Nuovo `QualificaSeniorSalesSeeder` (assegnazione), chiamato da `QualificaProductionDataSeeder` e da
+        `QualificaRoleResetSeeder` dopo `QualificaCommercialBackOfficeSeeder`.</item>
+    </in>
+    <out>
+      <item>Codice applicativo, endpoint, frontend: invariati.</item>
+      <item>Guide in-app: il ruolo e' un dato di seed, i moduli e le loro guide non cambiano.</item>
+    </out>
+  </scope>
+
+  <acceptance>
+    <criterion id="AC-001">Il ruolo ha ogni permesso di `registries`, `referents`, `opportunities`, `quotes`,
+      `work-orders`, piu' `product-categories.viewAny` e `operational-sites.viewAny`, e niente di Contratti,
+      Proforma, Tipi referente, Societa', Configuratore Stati Offerta ne' `.view`/scritture dei moduli di supporto.</criterion>
+    <criterion id="AC-002">Il seeder aggiunge il ruolo alle persone elencate con un account (anche disattivato, D-6),
+      sopra il ruolo che hanno; un'email senza account viene saltata con un warning; rieseguito converge.</criterion>
+    <criterion id="AC-003">Un `commerciale` con il nuovo ruolo vede le opportunita', le offerte e le commesse di
+      tutti, mentre senza il ruolo no.</criterion>
+    <criterion id="AC-004">`QualificaRoleResetSeeder` ricrea il ruolo e lo riassegna alle persone elencate.</criterion>
+  </acceptance>
+
+  <rollout>
+    Su un DB gia' installato: `php artisan db:seed --class=QualificaSeniorSalesSeeder` (risemina anche i ruoli),
+    oppure il reset completo `QualificaRoleResetSeeder`.
+  </rollout>
+</spec>

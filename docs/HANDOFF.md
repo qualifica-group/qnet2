@@ -3,6 +3,21 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Ruolo "Commerciale Senior" (spec 0344) — VERDE, COMMITTATO (2026-11-02)
+
+- Ruolo `commerciale-senior` assegnato IN AGGIUNTA alla mansione (oggi `commerciale`) a 8 persone elencate per email
+  in `QualificaCatalog/SeniorSalesRoleCatalogue::USERS` (Baldi, Fedele, Garofalo, Alvoni, Popa, Crisci, Fusco, Dalvini;
+  Dalvini ha solo un account disattivato "[OLD]" e riceve il ruolo comunque, D-6).
+- Moduli completi (ogni ability, `viewAll` e quindi `viewCompetence`): `registries`, `referents`, `opportunities`,
+  `quotes`, `work-orders`; `viewAny` di supporto su `product-categories`, `operational-sites`. Niente Contratti/Proforma.
+  Effetto derivato: Gestione Richieste/Iscritti in sola lettura con `viewAll` (`withRequestModulesSight`).
+- `QualificaRoleSeeder` step 4c-bis; `backOfficePermissions()` generalizzato in `modulePermissions()` (back office invariato).
+  Nuovo `QualificaSeniorSalesSeeder`, chiamato da `QualificaProductionDataSeeder` e `QualificaRoleResetSeeder` dopo il back office.
+- Test: `tests/Feature/Seeding/QualificaSeniorSalesSeederTest.php` (4). Seeding 228/228, altri 8 file che usano i seeder
+  dei ruoli 52/52, Pint pulito. Nessun file frontend toccato. Manuale Claude Docs: aggiunto "commerciale senior" ai ruoli
+  che non vedono i dati contrattuali; guide in-app nessun impatto.
+- Rollout su DB esistente (NON eseguito su dev): `php artisan db:seed --class=QualificaSeniorSalesSeeder`.
+
 ## Nota "Non trovi un documento? Controlla nel vecchio QNet" (spec 0343) — VERDE, COMMITTATO (2026-11-02)
 
 - `GET /api/attachments` aggiunge `meta.legacy_url` (additivo, `data` invariato), calcolato da

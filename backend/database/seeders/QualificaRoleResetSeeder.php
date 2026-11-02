@@ -56,6 +56,7 @@ class QualificaRoleResetSeeder extends Seeder
             // for whoever holds the base role only.
             $this->call(QualificaHrOfficeSeeder::class);
             $this->call(QualificaCommercialBackOfficeSeeder::class);
+            $this->call(QualificaSeniorSalesSeeder::class);
             $this->call(QualificaStockKeeperSeeder::class);
             $this->call(QualificaLegacyRoleSeeder::class);
 

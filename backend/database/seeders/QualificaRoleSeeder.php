@@ -9,6 +9,7 @@ use Database\Seeders\QualificaCatalog\CommercialBackOfficeRoleCatalogue as BackO
 use Database\Seeders\QualificaCatalog\HrOfficeRoleCatalogue as HrOffice;
 use Database\Seeders\QualificaCatalog\OperatorRoleCatalogue as Catalogue;
 use Database\Seeders\QualificaCatalog\OwnAbsencesCatalogue as OwnAbsences;
+use Database\Seeders\QualificaCatalog\SeniorSalesRoleCatalogue as SeniorSales;
 use Database\Seeders\QualificaCatalog\StockKeeperRoleCatalogue as StockKeeper;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
@@ -25,8 +26,8 @@ use Spatie\Permission\PermissionRegistrar;
  *
  * Next to them the HR office role (HrOfficeRoleCatalogue, spec 0283), and the
  * per-field matrix keeping the user record's contractual data to that role and
- * to `admin`; and the commercial back office role (CommercialBackOfficeRoleCatalogue,
- * spec 0299).
+ * to `admin`; the commercial back office role (CommercialBackOfficeRoleCatalogue,
+ * spec 0299) and the senior sales role (SeniorSalesRoleCatalogue, spec 0344).
  *
  * Self-sufficient by design: it re-runs `permissions:sync` first, so a role can
  * never end up silently empty because the catalogue had not been bootstrapped.
@@ -72,8 +73,17 @@ class QualificaRoleSeeder extends Seeder
         // Step 4c: the commercial back office (spec 0299), held on top of a
         // mansione. Only the rows every role carries: the mansione's hidden
         // rows keep applying.
-        $backOffice = $this->syncRole(BackOffice::ROLE, BackOffice::DESCRIPTION, $this->backOfficePermissions($catalogue));
+        $backOffice = $this->syncRole(BackOffice::ROLE, BackOffice::DESCRIPTION, $this->modulePermissions(
+            $catalogue, BackOffice::MODULES, BackOffice::EXTRA_PERMISSIONS, BackOffice::SELECT_ONLY_RESOURCES,
+        ));
         $this->syncFieldPermissions($backOffice);
+
+        // Step 4c-bis: the senior sales people (spec 0344), held on top of
+        // their mansione the same way.
+        $seniorSales = $this->syncRole(SeniorSales::ROLE, SeniorSales::DESCRIPTION, $this->modulePermissions(
+            $catalogue, SeniorSales::MODULES, [], SeniorSales::SELECT_ONLY_RESOURCES,
+        ));
+        $this->syncFieldPermissions($seniorSales);
 
         // Step 4d: the equipment keeper (spec 0307 D-21), held on top of a
         // mansione, with the `stock` module only.
@@ -128,18 +138,21 @@ class QualificaRoleSeeder extends Seeder
     }
 
     /**
-     * The back-office modules in full, the single extra abilities and the
-     * read-only support resources. Task, Segnatempo and Assenze come from the
-     * mansione it is held on top of.
+     * The modules in full, the single extra abilities and the read-only
+     * support resources of a role held on top of a mansione (back office,
+     * senior sales): Task, Segnatempo and Assenze come from that mansione.
      *
      * @param  Collection<int, string>  $catalogue
+     * @param  array<int, string>  $modules
+     * @param  array<int, string>  $extraPermissions
+     * @param  array<int, string>  $selectOnlyResources
      * @return Collection<int, string>
      */
-    private function backOfficePermissions(Collection $catalogue): Collection
+    private function modulePermissions(Collection $catalogue, array $modules, array $extraPermissions, array $selectOnlyResources): Collection
     {
-        return $catalogue->filter(fn (string $permission): bool => in_array(Str::beforeLast($permission, '.'), BackOffice::MODULES, true)
-            || in_array($permission, BackOffice::EXTRA_PERMISSIONS, true)
-            || $this->isSelectOnlyGrant(Str::beforeLast($permission, '.'), Str::afterLast($permission, '.'), BackOffice::SELECT_ONLY_RESOURCES))
+        return $catalogue->filter(fn (string $permission): bool => in_array(Str::beforeLast($permission, '.'), $modules, true)
+            || in_array($permission, $extraPermissions, true)
+            || $this->isSelectOnlyGrant(Str::beforeLast($permission, '.'), Str::afterLast($permission, '.'), $selectOnlyResources))
             ->values();
     }
 
