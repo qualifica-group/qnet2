@@ -56,6 +56,8 @@ if (! function_exists('legacyQuoteRecord')) {
             'company_site_id' => null,
             'operational_site_id' => null,
             'payment_method_id' => null,
+            // REQUIREMENT CHANGED: spec 0332 — the legacy sends the Fonte on the opportunity's first quotation only.
+            'source_id' => null,
             'lines' => [
                 ['id' => 900, 'product_id' => 10, 'description' => null, 'quantity' => 2, 'unit_price' => 50, 'vat_rate_id' => null, 'commissions' => []],
             ],

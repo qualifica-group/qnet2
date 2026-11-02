@@ -8,6 +8,7 @@ import { NotificationBell } from '@/features/notifications/notification-bell'
 import { useNotificationTitle } from '@/features/notifications/use-notification-title'
 import { WorkspaceLauncher } from '@/features/workspaces/components/workspace-launcher'
 import { HelpButton } from '@/features/help/components/help-button'
+import { SupportRequestButton } from '@/features/support-requests/support-request-button'
 import { usePresenceHeartbeat } from '@/features/system-health/use-presence-heartbeat'
 import { useAuth } from '@/features/auth/use-auth'
 import { ImpersonationBanner } from '@/features/auth/impersonation-banner'
@@ -53,6 +54,7 @@ export function AppLayout() {
                 <WorkspaceLauncher />
               </div>
               <div className="ml-auto flex items-center gap-0.5">
+                <SupportRequestButton />
                 <HelpButton />
                 <NotificationBell />
                 <ThemeToggle />

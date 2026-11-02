@@ -39,10 +39,10 @@ use Illuminate\Support\Collection;
  * on the page — never N.
  *
  * D-9: `opportunity_id` rides along as the record the `documents`/`notes`/
- * `activity` row actions and the field-change-request "current value" for
- * `source` key off — documents/notes/activity stay anchored to the
- * Opportunity (two sibling offers show the same thread), while `source` etc.
- * are re-derived THROUGH `quote.opportunity` for display. `pending_change_requests`
+ * `activity` row actions key off — documents/notes/activity stay anchored to
+ * the Opportunity (two sibling offers show the same thread), while the
+ * opportunity-level columns are re-derived THROUGH `quote.opportunity` for
+ * display. `pending_change_requests`
  * does NOT follow that split (D-10, corrected in execution): it counts the
  * QUOTE's own field-change-requests — two sibling offers carry independent
  * badges.
@@ -66,10 +66,10 @@ final class RequestRowMapper
             // D-9: the record documents/notes/activity/history keep reading —
             // both stay anchored to the Opportunity, never the offer.
             'opportunity_id' => $row->opportunity_id,
-            // "Fonte" (user directive 2026-07-31): re-derived through the
-            // offer's opportunity (spec 0086) — the `{id, name}` ref both the
-            // relation cell and its inline picker read.
-            'source' => $this->summarize($opportunity?->source),
+            // "Fonte" (user directive 2026-07-31; the offer's own column since
+            // spec 0332) — the `{id, name}` ref both the relation cell and
+            // its inline picker read.
+            'source' => $this->summarize($row->source),
             // "Richieste di modifica in attesa" (spec 0078, AC-037; spec
             // 0086, D-10 corrected): the OFFER's own pending requests —
             // `withCount('pendingFieldChangeRequests')` on the Quote itself

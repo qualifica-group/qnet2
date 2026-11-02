@@ -55,9 +55,9 @@ if (! function_exists('fcrActivityActorWith')) {
 if (! function_exists('fcrActivityQuote')) {
     function fcrActivityQuote(): Quote
     {
-        $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
+        $opportunity = Opportunity::factory()->create();
 
-        return Quote::factory()->for($opportunity)->create();
+        return Quote::factory()->for($opportunity)->create(['source_id' => Source::factory()->create()->id]);
     }
 }
 

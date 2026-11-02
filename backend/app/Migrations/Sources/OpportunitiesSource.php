@@ -14,7 +14,6 @@ use App\Models\Opportunity;
 use App\Models\ProductCategory;
 use App\Models\Referent;
 use App\Models\Registry;
-use App\Models\Source;
 use App\Models\User;
 use App\Services\OpportunityService;
 use App\Services\ProductLines\ProductLineWriter;
@@ -78,7 +77,6 @@ class OpportunitiesSource extends AbstractMigrationSource
             MigrationDependency::required('registries'),
             MigrationDependency::optional('users'),
             MigrationDependency::optional('referents'),
-            MigrationDependency::optional('sources'),
             MigrationDependency::optional('product-categories'),
             MigrationDependency::optional('operational-sites'),
         ];
@@ -280,7 +278,6 @@ class OpportunitiesSource extends AbstractMigrationSource
             commercialId: $this->remapLegacyId(Referent::class, $record['commercial_referent_id'] ?? null, 'commercial_referent_id', $warnings),
             reporterId: $this->remapLegacyId(Referent::class, $record['reporter_referent_id'] ?? null, 'reporter_referent_id', $warnings),
             supervisorId: $this->remapLegacyId(User::class, $record['supervisor_user_id'] ?? null, 'supervisor_user_id', $warnings),
-            sourceId: $this->remapLegacyId(Source::class, $record['source_id'] ?? null, 'source_id', $warnings),
             leadId: null,
             managerSlots: $this->legacyManagerSlots($record['manager_user_ids'] ?? [], $warnings),
             productLines: $this->productLines($record, $warnings),

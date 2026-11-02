@@ -3,6 +3,8 @@
 namespace App\Policies\Abstracts;
 
 use App\Models\User;
+use Closure;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -21,27 +23,27 @@ abstract class BasePolicy
      */
     abstract protected function resource(): string;
 
-    public function viewAny(User $user): bool
+    public function viewAny(User $user): bool|Response
     {
         return $user->can($this->permission('viewAny'));
     }
 
-    public function view(User $user, Model $model): bool
+    public function view(User $user, Model $model): bool|Response
     {
         return $user->can($this->permission('view'));
     }
 
-    public function create(User $user): bool
+    public function create(User $user): bool|Response
     {
         return $user->can($this->permission('create'));
     }
 
-    public function update(User $user, Model $model): bool
+    public function update(User $user, Model $model): bool|Response
     {
         return $user->can($this->permission('update'));
     }
 
-    public function delete(User $user, Model $model): bool
+    public function delete(User $user, Model $model): bool|Response
     {
         return $user->can($this->permission('delete'));
     }
@@ -98,6 +100,32 @@ abstract class BasePolicy
     public function permissions(): array
     {
         return array_map(fn (string $ability) => $this->permission($ability), static::abilities());
+    }
+
+    /**
+     * Permission first, then the perimeter (spec 0328 D-6). A missing
+     * permission is denied WITHOUT a message, so the denial registry names
+     * it; a record outside the perimeter is denied with its own reason.
+     * `$perimeter` runs only once the permission is held, like the `&&` it
+     * replaces.
+     *
+     * @param  Closure(): bool  $perimeter
+     */
+    protected function withinPerimeter(bool $hasPermission, Closure $perimeter, string $reason): Response
+    {
+        if (! $hasPermission) {
+            return Response::deny();
+        }
+
+        return $perimeter() ? Response::allow() : $this->denyBecause($reason);
+    }
+
+    /**
+     * @param  string  $reason  key of lang/{locale}/authorization.php
+     */
+    protected function denyBecause(string $reason): Response
+    {
+        return Response::deny(__("authorization.{$reason}"));
     }
 
     protected function permission(string $ability): string

@@ -1,5 +1,6 @@
 <?php
 
+use App\Migrations\Sources\AttachmentsSource;
 use App\Migrations\Sources\AttributeLayoutsSource;
 use App\Migrations\Sources\AttributesSource;
 use App\Migrations\Sources\BusinessFunctionMembersSource;
@@ -35,10 +36,13 @@ use App\Migrations\Sources\SourcesSource;
 use App\Migrations\Sources\TagsSource;
 use App\Migrations\Sources\TasksSource;
 use App\Migrations\Sources\TaskTemplatesSource;
+use App\Migrations\Sources\TimeEntriesSource;
+use App\Migrations\Sources\TimeEntryDayNotesSource;
 use App\Migrations\Sources\UsersSource;
 use App\Migrations\Sources\VatRatesSource;
 use App\Migrations\Sources\WorkOrderProgressSource;
 use App\Migrations\Sources\WorkOrdersSource;
+use App\Migrations\Sources\WorkOrderTaskTemplatesSource;
 use App\Migrations\Sources\WorkOrderWorkflowsSource;
 use App\Migrations\Sources\WorkOrderWorkflowStatusesSource;
 
@@ -82,10 +86,36 @@ return [
     // reclaims a migration still legitimately running on the first.
     'job_timeout' => (int) env('MIGRATION_JOB_TIMEOUT', 1800),
 
+    // Dedicated queue of RunMigrationJob/RunMassMigrationJob: a migration holds
+    // its worker for up to job_timeout, so on the shared `default` queue it
+    // would stall emails, exports and imports behind it. Served by its own
+    // worker (`queue:work --queue=migrations`), never by the default one.
+    'queue' => env('MIGRATION_QUEUE', 'migrations'),
+
     // Spec 0285: the `users` source only links the legacy users to the qnet
     // accounts that already exist (writes `old_id`, creates nothing), for an
     // installation whose accounts come from its own seeder.
     'users_link_only' => (bool) env('EXTERNAL_MIGRATION_USERS_LINK_ONLY', false),
+
+    // Spec 0295 D-11: link-only legacy documents. qnet-2 streams a legacy file
+    // only from a URL under this base (the legacy tenant domain, e.g.
+    // https://www.qualificagroup.org), never following redirects. Empty =
+    // the `attachments` source is unavailable and no legacy file is fetched.
+    'legacy_files_base_url' => env('EXTERNAL_MIGRATION_FILES_BASE_URL'),
+    'legacy_files_timeout' => (int) env('EXTERNAL_MIGRATION_FILES_TIMEOUT', 30),
+
+    // Spec 0343 D-4: legacy QNet page of a migrated record, by attachable
+    // alias, under legacy_files_base_url; `{id}` = the record's old_id. The
+    // legacy has no detail page for opportunities and tasks: their list.
+    'legacy_record_paths' => [
+        'work_order' => 'manageorder/{id}',
+        'registry' => 'companyshow/{id}',
+        'purchase_request' => 'rda-manage/{id}',
+        'purchase_order' => 'amministrazione.genera-proforma-fornitori/{id}/view',
+        'purchase_invoice' => 'amministrazione.genera-proforma-fornitori/{id}/view',
+        'opportunity' => 'opportunities',
+        'task' => 'tasks',
+    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -137,6 +167,8 @@ return [
         // spec 0322: the work order workflows and the current status of each work order.
         'work-order-workflows' => WorkOrderWorkflowsSource::class,
         'work-order-workflow-statuses' => WorkOrderWorkflowStatusesSource::class,
+        // spec 0326: the task template of each migrated work order.
+        'work-order-task-templates' => WorkOrderTaskTemplatesSource::class,
         // spec 0203: the product supplier link and the legacy commission rules,
         // both needing the migrated registries.
         'product-suppliers' => ProductSuppliersSource::class,
@@ -157,6 +189,10 @@ return [
         'collections' => CollectionsSource::class,
         // spec 0311: the notes of every legacy module, after the records they belong to.
         'notes' => NotesSource::class,
+        'attachments' => AttachmentsSource::class,
+        // spec 0341: the legacy segnatempo intervals and day notes, after every record they link to.
+        'time-entries' => TimeEntriesSource::class,
+        'time-entry-day-notes' => TimeEntryDayNotesSource::class,
     ],
 
 ];

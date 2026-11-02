@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -58,7 +59,7 @@ const SERVER_ERROR_FIELDS = ['locale'] as const
  * is shown read-only and is never part of the editable form state or payload.
  */
 export function ProfileForm() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
@@ -126,7 +127,7 @@ export function ProfileForm() {
       if (
         !applyServerValidationErrors(error, form.setError, [...SERVER_ERROR_FIELDS])
       ) {
-        setServerError(t('settings.genericError'))
+        setServerError(apiErrorMessage(error, t('settings.genericError'), i18n))
       }
     }
   }

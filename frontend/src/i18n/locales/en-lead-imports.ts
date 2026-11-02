@@ -25,7 +25,6 @@ export const leadImports = {
   },
   deleted: 'Import run deleted successfully.',
   deleteError: 'Unable to delete the import run. Please try again.',
-  deleteForbidden: 'You cannot delete this import run.',
   detail: {
     resume: 'Resume import',
     loadError: 'Unable to load the import run. Please try again.',

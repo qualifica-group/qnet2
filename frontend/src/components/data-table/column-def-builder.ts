@@ -41,12 +41,16 @@ export interface BuildColDefsParams {
   domain: string
   /** Selected Product Category scope (spec 0064), forwarded to the Set Filter values callback. */
   productCategoryId?: number
+  /** Root Product Category tab scope (spec 0337), forwarded to the Set Filter values callback. */
+  productCategoryBranchId?: number
   /** Opportunity row-set scope (spec 0067 D-1), forwarded to the Set Filter values callback. */
   opportunityId?: number
   /** Contract's Offerta row-set scope (spec 0095 D-8), forwarded to the Set Filter values callback. */
   quoteId?: number
   /** Row-set scope to one Anagrafica (spec 0199); a no-op for every domain but `opportunities`, `quotes`, `work-orders`, `tasks`. */
   registryId?: number
+  /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
+  referentId?: number
   columns: TableColumn[]
   cellRenderers?: Record<string, CellRenderer>
   renderRowActions?: (params: ICellRendererParams) => ReactNode
@@ -77,9 +81,11 @@ export interface BuildColDefsParams {
 export function buildColDefs({
   domain,
   productCategoryId,
+  productCategoryBranchId,
   opportunityId,
   quoteId,
   registryId,
+  referentId,
   columns,
   cellRenderers,
   renderRowActions,
@@ -114,6 +120,8 @@ export function buildColDefs({
       opportunityId,
       quoteId,
       registryId,
+      referentId,
+      productCategoryBranchId,
     )
     return {
       colId: column.id,

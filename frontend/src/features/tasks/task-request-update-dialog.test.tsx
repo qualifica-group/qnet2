@@ -193,7 +193,7 @@ describe('TaskRequestUpdateDialog — server error mapping (spec 0153 D-14)', ()
     expect(toast.error).toHaveBeenCalledWith(label('tasks.actions.errors.wrongPhase'))
   })
 
-  it('wires a field-scoped 422 on message inline, without the generic toast', async () => {
+  it('wires a field-scoped 422 on message inline, with the shared form-errors toast instead of the generic one', async () => {
     vi.mocked(requestTaskUpdate).mockRejectedValueOnce(
       actionError(422, { message: ['The message must be at least 3 characters.'] }),
     )
@@ -202,6 +202,11 @@ describe('TaskRequestUpdateDialog — server error mapping (spec 0153 D-14)', ()
     fillMessageAndSubmit()
 
     await screen.findByText('The message must be at least 3 characters.')
-    expect(toast.error).not.toHaveBeenCalled()
+    // User directive 2026-10-30: the field-scoped 422 is also raised in the foreground.
+    expect(toast.error).toHaveBeenCalledTimes(1)
+    expect(toast.error).toHaveBeenCalledWith(
+      label('common.formErrors.title'),
+      expect.objectContaining({ description: 'The message must be at least 3 characters.' }),
+    )
   })
 })

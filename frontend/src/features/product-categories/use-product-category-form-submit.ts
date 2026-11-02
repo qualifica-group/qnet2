@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useFormSubmitError } from '@/features/auth/use-form-submit-error'
 import type { Path, UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { createProductCategory, updateProductCategory } from '@/features/product-categories/api'
 import {
   buildCreatePayload,
@@ -65,9 +66,9 @@ export function useProductCategoryFormSubmit({
   customFieldErrorPaths,
   onSuccess,
 }: UseProductCategoryFormSubmitArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
-  const [serverError, setServerError] = useState<string | null>(null)
+  const [serverError, setServerError] = useFormSubmitError()
 
   const onSubmit = async (values: ProductCategoryFormValues) => {
     setServerError(null)
@@ -102,7 +103,7 @@ export function useProductCategoryFormSubmit({
       onSuccess(created)
     } catch (error) {
       if (!applyServerValidationErrors(error, form.setError, errorFields)) {
-        setServerError(t('productCategories.form.genericError'))
+        setServerError(apiErrorMessage(error, t('productCategories.form.genericError'), i18n))
       }
     }
   }

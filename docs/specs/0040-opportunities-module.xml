@@ -27,7 +27,8 @@
       i "default" naturali di Commerciale/Segnalatore) e `supervisor_id` (FK `users`).
     - "Referente/Commerciale/Segnalatore" -> `Referent` / `referents`, collegati all'anagrafica
       via pivot `referent_registry`. NON esiste un "referente predefinito" sul pivot: il prefill
-      possibile e' SOLO commercial/reporter dai default dell'anagrafica.
+      possibile e' SOLO commercial/reporter dai default dell'anagrafica. [Superato da spec 0330:
+      `registries.primary_referent_id` e' il referente principale e precompila il Referente.]
     - "Supervisore"          -> `User` / `users`. For-select esistente (api.php:232).
     - "Fonte"                -> `Source` / `sources`. For-select esistente (lookups.php:35).
     - "Categoria Prodotto"   -> `ProductCategory` / `product_categories`

@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useFormSubmitError } from '@/features/auth/use-form-submit-error'
 import type { Path, UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { campaignDetailQueryKey, createCampaign, updateCampaign } from '@/features/campaigns/api'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/campaigns/campaign-form-payload'
 import { editDefaults, type CampaignFormValues } from '@/features/campaigns/use-campaign-form'
@@ -80,9 +81,9 @@ export function useCampaignFormSubmit({
   suggestedCode,
   onSuccess,
 }: UseCampaignFormSubmitArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
-  const [serverError, setServerError] = useState<string | null>(null)
+  const [serverError, setServerError] = useFormSubmitError()
 
   const onSubmit = async (values: CampaignFormValues) => {
     setServerError(null)
@@ -109,9 +110,9 @@ export function useCampaignFormSubmit({
       ])
       const productLinesMessage = collectPrefixedServerErrors(error, PRODUCT_LINES_ERROR_PREFIXES)
       if (productLinesMessage) {
-        setServerError(productLinesMessage)
+        setServerError(productLinesMessage, { notify: false })
       } else if (!mappedScalar) {
-        setServerError(t('campaigns.form.genericError'))
+        setServerError(apiErrorMessage(error, t('campaigns.form.genericError'), i18n))
       }
     }
   }

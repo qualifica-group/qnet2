@@ -15,6 +15,7 @@ import type { ApiErrorResponse } from '@/api/types'
 import { workOrderPaymentStatusColumnRenderers } from '@/features/work-order-payment-statuses/column-renderers'
 import { deleteWorkOrderPaymentStatus } from '@/features/work-order-payment-statuses/api'
 import { StatusReorderToggle } from '@/features/status-reorder/status-reorder-toggle'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 
 /** Domain key used to mount the generic table for work order payment statuses. */
 const WORK_ORDER_PAYMENT_STATUSES_DOMAIN = 'work-order-payment-statuses'
@@ -34,7 +35,7 @@ const WORK_ORDER_PAYMENT_STATUSES_DOMAIN = 'work-order-payment-statuses'
  * affordance only; the backend re-authorizes each call.
  */
 export function WorkOrderPaymentStatusesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -59,8 +60,9 @@ export function WorkOrderPaymentStatusesTable() {
           return
         }
         const status = error.response?.status
-        if (status === 403) {
-          toast.error(t('workOrderPaymentStatuses.form.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden !== null) {
+          toast.error(forbidden)
         } else if (status === 409) {
           // BR-4: the status is still referenced by a work order line. Surface the
           // backend's own message rather than a generic one.
@@ -74,7 +76,7 @@ export function WorkOrderPaymentStatusesTable() {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(
@@ -113,7 +115,6 @@ export function WorkOrderPaymentStatusesTable() {
                 dragHandleLabel: t('workOrderPaymentStatuses.reorder.dragHandleLabel'),
                 loadError: t('workOrderPaymentStatuses.reorder.loadError'),
                 saved: t('workOrderPaymentStatuses.reorder.saved'),
-                forbidden: t('workOrderPaymentStatuses.reorder.forbidden'),
                 genericError: t('workOrderPaymentStatuses.reorder.genericError'),
               }}
               onReordered={refreshGrid}

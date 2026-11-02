@@ -51,7 +51,6 @@ export const sectors = {
     deleted: 'Settore eliminato con successo.',
     genericError: 'Qualcosa è andato storto. Riprova.',
     deleteError: 'Impossibile eliminare il settore. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questo settore.',
     deleteInUse: 'Questo settore ha sotto-settori e non può essere eliminato.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',

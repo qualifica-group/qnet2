@@ -118,7 +118,9 @@ it('AC-006: bulk-completing tasks in different stages creates each time_entry wi
     $this->postJson('/api/work-orders/'.$workOrder->id.'/task-board/bulk', [
         'task_ids' => [$taskA->id, $taskB->id],
         'action' => 'complete',
+        // REQUIREMENT CHANGED (spec 0338): time_entry.minutes is the TOTAL, split via time_entry_shares.
         'time_entry' => stageValidTimeEntryPayload(),
+        'time_entry_shares' => [['task_id' => $taskA->id, 'minutes' => 30], ['task_id' => $taskB->id, 'minutes' => 30]],
     ])->assertOk();
 
     $this->assertDatabaseHas('time_entries', ['task_id' => $taskA->id, 'work_order_stage_id' => $stageA->id]);

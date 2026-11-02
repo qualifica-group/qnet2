@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\OrgChart\OrgChartReadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -52,6 +53,6 @@ class OrgChartController extends BaseApiController
         /** @var User $actor */
         $actor = $request->user();
 
-        abort_unless($actor->can(self::VIEW_PERMISSION), 403);
+        Gate::forUser($actor)->authorize(self::VIEW_PERMISSION);
     }
 }

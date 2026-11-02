@@ -13,6 +13,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "A contract is never created by hand: it is born when a quote moves to a **Closed (positive)** status, with an **Accepted at** date of that day and the **Default** status of **Contract Statuses**. It is not born if the product category is set to not generate contracts. If the quote leaves the positive status, the contract becomes **\"Sospeso\"** and QNet remembers the previous status.",
         },
+        {
+          type: 'paragraph',
+          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Contract data** (Offer, Opportunity, Offer date) and **Context**, then **Registry and contacts** (Registry, Referent with its type, Commercial, Reporter) and **Rewards**, then **Team** (the quote's Supervisor and Account managers) and **Company and sites**, then **Document and payment** and **Lifecycle**. The quote's data are read only and changed from the quote; Payment notes, Renewal, Expiry and Comments are edited here.",
+        },
       ],
     },
     {
@@ -23,7 +27,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Current status', 'Available actions'],
           rows: [
-            ['Open or Pending', 'Data editable in place, **Change status**, **Validate contract**, **Terminate contract**'],
+            ['Open or Pending', 'Data editable in place, **Change status**, **Validate contract** (only if never validated), **Terminate contract**'],
             ['Closed (positive)', '**Program**, **Terminate contract**, **Reopen contract**'],
             ['Closed (negative)', '**Reopen contract**'],
             ['"Sospeso"', '**Reopen contract**'],
@@ -32,10 +36,10 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            '**Validate contract**: set the **Validation date** (not in the future).',
+            '**Validate contract**: set the **Validation date** (not in the future). It does not appear on a contract that already has a validation date, even when its status is Pending (for example "Da programmare", "Programmato" or "In scadenza").',
             '**Terminate contract**: set the **Termination date**, **Reason** and **Destination status**.',
             'Contract data: **Expiry**, **Renewal**, **Payment notes** and **Comments** are edited straight in the card while the contract is Open or Pending: press the pencil next to the field (or click the value), change it and press **Save** (Cancel, Esc or a click outside close without saving). Comments are written inside their box at the top of the card.',
-            '**Reopen contract**: brings the contract back to working; if it was suspended, it returns to the previous status.',
+            '**Reopen contract**: brings the contract back to working; if it was suspended, it returns to the previous status. Reopening a Closed (positive) or Closed (negative) contract also clears the validation date and author, so the contract can be validated again; the previous values stay in **Activity history**.',
           ],
         },
         {
@@ -120,11 +124,37 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'category-tabs',
+      title: "Filtering by product category",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Above the list is the category bar: the **All** tab and one tab for each product category present, with the number of contracts. Clicking a tab shows only the contracts of that category. Your choice is kept after reloading the page.",
+        },
+        {
+          type: 'paragraph',
+          text: "A contract appears under the tab of every category among the products on the **revenue rows of the contract's quote** (it counts once even with several rows of the same category). Cost rows do not count; a contract whose quote has no revenue rows appears only under **All**. The number next to the name is how many contracts, among those you can see, fall under that category.",
+        },
+        {
+          type: 'steps',
+          items: ["If the tabs do not fit the row, the others move into the **More** menu, where you can search a category by name.","Click the **star** next to a category (in the menu) to add it to your **favorites**: favorites come first.","Turn on **Show only favorites** to see only the favorites in the bar; the others stay in the **More** menu."],
+        },
+        {
+          type: 'paragraph',
+          text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. Turn it off to go back to all the categories.",
+        },
+        {
+          type: 'note',
+          text: "Favorites are separate for each list (Opportunities, Quotes, Contracts, Work orders, Request Management). The first time they are suggested from the categories you are enabled for; as soon as you use the star they become yours. The export does not follow the tab: it always covers all the contracts.",
+        },
+      ],
+    },
+    {
       id: 'visibility',
       title: "Which contracts you see",
       blocks: [
         { type: 'paragraph', text: "What you see depends on your role. You always need the **View** permission; the levels are cumulative and depend on the contract's quote. Contract permissions are independent of the Quotes ones." },
-        { type: 'table', headers: ["Permission", "Visible contracts"], rows: [["**View**", "Those where you are the **Supervisor** or an **Account manager** of the contract's quote."], ["**View by site**", "Your own plus those whose quote belongs to your **Operating site**."], ["**View all**", "All of them."]] },
+        { type: 'table', headers: ["Permission", "Visible contracts"], rows: [["**View**", "Those where you are the **Supervisor** or an **Account manager** of the contract's quote."], ["**View by site**", "Your own plus those whose quote belongs to your **Operating site**."], ["**View by competence**", "Your own plus those whose quote has a category in your assignment scope, in any site. With **Scope on all categories**, all of them."], ["**View all**", "All of them."]] },
         { type: 'paragraph', text: "The filter applies to the list, the detail, filters, exports, statistics and dashboard, selectors and documents. Opening a link to a contract you cannot see shows an access error. Seeing a contract does not let you edit or delete it: that takes the **Edit** and **Delete** permissions, and you can only edit what you can see." },
       ],
     },

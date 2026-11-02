@@ -257,7 +257,11 @@ describe('RewardTypesTable — delete outcome toasts (AC-019)', () => {
     deleteRewardTypeMock.mockRejectedValue(
       new AxiosError('Forbidden', '403', undefined, undefined, {
         status: 403,
-        data: { success: false, message: 'Forbidden' },
+        data: {
+          success: false,
+          message: 'Forbidden',
+          authorization: { reason: 'missing_permission', permission: 'reward-types.delete' },
+        },
       } as never),
     )
 
@@ -265,7 +269,7 @@ describe('RewardTypesTable — delete outcome toasts (AC-019)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith('You cannot delete this reward type.'),
+      expect(toastErrorMock).toHaveBeenCalledWith('You do not have the «Delete» permission on the «Vouchers, Rewards and Incentives» module.'),
     )
   })
 

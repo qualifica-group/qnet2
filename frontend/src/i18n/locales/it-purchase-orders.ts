@@ -64,7 +64,6 @@ export const purchaseOrders = {
   },
   messages: {
     deleted: 'Ordine di acquisto eliminato.',
-    deleteForbidden: 'Non puoi eliminare questo ordine di acquisto.',
     deleteBlocked: 'Si possono eliminare solo ordini in bozza o in validazione.',
     deleteError: "Impossibile eliminare l'ordine di acquisto. Riprova.",
   },

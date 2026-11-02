@@ -55,6 +55,8 @@ import { outboundEmails } from './en-outbound-emails'
 import { emailTemplates } from './en-email-templates'
 import { documentBundles } from './en-document-bundles'
 import { taskTemplates } from './en-task-templates'
+import { supportTopics } from './en-support-topics'
+import { supportRequests } from './en-support-requests'
 import { tasks } from './en-tasks'
 import { timeEntries } from './en-time-entries'
 import {
@@ -75,6 +77,7 @@ import { dashboard } from './en-dashboard'
 import { navigation } from './en-navigation'
 import { settings } from './en-settings'
 import { requestManagement } from './en-request-management'
+import { categoryTabs } from './en-category-tabs'
 import { enrolleeManagement } from './en-enrollee-management'
 import { notes } from './en-notes'
 import { richText } from './en-rich-text'
@@ -123,6 +126,7 @@ export const en = {
     edit: 'Edit',
     delete: 'Delete',
     duplicate: 'Duplicate',
+    clone: 'Clone',
     activity: 'Activity',
     convertToOpportunity: 'Convert to Opportunity',
     documents: 'Documents',
@@ -314,7 +318,6 @@ export const en = {
       nameMax: 'Name must be at most 255 characters.',
       genericError: 'Something went wrong. Please try again.',
       deleteError: 'Unable to delete the role. Please try again.',
-      deleteForbidden: 'You cannot delete this role.',
       sections: {
         details: {
           title: 'Role details',
@@ -470,11 +473,14 @@ export const en = {
   taskStatuses,
   taskTypes,
   taskCategories,
+  supportTopics,
+  supportRequests,
   taskPriorities,
   taskImportances,
   timeEntries,
   commissionConfigurations,
   requestManagement,
+  categoryTabs,
   enrolleeManagement,
   // Shared validation messages of the `attribute_values` dynamic map (spec
   // 0084): a neutral namespace reused by every context that collects it

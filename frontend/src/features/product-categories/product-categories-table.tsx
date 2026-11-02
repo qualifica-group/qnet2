@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { FolderTree, LayoutGrid, Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -45,7 +46,7 @@ const PRODUCT_CATEGORIES_ACTION_ICONS: ActionIconMap = { 'layout-grid': LayoutGr
  * custom tree view to this grid.
  */
 export function ProductCategoriesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const stats = useStatsPanel(PRODUCT_CATEGORIES_DOMAIN)
   const invalidateStats = useInvalidateModuleStats(PRODUCT_CATEGORIES_DOMAIN)
 
@@ -117,8 +118,9 @@ export function ProductCategoriesTable() {
         invalidateStats()
       } catch (error) {
         const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        if (status === 403) {
-          toast.error(t('productCategories.form.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden) {
+          toast.error(forbidden)
         } else if (status === 409 || status === 422) {
           toast.error(t('productCategories.form.deleteInUse'))
         } else {
@@ -128,7 +130,7 @@ export function ProductCategoriesTable() {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t, invalidateStats],
+    [refreshGrid, t, i18n, invalidateStats],
   )
 
   const handleAction: RowActionHandler = useCallback(

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BookOpen, CalendarCog, CalendarOff, CalendarX, Circle, CreditCard, Files, GraduationCap, LayoutTemplate, Library, ListChecks, Plug, Shapes, Sparkles } from 'lucide-react'
+import { BookOpen, CalendarCog, CalendarOff, CalendarX, Circle, CreditCard, Files, GraduationCap, LayoutTemplate, Library, LifeBuoy, ListChecks, Plug, Shapes, Sparkles } from 'lucide-react'
 import { resolveIcon } from '@/features/navigation/icon-map'
 
 /**
@@ -89,5 +89,13 @@ describe('resolveIcon — skills navigation icons (spec 0286)', () => {
   it('resolves "sparkles" and "list-checks" to their Lucide components', () => {
     expect(resolveIcon('sparkles')).toBe(Sparkles)
     expect(resolveIcon('list-checks')).toBe(ListChecks)
+  })
+})
+
+/** Spec 0334: `config/navigation/configuration/tasks.php` declares `'icon' => 'life-buoy'` for "Assistenza tecnica". */
+describe('resolveIcon — support-topics navigation icon (spec 0334)', () => {
+  it('resolves "life-buoy" to the LifeBuoy component, not the Circle fallback', () => {
+    expect(resolveIcon('life-buoy')).toBe(LifeBuoy)
+    expect(resolveIcon('life-buoy')).not.toBe(Circle)
   })
 })

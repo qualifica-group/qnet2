@@ -51,7 +51,6 @@ export const staffCourses = {
     validityInvalid: 'La validità deve essere un numero intero di mesi da 1 a 240.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare il corso. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questo corso.',
     deleteInUse: 'Impossibile eliminare: il corso ha formazioni registrate. Disattivalo invece.',
     sections: {
       identity: {

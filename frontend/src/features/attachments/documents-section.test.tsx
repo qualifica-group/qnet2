@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '@/i18n'
 import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import { DocumentsSection } from '@/features/attachments/documents-section'
-import type { Attachment } from '@/features/attachments/types'
+import type { Attachment, AttachmentList } from '@/features/attachments/types'
 
 /**
  * Documents section (shared, self-fetching Attachment API consumer): list
@@ -57,6 +57,11 @@ function attachment(overrides: Partial<Attachment> = {}): Attachment {
   }
 }
 
+// REQUIREMENT CHANGED (spec 0343): the list carries the legacy link beside the documents.
+function documentList(documents: Attachment[], legacyUrl: string | null = null): AttachmentList {
+  return { documents, legacyUrl }
+}
+
 function renderSection(ui: ReactElement) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
@@ -88,10 +93,12 @@ afterEach(() => {
 
 describe('DocumentsSection', () => {
   it('renders an image thumbnail for image documents and an icon for other files', async () => {
-    listAttachmentsMock.mockResolvedValue([
-      attachment({ id: 1, original_name: 'photo.png', mime_type: 'image/png' }),
-      attachment({ id: 2, original_name: 'contract.pdf', mime_type: 'application/pdf' }),
-    ])
+    listAttachmentsMock.mockResolvedValue(
+      documentList([
+        attachment({ id: 1, original_name: 'photo.png', mime_type: 'image/png' }),
+        attachment({ id: 2, original_name: 'contract.pdf', mime_type: 'application/pdf' }),
+      ]),
+    )
 
     renderSection(
       <DocumentsSection resource="opportunity" id={42} canUpload={false} canDelete={false} />,
@@ -110,7 +117,7 @@ describe('DocumentsSection', () => {
   })
 
   it('shows the empty state when there are no documents', async () => {
-    listAttachmentsMock.mockResolvedValue([])
+    listAttachmentsMock.mockResolvedValue(documentList([]))
 
     renderSection(
       <DocumentsSection resource="opportunity" id={42} canUpload={false} canDelete={false} />,
@@ -133,7 +140,7 @@ describe('DocumentsSection', () => {
   })
 
   it('previews in a new tab through the authenticated binary fetch', async () => {
-    listAttachmentsMock.mockResolvedValue([attachment()])
+    listAttachmentsMock.mockResolvedValue(documentList([attachment()]))
     const tab = { location: { href: '' }, close: vi.fn() }
     const openSpy = vi.fn(() => tab)
     vi.stubGlobal('open', openSpy)
@@ -153,7 +160,7 @@ describe('DocumentsSection', () => {
   })
 
   it('closes the opened tab and warns when the preview fetch fails', async () => {
-    listAttachmentsMock.mockResolvedValue([attachment()])
+    listAttachmentsMock.mockResolvedValue(documentList([attachment()]))
     fetchAttachmentBinaryMock.mockRejectedValue(new Error('forbidden'))
     const tab = { location: { href: '' }, close: vi.fn() }
     vi.stubGlobal('open', vi.fn(() => tab))
@@ -169,7 +176,7 @@ describe('DocumentsSection', () => {
   })
 
   it('downloads through the authenticated binary fetch, keeping the original name', async () => {
-    listAttachmentsMock.mockResolvedValue([attachment()])
+    listAttachmentsMock.mockResolvedValue(documentList([attachment()]))
 
     renderSection(
       <DocumentsSection resource="opportunity" id={42} canUpload={false} canDelete={false} />,
@@ -182,7 +189,7 @@ describe('DocumentsSection', () => {
   })
 
   it('uploads the dropped/selected file and refreshes the list', async () => {
-    listAttachmentsMock.mockResolvedValue([])
+    listAttachmentsMock.mockResolvedValue(documentList([]))
     uploadAttachmentMock.mockResolvedValue(attachment())
 
     renderSection(
@@ -208,7 +215,7 @@ describe('DocumentsSection', () => {
   })
 
   it('accepts a multiple selection and uploads every file once', async () => {
-    listAttachmentsMock.mockResolvedValue([])
+    listAttachmentsMock.mockResolvedValue(documentList([]))
     uploadAttachmentMock.mockResolvedValue(attachment())
 
     renderSection(
@@ -231,7 +238,7 @@ describe('DocumentsSection', () => {
   })
 
   it('keeps the successful uploads and reports only the failed files of a batch', async () => {
-    listAttachmentsMock.mockResolvedValue([])
+    listAttachmentsMock.mockResolvedValue(documentList([]))
     uploadAttachmentMock
       .mockResolvedValueOnce(attachment())
       .mockRejectedValueOnce(new Error('too large'))
@@ -260,7 +267,7 @@ describe('DocumentsSection', () => {
   })
 
   it('does not render the dropzone when the caller has no upload permission', async () => {
-    listAttachmentsMock.mockResolvedValue([])
+    listAttachmentsMock.mockResolvedValue(documentList([]))
 
     renderSection(
       <DocumentsSection resource="opportunity" id={42} canUpload={false} canDelete={false} />,
@@ -271,7 +278,7 @@ describe('DocumentsSection', () => {
   })
 
   it('deletes a document after the confirm dialog is accepted', async () => {
-    listAttachmentsMock.mockResolvedValue([attachment()])
+    listAttachmentsMock.mockResolvedValue(documentList([attachment()]))
     deleteAttachmentMock.mockResolvedValue(undefined)
 
     renderSection(
@@ -289,7 +296,7 @@ describe('DocumentsSection', () => {
   })
 
   it('does not delete when the confirm dialog is cancelled', async () => {
-    listAttachmentsMock.mockResolvedValue([attachment()])
+    listAttachmentsMock.mockResolvedValue(documentList([attachment()]))
 
     renderSection(
       <DocumentsSection resource="opportunity" id={42} canUpload={false} canDelete />,
@@ -306,7 +313,7 @@ describe('DocumentsSection', () => {
   })
 
   it('does not render the delete action when the caller has no delete permission', async () => {
-    listAttachmentsMock.mockResolvedValue([attachment()])
+    listAttachmentsMock.mockResolvedValue(documentList([attachment()]))
 
     renderSection(
       <DocumentsSection resource="opportunity" id={42} canUpload={false} canDelete={false} />,
@@ -314,5 +321,31 @@ describe('DocumentsSection', () => {
 
     await screen.findByText('contract.pdf')
     expect(screen.queryByRole('button', { name: 'Delete document' })).not.toBeInTheDocument()
+  })
+
+  it('links a migrated record to the old QNet, also with no documents (spec 0343)', async () => {
+    listAttachmentsMock.mockResolvedValue(documentList([], 'https://legacy.test/manageorder/501'))
+
+    renderSection(
+      <DocumentsSection resource="work_order" id={42} canUpload={false} canDelete={false} />,
+    )
+
+    const link = await screen.findByRole('link', { name: /Check the old QNet/ })
+    expect(screen.getByText("Can't find a document?")).toBeInTheDocument()
+    expect(link).toHaveAttribute('href', 'https://legacy.test/manageorder/501')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
+  it('shows no legacy note for a QNet record or a non-web link (spec 0343)', async () => {
+    listAttachmentsMock.mockResolvedValue(documentList([attachment()], 'javascript:alert(1)'))
+
+    renderSection(
+      <DocumentsSection resource="work_order" id={42} canUpload={false} canDelete={false} />,
+    )
+
+    await screen.findByText('contract.pdf')
+    expect(screen.queryByText("Can't find a document?")).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Check the old QNet/ })).not.toBeInTheDocument()
   })
 })

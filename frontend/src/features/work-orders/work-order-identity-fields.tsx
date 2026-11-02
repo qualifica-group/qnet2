@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { RelationSelectField, type RelationFieldRef } from '@/components/form/relation-select-field'
 import { MetaField } from '@/features/authorization/MetaField'
-import { TASK_TEMPLATES_FOR_SELECT_RESOURCE } from '@/features/task-templates/for-select-api'
+import { TASK_TEMPLATE_POPUP_WIDTH_CLASS, TASK_TEMPLATES_FOR_SELECT_RESOURCE } from '@/features/task-templates/for-select-api'
 import type { WorkOrderFormValues } from '@/features/work-orders/use-work-order-form'
 import type { WorkOrderType } from '@/features/work-orders/types'
 
@@ -189,6 +189,7 @@ export function WorkOrderTaskTemplateField({ control, selected }: TaskTemplateFi
       errorLabel={t('workOrders.form.taskTemplateError')}
       clearLabel={t('workOrders.form.taskTemplateClear')}
       retryLabel={t('common.retry')}
+      contentClassName={TASK_TEMPLATE_POPUP_WIDTH_CLASS}
     />
   )
 }

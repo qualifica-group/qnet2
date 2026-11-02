@@ -36,6 +36,8 @@ export const permissions = {
     // Spec 0165: Enrollee Management only — the enrollees of the actor's
     // physical Sede (not the remote ones), on top of those they operate.
     viewPrimarySite: 'View physical site',
+    // Spec 0340: records inside the actor's assignment scope, in any site.
+    viewCompetence: 'View by competence',
     viewDocuments: 'View documents',
     // Beyond BasePolicy's CRUD: the supervisory act of assigning the GA2
     // Operator at creation (user directive 2026-07-29).
@@ -178,6 +180,7 @@ export const permissions = {
     'task-statuses': 'Task Statuses',
     'task-types': 'Task Types',
     'task-categories': 'Task Categories',
+    'support-topics': 'Technical support',
     'task-priorities': 'Task Priorities',
     'task-importances': 'Task Importances',
     'task-templates': 'Task Templates',

@@ -149,7 +149,6 @@ export const purchaseRequests = {
     conflict: 'The purchase request has changed or is closed. Reload and try again.',
     saveError: 'Unable to save the purchase request. Please try again.',
     deleted: 'Purchase request deleted.',
-    deleteForbidden: 'You do not have permission to delete this purchase request.',
     deleteBlocked: 'The purchase request has ordered or received lines and cannot be deleted.',
     deleteError: 'Unable to delete the purchase request. Please try again.',
     notifyError: 'Unable to send the purchase request to the manager.',

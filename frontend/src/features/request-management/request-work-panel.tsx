@@ -256,8 +256,7 @@ function RequestWorkPanelBody({ panel, onSaved }: RequestWorkPanelBodyProps) {
                 NOT `opportunity_id` (spec 0086 D-10, revised): unlike
                 documents/notes/activity, field change requests are keyed
                 through this module's own TableDefinition, whose subject is the
-                Quote — `source_id` is exposed on it as a read-through virtual
-                attribute. */}
+                Quote — `source_id` is the Quote's own column (spec 0332). */}
             <FormSection
               icon={ListChecks}
               title={t('fieldChangeRequests.section.title', { defaultValue: 'Change requests' })}

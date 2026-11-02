@@ -19,6 +19,7 @@ use App\Services\Quotes\QuoteManagerSyncMode;
 use App\Services\Quotes\QuoteTypologySummaryCalculator;
 use App\Services\Quotes\QuoteWorkflowResolver;
 use App\Support\OperationalSiteLabel;
+use App\Support\ReferentRef;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Attributes\PreserveKeys;
@@ -42,7 +43,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * third as `{id, label}` via OperationalSiteLabel — the site has no own name
  * column, exactly as on ProjectResource/OpportunityResource.
  *
- * `registry`/`referent`/`source`/`product_lines`/`general_notes` (user
+ * `registry`/`referent`/`product_lines`/`general_notes` (user
  * directive 2026-08-31) are a READ-ONLY projection of the parent Opportunity:
  * `quotes` carries no such column and none of them is writable from here — the
  * offer detail only displays them as the context of the record it belongs to,
@@ -50,12 +51,15 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * `product_lines` reuses OpportunityResource's own row shape verbatim, so the
  * shared read-only list renders either record identically. Relies on
  * QuoteService::DETAIL_RELATIONS eager-loading `opportunity.registry`,
- * `opportunity.referent`, `opportunity.source` and
+ * `opportunity.referent` and
  * `opportunity.productLines.{businessFunction,productCategory}`.
  *
  * `layout`/`layout_id` (spec 0070) and `payment_method`/`payment_method_id`
  * (user directive 2026-07-30) follow the standard `{id, name}` ref shape
  * (`summarizeByName`), additive alongside every pre-existing key.
+ *
+ * `source_id`/`source` (spec 0332) are the Offerta's OWN Fonte (a `quotes`
+ * column, QuoteService::DETAIL_RELATIONS eager-loads `source`).
  *
  * Spec 0083, D-1/D-8: the former flat quote-status pick is REMOVED and
  * replaced by `quote_workflow_status_id`/`quote_workflow_status` (the
@@ -142,8 +146,9 @@ class QuoteResource extends JsonResource
             // propria su `quotes` e non sono scrivibili da qui — il dettaglio
             // Offerta le mostra soltanto, come fa la scheda Opportunita'.
             'registry' => $this->summarizeByName($this->opportunity?->registry),
-            'referent' => $this->summarizeByName($this->opportunity?->referent),
-            'source' => $this->summarizeByName($this->opportunity?->source),
+            'referent' => ReferentRef::summarize($this->opportunity?->referent),
+            'source_id' => $this->source_id,
+            'source' => $this->summarizeByName($this->source),
             'product_lines' => $this->summarizeProductLines($this->opportunity?->productLines ?? []),
             'general_notes' => $this->opportunity?->general_notes,
             'quote_workflow_status_id' => $this->quote_workflow_status_id,

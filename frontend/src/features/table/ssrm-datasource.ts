@@ -68,12 +68,16 @@ export interface SsrmDatasourceOptions {
   getCustomFilterRules?: () => FilterRules | null
   /** Product Category tab scope (spec 0064); a no-op for every domain but `request-management`. */
   productCategoryId?: number
+  /** Root Product Category tab scope (spec 0337): the rows of the whole branch. */
+  productCategoryBranchId?: number
   /** Row-set scope to one Opportunity's Quotes panel (spec 0067 D-1); a no-op for every domain but `quotes`. */
   opportunityId?: number
   /** Row-set scope to one Contract's Offerta (spec 0095 D-8); a no-op for every domain but `work-orders`. */
   quoteId?: number
   /** Row-set scope to one Anagrafica (spec 0199); a no-op for every domain but `opportunities`, `quotes`, `work-orders`, `tasks`. */
   registryId?: number
+  /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
+  referentId?: number
   /** Reports each response's `meta.aggregates` (spec 0156 D-3); a no-op for a domain with no `aggregates()` override. */
   onAggregates?: (aggregates: TableRowsAggregates | undefined) => void
   /** Server-side tree data (spec 0157 D-1); a no-op for every domain but `tasks`. */
@@ -104,9 +108,11 @@ export function createSsrmDatasource(
     getAdvancedFilters,
     getCustomFilterRules,
     productCategoryId,
+    productCategoryBranchId,
     opportunityId,
     quoteId,
     registryId,
+    referentId,
     onAggregates,
     treeData,
     rowGrouping,
@@ -179,9 +185,11 @@ export function createSsrmDatasource(
         advancedFilters,
         customFilterRules,
         productCategoryId,
+        productCategoryBranchId,
         opportunityId,
         quoteId,
         registryId,
+        referentId,
         tree: treeData ?? false,
         treeParentId,
         rowGroupCols,
@@ -201,9 +209,11 @@ export function createSsrmDatasource(
           ...(Object.keys(advancedFilters).length > 0 ? { advancedFilters } : {}),
           ...(customFilterRules ? { customFilterRules } : {}),
           ...(productCategoryId != null ? { productCategoryId } : {}),
+          ...(productCategoryBranchId != null ? { productCategoryBranchId } : {}),
           ...(opportunityId != null ? { opportunityId } : {}),
           ...(quoteId != null ? { quoteId } : {}),
           ...(registryId != null ? { registryId } : {}),
+          ...(referentId != null ? { referentId } : {}),
           ...(grouped ? { rowGroupCols, groupKeys } : {}),
           ...(treeData ? { tree: true } : {}),
           ...(treeParentId != null ? { treeParentId } : {}),

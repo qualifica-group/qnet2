@@ -11,7 +11,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Non esiste una pagina di modifica separata: la commessa si modifica **direttamente dal suo dettaglio**, un campo alla volta, comprese le **Informazioni aggiuntive** (ogni campo flessibile ha la sua riga). Una sezione legata a un campo sì/no compare solo con il campo attivo: spegnendolo, i valori della sezione vengono svuotati.',
+          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati commessa** (con il link al Contratto) e **Contesto**, poi **Anagrafica e contatti** (Anagrafica, Referente con il suo tipo, Commerciale, Segnalatore) e **Buoni**, poi **Team** (Supervisori e Partecipanti della commessa) e **Società e sedi**, poi **Documento e pagamento** e **Dati contrattuali**. Contesto, Anagrafica e contatti, Buoni, Società e sedi e Documento e pagamento vengono dall'offerta, in sola lettura; in una commessa con righe di più offerte non compaiono.",
+        },
+        {
+          type: 'paragraph',
+          text: 'Non esiste una pagina di modifica separata: la commessa si modifica **direttamente dal suo dettaglio**, un campo alla volta, comprese le **Informazioni aggiuntive** (ogni campo flessibile ha la sua riga). Una sezione legata a un campo sì/no compare solo con il campo attivo: spegnendolo, i valori della sezione vengono svuotati. Cliccando il titolo **Informazioni aggiuntive** la sezione si chiude o si riapre: la scelta resta salvata nel browser e vale per tutte le commesse, nel dettaglio e nella creazione.',
         },
         {
           type: 'steps',
@@ -28,7 +32,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Commessa n., Offerta collegata, Modello di Task). Anagrafica cliente, Contratto (codice e titolo), Società e sedi derivano dall\'offerta, come la Scadenza contratto mostrata tra gli indicatori in alto (si modifica sul contratto); Stato e Avanzamento derivano dalle registrazioni di avanzamento (vedi la sezione dedicata).',
+          text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Commessa n., Offerta collegata, Modello di Task). Contratto (codice e titolo) e le sezioni prese dall\'offerta derivano dall\'offerta, come la Scadenza contratto mostrata tra gli indicatori in alto (si modifica sul contratto); Stato e Avanzamento derivano dalle registrazioni di avanzamento (vedi la sezione dedicata).',
         },
         {
           type: 'note',
@@ -47,6 +51,32 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: "La **Chiusura forzata** resta un'azione di riga (chiede il motivo), non una cella. La colonna **Anagrafica** mostra il cliente della commessa, ripreso dall'offerta collegata: si può filtrare e ordinare ma non modificare. Lo stesso vale per la colonna **Scadenza contratto**, la data di scadenza del contratto da cui nasce la commessa (filtro per data, vuota se il contratto non ha una scadenza). Restano in sola lettura Commessa n., Contratto n., Offerta collegata, Anagrafica, Scadenza contratto, Stato, Avanzamento, Creata il e Aggiornata il.",
+        },
+      ],
+    },
+    {
+      id: 'category-tabs',
+      title: "Filtrare per categoria prodotto",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Sopra l'elenco trovi la barra delle categorie: la tab **Tutte** e una tab per ogni categoria prodotto presente, con il numero di commesse. Cliccando una tab l'elenco mostra solo le commesse di quella categoria. La scelta resta anche dopo aver ricaricato la pagina.",
+        },
+        {
+          type: 'paragraph',
+          text: "Una commessa compare nella tab di ogni categoria dei prodotti presenti nelle **righe di ricavo delle offerte da cui nasce**: l'offerta collegata e, per una commessa multi-offerta, le offerte delle righe che contiene (conta una volta sola anche con più righe della stessa categoria). Le righe di costo non contano; una commessa senza righe di ricavo compare solo in **Tutte**. Il numero accanto al nome è quante commesse, tra quelle che puoi vedere, rientrano nella categoria.",
+        },
+        {
+          type: 'steps',
+          items: ["Se le tab non entrano nella riga, le altre finiscono nel menu **Altre**, dove puoi cercare una categoria per nome.","Clicca la **stellina** accanto a una categoria (nel menu) per aggiungerla alle **preferite**: le preferite compaiono per prime.","Attiva **Mostra solo preferite** per vedere in barra solo le preferite; le altre restano nel menu **Altre**."],
+        },
+        {
+          type: 'paragraph',
+          text: "Nel menu **Altre** l'interruttore **Categorie madri** limita la barra alle sole categorie di primo livello: la tab di una categoria madre raccoglie anche le sottocategorie (un record conta una volta sola). La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria tab e le **preferite** sono separate tra le due modalità. Spegnendolo torni a tutte le categorie.",
+        },
+        {
+          type: 'note',
+          text: "Le preferite sono separate per ogni elenco (Opportunità, Offerte, Contratti, Commesse, Gestione Richieste). La prima volta ti vengono proposte in base alle categorie per cui sei abilitato; appena usi la stellina diventano le tue. L'esportazione non segue la tab: considera sempre tutte le commesse. La tab **Commesse** del dettaglio di un contratto non ha la barra.",
         },
       ],
     },
@@ -153,6 +183,28 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'task-board-selection',
+      title: 'Task: selezione multipla',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Nella scheda **Task** del dettaglio ogni task principale ha una casella di selezione: selezionandone uno o più compare in basso la barra con le azioni massive (Assegna, Completa, Riapri, Blocca, Priorità, Date). I sotto-task non si selezionano.',
+        },
+        {
+          type: 'list',
+          items: [
+            '**Seleziona tutti**, nella barra dei filtri, seleziona tutti i task visibili di tutte le fasi; cliccandola di nuovo li deseleziona.',
+            'La casella accanto al nome di ogni **fase** (anche **Senza fase**, e in testa a ogni colonna della vista Board) seleziona o deseleziona tutti i task di quella fase.',
+            'Se solo una parte dei task è selezionata la casella mostra un trattino: un clic completa la selezione.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Le caselle "seleziona tutti" considerano solo i task mostrati con i filtri attuali. Su una commessa chiusa il board è in sola lettura e le caselle non compaiono.',
+        },
+      ],
+    },
+    {
       id: 'costs',
       title: 'Costi',
       blocks: [
@@ -231,6 +283,22 @@ const guide: HelpGuide = {
             'Scegli lo **stato di pagamento**, scrivi l\'**accordo sui pagamenti** e indica se ci sono **insoluti**.',
             'Premi **Salva** per salvare la riga e chiudere il popup, oppure **Annulla** per scartare le modifiche.',
           ],
+        },
+        {
+          type: 'paragraph',
+          text: '**Azione massiva**: con il permesso di gestire i pagamenti ogni riga ha una casella di selezione, e quella nell\'intestazione seleziona tutte le righe. Serve per segnare in un colpo solo più prodotti, ad esempio tutti come **Saldato** o come **Insoluto**.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Seleziona le righe con le caselle (o tutte con la casella dell\'intestazione): sopra la tabella compare la barra con il numero di righe selezionate.',
+            'Premi **Imposta pagamento**: nel popup scegli lo **stato di pagamento** (anche **Nessuno stato**) e/o gli **insoluti** (Sì/No). Un campo lasciato su **Non modificare** resta com\'è su ogni riga.',
+            'Premi **Applica**: i valori vengono salvati su tutte le righe selezionate insieme (se una non può essere salvata non cambia nessuna) e la selezione si azzera. **Deseleziona** toglie la selezione senza salvare.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'L\'accordo sui pagamenti è un testo diverso per ogni riga: si modifica solo dal popup **Pagamento riga**. Se più righe diventano consegnabili con un\'azione massiva, supervisori e partecipanti ricevono **una sola notifica** con l\'elenco dei prodotti.',
         },
         {
           type: 'note',
@@ -332,9 +400,9 @@ const guide: HelpGuide = {
       title: "Quali commesse vedi",
       blocks: [
         { type: 'paragraph', text: "Cosa vedi dipende dal tuo ruolo. Serve sempre il permesso **Visualizza**; i livelli si sommano:" },
-        { type: 'table', headers: ["Permesso", "Commesse visibili"], rows: [["**Visualizza**", "Quelle di cui sei **Responsabile** o **Partecipante**."], ["**Visualizza per sede**", "Le tue e quelle la cui offerta è di una tua sede. Per una commessa con più offerte basta che lo sia una."], ["**Visualizza tutti**", "Tutte."]] },
+        { type: 'table', headers: ["Permesso", "Commesse visibili"], rows: [["**Visualizza**", "Quelle di cui sei **Responsabile** o **Partecipante**."], ["**Visualizza per sede**", "Le tue e quelle la cui offerta è di una tua sede. Per una commessa con più offerte basta che lo sia una."], ["**Visualizza per competenza**", "Le tue e quelle in cui almeno una offerta di origine ha una categoria nel tuo ambito di assegnazione, in qualunque sede. Con **Ambito su tutte le categorie** tutte."], ["**Visualizza tutti**", "Tutte."]] },
         { type: 'paragraph', text: "Il filtro vale per elenco, scheda, filtri, esportazioni, statistiche e dashboard, selettori e documenti. Aprire il link di una commessa che non puoi vedere mostra un errore di accesso. Vedere una commessa non permette di modificarla o eliminarla: servono i permessi **Modifica** ed **Elimina**, e si modifica solo ciò che si vede." },
-        { type: 'note', text: "Se crei una commessa senza esserne Responsabile o Partecipante, non la vedrai più a meno di avere **Visualizza tutti** o **Visualizza per sede**." },
+        { type: 'note', text: "Se crei una commessa senza esserne Responsabile o Partecipante, non la vedrai più a meno di avere **Visualizza tutti**, **Visualizza per sede** o **Visualizza per competenza**." },
       ],
     },
     {

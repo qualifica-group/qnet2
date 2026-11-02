@@ -54,13 +54,16 @@ if (! function_exists('workflowResolver')) {
 
 if (! function_exists('quoteForNewOpportunity')) {
     /**
-     * @param  array<string, mixed>  $opportunityAttributes
+     * REQUIREMENT CHANGED: spec 0332 — the attributes are the Quote's (the
+     * Fonte is its own column now). Same signature in every file declaring it.
+     *
+     * @param  array<string, mixed>  $quoteAttributes
      */
-    function quoteForNewOpportunity(array $opportunityAttributes = []): Quote
+    function quoteForNewOpportunity(array $quoteAttributes = []): Quote
     {
-        $opportunity = Opportunity::factory()->create($opportunityAttributes);
+        $opportunity = Opportunity::factory()->create();
 
-        return Quote::factory()->create(['opportunity_id' => $opportunity->id]);
+        return Quote::factory()->create(['opportunity_id' => $opportunity->id, ...$quoteAttributes]);
     }
 }
 

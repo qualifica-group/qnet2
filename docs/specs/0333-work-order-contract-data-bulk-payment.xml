@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0333-work-order-contract-data-bulk-payment" status="approved" owner="utente" date="2026-10-30">
+
+  <goal>
+    Nel tab "Dati contrattuali" della commessa si selezionano piu' prodotti (righe) e si imposta in un colpo
+    solo lo stato pagamento (es. Saldato, Insoluto) e/o il flag "Insoluti", invece di aprire il dialog riga per riga.
+  </goal>
+
+  <context>
+    - Spec 0201: `work_order_line_payments` (una per riga, UNIQUE quote_line_id), `PATCH
+      /api/work-orders/{workOrder}/contract-data/lines/{quoteLine}` (`UpdateWorkOrderLinePaymentRequest`,
+      `WorkOrderLinePaymentWriter`, notifica `WorkOrderLineDeliverableNotification` sul passaggio a uno stato
+      `allows_delivery`), permesso `work-orders.managePayments` (flag `manage_payments`).
+    - Frontend `features/work-order-contract-data/`: tabella `ContractDataTable`, dialog per riga
+      `ContractPaymentDialog`. Pattern di selezione/barra bulk: task board della commessa (spec 0146).
+    - Richiesta utente 2026-10-30: "Azione massiva sui prodotti di commessa per selezionarli tutti come pagati,
+      insoluto ecc".
+  </context>
+
+  <decisions>
+    - D-1 (campi): l'azione massiva imposta lo stato pagamento (anche "Nessuno stato") e/o il flag `has_unpaid`;
+      ogni campo puo' restare "Non modificare". L'accordo di pagamento (testo libero per riga) resta solo nel
+      dialog della singola riga.
+    - D-2 (atomicita'): tutte le righe in una transazione; una riga non della commessa = 422 per l'intera richiesta.
+    - D-3 (stato): solo stati attivi (nessuna eccezione "stato gia' presente" come nel PATCH singolo).
+    - D-4 (notifica): le righe che passano a uno stato `allows_delivery` producono UNA notifica per destinatario,
+      con i prodotti elencati (separati da virgola); stessi destinatari e regole del PATCH singolo.
+    - D-5 (risposta): l'intero payload del GET contract-data, che il frontend mette in cache senza refetch.
+    - D-6 (UI): checkbox per riga + "seleziona tutte" nell'intestazione, visibili solo con `manage_payments`;
+      con almeno una riga selezionata compare una barra "N selezionate · Imposta pagamento · Deseleziona".
+  </decisions>
+
+  <data_contract>
+    <endpoint method="PATCH" path="/api/work-orders/{workOrder}/contract-data/lines">
+      <request>
+        { "quote_line_ids": [int, ...] (1..200, distinti, righe della commessa),
+          "work_order_payment_status_id"?: int | null (stato attivo),
+          "has_unpaid"?: bool }
+        Almeno uno tra `work_order_payment_status_id` e `has_unpaid` presente. Chiave assente = invariato.
+      </request>
+      <response status="200">{ "success": true, "message": "Payment data saved", "data": { lines, totals, commissions_visible } } (shape del GET, spec 0201)</response>
+      <response status="403">senza `managePayments` sulla commessa (o fuori scope)</response>
+      <response status="422">ids mancanti/vuoti/oltre 200/non della commessa, stato inesistente o inattivo, flag non booleano, nessun campo da impostare</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    - AC-001: il PATCH bulk crea/aggiorna il pagamento di tutte le righe indicate, cambia solo le chiavi inviate, lascia intatte le altre righe.
+    - AC-002: 403 senza permesso, 401 anonimo, 422 per riga di altra commessa (nessuna riga scritta), stato inattivo, payload senza campi.
+    - AC-003: piu' righe che diventano consegnabili = una sola notifica per destinatario (mai l'attore) con tutti i prodotti.
+    - AC-004: UI: selezione per riga e "seleziona tutte", barra con conteggio, dialog con "Non modificare", invio del solo diff scelto, selezione azzerata al successo, errore server mostrato nel dialog.
+    - AC-005: senza `manage_payments` nessuna checkbox ne' barra.
+  </acceptance_criteria>
+
+  <scope>
+    <in>
+      <item>Backend: route, `BulkUpdateWorkOrderLinePaymentsRequest`, metodo `bulkUpdateLines` del controller, `WorkOrderLinePaymentWriter::handleMany`, test Pest.</item>
+      <item>Frontend: api/hook/tipi, selezione in tabella/riga, barra e dialog bulk, i18n IT/EN, test Vitest.</item>
+      <item>Guida in-app `work-orders` (sezione `contract-data`) IT/EN; manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Accordo di pagamento in massa (D-1). Azione massiva su piu' commesse dalla griglia commesse.</item>
+    </out>
+  </scope>
+</spec>

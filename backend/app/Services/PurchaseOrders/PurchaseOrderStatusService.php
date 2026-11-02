@@ -8,8 +8,8 @@ use App\Enums\PurchaseOrderStatus;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderLine;
 use App\Models\User;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -31,9 +31,7 @@ class PurchaseOrderStatusService
             // Step 1: serialize on the order, then check the permission of the target (403)
             $locked = PurchaseOrder::query()->whereKey($order->getKey())->lockForUpdate()->firstOrFail();
 
-            if (! $actor->can($this->ability($to), $locked)) {
-                throw new AuthorizationException;
-            }
+            Gate::forUser($actor)->authorize($this->ability($to), $locked);
 
             // Step 2: the matrix decides (422 on to_status)
             if (! $locked->status->canTransitionTo($to)) {

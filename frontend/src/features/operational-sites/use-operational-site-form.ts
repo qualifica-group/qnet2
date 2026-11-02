@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { useCustomFieldsForm } from '@/features/custom-fields/use-custom-fields-form'
 import {
   createOperationalSite,
@@ -56,7 +57,7 @@ interface UseOperationalSiteFormArgs {
  * (`onSubmit`).
  */
 export function useOperationalSiteForm({ mode, onSuccess }: UseOperationalSiteFormArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -143,7 +144,7 @@ export function useOperationalSiteForm({ mode, onSuccess }: UseOperationalSiteFo
         ...(customFields.errorPaths as Path<OperationalSiteFormValues>[]),
       ]
       if (!applyServerValidationErrors(error, form.setError, errorFields)) {
-        setServerError(t('operationalSites.form.genericError'))
+        setServerError(apiErrorMessage(error, t('operationalSites.form.genericError'), i18n))
       }
     }
   }

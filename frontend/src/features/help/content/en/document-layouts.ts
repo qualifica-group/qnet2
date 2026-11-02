@@ -28,6 +28,15 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'clone-layout',
+      title: 'Cloning a layout',
+      blocks: [
+        { type: 'steps', items: ['Open the layout to start from and press **Clone** at the top right (or pick **Clone** among the row actions in the list).', 'In the **Clone layout** window check the copy’s **Name** and **Code**: they are suggested as “name (copy)” and “code_copy”, and you can change them.', 'Press **Clone**: the new layout opens and you can keep editing it.'] },
+        { type: 'paragraph', text: 'The copy keeps the same **Module**, **Description**, **Active** status and the whole **Content**, images (logo, letterhead) and page settings included. The original layout stays as it was.' },
+        { type: 'note', text: 'The copy is never the **Default**: set it afterwards if needed. Creating layouts requires the matching permission.' },
+      ],
+    },
+    {
       id: 'editor',
       title: 'The visual editor',
       blocks: [
@@ -44,6 +53,7 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'note', text: 'The **Page** panel sets orientation (Portrait or Landscape), margins and default font.' },
+        { type: 'paragraph', text: 'The preview shows the document over several A4 sheets: when the **Body** no longer fits in the space between header and footer (margins included), the next block moves to the following sheet, as it does after a **Page break**. Each sheet repeats the **Behind the page** image, the **Header** and the **Footer**, with its own page number. A block taller than a whole sheet stays clipped in the preview; in the downloaded document it continues on the next sheet.' },
       ],
     },
     {

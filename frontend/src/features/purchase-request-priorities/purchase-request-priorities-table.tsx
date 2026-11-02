@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -34,7 +35,7 @@ const PURCHASE_REQUEST_PRIORITIES_DOMAIN = 'purchase-request-priorities'
  * re-authorizes each call.
  */
 export function PurchaseRequestPrioritiesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -59,8 +60,9 @@ export function PurchaseRequestPrioritiesTable() {
           return
         }
         const status = error.response?.status
-        if (status === 403) {
-          toast.error(t('purchaseRequestPriorities.form.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden) {
+          toast.error(forbidden)
         } else if (status === 409) {
           // The row is still referenced by an RDA. Surface the
           // backend's own message rather than a generic one.
@@ -72,7 +74,7 @@ export function PurchaseRequestPrioritiesTable() {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(
@@ -112,7 +114,6 @@ export function PurchaseRequestPrioritiesTable() {
                 inactiveBadge: t('purchaseRequestPriorities.reorder.inactiveBadge'),
                 loadError: t('purchaseRequestPriorities.reorder.loadError'),
                 saved: t('purchaseRequestPriorities.reorder.saved'),
-                forbidden: t('purchaseRequestPriorities.reorder.forbidden'),
                 genericError: t('purchaseRequestPriorities.reorder.genericError'),
               }}
               onReordered={refreshGrid}

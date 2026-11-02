@@ -101,6 +101,7 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: 'Press **Save changes**. **Restore default** returns every module to single page.' },
         { type: 'paragraph', text: 'Next to the selection fields linked to a QNet module (registries, referents, products, VAT rates, payment methods, units of measure, tasks, work orders, opportunities and so on) there is a **+** button, useful when the value you need does not exist yet:' },
         { type: 'steps', items: ['Press **+** next to the field.', 'Fill in the creation window.', 'Save: the new value is inserted into the field right away.'] },
+        { type: 'tip', text: 'If a save fails, the **Unable to save** notice appears at the top of the screen with the reasons, for example "This registry already has an open opportunity" (up to four, then "…and N more errors"). You see it even when the field involved is further up or in another section; the message also stays under the field to correct.' },
         { type: 'note', text: 'The button only appears if you can create that type of record. It does not appear in list filters, inside a quick-create window that is already open, or on the invoice, quote and cost line fields that take a price or rate from the chosen value (product, VAT rate): there, create the record from its module and then pick it.' },
       ],
     },
@@ -122,6 +123,16 @@ const guide: HelpGuide = {
         { type: 'paragraph', text: '**Interface scale** enlarges or shrinks the whole application (100% is the normal size). **Date format** decides how you see dates and times, for example **Day/Month/Year** and **24-hour (14:30)**, with a preview. **Theme color** changes the palette of buttons, highlights and the side menu: pick one of the eight combinations (for example **Classic blue**, **Forest green**, **Graphite mono**), each previewing its colors; it applies to both the light and the dark theme. Save with **Save changes**.' },
         { type: 'note', text: 'The avatar accepts JPEG, PNG, GIF or WebP up to 10 MB. The profile email cannot be changed from here.' },
         { type: 'tip', text: 'Administrators can sign into qnet as another user with **Impersonate**; it is explained in the **Users** guide.' },
+      ],
+    },
+    {
+      id: 'technical-support',
+      title: 'Asking for technical support',
+      blocks: [
+        { type: 'paragraph', text: 'If something does not work, press the lifebuoy button (**Technical support**) in the header, next to the question mark of the guide. Any user can use it.' },
+        { type: 'steps', items: ['Pick the **kind of problem** that looks most like yours.', 'Write what is wrong in **Describe the problem**.', 'If you cannot work, turn on **It is urgent / I am blocked**.', 'If you want, press **Add files** to attach screenshots or documents (up to 5).', 'Press **Send request**.'] },
+        { type: 'paragraph', text: 'At the end **Request n. … sent** appears: the number is the task created for the IT team. If you are allowed to see tasks you also get the **Open the task** link.' },
+        { type: 'note', text: 'QNet adds the page you were on and the browser you use by itself, so the IT team understands the problem better. If you see "Technical support is not configured yet", contact the administrator.' },
       ],
     },
     {
@@ -153,6 +164,8 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'tip', text: "If the preview does not open, allow pop-up windows for qnet's site." },
+        { type: 'note', text: 'Documents migrated from the old QNet appear like the others, but the file stays on the old QNet: **Preview** and **Download** go through QNet and need the old QNet to be reachable, otherwise an error appears. **Delete document** removes only the link in QNet, not the file on the old QNet. If you attach a migrated document to an email of a work order, QNet saves a copy of it in the email.' },
+        { type: 'tip', text: 'On a record that comes from the old QNet, below the documents you find **Can’t find a document? Check the old QNet**: the link opens that record in the old QNet (for Opportunities and Tasks their list, where to look it up), in a new tab. The old QNet may ask you to sign in.' },
       ],
     },
     {
@@ -193,6 +206,7 @@ const guide: HelpGuide = {
           headers: ['Question', 'Answer'],
           rows: [
             ["I don't see a menu item or button described in the manual.", 'The menu and actions depend on your role permissions. Ask the administrator to check the role in **Configuration › System › Roles**.'],
+            ['An operation is rejected with a message like **You do not have the "Delete" permission on the "Opportunities" module**.', 'The message says exactly what is missing: action and module are the name of the permission, the same ones the administrator finds in the role form under **Configuration › System › Roles**. Ask them to assign it to your role. If the message gives a reason instead (for example "You cannot edit this work order: you are neither a member nor the manager."), a permission is not enough: the record is outside your scope or in a state that does not allow it, and it is solved by being assigned to the record (for example being added as a member) or by waiting for the right state. **Section reserved to the super-admin** marks a section no permission unlocks.'],
             ['Opening a record shows **Record not found** or **Access denied**.', 'The record no longer exists (it was deleted or the link is wrong) or your role does not allow you to see it. Retrying does not help: check the link or ask the administrator or the record owners for access.'],
             ["I can't edit a field.", 'Your role may have it as read-only, or the field is inherited (for example from a project or a lead) or protected: for **Source**, propose a change from the **Change Requests** guide.'],
             ["I can't delete a configuration value.", "It is already used by some record. Turn off **Active** instead: it disappears from drop-downs without touching existing data."],
@@ -233,7 +247,7 @@ const guide: HelpGuide = {
             ['Task', 'An activity with a requester, assignees and a due date.'],
             ['Task template', 'A list of standard tasks generated when a work order is created.'],
             ['Voucher', 'A reward or incentive assigned to the referrer, with status Pending, Approved or Denied.'],
-            ['Role', 'A set of permissions assigned to users.'],
+            ['Role', 'A set of permissions assigned to users. If an operation is rejected, the message names the missing permission (see the FAQ above).'],
             ['Custom field', 'A field added by the administrator to a module.'],
             ['Attribute', 'An extra field defined by a product category for products, quotes or work orders.'],
           ],

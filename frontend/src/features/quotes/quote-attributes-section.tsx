@@ -2,14 +2,17 @@ import { useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ClipboardList } from 'lucide-react'
 import type { Control } from 'react-hook-form'
-import { RecordSection } from '@/components/detail/record-panel'
 import { RecordInlineField, type InlineEdit } from '@/components/record-form/record-inline-field'
+import { AdditionalInformationSection } from '@/features/attributes/additional-information-section'
 import { AttributeLayoutField } from '@/features/attributes/attribute-layout-field'
 import type { LayoutBlob } from '@/features/attributes/attribute-layout-types'
 import { AttributeLayoutView, type AttributeFieldRenderer } from '@/features/attributes/attribute-layout-view'
 import { toEffectiveAttribute } from '@/features/request-management/applicable-attribute-adapter'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
 import type { ApplicableAttributeSummary } from '@/features/quotes/types'
+
+/** Where the open/closed state of the quotes' "Informazioni aggiuntive" is kept, shared by detail and create. */
+export const QUOTE_ADDITIONAL_INFORMATION_STORAGE_KEY = 'quotes.additional-information'
 
 /** The form-field path of one Attribute's value: the key of its in-place row. */
 function attributeFieldPath(code: string): string {
@@ -81,9 +84,13 @@ export function QuoteAttributesSection({
   }
 
   return (
-    <RecordSection title={t('quotes.detail.additionalInformation')} icon={<ClipboardList />}>
+    <AdditionalInformationSection
+      storageKey={QUOTE_ADDITIONAL_INFORMATION_STORAGE_KEY}
+      title={t('quotes.detail.additionalInformation')}
+      icon={<ClipboardList />}
+    >
       <AttributeLayoutView layout={layout} attributes={attributes} values={values} renderField={renderField} />
-    </RecordSection>
+    </AdditionalInformationSection>
   )
 }
 

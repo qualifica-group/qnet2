@@ -31,7 +31,8 @@ vi.mock('@/features/purchase-orders/api', async (importOriginal) => ({
 
 vi.mock('@/features/attachments/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/attachments/api')>()),
-  listAttachments: vi.fn().mockResolvedValue([]),
+  // REQUIREMENT CHANGED (spec 0343): the list carries the legacy link beside the documents.
+  listAttachments: vi.fn().mockResolvedValue({ documents: [], legacyUrl: null }),
 }))
 
 vi.mock('@/features/auth/use-abilities', () => ({

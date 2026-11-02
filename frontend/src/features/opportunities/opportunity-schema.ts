@@ -66,7 +66,6 @@ function baseFields(t: TFunction) {
     commercial_id: z.number().nullable(),
     reporter_id: z.number().nullable(),
     supervisor_id: z.number().nullable(),
-    source_id: z.number().nullable(),
     // Spec 0056: facoltativa, never a submit-blocking requirement — no
     // server-side inheritance from another entity (a plain editable FK).
     operational_site_id: z.number().nullable(),

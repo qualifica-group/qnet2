@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Bookmark, BookmarkPlus, ListFilter, Plus } from 'lucide-react'
 import axios from 'axios'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { useConfirm } from '@/components/confirm-dialog-context'
@@ -100,7 +101,7 @@ export function FilterViewsControl({
   activeCustomFilterViewId,
   canPublish,
 }: FilterViewsControlProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const confirm = useConfirm()
   const { data: views } = useFilterViews(domain)
   const createView = useCreateFilterView(domain)
@@ -158,16 +159,16 @@ export function FilterViewsControl({
     try {
       await deleteView.mutateAsync(view.id)
       toast.success(t('table.viewDeleted'))
-    } catch {
-      toast.error(t('table.viewDeleteError'))
+    } catch (error) {
+      toast.error(apiErrorMessage(error, t('table.viewDeleteError'), i18n))
     }
   }
 
   const handleToggleFavorite = async (view: TableFilterView) => {
     try {
       await toggleFavorite.mutateAsync({ id: view.id, isFavorite: view.is_favorite })
-    } catch {
-      toast.error(t('table.customFilters.favoriteError'))
+    } catch (error) {
+      toast.error(apiErrorMessage(error, t('table.customFilters.favoriteError'), i18n))
     }
   }
 
@@ -190,9 +191,10 @@ export function FilterViewsControl({
         axios.isAxiosError(error) &&
         error.response?.status === 422 &&
         Boolean(error.response.data?.errors?.name)
-      const isForbidden = axios.isAxiosError(error) && error.response?.status === 403
       toast.error(
-        t(isDuplicateName ? 'table.duplicateViewName' : isForbidden ? 'table.customFilters.publishForbidden' : 'table.viewSaveError'),
+        isDuplicateName
+          ? t('table.duplicateViewName')
+          : apiErrorMessage(error, t('table.viewSaveError'), i18n),
       )
     }
   }

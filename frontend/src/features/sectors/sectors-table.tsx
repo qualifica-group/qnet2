@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -29,7 +30,7 @@ const SECTORS_DOMAIN = 'sectors'
  * both the SSRM grid and the parent-picker tree after every mutation.
  */
 export function SectorsTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
 
   const tableRef = useRef<TableViewHandle>(null)
@@ -55,8 +56,9 @@ export function SectorsTable() {
         void queryClient.invalidateQueries({ queryKey: sectorKeys.tree })
       } catch (error) {
         const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        if (status === 403) {
-          toast.error(t('sectors.form.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden) {
+          toast.error(forbidden)
         } else if (status === 409) {
           toast.error(t('sectors.form.deleteInUse'))
         } else {
@@ -66,7 +68,7 @@ export function SectorsTable() {
         setDeletingId(null)
       }
     },
-    [refreshGrid, queryClient, t],
+    [refreshGrid, queryClient, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(

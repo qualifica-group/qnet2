@@ -29,6 +29,9 @@ return [
     // Image guard (spec 0069, MT-4).
     'image_in_use' => 'This image is referenced by a block in the current config: remove the block before deleting it.',
 
+    // Clone (spec 0339, D-4).
+    'clone_image_missing' => 'Cannot clone: the file of the image ":name" is no longer available. Upload it again to the layout and retry.',
+
     'variables' => [
         'categories' => [
             'quote' => 'Quote',

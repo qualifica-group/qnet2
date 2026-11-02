@@ -1,8 +1,9 @@
 import { useCallback, useState } from 'react'
 import axios from 'axios'
-import type { TFunction } from 'i18next'
+import type { i18n as I18nInstance, TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { conversionBlockers } from '@/features/leads/lead-conversion-error'
 import { useConvertLeads } from '@/features/leads/use-convert-leads'
 
@@ -28,7 +29,7 @@ interface UseLeadConversionResult {
  * its empty/derived Offerta, all server-side).
  */
 export function useLeadConversion({ onConverted }: UseLeadConversionOptions = {}): UseLeadConversionResult {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { mutateAsync } = useConvertLeads()
   const [convertingId, setConvertingId] = useState<number | null>(null)
 
@@ -40,12 +41,12 @@ export function useLeadConversion({ onConverted }: UseLeadConversionOptions = {}
         toast.success(t('leads.convert.success'))
         onConverted?.()
       } catch (error) {
-        toast.error(conversionErrorMessage(error, t))
+        toast.error(conversionErrorMessage(error, t, i18n))
       } finally {
         setConvertingId(null)
       }
     },
-    [mutateAsync, onConverted, t],
+    [mutateAsync, onConverted, t, i18n],
   )
 
   const startConversion = useCallback((leadId: number) => void convert(leadId), [convert])
@@ -54,7 +55,7 @@ export function useLeadConversion({ onConverted }: UseLeadConversionOptions = {}
 }
 
 /** A blocker reason, then the server's own 422 message (e.g. single-managed offer rows), then the generic fallback. */
-function conversionErrorMessage(error: unknown, t: TFunction): string {
+function conversionErrorMessage(error: unknown, t: TFunction, i18n: I18nInstance): string {
   const blockers = conversionBlockers(error)
 
   if (blockers && blockers.length > 0) {
@@ -69,5 +70,5 @@ function conversionErrorMessage(error: unknown, t: TFunction): string {
     }
   }
 
-  return t('leads.convert.errors.generic')
+  return apiErrorMessage(error, t('leads.convert.errors.generic'), i18n)
 }

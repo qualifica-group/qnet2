@@ -72,7 +72,6 @@ export const contractStatuses = {
     defaultRequiresActive: 'A default status must be active.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the contract status. Please try again.',
-    deleteForbidden: 'You cannot delete this contract status.',
     deleteInUseFallback: 'This contract status is used by a contract and cannot be deleted.',
     leaveConfirm: {
       title: 'Leave without saving?',
@@ -93,7 +92,6 @@ export const contractStatuses = {
     dragHandleLabel: 'Drag to reorder',
     loadError: 'Unable to load the statuses. Please try again.',
     saved: 'Order updated successfully.',
-    forbidden: 'You cannot reorder these statuses.',
     genericError: 'Unable to update the order. Please try again.',
   },
 }

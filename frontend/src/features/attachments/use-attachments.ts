@@ -6,7 +6,7 @@ import {
   listAttachments,
   uploadAttachment,
 } from '@/features/attachments/api'
-import type { Attachment } from '@/features/attachments/types'
+import type { Attachment, AttachmentList } from '@/features/attachments/types'
 
 /** Stable empty array: avoids a new reference (and a rerender trigger) while the list query has no data yet. */
 const EMPTY_DOCUMENTS: Attachment[] = []
@@ -31,7 +31,7 @@ export function useAttachments(resource: string, id: number, collection: string)
   const queryClient = useQueryClient()
   const queryKey = attachmentsQueryKey(resource, id, collection)
 
-  const listQuery = useQuery<Attachment[], AxiosError>({
+  const listQuery = useQuery<AttachmentList, AxiosError>({
     queryKey,
     queryFn: () => listAttachments(resource, id, collection),
   })
@@ -67,7 +67,8 @@ export function useAttachments(resource: string, id: number, collection: string)
   })
 
   return {
-    documents: listQuery.data ?? EMPTY_DOCUMENTS,
+    documents: listQuery.data?.documents ?? EMPTY_DOCUMENTS,
+    legacyUrl: listQuery.data?.legacyUrl ?? null,
     isLoading: listQuery.isLoading,
     isError: listQuery.isError,
     refetch: listQuery.refetch,

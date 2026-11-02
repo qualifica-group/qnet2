@@ -14,10 +14,10 @@ use Spatie\Permission\Models\Permission;
  * the same config (an agnostic component with real permissions but no form of
  * its own: `notes`, `attachments`).
  *
- * Indirect sub-entity permissions (addresses.*, contacts.*, personal_data.*)
- * are governed via the field-permission matrix on their parent form, so they
- * are never offered here — and RoleService never drops the ones a role already
- * holds when it saves the form.
+ * Indirect sub-entity permissions (personal_data.*) are governed via the
+ * field-permission matrix on their parent form, so they are never offered
+ * here (contacts and addresses have none: spec 0328) — and RoleService never
+ * drops the ones a role already holds when it saves the form.
  *
  * Single source of truth shared by RolesTableDefinition (the offered catalogue,
  * for the form and the `permissions` set filter) and RoleService (preserving

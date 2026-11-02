@@ -112,7 +112,6 @@ export const paymentMethods = {
     paymentDaysMax: 'I giorni di pagamento possono essere al massimo 3650.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare la modalità di pagamento. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questa modalità di pagamento.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
       description: 'La modalità di pagamento non è ancora stata creata: i dati inseriti andranno persi.',
@@ -146,7 +145,6 @@ export const paymentMethods = {
     dragHandleLabel: 'Trascina per riordinare',
     loadError: 'Impossibile caricare le modalità di pagamento. Riprova.',
     saved: 'Ordine aggiornato con successo.',
-    forbidden: 'Non puoi riordinare queste modalità di pagamento.',
     genericError: "Impossibile aggiornare l'ordine. Riprova.",
   },
 }

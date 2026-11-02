@@ -88,7 +88,7 @@ class EmploymentContractController extends BaseApiController
         $actor = $request->user();
         $field = $this->authorization->fieldPermissions($actor, $user)[UsersAuthorization::CONTRACTS_FIELD];
 
-        abort_unless($editable ? $field->editable : $field->visible, 403, 'This action is unauthorized.');
+        abort_unless($editable ? $field->editable : $field->visible, 403, __($editable ? 'You cannot edit the contracts of this person.' : 'You cannot view the contracts of this person.'));
     }
 
     private function profileOf(User $user): EmploymentProfile

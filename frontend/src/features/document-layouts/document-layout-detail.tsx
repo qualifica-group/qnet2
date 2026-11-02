@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FileText } from 'lucide-react'
+import { Copy, FileText } from 'lucide-react'
 import { DetailMonogram } from '@/components/detail/detail-panel'
 import { RecordBody } from '@/components/detail/record-body'
 import {
@@ -13,9 +13,11 @@ import {
 } from '@/components/detail/record-panel'
 import type { RecordCollaborationTab } from '@/components/detail/record-collaboration-card'
 import { useInlineEditingField, useRecordInlineEdit } from '@/components/record-form/use-record-inline-edit'
+import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
 import { activityLogTab } from '@/features/activity-log/activity-log-tab'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
+import { DocumentLayoutCloneDialog } from '@/features/document-layouts/document-layout-clone-dialog'
 import { DocumentLayoutContentRow } from '@/features/document-layouts/document-layout-content'
 import { DocumentLayoutRows } from '@/features/document-layouts/document-layout-rows'
 import {
@@ -24,6 +26,7 @@ import {
 } from '@/features/document-layouts/use-document-layout-form'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import type {
+  DocumentLayoutCloneSource,
   DocumentLayoutDetailWithPermissions,
   DocumentLayoutFormMode,
 } from '@/features/document-layouts/types'
@@ -41,6 +44,7 @@ interface DocumentLayoutDetailViewProps {
  * authorized, a metadata footer. There is no edit page (wave 3 of the "no
  * edit pages" plan): every row edits IN PLACE, one at a time, each save a
  * PATCH of that field alone. `code` and `module` are immutable after create.
+ * "Clona" (spec 0339) copies the layout into a new one and opens it.
  */
 export function DocumentLayoutDetailView(props: DocumentLayoutDetailViewProps) {
   // The rows read the field permissions, so the provider wraps the whole detail.
@@ -54,6 +58,7 @@ export function DocumentLayoutDetailView(props: DocumentLayoutDetailViewProps) {
 function DocumentLayoutDetailContent({ documentLayout, onChanged }: DocumentLayoutDetailViewProps) {
   const { t } = useTranslation()
   const editing = useInlineEditingField()
+  const [cloneSource, setCloneSource] = useState<DocumentLayoutCloneSource | null>(null)
   // Stable per saved record: the form re-syncs its values on a new one.
   const mode = useMemo<DocumentLayoutFormMode>(() => ({ type: 'edit', documentLayout }), [documentLayout])
   const { form, onSubmit, serverError, clearServerError, configErrors } = useDocumentLayoutForm({
@@ -72,6 +77,7 @@ function DocumentLayoutDetailContent({ documentLayout, onChanged }: DocumentLayo
     genericErrorMessage: t('documentLayouts.form.genericError'),
   })
   const canEdit = documentLayout.permissions.resource.update
+  const canClone = documentLayout.permissions.resource.create
   const createdAt = formatDateTime(documentLayout.created_at)
   const updatedAt = formatDateTime(documentLayout.updated_at)
 
@@ -88,6 +94,14 @@ function DocumentLayoutDetailContent({ documentLayout, onChanged }: DocumentLayo
             media={<DetailMonogram name={documentLayout.name} icon={<FileText />} />}
             title={documentLayout.name}
             subtitle={documentLayout.code}
+            actions={
+              canClone ? (
+                <Button variant="outline" size="sm" className="bg-card" onClick={() => setCloneSource(documentLayout)}>
+                  <Copy aria-hidden="true" />
+                  {t('documentLayouts.clone.action')}
+                </Button>
+              ) : null
+            }
           />
         }
       >
@@ -125,6 +139,8 @@ function DocumentLayoutDetailContent({ documentLayout, onChanged }: DocumentLayo
           </span>
         ) : null}
       </RecordMeta>
+
+      <DocumentLayoutCloneDialog source={cloneSource} onClose={() => setCloneSource(null)} />
     </RecordCanvas>
   )
 }

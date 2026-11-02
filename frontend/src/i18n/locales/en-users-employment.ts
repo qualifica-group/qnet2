@@ -122,7 +122,6 @@ export const usersDetailEmployment = {
     created: 'Contract condition added.',
     deleted: 'Contract condition deleted.',
     loadError: 'Unable to load the contract history.',
-    forbidden: 'You do not have permission for this action.',
     notLast: 'Only the last condition can be deleted.',
     genericError: 'Action failed. Try again.',
     expiresOn: 'Expires {{date}}',

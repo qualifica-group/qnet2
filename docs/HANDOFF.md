@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Righe ODA visibili nel riquadro "ODA fatturabili" dell'editor fattura passiva — VERDE, NON COMMITTATO (2026-11-02)
+## Righe ODA visibili nel riquadro "ODA fatturabili" dell'editor fattura passiva — VERDE, COMMITTATO 36d525d3 (2026-11-02)
 
 - Richiesta utente: creando una fattura passiva da zero, il riquadro ODA fatturabili mostrava solo codice/data/totale
   dell'ordine; prima di premere Aggiungi non si vedevano le righe ne' le quantita'. Scelta utente: righe espandibili in
@@ -21,6 +21,632 @@
 - Manuale: guide in-app `purchase-invoices` IT/EN (sezione Registrare un documento, passo righe) aggiornate; manuale
   Claude Docs NON aggiornato (il documento non e' condiviso con la sessione: accesso negato in lettura); da
   aggiornare a mano la sezione Fatture passive > Registrare un documento (riquadro ODA fatturabili con righe espandibili).
+
+## Nota "Non trovi un documento? Controlla nel vecchio QNet" (spec 0343) — VERDE, COMMITTATO (2026-11-02)
+
+- `GET /api/attachments` aggiunge `meta.legacy_url` (additivo, `data` invariato), calcolato da
+  `App\Services\Attachments\LegacyRecordLink::forOwner()` dopo l'authz: owner con `old_id` + alias in
+  `config('migrations.legacy_record_paths')` (work_order, registry, purchase_request, purchase_order, purchase_invoice ->
+  pagina del record; opportunity, task -> elenco; purchase_request_line -> pagina della sua RDA) sotto
+  `legacy_files_base_url`; altrimenti null.
+- Frontend: `listAttachments` restituisce `AttachmentList` `{ documents, legacyUrl }`; `useAttachments` espone `legacyUrl`;
+  `features/attachments/legacy-documents-note.tsx` (safeUrl http/https, nuova scheda) montata in fondo a `DocumentsSection`,
+  quindi in ogni modulo e nel dialog Documenti delle righe. Mock `listAttachments` dei test aggiornati (REQUIREMENT CHANGED).
+- Test: `tests/Feature/Attachments/LegacyRecordLinkTest.php` (12), `documents-section.test.tsx` (+2). Attachments Pest 94/94;
+  Vitest 1.453 su moduli con documenti; help parity 153/153; tsc/ESLint/Pint puliti. Guida `general#notes-and-documents`
+  IT/EN e manuale Claude Docs aggiornati.
+
+## Documenti legacy "solo link" (spec 0295) — VERDE, COMMITTATO (2026-11-02)
+
+- Il legacy invia solo metadati + URL del file (niente base64); qnet-2 salva una riga `attachments` senza file:
+  `disk` = `Attachment::LEGACY_DISK` ('legacy', nessun disco reale), `path` = `{old_source}/{old_id}`, `external_url`,
+  anchor unico (`old_source`, `old_id`). Predicato unico `Attachment::isLegacyLink()`. Migrazione
+  `2026_11_13_100000_add_legacy_link_to_attachments_table` (applicata in avanti sul DB dev).
+- Apertura: `GET /api/attachments/{id}/download|view` invariati; per un legacy, dopo `authorize('view')`,
+  `Services/Attachments/LegacyAttachmentFetcher` scarica in streaming (redirect non seguiti, Content-Type dal DB, nosniff).
+  Confine SSRF `App\Support\LegacyFileUrl::isAllowed()` (URL sotto `migrations.legacy_files_base_url`, env
+  `EXTERNAL_MIGRATION_FILES_BASE_URL`; vuoto = sorgente non disponibile). `AttachmentService::delete()` non tocca il disco
+  per i legacy; `copyTo()` da legacy (composer email) scarica e salva una copia LOCALE (limite `max_size` -> 422).
+- Sorgente `attachments` (`AttachmentsSource`), fase 18 con `notes`; MIME fuori allow-list -> `application/octet-stream`.
+- Legacy (`../qnet`, committato): `Api/V2/AttachmentMigrationController` + `Support/Migration/LegacyAttachmentFile`,
+  rotta `migration/attachments`; nuova rotta pubblica `/fileorder/{num}/{name}` (`FileController::grab_order_document`)
+  per i documenti di commessa (decisione utente); task via `/fileticket/{hash}` esistente. 31.202 documenti sul tenant 14.
+- Test: `tests/Feature/Attachments/LegacyAttachmentLinkTest.php` (22), `tests/Feature/Migration/AttachmentsSourceImportTest.php`
+  (26). Gate finale: suite backend 13.282/13.298, rossi tutti attribuiti fuori spec (0341 registro, 0340 ManagementControl
+  `permissions:sync`, `.env` `USERS_LINK_ONLY=true`, LibreOffice assente, `SettlementApprovalTest` dipendente dalla data,
+  `TableBulkDeleteTest` preesistente); Vitest 9.696 verdi (11 unhandled `toast.error` in form non toccati), tsc/eslint/Pint puliti.
+- Prossimi passi: impostare `EXTERNAL_MIGRATION_FILES_BASE_URL` in produzione; prima di spegnere il legacy serve la spec
+  futura "converti link -> locale" (D-9); le rotte file pubbliche del legacy restano una debolezza da chiudere.
+  Difetto preesistente fuori scope: `OutboundEmailAttachmentService::copyAll()` lascia il file della prima copia se la seconda fallisce.
+
+## Migrazione segnatempo dal legacy (spec 0341) — VERDE, COMMITTATO (2026-11-02)
+
+- Due sorgenti nuove, fase 19 (ultima) di `MigrationOrder`: `time-entries` (un intervallo legacy = una `time_entries`)
+  e `time-entry-day-notes`. Migrazione `2026_11_13_100000_add_old_id_to_time_entries_tables` (gia' applicata in dev).
+- qnet-2: `TimeEntriesSource`, `TimeEntryDayNotesSource`, `Migrations\Support\LegacyTimeEntryLinks` (regola D-5:
+  task migrato impone titolo/link/fase; senza task vince la commessa sull'opportunita', il cliente del record
+  sull'anagrafica legacy, fase per nome). Scrittura diretta sul model, senza `TimeEntryService`, activity log,
+  notifiche, nota commessa (`work_order_note_id` null). Nota di giornata gia' presente per utente+data -> adottata.
+- Legacy (`../qnet`, committato): `Api/V2/TimeEntryMigrationController` (`/migration/time-entries`),
+  `TimeEntryDayNoteMigrationController` (`/migration/time-entry-day-notes`), `Support/Migration/LegacyTimeEntryInterval`.
+  Scansione completa sui dati reali: 163.477 item, 159.028 validi, 4.449 orfani (3.832 durata zero, 15 fine<inizio,
+  5 timer aperti, 597 giornate senza intervalli); 52 note di giornata in testo semplice. Pagina da 100 ~0,37 s.
+- Test: `tests/Feature/Migration/TimeEntriesSourceImportTest.php`, `TimeEntryDayNotesSourceImportTest.php`;
+  REQUIREMENT CHANGED su `MigrationDependenciesTest` e `NotesSourceImportTest` AC-007 (Note non e' piu' l'ultima fase).
+- i18n etichette/requisiti IT/EN, guida `migrations#time-entries` IT/EN, manuale Claude Docs (sezione Migrazioni).
+  `MigrationRegistryTest` aggiornato (45 sorgenti, REQUIREMENT CHANGED 0341).
+- Verifica: Migration+Unit/Migrations 757/757 (con `EXTERNAL_MIGRATION_USERS_LINK_ONLY=false`: il `.env` locale a
+  true fa fallire 6 test utenti, preesistente). Suite completa backend 13287/13298: 4 rossi estranei alla 0341
+  (`QuoteDocumentPdfTest` 500 nel rendering PDF, `SettlementApprovalTest` not_due/overdue legato alla data,
+  `TableBulkDeleteTest` last super-admin gia' noto, `WorkOrderCategoryTabsTest` ordine chiavi). Vitest 9696/9696,
+  `tsc -b --force` e Pint/ESLint puliti.
+- Prossimo passo: import reale in dev (non eseguito, da decidere con l'utente).
+
+## Visibilita' "per competenza" su 6 moduli (spec 0340 rev.1) — VERDE, COMMITTATO (2026-11-02)
+
+- Nuova ability `viewCompetence` ("Visualizza per competenza") su `opportunities`, `quotes`, `contracts`, `work-orders`,
+  `request-management`, `enrollee-management`: UNION con propri/sede, gate di RIGA (D-5), senza sede (D-1),
+  `is_assignable` ignorato (D-6), flag `covers_all_product_categories` = tutto il modulo anche senza categorie (D-3).
+  Nessun ruolo la riceve di default; `permissions:sync` gia' eseguito sul DB di dev (6 create).
+- Base: `App\Services\Assignment\CompetenceReach` (all/categoryIds, `reaches()`, `fingerprint()`),
+  `OperatorCompetence::reachOf(User)` e `::reachingUserIds(array)` (+ `profilesQuery()` condivisa con `configuredProfiles()`),
+  `ActorCompetenceReach::for(User)` (binding `scoped`). Helper test `tests/Helpers/CompetenceVisibilityHelpers.php`.
+- Categorie del record (D-2): Offerte/Contratti/Commesse = righe di RICAVO (`RevenueCategoryQuoteIds`,
+  `WorkOrderSourceQuotes::withRevenueCategory`); Opportunita'/Richieste/Iscritti = `opportunity_product_lines`
+  (`OpportunityVisibilityScope::competenceOpportunityIds()`, riusato da `RequestManagementScope`).
+- Verdetto per riga senza query: `QuoteVisibilityScope`/`WorkOrderVisibilityScope::withCompetenceVerdict()` (attributo
+  `competence_scoped`); Opportunita' da `productLines` caricate; `RequestManagementScope::isInActorCompetence()`.
+  `scopeFingerprint()` aggiunge `:comp:` solo con l'ability.
+- Note: `OpportunitiesTableDefinition` usa ora un solo EXISTS `request_scoped_quote_exists` (= `RequestManagementScope::scopeToActor`
+  sulle offerte; sostituisce `site_scoped_quote_exists`); `QuoteRowActions::allowsNotes()` + competenza;
+  `RequestManagementNotable::mentionableUsersQuery()` include il livello competenza (lacuna trovata in build, rev.1).
+- Messaggi di diniego IT/EN aggiornati (`lang/*/authorization.php`, `lang/it.json` per Gestione richieste).
+- FE: `abilities.viewCompetence` IT/EN; guide in-app IT+EN roles/opportunities/quotes/contracts/work-orders/
+  request-management/enrollee-management. Manuale Claude Docs aggiornato (tabelle permessi + note); PDF derivato da rigenerare.
+- Test esistenti cambiati (REQUIREMENT CHANGED): `WorkOrderSecurityTest` (18->19), `PermissionCatalogueEndpointTest`
+  (ordine ability contratti), `EnrolleeManagementPermissionsSyncTest` (15->16).
+- Verifica (verifier): Pest completo 13230, 13212 verdi; 17 rossi identici su HEAD pulito (LibreOffice assente in
+  `QuoteDocumentPdfTest`, `WorkOrderCategoryTabsTest` AC-024 ordine per nome, Migration/*, ManagementControl/*,
+  `TableBulkDeleteTest`, `SettlementApprovalTest` legato alla data). Vitest 9696 verdi (12 unhandled error in
+  vat-rates/auth, fuori feature), `tsc -b --force` e ESLint puliti, Pint pulito. `composer test` richiede `COMPOSER_PROCESS_TIMEOUT=0`.
+- rev.2 (2026-11-02, COMMITTATO): `SyncsRoleMatrix::withCompetenceSight()` in `syncRole()` -> nei seed di produzione e di
+  reset ruoli ogni ruolo con `viewAll` su opportunities/quotes/contracts/work-orders riceve `viewCompetence`; `viewCompetence`
+  in `OperatorRoleCatalogue::OWN_REQUESTS_DENIED_ABILITIES` (chi vede solo il suo non cambia). Test
+  `tests/Feature/Seeding/QualificaCompetenceSightSeederTest.php`; guide roles IT/EN e manuale aggiornati. Ruoli gia' nel DB:
+  cambiano solo rieseguendo i seeder dei ruoli (non eseguiti su dev).
+- rev.3 (2026-11-02, COMMITTATO): `coordinamento-operativo` vede per competenza, non tutto (`ALL_BUT_VIEW_ALL` in
+  `LegacyRoleCatalogue`, letto da `QualificaLegacyRoleSeeder::permissionsOf()`); richieste/iscritti specchiano `viewCompetence`
+  delle Offerte. REQUIREMENT CHANGED in `QualificaLegacyRoleSeederTest`. Effetto solo dopo `QualificaRoleResetSeeder`
+  (non eseguito su dev): chi ha anche `admin` o `contabilita` continua a vedere tutto.
+- Da sapere: `ContractsTableDefinition.php` e' a 497 righe (split alla prossima modifica). PDF del manuale da rigenerare.
+
+## Tab categorie sulle Commesse (spec 0335 rev.3) — VERDE, NON COMMITTATO (2026-11-01)
+
+- Richiesta utente: barra delle categorie prodotto anche sulla griglia Commesse, "come in altri moduli" (D-9).
+- Regola: una commessa compare nella tab di ogni categoria delle righe di RICAVO delle sue offerte di origine
+  (`work_orders.quote_id` + offerte delle righe in `quote_line_work_order`, unica sorgente per la multi-offerta).
+- Backend: `CategoryTabGrid::WorkOrders = 'work-orders'`; `Tables\CategoryTabs\WorkOrderSourceQuotes` (coppie
+  commessa/offerta in UNION, `withRevenueCategory()` per lo scope); `WorkOrders\QuoteScopedTableDefinition` implementa
+  `ProductCategoryScopable` (categoria + ramo radice); `GridCategoryTabsResolver::workOrderRows()`; 3 route in
+  `routes/api/work-orders.php` prima di `{workOrder}`. Nessuna migrazione/permesso nuovo (`work-orders.viewAny`).
+- Test: `tests/Feature/CategoryTabs/WorkOrderCategoryTabsTest.php`; helper `categoryTabWorkOrder`/`categoryTabMultiWorkOrder`;
+  `categoryTabModules()` ora include `work-orders` (i test RootLevel* coprono anche le Commesse).
+- Frontend: `work-orders-table.tsx` monta `CategoryTabs` (source `{ key: 'work-orders', apiBasePath: '/work-orders' }`),
+  conteggi riletti in `onMutated`; test `work-orders-table-category-tabs.test.tsx`. Guida `work-orders#category-tabs` IT/EN;
+  nota preferite in opportunities/quotes/contracts ora cita le Commesse.
+- Verifica: Pest CategoryTabs 85/85 verdi; WorkOrders+Table+Tables+RequestManagement+Contracts 1827/1828, unico rosso
+  `TableBulkDeleteTest` "guards the last super-admin" (atteso `guarded`, ricevuto `forbidden`), area utenti non toccata.
+  Vitest 675/675, ESLint, Pint, `tsc -b --force` puliti.
+- Da fare: manuale Claude Docs sezione Commesse (connettore senza accesso al documento in questa sessione).
+
+## Clona layout documento (spec 0339) — VERDE, NON COMMITTATO (2026-10-30)
+
+- Richiesta utente: pulsante "Clona" nel modulo Layout per riprendere un layout gia' fatto e continuare a modificarlo.
+- Contratto: `POST /api/document-layouts/{documentLayout}/clone` body `{name, code}` (name unico nel modulo del
+  sorgente, code unico + snake_case) -> 201 come POST create (nuovo layout + `permissions`). Authz: `view` sul sorgente
+  + `create`. 422 `images` se il file di un'immagine del sorgente manca (D-4, nessuna riga/file orfano).
+- La copia eredita module/description/is_active/config, mai `is_default`; immagini copiate con
+  `AttachmentService::copyTo()` e blocchi `image` ri-puntati ai nuovi `attachment_id` (copia server-side obbligata:
+  il validatore rifiuta attachment_id di altri layout, quindi `openDuplicate` lato client non e' applicabile).
+- Backend: `DocumentLayoutCloneController` (invokable), `CloneDocumentLayoutRequest`, `CloneDocumentLayoutData`,
+  `Services\DocumentLayouts\DocumentLayoutCloner`; azione di riga `clone` (catalogo + `actionsFor` con Gate create);
+  lang `document_layouts.clone_image_missing`.
+- Frontend: `cloneDocumentLayout` (api.ts), `buildCloneDocumentLayoutSchema` + `NAME_MAX_LENGTH`/`CODE_MAX_LENGTH`
+  esportati, `use-document-layout-clone-form.ts`, `document-layout-clone-dialog.tsx`, `DOCUMENT_LAYOUTS_BASE_PATH`
+  (types.ts, usato anche da moduleScreen); pulsante "Clona" nella testata del dettaglio (gate
+  `permissions.resource.create`), azione `clone` nella griglia; a copia riuscita naviga a `/document-layouts/{id}`.
+  i18n `documentLayouts.clone.*`, `actions.clone`; guida in-app sezione `clone-layout` IT/EN; manuale Claude Docs
+  aggiornato (sezione Layout, paragrafo "Clonare un layout").
+- Verifica: Pest DocumentLayouts 149/149 (10 nuovi); Vitest document-layouts 158/158, help 153/153;
+  `tsc -b --force` 0 errori; ESLint/Pint puliti. Suite completa: 13142/13158, i 15 rossi sono fuori scope e non
+  toccano il codice cambiato (Migration users: `.env` locale con `EXTERNAL_MIGRATION_USERS_LINK_ONLY`; QuoteDocumentPdf:
+  LibreOffice assente; ManagementControl permissions sync e TableBulkDelete super-admin guard: da indagare a parte).
+- Prossimo passo: commit su ordine dell'utente.
+
+## Anteprima layout su piu' fogli A4 — VERDE, COMMITTATO (2026-10-30)
+
+- Segnalazione utente (layout 27, anche in locale): l'anteprima era un solo foglio a altezza fissa, il corpo lungo
+  scriveva sopra il footer della carta intestata e veniva tagliato. Scelta utente: anteprima multipagina.
+- `editor/preview/`: `preview-pagination.ts` (`paginateBodyBlocks`, pura: blocco che non entra -> foglio dopo,
+  `page_break` chiude il foglio, blocco piu' alto del foglio da solo e tagliato), `use-preview-measurement.ts` (misura
+  i fogli disegnati: `data-preview-body` clientHeight + `data-preview-block` offsetHeight + row-gap; layout effect a
+  ogni render + ResizeObserver sui blocchi, stato invariato se la misura non cambia), `preview-sheet.tsx` (un foglio:
+  sfondo `behind_page`, header, quota di corpo `min-h-0 flex-1`, footer), `preview-page-context.ts` (numero/totale
+  pagine per i campi `page`/`total_pages` di `PreviewRun`). `document-layout-preview.tsx` orchestra.
+- Limite: si spostano blocchi interi (una tabella lunga non si spezza per righe). Non verificato in un browser vero
+  (jsdom non ha layout): da controllare a occhio sul layout 27.
+- Test: `preview-pagination.test.ts` (5), `document-layout-preview.test.tsx` +2 (fogli multipli, numeri pagina);
+  query del foglio per chiave i18n. Vitest document-layouts + help 311/311; ESLint e `tsc -b --force` puliti.
+- Manuale: guida in-app `document-layouts` IT/EN e manuale Claude Docs (sezione Layout, dopo la nota sul pannello
+  Pagina): paragrafo sull'anteprima a piu' fogli.
+
+## Layout documenti: traduzioni mancanti nel form di creazione — VERDE, COMMITTATO (2026-10-30)
+
+- `documentLayouts.form.createTitle`/`createSubtitle`/`leaveConfirm.{title,description,confirm,cancel}` erano usate
+  (`document-layout-form-body.tsx`, `document-layout-screens.tsx`) ma assenti in IT ed EN: a schermo la chiave grezza.
+  Aggiunte in `{it,en}-document-layouts.ts` col wording degli altri moduli. `aria-label` "A4 preview" hardcoded in
+  `preview-sheet.tsx` -> `documentLayouts.editor.preview.sheet` (anche in `editor-i18n-fixture.ts`).
+- Vitest document-layouts + i18n + help 545/545. `tsc -b --force` rosso solo per `waitFor` inutilizzato in
+  `document-layout-clone-dialog.test.tsx` (lavoro clone spec 0339, non toccato). Manuale: nessun impatto.
+
+## Immagini dei layout sparite in produzione: comando di ripristino — VERDE, NON COMMITTATO (2026-10-30)
+
+- Causa: il DB di produzione e' un dump importato da un'altra macchina senza `storage/app/private/attachments/`:
+  le 58 righe `attachments` esistono, i file no (stesso stato sul DB dev `qnet2`). `ImageBlockRenderer` salta in
+  silenzio il file mancante -> PDF senza carta intestata/logo; l'editor mostra "immagine mancante".
+- `php artisan document-layouts:restore-images [--dry-run]` (`App\Console\Commands\RestoreDocumentLayoutImages`): per
+  ogni `layout_image` senza file riscrive l'asset di `database/seeders/assets` (+ `quote-layouts/images`) con stesso
+  `original_name` E stessa `size` nel `disk`/`path` della riga. Non tocca il DB ne' i file presenti; idempotente.
+- Eseguito sul dev: 45/45 ripristinate, secondo giro 0. Restano senza file i 13 `documents` dei Modelli documenti SOA
+  (migrazione `document-bundles`, idempotente su `old_id`: non ricopia): servono i file della macchina d'origine,
+  oppure cancellare i bundle e rimigrarli, oppure ricaricarli a mano.
+- Da fare in produzione (utente): dopo il deploy `--dry-run` e poi il comando. Deploy futuri: `storage/` persistente
+  e nei backup insieme al DB. APERTI (non verificati, segnalati): Calibri assente sul server Linux -> sostituzione
+  font in LibreOffice; export PDF con compressione di default; immagini in VML poco fedeli in LibreOffice.
+  `LIBREOFFICE_BINARY` del `.env` dev punta a un'app inesistente.
+- Test: `tests/Feature/DocumentLayouts/RestoreDocumentLayoutImagesCommandTest.php` 5/5; `tests/Feature/DocumentLayouts`
+  139/139; Pint pulito. Manuale: nessun impatto (comando di manutenzione, nessuna UI).
+
+## Completa massivo: segnatempo totale ripartito tra i task (spec 0338) — VERDE, NON COMMITTATO (2026-10-30)
+
+- Decisioni utente: il segnatempo del popup multiplo e' un TOTALE ripartito (parti uguali, resto ai primi task);
+  anteprima modificabile (somma = totale); con ora di inizio fasce consecutive; bacheca commessa `complete` ora
+  TUTTO O NIENTE (422 `incompatible_tasks`, stessa shape di `/api/tasks/bulk`; le altre azioni restano best-effort);
+  "per tutti gli assegnatari" = ogni assegnatario registra la quota dei propri task. Feedback copiato su ogni task.
+- Contratto: `time_entry_shares: [{task_id, minutes}]` su `POST /api/tasks/bulk` e `.../task-board/bulk` per
+  action=complete, obbligatorio con `time_entry`, vietato altrimenti; `time_entry.minutes` = totale; l'ultima fascia
+  non oltre le 23:59 (422 su `time_entry.minutes`: un end_time 24:00 non si risalverebbe dal form `H:i`).
+- Backend: `App\Http\Requests\TimeEntries\BulkTimeEntrySharesRules` (regole + `validateConsistency` + `normalize`),
+  `App\Services\Tasks\TaskBulkTimeEntrySplitter`; firme di `TaskBulkActionExecutor`/`TaskCompletionService` invariate.
+- Frontend: `features/tasks/time-entry-shares.ts` (`splitMinutesEvenly`, `shareSlots`, `validateShares`),
+  `use-task-bulk-time-entry-shares.ts`, `task-bulk-time-entry-shares-section.tsx`; i due dialog bulk con
+  DialogDescription; `TaskBoardBulkBar` riceve `tasksById` (gia' passato da `work-order-task-board.tsx`, committato
+  per errore dentro 3914eef1: HEAD non compila finche' non si committa questa feature).
+- Verifica: Pest mirati 110/110; Vitest tasks+task-board 642/642; `tsc -b --force` 0; ESLint/Pint puliti. Suite
+  completa (verifier): 9 rossi backend fuori scope (`Tests\Feature\Migration\*` x7, `QuoteDocumentPdfTest` senza
+  LibreOffice, `TableBulkDeleteTest:131` 'guarded' vs 'forbidden') — da indagare a parte.
+- Manuale: guide in-app tasks IT/EN; Claude Docs paragrafo "Completare piu' task insieme" dopo "Il segnatempo al
+  completamento e' obbligatorio".
+
+## "Informazioni aggiuntive" collassabili in Offerte e Commesse — VERDE, COMMITTATO (2026-10-30)
+
+- Decisioni utente: solo Offerte e Commesse (Opportunita' e Contratti non hanno attributi: `AttributeContext` =
+  product/quote/work_order); stato aperto/chiuso nel browser, uno per modulo, condiviso da dettaglio e creazione.
+- `RecordSection` (`components/detail/record-panel.tsx`) ha `collapsible`/`open`/`onOpenChange` (titolo = trigger
+  con chevron, contenuto in `CollapsibleContent` con `form-section-collapsible-content`); senza `collapsible` markup
+  invariato.
+- `features/attributes/additional-information-section.tsx`: `AdditionalInformationSection` (+ `usePersistedOpen`
+  interno). Chiavi localStorage `quotes.additional-information` / `work-orders.additional-information`
+  (`QUOTE_/WORK_ORDER_ADDITIONAL_INFORMATION_STORAGE_KEY`), valore `closed`, assente = aperta. Usata da
+  `QuoteAttributesSection`, `WorkOrderAttributesSection` e dai rami "caricamento" dei due form di creazione.
+- Guide in-app IT/EN quotes + work-orders aggiornate; manuale Claude Docs: paragrafo dopo la tabella "Stesse
+  sezioni, stesso posto".
+- Verifica: Vitest attributes/quotes/work-orders/components/detail/help verdi, ESLint pulito, `tsc -b --force` EXIT=0.
+
+## Board Task commessa: "Seleziona tutti" per fase e globale — VERDE, COMMITTATO (2026-10-30)
+
+- Richiesta utente: nel dettaglio commessa, checkbox che seleziona tutti i task per fase e per tutto. Solo frontend,
+  nessun contratto API toccato (la barra azioni massive D-7 riceve gli stessi `selectedTaskIds`).
+- Nuovi `features/work-orders/task-board/task-board-selection.ts` (`selectAllState` tri-stato, `setIdsSelection`) e
+  `task-board-select-all-checkbox.tsx` (`TaskBoardSelectAllCheckbox`: parziale -> seleziona tutti, disabilitata se la
+  fase e' vuota). `useTaskBoardState` espone `visibleRootIds` (radici dei `groups` filtrati) e `setTasksSelection`.
+  Prop `onSetSelection(taskIds, isSelected)` lungo list view -> `TaskBoardStageGroup` (header, dopo il chevron) e
+  kanban view -> `TaskBoardKanbanColumn` (nuovo `leadingSlot` di `components/kanban/kanban-column-shell.tsx`).
+  Globale: `selectAllSlot` di `TaskBoardToolbar`, montato da `WorkOrderTaskBoard`. Tutto nascosto se `isReadOnly`.
+  Coprono solo i task radice visibili coi filtri attuali (come le caselle di riga).
+- i18n `workOrders.taskBoard.bulk.selectAll` / `selectStage` (IT/EN). Guida in-app `work-orders#task-board-selection`
+  IT/EN; manuale Claude Docs: paragrafo dopo la barra azioni massive della sezione Task (Commesse resta "in sviluppo").
+- Verifica: Vitest work-orders + kanban + tasks + help 958/958; ESLint pulito; `tsc -b --force` 0.
+
+## Barra tab categorie: modalita' "Categorie madri" (spec 0337) — VERDE, COMMITTATO (2026-10-30)
+
+- Decisioni utente: madri = radici (`parent_id` null), la tab raccoglie il ramo intero (record contati una volta);
+  livello salvato nel browser per modulo (`${key}.category-tab-level` all|root, tab per livello `${key}.category-tab`
+  e `${key}.category-tab.root`); in Gestione Richieste/Iscritti una tab radice filtra soltanto (niente `attr.*`,
+  niente rinomina GA, config = "Tutte"); preferiti separati per livello (riga `"{module}:root"`, default = radici
+  che contengono categorie coperte dalla competenza).
+- Backend: `App\Products\ProductCategoryBranches` (`rootIds`, `branchIds`, `rootIdOf`);
+  `ProductCategoryScopable::scopeToProductCategoryBranch()` sui 4 decoratori (`RevenueCategoryQuoteIds` ora accetta
+  piu' id); `productCategoryBranchId` su rows/values (`prohibits:productCategoryId`), mai su config/preferenze/
+  filtri/export; `?level=root` (`CategoryTabLevelRequest`, 422 se diverso) su `{module}/product-categories`
+  (`RootCategoryCounts`, cache `...:root`) e `{module}/category-tab-preferences`
+  (`ResolveDefaultCategoryTabPreference::handleForRoots`, `CategoryTabPreferenceStore` con `level`).
+- Frontend: `TableConfigScope.productCategoryBranchId` lungo `features/table/*` + `components/data-table/*`
+  (filtri locali chiave `branch-{id}`); `features/category-tabs/category-tab-level.ts`, switch "Categorie madri"
+  nel menu Altre; `useCategoryTabStrip` espone `scope` e `tableKey` (`root-{id}`) ai 4 montaggi.
+  `DataTableProps`/`RowActionsRenderer` estratti in `components/data-table/data-table-props.ts` (data-table.tsx era
+  a 503 righe, ora 362).
+- Verifica (verifier): AC-001..011 PASS; Pest mirato 3543/3548 (estranei: PDF LibreOffice, bulk delete super-admin,
+  `DemoOpportunitySeederTest` flaky); Pint ok; Vitest mirato 2404/2404; suite completa backend 13096/13112 (solo
+  estranei noti: Migration d'ambiente, ManagementControl indice menu, PDF, bulk delete), frontend 9647/9647 (11
+  unhandled noti da `form-errors.ts`); dopo l'estrazione Vitest data-table/table/category-tabs 602/602, `tsc -b`
+  0, ESLint pulito. Guide in-app IT/EN (request-management, opportunities, quotes, contracts) + manuale Claude
+  Docs aggiornati; PDF da rigenerare.
+- Attenzione file grandi: `TableController.php` 493 righe (hard limit 500): il prossimo parametro di scope va
+  estratto, non aggiunto.
+
+## Barra tab categorie prodotto su Opportunita' e Offerte (spec 0335) — VERDE, COMMITTATO (2026-10-30)
+
+- Decisioni utente: Offerte classificate SOLO dalle righe di ricavo (`quote_lines` REVENUE -> `products.category_id`),
+  nessun fallback sulle linee dell'Opportunita' (diverso da `QuoteClassificationSource`); Opportunita' dalle
+  `opportunity_product_lines`; solo filtro righe + conteggio (niente `attr.*`/rinomina GA); preferiti separati per
+  griglia con default da competenza (0193); statistiche ed export NON seguono la tab.
+- Backend: interfaccia `App\Tables\ProductCategoryScopable` (TableController/TableRowsRequest/TableValuesRequest testano
+  questa, non piu' la classe RM); implementata da `RequestManagementScopedTableDefinition`,
+  `Quotes\OpportunityScopedTableDefinition` e dal nuovo `Opportunities\OpportunityCategoryScopedTableDefinition`
+  (outermost di `opportunities`, inoltra anche `RegistryScopable`). Enum `Tables\CategoryTabs\CategoryTabGrid`
+  (route default `categoryTabGrid`), `Services\CategoryTabs\{GridCategoryTabsResolver,CategoryTabPreferenceStore}`,
+  `GridCategoryTabResource` (`{id,name,records_count}`), controller `CategoryTabs\GridCategoryTab{s,Preferences}Controller`.
+  Route `GET {opportunities|quotes}/product-categories`, `GET|PUT {opportunities|quotes}/category-tab-preferences`
+  (gate `{grid}.viewAny`, prima dei wildcard). `ResolveDefaultCategoryTabPreference` ora riceve gli id della barra.
+  Nessuna migrazione (`user_category_tab_preferences.module` = `opportunities`/`quotes`).
+- Frontend: barra condivisa in `features/category-tabs/` (`CategoryTabs`, picker, fit, `useCategoryTabStrip(source)`,
+  `useCategoryTabSelection`, preferiti ottimistici); Gestione Richieste la usa a parita' (stesse chiavi
+  localStorage/query). i18n `categoryTabs.*` (`{it,en}-category-tabs.ts`), via `requestManagement.categoryTabs.*`.
+  Montata in `opportunities-table.tsx`/`quotes-table.tsx` (localStorage `opportunities|quotes.category-tab`).
+- Verifica (verifier): Pest `tests/Feature/CategoryTabs` 17/17, mirati 1945/1949 (rossi estranei: bulk delete users
+  super-admin, PDF senza LibreOffice); Pint ok; Vitest mirato 1721/1721, completo 9625/9625 (11 unhandled
+  `toast.error is not a function` da `form-errors.ts`, feature errori form); `tsc -b --force` 0; ESLint pulito.
+  Pest completo 13030/13046: 15 rossi non attribuibili alla 0335 (Migration = `MigrationPlanService::isAvailable`
+  d'ambiente, ManagementControl = indice menu, probabile navigazione spec 0334). Guide in-app `opportunities#category-tabs`,
+  `quotes#category-tabs` IT/EN + manuale Claude Docs (Opportunita'/Offerte) aggiornati; PDF da rigenerare.
+- Fuori scope: barra sulle griglie Offerte annidate (master-detail, dettaglio Opportunita', tab Anagrafica).
+- rev.2 Contratti (D-8, AC-020..023), VERDE: `CategoryTabGrid::Contracts`; un contratto sta nelle tab delle
+  categorie delle righe di ricavo della SUA offerta (`contracts.quote_id`), conteggi su `ContractVisibilityScope`.
+  Nuovi `Tables\Contracts\ContractCategoryScopedTableDefinition` (outermost di `contracts`),
+  `Tables\CategoryTabs\RevenueCategoryQuoteIds` (subquery condivisa con quotes) e trait
+  `Tables\CategoryTabs\DelegatesRowScopedTableMethods` (passthrough condiviso con opportunities). Route
+  `contracts/product-categories`, `contracts/category-tab-preferences` prima di `{contract}`. Frontend
+  `contracts-table.tsx` (localStorage `contracts.category-tab`), guida `contracts#category-tabs` IT/EN, manuale
+  Claude Docs sezione Contratti. Verifica: Pest mirato 2138/2142 (4 estranei noti: PDF LibreOffice, bulk delete
+  super-admin), Pint ok, Vitest mirato 1614/1614, `tsc -b --force` 0, ESLint pulito. Nit aperto: docblock di
+  `TableRegistry::resolve()` non cita i wrapper di categoria.
+
+## Assistenza tecnica (richiesta al reparto IT) — VERDE, COMMITTATO (2026-10-30, spec 0334)
+
+- Pulsante salvagente "Assistenza tecnica" nell'header prima del (?) (`features/support-requests/`, montato in
+  `layouts/app-layout.tsx`): dialog con tipo di problema, descrizione, "E' urgente", max 5 allegati. Qualsiasi utente
+  autenticato (nessun permesso). Conferma col numero Task, link solo se `can_view_task`.
+- Config per tipo di problema: entita' `SupportTopic` (`support_topics` + pivot `support_topic_assignee`/`_watcher`),
+  CRUD `/api/support-topics`, tabella SSRM `support-topics`, permessi `support-topics.*`, menu Configurazione > Task >
+  Assistenza tecnica (`/support-topics`, frontend `features/support-topics/`). Icona validata su `BadgeTokens::icons()`.
+- Utente: `GET /api/support-requests/topics` (attivi con >= 1 assegnatario attivo; id/name/description/icon),
+  `POST /api/support-requests` multipart -> `SupportRequestService::handle()` -> `TaskService::create` +
+  `AttachmentService::storeFor` in una transazione (binari ripuliti se fallisce). Titolo "{tipo}: {inizio descrizione}"
+  (191), descrizione escapata + Pagina/Browser, priorita'/scadenza urgenti se `is_urgent`, watcher = richiedente escluso.
+  Upload: `mimetypes` + `extensions` (nuova `config('attachments.allowed_extensions')`, usata SOLO qui).
+- Test: Pest SupportTopics+SupportRequests 30/30; Vitest aree toccate 222/222; `tsc -b --force` pulito; ESLint/Pint
+  puliti. REQUIREMENT CHANGED: `FieldCatalogueEndpointTest` (+ support-topics), `help-guide-keys.test.ts` e
+  `workspaces-help.test.ts` (99 -> 100 chiavi guida).
+- DB dev: migrazione gia' eseguita (batch 11), `permissions:sync` eseguito (creati anche 8 `work-order-workflows.*` mancanti).
+- Seed di produzione, ultimo step `QualificaSupportTopicSeeder` (dati in `QualificaCatalog/SupportTopicCatalogue.php`): 8 tipi
+  (Stampante, PC o portatile, Password e accesso, Email, Rete e internet, Telefono, QNet, Altro), assegnatario
+  nicola.eliseo@qualificagroup.com, Ticket / Tecnico (informatico) / Media (urgente: Urgente) / importanza Media,
+  scadenza 2 giorni (urgente 0). Create-only per nome. Test `QualificaSupportTopicSeederTest` 3/3 +
+  `QualificaProductionDataSeederTest` verde. NON eseguito sul DB dev (regola: niente db:seed da agente).
+- Manuale: guide in-app `support-topics` IT/EN + sezione `technical-support` in `general`; manuale Claude Docs aggiornato
+  (riga header, "Chiedere assistenza tecnica" in Primi passi, "Assistenza tecnica" sotto Modelli di Task).
+- Rossi preesistenti nella suite completa (non 0334): `TableBulkDeleteTest` super-admin (`forbidden` vs `guarded` dopo
+  e6e79327), Migration/UsersSource* (`.env` `EXTERNAL_MIGRATION_USERS_LINK_ONLY=true`), ManagementControl/*Access
+  (chiave nav `management-control-section` inesistente), QuoteDocumentPdfTest (LibreOffice assente); Vitest: 11 unhandled
+  `toast.error is not a function` in form test con mock sonner senza `error` (dopo 935b8c6a).
+- Da segnalare: `StoreAttachmentRequest` e `StoreWorkOrderEmailAttachmentRequest` non hanno `extensions:` (backend.md §8).
+- Fix icone: icona menu `life-buoy` mappata in `navigation/icon-map.ts` (prima cadeva sul
+  cerchio di ripiego); colonna Icona della tabella disegna l'icona (`support-topic-icon-cell.tsx`) invece del nome.
+
+## Referente: card "Commissioni configurate" in fondo al dettaglio (spec 0336) — VERDE, COMMITTATO (2026-10-30)
+
+- Richiesta utente: "come in anagrafica" la tabella delle commissioni in basso al dettaglio referente.
+- Backend: `ReferentScopable` + `Tables/Referents/ReferentScopedTableDefinition` (outermost su
+  `commission-configurations`, inoltra `scopeToRegistry`), `TableRegistry::REFERENT_SCOPE_COLUMNS`. Chiave `referentId`
+  (`exists:referents,id`) su rows/values/export (`TableRowsRequest`, `TableValuesRequest`, `CreateExportRequest`,
+  `TableController::scopeToReferent`, `ExportController`, `ExportService`). Columns non toccato (shape invariata).
+- Frontend: `TableRowScope.referentId` propagato come `registryId` (datasource, values/column-filters, export dialog,
+  chiave filtri locali con segmento `referent-<id>`). `RegistryRelatedGrid` ora riceve `rowScope`. Nuovo
+  `features/referents/referent-related-records.tsx` montato in `ReferentDetailView`. Form commissioni:
+  `supplierRegistryId` sostituito da `recipientPreset {role, recipientId}` (`registry_id` -> SUPPLIER,
+  `referent_id` -> REPORTER, `COMMISSION_CREATE_REFERENT_PARAM`). i18n `referents.detail.related.*` IT/EN; guida
+  `referents#configured-commissions` IT/EN.
+- Verifica: Pest `ReferentCommissionConfigurationScopeTest` 7/7, `tests/Feature/Tables` 62/62, `Exports` 43/43,
+  `CommissionConfigurations` 53/53, `tests/Feature/Table` 303/304: fallisce
+  `TableBulkDeleteTest` "guards the last super-admin" ('forbidden' invece di 'guarded'), percorso users bulk-delete
+  non toccato da questa modifica, da indagare a parte. Vitest referents/registries/commission-configurations/table/
+  exports/data-table 99 file / 861, help 153/153; `tsc -b --force` 0; ESLint pulito (1 warning preesistente).
+
+## Segnalatori 2026: referenti + commissioni per categoria nel production seed — VERDE, COMMITTATO (2026-10-30)
+
+- Richiesta utente: dall'Excel "Segnalatori 2026_.xlsx" creare i segnalatori mancanti tra i referenti e inserire le
+  percentuali per categoria, nel `QualificaProductionDataSeeder` (step 13).
+- `database/seeders/QualificaCatalog/ReporterCommissionCatalogue.php` (dati, 93 righe) +
+  `QualificaReporterCommissionSeeder`: regole `REPORTER`/`PRODUCT_CATEGORY`/`PERCENTAGE`, destinatario referente,
+  `valid_from` 2026-10-30. Colonne -> categorie: ISO, SOA, Sicurezza, Gare (solo valori numerici, "VARIABILE" = nessuna
+  regola), GDPR, "Finanza Agevolata - FNC"; "UNI PDR 125 e SA 8000" -> 10% su "ISO - UNI PDR 125" e "ISO - SA8000"
+  (nota interna: mantenimento 5%, non gestito dal sistema). La colonna NOTE va solo in nota.
+- Decisioni utente: nome dalla colonna NOME (aziende come scheda azienda, referente in nota); GDPR riga 7 = 15%,
+  FNC riga 21 = 20%; riga 53 (doppione di Lagana', riga 78) scartata.
+- 70 segnalatori esistenti sono cercati per `old_id` e non vengono modificati; se non ancora migrati compare un
+  warning e lo step va rilanciato dopo la migrazione referenti. 23 nuovi: tipo "Segnalatore", esterni, email/telefono.
+  La regola esistente non viene toccata (le modifiche da UI sopravvivono).
+- Verifica: Pest `ReporterCommissionSeederTest` 4/4, `tests/Feature/CommissionConfigurations` 53/53, `tests/Feature/Seeding`
+  production/sample 5/5; Pint ok; prova a secco sul DB dev in transazione annullata: 23 referenti, 631 regole su 91
+  segnalatori, rilancio senza duplicati. Manuale: nessun impatto (solo dati).
+
+## Commessa "Dati contrattuali": azione massiva sul pagamento delle righe (spec 0333) — VERDE, COMMITTATO (2026-10-30)
+
+- Richiesta utente: selezionare piu' prodotti di commessa e segnarli tutti come pagati, insoluto ecc.
+- Backend: `PATCH /api/work-orders/{workOrder}/contract-data/lines` `{quote_line_ids[1..200], work_order_payment_status_id?, has_unpaid?}`
+  (`BulkUpdateWorkOrderLinePaymentsRequest`: `managePayments`, ids via `exists:quote_line_work_order` della commessa,
+  solo stati attivi, `after()` "almeno un valore"), `WorkOrderContractDataController::bulkUpdateLines` risponde il
+  payload intero del GET. `WorkOrderLinePaymentWriter::handleMany` (transazione) + `apply()` condiviso con `handle()`;
+  UNA notifica `WorkOrderLineDeliverableNotification` per destinatario con i prodotti separati da virgola.
+  Lang `it.json`: "Choose at least one value to set.".
+- Frontend `features/work-order-contract-data/`: checkbox per riga + "seleziona tutte" (intestazione; riga dedicata
+  sotto `md`), `contract-data-bulk-bar.tsx`, `contract-payment-bulk-dialog.tsx` (+ `-schema.ts`, valori "Non
+  modificare"), `contract-payment-errors.ts` (`paymentServerMessage`, estratto dal dialog singolo),
+  `useBulkUpdateContractDataLines` (setQueryData), i18n `workOrders.contractData.bulk.*` IT/EN.
+- Fuori scope (D-1): accordo di pagamento in massa; azione massiva su piu' commesse dalla griglia.
+- Verifica: Pest `tests/Feature/WorkOrders` 413/413 (nuovo `WorkOrderLinePaymentBulkTest` 6); Pint ok; Vitest
+  work-orders + contract-data + i18n 73 file / 567, help 152/152; `tsc -b --force` 0; ESLint pulito. Suite completa
+  non eseguita. Guida in-app `work-orders#contract-data` IT/EN aggiornata; manuale Claude Docs: sezione Commesse
+  ancora "in fase di sviluppo", nessuna modifica.
+
+## Errori di salvataggio sempre in primo piano, tutti i form — VERDE, NON COMMITTATO (2026-10-30)
+
+- Direttiva utente 2026-10-30: un salvataggio rifiutato deve essere ESPLICITO, mai solo sotto un campo fuori vista.
+- `features/auth/form-errors.ts`: `notifyFormErrors(messages)` = un toast `sonner` "Impossibile salvare" (id fisso
+  `form-errors`: un nuovo invio lo sostituisce), motivi distinti, max 4 + "…e altri N errori", 10 s.
+  `applyServerValidationErrors` lo chiama su OGNI 422 gestito (tutte le chiavi, anche quelle senza campo; senza
+  `errors` usa `message`): copre i ~110 form che usano l'helper. Non-422: resta del chiamante.
+- `features/auth/use-form-submit-error.ts`: `useFormSubmitError()` sostituisce `useState` per `serverError` nei 14
+  form a pagina intera (opportunita', offerte, anagrafiche, referenti, sedi, utenti, lead, progetti, campagne,
+  prodotti, categorie prodotto, commesse, task, richiesta): banner in testata + toast. `{ notify: false }` per un
+  banner derivato da un 422 gia' toastato (dati personali, linee prodotto), altrimenti la lista verrebbe sostituita.
+- Opportunita': il rifiuto "anagrafica con opportunita' aperta" (bypassa l'helper) chiama `notifyFormErrors`.
+- Ferie: tolto il toast dedicato su `user_id` (doppione del toast condiviso).
+- REQUIREMENT CHANGED nei test: `task-bulk-date-dialog`, `task-bulk-priority-dialog`, `task-request-update-dialog`
+  affermavano "nessun toast su 422 di campo" -> ora attendono il toast condiviso; `staff-course-form` mock sonner
+  senza `error`. Nuovo `form-errors.notify.test.ts`.
+- Verifica: Vitest completo 9578/9578;
+  `tsc -b --force` pulito; ESLint pulito sui file toccati. Guida in-app `general` IT/EN (tip in
+  `opening-records-and-quick-create`) + manuale Claude Docs (sottosezione "Se il salvataggio non riesce"); PDF da
+  rigenerare.
+- Non coperto (prossimo passo): errori di validazione CLIENT (Zod) nei form a pagina intera senza toast;
+  `apiErrorMessage` ignora il `message` del server su 4xx diversi da 403/422.
+
+## ISO: campo "Altro" testo libero + seeder mirato per la produzione — VERDE, COMMITTATO (2026-10-30)
+
+- `IsoCatalogue`: nuovo campo Offerta `iso_other_standard` ("Altro", `text`), nella sezione `iso-standards`
+  accanto a "Parità di genere + 30415". Non apre blocchi (nessun `visible_when` lo nomina).
+- `QualificaIsoQuoteFormSeeder` (NON in `QualificaProductionDataSeeder`): per installazioni gia' seedate,
+  `php artisan db:seed --class=QualificaIsoQuoteFormSeeder --force`. Campi additivi + form Offerta della radice
+  "ISO" RISCRITTO comunque (una modifica a mano del form ISO si perde; i valori delle offerte restano). Serve perche'
+  `QualificaQuoteLayoutSeeder` non sovrascrive un form gia' configurato.
+- Test: `QualificaIsoCatalogueTest` 9/9 (nuovo caso del seeder mirato; atteso di `iso-standards` aggiornato =
+  REQUIREMENT CHANGED), `QualificaQuoteLayoutSeederTest` 5/5, `QualificaProductionDataSeederTest` 3/3; Pint pulito.
+  Seeder NON eseguito sul DB dev (vincolo utente). Manuale: il form ISO non vi e' descritto, nessun passaggio da toccare.
+
+## Fonte spostata dall'Opportunita' all'Offerta (spec 0332) — VERDE, NON COMMITTATO (2026-10-30)
+
+- Decisioni utente: Fonte solo su `quotes.source_id` (FK sources nullOnDelete); `opportunities.source_id` eliminata;
+  backfill e migrazione legacy sulla PRIMA offerta (id minimo) dell'opportunita'; lead -> precompila la Fonte della
+  nuova offerta (`OpportunityForSelectResource.meta.lead_source`, solo client); Opportunita' senza Fonte (form, griglia,
+  filtro, conversione lead: `LeadOpportunityDefaultsResolver` blocca solo `registry_id`); griglia Offerte con colonna
+  `source` filtrabile ed editabile.
+- Migrazioni `2026_11_11_100000_add_source_id_to_quotes_table` e `2026_11_11_100100_move_opportunity_source_to_first_quote`
+  (down: ricrea `opportunities.source_id` dalla prima offerta). Provate solo in Pest. **NON eseguite su `qnet2`**: serve
+  l'ok utente. Nel DB dev 61 opportunita' con Fonte e senza offerte la perdono.
+- Gestione richieste/iscritti: shape invariata, la Fonte si legge/scrive sull'offerta (`RequestAttributionWriter::
+  applyQuoteAttribution`); campo protetto `source_id` invariato. Workflow offerta: criterio `source_id` `inherited: false`.
+  `SourceService::delete` 409 se la Fonte e' usata da offerte (`Source::quotes()`).
+- FE: `QuoteSourceField` + `quote-record-context.tsx` (`QuoteContextSection`, Fonte editabile + Linee prodotto) nel
+  dettaglio e nella creazione; `ProjectedContextSection` resta per Contratto/Commessa.
+- Legacy `../qnet` (non committato): `QuoteMigrationController` emette `source_id` solo sulla quotation con id minimo
+  dell'opportunita' (verificato con tinker: opp 1 -> quote 372 = 4, quote 1808 = null); `OpportunityMigrationController`
+  non emette piu' `source_id`.
+- Verifica: Pest suite completa 12968/12984 (15 rossi preesistenti noti + 1 skipped); Pest mirati Quotes/Opportunities/
+  RequestManagement/Enrollee/FieldChangeRequests/QuoteWorkflows/Leads/Migration/Contracts/WorkOrders verdi salvo i
+  rossi noti (PDF LibreOffice, import Utenti, piano migrazione); Vitest completo 9572/9572; tsc -b exit 0; Pint pulito;
+  ESLint pulito salvo `quotes/column-renderers.tsx:12` preesistente. Guide IT/EN (opportunities, quotes,
+  request-management, quote-workflows, leads) e manuale Claude Docs aggiornati; PDF da rigenerare.
+- Al commit: nel working tree ci sono anche modifiche di altre sessioni (contratti "Valida", catalogo ISO, refactor
+  `features/auth/form-errors` e `use-*-form-submit`): committare solo i file della 0332.
+
+## Contratti: "Valida" solo se mai validato — VERDE, NON COMMITTATO (2026-10-30)
+
+- Segnalazione utente: un contratto validato riproponeva "Valida". Causa: il gate guardava solo il gruppo dello stato,
+  e la migrazione legacy mette i contratti validati su righe `pending` (Da programmare 173, Programmato 4.691,
+  In scadenza 5.137 nel DB dev). Decisione utente: `mayValidate()`/`contractLifecycleActions().validate` richiedono anche
+  `validated_at === null`; `ContractActionService::assertNotClosed` risponde 422 anche con il timbro presente.
+- "Riapri contratto" da una chiusura (`ContractReactivator::reactivateClosed`) azzera anche `validated_at`/`validated_by`
+  (supera la regola "timbro di validazione conservato") e registra l'azzeramento come voce `updated` (old -> null) visibile
+  in Cronologia attivita'; `config/activity-log.php` foreign_keys `contract.validated_by` -> User per il nome. La riattivazione
+  da SOSPESO conserva il timbro. Etichette `activityLog.fields.validated_at/validated_by` IT/EN.
+- Verifica: Pest Contracts+ActivityLog 275/275, Vitest contracts/help/activity-log/i18n 566/566, tsc -b pulito, Pint/ESLint
+  puliti. Suite completa non eseguita. Guide IT/EN contratti + manuale Claude Docs (azioni contratto) aggiornati; PDF da rigenerare.
+- Aperti (segnalati, non fatti): i contratti validati su stati `pending` non mostrano "Programma" (solo `closed_won`); la voce
+  `contract.reactivated` arriva alla Cronologia con un evento fuori da `ActivityLogEvent` (badge senza etichetta, preesistente).
+
+## Schede Opportunita'/Offerta/Contratto/Commessa con lo stesso scheletro (spec 0331) — VERDE, NON COMMITTATO (2026-10-29)
+
+- Ordine unico in `components/detail/record-skeleton-sections.tsx` (`RecordSkeletonSections`, slot details/context/
+  contacts/rewards/team/company/document/specific, dentro `RecordSectionsGrid`): una scheda nuova o un riordino passa
+  SOLO da qui. Sezioni proiettate condivise in `features/quotes/quote-projection-sections.tsx` (`Projected*Section`).
+- BE additivo: `ContractResource` + source, product_lines, rewards, managers, manager_labels, layout; `WorkOrderResource`
+  + referent, commercial, reporter, source, product_lines, rewards, layout, payment_method (null/[] per multi-offerta,
+  `quote_id` null). Eager load in `ContractService`/`WorkOrderService::DETAIL_RELATIONS`. Helper test
+  `tests/Helpers/OfferProjectionHelpers.php` (registrato in `tests/Pest.php`).
+- `RewardChipsSection` prop `emptyLabel`: le schede dettaglio mostrano "Nessun buono"; il form di creazione no.
+- Titoli nuovi solo nel dettaglio (prop `title` sulle sezioni condivise col form di creazione): Commessa ha due chiavi
+  per il team (`sections.team` form, `sections.detailTeam` dettaglio). Team Contratto = Supervisore + G.A. offerta
+  (supera direttiva 2026-08-31). Contratto/Commessa usano le etichette `quotes.detail.*` ("Metodo di pagamento").
+- Verifica 2026-10-29 (verifier): BE 12951/12967, i 15 rossi tutti preesistenti noti; Vitest 9564/9564; tsc -b pulito;
+  ESLint/Pint puliti. Guide IT/EN dei 4 moduli + manuale Claude Docs (Parte 3) aggiornati; PDF da rigenerare.
+
+## Referente principale dell'anagrafica (spec 0330) — VERDE, NON COMMITTATO (2026-10-29)
+
+- Richiesta utente: scelta un'anagrafica, il Referente si precompila. Nuova colonna `registries.primary_referent_id`
+  (FK `referents` nullOnDelete). INV-1: e' sempre uno dei referenti collegati, null solo senza referenti; default e
+  rielezione = primo per id di `referent_registry` (`Registry::referents()` ora ordinata per id del pivot).
+- BE: `App\Services\Registries\PrimaryReferentElector` (unica regola, usata da `RegistryService::create/update` e
+  `ReferentService::delete`, ora in transazione); 422 di appartenenza nel trait
+  `Http/Requests/Concerns/ValidatesPrimaryReferent` (messaggi `lang/{it,en}/registries.php`); `RegistriesAuthorization`
+  field `primary_referent_id` (stesso permesso di `referent_ids`); `RegistryResource.primary_referent_id/primary_referent`;
+  `RegistryForSelectResource.meta.primary_referent`. `OpportunityCellWriter`: anagrafica cambiata -> Referente = principale
+  se l'attore puo' modificarlo (senza permesso e con Referente valorizzato resta il 422 preesistente, D-8).
+- Migrazioni `2026_11_10_100000` (schema) e `2026_11_10_100100` (backfill idempotente): provate solo in Pest.
+  **NON eseguite sul DB `qnet2`**: serve l'ok dell'utente.
+- FE: `features/registries/for-select-meta.ts` (`RegistryForSelectMeta`, `fetchRegistryForSelectMeta`) sostituisce
+  `opportunities/opportunity-relation-meta.ts` (cancellato). Prefill nei change handler: `useRegistryRoleInheritance`
+  (scelta a mano, dettaglio, preset da anagrafica), `useOpportunityLeadSelection` (D-6), attivita'
+  `use-task-registry-referent-prefill.ts` (in `task-inline-cascade.ts` `referent_id` passa a `sets` per `registry_id`).
+  Form anagrafica: `RegistryPrimaryReferentField` + `primary-referent.ts` (`nextPrimaryReferentId`), badge "Principale"
+  sulla card; `RelationMultiSelectField` ha il nuovo prop opzionale `onValueChange`.
+- Test: `RegistryPrimaryReferentTest` (AC-001..008), `OpportunityGridInlineEditTest` (AC-009), `RegistriesSourceImportTest`
+  (AC-010), `RegistryMetaTest` (REQUIREMENT CHANGED: nuovo campo nel catalogo); Vitest registries/opportunities/tasks/help.
+  Verifier: Pest mirato 273/273; suite completa 12951/12967 con i soli 15 rossi preesistenti noti; Vitest 9564/9564;
+  tsc -b exit 0; ESLint/Pint puliti sui file 0330.
+- Guide in-app IT/EN (registries, opportunities, tasks) e manuale Claude Docs (Anagrafiche, Opportunita', Task) aggiornati.
+- Al commit: `help/content/{it,en}/opportunities.ts` contiene anche righe della spec 0331 (altra sessione) e
+  `i18n/*-opportunities.ts` e' solo 0331: committare solo gli hunk della 0330.
+
+## Scheda Contratto: Referente, Commerciale, Segnalatore come nell'Offerta — VERDE, COMMITTATO (2026-10-29)
+
+- Richiesta utente: la sezione "Cliente e opportunita'" del Contratto mostra le righe dell'Offerta: Anagrafica
+  (label rinominata da "Cliente"), Referente dell'opportunita' con Tipo referente (`ReferentValue`), Opportunita',
+  Offerta, Commerciale, Segnalatore (link a `referents`, sola lettura). Il Supervisore resta fuori (direttiva 2026-08-31).
+- BE: `ContractResource.referent` = `ReferentRef::summarize(quote.opportunity.referent)`; eager load
+  `quote.opportunity.referent.referentType` in `ContractService::DETAIL_RELATIONS`.
+- File: `ContractResource.php`, `ContractService.php`, `ContractShowTest.php`; FE `contracts/{types.ts,
+  contract-detail-fields.tsx}`, i18n `{it,en}-contracts.ts`, guide `help/content/{it,en}/contracts.ts`, 4 test contratti.
+- Test: `ContractShowTest` (referent + tipo), `contract-detail.test.tsx` (REQUIREMENT CHANGED: Commerciale/Segnalatore
+  ora visibili), fixture `referent: null` negli altri test contratto. Pest Contracts 177/177, Vitest contracts+i18n+help
+  verdi, tsc -b exit 0, ESLint/Pint puliti. Manuale Claude Docs (sezione Contratti) aggiornato; PDF da rigenerare.
+
+## Tipo referente sotto il nome del Referente — VERDE, COMMITTATO (2026-10-29)
+
+- Richiesta utente: nelle card Referenti dell'anagrafica e ovunque compaia un Referente si legge il suo Tipo referente.
+- Contratto (additivo): il ref del referente e' `{id, name, referent_type: {id, name}|null}` in
+  `RegistryResource.referents[]` (oltre a `primary_contacts`), `OpportunityResource.referent`,
+  `QuoteResource.referent` (proiezione dall'opportunita'), `TaskResource.referent`. Helper `App\Support\ReferentRef`
+  (`summarize`/`typeOf`, mai query: eager-load `referentType` aggiunto in Registry/Opportunity/Quote/TaskService).
+- FE: `ReferentRef` in `features/referents/types.ts`; `features/referents/referent-value.tsx` (`ReferentValue`,
+  `ReferentTypeLine` con etichetta sr-only). Su un draft da picker `referent_type` manca: nessuna riga.
+- Fuori scope (non toccati): Commerciale/Segnalatore/Partner (anch'essi Referent) mostrano solo il nome.
+- Test: `RegistryCrudTest`, `TaskCrudTest`, `QuoteDerivedReferentTest`, `OpportunityCrudTest` (assert contratto
+  aggiornato: REQUIREMENT CHANGED), `referent-value.test.tsx`, `registry-detail.test.tsx`. Guide in-app IT/EN
+  registries + referents e manuale Claude Docs aggiornati.
+
+## Anno a 4 cifre negli input data — VERDE, COMMITTATO (2026-10-29)
+
+- `components/ui/input.tsx`: ogni `Input` `type` `date`/`datetime-local`/`month` senza `max` proprio riceve
+  `max` a fine anno 9999 (`FOUR_DIGIT_YEAR_MAX`): il browser ferma il segmento anno a 4 cifre. Un `max` esplicito
+  (es. `max={dayOf(new Date())}`) vince. Copre tutti i form, i campi flessibili (`native-input-field-control.tsx`),
+  `DateTimeField`, editor di cella AG Grid e filtri avanzati, perche' passano tutti da `Input`. Test: `input.test.tsx`.
+
+## Popup "Modello di Task" grande nel form Commessa e nel dialog "Programma" — VERDE, COMMITTATO (2026-10-30)
+
+- `RelationSelectField` ha la prop `contentClassName` (inoltrata a `AsyncPaginatedSelect`).
+- `TASK_TEMPLATE_POPUP_WIDTH_CLASS` vive in `features/task-templates/for-select-api.ts` (unica fonte): `w-[48rem]`, mai
+  piu' stretto del trigger; esce dalla cella della griglia (popup portalizzato nel `DialogContent`, che non taglia
+  l'overflow), resta nel viewport via `max-w-[calc(100vw-2rem)]` base + shift Radix. Usata da
+  `WorkOrderTaskTemplateField` (form Commessa) e `ContractProgramSharedFields` (dialog "Programma" e "Programma
+  commessa unica", valori comuni e gruppi). Test: `contract-program-dialog.test.tsx` (popup `w-[48rem]`).
+- Restano con larghezze proprie `quote-product-select.tsx` e `category-popup-width.ts` (non toccati).
+- Verifica 2026-10-30: Vitest mirato 427/427 (contracts program, work-orders, task-templates, relation-select-field);
+  ESLint pulito; tsc -b pulito. Manuale: nessun impatto (solo larghezza del popup).
+
+## Errori 403 specifici (spec 0329) — VERDE, COMMITTATO (2026-10-29)
+
+- Ogni 403 di `/api/*` (tranne `GET /api/tasks/{task}` con `errors.access_contacts`) ha la shape
+  `{success:false, message, authorization:{reason:'missing_permission'|'denied', permission:'res.ability'|null}}`.
+  Il frontend compone "Non hai il permesso «Elimina» sul modulo «Opportunità»." con `abilityLabel`/`resourceLabel`;
+  `message` del backend per missing_permission contiene la chiave grezza (fallback per i client API).
+- BE: `app/Authorization/Denials/{AuthorizationDenialLog,ForbiddenResponse}` (registro `scoped` + listener
+  `GateEvaluated`: i permessi negati durante una Policy sono le sue cause; messaggio esplicito vince sempre). Strada
+  controller: `BaseApiController::errorResponse()` (log/alert Teams dei 403 INVARIATI, decisione utente). Strada
+  pre-controller: render 403 in `bootstrap/app.php`. `EnsureSuperAdmin` -> "Sezione riservata al super-admin."
+- Motivi di perimetro: `BasePolicy` ora `bool|Response` + `withinPerimeter()`/`denyBecause()`; 14 Policy restituiscono
+  `Response::deny(__('authorization.<key>'))` (`lang/{it,en}/authorization.php`). **Mai usare il risultato di un metodo
+  di Policy come bool** (un Response di diniego e' truthy): passare da `Gate::allows/inspect` o `$user->can()`.
+- ~95 `abort(403)`/`AuthorizationException` convertiti (permesso -> `Gate::authorize/allowIf`; regola -> messaggio
+  in `lang/it.json`). `tests/Unit/Architecture/ForbiddenWithoutMessageTest.php` vieta nuovi 403 senza testo.
+- FE: `lib/forbidden-message.ts` (`forbiddenMessage`, `apiErrorMessage`), adottato in tutte le feature; `DetailError`
+  e `TableView` lo usano da soli; l'interceptor di `api/client.ts` converte i body Blob degli errori in JSON (prima
+  `lib/download.ts::normalizeBlobError`, rimossa dai moduli). Chiavi `*Forbidden`/`reorder.forbidden` cancellate;
+  `users.form.deleteForbidden` resta (422 ultimo super-admin). Nuovo codice: 403 -> `apiErrorMessage(error, fallback, i18n)`.
+- Test: BE `tests/Feature/Authorization` + `tests/Unit/Architecture` 158/158; suite completa solo i 15 rossi
+  preesistenti noti (+ `TaskVisibilityTest` AC-065 flaky sotto carico). Vitest 9514: unico rosso
+  `request-work-panel.test.tsx` corretto (REQUIREMENT CHANGED, 10/10); `leads-table-assign` flaky sotto carico.
+  tsc -b exit 0; ESLint: solo l'errore preesistente in `quotes/column-renderers.tsx:12`.
+- Manuale: FAQ in `help/content/{it,en}/general.ts` + manuale Claude Docs (FAQ). PDF derivato da rigenerare.
+- Aperti: `BaseApiController` 311 righe (soft limit); `i18n/locales/en.ts` 504 righe (preesistente, >500).
+
+## Carico macchina durante le feature — workflow `.claude/` (2026-10-29)
+
+- Causa: per ogni microtask il verifier lanciava la suite completa (10 processi Pest + circa 9 worker Vitest + `tsc`),
+  e l'hook Stop `typecheck.sh` lanciava `tsc -b --force` (fino a 8 GB) a ogni fine turno, anche in parallelo tra teammate.
+- Ora: per microtask solo i test mirati; suite completa **una volta** a fine feature, BE poi FE in sequenza, con
+  `nice -n 10 composer test -- --processes=4` e `nice -n 10 npx vitest run --maxWorkers=4`. Non usare `vitest related`
+  (oltre 5 minuti su un solo file: costruisce il grafo di tutta la suite).
+- `typecheck.sh`: salta se niente in `frontend/src`, `tsconfig*` o `package*.json` e' piu' recente dello stamp
+  `frontend/node_modules/.cache/qnet-typecheck.stamp` (aggiornato solo a esito verde); lock `qnet-typecheck.lock`
+  (un solo tsc tra sessioni, lock vecchio oltre 15 min rimosso); `nice`. Quando gira resta `--force`.
+- `build-feature`: default subagent a stella, agent team solo con vero coordinamento continuo.
+- File: `.claude/hooks/typecheck.sh`, `.claude/agents/{verifier,backend,frontend,tester-debug}.md`,
+  `.claude/commands/build-feature.md`, `.claude/rules/backend.md §6`, `CLAUDE.md §HOOK`.
+
+## Contatti e indirizzi autorizzati dal record padre (spec 0328) — VERDE, COMMITTATO (2026-10-29)
+
+- Causa: `/api/addresses` e `/api/contacts` (salvataggio immediato nei dettagli di Utenti, Anagrafiche, Referenti,
+  Societa' sedi) chiedevano `addresses.*`/`contacts.*`, che il form Ruoli non puo' assegnare: un ruolo creato da UI
+  con `registries.update` riceveva 403.
+- Ora `AddressPolicy`/`ContactPolicy` (non piu' BasePolicy) delegano a `App\Authorization\PersonalDataChildAuthorization`:
+  scheda -> `personable` -> risorsa da `config('personal_data.owner_resources')` -> policy del padre (`view`/`update`)
+  + riga `personal_data.{addresses|contacts}` della matrice del padre (visibile / modificabile e non disabilitata).
+  Fail closed: proprietario non scheda, scheda senza padre, tipo non mappato. `store` autorizza `[Model::class, $owner]`.
+- Migrazione `2026_11_09_100000_prune_address_and_contact_permissions` elimina i permessi; tolti da `DemoRolesSeeder` e
+  da `OperatorRoleCatalogue::USER_FORM_MODULES` (resta `personal_data`). Nessun seeder di riallineamento serve: il
+  diritto si ricava dal padre. `personal_data.*` invariato (D-5, endpoint non usati per scrivere dalla UI).
+- Nuovo padre con scheda -> aggiungerlo a `owner_resources`, altrimenti i suoi contatti/indirizzi danno 403.
+- Test: helper `tests/Helpers/PersonalDataHelpers.php` (`registryCard`, `registryCardActor`), nuovo
+  `PersonalDataChildAuthorizationTest`; adattati CRUD contatti/indirizzi, formatting, unicita' telefono, HR AC-011,
+  DemoRolesSeederTest, PersonalDataPolicyTest (REQUIREMENT CHANGED: niente piu' `contacts.*`/`addresses.*`).
+- Manuale: nota in guida Ruoli IT/EN (`field-permissions`) e nel manuale Claude Docs (Permessi sui singoli campi).
+- Verifica 2026-10-29: suite completa 12930/12946; i 15 rossi non toccano questa modifica (users-source con
+  `EXTERNAL_MIGRATION_USERS_LINK_ONLY=true` nel `.env`, LibreOffice assente per QuoteDocumentPdf, 4 test Controllo di
+  gestione sul menu cambiato da `0407bfd7` spec 0318, TableBulkDeleteTest `guarded`/`forbidden` della spec 0327 in
+  corso). `tsc -b --force` pulito. Spec rinumerata 0327 -> 0328: la 0327 e' `specific-authorization-errors`.
+
+## Coda dedicata per i job di migrazione — VERDE, NON COMMITTATO (2026-10-29)
+
+- `RunMigrationJob`/`RunMassMigrationJob` vanno sulla coda `config('migrations.queue')` (env `MIGRATION_QUEUE`, default
+  `migrations`), non piu' su `default`: una migrazione occupa il worker fino a `job_timeout` (1800 s) e bloccava email,
+  export, import e report. `runMassSync` (seeder) resta inline.
+- **Deploy (obbligatorio):** serve un worker dedicato `php artisan queue:work --queue=migrations` accanto a quello di
+  `default`, altrimenti le migrazioni restano `pending`. `composer dev` ne avvia gia' uno (`queue:listen --queue=migrations`).
+- Test: `tests/Feature/Migration` + `Spec0177`, 713 verdi con `EXTERNAL_MIGRATION_USERS_LINK_ONLY=false`. Con il `.env`
+  locale (`=true`) falliscono 7 test della sorgente `users`: preesistente, `phpunit.xml` non sovrascrive quella variabile.
+- Manuale: nessun impatto.
 
 ## Pagamento rate dal documento passivo — VERDE, COMMITTATO c6e5c108 (2026-10-29)
 
@@ -77,6 +703,24 @@
 - Test: Pest PaymentMethods/Migration/Unit/Invoices/... ; Vitest payment-methods+help 212/212, invoices/quotes/quick-create/
   table 929/929; `tsc -b --force` EXIT 0; ESLint, Pint ok. Test con lista congelata aggiornati (REQUIREMENT CHANGED).
 - Da fare: rilanciare su dev la sorgente `payment-methods` per sovrascrivere i 100 metodi (serve ok utente).
+
+## Spec 0326 Modello di task delle commesse migrate — VERDE, COMMITTATO (2026-10-29)
+
+- Il legacy non salva il modello della commessa; lo ricava `LegacyWorkOrderTaskTemplate` (../qnet
+  `app/Support/Migration/`) dai task generati: (a) `tasks.unique_key` = azione del modello, (b) chiave vuota ->
+  `tasks.id_attivita` -> copia sull'offerta `spazio_attivitas` (stessa quotation) -> `id_attivita` = id azione.
+  Regola D-2: piu' azioni raggiunte, poi copertura, poi attivo, poi id piu' basso. Endpoint legacy
+  `GET work-order-task-templates` (`WorkOrderTaskTemplateMigrationController`, route in `apiV2-migration.php`).
+  Verificato con tinker: 15418 commesse su 16392, 1 warning (8146: 53/58), COM-6427 -> 47 (11/21), ~3-7 s a pagina.
+- qnet-2: sorgente `work-order-task-templates` (`WorkOrderTaskTemplatesSource`, fase 12, dipende da `work-orders`
+  e `task-templates`): forceFill + saveQuietly senza activity log, MAI via `WorkOrderService` (genererebbe i task).
+  Commessa/modello non migrati -> fail; stesso modello -> skip; altro modello -> skip + warning.
+- Test: `WorkOrderTaskTemplatesSourceTest` 6/6, registry 42 sorgenti; Migration 683/690 (i 7 rossi noti users
+  link-only). Vitest help/i18n/migrations 418/418, tsc -b EXIT 0, ESLint e Pint ok.
+- Testi: etichetta + requisiti sorgente IT/EN, guida `migrations` (voce Commesse — modello di task), manuale Claude
+  Docs rev 503 (paragrafo dopo Commesse — workflow).
+- Da fare su dev: lanciare `work-order-task-templates` (dopo `task-templates`). Nota: un modello collegato a una
+  commessa non e' piu' eliminabile (restrictOnDelete, 409). Parte legacy committata in ../qnet.
 
 ## Merge feature/amministrazione (spec 0288) in main — VERDE, COMMITTATO (2026-10-29)
 
@@ -279,8 +923,7 @@
   `recruitment_contract` (1134) avevano il margine inferiore sotto la fascia footer della carta intestata (misurata:
   `QuoteDocumentLayoutCatalogue::LETTERHEAD_FOOTER_TWIPS` = 1291) -> portati a 1560; test dedicato. Il seeder e'
   create-only: sul DB dev gia' seminato i due margini vanno aggiornati a mano (tinker) o cancellando e riseminando.
-  APERTO: l'anteprima A4 dell'editor non impagina (un solo foglio), sui layout lunghi il testo copre il footer
-  della carta intestata; in attesa di conferma utente per l'anteprima multipagina.
+  Anteprima A4 a un solo foglio: risolto 2026-10-30 con l'anteprima multipagina (voce in cima).
 - Test: `tests/Feature/Seeding/QualificaQuoteDocumentLayoutSeederTest.php` (validator, immagini possedute, variabili
   del catalogo, render `.docx` di tutti i 28, default invariato, create-only, nome occupato). Verdi anche Seeding (217),
   DocumentLayouts, Unit/DocumentLayouts, Products, QualificaTemplateSeederTest, QuoteDocumentFidelityTest.
@@ -1047,7 +1690,7 @@
 
 - Spec `docs/specs/0305-legacy-quote-lines-without-service.xml` (approvata, D-1..D-9). Caso guida commessa 270 ->
   offerta 238 (righe 74624/74625/74626 "... UNI ISO 11381:2017 _ 1°/2°/3° Anno", `service_id` 0).
-- Legacy (`../qnet`, non committato): nuovo `App\Support\Migration\LegacyFreeLineProducts` (titolo normalizzato:
+- Legacy (`../qnet`, committato): nuovo `App\Support\Migration\LegacyFreeLineProducts` (titolo normalizzato:
   trim, spazi ridotti, minuscole; `key` = id minimo su TUTTA `quotationservices`, `name` = "[OLD] " + titolo; 339
   titoli). `QuoteMigrationController::mapLine()`: riga senza servizio -> `product_id` null + `free_product {key,name}`
   + `description` null; righe con servizio invariate. Modifiche utente a `AppServiceProvider.php`/`config/database.php`
@@ -2037,7 +2680,7 @@
   (`OrgChartFunctions::GENERAL_MANAGER`, fuori da `OrgChartRoster`: nessuna mansione/livello); i responsabili di
   livello I di tutte le altre funzioni ricevono Enrico in "Risponde a" (additivo, come il resto dello Step 5).
 - `BusinessFunctionCatalogue::GENERAL_MANAGEMENT` (25 funzioni), `QualificaHrCatalogSeeder::assignFunctions`.
-- Legacy (`../qnet`, non committato): `LegacyBusinessFunctions::NAMES` 26 => 'Direzione Generale' (non piu' "[OLD]",
+- Legacy (`../qnet`, committato): `LegacyBusinessFunctions::NAMES` 26 => 'Direzione Generale' (non piu' "[OLD]",
   attiva). Spec 0281 D-2/D-2b aggiornata.
 - DB locale: riga id 29 "[OLD] DIREZIONE GENERALE" (old_id 26) rinominata "Direzione Generale", attiva, BS; rilanciati
   `QualificaBusinessFunctionSeeder` + `QualificaHrCatalogSeeder`: 16 responsabili rispondono a Enrico, lui a nessuno.
@@ -2153,7 +2796,7 @@
   `QualificaCatalogSeeder` step 5 prima del Link seeder. Esistente per nome (senza maiuscole) -> invariato, solo tipo
   mancante riempito. La categoria "APL" e gli operatori APL (`OperatorRoster::FUNCTION_WIDE_COMPETENCE`) ora puntano
   ad "Agenzia per il Lavoro". "Consulenza" e "No funzione aziendale" restano.
-- Legacy (`../qnet`, non committato): `app/Support/Migration/LegacyBusinessFunctions.php` (id legacy -> nome qnet-2,
+- Legacy (`../qnet`, committato): `app/Support/Migration/LegacyBusinessFunctions.php` (id legacy -> nome qnet-2,
   fusione BACK OFFICE 7 -> SEGRETERIA 20). `BusinessFunctionController` invia nome mappato o "[OLD] ..." + `is_active`,
   esclude le fuse e unisce membri/responsabile; `UserMigrationController` e `ProductCategoryMigrationController`
   mandano `business_function_id` via `referenceId()`. Verificato con tinker sui dati reali: 25 righe, 6 [OLD] non attive
@@ -3275,7 +3918,7 @@
 - Contratto: `country` = codice ISO alpha-2 in TUTTI gli endpoint con indirizzo. qnet-2 `MigrationGeoResolver`
   cerca per `countries.iso2` (un nome non e' piu' accettato). Fixture dei test di migrazione `'country' => 'IT'`
   (REQUIREMENT CHANGED) + test nuovo ISO/nome in OperationalSitesSourceImportTest.
-- Legacy (`../qnet`, non committato): `LegacyNation` (249 `nations` per id -> ISO, mappa approvata dall'utente;
+- Legacy (`../qnet`, committato): `LegacyNation` (249 `nations` per id -> ISO, mappa approvata dall'utente;
   nomi troncati "Per"/"Citt" mappati a mano), `LegacyGeo::place()` (comune riconosciuto su `listacomuni`,
   completa provincia/regione/stato, sigle sarde soppresse, regioni nel nome del dataset qnet-2),
   `LegacyComuneSpelling` (204 comuni ISTAT -> grafia del dataset qnet-2). Usati da Referent, Registry (+addresses),

@@ -31,7 +31,7 @@ class ContractProgrammableLinesController extends BaseApiController
     {
         try {
             $this->authorize('program', $contract);
-            abort_unless($this->availability->mayProgram($contract), 403);
+            abort_unless($this->availability->mayProgram($contract), 403, __('You cannot program this contract: it is not in the Closed won status.'));
 
             $contract->loadMissing('quote');
 

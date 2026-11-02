@@ -128,7 +128,6 @@ export const projects = {
       confirm: 'Leave without saving',
       cancel: 'Keep editing',
     },
-    deleteForbidden: 'You cannot delete this project.',
     deleteHasCampaigns: 'This project cannot be deleted: it still has campaigns linked to it.',
   },
 }

@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -46,7 +47,7 @@ export function ContractTerminateDialog({
   contract,
   onTerminated,
 }: ContractTerminateDialogProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const schema = buildTerminateContractSchema(t)
 
   const form = useForm<TerminateContractFormValues>({
@@ -69,7 +70,7 @@ export function ContractTerminateDialog({
       await terminateMutation.mutateAsync(buildTerminatePayload(values))
     } catch (error) {
       if (!applyServerValidationErrors(error, form.setError, [...SERVER_ERROR_FIELDS])) {
-        toast.error(t('contracts.actions.terminateDialog.genericError'))
+        toast.error(apiErrorMessage(error, t('contracts.actions.terminateDialog.genericError'), i18n))
       }
     }
   }

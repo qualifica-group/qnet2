@@ -15,6 +15,8 @@ interface WorkOrderTeamSectionProps {
   participants: WorkOrderParticipant[]
   form: WorkOrderFormState
   inline: InlineEdit
+  /** The detail card names the block "Team" (spec 0331 D-5); the create form keeps the default. */
+  title?: string
 }
 
 /**
@@ -25,13 +27,13 @@ interface WorkOrderTeamSectionProps {
  * slots — one editor for all of them, since moving a person between slots is
  * one change. Each participant keeps its "Partecipante n" denomination.
  */
-export function WorkOrderTeamSection({ supervisors, participants, form, inline }: WorkOrderTeamSectionProps) {
+export function WorkOrderTeamSection({ supervisors, participants, form, inline, title }: WorkOrderTeamSectionProps) {
   const { t } = useTranslation()
   const { control } = form.form
   const sortedParticipants = [...participants].sort((a, b) => a.position - b.position)
 
   return (
-    <RecordSection title={t('workOrders.detail.sections.team')} icon={<Users />}>
+    <RecordSection title={title ?? t('workOrders.detail.sections.team')} icon={<Users />}>
       <RecordFieldList>
         <RecordInlineField
           field="supervisor_ids"

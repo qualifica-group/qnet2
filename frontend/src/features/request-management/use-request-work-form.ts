@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import type { Path } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { managerSlotsFromRefs, padManagerSlots } from '@/lib/utils'
@@ -122,7 +123,7 @@ function buildDefaultValues(panel: RequestWorkPanelWithPermissions): RequestWork
  * (accessible triad via `MetaField`/`FormMessage`, frontend.md §10).
  */
 export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions, onSaved?: () => void) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const module = useRequestModule()
   const queryClient = useQueryClient()
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -242,9 +243,13 @@ export function useRequestWorkForm(panel: RequestWorkPanelWithPermissions, onSav
       } catch (error) {
         if (!applyServerValidationErrors(error, form.setError, errorFields)) {
           setSubmitError(
-            t('requestManagement.workPanel.genericError', {
-              defaultValue: 'Something went wrong. Please try again.',
-            }),
+            apiErrorMessage(
+              error,
+              t('requestManagement.workPanel.genericError', {
+                defaultValue: 'Something went wrong. Please try again.',
+              }),
+              i18n,
+            ),
           )
         }
       }

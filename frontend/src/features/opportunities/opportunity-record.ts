@@ -6,6 +6,7 @@ import type {
   OpportunityManagerRef,
   OpportunityProductOfInterest,
 } from '@/features/opportunities/types'
+import type { ReferentRef } from '@/features/referents/types'
 import type { OpportunityFormValues } from '@/features/opportunities/use-opportunity-form'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 
@@ -18,12 +19,11 @@ export interface OpportunityRecordValues {
   success_probability: number | null
   general_notes: string | null
   registry: RelationFieldRef | null
-  referent: RelationFieldRef | null
+  referent: ReferentRef | null
   commercial: RelationFieldRef | null
   reporter: RelationFieldRef | null
   /** Read-only origin; `null` on a create, whose lead has its own open picker. */
   lead: OpportunityLeadRef | null
-  source: RelationFieldRef | null
   supervisor: RelationFieldRef | null
   managers: OpportunityManagerRef[]
   /** The G.A. denominations (spec 0080): the record's own resolution, live from the rows on a create. */

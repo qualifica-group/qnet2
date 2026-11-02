@@ -120,7 +120,7 @@ if (! function_exists('terminatedContractForReactivation')) {
     }
 }
 
-it('reactivating a disdetto contract clears the whole termination stamp and lands on the chosen status', function () {
+it('reactivating a disdetto contract clears the termination and validation stamps and lands on the chosen status', function () {
     $contract = terminatedContractForReactivation();
     $destination = ContractStatus::where('name', 'Programmato')->sole();
     $actor = contractActionsUserWith(['reactivate']);
@@ -138,11 +138,17 @@ it('reactivating a disdetto contract clears the whole termination stamp and land
         ->and($contract->termination_reason)->toBeNull()
         ->and($contract->terminated_by)->toBeNull()
         ->and($contract->contract_status_id)->toBe($destination->id)
-        // The validation stamp survives: only the disdetta is undone.
-        ->and($contract->validated_at)->not->toBeNull();
+        // REQUIREMENT CHANGED (user decision 2026-10-30): the validation stamp
+        // is cleared too, so the reopened contract can be validated again.
+        ->and($contract->validated_at)->toBeNull()
+        ->and($contract->validated_by)->toBeNull();
 
     $activity = Activity::where('subject_id', $contract->id)->where('event', 'contract.reactivated')->first();
     expect($activity->properties['reactivated_from'])->toBe('terminated');
+
+    $cleared = Activity::where('subject_id', $contract->id)->where('event', 'updated')->latest('id')->first();
+    expect($cleared->properties['old']['validated_at'])->toBe(now()->subMonths(2)->toDateString())
+        ->and($cleared->properties['attributes']['validated_at'])->toBeNull();
 });
 
 it('reactivating a disdetto contract without a contract_status_id is 422', function () {
@@ -184,16 +190,19 @@ it('reactivating a disdetto contract does NOT require the quote to be closed_won
         ->assertJsonPath('data.contract_status_id', $destination->id);
 });
 
-it('reopening a CLOSED_WON contract lands it back on the chosen working status, keeping the validation stamp', function () {
+it('reopening a CLOSED_WON contract lands it back on the chosen working status, moving the validation stamp to the log', function () {
     // Directive 2026-08-31 rev.3: the positive closure is reopened through
-    // the same endpoint as the negative one; only the validation stamp is
-    // deliberately kept, exactly as reopening a disdetta already did.
+    // the same endpoint as the negative one. REQUIREMENT CHANGED (user
+    // decision 2026-10-30): the validation stamp is cleared, its values kept
+    // in the reactivation's activity properties.
+    $validator = User::factory()->create();
     $contract = Contract::factory()->create([
         'validated_at' => now()->subMonth(),
+        'validated_by' => $validator->id,
         'contract_status_id' => ContractStatus::where('system_key', 'validated')->sole()->id,
     ]);
     $destination = ContractStatus::where('name', 'Programmato')->sole();
-    $actor = contractActionsUserWith(['reactivate']);
+    $actor = contractActionsUserWith(['reactivate', 'view', 'viewActivity']);
     Sanctum::actingAs($actor);
 
     $this->postJson("/api/contracts/{$contract->id}/reactivate", ['contract_status_id' => $destination->id])
@@ -202,10 +211,38 @@ it('reopening a CLOSED_WON contract lands it back on the chosen working status, 
 
     $contract->refresh();
     expect($contract->contract_status_id)->toBe($destination->id)
-        ->and($contract->validated_at)->not->toBeNull();
+        ->and($contract->validated_at)->toBeNull()
+        ->and($contract->validated_by)->toBeNull();
 
     $activity = Activity::where('subject_id', $contract->id)->where('event', 'contract.reactivated')->first();
     expect($activity->properties['reactivated_from'])->toBe('validated');
+
+    // The cleared stamp shows up in "Cronologia attivita'" as a field change,
+    // the validator resolved to its name.
+    $changes = collect($this->getJson("/api/activity-log/contracts/{$contract->id}")->assertOk()->json('data.items.0.changes'))
+        ->keyBy('field');
+    expect($changes['validated_at']['old_value'])->toBe(now()->subMonth()->toDateString())
+        ->and($changes['validated_at']['new_value'])->toBeNull()
+        ->and($changes['validated_by']['old_display'])->toBe($validator->name);
+});
+
+it('reactivating a SUSPENDED contract keeps its validation stamp', function () {
+    $closedWon = QuoteWorkflowStatus::factory()->create(['group' => WorkflowStatusGroup::ClosedWon]);
+    $programmed = ContractStatus::where('name', 'Programmato')->sole();
+    $contract = Contract::factory()->create([
+        'validated_at' => now()->subMonth(),
+        'suspended_at' => now(),
+        'status_before_suspension_id' => $programmed->id,
+        'contract_status_id' => ContractStatus::where('system_key', 'suspended')->sole()->id,
+    ]);
+    $contract->quote()->update(['quote_workflow_status_id' => $closedWon->id]);
+    Sanctum::actingAs(contractActionsUserWith(['reactivate']));
+
+    $this->postJson("/api/contracts/{$contract->id}/reactivate")->assertOk();
+
+    expect($contract->fresh()->validated_at->toDateString())->toBe(now()->subMonth()->toDateString())
+        ->and(Activity::where('subject_id', $contract->id)->where('event', 'updated')->get()
+            ->contains(fn (Activity $entry): bool => array_key_exists('validated_at', $entry->properties['old'] ?? [])))->toBeFalse();
 });
 
 it('reopening a CLOSED_WON contract without a contract_status_id is 422', function () {
@@ -265,10 +302,8 @@ it('AC-009: validating an unvalidated contract stamps validated_at/validated_by 
 });
 
 it('AC-010: validating a contract already sitting on a closed_won status is 422, nothing changes', function () {
-    // The refusal is driven by the GROUP of the current status (directive
-    // 2026-08-31 rev.2), not by the `validated_at` stamp: a contract that
-    // was validated, disdetto and then riattivato is back on an open status
-    // and must be validatable again (see the sibling test below).
+    // Refused on the closed_won GROUP (directive 2026-08-31 rev.2) as well
+    // as on the `validated_at` stamp (see the sibling tests below).
     $validator = User::factory()->create();
     $contract = Contract::factory()->create([
         'validated_at' => now()->subDay(),
@@ -285,13 +320,29 @@ it('AC-010: validating a contract already sitting on a closed_won status is 422,
         ->and($contract->validated_by)->toBe($validator->id);
 });
 
-it('re-validates a contract that carries an old validated_at but is back on an open status', function () {
+it('validating a contract already validated but sitting on a pending status is 422, nothing changes', function () {
+    // User decision 2026-10-30: the legacy migration lands validated
+    // contracts on pending rows ("Programmato", ...); the stamp alone refuses.
     $contract = Contract::factory()->create([
         'validated_at' => now()->subMonths(3),
-        'contract_status_id' => ContractStatus::where('system_key', 'new')->sole()->id,
+        'contract_status_id' => ContractStatus::where('name', 'Programmato')->sole()->id,
     ]);
-    $actor = contractActionsUserWith(['validate']);
-    Sanctum::actingAs($actor);
+    Sanctum::actingAs(contractActionsUserWith(['validate']));
+
+    $this->postJson("/api/contracts/{$contract->id}/validate")->assertStatus(422);
+
+    $contract->refresh();
+    expect($contract->validated_at->toDateString())->toBe(now()->subMonths(3)->toDateString())
+        ->and($contract->contractStatus->name)->toBe('Programmato');
+});
+
+it('re-validates a contract once it has been reopened from its closure', function () {
+    $contract = terminatedContractForReactivation();
+    Sanctum::actingAs(contractActionsUserWith(['reactivate', 'validate']));
+
+    $this->postJson("/api/contracts/{$contract->id}/reactivate", [
+        'contract_status_id' => ContractStatus::where('system_key', 'new')->sole()->id,
+    ])->assertOk()->assertJsonPath('permissions.actions.validate', true);
 
     $this->postJson("/api/contracts/{$contract->id}/validate")
         ->assertOk()

@@ -159,7 +159,7 @@ describe('WorkOrdersTable — delete', () => {
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalled())
   })
 
-  it('shows a forbidden toast on a 403, using the backend re-authorization, not the UI gate', async () => {
+  it("shows the server's 403 reason, using the backend re-authorization, not the UI gate", async () => {
     deleteWorkOrderMock.mockRejectedValue(
       new AxiosError('Forbidden', '403', undefined, undefined, {
         status: 403,
@@ -170,8 +170,7 @@ describe('WorkOrdersTable — delete', () => {
     renderTable()
     screen.getByRole('button', { name: 'delete row' }).click()
 
-    await waitFor(() => expect(toastErrorMock).toHaveBeenCalled())
-    expect(toastErrorMock).not.toHaveBeenCalledWith('Forbidden')
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('Forbidden'))
   })
 
   it('shows the generic conflict message on a 409 (D-11 future guard)', async () => {

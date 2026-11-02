@@ -14,6 +14,8 @@ import { QuoteCommercialField, QuoteManagersField, QuoteSupervisorField } from '
 import { QuoteReporterField } from '@/features/quotes/quote-reporter-field'
 import type { QuoteFormValues } from '@/features/quotes/quote-schema'
 import type { QuoteManagerRef } from '@/features/quotes/types'
+import { ReferentValue } from '@/features/referents/referent-value'
+import type { ReferentRef } from '@/features/referents/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 
 /** A referent shown as a link to its record, or the kit's empty placeholder. */
@@ -30,7 +32,7 @@ function ReferentLink({ referent }: { referent: RelationFieldRef | null }) {
 /** The Opportunita's own anagrafica and referente: read-only, on the detail only. */
 interface DerivedContacts {
   registry: RelationFieldRef | null
-  referent: RelationFieldRef | null
+  referent: ReferentRef | null
 }
 
 interface QuoteContactsSectionProps {
@@ -81,7 +83,7 @@ export function QuoteContactsSection({
               )}
             </RecordField>
             <RecordField label={t('quotes.detail.referent')}>
-              <ReferentLink referent={derived.referent} />
+              <ReferentValue referent={derived.referent} />
             </RecordField>
           </>
         ) : null}

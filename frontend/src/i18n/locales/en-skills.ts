@@ -51,7 +51,6 @@ export const skills = {
     jobRoleDuplicate: 'The same job role cannot appear twice.',
     genericError: 'Something went wrong. Try again.',
     deleteError: 'Unable to delete the skill. Try again.',
-    deleteForbidden: 'You cannot delete this skill.',
     deleteInUse: 'Cannot delete: the skill is assigned to at least one person. Deactivate it instead.',
     sections: {
       identity: {

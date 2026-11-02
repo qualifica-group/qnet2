@@ -22,11 +22,14 @@ export interface TableViewControllerArgs extends RowActionsOptions {
   domain: string
   scope?: TableConfigScope
   productCategoryId?: number
+  productCategoryBranchId?: number
   opportunityId?: number
   quoteId?: number
   defaultFilterModel?: Record<string, unknown>
   forcedFilterModel?: Record<string, unknown>
   registryId?: number
+  /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
+  referentId?: number
   onRowCountChanged?: (count: number | null) => void
   onAction: RowActionHandler
   getBulkActions?: (selection: TableSelection) => BulkAction[]
@@ -94,11 +97,13 @@ export function useTableViewController(
     domain,
     scope,
     productCategoryId,
+    productCategoryBranchId,
     opportunityId,
     quoteId,
     defaultFilterModel,
     forcedFilterModel,
     registryId,
+    referentId,
     onRowCountChanged,
     onAction,
     isBusy,
@@ -122,11 +127,13 @@ export function useTableViewController(
     {
       domain,
       productCategoryId,
+      productCategoryBranchId,
       opportunityId,
       quoteId,
       defaultFilterModel,
       forcedFilterModel,
       registryId,
+      referentId,
       onRowCountChanged,
       getBulkActions,
       disableBuiltinDelete,

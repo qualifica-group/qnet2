@@ -14,7 +14,7 @@ use App\Tables\Shared\RootCategoriesColumn;
  * generic engine. `revenue_net`/`cost_net`/`margin_net` are ALSO real DB
  * columns (the persisted header aggregates, D-9) — sortable/filterable by
  * the generic engine, no derived-column handling needed. `opportunity`/
- * `quote_workflow_status`/`commercial`/`reporter`/`supervisor` are STANDARD
+ * `quote_workflow_status`/`commercial`/`reporter`/`supervisor` (and `source`, spec 0332) are STANDARD
  * relation-name derived columns (own FK on the quote), resolved by
  * QuotesTableDefinition/QuoteRelationColumns — all 5 sortable (a correlated
  * subquery), mirroring OpportunityColumnCatalog. `company`/`company_site`
@@ -156,6 +156,11 @@ final class QuoteColumnCatalog
             [...self::derivedColumn('company', 'quotes.columns.company'), ...self::editableRelation('companies', 'company_id')],
             [...self::derivedColumn('company_site', 'quotes.columns.companySite'), ...self::editableRelation('company-sites', 'company_site_id', ['company_id' => 'company'])],
             [...self::derivedColumn('operational_site', 'quotes.columns.operationalSite'), ...self::editableRelation('operational-sites', 'operational_site_id')],
+            // The Fonte moved here from the Opportunity (spec 0332); placed
+            // beside the Sede, before the columns that arrived after them
+            // (spec 0001: stored layouts are keyed by column ID, so only
+            // DEFAULT layouts move).
+            [...self::derivedColumn('source', 'quotes.columns.source'), ...self::editableRelation('sources', 'source_id')],
             // Appended LAST for the same reason as the three above (spec
             // 0001): a column inserted mid-catalogue would shift every user's
             // persisted layout.

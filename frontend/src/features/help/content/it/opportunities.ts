@@ -30,7 +30,7 @@ const guide: HelpGuide = {
             ['Note generali', 'Testo libero'],
             ['Dettagli', '**Titolo** (facoltativo), **Data inizio**, **Data chiusura prevista**, **Valore stimato**, **Probabilità di successo (%)**'],
             ['Anagrafica e contatti', '**Anagrafica** (obbligatoria), **Referente**, **Commerciale**, **Segnalatore** con i **Buoni assegnati**'],
-            ['Classificazione', '**Fonte**, **Linee prodotto** (almeno una riga: categoria genitore, **Filtro** intermedio facoltativo, categoria prodotto), **Prodotti di interesse**'],
+            ['Classificazione', '**Linee prodotto** (almeno una riga: categoria genitore, **Filtro** intermedio facoltativo, categoria prodotto), **Prodotti di interesse**'],
             ['Team', '**Supervisore**, **Gestori account**'],
           ],
         },
@@ -54,6 +54,10 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
+          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati opportunità** e **Contesto** (Linee prodotto, Prodotti di interesse), poi **Anagrafica e contatti** e **Buoni**, infine **Team**. La sezione Buoni resta visibile anche vuota (\"Nessun buono\").",
+        },
+        {
+          type: 'paragraph',
           text: "Non esiste una pagina di modifica separata: l'opportunità si modifica **direttamente dal suo dettaglio**, un campo alla volta.",
         },
         {
@@ -71,11 +75,37 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Alcuni campi si portano dietro altri valori nello stesso salvataggio: cambiando l'**Anagrafica** il Referente si svuota e Commerciale, Segnalatore, Supervisore e Gestori account vengono proposti da quelli dell'anagrafica (con conferma se sono diversi); cambiando le **Righe di classificazione** i Prodotti di interesse non più coperti vengono tolti; i **Buoni assegnati** si modificano dal campo **Segnalatore**, di cui sono il premio.",
+          text: "Alcuni campi si portano dietro altri valori nello stesso salvataggio: cambiando l'**Anagrafica** il Referente prende il referente principale della nuova anagrafica (resta vuoto se non ne ha; vale anche scegliendo un **Lead**, quando l'anagrafica cambia o il Referente è vuoto) e Commerciale, Segnalatore, Supervisore e Gestori account vengono proposti da quelli dell'anagrafica (con conferma se sono diversi); cambiando le **Righe di classificazione** i Prodotti di interesse non più coperti vengono tolti; i **Buoni assegnati** si modificano dal campo **Segnalatore**, di cui sono il premio.",
         },
         {
           type: 'note',
-          text: "Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure è ereditato e bloccato dal lead di origine (Anagrafica, Fonte), oppure cambiarlo modificherebbe un campo che non puoi toccare. Il **Lead di origine** non si cambia e, se il tuo ruolo non lo vede, non compare né in creazione né nel dettaglio; lo **Stato** è calcolato dalle offerte.",
+          text: "Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure è ereditato e bloccato dal lead di origine (Anagrafica), oppure cambiarlo modificherebbe un campo che non puoi toccare. Il **Lead di origine** non si cambia e, se il tuo ruolo non lo vede, non compare né in creazione né nel dettaglio; lo **Stato** è calcolato dalle offerte.",
+        },
+      ],
+    },
+    {
+      id: 'category-tabs',
+      title: "Filtrare per categoria prodotto",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Sopra l'elenco trovi la barra delle categorie: la tab **Tutte** e una tab per ogni categoria prodotto presente, con il numero di opportunità. Cliccando una tab l'elenco mostra solo le opportunità di quella categoria. La scelta resta anche dopo aver ricaricato la pagina.",
+        },
+        {
+          type: 'paragraph',
+          text: "Un'opportunità compare nella tab di ogni categoria delle sue linee di prodotto (conta una volta sola anche se ha più linee della stessa categoria). Il numero accanto al nome è quante opportunità, tra quelle che puoi vedere, rientrano nella categoria.",
+        },
+        {
+          type: 'steps',
+          items: ["Se le tab non entrano nella riga, le altre finiscono nel menu **Altre**, dove puoi cercare una categoria per nome.","Clicca la **stellina** accanto a una categoria (nel menu) per aggiungerla alle **preferite**: le preferite compaiono per prime.","Attiva **Mostra solo preferite** per vedere in barra solo le preferite; le altre restano nel menu **Altre**."],
+        },
+        {
+          type: 'paragraph',
+          text: "Nel menu **Altre** l'interruttore **Categorie madri** limita la barra alle sole categorie di primo livello: la tab di una categoria madre raccoglie anche le sottocategorie (un record conta una volta sola). La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria tab e le **preferite** sono separate tra le due modalità. Spegnendolo torni a tutte le categorie.",
+        },
+        {
+          type: 'note',
+          text: "Le preferite sono separate per ogni elenco (Opportunità, Offerte, Contratti, Commesse, Gestione Richieste). La prima volta ti vengono proposte in base alle categorie per cui sei abilitato; appena usi la stellina diventano le tue. Il pannello delle statistiche e l'esportazione non seguono la tab: considerano sempre tutte le opportunità.",
         },
       ],
     },
@@ -85,11 +115,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Un clic su una cella modificabile (Nome, Anagrafica, Referente, Commerciale, Supervisore, Gestori account, Fonte, Categoria prodotto, Prodotti di interesse, Valore stimato, Probabilità, Data inizio, Data chiusura prevista) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
+          text: "Un clic su una cella modificabile (Nome, Anagrafica, Referente, Commerciale, Supervisore, Gestori account, Categoria prodotto, Prodotti di interesse, Valore stimato, Probabilità, Data inizio, Data chiusura prevista) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
         },
         {
           type: 'note',
-          text: "Cambiando l'**Anagrafica** dall'elenco il Referente si svuota e i ruoli **vuoti** (Commerciale, Segnalatore, Supervisore, Gestori account) prendono quelli della nuova anagrafica; i ruoli già compilati restano com'erano (dall'elenco non c'è la richiesta di conferma). Il Referente si sceglie tra quelli dell'anagrafica della riga; un Nome vuoto torna al titolo automatico.",
+          text: "Cambiando l'**Anagrafica** dall'elenco il Referente prende il referente principale della nuova anagrafica (vuoto se non ne ha; se non puoi modificare il Referente e la riga ne ha già uno, il cambio di anagrafica non è ammesso) e i ruoli **vuoti** (Commerciale, Segnalatore, Supervisore, Gestori account) prendono quelli della nuova anagrafica; i ruoli già compilati restano com'erano (dall'elenco non c'è la richiesta di conferma). Il Referente si sceglie tra quelli dell'anagrafica della riga; un Nome vuoto torna al titolo automatico.",
         },
         {
           type: 'paragraph',
@@ -103,7 +133,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Se l'opportunità nasce da un lead, alcuni campi sono ereditati e bloccati: un avviso in alto lo segnala. I **Gestori account** sono sincronizzati con l'offerta collegata.",
+          text: "Se l'opportunità nasce da un lead, alcuni campi sono ereditati e bloccati: un avviso in alto lo segnala. I **Gestori account** sono sincronizzati con l'offerta collegata. L'opportunità non ha più la **Fonte**: è un campo dell'offerta e, creando un'offerta da un'opportunità nata da un lead, si precompila con la Fonte del lead.",
         },
         {
           type: 'warning',
@@ -130,9 +160,9 @@ const guide: HelpGuide = {
       title: "Quali opportunità vedi",
       blocks: [
         { type: 'paragraph', text: "Cosa vedi dipende dal tuo ruolo. Serve sempre il permesso **Visualizza**; poi:" },
-        { type: 'list', items: ["Con **Visualizza** vedi solo le opportunità in cui sei **Supervisore** o tra i **Gestori account**.", "Con **Visualizza tutti** le vedi tutte."] },
+        { type: 'list', items: ["Con **Visualizza** vedi solo le opportunità in cui sei **Supervisore** o tra i **Gestori account**.", "Con **Visualizza per competenza** vedi anche quelle con almeno un prodotto in una categoria del tuo ambito di assegnazione, in qualunque sede. Con **Ambito su tutte le categorie** le vedi tutte.", "Con **Visualizza tutti** le vedi tutte."] },
         { type: 'paragraph', text: "Il filtro vale per elenco, scheda, filtri, esportazioni, statistiche e dashboard, selettori e documenti. Aprire il link di un'opportunità che non puoi vedere mostra un errore di accesso. Vedere un'opportunità non permette di modificarla o eliminarla: servono i permessi **Modifica** ed **Elimina**, e si modifica solo ciò che si vede." },
-        { type: 'note', text: "Se crei un'opportunità senza far parte del suo team, non la vedrai più a meno di avere **Visualizza tutti**. Nel riquadro **Offerte** di un'opportunità compaiono solo le offerte che puoi vedere." },
+        { type: 'note', text: "Se crei un'opportunità senza far parte del suo team, non la vedrai più a meno di avere **Visualizza tutti** o **Visualizza per competenza** (con la categoria giusta nel tuo ambito). Nel riquadro **Offerte** di un'opportunità compaiono solo le offerte che puoi vedere." },
       ],
     },
   ],

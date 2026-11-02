@@ -69,8 +69,8 @@ it('AC-024/AC-025: creating a request notifies every viewAny holder on database+
     $requester = fcrNotifActorWith(['create']);
     $viewer = fcrNotifActorWith(['viewAny']);
     $stranger = fcrNotifActorWith([]);
-    $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
-    $quote = Quote::factory()->for($opportunity)->create();
+    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->for($opportunity)->create(['source_id' => Source::factory()->create()->id]);
     $newSource = Source::factory()->create();
     Sanctum::actingAs($requester);
 
@@ -105,8 +105,8 @@ it('AC-026: approval notifies the requester with level success and the handling 
     $requester = fcrNotifActorWith(['create']);
     $currentSource = Source::factory()->create();
     $requestedSource = Source::factory()->create();
-    $opportunity = Opportunity::factory()->create(['source_id' => $currentSource->id]);
-    $quote = Quote::factory()->for($opportunity)->create();
+    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->for($opportunity)->create(['source_id' => $currentSource->id]);
     $fieldChangeRequest = FieldChangeRequest::factory()->create([
         'resource' => 'request-management',
         'subject_type' => 'quote',
@@ -137,14 +137,14 @@ it('AC-026: rejection notifies the requester with level warning', function () {
 
     $manager = fcrNotifActorWith(['manage'], ['view', 'viewAll', 'update', 'updateSource']);
     $requester = fcrNotifActorWith(['create']);
-    $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
-    $quote = Quote::factory()->for($opportunity)->create();
+    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->for($opportunity)->create(['source_id' => Source::factory()->create()->id]);
     $fieldChangeRequest = FieldChangeRequest::factory()->create([
         'resource' => 'request-management',
         'subject_type' => 'quote',
         'subject_id' => $quote->id,
         'field' => 'source_id',
-        'current_value' => $opportunity->source_id,
+        'current_value' => $quote->source_id,
         'requested_value' => Source::factory()->create()->id,
         'status' => 'pending',
         'pending_key' => "quote:{$quote->id}:source_id",
@@ -171,8 +171,8 @@ it('renders the creation notification in Italian with the translated field label
 
     $requester = fcrNotifActorWith(['create']);
     $viewer = fcrNotifActorWith(['viewAny']);
-    $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
-    $quote = Quote::factory()->for($opportunity)->create();
+    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->for($opportunity)->create(['source_id' => Source::factory()->create()->id]);
     Sanctum::actingAs($requester);
 
     $this->postJson('/api/field-change-requests', [
@@ -197,14 +197,14 @@ it('renders the resolution notification in Italian with the translated field lab
 
     $manager = fcrNotifActorWith(['manage'], ['view', 'viewAll', 'update', 'updateSource']);
     $requester = fcrNotifActorWith(['create']);
-    $opportunity = Opportunity::factory()->create(['source_id' => Source::factory()->create()->id]);
-    $quote = Quote::factory()->for($opportunity)->create();
+    $opportunity = Opportunity::factory()->create();
+    $quote = Quote::factory()->for($opportunity)->create(['source_id' => Source::factory()->create()->id]);
     $fieldChangeRequest = FieldChangeRequest::factory()->create([
         'resource' => 'request-management',
         'subject_type' => 'quote',
         'subject_id' => $quote->id,
         'field' => 'source_id',
-        'current_value' => $opportunity->source_id,
+        'current_value' => $quote->source_id,
         'requested_value' => Source::factory()->create()->id,
         'status' => 'pending',
         'pending_key' => "quote:{$quote->id}:source_id",

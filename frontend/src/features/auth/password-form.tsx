@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
@@ -25,7 +26,7 @@ interface PasswordValues {
 }
 
 export function PasswordForm() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [serverError, setServerError] = useState<string | null>(null)
 
   const schema = useMemo(
@@ -60,7 +61,7 @@ export function PasswordForm() {
       toast.success(t('settings.passwordChanged'))
     } catch (error) {
       if (!applyServerValidationErrors(error, form.setError, ['current_password', 'password'])) {
-        setServerError(t('settings.genericError'))
+        setServerError(apiErrorMessage(error, t('settings.genericError'), i18n))
       }
     }
   }

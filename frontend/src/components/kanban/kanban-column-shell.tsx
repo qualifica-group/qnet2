@@ -20,6 +20,8 @@ export interface KanbanColumnShellProps {
   accentColor: string | null
   label: string
   count: number
+  /** Control placed before the accent dot (e.g. the board's per-column "select all" checkbox). Omitted, the header starts with the dot. */
+  leadingSlot?: ReactNode
   /** Extra content under the header row (e.g. the board's own KPI summary line). Omitted, the header is a single row. */
   headerExtra?: ReactNode
   /** The column's own row list, fully owned by the caller (plain `<ul>`, or a `<SortableContext><ul>…` for a board that supports in-column reorder). */
@@ -34,6 +36,7 @@ export function KanbanColumnShell({
   accentColor,
   label,
   count,
+  leadingSlot,
   headerExtra,
   children,
   addSlot,
@@ -42,6 +45,7 @@ export function KanbanColumnShell({
     <div className="flex w-72 shrink-0 flex-col gap-2">
       <div className="flex flex-col gap-1.5 px-1">
         <div className="flex items-center gap-2">
+          {leadingSlot}
           <span aria-hidden="true" className={cn('size-2.5 shrink-0 rounded-full', accentColor ?? NEUTRAL_ACCENT)} />
           <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{label}</h3>
           <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">

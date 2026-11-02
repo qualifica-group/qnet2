@@ -63,7 +63,7 @@ trait WritesInlineEditableCells
     /**
      * Every editable column of this domain writes through
      * RequestManagementService::updateWork() rather than a plain
-     * `$row->update([...])`: `source_id`/`product_lines`/`general_notes`-
+     * `$row->update([...])`: `product_lines`/`general_notes`-
      * adjacent fields live on the OPPORTUNITY (spec 0086, D-2 — "i campi che
      * vivono sull'Opportunità si leggono e si scrivono attraverso
      * `quote.opportunity`"), while `next_callback_at` lives on the Offerta

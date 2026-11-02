@@ -24,9 +24,10 @@ use InvalidArgumentException;
  * Quote's own REVENUE offer lines (`Quote::offerLines`, never `cost_lines`)
  * and — when it has none — from its Opportunita's product lines (user
  * directive 2026-09-08, delegated to QuoteClassificationSource, which owns
- * both sources and the rule between them), while `source_id` and every custom
- * `relation` field have NO counterpart on the Quote at all: they are resolved
- * by INHERITANCE from the parent Opportunity (`quote.opportunity`).
+ * both sources and the rule between them), and `source_id` is the offer's own
+ * `quotes.source_id` column (spec 0332 D-8) — while every custom `relation`
+ * field has NO counterpart on the Quote at all: it is resolved by INHERITANCE
+ * from the parent Opportunity (`quote.opportunity`).
  * `inherited` in the catalogue shape (AC-016) marks exactly this split, so
  * the client can tell the two apart — the fallback does NOT make the two
  * category fields inherited ones: they stay the offer's own whenever the
@@ -50,6 +51,8 @@ final class QuoteCriterionFieldRegistry
      */
     public const string BRANCH_FIELD = 'product_category_branch_id';
 
+    private const string SOURCE_FIELD = 'source_id';
+
     private const string ENTITY_TYPE = 'opportunities';
 
     private const string CUSTOM_FIELD_TYPE = 'relation';
@@ -62,7 +65,7 @@ final class QuoteCriterionFieldRegistry
             'for_select_resource' => 'sources',
             'table' => 'sources',
             'multi_valued' => false,
-            'inherited' => true,
+            'inherited' => false,
         ],
         'business_function_id' => [
             'for_select_resource' => 'business-functions',
@@ -159,8 +162,7 @@ final class QuoteCriterionFieldRegistry
 
     /**
      * The distinct value(s) $quote actually carries for $field (AC-010/011/
-     * 012): the resolving Opportunity's own value for an INHERITED field
-     * (empty when null or the opportunity is missing), the offer's own
+     * 012): the offer's own `source_id` (empty when null; spec 0332), the offer's own
      * classification for `business_function_id`/`product_category_id`
      * (QuoteClassificationSource: its revenue lines' products, or its
      * Opportunita's product lines when the offer has no revenue line), that
@@ -181,10 +183,8 @@ final class QuoteCriterionFieldRegistry
             return $this->normalizeCustomValues($quote->opportunity?->custom_fields[$definition['custom_key']] ?? null);
         }
 
-        if ($definition['inherited']) {
-            $value = $quote->opportunity?->getAttribute($field);
-
-            return $value === null ? [] : [(int) $value];
+        if ($field === self::SOURCE_FIELD) {
+            return $quote->source_id === null ? [] : [(int) $quote->source_id];
         }
 
         if ($field === self::BRANCH_FIELD) {

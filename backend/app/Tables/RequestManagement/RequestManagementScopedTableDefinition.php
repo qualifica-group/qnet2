@@ -7,9 +7,11 @@ namespace App\Tables\RequestManagement;
 use App\Models\ProductCategory;
 use App\Models\Quote;
 use App\Models\User;
+use App\Products\ProductCategoryBranches;
 use App\Services\ProductCategoryService;
 use App\Services\RequestManagement\RequestManagementService;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
+use App\Tables\ProductCategoryScopable;
 use App\Tables\RequestManagement\Concerns\WritesAttributeCells;
 use App\Tables\TableDefinition;
 use Illuminate\Database\Eloquent\Builder;
@@ -69,7 +71,7 @@ use Illuminate\Support\Collection;
  * existing caller of the `request-management` domain is byte-identical to
  * today.
  */
-class RequestManagementScopedTableDefinition implements TableDefinition
+class RequestManagementScopedTableDefinition implements ProductCategoryScopable, TableDefinition
 {
     use DelegatesUnaugmentedTableMethods, WritesAttributeCells {
         // Both traits declare editableColumnIds()/updateCell(): the
@@ -85,6 +87,12 @@ class RequestManagementScopedTableDefinition implements TableDefinition
     private const string PRODUCT_LINES_TABLE = 'opportunity_product_lines';
 
     private ?int $categoryScope = null;
+
+    /**
+     * Spec 0337, D-3: a root tab only filters the rows, so it leaves
+     * `categoryScope` null and carries no `attr.*` column nor GA relabel.
+     */
+    private ?int $branchScope = null;
 
     private bool $allowListUnion = false;
 
@@ -104,6 +112,7 @@ class RequestManagementScopedTableDefinition implements TableDefinition
         private readonly ProductCategoryService $productCategoryService,
         private readonly AttributeGridColumns $attributeColumns,
         private readonly RequestManagementService $service,
+        private readonly ProductCategoryBranches $branches,
     ) {}
 
     /**
@@ -114,6 +123,15 @@ class RequestManagementScopedTableDefinition implements TableDefinition
     public function scopeToProductCategory(?int $productCategoryId): void
     {
         $this->categoryScope = $productCategoryId;
+    }
+
+    /**
+     * Narrows `baseQuery()` ONLY to the rows of a root category's branch
+     * (spec 0337, D-3): no `attr.*` columns and no G.A. relabel.
+     */
+    public function scopeToProductCategoryBranch(?int $rootId): void
+    {
+        $this->branchScope = $rootId;
     }
 
     /**
@@ -133,11 +151,11 @@ class RequestManagementScopedTableDefinition implements TableDefinition
     {
         $query = $this->inner->baseQuery();
 
-        if ($this->categoryScope === null) {
+        $categoryIds = $this->scopedCategoryIds();
+
+        if ($categoryIds === null) {
             return $query;
         }
-
-        $categoryScope = $this->categoryScope;
 
         // D-2: the offer's opportunity's OWN product lines (spec 0086: `quotes`
         // carries no product lines of its own) — a request with lines on
@@ -151,10 +169,22 @@ class RequestManagementScopedTableDefinition implements TableDefinition
             static fn (QueryBuilder $lines) => $lines
                 ->select('opportunity_id')
                 ->from(self::PRODUCT_LINES_TABLE)
-                ->where('product_category_id', $categoryScope),
+                ->whereIn('product_category_id', $categoryIds),
         );
 
         return $query;
+    }
+
+    /**
+     * @return array<int, int>|null
+     */
+    private function scopedCategoryIds(): ?array
+    {
+        if ($this->branchScope !== null) {
+            return $this->branches->branchIds($this->branchScope);
+        }
+
+        return $this->categoryScope === null ? null : [$this->categoryScope];
     }
 
     /**

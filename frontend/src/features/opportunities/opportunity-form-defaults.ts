@@ -49,7 +49,6 @@ export function editDefaults(opportunity: OpportunityDetail): OpportunityFormVal
     commercial_id: opportunity.commercial_id,
     reporter_id: opportunity.reporter_id,
     supervisor_id: opportunity.supervisor_id,
-    source_id: opportunity.source_id,
     operational_site_id: opportunity.operational_site_id ?? null,
     product_lines: toProductLineRows(opportunity.product_lines),
     products_of_interest: (opportunity.products_of_interest ?? []).map((product) => product.id),
@@ -83,7 +82,6 @@ export function createDefaults(
     commercial_id: null,
     reporter_id: null,
     supervisor_id: null,
-    source_id: null,
     operational_site_id: null,
     // User directive 2026-07-29: the create form opens on ONE empty
     // product-line row (at least one is mandatory anyway) and on the four

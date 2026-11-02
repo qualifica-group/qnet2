@@ -15,6 +15,7 @@ import type { ApiErrorResponse } from '@/api/types'
 import { taskStatusColumnRenderers } from '@/features/task-statuses/column-renderers'
 import { deleteTaskStatus } from '@/features/task-statuses/api'
 import { StatusReorderToggle } from '@/features/status-reorder/status-reorder-toggle'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 
 /** Domain key used to mount the generic table for task statuses. */
 const TASK_STATUSES_DOMAIN = 'task-statuses'
@@ -30,7 +31,7 @@ const TASK_STATUSES_DOMAIN = 'task-statuses'
  * affordance only; the backend re-authorizes each call.
  */
 export function TaskStatusesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -55,8 +56,9 @@ export function TaskStatusesTable() {
           return
         }
         const status = error.response?.status
-        if (status === 403) {
-          toast.error(t('taskStatuses.form.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden !== null) {
+          toast.error(forbidden)
         } else if (status === 409 || status === 422) {
           // The row is still referenced by a Task, or is a system status. Surface the
           // backend's own message rather than a generic one.
@@ -68,7 +70,7 @@ export function TaskStatusesTable() {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(
@@ -108,7 +110,6 @@ export function TaskStatusesTable() {
                 inactiveBadge: t('taskStatuses.reorder.inactiveBadge'),
                 loadError: t('taskStatuses.reorder.loadError'),
                 saved: t('taskStatuses.reorder.saved'),
-                forbidden: t('taskStatuses.reorder.forbidden'),
                 genericError: t('taskStatuses.reorder.genericError'),
               }}
               onReordered={refreshGrid}

@@ -88,6 +88,6 @@ class AbsenceRequestAttachmentController extends BaseApiController
 
     private function assertCanAttach(Request $request, AbsenceRequest $absenceRequest): void
     {
-        abort_unless($this->capabilities->canAttach($request->user(), $absenceRequest), 403, 'This action is unauthorized.');
+        abort_unless($this->capabilities->canAttach($request->user(), $absenceRequest), 403, __('You cannot attach files to this absence request.'));
     }
 }

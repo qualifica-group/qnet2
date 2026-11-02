@@ -3,6 +3,7 @@
 namespace App\Services\Assignment;
 
 use App\Models\EmploymentProfile;
+use App\Models\User;
 use App\Services\ProductCategories\CategoryHierarchy;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -131,6 +132,30 @@ class OperatorCompetence
     }
 
     /**
+     * The users whose competence reaches a record carrying $categoryIds, for
+     * the `viewCompetence` tier read from the record's end (spec 0340: who may
+     * be mentioned on a thread they can read). Same covers() rule as
+     * reachOf(), so `is_assignable` is ignored (D-6) and the wildcard flag
+     * reaches a record with no category (D-3).
+     *
+     * @param  array<int, int>  $categoryIds
+     * @return array<int, int>
+     */
+    public function reachingUserIds(array $categoryIds): array
+    {
+        $functionByCategory = $this->effectiveFunctionByCategory();
+
+        $reaching = [];
+        foreach ($this->profilesQuery()->get() as $profile) {
+            if ($this->profileOf($profile)->covers($categoryIds, $functionByCategory)) {
+                $reaching[] = (int) $profile->user_id;
+            }
+        }
+
+        return $reaching;
+    }
+
+    /**
      * user id => profile, for the ASSIGNABLE users (spec 0194) carrying the
      * wildcard flag (spec 0129 D-1) or at least one competence row (spec
      * 0111). A switched-off user's competence is kept but never read. Everyone else is
@@ -146,14 +171,7 @@ class OperatorCompetence
             return $this->configuredProfiles;
         }
 
-        $profiles = EmploymentProfile::query()
-            ->select(['id', 'user_id', 'covers_all_product_categories'])
-            ->where('is_assignable', true)
-            ->where(static fn (Builder $query): Builder => $query
-                ->where('covers_all_product_categories', true)
-                ->orWhereHas('productLines'))
-            ->with('productLines:id,employment_profile_id,business_function_id,product_category_id')
-            ->get();
+        $profiles = $this->profilesQuery()->where('is_assignable', true)->get();
 
         $this->configuredProfiles = [];
 
@@ -201,6 +219,60 @@ class OperatorCompetence
             $categoryIds,
             static fn (int $categoryId): bool => $competence->covers([$categoryId], $functionByCategory),
         ));
+    }
+
+    /**
+     * Every category $user's competence covers, for the record-visibility
+     * tier `viewCompetence` (spec 0340): the same covers() rule as the
+     * assignment surfaces, evaluated once per category of the taxonomy.
+     *
+     * Unlike configuredProfiles(), `is_assignable` is NOT read (D-6): the
+     * switch governs receiving assignments, not seeing records. Unlike
+     * coveredCategoryIdsFor(), the wildcard flag answers "everything" rather
+     * than [] (D-3).
+     */
+    public function reachOf(User $user): CompetenceReach
+    {
+        $profile = EmploymentProfile::query()
+            ->select(['id', 'user_id', 'covers_all_product_categories'])
+            ->where('user_id', $user->getKey())
+            ->with('productLines:id,employment_profile_id,business_function_id,product_category_id')
+            ->first();
+
+        if ($profile === null) {
+            return CompetenceReach::none();
+        }
+
+        if ($profile->covers_all_product_categories) {
+            return CompetenceReach::everything();
+        }
+
+        if ($profile->productLines->isEmpty()) {
+            return CompetenceReach::none();
+        }
+
+        $competence = $this->profileOf($profile);
+        $functionByCategory = $this->effectiveFunctionByCategory();
+
+        return CompetenceReach::of(array_filter(
+            array_map(intval(...), array_keys($this->hierarchy->parentIdMap())),
+            static fn (int $categoryId): bool => $competence->covers([$categoryId], $functionByCategory),
+        ));
+    }
+
+    /**
+     * The profiles carrying any competence: the wildcard flag or at least one row.
+     *
+     * @return Builder<EmploymentProfile>
+     */
+    private function profilesQuery(): Builder
+    {
+        return EmploymentProfile::query()
+            ->select(['id', 'user_id', 'covers_all_product_categories'])
+            ->where(static fn (Builder $query): Builder => $query
+                ->where('covers_all_product_categories', true)
+                ->orWhereHas('productLines'))
+            ->with('productLines:id,employment_profile_id,business_function_id,product_category_id');
     }
 
     private function profileOf(EmploymentProfile $profile): CompetenceProfile

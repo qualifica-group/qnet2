@@ -269,14 +269,14 @@ describe('ProjectsTable — Sheet-based CRUD (AC-020/021/022)', () => {
     )
   })
 
-  it('maps a 403 delete failure to the forbidden message', async () => {
+  it('shows the server reason on a 403 delete failure', async () => {
     deleteProjectMock.mockRejectedValue(axiosErrorWithStatus(403))
     renderTable()
 
     fireEvent.click(screen.getByText('trigger-delete'))
 
     await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith('You cannot delete this project.'),
+      expect(toast.error).toHaveBeenCalledWith('error'),
     )
   })
 

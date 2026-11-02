@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ClipboardList, Lock } from 'lucide-react'
 import { DetailEmpty } from '@/components/detail/detail-panel'
@@ -56,6 +57,10 @@ interface WorkOrderIdentitySectionProps {
   workflowStatus?: WorkOrderWorkflowStatusContext
   form: WorkOrderFormState
   inline: InlineEdit
+  /** The detail card names the block "Dati commessa" (spec 0331 D-5); the create form keeps the default. */
+  title?: string
+  /** Extra read-only rows closing the list (the detail's link to the Contratto). */
+  children?: ReactNode
 }
 
 /**
@@ -64,12 +69,19 @@ interface WorkOrderIdentitySectionProps {
  * written at creation only: their field permission turns them read-only on
  * the detail (D-1/D-5, spec 0124 D-5), so the row shows no pencil there.
  */
-export function WorkOrderIdentitySection({ values, workflowStatus, form, inline }: WorkOrderIdentitySectionProps) {
+export function WorkOrderIdentitySection({
+  values,
+  workflowStatus,
+  form,
+  inline,
+  title,
+  children,
+}: WorkOrderIdentitySectionProps) {
   const { t } = useTranslation()
   const { control } = form.form
 
   return (
-    <RecordSection title={t('workOrders.detail.sections.identity')} icon={<ClipboardList />}>
+    <RecordSection title={title ?? t('workOrders.detail.sections.identity')} icon={<ClipboardList />}>
       <RecordFieldList>
         <RecordInlineField
           field="title"
@@ -155,6 +167,7 @@ export function WorkOrderIdentitySection({ values, workflowStatus, form, inline 
             <span className="whitespace-pre-wrap">{values.force_close_reason}</span>
           </RecordField>
         ) : null}
+        {children}
       </RecordFieldList>
     </RecordSection>
   )

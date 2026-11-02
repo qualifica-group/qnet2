@@ -30,7 +30,7 @@ const guide: HelpGuide = {
             ['General notes', 'Free-form text'],
             ['Details', '**Title** (optional), **Start date**, **Expected close date**, **Estimated value**, **Success probability (%)**'],
             ['Registry and contacts', '**Registry** (required), **Contact**, **Sales rep**, **Reporter** with the **Assigned rewards**'],
-            ['Classification', '**Source**, **Product lines** (at least one row: parent category, optional intermediate **Filter**, product category), **Products of interest**'],
+            ['Classification', '**Product lines** (at least one row: parent category, optional intermediate **Filter**, product category), **Products of interest**'],
             ['Team', '**Supervisor**, **Account managers**'],
           ],
         },
@@ -54,6 +54,10 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
+          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Opportunity data** and **Context** (Product lines, Products of interest), then **Registry and contacts** and **Rewards**, then **Team**. The Rewards section stays visible even when empty (\"No rewards\").",
+        },
+        {
+          type: 'paragraph',
           text: 'There is no separate edit page: the opportunity is edited **directly from its detail**, one field at a time.',
         },
         {
@@ -71,11 +75,37 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "Some fields carry other values into the same save: changing the **Registry** clears the Contact and proposes the registry's Sales rep, Reporter, Supervisor and Account managers (asking first if they differ); changing the **Classification rows** removes the Products of interest they no longer cover; the **Assigned rewards** are edited from the **Reporter** field, whose reward they are.",
+          text: "Some fields carry other values into the same save: changing the **Registry** gives the Contact the new registry's main referent (it stays empty if the registry has none; the same happens when you pick a **Lead**, if the registry changes or the Contact is empty) and proposes the registry's Sales rep, Reporter, Supervisor and Account managers (asking first if they differ); changing the **Classification rows** removes the Products of interest they no longer cover; the **Assigned rewards** are edited from the **Reporter** field, whose reward they are.",
         },
         {
           type: 'note',
-          text: 'A field with no pencil is not editable by you: your role makes it read-only, or it is inherited and locked by the originating lead (Registry, Source), or changing it would change a field you cannot touch. The **Originating lead** cannot be changed and, when your role cannot see it, it shows neither on create nor in the detail; the **Status** is computed from the quotes.',
+          text: 'A field with no pencil is not editable by you: your role makes it read-only, or it is inherited and locked by the originating lead (Registry), or changing it would change a field you cannot touch. The **Originating lead** cannot be changed and, when your role cannot see it, it shows neither on create nor in the detail; the **Status** is computed from the quotes.',
+        },
+      ],
+    },
+    {
+      id: 'category-tabs',
+      title: "Filtering by product category",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Above the list is the category bar: the **All** tab and one tab for each product category present, with the number of opportunities. Clicking a tab shows only the opportunities of that category. Your choice is kept after reloading the page.",
+        },
+        {
+          type: 'paragraph',
+          text: "An opportunity appears under the tab of every category among its product lines (it counts once even with several lines of the same category). The number next to the name is how many opportunities, among those you can see, fall under that category.",
+        },
+        {
+          type: 'steps',
+          items: ["If the tabs do not fit the row, the others move into the **More** menu, where you can search a category by name.","Click the **star** next to a category (in the menu) to add it to your **favorites**: favorites come first.","Turn on **Show only favorites** to see only the favorites in the bar; the others stay in the **More** menu."],
+        },
+        {
+          type: 'paragraph',
+          text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. Turn it off to go back to all the categories.",
+        },
+        {
+          type: 'note',
+          text: "Favorites are separate for each list (Opportunities, Quotes, Contracts, Work orders, Request Management). The first time they are suggested from the categories you are enabled for; as soon as you use the star they become yours. The statistics panel and the export do not follow the tab: they always cover all the opportunities.",
         },
       ],
     },
@@ -85,11 +115,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Clicking an editable cell (Name, Registry, Contact, Sales rep, Supervisor, Account managers, Source, Product category, Products of interest, Estimated value, Probability, Start date, Expected close date) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
+          text: "Clicking an editable cell (Name, Registry, Contact, Sales rep, Supervisor, Account managers, Product category, Products of interest, Estimated value, Probability, Start date, Expected close date) edits it **directly in the list**, with the **same rules as the detail**: an invalid value or a field you cannot change is refused with a message and the cell goes back to its previous value.",
         },
         {
           type: 'note',
-          text: "Changing the **Registry** from the list clears the Contact and fills the **empty** roles (Sales rep, Reporter, Supervisor, Account managers) with the new registry's ones; roles already set stay as they were (the list does not ask for confirmation). The Contact is picked among the row's registry contacts; an empty Name goes back to the automatic title.",
+          text: "Changing the **Registry** from the list gives the Contact the new registry's main referent (empty if it has none; if you cannot edit the Contact and the row already has one, the registry change is not allowed) and fills the **empty** roles (Sales rep, Reporter, Supervisor, Account managers) with the new registry's ones; roles already set stay as they were (the list does not ask for confirmation). The Contact is picked among the row's registry contacts; an empty Name goes back to the automatic title.",
         },
         {
           type: 'paragraph',
@@ -103,7 +133,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'If the opportunity is born from a lead, some fields are inherited and locked: a banner at the top signals it. **Account managers** are synced with the linked quote.',
+          text: 'If the opportunity is born from a lead, some fields are inherited and locked: a banner at the top signals it. **Account managers** are synced with the linked quote. The opportunity no longer has a **Source**: it is a field of the quote and, when you create a quote from an opportunity born from a lead, it is prefilled with the lead\'s Source.',
         },
         {
           type: 'warning',
@@ -130,9 +160,9 @@ const guide: HelpGuide = {
       title: "Which opportunities you see",
       blocks: [
         { type: 'paragraph', text: "What you see depends on your role. You always need the **View** permission; then:" },
-        { type: 'list', items: ["With **View** you only see opportunities where you are the **Supervisor** or one of the **Account managers**.", "With **View all** you see all of them."] },
+        { type: 'list', items: ["With **View** you only see opportunities where you are the **Supervisor** or one of the **Account managers**.", "With **View by competence** you also see those with at least one product in a category of your assignment scope, in any site. With **Scope on all categories** you see all of them.", "With **View all** you see all of them."] },
         { type: 'paragraph', text: "The filter applies to the list, the detail, filters, exports, statistics and dashboard, selectors and documents. Opening a link to an opportunity you cannot see shows an access error. Seeing an opportunity does not let you edit or delete it: that takes the **Edit** and **Delete** permissions, and you can only edit what you can see." },
-        { type: 'note', text: "If you create an opportunity without being in its team, you will no longer see it unless you have **View all**. The **Quotes** panel inside an opportunity only lists the quotes you can see." },
+        { type: 'note', text: "If you create an opportunity without being in its team, you will no longer see it unless you have **View all** or **View by competence** (with the right category in your scope). The **Quotes** panel inside an opportunity only lists the quotes you can see." },
       ],
     },
   ],

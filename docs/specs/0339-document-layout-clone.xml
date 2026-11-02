@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0339-document-layout-clone" status="approved" owner="utente" date="2026-10-30">
+
+  <goal>
+    Nel modulo Layout documenti l'utente clona un layout esistente (contenuto, immagini, impostazioni pagina) in un
+    nuovo layout dello stesso modulo, con nome e codice propri, e prosegue a modificarlo senza ripartire da zero.
+  </goal>
+
+  <context>
+    <!-- Fatti verificati (2026-10-30). -->
+    - `document_layouts` (spec 0069/0070): `code` unico globale e immutabile, `name` unico per `module`, `module`
+      immutabile, `is_default` gestito da `DocumentLayoutDefaultManager`.
+    - Le immagini sono allegati del layout (`images()`, collection `layout_image`); i blocchi `image` (solo top-level
+      nelle zone header/body/footer) le referenziano per `attachment_id` e il validatore rifiuta un `attachment_id` non
+      del layout (sempre in create). Per questo un "duplica" lato client (form di create precompilato, pattern
+      `openDuplicate`) non funziona: la copia va fatta server-side.
+    - `AttachmentService::copyTo()` duplica fisicamente il binario su un nuovo nome UUID.
+  </context>
+
+  <decisions>
+    <decision id="D-1">Endpoint dedicato `POST /api/document-layouts/{documentLayout}/clone` con `name` e `code` scelti
+      dall'utente (il codice e' immutabile dopo la creazione, quindi va scelto al momento della copia).</decision>
+    <decision id="D-2">La copia eredita modulo, descrizione, `is_active` e `config`; non e' mai predefinita
+      (`is_default = false`). Ogni immagine e' copiata fisicamente e i blocchi `image` della copia puntano alle nuove
+      immagini.</decision>
+    <decision id="D-3">Autorizzazione: `document-layouts.view` sul layout sorgente + `document-layouts.create`.</decision>
+    <decision id="D-4">Un'immagine del sorgente senza file su disco blocca la copia con 422 (`images`), nessuna riga ne'
+      file orfano: la copia non deve perdere in silenzio logo o carta intestata.</decision>
+    <decision id="D-5">UI: pulsante "Clona" nella testata del dettaglio e azione di riga "Clona" nella griglia; entrambi
+      aprono un dialog con nome ("{nome} (copia)") e codice ("{codice}_copy") precompilati; a copia riuscita si apre il
+      dettaglio del nuovo layout, dove si continua a modificarlo.</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Backend: route, `DocumentLayoutCloneController` (invokable), `CloneDocumentLayoutRequest`, DTO
+        `CloneDocumentLayoutData`, `App\Services\DocumentLayouts\DocumentLayoutCloner`; azione di riga `clone` in
+        `DocumentLayoutColumnCatalog` + `actionsFor`.</item>
+      <item>Frontend: `cloneDocumentLayout` in `api.ts`, schema + hook + `DocumentLayoutCloneDialog`, pulsante nel
+        dettaglio, gestione dell'azione `clone` nella griglia; i18n IT/EN.</item>
+      <item>Guida in-app `document-layouts` IT/EN; manuale Claude Docs (sezione Layout documenti).</item>
+    </in>
+    <out>
+      <item>Copia verso un altro modulo; copia dei log attivita'; nuovi permessi; migrazioni.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="POST" path="/api/document-layouts/{documentLayout}/clone">
+      <request>`{ name: string (required, max 191, unico nel modulo del sorgente), code: string (required, max 64,
+        /^[a-z][a-z0-9_]*$/, unico) }`</request>
+      <response status="201">envelope `{ success, message, data: DocumentLayoutResource, permissions }` del NUOVO layout
+        (stessa shape di POST /api/document-layouts).</response>
+      <errors>403 senza `view` o `create`; 404 sorgente inesistente; 422 `name`/`code` (validazione), 422 `images`
+        (file di un'immagine mancante, D-4).</errors>
+    </endpoint>
+    <frontend_contract>
+      - `cloneDocumentLayout(id, { name, code }): Promise&lt;DocumentLayoutDetail&gt;`.
+      - Azione di riga `clone` (icona `copy`, permesso `document-layouts.create`).
+      - Navigazione al dettaglio `/document-layouts/{newId}` a copia riuscita.
+    </frontend_contract>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Clonare un layout con due immagini referenziate da blocchi `image` crea un nuovo layout con
+      stessi modulo/descrizione/is_active/config, `is_default` false, due nuove immagini con binario su disco, e i
+      blocchi `image` della copia puntano ai nuovi `attachment_id`; il sorgente resta invariato. (Pest)</criterion>
+    <criterion id="AC-002">Clonare il layout predefinito non cambia il predefinito del modulo. (Pest)</criterion>
+    <criterion id="AC-003">`name` gia' usato nel modulo o `code` gia' usato/non valido -> 422 sul campo. (Pest)</criterion>
+    <criterion id="AC-004">Senza `create` o senza `view` -> 403; nessuna riga creata. (Pest)</criterion>
+    <criterion id="AC-005">Immagine sorgente senza file -> 422 `images`, nessun layout ne' allegato ne' file creato. (Pest)</criterion>
+    <criterion id="AC-006">La riga della griglia espone `clone` solo con `document-layouts.create`. (Pest)</criterion>
+    <criterion id="AC-007">Dettaglio: "Clona" apre il dialog precompilato, l'invio chiama l'endpoint e naviga al nuovo
+      layout; un 422 mostra l'errore sul campo. Senza permesso il pulsante non c'e'. (Vitest)</criterion>
+    <criterion id="AC-008">Guida in-app IT/EN aggiornata, parity verde. (Vitest)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna migrazione, dipendenza o permesso nuovo.
+    - Copia in transazione; i binari gia' copiati vengono cancellati se la copia fallisce.
+    - File &lt; 300 righe; UI compatta (ui-design.md §2); nessun dead code.
+    - Test mirati Pest/Vitest + `tsc -b --force`; Pint/ESLint puliti; nessun commit senza ordine (CLAUDE.md §3.6).
+  </constraints>
+
+</spec>

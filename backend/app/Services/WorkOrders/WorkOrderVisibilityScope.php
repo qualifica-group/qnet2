@@ -6,8 +6,12 @@ namespace App\Services\WorkOrders;
 
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Services\Assignment\ActorCompetenceReach;
+use App\Services\Assignment\CompetenceReach;
 use App\Services\RequestManagement\RequestManagementScope;
+use App\Tables\CategoryTabs\WorkOrderSourceQuotes;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 /**
  * THE single implementation of the "solo le mie commesse" rule (user
@@ -16,7 +20,10 @@ use Illuminate\Database\Eloquent\Builder;
  * bypass) OR they are one of that commessa's Responsabili (`supervisors`)
  * or Partecipanti (`participants`) OR (spec 0316) they hold
  * `work-orders.viewSite` and one of its source offers (`quote_id`, or the
- * offers of its pivot lines) sits in one of the actor's operational sites.
+ * offers of its pivot lines) sits in one of the actor's operational sites OR
+ * (spec 0340) they hold `work-orders.viewCompetence` and a source offer carries
+ * a REVENUE line on a category their assignment competence reaches (every
+ * commessa when the competence is the "all categories" wildcard).
  *
  * The rule NARROWS, it never widens: being a Responsabile does not grant
  * `work-orders.view` — the resource permission is still required, exactly as
@@ -42,6 +49,11 @@ final class WorkOrderVisibilityScope
 
     public const VIEW_SITE_PERMISSION = 'work-orders.viewSite';
 
+    public const VIEW_COMPETENCE_PERMISSION = 'work-orders.viewCompetence';
+
+    /** Row attribute projected by withCompetenceVerdict(): the competence tier's verdict for the row. */
+    public const COMPETENCE_VERDICT_ATTRIBUTE = 'competence_scoped';
+
     /**
      * @template TModel of WorkOrder
      *
@@ -59,8 +71,9 @@ final class WorkOrderVisibilityScope
         }
 
         $siteIds = self::siteIds($user);
+        $reach = self::competenceReach($user);
 
-        return $query->where(function (Builder $scoped) use ($user, $siteIds): void {
+        return $query->where(function (Builder $scoped) use ($user, $siteIds, $reach): void {
             $scoped
                 ->whereHas('supervisors', fn (Builder $supervisors) => $supervisors->whereKey($user->id))
                 ->orWhereHas('participants', fn (Builder $participants) => $participants->whereKey($user->id));
@@ -68,7 +81,45 @@ final class WorkOrderVisibilityScope
             if ($siteIds !== []) {
                 $scoped->orWhere(fn (Builder $bySite) => $bySite->withSourceQuoteInSites($siteIds));
             }
+
+            if ($reach !== null) {
+                $reach->all
+                    ? $scoped->orWhereNotNull('work_orders.id')
+                    : $scoped->orWhereIn('work_orders.id', WorkOrderSourceQuotes::withRevenueCategory($reach->categoryIds));
+            }
         });
+    }
+
+    /**
+     * Projects the competence tier's verdict on each row (spec 0340, AC-016),
+     * so isVisibleTo() answers a competence-only row from the attribute instead
+     * of one query per row. Built from the SAME subquery as scopeToActor().
+     * No-op when the actor has no competence tier or it covers everything.
+     *
+     * @template TModel of WorkOrder
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
+    public static function withCompetenceVerdict(Builder $query, ?User $user): Builder
+    {
+        $reach = $user === null ? null : self::competenceReach($user);
+
+        if ($reach === null || $reach->all) {
+            return $query;
+        }
+
+        if ($query->getQuery()->columns === null) {
+            $query->select('work_orders.*');
+        }
+
+        return $query->addSelect([
+            self::COMPETENCE_VERDICT_ATTRIBUTE => DB::table('work_orders as competence_probe')
+                ->select('competence_probe.id')
+                ->whereColumn('competence_probe.id', 'work_orders.id')
+                ->whereIn('competence_probe.id', WorkOrderSourceQuotes::withRevenueCategory($reach->categoryIds))
+                ->limit(1),
+        ]);
     }
 
     /**
@@ -88,13 +139,7 @@ final class WorkOrderVisibilityScope
                 return true;
             }
 
-            $siteIds = self::siteIds($user);
-
-            if ($siteIds === []) {
-                return false;
-            }
-
-            $inMemory = self::isInSitesInMemory($workOrder, $siteIds);
+            $inMemory = self::tiersInMemory($user, $workOrder);
 
             if ($inMemory !== null) {
                 return $inMemory;
@@ -102,6 +147,57 @@ final class WorkOrderVisibilityScope
         }
 
         return self::scopeToActor(WorkOrder::query()->whereKey($workOrder->getKey()), $user)->exists();
+    }
+
+    /**
+     * Site / competence verdict from loaded data only; null when a needed
+     * relation or projected verdict is missing, so the caller falls back to
+     * the query shape.
+     */
+    private static function tiersInMemory(User $user, WorkOrder $workOrder): ?bool
+    {
+        $siteIds = self::siteIds($user);
+
+        if ($siteIds !== []) {
+            $bySite = self::isInSitesInMemory($workOrder, $siteIds);
+
+            if ($bySite === null) {
+                return null;
+            }
+
+            if ($bySite) {
+                return true;
+            }
+        }
+
+        $reach = self::competenceReach($user);
+
+        if ($reach === null) {
+            return false;
+        }
+
+        if ($reach->all) {
+            return true;
+        }
+
+        return array_key_exists(self::COMPETENCE_VERDICT_ATTRIBUTE, $workOrder->getAttributes())
+            ? $workOrder->getAttribute(self::COMPETENCE_VERDICT_ATTRIBUTE) !== null
+            : null;
+    }
+
+    /**
+     * The actor's non-empty competence reach, or null when they lack
+     * `work-orders.viewCompetence` or have no competence (the tier adds nothing).
+     */
+    private static function competenceReach(User $user): ?CompetenceReach
+    {
+        if (! $user->can(self::VIEW_COMPETENCE_PERMISSION)) {
+            return null;
+        }
+
+        $reach = ActorCompetenceReach::for($user);
+
+        return $reach->isEmpty() ? null : $reach;
     }
 
     /**

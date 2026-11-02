@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import axios, { type AxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { bulkPayInstallments, purchaseInstallmentKeys } from '@/features/purchase-invoice-installments/api'
 import {
   buildBulkPaymentPayload,
@@ -27,7 +28,7 @@ const I18N = 'purchaseInvoiceInstallments.bulkPayment'
  * total for the footer. A server 422 is mapped back onto the dialog row it belongs to.
  */
 export function usePurchaseInstallmentBulkPaymentForm(targets: readonly BulkPaymentTarget[], onDone: () => void) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const schema = useMemo(() => buildBulkPaymentSchema(t, targets), [t, targets])
 
@@ -90,7 +91,7 @@ export function usePurchaseInstallmentBulkPaymentForm(targets: readonly BulkPaym
       },
       onError: (error) => {
         if (!mapServerErrors(error, rowIndexes)) {
-          toast.error(t(`${I18N}.genericError`))
+          toast.error(apiErrorMessage(error, t(`${I18N}.genericError`), i18n))
         }
       },
     })

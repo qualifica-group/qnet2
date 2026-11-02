@@ -13,10 +13,10 @@ use App\Http\Resources\PurchaseInvoiceResource;
 use App\Models\PurchaseInvoice;
 use App\Models\User;
 use App\Services\PurchaseInvoices\PurchaseInvoiceService;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -119,8 +119,8 @@ class PurchaseInvoiceController extends BaseApiController
 
             if (isset($payload['purchase_invoice_id'])) {
                 $this->authorize('update', PurchaseInvoice::query()->findOrFail($payload['purchase_invoice_id']));
-            } elseif (! $actor->can('purchase-invoices.create') && ! $actor->can('purchase-invoices.update')) {
-                throw new AuthorizationException;
+            } else {
+                Gate::allowIf($actor->can('purchase-invoices.create') || $actor->can('purchase-invoices.update'));
             }
 
             return $this->ok($this->service->previewInstallments($payload));

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\DataObjects\WorkOrders;
 
+use App\Http\Requests\TimeEntries\BulkTimeEntrySharesRules;
+
 /**
  * Validated payload for POST /api/work-orders/{workOrder}/task-board/bulk
  * (spec 0146, D-7/data_contract). Only the fields the chosen `action` needs
@@ -21,6 +23,7 @@ final readonly class BulkTaskBoardData
      * @param  array<int, int>  $taskIds
      * @param  array<int, int>|null  $assigneeIds
      * @param  array<string, mixed>|null  $timeEntry
+     * @param  array<int, array{task_id: int, minutes: int}>|null  $timeEntryShares
      */
     public function __construct(
         public string $action,
@@ -35,6 +38,7 @@ final readonly class BulkTaskBoardData
         public bool $startDateSubmitted = false,
         public ?string $endDate = null,
         public bool $endDateSubmitted = false,
+        public ?array $timeEntryShares = null,
     ) {}
 
     /**
@@ -57,6 +61,7 @@ final readonly class BulkTaskBoardData
             startDateSubmitted: array_key_exists('start_date', $data),
             endDate: $data['end_date'] ?? null,
             endDateSubmitted: array_key_exists('end_date', $data),
+            timeEntryShares: isset($data['time_entry_shares']) ? BulkTimeEntrySharesRules::normalize((array) $data['time_entry_shares']) : null,
         );
     }
 }

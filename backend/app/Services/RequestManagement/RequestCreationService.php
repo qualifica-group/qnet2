@@ -99,7 +99,7 @@ final class RequestCreationService
             $operationalSiteId = $data->operationalSiteId ?? $this->actorOperationalSiteId($actor);
 
             // Step 2: the Opportunity, through the shared service. The
-            // initial attribution (source/reporter/Sede operativa) travels
+            // initial attribution (reporter/Sede operativa) travels
             // with it; every other relation stays unset (out of scope, D-4).
             // `rewards` is withheld (see class docblock) — Step 5 syncs them
             // onto the Offerta instead. `managerSlots` is null (spec 0087,
@@ -112,7 +112,6 @@ final class RequestCreationService
                 commercialId: null,
                 reporterId: $data->reporterId,
                 supervisorId: null,
-                sourceId: $data->sourceId,
                 leadId: null,
                 managerSlots: null,
                 operationalSiteId: $operationalSiteId,
@@ -140,6 +139,7 @@ final class RequestCreationService
             // filled any in (user directive 2026-08-07; AC-028's empty offer
             // stays the default), so coverage/aggregates/derived name are the
             // service's own concern here too, never duplicated.
+            // `source_id` (spec 0332) lives on the Offerta alone.
             // `reporter_id`/`operational_site_id` are the SAME resolved
             // values just used for the Opportunity, so the two records never
             // disagree at creation time. `supervisor_id` travels too (spec
@@ -182,6 +182,7 @@ final class RequestCreationService
                 offerLines: $offerLines,
                 managerSlots: $managerSlots,
                 promoteManagersToOpportunity: true,
+                sourceId: $data->sourceId,
             ), $actor);
 
             // Step 4: the planned callback, submitted at creation too (user

@@ -29,7 +29,7 @@ const guide: HelpGuide = {
             ['Permissions', 'It has its own permissions, separate from Request Management.'],
             [
               'Who sees what',
-              'With no other permission you only see the requests you operate. **View physical site** adds those of your physical site (not your remote sites); **View by site** those of all your sites; **View all** every one.',
+              'With no other permission you only see the requests you operate. **View physical site** adds those of your physical site (not your remote sites); **View by site** those of all your sites; **View by competence** those with a product in a category of your assignment scope, in any site (with **Scope on all categories**, every one); **View all** every one. The module\'s status filter still applies.',
             ],
             [
               'Transfer notifications',

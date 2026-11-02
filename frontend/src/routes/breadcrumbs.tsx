@@ -102,6 +102,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'task-statuses': 'navigation.taskStatuses',
   'task-types': 'navigation.taskTypes',
   'task-categories': 'navigation.taskCategories',
+  'support-topics': 'navigation.supportTopics',
   'task-priorities': 'navigation.taskPriorities',
   'task-importances': 'navigation.taskImportances',
   'task-templates': 'navigation.taskTemplates',

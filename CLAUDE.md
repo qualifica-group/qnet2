@@ -133,7 +133,7 @@ Gli hook **bloccano** (exit 2 = correggi, non aggirare). Convenzioni meccanicame
 - **PreToolUse Edit/Write** → `config-protection.js` (vieta di indebolire config linter/test).
 - **PreToolUse Write** → `doc-guard.js` (blocca nuovi `.md`/README non richiesti fuori da `docs/`; override `ALLOW_DOCS=1`).
 - **PostToolUse Edit/Write** → `post-edit.sh` (Pint/ESLint/console.log), `secret-scan.sh` (segreti), `code-guard.js` (**emoji nel codice** = blocco; **file >500 righe** = blocco, >300 = avviso).
-- **Stop** → `typecheck.sh` (`tsc -b --force` frontend — build-mode, non `--noEmit`), `handoff-reminder.sh` (ricorda di persistere la memoria).
+- **Stop** → `typecheck.sh` (`tsc -b --force` frontend — build-mode, non `--noEmit`; salta se nessun file frontend e' cambiato dall'ultimo verde, un solo tsc alla volta tra sessioni), `handoff-reminder.sh` (ricorda di persistere la memoria).
 
 ## §CHECKLIST PRE-RISPOSTA
 

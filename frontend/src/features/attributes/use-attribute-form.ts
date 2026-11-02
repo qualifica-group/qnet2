@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { attributeDetailQueryKey, createAttribute, updateAttribute } from '@/features/attributes/api'
 import { buildCreatePayload, buildUpdatePayload } from '@/features/attributes/attribute-form-payload'
 import {
@@ -63,7 +64,7 @@ interface UseAttributeFormArgs {
  * (`onSubmit`).
  */
 export function useAttributeForm({ mode, onSuccess }: UseAttributeFormArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -150,7 +151,7 @@ export function useAttributeForm({ mode, onSuccess }: UseAttributeFormArgs) {
     } catch (error) {
       applyTableConfigServerErrors(error, form.setError)
       if (!applyServerValidationErrors(error, form.setError, errorFields)) {
-        setServerError(t('attributes.form.genericError'))
+        setServerError(apiErrorMessage(error, t('attributes.form.genericError'), i18n))
       }
     }
   }

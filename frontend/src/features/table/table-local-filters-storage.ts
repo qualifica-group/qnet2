@@ -19,9 +19,13 @@ export interface TableLocalFiltersScope {
   userId: number
   domain: string
   productCategoryId?: number
+  /** Root Product Category tab (spec 0337): its own key, apart from any single-category tab. */
+  productCategoryBranchId?: number
   opportunityId?: number
   quoteId?: number
   registryId?: number
+  /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
+  referentId?: number
 }
 
 export const EMPTY_TABLE_LOCAL_FILTERS: TableLocalFilters = { search: '', customFilter: null }
@@ -61,7 +65,9 @@ export function tableLocalFiltersKey(scope: TableLocalFiltersScope): string {
     scope.productCategoryId ?? '',
     scope.opportunityId ?? '',
     scope.quoteId ?? '',
+    ...(scope.productCategoryBranchId != null ? [`branch-${scope.productCategoryBranchId}`] : []),
     ...(scope.registryId != null ? [scope.registryId] : []),
+    ...(scope.referentId != null ? [`referent-${scope.referentId}`] : []),
   ].join(':')
 }
 

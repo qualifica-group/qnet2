@@ -15,6 +15,7 @@ import type { ApiErrorResponse } from '@/api/types'
 import { taskPriorityColumnRenderers } from '@/features/task-priorities/column-renderers'
 import { deleteTaskPriority } from '@/features/task-priorities/api'
 import { StatusReorderToggle } from '@/features/status-reorder/status-reorder-toggle'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 
 /** Domain key used to mount the generic table for task priorities. */
 const TASK_PRIORITIES_DOMAIN = 'task-priorities'
@@ -34,7 +35,7 @@ const TASK_PRIORITIES_DOMAIN = 'task-priorities'
  * re-authorizes each call.
  */
 export function TaskPrioritiesTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const tableRef = useRef<TableViewHandle>(null)
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
@@ -59,8 +60,9 @@ export function TaskPrioritiesTable() {
           return
         }
         const status = error.response?.status
-        if (status === 403) {
-          toast.error(t('taskPriorities.form.deleteForbidden'))
+        const forbidden = forbiddenMessage(error, i18n)
+        if (forbidden !== null) {
+          toast.error(forbidden)
         } else if (status === 409) {
           // The row is still referenced by a Task. Surface the
           // backend's own message rather than a generic one.
@@ -72,7 +74,7 @@ export function TaskPrioritiesTable() {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t],
+    [refreshGrid, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(
@@ -112,7 +114,6 @@ export function TaskPrioritiesTable() {
                 inactiveBadge: t('taskPriorities.reorder.inactiveBadge'),
                 loadError: t('taskPriorities.reorder.loadError'),
                 saved: t('taskPriorities.reorder.saved'),
-                forbidden: t('taskPriorities.reorder.forbidden'),
                 genericError: t('taskPriorities.reorder.genericError'),
               }}
               onReordered={refreshGrid}

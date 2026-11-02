@@ -50,7 +50,6 @@ export const costTypes = {
     colorInvalid: 'Scegli uno dei colori disponibili.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare il tipo di costo. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questo tipo di costo.',
     deleteInUse: 'Impossibile eliminare: il tipo di costo è usato da righe di ordini di acquisto.',
     hints: {
       nature:
@@ -75,7 +74,6 @@ export const costTypes = {
     dragHandleLabel: 'Trascina per riordinare',
     loadError: 'Impossibile caricare l’elenco. Riprova.',
     saved: 'Ordine aggiornato con successo.',
-    forbidden: 'Non puoi riordinare queste righe.',
     genericError: 'Impossibile aggiornare l’ordine. Riprova.',
     inactiveBadge: 'Non attivo',
   },

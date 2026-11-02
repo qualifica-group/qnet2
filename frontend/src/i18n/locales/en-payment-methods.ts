@@ -110,7 +110,6 @@ export const paymentMethods = {
     paymentDaysMax: 'Payment days must be at most 3650.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the payment method. Please try again.',
-    deleteForbidden: 'You cannot delete this payment method.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The payment method has not been created yet: what you entered will be lost.',
@@ -144,7 +143,6 @@ export const paymentMethods = {
     dragHandleLabel: 'Drag to reorder',
     loadError: 'Unable to load the payment methods. Please try again.',
     saved: 'Order updated successfully.',
-    forbidden: 'You cannot reorder these payment methods.',
     genericError: 'Unable to update the order. Please try again.',
   },
 }

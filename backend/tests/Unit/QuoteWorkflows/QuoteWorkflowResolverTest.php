@@ -53,17 +53,18 @@ if (! function_exists('workflowResolver')) {
 
 if (! function_exists('quoteForNewOpportunity')) {
     /**
-     * A Quote for a fresh Opportunity carrying $opportunityAttributes — the
-     * inherited criteria (source_id/custom.*, D-7) resolve through this
-     * parent, never a column on the Quote itself.
+     * A Quote for a fresh Opportunity carrying $quoteAttributes. The
+     * inherited criteria (custom.*, D-7) resolve through the parent
+     * Opportunity; REQUIREMENT CHANGED: spec 0332 — `source_id` is the Quote's
+     * own column. Same signature in every file declaring it.
      *
-     * @param  array<string, mixed>  $opportunityAttributes
+     * @param  array<string, mixed>  $quoteAttributes
      */
-    function quoteForNewOpportunity(array $opportunityAttributes = []): Quote
+    function quoteForNewOpportunity(array $quoteAttributes = []): Quote
     {
-        $opportunity = Opportunity::factory()->create($opportunityAttributes);
+        $opportunity = Opportunity::factory()->create();
 
-        return Quote::factory()->create(['opportunity_id' => $opportunity->id]);
+        return Quote::factory()->create(['opportunity_id' => $opportunity->id, ...$quoteAttributes]);
     }
 }
 
@@ -153,6 +154,18 @@ it('matches business_function_id/product_category_id against ANY offer line row,
     $nonMatching->criteria()->create(['field' => 'product_category_id', 'value_id' => $categoryB->id]);
 
     expect(workflowResolver()->resolve($quote)->id)->toBe($matching->id);
+});
+
+it('AC-007 (spec 0332): matches on the Fonte of the offer itself, never of a sibling offer', function () {
+    $source = Source::factory()->create();
+    $withSource = quoteForNewOpportunity(['source_id' => $source->id]);
+    $sibling = Quote::factory()->create(['opportunity_id' => $withSource->opportunity_id]);
+
+    $workflow = workflowWithSystemStatuses();
+    $workflow->criteria()->create(['field' => 'source_id', 'value_id' => $source->id]);
+
+    expect(workflowResolver()->resolve($withSource)->id)->toBe($workflow->id)
+        ->and(workflowResolver()->resolve($sibling))->toBeNull();
 });
 
 it('ignores an inactive workflow (AC-014)', function () {

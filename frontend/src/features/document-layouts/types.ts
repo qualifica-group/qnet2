@@ -16,6 +16,9 @@ import type { DocumentLayoutConfig } from '@/features/document-layouts/layout-co
  * `quotes`, `invoices` (spec 0195) and `purchase_orders` (spec 0210); the enum is deliberately extendable without a
  * frontend shape change (spec 0069 goal).
  */
+/** Route base of the module's pages (detail `/:id`, create `/new`). */
+export const DOCUMENT_LAYOUTS_BASE_PATH = '/document-layouts'
+
 export const DOCUMENT_LAYOUT_MODULES = ['quotes', 'invoices', 'purchase_orders'] as const
 export type DocumentLayoutModule = (typeof DOCUMENT_LAYOUT_MODULES)[number]
 
@@ -82,6 +85,19 @@ export interface CreateDocumentLayoutPayload {
 export type UpdateDocumentLayoutPayload = Partial<
   Omit<CreateDocumentLayoutPayload, 'code' | 'module'>
 >
+
+/** Payload for POST /document-layouts/{id}/clone (spec 0339): the copy's own identity. */
+export interface CloneDocumentLayoutPayload {
+  name: string
+  code: string
+}
+
+/** The layout a clone starts from: what the clone dialog needs to pre-fill its fields. */
+export interface DocumentLayoutCloneSource {
+  id: number
+  name: string
+  code: string
+}
 
 /**
  * Discriminated form mode of `useDocumentLayoutForm`: `create` backs the

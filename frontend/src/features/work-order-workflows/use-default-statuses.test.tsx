@@ -16,7 +16,7 @@ vi.mock('@/features/work-order-workflows/api', async (importOriginal) => ({
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-const LABELS = { saved: 'saved', forbidden: 'forbidden', genericError: 'error', nameRequired: 'name required' }
+const LABELS = { saved: 'saved', genericError: 'error', nameRequired: 'name required' }
 
 function status(overrides: Partial<WorkOrderWorkflowStatusItem> & Pick<WorkOrderWorkflowStatusItem, 'id' | 'name'>): WorkOrderWorkflowStatusItem {
   return { description: null, color: null, sort_order: 0, system_key: null, group: 'in_progress', progress_percentage: null, ...overrides }

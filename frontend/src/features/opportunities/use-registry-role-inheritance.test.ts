@@ -25,6 +25,8 @@ describe('rolesFromRegistryMeta', () => {
           { id: 91, name: 'Gina', position: 1 },
           { id: 93, name: 'Turi', position: 3 },
         ],
+        is_qualified_supplier: false,
+        primary_referent: null,
       }),
     ).toEqual(REGISTRY_ROLES)
   })

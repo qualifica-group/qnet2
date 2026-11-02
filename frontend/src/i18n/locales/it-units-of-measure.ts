@@ -54,7 +54,6 @@ export const unitsOfMeasure = {
     descriptionMax: 'La descrizione può contenere al massimo 500 caratteri.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: "Impossibile eliminare l'unita di misura. Riprova.",
-    deleteForbidden: 'Non puoi eliminare questa unita di misura.',
     deleteInUse: "Impossibile eliminare: l'unita di misura è usata da un prodotto o da una riga offerta.",
     leaveConfirm: {
       title: 'Uscire senza salvare?',

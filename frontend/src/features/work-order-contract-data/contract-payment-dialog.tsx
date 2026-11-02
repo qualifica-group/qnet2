@@ -2,8 +2,6 @@ import { useId, useMemo } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
-import type { AxiosError } from 'axios'
-import type { ApiErrorResponse } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
@@ -16,22 +14,14 @@ import {
   paymentFormDefaults,
   type ContractPaymentFormValues,
 } from '@/features/work-order-contract-data/contract-payment-schema'
+import { NO_STATUS_VALUE } from '@/features/work-order-contract-data/contract-payment-bulk-schema'
+import { paymentServerMessage } from '@/features/work-order-contract-data/contract-payment-errors'
 import { PaymentStatusLabel } from '@/features/work-order-contract-data/payment-status-label'
 import {
   usePaymentStatusOptions,
   useUpdateContractDataLine,
 } from '@/features/work-order-contract-data/use-work-order-contract-data'
 import type { ContractDataLine } from '@/features/work-order-contract-data/types'
-
-/** Select value standing for "no status": Radix items cannot carry an empty value. */
-const NO_STATUS_VALUE = 'none'
-
-/** First server-side message for the dialog, else the generic one. */
-function serverMessage(error: AxiosError<ApiErrorResponse>, fallback: string): string {
-  const fieldErrors = error.response?.data?.errors
-  const first = fieldErrors ? Object.values(fieldErrors)[0]?.[0] : undefined
-  return first ?? error.response?.data?.message ?? fallback
-}
 
 interface ContractPaymentDialogProps {
   workOrderId: number
@@ -155,7 +145,7 @@ export function ContractPaymentDialog({ workOrderId, line, onClose }: ContractPa
 
           {mutation.isError ? (
             <p role="alert" className="text-xs text-destructive">
-              {serverMessage(mutation.error, t('workOrders.contractData.editor.saveError'))}
+              {paymentServerMessage(mutation.error, t('workOrders.contractData.editor.saveError'))}
             </p>
           ) : null}
 

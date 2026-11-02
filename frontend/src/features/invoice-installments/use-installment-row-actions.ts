@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { getInstallment, installmentKeys } from '@/features/invoice-installments/api'
 import { getInvoice, invoiceKeys } from '@/features/invoices/api'
 import { useInvoiceCollectionActions } from '@/features/invoices/use-invoice-collection-actions'
@@ -17,7 +18,7 @@ const NO_INSTALLMENTS: readonly InvoiceInstallment[] = []
  * on demand from the installment's own invoice reference.
  */
 export function useInstallmentRowActions(onChanged: () => void) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [viewInvoiceId, setViewInvoiceId] = useState<number | null>(null)
   const [documentInstallments, setDocumentInstallments] = useState<readonly InvoiceInstallment[]>(NO_INSTALLMENTS)
@@ -64,11 +65,11 @@ export function useInstallmentRowActions(onChanged: () => void) {
         if (installment) {
           open(installment, installments)
         }
-      } catch {
-        toast.error(t('invoiceInstallments.lookupError'))
+      } catch (error) {
+        toast.error(apiErrorMessage(error, t('invoiceInstallments.lookupError'), i18n))
       }
     },
-    [resolveInstallment, t],
+    [resolveInstallment, t, i18n],
   )
 
   const handleAction: RowActionHandler = useCallback(
@@ -79,7 +80,7 @@ export function useInstallmentRowActions(onChanged: () => void) {
         case 'view_invoice':
           void resolveInstallment(id, invoiceId).then(
             (resolved) => setViewInvoiceId(resolved.invoiceId),
-            () => toast.error(t('invoiceInstallments.lookupError')),
+            (error: unknown) => toast.error(apiErrorMessage(error, t('invoiceInstallments.lookupError'), i18n)),
           )
           break
         case 'record_collection':
@@ -95,7 +96,7 @@ export function useInstallmentRowActions(onChanged: () => void) {
           break
       }
     },
-    [openCollect, openViaDocument, requestClear, resolveInstallment, t],
+    [openCollect, openViaDocument, requestClear, resolveInstallment, t, i18n],
   )
 
   return {

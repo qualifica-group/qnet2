@@ -12,6 +12,7 @@ import { PersonalDataRecordSections } from '@/features/personal-data/personal-da
 import { referentDetailQueryKey } from '@/features/referents/api'
 import { ReferentDetailHeader, ReferentStatsStrip } from '@/features/referents/referent-detail-header'
 import { ReferentDetailSections } from '@/features/referents/referent-detail-sections'
+import { ReferentRelatedRecords } from '@/features/referents/referent-related-records'
 import { useReferentInlineEdit } from '@/features/referents/use-referent-inline-edit'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import type { ReferentDetailWithPermissions } from '@/features/referents/types'
@@ -116,6 +117,9 @@ function ReferentDetailContent({ referent, onChanged }: ReferentDetailViewProps)
           />
         </RecordSectionsGrid>
       </RecordBody>
+
+      {/* Spec 0336: the Configuratore commissioni rules on this referente, full width below the record. */}
+      <ReferentRelatedRecords referentId={referent.id} />
 
       {createdAt ? (
         <RecordMeta>

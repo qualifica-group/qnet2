@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AxiosError } from 'axios'
 import i18n from '@/i18n'
 import { TaskTimeEntriesSection } from '@/features/time-entries/task/task-time-entries-section'
 import { getTodayDateKey, toDateString } from '@/features/time-entries/time-entry-period'
@@ -125,6 +126,19 @@ describe('TaskTimeEntriesSection — editor gating (AC-040)', () => {
 
     expect(await screen.findByText(label('timeEntries.task.forbidden'))).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: label('timeEntries.task.addButton') })).not.toBeInTheDocument()
+  })
+
+  it('shows the server reason in the dashed box when the task answers 403', async () => {
+    fetchTaskTimeEntriesMock.mockRejectedValue(
+      new AxiosError('x', undefined, undefined, undefined, {
+        status: 403,
+        data: { success: false, message: 'Task non visibile.' },
+      } as never),
+    )
+    render(<TaskTimeEntriesSection taskId={TASK_ID} />, { wrapper: wrapper() })
+
+    expect(await screen.findByText('Task non visibile.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: label('timeEntries.page.retry') })).not.toBeInTheDocument()
   })
 
   it('shows the empty state when there are no entries', async () => {

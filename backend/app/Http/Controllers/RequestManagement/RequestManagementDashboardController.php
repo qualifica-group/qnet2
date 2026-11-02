@@ -16,6 +16,7 @@ use App\Services\RequestManagement\Report\ReportSiteFilter;
 use App\Services\RequestManagement\RequestManagementScope;
 use App\Support\Cache\AggregateCache;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -44,7 +45,7 @@ class RequestManagementDashboardController extends BaseApiController
             $module = RequestModule::fromRequest($request);
             /** @var User $actor */
             $actor = $request->user();
-            abort_unless($actor->can(RequestModule::STATISTICS_PERMISSION), 403);
+            Gate::forUser($actor)->authorize(RequestModule::STATISTICS_PERMISSION);
 
             $dateFrom = $request->dateFrom();
             $dateTo = $request->dateTo();

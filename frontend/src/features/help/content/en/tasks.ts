@@ -179,7 +179,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Changing the **Account** clears Contact, Opportunity and Lead, and keeps the Work order only when it belongs to the same account. Opportunity, Work order and Lead only list the records of the chosen account once you picked one.',
+          text: 'Changing the **Account** clears Opportunity and Lead, puts the main referent of the new account in Contact (empty if it has none) and keeps the Work order only when it belongs to the same account. Opportunity, Work order and Lead only list the records of the chosen account once you picked one.',
         },
       ],
     },
@@ -206,7 +206,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'The rules are the same as on create: changing the **Registry** clears Referent, Opportunity and Lead in the same save; picking a **Work order** removes the Opportunity and offers the Stage right away. When one of the fields that would change along with it is not editable by you, the starting field (Registry, Work order, Opportunity or Parent task) has no pencil either.',
+          text: 'The rules are the same as on create: changing the **Registry** clears Opportunity and Lead and puts the main referent in Referent in the same save; picking a **Work order** removes the Opportunity and offers the Stage right away. When one of the fields that would change along with it (the Referent included) is not editable by you, the starting field (Registry, Work order, Opportunity or Parent task) has no pencil either.',
         },
       ],
     },
@@ -282,7 +282,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "In the Complete dialog the **Log the time entry for all assignees** checkbox is checked by default: the time entry is logged for every assignee, one identical entry each (yourself alone when the task has none). Uncheck it to log it for yourself only. The choice works wherever you complete the task: detail, list, kanban and Sub-tasks panel. On the work order task board (**Complete** on the selected tasks) the same checkbox is **unchecked** by default: the time entry is logged for you only unless you check it.",
+          text: "In the Complete dialog the **Log the time entry for all assignees** checkbox is checked by default: the time entry is logged for every assignee of the task (yourself alone when the task has none). Uncheck it to log it for yourself only. The choice works wherever you complete the task: detail, list, kanban and Sub-tasks panel. On the work order task board (**Complete** on the selected tasks) the same checkbox is **unchecked** by default: the time entry is logged for you only unless you check it. When completing several tasks together, \"for all assignees\" means each assignee logs the share of **their own** tasks (whoever is assigned to every task therefore totals the time entered).",
         },
         {
           type: 'note',
@@ -290,7 +290,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "When completing **several tasks at once** (bulk action), the **Track time** switch only shows up when none of the selected tasks requires the time entry. If even one does, the action is all or nothing: without a time entry it stops with an error and no task is completed.",
+          text: "When completing **several tasks at once** (bulk action), the feedback is applied identically to every task, while the time entered in the time entry is a **total** that is split among the tasks. Under the time entry the **Split among tasks** section shows an editable preview: the minutes are divided equally (the remainder, one minute each, goes to the first tasks of the selection) and you can correct each share, which must add up to the total and be at least 1 minute each; **Split equally** restores the division. Changing the total or the start time recalculates the shares. If you set a start time, each task gets a consecutive time slot (e.g. 09:00-09:30, 09:30-10:00). The **Track time** switch only shows up when none of the selected tasks requires the time entry; when it is off there is no split. If even one task is not eligible, the action is all or nothing: it stops with an error and no task is completed. The same holds for **Complete** on the work order task board.",
         },
         {
           type: 'paragraph',
@@ -379,7 +379,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'A bulk action is **all or nothing**: if even one selected task is not eligible (e.g. blocked, or Complete requires validation), the action stops with a message listing which tasks and why, and none of the selected tasks is changed.',
+          text: 'A bulk action is **all or nothing**: if even one selected task is not eligible (e.g. blocked, or Complete requires validation), the action stops with a message listing which tasks and why, and none of the selected tasks is changed. For **Complete**, the time entry is a total split among the tasks (**Split among tasks** section).',
         },
         {
           type: 'paragraph',

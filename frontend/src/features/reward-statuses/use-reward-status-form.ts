@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { createRewardStatus, rewardStatusDetailQueryKey, updateRewardStatus } from '@/features/reward-statuses/api'
 import {
   buildCreatePayload,
@@ -40,7 +41,7 @@ interface UseRewardStatusFormArgs {
  * The component stays UI-only; this hook is the orchestration point (`onSubmit`).
  */
 export function useRewardStatusForm({ mode, onSuccess }: UseRewardStatusFormArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -95,7 +96,7 @@ export function useRewardStatusForm({ mode, onSuccess }: UseRewardStatusFormArgs
       onSuccess(created)
     } catch (error) {
       if (!applyServerValidationErrors(error, form.setError, errorFields)) {
-        setServerError(t('rewardStatuses.form.genericError'))
+        setServerError(apiErrorMessage(error, t('rewardStatuses.form.genericError'), i18n))
       }
     }
   }

@@ -14,6 +14,7 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { projectColumnRenderers } from '@/features/projects/column-renderers'
 import { deleteProject } from '@/features/projects/api'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 
 /** Domain key used to mount the generic table for projects. */
 const PROJECTS_DOMAIN = 'projects'
@@ -45,7 +46,7 @@ export interface ProjectsTableHandle {
  */
 export const ProjectsTable = forwardRef<ProjectsTableHandle, ProjectsTableProps>(
   function ProjectsTable({ hideHeader = false }, forwardedRef) {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
     const invalidateStats = useInvalidateModuleStats(PROJECTS_DOMAIN)
 
     const tableRef = useRef<TableViewHandle>(null)
@@ -78,8 +79,9 @@ export const ProjectsTable = forwardRef<ProjectsTableHandle, ProjectsTableProps>
           invalidateStats()
         } catch (error) {
           const status = axios.isAxiosError(error) ? error.response?.status : undefined
-          if (status === 403) {
-            toast.error(t('projects.form.deleteForbidden'))
+          const forbidden = forbiddenMessage(error, i18n)
+          if (forbidden !== null) {
+            toast.error(forbidden)
           } else if (status === 409) {
             toast.error(t('projects.form.deleteHasCampaigns'))
           } else {
@@ -89,7 +91,7 @@ export const ProjectsTable = forwardRef<ProjectsTableHandle, ProjectsTableProps>
           setDeletingId(null)
         }
       },
-      [refreshGrid, t, invalidateStats],
+      [refreshGrid, t, invalidateStats, i18n],
     )
 
     const handleAction: RowActionHandler = useCallback(

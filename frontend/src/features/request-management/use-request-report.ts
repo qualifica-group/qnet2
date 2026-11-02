@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import type { TFunction } from 'i18next'
+import type { i18n as I18nInstance, TFunction } from 'i18next'
 import axios from 'axios'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import {
   createRequestManagementReport,
   downloadRequestManagementReport,
@@ -23,11 +24,16 @@ const POLLING_STATUSES: ReadonlySet<RequestReportStatus> = new Set(['processing'
 /**
  * Maps a failed request onto a localized message (status-only, mirroring
  * `resolveExportErrorMessage`): no server message parsing, just the
- * well-known statuses this contract can return (403/422).
+ * well-known statuses this contract can return (403 via the shared helper, 422).
  */
-export function resolveRequestReportErrorMessage(error: unknown, t: TFunction): string {
+export function resolveRequestReportErrorMessage(
+  error: unknown,
+  t: TFunction,
+  i18n: I18nInstance,
+): string {
+  const forbidden = forbiddenMessage(error, i18n)
+  if (forbidden) return forbidden
   const status = axios.isAxiosError(error) ? error.response?.status : undefined
-  if (status === 403) return t('requestManagement.report.errors.forbidden')
   if (status === 422) return t('requestManagement.report.errors.validation')
   return t('requestManagement.report.errors.generic')
 }
@@ -41,7 +47,7 @@ export function resolveRequestReportErrorMessage(error: unknown, t: TFunction): 
  * (AC-045).
  */
 export function useRequestReport() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const module = useRequestModule()
   const queryClient = useQueryClient()
   const [runId, setRunId] = useState<number | null>(null)
@@ -99,12 +105,12 @@ export function useRequestReport() {
     create: createMutation.mutate,
     isCreating: createMutation.isPending,
     createError: createMutation.isError
-      ? resolveRequestReportErrorMessage(createMutation.error, t)
+      ? resolveRequestReportErrorMessage(createMutation.error, t, i18n)
       : null,
     isProcessing: reportRun?.status === 'processing',
     isDownloading: downloadMutation.isPending,
     downloadError: downloadMutation.isError
-      ? resolveRequestReportErrorMessage(downloadMutation.error, t)
+      ? resolveRequestReportErrorMessage(downloadMutation.error, t, i18n)
       : null,
     reset,
   }

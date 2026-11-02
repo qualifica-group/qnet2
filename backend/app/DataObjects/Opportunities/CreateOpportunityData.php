@@ -68,7 +68,6 @@ final readonly class CreateOpportunityData
         public ?int $commercialId,
         public ?int $reporterId,
         public ?int $supervisorId,
-        public ?int $sourceId,
         public ?int $leadId,
         public ?array $managerSlots,
         public ?array $productLines,
@@ -96,7 +95,6 @@ final readonly class CreateOpportunityData
             commercialId: isset($data['commercial_id']) ? (int) $data['commercial_id'] : null,
             reporterId: isset($data['reporter_id']) ? (int) $data['reporter_id'] : null,
             supervisorId: isset($data['supervisor_id']) ? (int) $data['supervisor_id'] : null,
-            sourceId: isset($data['source_id']) ? (int) $data['source_id'] : null,
             leadId: isset($data['lead_id']) ? (int) $data['lead_id'] : null,
             managerSlots: array_key_exists('manager_slots', $data)
                 ? array_map(static fn ($id): ?int => $id === null ? null : (int) $id, $data['manager_slots'])
@@ -187,7 +185,6 @@ final readonly class CreateOpportunityData
             'commercial_id' => $this->commercialId,
             'reporter_id' => $this->reporterId,
             'supervisor_id' => $this->supervisorId,
-            'source_id' => $this->sourceId,
             'operational_site_id' => $this->operationalSiteId,
             'lead_id' => $this->leadId,
             'start_date' => $this->startDate,

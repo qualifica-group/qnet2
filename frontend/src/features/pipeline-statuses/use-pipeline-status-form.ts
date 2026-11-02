@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { createPipelineStatus, pipelineStatusDetailQueryKey, updatePipelineStatus } from '@/features/pipeline-statuses/api'
 import {
   buildCreatePayload,
@@ -42,7 +43,7 @@ interface UsePipelineStatusFormArgs {
  * (`onSubmit`).
  */
 export function usePipelineStatusForm({ mode, onSuccess }: UsePipelineStatusFormArgs) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -114,7 +115,7 @@ export function usePipelineStatusForm({ mode, onSuccess }: UsePipelineStatusForm
       onSuccess(created)
     } catch (error) {
       if (!applyServerValidationErrors(error, form.setError, errorFields)) {
-        setServerError(t('pipelineStatuses.form.genericError'))
+        setServerError(apiErrorMessage(error, t('pipelineStatuses.form.genericError'), i18n))
       }
     }
   }

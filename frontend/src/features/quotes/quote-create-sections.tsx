@@ -1,10 +1,16 @@
 import { useTranslation } from 'react-i18next'
 import { useWatch } from 'react-hook-form'
 import { Loader2, SlidersHorizontal } from 'lucide-react'
-import { RecordSection, RecordSectionsGrid } from '@/components/detail/record-panel'
+import { RecordSectionsGrid } from '@/components/detail/record-panel'
 import type { InlineEdit } from '@/components/record-form/record-inline-field'
-import { QuoteAttributesBand, QuoteAttributesSection } from '@/features/quotes/quote-attributes-section'
+import { AdditionalInformationSection } from '@/features/attributes/additional-information-section'
+import {
+  QUOTE_ADDITIONAL_INFORMATION_STORAGE_KEY,
+  QuoteAttributesBand,
+  QuoteAttributesSection,
+} from '@/features/quotes/quote-attributes-section'
 import { QuoteCompanySection, QuoteDocumentSection } from '@/features/quotes/quote-record-company'
+import { QuoteContextSection } from '@/features/quotes/quote-record-context'
 import { QuoteIdentitySection, QuoteInternalNotesRow } from '@/features/quotes/quote-record-identity'
 import { QuoteContactsSection, QuoteTeamSection } from '@/features/quotes/quote-record-people'
 import { useQuoteDraftLabels } from '@/features/quotes/use-quote-draft-labels'
@@ -33,7 +39,7 @@ interface QuoteCreateSectionsProps {
  * until clicked — empty or prefilled — and opening on the same field
  * component the detail edits in place. Nothing is saved per row: the
  * header's Salva validates and creates the whole draft. What only exists once
- * created (status, the Opportunita's projected context, buoni chips) is left
+ * created (status, the Opportunita's Linee prodotto, buoni chips) is left
  * out; the Opportunita' itself, fixed after creation, is picked here and
  * prefills roles, sede and G.A.
  */
@@ -74,6 +80,8 @@ export function QuoteCreateSections({ quoteForm, draft, defaults }: QuoteCreateS
           registryId: defaults.opportunityRegistryId,
         }}
       />
+
+      <QuoteContextSection source={refs.source} form={form} inline={draft} />
 
       <QuoteContactsSection
         commercial={refs.commercial}
@@ -129,12 +137,16 @@ export function QuoteCreateAttributes({ quoteForm, draft }: QuoteCreateAttribute
   return (
     <QuoteAttributesBand>
       {loading ? (
-        <RecordSection title={t('quotes.detail.additionalInformation')} icon={<SlidersHorizontal />}>
+        <AdditionalInformationSection
+          storageKey={QUOTE_ADDITIONAL_INFORMATION_STORAGE_KEY}
+          title={t('quotes.detail.additionalInformation')}
+          icon={<SlidersHorizontal />}
+        >
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
             {t('common.loading')}
           </p>
-        </RecordSection>
+        </AdditionalInformationSection>
       ) : (
         <QuoteAttributesSection
           attributes={attributeContext.applicable_attributes}

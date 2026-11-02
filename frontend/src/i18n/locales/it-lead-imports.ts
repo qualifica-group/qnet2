@@ -25,7 +25,6 @@ export const leadImports = {
   },
   deleted: 'Import eliminato con successo.',
   deleteError: "Impossibile eliminare l'import. Riprova.",
-  deleteForbidden: 'Non puoi eliminare questo import.',
   detail: {
     resume: 'Riprendi import',
     loadError: "Impossibile caricare l'import. Riprova.",

@@ -59,6 +59,8 @@ function original(
     sectors: [{ id: 10, name: 'Sector A' }, { id: 11, name: 'Sector B' }],
     referent_ids: [20],
     referents: [{ id: 20, name: 'Referent A' }],
+    primary_referent_id: 20,
+    primary_referent: { id: 20, name: 'Referent A' },
     manager_ids: [30],
     managers: [{ id: 30, name: 'Manager A', position: 1 }],
     manager_slots: [30],
@@ -91,6 +93,7 @@ const formValues: RegistryFormValues = {
   source_id: 1,
   sector_ids: [10, 11],
   referent_ids: [20],
+  primary_referent_id: 20,
   manager_slots: [30],
   supervisor_id: 40,
   commercial_id: null,
@@ -124,6 +127,10 @@ describe('buildCreatePayload', () => {
     )
     expect(payload.vat_group).toBeNull()
     expect(payload.agreement_notes).toBeNull()
+  })
+
+  it('carries primary_referent_id on create (spec 0330)', () => {
+    expect(buildCreatePayload(formValues, individualDraft()).primary_referent_id).toBe(20)
   })
 
   it('carries general_notes, an empty string mapped to null (spec 0207)', () => {
@@ -161,6 +168,19 @@ describe('buildUpdatePayload', () => {
       individualDraft(),
     )
     expect(payload).toEqual({ vat_group: 'Group B' })
+  })
+
+  it('sends primary_referent_id only when it changed (spec 0330)', () => {
+    expect(
+      buildUpdatePayload(
+        { ...formValues, referent_ids: [20, 21], primary_referent_id: 21 },
+        original(),
+        individualDraft(),
+      ),
+    ).toEqual({ referent_ids: [20, 21], primary_referent_id: 21 })
+    expect(
+      buildUpdatePayload({ ...formValues, referent_ids: [20, 21] }, original(), individualDraft()),
+    ).toEqual({ referent_ids: [20, 21] })
   })
 
   it('sends only general_notes when they alone changed, null once emptied (spec 0207)', () => {

@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Amount, PaymentCell, ProductCell } from '@/features/work-order-contract-data/contract-data-cells'
 import { money, plainNumber } from '@/features/work-order-contract-data/contract-data-format'
 import {
@@ -25,17 +26,41 @@ interface ContractDataRowProps {
   canManage: boolean
   /** Multi-offer work order: each line names its own client. */
   showRegistry: boolean
+  /** Bulk selection (spec 0333), only meaningful with `canManage`. */
+  isSelected: boolean
+  onToggleSelection: () => void
   onEdit: () => void
 }
 
 /** One product line: figures with their calculation hints, payment, and the single actions button. */
-export function ContractDataRow({ line, commissionsVisible, canManage, showRegistry, onEdit }: ContractDataRowProps) {
+export function ContractDataRow({
+  line,
+  commissionsVisible,
+  canManage,
+  showRegistry,
+  isSelected,
+  onToggleSelection,
+  onEdit,
+}: ContractDataRowProps) {
   const { t } = useTranslation()
   const label = (key: string) => t(`workOrders.contractData.columns.${key}`)
 
   return (
     <tr className="relative grid grid-cols-2 gap-x-3 border-t first:border-t-0 md:table-row">
-      <th scope="row" className={`${CELL} col-span-2 pr-10 text-left font-normal md:w-full md:min-w-[20rem] md:max-w-0 md:pr-2`}>
+      {canManage ? (
+        <td className="absolute top-1.5 left-2 md:static md:table-cell md:w-px md:px-2 md:py-1.5 md:align-middle">
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={onToggleSelection}
+            aria-label={t('workOrders.contractData.bulk.selectLine', { product: line.product.name })}
+            className="align-middle"
+          />
+        </td>
+      ) : null}
+      <th
+        scope="row"
+        className={`${CELL} col-span-2 pr-10 text-left font-normal md:w-full md:min-w-[20rem] md:max-w-0 md:pr-2 ${canManage ? 'pl-8 md:pl-2' : ''}`}
+      >
         <ProductCell line={line} showRegistry={showRegistry} />
       </th>
       <td data-label={label('quantity')} className={`${NUMERIC_CELL} ${LABEL}`}>

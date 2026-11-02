@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import type { CommissionRecalculationMode } from '@/features/commission-configurations/types'
 import {
   fetchQuoteCommissionRecalculation,
@@ -18,7 +19,7 @@ import type { QuoteDetailWithPermissions } from '@/features/quotes/types'
  * detail replaces the cached one, so commissions, margin and summary update.
  */
 export function useQuoteCommissionRecalculation(quoteId: number, open: boolean, onDone: () => void) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
 
   const impact = useQuery<QuoteCommissionRecalculationImpact, AxiosError>({
@@ -36,7 +37,7 @@ export function useQuoteCommissionRecalculation(quoteId: number, open: boolean, 
       toast.success(t('quotes.recalculateCommissions.done'))
       onDone()
     },
-    onError: () => toast.error(t('quotes.recalculateCommissions.error')),
+    onError: (error) => toast.error(apiErrorMessage(error, t('quotes.recalculateCommissions.error'), i18n)),
   })
 
   return { impact, recalculate }

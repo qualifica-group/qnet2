@@ -111,6 +111,8 @@ function registry(overrides: Partial<RegistryDetailWithPermissions> = {}): Regis
     sectors: [],
     referent_ids: [],
     referents: [],
+    primary_referent_id: null,
+    primary_referent: null,
     manager_ids: [],
     managers: [],
     manager_slots: [],
@@ -189,6 +191,24 @@ describe('RegistryDetailView — record card (user directive 2026-09-11)', () =>
     expect(statValue('Assigned managers')).toBe('1')
     expect(statValue('Business sectors')).toBe('1')
     expect(statValue('Employees')).toBe('42')
+  })
+
+  it('shows each referent card with its referent type, and no type line when it has none', () => {
+    render(
+      <RegistryDetailView
+        registry={registry({
+          referents: [
+            { id: 1, name: 'Ada Lovelace', referent_type: { id: 7, name: 'Administrator' } },
+            { id: 2, name: 'Grace Hopper', referent_type: null },
+          ],
+        })}
+      />,
+    )
+
+    const adaCard = screen.getByRole('link', { name: 'Ada Lovelace' }).parentElement as HTMLElement
+    const graceCard = screen.getByRole('link', { name: 'Grace Hopper' }).parentElement as HTMLElement
+    expect(within(adaCard).getByText('Administrator')).toBeInTheDocument()
+    expect(within(graceCard).queryByText(/Referent type/)).not.toBeInTheDocument()
   })
 
   it('puts the supervisor and the G.A. slots in ONE Team block, a row each', () => {
@@ -295,3 +315,31 @@ describe('RegistryDetailView — related records (spec 0199)', () => {
 function statValue(label: string): string | undefined {
   return screen.getByText(label).nextElementSibling?.textContent ?? undefined
 }
+
+describe('RegistryDetailView — main referent (spec 0330 AC-012)', () => {
+  beforeAll(async () => {
+    await i18n.changeLanguage('en')
+  })
+
+  it('marks only the main referent card with the "Main" badge and lists the row', () => {
+    render(
+      <RegistryDetailView
+        registry={registry({
+          referent_ids: [1, 2],
+          referents: [
+            { id: 1, name: 'Ada Lovelace', referent_type: null },
+            { id: 2, name: 'Grace Hopper', referent_type: null },
+          ],
+          primary_referent_id: 2,
+          primary_referent: { id: 2, name: 'Grace Hopper' },
+        })}
+      />,
+    )
+
+    const adaCard = screen.getByRole('link', { name: 'Ada Lovelace' }).parentElement as HTMLElement
+    const graceCard = screen.getByRole('link', { name: 'Grace Hopper' }).parentElement as HTMLElement
+    expect(within(graceCard).getByText('Main')).toBeInTheDocument()
+    expect(within(adaCard).queryByText('Main')).not.toBeInTheDocument()
+    expect(screen.getByText('Main referent')).toBeInTheDocument()
+  })
+})

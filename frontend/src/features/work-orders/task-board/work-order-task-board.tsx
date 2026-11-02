@@ -23,6 +23,7 @@ import { TaskBoardBulkBar } from '@/features/work-orders/task-board/task-board-b
 import { TaskBoardKanbanView } from '@/features/work-orders/task-board/task-board-kanban-view'
 import { TaskBoardKpis } from '@/features/work-orders/task-board/task-board-kpis'
 import { TaskBoardListView } from '@/features/work-orders/task-board/task-board-list-view'
+import { TaskBoardSelectAllCheckbox } from '@/features/work-orders/task-board/task-board-select-all-checkbox'
 import { TaskBoardStageCreateDialog } from '@/features/work-orders/task-board/task-board-stage-create-dialog'
 import { TaskBoardToolbar } from '@/features/work-orders/task-board/task-board-toolbar'
 import { DEFAULT_TASK_BOARD_FILTERS } from '@/features/work-orders/task-board/task-board-filters'
@@ -131,6 +132,19 @@ export function WorkOrderTaskBoard({ workOrderId, actionsContainer }: WorkOrderT
               options={state.filterOptions}
               viewMode={viewMode}
               onViewModeChange={setViewMode}
+              selectAllSlot={
+                state.isReadOnly ? undefined : (
+                  <label className="flex shrink-0 cursor-pointer items-center gap-1.5 px-1 text-xs text-muted-foreground">
+                    <TaskBoardSelectAllCheckbox
+                      taskIds={state.visibleRootIds}
+                      selectedTaskIds={state.selectedTaskIds}
+                      onSetSelection={state.setTasksSelection}
+                      label={t('workOrders.taskBoard.bulk.selectAll')}
+                    />
+                    {t('workOrders.taskBoard.bulk.selectAll')}
+                  </label>
+                )
+              }
             />
 
             {state.hasAnyTask && !state.hasVisibleTask ? (
@@ -149,6 +163,7 @@ export function WorkOrderTaskBoard({ workOrderId, actionsContainer }: WorkOrderT
                 isReadOnly={state.isReadOnly}
                 selectedTaskIds={state.selectedTaskIds}
                 onToggleSelection={state.toggleTaskSelection}
+                onSetSelection={state.setTasksSelection}
                 onOpenTask={openTask}
                 onAddTask={addTask}
                 unstagedLoggedMinutes={state.payload?.unstaged_logged_minutes ?? 0}
@@ -162,6 +177,7 @@ export function WorkOrderTaskBoard({ workOrderId, actionsContainer }: WorkOrderT
                 isReadOnly={state.isReadOnly}
                 selectedTaskIds={state.selectedTaskIds}
                 onToggleSelection={state.toggleTaskSelection}
+                onSetSelection={state.setTasksSelection}
                 onOpenTask={openTask}
                 onAddTask={addTask}
                 unstagedLoggedMinutes={state.payload?.unstaged_logged_minutes ?? 0}
@@ -171,7 +187,7 @@ export function WorkOrderTaskBoard({ workOrderId, actionsContainer }: WorkOrderT
         )}
       </div>
 
-      <TaskBoardBulkBar workOrderId={workOrderId} selectedTaskIds={selectedIds} onClear={state.clearSelection} />
+      <TaskBoardBulkBar workOrderId={workOrderId} selectedTaskIds={selectedIds} tasksById={state.tasksById} onClear={state.clearSelection} />
 
       <TaskBoardStageCreateDialog workOrderId={workOrderId} open={isCreatingStage} onOpenChange={setIsCreatingStage} />
 

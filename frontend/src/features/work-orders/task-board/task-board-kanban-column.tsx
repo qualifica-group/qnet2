@@ -21,6 +21,7 @@ import type { BoardStageGroup } from '@/features/work-orders/task-board/task-boa
 import { computeStageMetrics } from '@/features/work-orders/task-board/task-board-metrics'
 import type { StageAccent } from '@/features/work-orders/task-board/task-board-stage-accent'
 import { TaskBoardKanbanCard } from '@/features/work-orders/task-board/task-board-kanban-card'
+import { TaskBoardSelectAllCheckbox } from '@/features/work-orders/task-board/task-board-select-all-checkbox'
 import { TaskBoardStageSummary } from '@/features/work-orders/task-board/task-board-task-meta'
 import { groupDroppableId } from '@/features/work-orders/task-board/use-task-board-dnd'
 
@@ -32,6 +33,7 @@ interface TaskBoardKanbanColumnProps {
   today: string
   selectedTaskIds: Set<number>
   onToggleSelection: (taskId: number) => void
+  onSetSelection: (taskIds: number[], isSelected: boolean) => void
   onOpenTask: (taskId: number) => void
   onAddTask: (stageId: number | null) => void
   /** The commessa's `unstaged_logged_minutes` (spec 0163 AC-007): read only when `group.stage === null`. */
@@ -46,6 +48,7 @@ export function TaskBoardKanbanColumn({
   today,
   selectedTaskIds,
   onToggleSelection,
+  onSetSelection,
   onOpenTask,
   onAddTask,
   unstagedLoggedMinutes,
@@ -57,11 +60,22 @@ export function TaskBoardKanbanColumn({
   const metrics = computeStageMetrics(roots.map((node) => node.task))
   const loggedMinutes = stage ? stage.logged_minutes : (unstagedLoggedMinutes ?? 0)
   const isClosed = stage?.closed_at != null
+  const stageName = stage ? stage.name : t('workOrders.taskBoard.noStage')
 
   return (
     <KanbanColumnShell
       accentColor={accent.dot}
-      label={stage ? stage.name : t('workOrders.taskBoard.noStage')}
+      label={stageName}
+      leadingSlot={
+        !isReadOnly ? (
+          <TaskBoardSelectAllCheckbox
+            taskIds={roots.map((node) => node.task.id)}
+            selectedTaskIds={selectedTaskIds}
+            onSetSelection={onSetSelection}
+            label={t('workOrders.taskBoard.bulk.selectStage', { name: stageName })}
+          />
+        ) : null
+      }
       count={metrics.count}
       headerExtra={<TaskBoardStageSummary metrics={metrics} loggedMinutes={loggedMinutes} />}
       addSlot={

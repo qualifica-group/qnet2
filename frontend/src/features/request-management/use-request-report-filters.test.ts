@@ -11,7 +11,7 @@ import type { RequestReportCategory, RequestReportSite } from '@/features/reques
 
 /**
  * User directive 2026-09-08: the filters applied to the dashboard survive a
- * reload. Same persistence shape as `useRequestManagementCategoryPreference`;
+ * reload. Same persistence shape as `useCategoryTabSelection`;
  * reconciling the stored branches against the ones the report still offers is
  * the caller's job and is covered here as a pure function.
  */

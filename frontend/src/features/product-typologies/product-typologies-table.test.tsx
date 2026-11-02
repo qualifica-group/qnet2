@@ -170,7 +170,11 @@ describe('ProductTypologiesTable — delete (D-8: 409 "in use" guard)', () => {
     deleteProductTypologyMock.mockRejectedValue(
       new AxiosError('Forbidden', '403', undefined, undefined, {
         status: 403,
-        data: { success: false, message: 'Forbidden' },
+        data: {
+          success: false,
+          message: 'Forbidden',
+          authorization: { reason: 'missing_permission', permission: 'product-typologies.delete' },
+        },
       } as never),
     )
 
@@ -178,7 +182,7 @@ describe('ProductTypologiesTable — delete (D-8: 409 "in use" guard)', () => {
     screen.getByRole('button', { name: 'delete row' }).click()
 
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith('You cannot delete this product typology.'),
+      expect(toastErrorMock).toHaveBeenCalledWith('You do not have the «Delete» permission on the «Product Typologies» module.'),
     )
   })
 

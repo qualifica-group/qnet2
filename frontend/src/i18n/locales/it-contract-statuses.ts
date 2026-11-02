@@ -73,7 +73,6 @@ export const contractStatuses = {
     defaultRequiresActive: 'Uno stato predefinito deve essere attivo.',
     genericError: 'Si è verificato un errore. Riprova.',
     deleteError: 'Impossibile eliminare lo stato contratto. Riprova.',
-    deleteForbidden: 'Non puoi eliminare questo stato contratto.',
     deleteInUseFallback: 'Questo stato contratto è usato da un contratto e non può essere eliminato.',
     leaveConfirm: {
       title: 'Uscire senza salvare?',
@@ -94,7 +93,6 @@ export const contractStatuses = {
     dragHandleLabel: 'Trascina per riordinare',
     loadError: 'Impossibile caricare gli stati. Riprova.',
     saved: 'Ordine aggiornato con successo.',
-    forbidden: 'Non puoi riordinare questi stati.',
     genericError: "Impossibile aggiornare l'ordine. Riprova.",
   },
 }

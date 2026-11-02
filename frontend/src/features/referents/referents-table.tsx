@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { MessagesSquare, Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -38,7 +38,7 @@ const REFERENTS_ACTION_ICONS: ActionIconMap = { 'messages-square': MessagesSquar
  * each call. The `notes` row action (spec 0312) opens the shared `NotesDialog`.
  */
 export function ReferentsTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const stats = useStatsPanel(REFERENTS_DOMAIN)
   const invalidateStats = useInvalidateModuleStats(REFERENTS_DOMAIN)
 
@@ -68,15 +68,12 @@ export function ReferentsTable() {
         refreshGrid()
         invalidateStats()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        toast.error(
-          status === 403 ? t('referents.form.deleteForbidden') : t('referents.form.deleteError'),
-        )
+        toast.error(apiErrorMessage(error, t('referents.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t, invalidateStats],
+    [refreshGrid, t, i18n, invalidateStats],
   )
 
   const handleAction: RowActionHandler = useCallback(

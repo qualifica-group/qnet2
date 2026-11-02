@@ -5,7 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { toast } from 'sonner'
-import type { TFunction } from 'i18next'
+import type { TFunction, i18n as I18nInstance } from 'i18next'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import { Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -54,7 +55,9 @@ interface FieldChangeRequestActionsProps {
 }
 
 /** The server's own message on failure, a generic fallback otherwise (AC-049: the 409 conflict shows it verbatim). */
-function resolveHandleErrorMessage(error: unknown, t: TFunction): string {
+function resolveHandleErrorMessage(error: unknown, t: TFunction, i18n: I18nInstance): string {
+  const forbidden = forbiddenMessage(error, i18n)
+  if (forbidden) return forbidden
   if (axios.isAxiosError<ApiErrorResponse>(error) && error.response?.data?.message) {
     return error.response.data.message
   }
@@ -77,7 +80,7 @@ export function FieldChangeRequestActions({
   onHandled,
   className = BAR_CLASS,
 }: FieldChangeRequestActionsProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [openAction, setOpenAction] = useState<HandleAction | null>(null)
   const schema = buildHandleFieldChangeRequestSchema(t)
@@ -110,7 +113,7 @@ export function FieldChangeRequestActions({
       close()
     },
     onError: (error) => {
-      toast.error(resolveHandleErrorMessage(error, t))
+      toast.error(resolveHandleErrorMessage(error, t, i18n))
     },
   })
 

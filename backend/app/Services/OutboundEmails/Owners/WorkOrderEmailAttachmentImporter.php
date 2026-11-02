@@ -16,6 +16,7 @@ use App\Services\DocumentLayouts\Rendering\DocumentGenerator;
 use App\Services\DocumentLayouts\Rendering\DocxToPdfConverter;
 use App\Services\DocumentLayouts\Rendering\QuoteRenderSubject;
 use App\Services\OutboundEmails\OutboundEmailAttachmentService;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -68,14 +69,13 @@ final class WorkOrderEmailAttachmentImporter
             throw ValidationException::withMessages(['attachment_ids' => [__('outbound_emails.attachment_not_available')]]);
         }
 
-        if ($sources->contains(fn (Attachment $a) => $a->attachable_type === $workOrder->getMorphClass()) && $actor->cannot('viewDocuments', WorkOrder::class)) {
-            abort(403);
+        if ($sources->contains(fn (Attachment $a) => $a->attachable_type === $workOrder->getMorphClass())) {
+            Gate::forUser($actor)->authorize('viewDocuments', WorkOrder::class);
         }
 
         if ($registry !== null
-            && $sources->contains(fn (Attachment $a) => $a->attachable_type === $registry->getMorphClass())
-            && $actor->cannot('viewDocuments', Registry::class)) {
-            abort(403);
+            && $sources->contains(fn (Attachment $a) => $a->attachable_type === $registry->getMorphClass())) {
+            Gate::forUser($actor)->authorize('viewDocuments', Registry::class);
         }
 
         return $this->emailAttachments->copyAll($sources, $email, $actor);
@@ -100,9 +100,7 @@ final class WorkOrderEmailAttachmentImporter
 
         abort_if($quote === null, 422, __('quotes.no_layout_available'));
 
-        if ($actor->cannot('view', $quote)) {
-            abort(403);
-        }
+        Gate::forUser($actor)->authorize('view', $quote);
 
         $layout = $this->layoutResolver->resolve($quote);
 

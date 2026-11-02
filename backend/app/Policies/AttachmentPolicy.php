@@ -10,6 +10,7 @@ use App\Policies\Abstracts\BasePolicy;
 use App\RichText\RichText;
 use App\RichText\RichTextOwnerAccess;
 use App\Services\Opportunities\OpportunityDocumentAccess;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -51,10 +52,10 @@ class AttachmentPolicy extends BasePolicy
      * record's embedded images or every email's allegati regardless of
      * whether they can read the owner.
      */
-    public function viewAny(User $user, ?string $collection = null): bool
+    public function viewAny(User $user, ?string $collection = null): bool|Response
     {
         if ($this->isClosedCollection($collection)) {
-            return false;
+            return $this->denyBecause('attachment_collection_closed');
         }
 
         return parent::viewAny($user);
@@ -68,22 +69,20 @@ class AttachmentPolicy extends BasePolicy
      * authorizes on the owning Commessa directly. Every other collection
      * keeps the plain permission check.
      */
-    public function view(User $user, Model $model): bool
+    public function view(User $user, Model $model): bool|Response
     {
         if ($model instanceof Attachment && $model->collection === RichText::ATTACHMENT_COLLECTION) {
-            return app(RichTextOwnerAccess::class)->canRead($user, $model->attachable);
+            return app(RichTextOwnerAccess::class)->canRead($user, $model->attachable)
+                ? Response::allow()
+                : $this->denyBecause('attachment_owner_not_visible');
         }
 
-        if ($model instanceof Attachment && $model->collection === OutboundEmail::ATTACHMENT_COLLECTION) {
-            return false;
-        }
-
-        if ($model instanceof Attachment && $this->isOutsideGenericBoundary($model)) {
-            return false;
+        if ($model instanceof Attachment && ($model->collection === OutboundEmail::ATTACHMENT_COLLECTION || $this->isOutsideGenericBoundary($model))) {
+            return $this->denyBecause('attachment_collection_closed');
         }
 
         if ($model instanceof Attachment && ! $this->canSeeOwner($user, $model->attachable_type, $model->attachable_id)) {
-            return false;
+            return $this->denyBecause('attachment_owner_not_visible');
         }
 
         return parent::view($user, $model);
@@ -95,10 +94,10 @@ class AttachmentPolicy extends BasePolicy
      * HTML field (D-3/D-6); `email_attachments` are written only by the
      * nested email attachment upload/import endpoints (D-7/D-8).
      */
-    public function create(User $user, ?string $collection = null): bool
+    public function create(User $user, ?string $collection = null): bool|Response
     {
         if ($this->isClosedCollection($collection)) {
-            return false;
+            return $this->denyBecause('attachment_collection_closed');
         }
 
         return parent::create($user);
@@ -111,14 +110,14 @@ class AttachmentPolicy extends BasePolicy
      * removed only through the nested email attachment endpoint, which also
      * enforces the draft-only state rule (D-8).
      */
-    public function delete(User $user, Model $model): bool
+    public function delete(User $user, Model $model): bool|Response
     {
         if ($model instanceof Attachment && ($this->isClosedCollection($model->collection) || $this->isOutsideGenericBoundary($model))) {
-            return false;
+            return $this->denyBecause('attachment_collection_closed');
         }
 
         if ($model instanceof Attachment && ! $this->canSeeOwner($user, $model->attachable_type, $model->attachable_id)) {
-            return false;
+            return $this->denyBecause('attachment_owner_not_visible');
         }
 
         return parent::delete($user, $model);
@@ -128,9 +127,11 @@ class AttachmentPolicy extends BasePolicy
      * Owner gate for the endpoints that name the owner in the request (list,
      * upload): true unless the owner type is owner-scoped and not visible.
      */
-    public function accessOwner(User $user, ?string $attachableType, mixed $attachableId): bool
+    public function accessOwner(User $user, ?string $attachableType, mixed $attachableId): Response
     {
-        return $this->canSeeOwner($user, $attachableType, $attachableId === null ? null : (int) $attachableId);
+        return $this->canSeeOwner($user, $attachableType, $attachableId === null ? null : (int) $attachableId)
+            ? Response::allow()
+            : $this->denyBecause('attachment_owner_not_visible');
     }
 
     /**

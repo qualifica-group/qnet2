@@ -107,8 +107,9 @@ final class MigrationOrder
         // (spec 0300) link the commessa and its quote, no task: same phase, as
         // `work-order-progress` (spec 0321), which only needs the commessa;
         // `work-order-workflow-statuses` (spec 0322) set the current status of
-        // the commessa from the phase 5 workflows.
-        ['tasks', 'proforma-requests', 'work-order-progress', 'work-order-workflow-statuses'],
+        // the commessa from the phase 5 workflows; `work-order-task-templates`
+        // (spec 0326) link the commessa to its phase 6 task template.
+        ['tasks', 'proforma-requests', 'work-order-progress', 'work-order-workflow-statuses', 'work-order-task-templates'],
 
         // Phase 13 — spec 0294, start of the accounting part: the legacy RDA.
         // They link users, companies, company sites, operational sites and
@@ -138,8 +139,14 @@ final class MigrationOrder
 
         // Phase 18 — spec 0311: the notes of every legacy module (work orders,
         // opportunities, tasks; registries, referents and purchase requests
-        // since spec 0312), last so every record they belong to exists.
-        ['notes'],
+        // since spec 0312) and, spec 0295, the link-only documents of the same
+        // modules plus purchase orders; last so every record they belong to
+        // exists. The two have no dependency on each other.
+        ['notes', 'attachments'],
+
+        // Phase 19 — spec 0341: the legacy segnatempo (intervals, then the day
+        // notes), last so the users, tasks and commesse they link to exist.
+        ['time-entries', 'time-entry-day-notes'],
     ];
 
     /**

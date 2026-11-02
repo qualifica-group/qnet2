@@ -14,10 +14,10 @@ use App\Models\Invoice;
 use App\Models\User;
 use App\Services\Invoices\InvoiceMonthlySummary;
 use App\Services\Invoices\InvoiceService;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -49,8 +49,8 @@ class InvoiceController extends BaseApiController
 
             if (isset($payload['invoice_id'])) {
                 $this->authorize('update', Invoice::query()->findOrFail($payload['invoice_id']));
-            } elseif (! $actor->can('invoices.create') && ! $actor->can('invoices.update')) {
-                throw new AuthorizationException;
+            } else {
+                Gate::allowIf($actor->can('invoices.create') || $actor->can('invoices.update'));
             }
 
             return $this->ok($this->service->previewInstallments($payload));

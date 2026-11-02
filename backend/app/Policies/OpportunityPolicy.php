@@ -6,6 +6,7 @@ use App\Models\Opportunity;
 use App\Models\User;
 use App\Policies\Abstracts\BasePolicy;
 use App\Services\Opportunities\OpportunityVisibilityScope;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -34,11 +35,11 @@ class OpportunityPolicy extends BasePolicy
 
     /**
      * Spec 0316, D-8: record-level abilities need the resource permission AND
-     * the record to be visible to the actor (viewAll, supervisor or manager).
+     * the record to be visible to the actor (viewAll, supervisor, manager or, spec 0340, competence).
      */
-    public function view(User $user, Model $model): bool
+    public function view(User $user, Model $model): bool|Response
     {
-        return parent::view($user, $model) && $this->isVisible($user, $model);
+        return $this->withinPerimeter($user->can($this->permission('view')), fn (): bool => $this->isVisible($user, $model), 'opportunity_out_of_scope');
     }
 
     /**
@@ -50,14 +51,24 @@ class OpportunityPolicy extends BasePolicy
         return $user->can($this->permission('viewAll'));
     }
 
-    public function update(User $user, Model $model): bool
+    /**
+     * Resource-level gate for the competence visibility level (spec 0340): the
+     * actor also sees the opportunities in their assignment competence. A ROW
+     * gate, it grants no action (D-5).
+     */
+    public function viewCompetence(User $user): bool
     {
-        return parent::update($user, $model) && $this->isVisible($user, $model);
+        return $user->can($this->permission('viewCompetence'));
     }
 
-    public function delete(User $user, Model $model): bool
+    public function update(User $user, Model $model): bool|Response
     {
-        return parent::delete($user, $model) && $this->isVisible($user, $model);
+        return $this->withinPerimeter($user->can($this->permission('update')), fn (): bool => $this->isVisible($user, $model), 'opportunity_out_of_scope');
+    }
+
+    public function delete(User $user, Model $model): bool|Response
+    {
+        return $this->withinPerimeter($user->can($this->permission('delete')), fn (): bool => $this->isVisible($user, $model), 'opportunity_out_of_scope');
     }
 
     private function isVisible(User $user, Model $model): bool
@@ -70,6 +81,6 @@ class OpportunityPolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll', 'viewDocuments'];
+        return [...parent::abilities(), 'viewAll', 'viewCompetence', 'viewDocuments'];
     }
 }

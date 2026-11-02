@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DataTable } from '@/components/data-table/data-table'
@@ -86,26 +87,30 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     },
     ref,
   ) {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
     // Read once as a primitive: every downstream memo in the controller keys
     // on this value, not on the `scope`/`rowScope` object identity (a caller
     // may pass a fresh object literal every render).
     const productCategoryId = scope?.productCategoryId
+    const productCategoryBranchId = scope?.productCategoryBranchId
     const opportunityId = rowScope?.opportunityId
     const quoteId = rowScope?.quoteId
     const registryId = rowScope?.registryId
-    const { data: config, isPending, isError, refetch } = useTableConfig(domain, scope)
+    const referentId = rowScope?.referentId
+    const { data: config, error: configError, isPending, isError, refetch } = useTableConfig(domain, scope)
 
     const view = useTableViewController(
       {
         domain,
         scope,
         productCategoryId,
+        productCategoryBranchId,
         opportunityId,
         quoteId,
         defaultFilterModel,
         forcedFilterModel,
         registryId,
+        referentId,
         onRowCountChanged,
         onAction,
         isBusy,
@@ -150,7 +155,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     } else if (isError) {
       content = (
         <div className="flex h-full flex-col items-start gap-3 p-4">
-          <p className="text-sm text-destructive">{t('table.loadError')}</p>
+          <p className="text-sm text-destructive">{apiErrorMessage(configError, t('table.loadError'), i18n)}</p>
           <Button variant="outline" size="sm" onClick={() => void refetch()}>
             {t('common.retry')}
           </Button>
@@ -168,9 +173,11 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
           key={view.layoutVersion}
           domain={domain}
           productCategoryId={productCategoryId}
+          productCategoryBranchId={productCategoryBranchId}
           opportunityId={opportunityId}
           quoteId={quoteId}
           registryId={registryId}
+          referentId={referentId}
           columns={config.columns}
           datasource={view.datasource}
           blockSize={config.defaultPagination.limit}
@@ -216,6 +223,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       opportunityId,
       quoteId,
       registryId,
+      referentId,
     })
 
     return (

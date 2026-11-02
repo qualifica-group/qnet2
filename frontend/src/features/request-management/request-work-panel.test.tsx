@@ -256,15 +256,22 @@ describe('RequestWorkPanelScreen (spec 0049 AC-061)', () => {
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
   })
 
+  // Spec 0329 D-9: the 403 description is the specific reason built from the server's `authorization` block.
   it.each([
-    [404, 'Record not found', 'does not exist or has been deleted'],
-    [403, 'Access denied', 'You do not have the necessary permissions'],
-  ])('shows the record-unavailable state, without retry, on a %i', async (status, title, description) => {
+    [404, { success: false, message: 'x' }, 'Record not found', 'does not exist or has been deleted'],
+    [
+      403,
+      {
+        success: false,
+        message: 'x',
+        authorization: { reason: 'missing_permission', permission: 'request-management.view' },
+      },
+      'Access denied',
+      'You do not have the «View» permission on the «Request Management» module.',
+    ],
+  ])('shows the record-unavailable state, without retry, on a %i', async (status, data, title, description) => {
     fetchRequestWorkPanelMock.mockRejectedValue(
-      new AxiosError('failed', undefined, undefined, undefined, {
-        status,
-        data: { success: false, message: 'x' },
-      } as AxiosResponse),
+      new AxiosError('failed', undefined, undefined, undefined, { status, data } as AxiosResponse),
     )
 
     renderPanel()

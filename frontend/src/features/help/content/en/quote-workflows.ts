@@ -36,7 +36,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'A workflow applies to quotes matching all of its criteria (at least one): **Source**, **Business function**, **Product category**, **Product category (branch)** (includes subcategories) and the Opportunity\'s Relationship-type custom fields. Source and custom fields come from the opportunity ("Inherited from the opportunity").',
+          text: 'A workflow applies to quotes matching all of its criteria (at least one): **Source**, **Business function**, **Product category**, **Product category (branch)** (includes subcategories) and the Opportunity\'s Relationship-type custom fields. Source is a field of the quote; custom fields come from the opportunity ("Inherited from the opportunity").',
         },
         {
           type: 'paragraph',

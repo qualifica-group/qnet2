@@ -19,6 +19,13 @@ final class LegacyRoleCatalogue
     /** Every ability the catalogue declares for the resource. */
     public const string ALL = '*';
 
+    /**
+     * Every ability but `viewAll` (spec 0340 rev.3, user directive 2026-11-02):
+     * the role sees its own records, its Sedi's and its assignment scope
+     * (`viewCompetence`), never the whole module.
+     */
+    public const string ALL_BUT_VIEW_ALL = '*-viewAll';
+
     private const array READ = ['viewAny', 'view'];
 
     private const array WRITE = ['viewAny', 'view', 'create', 'update'];
@@ -73,10 +80,10 @@ final class LegacyRoleCatalogue
             'permissions' => [
                 'registries' => self::ALL,
                 'referents' => self::ALL,
-                'opportunities' => self::ALL,
-                'quotes' => self::ALL,
-                'work-orders' => self::ALL,
-                'contracts' => self::ALL,
+                'opportunities' => self::ALL_BUT_VIEW_ALL,
+                'quotes' => self::ALL_BUT_VIEW_ALL,
+                'work-orders' => self::ALL_BUT_VIEW_ALL,
+                'contracts' => self::ALL_BUT_VIEW_ALL,
                 'products' => self::ALL,
                 'product-categories' => self::WRITE,
                 'document-layouts' => self::WRITE,

@@ -22,7 +22,8 @@ uses(RefreshDatabase::class);
 // 2026-07-17: operational_site_id is REMOVED from the derivable set)
 // ---------------------------------------------------------------------------
 
-it('opportunity-defaults: a complete lead locks both derivable fields (AC-060, AC-050 spec 0041)', function () {
+// REQUIREMENT CHANGED: spec 0332 — only registry_id is derived/locked now.
+it('opportunity-defaults: a complete lead locks the derivable registry (AC-060, AC-050 spec 0041)', function () {
     $actor = opportunityFromLeadActor(['create'], ['view']);
     $lead = completeLead();
     Sanctum::actingAs($actor);
@@ -32,12 +33,10 @@ it('opportunity-defaults: a complete lead locks both derivable fields (AC-060, A
     expect($response->json('data.lead_id'))->toBe($lead->id);
     expect($response->json('data.existing_opportunity_id'))->toBeNull();
     expect($response->json('data.values.registry_id'))->toBe($lead->registry_id);
-    expect($response->json('data.values.source_id'))->toBe($lead->source_id);
+    expect($response->json('data.values'))->not->toHaveKey('source_id');
     expect($response->json('data.values'))->not->toHaveKey('business_function_id');
     expect($response->json('data.values'))->not->toHaveKey('product_category_id');
-    expect($response->json('data.locked_fields'))->toEqualCanonicalizing([
-        'source_id', 'registry_id',
-    ]);
+    expect($response->json('data.locked_fields'))->toEqualCanonicalizing(['registry_id']);
     expect($response->json('data.locked_fields'))->not->toContain('referent_id');
     expect($response->json('data.references.registry.id'))->toBe($lead->registry_id);
 });
@@ -136,7 +135,6 @@ it('create with lead_id: the server writes the derived attributes (AC-063)', fun
         'id' => $response->json('data.id'),
         'lead_id' => $lead->id,
         'registry_id' => $lead->registry_id,
-        'source_id' => $lead->source_id,
     ]);
 });
 
@@ -269,9 +267,7 @@ it('detail: an opportunity from a lead exposes lead {id,label} and locked_fields
         ->assertOk()
         ->assertJsonPath('data.lead.id', $lead->id)
         ->assertJsonPath('data.lead.label', $lead->registry->name)
-        ->assertJsonPath('data.locked_fields', [
-            'source_id', 'registry_id',
-        ]);
+        ->assertJsonPath('data.locked_fields', ['registry_id']);
 });
 
 it('LeadResource exposes opportunity {id,name}|null (AC-065)', function () {

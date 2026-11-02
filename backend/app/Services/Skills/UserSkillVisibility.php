@@ -63,13 +63,13 @@ final class UserSkillVisibility
     /** 403 without any access, 404 (never 403) on a record the actor cannot see. */
     public function assertCanView(User $actor, UserSkill $userSkill): void
     {
-        abort_if(UserSkillScope::forActor($actor) === null, 403, 'This action is unauthorized.');
+        abort_if(UserSkillScope::forActor($actor) === null, 403, __('You cannot access skills.'));
         abort_unless($this->canViewPerson($actor, (int) $userSkill->user_id), 404, 'Resource not found.');
     }
 
     public function assertCanWritePerson(User $actor, int $userId): void
     {
-        abort_unless($this->canWritePerson($actor, $userId), 403, 'This action is unauthorized.');
+        abort_unless($this->canWritePerson($actor, $userId), 403, __('You cannot edit the skills of this person.'));
     }
 
     /**

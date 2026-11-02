@@ -9,23 +9,6 @@ export const requestManagement = {
   title: 'Request Management',
   subtitle: 'Work opportunities: verify contacts and complete dynamic fields.',
   forbidden: "You don't have permission to view Request Management.",
-  categoryTabs: {
-    all: 'All',
-    more: 'More ({{count}})',
-    pickerLabel: 'Product categories',
-    searchPlaceholder: 'Search category…',
-    noMatch: 'No category found.',
-    menuLabel: 'Categories and favorites',
-    favorites: 'Favorites',
-    otherCategories: 'Other categories',
-    addFavorite: 'Add {{name}} to favorites',
-    removeFavorite: 'Remove {{name}} from favorites',
-    showOnlyFavorites: 'Show favorites only',
-    favoritesHint: 'Tap the star next to a category to add it to your favorites.',
-    favoritesDefaultHint:
-      'Favorites are suggested from the categories you are enabled for. Use the star to change them.',
-    favoritesError: 'Could not save your favorite categories.',
-  },
   columns: {
     source: 'Source',
     pendingChangeRequests: 'Change requests',
@@ -66,7 +49,6 @@ export const requestManagement = {
   },
   delete: {
     success: 'Request deleted.',
-    forbidden: 'You are not allowed to delete this request.',
     error: 'Unable to delete the request. Please try again.',
   },
   assign: {
@@ -385,7 +367,6 @@ export const requestManagement = {
       // Spec 0112 AC-020: no request fires with zero sites selected.
       sitesRequired: 'Select at least one site.',
       sitesLoadFailed: 'Unable to load sites. Please try again.',
-      forbidden: "You don't have permission to generate this report.",
       validation: 'The dates entered are invalid.',
       generic: 'Unable to generate the report. Please try again.',
       jobFailed: 'Report generation failed. Please try again.',
@@ -429,7 +410,6 @@ export const requestManagement = {
       'Nothing to show yet: there are no requests in the categories included in the report. The dashboard will fill in as soon as one is recorded.',
     errors: {
       network: 'Unable to reach the server: check your connection and try again.',
-      forbidden: 'You do not have permission to view the requests dashboard.',
       invalidFilters:
         'The applied filters are no longer valid (for example a category is no longer available). Update them from the Filters button.',
       generic: 'Unable to load the dashboard because of a server error. Please try again shortly.',

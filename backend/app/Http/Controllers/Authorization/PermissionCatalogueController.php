@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 /**
@@ -45,8 +46,6 @@ class PermissionCatalogueController extends BaseApiController
      */
     private function authorizeViewsCatalogue(User $actor): void
     {
-        if (! $actor->can('roles.viewAny') && ! $actor->can('roles.create') && ! $actor->can('roles.update')) {
-            throw new AuthorizationException;
-        }
+        Gate::allowIf($actor->can('roles.viewAny') || $actor->can('roles.create') || $actor->can('roles.update'));
     }
 }

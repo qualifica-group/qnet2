@@ -166,7 +166,7 @@ describe('InvoiceTagsTable — delete', () => {
     screen.getByRole('button', { name: 'delete row' }).click()
 
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith(i18n.t('invoiceTags.form.deleteForbidden')),
+      expect(toastErrorMock).toHaveBeenCalledWith('Forbidden'),
     )
   })
 

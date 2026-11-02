@@ -20,6 +20,7 @@ use App\Models\QuoteLine;
 use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
 use App\Models\Registry;
+use App\Models\Source;
 use App\Models\User;
 use App\Models\VatRate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -304,6 +305,31 @@ it('writes the legacy offer date and the opportunity callback (G-14)', function 
     expect($quote->quote_date->toDateString())->toBe('2024-02-20')
         ->and($quote->next_callback_at->toDateTimeString())->toBe('2024-04-10 00:00:00')
         ->and($quote->next_callback_reminded_at)->toBeNull();
+});
+
+it('AC-009: saves the remapped Fonte of the first quotation and leaves the others without', function () {
+    legacyQuoteServiceProduct(10);
+    $source = Source::factory()->create(['old_id' => 5]);
+
+    runLegacyQuotesImport([
+        legacyQuoteRecord(['source_id' => 5]),
+        legacyQuoteRecord(['id' => 43, 'lines' => [
+            ['id' => 901, 'product_id' => 10, 'quantity' => 1, 'unit_price' => 10, 'commissions' => []],
+        ]]),
+    ]);
+
+    expect(Quote::query()->where('old_id', 42)->value('source_id'))->toBe($source->id)
+        ->and(Quote::query()->where('old_id', 43)->value('source_id'))->toBeNull();
+});
+
+it('AC-009: warns and keeps the offer without Fonte when the legacy source is not migrated', function () {
+    legacyQuoteServiceProduct(10);
+
+    $run = runLegacyQuotesImport([legacyQuoteRecord(['source_id' => 999])]);
+
+    expect($run->created_rows)->toBe(1)
+        ->and(Quote::query()->where('old_id', 42)->value('source_id'))->toBeNull()
+        ->and(legacyQuoteWarnings($run))->toBe(['Unresolved source_id (legacy id 999).']);
 });
 
 it('reports a legacy customer other than the opportunity one, keeping the opportunity (G-15)', function () {

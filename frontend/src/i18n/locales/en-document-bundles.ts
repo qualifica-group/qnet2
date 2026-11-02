@@ -46,7 +46,6 @@ export const documentBundles = {
     descriptionMax: 'Description may contain at most 500 characters.',
     genericError: 'Something went wrong. Please retry.',
     deleteError: 'Unable to delete the document bundle. Please retry.',
-    deleteForbidden: 'You cannot delete this document bundle.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The document bundle has not been created yet: the data you entered will be lost.',

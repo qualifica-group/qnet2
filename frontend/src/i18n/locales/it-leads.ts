@@ -124,7 +124,6 @@ export const leads = {
       confirm: 'Esci senza salvare',
       cancel: 'Continua a compilare',
     },
-    deleteForbidden: 'Non puoi eliminare questo lead.',
   },
   assign: {
     tableButton: 'Assegna operatori',

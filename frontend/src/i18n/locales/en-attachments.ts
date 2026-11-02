@@ -16,6 +16,9 @@ export const attachments = {
   download: 'Download',
   deleteAction: 'Delete document',
   deleteConfirm: 'Delete "{{name}}"? This cannot be undone.',
+  legacyNote: "Can't find a document?",
+  legacyLink: 'Check the old QNet',
+  legacyLinkNewTab: '(opens in a new tab)',
   errors: {
     load: 'Unable to load the documents. Please try again.',
     upload: 'Unable to upload the file. Please try again.',

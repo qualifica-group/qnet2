@@ -13,6 +13,10 @@ const guide: HelpGuide = {
           type: 'paragraph',
           text: "Il contratto non si crea a mano: nasce quando un'offerta passa a uno stato **Chiuso con esito positivo**, con data di **Accettazione** del giorno e lo stato **Predefinito** di **Stati Contratto**. Non nasce se la categoria prodotto è impostata per non generare contratti. Se l'offerta esce dallo stato positivo, il contratto viene **Sospeso** e QNet ricorda lo stato precedente.",
         },
+        {
+          type: 'paragraph',
+          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati contratto** (Offerta, Opportunità, Data offerta) e **Contesto**, poi **Anagrafica e contatti** (Anagrafica, Referente con il suo tipo, Commerciale, Segnalatore) e **Buoni**, poi **Team** (Supervisore e Gestori account dell'offerta) e **Società e sedi**, poi **Documento e pagamento** e **Ciclo di vita**. I dati dell'offerta sono in sola lettura e si modificano dall'offerta; Note di pagamento, Rinnovo, Scadenza e Commenti si modificano qui.",
+        },
       ],
     },
     {
@@ -23,7 +27,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Stato attuale', 'Azioni disponibili'],
           rows: [
-            ['Aperto o In attesa', 'Dati modificabili sul posto, **Cambia stato**, **Valida contratto**, **Disdici contratto**'],
+            ['Aperto o In attesa', 'Dati modificabili sul posto, **Cambia stato**, **Valida contratto** (solo se non è mai stato validato), **Disdici contratto**'],
             ['Chiuso positivo', '**Programma**, **Disdici contratto**, **Riapri contratto**'],
             ['Chiuso negativo', '**Riapri contratto**'],
             ['Sospeso', '**Riapri contratto**'],
@@ -32,10 +36,10 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            '**Valida contratto**: indica la **Data di validazione** (non futura).',
+            '**Valida contratto**: indica la **Data di validazione** (non futura). Non compare su un contratto che ha già una data di validazione, anche se il suo stato è In attesa (per esempio Da programmare, Programmato o In scadenza).',
             '**Disdici contratto**: indica **Data di disdetta**, **Motivazione** e **Stato di destinazione**.',
             'Dati del contratto: **Scadenza**, **Rinnovo**, **Note di pagamento** e **Commenti** si modificano direttamente nella scheda, finché il contratto è Aperto o In attesa: premi la matita accanto al campo (o fai clic sul valore), cambia il valore e premi **Salva** (Annulla, Esc o un clic fuori chiudono senza salvare). I Commenti si scrivono dentro il loro riquadro in cima alla scheda.',
-            '**Riapri contratto**: riporta il contratto in lavorazione; se era sospeso, torna allo stato precedente.',
+            '**Riapri contratto**: riporta il contratto in lavorazione; se era sospeso, torna allo stato precedente. Riaprendo un contratto Chiuso positivo o Chiuso negativo si azzerano anche la data e l\'autore della validazione, così il contratto si può validare di nuovo; i valori precedenti restano in **Cronologia attività**.',
           ],
         },
         {
@@ -120,11 +124,37 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'category-tabs',
+      title: "Filtrare per categoria prodotto",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Sopra l'elenco trovi la barra delle categorie: la tab **Tutte** e una tab per ogni categoria prodotto presente, con il numero di contratti. Cliccando una tab l'elenco mostra solo i contratti di quella categoria. La scelta resta anche dopo aver ricaricato la pagina.",
+        },
+        {
+          type: 'paragraph',
+          text: "Un contratto compare nella tab di ogni categoria dei prodotti presenti nelle **righe di ricavo dell'offerta del contratto** (conta una volta sola anche con più righe della stessa categoria). Le righe di costo non contano; un contratto la cui offerta non ha righe di ricavo compare solo in **Tutte**. Il numero accanto al nome è quanti contratti, tra quelli che puoi vedere, rientrano nella categoria.",
+        },
+        {
+          type: 'steps',
+          items: ["Se le tab non entrano nella riga, le altre finiscono nel menu **Altre**, dove puoi cercare una categoria per nome.","Clicca la **stellina** accanto a una categoria (nel menu) per aggiungerla alle **preferite**: le preferite compaiono per prime.","Attiva **Mostra solo preferite** per vedere in barra solo le preferite; le altre restano nel menu **Altre**."],
+        },
+        {
+          type: 'paragraph',
+          text: "Nel menu **Altre** l'interruttore **Categorie madri** limita la barra alle sole categorie di primo livello: la tab di una categoria madre raccoglie anche le sottocategorie (un record conta una volta sola). La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria tab e le **preferite** sono separate tra le due modalità. Spegnendolo torni a tutte le categorie.",
+        },
+        {
+          type: 'note',
+          text: "Le preferite sono separate per ogni elenco (Opportunità, Offerte, Contratti, Commesse, Gestione Richieste). La prima volta ti vengono proposte in base alle categorie per cui sei abilitato; appena usi la stellina diventano le tue. L'esportazione non segue la tab: considera sempre tutti i contratti.",
+        },
+      ],
+    },
+    {
       id: 'visibility',
       title: "Quali contratti vedi",
       blocks: [
         { type: 'paragraph', text: "Cosa vedi dipende dal tuo ruolo. Serve sempre il permesso **Visualizza**; i livelli si sommano e dipendono dall'offerta del contratto. I permessi dei Contratti sono indipendenti da quelli delle Offerte." },
-        { type: 'table', headers: ["Permesso", "Contratti visibili"], rows: [["**Visualizza**", "Quelli in cui sei **Supervisore** o **Gestore account** dell'offerta del contratto."], ["**Visualizza per sede**", "I tuoi e quelli la cui offerta è della tua **Sede operativa**."], ["**Visualizza tutti**", "Tutti."]] },
+        { type: 'table', headers: ["Permesso", "Contratti visibili"], rows: [["**Visualizza**", "Quelli in cui sei **Supervisore** o **Gestore account** dell'offerta del contratto."], ["**Visualizza per sede**", "I tuoi e quelli la cui offerta è della tua **Sede operativa**."], ["**Visualizza per competenza**", "I tuoi e quelli la cui offerta ha una categoria nel tuo ambito di assegnazione, in qualunque sede. Con **Ambito su tutte le categorie** tutti."], ["**Visualizza tutti**", "Tutti."]] },
         { type: 'paragraph', text: "Il filtro vale per elenco, scheda, filtri, esportazioni, statistiche e dashboard, selettori e documenti. Aprire il link di un contratto che non puoi vedere mostra un errore di accesso. Vedere un contratto non permette di modificarlo o eliminarlo: servono i permessi **Modifica** ed **Elimina**, e si modifica solo ciò che si vede." },
       ],
     },

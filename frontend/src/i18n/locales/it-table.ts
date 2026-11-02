@@ -206,7 +206,6 @@ export const table = {
     editRules: 'Modifica regole',
     rulesViewIndicator: 'Filtro personalizzato',
     unnamed: 'Filtro personalizzato',
-    publishForbidden: 'Non hai il permesso di pubblicare viste condivise.',
     favoriteError: 'Impossibile aggiornare i preferiti.',
     activeFiltersLabel: 'Filtri attivi',
     removeChip: 'Rimuovi {{label}}',

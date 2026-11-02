@@ -7,6 +7,7 @@ use App\Models\Lead;
 use App\Models\OperationalSite;
 use App\Models\Opportunity;
 use App\Models\ProductCategory;
+use App\Models\Quote;
 use App\Models\Referent;
 use App\Models\Registry;
 use App\Models\Source;
@@ -127,10 +128,11 @@ it('a user referenced as an opportunity supervisor cannot be deleted: 409 (AC-02
     $this->assertDatabaseHas('users', ['id' => $supervisor->id]);
 });
 
-it('a source referenced by an opportunity cannot be deleted: 409 (AC-023)', function () {
+// REQUIREMENT CHANGED: spec 0332 — the Fonte is held by the offer, which now guards the deletion.
+it('a source referenced by a quote cannot be deleted: 409 (AC-023)', function () {
     $actor = grantDeleteAbility('sources');
     $source = Source::factory()->create();
-    Opportunity::factory()->create(['source_id' => $source->id]);
+    Quote::factory()->create(['source_id' => $source->id]);
     Sanctum::actingAs($actor);
 
     $this->deleteJson("/api/sources/{$source->id}")->assertStatus(409);

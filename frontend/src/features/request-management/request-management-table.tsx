@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation } from '@tanstack/react-query'
-import axios from 'axios'
 import { ArrowRightLeft, GraduationCap, MessagesSquare, Paperclip, Plus, UserCog } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { ResourceActivityDialog } from '@/features/activity-log/resource-activity-dialog'
@@ -24,15 +24,16 @@ import type { RowActionHandler } from '@/features/table/row-actions'
 import type { BulkAction, TableSelection } from '@/features/table/use-bulk-actions-slot'
 import type { TableActionDefinition, TableRow } from '@/features/table/types'
 import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
-import { assignRequestOperators, deleteRequest } from '@/features/request-management/api'
+import { assignRequestOperators, deleteRequest, fetchRequestManagementCategories } from '@/features/request-management/api'
 import { AssignManagerGa1Dialog } from '@/features/request-management/assign-manager-ga1-dialog'
 import { requestManagementColumnRenderers } from '@/features/request-management/column-renderers'
 import { OfferLinesDialogProvider } from '@/features/request-management/offer-lines-dialog'
-import { RequestManagementCategoryTabs } from '@/features/request-management/request-management-category-tabs'
+import { levelArgs } from '@/features/category-tabs/category-tab-level'
+import { CategoryTabs } from '@/features/category-tabs/category-tabs'
+import { useCategoryTabStrip } from '@/features/category-tabs/use-category-tab-strip'
+import { categoryTabItemsFromRequests } from '@/features/category-tabs/api'
+import type { CategoryTabItem, CategoryTabLevel } from '@/features/category-tabs/types'
 import { useInvalidateRequestDashboard } from '@/features/request-management/use-request-dashboard'
-import { useInvalidateRequestManagementCategories } from '@/features/request-management/use-request-management-categories'
-import { useRequestManagementCategoryTab } from '@/features/request-management/use-request-management-category-tab'
-import { useCategoryTabPreferences } from '@/features/request-management/use-category-tab-preferences'
 import { useQuoteAssignmentScope } from '@/features/request-management/use-quote-assignment-scope'
 import { useRequestManagerGa1Assignment } from '@/features/request-management/use-request-manager-ga1-assignment'
 import { useRequestTransferSelection } from '@/features/request-management/use-request-transfer-selection'
@@ -60,6 +61,11 @@ const REQUEST_MANAGEMENT_ACTION_ICONS: ActionIconMap = {
  * equo" works Offerta by Offerta and stays available. Hoisted at module level:
  * an inline array would be a new reference on every render.
  */
+/** Gestione Richieste' endpoint names the strip's count `requests_count`; the shared strip reads `count`. Module-level so the query function stays stable. */
+async function fetchRequestManagementTabs(apiBasePath: string, level: CategoryTabLevel = 'all'): Promise<CategoryTabItem[]> {
+  return categoryTabItemsFromRequests(await fetchRequestManagementCategories(apiBasePath, ...levelArgs(level)))
+}
+
 const NO_COMMON_OPERATOR_DISABLED_MODES: readonly AssignmentMode[] = ['single']
 
 /**
@@ -112,16 +118,16 @@ interface RequestNotesTarget {
  * (update) still stays on the work panel, never `opportunities.*`.
  */
 export function RequestManagementTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { can } = useAbilities()
   const module = useRequestModule()
 
-  const { categories, selectedCategoryId, setCategoryId } = useRequestManagementCategoryTab()
-  const categoryTabPreferences = useCategoryTabPreferences()
+  const { selectedCategoryId, scope, tableKey, tabsProps, invalidateCategories } = useCategoryTabStrip(
+    { key: module.key, apiBasePath: module.apiBasePath },
+    fetchRequestManagementTabs,
+  )
   // Writes mark the shared dashboard cache stale; the statistics page reads it (spec 0185).
   const invalidateDashboard = useInvalidateRequestDashboard()
-
-  const invalidateCategories = useInvalidateRequestManagementCategories()
 
   const tableRef = useRef<TableViewHandle>(null)
   // A write can move the request across categories, so the tab strip and its
@@ -153,17 +159,12 @@ export function RequestManagementTable() {
         toast.success(t('requestManagement.delete.success'))
         refreshGrid()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        toast.error(
-          status === 403
-            ? t('requestManagement.delete.forbidden')
-            : t('requestManagement.delete.error'),
-        )
+        toast.error(apiErrorMessage(error, t('requestManagement.delete.error'), i18n))
       } finally {
         setDeletingId(null)
       }
     },
-    [module.apiBasePath, refreshGrid, t],
+    [module.apiBasePath, refreshGrid, t, i18n],
   )
 
   // Transfer to another Sede + Operatore (spec 0079): row and bulk share ONE
@@ -258,11 +259,11 @@ export function RequestManagementTable() {
         // Spec 0113 removed the "this Sede has no operators" 422: a record with no
         // candidate is now reported as `skipped` inside a 200. Any 422 still reaching
         // here has a different cause, so naming that one would point at the wrong thing.
-        toast.error(t('requestManagement.assign.errors.generic'))
+        toast.error(apiErrorMessage(error, t('requestManagement.assign.errors.generic'), i18n))
         throw error
       }
     },
-    [assignMutation, assignIds, t],
+    [assignMutation, assignIds, t, i18n],
   )
 
   const openAssignDialog = useCallback((selection: TableSelection) => {
@@ -274,6 +275,7 @@ export function RequestManagementTable() {
   // one chosen user onto every selected row, or `null` to clear the slot. Its
   // whole flow (gate, label, dialog state, mutation) lives in its own hook.
   const managerGa1 = useRequestManagerGa1Assignment({
+    // `null` on a root tab too (spec 0337 D-3): a branch has no single category to resolve labels for.
     categoryId: selectedCategoryId,
     onAssigned: clearSelectionAndRefresh,
   })
@@ -382,16 +384,7 @@ export function RequestManagementTable() {
         }
       />
 
-      <RequestManagementCategoryTabs
-        categories={categories}
-        selectedCategoryId={selectedCategoryId}
-        onSelect={setCategoryId}
-        favoriteCategoryIds={categoryTabPreferences.preferences.favorite_category_ids}
-        showOnlyFavorites={categoryTabPreferences.preferences.show_only_favorites}
-        favoritesAreDefault={categoryTabPreferences.preferences.is_default}
-        onToggleFavorite={categoryTabPreferences.toggleFavorite}
-        onShowOnlyFavoritesChange={categoryTabPreferences.setShowOnlyFavorites}
-      />
+      <CategoryTabs {...tabsProps} />
 
       {/* User directive 2026-09-07: the "Linee di prodotto" cell is inline
           editable like the others, and its editor delegates to this dialog
@@ -402,10 +395,10 @@ export function RequestManagementTable() {
           // Keyed by the selection (D-4): switching tabs remounts the whole
           // table so every client-side state (search, filters, layout) restarts
           // from the freshly-scoped config's defaults instead of carrying over.
-          key={selectedCategoryId ?? 'all'}
+          key={tableKey}
           ref={tableRef}
           domain={module.key}
-          scope={selectedCategoryId !== null ? { productCategoryId: selectedCategoryId } : undefined}
+          scope={scope}
           renderers={requestManagementColumnRenderers}
           onAction={handleAction}
           isBusy={isBusy}

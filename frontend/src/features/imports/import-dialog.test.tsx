@@ -138,7 +138,11 @@ describe('ImportDialog', () => {
     uploadImportMock.mockRejectedValue(
       new AxiosError('Forbidden', '403', undefined, undefined, {
         status: 403,
-        data: { success: false, message: 'Forbidden' },
+        data: {
+          success: false,
+          message: 'Forbidden',
+          authorization: { reason: 'missing_permission', permission: 'leads.import' },
+        },
       } as never),
     )
 
@@ -146,7 +150,7 @@ describe('ImportDialog', () => {
     await uploadCsv()
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      "You don't have permission to import this data.",
+      'You do not have the «Import» permission on the «Leads» module.',
     )
     // Stays on the upload step: the file field is still present, no validating badge leaked.
     expect(screen.getByLabelText(/csv file/i)).toBeInTheDocument()

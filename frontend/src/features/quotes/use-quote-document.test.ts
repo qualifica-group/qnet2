@@ -87,10 +87,14 @@ describe('useQuoteDocument', () => {
     await waitFor(() => expect(result.current.isGenerating(9)).toBe(false))
   })
 
-  it('shows the translated forbidden message on a 403 (AC-303)', async () => {
+  it('shows the specific permission sentence on a 403 (AC-303)', async () => {
     const error = new axios.AxiosError('Forbidden', '403', undefined, undefined, {
       status: 403,
-      data: { success: false, message: 'Forbidden' },
+      data: {
+        success: false,
+        message: 'Forbidden',
+        authorization: { reason: 'missing_permission', permission: 'quotes.view' },
+      },
     } as never)
     generateQuoteDocumentMock.mockRejectedValue(error)
     const { result } = renderHook(() => useQuoteDocument())
@@ -99,7 +103,7 @@ describe('useQuoteDocument', () => {
       await result.current.generate(9, 'QUO-0009')
     })
 
-    expect(toastErrorMock).toHaveBeenCalledWith("You don't have permission to generate this document.")
+    expect(toastErrorMock).toHaveBeenCalledWith('You do not have the «View» permission on the «Quotes» module.')
   })
 
   it("shows the backend's own message on a 422 (AC-303, e.g. no_layout_available)", async () => {

@@ -104,6 +104,7 @@ it('imports a company with every field, remapped relations and no notification o
         ->and($registry->commercial_id)->toBe($commercial->id)
         ->and($registry->reporter_id)->toBe($reporter->id)
         ->and($registry->referents()->pluck('referents.id')->all())->toBe([$contact->id])
+        ->and($registry->primary_referent_id)->toBe($contact->id)
         ->and($registry->sectors()->pluck('sectors.id')->all())->toBe([$sector->id])
         ->and($registry->managers->pluck('pivot.position', 'id')->all())->toBe([$managerOne->id => 1, $managerTwo->id => 2])
         ->and($registry->created_at->format('Y-m-d H:i:s'))->toBe('2019-03-04 10:11:12')

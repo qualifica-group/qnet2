@@ -2,6 +2,7 @@ import { apiClient } from '@/api/client'
 import type { ApiResponse, ApiResponseWithPermissions } from '@/api/types'
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type {
+  CloneDocumentLayoutPayload,
   CreateDocumentLayoutPayload,
   DocumentLayoutDetail,
   DocumentLayoutDetailWithPermissions,
@@ -31,6 +32,22 @@ export async function createDocumentLayout(
 ): Promise<DocumentLayoutDetail> {
   const { data } = await apiClient.post<ApiResponse<DocumentLayoutDetail>>(
     '/document-layouts',
+    payload,
+  )
+  return data.data
+}
+
+/**
+ * Clones a document layout (spec 0339): a new layout of the same module with
+ * the given name/code, the source's content and copies of its images.
+ * Returns the created resource from the envelope `data`.
+ */
+export async function cloneDocumentLayout(
+  id: number,
+  payload: CloneDocumentLayoutPayload,
+): Promise<DocumentLayoutDetail> {
+  const { data } = await apiClient.post<ApiResponse<DocumentLayoutDetail>>(
+    `/document-layouts/${id}/clone`,
     payload,
   )
   return data.data

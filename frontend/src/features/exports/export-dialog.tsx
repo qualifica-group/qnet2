@@ -68,6 +68,8 @@ export interface ExportDialogProps {
   quoteId?: number | null
   /** Row-set scope to one Anagrafica (spec 0199); a no-op for every domain but `opportunities`, `quotes`, `work-orders`, `tasks`. */
   registryId?: number | null
+  /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
+  referentId?: number | null
 }
 
 /**
@@ -88,6 +90,7 @@ export function ExportDialog({
   opportunityId,
   quoteId,
   registryId,
+  referentId,
 }: ExportDialogProps) {
   const { t } = useTranslation()
   const exportState = useExport({ domain })
@@ -121,6 +124,7 @@ export function ExportDialog({
       ...(opportunityId != null ? { opportunityId } : {}),
       ...(quoteId != null ? { quoteId } : {}),
       ...(registryId != null ? { registryId } : {}),
+      ...(referentId != null ? { referentId } : {}),
     })
   }
 

@@ -28,6 +28,7 @@ export const quotes = {
     company: 'Company',
     companySite: 'Company site',
     operationalSite: 'Operational site',
+    source: 'Source',
     nextCallbackAt: 'Next callback',
     alert: 'Alert',
   },
@@ -80,7 +81,6 @@ export const quotes = {
     workflowStatus: 'Status',
     registry: 'Registry',
     referent: 'Referent',
-    source: 'Source',
     productLines: 'Product lines',
     opportunityGeneralNotes: 'Opportunity general notes',
     commercial: 'Commercial',
@@ -89,6 +89,7 @@ export const quotes = {
     company: 'Company',
     companySite: 'Company site',
     operationalSite: 'Operational site',
+    source: 'Source',
     layout: 'Layout',
     paymentMethod: 'Payment method',
     rewards: 'Rewards',
@@ -112,7 +113,6 @@ export const quotes = {
     },
     generatingDocument: 'Generating…',
     documentGenerated: 'PDF generated successfully.',
-    documentForbidden: "You don't have permission to generate this document.",
     documentGenericError: 'Unable to generate the document. Please try again.',
   },
   /**
@@ -216,6 +216,8 @@ export const quotes = {
     companySiteSearch: 'Search sites…',
     operationalSite: 'Operational site',
     operationalSiteSearch: 'Search operational sites…',
+    source: 'Source',
+    sourceSearch: 'Search sources…',
     layout: 'Layout',
     layoutSearch: 'Search layouts…',
     paymentMethod: 'Payment method',
@@ -244,7 +246,6 @@ export const quotes = {
     deleted: 'Quote deleted successfully.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the quote. Please try again.',
-    deleteForbidden: 'You cannot delete this quote.',
     sections: {
       dynamicFields: {
         title: 'Additional information',

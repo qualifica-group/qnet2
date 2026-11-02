@@ -6,6 +6,7 @@ import type {
   ManagerRef,
   ReferenceRef,
   RegistryDetail,
+  RegistryReferentRef,
   SizeClass,
 } from '@/features/registries/types'
 import type { RegistryFormValues } from '@/features/registries/use-registry-form'
@@ -14,7 +15,9 @@ import type { RegistryFormValues } from '@/features/registries/use-registry-form
 export interface RegistryRecordValues {
   source: ReferenceRef | null
   sectors: ReferenceRef[]
-  referents: ReferenceRef[]
+  referents: RegistryReferentRef[]
+  /** Spec 0330: the main referent, one of `referents`. */
+  primary_referent: ReferenceRef | null
   commercial: ReferenceRef | null
   reporter: ReferenceRef | null
   supervisor: ReferenceRef | null
@@ -44,6 +47,7 @@ export function persistedRegistryValues(registry: RegistryDetail): RegistryRecor
     source: registry.source,
     sectors: registry.sectors,
     referents: registry.referents,
+    primary_referent: registry.primary_referent,
     commercial: registry.commercial,
     reporter: registry.reporter,
     supervisor: registry.supervisor,

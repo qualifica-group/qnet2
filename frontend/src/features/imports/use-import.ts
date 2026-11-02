@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import axios from 'axios'
+import i18n from '@/i18n'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import { confirmImport, getImportRun, uploadImport } from '@/features/imports/api'
 import { importKeys } from '@/features/imports/query-keys'
 import { useStallTimeout } from '@/hooks/use-stall-timeout'
@@ -28,7 +30,8 @@ const POLLING_STATUSES: ReadonlySet<ImportStatus> = new Set(['validating', 'proc
  */
 function resolveImportErrorMessage(error: unknown, t: TFunction): string {
   const status = axios.isAxiosError(error) ? error.response?.status : undefined
-  if (status === 403) return t('imports.errors.forbidden')
+  const forbidden = forbiddenMessage(error, i18n)
+  if (forbidden) return forbidden
   if (status === 422) return t('imports.errors.validation')
   if (status === 409) return t('imports.errors.invalidState')
   return t('imports.errors.generic')

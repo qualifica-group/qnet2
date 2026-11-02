@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { AxiosError, AxiosHeaders } from 'axios'
 import '@/i18n'
 import { TaskBoardBulkBar } from '@/features/work-orders/task-board/task-board-bulk-bar'
 
@@ -47,7 +48,12 @@ function renderBulkBar(selectedTaskIds: number[], onClear = vi.fn()) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <TaskBoardBulkBar workOrderId={9} selectedTaskIds={selectedTaskIds} onClear={onClear} />
+      <TaskBoardBulkBar
+        workOrderId={9}
+        selectedTaskIds={selectedTaskIds}
+        tasksById={new Map(selectedTaskIds.map((id) => [id, { title: `Task ${id}` }]))}
+        onClear={onClear}
+      />
     </QueryClientProvider>,
   )
   return { onClear }
@@ -106,10 +112,34 @@ describe('TaskBoardBulkBar', () => {
         task_ids: [5],
         closure_feedback: 'Consegnato',
         time_entry: expect.objectContaining({ minutes: 60 }),
+        // REQUIREMENT CHANGED (spec 0338): the segnatempo is a total, split by time_entry_shares.
+        time_entry_shares: [{ task_id: 5, minutes: 60 }],
         for_all_assignees: false,
       }),
     )
     expect(onClear).toHaveBeenCalled()
+  })
+
+  it('Completa: on 422 incompatible_tasks shows the reasons and keeps the pop-up open with its data (spec 0338 AC-012)', async () => {
+    const error = new AxiosError('failed')
+    error.response = {
+      status: 422,
+      statusText: 'error',
+      headers: {},
+      config: { headers: new AxiosHeaders() },
+      data: { success: false, message: 'x', errors: { task_ids: ['x'] }, incompatible_tasks: [{ id: 5, reason: 'Bloccato.' }] },
+    }
+    bulkBoardTaskActionMock.mockRejectedValue(error)
+    const { onClear } = renderBulkBar([5])
+
+    fireEvent.click(screen.getByRole('button', { name: /Completa/ }))
+    fireEvent.change(await screen.findByLabelText('Feedback di chiusura'), { target: { value: 'Consegnato' } })
+    fireEvent.change(screen.getByLabelText(/Tempo/), { target: { value: '01:00' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Completa', hidden: false }))
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.any(String), { description: expect.stringContaining('Bloccato.') }))
+    expect(screen.getByLabelText('Feedback di chiusura')).toHaveValue('Consegnato')
+    expect(onClear).not.toHaveBeenCalled()
   })
 
   it('Completa: the all-assignees checkbox is unchecked by default and sends true once checked (spec 0319)', async () => {

@@ -1,4 +1,4 @@
-import { Briefcase, Building, Building2, Handshake, MapPin, UserRound } from 'lucide-react'
+import { Briefcase, Building, Building2, Handshake, MapPin, Radio, UserRound } from 'lucide-react'
 import type { ICellRendererParams } from 'ag-grid-community'
 import { CELL_WRAPPER, DateTimeCell } from '@/features/table/cell-renderers'
 import { CodeBadgeCell, CurrencyCell, RefNamesCell, RelationCell, StatusBadgeCell } from '@/features/table/rich-cells'
@@ -60,6 +60,7 @@ export const quoteColumnRenderers: TableRendererMap = {
   company: (params) => <RelationCell {...params} icon={Building2} />,
   company_site: (params) => <RelationCell {...params} icon={Building} />,
   operational_site: (params) => <RelationCell {...params} icon={MapPin} />,
+  source: (params) => <RelationCell {...params} icon={Radio} />,
   next_callback_at: (params) => <DateTimeCell {...params} optionalTime />,
   alert: (params) => <AlertCell {...params} />,
   offer_lines: (params) => <OfferLinesCell {...params} />,

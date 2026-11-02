@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { useOptionalConfirm } from '@/components/confirm-dialog-context'
 import { defaultProductSupplierOf, productPriceFor } from '@/features/products/product-suppliers'
 import { fetchQuoteCommissionDefaults, fetchQuoteCommissionRecipients } from '@/features/quotes/api'
@@ -97,7 +98,7 @@ export function useQuoteLineCommissions({
   onChange,
   commissionContext,
 }: UseQuoteLineCommissionsArgs): QuoteLineCommissionsAdapter {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const confirm = useOptionalConfirm()
   const previousContext = useRef(commissionContext)
 
@@ -111,8 +112,8 @@ export function useQuoteLineCommissions({
 
     void Promise.all(value.map((row) => resyncRow(row, commissionContext, roles)))
       .then(onChange)
-      .catch(() => toast.error(t('quotes.form.commissions.defaultsError')))
-  }, [commissionContext, onChange, t, value])
+      .catch((error: unknown) => toast.error(apiErrorMessage(error, t('quotes.form.commissions.defaultsError'), i18n)))
+  }, [commissionContext, onChange, t, i18n, value])
 
   return useMemo(() => {
     const defaultsFor = async (productId: number, lineNetAmount: number, supplierId: number | null): Promise<LineCommissionDefaults> => {
@@ -137,8 +138,8 @@ export function useQuoteLineCommissions({
             items.map(async (item) => [item.id, await defaultsFor(item.id, DEFAULT_LINE_QUANTITY * unitPriceOf(item), defaultSupplierIdOf(item))] as const),
           )
           return new Map(resolved)
-        } catch {
-          toast.error(t('quotes.form.commissions.defaultsError'))
+        } catch (error) {
+          toast.error(apiErrorMessage(error, t('quotes.form.commissions.defaultsError'), i18n))
           return null
         }
       },
@@ -159,8 +160,8 @@ export function useQuoteLineCommissions({
         }
         try {
           return await defaultsFor(item.id, (row.quantity ?? 0) * unitPriceOf(item), defaultSupplierIdOf(item))
-        } catch {
-          toast.error(t('quotes.form.commissions.defaultsError'))
+        } catch (error) {
+          toast.error(apiErrorMessage(error, t('quotes.form.commissions.defaultsError'), i18n))
           return null
         }
       },
@@ -182,11 +183,11 @@ export function useQuoteLineCommissions({
         }
         try {
           return await defaultsFor(row.product_id, (row.quantity ?? 0) * (row.unit_price ?? 0), supplierId)
-        } catch {
-          toast.error(t('quotes.form.commissions.defaultsError'))
+        } catch (error) {
+          toast.error(apiErrorMessage(error, t('quotes.form.commissions.defaultsError'), i18n))
           return null
         }
       },
     }
-  }, [commissionContext, confirm, t])
+  }, [commissionContext, confirm, t, i18n])
 }

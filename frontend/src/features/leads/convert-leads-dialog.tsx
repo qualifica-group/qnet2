@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -55,7 +56,7 @@ export function ConvertLeadsDialog({
   rows,
   onConverted,
 }: ConvertLeadsDialogProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [blockers, setBlockers] = useState<LeadConversionBlocker[] | null>(null)
 
   const convertMutation = useConvertLeads({
@@ -93,9 +94,9 @@ export function ConvertLeadsDialog({
         return
       }
 
-      toast.error(t('leads.bulkConvert.errors.generic'))
+      toast.error(apiErrorMessage(error, t('leads.bulkConvert.errors.generic'), i18n))
     }
-  }, [convertMutation, rows, t])
+  }, [convertMutation, rows, t, i18n])
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

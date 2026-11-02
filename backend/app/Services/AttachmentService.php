@@ -5,6 +5,7 @@ namespace App\Services;
 use App\DataObjects\Attachments\CreateAttachmentData;
 use App\Models\Attachment;
 use App\Models\User;
+use App\Services\Attachments\LegacyAttachmentFetcher;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,8 @@ use Throwable;
  */
 class AttachmentService
 {
+    public function __construct(private readonly LegacyAttachmentFetcher $legacyFetcher) {}
+
     /**
      * Store an uploaded file from the HTTP boundary (validated DTO), authored by
      * the given actor and optionally linked to a polymorphic owner.
@@ -64,6 +67,10 @@ class AttachmentService
      */
     public function copyTo(Attachment $source, Model $target, ?string $collection, User $uploader): Attachment
     {
+        if ($source->isLegacyLink()) {
+            return $this->copyLegacyTo($source, $target, $collection, $uploader);
+        }
+
         $disk = $source->disk;
         $directory = trim((string) config('attachments.directory'), '/');
         $storedName = (string) Str::uuid().($source->extension !== null ? '.'.$source->extension : '');
@@ -99,6 +106,26 @@ class AttachmentService
 
             throw $exception;
         }
+    }
+
+    /**
+     * A link-only legacy document (spec 0295 D-8) has no local binary: its
+     * bytes are downloaded from the legacy (bounded by `attachments.max_size`)
+     * and stored as a fresh LOCAL attachment on the attachments disk, so the
+     * copy outlives the legacy QNet.
+     */
+    private function copyLegacyTo(Attachment $source, Model $target, ?string $collection, User $uploader): Attachment
+    {
+        $contents = $this->legacyFetcher->contents($source, (int) config('attachments.max_size') * 1024);
+
+        return $this->storeBinary(
+            $target,
+            $collection ?? $source->collection ?? 'documents',
+            $source->original_name,
+            $source->mime_type,
+            $contents,
+            $uploader,
+        );
     }
 
     /**
@@ -148,7 +175,7 @@ class AttachmentService
     }
 
     /**
-     * Delete the attachment metadata and its stored binary.
+     * Delete the attachment metadata and its stored binary (none for a legacy link).
      *
      * The row is deleted first inside a transaction; the file is removed only
      * after the row is gone, so a failed DB delete never leaves a dangling
@@ -158,12 +185,16 @@ class AttachmentService
     {
         $disk = $attachment->disk;
         $path = $attachment->path;
+        $isLegacyLink = $attachment->isLegacyLink();
 
         DB::transaction(function () use ($attachment): void {
             $attachment->delete();
         });
 
-        Storage::disk($disk)->delete($path);
+        // A legacy link has no local binary and its legacy file is never touched (D-4).
+        if (! $isLegacyLink) {
+            Storage::disk($disk)->delete($path);
+        }
     }
 
     /**

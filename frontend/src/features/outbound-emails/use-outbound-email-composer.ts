@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useForm, useFormState } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { toast } from 'sonner'
 import { useConfirm } from '@/components/confirm-dialog-context'
 import type { EmailOwnerRef } from '@/features/outbound-emails/types'
@@ -49,7 +50,7 @@ export function useOutboundEmailComposer({
   open,
   onOpenChange,
 }: UseOutboundEmailComposerOptions) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const confirm = useConfirm()
   const initializedRef = useRef(false)
 
@@ -99,7 +100,7 @@ export function useOutboundEmailComposer({
       toast.success(t('outboundEmails.composer.draftSaved'))
     } catch (error) {
       if (!applyComposerValidationErrors(error, form.setError)) {
-        toast.error(t('outboundEmails.composer.genericError'))
+        toast.error(apiErrorMessage(error, t('outboundEmails.composer.genericError'), i18n))
       }
     }
   })
@@ -126,7 +127,7 @@ export function useOutboundEmailComposer({
       onOpenChange(false)
     } catch (error) {
       if (!applyComposerValidationErrors(error, form.setError)) {
-        toast.error(t('outboundEmails.composer.genericError'))
+        toast.error(apiErrorMessage(error, t('outboundEmails.composer.genericError'), i18n))
       }
     }
   }
@@ -145,8 +146,8 @@ export function useOutboundEmailComposer({
       await remove.mutateAsync()
       toast.success(t('outboundEmails.composer.deleted'))
       onOpenChange(false)
-    } catch {
-      toast.error(t('outboundEmails.composer.genericError'))
+    } catch (error) {
+      toast.error(apiErrorMessage(error, t('outboundEmails.composer.genericError'), i18n))
     }
   }
 

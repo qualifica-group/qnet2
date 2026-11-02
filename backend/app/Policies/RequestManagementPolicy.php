@@ -56,6 +56,17 @@ class RequestManagementPolicy extends BasePolicy
     }
 
     /**
+     * Resource-level gate for the competence tier (spec 0340): the actor also
+     * sees the requests whose opportunity carries a product line in their
+     * assignment competence, on every Sede. UNION with the operator and site
+     * tiers; a ROW gate that grants no action (D-5).
+     */
+    public function viewCompetence(User $user): bool
+    {
+        return $user->can($this->permission('viewCompetence'));
+    }
+
+    /**
      * Resource-level gate for the documents surface of this module (row
      * action + dialog). The per-attachment boundary stays with
      * AttachmentPolicy (`attachments.*`) on each attachment endpoint.
@@ -136,6 +147,6 @@ class RequestManagementPolicy extends BasePolicy
      */
     public static function abilities(): array
     {
-        return [...parent::abilities(), 'viewAll', 'viewSite', 'viewDocuments', 'assignOperator', 'assignManagerGa1', 'transferContact', 'appendTeamMember'];
+        return [...parent::abilities(), 'viewAll', 'viewSite', 'viewCompetence', 'viewDocuments', 'assignOperator', 'assignManagerGa1', 'transferContact', 'appendTeamMember'];
     }
 }

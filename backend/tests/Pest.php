@@ -43,6 +43,7 @@ require_once __DIR__.'/Helpers/RoleAbilityHelpers.php';
 require_once __DIR__.'/Helpers/PaymentMethodHelpers.php';
 require_once __DIR__.'/Helpers/RequestManagementHelpers.php';
 require_once __DIR__.'/Helpers/CampaignHelpers.php';
+require_once __DIR__.'/Helpers/CategoryTabHelpers.php';
 require_once __DIR__.'/Helpers/RegistryHelpers.php';
 require_once __DIR__.'/Helpers/ProformaRequestHelpers.php';
 require_once __DIR__.'/Helpers/ProformaMultiQuoteHelpers.php';
@@ -83,6 +84,9 @@ require_once __DIR__.'/Helpers/AbsenceInsightHelpers.php';
 require_once __DIR__.'/Helpers/StaffTrainingHelpers.php';
 require_once __DIR__.'/Helpers/SkillHelpers.php';
 require_once __DIR__.'/Helpers/StockHelpers.php';
+require_once __DIR__.'/Helpers/PersonalDataHelpers.php';
+require_once __DIR__.'/Helpers/OfferProjectionHelpers.php';
+require_once __DIR__.'/Helpers/CompetenceVisibilityHelpers.php';
 
 /*
 |--------------------------------------------------------------------------

@@ -212,9 +212,9 @@ describe('ContractMultiProgramDialog (spec 0267)', () => {
     expect(submitButton()).toBeDisabled()
   })
 
-  it('falls back to a generic toast on 403', async () => {
+  it('shows the server reason of a 403 in the toast', async () => {
     vi.mocked(createMultiQuoteWorkOrder).mockRejectedValue(
-      Object.assign(new Error('Forbidden'), { isAxiosError: true, response: { status: 403, data: {} } }),
+      Object.assign(new Error('Forbidden'), { isAxiosError: true, response: { status: 403, data: { success: false, message: 'Vietato.' } } }),
     )
     renderDialog()
     await screen.findByText('Corso base')
@@ -224,6 +224,6 @@ describe('ContractMultiProgramDialog (spec 0267)', () => {
 
     fireEvent.click(submitButton())
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalled())
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Vietato.'))
   })
 })

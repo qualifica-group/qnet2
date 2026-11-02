@@ -28,6 +28,9 @@ it('index: business-function-members is unavailable in users link-only mode', fu
 });
 
 it('index: every source is available with the default full users import', function () {
+    // REQUIREMENT CHANGED (spec 0295 D-14): `attachments` is available only with the legacy files base URL.
+    config(['migrations.legacy_files_base_url' => 'https://legacy-files.test']);
+    config(['migrations.users_link_only' => false]);
     Sanctum::actingAs(migrationsSuperAdminActor());
 
     $sources = collect($this->getJson('/api/migrations')->assertOk()->json('data.sources'));

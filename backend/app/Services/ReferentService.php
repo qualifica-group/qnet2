@@ -8,7 +8,9 @@ use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\DataObjects\Users\ProfileData;
 use App\Models\Referent;
+use App\Models\Registry;
 use App\Models\User;
+use App\Services\Registries\PrimaryReferentElector;
 use Closure;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -49,7 +51,10 @@ class ReferentService
         'personalData.addresses.country',
     ];
 
-    public function __construct(private readonly ReferentProfileWriter $profileWriter) {}
+    public function __construct(
+        private readonly ReferentProfileWriter $profileWriter,
+        private readonly PrimaryReferentElector $primaryReferentElector,
+    ) {}
 
     /**
      * Eager-load the nested read tree so a plain GET /referents/{referent}
@@ -122,6 +127,9 @@ class ReferentService
      * addresses) cascade away via HasPersonalData. The former lead guard
      * (spec 0024 BR-2/D-4) moved to RegistryService::delete() — spec 0041
      * D-1: a Lead's contact is now an Anagrafica, not a Referent.
+     *
+     * Spec 0330 D-4: the registries that had this referent as principale are
+     * re-elected (the FK nulls the column, the pivot cascades away).
      */
     public function delete(Referent $referent): void
     {
@@ -129,7 +137,15 @@ class ReferentService
             abort(409, 'This referent has opportunities and cannot be deleted.');
         }
 
-        $referent->delete();
+        DB::transaction(function () use ($referent): void {
+            $registries = Registry::query()->where('primary_referent_id', $referent->id)->get();
+
+            $referent->delete();
+
+            foreach ($registries as $registry) {
+                $this->primaryReferentElector->elect($registry->refresh(), null);
+            }
+        });
     }
 
     /**

@@ -81,10 +81,10 @@ function renderWith(node: ReactNode) {
   )
 }
 
-function axiosError(status: number) {
+function axiosError(status: number, data: Record<string, unknown> = { success: false, message: 'server message' }) {
   return new AxiosError('error', String(status), undefined, undefined, {
     status,
-    data: { success: false, message: 'server message' },
+    data,
   } as never)
 }
 
@@ -144,12 +144,12 @@ describe('ContractTypesTable - delete', () => {
   })
 
   it('shows a forbidden toast on a 403', async () => {
-    deleteMock.mockRejectedValue(axiosError(403))
+    deleteMock.mockRejectedValue(axiosError(403, { success: false, message: 'Forbidden', authorization: { reason: 'missing_permission', permission: 'contract-types.delete' } }))
 
     renderWith(<ContractTypesTable />)
     screen.getByRole('button', { name: 'delete row' }).click()
 
-    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('You cannot delete this contract type.'))
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('You do not have the «Delete» permission on the «Contract types» module.'))
   })
 
   it('shows a distinct "in use" message on a 409', async () => {

@@ -30,6 +30,7 @@ export interface TableViewHandle {
 export interface UseTableViewGridStateArgs {
   domain: string
   productCategoryId?: number
+  productCategoryBranchId?: number
   opportunityId?: number
   quoteId?: number
   /** Applied when the saved filter model is empty (see `TableViewProps.defaultFilterModel`). */
@@ -37,6 +38,8 @@ export interface UseTableViewGridStateArgs {
   /** Merged over the saved/default model at mount (see `TableViewProps.forcedFilterModel`). */
   forcedFilterModel?: Record<string, unknown>
   registryId?: number
+  /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
+  referentId?: number
   onRowCountChanged?: (count: number | null) => void
   getBulkActions?: (selection: TableSelection) => BulkAction[]
   disableBuiltinDelete?: boolean
@@ -87,11 +90,13 @@ export function useTableViewGridState(
   const {
     domain,
     productCategoryId,
+    productCategoryBranchId,
     opportunityId,
     quoteId,
     defaultFilterModel,
     forcedFilterModel,
     registryId,
+    referentId,
     onRowCountChanged,
     getBulkActions,
     disableBuiltinDelete,
@@ -166,7 +171,7 @@ export function useTableViewGridState(
 
   // The quick search and active custom filter kept in the browser across a
   // reload; column/advanced filters are restored from the config instead.
-  const localFilters = useTableLocalFilters({ domain, productCategoryId, opportunityId, quoteId, registryId })
+  const localFilters = useTableLocalFilters({ domain, productCategoryId, productCategoryBranchId, opportunityId, quoteId, registryId, referentId })
 
   // Client-only toolbar state (search term + ⌘K, floating filters, fullscreen,
   // live row count), owned by a dedicated hook so this component stays a thin
@@ -249,9 +254,11 @@ export function useTableViewGridState(
         getAdvancedFilters: advancedFilters.getApplied,
         getCustomFilterRules: customFilterState.getActive,
         productCategoryId,
+        productCategoryBranchId,
         opportunityId,
         quoteId,
         registryId,
+        referentId,
         onAggregates: setAggregates,
         treeData,
         rowGrouping,
@@ -262,9 +269,11 @@ export function useTableViewGridState(
       advancedFilters.getApplied,
       customFilterState.getActive,
       productCategoryId,
+      productCategoryBranchId,
       opportunityId,
       quoteId,
       registryId,
+      referentId,
       treeData,
       rowGrouping,
     ],

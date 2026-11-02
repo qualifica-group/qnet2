@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetToolbar } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -40,7 +41,7 @@ function MovementRow({ movement }: { movement: StockMovement }) {
 }
 
 function HistoryBody({ target }: { target: StockHistoryFilters }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const history = useStockHistory(target)
 
   if (history.isLoading) {
@@ -49,7 +50,7 @@ function HistoryBody({ target }: { target: StockHistoryFilters }) {
   if (history.isError) {
     return (
       <div className="flex items-center gap-2 text-sm text-destructive" role="alert">
-        {t('stock.history.loadError')}
+        {apiErrorMessage(history.error, t('stock.history.loadError'), i18n)}
         <Button type="button" variant="outline" size="sm" onClick={() => void history.refetch()}>
           {t('common.retry')}
         </Button>

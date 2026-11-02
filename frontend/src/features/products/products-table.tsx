@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import axios from 'axios'
 import { Plus, Tags } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { Can } from '@/features/auth/can'
@@ -39,7 +39,7 @@ const NO_TARGETS: readonly ProductCostTypeTarget[] = []
  * each call.
  */
 export function ProductsTable() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const stats = useStatsPanel(PRODUCTS_DOMAIN)
   const invalidateStats = useInvalidateModuleStats(PRODUCTS_DOMAIN)
 
@@ -71,15 +71,12 @@ export function ProductsTable() {
         refreshGrid()
         invalidateStats()
       } catch (error) {
-        const status = axios.isAxiosError(error) ? error.response?.status : undefined
-        toast.error(
-          status === 403 ? t('products.form.deleteForbidden') : t('products.form.deleteError'),
-        )
+        toast.error(apiErrorMessage(error, t('products.form.deleteError'), i18n))
       } finally {
         setDeletingId(null)
       }
     },
-    [refreshGrid, t, invalidateStats],
+    [refreshGrid, t, i18n, invalidateStats],
   )
 
   const handleAction: RowActionHandler = useCallback(

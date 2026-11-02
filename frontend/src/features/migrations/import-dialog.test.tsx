@@ -119,7 +119,11 @@ describe('ImportDialog (migrations)', () => {
     startMigrationImportMock.mockRejectedValue(
       new AxiosError('Forbidden', '403', undefined, undefined, {
         status: 403,
-        data: { success: false, message: 'Forbidden' },
+        data: {
+          success: false,
+          message: 'Forbidden',
+          authorization: { reason: 'missing_permission', permission: 'leads.import' },
+        },
       } as never),
     )
 
@@ -127,7 +131,7 @@ describe('ImportDialog (migrations)', () => {
     fireEvent.click(screen.getByRole('button', { name: /^start import$/i }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      "You don't have permission to access migrations.",
+      'You do not have the «Import» permission on the «Leads» module.',
     )
     expect(screen.getByRole('button', { name: /^start import$/i })).toBeInTheDocument()
     expect(fetchMigrationRunMock).not.toHaveBeenCalled()

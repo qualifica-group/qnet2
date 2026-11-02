@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useFormSubmitError } from '@/features/auth/use-form-submit-error'
 import { useForm, useWatch } from 'react-hook-form'
 import type { Path, Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -7,6 +8,7 @@ import axios from 'axios'
 import { toast } from 'sonner'
 import { seedAttributeValues } from '@/features/attributes/attribute-values'
 import { applyServerValidationErrors } from '@/features/auth/form-errors'
+import { apiErrorMessage } from '@/lib/forbidden-message'
 import { hasPhoneContact } from '@/features/personal-data/create-validation'
 import {
   describeAddressIssues,
@@ -97,8 +99,8 @@ function collectPrefixedServerErrors(error: unknown, prefixes: string[]): string
  * navigation is the caller's concern (mirrors every other `ModuleFormScreen`).
  */
 export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
-  const { t } = useTranslation()
-  const [serverError, setServerError] = useState<string | null>(null)
+  const { t, i18n } = useTranslation()
+  const [serverError, setServerError] = useFormSubmitError()
   // Bumped on every refused save so the buffered identity card marks its own
   // missing fields (it takes no part in this form's submit).
   const [revalidateSignal, setRevalidateSignal] = useState(0)
@@ -285,7 +287,7 @@ export function useRequestCreateForm({ onSuccess }: UseRequestCreateFormArgs) {
       setProductLinesError(productLinesMessage)
       setRewardsError(rewardsMessage)
       if (!mappedScalar && !clientMessage && !productLinesMessage && !rewardsMessage) {
-        setServerError(t('requestManagement.form.create.errors.generic'))
+        setServerError(apiErrorMessage(error, t('requestManagement.form.create.errors.generic'), i18n))
       }
     }
   })

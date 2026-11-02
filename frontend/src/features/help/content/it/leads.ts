@@ -129,7 +129,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ["Nell'opportunità", 'Da dove arriva'],
           rows: [
-            ['Anagrafica, Fonte, Note generali', 'Dal lead.'],
+            ['Anagrafica, Note generali', 'Dal lead.'],
             ['Sede operativa', 'La sede del lead, modificabile.'],
             ['Gestori account', 'L\'operatore del lead diventa il secondo gestore account.'],
             ['Righe di classificazione', 'Funzioni aziendali e categorie della campagna (o del suo progetto).'],

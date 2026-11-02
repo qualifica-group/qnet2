@@ -74,7 +74,7 @@ export function RegistryOpportunitiesPanel({ registryId, onRowCountChanged }: Re
       <RegistryRelatedGrid
         ref={tableRef}
         domain={OPPORTUNITIES_DOMAIN}
-        registryId={registryId}
+        rowScope={{ registryId }}
         renderers={opportunityColumnRenderers}
         iconMap={OPPORTUNITIES_ACTION_ICONS}
         onAction={handleAction}
@@ -107,7 +107,7 @@ export function RegistryQuotesPanel({ registryId, onRowCountChanged }: RegistryR
       <RegistryRelatedGrid
         ref={tableRef}
         domain={QUOTES_DOMAIN}
-        registryId={registryId}
+        rowScope={{ registryId }}
         renderers={quoteColumnRenderers}
         iconMap={QUOTES_ACTION_ICONS}
         onAction={handleAction}
@@ -162,7 +162,7 @@ export function RegistryWorkOrdersPanel({ registryId, onRowCountChanged }: Regis
       <RegistryRelatedGrid
         ref={tableRef}
         domain={WORK_ORDERS_DOMAIN}
-        registryId={registryId}
+        rowScope={{ registryId }}
         renderers={renderers}
         iconMap={iconMap}
         onAction={handleAction}
@@ -227,7 +227,7 @@ export function RegistryTasksPanel({ registryId, onRowCountChanged }: RegistryRe
       <RegistryRelatedGrid
         ref={tableRef}
         domain={TASKS_DOMAIN}
-        registryId={registryId}
+        rowScope={{ registryId }}
         renderers={taskColumnRenderers}
         iconMap={TASK_ACTION_ICONS}
         onAction={handleAction}
@@ -268,7 +268,7 @@ export function RegistryCommissionConfigurationsPanel({ registryId, onRowCountCh
       <RegistryRelatedGrid
         ref={tableRef}
         domain={COMMISSION_CONFIGURATIONS_DOMAIN}
-        registryId={registryId}
+        rowScope={{ registryId }}
         renderers={commissionConfigurationColumnRenderers}
         onAction={handleAction}
         isBusy={isBusy}

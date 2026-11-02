@@ -34,6 +34,8 @@ export const registries = {
     subtitle: 'Read-only view of the selected registry.',
     loadError: 'Unable to load the registry. Please try again.',
     details: 'Details',
+    // Badge on the main referent's card (spec 0330).
+    primaryReferentBadge: 'Main',
     // Read-only tab of the registry's documents on the Opportunity, Quote and
     // Work order details (spec 0173).
     registryDocumentsTab: 'Registry documents',
@@ -73,6 +75,8 @@ export const registries = {
     referentsEmpty: 'No referents found.',
     referentsError: 'Unable to load referents.',
     referentsRemove: 'Remove referent',
+    primaryReferent: 'Main referent',
+    primaryReferentPlaceholder: 'Select the main referent…',
     managers: 'Account managers',
     managersPlaceholder: 'Select account managers…',
     managersSearch: 'Search account managers…',
@@ -116,7 +120,6 @@ export const registries = {
     deleted: 'Registry deleted successfully.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the registry. Please try again.',
-    deleteForbidden: 'You cannot delete this registry.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The registry has not been created yet: what you entered will be lost.',

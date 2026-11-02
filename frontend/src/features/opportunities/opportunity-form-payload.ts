@@ -64,9 +64,6 @@ export function buildCreatePayload(
   if (!locked.has('referent_id')) {
     payload.referent_id = values.referent_id
   }
-  if (!locked.has('source_id')) {
-    payload.source_id = values.source_id
-  }
 
   // Spec 0059 D-3: nothing to sync away on a fresh create, so an empty set is
   // simply omitted (identical server-side outcome to sending `[]`); a
@@ -116,9 +113,6 @@ export function buildUpdatePayload(
   }
   if (values.supervisor_id !== original.supervisor_id) {
     payload.supervisor_id = values.supervisor_id
-  }
-  if (values.source_id !== original.source_id) {
-    payload.source_id = values.source_id
   }
   if (values.operational_site_id !== (original.operational_site_id ?? null)) {
     payload.operational_site_id = values.operational_site_id

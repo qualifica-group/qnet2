@@ -224,9 +224,8 @@ class UpdateRequestRequest extends FormRequest
      * forecast trio stayed Opportunity-level (read through the Quote's own `opportunity`
      * relation) — see OPPORTUNITY_FIELDS.
      * `next_callback_at` left that set with the user directive 2026-09-04 —
-     * a real Quote column now, read by the generic reader. `source_id` needs
-     * no override: Quote's own virtual `sourceId()` accessor (D-10) already
-     * reads through correctly.
+     * a real Quote column now, read by the generic reader, and so is
+     * `source_id` since spec 0332.
      *
      * `manager_slots` (spec 0097) needs one for a different reason: it is a
      * WIRE shape, not an attribute — the persisted side is the `quote_user`

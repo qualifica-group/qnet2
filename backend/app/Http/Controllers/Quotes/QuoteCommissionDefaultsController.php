@@ -39,7 +39,7 @@ class QuoteCommissionDefaultsController extends BaseApiController
 
             $permissions = $this->redactor->permissions($request->user(), $quote);
 
-            abort_unless($permissions['commissions']->editable, 403);
+            abort_unless($permissions['commissions']->editable, 403, __('You cannot edit the commissions of this quote.'));
 
             // Spec 0306, D-6/AC-009: the preview direction is the resolved
             // Supplier rule's (PAID while the typology is on and no rule

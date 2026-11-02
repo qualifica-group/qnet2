@@ -33,6 +33,7 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'task-statuses',
   'task-types',
   'task-categories',
+  'support-topics',
   'task-priorities',
   'task-importances',
   'task-templates',

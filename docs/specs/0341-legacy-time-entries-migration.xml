@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0341-legacy-time-entries-migration" status="approved" owner="nicola" date="2026-11-02">
+
+  <goal>
+    Il super-admin importa dalla pagina Migrazioni tutti i segnatempo del QNet legacy (intervalli e note di
+    giornata) nel modulo Segnatempo di qnet-2, senza perdere in silenzio nessun record: cio' che non si puo'
+    importare compare nel report come riga fallita con il motivo.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-11-02 (domande in sessione):
+    U-1 Durate anomale (0 minuti, fine prima dell'inizio, timer ancora aperti) -> scartate e mostrate come righe
+        fallite con il motivo.
+    U-2 Nessuna nota collaborativa creata sulle commesse: la nota resta nel campo `notes` del segnatempo.
+    U-3 Tutto lo storico (legacy dal 2025-01-01 al 2026-10-29).
+    U-4 Collegamento (task, commessa, opportunita', anagrafica, fase) non migrato -> segnatempo importato senza
+        quel collegamento, con un avviso. Utente non migrato -> riga fallita.
+
+    Legacy (`/Users/Repository/qnet`), verificato sui dati reali il 2026-11-02:
+    - `working_activity_days` (163.236): `user_id`, `day`, `title` (1.028 vuoti, max 255), `type`
+      (task 145.859, call 11.597, meeting 4.096, email 537, other 52, ticket 26, visit 17, vuoto 34), `status`
+      (running 6, paused 2), `company_id` (varchar, id `companies`), `linked_to_type` enum order/opportunity/task +
+      `linked_to_id`, `task_id`, `fase_id` (-> `ordermilestones`), `notes` (35.652, 10 con HTML).
+    - `working_activity_intervals` (162.880): `working_activity_day_id`, `task_id`, `from_time`, `to_time`,
+      `duration_minutes`, `notes` (10.916). Il 99,5% delle giornate ha un intervallo; 597 giornate non ne hanno.
+      Durata (`duration_minutes` altrimenti differenza orari): 1-720 min 159.016, 721-1440 min 4, zero 3.840,
+      negativa 15, nulla (timer aperto) 5. Nessun intervallo orfano, nessun utente cancellato.
+    - `work_activity_day_notes` (52): `user_id`, `work_date`, `note` (tutte HTML `<p>`), nessun doppione
+      utente+data.
+    - Endpoint di migrazione: `routes/apiV2-migration.php`, controller `Api/V2/*MigrationController`
+      (riferimento `NoteMigrationController`), orfani via `App\Support\Migration\LegacyOrphanRows` (spec 0303).
+
+    qnet-2, verificato:
+    - `time_entries` (spec 0122): riga piatta; `user_id`, `date`, `title` (191), `task_type_id` obbligatorio,
+      `start_time`/`end_time` nullable, `minutes` (validazione app 1-1440), `notes` (app max 5000),
+      `registry_id`/`opportunity_id`/`work_order_id`/`task_id`, `work_order_stage_id`, `work_order_note_id`.
+      Nessun `old_id`. Oggi vuota in dev.
+    - `time_entry_day_notes`: `unique(user_id, date)`, `note` testo semplice (max 5000). Nessun `old_id`.
+    - Regola D-5 (`App\Services\TimeEntries\TimeEntryLinkResolver`): con un Task, titolo, anagrafica,
+      opportunita', commessa e fase (`TaskEffectiveStage::forTask`) vengono dal Task; senza Task opportunita' e
+      commessa si escludono e prestano il cliente all'anagrafica vuota.
+    - `task_types`: Attivita', Riunione, Chiamata, Ticket, Email, Visita, Altro; lookup per nome
+      `App\Migrations\Support\LegacyTaskLookups::typeIdByName()` e `stageIdByName()` (le fasi commessa sono
+      migrate per nome, senza `old_id`, spec 0189).
+    - Motore: `AbstractMigrationSource` (item con `orphan_reason` -> riga fallita, spec 0303),
+      concern `MapsLegacyOperationalRecord` (`remapLegacyId` con avviso, `finalizeLegacyRecord`),
+      `RequiresLegacyAnchors` (`requiredOldId`, `cappedText`); registro `config/migrations.php`, fasi
+      `App\Migrations\MigrationOrder` (ultima: fase 18 `notes`).
+
+    Decisioni proposte (da validare):
+    D-1 Due sorgenti: `time-entries` (un item per intervallo legacy, id = id intervallo) e `time-entry-day-notes`
+        (id = id nota). Fase 19 di MigrationOrder, `time-entries` poi `time-entry-day-notes`.
+    D-2 Il legacy manda i dati pronti (backend.md §9): `minutes` gia' calcolati, `start_time`/`end_time` solo se
+        entrambi presenti, `type_name` nel vocabolario qnet-2 (task->Attivita', meeting->Riunione,
+        call->Chiamata, ticket->Ticket, email->Email, visit->Visita, other->Altro, vuoto->Attivita'), titolo di
+        fallback se vuoto (titolo del task legacy, altrimenti nome del tipo), note composte (nota giornata + nota
+        intervallo, separate da a capo, HTML convertito in testo), il collegamento legacy decodificato in
+        `work_order_id`/`opportunity_id`/`task_id` (task: `task_id` della giornata, altrimenti
+        `linked_to_id` di tipo task, altrimenti `task_id` dell'intervallo), `registry_id` da `company_id`,
+        `stage_name` dalla fase legacy.
+    D-3 Scarti nel legacy come item con `orphan_reason` (spec 0303), id `working_activity_intervals:{id}`:
+        durata zero, durata negativa (fine prima dell'inizio), timer aperto (nessuna durata calcolabile),
+        durata oltre 1440 minuti. Le 597 giornate senza intervalli arrivano come orfani
+        `working_activity_days:{id}` con motivo "Giornata senza intervalli": nessun record perso in silenzio.
+    D-4 qnet-2 scrive direttamente il model, senza `TimeEntryService` (che imporrebbe visibilita' del Task
+        all'utente, sovrapposizioni e sincronizzazione della nota commessa), senza activity log e senza
+        notifiche; `work_order_note_id` resta null (U-2).
+    D-5 Regola D-5 di qnet-2 applicata all'import: se il task e' migrato, titolo, anagrafica, opportunita',
+        commessa e fase vengono dal Task (senza controllo di visibilita': e' storico). Senza task: commessa e
+        opportunita' come inviate (se arrivano entrambe vince la commessa, con avviso), anagrafica = cliente
+        della commessa/opportunita' quando ce l'hanno (se l'anagrafica legacy e' diversa: avviso, come la regola
+        D-5 di qnet-2 che rifiuta un cliente incoerente), altrimenti l'anagrafica legacy; fase per nome tra le fasi della commessa (non trovata ->
+        vuota con avviso).
+    D-6 Validazione difensiva in qnet-2: utente non migrato -> riga fallita; tipo non trovato -> riga fallita;
+        `minutes` fuori 1-1440 -> riga fallita; titolo oltre 191 e note oltre 5000 troncati con avviso.
+    D-7 Idempotenza: `old_id` gia' presente -> saltato, mai riscritto. Nessuna deduplica contro segnatempo
+        inseriti a mano in qnet-2 (non c'e' una chiave affidabile): se l'utente ha gia' segnatempo qnet-2 nella
+        stessa data, la riga si importa con un avviso.
+    D-8 Note di giornata: HTML convertito in testo nel legacy; in qnet-2 una nota gia' presente per
+        utente+data senza `old_id` (scritta a mano) viene adottata: riceve l'`old_id`, il testo qnet-2 resta,
+        avviso. Nota vuota dopo la conversione -> orfano nel legacy.
+  </context>
+
+  <scope>
+    <in>
+      <item>Legacy: `TimeEntryMigrationController` (`/time-entries`, intervalli + orfani) e
+        `TimeEntryDayNoteMigrationController` (`/time-entry-day-notes`) in `routes/apiV2-migration.php`; eventuale
+        helper `App\Support\Migration\LegacyTimeEntryDuration` per durata e motivo di scarto.</item>
+      <item>qnet-2 backend: migrazione `old_id` (unique, nullable) su `time_entries` e `time_entry_day_notes`;
+        `TimeEntriesSource`, `TimeEntryDayNotesSource`; registrazione in `config/migrations.php` e fase 19 in
+        `MigrationOrder`; test Pest.</item>
+      <item>qnet-2 frontend: etichette sorgente IT/EN (`it-migrations.ts`/`en-migrations.ts`), requisiti IT/EN
+        (`it-migration-requirements.ts`/`en-migration-requirements.ts`).</item>
+      <item>Manuale: guida `migrations` IT/EN (elenco sorgenti + paragrafo Segnatempo); nota "ore del timesheet non
+        importate" della sorgente Task aggiornata; manuale Claude Docs, sezione Migrazioni.</item>
+    </in>
+    <out>
+      <item>Orari di lavoro utente (`user_work_schedules`) e pausa pranzo (`lunch_time`) del legacy.</item>
+      <item>Note collaborative sulle commesse (U-2) e qualsiasi notifica.</item>
+      <item>Deduplica o fusione con segnatempo inseriti a mano in qnet-2 (D-7).</item>
+      <item>Stato running/paused del timer legacy: qnet-2 non ha timer.</item>
+      <item>Modifiche al modulo Segnatempo di qnet-2 (UI, API, statistiche, export).</item>
+      <item>Nuovi endpoint HTTP in qnet-2: si usa il motore generico `/api/migrations/{source}`.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Contratto legacy -> qnet-2. Envelope paginato come le altre sorgenti (`paginatedResponse`). -->
+    <endpoint method="GET" path="(legacy) /api/v2/migration/time-entries">
+      <request>search?: string (titolo), offset?: int >= 0, limit?: int 1-100 (default 50). Ordine per id intervallo.</request>
+      <response status="200">
+        item: {
+          id: int,                          (id working_activity_intervals)
+          user_id: int,                     (legacy users.id)
+          date: "Y-m-d",
+          title: string,                    (mai vuoto, D-2; max 255)
+          type_name: string,                (Attivita'|Riunione|Chiamata|Ticket|Email|Visita|Altro)
+          start_time: "H:i"|null, end_time: "H:i"|null,   (entrambi o nessuno)
+          minutes: int,                     (1-1440)
+          notes: string|null,               (testo semplice composto)
+          registry_id: int|null,            (legacy companies.id)
+          opportunity_id: int|null, work_order_id: int|null, task_id: int|null,   (legacy id)
+          stage_name: string|null,          (nome fase legacy, solo con commessa)
+          created_at: string|null, updated_at: string|null,
+          warnings: string[]
+        }
+        orfano (dopo i record, spec 0303): { id: "working_activity_intervals:{id}"|"working_activity_days:{id}",
+          orphan_reason: string (italiano, con utente, data, titolo e motivo), warnings: [] }
+      </response>
+      <errors>Gli stessi degli altri controller di migrazione (auth API V2, 422 parametri).</errors>
+    </endpoint>
+    <endpoint method="GET" path="(legacy) /api/v2/migration/time-entry-day-notes">
+      <request>search?, offset?, limit? come sopra. Ordine per id.</request>
+      <response status="200">
+        item: { id: int, user_id: int, date: "Y-m-d", note: string (testo semplice, non vuoto),
+          created_at: string|null, updated_at: string|null, warnings: string[] }
+        orfano: { id: "work_activity_day_notes:{id}", orphan_reason: string, warnings: [] }
+      </response>
+    </endpoint>
+    <endpoint method="(qnet-2)" path="/api/migrations/time-entries, /api/migrations/time-entry-day-notes">
+      <request>Motore generico invariato (preview, import, mass import).</request>
+      <response status="200">Shape invariata di `MigrationSourceResource`; `key` `time-entries` / `time-entry-day-notes`,
+        dipendenze: time-entries -> required `users`, optional `registries`, `opportunities`, `work-orders`, `tasks`;
+        time-entry-day-notes -> required `users`.</response>
+      <errors>Invariati (solo super-admin).</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un item valido senza task, quando si importa `time-entries`, allora nasce una
+      `time_entries` con `old_id`, utente, data, tipo per nome, orari, minuti, note, collegamenti e
+      `created_at`/`updated_at` legacy; nessuna activity log, nessuna nota collaborativa (`work_order_note_id` null).</criterion>
+    <criterion id="AC-002">Dato un item con task migrato, allora titolo, anagrafica, opportunita', commessa e fase
+      vengono dal Task qnet-2 anche se l'item ne manda altri (D-5).</criterion>
+    <criterion id="AC-003">Dato un item con utente non migrato, allora la riga fallisce con il motivo; dato un tipo
+      sconosciuto o minuti fuori 1-1440, la riga fallisce.</criterion>
+    <criterion id="AC-004">Dato un item con task, commessa, opportunita', anagrafica o fase non trovati, allora il
+      segnatempo si importa senza quel collegamento e il report ha un avviso per ciascuno (U-4).</criterion>
+    <criterion id="AC-005">Dato un item senza task con commessa e senza anagrafica, allora l'anagrafica e' il cliente
+      della commessa; con commessa e opportunita' insieme vince la commessa con un avviso; la fase si risolve per
+      nome tra le fasi della commessa.</criterion>
+    <criterion id="AC-006">Dato un orfano con `orphan_reason`, allora compare tra le righe fallite con quel motivo e
+      gli altri item della pagina si importano.</criterion>
+    <criterion id="AC-007">Rilanciando l'import, un item con `old_id` gia' presente e' saltato e non riscritto.</criterion>
+    <criterion id="AC-008">Dato un utente con segnatempo qnet-2 nella stessa data, allora l'item si importa con un
+      avviso (D-7). Titolo oltre 191 e note oltre 5000 sono troncati con avviso.</criterion>
+    <criterion id="AC-009">Dato un item `time-entry-day-notes` valido, allora nasce la nota di giornata con
+      `old_id`; se esiste gia' una nota qnet-2 per utente+data senza `old_id`, viene adottata (testo invariato,
+      avviso); rilanciando, e' saltata; utente non migrato -> riga fallita.</criterion>
+    <criterion id="AC-010">Le due sorgenti sono registrate, in fase 19 di MigrationOrder nell'ordine
+      time-entries, time-entry-day-notes, con le dipendenze del contratto; etichette e requisiti IT/EN presenti
+      (parity test verde).</criterion>
+    <criterion id="AC-011">(legacy, verifica tinker sui dati reali) `/time-entries` restituisce totale = intervalli
+      validi + orfani (circa 159.020 + 3.860 + 597), nessun item valido con minuti fuori 1-1440 o titolo vuoto;
+      `/time-entry-day-notes` restituisce 52 note in testo semplice.</criterion>
+    <criterion id="AC-012">Guida in-app `migrations` IT/EN aggiornata con gli stessi id di sezione;
+      `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Nessun nuovo endpoint qnet-2: solo sorgenti del motore esistente.</item>
+    <item>backend.md §9: pulizia, decodifica, fallback e scarti nel legacy; in qnet-2 solo lookup `old_id`,
+      regole qnet-2 (D-5, limiti colonna), validazione difensiva, adozione, scrittura silenziosa.</item>
+    <item>Migrazione nuova e reversibile; mai `migrate:fresh`/`rollback`/`seed` sul DB dev.</item>
+    <item>Sorgenti sotto 300 righe: logica di collegamento in un helper `App\Migrations\Support\LegacyTimeEntryLinks`
+      se `TimeEntriesSource` supera la soglia.</item>
+    <item>Test Pest mirati (`tests/Feature/Migration/TimeEntriesSourceImportTest.php`, `TimeEntryDayNotesSourceImportTest.php`; i test
+      su MigrationOrder/dipendenze esistenti, es. `tests/Unit/Migrations/MigrationDependenciesTest.php`, si aggiornano
+      solo se fissano la fase 18 come ultima: REQUIREMENT CHANGED), helper condivisi in `tests/Helpers/`; Vitest parity;
+      Pint, ESLint, `tsc -b --force`.</item>
+  </constraints>
+
+</spec>

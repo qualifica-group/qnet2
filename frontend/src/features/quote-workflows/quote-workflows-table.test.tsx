@@ -159,7 +159,11 @@ describe('QuoteWorkflowsTable — delete (AC-018)', () => {
     deleteQuoteWorkflowMock.mockRejectedValue(
       new AxiosError('Forbidden', '403', undefined, undefined, {
         status: 403,
-        data: { success: false, message: 'Forbidden' },
+        data: {
+          success: false,
+          message: 'Forbidden',
+          authorization: { reason: 'missing_permission', permission: 'quote-workflows.delete' },
+        },
       } as never),
     )
 
@@ -168,7 +172,7 @@ describe('QuoteWorkflowsTable — delete (AC-018)', () => {
 
     await waitFor(() => expect(deleteQuoteWorkflowMock).toHaveBeenCalledWith(1))
     await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith('You cannot delete this quote workflow.'),
+      expect(toastErrorMock).toHaveBeenCalledWith('You do not have the «Delete» permission on the «Offer status configurator» module.'),
     )
   })
 

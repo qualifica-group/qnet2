@@ -163,17 +163,21 @@ describe('QuotesTable — delete', () => {
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('Quote deleted successfully.'))
   })
 
-  it('shows a forbidden toast on a 403', async () => {
+  it('shows the specific permission sentence on a 403', async () => {
     const error = new axios.AxiosError('Forbidden', '403', undefined, undefined, {
       status: 403,
-      data: { success: false, message: 'Forbidden' },
+      data: {
+        success: false,
+        message: 'Forbidden',
+        authorization: { reason: 'missing_permission', permission: 'quotes.delete' },
+      },
     } as never)
     deleteQuoteMock.mockRejectedValue(error)
 
     renderTable()
     screen.getByRole('button', { name: 'delete row' }).click()
 
-    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('You cannot delete this quote.'))
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('You do not have the «Delete» permission on the «Quotes» module.'))
   })
 
   it('shows a generic error toast on any other failure', async () => {

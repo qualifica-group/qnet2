@@ -28,6 +28,15 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'clone-layout',
+      title: 'Clonare un layout',
+      blocks: [
+        { type: 'steps', items: ['Apri il layout da cui partire e premi **Clona** in alto a destra (oppure scegli **Clona** tra le azioni della riga nell’elenco).', 'Nella finestra **Clona layout** controlla **Nome** e **Codice** della copia: sono già proposti come “nome (copia)” e “codice_copy”, puoi cambiarli.', 'Premi **Clona**: si apre il nuovo layout e puoi continuare a modificarlo.'] },
+        { type: 'paragraph', text: 'La copia ha lo stesso **Modulo**, la stessa **Descrizione**, lo stesso stato **Attivo** e tutto il **Contenuto**, comprese le immagini (logo, carta intestata) e le impostazioni di pagina. Il layout di partenza resta com’era.' },
+        { type: 'note', text: 'La copia non è mai **Predefinito**: se deve diventarlo, impostalo dopo. Serve il permesso di creare layout.' },
+      ],
+    },
+    {
       id: 'editor',
       title: 'L’editor visuale',
       blocks: [
@@ -44,6 +53,7 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'note', text: 'Il pannello **Pagina** imposta orientamento (Verticale o Orizzontale), margini e font predefinito.' },
+        { type: 'paragraph', text: 'L’anteprima mostra il documento su più fogli A4: quando il **Corpo** non sta più nello spazio tra intestazione e piè di pagina (margini compresi), il blocco successivo passa al foglio dopo, così come dopo un’**Interruzione di pagina**. Ogni foglio ripete l’immagine **Dietro la pagina**, l’**Intestazione** e il **Piè di pagina**, con il suo numero di pagina. Un blocco più alto di un intero foglio resta tagliato in anteprima; nel documento scaricato prosegue sul foglio successivo.' },
       ],
     },
     {

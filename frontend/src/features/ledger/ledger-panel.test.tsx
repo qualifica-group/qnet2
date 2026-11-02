@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AxiosError, type AxiosResponse } from 'axios'
 import type { ReactElement } from 'react'
 import i18n from '@/i18n'
 import { apiClient } from '@/api/client'
@@ -163,5 +164,28 @@ describe('LedgerPanel', () => {
     await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument())
     expect(screen.queryByRole('heading', { name: 'Customer' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Supplier' })).not.toBeInTheDocument()
+  })
+
+  it('shows the specific permission sentence on a 403 and the generic text on a 500', async () => {
+    const httpError = (status: number, data: unknown) =>
+      new AxiosError('failed', undefined, undefined, undefined, { status, data } as AxiosResponse)
+    getMock.mockRejectedValue(
+      httpError(403, {
+        success: false,
+        message: 'You do not have the «ledger.viewAny» permission.',
+        authorization: { reason: 'missing_permission', permission: 'ledger.viewAny' },
+      }),
+    )
+    const { unmount } = renderPanel(<LedgerPanel registryId={7} />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'You do not have the «View list» permission on the «Ledger» module.',
+    )
+    unmount()
+
+    getMock.mockRejectedValue(httpError(500, { success: false, message: 'Server error' }))
+    renderPanel(<LedgerPanel registryId={7} />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load the ledger.')
   })
 })

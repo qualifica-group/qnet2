@@ -51,7 +51,6 @@ export const operationalSites = {
     cityRequired: 'City is required.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the operational site. Please try again.',
-    deleteForbidden: 'You cannot delete this operational site.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The operational site has not been created yet: the data you entered will be lost.',

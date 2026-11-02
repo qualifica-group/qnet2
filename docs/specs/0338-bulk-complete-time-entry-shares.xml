@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0338-bulk-complete-time-entry-shares" status="draft" owner="utente" date="2026-10-30">
+
+  <goal>
+    Nella chiusura multipla dei task (modulo Task e bacheca task della commessa) il segnatempo inserito
+    e' il TOTALE del lavoro svolto sui task selezionati: viene ripartito tra i task (es. 3h su 6 task =
+    30 min ciascuno) invece di essere copiato identico su ognuno. Il popup lo dichiara e mostra
+    un'anteprima della ripartizione modificabile a mano.
+  </goal>
+
+  <context>
+    Stato attuale verificato:
+    - Modulo Task: POST /api/tasks/bulk (TaskBulkController, BulkTaskRequest, BulkTaskData, TaskBulkService).
+      Tutto o niente (savepoint per task + TaskBulkIncompatibleException -> 422 `incompatible_tasks`).
+      `time_entry` facoltativo (spec 0162 D-4); `for_all_assignees` sempre true, senza casella.
+      Popup: frontend/src/features/tasks/task-bulk-complete-dialog.tsx.
+    - Bacheca commessa: POST /api/work-orders/{workOrder}/task-board/bulk (WorkOrderTaskBoardController::bulk,
+      BulkTaskBoardRequest, BulkTaskBoardData, App\Services\WorkOrders\TaskBulkActionService).
+      Best-effort per riga (risposta `{results, succeeded, failed}`); `time_entry` obbligatorio;
+      `for_all_assignees` casella, default false (spec 0319).
+      Popup: frontend/src/features/work-orders/task-board/task-board-bulk-complete-dialog.tsx.
+    - Entrambi scrivono ogni task tramite App\Services\Tasks\TaskBulkActionExecutor::complete() ->
+      TaskCompletionService::complete(); il segnatempo nasce da CompleteTaskData::fromValidated() ->
+      TimeEntryData::forTask() ed e' atomico con la chiusura. Oggi lo STESSO `time_entry` va su ogni task.
+    - Regole `time_entry.*`: TimeEntryValidationRules (minutes 1..1440 obbligatorio, start/end facoltativi,
+      end after start). Nessun controllo di sovrapposizione tra segnatempo.
+    - Popup singolo di riferimento grafico: frontend/src/features/tasks/task-complete-dialog.tsx
+      (DialogHeader con DialogDescription, feedback, TaskCompleteTimeEntryToggleSection, casella assegnatari).
+
+    Decisioni utente (2026-10-30):
+    - D-1 Il segnatempo del popup e' un TOTALE; le ore si ripartiscono tra i task. Il feedback (testo) e'
+      applicato identico a ogni task.
+    - D-2 Anteprima modificabile: elenco dei task selezionati con i minuti di ciascuno, precompilati in
+      parti uguali; l'utente puo' correggerli, la somma deve restare uguale al totale.
+    - D-3 Parti uguali: floor(totale / N) a ciascuno, il resto (1 minuto ciascuno) ai primi task nell'ordine
+      della selezione. Ogni quota >= 1 minuto: totale &lt; N task e' un errore.
+    - D-4 Orari: se il segnatempo ha l'ora di inizio, ogni task riceve una fascia consecutiva nell'ordine
+      delle quote (09:00-09:30, 09:30-10:00, ...). Senza ora di inizio i segnatempo non hanno orari.
+    - D-5 Bacheca commessa: l'azione `complete` diventa TUTTO O NIENTE come nel modulo Task (se un task non
+      si chiude non si chiude nessuno e non si crea alcun segnatempo). Le altre azioni della bacheca restano
+      best-effort.
+    - D-6 "Per tutti gli assegnatari": ogni assegnatario di un task registra la quota di QUEL task (stessa
+      fascia); chi e' assegnato a tutti i task totalizza quindi il totale inserito. Task senza assegnatari ->
+      la quota va a chi chiude. Il modulo Task resta con for_all_assignees sempre true (nessuna casella).
+    - D-7 Graficamente il popup multiplo ricalca quello singolo (stessa struttura header/descrizione,
+      feedback, segnatempo, casella), con in piu' la sezione "Ripartizione".
+  </context>
+
+  <scope>
+    <in>
+      <item>Nuovo campo `time_entry_shares` sui due endpoint bulk per action=complete, validato server-side.</item>
+      <item>Ripartizione server-side del segnatempo per task (quote + fasce consecutive) in una sola classe condivisa dai due service.</item>
+      <item>Bacheca commessa: `complete` tutto o niente con 422 `incompatible_tasks` (stessa shape di /api/tasks/bulk).</item>
+      <item>Frontend: funzione pura di ripartizione, sezione "Ripartizione" condivisa, adozione nei due popup multipli con DialogDescription.</item>
+      <item>Popup bacheca: riceve id e titolo dei task selezionati; gestisce il 422 `incompatible_tasks`.</item>
+      <item>i18n IT/EN, guide in-app tasks IT/EN, manuale Claude Docs, HANDOFF.</item>
+    </in>
+    <out>
+      <item>Segnatempo unico collegato a piu' task (tabella pivot): abbandonato dall'utente, non si fa.</item>
+      <item>Popup di chiusura singola e form manuale del segnatempo: invariati.</item>
+      <item>Casella "per tutti gli assegnatari" nel modulo Task: non si aggiunge.</item>
+      <item>Altre azioni bulk (assign, uncomplete, block, priority, dates, delete): invariate.</item>
+      <item>Validazione / percorso "da validare" nella bacheca: resta azione singola (invariato).</item>
+      <item>Controllo di sovrapposizione con altri segnatempo dell'utente: non esiste oggi e non si introduce.</item>
+      <item>Ripartizione per task con stime/pesi diversi dalle parti uguali (solo correzione manuale).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Campo comune ai due endpoint quando action=complete. -->
+    <shared_field name="time_entry_shares">
+      <shape>array&lt;{ task_id: int, minutes: int }&gt;</shape>
+      <rules>
+        - required quando `time_entry` e' presente; prohibited quando `time_entry` e' assente o action != complete.
+        - una voce per OGNI id di `task_ids` e solo per quelli (task_id distinct, in task_ids, count == count(task_ids)).
+        - minutes: integer, min:1.
+        - somma(minutes) == time_entry.minutes, altrimenti 422 su `time_entry_shares`.
+        - se time_entry.start_time e' presente: start_time + time_entry.minutes non oltre le 23:59
+          (422 su `time_entry.minutes`). Rev. 2026-10-30: era 24:00, ma una fascia che finisce a 24:00
+          non si risalva dal form di modifica (regole `H:i`, frontend 00-23).
+      </rules>
+      <semantics>
+        - time_entry.minutes e' il TOTALE. time_entry.end_time resta solo un dato di input (non viene copiato).
+        - L'ordine dell'array e' l'ordine delle fasce: per la voce i, start = time_entry.start_time + somma delle
+          quote precedenti, end = start + minutes. Senza start_time: start_time/end_time null su ogni segnatempo.
+        - date, task_type_id, notes: copiati identici su ogni segnatempo.
+        - for_all_assignees true: la quota (e la fascia) del task e' registrata per ciascun assegnatario del task,
+          o per chi chiude se il task non ne ha.
+      </semantics>
+    </shared_field>
+
+    <endpoint method="POST" path="/api/tasks/bulk">
+      <request>
+        { action: "complete", task_ids: int[1..200], closure_feedback?: string|null,
+          validation_status_id?: int|null, time_entry?: { date, task_type_id, minutes, start_time?, end_time?, notes? },
+          time_entry_shares?: [{ task_id, minutes }] }
+      </request>
+      <response status="200">{ success: true, message, data: { affected: int } } (invariato)</response>
+      <errors>
+        403 senza tasks.complete (invariato);
+        422 validazione `time_entry_shares` / `time_entry.*` (nessuna scrittura);
+        422 { success: false, message, errors: { task_ids: [..] }, incompatible_tasks: [{ id, reason }] } (invariato).
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/task-board/bulk">
+      <request>
+        { action: "complete", task_ids: int[1..200], closure_feedback?: string|null, for_all_assignees?: bool,
+          time_entry: { date, task_type_id, minutes, start_time?, end_time?, notes? },
+          time_entry_shares: [{ task_id, minutes }] }
+      </request>
+      <response status="200">
+        { success: true, message, data: { results: [{ task_id, ok: true, message: null }], succeeded: N, failed: 0 } }
+        (stessa shape di oggi; con action=complete in caso di successo failed e' sempre 0)
+      </response>
+      <errors>
+        409 commessa chiusa (invariato); 422 task non radice di questa commessa (invariato);
+        422 validazione `time_entry_shares` / `time_entry.*`;
+        422 NUOVO per action=complete: { success: false, message, errors: { task_ids: [..] },
+          incompatible_tasks: [{ id, reason }] } — nessun task chiuso, nessun segnatempo, nessuna notifica.
+        Le altre action restano 200 best-effort con `results`.
+      </errors>
+    </endpoint>
+
+    <frontend>
+      - features/tasks/time-entry-shares.ts: splitMinutesEvenly(total: number, taskIds: number[]): TimeEntryShare[];
+        shareSlots(startTime: string | null, shares: TimeEntryShare[]): { taskId, startTime, endTime }[].
+        type TimeEntryShare = { task_id: number; minutes: number }.
+      - Componente condiviso features/tasks/task-bulk-time-entry-shares-section.tsx, input: tasks {id, title}[],
+        totale, ora di inizio, quote; azione "Ripartisci in parti uguali"; indicatore "Assegnati X di Y".
+      - Cambio del totale o dell'ora di inizio: le quote si ricalcolano in parti uguali (le correzioni manuali si perdono).
+      - Chiavi i18n nuove (IT/EN): tasks.bulk.completeDialog.description (count),
+        tasks.bulk.shares.{title, hint, equalSplit, assigned, mismatch, tooFewMinutes, slot}.
+    </frontend>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato 3 task completabili, quando POST /api/tasks/bulk complete con time_entry.minutes=180 e quote 60/60/60, allora ogni task e' chiuso con un segnatempo da 60 min collegato a quel task (per ogni assegnatario) e la somma per task e' 180.</criterion>
+    <criterion id="AC-002">Dato time_entry.start_time=09:00, minutes=180 e quote 90/45/45, quando si completa (entrambi gli endpoint), allora i segnatempo hanno fasce 09:00-10:30, 10:30-11:15, 11:15-12:00; senza start_time hanno start_time/end_time null.</criterion>
+    <criterion id="AC-003">Quando le quote non sommano a time_entry.minutes, o una quota e' 0, o manca/avanza un task_id rispetto a task_ids, o ci sono quote senza time_entry o su un'action diversa da complete, o c'e' time_entry senza quote, allora 422 sul campo relativo e nessun task ne' segnatempo cambia (entrambi gli endpoint).</criterion>
+    <criterion id="AC-004">Dato start_time=23:00 e minutes=120, quando si completa, allora 422 su time_entry.minutes e nessuna scrittura; con start_time=22:00 e 120 minuti 422, con 119 minuti l'ultima fascia termina alle 23:59.</criterion>
+    <criterion id="AC-005">Dato un task con 2 assegnatari e quota 30 e for_all_assignees true, quando si completa, allora ci sono 2 segnatempo da 30 min con la stessa fascia, uno per assegnatario; task senza assegnatari -> 1 segnatempo a chi chiude.</criterion>
+    <criterion id="AC-006">Dato 3 task di una commessa di cui uno bloccato, quando POST task-board/bulk complete, allora 422 con incompatible_tasks che contiene solo il bloccato con il motivo, nessun task chiuso, nessun segnatempo, nessuna notifica, nessun avanzamento commessa. (REQUIREMENT CHANGED rispetto a spec 0146 AC-018 per la sola action complete.)</criterion>
+    <criterion id="AC-007">Le action assign/uncomplete/block/priority/dates della bacheca restano best-effort con risposta `results` (test esistenti verdi).</criterion>
+    <criterion id="AC-008">Modulo Task, nessun task selezionato richiede il segnatempo e l'interruttore e' spento: si chiudono senza time_entry ne' quote, nessun segnatempo (comportamento spec 0162 invariato).</criterion>
+    <criterion id="AC-009">splitMinutesEvenly(180, 7 id) restituisce [26,26,26,26,26,25,25] nell'ordine degli id (somma 180); splitMinutesEvenly(5, 10 id) segnala l'errore "minuti insufficienti"; shareSlots calcola fasce consecutive.</criterion>
+    <criterion id="AC-010">Popup multiplo (entrambi): mostra la descrizione con il numero di task che dice che il feedback va su ogni task e il tempo e' un totale ripartito; la sezione Ripartizione elenca i task con la quota in parti uguali; cambiando il totale le quote si ricalcolano; modificando una quota l'indicatore "Assegnati X di Y" si aggiorna; con somma diversa dal totale il submit e' bloccato con messaggio e nessuna richiesta parte.</criterion>
+    <criterion id="AC-011">Popup multiplo con ora di inizio: ogni riga della Ripartizione mostra la propria fascia oraria; il payload inviato contiene time_entry.minutes = totale e time_entry_shares nell'ordine delle righe.</criterion>
+    <criterion id="AC-012">Popup bacheca: su 422 incompatible_tasks mostra un toast con i motivi per task e il popup resta aperto con i dati inseriti.</criterion>
+    <criterion id="AC-013">Modulo Task con interruttore "Registra il tempo" spento: la sezione Ripartizione non compare e il payload non contiene time_entry_shares.</criterion>
+    <criterion id="AC-014">Guide in-app tasks IT/EN aggiornate con gli stessi id di sezione; help-content-parity.test.ts verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Nessuna migrazione (lo schema time_entries non cambia).
+    - Authz invariata: permesso base nel controller + abilita' per task in TaskBulkActionExecutor.
+    - Ripartizione server-side in UNA classe (App\Services\Tasks\TaskBulkTimeEntrySplitter) usata da
+      TaskBulkService e TaskBulkActionService; regole di validazione delle quote in UN posto condiviso dai due FormRequest.
+    - TaskBulkActionExecutor e TaskCompletionService: firme invariate (ricevono il time_entry gia' ripartito per task).
+    - Test esistenti che inviano time_entry senza quote sui due endpoint vanno aggiornati: REQUIREMENT CHANGED
+      (contratto), da dichiarare; il test AC-018 di TaskBulkActionsTest cambia per D-5.
+    - Il backend e' l'autorita' sulla somma; il frontend la rispecchia (validazione client non sostitutiva).
+    - UI compatta (ui-design.md §2), responsive 375/768/1024, elenco quote scrollabile dentro il popup, input con label accessibili.
+    - File sotto 300 righe: le due dialog crescono solo della sezione condivisa.
+  </constraints>
+
+</spec>

@@ -26,9 +26,13 @@ use Illuminate\Support\Facades\DB;
  *   contract is a commercial decision of its own — and the destination
  *   status comes from the client, since nothing ever recorded the one
  *   preceding the closure. Clears the whole termination stamp so the
- *   contract stops being disdetto; the validation stamp is deliberately
- *   KEPT, exactly as it already was when reopening a disdetta, so the
- *   history of the first validation survives.
+ *   contract stops being disdetto, and the validation stamp too (user
+ *   decision 2026-10-30) so it can be validated again: "Valida" is offered
+ *   only to a contract never validated. The cleared stamp is logged as a
+ *   field change (`updated`, old -> null) so "Cronologia attivita'" keeps
+ *   it, even for migrated contracts, which have no "contract.validated"
+ *   entry: `validated_at`/`validated_by` are not fillable, so the model's
+ *   own auto-log never records them.
  *
  * A contract that is neither is refused (422). The closure is read on the
  * status GROUP, not on the `terminated_at`/`validated_at` stamps:
@@ -73,14 +77,21 @@ class ContractReactivator
     {
         $statusId = $this->submittedStatusId($data);
         $from = $this->group($contract) === ContractStatusGroup::ClosedWon ? 'validated' : 'terminated';
+        $clearedValidation = [
+            'validated_at' => $contract->validated_at?->toDateString(),
+            'validated_by' => $contract->validated_by,
+        ];
 
         $contract->contract_status_id = $statusId;
         $contract->terminated_at = null;
         $contract->termination_reason = null;
         $contract->terminated_by = null;
+        $contract->validated_at = null;
+        $contract->validated_by = null;
         $contract->save();
 
         $this->logReactivation($contract, $statusId, $from);
+        $this->logClearedValidation($contract, $clearedValidation);
     }
 
     private function logReactivation(Contract $contract, int $statusId, string $from): void
@@ -90,6 +101,25 @@ class ContractReactivator
             ->event('contract.reactivated')
             ->withProperties(['contract_status_id' => $statusId, 'reactivated_from' => $from])
             ->log('Contract reactivated');
+    }
+
+    /**
+     * @param  array{validated_at: string|null, validated_by: int|null}  $previous
+     */
+    private function logClearedValidation(Contract $contract, array $previous): void
+    {
+        if ($previous['validated_at'] === null && $previous['validated_by'] === null) {
+            return;
+        }
+
+        activity($contract->getTable())
+            ->performedOn($contract)
+            ->event('updated')
+            ->withProperties([
+                'attributes' => ['validated_at' => null, 'validated_by' => null],
+                'old' => $previous,
+            ])
+            ->log('updated');
     }
 
     /**

@@ -9,6 +9,11 @@
 # `--force` evita falsi verdi da cache .tsbuildinfo stale.
 #
 # Batch a fine turno (non per-edit) per non rallentare ogni Edit.
+# Carico macchina: tsc puo' occupare fino a 8 GB, quindi
+#  - salta se nessun sorgente/config frontend e' cambiato dall'ultimo typecheck pulito
+#    (stamp in node_modules/.cache, aggiornato solo a esito verde);
+#  - un solo tsc alla volta tra sessioni/teammate (lock atomico via mkdir);
+#  - gira a priorita' ridotta (nice).
 # Opt-out: TYPECHECK_GATE=off
 
 set -uo pipefail
@@ -23,6 +28,29 @@ FE="$ROOT/frontend"
 [ -f "$FE/tsconfig.json" ] || exit 0
 [ -d "$FE/node_modules" ] || exit 0
 
+CACHE_DIR="$FE/node_modules/.cache"
+STAMP="$CACHE_DIR/qnet-typecheck.stamp"
+LOCK="$CACHE_DIR/qnet-typecheck.lock"
+LOCK_STALE_MINUTES=15
+mkdir -p "$CACHE_DIR"
+
+# Nessun file rilevante piu' recente dell'ultimo verde -> niente da verificare.
+if [ -f "$STAMP" ]; then
+  CHANGED="$(find "$FE/src" "$FE"/tsconfig*.json "$FE/package.json" "$FE/package-lock.json" \
+    -newer "$STAMP" -print -quit 2>/dev/null)"
+  [ -z "$CHANGED" ] && exit 0
+fi
+
+# Un tsc gia' in corso (altra sessione/teammate): non duplicarlo. Lo stamp non viene
+# aggiornato qui, quindi il prossimo fine turno ricontrolla.
+find "$LOCK" -maxdepth 0 -mmin +"$LOCK_STALE_MINUTES" -exec rmdir {} \; 2>/dev/null
+mkdir "$LOCK" 2>/dev/null || exit 0
+trap 'rmdir "$LOCK" 2>/dev/null' EXIT
+
+# Marcatore preso PRIMA di tsc: un file modificato durante il check resta "piu' nuovo".
+MARK="$CACHE_DIR/qnet-typecheck.mark.$$"
+touch "$MARK"
+
 # Preferisci il tsc locale; fallback a npx.
 if [ -x "$FE/node_modules/.bin/tsc" ]; then
   TSC="$FE/node_modules/.bin/tsc"
@@ -33,14 +61,16 @@ fi
 # Il progetto e' grande: con l'heap di default Node va in segfault (exit 139,
 # output vuoto) e il gate lo scambierebbe per errori di tipo.
 export NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=8192"
-OUT="$(cd "$FE" && $TSC -b --force --pretty false 2>&1)"
+OUT="$(cd "$FE" && nice -n 10 $TSC -b --force --pretty false 2>&1)"
 STATUS=$?
 
 if [ $STATUS -ne 0 ]; then
+  rm -f "$MARK"
   echo "[typecheck] tsc -b ha trovato errori di tipo nel frontend:" >&2
   printf '%s\n' "$OUT" | head -40 >&2
   echo "[typecheck] Correggi i tipi prima di considerare il task completo (vite build NON li intercetta)." >&2
   exit 2
 fi
 
+mv -f "$MARK" "$STAMP"
 exit 0

@@ -103,7 +103,6 @@ export const financialAccounts = {
     cardExpiryInvalid: 'Use the MM/YYYY format.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the financial account. Please try again.',
-    deleteForbidden: 'You cannot delete this financial account.',
     deleteInUse: 'This account has linked cards and cannot be deleted.',
     sections: {
       details: {

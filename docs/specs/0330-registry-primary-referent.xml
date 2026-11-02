@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0330-registry-primary-referent" status="draft" owner="utente" date="2026-10-29">
+
+  <goal>
+    Ogni anagrafica ha un "Referente principale", uno dei suoi referenti collegati (di default il primo
+    inserito). Quando in un'opportunita' o in un'attivita' si sceglie un'anagrafica, il campo Referente
+    viene precompilato col referente principale invece di restare vuoto.
+  </goal>
+
+  <context>
+    - `Registry` (`registries`) ha gia' i ruoli singoli `commercial_id`/`reporter_id` (FK `referents`) e
+      `supervisor_id` (FK `users`). I referenti sono un elenco multiplo sul pivot `referent_registry`
+      (`id`, `referent_id`, `registry_id`, unique coppia), senza ordine ne' flag: la spec 0040 (riga 29)
+      registra che "NON esiste un referente predefinito sul pivot". Questa spec lo introduce.
+    - `Registry::referents()` (BelongsToMany) non ha un ordine esplicito; `RegistryService::syncPivots()`
+      fa `referents()->sync($data->referentIds)`: le righe gia' presenti restano, le nuove vengono
+      inserite in coda (id del pivot crescente) nell'ordine dell'array.
+    - Scrittura dell'anagrafica: `StoreRegistryRequest`/`UpdateRegistryRequest` -> `CreateRegistryData`/
+      `UpdateRegistryData` -> `RegistryService::create/update` -> `RegistryResource`. Permessi di campo in
+      `App\Authorization\RegistriesAuthorization` (`FieldDefinition`, `referent_ids` multiselect).
+    - La migrazione dal legacy (`App\Migrations\Sources\RegistriesSource`) crea le anagrafiche tramite
+      `RegistryService::create`: eredita la regola di default senza modifiche.
+    - `ReferentService::delete()` cancella il referente; il pivot cade in cascata.
+    - For-select anagrafiche: `RegistryService::forSelect` + `RegistryForSelectResource`, il cui `meta`
+      (`commercial`, `reporter`, `supervisor`, `managers`, `is_qualified_supplier`) alimenta l'eredita'
+      nel form Opportunita'.
+    - Opportunita' (frontend `features/opportunities`):
+      `useRegistryRoleInheritance` (Step 1 azzera `referent_id`), usato da `OpportunityRegistryField`
+      (scelta a mano, anche nel dettaglio in modifica in place) e da `useOpportunityRegistryPreset`
+      ("Nuova opportunita'" dal dettaglio anagrafica, spec 0199). `fetchOpportunityRegistryMeta` +
+      tipo `RegistryMeta` in `opportunity-relation-meta.ts`. La scelta di un Lead
+      (`useOpportunityLeadSelection.selectLead`) imposta `registry_id` dai default del lead senza passare
+      dall'hook di eredita'; il Referente oggi resta libero (spec 0041 D-3).
+    - Opportunita' (elenco): `App\Tables\Opportunities\OpportunityCellWriter::registryPayload()` mette
+      `referent_id = null` quando cambia l'anagrafica e riempie i ruoli vuoti modificabili.
+    - Attivita' (frontend `features/tasks`): `useTaskForm.handleRegistryChange` azzera `referent_id`,
+      `opportunity_id`, `lead_id` (spec 0154 D-11); lo stesso form serve creazione e modifica in place
+      del dettaglio. `task-inline-cascade.ts` dichiara `registry_id: { clears: ['referent_id', ...] }`.
+      La griglia attivita' non modifica l'anagrafica (`TaskCellWriter` non la gestisce).
+    - Dati di sviluppo: 29418 anagrafiche, 5170 con referenti (3201 con 1, 1650 con 2, 269 con 3,
+      ~50 con 4+). L'anagrafica dell'opportunita' 30622 non ha referenti: li' il Referente resta vuoto.
+    - Decisioni utente 2026-10-29: campo nuovo "Referente principale" con select dedicata; default =
+      primo della lista / primo inserito; backfill sui dati esistenti; prefill anche per "Nuova
+      opportunita'" da anagrafica, Opportunita' da Lead e form Attivita'; nessuna colonna in tabella.
+  </context>
+
+  <decisions>
+    - D-1 (dove sta): colonna `registries.primary_referent_id` (FK `referents`, `nullOnDelete`),
+      come `commercial_id`/`reporter_id`. Niente flag sul pivot: una sola fonte, letta senza join dal
+      for-select.
+    - D-2 (ordine = ordine di inserimento): `Registry::referents()` ordinato per `referent_registry.id`.
+      "Primo della lista" e "primo inserito" coincidono ovunque (form, dettaglio, backfill).
+    - D-3 (invariante INV-1): `primary_referent_id` e' sempre uno dei referenti collegati, ed e' null
+      se e solo se l'anagrafica non ha referenti. Lo garantisce il server dopo ogni create/update
+      dell'anagrafica e dopo la cancellazione di un referente. Un `primary_referent_id: null` inviato
+      con referenti presenti non lascia l'anagrafica senza principale: torna al primo inserito.
+    - D-4 (elezione): se il principale richiesto/attuale non e' (piu') tra i collegati, diventa il primo
+      collegato per id di pivot; senza collegati, null. Unica implementazione lato server, riusata da
+      `RegistryService` e `ReferentService::delete`.
+    - D-5 (prefill = sostituzione): cambiare anagrafica invalida il referente precedente (BR-4 spec
+      0040), quindi il Referente prende il principale della nuova anagrafica senza conferma; con
+      anagrafica senza referenti resta vuoto (comportamento attuale). Il campo resta modificabile.
+    - D-6 (Lead): alla scelta di un Lead, se l'anagrafica del lead e' diversa da quella gia' nel form
+      oppure il Referente e' vuoto, il Referente prende il principale; con la stessa anagrafica e un
+      Referente gia' scelto non cambia nulla. Supera la nota di spec 0041 D-3 "il referente resta
+      libero" solo per il valore iniziale: il campo resta libero e non viene bloccato.
+    - D-7 (Attivita'): stessa regola di D-5 nel form attivita' (creazione e dettaglio). Nel cascade
+      del dettaglio `referent_id` passa da `clears` a `sets` per `registry_id`: chi non puo' modificare
+      il Referente non apre l'editor dell'Anagrafica (regola spec 0195 gia' in uso per le `sets`).
+      Il prefill da "Task padre" e da "Commessa" resta invariato (fuori scope).
+    - D-8 (elenco Opportunita'): `OpportunityCellWriter` mette `referent_id` = principale della nuova
+      anagrafica invece di null, solo se l'attore puo' modificare `referent_id` (stessa regola dei
+      ruoli ereditati); altrimenti null come oggi. Comportamento preesistente invariato: senza permesso
+      su `referent_id`, il cambio di anagrafica di un'opportunita' con un Referente gia' valorizzato e'
+      rifiutato (422 campo non modificabile) e nulla cambia; con Referente vuoto riesce e resta vuoto.
+    - D-9 (form anagrafica): select "Referente principale" sotto "Referenti", con le sole voci dei
+      referenti presenti in quel momento nel campo Referenti (anche non ancora salvati). Le etichette
+      si risolvono con il for-select referenti `ids[]` esistente, filtrato lato client sugli id
+      selezionati: nessun nuovo parametro di endpoint. Il form anticipa D-4: aggiungendo il primo
+      referente, o togliendo il principale, il campo passa al primo della lista. Disabilitata senza
+      referenti. Nel dettaglio la card del principale porta il badge "Principale".
+    - D-10 (backfill): migrazione dati separata dalla migrazione di schema. Imposta
+      `primary_referent_id` = referente con id di pivot minimo per ogni anagrafica con referenti.
+      Idempotente (rieseguita da' lo stesso risultato), `down()` no-op documentato. Sul DB `qnet2` di
+      sviluppo si esegue SOLO dopo ok esplicito dell'utente (memoria: niente comandi DB non autorizzati);
+      la prova si fa nei test Pest su sqlite.
+    - D-11 (meta condiviso): tipo e fetch del `meta` del for-select anagrafiche passano da
+      `features/opportunities/opportunity-relation-meta.ts` a `features/registries/for-select-meta.ts`
+      (`RegistryForSelectMeta`, `fetchRegistryForSelectMeta`), perche' ora li usano Opportunita' e
+      Attivita'. Il file vecchio si cancella e gli import si aggiornano (zero dead code).
+  </decisions>
+
+  <scope>
+    <in>
+      <item>Migrazione schema `2026_11_10_100000_add_primary_referent_id_to_registries_table` (FK referents nullOnDelete, reversibile).</item>
+      <item>Migrazione dati `2026_11_10_100100_backfill_registries_primary_referent_id` (D-10).</item>
+      <item>`Registry`: fillable `primary_referent_id`, relazione `primaryReferent()`, `referents()` ordinata per id del pivot (D-2).</item>
+      <item>Request store/update: regola `primary_referent_id` + verifica di appartenenza (422). DTO create/update con il nuovo campo (update: solo se inviato).</item>
+      <item>Elezione del principale (D-4) dopo create/update in `RegistryService` e dopo `ReferentService::delete`.</item>
+      <item>`RegistriesAuthorization`: `FieldDefinition('primary_referent_id', 'select')`, permesso uguale a `referent_ids`.</item>
+      <item>`RegistryResource`: `primary_referent_id`, `primary_referent`. `RegistryForSelectResource.meta.primary_referent`.</item>
+      <item>`OpportunityCellWriter::registryPayload` (D-8).</item>
+      <item>Frontend anagrafiche: tipi, schema Zod, default, payload (create + diff update), select "Referente principale" nel form e nella riga in place del dettaglio, badge "Principale" sulla card.</item>
+      <item>Frontend `features/registries/for-select-meta.ts` (D-11) e aggiornamento import in Opportunita'.</item>
+      <item>Frontend Opportunita': prefill in `useRegistryRoleInheritance` (copre scelta a mano, dettaglio e "Nuova opportunita'" da anagrafica) e in `selectLead` (D-6).</item>
+      <item>Frontend Attivita': prefill in `handleRegistryChange` con richiesta piu' recente vincente, `task-inline-cascade.ts` (D-7).</item>
+      <item>i18n IT/EN delle nuove etichette e del messaggio 422.</item>
+      <item>Guide in-app IT+EN: `registries`, `opportunities`, `tasks` (righe che oggi dicono "il Referente si svuota"). Manuale Claude Docs: sezioni Anagrafiche, Opportunita', Attivita'.</item>
+      <item>Aggiornamento della riga 29 della spec 0040 (rimando a questa spec) e di `docs/HANDOFF.md`.</item>
+    </in>
+    <out>
+      <item>Colonna "Referente principale" nella tabella Anagrafiche (decisione utente).</item>
+      <item>Riordino manuale dei referenti (drag and drop o posizione sul pivot).</item>
+      <item>Prefill del Referente da "Task padre" o da "Commessa" nelle attivita'; Leads, Commesse, Preventivi, Gestione Richieste.</item>
+      <item>Eredita' di Commerciale/Segnalatore/Supervisore/G.A. nella scelta di un Lead (oggi assente, resta assente).</item>
+      <item>Modifiche al legacy `../qnet` e ai controller di migrazione: il default arriva da `RegistryService::create`.</item>
+      <item>Cambio del referente sulle opportunita'/attivita' gia' salvate: il backfill tocca solo `registries`.</item>
+      <item>Notifiche o activity log dedicati al cambio di principale (l'activity log del model lo registra gia' come attributo).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <schema>
+      registries.primary_referent_id BIGINT UNSIGNED NULL, FK referents(id) ON DELETE SET NULL, indicizzata.
+      INV-1: primary_referent_id IN (SELECT referent_id FROM referent_registry WHERE registry_id = registries.id),
+      oppure NULL se e solo se l'anagrafica non ha righe nel pivot.
+    </schema>
+
+    <endpoint method="POST" path="/api/registries">
+      <request>
+        Campi esistenti invariati, piu':
+        primary_referent_id?: number|null   // opzionale; se valorizzato deve essere tra i referent_ids inviati
+      </request>
+      <response status="201">
+        Envelope invariato; `data` = RegistryResource con in piu':
+        primary_referent_id: number|null,
+        primary_referent: { id: number, name: string } | null
+        Se primary_referent_id non e' inviato o e' null e referent_ids non e' vuoto: il primo di referent_ids.
+        `referent_ids`/`referents` nell'ordine di inserimento (id del pivot).
+      </response>
+      <errors>
+        422 errors.primary_referent_id: ["Il referente principale deve essere uno dei referenti dell'anagrafica."]
+        (EN: "The main referent must be one of the registry's referents.")
+        403 invariato (campo non modificabile = 422 di field permission esistente).
+      </errors>
+    </endpoint>
+
+    <endpoint method="PUT|PATCH" path="/api/registries/{registry}">
+      <request>
+        primary_referent_id?: number|null   // solo se inviato; l'appartenenza si verifica contro
+                                            // referent_ids inviati nella stessa richiesta, altrimenti
+                                            // contro i referenti gia' collegati
+      </request>
+      <response status="200">
+        Come POST. Dopo il salvataggio vale INV-1: togliendo il principale dai referenti, il nuovo
+        principale e' il primo collegato rimasto; togliendo tutti i referenti, null.
+      </response>
+      <errors>422 come POST; 403/404 invariati.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/registries/{registry}">
+      <response status="200">Stessi campi aggiunti di POST.</response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/registries/for-select">
+      <response status="200">
+        Ogni item: meta += primary_referent: { id: number, name: string } | null (sempre presente).
+        Gli altri campi di meta invariati. Nessun N+1 (eager load `primaryReferent:id,name`).
+      </response>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/referents/{referent}">
+      <response status="200">
+        Invariato. Effetto in piu': per ogni anagrafica di cui era principale, il nuovo principale e'
+        il primo collegato rimasto (o null).
+      </response>
+    </endpoint>
+
+    <behavior name="Modifica cella Anagrafica nell'elenco Opportunita'">
+      Endpoint della griglia invariato. Payload interno di `OpportunityCellWriter`: con anagrafica
+      cambiata, referent_id = primary_referent_id della nuova anagrafica se l'attore puo' modificare
+      referent_id, altrimenti null (con Referente gia' valorizzato: 422, comportamento preesistente).
+    </behavior>
+
+    <frontend name="features/registries/for-select-meta.ts">
+      export interface RegistryForSelectMeta {
+        is_qualified_supplier: boolean
+        commercial: RelationFieldRef | null
+        reporter: RelationFieldRef | null
+        supervisor: RelationFieldRef | null
+        managers: OpportunityManagerRef[]   // tipo esistente, import invariato
+        primary_referent: RelationFieldRef | null
+      }
+      export function fetchRegistryForSelectMeta(queryClient: QueryClient, registryId: number): Promise&lt;RegistryForSelectMeta | null&gt;
+      // stessa query key e stesso comportamento di fetchOpportunityRegistryMeta (che viene rimosso)
+    </frontend>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato il DB di test con anagrafiche con 0, 1 e 3 referenti collegati in ordine noto, quando gira la migrazione di backfill, allora `primary_referent_id` e' null per quella senza referenti e uguale al referente con id di pivot minimo per le altre; rieseguendola il risultato non cambia. (Pest, migrazione)</criterion>
+    <criterion id="AC-002">Dato POST /api/registries con referent_ids [B, A] e senza primary_referent_id, allora la risposta ha primary_referent_id = B e referent_ids = [B, A]. (Pest Feature)</criterion>
+    <criterion id="AC-003">Dato POST/PATCH con primary_referent_id = X non presente tra i referenti (inviati o collegati), allora 422 con errore su `primary_referent_id` e nessuna modifica salvata. (Pest Feature)</criterion>
+    <criterion id="AC-004">Data un'anagrafica con referenti [A, B] e principale A, quando PATCH referent_ids = [B, C], allora primary_referent_id = B; quando PATCH referent_ids = [], allora null. (Pest Feature)</criterion>
+    <criterion id="AC-005">Data un'anagrafica con referenti [A, B], quando PATCH primary_referent_id = B, allora il principale e' B; quando poi PATCH primary_referent_id = null, allora il principale torna A. (Pest Feature)</criterion>
+    <criterion id="AC-006">Dato un utente senza permesso di modifica dell'anagrafica sul campo, quando invia primary_referent_id, allora la richiesta e' rifiutata come oggi per `referent_ids` (field permission). (Pest Feature)</criterion>
+    <criterion id="AC-007">Dato un referente principale di un'anagrafica con altri referenti, quando viene cancellato (DELETE /api/referents/{id}), allora il principale diventa il primo collegato rimasto; se era l'unico, null. (Pest Feature)</criterion>
+    <criterion id="AC-008">GET /api/registries/for-select restituisce `meta.primary_referent` {id, name} o null per ogni item, senza query aggiuntive per item. (Pest Feature con conteggio query)</criterion>
+    <criterion id="AC-009">Nell'elenco Opportunita', cambiando la cella Anagrafica verso un'anagrafica con principale P, il referente salvato e' P se l'attore puo' modificare referent_id, altrimenti null. (Pest Feature su OpportunityCellWriter)</criterion>
+    <criterion id="AC-010">La migrazione dal legacy che crea un'anagrafica con referenti le assegna il principale = primo referente rimappato. (Pest, test esistente di RegistriesSource esteso)</criterion>
+    <criterion id="AC-011">Form anagrafica: la select "Referente principale" elenca solo i referenti presenti nel campo Referenti; aggiungendo il primo referente si imposta da sola; togliendo il principale passa al primo rimasto; senza referenti e' disabilitata; il payload di update invia primary_referent_id solo se cambiato. (Vitest jsdom)</criterion>
+    <criterion id="AC-012">Dettaglio anagrafica: la card del referente principale mostra il badge "Principale"; la riga in place "Referente principale" salva con PATCH. (Vitest jsdom)</criterion>
+    <criterion id="AC-013">Form Opportunita': scegliendo un'anagrafica con principale P, il Referente diventa P; con un'anagrafica senza referenti resta vuoto; una scelta piu' recente prevale su una risposta lenta della precedente. Vale anche per "Nuova opportunita'" aperta dal dettaglio anagrafica. (Vitest, test di useRegistryRoleInheritance e del preset)</criterion>
+    <criterion id="AC-014">Form Opportunita' da Lead: scegliendo un Lead la cui anagrafica ha principale P e Referente vuoto, il Referente diventa P; con la stessa anagrafica gia' nel form e un Referente gia' scelto, il Referente non cambia. (Vitest)</criterion>
+    <criterion id="AC-015">Form Attivita' (creazione e dettaglio): scegliendo un'anagrafica con principale P il Referente diventa P, Opportunita' e Lead si azzerano come oggi; scelte rapide successive tengono solo l'ultima. Nel dettaglio, senza permesso di modifica sul Referente, l'Anagrafica non apre l'editor. (Vitest)</criterion>
+    <criterion id="AC-016">Guide in-app IT ed EN aggiornate con gli stessi id di sezione; `help-content-parity.test.ts` verde. (Vitest)</criterion>
+    <criterion id="AC-017">Gate: Pest mirato su Registries/Referents/Opportunities/Tasks e suite completa a fine feature, Vitest, Pint, ESLint e `tsc -b --force` puliti. (verifier)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Solo componenti esistenti (`RelationSelectField` o la `Select` di `components/ui`, `Badge`).
+    - Authz server-side: field permission di `RegistriesAuthorization`; nessun nuovo endpoint.
+    - Validazione di appartenenza nel FormRequest (422), elezione nel layer servizio; niente SQL interpolato
+      (il backfill usa query builder con subquery statica).
+    - Migrazioni: schema reversibile; dati idempotente. Mai `migrate:fresh/rollback/refresh`, `db:wipe`,
+      `db:seed` o `migrate` sul DB `qnet2` senza ok esplicito dell'utente in quel momento.
+    - Prefill sempre nei change handler, mai in un `useEffect` (regola spec 0154 D-11 / react-hooks.md).
+    - File entro 300/500 righe: `use-task-form.ts` e' gia' a 351, il prefill va in un hook a parte.
+    - UI compatta (ui-design.md §2), i18n IT/EN, nessun testo hard-coded.
+  </constraints>
+
+</spec>

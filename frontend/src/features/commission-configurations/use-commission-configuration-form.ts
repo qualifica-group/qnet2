@@ -59,7 +59,7 @@ export function useCommissionConfigurationForm({ mode, onSuccess }: Args) {
   const schema = useMemo(() => buildCommissionConfigurationSchema(t), [t])
   const isEdit = mode.type === 'edit'
   const defaultValues = useMemo(
-    () => (mode.type === 'edit' ? toFormValues(mode.configuration) : createDefaults(mode.supplierRegistryId)),
+    () => (mode.type === 'edit' ? toFormValues(mode.configuration) : createDefaults(mode.recipientPreset)),
     [mode],
   )
 

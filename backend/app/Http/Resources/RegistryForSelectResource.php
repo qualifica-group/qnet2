@@ -41,6 +41,9 @@ class RegistryForSelectResource extends ForSelectResource
                 'supervisor' => $this->supervisor !== null
                     ? ['id' => $this->supervisor->id, 'name' => $this->supervisor->name]
                     : null,
+                'primary_referent' => $this->primaryReferent !== null
+                    ? ['id' => $this->primaryReferent->id, 'name' => $this->primaryReferent->name]
+                    : null,
                 'managers' => $this->managers
                     ->map(static fn (User $manager): array => [
                         'id' => $manager->id,

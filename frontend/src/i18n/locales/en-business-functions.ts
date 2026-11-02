@@ -88,7 +88,6 @@ export const businessFunctions = {
     nameMax: 'Name must be at most 191 characters.',
     genericError: 'Something went wrong. Please try again.',
     deleteError: 'Unable to delete the business function. Please try again.',
-    deleteForbidden: 'You cannot delete this business function.',
     leaveConfirm: {
       title: 'Leave without saving?',
       description: 'The business function has not been created yet: what you entered will be lost.',

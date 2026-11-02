@@ -13,6 +13,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 /**
@@ -164,8 +165,8 @@ trait ValidatesEmployment
     {
         $touchesPayment = $this->has('employment.iban') || $this->has('employment.iban_holder');
 
-        if ($touchesPayment && ! $this->user()?->can(UserPolicy::MANAGE_COMPENSATION_PERMISSION)) {
-            throw new AuthorizationException;
+        if ($touchesPayment) {
+            Gate::forUser($this->user())->authorize(UserPolicy::MANAGE_COMPENSATION_PERMISSION);
         }
     }
 

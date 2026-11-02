@@ -5,6 +5,8 @@ import type { TFunction } from 'i18next'
 import axios from 'axios'
 import { createExport, downloadExport, getExportRun } from '@/features/exports/api'
 import { exportKeys } from '@/features/exports/query-keys'
+import i18n from '@/i18n'
+import { forbiddenMessage } from '@/lib/forbidden-message'
 import type { CreateExportPayload, ExportRun, ExportStatus } from '@/features/exports/types'
 
 /** Interval (ms) between polls while the run is still processing. */
@@ -17,11 +19,12 @@ const POLLING_STATUSES: ReadonlySet<ExportStatus> = new Set(['processing'])
  * Maps a failed request onto a localized message (status-only, mirroring the
  * `resolveImportErrorMessage` convention in `features/imports/use-import.ts`):
  * no server message parsing, just the well-known statuses this contract can
- * return (403/422/429).
+ * return (403/422/429); a 403 carries the server's specific reason.
  */
 export function resolveExportErrorMessage(error: unknown, t: TFunction): string {
   const status = axios.isAxiosError(error) ? error.response?.status : undefined
-  if (status === 403) return t('exports.errors.forbidden')
+  const forbidden = forbiddenMessage(error, i18n)
+  if (forbidden) return forbidden
   if (status === 422) return t('exports.errors.validation')
   if (status === 429) return t('exports.errors.rateLimited')
   return t('exports.errors.generic')

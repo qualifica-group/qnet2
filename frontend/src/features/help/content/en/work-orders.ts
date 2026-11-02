@@ -11,7 +11,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'There is no separate edit page: a work order is edited **directly from its detail**, one field at a time, **Additional information** included (every flexible field has its own row). A section tied to a yes/no field appears only while the field is on: switching it off clears the values of the section.',
+          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Work order data** (with the link to the Contract) and **Context**, then **Registry and contacts** (Registry, Referent with its type, Commercial, Reporter) and **Rewards**, then **Team** (the work order's Supervisors and Participants) and **Company and sites**, then **Document and payment** and **Contract data**. Context, Registry and contacts, Rewards, Company and sites and Document and payment come from the quote, read only; a work order with lines from several quotes does not show them.",
+        },
+        {
+          type: 'paragraph',
+          text: 'There is no separate edit page: a work order is edited **directly from its detail**, one field at a time, **Additional information** included (every flexible field has its own row). A section tied to a yes/no field appears only while the field is on: switching it off clears the values of the section. Clicking the **Additional information** title collapses or reopens the section: the choice is kept in the browser and applies to every work order, on the detail and on the create form.',
         },
         {
           type: 'steps',
@@ -28,7 +32,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer, Task template). Client registry, Contract (code and title), Company and sites come from the offer, as does the Contract expiry shown among the indicators at the top (edited on the contract); Status and Progress come from the progress records (see the dedicated section).',
+          text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer, Task template). Contract (code and title) and the sections taken from the quote come from the offer, as does the Contract expiry shown among the indicators at the top (edited on the contract); Status and Progress come from the progress records (see the dedicated section).',
         },
         {
           type: 'note',
@@ -47,6 +51,32 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: "**Force closing** stays a row action (it asks for a reason), not a cell. The **Registry** column shows the work order's client, taken from the linked offer: it can be filtered and sorted but not edited. The same goes for the **Contract expiry** column, the expiry date of the contract the work order comes from (date filter, empty when the contract has no expiry). Work order no., Contract no., Linked offer, Registry, Contract expiry, Status, Progress, Created at and Updated at stay read-only.",
+        },
+      ],
+    },
+    {
+      id: 'category-tabs',
+      title: "Filtering by product category",
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Above the list is the category bar: the **All** tab and one tab for each product category present, with the number of work orders. Clicking a tab shows only the work orders of that category. Your choice is kept after reloading the page.",
+        },
+        {
+          type: 'paragraph',
+          text: "A work order appears under the tab of every category among the products on the **revenue rows of the offers it comes from**: the linked offer and, for a multi-offer work order, the offers of the rows it holds (it counts once even with several rows of the same category). Cost rows do not count; a work order without revenue rows appears only under **All**. The number next to the name is how many work orders, among those you can see, fall under that category.",
+        },
+        {
+          type: 'steps',
+          items: ["If the tabs do not fit the row, the others move into the **More** menu, where you can search a category by name.","Click the **star** next to a category (in the menu) to add it to your **favorites**: favorites come first.","Turn on **Show only favorites** to see only the favorites in the bar; the others stay in the **More** menu."],
+        },
+        {
+          type: 'paragraph',
+          text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. Turn it off to go back to all the categories.",
+        },
+        {
+          type: 'note',
+          text: "Favorites are separate for each list (Opportunities, Quotes, Contracts, Work orders, Request Management). The first time they are suggested from the categories you are enabled for; as soon as you use the star they become yours. The export does not follow the tab: it always covers all the work orders. The **Work orders** tab of a contract's detail has no bar.",
         },
       ],
     },
@@ -153,6 +183,28 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'task-board-selection',
+      title: 'Tasks: multiple selection',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'In the detail\'s **Task** tab every main task has a selection checkbox: selecting one or more shows the bulk action bar at the bottom (Assign, Complete, Reopen, Block, Priority, Dates). Sub-tasks cannot be selected.',
+        },
+        {
+          type: 'list',
+          items: [
+            '**Select all**, in the filter bar, selects every visible task of every phase; clicking it again clears them.',
+            'The checkbox next to each **phase** name (**No phase** included, and at the top of each column in the Board view) selects or clears every task of that phase.',
+            'When only some of the tasks are selected the checkbox shows a dash: one click completes the selection.',
+          ],
+        },
+        {
+          type: 'note',
+          text: '"Select all" checkboxes only cover the tasks shown under the current filters. On a closed work order the board is read-only and the checkboxes do not appear.',
+        },
+      ],
+    },
+    {
       id: 'costs',
       title: 'Costs',
       blocks: [
@@ -231,6 +283,22 @@ const guide: HelpGuide = {
             'Choose the **payment status**, write the **payment agreement** and say whether there are **unpaid** amounts.',
             'Press **Save** to save the line and close the popup, or **Cancel** to discard the changes.',
           ],
+        },
+        {
+          type: 'paragraph',
+          text: '**Bulk action**: if you may manage payments every line has a selection checkbox, and the one in the header selects every line. Use it to mark several products at once, for example all as **Paid** or as **Unpaid**.',
+        },
+        {
+          type: 'steps',
+          items: [
+            'Select the lines with their checkboxes (or all of them with the header checkbox): a bar with the number of selected lines appears above the table.',
+            'Press **Set payment**: in the popup choose the **payment status** (also **No status**) and/or the **unpaid** flag (Yes/No). A field left on **Keep unchanged** stays as it is on every line.',
+            'Press **Apply**: the values are saved on all the selected lines together (if one cannot be saved none changes) and the selection is cleared. **Clear selection** drops the selection without saving.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'The payment agreement is a different text on every line: it is edited only in the **Line payment** popup. When a bulk action makes several lines deliverable, supervisors and participants receive **a single notification** listing the products.',
         },
         {
           type: 'note',
@@ -332,9 +400,9 @@ const guide: HelpGuide = {
       title: "Which work orders you see",
       blocks: [
         { type: 'paragraph', text: "What you see depends on your role. You always need the **View** permission; the levels are cumulative:" },
-        { type: 'table', headers: ["Permission", "Visible work orders"], rows: [["**View**", "Those where you are a **Supervisor** or a **Participant**."], ["**View by site**", "Your own plus those whose quote belongs to one of your sites. For a work order with several quotes, one is enough."], ["**View all**", "All of them."]] },
+        { type: 'table', headers: ["Permission", "Visible work orders"], rows: [["**View**", "Those where you are a **Supervisor** or a **Participant**."], ["**View by site**", "Your own plus those whose quote belongs to one of your sites. For a work order with several quotes, one is enough."], ["**View by competence**", "Your own plus those where at least one source quote has a category in your assignment scope, in any site. With **Scope on all categories**, all of them."], ["**View all**", "All of them."]] },
         { type: 'paragraph', text: "The filter applies to the list, the detail, filters, exports, statistics and dashboard, selectors and documents. Opening a link to a work order you cannot see shows an access error. Seeing a work order does not let you edit or delete it: that takes the **Edit** and **Delete** permissions, and you can only edit what you can see." },
-        { type: 'note', text: "If you create a work order without being a Supervisor or a Participant, you will no longer see it unless you have **View all** or **View by site**." },
+        { type: 'note', text: "If you create a work order without being a Supervisor or a Participant, you will no longer see it unless you have **View all**, **View by site** or **View by competence**." },
       ],
     },
     {

@@ -9,6 +9,7 @@ use App\Models\Opportunity;
 use App\Models\PaymentMethod;
 use App\Models\Quote;
 use App\Models\Referent;
+use App\Models\ReferentType;
 use App\Models\Registry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -56,7 +57,8 @@ if (! function_exists('contractShowFullContract')) {
     function contractShowFullContract(): Contract
     {
         $registry = Registry::factory()->create();
-        $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id]);
+        $referent = Referent::factory()->create(['referent_type_id' => ReferentType::factory()->create()->id]);
+        $opportunity = Opportunity::factory()->create(['registry_id' => $registry->id, 'referent_id' => $referent->id]);
         $company = Company::factory()->create();
         $companySite = CompanySite::factory()->create(['company_id' => $company->id]);
         $operationalSite = OperationalSite::factory()->withAddress()->create();
@@ -108,6 +110,8 @@ it('GET shows the full contract, projecting client/opportunity/amounts from the 
         ->assertJsonPath('data.quote.margin_net', '600.00')
         ->assertJsonPath('data.registry.id', $contract->quote->opportunity->registry->id)
         ->assertJsonPath('data.opportunity.id', $contract->quote->opportunity_id)
+        ->assertJsonPath('data.referent.id', $contract->quote->opportunity->referent_id)
+        ->assertJsonPath('data.referent.referent_type.name', $contract->quote->opportunity->referent->referentType->name)
         ->assertJsonPath('data.company.name', $contract->quote->company->denomination)
         ->assertJsonPath('data.company_site.id', $contract->quote->company_site_id)
         ->assertJsonPath('data.operational_site.id', $contract->quote->operational_site_id)

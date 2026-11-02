@@ -28,7 +28,7 @@ const guide: HelpGuide = {
           headers: ['Section', 'What it contains'],
           rows: [
             ['Personal details', 'The same fields as a registry, with Individual or Company.'],
-            ['Referent details', 'Referent type, Contact scope (Internal or External), Linked user (if the person uses QNet), **Supplier registry** and Notes.'],
+            ['Referent details', 'Referent type (the person’s role, shown under their name on the registry’s Referents cards and in the Contact field of opportunities, quotes and tasks), Contact scope (Internal or External), Linked user (if the person uses QNet), **Supplier registry** and Notes.'],
             ['Other fields', 'The custom fields of referents, grouped as in the form.'],
             ['Contacts', 'Contact details. The Phone is required at creation.'],
             ['Addresses', 'Sites and billing addresses.'],
@@ -88,6 +88,28 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: 'After a statement of the agent has been approved the field is **locked on that supplier**: it cannot be changed to another. Only a registry that is a supplier can be chosen.',
+        },
+      ],
+    },
+    {
+      id: 'configured-commissions',
+      title: 'Configured commissions',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "At the bottom of the referent detail, as in the registry, you find **Configured commissions**: the Commission Configurator table with only the rules that have this referent as **Recipient** (for example a reporter's percentages per category). The rules valid for a whole role, with no recipient, do not appear here.",
+        },
+        {
+          type: 'steps',
+          items: [
+            'Open the referent and scroll down to **Configured commissions**: the number next to the title counts the rules.',
+            'Use **View** on the row to open the rule in a panel above the referent, or **Delete** if it is not in use.',
+            'For a new rule press **New configuration**: the form starts with Recipient role **Reporter**, scope **Specific recipient** and this referent as Recipient. Change role or scope if needed, fill in Calculation and Validity and press **Save**.',
+          ],
+        },
+        {
+          type: 'tip',
+          text: 'The table appears only if you can view the Commission Configurator; the New configuration button only if you can create rules.',
         },
       ],
     },

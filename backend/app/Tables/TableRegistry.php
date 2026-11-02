@@ -4,7 +4,10 @@ namespace App\Tables;
 
 use App\CustomFields\CustomFieldEntityRegistry;
 use App\RequestManagement\RequestModule;
+use App\Tables\Contracts\ContractCategoryScopedTableDefinition;
+use App\Tables\Opportunities\OpportunityCategoryScopedTableDefinition;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
+use App\Tables\Referents\ReferentScopedTableDefinition;
 use App\Tables\Registries\RegistryScopedTableDefinition;
 use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\WorkOrders\QuoteScopedTableDefinition;
@@ -41,6 +44,28 @@ class TableRegistry
     private const string WORK_ORDERS_DOMAIN = 'work-orders';
 
     /**
+     * The only domain wrapped in `OpportunityCategoryScopedTableDefinition`
+     * (spec 0335), on top of its registry scope.
+     */
+    private const string OPPORTUNITIES_DOMAIN = 'opportunities';
+
+    /**
+     * The only domain wrapped in `ContractCategoryScopedTableDefinition`
+     * (spec 0335, D-8).
+     */
+    private const string CONTRACTS_DOMAIN = 'contracts';
+
+    /**
+     * Domains wrapped in `ReferentScopedTableDefinition` (spec 0336), each
+     * with its polymorphic id and type columns pointing at a Referente.
+     *
+     * @var array<string, array{0: string, 1: string}>
+     */
+    private const array REFERENT_SCOPE_COLUMNS = [
+        'commission-configurations' => ['commission_configurations.recipient_id', 'commission_configurations.recipient_type'],
+    ];
+
+    /**
      * Domains wrapped in `RegistryScopedTableDefinition` (spec 0199), each
      * with the fully-qualified column holding the client. `quotes` and
      * `work-orders` are not listed: their own scoped decorators implement
@@ -70,8 +95,9 @@ class TableRegistry
      * 0130), THEN in `OpportunityScopedTableDefinition` (spec 0067) for
      * `quotes`, THEN in `QuoteScopedTableDefinition` (spec 0095) for
      * `work-orders`, THEN in `RegistryScopedTableDefinition` (spec 0199) for
-     * `opportunities`/`tasks`/`commission-configurations` (spec 0204) — one
-     * line each here, zero per-module code.
+     * `opportunities`/`tasks`/`commission-configurations` (spec 0204), THEN
+     * in `ReferentScopedTableDefinition` (spec 0336) for
+     * `commission-configurations` — one line each here, zero per-module code.
      *
      * @throws ModelNotFoundException when the domain is not registered.
      */
@@ -82,7 +108,12 @@ class TableRegistry
         $definition = $this->wrapIfOpportunityScoped($domain, $definition);
         $definition = $this->wrapIfQuoteScoped($domain, $definition);
 
-        return $this->wrapIfRegistryScoped($domain, $definition);
+        $definition = $this->wrapIfRegistryScoped($domain, $definition);
+        $definition = $this->wrapIfReferentScoped($domain, $definition);
+
+        $definition = $this->wrapIfOpportunityCategoryScoped($domain, $definition);
+
+        return $this->wrapIfContractCategoryScoped($domain, $definition);
     }
 
     /**
@@ -201,6 +232,66 @@ class TableRegistry
             'inner' => $definition,
             'registryColumn' => $column,
             'morphTypeColumn' => self::REGISTRY_SCOPE_MORPH_TYPE_COLUMNS[$domain] ?? null,
+        ]);
+
+        return $wrapped;
+    }
+
+    /**
+     * Wrap in `ReferentScopedTableDefinition` (spec 0336) for the domains
+     * listed in `REFERENT_SCOPE_COLUMNS` only, OUTSIDE the registry decorator
+     * they are all wrapped in: it must be the one callers' `instanceof` checks see.
+     */
+    private function wrapIfReferentScoped(string $domain, TableDefinition $definition): TableDefinition
+    {
+        $columns = self::REFERENT_SCOPE_COLUMNS[$domain] ?? null;
+
+        if ($columns === null || ! $definition instanceof RegistryScopable) {
+            return $definition;
+        }
+
+        /** @var ReferentScopedTableDefinition $wrapped */
+        $wrapped = $this->container->make(ReferentScopedTableDefinition::class, [
+            'inner' => $definition,
+            'referentColumn' => $columns[0],
+            'morphTypeColumn' => $columns[1],
+        ]);
+
+        return $wrapped;
+    }
+
+    /**
+     * Wrap in `OpportunityCategoryScopedTableDefinition` (spec 0335) for
+     * `opportunities` only, OUTSIDE the registry decorator: it must be the
+     * outermost one, the one callers' `instanceof` checks see.
+     */
+    private function wrapIfOpportunityCategoryScoped(string $domain, TableDefinition $definition): TableDefinition
+    {
+        if ($domain !== self::OPPORTUNITIES_DOMAIN) {
+            return $definition;
+        }
+
+        /** @var OpportunityCategoryScopedTableDefinition $wrapped */
+        $wrapped = $this->container->make(OpportunityCategoryScopedTableDefinition::class, [
+            'inner' => $definition,
+        ]);
+
+        return $wrapped;
+    }
+
+    /**
+     * Wrap in `ContractCategoryScopedTableDefinition` (spec 0335, D-8) for
+     * `contracts` only; outermost, like the opportunities one.
+     */
+    private function wrapIfContractCategoryScoped(string $domain, TableDefinition $definition): TableDefinition
+    {
+        if ($domain !== self::CONTRACTS_DOMAIN) {
+            return $definition;
+        }
+
+        /** @var ContractCategoryScopedTableDefinition $wrapped */
+        $wrapped = $this->container->make(ContractCategoryScopedTableDefinition::class, [
+            'inner' => $definition,
         ]);
 
         return $wrapped;

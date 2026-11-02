@@ -211,7 +211,7 @@ class RolesTableDefinition extends AbstractTableDefinition
      * Dynamic `permissions` options: the assignable (form-module) permission
      * catalogue, used both by the set filter and (read by the thin frontend
      * adapter from the same config) to render the permission checkboxes in the
-     * role form. Indirect sub-entity permissions (addresses.*, contacts.*, …)
+     * role form. Indirect sub-entity permissions (personal_data.*)
      * are governed via field-permissions, so they are never offered here
      * (AssignablePermissionCatalogue is the single source of truth). The
      * frontend never hardcodes permission names.

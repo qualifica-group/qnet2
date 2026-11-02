@@ -25,6 +25,16 @@ export const common = {
   openDetailPage: 'Apri pagina di dettaglio',
   /** Appended to the name when duplicating a record (row action "duplicate"); leading space by design. */
   copySuffix: ' (copia)',
+  /** Last-resort 403 sentence (`lib/forbidden-message.ts`) when the server sent no reason. */
+  forbidden: 'Non hai i permessi per questa operazione.',
+  /** 403 with a missing permission: ability and module are the permission's localized labels. */
+  missingPermission: 'Non hai il permesso «{{ability}}» sul modulo «{{module}}».',
+  /** Title of the toast `notifyFormErrors` raises for a refused save (every form): the reasons follow it. */
+  formErrors: {
+    title: 'Impossibile salvare',
+    more_one: '…e un altro errore',
+    more_other: '…e altri {{count}} errori',
+  },
   /** Final state of a record fetch answered 404/403 (`DetailError`, `RecordUnavailable`): no retry. */
   recordUnavailable: {
     notFound: {
@@ -42,6 +52,8 @@ export const common = {
     collapse: 'Comprimi pannello laterale',
     expand: 'Espandi pannello laterale',
   },
+  /** Record detail "Buoni" section when nothing is assigned (spec 0331 D-4). */
+  noRewards: 'Nessun buono',
   /** Badge next to a record title: its legacy id, shown only to who may see it (`legacy-ids.view`). */
   legacyIdBadge: 'OLD ID #{{id}}',
   /** In-place editing of a record's rows (spec 0195): the pencil, and the open row's confirm/cancel. */
