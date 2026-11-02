@@ -15,7 +15,7 @@
   `EXTERNAL_MIGRATION_FILES_BASE_URL`; vuoto = sorgente non disponibile). `AttachmentService::delete()` non tocca il disco
   per i legacy; `copyTo()` da legacy (composer email) scarica e salva una copia LOCALE (limite `max_size` -> 422).
 - Sorgente `attachments` (`AttachmentsSource`), fase 18 con `notes`; MIME fuori allow-list -> `application/octet-stream`.
-- Legacy (`../qnet`, non committato): `Api/V2/AttachmentMigrationController` + `Support/Migration/LegacyAttachmentFile`,
+- Legacy (`../qnet`, committato): `Api/V2/AttachmentMigrationController` + `Support/Migration/LegacyAttachmentFile`,
   rotta `migration/attachments`; nuova rotta pubblica `/fileorder/{num}/{name}` (`FileController::grab_order_document`)
   per i documenti di commessa (decisione utente); task via `/fileticket/{hash}` esistente. 31.202 documenti sul tenant 14.
 - Test: `tests/Feature/Attachments/LegacyAttachmentLinkTest.php` (22), `tests/Feature/Migration/AttachmentsSourceImportTest.php`
@@ -25,6 +25,29 @@
 - Prossimi passi: impostare `EXTERNAL_MIGRATION_FILES_BASE_URL` in produzione; prima di spegnere il legacy serve la spec
   futura "converti link -> locale" (D-9); le rotte file pubbliche del legacy restano una debolezza da chiudere.
   Difetto preesistente fuori scope: `OutboundEmailAttachmentService::copyAll()` lascia il file della prima copia se la seconda fallisce.
+
+## Migrazione segnatempo dal legacy (spec 0341) — VERDE, COMMITTATO (2026-11-02)
+
+- Due sorgenti nuove, fase 19 (ultima) di `MigrationOrder`: `time-entries` (un intervallo legacy = una `time_entries`)
+  e `time-entry-day-notes`. Migrazione `2026_11_13_100000_add_old_id_to_time_entries_tables` (gia' applicata in dev).
+- qnet-2: `TimeEntriesSource`, `TimeEntryDayNotesSource`, `Migrations\Support\LegacyTimeEntryLinks` (regola D-5:
+  task migrato impone titolo/link/fase; senza task vince la commessa sull'opportunita', il cliente del record
+  sull'anagrafica legacy, fase per nome). Scrittura diretta sul model, senza `TimeEntryService`, activity log,
+  notifiche, nota commessa (`work_order_note_id` null). Nota di giornata gia' presente per utente+data -> adottata.
+- Legacy (`../qnet`, committato): `Api/V2/TimeEntryMigrationController` (`/migration/time-entries`),
+  `TimeEntryDayNoteMigrationController` (`/migration/time-entry-day-notes`), `Support/Migration/LegacyTimeEntryInterval`.
+  Scansione completa sui dati reali: 163.477 item, 159.028 validi, 4.449 orfani (3.832 durata zero, 15 fine<inizio,
+  5 timer aperti, 597 giornate senza intervalli); 52 note di giornata in testo semplice. Pagina da 100 ~0,37 s.
+- Test: `tests/Feature/Migration/TimeEntriesSourceImportTest.php`, `TimeEntryDayNotesSourceImportTest.php`;
+  REQUIREMENT CHANGED su `MigrationDependenciesTest` e `NotesSourceImportTest` AC-007 (Note non e' piu' l'ultima fase).
+- i18n etichette/requisiti IT/EN, guida `migrations#time-entries` IT/EN, manuale Claude Docs (sezione Migrazioni).
+  `MigrationRegistryTest` aggiornato (45 sorgenti, REQUIREMENT CHANGED 0341).
+- Verifica: Migration+Unit/Migrations 757/757 (con `EXTERNAL_MIGRATION_USERS_LINK_ONLY=false`: il `.env` locale a
+  true fa fallire 6 test utenti, preesistente). Suite completa backend 13287/13298: 4 rossi estranei alla 0341
+  (`QuoteDocumentPdfTest` 500 nel rendering PDF, `SettlementApprovalTest` not_due/overdue legato alla data,
+  `TableBulkDeleteTest` last super-admin gia' noto, `WorkOrderCategoryTabsTest` ordine chiavi). Vitest 9696/9696,
+  `tsc -b --force` e Pint/ESLint puliti.
+- Prossimo passo: import reale in dev (non eseguito, da decidere con l'utente).
 
 ## Visibilita' "per competenza" su 6 moduli (spec 0340 rev.1) — VERDE, COMMITTATO (2026-11-02)
 
@@ -1612,7 +1635,7 @@
 
 - Spec `docs/specs/0305-legacy-quote-lines-without-service.xml` (approvata, D-1..D-9). Caso guida commessa 270 ->
   offerta 238 (righe 74624/74625/74626 "... UNI ISO 11381:2017 _ 1°/2°/3° Anno", `service_id` 0).
-- Legacy (`../qnet`, non committato): nuovo `App\Support\Migration\LegacyFreeLineProducts` (titolo normalizzato:
+- Legacy (`../qnet`, committato): nuovo `App\Support\Migration\LegacyFreeLineProducts` (titolo normalizzato:
   trim, spazi ridotti, minuscole; `key` = id minimo su TUTTA `quotationservices`, `name` = "[OLD] " + titolo; 339
   titoli). `QuoteMigrationController::mapLine()`: riga senza servizio -> `product_id` null + `free_product {key,name}`
   + `description` null; righe con servizio invariate. Modifiche utente a `AppServiceProvider.php`/`config/database.php`
@@ -2602,7 +2625,7 @@
   (`OrgChartFunctions::GENERAL_MANAGER`, fuori da `OrgChartRoster`: nessuna mansione/livello); i responsabili di
   livello I di tutte le altre funzioni ricevono Enrico in "Risponde a" (additivo, come il resto dello Step 5).
 - `BusinessFunctionCatalogue::GENERAL_MANAGEMENT` (25 funzioni), `QualificaHrCatalogSeeder::assignFunctions`.
-- Legacy (`../qnet`, non committato): `LegacyBusinessFunctions::NAMES` 26 => 'Direzione Generale' (non piu' "[OLD]",
+- Legacy (`../qnet`, committato): `LegacyBusinessFunctions::NAMES` 26 => 'Direzione Generale' (non piu' "[OLD]",
   attiva). Spec 0281 D-2/D-2b aggiornata.
 - DB locale: riga id 29 "[OLD] DIREZIONE GENERALE" (old_id 26) rinominata "Direzione Generale", attiva, BS; rilanciati
   `QualificaBusinessFunctionSeeder` + `QualificaHrCatalogSeeder`: 16 responsabili rispondono a Enrico, lui a nessuno.
@@ -2718,7 +2741,7 @@
   `QualificaCatalogSeeder` step 5 prima del Link seeder. Esistente per nome (senza maiuscole) -> invariato, solo tipo
   mancante riempito. La categoria "APL" e gli operatori APL (`OperatorRoster::FUNCTION_WIDE_COMPETENCE`) ora puntano
   ad "Agenzia per il Lavoro". "Consulenza" e "No funzione aziendale" restano.
-- Legacy (`../qnet`, non committato): `app/Support/Migration/LegacyBusinessFunctions.php` (id legacy -> nome qnet-2,
+- Legacy (`../qnet`, committato): `app/Support/Migration/LegacyBusinessFunctions.php` (id legacy -> nome qnet-2,
   fusione BACK OFFICE 7 -> SEGRETERIA 20). `BusinessFunctionController` invia nome mappato o "[OLD] ..." + `is_active`,
   esclude le fuse e unisce membri/responsabile; `UserMigrationController` e `ProductCategoryMigrationController`
   mandano `business_function_id` via `referenceId()`. Verificato con tinker sui dati reali: 25 righe, 6 [OLD] non attive
@@ -3840,7 +3863,7 @@
 - Contratto: `country` = codice ISO alpha-2 in TUTTI gli endpoint con indirizzo. qnet-2 `MigrationGeoResolver`
   cerca per `countries.iso2` (un nome non e' piu' accettato). Fixture dei test di migrazione `'country' => 'IT'`
   (REQUIREMENT CHANGED) + test nuovo ISO/nome in OperationalSitesSourceImportTest.
-- Legacy (`../qnet`, non committato): `LegacyNation` (249 `nations` per id -> ISO, mappa approvata dall'utente;
+- Legacy (`../qnet`, committato): `LegacyNation` (249 `nations` per id -> ISO, mappa approvata dall'utente;
   nomi troncati "Per"/"Citt" mappati a mano), `LegacyGeo::place()` (comune riconosciuto su `listacomuni`,
   completa provincia/regione/stato, sigle sarde soppresse, regioni nel nome del dataset qnet-2),
   `LegacyComuneSpelling` (204 comuni ISTAT -> grafia del dataset qnet-2). Usati da Referent, Registry (+addresses),

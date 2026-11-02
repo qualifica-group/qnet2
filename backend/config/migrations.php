@@ -36,6 +36,8 @@ use App\Migrations\Sources\SourcesSource;
 use App\Migrations\Sources\TagsSource;
 use App\Migrations\Sources\TasksSource;
 use App\Migrations\Sources\TaskTemplatesSource;
+use App\Migrations\Sources\TimeEntriesSource;
+use App\Migrations\Sources\TimeEntryDayNotesSource;
 use App\Migrations\Sources\UsersSource;
 use App\Migrations\Sources\VatRatesSource;
 use App\Migrations\Sources\WorkOrderProgressSource;
@@ -175,6 +177,9 @@ return [
         // spec 0311: the notes of every legacy module, after the records they belong to.
         'notes' => NotesSource::class,
         'attachments' => AttachmentsSource::class,
+        // spec 0341: the legacy segnatempo intervals and day notes, after every record they link to.
+        'time-entries' => TimeEntriesSource::class,
+        'time-entry-day-notes' => TimeEntryDayNotesSource::class,
     ],
 
 ];

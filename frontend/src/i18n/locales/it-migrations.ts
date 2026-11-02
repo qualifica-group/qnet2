@@ -56,6 +56,8 @@ export const migrations = {
     collections: 'Incassi',
     notes: 'Note',
     attachments: 'Documenti',
+    'time-entries': 'Segnatempo',
+    'time-entry-day-notes': 'Segnatempo — note di giornata',
   },
   state: {
     notMigrated: 'Non migrata',

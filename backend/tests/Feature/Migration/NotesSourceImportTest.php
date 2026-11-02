@@ -199,11 +199,11 @@ it('AC-006 stores an inline image as a rich text attachment of the note', functi
         ->and($note->body)->not->toContain('base64');
 });
 
-it('AC-007 registers the source in the last phase with its dependencies', function () {
+it('AC-007 registers the source in phase 18 with its dependencies', function () {
     $source = app(MigrationRegistry::class)->resolve('notes');
-    $phases = MigrationOrder::phases();
 
-    expect(MigrationOrder::phaseOf('notes'))->toBe(count($phases))
+    // REQUIREMENT CHANGED (spec 0341): phase 19 (segnatempo) now follows the notes.
+    expect(MigrationOrder::phaseOf('notes'))->toBe(18)
         ->and(array_map(fn ($dependency) => $dependency->toArray(), $source->dependencies()))->toBe([
             ['source' => 'users', 'required' => true],
             ['source' => 'work-orders', 'required' => true],

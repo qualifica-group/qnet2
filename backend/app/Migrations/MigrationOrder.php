@@ -143,6 +143,10 @@ final class MigrationOrder
         // modules plus purchase orders; last so every record they belong to
         // exists. The two have no dependency on each other.
         ['notes', 'attachments'],
+
+        // Phase 19 — spec 0341: the legacy segnatempo (intervals, then the day
+        // notes), last so the users, tasks and commesse they link to exist.
+        ['time-entries', 'time-entry-day-notes'],
     ];
 
     /**

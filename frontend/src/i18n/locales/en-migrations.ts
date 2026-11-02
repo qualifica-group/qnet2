@@ -57,6 +57,8 @@ export const migrations = {
     collections: 'Collections',
     notes: 'Notes',
     attachments: 'Documents',
+    'time-entries': 'Time entries',
+    'time-entry-day-notes': 'Time entries — day notes',
   },
   state: {
     notMigrated: 'Not migrated',

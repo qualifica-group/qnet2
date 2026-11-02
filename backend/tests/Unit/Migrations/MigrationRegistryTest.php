@@ -37,6 +37,8 @@ use App\Migrations\Sources\SourcesSource;
 use App\Migrations\Sources\TagsSource;
 use App\Migrations\Sources\TasksSource;
 use App\Migrations\Sources\TaskTemplatesSource;
+use App\Migrations\Sources\TimeEntriesSource;
+use App\Migrations\Sources\TimeEntryDayNotesSource;
 use App\Migrations\Sources\UsersSource;
 use App\Migrations\Sources\VatRatesSource;
 use App\Migrations\Sources\WorkOrderProgressSource;
@@ -114,13 +116,16 @@ it('config/migrations.php registers every source (spec 0013 Increment 2)', funct
         'notes' => NotesSource::class,
         // REQUIREMENT CHANGED (spec 0295): the legacy link-only documents source.
         'attachments' => AttachmentsSource::class,
+        // REQUIREMENT CHANGED (spec 0341): the legacy segnatempo sources.
+        'time-entries' => TimeEntriesSource::class,
+        'time-entry-day-notes' => TimeEntryDayNotesSource::class,
     ]);
 });
 
 it('all() resolves every registered source', function () {
     $sources = app(MigrationRegistry::class)->all();
 
-    expect($sources)->toHaveCount(43)
+    expect($sources)->toHaveCount(45)
         ->and(array_map(fn ($source) => $source->key(), $sources))->toBe([
             'roles', 'users', 'business-functions', 'companies', 'company-sites', 'operational-sites',
             'business-function-members', 'referent-types', 'referents',
@@ -128,6 +133,6 @@ it('all() resolves every registered source', function () {
             'product-category-attributes', 'attribute-layouts', 'products', 'cost-products', 'email-templates', 'document-bundles',
             'registries', 'opportunities', 'quotes', 'work-orders', 'tasks', 'work-order-progress', 'work-order-workflows', 'work-order-workflow-statuses', 'work-order-task-templates',
             'product-suppliers', 'commission-configurations', 'purchase-requests', 'purchase-orders', 'financial-accounts', 'purchase-invoices', 'proforma-requests', 'invoices', 'collections',
-            'notes', 'attachments',
+            'notes', 'attachments', 'time-entries', 'time-entry-day-notes',
         ]);
 });

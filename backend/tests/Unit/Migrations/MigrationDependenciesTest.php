@@ -45,5 +45,8 @@ it('phaseOf gives the 1-based phase, or null for a source outside the order', fu
         ->and(MigrationOrder::phaseOf('notes'))->toBe(18)
         // REQUIREMENT CHANGED (spec 0295): `attachments` shares the notes phase.
         ->and(MigrationOrder::phaseOf('attachments'))->toBe(18)
+        // REQUIREMENT CHANGED (spec 0341): the segnatempo are the new last phase, after the notes.
+        ->and(MigrationOrder::phaseOf('time-entries'))->toBe(19)
+        ->and(MigrationOrder::phaseOf('time-entry-day-notes'))->toBe(count(MigrationOrder::phases()))
         ->and(MigrationOrder::phaseOf('unknown-source'))->toBeNull();
 });
