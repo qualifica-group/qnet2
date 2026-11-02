@@ -3,6 +3,40 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Pagamento rate dal documento passivo — VERDE, NON COMMITTATO (2026-10-29)
+
+- Richiesta utente: registrare/annullare il pagamento di una rata anche dalla sezione **Scadenze** della riga
+  espansa e della scheda di una fattura passiva (prima solo dalla griglia Scadenze passive). Nessuna modifica
+  backend: `PUT/DELETE /purchase-invoice-installments/{id}/payment` e `permissions.actions.pay`
+  (`purchase-invoices.pay`) esistevano gia' nella show response.
+- FE: nuovo hook `purchase-invoice-installments/use-purchase-installment-payment-actions.ts` (openPayment con
+  fetch fresco, requestClear, dialog targets, confirmClear) estratto da `use-purchase-installment-row-actions.ts`,
+  che ora lo compone e aggiunge solo `handleAction`/navigate. Le mutation record/clear invalidano anche
+  `purchaseInvoiceKeys.all` (il documento cambia pagato/residuo/stato).
+- `purchase-invoices/purchase-invoice-installments-section.tsx` = sezione Scadenze + dialog pagamento/annullo,
+  usata da `purchase-invoice-detail-panel.tsx` (ora riceve `onChanged` = refresh griglia da
+  `purchase-invoices-table.tsx`) e da `purchase-invoice-detail.tsx`. `purchase-invoice-detail-installments.tsx`
+  ha la colonna Azioni (`canPay`, `busyInstallmentId`, `onRecord`, `onClear`) con le etichette
+  `purchaseInvoiceInstallments.actions.record_payment|clear_payment`; nuova chiave
+  `purchaseInvoiceViews.detail.installments.columns.actions` IT/EN.
+- Verifica: vitest purchase-invoices + purchase-invoice-installments + help (18+14 file verdi), ESLint, `tsc -b
+  --force` EXIT=0 (serve `NODE_OPTIONS=--max-old-space-size=8192`, come l'hook).
+- Manuale: guide in-app `purchase-invoices` IT/EN aggiornate (elenco + sezione Scadenze e pagamenti). Il Claude
+  Docs "Manuale Utente QNet" NON era accessibile dalla sessione (access denied): da aggiornare a mano la
+  sezione Fatture passive (riga espansa e scheda: Registra/Annulla pagamento sulle rate).
+
+## Bug dati: metodi di pagamento migrati senza configurazione rate — APERTO (2026-10-29)
+
+- Il modale di emissione proforma e il calcolatore sono corretti: le scadenze cambiano con `payment_days`.
+  Ma il legacy `payments` ha `number_deadlines`, `days_between_expiration`, `dffm` (DF/FM), `fixed_date`,
+  `vat_rate` (sempre 1 = split) e il `PaymentMethodMigrationController` legacy manda solo `payment_days`;
+  `PaymentMethodsSource` passa solo quello. Risultato: 100 metodi in qnet-2 tutti a 1 rata, senza fine mese
+  (46 nel legacy sono multi-rata/FM/giorno fisso). Fix proposto (backend.md §9): il legacy emette
+  `installments_count` (0->1), `days_between_installments`, `end_of_month` (`dffm==='FM'`),
+  `end_of_month_extra_days` (`fixed_date`, 0->null), `vat_allocation`; qnet-2 li passa a
+  `CreatePaymentMethodData`; piu' un aggiornamento una tantum delle righe gia' importate (re-import salta per
+  `old_id`). Mesi esclusi restano fuori (spec 0194 D-10). In attesa di via libera dell'utente.
+
 ## Merge feature/amministrazione (spec 0288) in main — VERDE, COMMITTATO (2026-10-29)
 
 - Conflitto semantico con la 0320 D-8 (fornitore sulla RIGA, `products.supplier_id` eliminata): il codice 0288

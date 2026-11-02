@@ -25,7 +25,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'The list has **one row per document**: type, supplier number, date, supplier, company, linked ODAs, **total**, **paid**, **residual** and **payment status**. Expand the document row to see its **Lines**, **Installments** and **linked ODAs** (with the ODA permission, each one links to the order) without opening the record. As in every list you can sort, search, filter, save views and export.',
+          text: 'The list has **one row per document**: type, supplier number, date, supplier, company, linked ODAs, **total**, **paid**, **residual** and **payment status**. Expand the document row to see its **Lines**, **Installments** and **linked ODAs** (with the ODA permission, each one links to the order) without opening the record. In **Installments**, with the pay permission, each installment offers **Record payment** or **Clear payment**. As in every list you can sort, search, filter, save views and export.',
         },
         {
           type: 'table',
@@ -116,7 +116,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Installments are generated from the **payment method** and, when editing a proforma without payments, they are **recalculated**. The installments add up to the **Net payable**, not to the document total. If payments exist, date, method, supplier, **Withholding tax** and **ENASARCO** are frozen and the installments are **rebalanced** leaving the paid ones intact. Payments are recorded from **Accounting › Payable › Payable installments**, where the **Open document** action leads to the document sheet.',
+          text: 'Installments are generated from the **payment method** and, when editing a proforma without payments, they are **recalculated**. The installments add up to the **Net payable**, not to the document total. If payments exist, date, method, supplier, **Withholding tax** and **ENASARCO** are frozen and the installments are **rebalanced** leaving the paid ones intact. Payments are recorded on the single installments: in the **Installments** section of the record or of the expanded row, with **Record payment** and **Clear payment** (the pay permission is required), or from **Accounting › Payable › Payable installments**, where the **Open document** action leads to the document sheet.',
         },
         {
           type: 'note',

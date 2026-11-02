@@ -22,10 +22,6 @@ const PURCHASE_INVOICE_ACTION_ICONS: ActionIconMap = {
   'file-text': FileText,
 }
 
-function renderDetail(params: ICellRendererParams<TableRow>) {
-  return <PurchaseInvoiceDetailPanel {...params} />
-}
-
 /**
  * Thin passive-invoices adapter over the generic table: one row per document,
  * actions come from the server row (view, delete, activity; the record edits in place),
@@ -38,6 +34,11 @@ export function PurchaseInvoicesTable() {
   const [isCreating, setIsCreating] = useState(false)
   // The editor and delete mutations already invalidate every document query: only the SSRM cache needs a purge.
   const refreshGrid = useCallback(() => tableRef.current?.refresh(), [])
+
+  const renderDetail = useCallback(
+    (params: ICellRendererParams<TableRow>) => <PurchaseInvoiceDetailPanel {...params} onChanged={refreshGrid} />,
+    [refreshGrid],
+  )
 
   return (
     <div className="flex flex-1 flex-col gap-4">

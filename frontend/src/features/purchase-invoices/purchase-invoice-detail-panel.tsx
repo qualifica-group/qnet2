@@ -3,18 +3,24 @@ import { useTranslation } from 'react-i18next'
 import type { ICellRendererParams } from 'ag-grid-community'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { PurchaseInvoiceDetailInstallments } from '@/features/purchase-invoices/purchase-invoice-detail-installments'
 import { PurchaseInvoiceDetailLines } from '@/features/purchase-invoices/purchase-invoice-detail-lines'
 import { PurchaseInvoiceDetailOrders } from '@/features/purchase-invoices/purchase-invoice-detail-orders'
+import { PurchaseInvoiceInstallmentsSection } from '@/features/purchase-invoices/purchase-invoice-installments-section'
 import { usePurchaseInvoice } from '@/features/purchase-invoices/use-purchase-invoice-editor-queries'
 import type { TableRow } from '@/features/table/types'
 
+type PurchaseInvoiceDetailPanelProps = ICellRendererParams<TableRow> & {
+  /** Refreshes the master grid after a payment changed the totals. */
+  onChanged?: () => void
+}
+
 /**
  * Master/detail row of the passive invoices grid: lazily loads the document and
- * shows its lines, installments and linked ODAs, like the active invoices panel. The real
- * height is pushed back to AG Grid through a ResizeObserver once loaded.
+ * shows its lines, installments (with the payment actions) and linked ODAs, like
+ * the active invoices panel. The real height is pushed back to AG Grid through a
+ * ResizeObserver once loaded.
  */
-export function PurchaseInvoiceDetailPanel({ data, node, api }: ICellRendererParams<TableRow>) {
+export function PurchaseInvoiceDetailPanel({ data, node, api, onChanged }: PurchaseInvoiceDetailPanelProps) {
   const { t } = useTranslation()
   const invoiceId = typeof data?.id === 'number' ? data.id : null
   const { data: invoice, isError, refetch } = usePurchaseInvoice(invoiceId)
@@ -56,10 +62,7 @@ export function PurchaseInvoiceDetailPanel({ data, node, api }: ICellRendererPar
         <h3 className="text-xs font-semibold text-foreground">{t('purchaseInvoiceViews.detail.lines.title')}</h3>
         <PurchaseInvoiceDetailLines lines={invoice.lines} />
       </section>
-      <section className="flex flex-col gap-1.5">
-        <h3 className="text-xs font-semibold text-foreground">{t('purchaseInvoiceViews.detail.installments.title')}</h3>
-        <PurchaseInvoiceDetailInstallments installments={invoice.installments} />
-      </section>
+      <PurchaseInvoiceInstallmentsSection invoice={invoice} onChanged={onChanged} />
       <section className="flex flex-col gap-1.5">
         <h3 className="text-xs font-semibold text-foreground">{t('purchaseInvoiceViews.detail.orders.title')}</h3>
         <PurchaseInvoiceDetailOrders orders={invoice.purchase_orders} />

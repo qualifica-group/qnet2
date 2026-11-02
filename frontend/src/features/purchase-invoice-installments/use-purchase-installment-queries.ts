@@ -6,6 +6,7 @@ import {
   type UseQueryResult,
 } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
+import { purchaseInvoiceKeys } from '@/features/purchase-invoices/api'
 import {
   clearPurchasePayment,
   getPurchaseInstallment,
@@ -16,6 +17,12 @@ import type {
   PurchaseInstallmentDetail,
   PurchasePaymentPayload,
 } from '@/features/purchase-invoice-installments/types'
+
+/** A payment changes the document too (paid, residual, status): every surface showing it reloads. */
+function invalidatePaymentSurfaces(queryClient: ReturnType<typeof useQueryClient>): void {
+  void queryClient.invalidateQueries({ queryKey: purchaseInstallmentKeys.all })
+  void queryClient.invalidateQueries({ queryKey: purchaseInvoiceKeys.all })
+}
 
 /** One installment for the edit dialog; always refetched on open (a payment may have landed meanwhile). */
 export function usePurchaseInstallment(id: number | null): UseQueryResult<PurchaseInstallmentDetail, AxiosError> {
@@ -33,7 +40,7 @@ export function useRecordPurchasePayment(
   const queryClient = useQueryClient()
   return useMutation<PurchaseInstallmentDetail, AxiosError, PurchasePaymentPayload>({
     mutationFn: (payload) => recordPurchasePayment(id, payload),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: purchaseInstallmentKeys.all }),
+    onSuccess: () => invalidatePaymentSurfaces(queryClient),
   })
 }
 
@@ -41,6 +48,6 @@ export function useClearPurchasePayment(): UseMutationResult<PurchaseInstallment
   const queryClient = useQueryClient()
   return useMutation<PurchaseInstallmentDetail, AxiosError, number>({
     mutationFn: clearPurchasePayment,
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: purchaseInstallmentKeys.all }),
+    onSuccess: () => invalidatePaymentSurfaces(queryClient),
   })
 }

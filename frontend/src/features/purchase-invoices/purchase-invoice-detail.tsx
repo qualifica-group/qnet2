@@ -13,9 +13,9 @@ import { Form } from '@/components/ui/form'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { cn } from '@/lib/utils'
 import { PURCHASE_INVOICE_TYPES } from '@/features/purchase-invoice-installments/types'
-import { PurchaseInvoiceDetailInstallments } from '@/features/purchase-invoices/purchase-invoice-detail-installments'
 import { PurchaseInvoiceDetailOrders } from '@/features/purchase-invoices/purchase-invoice-detail-orders'
 import { PurchaseInvoiceDocuments } from '@/features/purchase-invoices/purchase-invoice-documents'
+import { PurchaseInvoiceInstallmentsSection } from '@/features/purchase-invoices/purchase-invoice-installments-section'
 import { PurchaseInvoiceLinesRecord } from '@/features/purchase-invoices/purchase-invoice-lines-record'
 import { PurchaseInvoiceRecordTotals } from '@/features/purchase-invoices/purchase-invoice-record-totals'
 import { PurchaseInvoiceRecordSections } from '@/features/purchase-invoices/purchase-invoice-record-sections'
@@ -98,12 +98,7 @@ function PurchaseInvoiceDetailBody({
             </RecordSectionsGrid>
             <div className="flex flex-col gap-3 border-t p-4">
               <PurchaseInvoiceLinesRecord invoice={invoice} editor={editor} />
-              <section className="flex flex-col gap-1.5">
-                <h3 className="text-xs font-semibold text-foreground">
-                  {t('purchaseInvoiceViews.detail.installments.title')}
-                </h3>
-                <PurchaseInvoiceDetailInstallments installments={invoice.installments} />
-              </section>
+              <PurchaseInvoiceInstallmentsSection invoice={invoice} onChanged={onChanged} />
               <section className="flex flex-col gap-1.5">
                 <h3 className="text-xs font-semibold text-foreground">
                   {t('purchaseInvoiceViews.detail.orders.title')}

@@ -1,8 +1,11 @@
 import { useTranslation } from 'react-i18next'
+import { HandCoins, Undo2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/formatting/date-display'
 import { formatEuro } from '@/features/invoices/invoice-format'
+import { isPaid } from '@/features/purchase-invoice-installments/purchase-installment-payment'
 import { BADGE_BASE, BADGE_COLOR_CLASSES } from '@/features/table/cell-renderers'
 import type { PurchaseInstallmentStatus } from '@/features/purchase-invoice-installments/types'
 import type { PurchaseInvoiceInstallment } from '@/features/purchase-invoices/types'
@@ -17,8 +20,26 @@ const STATUS_COLORS: Record<PurchaseInstallmentStatus, string> = {
   paid: BADGE_COLOR_CLASSES.green,
 }
 
-/** Compact read-only schedule; amounts the actor cannot see (field permissions) are simply blank. */
-export function PurchaseInvoiceDetailInstallments({ installments }: { installments: PurchaseInvoiceInstallment[] }) {
+interface PurchaseInvoiceDetailInstallmentsProps {
+  installments: PurchaseInvoiceInstallment[]
+  /** `purchase-invoices.pay` of the show response; hides the per-installment actions when false. */
+  canPay: boolean
+  busyInstallmentId: number | null
+  onRecord: (installment: PurchaseInvoiceInstallment) => void
+  onClear: (installment: PurchaseInvoiceInstallment) => void
+}
+
+/**
+ * Compact schedule with per-installment "Registra pagamento" / "Annulla pagamento";
+ * amounts the actor cannot see (field permissions) are simply blank.
+ */
+export function PurchaseInvoiceDetailInstallments({
+  installments,
+  canPay,
+  busyInstallmentId,
+  onRecord,
+  onClear,
+}: PurchaseInvoiceDetailInstallmentsProps) {
   const { t } = useTranslation()
 
   if (installments.length === 0) {
@@ -42,6 +63,9 @@ export function PurchaseInvoiceDetailInstallments({ installments }: { installmen
             <th scope="col" className={HEAD}>{t('purchaseInvoiceViews.detail.installments.columns.status')}</th>
             <th scope="col" className={NUM_HEAD}>{t('purchaseInvoiceViews.detail.installments.columns.paid_amount')}</th>
             <th scope="col" className={HEAD}>{t('purchaseInvoiceViews.detail.installments.columns.paid_at')}</th>
+            {canPay ? (
+              <th scope="col" className={NUM_HEAD}>{t('purchaseInvoiceViews.detail.installments.columns.actions')}</th>
+            ) : null}
           </tr>
         </thead>
         <tbody>
@@ -58,6 +82,35 @@ export function PurchaseInvoiceDetailInstallments({ installments }: { installmen
               </td>
               <td className={NUM_CELL}>{formatEuro(installment.paid_amount)}</td>
               <td className={`${CELL} tabular-nums`}>{formatDate(installment.paid_at)}</td>
+              {canPay ? (
+                <td className="px-2 py-1 text-right">
+                  <div className="flex justify-end gap-1">
+                    {isPaid(installment) ? (
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="outline"
+                        disabled={busyInstallmentId === installment.id}
+                        onClick={() => onClear(installment)}
+                      >
+                        <Undo2 aria-hidden="true" />
+                        {t('purchaseInvoiceInstallments.actions.clear_payment')}
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="default"
+                        disabled={busyInstallmentId === installment.id}
+                        onClick={() => onRecord(installment)}
+                      >
+                        <HandCoins aria-hidden="true" />
+                        {t('purchaseInvoiceInstallments.actions.record_payment')}
+                      </Button>
+                    )}
+                  </div>
+                </td>
+              ) : null}
             </tr>
           ))}
         </tbody>

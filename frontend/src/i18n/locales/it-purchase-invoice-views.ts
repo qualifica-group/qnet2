@@ -81,6 +81,7 @@ export const purchaseInvoiceViews = {
         status: 'Stato',
         paid_amount: 'Pagato',
         paid_at: 'Data pagamento',
+        actions: 'Azioni',
       },
     },
     orders: {
