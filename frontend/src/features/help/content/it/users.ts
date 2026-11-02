@@ -162,7 +162,7 @@ const guide: HelpGuide = {
       blocks: [
         { type: 'paragraph', text: 'Con **Impersona** entri nel gestionale come quell’utente e vedi esattamente ciò che vede. Serve per verificare i permessi o capire un problema segnalato.' },
         { type: 'steps', items: ['Nell’elenco utenti apri il menu azioni della riga, oppure apri la scheda dell’utente.', 'Scegli **Impersona** e conferma. Si apre la dashboard.', 'Un avviso in alto mostra "Stai operando come" seguito dal nome dell’utente.', 'Per uscire fai clic su **Torna al tuo account**.'] },
-        { type: 'paragraph', text: 'Serve il permesso **Impersona** sul modulo Utenti. Non puoi impersonare te stesso né un utente disattivato. Solo un super-admin può impersonare un altro super-admin. Ogni inizio e fine di impersonificazione resta registrato.' },
+        { type: 'paragraph', text: 'Serve il permesso **Impersona** sul modulo Utenti. Non puoi impersonare te stesso né un utente disattivato. Solo un super-admin può impersonare un altro super-admin. Ogni inizio e fine di impersonificazione resta registrato nella **Cronologia attività** dell’utente impersonato, come **Inizio impersonificazione** e **Fine impersonificazione**, con il nome di chi ha impersonato.' },
         { type: 'warning', text: 'Mentre impersoni, ogni operazione viene fatta a nome dell’altro utente.' },
       ],
     },

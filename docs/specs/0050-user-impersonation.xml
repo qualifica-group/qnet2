@@ -63,7 +63,9 @@
           di /auth/me ne' di UserResource (che e' condivisa da tutti i moduli).
           Blast radius zero sui contratti esistenti.
       D-6 AUDIT: entry activity esplicite su start e stop (causer = attore originale,
-          subject = utente target), description 'impersonation.started'/'impersonation.stopped'.
+          subject = utente target), event e description 'impersonation.started'/'impersonation.stopped'
+          (event esplicito, fix 2026-11-02: senza event la timeline mostrava la chiave
+          activityLog.events.null; la migrazione 2026_11_16_100000 allinea le righe gia' scritte).
   </context>
 
   <data_contract>

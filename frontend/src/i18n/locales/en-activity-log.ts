@@ -31,6 +31,10 @@ export const activityLog = {
     deleted: 'Deleted',
     restored: 'Restored',
     moved: 'Moved (org chart)',
+    impersonation: {
+      started: 'Impersonation started',
+      stopped: 'Impersonation stopped',
+    },
   },
   modules: {
     user: 'User',

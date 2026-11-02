@@ -5,8 +5,18 @@
  * being a free-form alias resolved to a label by the caller (i18n).
  */
 
-/** Spatie activitylog event names, as emitted by `LogsModelActivity`. */
-export type ActivityLogEvent = 'created' | 'updated' | 'deleted' | 'restored' | 'moved'
+/**
+ * Spatie activitylog event names: the model events of `LogsModelActivity`,
+ * the org chart move (spec 0273) and the impersonation audit (spec 0050 D-6).
+ */
+export type ActivityLogEvent =
+  | 'created'
+  | 'updated'
+  | 'deleted'
+  | 'restored'
+  | 'moved'
+  | 'impersonation.started'
+  | 'impersonation.stopped'
 
 /**
  * Timeline narrowing sent as the `event` query param; `'all'` is the absence

@@ -356,7 +356,7 @@ it('D-4: the actor original token stays valid after starting a session', functio
 // AC-013 — audit (D-6)
 // ---------------------------------------------------------------------------
 
-it('AC-013: start and stop each write an activity entry with causer=actor and subject=target', function () {
+it('AC-013: start and stop each write an activity entry with causer=actor, subject=target and an explicit event', function () {
     $actor = actorWithImpersonatePermission();
     $target = User::factory()->create();
 
@@ -370,7 +370,8 @@ it('AC-013: start and stop each write an activity entry with causer=actor and su
         ->where('subject_id', $target->id)
         ->sole();
 
-    expect($started->causer_id)->toBe($actor->id);
+    expect($started->causer_id)->toBe($actor->id)
+        ->and($started->event)->toBe('impersonation.started');
 
     asToken($this, $token)->postJson('/api/auth/stop-impersonation')->assertOk();
 
@@ -380,7 +381,8 @@ it('AC-013: start and stop each write an activity entry with causer=actor and su
         ->where('subject_id', $target->id)
         ->sole();
 
-    expect($stopped->causer_id)->toBe($actor->id);
+    expect($stopped->causer_id)->toBe($actor->id)
+        ->and($stopped->event)->toBe('impersonation.stopped');
 });
 
 // ---------------------------------------------------------------------------
@@ -415,4 +417,25 @@ it('AC-015: php artisan permissions:sync creates users.impersonate', function ()
     $this->artisan('permissions:sync')->assertSuccessful();
 
     expect(Permission::where('name', 'users.impersonate')->exists())->toBeTrue();
+});
+
+it('AC-013: the backfill migration sets the event on impersonation entries logged without one', function () {
+    $target = User::factory()->create();
+    $legacy = collect(['impersonation.started', 'impersonation.stopped'])
+        ->mapWithKeys(fn (string $description): array => [$description => activity('users')
+            ->performedOn($target)
+            ->log($description)])
+        ->all();
+    $unrelated = activity('users')->performedOn($target)->log('something.else');
+
+    $migration = require database_path('migrations/2026_11_16_100000_backfill_impersonation_activity_events.php');
+    $migration->up();
+
+    expect($legacy['impersonation.started']->fresh()->event)->toBe('impersonation.started')
+        ->and($legacy['impersonation.stopped']->fresh()->event)->toBe('impersonation.stopped')
+        ->and($unrelated->fresh()->event)->toBeNull();
+
+    $migration->down();
+
+    expect($legacy['impersonation.started']->fresh()->event)->toBeNull();
 });

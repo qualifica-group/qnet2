@@ -21,6 +21,10 @@ export const activityLog = {
     deleted: 'Eliminazione',
     restored: 'Ripristino',
     moved: 'Spostamento (organigramma)',
+    impersonation: {
+      started: 'Inizio impersonificazione',
+      stopped: 'Fine impersonificazione',
+    },
   },
   modules: {
     user: 'Utente',

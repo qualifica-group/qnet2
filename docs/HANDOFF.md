@@ -3,6 +3,18 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Fix: evento delle voci di impersonificazione in Cronologia attivita' (spec 0050 D-6) — VERDE, COMMITTATO (2026-11-02)
+
+- Causa: `ImpersonationService::log()` scriveva l'activity senza `event` -> la timeline mostrava la chiave
+  `activityLog.events.null`. Ora `->event()` = description, costanti `ImpersonationService::EVENT_STARTED`
+  (`impersonation.started`) / `EVENT_STOPPED` (`impersonation.stopped`).
+- Migrazione `2026_11_16_100000_backfill_impersonation_activity_events` (event = description sulle righe con
+  event NULL; down le rimette a NULL): eseguita su dev, 14 righe allineate.
+- Frontend: `ActivityLogEvent` con i due eventi, badge `outline`, `activityLog.events.impersonation.{started,stopped}`
+  IT/EN. Guida `users` IT/EN aggiornata. Test: `ImpersonationTest` AC-013 (+ backfill), `activity-log-section.test.tsx`.
+- Aperto (fuori scope, segnalato): gli eventi `contract.validated|status_changed|terminated|reactivated` dei contratti
+  non hanno etichetta nella timeline (stessa classe di bug; oggi 0 righe su dev).
+
 ## Migrazione incrementale dal legacy (spec 0345) — VERDE, COMMITTATO (2026-11-02)
 
 - Campo facoltativo "Importa solo i record creati o modificati dal" in import singolo e "Importa tutto", per TUTTE

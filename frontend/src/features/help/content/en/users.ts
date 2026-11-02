@@ -167,7 +167,7 @@ const guide: HelpGuide = {
           'A banner at the top shows "You are operating as" followed by the user’s name.',
           'To exit, click **Back to your account**.',
         ] },
-        { type: 'paragraph', text: 'It requires the **Impersonate** permission on the Users module. You cannot impersonate yourself nor a deactivated user. Only a super-admin can impersonate another super-admin. Every impersonation start and end is logged.' },
+        { type: 'paragraph', text: 'It requires the **Impersonate** permission on the Users module. You cannot impersonate yourself nor a deactivated user. Only a super-admin can impersonate another super-admin. Every impersonation start and end is logged in the impersonated user’s **Activity history**, as **Impersonation started** and **Impersonation stopped**, with the name of who impersonated.' },
         { type: 'warning', text: "While impersonating, every operation is performed on the other user's behalf." },
       ],
     },

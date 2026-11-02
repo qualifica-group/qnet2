@@ -30,6 +30,11 @@ class ImpersonationService
 {
     private const string TOKEN_NAME = 'impersonation';
 
+    /** Activity event (and description) of the D-6 audit entries; the timeline labels them by event. */
+    public const string EVENT_STARTED = 'impersonation.started';
+
+    public const string EVENT_STOPPED = 'impersonation.stopped';
+
     /**
      * @throws ValidationException self-impersonation, inactive target, or already-nested session
      * @throws AuthorizationException actor is not a super-admin and the target is
@@ -48,7 +53,7 @@ class ImpersonationService
         $issued->accessToken->forceFill(['impersonated_by' => $actor->id])->save();
 
         // Step 3: audit (D-6) — causer is the ORIGINAL actor, subject the target.
-        $this->log('impersonation.started', $actor, $target);
+        $this->log(self::EVENT_STARTED, $actor, $target);
 
         return new LoginResult(user: $target, token: $issued->plainTextToken);
     }
@@ -107,7 +112,7 @@ class ImpersonationService
 
         // Step 2: audit (D-6) while the impersonation session is still live,
         // so causer/subject read off it before it is revoked below.
-        $this->log('impersonation.stopped', $original, $current);
+        $this->log(self::EVENT_STOPPED, $original, $current);
 
         // Step 3: revoke the impersonation token.
         $currentToken->delete();
@@ -187,13 +192,16 @@ class ImpersonationService
 
     /**
      * Explicit activity entry (D-6): causer is always the ORIGINAL actor,
-     * subject the TARGET user, on both start and stop.
+     * subject the TARGET user, on both start and stop. The event is set
+     * explicitly: without it the row reaches the activity timeline with a
+     * null event and no label.
      */
-    private function log(string $description, User $actor, User $target): void
+    private function log(string $event, User $actor, User $target): void
     {
         activity($target->getTable())
             ->performedOn($target)
             ->causedBy($actor)
-            ->log($description);
+            ->event($event)
+            ->log($event);
     }
 }

@@ -134,6 +134,22 @@ describe('ActivityLogSection', () => {
     expect(screen.getByText('Bruno Lead')).toBeInTheDocument()
   })
 
+  it('spec 0050 D-6: labels the impersonation start and stop entries', async () => {
+    fetchActivityLogMock.mockResolvedValue(
+      page({
+        items: [
+          entry({ id: 1, event: 'impersonation.started', changes: [] }),
+          entry({ id: 2, event: 'impersonation.stopped', changes: [] }),
+        ],
+      }),
+    )
+
+    renderSection()
+
+    await waitFor(() => expect(screen.getByText('Impersonation started')).toBeInTheDocument())
+    expect(screen.getByText('Impersonation stopped')).toBeInTheDocument()
+  })
+
   it('shows the extracted text of a rich text field, never the markup (D-13/AC-025)', async () => {
     fetchActivityLogMock.mockResolvedValue(
       page({
