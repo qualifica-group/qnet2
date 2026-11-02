@@ -164,6 +164,7 @@ const guide: HelpGuide = {
           ],
         },
         { type: 'tip', text: "If the preview does not open, allow pop-up windows for qnet's site." },
+        { type: 'note', text: 'Documents migrated from the old QNet appear like the others, but the file stays on the old QNet: **Preview** and **Download** go through QNet and need the old QNet to be reachable, otherwise an error appears. **Delete document** removes only the link in QNet, not the file on the old QNet. If you attach a migrated document to an email of a work order, QNet saves a copy of it in the email.' },
       ],
     },
     {

@@ -1,6 +1,7 @@
 <?php
 
 use App\Migrations\MigrationRegistry;
+use App\Migrations\Sources\AttachmentsSource;
 use App\Migrations\Sources\AttributeLayoutsSource;
 use App\Migrations\Sources\AttributesSource;
 use App\Migrations\Sources\BusinessFunctionMembersSource;
@@ -111,13 +112,15 @@ it('config/migrations.php registers every source (spec 0013 Increment 2)', funct
         'collections' => CollectionsSource::class,
         // REQUIREMENT CHANGED (spec 0311): the legacy notes source.
         'notes' => NotesSource::class,
+        // REQUIREMENT CHANGED (spec 0295): the legacy link-only documents source.
+        'attachments' => AttachmentsSource::class,
     ]);
 });
 
 it('all() resolves every registered source', function () {
     $sources = app(MigrationRegistry::class)->all();
 
-    expect($sources)->toHaveCount(42)
+    expect($sources)->toHaveCount(43)
         ->and(array_map(fn ($source) => $source->key(), $sources))->toBe([
             'roles', 'users', 'business-functions', 'companies', 'company-sites', 'operational-sites',
             'business-function-members', 'referent-types', 'referents',
@@ -125,6 +128,6 @@ it('all() resolves every registered source', function () {
             'product-category-attributes', 'attribute-layouts', 'products', 'cost-products', 'email-templates', 'document-bundles',
             'registries', 'opportunities', 'quotes', 'work-orders', 'tasks', 'work-order-progress', 'work-order-workflows', 'work-order-workflow-statuses', 'work-order-task-templates',
             'product-suppliers', 'commission-configurations', 'purchase-requests', 'purchase-orders', 'financial-accounts', 'purchase-invoices', 'proforma-requests', 'invoices', 'collections',
-            'notes',
+            'notes', 'attachments',
         ]);
 });

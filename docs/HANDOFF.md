@@ -3,6 +3,29 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Documenti legacy "solo link" (spec 0295) — VERDE, COMMITTATO (2026-11-02)
+
+- Il legacy invia solo metadati + URL del file (niente base64); qnet-2 salva una riga `attachments` senza file:
+  `disk` = `Attachment::LEGACY_DISK` ('legacy', nessun disco reale), `path` = `{old_source}/{old_id}`, `external_url`,
+  anchor unico (`old_source`, `old_id`). Predicato unico `Attachment::isLegacyLink()`. Migrazione
+  `2026_11_13_100000_add_legacy_link_to_attachments_table` (applicata in avanti sul DB dev).
+- Apertura: `GET /api/attachments/{id}/download|view` invariati; per un legacy, dopo `authorize('view')`,
+  `Services/Attachments/LegacyAttachmentFetcher` scarica in streaming (redirect non seguiti, Content-Type dal DB, nosniff).
+  Confine SSRF `App\Support\LegacyFileUrl::isAllowed()` (URL sotto `migrations.legacy_files_base_url`, env
+  `EXTERNAL_MIGRATION_FILES_BASE_URL`; vuoto = sorgente non disponibile). `AttachmentService::delete()` non tocca il disco
+  per i legacy; `copyTo()` da legacy (composer email) scarica e salva una copia LOCALE (limite `max_size` -> 422).
+- Sorgente `attachments` (`AttachmentsSource`), fase 18 con `notes`; MIME fuori allow-list -> `application/octet-stream`.
+- Legacy (`../qnet`, non committato): `Api/V2/AttachmentMigrationController` + `Support/Migration/LegacyAttachmentFile`,
+  rotta `migration/attachments`; nuova rotta pubblica `/fileorder/{num}/{name}` (`FileController::grab_order_document`)
+  per i documenti di commessa (decisione utente); task via `/fileticket/{hash}` esistente. 31.202 documenti sul tenant 14.
+- Test: `tests/Feature/Attachments/LegacyAttachmentLinkTest.php` (22), `tests/Feature/Migration/AttachmentsSourceImportTest.php`
+  (26). Gate finale: suite backend 13.282/13.298, rossi tutti attribuiti fuori spec (0341 registro, 0340 ManagementControl
+  `permissions:sync`, `.env` `USERS_LINK_ONLY=true`, LibreOffice assente, `SettlementApprovalTest` dipendente dalla data,
+  `TableBulkDeleteTest` preesistente); Vitest 9.696 verdi (11 unhandled `toast.error` in form non toccati), tsc/eslint/Pint puliti.
+- Prossimi passi: impostare `EXTERNAL_MIGRATION_FILES_BASE_URL` in produzione; prima di spegnere il legacy serve la spec
+  futura "converti link -> locale" (D-9); le rotte file pubbliche del legacy restano una debolezza da chiudere.
+  Difetto preesistente fuori scope: `OutboundEmailAttachmentService::copyAll()` lascia il file della prima copia se la seconda fallisce.
+
 ## Visibilita' "per competenza" su 6 moduli (spec 0340 rev.1) — VERDE, COMMITTATO (2026-11-02)
 
 - Nuova ability `viewCompetence` ("Visualizza per competenza") su `opportunities`, `quotes`, `contracts`, `work-orders`,

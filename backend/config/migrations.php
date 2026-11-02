@@ -1,5 +1,6 @@
 <?php
 
+use App\Migrations\Sources\AttachmentsSource;
 use App\Migrations\Sources\AttributeLayoutsSource;
 use App\Migrations\Sources\AttributesSource;
 use App\Migrations\Sources\BusinessFunctionMembersSource;
@@ -94,6 +95,13 @@ return [
     // installation whose accounts come from its own seeder.
     'users_link_only' => (bool) env('EXTERNAL_MIGRATION_USERS_LINK_ONLY', false),
 
+    // Spec 0295 D-11: link-only legacy documents. qnet-2 streams a legacy file
+    // only from a URL under this base (the legacy tenant domain, e.g.
+    // https://www.qualificagroup.org), never following redirects. Empty =
+    // the `attachments` source is unavailable and no legacy file is fetched.
+    'legacy_files_base_url' => env('EXTERNAL_MIGRATION_FILES_BASE_URL'),
+    'legacy_files_timeout' => (int) env('EXTERNAL_MIGRATION_FILES_TIMEOUT', 30),
+
     /*
     |--------------------------------------------------------------------------
     | Generic, registry-driven migration source map
@@ -166,6 +174,7 @@ return [
         'collections' => CollectionsSource::class,
         // spec 0311: the notes of every legacy module, after the records they belong to.
         'notes' => NotesSource::class,
+        'attachments' => AttachmentsSource::class,
     ],
 
 ];

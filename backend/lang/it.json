@@ -252,5 +252,8 @@
     "This support topic has no active assignee.": "Questo tipo di problema non ha assegnatari attivi.",
     "Support request sent to the IT department": "Richiesta inviata al reparto IT",
     "Page": "Pagina",
-    "Browser": "Browser"
+    "Browser": "Browser",
+    "The requested file no longer exists.": "Il file richiesto non esiste più.",
+    "The original document is temporarily unavailable.": "Il documento originale non è al momento disponibile.",
+    "The document exceeds the maximum allowed size.": "Il documento supera la dimensione massima consentita."
 }

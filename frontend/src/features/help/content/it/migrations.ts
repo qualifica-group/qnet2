@@ -143,6 +143,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'attachments',
+      title: 'Documenti',
+      blocks: [
+        { type: 'paragraph', text: 'La sorgente **Documenti** si importa insieme a **Note**, dopo i moduli, e porta i documenti allegati del vecchio QNet a **commesse**, **opportunità** (anche i documenti dei lead: se il lead non ha opportunità vanno sull’anagrafica cliente), **task**, **RDA** (testata e righe), **ODA** (solo i documenti propri, non le copie dei documenti RDA) e **anagrafiche** (documenti anagrafica e documenti cliente da modello). Servono già importate le **Commesse**; conviene avere prima anche **Utenti**, **Opportunità**, **Task**, **Anagrafiche**, **RDA** e **ODA**.' },
+        { type: 'list', items: [
+          'Il file **non viene copiato**: QNet conserva il collegamento e lo apre dal vecchio QNet. Per questo l’amministratore deve aver configurato l’indirizzo dei file del vecchio QNet; senza, la sorgente non è disponibile.',
+          'Un documento il cui record non è importato, o il cui file manca nel vecchio QNet, fallisce con il motivo. Un caricatore non importato resta vuoto, con un avviso.',
+          'I formati non ammessi da QNet (per esempio p7m, rar, msg) si possono solo scaricare, non vedere in anteprima.',
+          'Se rilanci la sorgente, i documenti già importati vengono saltati.',
+        ] },
+        { type: 'note', text: 'Non vengono importati gli allegati delle email, le FAQ, i ticket, la visibilità e la tipologia dei documenti del vecchio QNet, né le categorie e le scadenze dei documenti cliente da modello. Nella sezione **Documenti** di un record i documenti migrati compaiono come gli altri, ma **Anteprima** e **Scarica** passano da QNet e richiedono che il vecchio QNet sia raggiungibile.' },
+      ],
+    },
+    {
       id: 'mass-import',
       title: 'Importare tutto insieme',
       blocks: [

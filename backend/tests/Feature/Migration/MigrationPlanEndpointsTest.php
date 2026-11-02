@@ -26,6 +26,8 @@ if (! function_exists('migrationsSuperAdminActor')) {
 // ---------------------------------------------------------------------------
 
 it('current(): defaults to MigrationOrder order with every source enabled when no plan is saved', function () {
+    // REQUIREMENT CHANGED (spec 0295 D-14): `attachments` is available only with the legacy files base URL.
+    config(['migrations.legacy_files_base_url' => 'https://legacy-files.test']);
     $plan = app(MigrationPlanService::class)->current();
 
     $keys = array_column($plan, 'source');

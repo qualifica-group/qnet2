@@ -9,6 +9,7 @@ use App\Http\Resources\AttachmentResource;
 use App\Models\Attachment;
 use App\Models\OutboundEmail;
 use App\RichText\RichText;
+use App\Services\Attachments\LegacyAttachmentFetcher;
 use App\Services\AttachmentService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -31,7 +32,10 @@ class AttachmentController extends BaseApiController
 {
     use AuthorizesRequests;
 
-    public function __construct(private readonly AttachmentService $service) {}
+    public function __construct(
+        private readonly AttachmentService $service,
+        private readonly LegacyAttachmentFetcher $legacyFetcher,
+    ) {}
 
     /**
      * GET /api/attachments — list the files owned by one polymorphic owner,
@@ -119,6 +123,10 @@ class AttachmentController extends BaseApiController
         try {
             $this->authorize('view', $attachment);
 
+            if ($attachment->isLegacyLink()) {
+                return $this->legacyFetcher->stream($attachment, 'attachment');
+            }
+
             $disk = Storage::disk($attachment->disk);
 
             if (! $disk->exists($attachment->path)) {
@@ -143,6 +151,10 @@ class AttachmentController extends BaseApiController
     {
         try {
             $this->authorize('view', $attachment);
+
+            if ($attachment->isLegacyLink()) {
+                return $this->legacyFetcher->stream($attachment, 'inline');
+            }
 
             $disk = Storage::disk($attachment->disk);
 

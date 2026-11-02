@@ -31,4 +31,23 @@ class AttachmentFactory extends Factory
             'uploaded_by' => User::factory(),
         ];
     }
+
+    /**
+     * A link-only legacy document (spec 0295 D-10) under the given base URL.
+     */
+    public function legacyLink(string $baseUrl = 'https://legacy.test', string $source = 'orderdocuments'): static
+    {
+        return $this->state(function () use ($baseUrl, $source): array {
+            $oldId = $this->faker->unique()->numberBetween(1, 1000000);
+
+            return [
+                'collection' => 'documents',
+                'disk' => Attachment::LEGACY_DISK,
+                'path' => "{$source}/{$oldId}",
+                'external_url' => rtrim($baseUrl, '/')."/document/{$oldId}/file.pdf",
+                'old_source' => $source,
+                'old_id' => $oldId,
+            ];
+        });
+    }
 }

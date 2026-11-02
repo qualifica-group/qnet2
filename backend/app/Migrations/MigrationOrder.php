@@ -139,8 +139,10 @@ final class MigrationOrder
 
         // Phase 18 — spec 0311: the notes of every legacy module (work orders,
         // opportunities, tasks; registries, referents and purchase requests
-        // since spec 0312), last so every record they belong to exists.
-        ['notes'],
+        // since spec 0312) and, spec 0295, the link-only documents of the same
+        // modules plus purchase orders; last so every record they belong to
+        // exists. The two have no dependency on each other.
+        ['notes', 'attachments'],
     ];
 
     /**

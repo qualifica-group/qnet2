@@ -56,6 +56,7 @@ export const migrations = {
     invoices: 'Invoices',
     collections: 'Collections',
     notes: 'Notes',
+    attachments: 'Documents',
   },
   state: {
     notMigrated: 'Not migrated',

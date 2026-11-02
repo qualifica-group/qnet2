@@ -143,6 +143,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'attachments',
+      title: 'Documents',
+      blocks: [
+        { type: 'paragraph', text: 'The **Documents** source runs together with **Notes**, after the modules, and brings the documents attached in the old QNet to **work orders**, **opportunities** (also the documents of leads: if the lead has no opportunity they go on the customer registry), **tasks**, **purchase requests** (header and lines), **purchase orders** (only their own documents, not the copies of the purchase request documents) and **registries** (registry documents and customer documents from template). It needs **Work orders** already imported; it is better to have **Users**, **Opportunities**, **Tasks**, **Registries**, **Purchase requests** and **Purchase orders** first too.' },
+        { type: 'list', items: [
+          'The file is **not copied**: QNet keeps the link and opens it from the old QNet. For this reason the administrator must have configured the address of the old QNet files; without it the source is not available.',
+          'A document whose record is not imported, or whose file is missing in the old QNet, fails with the reason. An uploader not imported stays empty, with a warning.',
+          'Formats not allowed by QNet (for example p7m, rar, msg) can only be downloaded, not previewed.',
+          'If you run the source again, the documents already imported are skipped.',
+        ] },
+        { type: 'note', text: 'Email attachments, FAQ, tickets, visibility and type of the documents of the old QNet, and the categories and due dates of customer documents from template are not imported. In the **Documents** section of a record the migrated documents appear like the others, but **Preview** and **Download** go through QNet and need the old QNet to be reachable.' },
+      ],
+    },
+    {
       id: 'mass-import',
       title: 'Importing everything at once',
       blocks: [

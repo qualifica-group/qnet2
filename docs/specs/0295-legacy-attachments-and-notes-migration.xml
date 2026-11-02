@@ -1,32 +1,253 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<spec id="0295-legacy-attachments-and-notes-migration" status="draft" owner="nicola" date="2026-10-22">
+<spec id="0295-legacy-attachments-and-notes-migration" status="draft" owner="nicola" date="2026-11-02">
 
   <goal>
-    Importare dal QNet legacy gli allegati e le note di ogni modulo che li prevede, in un passaggio unico e
-    trasversale, dopo che i record di ciascun modulo sono gia' migrati (decisione utente 2026-10-22).
+    Rendere consultabili in qnet-2 i documenti allegati dei moduli migrati dal QNet legacy senza copiarne i file:
+    qnet-2 importa solo i metadati e il link al file legacy, e lo apre passando dal proprio backend con le stesse
+    autorizzazioni dei documenti locali. I nuovi documenti continuano a essere salvati in locale.
   </goal>
 
   <context>
-    Spec contenitore, da completare (analisi, contratto, criteri) quando si avvia il lavoro. Raccoglie i satelliti
-    esclusi dalle singole sorgenti di migrazione. Il meccanismo di copia file esiste gia' per i pacchetti
-    documentali (`DocumentBundlesSource`: contenuto base64 inviato dal legacy, scritto sul disco allegati).
+    Verificato sul codice e sui dati reali (tenant locale 14) il 2026-11-02. Le note sono uscite da questa spec
+    (2026-10-26, sorgente `notes`, spec 0311): l'id del file resta invariato per non rompere i riferimenti.
 
-    Voci raccolte finora:
-    - RDA (spec 0294 D-4): `rda_document`, 328 file, 233 di testata (`rda_id`, `rda_detail_id` null) e 95 di riga
-      (`rda_detail_id`); campi `document` (path sullo storage legacy), `name`, `title`. In qnet-2 `PurchaseRequest`
-      e `PurchaseRequestLine` usano `HasAttachments`; entrambe hanno `old_id` (spec 0294 D-7).
-    - Commesse (spec 0189): documenti esclusi.
-    - Task (spec 0289 D-2): documenti `task_documents` esclusi.
+    Decisioni utente 2026-11-02:
+    D-1 Solo link: il legacy invia metadati + URL assoluto del file, mai il contenuto (niente base64 come in
+        `DocumentBundlesSource`). Nessun file scritto su disco da qnet-2 in fase di import.
+    D-2 Apertura tramite qnet-2: anteprima e download passano dagli endpoint esistenti
+        `GET /api/attachments/{id}/view|download`, che per un allegato legacy scaricano il file dal legacy al volo e lo
+        inoltrano (proxy in streaming). Autorizzazione invariata, frontend invariato, URL legacy mai esposto al browser.
+    D-3 I nuovi allegati restano locali (`AttachmentService` invariato per l'upload).
+    D-4 Eliminare un allegato legacy cancella solo la riga qnet-2; il file sul legacy non si tocca.
+    D-5 Mappatura (tabella legacy -> alias `attachable_type` qnet-2):
+        `orderdocuments` (23.856) -> `work_order`; `opportunitydocuments` (3.951) -> `opportunity`;
+        `lead_documents` (41) -> `opportunity`, con fallback D-7; `task_documents` (1.222) -> `task`;
+        `rda_document` (328) -> `purchase_request` (testata, `rda_detail_id` null) / `purchase_request_line` (riga);
+        `documents` (72, `company_id`) -> `registry`; `customer_documents_lines_from_templates` (1.708, via
+        `customer_documents_from_templates.customer_id`) -> `registry`;
+        `proformfora_head_documents` (338) -> `purchase_order` (ogni testata legacy e' un ODA, spec 0296), D-6.
+    D-6 Proforma fornitore: solo i 24 documenti propri. Le 314 righe con `source_rda_document_id` sono copie di un
+        documento RDA gia' migrato sulla RDA: il legacy non le invia.
+    D-7 Lead senza opportunita' (21 su 41, 15 lead): il legacy risolve `lead_documents.opportunity_id` ->
+        `leads.opportunity_id` -> anagrafica `leads.customer_id` (`registry`); se manca tutto, riga orfana (spec 0303).
+    D-8 Composer email: allegare a un'email un documento legacy (import dei documenti di commessa/anagrafica,
+        `OutboundEmailAttachmentService` -> `AttachmentService::copyTo()`) scarica il file dal legacy e ne salva una
+        copia LOCALE sull'email: l'email resta completa anche dopo la dismissione del legacy.
+    D-9 Dismissione del legacy: fuori scope. Prima di spegnere il vecchio QNet servira' un comando che scarica i file
+        uno per uno e converte le righe solo-link in allegati locali (feature futura, spec separata). Finche' non
+        esiste, spegnere il legacy rende non apribili i documenti migrati.
 
-    Le note di tutti i moduli sono uscite da questa spec (2026-10-26): sorgente unica `notes`, spec 0311.
+    Decisioni tecniche (proposte, da validare con la spec):
+    D-10 Schema: nuova migrazione `add_legacy_link_to_attachments_table` su `attachments`: `old_source` string(64)
+         nullable, `old_id` unsignedBigInteger nullable, unique (`old_source`, `old_id`) (gli id delle tabelle legacy
+         si sovrappongono: stesso schema di `invoices`, `add_old_id_to_invoices_table`), `external_url` string(2048)
+         nullable. `disk`/`path` restano NOT NULL e unique: un allegato legacy ha `disk` = `Attachment::LEGACY_DISK`
+         (`legacy`, nessun disco con quel nome in `config/filesystems.php`: un `Storage::disk('legacy')` dimenticato
+         fallisce rumorosamente invece di leggere un file sbagliato) e `path` = `{old_source}/{old_id}`.
+         `Attachment::isLegacyLink(): bool` (`external_url !== null`) e' l'unico predicato usato dal codice.
+    D-11 Sicurezza del proxy (SSRF): qnet-2 scarica solo URL che iniziano con `config('migrations.legacy_files_base_url')`
+         (env `EXTERNAL_MIGRATION_FILES_BASE_URL`, es. `https://www.qualificagroup.org`), controllo ripetuto all'import
+         e a ogni scaricamento; redirect non seguiti; timeout `config('migrations.legacy_files_timeout')`
+         (env `EXTERNAL_MIGRATION_FILES_TIMEOUT`, default 30). Nessun token: le rotte file del legacy sono pubbliche
+         (`FileController`, fuori dal gruppo `auth`), debolezza preesistente del legacy, segnalata e fuori scope.
+         Emendamento 2026-11-02 (decisione utente): i documenti di commessa (`documents/{t}/orders/{order_id}/{file}`)
+         non avevano una rotta (solo download Livewire autenticato): nuova rotta pubblica legacy
+         `/fileorder/{num}/{name}` (`FileController@grab_order_document`). I documenti dei task
+         (`documents/{t}/attachment/{hashfile}`) usano la rotta pubblica esistente `/fileticket/{hash}`.
+    D-12 Tipo di file (XSS): il frontend apre l'anteprima come `blob:` sotto l'origine della SPA
+         (`features/attachments/api.ts`), sicuro solo perche' la allow-list `config('attachments.allowed_mime_types')`
+         esclude HTML/SVG. Un MIME legacy fuori allow-list (dati reali: `p7m` 155, `rar` 61, `msg` 13, `pptm` 19,
+         `htm` 4, ...) viene importato con `mime_type` = `application/octet-stream` + warning: si scarica, non si
+         esegue mai. Il proxy risponde sempre con il `mime_type` salvato (mai quello del legacy) e
+         `X-Content-Type-Options: nosniff`.
+    D-13 Collection `documents` (`DOCUMENTS_COLLECTION`), quella mostrata da `DocumentsSection` di ogni modulo.
+         `view_document` (opportunita'/lead) e `type_document` (anagrafica) del legacy non hanno equivalente: non
+         migrati.
+    D-14 `MigrationOrder`: sorgente `attachments` nella fase 18 accanto a `notes` (entrambe richiedono che i record
+         esistano, nessuna dipendenza reciproca). Dipendenze: required `work-orders`; optional `users`,
+         `opportunities`, `tasks`, `registries`, `purchase-requests`, `purchase-orders`. Scrittura senza activity log
+         (`activity()->withoutLogs`, come `NotesSource`). `isAvailable()` false se `legacy_files_base_url` e' vuoto.
+    D-15 Regola §9 (`rules/backend.md`): nel legacy nome mostrato, MIME, dimensione, URL assoluto, fallback D-7,
+         esclusione copie D-6, file mancante -> orfano; in qnet-2 solo lookup `old_id`, upsert idempotente,
+         controlli di sicurezza D-11/D-12.
+
+    Fatti verificati:
+    - qnet-2: `attachments` (`2026_06_14_100000_create_attachments_table`), model `Attachment`, trait
+      `HasAttachments` (cascade delete via `AttachmentService::delete()`), `AttachmentController` (`download`/`view`
+      leggono `Storage::disk($attachment->disk)`), `AttachmentResource` (`download_url`/`view_url`), policy
+      `AttachmentPolicy` con `owner_scoped_types` = opportunity, work_order, contract (spec 0316).
+      Alias in `config('attachments.attachable_types')`: work_order, opportunity, task, registry, purchase_request,
+      purchase_request_line, purchase_order (tutti con `HasAttachments`). `old_id` presente su registries,
+      opportunities, work_orders, tasks, purchase_requests, purchase_request_lines, purchase_orders, users.
+    - Consumatori del binario di un allegato: `AttachmentController` (download/view), `AttachmentService::delete()`
+      e `copyTo()` (usato da `OutboundEmailAttachmentService`, `RichTextAttachmentCopier`, `DocumentLayoutCloner`,
+      `WorkOrderTaskGenerator`). Solo il composer email puo' ricevere un allegato legacy come sorgente
+      (documenti `work_order`/`registry`); gli altri copiano immagini rich text, layout e documenti di modelli
+      task, mai migrati come link. `copyTo()` gestisce il caso legacy in modo generico.
+    - Legacy: rotte `migration/*` in `routes/apiV2-migration.php` (gruppo `auth:api` + `v2.access`), envelope
+      `paginatedResponse` (`items`, `pagination.total/offset/limit/total_pages`), orfani `LegacyOrphanRows`
+      (`id` = `{table}:{id}`, `orphan_reason`). File su `storage/app/public/documents/{tenant}/...`, serviti da
+      rotte pubbliche per dominio del tenant: `/document/{id}/{file}` (`attachment/`), `/file/{id}/{file}`
+      (`opportunities/`), `/lead/{id}/{file}`, `/documenticliente/{id}/{file}`, `/filerda/{rdaId}/{file}`,
+      `/fileproformafornitore/{pfhId}/{file}`.
   </context>
 
   <scope>
     <in>
-      <item>Da definire: un elenco per modulo (tabella legacy, record qnet-2 di destinazione, file e note).</item>
+      <item>Legacy: `AttachmentMigrationController` (`GET /api/v2/migration/attachments`) + rotta, su tutte le tabelle
+        di D-5 in un'unica lista paginata (ordine `source`, `id`), con D-6, D-7 e orfani per file assente o padre
+        mancante. Rotta file `/fileorder/{num}/{name}` in `routes/web.php` + `FileController::grab_order_document`
+        (emendamento D-11).</item>
+      <item>qnet-2: migrazione D-10, `Attachment` (fillable/cast, `LEGACY_DISK`, `isLegacyLink()`).</item>
+      <item>qnet-2: `App\Services\Attachments\LegacyAttachmentFetcher` (D-11): stream per il proxy, bytes per la
+        copia.</item>
+      <item>qnet-2: `AttachmentController::download()`/`view()` -> proxy per gli allegati legacy (D-2, D-12);
+        `AttachmentService::delete()` (D-4) e `copyTo()` (D-8) gestiscono gli allegati legacy.</item>
+      <item>qnet-2: `App\Migrations\Sources\AttachmentsSource` (chiave `attachments`), registrata in
+        `config/migrations.php` e in `MigrationOrder` (D-14); chiavi config `legacy_files_base_url`,
+        `legacy_files_timeout` + `.env.example`.</item>
+      <item>Manuale: guida in-app `general#notes-and-documents` e `migrations` (nuova sezione `attachments`), IT ed EN;
+        manuale Claude Docs, sezioni corrispondenti.</item>
+      <item>Pagina Migrazioni (solo testi, emendamento 2026-11-02): etichetta e requisiti della sorgente `attachments`
+        in `i18n/locales/{it,en}-migrations.ts` e `{it,en}-migration-requirements.ts`; i testi delle sorgenti che oggi
+        dicono "documenti non importati" rimandano alla sorgente Documenti.</item>
     </in>
     <out>
-      <item>Da definire.</item>
+      <item>Copia dei file in locale e comando di conversione link -> locale (D-9, spec futura).</item>
+      <item>Modifiche al frontend (shape `AttachmentResource` invariata, nessun badge "legacy").</item>
+      <item>Allegati email legacy (`email_attachments`, `email_orders_attachments`, `email_quotation_attachments`),
+        FAQ (`faq_documents`), ticket (`ticket_documents`), documenti condivisi, modelli documento (gia' in
+        `document-bundles`), copie RDA sugli ODA (D-6).</item>
+      <item>Visibilita' `view_document` e tipologia `type_document` del legacy (D-13); categorie e scadenze dei
+        documenti cliente da modello (`customer_documents_from_templates`): migra solo il file.</item>
+      <item>Protezione delle rotte file pubbliche del legacy (D-11, segnalata).</item>
+      <item>Aggiornamento di allegati gia' migrati al re-import (salto per `old_source`+`old_id`).</item>
     </out>
   </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/v2/migration/attachments" system="legacy">
+      <request>
+        Query: `search` string|null (sul nome), `offset` int >= 0, `limit` int 1..100 (default 50).
+        Auth: gruppo `auth:api` + `v2.access`. Ordine: `source`, poi `source_id` crescente.
+      </request>
+      <response status="200">
+        {
+          items: [{
+            id: string,                 "{source}:{source_id}", es. "orderdocuments:123"
+            source: string,             tabella legacy (D-5): orderdocuments | opportunitydocuments | lead_documents |
+                                        task_documents | rda_document | documents |
+                                        customer_documents_lines_from_templates | proformfora_head_documents
+            source_id: int,             id nella tabella legacy
+            attachable_type: string,    alias qnet-2: work_order | opportunity | task | registry | purchase_request |
+                                        purchase_request_line | purchase_order
+            attachable_id: int,         id legacy del padre (= old_id del record qnet-2)
+            original_name: string,      nome mostrato (composto dal legacy da title/name, con estensione), max 255
+            mime_type: string,          MIME rilevato sul file legacy
+            extension: string|null,     minuscola, senza punto
+            size: int,                  byte, > 0
+            url: string,                URL assoluto https del file sul legacy
+            uploaded_by_user_id: int|null,  id utente legacy
+            created_at: string|null,    "Y-m-d H:i:s"
+            updated_at: string|null,
+            warnings: string[]
+          }
+          | { id: string, orphan_reason: string, warnings: string[] }   file assente sullo storage legacy o padre
+                                                                         irrisolvibile (spec 0303)
+          ],
+          export_link: null,
+          pagination: { total: int, offset: int, limit: int, total_pages: int }
+        }
+      </response>
+      <errors>401/403 senza token o accesso V2; 422 parametri non validi.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/attachments/{attachment}/download | /view" system="qnet-2" change="behaviour">
+      <request>Invariata.</request>
+      <response status="200">
+        Allegato locale: invariato. Allegato legacy (`isLegacyLink()`): corpo = byte del file letti in streaming dal
+        legacy; `Content-Type` = `attachments.mime_type`; `Content-Disposition` = `attachment` (download) o `inline`
+        (view) con `original_name`; `X-Content-Type-Options: nosniff`.
+      </response>
+      <errors>
+        403 come oggi (policy `view`, prima di qualunque chiamata al legacy).
+        404 envelope `{ success: false, message }` se il legacy risponde 404 o l'URL non e' sotto
+        `legacy_files_base_url`.
+        502 envelope se il legacy non risponde, va in timeout, risponde 5xx o con un redirect.
+        Nessun URL, host o percorso legacy nel `message`.
+      </errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/attachments/{attachment}" system="qnet-2" change="behaviour">
+      <response status="204">Allegato legacy: cancellata la riga, nessuna operazione su disco o sul legacy.</response>
+    </endpoint>
+
+    <behaviour name="AttachmentService::copyTo(source legacy)" system="qnet-2">
+      Scarica i byte dal legacy (`LegacyAttachmentFetcher`), li scrive su `config('attachments.disk')` come un upload e
+      crea la riga di destinazione LOCALE (`external_url`/`old_source`/`old_id` null). Oltre `attachments.max_size`
+      -> 422 con messaggio di dominio; legacy irraggiungibile -> 502; in errore nessuna riga e nessun file restano.
+    </behaviour>
+
+    <behaviour name="AttachmentsSource::processRow" system="qnet-2">
+      Riga creata: `attachable` = record con `old_id` = `attachable_id` per l'alias; `collection` = `documents`;
+      `disk` = `legacy`; `path` = `{source}/{source_id}`; `external_url` = `url`; `old_source` = `source`;
+      `old_id` = `source_id`; `original_name` (troncato a 255 con warning), `mime_type` (D-12), `extension`, `size`;
+      `uploaded_by` = utente con `old_id` = `uploaded_by_user_id` (null + warning se non migrato); `created_at`/
+      `updated_at` legacy. Saltata se (`old_source`, `old_id`) esiste.
+      Fallita con motivo: `orphan_reason`; alias fuori da D-5; padre non migrato; `url` fuori da
+      `legacy_files_base_url`; `size` non positivo.
+    </behaviour>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un record completo per ciascun alias di D-5, quando si importa la sorgente
+      `attachments`, allora nasce una riga `attachments` con i valori del contratto `AttachmentsSource::processRow`,
+      nessun file viene scritto sul disco allegati (`Storage::fake`, disco vuoto) e nessuna voce di activity log.</criterion>
+    <criterion id="AC-002">Re-import dello stesso (`source`, `source_id`) -> riga saltata; due record con lo stesso
+      `source_id` ma `source` diverso -> due righe create.</criterion>
+    <criterion id="AC-003">Padre non migrato -> riga fallita col motivo; utente caricatore non migrato -> riga creata
+      con `uploaded_by` null e warning; record con `orphan_reason` -> fallito con quel motivo.</criterion>
+    <criterion id="AC-004">`url` con host diverso da `legacy_files_base_url`, o alias fuori da D-5 -> riga fallita,
+      nessuna riga `attachments` creata.</criterion>
+    <criterion id="AC-005">`mime_type` fuori da `attachments.allowed_mime_types` (es. `text/html`,
+      `application/pkcs7-mime`) -> riga creata con `application/octet-stream` e warning.</criterion>
+    <criterion id="AC-006">Dato un allegato legacy e un utente autorizzato, `GET .../download` restituisce 200 con i
+      byte forniti dal legacy (`Http::fake`), `Content-Disposition: attachment` con `original_name`, `Content-Type`
+      = `mime_type` salvato anche se il legacy ne dichiara un altro, `nosniff`; `GET .../view` lo stesso con
+      `inline`.</criterion>
+    <criterion id="AC-007">Utente senza permesso, o senza `view` sul proprietario per gli alias `owner_scoped_types`
+      -> 403 e nessuna richiesta HTTP al legacy (`Http::assertNothingSent`).</criterion>
+    <criterion id="AC-008">Legacy 404 -> 404 envelope; legacy 5xx, timeout/connessione o redirect 3xx -> 502 envelope;
+      `external_url` modificato verso un host non consentito -> 404 senza richiesta HTTP. Nessun messaggio contiene
+      l'URL legacy.</criterion>
+    <criterion id="AC-009">`DELETE` di un allegato legacy (e cancellazione definitiva del proprietario) -> riga
+      eliminata, nessuna `Storage::delete` e nessuna richiesta HTTP.</criterion>
+    <criterion id="AC-010">Import nell'email di commessa di un documento legacy della commessa o dell'anagrafica ->
+      l'email ha una copia locale con i byte del legacy (disco allegati, `external_url` null); l'allegato legacy
+      resta invariato. Legacy irraggiungibile -> 502, nessuna riga e nessun file sull'email; file oltre
+      `max_size` -> 422.</criterion>
+    <criterion id="AC-011">Allegati locali invariati: le suite esistenti `tests/Feature/Attachments`, email di
+      commessa/ODA/fatture e `tests/Feature/Migration` restano verdi.</criterion>
+    <criterion id="AC-012">Registro: `attachments` in `MigrationOrder` fase 18 con le dipendenze di D-14;
+      `isAvailable()` false con `legacy_files_base_url` vuoto.</criterion>
+    <criterion id="AC-013">Legacy (verifica manuale con tinker sul tenant locale): conteggi per `source` coerenti con
+      D-5 meno le esclusioni di D-6; nessuna riga `proformfora_head_documents` con `source_rda_document_id`; un
+      documento lead senza opportunita' esce come `registry` se il lead ha `customer_id`, altrimenti orfano; un file
+      assente esce come orfano; un `url` campione si apre dal browser; `php -l` pulito.</criterion>
+    <criterion id="AC-014">Guide in-app IT ed EN aggiornate con gli stessi id di sezione;
+      `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: client HTTP Laravel (`Http`, gia' usato da `ExternalApiClient`), `Storage`,
+      `response()->stream()`.</item>
+    <item>Autorizzazione server-side invariata e sempre PRIMA della chiamata al legacy; nessun nuovo permesso.</item>
+    <item>Envelope `{ success, message }` sugli errori, senza dettagli interni (URL/host legacy).</item>
+    <item>Migrazione reversibile (`down`), nessuna migrazione committata modificata. Mai `migrate:fresh`/rollback/seed
+      sul DB dev; sul legacy solo letture (tinker) e il nuovo controller.</item>
+    <item>Test Pest mirati con `Http::fake` + `Storage::fake`: nessuna chiamata reale al legacy nei test.</item>
+    <item>Fixture dei test qnet-2 = contratto legacy sopra (cambio fixture = REQUIREMENT CHANGED).</item>
+    <item>File entro 300/500 righe; `AttachmentController` resta sottile (logica nel fetcher/service).</item>
+  </constraints>
+
 </spec>
