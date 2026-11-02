@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0325-payment-method-legacy-fields" status="done" owner="utente" date="2026-10-29" amends="0068,0194,0013">
+
+  <goal>
+    La modalita' di pagamento di qnet-2 ha esattamente i campi della tabella legacy `payments`, il calcolo delle
+    scadenze li usa come il legacy, e la migrazione `payment-methods` porta tutti i campi e sovrascrive i metodi gia'
+    importati a ogni nuovo run.
+  </goal>
+
+  <context>
+    - Legacy `payments` (../qnet, form `Livewire/Payments/ManagePayment`): payment_type (MP01..MP23), description,
+      vat_rate (1 IVA divisa, 2 sulla prima rata, 3 sull'ultima, 4 prima rata solo IVA), condition (TP01 a rate,
+      TP02 completo, TP03 anticipato), fixed_date (giorno scadenza fissa), exclude_month1, exclude_month2,
+      number_deadlines, days_before_deadline, days_between_expiration, dffm (DF/FM). 100 righe.
+    - Calcolo legacy (`GenerateProForma::scadenze`): giorno = (FM ? ultimo del mese : giorno documento) +
+      fixed_date + 10 se il mese della scadenza e' un mese escluso; lo spostamento dei mesi esclusi vale solo con
+      fixed_date = 0. Il legacy usa per errore exclude_month1 due volte (exclude_month2 non ha mai effetto).
+    - qnet-2 prima: payment_method_code, name, vat_allocation, payment_days, installments_count,
+      days_between_installments, end_of_month, end_of_month_extra_days (solo con FM). Mancavano condition e i due mesi
+      esclusi; la sorgente inviava solo name/code/payment_method_code/payment_days e un re-run saltava i metodi
+      gia' importati.
+  </context>
+
+  <decisions>
+    D-1 Nuove colonne `payment_methods`: `payment_condition` string(4) NOT NULL default 'TP02' (enum
+        `PaymentCondition`: TP01 Installments, TP02 Full, TP03 Advance), `excluded_month_1` e `excluded_month_2`
+        unsignedTinyInteger nullable (1..12).
+    D-2 (utente 2026-10-29) Il calcolo scadenze segue il legacy: `end_of_month_extra_days` (= fixed_date, nome di
+        colonna invariato) si somma alla scadenza anche senza fine mese; con giorni aggiuntivi a 0/vuoti, una
+        scadenza che cade in un mese escluso si sposta di 10 giorni. Vale per ENTRAMBI i mesi esclusi (il legacy,
+        per un refuso, applicava solo il primo). Riguarda solo le scadenze calcolate da ora in poi.
+    D-3 (utente 2026-10-29) Migrazione sovrascrivibile: un metodo gia' importato (stesso old_id) viene aggiornato con
+        i campi legacy (name, payment_method_code, payment_condition, vat_allocation, payment_days,
+        installments_count, days_between_installments, end_of_month, end_of_month_extra_days, excluded_month_1,
+        excluded_month_2), senza activity log. Restano di qnet-2 e non si toccano: code, sort_order, is_active,
+        description, payment_instructions. La riga sovrascritta conta come "saltata" (nessun contatore di
+        aggiornamento nel motore, come il backfill di OpportunitiesSource).
+    D-4 Normalizzazione nel legacy (backend.md §9): condition non TP01..TP03 -> TP01 con piu' rate, altrimenti TP02;
+        vat_rate 1..4 -> split|first|last|vat_first (vat_first con meno di 2 rate -> split, sconosciuto -> split);
+        number_deadlines 0 -> 1; dffm 'FM' -> end_of_month true; fixed_date 0 -> null; exclude_month 0 o fuori 1..12
+        -> null.
+  </decisions>
+
+  <data_contract>
+    <shape>
+      GET legacy /payment-methods, record:
+        { id: int, name: string|null, code: string|null, payment_method_code: string|null,
+          payment_condition: "TP01"|"TP02"|"TP03", vat_allocation: "split"|"first"|"last"|"vat_first",
+          payment_days: int|null, installments_count: int>=1, days_between_installments: int>=0,
+          end_of_month: bool, end_of_month_extra_days: int|null, excluded_month_1: int(1..12)|null,
+          excluded_month_2: int(1..12)|null, description: null, payment_instructions: null, is_active: true }
+      qnet-2 API payment-methods (resource, store, update, table row): + payment_condition, excluded_month_1,
+        excluded_month_2. Validazione: payment_condition in enum; excluded_month_* nullable integer 1..12.
+    </shape>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Migrazione schema reversibile con le tre colonne di D-1; model, DTO, request, resource, riga tabella e autorizzazione campi le espongono.</criterion>
+    <criterion id="AC-002">Calcolatore: giorni aggiuntivi sommati anche con DF; mese escluso +10 giorni solo senza giorni aggiuntivi; entrambi i mesi esclusi attivi.</criterion>
+    <criterion id="AC-003">Sorgente: crea con tutti i campi; un re-run sovrascrive i campi legacy del metodo gia' importato e lascia code/sort_order/is_active/description/payment_instructions; valori fuori dominio -> warning e default.</criterion>
+    <criterion id="AC-004">Legacy: il controller invia la shape del contratto; verificato con tinker sui dati reali.</criterion>
+    <criterion id="AC-005">FE: form e dettaglio con condizioni di pagamento, giorni aggiuntivi sempre visibili, mesi esclusi; guide IT/EN aggiornate.</criterion>
+  </acceptance_criteria>
+</spec>

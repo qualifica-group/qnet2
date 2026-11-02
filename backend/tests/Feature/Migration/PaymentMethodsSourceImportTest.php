@@ -1,6 +1,8 @@
 <?php
 
 use App\Enums\MigrationStatus;
+use App\Enums\PaymentCondition;
+use App\Enums\VatAllocation;
 use App\Jobs\RunMigrationJob;
 use App\Models\MigrationRun;
 use App\Models\PaymentMethod;
@@ -233,4 +235,132 @@ it('isolates a failed row (missing name) without blocking the valid one', functi
     expect($fresh->created_rows)->toBe(1)
         ->and($fresh->failed_rows)->toBe(1)
         ->and(collect($fresh->report)->firstWhere('level', 'error'))->not->toBeNull();
+});
+
+// ---------------------------------------------------------------------------
+// Every legacy field, and the overwrite on re-import (spec 0325)
+// ---------------------------------------------------------------------------
+
+/**
+ * A legacy record carrying every field of `payments` (spec 0325 data contract).
+ *
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function legacyPaymentMethodRecord(array $overrides = []): array
+{
+    return $overrides + [
+        'id' => 70,
+        'name' => 'RI.BA. 30/60 GG F.M.',
+        'code' => 'ri_ba_30_60_gg_f_m',
+        'payment_method_code' => 'MP12',
+        'payment_condition' => 'TP01',
+        'vat_allocation' => 'first',
+        'payment_days' => 30,
+        'installments_count' => 2,
+        'days_between_installments' => 30,
+        'end_of_month' => true,
+        'end_of_month_extra_days' => 10,
+        'excluded_month_1' => 8,
+        'excluded_month_2' => 12,
+        'description' => null,
+        'payment_instructions' => null,
+        'is_active' => true,
+    ];
+}
+
+it('imports every legacy field of the payment method', function () {
+    fakePaymentMethodsResponse([legacyPaymentMethodRecord()]);
+
+    $run = runPaymentMethodsImport();
+
+    $method = PaymentMethod::query()->where('old_id', 70)->first();
+
+    expect($method->payment_condition)->toBe(PaymentCondition::Installments)
+        ->and($method->vat_allocation)->toBe(VatAllocation::First)
+        ->and($method->payment_days)->toBe(30)
+        ->and($method->installments_count)->toBe(2)
+        ->and($method->days_between_installments)->toBe(30)
+        ->and($method->end_of_month)->toBeTrue()
+        ->and($method->end_of_month_extra_days)->toBe(10)
+        ->and($method->excluded_month_1)->toBe(8)
+        ->and($method->excluded_month_2)->toBe(12)
+        ->and($run->fresh()->report)->toBeNull();
+});
+
+it('REQUIREMENT CHANGED: a re-import overwrites the legacy fields and keeps the fields qnet owns', function () {
+    $changed = legacyPaymentMethodRecord([
+        'name' => 'RI.BA. 60 GG D.F.',
+        'code' => 'ri_ba_60_gg_d_f',
+        'payment_condition' => 'TP02',
+        'vat_allocation' => 'split',
+        'payment_days' => 60,
+        'installments_count' => 1,
+        'days_between_installments' => 0,
+        'end_of_month' => false,
+        'end_of_month_extra_days' => null,
+        'excluded_month_1' => null,
+        'excluded_month_2' => null,
+    ]);
+    seedMigrationsConfig();
+    Http::fake([
+        fakeMigrationsBaseUrl().'/payment-methods*' => Http::sequence()
+            ->push(['items' => [legacyPaymentMethodRecord()], 'pagination' => ['total' => 1]])
+            ->push(['items' => [$changed], 'pagination' => ['total' => 1]]),
+    ]);
+    runPaymentMethodsImport();
+
+    $method = PaymentMethod::query()->where('old_id', 70)->first();
+    $method->update(['description' => 'Nota interna', 'payment_instructions' => 'IBAN', 'is_active' => false, 'installments_count' => 5]);
+    $sortOrder = $method->sort_order;
+
+    $secondRun = runPaymentMethodsImport();
+
+    $method->refresh();
+
+    expect(PaymentMethod::query()->count())->toBe(1)
+        ->and($method->name)->toBe('RI.BA. 60 GG D.F.')
+        ->and($method->payment_condition)->toBe(PaymentCondition::Full)
+        ->and($method->vat_allocation)->toBe(VatAllocation::Split)
+        ->and($method->payment_days)->toBe(60)
+        ->and($method->installments_count)->toBe(1)
+        ->and($method->end_of_month)->toBeFalse()
+        ->and($method->end_of_month_extra_days)->toBeNull()
+        ->and($method->excluded_month_1)->toBeNull()
+        ->and($method->excluded_month_2)->toBeNull()
+        ->and($method->code)->toBe('ri_ba_30_60_gg_f_m')
+        ->and($method->sort_order)->toBe($sortOrder)
+        ->and($method->is_active)->toBeFalse()
+        ->and($method->description)->toBe('Nota interna')
+        ->and($method->payment_instructions)->toBe('IBAN')
+        ->and($secondRun->fresh()->skipped_rows)->toBe(1)
+        ->and($secondRun->fresh()->failed_rows)->toBe(0);
+});
+
+it('adopts a seeded method and overwrites it with the legacy fields', function () {
+    $seeded = PaymentMethod::factory()->create(['name' => 'Ri.Ba.', 'code' => 'ri_ba_30_60_gg_f_m', 'installments_count' => 1]);
+
+    fakePaymentMethodsResponse([legacyPaymentMethodRecord()]);
+    runPaymentMethodsImport();
+
+    $seeded->refresh();
+
+    expect($seeded->old_id)->toBe(70)
+        ->and($seeded->name)->toBe('RI.BA. 30/60 GG F.M.')
+        ->and($seeded->installments_count)->toBe(2)
+        ->and($seeded->excluded_month_1)->toBe(8);
+});
+
+it('warns and keeps the current value of an unknown enum or an out of range month', function () {
+    fakePaymentMethodsResponse([legacyPaymentMethodRecord(['payment_condition' => '1', 'excluded_month_1' => 13])]);
+
+    $run = runPaymentMethodsImport();
+
+    $method = PaymentMethod::query()->where('old_id', 70)->first();
+    $warnings = collect($run->fresh()->report)->where('level', 'warning');
+
+    expect($method->payment_condition)->toBe(PaymentCondition::Full)
+        ->and($method->excluded_month_1)->toBeNull()
+        ->and($warnings)->toHaveCount(2)
+        ->and($run->fresh()->created_rows)->toBe(1);
 });

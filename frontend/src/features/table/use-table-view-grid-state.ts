@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react'
 import type { GridApi, GridReadyEvent } from 'ag-grid-community'
+import { registerPresetSetFilterValues } from '@/components/data-table/preset-set-filter-values'
 import { useAbilities } from '@/features/auth/use-abilities'
 import { resolveRowGrouping } from '@/features/table/row-grouping'
 import { createSsrmDatasource, type SsrmDatasource } from '@/features/table/ssrm-datasource'
@@ -277,6 +278,7 @@ export function useTableViewGridState(
       if (!gridApi) {
         return
       }
+      registerPresetSetFilterValues(gridApi, patch)
       const next = { ...gridApi.getFilterModel(), ...patch }
       for (const key of Object.keys(next)) {
         if (next[key] === null) {

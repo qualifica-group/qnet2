@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PaymentCondition;
 use App\Enums\VatAllocation;
 use App\Models\Abstracts\BaseModel;
 use App\Models\Concerns\LogsModelActivity;
@@ -24,7 +25,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * App\Services\PaymentMethods\PaymentMethodOrderManager, never accepted from
  * the client at the FormRequest layer.
  */
-#[Fillable(['name', 'code', 'payment_method_code', 'description', 'payment_instructions', 'payment_days', 'installments_count', 'days_between_installments', 'end_of_month', 'end_of_month_extra_days', 'vat_allocation', 'sort_order', 'is_active'])]
+#[Fillable(['name', 'code', 'payment_method_code', 'payment_condition', 'description', 'payment_instructions', 'payment_days', 'installments_count', 'days_between_installments', 'end_of_month', 'end_of_month_extra_days', 'excluded_month_1', 'excluded_month_2', 'vat_allocation', 'sort_order', 'is_active'])]
 class PaymentMethod extends BaseModel
 {
     /** @use HasFactory<PaymentMethodFactory> */
@@ -41,6 +42,9 @@ class PaymentMethod extends BaseModel
             'days_between_installments' => 'int',
             'end_of_month' => 'bool',
             'end_of_month_extra_days' => 'int',
+            'excluded_month_1' => 'int',
+            'excluded_month_2' => 'int',
+            'payment_condition' => PaymentCondition::class,
             'vat_allocation' => VatAllocation::class,
             'sort_order' => 'int',
             'is_active' => 'bool',

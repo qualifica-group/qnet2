@@ -2,6 +2,7 @@
 
 namespace App\DataObjects\PaymentMethods;
 
+use App\Enums\PaymentCondition;
 use App\Enums\VatAllocation;
 
 /**
@@ -34,6 +35,9 @@ final readonly class CreatePaymentMethodData
         public bool $endOfMonth = false,
         public ?int $endOfMonthExtraDays = null,
         public VatAllocation $vatAllocation = VatAllocation::Split,
+        public PaymentCondition $paymentCondition = PaymentCondition::Full,
+        public ?int $excludedMonth1 = null,
+        public ?int $excludedMonth2 = null,
     ) {}
 
     /**
@@ -56,6 +60,9 @@ final readonly class CreatePaymentMethodData
             endOfMonth: (bool) ($data['end_of_month'] ?? false),
             endOfMonthExtraDays: isset($data['end_of_month_extra_days']) ? (int) $data['end_of_month_extra_days'] : null,
             vatAllocation: VatAllocation::from($data['vat_allocation'] ?? VatAllocation::Split->value),
+            paymentCondition: PaymentCondition::from($data['payment_condition'] ?? PaymentCondition::Full->value),
+            excludedMonth1: isset($data['excluded_month_1']) ? (int) $data['excluded_month_1'] : null,
+            excludedMonth2: isset($data['excluded_month_2']) ? (int) $data['excluded_month_2'] : null,
         );
     }
 
@@ -75,7 +82,10 @@ final readonly class CreatePaymentMethodData
             'days_between_installments' => $this->daysBetweenInstallments,
             'end_of_month' => $this->endOfMonth,
             'end_of_month_extra_days' => $this->endOfMonthExtraDays,
+            'excluded_month_1' => $this->excludedMonth1,
+            'excluded_month_2' => $this->excludedMonth2,
             'vat_allocation' => $this->vatAllocation,
+            'payment_condition' => $this->paymentCondition,
             'is_active' => $this->isActive,
         ];
     }

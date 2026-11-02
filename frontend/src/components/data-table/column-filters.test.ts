@@ -266,7 +266,7 @@ describe('buildColumnFilter', () => {
 /** Builds a minimal `SetFilterValuesFuncParams` stub carrying a fake filter model. */
 function stubValuesParams(filterModel: Record<string, unknown>): SetFilterValuesFuncParams {
   return {
-    api: { getFilterModel: () => filterModel },
+    api: { getFilterModel: () => filterModel, getGridOption: () => undefined },
     success: vi.fn(),
   } as unknown as SetFilterValuesFuncParams
 }

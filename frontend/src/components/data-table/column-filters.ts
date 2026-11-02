@@ -11,6 +11,7 @@ import type {
   SetFilterValuesFuncParams,
   ValueFormatterParams,
 } from 'ag-grid-community'
+import { withPresetSetFilterValues } from '@/components/data-table/preset-set-filter-values'
 import { fetchTableColumnValues } from '@/features/table/api'
 import type { TableColumn } from '@/features/table/types'
 import { enumLabelOf } from '@/features/config/enum-label'
@@ -112,7 +113,7 @@ export function createColumnValuesGetter(
         if (response.hasMore) {
           onTruncated()
         }
-        params.success(response.values)
+        params.success(withPresetSetFilterValues(params.api, columnId, response.values))
       })
       .catch(() => params.success([]))
   }

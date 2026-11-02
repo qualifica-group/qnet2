@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Pagamento rate dal documento passivo — VERDE, NON COMMITTATO (2026-10-29)
+## Pagamento rate dal documento passivo — VERDE, COMMITTATO c6e5c108 (2026-10-29)
 
 - Richiesta utente: registrare/annullare il pagamento di una rata anche dalla sezione **Scadenze** della riga
   espansa e della scheda di una fattura passiva (prima solo dalla griglia Scadenze passive). Nessuna modifica
@@ -25,17 +25,39 @@
   Docs "Manuale Utente QNet" NON era accessibile dalla sessione (access denied): da aggiornare a mano la
   sezione Fatture passive (riga espansa e scheda: Registra/Annulla pagamento sulle rate).
 
-## Bug dati: metodi di pagamento migrati senza configurazione rate — APERTO (2026-10-29)
+## Fix tab "Fatture" (Fatture attive) che tornava su "Tutte" — VERDE, COMMITTATO (2026-10-29)
 
-- Il modale di emissione proforma e il calcolatore sono corretti: le scadenze cambiano con `payment_days`.
-  Ma il legacy `payments` ha `number_deadlines`, `days_between_expiration`, `dffm` (DF/FM), `fixed_date`,
-  `vat_rate` (sempre 1 = split) e il `PaymentMethodMigrationController` legacy manda solo `payment_days`;
-  `PaymentMethodsSource` passa solo quello. Risultato: 100 metodi in qnet-2 tutti a 1 rata, senza fine mese
-  (46 nel legacy sono multi-rata/FM/giorno fisso). Fix proposto (backend.md §9): il legacy emette
-  `installments_count` (0->1), `days_between_installments`, `end_of_month` (`dffm==='FM'`),
-  `end_of_month_extra_days` (`fixed_date`, 0->null), `vat_allocation`; qnet-2 li passa a
-  `CreatePaymentMethodData`; piu' un aggiornamento una tantum delle righe gia' importate (re-import salta per
-  `old_id`). Mesi esclusi restano fuori (spec 0194 D-10). In attesa di via libera dell'utente.
+- Causa: il Set Filter di AG Grid tiene un valore del modello solo se e' nella sua lista valori, e la lista
+  (`POST /tables/{domain}/values`) e' ristretta dagli ALTRI filtri (0004). Ottobre 2026 ha solo proforma ->
+  lista `type` = `["proforma"]` -> `invoice` scartato in silenzio. Stesso difetto su mesi vuoti della striscia e
+  sul ripristino al mount (filtri salvati + `forcedFilterModel`), con effetto a cascata (cadeva anche l'anno).
+- Fix generico, nessun cambio di comportamento sui filtri aperti a mano: `components/data-table/preset-set-filter-values.ts`
+  (`registerPresetSetFilterValues` chiamata da `TableViewHandle.setFilterModel` prima di applicare il modello, ricarica la
+  lista dei filtri gia' costruiti; `withPresetSetFilterValues` nel getter di `column-filters.ts` unisce alla lista server i
+  valori del preset e quelli di `initialState`). Si appoggia al fatto che `AgPromise` risolve in modo sincrono.
+- Verifica: Vitest 1247 file / 9497 test, `tsc -b --force` EXIT 0, ESLint ok; riprodotto e verificato in Chrome via
+  Playwright (tab Proforma/Fatture/Tutte, mese Nov vuoto, reload con tab Fatture salvato).
+- Fuori scope segnalato: il chip del filtro mostra "Tipo: invoice" (valore grezzo, non tradotto).
+
+## Spec 0325 Modalita' di pagamento: campi legacy + migrazione sovrascrivibile — VERDE, NON COMMITTATO (2026-10-29)
+
+- Campi = legacy `payments`: nuove colonne `payment_condition` (enum `PaymentCondition` TP01/TP02/TP03, default TP02),
+  `excluded_month_1/2` (1..12 nullable); `end_of_month_extra_days` (nome invariato) = legacy `fixed_date`. Migrazione
+  `2026_11_08_100000_add_legacy_due_date_fields_to_payment_methods_table` (risultava gia' applicata su qnet2 a fine
+  sessione: non lanciata da me, origine da verificare).
+- D-2 `InstallmentScheduleCalculator`: giorni aggiuntivi anche senza fine mese; senza giorni aggiuntivi, scadenza in un
+  mese escluso +10 gg (`EXCLUDED_MONTH_SHIFT_DAYS`). Entrambi i mesi (il legacy per refuso usava solo il primo).
+- D-3 `PaymentMethodsSource`: re-run sovrascrive i campi legacy via `PaymentMethodService::update` senza activity log
+  (riga contata "saltata"); code/sort_order/is_active/description/payment_instructions restano di qnet-2. Anche il
+  metodo adottato dal catalogo viene sovrascritto. Enum/numero fuori dominio -> warning e campo non scritto.
+- Legacy `../qnet` `PaymentMethodMigrationController` invia tutti i campi normalizzati (D-4), verificato in tinker su
+  100 righe (TP01 18 / TP02 82, mesi esclusi 41, giorni fissi 22, rate>1 21). Modifica legacy non committata.
+- FE: nuovo `payment-method-due-date-rows.tsx` (condizioni, mesi esclusi; riusa `monthName` di tasks); "Fine mese" e
+  "Giorni aggiuntivi" ora righe separate; i18n IT/EN, guide in-app IT/EN, manuale Claude Docs (paragrafo Modalita' di
+  Pagamento).
+- Test: Pest PaymentMethods/Migration/Unit/Invoices/... ; Vitest payment-methods+help 212/212, invoices/quotes/quick-create/
+  table 929/929; `tsc -b --force` EXIT 0; ESLint, Pint ok. Test con lista congelata aggiornati (REQUIREMENT CHANGED).
+- Da fare: rilanciare su dev la sorgente `payment-methods` per sovrascrivere i 100 metodi (serve ok utente).
 
 ## Merge feature/amministrazione (spec 0288) in main — VERDE, COMMITTATO (2026-10-29)
 

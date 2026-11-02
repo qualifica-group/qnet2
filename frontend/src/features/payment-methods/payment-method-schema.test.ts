@@ -21,6 +21,9 @@ const VALID_PAYLOAD = {
   end_of_month: false,
   end_of_month_extra_days: null,
   vat_allocation: 'split',
+  payment_condition: 'TP02',
+  excluded_month_1: null,
+  excluded_month_2: null,
   is_active: true,
 }
 

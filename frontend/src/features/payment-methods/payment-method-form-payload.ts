@@ -11,17 +11,21 @@ function blankToNull(value: string | null): string | null {
 }
 
 /**
- * The installment configuration (spec 0194 D-10). `days_between_installments`
- * is null in the form when untouched on a single installment: the server needs
- * an integer, so it falls back to 0.
+ * The installment and due date configuration (spec 0194 D-10, spec 0325).
+ * `days_between_installments` is null in the form when untouched on a single
+ * installment: the server needs an integer, so it falls back to 0. The extra
+ * days apply with or without end of month (spec 0325 D-2).
  */
 function rateFields(values: PaymentMethodFormValues) {
   return {
     installments_count: values.installments_count,
     days_between_installments: values.days_between_installments ?? 0,
     end_of_month: values.end_of_month,
-    end_of_month_extra_days: values.end_of_month ? values.end_of_month_extra_days : null,
+    end_of_month_extra_days: values.end_of_month_extra_days,
+    excluded_month_1: values.excluded_month_1,
+    excluded_month_2: values.excluded_month_2,
     vat_allocation: values.vat_allocation,
+    payment_condition: values.payment_condition,
   }
 }
 
@@ -82,8 +86,17 @@ export function buildUpdatePayload(
   if (rates.end_of_month_extra_days !== original.end_of_month_extra_days) {
     payload.end_of_month_extra_days = rates.end_of_month_extra_days
   }
+  if (rates.excluded_month_1 !== original.excluded_month_1) {
+    payload.excluded_month_1 = rates.excluded_month_1
+  }
+  if (rates.excluded_month_2 !== original.excluded_month_2) {
+    payload.excluded_month_2 = rates.excluded_month_2
+  }
   if (rates.vat_allocation !== original.vat_allocation) {
     payload.vat_allocation = rates.vat_allocation
+  }
+  if (rates.payment_condition !== original.payment_condition) {
+    payload.payment_condition = rates.payment_condition
   }
   if (values.is_active !== original.is_active) {
     payload.is_active = values.is_active

@@ -1,11 +1,12 @@
 import { useFormContext, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { NumberInlineRow, SwitchInlineRow } from '@/components/record-form/inline-rows'
 import { RecordInlineField, type InlineEdit } from '@/components/record-form/record-inline-field'
 import { FormControl } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
 import { MetaField } from '@/features/authorization/MetaField'
+import { ExcludedMonthsRow, PaymentConditionRow } from '@/features/payment-methods/payment-method-due-date-rows'
 import { VAT_ALLOCATIONS } from '@/features/payment-methods/types'
 import type { PaymentMethodFormValues } from '@/features/payment-methods/use-payment-method-form'
 
@@ -14,7 +15,7 @@ interface PaymentMethodInstallmentRowsProps {
   canEdit: boolean
 }
 
-type NumericRateField = 'days_between_installments' | 'installments_count' | 'end_of_month_extra_days'
+type NumericRateField = 'days_between_installments' | 'installments_count'
 
 interface NumericRateInputProps {
   name: NumericRateField
@@ -104,56 +105,6 @@ function InstallmentScheduleRow({ inline, canEdit }: PaymentMethodInstallmentRow
   )
 }
 
-/** The end-of-month switch and its extra days (only meaningful while the switch is on) are ONE row. */
-function EndOfMonthRow({ inline, canEdit }: PaymentMethodInstallmentRowsProps) {
-  const { t } = useTranslation()
-  const { control } = useFormContext<PaymentMethodFormValues>()
-  const [endOfMonth, extraDays] = useWatch({ control, name: ['end_of_month', 'end_of_month_extra_days'] })
-  const closedLabel = !endOfMonth
-    ? t('common.no')
-    : extraDays === null
-      ? t('common.yes')
-      : t('paymentMethods.detail.endOfMonthWithExtra', { days: extraDays })
-
-  return (
-    <RecordInlineField
-      field="end_of_month"
-      label={t('paymentMethods.form.endOfMonth')}
-      inline={inline}
-      canEdit={canEdit}
-      editor={
-        <div className="flex flex-col gap-3">
-          <MetaField
-            control={control}
-            name="end_of_month"
-            metaKey="end_of_month"
-            label={t('paymentMethods.form.endOfMonth')}
-            hint={t('paymentMethods.form.hints.endOfMonth')}
-          >
-            {({ field, disabled }) => (
-              <FormControl>
-                <Switch checked={field.value} onCheckedChange={field.onChange} disabled={disabled} />
-              </FormControl>
-            )}
-          </MetaField>
-          {endOfMonth ? (
-            <NumericRateInput
-              name="end_of_month_extra_days"
-              label={t('paymentMethods.form.endOfMonthExtraDays')}
-              min={0}
-              max={31}
-              hint={t('paymentMethods.form.hints.endOfMonthExtraDays')}
-            />
-          ) : null}
-        </div>
-      }
-    >
-      {closedLabel}
-      <SecondaryFieldError name="end_of_month_extra_days" />
-    </RecordInlineField>
-  )
-}
-
 function VatAllocationRow({ inline, canEdit }: PaymentMethodInstallmentRowsProps) {
   const { t } = useTranslation()
   const { control } = useFormContext<PaymentMethodFormValues>()
@@ -197,12 +148,33 @@ function VatAllocationRow({ inline, canEdit }: PaymentMethodInstallmentRowsProps
   )
 }
 
-/** The "Installments" section's rows (spec 0194 D-10), shared by the detail and the create draft. */
+/**
+ * The "Installments" section's rows (spec 0194 D-10, spec 0325), shared by the
+ * detail and the create draft: every due date field of the legacy method.
+ */
 export function PaymentMethodInstallmentRows(props: PaymentMethodInstallmentRowsProps) {
+  const { t } = useTranslation()
+
   return (
     <>
+      <PaymentConditionRow {...props} />
       <InstallmentScheduleRow {...props} />
-      <EndOfMonthRow {...props} />
+      <SwitchInlineRow<PaymentMethodFormValues>
+        name="end_of_month"
+        label={t('paymentMethods.form.endOfMonth')}
+        hint={t('paymentMethods.form.hints.endOfMonth')}
+        {...props}
+      />
+      <NumberInlineRow<PaymentMethodFormValues>
+        name="end_of_month_extra_days"
+        label={t('paymentMethods.form.endOfMonthExtraDays')}
+        hint={t('paymentMethods.form.hints.endOfMonthExtraDays')}
+        min={0}
+        max={31}
+        step={1}
+        {...props}
+      />
+      <ExcludedMonthsRow {...props} />
       <VatAllocationRow {...props} />
     </>
   )
