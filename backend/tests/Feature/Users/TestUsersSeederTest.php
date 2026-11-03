@@ -38,14 +38,16 @@ it('creates the privileged accounts only, standalone on a fresh database', funct
         ]);
 });
 
-it('gives the admin accounts every permission of the catalogue, without the privileged role', function () {
+// REQUIREMENT CHANGED (2026-11-03, spec 0348): the request import belongs to its own role, not to `admin`.
+it('gives the admin accounts every permission of the catalogue but the request import, without the privileged role', function () {
     $this->seed(TestUsersSeeder::class);
 
     $admin = User::query()->where('email', 'mario.esposito@qualificagroup.com')->sole();
 
     expect($admin->getRoleNames()->all())->toBe([OperatorRoleCatalogue::ADMIN_ROLE])
         ->and($admin->getAllPermissions()->pluck('name')->sort()->values()->all())
-        ->toBe(Permission::query()->pluck('name')->sort()->values()->all())
+        ->toBe(Permission::query()->where('name', '!=', 'request-management.import')->pluck('name')->sort()->values()->all())
+        ->and($admin->can('request-management.import'))->toBeFalse()
         ->and($admin->can('request-management.viewAll'))->toBeTrue()
         ->and($admin->can('work-orders.viewAll'))->toBeTrue();
 });

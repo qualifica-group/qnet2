@@ -29,6 +29,7 @@ class ImportMappingTemplate extends BaseModel
         'name',
         'columns',
         'column_mapping',
+        'value_mappings',
         'dedup_strategy',
     ];
 
@@ -37,6 +38,7 @@ class ImportMappingTemplate extends BaseModel
         'name' => 'string',
         'columns' => 'array',
         'column_mapping' => 'array',
+        'value_mappings' => 'array',
         'dedup_strategy' => 'string',
     ];
 

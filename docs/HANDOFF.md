@@ -3,6 +3,52 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Importa richieste (Develop): trattative Excel -> Gestione Richieste — VERDE sui test della feature, COMMITTATO (2026-11-03, spec 0348)
+
+- Dominio import `request-management` sul wizard generico (`/api/imports/request-management/...`), pagina
+  `/dev/request-imports` (Develop › Importa richieste), permesso `request-management.import` (gia' prodotto da
+  RequestManagementPolicy/BasePolicy). Ogni riga: Anagrafica (dedup come leads) + Opportunita' + Offerta via
+  `RequestCreationService` (nuovo `CreateRequestData::$workflowStatusId`); nessun Lead; notifiche spente con
+  `AssignmentNotifier::muted()` attorno a ogni persistRow.
+- Sede operativa (decisione utente 2026-11-03): globale FACOLTATIVA; ogni richiesta prende override di riga ??
+  sede principale dell'operatore (`RequestImportLookups::primarySiteIdOf`) ?? sede globale ?? sede dell'attore.
+- Segnalatore (decisione utente 2026-11-03): field `reporter_name` (alias "segnalatore") -> Referent `reporter_id` su
+  Opportunita'+Offerta. Esistente per nome normalizzato; inesistente o omonimi -> vuoto + avviso + nota.
+  I referenti NON vengono mai creati dall'import (decisione utente 2026-11-03, revoca della creazione).
+- Accesso (decisione utente 2026-11-03): `request-management.import` SOLO a super-admin e al ruolo `importatore-richieste`
+  (costanti in `QualificaCatalog/RequestImporterRoleCatalogue`, ruolo creato da QualificaRoleSeeder; tolto da
+  ALL_REQUESTS/OWN_REQUESTS e da `admin`). Assegnazione: `OperatorRoster::EXTRA_ROLES` (Rosa Falzarano, Fabrizio
+  Aliberti, in aggiunta a supervisore), applicata da QualificaOperatorSeeder e QualificaRoleResetSeeder. Nessun seeder
+  dedicato (decisione utente). Installazione live: `php artisan db:seed --class=QualificaRoleResetSeeder`. NON eseguito su dev.
+- Motore (T-01): `ImportDefinition` += valueMappingFields, attributeTargets, valueMappingPreview,
+  validateValueMappings, validateAttributeTargets, supportsOpportunityConversion (false qui: summary senza
+  `conversion_readiness`, confirm forza convert=false), defaultSourceFields/globalConfigDefaults (linea di
+  prodotto precompilata se la colonna categoria ha un solo valore). Endpoint `POST imports/{domain}/{run}/value-mapping`.
+  `import_runs.value_mappings` + `import_mapping_templates.value_mappings` (migrazione 2026_11_18_100000, APPLICATA
+  al DB dev con --path). Template: value_mappings fotografati dal run (solo voci {id}). `ImportRunPolicy` per dominio.
+- Dominio (T-03/T-04): `App\Imports\RequestManagementImportDefinition` + `App\Imports\RequestManagement\*`;
+  config `imports.request_management` (alias stati/fonti, callback_time 09:00, note_labels, stopword/noise
+  prodotti). Stati nuovi creati al primo persistRow via `WorkflowStatusWriter::appendCustom` (idempotenti).
+  Workflow risolto prima dell'offerta con una Quote transitoria + QuoteWorkflowResolver.
+- Frontend: pannello Valori (stati esistenti / crea nuovo stato / fonti), target `attribute.<code>` dagli
+  attributi efficaci contesto quote, testi wizard per dominio (`importWizard.domains.<resource>.*`), guida in-app
+  `request-imports` IT/EN; manuale Claude Docs: sezione "Importa richieste" dopo "Stato del sistema".
+- Prova reale sui 4 Excel utente (transazione annullata, DB invariato): 72/163/23/284 righe tutte create, 0 errori;
+  prodotti riconosciuti 82% Autofinanziato, 71% DIL (non risolti: make up 30/40 ore, "generica", Gare d'Appalto,
+  "???", OSA/ASACOM); 195/284 righe DIL senza cognome (avviso).
+- REQUIREMENT CHANGED: DevelopSectionTest (6 voci), ImportRegistryTest (2 domini), help-guide-keys.test.ts e
+  workspaces-help.test.ts (102 chiavi), vecchio test AC-008 (categoria "DIL - Lombardia").
+- Limiti noti: un'edit in revisione perde le note dei valori scartati di quella riga; stato/fonte non visibili
+  in revisione (applicati al commit); stati closed_*/validated richiedono una riga offerta; stati con
+  requires_note falliscono (note null).
+- Suite completa (gate finale): pint verde, tsc verde; backend 15 failed + 6 errors e frontend 11 unhandled
+  `toast.error is not a function` su file NON toccati dalla feature (PermissionCatalogue 677≠660, Migration/*,
+  AiAssistant/*, TableBulkDelete, QualificaRoleMatrix, SettlementApproval, QuoteDocumentPdf/LibreOffice,
+  ManagementControl/*): estranei per deduzione, non confrontati con HEAD. Unico rosso della feature
+  (workspaces-help 101→102) corretto.
+- Prossimo passo: applicare sull'installazione live QualificaRoleResetSeeder; import reale dei file dalla pagina; decidere se admin deve tenere l'import.
+- Nota: questo file e' ~980 KB, molto oltre i 50 KB: va archiviato in `docs/handoff-archive/` (fuori scope qui).
+
 ## Segnalatori 2026 v2: commissioni per colonna e per prodotto 2°/3° anno, seeder convergente — VERDE, COMMITTATO (2026-11-03)
 
 - Sorgente: Excel utente "COM_- Segnalatori 2026_ (2).xlsx" (stesse righe del 30/10, piu' colonne). Catalogo

@@ -10,6 +10,7 @@ use App\Models\Quote;
 use App\Models\User;
 use App\Notifications\RecordAssignmentNotification;
 use App\Support\Notifications\RecordDetails;
+use Closure;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +28,36 @@ use Illuminate\Support\Facades\DB;
  */
 final class AssignmentNotifier
 {
+    /**
+     * Whether notify() is silenced. Static on purpose: the Registry,
+     * Opportunity and Quote services each hold their OWN notifier instance, and
+     * a silence that only reached one of them would still let the others talk.
+     */
+    private static bool $muted = false;
+
+    /**
+     * Runs $callback with every assignment notification suppressed (the
+     * request import writes thousands of records and must not page the
+     * operators it assigns them to, spec 0348 D-4). The previous state is
+     * restored even when the callback throws, so the silence never outlives it.
+     *
+     * @template TReturn
+     *
+     * @param  Closure(): TReturn  $callback
+     * @return TReturn
+     */
+    public static function muted(Closure $callback): mixed
+    {
+        $previous = self::$muted;
+        self::$muted = true;
+
+        try {
+            return $callback();
+        } finally {
+            self::$muted = $previous;
+        }
+    }
+
     /**
      * @param  Model  $record  the Registry, Opportunity or Quote just
      *                         written; its label and detail card are
@@ -47,6 +78,10 @@ final class AssignmentNotifier
         ?int $supervisorId,
         array $managerPositions,
     ): void {
+        if (self::$muted) {
+            return;
+        }
+
         // Step 1: drop the actor from both roles.
         if ($actor !== null) {
             $supervisorId = $supervisorId === $actor->id ? null : $supervisorId;

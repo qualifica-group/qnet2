@@ -44,7 +44,7 @@ function parseRunId(value: string | null): number | null {
  */
 export function ImportWizard({ domain }: ImportWizardProps) {
   const { t } = useTranslation('importWizard')
-  const title = t('page.title')
+  const title = t(`domains.${domain}.pageTitle`, { defaultValue: t('page.title') })
   const [searchParams, setSearchParams] = useSearchParams()
   const initialRunId = parseRunId(searchParams.get(RUN_ID_PARAM))
 

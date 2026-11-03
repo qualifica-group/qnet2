@@ -131,8 +131,9 @@ class ImportService
      *
      * @param  array<string, string>  $columnMapping
      * @param  array<string, mixed>  $globalConfig
+     * @param  array<string, mixed>|null  $valueMappings  spec 0348, persisted verbatim for staging/commit
      */
-    public function configure(ImportRun $run, array $columnMapping, array $globalConfig, string $dedupStrategy): ImportRun
+    public function configure(ImportRun $run, array $columnMapping, array $globalConfig, string $dedupStrategy, ?array $valueMappings = null): ImportRun
     {
         if ($run->status !== ImportStatus::Configuring) {
             abort(422, 'The import cannot be configured in its current status.');
@@ -141,6 +142,7 @@ class ImportService
         $run->update([
             'column_mapping' => $columnMapping,
             'global_config' => $globalConfig,
+            'value_mappings' => $valueMappings,
             'dedup_strategy' => $dedupStrategy,
             'status' => ImportStatus::Staging,
         ]);

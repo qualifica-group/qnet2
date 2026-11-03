@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0348-request-management-import" status="approved" owner="utente" date="2026-11-03">
+
+  <goal>
+    Dare al super-admin, dalla sezione Develop del menu, un import da Excel/CSV delle "trattative" che
+    crea direttamente le Gestioni Richieste (Anagrafica + Opportunita' + Offerta) con lo stesso wizard
+    di "Importa lead". Rispetto all'import lead aggiunge: la scelta della linea di prodotto quando il
+    file non la porta, la mappatura degli stati del file sugli stati di lavorazione dell'offerta (con
+    creazione degli stati mancanti), operatore/fonte/prodotto/richiamo per riga e le Informazioni
+    aggiuntive dell'offerta.
+  </goal>
+
+  <context>
+    Nomi VERIFICATI sul codice e sul DB dev reale (esplorazione 2026-11-03).
+
+    FILE DI ESEMPIO (4 Excel utente, un foglio ciascuno, intestazione in riga 1):
+    - APL_Orientamento Specialistico (72 righe): Operatore, Data Richiamo, Data App CPI, Stato, Nome e
+      Cognome, Telefono, Data di Nascita, Codice Fiscale, Email, Categoria Prodotto (sempre
+      "Orientamento Specialistico"), Profilo CPI, Tipologia sussidio, Comune di Residenza, CPI, Fonte,
+      Segnalatore, Trasferito da Altra Sede.
+    - Autofinanziato Campania (163): Operatore, Data di richiamo, Stato (46 vuoti), Nome e Cognome,
+      Cellulare, E-mail, Prodotto (sigle libere: OAC, OPI, AGG ASO, "???"...), Preferenza Orario corso,
+      Prezzo ("700,00 EUR"), Data Appuntamento (vuota), Fonte, Segnalatore.
+    - Consulenza Presa Appuntamenti (23): Operatore, Data richiamo, Data Accettazione (vuota), Nome
+      Azienda, Stato, Servizio Richiesto (vuoto), Referente Azienda, Telefono (piu' numeri separati da
+      "/" o " - "), email, Citta', Fonte. Nessuna colonna prodotto/linea.
+    - DIL Lombardia Sede Milano (284): Operatore APL, Operatore, Stato, data Richiamo, Nome, Cognome,
+      Codice Fiscale, Cellulare, Email (alcune malformate: "gmail,com", "yahoo-it"), Prodotto (testo
+      libero: "dil milano segretaria studio medico"), Data App Cpi, Data App APL, Data Attivazione Dote,
+      Data scadenza Dote, Residuo Ore, Tipologia sussidio, Comune di Residenza, Fonte, Segnalatore,
+      Trasferito da Altra Asede.
+    - Date: celle data Excel (lette m/d/Y dal formattatore), un valore testuale rotto ("15/102026").
+
+    GESTIONE RICHIESTE (spec 0049/0086):
+    - Il record e' un'Offerta `App\Models\Quote` appesa a un'`App\Models\Opportunity`; l'anagrafica e'
+      `App\Models\Registry` (+ PersonalData/contatti/indirizzi).
+    - Percorso di scrittura unico gia' esistente: `App\Services\RequestManagement\RequestCreationService::create(User, CreateRequestData)`
+      -> RegistryService::create / OpportunityService::create / QuoteService::create (+ manager slot
+      GA2 operatore promosso sull'Opportunita', sede operativa, fonte `sourceId` sull'Offerta,
+      `nextCallbackAt`, `offerLines`, `attributeValues`, `generalNotes`). Si RIUSA, non si duplica.
+    - Stato di lavorazione: `quotes.quote_workflow_status_id` -> `App\Models\QuoteWorkflowStatus`
+      (fillable name/description/color/sort_order/group/requires_note; `quote_workflow_id` e
+      `system_key` NON fillable). Il set e' risolto per criteri da `App\Services\Quotes\QuoteWorkflowResolver`
+      (criteri `product_category_id` / `product_category_branch_id`). `CreateQuoteData::$workflowStatusId`
+      e' un override assegnato verbatim (va validato dal chiamante). Gruppi: enum
+      `App\Enums\WorkflowStatusGroup` (open/pending/validated/closed_won/closed_lost).
+    - Workflow reali dei 4 file: DIL (id 11, ramo categoria 20), Autofinanziato (14, ramo 15),
+      Consulenza (15, ramo 23), Orientamento specialistico (20, categoria 26).
+      Stati del file ASSENTI nel workflow: Orientamento specialistico "Nuovo Contatto", "NR";
+      DIL "OK App. Fissato CPI". Varianti da abbinare: "NR"->"Non risponde", "Trattativa"->"In trattativa",
+      "Attesa_App APL"->"Attesa _ App. APL", maiuscole/spazi diversi.
+    - Informazioni aggiuntive dell'Offerta: attributi efficaci della categoria in contesto `quote`
+      (`CategoryHierarchy::effectiveAttributes($category, AttributeContext::Quote)`, esposti da
+      `GET /api/product-categories/{productCategory}/effective-attributes`). Esempi: DIL - Lombardia (21)
+      data_scelta_cpi "Data app. CPI", data_app_apl "OK app. APL", dote_activation_date,
+      dote_expiry_date, remaining_hours "Residuo Ore", subsidy_type (enum); Autofinanziato - Campania (16)
+      course_time_preference (enum), price "Prezzo EUR" (decimal); Orientamento specialistico (26)
+      nessun attributo CPI; Presa Appuntamenti (24) nessuno.
+    - Linea di prodotto = coppia (business_function_id, product_category_id) in
+      `opportunity_product_lines`; la funzione si deriva dalla categoria
+      (`ProductCategory::businessFunction()` / `CategoryHierarchy::effectiveBusinessFunction()`).
+    - Prodotti per categoria: `products.category_id` (es. cat 16: "OAC - Operatore Contabile
+      Amministrativo", "ASACOM - ...", "Aggiornamento ASO"; cat 21: "Segreteria Studio Medico",
+      "Gestione Magazzino"...). Righe offerta da prodotti: `App\Services\Quotes\ProductOfferLineResolver::resolve(array $productIds)`.
+    - Notifiche: `App\Services\Notifications\AssignmentNotifier::notify()` chiamato da
+      OpportunityService/QuoteService (dispatch afterCommit).
+
+    WIZARD IMPORT (spec 0033/0034/0036/0045/0094/0137):
+    - Motore generico per dominio: `config/imports.php` `definitions` (oggi solo `leads` =>
+      `App\Imports\LeadsImportDefinition`), `App\Imports\ImportRegistry`, rotte `routes/api/imports.php`
+      (`/api/imports/{domain}/...`: upload, show, configure, rows, rows/assign, rows/{row},
+      rows/{row}/resolution, summary, confirm, errors, mapping-templates), controller
+      `App\Http\Controllers\Import\ImportController`, payload `App\Support\Import\ImportRunPayloadBuilder`
+      (detected_columns, suggested_mapping, fields, global_fields, review_fields, dedup_modes,
+      matching_template, progress).
+    - Riusabili del dominio lead: dedup anagrafica `App\Imports\Leads\LeadDuplicateMatcher`, profilo
+      `App\Imports\Leads\LeadProfileBuilder`, riconoscitori `App\Imports\Recognition\{PersonNameRecognizer,NameSplitRecognizer,GeoRecognizer}`,
+      modalita' `App\Enums\ImportDedupMode` (create_new/update_existing/ignore/manual) +
+      `ImportRowResolution`, override per riga su `import_run_rows` (operator_id, operational_site_id,
+      product_ids), assegnazione massiva `App\Services\Import\ImportBulkAssigner`.
+    - Autorizzazione: `AbstractImportDefinition::authorizeImport()` (per dominio) MA
+      `App\Policies\ImportRunPolicy` e' cablata su `leads.import` -> va resa per dominio.
+    - Template di mappatura: tabella `import_mapping_templates` (resource, user_id, name, columns,
+      column_mapping, dedup_strategy).
+    - Frontend: `frontend/src/features/imports/wizard/` (ImportWizard domain-generico, step
+      upload / mapping+config / review / summary), pagina `frontend/src/pages/lead-import-page.tsx`.
+
+    NAVIGAZIONE: sezione `develop` in `backend/config/navigation/develop.php` (route `/dev/...`).
+
+    DECISIONI UTENTE (2026-11-03):
+    - D-1: nessun Lead. Ogni riga crea Anagrafica (o riusa quella trovata) + Opportunita' + Offerta,
+      come la creazione da Gestione Richieste.
+    - D-2: gli stati si mappano NEL WIZARD: ogni valore distinto della colonna Stato si abbina a uno
+      stato esistente del workflow oppure a "crea nuovo stato" (nome + gruppo). Gli abbinamenti a stati
+      esistenti si salvano nei template di mappatura.
+    - D-3: duplicati gestiti come l'import lead (4 modalita' + decisione per riga in revisione).
+    - D-4: import silenzioso, nessuna notifica di assegnazione agli operatori.
+    - D-5 (proposta, da confermare in approvazione): la linea di prodotto e' UNA per esecuzione
+      (configurazione globale obbligatoria), precompilata quando il file ha una colonna
+      categoria/linea con un unico valore riconosciuto.
+  </context>
+
+  <scope>
+    <in>
+      <item>Nuovo dominio import `request-management` (`RequestManagementImportDefinition` + collaboratori in `App\Imports\RequestManagement\`), registrato in `config/imports.php`.</item>
+      <item>Nuovo permesso `request-management.import` (catalogo permessi; super-admin lo ha di diritto) e `ImportRunPolicy` resa per dominio (`leads` resta su `leads.import`).</item>
+      <item>Voce di menu "Importa richieste" in Develop, route `/dev/request-imports`, pagina con `ImportWizard domain="request-management"`.</item>
+      <item>Configurazione globale: linea di prodotto (categoria selezionabile, obbligatoria), sede operativa (obbligatoria), fonte di ripiego (obbligatoria), operatore di ripiego (facoltativo).</item>
+      <item>Campi mappabili: identita'/contatti/indirizzo come lead + operator_name, workflow_status, source_name, next_callback_date, product_name, notes; target `attribute.&lt;code&gt;` per gli attributi efficaci (contesto quote) della categoria scelta.</item>
+      <item>Mappatura valori (nuovo endpoint) per `workflow_status` (stato esistente o nuovo) e `source_name` (fonte esistente o ripiego), salvata nella configurazione e nei template (solo abbinamenti a id esistenti).</item>
+      <item>Riconoscimento operatore per nome (utenti attivi, confronto senza maiuscole/accenti), prodotto per somiglianza nei prodotti della categoria, telefoni multipli divisi in piu' contatti, date Excel/testo.</item>
+      <item>Colonne non mappate e valori scartati (email malformata, data illeggibile, prodotto non riconosciuto, valore enum sconosciuto) finiscono nelle Note generali dell'Opportunita' come "Intestazione: valore", con avviso sulla riga; la riga NON fallisce per questi motivi.</item>
+      <item>Creazione degli stati nuovi nel workflow risolto, idempotente per (workflow, nome senza maiuscole), al momento della conferma.</item>
+      <item>Scrittura via RequestCreationService (riuso) con stato offerta impostato dalla mappatura, notifiche di assegnazione soppresse per l'intera esecuzione.</item>
+      <item>Revisione: override per riga di operatore, sede, prodotti (componenti esistenti), risoluzione duplicati per riga.</item>
+      <item>Guide in-app IT+EN nuova chiave `request-imports` + sezione nel manuale completo.</item>
+    </in>
+    <out>
+      <item>Creazione del record Lead e di campagne (D-1).</item>
+      <item>File con piu' linee di prodotto nella stessa esecuzione (si fa un'esecuzione per linea).</item>
+      <item>Creazione di nuove Fonti, nuovi utenti/operatori o nuovi prodotti dal wizard.</item>
+      <item>Mappatura di "Segnalatore" sui premi/segnalatori (rewards) e di "Trasferito da altra sede" sul flag di trasferimento (scritto solo da RequestTransferService): entrambi vanno nelle note.</item>
+      <item>Pagina storico delle esecuzioni (tabella runs) per questo dominio.</item>
+      <item>Modifiche all'import lead esistente oltre alla policy per dominio e ai punti generici del wizard elencati nel contratto.</item>
+      <item>Pulizia dei dati nei file (resta dell'utente): l'import segnala, non corregge.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Tutte le rotte sotto `auth:sanctum`, envelope { success, message, data }.
+         Ogni endpoint con {domain}=request-management richiede `request-management.import`. -->
+
+    <endpoint method="POST" path="/api/imports/request-management">
+      <request>multipart: file (xlsx|xls|csv, config imports.max_file_kb), invariato rispetto a leads.</request>
+      <response status="201">ImportRunDetail come leads (shape esistente) con DUE chiavi aggiunte, presenti per ogni dominio:
+        "value_mapping_fields": string[]   // leads: [] ; request-management: ["workflow_status","source_name"]
+        "attribute_targets": null | { "context": "quote", "depends_on": "product_category_id" }  // leads: null
+      </response>
+      <errors>403 senza permesso; 422 file non valido.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/imports/request-management/{importRun}">
+      <response status="200">ImportRunDetail (come sopra). Contenuti specifici del dominio:
+        fields[].id in: full_name, first_name, last_name, company_name, tax_code, vat_number, email, phone,
+          street, postal_code, country, region, province, city, notes, operator_name, workflow_status,
+          source_name, next_callback_date, product_name, product_category_name
+        global_fields[]:
+          { id:"product_category_id", required:true,  for_select_resource:"product-categories", multiple:false, depends_on:null }
+          { id:"operational_site_id", required:false, for_select_resource:"operational-sites",  multiple:false, depends_on:null }  // [revised 2026-11-03, decisione utente]
+          { id:"source_id",           required:true,  for_select_resource:"sources",            multiple:false, depends_on:null }
+          { id:"operator_id",         required:false, for_select_resource:"users",              multiple:false, depends_on:null }
+        dedup_modes: ["create_new","update_existing","ignore","manual"]
+        label i18n: "imports.request-management.fields.&lt;id&gt;" / "imports.request-management.global.&lt;id&gt;"
+        Il valore suggerito di product_category_id quando product_category_name e' mappato e la colonna ha
+        un solo valore distinto riconosciuto: global_fields[product_category_id].default = &lt;id&gt;.
+      </response>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/imports/{domain}/{importRun}/value-mapping">
+      <request>
+        {
+          "column_mapping": { "&lt;column_key&gt;": "&lt;field id | attribute.&lt;code&gt;&gt;" },
+          "global_config":  { "product_category_id": int, "source_id": int, ... }
+        }
+      </request>
+      <response status="200">
+        data: {
+          "fields": [
+            {
+              "field": "workflow_status",
+              "column_key": "Stato ",
+              "allow_create": true,
+              "options": [ { "id": int, "name": string, "group": "open|pending|validated|closed_won|closed_lost" } ],
+              "values": [ { "value": string, "count": int, "suggested_id": int|null } ]
+            },
+            {
+              "field": "source_name",
+              "column_key": "Fonte",
+              "allow_create": false,
+              "options": [ { "id": int, "name": string, "group": null } ],
+              "values": [ { "value": string, "count": int, "suggested_id": int|null } ]
+            }
+          ]
+        }
+        Regole: solo i campi di value_mapping_fields effettivamente mappati compaiono; "value" e' il testo
+        del file trimmato (la cella vuota compare come ""); i valori uguali a meno di maiuscole/spazi
+        sono UNA voce. workflow_status.options = stati del workflow risolto per la categoria scelta;
+        suggested_id = stato con nome normalizzato uguale (alias in config `imports.request_management.status_aliases`),
+        per "" lo stato di sistema `open` del workflow. source_name.suggested_id = fonte con nome
+        normalizzato uguale (alias in config), altrimenti global_config.source_id.
+      </response>
+      <errors>403 senza permesso; 404 run altrui-dominio; 409 run non in stato analizzato;
+        422 `global_config.product_category_id` mancante/non selezionabile quando workflow_status e' mappato;
+        dominio senza value_mapping_fields -> 404.</errors>
+    </endpoint>
+
+    <endpoint method="PUT" path="/api/imports/{domain}/{importRun}/configure">
+      <request>Body esistente (column_mapping, global_config, dedup_strategy, ...) + chiave nuova facoltativa:
+        "value_mappings": {
+          "workflow_status": { "&lt;value&gt;": { "id": int } | { "create": { "name": string(1..100), "group": "open|pending|validated|closed_won|closed_lost" } } },
+          "source_name":     { "&lt;value&gt;": { "id": int } }
+        }
+        column_mapping accetta target `attribute.&lt;code&gt;` solo se &lt;code&gt; e' tra gli attributi efficaci
+        (contesto quote) di global_config.product_category_id.
+      </request>
+      <response status="200">ImportRunDetail (stato staging come oggi).</response>
+      <errors>422 `value_mappings.workflow_status` se un valore distinto della colonna non ha abbinamento,
+        se un id non appartiene al workflow risolto, se un "create" ha nome gia' presente nel workflow;
+        422 `value_mappings.source_name` se un valore non ha abbinamento o id inesistente;
+        422 `column_mapping.&lt;key&gt;` per attributo non applicabile; leads invariato (value_mappings ignorato/vietato).</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/imports/{domain}/mapping-templates">
+      <request>Body invariato. [revised 2026-11-03, T-01] value_mappings NON si legge dal body: come column_mapping
+        viene fotografato dal run gia' configurato (`import_runs.value_mappings`), tenendo solo le voci { "id": int }
+        (le voci "create" vengono scartate). Il template si salva quindi dopo configure, come oggi.</request>
+      <response status="201">template con "value_mappings": object|null (nuova colonna json nullable `import_mapping_templates.value_mappings`). Anche `matching_template` nel run detail espone value_mappings.</response>
+    </endpoint>
+
+    <endpoint method="GET|PATCH|POST" path="/api/imports/request-management/{importRun}/(rows|rows/assign|rows/{row}|rows/{row}/resolution|summary|confirm|errors)">
+      <response status="200">Shape invariata rispetto a leads. Nel row payload, `messages` contiene anche gli avvisi
+        non bloccanti (prefisso livello "warning"); `resolved` porta operator_id, source_id,
+        workflow_status (id o "new:&lt;nome&gt;"), product_ids, next_callback_at (ISO), attribute_values.
+        confirm: nessun `convert_to_opportunity` per questo dominio (la creazione e' sempre Opp+Offerta).
+        [revised 2026-11-03, T-03] `resolved` NON porta workflow_status/source_id allo staging: la mappatura
+        valori si applica al commit leggendo `import_runs.value_mappings`. Gli avvisi non hanno un livello
+        separato: un riconoscimento incerto porta la riga a status `warning` (come GeoRecognizer).
+        Le notifiche sono spente per riga (AssignmentNotifier::muted attorno a ogni persistRow), effetto
+        equivalente al run intero.
+        [revised 2026-11-03, T-05] summary: per request-management la chiave `conversion_readiness` e' OMESSA
+        (il frontend la tratta come opzionale: assente = nessun toggle di conversione).</response>
+    </endpoint>
+
+    <navigation>
+      develop.children += { key:"request-imports", label:"navigation.requestImports", icon:"file-up",
+        route:"/dev/request-imports", permission:"request-management.import" }
+    </navigation>
+
+    <persistence_per_row>
+      1. Anagrafica: dedup come leads (LeadDuplicateMatcher). create_new -> nuova; update_existing con match ->
+         aggiorna contatti/indirizzo (LeadProfileBuilder::buildForUpdate) e aggancia; manual -> resolution di riga.
+      2. RequestCreationService::create con: productLines=[(funzione efficace, categoria globale)],
+         operationalSiteId=riga ?? sede principale dell'operatore ?? globale facoltativa [revised 2026-11-03, decisione utente], managerSlots con GA2 = operatore riga ?? operatore globale ?? attore,
+         sourceId=mappatura ?? globale, nextCallbackAt=data richiamo alle `imports.request_management.callback_time`
+         (default "09:00", fuso app), offerLines=ProductOfferLineResolver(product_ids riga),
+         attributeValues=valori attribute.* validi, generalNotes=note mappate + righe "Intestazione: valore".
+      3. Stato offerta: id mappato, o stato creato al confirm; deve appartenere al set risolto per l'offerta,
+         altrimenti la riga fallisce con errore e nulla di quella riga viene scritto.
+      4. Notifiche AssignmentNotifier soppresse per tutta l'elaborazione del run.
+    </persistence_per_row>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente senza `request-management.import` (anche con `leads.import`), quando chiama upload/show/value-mapping/configure/confirm del dominio request-management, allora riceve 403; un utente con `request-management.import` e senza `leads.import` riceve 403 sugli endpoint del dominio leads. (Pest)</criterion>
+    <criterion id="AC-002">Dato il file DIL di esempio (fixture sintetica con le stesse intestazioni), quando viene caricato, allora suggested_mapping abbina Nome->first_name, Cognome->last_name, Cellulare->phone, Email->email, Codice Fiscale->tax_code, Operatore->operator_name, Stato->workflow_status, data Richiamo->next_callback_date, Prodotto->product_name, Fonte->source_name, Comune di Residenza->city. (Pest)</criterion>
+    <criterion id="AC-003">Dato il run con Stato mappato e categoria DIL - Lombardia, quando si chiama value-mapping, allora workflow_status.values elenca i valori distinti con conteggio (unendo varianti di maiuscole), options sono gli stati del workflow DIL, "Attesa_App APL" ha suggested_id = "Attesa _ App. APL", "OK App. Fissato CPI" ha suggested_id null, la cella vuota ha suggested_id = stato `open`. (Pest)</criterion>
+    <criterion id="AC-004">Dato configure con un valore di Stato senza abbinamento, allora 422 su `value_mappings.workflow_status` e il run resta nello stato precedente; con un id di un altro workflow, 422; con "create" di un nome gia' presente (senza maiuscole), 422. (Pest)</criterion>
+    <criterion id="AC-005">Dato un abbinamento { create: { name: "OK App. Fissato CPI", group: "pending" } }, quando il run viene confermato, allora nel workflow DIL esiste UN solo nuovo stato con quel nome e gruppo, e le offerte di quelle righe lo hanno come stato; rieseguendo un secondo run con lo stesso "create" non si crea un duplicato. (Pest)</criterion>
+    <criterion id="AC-006">Dato un run confermato in create_new, per ogni riga valida esistono esattamente 1 Anagrafica nuova, 1 Opportunita' con linea (funzione efficace, categoria scelta) e sede scelta, 1 Offerta con stato mappato, fonte mappata, GA2 = operatore riconosciuto, prossimo richiamo = data alle 09:00; nessun record Lead creato. (Pest)</criterion>
+    <criterion id="AC-007">Dato una riga con Operatore "Zhour EL HAJIRI" e un utente "Zhour El Hajiri", allora resolved.operator_id e' quell'utente; con Operatore "Valentina" (ambiguo/sconosciuto) operator_id resta null, la riga ha un avviso e usa l'operatore globale se impostato, altrimenti l'attore. (Pest)</criterion>
+    <criterion id="AC-008">Dato categoria Autofinanziato - Campania e Prodotto "OAC" / "Agg ASO" / "???", allora i primi due risolvono rispettivamente a "OAC - Operatore Contabile Amministrativo" e "Aggiornamento ASO" e generano una riga offerta; "???" non risolve, l'offerta nasce senza righe, la riga ha un avviso e "Prodotto: ???" e' nelle note generali. (Pest)</criterion>
+    <criterion id="AC-009">Dato Prezzo mappato su attribute.price e Tipologia sussidio su attribute.subsidy_type, allora l'Offerta ha attribute_values.price = 700.00 per "700,00 EUR" e subsidy_type = opzione "NASPI"; un valore enum non previsto non blocca la riga, va in nota con avviso. (Pest)</criterion>
+    <criterion id="AC-010">Dato una riga con email "miguelcalla9@gmail,com" e telefono "3356261193 / 0819761955", allora la riga viene importata, l'email non e' salvata come contatto ma compare nelle note con avviso, e l'anagrafica ha due contatti telefono (il primo principale). (Pest)</criterion>
+    <criterion id="AC-011">Dato colonne non mappate (es. Segnalatore, Trasferito da Altra Sede, Operatore APL) con valore, allora le note generali dell'Opportunita' contengono una riga "Intestazione: valore" per ciascuna; celle vuote non producono righe. (Pest)</criterion>
+    <criterion id="AC-012">Dato un'anagrafica esistente con lo stesso telefono, in update_existing la nuova Opportunita'+Offerta si aggancia a quell'anagrafica senza crearne una nuova; in ignore la riga non scrive nulla; in manual con resolution skip non scrive nulla, con create crea una nuova anagrafica. (Pest)</criterion>
+    <criterion id="AC-013">Dato un run confermato con operatori assegnati, allora nessuna RecordAssignmentNotification viene inviata (Notification::fake + assertNothingSent); le creazioni fuori dall'import continuano a notificare. (Pest)</criterion>
+    <criterion id="AC-014">Dato uno stato mappato che non appartiene al set risolto per l'offerta al momento della scrittura, allora la riga va in errore e non esistono ne' Opportunita' ne' Offerta ne' Anagrafica nuova per quella riga; le altre righe vengono scritte. (Pest)</criterion>
+    <criterion id="AC-015">Dato una data "15/102026" o un testo non data in next_callback_date o in un attributo data, allora il campo resta vuoto, la riga ha un avviso e il valore originale e' nelle note. Una cella data Excel e "11/04/2026" in formato d/m/Y sono lette correttamente. (Pest)</criterion>
+    <criterion id="AC-016">Dato un template salvato con value_mappings contenenti id e una voce "create", allora il template conserva solo le voci id; al caricamento di un file con le stesse colonne, matching_template espone value_mappings e il wizard le preapplica. (Pest + Vitest)</criterion>
+    <criterion id="AC-017">Frontend: con un super-admin, la voce "Importa richieste" compare in Develop e apre il wizard; nello step di mappatura, scelta la categoria, il menu target delle colonne include "Informazioni aggiuntive: &lt;nome&gt;" per gli attributi della categoria; il pannello "Valori" mostra per ogni stato del file una select (stati del workflow + "Crea nuovo stato" con nome e gruppo) e blocca l'avanzamento finche' un valore resta senza abbinamento. (Vitest)</criterion>
+    <criterion id="AC-018">Import lead invariato: la suite esistente di imports/leads (Pest e Vitest) resta verde; per leads value_mapping_fields = [] e attribute_targets = null, e il wizard lead non mostra il pannello Valori. (Pest + Vitest)</criterion>
+    <criterion id="AC-019">Guide in-app: esiste la chiave `request-imports` in HELP_GUIDE_KEYS con guida IT ed EN dagli stessi id di sezione; `help-content-parity.test.ts` verde. (Vitest)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: lettura file con phpoffice/phpspreadsheet gia' presente (SpreadsheetReader esistente).</item>
+    <item>Authz server-side su ogni endpoint del dominio (`request-management.import`); il frontend nasconde con `Can`, non autorizza.</item>
+    <item>Scrittura SOLO via RequestCreationService/QuoteService/OpportunityService/RegistryService: nessun insert Eloquent diretto di Opportunity/Quote/Registry. Gli stati nuovi passano dal servizio che gestisce il set di stati del workflow (system_key/quote_workflow_id non fillable).</item>
+    <item>Soppressione notifiche limitata al run (scope esplicito, ripristinato anche in caso di eccezione), mai globale.</item>
+    <item>Ogni riga in transazione propria: un errore annulla solo quella riga.</item>
+    <item>Alias stati/fonti e orario del richiamo in `config/imports.php` (sezione `request_management`), niente magic value.</item>
+    <item>Identificatori in inglese; file entro 300/500 righe (collaboratori separati come per Leads).</item>
+    <item>Nessun comando distruttivo sul DB dev (niente migrate:fresh/rollback/seed); solo migrazioni additive (colonna value_mappings, permesso).</item>
+    <item>Manuale utente: guide in-app IT+EN e sezione del manuale Claude Docs aggiornate nella stessa modifica (CLAUDE.md §4-bis).</item>
+  </constraints>
+
+</spec>

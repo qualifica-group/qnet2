@@ -82,6 +82,7 @@ export const navigation = {
   rewardedReferents: 'Rewarded Referents',
   documentLayouts: 'Layouts',
   imports: 'Import Lead',
+  requestImports: 'Import requests',
   pipelineStatuses: 'Project/Campaign Statuses',
   marketingLeads: 'Marketing & Leads',
   accounting: 'Accounting',

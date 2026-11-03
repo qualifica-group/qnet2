@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Import\ImportController;
 use App\Http\Controllers\Import\ImportMappingTemplateController;
+use App\Http\Controllers\Import\ImportValueMappingController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -48,3 +49,8 @@ Route::patch('imports/{domain}/{importRun}/rows/{row}/resolution', [ImportContro
 Route::post('imports/{domain}', [ImportController::class, 'upload']);
 Route::put('imports/{domain}/{importRun}/configure', [ImportController::class, 'configure']);
 Route::post('imports/{domain}/{importRun}/confirm', [ImportController::class, 'confirm']);
+
+// Value-mapping step of the wizard (spec 0348): distinct file values of the
+// mapped columns + the records they can be matched to. Domains without
+// value_mapping_fields 404.
+Route::post('imports/{domain}/{importRun}/value-mapping', [ImportValueMappingController::class, 'preview']);

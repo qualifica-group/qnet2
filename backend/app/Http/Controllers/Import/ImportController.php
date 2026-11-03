@@ -81,7 +81,7 @@ class ImportController extends BaseApiController
     {
         try {
             $definition = $this->registry->resolve($domain); // 404 if unknown
-            $this->authorize('create', ImportRun::class);
+            $this->authorize('create', [ImportRun::class, $domain]);
             $this->authorizeImport($definition, $request->user());
 
             $columns = $definition->columnIds();
@@ -104,7 +104,7 @@ class ImportController extends BaseApiController
     {
         try {
             $this->registry->resolve($domain); // 404 if unknown
-            $this->authorize('viewAny', ImportRun::class);
+            $this->authorize('viewAny', [ImportRun::class, $domain]);
 
             $page = max(1, (int) $request->query('page', 1));
             $perPage = min(self::MAX_LIMIT, max(1, (int) $request->query('per_page', 15)));
@@ -137,7 +137,7 @@ class ImportController extends BaseApiController
             $definition = $this->registry->resolve($domain); // 404 if unknown
             /** @var User $actor */
             $actor = $request->user();
-            $this->authorize('create', ImportRun::class);
+            $this->authorize('create', [ImportRun::class, $domain]);
             $this->authorizeImport($definition, $actor);
 
             $run = $this->isWizardDefinition($definition)
@@ -188,13 +188,17 @@ class ImportController extends BaseApiController
             $this->authorize('update', $importRun);
             $this->authorizeImport($definition, $request->user());
 
-            $data = $request->safe()->only(['column_mapping', 'global_config', 'dedup_strategy']);
+            $data = $request->safe()->only(['column_mapping', 'global_config', 'dedup_strategy', 'value_mappings']);
+
+            // A domain without a value-mapping step ignores the key (spec 0348).
+            $valueMappings = $definition->valueMappingFields() === [] ? null : ($data['value_mappings'] ?? null);
 
             $run = $this->service->configure(
                 $importRun,
                 $data['column_mapping'],
                 $data['global_config'] ?? [],
                 $data['dedup_strategy'],
+                $valueMappings,
             );
 
             return $this->ok(['import_run' => new ImportRunResource($run)]);
@@ -379,12 +383,18 @@ class ImportController extends BaseApiController
     public function summary(Request $request, string $domain, ImportRun $importRun): JsonResponse
     {
         try {
-            $this->registry->resolve($domain); // 404 if unknown
+            $definition = $this->registry->resolve($domain); // 404 if unknown
             $this->assertRunMatchesDomain($importRun, $domain);
             $this->authorize('view', $importRun);
             $this->assertReadableStatus($importRun);
 
-            return $this->ok(['summary' => $this->summaryBuilder->summary($importRun)]);
+            $summary = $this->summaryBuilder->summary($importRun);
+
+            if (! $definition->supportsOpportunityConversion()) {
+                unset($summary['conversion_readiness']);
+            }
+
+            return $this->ok(['summary' => $summary]);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['importRun' => $importRun->id]);
         }
@@ -413,7 +423,8 @@ class ImportController extends BaseApiController
             $this->authorize('update', $importRun);
             $this->authorizeImport($definition, $request->user());
 
-            $convertToOpportunity = (bool) $request->safe()->boolean('convert_to_opportunity', false);
+            $convertToOpportunity = $definition->supportsOpportunityConversion()
+                && (bool) $request->safe()->boolean('convert_to_opportunity', false);
 
             if ($convertToOpportunity) {
                 $this->authorize('create', Opportunity::class);

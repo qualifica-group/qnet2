@@ -48,7 +48,10 @@ use App\Models\ImportRun;
  */
 final class ImportRunPayloadBuilder
 {
-    public function __construct(private readonly ColumnMapper $columnMapper) {}
+    public function __construct(
+        private readonly ColumnMapper $columnMapper,
+        private readonly ImportValueMappings $valueMappings,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -64,8 +67,10 @@ final class ImportRunPayloadBuilder
             ? $this->columnMapper->suggest($importRun->detected_columns, $definition->fields())->mapping
             : null;
         $payload['fields'] = $definition->fields();
-        $payload['global_fields'] = $definition->globalConfig();
+        $payload['global_fields'] = $this->globalFieldsWithDefaults($definition, $importRun, $payload['suggested_mapping']);
         $payload['review_fields'] = $definition->reviewFields();
+        $payload['value_mapping_fields'] = $definition->valueMappingFields();
+        $payload['attribute_targets'] = $definition->attributeTargets();
         $payload['dedup_modes'] = array_map(
             static fn (ImportDedupMode $mode): string => $mode->value,
             $definition->dedupModes(),
@@ -76,6 +81,31 @@ final class ImportRunPayloadBuilder
         $payload['progress'] = $this->progress($importRun);
 
         return $payload;
+    }
+
+    /**
+     * The definition's global fields, with the defaults it derives from the
+     * auto-suggested mapping (spec 0348 D-5). The file is only read while the
+     * run is being configured, and only for a definition that asks for it.
+     *
+     * @param  array<string, string>|null  $suggestedMapping
+     * @return array<int, array<string, mixed>>
+     */
+    private function globalFieldsWithDefaults(ImportDefinition $definition, ImportRun $importRun, ?array $suggestedMapping): array
+    {
+        $fields = $definition->globalConfig();
+
+        if ($definition->defaultSourceFields() === [] || $suggestedMapping === null || $importRun->status !== ImportStatus::Configuring) {
+            return $fields;
+        }
+
+        $mappedColumns = $this->valueMappings->mappedColumns($definition, $importRun, $suggestedMapping, $definition->defaultSourceFields());
+        $defaults = $definition->globalConfigDefaults($mappedColumns);
+
+        return array_map(
+            static fn (array $field): array => array_key_exists($field['id'], $defaults) ? [...$field, 'default' => $defaults[$field['id']]] : $field,
+            $fields,
+        );
     }
 
     /**
@@ -96,7 +126,7 @@ final class ImportRunPayloadBuilder
     }
 
     /**
-     * @return array{id: int, name: string, column_mapping: array<string, string>, dedup_strategy: ?string}|null
+     * @return array{id: int, name: string, column_mapping: array<string, string>, value_mappings: ?array<string, mixed>, dedup_strategy: ?string}|null
      */
     private function matchingTemplate(ImportRun $importRun): ?array
     {
@@ -112,6 +142,7 @@ final class ImportRunPayloadBuilder
             'id' => $template->id,
             'name' => $template->name,
             'column_mapping' => $template->column_mapping,
+            'value_mappings' => $template->value_mappings,
             'dedup_strategy' => $template->dedup_strategy,
         ];
     }

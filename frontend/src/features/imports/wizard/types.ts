@@ -136,12 +136,72 @@ export interface ImportRunDetail extends ImportRunSummary {
     name: string
     column_mapping: Record<string, string>
     dedup_strategy: string | null
+    /** Saved value mappings (spec 0348), `{id}` entries only; optional for pre-0348 fixtures. */
+    value_mappings?: ValueMappings | null
   } | null
+  /**
+   * Ids of the mappable fields whose DISTINCT file values must be matched to
+   * existing records in the "Valori" panel (spec 0348): `[]`/absent for leads.
+   */
+  value_mapping_fields?: string[]
+  /**
+   * When set, the column target menu also offers `attribute.<code>` entries
+   * for the effective attributes of the chosen category (spec 0348); `null`/
+   * absent for leads.
+   */
+  attribute_targets?: AttributeTargets | null
   /**
    * Set only while `staging`/`processing` (spec 0137), null otherwise.
    * Optional for fixtures predating the field, mirroring `review_fields`.
    */
   progress?: ImportPhaseProgress | null
+}
+
+/** See `ImportRunDetail.attribute_targets`. */
+export interface AttributeTargets {
+  context: 'quote'
+  /** Global field id carrying the category whose attributes are offered. */
+  depends_on: string
+}
+
+/** Group of a workflow status (backend `App\Enums\WorkflowStatusGroup`). */
+export type WorkflowStatusGroup = 'open' | 'pending' | 'validated' | 'closed_won' | 'closed_lost'
+
+/** Chosen match of one distinct file value (spec 0348): an existing record or a new status. */
+export type ValueMappingEntry =
+  | { id: number }
+  | { create: { name: string; group: WorkflowStatusGroup } }
+
+/** Per value-mapping field (e.g. `workflow_status`), per distinct file value (`""` = empty cell). */
+export type ValueMappings = Record<string, Record<string, ValueMappingEntry>>
+
+/** One selectable target of a value-mapping field. */
+export interface ValueMappingOption {
+  id: number
+  name: string
+  group: WorkflowStatusGroup | null
+}
+
+/** One distinct file value of a value-mapping field, with its server suggestion. */
+export interface ValueMappingValue {
+  value: string
+  count: number
+  suggested_id: number | null
+}
+
+/** One field of the `POST .../value-mapping` response (envelope `data.fields[]`). */
+export interface ValueMappingField {
+  field: string
+  column_key: string
+  allow_create: boolean
+  options: ValueMappingOption[]
+  values: ValueMappingValue[]
+}
+
+/** Body of `POST /imports/{domain}/{importRun}/value-mapping`. */
+export interface ValueMappingRequest {
+  column_mapping: Record<string, string>
+  global_config: Record<string, string | number | number[] | null>
 }
 
 /** A saved column-mapping template (spec 0035), shared team-wide per domain. */
@@ -152,6 +212,8 @@ export interface ImportMappingTemplate {
   columns: string[]
   column_mapping: Record<string, string>
   dedup_strategy: string | null
+  /** Saved value mappings (spec 0348), `{id}` entries only; absent/null for leads. */
+  value_mappings?: ValueMappings | null
   created_by: { id: number; name: string }
   created_at: string
 }
@@ -161,6 +223,8 @@ export interface ConfigureImportPayload {
   column_mapping: Record<string, string>
   global_config: Record<string, string | number | number[] | null>
   dedup_strategy: string
+  /** Sent only by domains with `value_mapping_fields` (spec 0348). */
+  value_mappings?: ValueMappings
 }
 
 /** Status of a single staged row, mirrored from `App\Enums\ImportRowStatus`. */
@@ -377,9 +441,10 @@ export interface ImportRunSummaryReport {
    * conversion action), how many rows are creatable at all, and how many
    * creatable rows still lack an operator or an operational site (both are
    * per-row-only fields, set via the review grid's per-row/bulk overrides —
-   * neither has a global-config default to fall back to).
+   * neither has a global-config default to fall back to). Absent for domains
+   * that always create the Opportunity themselves (request-management, spec 0348).
    */
-  conversion_readiness: ConversionReadiness
+  conversion_readiness?: ConversionReadiness
 }
 
 /** See `ImportRunSummaryReport.conversion_readiness`. */

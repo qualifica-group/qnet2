@@ -14,6 +14,8 @@ import type {
   ImportRunRowUpdateResult,
   ImportRunSummary,
   ImportRunSummaryReport,
+  ValueMappingField,
+  ValueMappingRequest,
 } from '@/features/imports/wizard/types'
 
 /**
@@ -221,4 +223,22 @@ export async function createMappingTemplate(
 /** Deletes a saved mapping template (owner-only server-side, spec 0035). */
 export async function deleteMappingTemplate(domain: string, mappingTemplateId: number): Promise<void> {
   await apiClient.delete(`/imports/${domain}/mapping-templates/${mappingTemplateId}`)
+}
+
+/**
+ * Distinct file values of the mapped value-mapping fields (`workflow_status`,
+ * `source_name`, spec 0348) with the records they can be matched to
+ * (`POST .../value-mapping`). Read-only despite the verb: the body carries the
+ * not-yet-saved mapping/config.
+ */
+export async function fetchValueMapping(
+  domain: string,
+  importRunId: number,
+  payload: ValueMappingRequest,
+): Promise<ValueMappingField[]> {
+  const { data } = await apiClient.post<ApiResponse<{ fields: ValueMappingField[] }>>(
+    `/imports/${domain}/${importRunId}/value-mapping`,
+    payload,
+  )
+  return data.data.fields
 }

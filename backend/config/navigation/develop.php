@@ -41,6 +41,14 @@ return [
             'role' => 'super-admin',
         ],
         [
+            // Request import from Excel/CSV (spec 0348).
+            'key' => 'request-imports',
+            'label' => 'navigation.requestImports',
+            'icon' => 'file-up',
+            'route' => '/dev/request-imports',
+            'permission' => 'request-management.import',
+        ],
+        [
             // API clients (spec 0209).
             'key' => 'api-integrations',
             'label' => 'navigation.apiIntegrations',
