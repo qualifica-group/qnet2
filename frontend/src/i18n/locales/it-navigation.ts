@@ -119,6 +119,7 @@ export const navigation = {
   systemHealth: 'Stato del sistema',
   apiIntegrations: 'API e integrazioni',
   apiDocs: 'Documentazione API',
+  aiAssistant: 'Assistente AI',
   workspaces: 'App',
   develop: 'Develop',
   settings: 'Impostazioni',

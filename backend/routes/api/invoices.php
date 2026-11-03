@@ -3,6 +3,7 @@
 use App\Http\Controllers\Invoices\InvoiceBulkCollectionController;
 use App\Http\Controllers\Invoices\InvoiceCollectionController;
 use App\Http\Controllers\Invoices\InvoiceController;
+use App\Http\Controllers\Invoices\InvoiceForSelectController;
 use App\Http\Controllers\Invoices\InvoiceInstallmentController;
 use App\Http\Controllers\Invoices\InvoiceIssueController;
 use App\Http\Controllers\Invoices\InvoicePdfController;
@@ -24,6 +25,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('proforma-requests/{proformaRequest}/invoice-draft', [InvoiceIssueController::class, 'draft']);
 Route::post('proforma-requests/{proformaRequest}/invoice', [InvoiceIssueController::class, 'store']);
 
+Route::get('invoices/for-select', InvoiceForSelectController::class);
 Route::post('invoices/installment-preview', [InvoiceController::class, 'installmentPreview']);
 Route::get('invoices/monthly-summary', [InvoiceController::class, 'monthlySummary']);
 

@@ -91,6 +91,7 @@ import { permissions, permissionExplorer } from './en-permissions'
 import { help } from './en-help'
 import { apiIntegrations } from './en-api-integrations'
 import { apiClients } from './en-api-clients'
+import { aiAssistant } from './en-ai-assistant'
 import {
   usersAssignment,
   usersColumnsEmployment,
@@ -506,6 +507,7 @@ export const en = {
   help,
   apiIntegrations,
   apiClients,
+  aiAssistant,
 }
 
 export type TranslationResources = typeof en

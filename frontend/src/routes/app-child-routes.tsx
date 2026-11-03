@@ -11,6 +11,7 @@ import ModuleDetailPage from '@/features/modules/module-detail-page'
 
 const DashboardPage = lazyRoute(() => import('@/pages/dashboard-page'))
 const NotificationsPage = lazyRoute(() => import('@/pages/notifications-page'))
+const AiAssistantPage = lazyRoute(() => import('@/pages/ai-assistant-page'))
 const UsersPage = lazyRoute(() => import('@/pages/users-page'))
 const RolesPage = lazyRoute(() => import('@/pages/roles-page'))
 const CompaniesPage = lazyRoute(() => import('@/pages/companies-page'))
@@ -93,6 +94,10 @@ export const APP_CHILD_ROUTES: RouteObject[] = [
   {
     path: 'notifications',
     element: <NotificationsPage />,
+  },
+  {
+    path: 'ai-assistant',
+    element: <AiAssistantPage />,
   },
   {
     path: 'users',

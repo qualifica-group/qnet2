@@ -28,6 +28,7 @@ export const permissions = {
     terminate: 'Termina',
     program: 'Programma',
     changeStatus: 'Cambia stato',
+    use: 'Usare',
     reactivate: 'Riapri',
     viewAll: 'Visualizza tutti',
     // Spec 0105: terzo livello di visibilità di Gestione Richieste — le
@@ -192,6 +193,8 @@ export const permissions = {
     'table-filter-views': 'Filtri salvati',
     // Permission-only: vedere l'old id (ID legacy) in griglie e schede (`legacy-ids.view`).
     'legacy-ids': 'ID legacy',
+    // Spec 0347: assistente AI (permesso unico `ai-assistant.use`).
+    'ai-assistant': 'Assistente AI',
   },
   areas: {
     // Area finale dell'albero: moduli permission-only assegnabili ma senza

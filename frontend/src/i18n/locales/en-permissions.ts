@@ -28,6 +28,7 @@ export const permissions = {
     terminate: 'Terminate',
     program: 'Program',
     changeStatus: 'Change status',
+    use: 'Use',
     reactivate: 'Reopen',
     viewAll: 'View all',
     // Spec 0105: Request Management's third visibility tier — the requests of
@@ -189,6 +190,8 @@ export const permissions = {
     'table-filter-views': 'Saved filters',
     // Permission-only: see the legacy old id on grids and record details (`legacy-ids.view`).
     'legacy-ids': 'Legacy IDs',
+    // Spec 0347: AI assistant (single permission `ai-assistant.use`).
+    'ai-assistant': 'AI assistant',
   },
   areas: {
     // Trailing area of the tree: permission-only modules that are assignable

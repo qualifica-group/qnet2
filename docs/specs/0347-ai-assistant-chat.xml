@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0347-ai-assistant-chat" status="approved" owner="utente" date="2026-11-02">
+
+  <goal>
+    Gli utenti con il permesso `ai-assistant.use` dialogano con un assistente AI dentro qnet-2
+    (widget flottante e pagina /ai-assistant): la risposta arriva in streaming, l'assistente conosce
+    la guida in-app della pagina corrente, puo' ricevere file/immagini e i dati dei record menzionati
+    con @, e le conversazioni restano salvate per utente per 30 giorni.
+  </goal>
+
+  <context>
+    <item>Sorgente del porting: Q-TASK = /Users/Repository/q-net (VITE_APP_NAME="Q-TASK"):
+      src/app/features/ai-chat/* (ai-chat-panel.tsx 1181 righe, floating-ai-chat.tsx,
+      use-ai-chat-conversations.ts), src/app/pages/ai-chat/ai-chat-page.tsx, src/lib/api/ai/*,
+      src/lib/query/ai/*, src/lib/ai/product-context.ts. Si porta il comportamento e la UX, NON
+      l'architettura: Q-TASK chiama il provider dal browser con la chiave in VITE_* (vietato da
+      security.md §5/frontend.md §10), salva in localStorage 24h e simula lo streaming (typewriter).</item>
+    <item>Decisioni utente 2026-11-02: D-1 proxy Laravel, chiavi solo nel .env; D-2 driver da config,
+      entrambi `openai` (OpenAI-compatibile: OpenAI, LM Studio, altri server /v1/chat/completions) e
+      `anthropic` (Messages API); D-3 widget + pagina /ai-assistant + allegati file/immagini; D-4
+      menzioni @ su 18 moduli (CRM, Vendite e operativo, Contabilita' e acquisti, Utenti); D-5
+      conversazioni nel DB per utente, retention 30 giorni; D-6 la guida in-app della pagina corrente
+      la invia il frontend (testo), il backend la valida e la mette nel system prompt; D-7 accesso
+      con permesso assegnabile `ai-assistant.use` (super-admin lo ha via Gate::before).</item>
+    <item>Decisioni di architettura proposte (performance, risposta alla domanda utente 2026-11-02):
+      D-8 streaming SSE reale (`response()->eventStream()`, presente in Laravel 13 ResponseFactory:131)
+      letto dal client axios configurato con `adapter: 'fetch'` + `responseType: 'stream'` (axios
+      ^1.17 in package.json): niente fetch nudo, niente typewriter; D-9 finestra di cronologia: al
+      provider vanno gli ultimi `history_window` messaggi (config, default 20); D-10 menzioni e file
+      vanno al provider SOLO nel turno in cui sono aggiunti; nei turni successivi il messaggio storico
+      li cita come testo "[allegato: nome]" / "[menzione: modulo #id label]"; D-11 ordine del prompt
+      stabile per il prompt caching: istruzioni fisse, poi guida pagina, poi cronologia, poi turno
+      corrente; Anthropic con `cache_control: {type: "ephemeral"}` sul blocco system, OpenAI caching
+      automatico sul prefisso; D-12 il driver `openai` usa solo Chat Completions (supportato da OpenAI,
+      LM Studio e dai server compatibili); D-13 se il provider fallisce il messaggio utente e i suoi
+      allegati vengono rimossi (nessuno stato parziale) e il frontend rimette bozza, file e menzioni nel
+      composer; D-14 PHP-FPM (nessun Octane): ogni stream occupa un worker per la durata della risposta,
+      accettato per ora; D-15 (richiesta utente 2026-11-03, LLM locale) un LLM locale (LM Studio,
+      Ollama) usa il driver `openai` con base_url locale e api_key vuota (nessun header Authorization).
+      Verificato su LM Studio con google/gemma-4-e2b: `max_completion_tokens`, `stream_options` e usage
+      supportati; i PDF come content part `file` sono rifiutati (400), le immagini accettate solo dai
+      modelli con visione. Per questo `accepted_mimes` si restringe da env (AI_ASSISTANT_ACCEPTED_MIMES,
+      solo sottoinsieme dei 4 tipi supportati, mai tipi nuovi) e max_files=0 o lista vuota disattiva gli
+      allegati (pulsante nascosto, `files` prohibited). I modelli che ragionano mandano
+      `reasoning_content`: mai inoltrato al browser; una risposta senza testo (budget speso a ragionare)
+      e' un errore come in D-13.</item>
+    <item>Envelope `{ success, message, data }` via BaseApiController::ok()/created(); liste paginate
+      via paginatedResponse() (`{ items, pagination }`, ADR 0011 shape). Policy su BasePolicy, permessi
+      `{resource}.{ability}` (es. `companies.view`). Permessi raccolti da `permissions:sync` dal config
+      di navigazione (backend/config/navigation/*.php) e dalle policy.</item>
+    <item>Menzioni: ricerca lato client sui `GET /api/{resource}/for-select` esistenti (ADR 0011,
+      gate solo auth:sanctum, righe ristrette dai visibility scope nei service). Esistono per companies,
+      company-sites, referents, registries, leads, opportunities, campaigns, quotes, work-orders,
+      projects, tasks, products, users. NON esistono per invoices, purchase-invoices, purchase-orders,
+      purchase-requests, contracts: vanno creati secondo ADR 0011. Al momento dell'invio il backend
+      autorizza ogni record con `Gate::forUser($user)->authorize('view', $record)` (TaskPolicy,
+      QuotePolicy, WorkOrderPolicy, OpportunityPolicy, PurchaseRequestPolicy, ContractPolicy hanno un
+      view() per-record; le altre ereditano BasePolicy::view = permesso `{resource}.view`).</item>
+    <item>Allegati: model polimorfico `App\Models\Attachment` (disk/path/original_name/mime_type/
+      extension/size/uploaded_by, trait HasAttachments, disco privato da config/attachments.php).</item>
+    <item>Guide in-app: `frontend/src/features/help` (HelpGuide {key,title,summary,sections[blocks]},
+      loadHelpGuide(locale,key), useHelpCurrentGuideKey). Guide fino a ~38 KB (migrations.ts).</item>
+    <item>Layout: widget montato in `frontend/src/layouts/app-layout.tsx` accanto a `HelpButton`.
+      i18n per namespace in `frontend/src/i18n/locales/{it,en}-&lt;ns&gt;.ts` con test di parita'.</item>
+    <item>Scheduler: `backend/routes/console.php` (Schedule::command(...)->dailyAt(...)->withoutOverlapping()).</item>
+  </context>
+
+  <scope>
+    <in>
+      <item>Config `backend/config/ai-assistant.php` + chiavi `.env.example` (senza valori reali).</item>
+      <item>Tabelle `ai_conversations`, `ai_messages`; model `AiConversation`, `AiMessage` (HasAttachments).</item>
+      <item>Interfaccia `AiChatDriver` con 2 implementazioni reali: `OpenAiCompatibleDriver`, `AnthropicDriver` (Http client Laravel, stream).</item>
+      <item>Endpoint di config, CRUD conversazioni (lista, dettaglio, creazione, eliminazione), invio messaggio in streaming SSE, download allegato.</item>
+      <item>Risoluzione server-side delle menzioni (registro di 18 moduli) con autorizzazione `view` per record.</item>
+      <item>5 nuovi endpoint for-select (ADR 0011): invoices, purchase-invoices, purchase-orders, purchase-requests, contracts.</item>
+      <item>Permesso `ai-assistant.use` (voce di navigazione "Assistente AI" -> /ai-assistant).</item>
+      <item>Comando `ai-assistant:prune` schedulato ogni notte: elimina conversazioni (e file) ferme da oltre `retention_days` (30).</item>
+      <item>Frontend `features/ai-assistant/`: widget flottante, pagina /ai-assistant con elenco conversazioni, composer con allegati e menzioni @ (scelta modulo -> ricerca), rendering markdown minimale senza HTML, stato non configurato.</item>
+      <item>i18n IT/EN; guida in-app `ai-assistant` IT/EN + chiave in HELP_GUIDE_KEYS; manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Tool use / function calling: l'assistente non interroga il DB da solo, vede solo cio' che l'utente menziona.</item>
+      <item>RAG/embedding sulle guide: si usa solo la guida della pagina corrente.</item>
+      <item>OpenAI Responses API e API nativa LM Studio /api/v1/chat (D-12).</item>
+      <item>Coda/worker per lo streaming (D-14); limiti di spesa o quote per utente; dashboard costi (i token restano salvati sui messaggi).</item>
+      <item>Rinomina, condivisione, esportazione, ricerca nelle conversazioni; modifica o rigenerazione di un messaggio.</item>
+      <item>Formati allegato diversi da PDF e immagini (png, jpg, jpeg, webp).</item>
+      <item>Rate limiting (backend.md §2: niente throttle fuori dagli endpoint di credenziali).</item>
+      <item>Modifiche a Q-TASK (/Users/Repository/q-net).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <shared_types>
+      <!-- AiConversation -->
+      { "id": int, "title": string, "last_message_at": iso8601|null, "created_at": iso8601 }
+      <!-- AiMessage -->
+      { "id": int, "role": "user"|"assistant", "content": string,
+        "mentions": [ { "module": AiMentionModule, "id": int, "label": string } ],
+        "attachments": [ { "id": int, "original_name": string, "mime_type": string, "size": int } ],
+        "model": string|null, "input_tokens": int|null, "output_tokens": int|null,
+        "created_at": iso8601 }
+      <!-- AiMentionModule: kebab-case = prefisso for-select e permesso -->
+      "companies"|"company-sites"|"referents"|"registries"|"leads"|"opportunities"|"campaigns"|
+      "quotes"|"work-orders"|"projects"|"tasks"|"products"|"invoices"|"purchase-invoices"|
+      "purchase-orders"|"purchase-requests"|"contracts"|"users"
+    </shared_types>
+
+    <config_keys file="backend/config/ai-assistant.php">
+      driver (AI_ASSISTANT_DRIVER: openai|anthropic|null; null = non configurato),
+      openai.base_url (AI_ASSISTANT_OPENAI_BASE_URL, default https://api.openai.com/v1),
+      openai.api_key (AI_ASSISTANT_OPENAI_API_KEY, puo' essere vuota per LM Studio),
+      openai.model (AI_ASSISTANT_OPENAI_MODEL, default gpt-4.1-mini),
+      anthropic.base_url (default https://api.anthropic.com/v1), anthropic.api_key, anthropic.model
+      (default claude-sonnet-5-5), anthropic.version (default 2023-06-01),
+      max_output_tokens (2048), temperature (null), timeout_seconds (120), connect_timeout_seconds (10),
+      history_window (20), max_message_chars (8000), guide_max_chars (40000), max_mentions (5),
+      mention_max_chars (8000), max_files (4), max_file_size_kb (10240),
+      accepted_mimes ([application/pdf, image/png, image/jpeg, image/webp]; AI_ASSISTANT_ACCEPTED_MIMES
+      lista separata da virgole che puo' solo restringerla, vuota = default), retention_days (30).
+    </config_keys>
+
+    <endpoint method="GET" path="/api/ai-assistant/config">
+      <request>nessun parametro</request>
+      <response status="200">
+        data: { "configured": bool, "driver": "openai"|"anthropic"|null, "model": string|null,
+          "limits": { "max_message_chars": int, "guide_max_chars": int, "max_mentions": int,
+            "max_files": int, "max_file_size_kb": int, "accepted_mimes": string[] },
+          "mention_modules": AiMentionModule[] }
+        <!-- mention_modules = solo i moduli per cui l'utente ha `{module}.view` -->
+      </response>
+      <errors>401 non autenticato; 403 senza ai-assistant.use</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/ai-assistant/conversations">
+      <request>query: offset (int, default 0), limit (int 1..100, default 30)</request>
+      <response status="200">{ "items": AiConversation[], "pagination": {...} } solo dell'utente, ordinate per last_message_at desc</response>
+      <errors>401; 403 senza ai-assistant.use; 422 parametri</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/ai-assistant/conversations">
+      <request>body JSON vuoto</request>
+      <response status="201">data: AiConversation (title = "" fino al primo messaggio)</response>
+      <errors>401; 403</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/ai-assistant/conversations/{conversation}">
+      <response status="200">data: AiConversation + { "messages": AiMessage[] } in ordine cronologico</response>
+      <errors>401; 403 senza permesso o conversazione di un altro utente; 404 inesistente</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/ai-assistant/conversations/{conversation}">
+      <response status="200">data: null; elimina messaggi e file allegati dal disco</response>
+      <errors>401; 403 (anche conversazione altrui); 404</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/ai-assistant/conversations/{conversation}/messages">
+      <request>multipart/form-data:
+        content: string required, 1..max_message_chars;
+        mentions[N][module]: AiMentionModule; mentions[N][id]: int; max max_mentions;
+        files[]: file, max max_files, mimes + extensions da accepted_mimes, max max_file_size_kb;
+        page_guide_key: string|null (max 100); page_guide_text: string|null (max guide_max_chars);
+        locale: "it"|"en"
+      </request>
+      <response status="200" content_type="text/event-stream">
+        Eventi SSE nell'ordine:
+        event: message.created   data: { "user_message": AiMessage }
+        event: delta             data: { "text": string }            (0..n)
+        event: message.completed data: { "assistant_message": AiMessage, "conversation": AiConversation }
+        oppure, se il provider fallisce dopo l'apertura dello stream:
+        event: error             data: { "message": string }   (messaggio utente e file gia' rimossi, D-13)
+        Il titolo della conversazione, se vuoto, diventa i primi 60 caratteri del primo messaggio.
+      </response>
+      <errors>
+        Prima dell'apertura dello stream, JSON envelope: 401; 403 senza ai-assistant.use, conversazione
+        altrui, o record menzionato non visibile (policy view); 404 conversazione; 422 validazione o
+        record menzionato inesistente (chiave `mentions.N.id`); 503 assistente non configurato
+        (driver null o api key mancante per anthropic). I messaggi d'errore non espongono nomi di
+        classi, URL del provider o chiavi.
+      </errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/ai-assistant/messages/{message}/attachments/{attachment}">
+      <response status="200">download del file (Content-Disposition attachment)</response>
+      <errors>401; 403 messaggio di un altro utente; 404 allegato non appartenente al messaggio (scopeBindings)</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/{invoices|purchase-invoices|purchase-orders|purchase-requests|contracts}/for-select">
+      <request>contratto ADR 0011: search, offset, limit, ids[], include_total</request>
+      <response status="200">{ items: [ { id, label, subtitle } ], export_link: null, pagination }
+        label = numero/codice documento, subtitle = controparte + data; righe ristrette come l'index del modulo</response>
+      <errors>401; 422</errors>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente senza `ai-assistant.use`, quando chiama qualsiasi endpoint /api/ai-assistant/*, allora riceve 403 e nessuna riga viene scritta.</criterion>
+    <criterion id="AC-002">Dato un utente con il permesso, quando chiama GET /config, allora riceve `configured`, driver, modello, limiti da config e solo i `mention_modules` per cui ha `{module}.view`; la risposta non contiene mai api key o base_url.</criterion>
+    <criterion id="AC-003">Dato driver null (o anthropic senza api key), quando invia un messaggio, allora riceve 503 envelope e il provider non viene chiamato (Http::assertNothingSent).</criterion>
+    <criterion id="AC-004">Dato un utente A, quando legge, elimina, invia messaggi o scarica allegati di una conversazione dell'utente B, allora riceve 403; la lista conversazioni di A non contiene mai quelle di B.</criterion>
+    <criterion id="AC-005">Dato driver openai e un provider finto (Http::fake) che risponde con 3 chunk SSE Chat Completions + usage, quando l'utente invia un messaggio, allora lo stream emette message.created, 3 delta e message.completed; sono salvati 1 messaggio user e 1 assistant con content concatenato, model, input_tokens e output_tokens.</criterion>
+    <criterion id="AC-006">Come AC-005 con driver anthropic (eventi message_start / content_block_delta / message_delta / message_stop): stessa sequenza di eventi e stesse righe salvate; la richiesta al provider ha header x-api-key e anthropic-version e il blocco system con cache_control ephemeral.</criterion>
+    <criterion id="AC-007">Data una conversazione con 25 messaggi e history_window=20, quando l'utente invia il 26esimo, allora il payload al provider contiene: prima il system (istruzioni fisse, poi la guida pagina), poi gli ultimi 20 messaggi storici, poi il turno corrente; nessun messaggio piu' vecchio.</criterion>
+    <criterion id="AC-008">Dati page_guide_key e page_guide_text, quando l'utente invia, allora il testo della guida e' nel system prompt dopo le istruzioni fisse; page_guide_text oltre guide_max_chars dà 422.</criterion>
+    <criterion id="AC-009">Dato un record menzionato visibile all'utente, quando invia, allora il turno corrente al provider contiene la proiezione JSON del record (troncata a mention_max_chars) e il messaggio salvato ha mentions [{module,id,label}]; nei turni successivi il messaggio storico arriva al provider solo come testo "[menzione: ...]" senza i dati.</criterion>
+    <criterion id="AC-010">Dato un record menzionato che l'utente non puo' vedere (policy view negata, es. task fuori visibilita'), quando invia, allora 403 e il provider non viene chiamato; record inesistente o modulo fuori elenco: 422 su mentions.N.</criterion>
+    <criterion id="AC-011">Per ciascuno dei 18 moduli (dataset), un record creato da factory si risolve in una proiezione non vuota senza lazy loading (preventLazyLoading attivo nei test).</criterion>
+    <criterion id="AC-012">Dato un PDF e un'immagine validi, quando l'utente invia, allora i file sono salvati come Attachment del messaggio user sul disco privato, arrivano al provider nel formato del driver (openai: image_url data URI / file; anthropic: blocchi image / document base64) solo in quel turno, e sono scaricabili dall'endpoint di download.</criterion>
+    <criterion id="AC-013">File oltre max_file_size_kb, piu' di max_files, MIME o estensione non ammessi (es. .exe rinominato .pdf), content vuoto o oltre max_message_chars, piu' di max_mentions: 422, nessuna riga e nessun file scritti.</criterion>
+    <criterion id="AC-014">Dato un provider che risponde 500 o va in timeout dopo l'apertura dello stream, quando l'utente invia, allora lo stream emette `error` con un messaggio generico (senza URL, classi o chiavi), il messaggio user e i suoi file non esistono piu' su DB e disco, e nessun messaggio assistant e' salvato.</criterion>
+    <criterion id="AC-015">Quando il primo messaggio di una conversazione con titolo vuoto completa, allora il titolo diventa i primi 60 caratteri del contenuto e last_message_at e' aggiornato.</criterion>
+    <criterion id="AC-016">Dato DELETE di una conversazione, allora conversazione, messaggi, righe attachments e file su disco sono eliminati.</criterion>
+    <criterion id="AC-017">Dato `ai-assistant:prune` con conversazioni ferme da 31 e da 29 giorni (retention_days=30), allora solo la prima viene eliminata con i suoi file; il comando e' registrato nello scheduler giornaliero.</criterion>
+    <criterion id="AC-018">I 5 nuovi for-select (invoices, purchase-invoices, purchase-orders, purchase-requests, contracts) rispettano ADR 0011: ricerca, paginazione, ids[], include_total=0, righe ristrette come l'index del modulo; 401 senza autenticazione.</criterion>
+    <criterion id="AC-019">`permissions:sync` crea `ai-assistant.use`; la voce di menu "Assistente AI" e il widget sono visibili solo con il permesso.</criterion>
+    <criterion id="AC-020">(FE) Il parser SSE, dati chunk spezzati a meta' evento, ricostruisce gli eventi nell'ordine giusto; il testo assistant cresce a ogni delta e alla fine la cache TanStack Query della conversazione contiene i due messaggi salvati.</criterion>
+    <criterion id="AC-021">(FE) Su evento `error` o errore 4xx/5xx, il composer mantiene testo, file e menzioni e mostra il messaggio d'errore con role="alert".</criterion>
+    <criterion id="AC-022">(FE) Digitando "@" il composer apre la scelta del modulo (solo mention_modules), poi la ricerca sul for-select del modulo (dopo 2 caratteri); la selezione aggiunge un chip rimovibile; tastiera: frecce, Invio, Esc.</criterion>
+    <criterion id="AC-023">(FE) Il composer blocca prima dell'invio file oltre i limiti di /config e mostra l'errore sul campo (triade aria-describedby / aria-invalid / role="alert").</criterion>
+    <criterion id="AC-024">(FE) Il widget invia page_guide_key e il testo serializzato della guida della pagina corrente (troncato a guide_max_chars); sulla pagina /ai-assistant invia la guida `general`.</criterion>
+    <criterion id="AC-025">(FE) Il markdown dei messaggi (grassetto, corsivo, elenchi, citazioni, codice inline) si rende con elementi React, senza dangerouslySetInnerHTML; un "&lt;script&gt;" nel testo resta testo.</criterion>
+    <criterion id="AC-026">(FE) Con configured=false widget e pagina mostrano lo stato "non configurato" senza campo di invio.</criterion>
+    <criterion id="AC-027">(FE) Pagina e widget usabili a 375 / 768 / 1024 px senza scroll orizzontale; widget aperto a tutta larghezza sotto sm.</criterion>
+    <criterion id="AC-028">Guida in-app `ai-assistant` IT/EN con stessi id di sezione (help-content-parity verde), chiave in HELP_GUIDE_KEYS; parita' i18n del namespace `ai-assistant` verde.</criterion>
+    <criterion id="AC-029">LLM locale (D-15): AI_ASSISTANT_ACCEPTED_MIMES restringe i tipi ma non aggiunge tipi non supportati; un tipo escluso o un file con lista vuota danno 422 senza chiamare il provider; GET config espone la lista ristretta; senza api_key il driver openai e' configurato e non manda Authorization; con max_files=0 o accepted_mimes vuoto il composer non mostra il pulsante allegati.</criterion>
+    <criterion id="AC-030">Modelli che ragionano (D-15): `reasoning_content` non viene mai emesso come delta ne' salvato; uno stream completato senza testo emette `error` e rimuove messaggio utente e file (come AC-014).</criterion>
+  </acceptance_criteria>
+
+  <internal_contract>
+    <!-- Interfacce PHP congelate tra le lane backend (T3 driver, T4 menzioni, T6 Action). -->
+    <item>Namespace `App\Services\AiAssistant\Prompt` (T3): readonly DTO
+      `AiPromptFile(string $name, string $mimeType, string $base64)`;
+      `AiPromptMessage(string $role /* 'user'|'assistant' */, string $text, array $files = [] /* AiPromptFile[] */)`;
+      `AiChatPrompt(string $systemInstructions, ?string $pageGuide, array $history /* AiPromptMessage[] */, AiPromptMessage $current, string $locale)`.</item>
+    <item>Namespace `App\Services\AiAssistant\Drivers` (T3): interface `AiChatDriver { public function stream(AiChatPrompt $prompt): \Generator; }`
+      il Generator produce `AiStreamEvent` (readonly: `string $type` 'delta'|'completed', `?string $text`, `?string $model`,
+      `?int $inputTokens`, `?int $outputTokens`; named constructors `AiStreamEvent::delta(string)` e
+      `AiStreamEvent::completed(?string $model, ?int $in, ?int $out)`); errori HTTP/timeout/risposta malformata ->
+      `AiProviderException` (messaggio generico, mai URL/chiavi). Implementazioni `OpenAiCompatibleDriver`, `AnthropicDriver`.
+      `AiChatDriverManager` (singleton): `isConfigured(): bool`, `driverName(): ?string`, `model(): ?string`,
+      `driver(): AiChatDriver` (lancia `AiAssistantNotConfiguredException` se non configurato).</item>
+    <item>Namespace `App\Services\AiAssistant\Mentions` (T4): `AiMentionRegistry` con `modules(): array` (le 18 chiavi
+      AiMentionModule), `availableModules(User $user): array` (solo con `{permesso}.view`), `has(string $module): bool`;
+      `AiMentionResolver::resolve(User $user, string $module, int $id): ResolvedAiMention` -> readonly
+      `ResolvedAiMention(string $module, int $id, string $label, string $context /* JSON troncato a mention_max_chars */)`;
+      record inesistente o modulo sconosciuto -> `AiMentionNotFoundException`; policy view negata -> `AuthorizationException` (403).</item>
+    <item>Config `config('ai-assistant.*')` con le chiavi di `config_keys`; T2 crea il file, T3/T4 lo leggono.</item>
+  </internal_contract>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: Http client Laravel (Guzzle gia' presente), axios esistente con adapter fetch, lucide-react al posto di @tabler/icons-react, nessuna libreria markdown.</item>
+    <item>Chiavi del provider solo in .env/config; mai in risposte, log, eventi SSE o bundle (nessuna VITE_AI_*).</item>
+    <item>Ogni endpoint: FormRequest + autorizzazione server-side (middleware `can:ai-assistant.use` + `AiConversationPolicy` sul proprietario); route annidate con scopeBindings; risorse via JsonResource.</item>
+    <item>Test senza chiamate reali a pagamento: Http::fake con body SSE registrati; nessun test contro OpenAI/Anthropic reali.</item>
+    <item>Logica dietro un'Action con handle() e // Step N (SendAiMessage); driver dietro interfaccia AiChatDriver (2 implementazioni reali: DIP giustificato).</item>
+    <item>File sotto 300 righe (500 hard): il pannello di Q-TASK va spezzato in componenti e hook.</item>
+    <item>Niente throttle (backend.md §2). Niente fetch nudo (frontend.md §4).</item>
+    <item>Dati personali: le menzioni di utenti e referenti mandano dati al provider esterno per scelta esplicita dell'utente (D-4); la proiezione esclude password, token, campi hidden del model.</item>
+    <item>Migrazioni reversibili; mai migrate:fresh/rollback/seed sul DB di sviluppo.</item>
+  </constraints>
+
+</spec>

@@ -91,6 +91,7 @@ import {
 import { help } from './it-help'
 import { apiIntegrations } from './it-api-integrations'
 import { apiClients } from './it-api-clients'
+import { aiAssistant } from './it-ai-assistant'
 
 export const it: TranslationResources = {
   common,
@@ -492,4 +493,5 @@ export const it: TranslationResources = {
   help,
   apiIntegrations,
   apiClients,
+  aiAssistant,
 }

@@ -3,6 +3,7 @@
 use App\Http\Controllers\PurchaseInvoices\PurchaseInvoiceBulkPaymentController;
 use App\Http\Controllers\PurchaseInvoices\PurchaseInvoiceController;
 use App\Http\Controllers\PurchaseInvoices\PurchaseInvoiceDraftController;
+use App\Http\Controllers\PurchaseInvoices\PurchaseInvoiceForSelectController;
 use App\Http\Controllers\PurchaseInvoices\PurchaseInvoiceInstallmentController;
 use App\Http\Controllers\PurchaseInvoices\PurchaseInvoiceInvoiceableOrdersController;
 use App\Http\Controllers\PurchaseInvoices\PurchaseInvoicePaymentController;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\Route;
 | declared ABOVE the bound wildcard so they win.
 */
 
+Route::get('purchase-invoices/for-select', PurchaseInvoiceForSelectController::class);
 Route::get('purchase-invoices/draft', PurchaseInvoiceDraftController::class);
 Route::get('purchase-invoices/invoiceable-orders', PurchaseInvoiceInvoiceableOrdersController::class);
 Route::post('purchase-invoices/installment-preview', [PurchaseInvoiceController::class, 'installmentPreview']);

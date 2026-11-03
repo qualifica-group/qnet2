@@ -348,6 +348,7 @@ Route::middleware('auth:sanctum')->group(function () {
     require __DIR__.'/api/time-entries.php'; // Segnatempo CRUD + day notes (spec 0122)
     require __DIR__.'/api/dashboard.php'; // Home dashboard Task counters (spec 0151)
     require __DIR__.'/api/support-topics.php'; // "Tipi di problema" CRUD + richieste di assistenza (spec 0334)
+    require __DIR__.'/api/ai-assistant.php'; // AI assistant chat (spec 0347)
     require __DIR__.'/api/task-templates.php'; // "Modelli di Task" CRUD + for-select (spec 0124)
     require __DIR__.'/api/contracts.php'; // Contracts show/update + domain actions (spec 0072)
     require __DIR__.'/api/commission-configurations.php';

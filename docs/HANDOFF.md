@@ -3,6 +3,44 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Assistente AI (porting chat Q-TASK, spec 0347) — VERDE, NON COMMITTATO (2026-11-02)
+
+- Sorgente: Q-TASK = `/Users/Repository/q-net` (`src/app/features/ai-chat`). Portato il comportamento, non l'architettura
+  (Q-TASK chiamava il provider dal browser con la chiave in VITE_*).
+- Backend: config `config/ai-assistant.php` (env `AI_ASSISTANT_*`, driver `openai` | `anthropic` | null = non
+  configurato); tabelle `ai_conversations`, `ai_messages`; model `AiConversation` (`deleteWithFiles()`), `AiMessage`
+  (HasAttachments, alias morph `ai_message`, NON in `attachments.attachable_types`: era una falla IDOR, test
+  `AiAssistantAttachmentBoundaryTest`); `AiConversationPolicy` (permesso `ai-assistant.use` + proprietario);
+  driver in `Services/AiAssistant/Drivers` (`AiChatDriverManager`, `OpenAiCompatibleDriver` su Chat Completions con
+  `max_completion_tokens`, `AnthropicDriver` con `cache_control` sul system); menzioni in `Services/AiAssistant/Mentions`
+  (18 moduli, proiezione allow-list, `authorize('view')`, marcatore `TRUNCATION_MARKER`); Action `SendAiMessage`
+  (SSE `message.created` / `delta` / `message.completed` / `error`, `endStreamWith: null`, rollback del messaggio utente
+  e dei file su errore o disconnessione); comando `ai-assistant:prune` alle 03:30 (retention 30 giorni).
+- Nuovi for-select ADR 0011: invoices, purchase-invoices, purchase-orders, purchase-requests, contracts (base comune
+  `Services/Shared/AbstractDocumentForSelectService`, `Requests/Shared/DocumentForSelectRequest`, `Support/ForSelectSubtitle`).
+- Frontend `features/ai-assistant/`: stream via `apiClient` con `adapter: 'fetch'` + `responseType: 'stream'`; widget
+  `FloatingAiAssistant` in `app-layout.tsx` sotto `<Can>`; pagina `/ai-assistant`; namespace i18n `aiAssistant`;
+  guida in-app `ai-assistant` IT/EN (HELP_GUIDE_KEYS 101: aggiornati `help-guide-keys.test.ts` e
+  `workspaces-help.test.ts`, REQUIREMENT CHANGED). Etichette editor ruoli: `permissions.resources.ai-assistant`,
+  `permissions.abilities.use` IT/EN. Manuale Claude Docs: nuova sottosezione "Assistente AI" in "Primi passi" (dopo
+  "Chiedere assistenza"); il PDF derivato va rigenerato.
+- Verifica: Pest feature 90+ verdi, suite completa backend 13435/13452 (16 rossi preesistenti, nessuno della feature:
+  ManagementControl `management-control-section` vs `-group`, LibreOffice assente in QuoteDocumentPdfTest, 6 in
+  Migration, TableBulkDeleteTest:131, SettlementApprovalTest AC-006 legato alla data, WorkOrderCategoryTabsTest:23);
+  Vitest completo 9758/9759 (unico rosso della feature corretto), 11 unhandled `toast.error is not a function`
+  preesistenti in `features/auth/form-errors.ts:37`; tsc -b 0; Pint/ESLint puliti. Smoke reale via nginx Herd con
+  stub OpenAI locale: delta in streaming ogni 0,25 s, token e titolo salvati.
+- LLM locale (D-15, AC-029/AC-030, 2026-11-03): driver `openai` + `AI_ASSISTANT_OPENAI_BASE_URL` locale, api_key
+  vuota (nessun header Authorization). Provato end-to-end via nginx Herd su LM Studio `google/gemma-4-e2b`:
+  streaming ok, `max_completion_tokens` e usage rispettati, guida pagina usata, token salvati; immagini ok sui modelli
+  con visione, PDF rifiutati da LM Studio (400) -> nuova env `AI_ASSISTANT_ACCEPTED_MIMES` (solo sottoinsieme dei 4
+  tipi), lista vuota o `max_files=0` = niente allegati (pulsante nascosto, `files` prohibited). `reasoning_content`
+  mai inoltrato; risposta senza testo = `error` + rollback (in `SendAiMessage`). Test
+  `Api/AiAssistantLocalModelTest.php` (6) + composer test; esempio LM Studio in `.env.example`; guida in-app e
+  manuale aggiornati (allegati e privacy: servizio esterno oppure modello aziendale).
+- Da verificare: AC-027 responsive a 375/768/1024 nel browser; prova con un provider vero (OpenAI e Anthropic). Aperto: `Model::preventLazyLoading()` non e' attivo in
+  `AppServiceProvider` (backend.md §3), fuori scope; email nella proiezione utenti delle menzioni da confermare.
+
 ## Fix: evento delle voci di impersonificazione in Cronologia attivita' (spec 0050 D-6) — VERDE, COMMITTATO (2026-11-02)
 
 - Causa: `ImpersonationService::log()` scriveva l'activity senza `event` -> la timeline mostrava la chiave

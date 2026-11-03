@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\PurchaseRequests\PurchaseRequestApproverOptionsController;
 use App\Http\Controllers\PurchaseRequests\PurchaseRequestController;
+use App\Http\Controllers\PurchaseRequests\PurchaseRequestForSelectController;
 use App\Http\Controllers\PurchaseRequests\PurchaseRequestLineStatusController;
 use App\Http\Controllers\PurchaseRequests\PurchaseRequestLineSupplierController;
 use Illuminate\Support\Facades\Route;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Literal segment declared ABOVE the bound {purchaseRequest} wildcard (spec 0245).
+Route::get('purchase-requests/for-select', PurchaseRequestForSelectController::class);
 Route::get('purchase-requests/approver-options', PurchaseRequestApproverOptionsController::class);
 Route::get('purchase-requests/{purchaseRequest}', [PurchaseRequestController::class, 'show']);
 Route::post('purchase-requests', [PurchaseRequestController::class, 'store']);

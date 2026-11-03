@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\PurchaseOrders\PurchaseOrderController;
+use App\Http\Controllers\PurchaseOrders\PurchaseOrderForSelectController;
 use App\Http\Controllers\PurchaseOrders\PurchaseOrderFromRequestLinesController;
 use App\Http\Controllers\PurchaseOrders\PurchaseOrderLineResidualController;
 use App\Http\Controllers\PurchaseOrders\PurchaseOrderPdfController;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\Route;
 | `auth:sanctum` group. The list is the generic `purchase-orders` table domain.
 */
 
+Route::get('purchase-orders/for-select', PurchaseOrderForSelectController::class);
 Route::get('purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'show']);
 Route::post('purchase-orders', [PurchaseOrderController::class, 'store']);
 Route::match(['put', 'patch'], 'purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'update']);

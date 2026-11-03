@@ -34,3 +34,7 @@ Schedule::command('employment:daily-sync')->dailyAt('00:30')->withoutOverlapping
 // Spec 0278, D-11: yearly carry-over of the absence balances, right after the
 // daily employment sync. Idempotent.
 Schedule::command('absences:carry-over')->yearlyOn(1, 1, '00:45')->withoutOverlapping()->onOneServer();
+
+// Spec 0347, D-5: removes the AI assistant conversations (and their files)
+// idle for more than the retention window.
+Schedule::command('ai-assistant:prune')->dailyAt('03:30')->withoutOverlapping()->onOneServer();

@@ -3,6 +3,7 @@
 use App\Http\Controllers\CategoryTabs\GridCategoryTabPreferencesController;
 use App\Http\Controllers\CategoryTabs\GridCategoryTabsController;
 use App\Http\Controllers\Contracts\ContractController;
+use App\Http\Controllers\Contracts\ContractForSelectController;
 use App\Http\Controllers\Contracts\ContractMultiProgrammableLinesController;
 use App\Http\Controllers\Contracts\ContractMultiQuoteWorkOrderController;
 use App\Http\Controllers\Contracts\ContractProgrammableLinesController;
@@ -33,6 +34,7 @@ use Illuminate\Support\Facades\Route;
 // "Programma commessa unica" (spec 0267, D-3): static paths BEFORE
 // `contracts/{contract}` so they never reach model binding. Both routes gate
 // every selected contract on `contracts.program` AND ClosedWon.
+Route::get('contracts/for-select', ContractForSelectController::class);
 Route::get('contracts/multi-programmable-lines', ContractMultiProgrammableLinesController::class);
 Route::post('contracts/multi-quote-work-orders', ContractMultiQuoteWorkOrderController::class);
 

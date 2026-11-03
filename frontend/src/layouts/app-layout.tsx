@@ -7,6 +7,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { NotificationBell } from '@/features/notifications/notification-bell'
 import { useNotificationTitle } from '@/features/notifications/use-notification-title'
 import { WorkspaceLauncher } from '@/features/workspaces/components/workspace-launcher'
+import { FloatingAiAssistant } from '@/features/ai-assistant/components/floating-ai-assistant'
 import { HelpButton } from '@/features/help/components/help-button'
 import { SupportRequestButton } from '@/features/support-requests/support-request-button'
 import { usePresenceHeartbeat } from '@/features/system-health/use-presence-heartbeat'
@@ -68,6 +69,7 @@ export function AppLayout() {
             <main className="flex flex-1 flex-col gap-4 p-4">
               <Outlet />
             </main>
+            <FloatingAiAssistant />
           </SidebarInset>
         </SidebarProvider>
       </UserDetailSheetProvider>

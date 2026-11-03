@@ -44,6 +44,7 @@ return [
     'items' => [
         require __DIR__.'/navigation/dashboard.php',
         require __DIR__.'/navigation/tasks.php',
+        require __DIR__.'/navigation/ai-assistant.php',
         require __DIR__.'/navigation/time-entries.php',
         require __DIR__.'/navigation/absences.php',
         require __DIR__.'/navigation/commercial.php',
