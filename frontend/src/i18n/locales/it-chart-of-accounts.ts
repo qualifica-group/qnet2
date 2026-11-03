@@ -1,0 +1,91 @@
+/**
+ * Dominio Piano dei conti (spec 0348). Piano gestionale a tre livelli:
+ * Mastro > Conto > Sottoconto. File affiancato per mantenere `it.ts` entro i limiti.
+ */
+
+export const chartOfAccounts = {
+  forbidden: 'Non hai i permessi per visualizzare il piano dei conti.',
+  loadError: 'Impossibile caricare il piano dei conti. Riprova.',
+  genericError: 'Si è verificato un errore. Riprova.',
+  treeLabel: 'Piano dei conti',
+  empty: 'Il piano dei conti è vuoto.',
+  newGroup: 'Nuovo mastro',
+  inactive: 'Non attivo',
+  expand: 'Espandi {{label}}',
+  collapse: 'Comprimi {{label}}',
+  expandAll: 'Espandi tutto',
+  collapseAll: 'Comprimi tutto',
+  rowActions: 'Azioni per {{label}}',
+  deleted: 'Voce eliminata con successo.',
+  deleteConflict: 'Impossibile eliminare: la voce ha voci collegate. Disattivala o eliminale prima.',
+  deleteError: 'Impossibile eliminare la voce. Riprova.',
+  deleteConfirm: {
+    title: 'Eliminare la voce?',
+    description: 'Stai per eliminare “{{label}}”. L’operazione non si può annullare.',
+  },
+  kind: {
+    cost: 'Costo',
+    revenue: 'Ricavo',
+  },
+  unplaced: {
+    title: 'Sottoconti di costo da collocare',
+  },
+  search: {
+    label: 'Cerca nel piano dei conti',
+    placeholder: 'Cerca per codice o descrizione…',
+    empty: 'Nessuna voce corrisponde alla ricerca.',
+  },
+  actions: {
+    newAccount: 'Nuovo conto',
+    newSubAccount: 'Nuovo sottoconto',
+    edit: 'Modifica',
+    delete: 'Elimina',
+    activity: 'Storico attività',
+    place: 'Colloca nel piano',
+  },
+  form: {
+    save: 'Salva',
+    saving: 'Salvataggio…',
+    cancel: 'Annulla',
+    created: 'Voce creata con successo.',
+    updated: 'Voce aggiornata con successo.',
+    kind: 'Tipo',
+    parentGroup: 'Mastro',
+    parentAccount: 'Conto',
+    code: 'Codice',
+    name: 'Nome',
+    description: 'Descrizione',
+    isActive: 'Attivo',
+    codeRequired: 'Il codice è obbligatorio.',
+    codeMax: 'Il codice può contenere al massimo 20 caratteri.',
+    codeInvalid: 'Il codice può contenere solo lettere, numeri, punti e trattini.',
+    nameRequired: 'Il nome è obbligatorio.',
+    nameMax: 'Il nome può contenere al massimo 150 caratteri.',
+    descriptionMax: 'La descrizione può contenere al massimo 500 caratteri.',
+    kindRequired: 'Il tipo (Costo o Ricavo) è obbligatorio.',
+    groupRequired: 'Il mastro è obbligatorio.',
+    accountRequired: 'Il conto è obbligatorio.',
+    group: {
+      createTitle: 'Nuovo mastro',
+      editTitle: 'Modifica mastro',
+      description: 'Il mastro raggruppa i conti e stabilisce se sono di costo o di ricavo.',
+    },
+    account: {
+      createTitle: 'Nuovo conto',
+      editTitle: 'Modifica conto',
+      description: 'Il conto raggruppa i sottoconti e eredita il tipo dal mastro.',
+    },
+    revenueSub: {
+      createTitle: 'Nuovo sottoconto di ricavo',
+      editTitle: 'Modifica sottoconto di ricavo',
+      description: 'Il sottoconto di ricavo è la voce che in futuro si assegnerà ai documenti.',
+    },
+    costSub: {
+      createTitle: 'Nuovo sottoconto di costo',
+      editTitle: 'Modifica sottoconto di costo',
+      placeTitle: 'Colloca tipo di costo',
+      description: 'Un sottoconto di costo è un tipo di costo: stessi campi, più il conto e il codice.',
+      placeDescription: 'Scegli il conto e il codice con cui collocare questo tipo di costo nel piano.',
+    },
+  },
+}

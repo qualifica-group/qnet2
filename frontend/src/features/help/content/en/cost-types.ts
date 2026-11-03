@@ -27,6 +27,7 @@ const guide: HelpGuide = {
             ['Description', 'Optional free text.'],
             ['Nature', '**Direct** (chargeable to a work order), **Indirect** (production cost, allocated) or **General** (structure and overhead). Required; the existing types are Direct.'],
             ['Color', 'The color of the type badge, picked from the palette. Required; the existing types are slate.'],
+            ['Code and account', 'Optional here: a cost type is also a **cost sub-account** of the **Chart of accounts**, where it has a parent account and a unique code. They are not edited from this page: place them from the Chart of accounts (**Place in the chart**) and they do not change when you save from here.'],
             ['Active', 'An inactive type can no longer be chosen on new lines.'],
           ],
         },

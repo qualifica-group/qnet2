@@ -27,6 +27,7 @@ const guide: HelpGuide = {
             ['Descrizione', 'Testo libero facoltativo.'],
             ['Natura', '**Diretto** (imputabile a una commessa), **Indiretto** (costo di produzione, ripartito) o **Generale** (struttura e spese generali). Obbligatoria; i tipi già presenti sono Diretto.'],
             ['Colore', 'Il colore del badge del tipo, scelto dalla tavolozza. Obbligatorio; i tipi già presenti sono grigio ardesia.'],
+            ['Codice e conto', 'Facoltativi qui: un tipo di costo è anche un **sottoconto di costo** del **Piano dei conti**, dove ha un conto padre e un codice univoco. Da questa pagina non si modificano: si collocano dal Piano dei conti (**Colloca nel piano**) e non cambiano se salvi da qui.'],
             ['Attivo', 'Un tipo non attivo non si può più scegliere sulle nuove righe.'],
           ],
         },

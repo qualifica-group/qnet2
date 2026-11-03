@@ -3,6 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Piano dei conti gestionale, fase 1 (spec 0348) — TEST MIRATI VERDI, GATE VERIFIER IN CORSO (2026-11-03)
+
+- Spec `docs/specs/0348-chart-of-accounts.xml` (D-1..D-14, AC-001..AC-015). Piano gestionale a 3 livelli, nessuna
+  prima nota. Mastri e conti in `chart_accounts` (`level` group|account, `kind` cost|revenue SOLO sul mastro);
+  sottoconti di costo = `cost_types` (+ `chart_account_id`, `code`); sottoconti di ricavo = nuova `revenue_types`.
+  NON chiamare "natura" il tipo Costo/Ricavo: `cost_types.nature` (diretto/indiretto/generale) resta del Controllo di gestione.
+- Codice univoco su tutto il piano (`App\Rules\UniqueChartCode`), regole d'albero in `ChartAccountRules`; delete
+  restrittivo 409 (`chart_accounts.in_use`). Struttura di partenza + collocazione dei 4 tipi iniziali dalla migrazione
+  dati `2026_11_03_100100_seed_default_chart_of_accounts` (idempotente); altri tipi di costo -> `unplaced_cost_types`.
+- API: `GET /api/chart-of-accounts/tree` (endpoint dedicato, non TableDefinition: D-12), CRUD `chart-accounts`,
+  `revenue-types`; `cost-types` accetta/restituisce `code`, `chart_account_id` (omessi = invariati). Permessi
+  `chart-accounts.*`, `revenue-types.*` (`permission_only_resources`); menu Configurazione > Contabilita' > Piano dei conti.
+- Frontend `features/chart-of-accounts/` (albero, ricerca con antenati, Sheet per mastro/conto, sottoconto ricavo,
+  sottoconto costo = form ledger di `features/cost-types`), guide in-app `chart-of-accounts` IT/EN (HELP_GUIDE_KEYS 102).
+- Ambiente locale: dopo il pull servono `php artisan migrate` + `php artisan permissions:sync`.
+- Da fare: esito gate verifier (suite completa); sezione "Piano dei conti" nel manuale Claude Docs.
+  Prossime fasi: F2 sottoconto su prodotti e righe fattura attiva (snapshot, provvigioni Ente, backfill),
+  F3 prospetto per mastro filtrabile per societa' (decisione utente 2026-11-03: piano unico di gruppo).
+
 ## Assistente AI (porting chat Q-TASK, spec 0347) — VERDE, COMMITTATO b29495c7 (2026-11-03)
 
 - Sorgente: Q-TASK = `/Users/Repository/q-net` (`src/app/features/ai-chat`). Portato il comportamento, non l'architettura

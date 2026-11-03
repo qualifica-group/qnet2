@@ -107,6 +107,7 @@ export const navigation = {
   purchaseOrderStatuses: 'Stati ODA',
   purchaseRequestLineStatuses: 'Stati righe RDA',
   invoiceTags: 'Tag fattura',
+  chartOfAccounts: 'Piano dei conti',
   management: 'Gestione',
   configuration: 'Configurazione',
   commercial: 'Commerciale',

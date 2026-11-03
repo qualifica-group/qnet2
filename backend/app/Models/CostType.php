@@ -8,13 +8,14 @@ use App\Models\Concerns\LogsModelActivity;
 use Database\Factories\CostTypeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Cost type lookup (spec 0210, D-3): classifies every purchase order line.
  * Configurable, with an active flag and a display order.
  */
-#[Fillable(['name', 'description', 'nature', 'color', 'sort_order', 'is_active'])]
+#[Fillable(['chart_account_id', 'code', 'name', 'description', 'nature', 'color', 'sort_order', 'is_active'])]
 class CostType extends BaseModel
 {
     /** @use HasFactory<CostTypeFactory> */
@@ -30,6 +31,16 @@ class CostType extends BaseModel
             'sort_order' => 'int',
             'is_active' => 'bool',
         ];
+    }
+
+    /**
+     * Parent account in the chart of accounts (spec 0348); null while unplaced.
+     *
+     * @return BelongsTo<ChartAccount, $this>
+     */
+    public function chartAccount(): BelongsTo
+    {
+        return $this->belongsTo(ChartAccount::class);
     }
 
     /**

@@ -5,6 +5,7 @@ use App\Models\AgentFiscalProfile;
 use App\Models\Attribute;
 use App\Models\BusinessFunction;
 use App\Models\Campaign;
+use App\Models\ChartAccount;
 use App\Models\CommissionConfiguration;
 use App\Models\CommissionSettlement;
 use App\Models\Company;
@@ -47,6 +48,7 @@ use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
 use App\Models\ReferentType;
 use App\Models\Registry;
+use App\Models\RevenueType;
 use App\Models\Reward;
 use App\Models\RewardStatus;
 use App\Models\RewardType;
@@ -350,6 +352,12 @@ return [
         ],
         'invoice-tags' => [
             'model' => InvoiceTag::class,
+        ],
+        'chart-accounts' => [
+            'model' => ChartAccount::class,
+        ],
+        'revenue-types' => [
+            'model' => RevenueType::class,
         ],
         'cost-types' => [
             'model' => CostType::class,

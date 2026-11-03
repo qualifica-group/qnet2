@@ -106,6 +106,7 @@ export const navigation = {
   purchaseOrderStatuses: 'ODA statuses',
   purchaseRequestLineStatuses: 'RDA line statuses',
   invoiceTags: 'Invoice tags',
+  chartOfAccounts: 'Chart of accounts',
   management: 'Management',
   configuration: 'Configuration',
   commercial: 'Sales',

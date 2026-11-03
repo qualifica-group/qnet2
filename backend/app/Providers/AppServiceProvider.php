@@ -22,6 +22,7 @@ use App\Models\Attribute;
 use App\Models\AttributeLayout;
 use App\Models\BusinessFunction;
 use App\Models\Campaign;
+use App\Models\ChartAccount;
 use App\Models\CommissionAccrual;
 use App\Models\CommissionConfiguration;
 use App\Models\CommissionSettlement;
@@ -80,6 +81,7 @@ use App\Models\QuoteWorkflowStatus;
 use App\Models\Referent;
 use App\Models\ReferentType;
 use App\Models\Registry;
+use App\Models\RevenueType;
 use App\Models\Reward;
 use App\Models\RewardStatus;
 use App\Models\RewardType;
@@ -270,6 +272,8 @@ class AppServiceProvider extends ServiceProvider
             'purchase_order_receipt' => PurchaseOrderReceipt::class,
             'purchase_order_receipt_line' => PurchaseOrderReceiptLine::class,
             'cost_type' => CostType::class,
+            'chart_account' => ChartAccount::class,
+            'revenue_type' => RevenueType::class,
             'job_role' => JobRole::class,
             'job_activity' => JobActivity::class,
             'employment_contract' => EmploymentContract::class,

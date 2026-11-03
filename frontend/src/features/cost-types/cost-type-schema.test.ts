@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import i18n from '@/i18n'
-import { buildCostTypeSchema } from '@/features/cost-types/cost-type-schema'
+import { buildCostTypeLedgerSchema, buildCostTypeSchema } from '@/features/cost-types/cost-type-schema'
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
@@ -37,5 +37,27 @@ describe('buildCostTypeSchema (specs 0210, 0249)', () => {
 
   it.each(['', 'not-a-token'])('rejects a missing or unknown color (%j)', (color) => {
     expect(schema().safeParse({ ...VALID, color }).success).toBe(false)
+  })
+})
+
+describe('buildCostTypeLedgerSchema (spec 0348)', () => {
+  const ledger = () => buildCostTypeLedgerSchema(i18n.t)
+  const LEDGER = { ...VALID, chart_account_id: 10, code: '61.03.001' }
+
+  it('accepts a cost type with account and code', () => {
+    expect(ledger().safeParse(LEDGER).success).toBe(true)
+  })
+
+  it('requires the account and the code', () => {
+    expect(ledger().safeParse({ ...LEDGER, chart_account_id: undefined }).success).toBe(false)
+    expect(ledger().safeParse({ ...LEDGER, code: '' }).success).toBe(false)
+  })
+
+  it.each(['61 03', 'a'.repeat(21), 'caffè'])('rejects the invalid code %j', (code) => {
+    expect(ledger().safeParse({ ...LEDGER, code }).success).toBe(false)
+  })
+
+  it('leaves the page schema untouched: no account or code required', () => {
+    expect(buildCostTypeSchema(i18n.t).safeParse(VALID).success).toBe(true)
   })
 })

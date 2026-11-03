@@ -20,6 +20,8 @@ class CostTypeResource extends JsonResource
 
         return [
             'id' => $this->id,
+            'chart_account_id' => $this->chart_account_id,
+            'code' => $this->code,
             'name' => $this->name,
             'description' => $this->description,
             'nature' => $this->nature->value,

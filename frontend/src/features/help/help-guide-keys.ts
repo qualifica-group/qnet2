@@ -59,6 +59,7 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'purchase-order-statuses',
   'purchase-request-line-statuses',
   'invoice-tags',
+  'chart-of-accounts',
   'invoices',
   'invoice-installments',
   'ledger',
