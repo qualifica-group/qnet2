@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Assistente AI (porting chat Q-TASK, spec 0347) — VERDE, NON COMMITTATO (2026-11-02)
+## Assistente AI (porting chat Q-TASK, spec 0347) — VERDE, COMMITTATO b29495c7 (2026-11-03)
 
 - Sorgente: Q-TASK = `/Users/Repository/q-net` (`src/app/features/ai-chat`). Portato il comportamento, non l'architettura
   (Q-TASK chiamava il provider dal browser con la chiave in VITE_*).
