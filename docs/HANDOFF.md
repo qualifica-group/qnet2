@@ -3,6 +3,32 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Segnalatori 2026 v2: commissioni per colonna e per prodotto 2°/3° anno, seeder convergente — VERDE, COMMITTATO (2026-11-03)
+
+- Sorgente: Excel utente "COM_- Segnalatori 2026_ (2).xlsx" (stesse righe del 30/10, piu' colonne). Catalogo
+  `QualificaCatalog\ReporterCommissionCatalogue` riscritto: `COLUMNS` (colonna -> `categories` | `year`+`within`-`except` |
+  `products` per categoria, `valid_from`/`note` propri) e 92 `REPORTERS` (`old_id` o anagrafica, `supervisor`, `contact`,
+  `rates`, `note`). `ReporterCommissionTargets` (colonne -> categorie/prodotti; `marksYear()` legge "2° Anno", "_II anno",
+  "_2 anno") e `ReporterCommissionRules` (sync delle regole di un segnalatore + `removeOrphans()`); seeder orchestratore.
+- Decisioni utente 2026-11-03: match sulla colonna NOME (per le righe con `old_id` vale l'abbinamento confermato il 30/10;
+  senza `old_id` nome normalizzato: maiuscole, accenti e ordine parole ignorati; piu' omonimi -> warning e salto);
+  "X 2/3 ANNO" = una regola PRODUCT su ogni prodotto 2°/3° anno del ramo (ISO esclude PDR 125/SA8000); SA8000:
+  sorveglianze 12-18 mesi = 2° anno, 24/30/33-35 = 3°, 6 mesi resta sulla categoria; AVV/GAR = categoria "Gare" con
+  `valid_from` 2027-01-01 e riga nelle note; PAL applicata come APL (stesso valore ovunque); note del referente =
+  Supervisore commerciale + Referente + NOTE + AVV/GAR; tipo "Segnalatore" solo se il referente non ne ha uno.
+- Seeder = fonte di verita' per quei segnalatori (REQUIREMENT CHANGED: il rilancio ripristina i valori del catalogo, prima
+  lasciava le regole modificate da UI). Rimuove solo regole col prefisso "Segnalatore - " non piu' in catalogo e quelle
+  orfane di referenti cancellati; una regola gia' applicata a righe d'offerta viene sospesa (FK restrict). Regole fatte a
+  mano con altro nome restano. Lanciabile da solo: `php artisan db:seed --class=QualificaReporterCommissionSeeder`.
+- Prova a secco sul DB dev (transazione annullata): +23 referenti (i 23 creati il 30/10 erano stati cancellati da UI
+  dall'utente #3 alle 15:42, le loro regole erano rimaste orfane), 17.728 create / 186 aggiornate / 144 rimosse,
+  18.215 regole totali; secondo giro 0/0/0. Riga 95 del vecchio file (Giuseppe Ciocci, old_id 19473) non e' piu'
+  nell'Excel: le sue 7 regole restano intatte. NON eseguito davvero sul DB dev (serve ok esplicito).
+- Test: `ReporterCommissionSeederTest` 17/17, `tests/Feature/CommissionConfigurations` 66/66, Seeding production/sample
+  5/5; Pint ok. Manuale: nessun impatto (solo dati).
+- Fuori scope, da segnalare: cancellare un referente lascia le sue regole commissione personali orfane (recipient
+  polimorfico senza FK).
+
 ## Catalogo: ramo "Progettazione" + seeder per la produzione — VERDE, COMMITTATO 916b8787 (2026-11-03)
 
 - Sorgente: Excel utente "Funzione Aziendale_ Progettazione". `QualificaCatalog\ProjectDesignCatalogue` (radice
