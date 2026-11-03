@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Catalogo: ramo "Progettazione" + seeder per la produzione — VERDE, NON COMMITTATO (2026-11-03)
+## Catalogo: ramo "Progettazione" + seeder per la produzione — VERDE, COMMITTATO 916b8787 (2026-11-03)
 
 - Sorgente: Excel utente "Funzione Aziendale_ Progettazione". `QualificaCatalog\ProjectDesignCatalogue` (radice
   "Progettazione", contenitore, funzione "Progettazione" dell'organigramma, regole e tipologia Consulenza, nessun campo
