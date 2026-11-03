@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Fix: "recipient_role ha un valore duplicato" su offerte multi-riga — VERDE, NON COMMITTATO (2026-11-03)
+
+- Causa: `distinct` di Laravel su `offer_lines.*.commissions.*.recipient_role` confronta TUTTE le righe insieme
+  (wildcard annidato), quindi un'offerta con piu' righe che pagano lo stesso ruolo (es. Segnalatore) dava 422.
+- Fix: `App\Quotes\QuoteLineCommissionRoleRule` (DataAwareRule) sostituisce `distinct` in `QuoteLineRules`:
+  unicita' del ruolo SOLO dentro la stessa riga (come l'unique DB `quote_line_id + recipient_role`), stesso
+  messaggio `validation.distinct`. Test: `tests/Feature/Quotes/QuoteCommissionRoleDistinctTest.php`.
+- Preesistenti, non legati: `QuoteDocumentPdfTest` (conversione PDF, ambiente) e `TableBulkDeleteTest` (last super-admin).
+- Manuale: nessun impatto.
+
 ## Importa richieste (Develop): trattative Excel -> Gestione Richieste — VERDE sui test della feature, COMMITTATO (2026-11-03, spec 0348)
 
 - Dominio import `request-management` sul wizard generico (`/api/imports/request-management/...`), pagina
