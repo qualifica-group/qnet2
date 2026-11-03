@@ -2,6 +2,7 @@
 export const aiAssistant = {
   title: 'Assistente AI',
   forbidden: 'Non hai i permessi per usare l\'assistente AI.',
+  pageDisabled: 'La pagina dell\'assistente AI non è attiva in questa installazione.',
   loadFailed: 'Impossibile caricare l\'assistente AI.',
   loading: 'Caricamento...',
   openButton: 'Apri l\'assistente AI',

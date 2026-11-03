@@ -34,7 +34,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'The button and the page only appear if your role is allowed to use the assistant. If the administrator has not configured the assistant yet, the chat shows **Assistant not configured** and does not let you write.',
+          text: 'The button and the page only appear if your role is allowed to use the assistant and the administrator has switched them on for your installation: the chat window and the page are switched on separately and are off to begin with. If the page is off, the menu item does not appear and the window has no **Open full page**. If the administrator has not configured the assistant yet, the chat shows **Assistant not configured** and does not let you write.',
         },
       ],
     },

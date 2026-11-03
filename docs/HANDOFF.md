@@ -3,7 +3,26 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Fix: "recipient_role ha un valore duplicato" su offerte multi-riga — VERDE, NON COMMITTATO (2026-11-03)
+## Assistente AI: interruttori env per finestra flottante e pagina — VERDE, COMMITTATO (2026-11-03, spec 0347 D-16)
+
+- Env backend `AI_ASSISTANT_FLOATING_ENABLED` / `AI_ASSISTANT_PAGE_ENABLED` (config `ai-assistant.floating_enabled`
+  / `page_enabled`), entrambe `false` di default. Esposte da `GET /api/ai-assistant/config` (`floating_enabled`,
+  `page_enabled`). Entrambe spente: middleware `EnsureAiAssistantEnabled` -> 404 envelope su tutte le rotte tranne
+  `/config` (permesso controllato prima: senza permesso resta 403).
+- Navigazione: nuova chiave opzionale `feature` (config key booleana) letta da `NavigationService::isAllowed`, tolta
+  dal payload; `navigation/ai-assistant.php` usa `ai-assistant.page_enabled`. Il permesso resta nel catalogo;
+  `NavigationCatalogue` (workspaces) NON filtra: la voce resta assegnabile ai workspace.
+- Frontend: launcher flottante solo con `floating_enabled`; link "Apri a pagina intera" solo con `page_enabled`;
+  pagina `/ai-assistant` con `page_enabled=false` mostra `aiAssistant.pageDisabled`.
+- Test: `tests/Feature/AiAssistant/Api/AiAssistantSurfacesTest.php` (AC-031..033); `aiapi_configure()` accende le due
+  superfici (REQUIREMENT CHANGED); FE `floating-ai-assistant.test.tsx` (launcher ora asincrono, REQUIREMENT CHANGED)
+  e `pages/ai-assistant-page.test.tsx` (AC-034).
+- Attenzione: il `.env` locale ha `AI_ASSISTANT_ACCEPTED_MIMES` senza PDF -> 4 test AiAssistant (AC-012, AC-014, AC-029)
+  rossi in locale, preesistenti e indipendenti da questa modifica.
+- Manuale: guide in-app `ai-assistant` IT/EN (sezione how-to-open) e Claude Docs (sottosezione "Assistente AI")
+  aggiornati; PDF derivato da rigenerare.
+
+## Fix: "recipient_role ha un valore duplicato" su offerte multi-riga — VERDE, COMMITTATO 6b86e915 (2026-11-03)
 
 - Causa: `distinct` di Laravel su `offer_lines.*.commissions.*.recipient_role` confronta TUTTE le righe insieme
   (wildcard annidato), quindi un'offerta con piu' righe che pagano lo stesso ruolo (es. Segnalatore) dava 422.

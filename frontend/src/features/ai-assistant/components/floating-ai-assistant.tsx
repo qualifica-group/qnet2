@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom'
 import { Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Can } from '@/features/auth/can'
+import { useAiAssistantConfig } from '@/features/ai-assistant/hooks/use-ai-assistant-config'
 import { AI_ASSISTANT_PERMISSION, AI_ASSISTANT_ROUTE } from '@/features/ai-assistant/routes'
 import { stripWorkspacePrefix } from '@/features/workspaces/workspace-path'
 import { cn } from '@/lib/utils'
@@ -13,8 +14,9 @@ const FloatingAiPanel = lazyRoute(() => import('@/features/ai-assistant/componen
 
 /**
  * Floating assistant: a launcher at the bottom right that opens a chat window
- * (full screen below `sm`). Only for users with `ai-assistant.use` (AC-019)
- * and hidden on the assistant page itself, which already is the chat.
+ * (full screen below `sm`). Only for users with `ai-assistant.use` (AC-019),
+ * only while the server switches the floating chat on (D-16), and hidden on
+ * the assistant page itself, which already is the chat.
  */
 export function FloatingAiAssistant() {
   return (
@@ -27,10 +29,11 @@ export function FloatingAiAssistant() {
 function FloatingAiAssistantLauncher() {
   const { t } = useTranslation()
   const { pathname } = useLocation()
+  const configQuery = useAiAssistantConfig()
   const [open, setOpen] = useState(false)
   const [hasOpened, setHasOpened] = useState(false)
 
-  if (stripWorkspacePrefix(pathname).startsWith(AI_ASSISTANT_ROUTE)) {
+  if (!configQuery.data?.floating_enabled || stripWorkspacePrefix(pathname).startsWith(AI_ASSISTANT_ROUTE)) {
     return null
   }
 
