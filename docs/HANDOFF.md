@@ -3,6 +3,28 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Catalogo: ramo "Progettazione" + seeder per la produzione — VERDE, NON COMMITTATO (2026-11-03)
+
+- Sorgente: Excel utente "Funzione Aziendale_ Progettazione". `QualificaCatalog\ProjectDesignCatalogue` (radice
+  "Progettazione", contenitore, funzione "Progettazione" dell'organigramma, regole e tipologia Consulenza, nessun campo
+  flessibile, stati di lavorazione di default) con l'unica linea selezionabile "Progettazione interna" e i suoi 11
+  prodotti, "Progettazione APL" compreso (Excel rivisto dall'utente: niente sottocategoria APL).
+  `ProjectDesignProductCatalogue`: prezzo 0, aliquota `EXEMPT_VAT_RATE` "Esente IVA" 0% (creata per nome se manca,
+  decisione utente: non "Nessuna"; "Progettazione APL" non la indica e prende quella delle altre), codice "PRD-" generato.
+- Agganciato al seed completo: `BranchCatalogues`, `CatalogRootRules`, `QualificaBusinessFunctionLinkSeeder`,
+  `CatalogProducts::seedProjectDesignProducts()` (pubblico).
+- Seeder per l'installazione gia' in produzione: `php artisan db:seed --class=QualificaProjectDesignCatalogSeeder`
+  (NON nella catena di `QualificaProductionDataSeeder`). Tocca solo il ramo: categorie create se mancano e mai
+  spostate/riallineate, link funzione solo se lo slot e' libero (`QualificaBusinessFunctionLinkSeeder` accetta
+  `categoryNames`), regole solo su questa radice (`CatalogRootRules::applyToRoot()`), prodotti create-or-fill-blanks
+  (`BranchProducts`). Nome di categoria del ramo trovato altrove nell'albero -> `RuntimeException` e rollback.
+  Verificato sul DB dev reale in transazione annullata: +11 prodotti al primo giro, 0 al secondo.
+- Test: `QualificaProjectDesignCatalogueTest` (3). REQUIREMENT CHANGED su conteggi/elenchi: `QualificaCatalogSeederTest`
+  (990 prodotti, linee selezionabili), `QualificaProductionDataSeederTest` (1000), `QualificaBusinessFunctionLinkSeederTest`.
+- Aperti (non implementati, da Excel): team commessa "Agus, De Gennaro" vs organigramma "Agus, Pagliara"; layout
+  preventivo "Qualifica group srl" non associato. `CatalogProducts.php` a 304 righe (soft limit).
+- Manuale: nessun impatto (dati di catalogo).
+
 ## Assistente AI (porting chat Q-TASK, spec 0347) — VERDE, COMMITTATO b29495c7 (2026-11-03)
 
 - Sorgente: Q-TASK = `/Users/Repository/q-net` (`src/app/features/ai-chat`). Portato il comportamento, non l'architettura

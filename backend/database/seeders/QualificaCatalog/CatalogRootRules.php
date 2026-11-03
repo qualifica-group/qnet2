@@ -41,7 +41,7 @@ use App\Services\ProductCategories\SingleQuotePerOpportunityInheritance;
  *
  * "SOA" and "Sicurezza" are worked like "Consulenza" (user decisions 2026-10-15),
  * and so are "Gare", "GDPR", "Finanza Agevolata", "Istruzione" and
- * "Accreditamenti" (user directives 2026-10-20).
+ * "Accreditamenti" (user directives 2026-10-20), and "Progettazione" (2026-11-03).
  *
  * "Formazione" alone also allows the multi-offer work order (spec 0267, user
  * decision 2026-10-15). The key is declared on that root only, so the other
@@ -113,6 +113,7 @@ final class CatalogRootRules
         EducationCatalogue::ROOT => self::CONSULTING_RULES,
         AccreditationCatalogue::ROOT => self::CONSULTING_RULES,
         IsoCatalogue::ROOT => self::CONSULTING_RULES,
+        ProjectDesignCatalogue::ROOT => self::CONSULTING_RULES,
     ];
 
     /**
@@ -137,19 +138,8 @@ final class CatalogRootRules
 
     public function apply(): void
     {
-        foreach (self::RULES as $rootName => $rules) {
-            /** @var ProductCategory $root */
-            $root = ProductCategory::query()->where('name', $rootName)->whereNull('parent_id')->firstOrFail();
-
-            // A clean save runs no UPDATE, so a re-run on an already-aligned
-            // root costs nothing and logs no activity.
-            $root->fill($rules)->save();
-
-            $this->managementMode->syncSubtree($root);
-            $this->singleQuote->syncSubtree($root);
-            $this->contractGeneration->syncSubtree($root);
-            $this->simplifiedOfferLine->syncSubtree($root);
-            $this->multiQuoteWorkOrder->syncSubtree($root);
+        foreach (array_keys(self::RULES) as $rootName) {
+            $this->applyToRoot($rootName);
         }
 
         foreach (self::NODE_OVERRIDES as $categoryName => $override) {
@@ -159,5 +149,26 @@ final class CatalogRootRules
             $category->fill($override)->save();
             $this->simplifiedOfferLine->syncSubtree($category);
         }
+    }
+
+    /**
+     * One root's rules and its subtree re-sync, public so a seeder adding a
+     * single branch to an installation already seeded realigns that branch
+     * alone, never the roots an operator may have reconfigured since.
+     */
+    public function applyToRoot(string $rootName): void
+    {
+        /** @var ProductCategory $root */
+        $root = ProductCategory::query()->where('name', $rootName)->whereNull('parent_id')->firstOrFail();
+
+        // A clean save runs no UPDATE, so a re-run on an already-aligned
+        // root costs nothing and logs no activity.
+        $root->fill(self::RULES[$rootName])->save();
+
+        $this->managementMode->syncSubtree($root);
+        $this->singleQuote->syncSubtree($root);
+        $this->contractGeneration->syncSubtree($root);
+        $this->simplifiedOfferLine->syncSubtree($root);
+        $this->multiQuoteWorkOrder->syncSubtree($root);
     }
 }

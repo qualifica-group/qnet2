@@ -31,10 +31,11 @@ use App\Services\ProductService;
  *     for the whole branch (ECampusCourseCatalogue::SINGLE_PRODUCTS), the
  *     ones quoted "+ iva" at the 22% VAT rate;
  *   - the SOA, "Sicurezza", "Gare", "GDPR", "Finanza Agevolata",
- *     "Istruzione", "Accreditamenti" and "ISO" lists (SoaCatalogue,
+ *     "Istruzione", "Accreditamenti", "ISO" and "Progettazione" lists (SoaCatalogue,
  *     SafetyProductCatalogue, TenderProductCatalogue, GdprProductCatalogue,
  *     SubsidisedFinanceProductCatalogue, EducationProductCatalogue,
- *     AccreditationProductCatalogue, IsoProductCatalogue and its siblings),
+ *     AccreditationProductCatalogue, IsoProductCatalogue and its siblings,
+ *     ProjectDesignProductCatalogue),
  *     delegated to BranchProducts with the 22% VAT rate resolved here, unless
  *     a row names its own.
  *
@@ -112,6 +113,18 @@ final class CatalogProducts
         $this->branchProducts->seed(IsoProductCatalogue::PRODUCTS, IsoSubcategories::typologies(), $vatRateId);
         $this->branchProducts->seed(IsoNamedStandardProductCatalogue::PRODUCTS, IsoSubcategories::typologies(), $vatRateId);
         $this->branchProducts->seed(IsoMultiStandardProductCatalogue::PRODUCTS, IsoSubcategories::typologies(), $vatRateId);
+        $this->seedProjectDesignProducts();
+    }
+
+    /**
+     * The "Progettazione" list, public so QualificaProjectDesignCatalogSeeder
+     * can file it on an installation already seeded without re-running the
+     * other lists. Its rows name their own VAT rate; the 22% one is only the
+     * fallback BranchProducts requires.
+     */
+    public function seedProjectDesignProducts(): void
+    {
+        $this->branchProducts->seed(ProjectDesignProductCatalogue::PRODUCTS, ProjectDesignCatalogue::TYPOLOGIES, $this->plusVatRate()->id);
     }
 
     private function seedECampusCourses(): void

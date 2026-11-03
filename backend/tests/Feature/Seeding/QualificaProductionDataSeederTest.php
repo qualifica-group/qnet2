@@ -64,7 +64,7 @@ it('composes structure, catalogue and operators in one run, with a super-admin a
         ->and(CustomFieldDefinition::query()->where('entity_type', 'products')->count())->toBe(2)
         ->and(Source::query()->where('name', 'Passaparola')->count())->toBe(1)
         ->and(ProductCategory::query()->where('name', 'GOL - Molise')->count())->toBe(1)
-        ->and(Product::query()->count())->toBe(989) // REQUIREMENT CHANGED: +33 Gare, +16 GDPR, +47 Finanza Agevolata, +2 Autofinanziato - Campania, +18 Istruzione and +1 Accreditamenti products (2026-10-20), +322 ISO products (2026-10-21).
+        ->and(Product::query()->count())->toBe(1000) // REQUIREMENT CHANGED: +33 Gare, +16 GDPR, +47 Finanza Agevolata, +2 Autofinanziato - Campania, +18 Istruzione and +1 Accreditamenti products (2026-10-20), +322 ISO products (2026-10-21), +11 Progettazione products (2026-11-03).
         // Before the legacy import: its products are filed by typology NAME.
         ->and(ProductTypology::query()->orderBy('name')->pluck('name')->all())->toBe(['Consulenza', 'Ente'])
         ->and(Workspace::query()->orderBy('sort_order')->pluck('slug')->all())->toBe(['contabilita', 'hr', 'sales'])
@@ -129,7 +129,7 @@ it('seeds no fabricated row on the first run, and duplicates nothing on a re-run
 
     expect(Source::query()->count())->toBe(10)
         ->and(Workspace::query()->count())->toBe(3)
-        ->and(Product::query()->count())->toBe(989) // REQUIREMENT CHANGED: +33 Gare, +16 GDPR, +47 Finanza Agevolata, +2 Autofinanziato - Campania, +18 Istruzione and +1 Accreditamenti products (2026-10-20), +322 ISO products (2026-10-21).
+        ->and(Product::query()->count())->toBe(1000) // REQUIREMENT CHANGED: +33 Gare, +16 GDPR, +47 Finanza Agevolata, +2 Autofinanziato - Campania, +18 Istruzione and +1 Accreditamenti products (2026-10-20), +322 ISO products (2026-10-21), +11 Progettazione products (2026-11-03).
         // Before the legacy import: its products are filed by typology NAME.
         ->and(ProductTypology::query()->orderBy('name')->pluck('name')->all())->toBe(['Consulenza', 'Ente'])
         ->and(ProductCategory::query()->where('name', 'Formazione')->count())->toBe(1)
