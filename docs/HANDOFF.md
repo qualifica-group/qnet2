@@ -3,7 +3,7 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Piano dei conti gestionale, fase 1 (spec 0348) — TEST MIRATI VERDI, GATE VERIFIER IN CORSO (2026-11-03)
+## Piano dei conti gestionale, fase 1 (spec 0348) — VERDE, COMMITTATO 1b8ed70c + fix test guide (2026-11-03)
 
 - Spec `docs/specs/0348-chart-of-accounts.xml` (D-1..D-14, AC-001..AC-015). Piano gestionale a 3 livelli, nessuna
   prima nota. Mastri e conti in `chart_accounts` (`level` group|account, `kind` cost|revenue SOLO sul mastro);
@@ -18,7 +18,12 @@
 - Frontend `features/chart-of-accounts/` (albero, ricerca con antenati, Sheet per mastro/conto, sottoconto ricavo,
   sottoconto costo = form ledger di `features/cost-types`), guide in-app `chart-of-accounts` IT/EN (HELP_GUIDE_KEYS 102).
 - Ambiente locale: dopo il pull servono `php artisan migrate` + `php artisan permissions:sync`.
-- Da fare: esito gate verifier (suite completa); sezione "Piano dei conti" nel manuale Claude Docs.
+- Gate verifier: AC-001..AC-014 PASS, AC-015 (375px) da verificare a mano. Rossi NON della feature nella suite
+  completa: 4 `ManagementControl/*AccessTest` + `ManagementControlPermissionTest` (nodo menu
+  `management-control-section` assente gia' in HEAD), `TableBulkDeleteTest:131` (guarded/forbidden),
+  `SettlementApprovalTest` (dipende dalla data), 10 errori FE `toast.error is not a function` (skills, vat-rates,
+  job-roles...); `composer test` va in memory limit su `ApiDocsParityTest` (512M).
+- Da fare: sezione "Piano dei conti" nel manuale Claude Docs.
   Prossime fasi: F2 sottoconto su prodotti e righe fattura attiva (snapshot, provvigioni Ente, backfill),
   F3 prospetto per mastro filtrabile per societa' (decisione utente 2026-11-03: piano unico di gruppo).
 
