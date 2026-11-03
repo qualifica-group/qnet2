@@ -11,6 +11,7 @@ use Database\Seeders\QualificaCatalog\BusinessFunctionCatalogue;
 use Database\Seeders\QualificaCatalog\EducationCatalogue;
 use Database\Seeders\QualificaCatalog\GdprCatalogue;
 use Database\Seeders\QualificaCatalog\IsoCatalogue;
+use Database\Seeders\QualificaCatalog\ProjectDesignCatalogue;
 use Database\Seeders\QualificaCatalog\SafetyCatalogue;
 use Database\Seeders\QualificaCatalog\SoaCatalogue;
 use Database\Seeders\QualificaCatalog\SubsidisedFinanceCatalogue;
@@ -39,7 +40,8 @@ use Illuminate\Support\Str;
  *   - "Finanza Agevolata", linked to the function of the same name (user
  *     directive 2026-10-20);
  *   - "Istruzione" and "Accreditamenti", each linked to the organisation
- *     chart's function of the same name (user directives 2026-10-20);
+ *     chart's function of the same name (user directives 2026-10-20), and
+ *     "Progettazione" likewise (user directive 2026-11-03);
  *   - "No categoria", the holding root of the legacy products imported without
  *     a category (user decision 2026-10-12): linked to "No funzione aziendale",
  *     so an offer line on one of those products can still extend its
@@ -81,6 +83,7 @@ class QualificaBusinessFunctionLinkSeeder extends Seeder
         EducationCatalogue::ROOT => EducationCatalogue::BUSINESS_FUNCTION,
         AccreditationCatalogue::ROOT => AccreditationCatalogue::BUSINESS_FUNCTION,
         IsoCatalogue::ROOT => IsoCatalogue::BUSINESS_FUNCTION,
+        ProjectDesignCatalogue::ROOT => ProjectDesignCatalogue::BUSINESS_FUNCTION,
         ProductsSource::UNCATEGORIZED_CATEGORY => self::UNCATEGORIZED_FUNCTION,
     ];
 
@@ -93,9 +96,16 @@ class QualificaBusinessFunctionLinkSeeder extends Seeder
 
     public function __construct(private readonly CategoryHierarchy $hierarchy) {}
 
-    public function run(): void
+    /**
+     * @param  list<string>|null  $categoryNames  Restricts the run to these LINKS keys, so a seeder adding
+     *                                            one branch to an installation already seeded fills that
+     *                                            branch's slot alone; null runs every link.
+     */
+    public function run(?array $categoryNames = null): void
     {
-        foreach (self::LINKS as $categoryName => $functionName) {
+        $links = $categoryNames === null ? self::LINKS : array_intersect_key(self::LINKS, array_flip($categoryNames));
+
+        foreach ($links as $categoryName => $functionName) {
             // Step 1: the function, before the link needs it.
             $function = $this->ensureFunction($functionName);
 

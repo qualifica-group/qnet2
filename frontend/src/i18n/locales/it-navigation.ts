@@ -83,6 +83,7 @@ export const navigation = {
   rewardedReferents: 'Referenti con Buoni',
   documentLayouts: 'Layout',
   imports: 'Importa lead',
+  requestImports: 'Importa richieste',
   pipelineStatuses: 'Stati progetto/campagna',
   marketingLeads: 'Marketing e Lead',
   accounting: 'Contabilità',

@@ -91,7 +91,7 @@ final class QuoteLineRules
                 ? ['sometimes', 'array', 'max:4']
                 : ['prohibited'],
             "{$field}.*.commissions.*.id" => ['nullable', 'integer', Rule::exists('quote_line_commissions', 'id')],
-            "{$field}.*.commissions.*.recipient_role" => ['required', Rule::enum(CommissionRecipientRole::class), 'distinct'],
+            "{$field}.*.commissions.*.recipient_role" => ['required', Rule::enum(CommissionRecipientRole::class), new QuoteLineCommissionRoleRule($field)],
             "{$field}.*.commissions.*.recipient_type" => ['required', Rule::in(['referent', 'user', 'registry'])],
             "{$field}.*.commissions.*.recipient_id" => ['required', 'integer'],
             "{$field}.*.commissions.*.commission_type" => ['required', Rule::enum(CommissionType::class)],

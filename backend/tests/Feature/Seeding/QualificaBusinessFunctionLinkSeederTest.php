@@ -59,9 +59,9 @@ it('assigns the root, so the whole Formazione branch inherits the function', fun
     // "APL", "Presa Appuntamenti", "No categoria" and "SOA" (REQUIREMENT
     // CHANGED, 2026-10-15) carry their own: they are outside the Formazione branch.
     // So do "Sicurezza", "Gare", "GDPR", "Finanza Agevolata", "Istruzione" and "Accreditamenti" (REQUIREMENT CHANGED, 2026-10-20),
-    // and "ISO" (REQUIREMENT CHANGED, 2026-10-21).
+    // and "ISO" (REQUIREMENT CHANGED, 2026-10-21), and "Progettazione" (REQUIREMENT CHANGED, 2026-11-03).
     expect(ProductCategory::query()->whereNotNull('business_function_id')->orderBy('id')->pluck('name')->all())
-        ->toBe(['Formazione', 'Presa Appuntamenti', 'APL', 'No categoria', 'SOA', 'Sicurezza', 'Gare', 'GDPR', 'Finanza Agevolata', 'Istruzione', 'Accreditamenti', 'ISO'])
+        ->toBe(['Formazione', 'Presa Appuntamenti', 'APL', 'No categoria', 'SOA', 'Sicurezza', 'Gare', 'GDPR', 'Finanza Agevolata', 'Istruzione', 'Accreditamenti', 'ISO', 'Progettazione'])
         ->and($formazione()->businessFunction->name)->toBe('Formazione');
 });
 

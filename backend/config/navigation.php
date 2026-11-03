@@ -26,6 +26,9 @@ return [
     |                 separator: the frontend renders its children as flat,
     |                 sibling links under a group label — NOT as a collapsible
     |                 parent. Omit for ordinary items.
+    |   - feature:    (optional, spec 0347 D-16) config key of a boolean switch;
+    |                 the item is hidden while it is false. The permission
+    |                 stays in the catalogue either way.
     |   - children:   nested items (optional)
     |
     | A group/section (route = null) with no visible children is removed

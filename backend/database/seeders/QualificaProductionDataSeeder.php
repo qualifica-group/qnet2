@@ -109,8 +109,10 @@ use Illuminate\Database\Seeder;
  *                                    merged by profile onto the qnet-2 modules,
  *                                    for whoever holds no role but the base one.
  *  13. QualificaReporterCommissionSeeder — the client's reporters ("Segnalatori
- *                                    2026") and their commission percentage per
- *                                    category; a legacy reporter not migrated yet
+ *                                    2026") and their commission percentages per
+ *                                    category and per 2nd/3rd-year product; every
+ *                                    run converges on the catalogue (also runnable
+ *                                    alone); a legacy reporter not migrated yet
  *                                    is skipped with a warning.
  *  14. QualificaSupportTopicSeeder — the IT support request types ("Assistenza
  *                                    tecnica", spec 0334), assigned to the IT

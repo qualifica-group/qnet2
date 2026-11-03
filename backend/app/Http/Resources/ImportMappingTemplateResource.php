@@ -25,6 +25,7 @@ class ImportMappingTemplateResource extends JsonResource
             'name' => $this->name,
             'columns' => $this->columns,
             'column_mapping' => $this->column_mapping,
+            'value_mappings' => $this->value_mappings,
             'dedup_strategy' => $this->dedup_strategy,
             'created_by' => [
                 'id' => $this->user->id,

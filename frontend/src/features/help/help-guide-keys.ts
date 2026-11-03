@@ -15,6 +15,7 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'campaigns',
   'leads',
   'imports',
+  'request-imports',
   'pipeline-statuses',
   'opportunities',
   'quote-workflows',

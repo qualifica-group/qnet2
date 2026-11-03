@@ -25,6 +25,7 @@ use Database\Seeders\QualificaCatalog\IsoMultiStandardProductCatalogue;
 use Database\Seeders\QualificaCatalog\IsoNamedStandardProductCatalogue;
 use Database\Seeders\QualificaCatalog\IsoProductCatalogue;
 use Database\Seeders\QualificaCatalog\IsoSubcategories;
+use Database\Seeders\QualificaCatalog\ProjectDesignProductCatalogue;
 use Database\Seeders\QualificaCatalog\SafetyProductCatalogue;
 use Database\Seeders\QualificaCatalog\SelfFundedCourseCatalogue;
 use Database\Seeders\QualificaCatalog\SoaCatalogue;
@@ -45,7 +46,7 @@ uses(RefreshDatabase::class);
  * directive 2026-10-01, the 90 e-Campus degree fees plus the 2 services
  * sold once for the whole branch (user directive 2026-10-08).
  */
-const TOTAL_SEEDED_PRODUCTS = 979; // REQUIREMENT CHANGED: +18 SOA and +127 Sicurezza products (2026-10-15), +33 Gare, +16 GDPR, +47 Finanza Agevolata, +2 Autofinanziato - Campania, +18 Istruzione and +1 Accreditamenti products (2026-10-20), +322 ISO products (2026-10-21).
+const TOTAL_SEEDED_PRODUCTS = 990; // REQUIREMENT CHANGED: +18 SOA and +127 Sicurezza products (2026-10-15), +33 Gare, +16 GDPR, +47 Finanza Agevolata, +2 Autofinanziato - Campania, +18 Istruzione and +1 Accreditamenti products (2026-10-20), +322 ISO products (2026-10-21), +11 Progettazione products (2026-11-03).
 
 /**
  * One scenario instead of one test per property: the catalogue seeder costs
@@ -100,6 +101,8 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
         'Orientamento specialistico',
         // The Consulenza leaf (user directive 2026-09-28).
         'Presa Appuntamenti',
+        // REQUIREMENT CHANGED: the Progettazione line (user directive 2026-11-03).
+        'Progettazione interna',
         // REQUIREMENT CHANGED: the SOA and Sicurezza targets, prefixed with
         // their branch (user directives 2026-10-15).
         'SOA - Consulenza', 'SOA - Ente',
@@ -358,7 +361,9 @@ it('provisions the whole reference catalogue correctly and idempotently', functi
             // REQUIREMENT CHANGED: the ISO list (user directive 2026-10-21).
             + array_sum(array_map(count(...), IsoProductCatalogue::PRODUCTS))
             + array_sum(array_map(count(...), IsoNamedStandardProductCatalogue::PRODUCTS))
-            + array_sum(array_map(count(...), IsoMultiStandardProductCatalogue::PRODUCTS)));
+            + array_sum(array_map(count(...), IsoMultiStandardProductCatalogue::PRODUCTS))
+            // REQUIREMENT CHANGED: the Progettazione list (user directive 2026-11-03).
+            + array_sum(array_map(count(...), ProjectDesignProductCatalogue::PRODUCTS)));
 });
 
 it('promotes "APL" out of "Consulenza" on an installation seeded while it hung there', function (): void {

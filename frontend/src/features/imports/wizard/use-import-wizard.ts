@@ -20,6 +20,7 @@ import type {
   ImportRunDetail,
   ImportRunStatus,
   ImportRunSummary,
+  ValueMappings,
 } from '@/features/imports/wizard/types'
 
 /** Interval (ms) between polls while the run is analyzing/staging/processing. */
@@ -233,7 +234,7 @@ export function useImportWizard({ domain, initialRunId, onRunCreated }: UseImpor
   })
 
   const confirmMutation = useMutation({
-    mutationFn: (payload: ConfirmImportPayload) => confirmImportRun(domain, runId as number, payload),
+    mutationFn: (payload?: ConfirmImportPayload) => confirmImportRun(domain, runId as number, payload),
     onSuccess: applyRunTransition,
     onError: resyncOnStaleState,
   })
@@ -268,9 +269,15 @@ export function useImportWizard({ domain, initialRunId, onRunCreated }: UseImpor
       strategy: string,
       globalConfig: ImportConfigFormValues,
       saveAsTemplate?: { name: string },
+      valueMappings?: ValueMappings,
     ) => {
       configureMutation.mutate(
-        { column_mapping: mapping, global_config: globalConfig, dedup_strategy: strategy },
+        {
+          column_mapping: mapping,
+          global_config: globalConfig,
+          dedup_strategy: strategy,
+          ...(valueMappings ? { value_mappings: valueMappings } : {}),
+        },
         {
           // Side-effect POST run AFTER configure already succeeded (spec 0035
           // constraint: never blocks/rolls back the wizard's advance, which

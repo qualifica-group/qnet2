@@ -119,7 +119,14 @@ class StageImportJob implements ShouldQueue
      */
     private function persistStagedRow(ImportRun $run, int $rowNumber, array $rawValues, StageOutcome $outcome): void
     {
+        // A recognizer that resolved the operator or the products (request
+        // import, spec 0348) seeds the row's own review columns with them, so
+        // the review grid shows them and the operator can still change them.
+        $resolved = $outcome->resolved ?? [];
+
         ImportRunRow::create([
+            'operator_id' => $resolved['operator_id'] ?? null,
+            'product_ids' => ($resolved['product_ids'] ?? []) === [] ? null : $resolved['product_ids'],
             'import_run_id' => $run->id,
             'row_number' => $rowNumber,
             'raw_values' => $rawValues,

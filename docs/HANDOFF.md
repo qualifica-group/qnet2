@@ -16,7 +16,7 @@
   `revenue-types`; `cost-types` accetta/restituisce `code`, `chart_account_id` (omessi = invariati). Permessi
   `chart-accounts.*`, `revenue-types.*` (`permission_only_resources`); menu Configurazione > Contabilita' > Piano dei conti.
 - Frontend `features/chart-of-accounts/` (albero, ricerca con antenati, Sheet per mastro/conto, sottoconto ricavo,
-  sottoconto costo = form ledger di `features/cost-types`), guide in-app `chart-of-accounts` IT/EN (HELP_GUIDE_KEYS 102).
+  sottoconto costo = form ledger di `features/cost-types`), guide in-app `chart-of-accounts` IT/EN (HELP_GUIDE_KEYS 103 dopo il merge con `request-imports`). ATTENZIONE: numero spec 0348 usato anche da `0348-request-management-import.xml` (collisione da risolvere).
 - Ambiente locale: dopo il pull servono `php artisan migrate` + `php artisan permissions:sync`.
 - Gate verifier: AC-001..AC-014 PASS, AC-015 (375px) da verificare a mano. Rossi NON della feature nella suite
   completa: 4 `ManagementControl/*AccessTest` + `ManagementControlPermissionTest` (nodo menu
@@ -26,6 +26,129 @@
 - Da fare: sezione "Piano dei conti" nel manuale Claude Docs.
   Prossime fasi: F2 sottoconto su prodotti e righe fattura attiva (snapshot, provvigioni Ente, backfill),
   F3 prospetto per mastro filtrabile per societa' (decisione utente 2026-11-03: piano unico di gruppo).
+
+## Assistente AI: interruttori env per finestra flottante e pagina — VERDE, COMMITTATO (2026-11-03, spec 0347 D-16)
+
+- Env backend `AI_ASSISTANT_FLOATING_ENABLED` / `AI_ASSISTANT_PAGE_ENABLED` (config `ai-assistant.floating_enabled`
+  / `page_enabled`), entrambe `false` di default. Esposte da `GET /api/ai-assistant/config` (`floating_enabled`,
+  `page_enabled`). Entrambe spente: middleware `EnsureAiAssistantEnabled` -> 404 envelope su tutte le rotte tranne
+  `/config` (permesso controllato prima: senza permesso resta 403).
+- Navigazione: nuova chiave opzionale `feature` (config key booleana) letta da `NavigationService::isAllowed`, tolta
+  dal payload; `navigation/ai-assistant.php` usa `ai-assistant.page_enabled`. Il permesso resta nel catalogo;
+  `NavigationCatalogue` (workspaces) NON filtra: la voce resta assegnabile ai workspace.
+- Frontend: launcher flottante solo con `floating_enabled`; link "Apri a pagina intera" solo con `page_enabled`;
+  pagina `/ai-assistant` con `page_enabled=false` mostra `aiAssistant.pageDisabled`.
+- Test: `tests/Feature/AiAssistant/Api/AiAssistantSurfacesTest.php` (AC-031..033); `aiapi_configure()` accende le due
+  superfici (REQUIREMENT CHANGED); FE `floating-ai-assistant.test.tsx` (launcher ora asincrono, REQUIREMENT CHANGED)
+  e `pages/ai-assistant-page.test.tsx` (AC-034).
+- Attenzione: il `.env` locale ha `AI_ASSISTANT_ACCEPTED_MIMES` senza PDF -> 4 test AiAssistant (AC-012, AC-014, AC-029)
+  rossi in locale, preesistenti e indipendenti da questa modifica.
+- Manuale: guide in-app `ai-assistant` IT/EN (sezione how-to-open) e Claude Docs (sottosezione "Assistente AI")
+  aggiornati; PDF derivato da rigenerare.
+
+## Fix: "recipient_role ha un valore duplicato" su offerte multi-riga — VERDE, COMMITTATO 6b86e915 (2026-11-03)
+
+- Causa: `distinct` di Laravel su `offer_lines.*.commissions.*.recipient_role` confronta TUTTE le righe insieme
+  (wildcard annidato), quindi un'offerta con piu' righe che pagano lo stesso ruolo (es. Segnalatore) dava 422.
+- Fix: `App\Quotes\QuoteLineCommissionRoleRule` (DataAwareRule) sostituisce `distinct` in `QuoteLineRules`:
+  unicita' del ruolo SOLO dentro la stessa riga (come l'unique DB `quote_line_id + recipient_role`), stesso
+  messaggio `validation.distinct`. Test: `tests/Feature/Quotes/QuoteCommissionRoleDistinctTest.php`.
+- Preesistenti, non legati: `QuoteDocumentPdfTest` (conversione PDF, ambiente) e `TableBulkDeleteTest` (last super-admin).
+- Manuale: nessun impatto.
+
+## Importa richieste (Develop): trattative Excel -> Gestione Richieste — VERDE sui test della feature, COMMITTATO (2026-11-03, spec 0348)
+
+- Dominio import `request-management` sul wizard generico (`/api/imports/request-management/...`), pagina
+  `/dev/request-imports` (Develop › Importa richieste), permesso `request-management.import` (gia' prodotto da
+  RequestManagementPolicy/BasePolicy). Ogni riga: Anagrafica (dedup come leads) + Opportunita' + Offerta via
+  `RequestCreationService` (nuovo `CreateRequestData::$workflowStatusId`); nessun Lead; notifiche spente con
+  `AssignmentNotifier::muted()` attorno a ogni persistRow.
+- Sede operativa (decisione utente 2026-11-03): globale FACOLTATIVA; ogni richiesta prende override di riga ??
+  sede principale dell'operatore (`RequestImportLookups::primarySiteIdOf`) ?? sede globale ?? sede dell'attore.
+- Segnalatore (decisione utente 2026-11-03): field `reporter_name` (alias "segnalatore") -> Referent `reporter_id` su
+  Opportunita'+Offerta. Esistente per nome normalizzato; inesistente o omonimi -> vuoto + avviso + nota.
+  I referenti NON vengono mai creati dall'import (decisione utente 2026-11-03, revoca della creazione).
+- Accesso (decisione utente 2026-11-03): `request-management.import` SOLO a super-admin e al ruolo `importatore-richieste`
+  (costanti in `QualificaCatalog/RequestImporterRoleCatalogue`, ruolo creato da QualificaRoleSeeder; tolto da
+  ALL_REQUESTS/OWN_REQUESTS e da `admin`). Assegnazione: `OperatorRoster::EXTRA_ROLES` (Rosa Falzarano, Fabrizio
+  Aliberti, in aggiunta a supervisore), applicata da QualificaOperatorSeeder e QualificaRoleResetSeeder. Nessun seeder
+  dedicato (decisione utente). Installazione live: `php artisan db:seed --class=QualificaRoleResetSeeder`. NON eseguito su dev.
+- Motore (T-01): `ImportDefinition` += valueMappingFields, attributeTargets, valueMappingPreview,
+  validateValueMappings, validateAttributeTargets, supportsOpportunityConversion (false qui: summary senza
+  `conversion_readiness`, confirm forza convert=false), defaultSourceFields/globalConfigDefaults (linea di
+  prodotto precompilata se la colonna categoria ha un solo valore). Endpoint `POST imports/{domain}/{run}/value-mapping`.
+  `import_runs.value_mappings` + `import_mapping_templates.value_mappings` (migrazione 2026_11_18_100000, APPLICATA
+  al DB dev con --path). Template: value_mappings fotografati dal run (solo voci {id}). `ImportRunPolicy` per dominio.
+- Dominio (T-03/T-04): `App\Imports\RequestManagementImportDefinition` + `App\Imports\RequestManagement\*`;
+  config `imports.request_management` (alias stati/fonti, callback_time 09:00, note_labels, stopword/noise
+  prodotti). Stati nuovi creati al primo persistRow via `WorkflowStatusWriter::appendCustom` (idempotenti).
+  Workflow risolto prima dell'offerta con una Quote transitoria + QuoteWorkflowResolver.
+- Frontend: pannello Valori (stati esistenti / crea nuovo stato / fonti), target `attribute.<code>` dagli
+  attributi efficaci contesto quote, testi wizard per dominio (`importWizard.domains.<resource>.*`), guida in-app
+  `request-imports` IT/EN; manuale Claude Docs: sezione "Importa richieste" dopo "Stato del sistema".
+- Prova reale sui 4 Excel utente (transazione annullata, DB invariato): 72/163/23/284 righe tutte create, 0 errori;
+  prodotti riconosciuti 82% Autofinanziato, 71% DIL (non risolti: make up 30/40 ore, "generica", Gare d'Appalto,
+  "???", OSA/ASACOM); 195/284 righe DIL senza cognome (avviso).
+- REQUIREMENT CHANGED: DevelopSectionTest (6 voci), ImportRegistryTest (2 domini), help-guide-keys.test.ts e
+  workspaces-help.test.ts (102 chiavi), vecchio test AC-008 (categoria "DIL - Lombardia").
+- Limiti noti: un'edit in revisione perde le note dei valori scartati di quella riga; stato/fonte non visibili
+  in revisione (applicati al commit); stati closed_*/validated richiedono una riga offerta; stati con
+  requires_note falliscono (note null).
+- Suite completa (gate finale): pint verde, tsc verde; backend 15 failed + 6 errors e frontend 11 unhandled
+  `toast.error is not a function` su file NON toccati dalla feature (PermissionCatalogue 677≠660, Migration/*,
+  AiAssistant/*, TableBulkDelete, QualificaRoleMatrix, SettlementApproval, QuoteDocumentPdf/LibreOffice,
+  ManagementControl/*): estranei per deduzione, non confrontati con HEAD. Unico rosso della feature
+  (workspaces-help 101→102) corretto.
+- Prossimo passo: applicare sull'installazione live QualificaRoleResetSeeder; import reale dei file dalla pagina; decidere se admin deve tenere l'import.
+- Nota: questo file e' ~980 KB, molto oltre i 50 KB: va archiviato in `docs/handoff-archive/` (fuori scope qui).
+
+## Segnalatori 2026 v2: commissioni per colonna e per prodotto 2°/3° anno, seeder convergente — VERDE, COMMITTATO (2026-11-03)
+
+- Sorgente: Excel utente "COM_- Segnalatori 2026_ (2).xlsx" (stesse righe del 30/10, piu' colonne). Catalogo
+  `QualificaCatalog\ReporterCommissionCatalogue` riscritto: `COLUMNS` (colonna -> `categories` | `year`+`within`-`except` |
+  `products` per categoria, `valid_from`/`note` propri) e 92 `REPORTERS` (`old_id` o anagrafica, `supervisor`, `contact`,
+  `rates`, `note`). `ReporterCommissionTargets` (colonne -> categorie/prodotti; `marksYear()` legge "2° Anno", "_II anno",
+  "_2 anno") e `ReporterCommissionRules` (sync delle regole di un segnalatore + `removeOrphans()`); seeder orchestratore.
+- Decisioni utente 2026-11-03: match sulla colonna NOME (per le righe con `old_id` vale l'abbinamento confermato il 30/10;
+  senza `old_id` nome normalizzato: maiuscole, accenti e ordine parole ignorati; piu' omonimi -> warning e salto);
+  "X 2/3 ANNO" = una regola PRODUCT su ogni prodotto 2°/3° anno del ramo (ISO esclude PDR 125/SA8000); SA8000:
+  sorveglianze 12-18 mesi = 2° anno, 24/30/33-35 = 3°, 6 mesi resta sulla categoria; AVV/GAR = categoria "Gare" con
+  `valid_from` 2027-01-01 e riga nelle note; PAL applicata come APL (stesso valore ovunque); note del referente =
+  Supervisore commerciale + Referente + NOTE + AVV/GAR; tipo "Segnalatore" solo se il referente non ne ha uno.
+- Seeder = fonte di verita' per quei segnalatori (REQUIREMENT CHANGED: il rilancio ripristina i valori del catalogo, prima
+  lasciava le regole modificate da UI). Rimuove solo regole col prefisso "Segnalatore - " non piu' in catalogo e quelle
+  orfane di referenti cancellati; una regola gia' applicata a righe d'offerta viene sospesa (FK restrict). Regole fatte a
+  mano con altro nome restano. Lanciabile da solo: `php artisan db:seed --class=QualificaReporterCommissionSeeder`.
+- Prova a secco sul DB dev (transazione annullata): +23 referenti (i 23 creati il 30/10 erano stati cancellati da UI
+  dall'utente #3 alle 15:42, le loro regole erano rimaste orfane), 17.728 create / 186 aggiornate / 144 rimosse,
+  18.215 regole totali; secondo giro 0/0/0. Riga 95 del vecchio file (Giuseppe Ciocci, old_id 19473) non e' piu'
+  nell'Excel: le sue 7 regole restano intatte. NON eseguito davvero sul DB dev (serve ok esplicito).
+- Test: `ReporterCommissionSeederTest` 17/17, `tests/Feature/CommissionConfigurations` 66/66, Seeding production/sample
+  5/5; Pint ok. Manuale: nessun impatto (solo dati).
+- Fuori scope, da segnalare: cancellare un referente lascia le sue regole commissione personali orfane (recipient
+  polimorfico senza FK).
+
+## Catalogo: ramo "Progettazione" + seeder per la produzione — VERDE, COMMITTATO 916b8787 (2026-11-03)
+
+- Sorgente: Excel utente "Funzione Aziendale_ Progettazione". `QualificaCatalog\ProjectDesignCatalogue` (radice
+  "Progettazione", contenitore, funzione "Progettazione" dell'organigramma, regole e tipologia Consulenza, nessun campo
+  flessibile, stati di lavorazione di default) con l'unica linea selezionabile "Progettazione interna" e i suoi 11
+  prodotti, "Progettazione APL" compreso (Excel rivisto dall'utente: niente sottocategoria APL).
+  `ProjectDesignProductCatalogue`: prezzo 0, aliquota `EXEMPT_VAT_RATE` "Esente IVA" 0% (creata per nome se manca,
+  decisione utente: non "Nessuna"; "Progettazione APL" non la indica e prende quella delle altre), codice "PRD-" generato.
+- Agganciato al seed completo: `BranchCatalogues`, `CatalogRootRules`, `QualificaBusinessFunctionLinkSeeder`,
+  `CatalogProducts::seedProjectDesignProducts()` (pubblico).
+- Seeder per l'installazione gia' in produzione: `php artisan db:seed --class=QualificaProjectDesignCatalogSeeder`
+  (NON nella catena di `QualificaProductionDataSeeder`). Tocca solo il ramo: categorie create se mancano e mai
+  spostate/riallineate, link funzione solo se lo slot e' libero (`QualificaBusinessFunctionLinkSeeder` accetta
+  `categoryNames`), regole solo su questa radice (`CatalogRootRules::applyToRoot()`), prodotti create-or-fill-blanks
+  (`BranchProducts`). Nome di categoria del ramo trovato altrove nell'albero -> `RuntimeException` e rollback.
+  Verificato sul DB dev reale in transazione annullata: +11 prodotti al primo giro, 0 al secondo.
+- Test: `QualificaProjectDesignCatalogueTest` (3). REQUIREMENT CHANGED su conteggi/elenchi: `QualificaCatalogSeederTest`
+  (990 prodotti, linee selezionabili), `QualificaProductionDataSeederTest` (1000), `QualificaBusinessFunctionLinkSeederTest`.
+- Aperti (non implementati, da Excel): team commessa "Agus, De Gennaro" vs organigramma "Agus, Pagliara"; layout
+  preventivo "Qualifica group srl" non associato. `CatalogProducts.php` a 304 righe (soft limit).
+- Manuale: nessun impatto (dati di catalogo).
 
 ## Assistente AI (porting chat Q-TASK, spec 0347) — VERDE, COMMITTATO b29495c7 (2026-11-03)
 

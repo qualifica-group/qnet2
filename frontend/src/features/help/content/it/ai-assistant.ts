@@ -34,7 +34,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'warning',
-          text: 'Il pulsante e la pagina compaiono solo se il tuo ruolo ha il permesso di usare l\'assistente. Se l\'assistente non è ancora stato configurato dall\'amministratore, la chat mostra **Assistente non configurato** e non permette di scrivere.',
+          text: 'Il pulsante e la pagina compaiono solo se il tuo ruolo ha il permesso di usare l\'assistente e se l\'amministratore li ha attivati per la tua installazione: la finestra di chat e la pagina si attivano separatamente e di partenza sono spente. Se la pagina non è attiva, la voce di menu non compare e nella finestra manca **Apri a pagina intera**. Se l\'assistente non è ancora stato configurato dall\'amministratore, la chat mostra **Assistente non configurato** e non permette di scrivere.',
         },
       ],
     },

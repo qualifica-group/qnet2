@@ -8,7 +8,8 @@ namespace Database\Seeders\QualificaCatalog;
  * (user directive 2026-10-15, its Commessa set in QualificaBranchWorkOrderSeeder),
  * "Sicurezza" (2026-10-15), "Gare", "GDPR", "Finanza Agevolata" and
  * "Istruzione" (2026-10-20), "Accreditamenti" (2026-10-20), "ISO" (2026-10-21,
- * its Commessa set in QualificaBranchWorkOrderSeeder too). Split out of
+ * its Commessa set in QualificaBranchWorkOrderSeeder too), "Progettazione"
+ * (2026-11-03). Split out of
  * QualificaCatalogSeeder (which reached its size limit, engineering.md §6):
  * the seeder reads the tree and the targets from here, in this order, which
  * is the order the roots are created in.
@@ -32,6 +33,7 @@ final class BranchCatalogues
         EducationCatalogue::ROOT => EducationCatalogue::SUBCATEGORIES,
         AccreditationCatalogue::ROOT => AccreditationCatalogue::SUBCATEGORIES,
         IsoCatalogue::ROOT => IsoSubcategories::SUBCATEGORIES,
+        ProjectDesignCatalogue::ROOT => ProjectDesignCatalogue::SUBCATEGORIES,
     ];
 
     /**
@@ -48,5 +50,6 @@ final class BranchCatalogues
         ...EducationCatalogue::TARGET_CATEGORIES,
         ...AccreditationCatalogue::TARGET_CATEGORIES,
         ...IsoSubcategories::TARGET_CATEGORIES,
+        ...ProjectDesignCatalogue::TARGET_CATEGORIES,
     ];
 }

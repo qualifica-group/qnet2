@@ -43,7 +43,11 @@
       solo sottoinsieme dei 4 tipi supportati, mai tipi nuovi) e max_files=0 o lista vuota disattiva gli
       allegati (pulsante nascosto, `files` prohibited). I modelli che ragionano mandano
       `reasoning_content`: mai inoltrato al browser; una risposta senza testo (budget speso a ragionare)
-      e' un errore come in D-13.</item>
+      e' un errore come in D-13; D-16 (richiesta utente 2026-11-03) finestra flottante e pagina si
+      accendono separatamente da env (AI_ASSISTANT_FLOATING_ENABLED, AI_ASSISTANT_PAGE_ENABLED), entrambe
+      spente di default; con entrambe spente tutti gli endpoint tranne /config rispondono 404 envelope
+      (middleware EnsureAiAssistantEnabled, dopo il controllo del permesso); con la pagina spenta la voce
+      di menu e' nascosta (chiave di navigazione opzionale `feature`) ma il permesso resta nel catalogo.</item>
     <item>Envelope `{ success, message, data }` via BaseApiController::ok()/created(); liste paginate
       via paginatedResponse() (`{ items, pagination }`, ADR 0011 shape). Policy su BasePolicy, permessi
       `{resource}.{ability}` (es. `companies.view`). Permessi raccolti da `permissions:sync` dal config
@@ -107,6 +111,8 @@
     </shared_types>
 
     <config_keys file="backend/config/ai-assistant.php">
+      floating_enabled (AI_ASSISTANT_FLOATING_ENABLED, default false), page_enabled
+      (AI_ASSISTANT_PAGE_ENABLED, default false) (D-16),
       driver (AI_ASSISTANT_DRIVER: openai|anthropic|null; null = non configurato),
       openai.base_url (AI_ASSISTANT_OPENAI_BASE_URL, default https://api.openai.com/v1),
       openai.api_key (AI_ASSISTANT_OPENAI_API_KEY, puo' essere vuota per LM Studio),
@@ -123,7 +129,8 @@
     <endpoint method="GET" path="/api/ai-assistant/config">
       <request>nessun parametro</request>
       <response status="200">
-        data: { "configured": bool, "driver": "openai"|"anthropic"|null, "model": string|null,
+        data: { "floating_enabled": bool, "page_enabled": bool,
+          "configured": bool, "driver": "openai"|"anthropic"|null, "model": string|null,
           "limits": { "max_message_chars": int, "guide_max_chars": int, "max_mentions": int,
             "max_files": int, "max_file_size_kb": int, "accepted_mimes": string[] },
           "mention_modules": AiMentionModule[] }
@@ -224,6 +231,10 @@
     <criterion id="AC-028">Guida in-app `ai-assistant` IT/EN con stessi id di sezione (help-content-parity verde), chiave in HELP_GUIDE_KEYS; parita' i18n del namespace `ai-assistant` verde.</criterion>
     <criterion id="AC-029">LLM locale (D-15): AI_ASSISTANT_ACCEPTED_MIMES restringe i tipi ma non aggiunge tipi non supportati; un tipo escluso o un file con lista vuota danno 422 senza chiamare il provider; GET config espone la lista ristretta; senza api_key il driver openai e' configurato e non manda Authorization; con max_files=0 o accepted_mimes vuoto il composer non mostra il pulsante allegati.</criterion>
     <criterion id="AC-030">Modelli che ragionano (D-15): `reasoning_content` non viene mai emesso come delta ne' salvato; uno stream completato senza testo emette `error` e rimuove messaggio utente e file (come AC-014).</criterion>
+    <criterion id="AC-031">Superfici (D-16): floating_enabled e page_enabled valgono false senza env; GET config li espone cosi' come sono configurati.</criterion>
+    <criterion id="AC-032">Con entrambe le superfici spente ogni endpoint /api/ai-assistant/* tranne /config risponde 404 `{ success: false }` e non scrive nulla; con una sola accesa l'API funziona; senza permesso resta 403.</criterion>
+    <criterion id="AC-033">La voce di menu "Assistente AI" compare solo con page_enabled; `ai-assistant.use` resta nel catalogo permessi; la chiave `feature` non esce nel payload di navigazione.</criterion>
+    <criterion id="AC-034">(FE) Con floating_enabled=false il pulsante flottante non compare; con page_enabled=false la finestra non mostra "Apri a pagina intera" e la pagina /ai-assistant mostra l'avviso "non attiva" senza chat.</criterion>
   </acceptance_criteria>
 
   <internal_contract>
