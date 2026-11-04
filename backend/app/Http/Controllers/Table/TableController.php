@@ -18,11 +18,11 @@ use App\Services\TableFilterStateService;
 use App\Services\TablePreferenceService;
 use App\Services\TableService;
 use App\Support\Cache\AggregateCache;
+use App\Tables\CategoryTabs\AttributeColumnsScopable;
 use App\Tables\ProductCategoryScopable;
 use App\Tables\Quotes\OpportunityScopedTableDefinition;
 use App\Tables\ReferentScopable;
 use App\Tables\RegistryScopable;
-use App\Tables\RequestManagement\RequestManagementScopedTableDefinition;
 use App\Tables\TableDefinition;
 use App\Tables\TableRegistry;
 use App\Tables\WorkOrders\QuoteScopedTableDefinition;
@@ -402,14 +402,14 @@ class TableController extends BaseApiController
 
     /**
      * Spec 0064, D-4 (restored with the `attr.*` columns, user directive
-     * 2026-08-31): widens a `RequestManagementScopedTableDefinition`'s SSRM
+     * 2026-08-31): widens an `AttributeColumnsScopable` definition's SSRM
      * allow-lists to the union of every category's `attr.*` columns, so
      * saving filter preferences from any tab never 422s. A no-op for every
      * other domain.
      */
     private function scopeToAllProductCategories(TableDefinition $definition): void
     {
-        if ($definition instanceof RequestManagementScopedTableDefinition) {
+        if ($definition instanceof AttributeColumnsScopable) {
             $definition->scopeToAllProductCategories();
         }
     }

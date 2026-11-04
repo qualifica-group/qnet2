@@ -26,6 +26,7 @@ function baseValues(overrides: Record<string, unknown> = {}) {
     code: 'QUO-0001',
     title: 'Offerta cliente Acme',
     quote_date: '2026-03-15',
+    follow_up_date: null,
     opportunity_id: 1,
     quote_workflow_status_id: null,
     note: null,
@@ -101,6 +102,12 @@ describe('buildCreateQuoteSchema', () => {
     const schema = buildCreateQuoteSchema(i18n.t)
     const result = schema.safeParse(baseValues({ quote_date: '' }))
     expect(result.success).toBe(false)
+  })
+
+  it('accepts the follow-up date empty or set (spec 0349)', () => {
+    const schema = buildCreateQuoteSchema(i18n.t)
+    expect(schema.safeParse(baseValues({ follow_up_date: null })).success).toBe(true)
+    expect(schema.safeParse(baseValues({ follow_up_date: '2026-12-01' })).success).toBe(true)
   })
 
   it('rejects a code over 32 characters', () => {

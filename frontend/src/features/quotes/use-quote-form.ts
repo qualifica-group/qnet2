@@ -27,6 +27,7 @@ const SERVER_ERROR_FIELDS = [
   'code',
   'title',
   'quote_date',
+  'follow_up_date',
   'opportunity_id',
   'quote_workflow_status_id',
   'note',

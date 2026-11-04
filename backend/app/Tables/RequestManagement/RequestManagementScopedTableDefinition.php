@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Products\ProductCategoryBranches;
 use App\Services\ProductCategoryService;
 use App\Services\RequestManagement\RequestManagementService;
+use App\Tables\CategoryTabs\AttributeColumnsScopable;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
 use App\Tables\ProductCategoryScopable;
 use App\Tables\RequestManagement\Concerns\WritesAttributeCells;
@@ -71,7 +72,7 @@ use Illuminate\Support\Collection;
  * existing caller of the `request-management` domain is byte-identical to
  * today.
  */
-class RequestManagementScopedTableDefinition implements ProductCategoryScopable, TableDefinition
+class RequestManagementScopedTableDefinition implements AttributeColumnsScopable, ProductCategoryScopable, TableDefinition
 {
     use DelegatesUnaugmentedTableMethods, WritesAttributeCells {
         // Both traits declare editableColumnIds()/updateCell(): the

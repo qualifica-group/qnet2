@@ -60,6 +60,7 @@ function quoteFixture(overrides: Partial<QuoteDetailWithPermissions> = {}): Quot
     code: 'QUO-0009',
     title: 'Sample quote',
     quote_date: '2026-03-15',
+    follow_up_date: null,
     opportunity_id: 55,
     opportunity: { id: 55, name: 'OPP_55' },
     quote_workflow_status_id: 1,

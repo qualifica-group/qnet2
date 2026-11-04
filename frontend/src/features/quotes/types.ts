@@ -138,6 +138,8 @@ export interface QuoteDetail {
   title: string
   /** Spec 0228: the offer's own date, `Y-m-d`, always set. */
   quote_date: string
+  /** Spec 0349 "Data ricontatto": `Y-m-d`, optional. */
+  follow_up_date: string | null
   opportunity_id: number
   opportunity: QuoteRelationRef
   /**
@@ -271,6 +273,8 @@ export interface CreateQuotePayload {
   title?: string | null
   /** Spec 0228: omitted = today server-side; never `null`. */
   quote_date?: string
+  /** Spec 0349: `null` = no date (and clears it on update). */
+  follow_up_date?: string | null
   opportunity_id: number
   /** Omitted on create: the backend assigns the `open` row of the set it resolves (AC-020). */
   quote_workflow_status_id?: number | null

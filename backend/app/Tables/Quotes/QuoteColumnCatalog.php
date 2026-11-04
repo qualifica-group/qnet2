@@ -39,7 +39,8 @@ use App\Tables\Shared\RootCategoriesColumn;
  *
  * Spec 0206: every column the form edits as a single field is
  * inline-editable through QuoteCellWriter (UpdateQuoteRequest +
- * QuoteService); `code`, `opportunity`, the aggregates, `created_at`,
+ * QuoteService), `follow_up_date` included (spec 0349); `code`,
+ * `opportunity`, the aggregates, `created_at`,
  * `next_callback_at` and `alert` stay read-only. `managers` is edited as a
  * list of people, mapped onto the positional `manager_slots`.
  */
@@ -172,6 +173,19 @@ final class QuoteColumnCatalog
                 'sortable' => true,
                 'filterable' => true,
                 'filterType' => 'date',
+            ],
+            // "Data ricontatto" (spec 0349): a real, editable `quotes` column,
+            // appended after the existing ones for the same layout reason.
+            [
+                'id' => 'follow_up_date',
+                'label' => 'quotes.columns.followUpDate',
+                'type' => 'date',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'date',
+                'editable' => true,
+                'nullable' => true,
             ],
             // Appended LAST for the same reason (spec 0001, AC-035): `alert`
             // arrived after every other column here.

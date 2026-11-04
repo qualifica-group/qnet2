@@ -32,6 +32,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
+          text: "Whoever is **added** as **Supervisor** or **Participant**, when the work order is created or later (from the list too), receives a **notification** in the bell and by email with the link to the work order. People already on it, a Participant who only changes position and anyone removed receive nothing; nobody is notified of their own changes. Someone who is both Supervisor and Participant receives one notification per role.",
+        },
+        {
+          type: 'note',
           text: 'A field without a pencil cannot be edited by you: your role makes it read-only, or it is chosen only at creation (Work order no., Linked offer, Task template). Contract (code and title) and the sections taken from the quote come from the offer, as does the Contract expiry shown among the indicators at the top (edited on the contract); Status and Progress come from the progress records (see the dedicated section).',
         },
         {
@@ -73,6 +77,10 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. Turn it off to go back to all the categories.",
+        },
+        {
+          type: 'paragraph',
+          text: "When you choose a category tab (not **All** and not a **Parent categories** tab), the columns of that category's flexible fields of the **work order** (not those of the quote) appear at the end of the list. You can filter and sort them. If you have permission to edit them, you change them right in the cell. Table-type fields can only be edited from the detail.",
         },
         {
           type: 'note',

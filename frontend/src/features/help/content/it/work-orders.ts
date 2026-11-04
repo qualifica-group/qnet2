@@ -32,6 +32,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
+          text: "Chi viene **aggiunto** come **Responsabile** o **Partecipante**, alla creazione della commessa o dopo (anche dall'elenco), riceve una **notifica** nella campanella e per email con il link alla commessa. Chi c'era già, chi cambia solo posizione tra i Partecipanti e chi viene tolto non riceve nulla; nessuno riceve notifiche per le modifiche che fa lui stesso. Chi è sia Responsabile sia Partecipante riceve una notifica per ciascun ruolo.",
+        },
+        {
+          type: 'note',
           text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Commessa n., Offerta collegata, Modello di Task). Contratto (codice e titolo) e le sezioni prese dall\'offerta derivano dall\'offerta, come la Scadenza contratto mostrata tra gli indicatori in alto (si modifica sul contratto); Stato e Avanzamento derivano dalle registrazioni di avanzamento (vedi la sezione dedicata).',
         },
         {
@@ -73,6 +77,10 @@ const guide: HelpGuide = {
         {
           type: 'paragraph',
           text: "Nel menu **Altre** l'interruttore **Categorie madri** limita la barra alle sole categorie di primo livello: la tab di una categoria madre raccoglie anche le sottocategorie (un record conta una volta sola). La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria tab e le **preferite** sono separate tra le due modalità. Spegnendolo torni a tutte le categorie.",
+        },
+        {
+          type: 'paragraph',
+          text: "Scegliendo la tab di una categoria (non **Tutte** e non una tab di **Categorie madri**), in fondo all'elenco compaiono le colonne dei campi flessibili della **commessa** di quella categoria (non quelli dell'offerta). Puoi filtrarle e ordinarle. Se hai il permesso di modificarle, le cambi direttamente nella cella. I campi di tipo tabella si modificano solo dal dettaglio.",
         },
         {
           type: 'note',

@@ -62,6 +62,56 @@
   fatal con memory_limit 512M; Pint sull'intero progetto crasha (`NameQualifiedTransformer`). Frontend: 11 unhandled
   `toast.error is not a function` in job-activities/vat-rates test.
 
+## Campi flessibili per tab categoria su Offerte, Commesse, Contratti (spec 0350) — VERDE, COMMITTATO (2026-11-04)
+
+- Richiesta utente: "commesse, contratti e offerte come gestione richieste: in base alla categoria escono i campi
+  flessibili; per commessa quelli della commessa". Decisioni utente 2026-11-04: Offerte = contesto Quote su
+  `quotes.attribute_values`, modificabili in cella; Commesse = contesto WorkOrder su `work_orders.attribute_values`,
+  modificabili in cella; Contratti = campi dell'offerta di origine (`contracts.quote_id`), SOLA LETTURA ma
+  filtrabili/ordinabili. Tab "Tutte" e "Categorie madri": nessuna `attr.*`. Supera "niente attr.*" della 0335.
+- Backend (nessuna migrazione, nessun endpoint nuovo, nessuna modifica frontend): `Tables\CategoryTabs\AttributeGridTarget`
+  (colonna JSON + `AttributeContext` + model del gate; `quote()`, `workOrder()`), interfaccia
+  `Tables\CategoryTabs\AttributeColumnsScopable` (`scopeToAllProductCategories()`, sostituisce gli `instanceof
+  RequestManagementScopedTableDefinition` in `TableController`/`TableFilterStateRequest`), trait di lettura
+  `Tables\CategoryTabs\Concerns\AppendsCategoryAttributeColumns` (3 griglie) e di scrittura `WritesCategoryAttributeCells`
+  (quotes/work-orders: CellWriter del modulo con `attribute_values => [code => value]`, poi remap col resolver del record).
+  `AttributeGridColumns::forTarget()`, `AttributeScopeResolver::forContext()` (memo per contesto); Gestione Richieste invariata.
+  Contratti: filtro `whereIn(contracts.quote_id, sottoquery quotes)`, sort con join alias `contract_quote_attrs` solo se
+  si ordina per `attr.*` + `select('contracts.*')`, distinti dalle offerte dei contratti visibili; PATCH `attr.*` -> 422.
+- Attenzione: le commesse risolvono gli attributi dalle righe offerta collegate (`quoteLines`), non da `quote_id`: una
+  commessa senza righe non ha attributi applicabili (scrittura 422), coerente col form.
+- Test: `tests/Feature/CategoryTabs/{Quote,WorkOrder,Contract}CategoryAttributeColumnsTest.php`, helper
+  `tests/Helpers/CategoryTabAttributeHelpers.php`. Verifier: AC-001..AC-011 PASS; Pest CategoryTabs 108/109 (unico rosso
+  `WorkOrderCategoryTabsTest` AC-024, flaky preesistente: fallisce 1/3 anche da solo, ordine chiavi senza ORDER BY in
+  `GridCategoryTabsResolver`, commit beb6a426, non toccato); CategoryTabs+RequestManagement 978/978 prima dei test di
+  copertura aggiunti; suite completa backend 13596/13619 con 22 rossi estranei (PDF/LibreOffice, bulk delete, ManagementControl,
+  Migration, piu' AiAssistant*, SettlementApproval, PermissionCatalogueEndpoint, QualificaOperatorSeeder: non toccano il
+  codice cambiato, preesistenza non provata); Vitest 9818/9818, `tsc -b` 0, ESLint help ok, Pint ok.
+- Manuale: guide in-app IT/EN `quotes|work-orders|contracts#category-tabs`; manuale Claude Docs: paragrafi "Campi
+  flessibili nella tab" in Offerte e Contratti + tabella contesti attributi. Commesse nel manuale resta "in sviluppo"
+  (nessun paragrafo). PDF da rigenerare.
+- Follow-up segnalati (fuori scope): portare `RequestManagementScopedTableDefinition` sul trait condiviso e spostare le
+  classi `attr.*` fuori da `Tables\RequestManagement`; fix del flaky AC-024 (ORDER BY stabile).
+
+## Notifica di inserimento nel team della Commessa (spec 0351) — VERDE, COMMITTATO (2026-11-04)
+
+- Richiesta utente: notificare chi viene aggiunto a una commessa come Responsabile o Partecipante. Riusa
+  `RecordAssignmentNotification` (database + mail, in coda) con target `WorkOrder` e ruoli nuovi
+  `AssignmentRoleEnum::WorkOrderSupervisor` / `Participant`; dispatch da `AssignmentNotifier::notifyWorkOrder()`
+  (muto, esclude l'attore, afterCommit, una notifica per ruolo). `notify()` invariato; helper `recipients()` -> `usersById()`.
+- `WorkOrderService::create()` (Step 6) e `update()` passano gli `attached` di `supervisors()->sync()` e
+  `PositionalPivotSync::sync()`: solo i nuovi entrati, mai i cambi di slot o le rimozioni. Copre POST/PATCH, cella
+  griglia, Programma e commessa unica. `WorkOrdersSource` chiama il service sotto `AssignmentNotifier::muted()`.
+- `RecordDetails`: etichetta "COM-xxxx - titolo", scheda email titolo/cliente/stato/data inizio/Responsabili/Partecipanti
+  (chiavi `notifications.fields.start_date|supervisors|participants`). Testi IT in `lang/it.json`; in EN il
+  Responsabile si chiama "Supervisor" come nella UI.
+- Test: `tests/Feature/Notifications/WorkOrderAssignmentNotificationTest.php` (6, AC-001..005, 007); AC-006 gia' in
+  `WorkOrdersSourceImportTest` (`assertNothingSent`). Verdi: Notifications, WorkOrders, Contracts, RequestManagement,
+  Imports, Registries, Migration WorkOrder*. In Quotes falliscono solo i 3 test PDF (LibreOffice assente in locale);
+  `DemoOpportunitySeederTest` instabile in parallelo (passa da solo 3/3), non legati.
+- Guida in-app `work-orders#editing-a-work-order` IT/EN (nota notifiche); manuale Claude Docs rev 576 (paragrafo
+  "Notifiche." dopo la visibilita' delle Commesse). Suite completa non eseguita.
+
 ## Piano dei conti gestionale, fase 1 (spec 0348) — VERDE, COMMITTATO 1b8ed70c + fix test guide (2026-11-03)
 
 - Spec `docs/specs/0348-chart-of-accounts.xml` (D-1..D-14, AC-001..AC-015). Piano gestionale a 3 livelli, nessuna
@@ -85,6 +135,26 @@
 - Da fare: sezione "Piano dei conti" nel manuale Claude Docs.
   Prossime fasi: F2 sottoconto su prodotti e righe fattura attiva (snapshot, provvigioni Ente, backfill),
   F3 prospetto per mastro filtrabile per societa' (decisione utente 2026-11-03: piano unico di gruppo).
+
+## Offerte: "Data ricontatto" (`quotes.follow_up_date`) — VERDE, COMMITTATO (2026-11-04, spec 0349)
+
+- Data facoltativa (`date`, `Y-m-d`) sull'Offerta, nessun promemoria; nome generico per decisione utente (non
+  "backoffice"). Distinta da "Prossimo richiamo" (`next_callback_at`, scritto solo da Gestione Richieste) e dalla
+  "Data richiamo" delle Commesse (`work_orders.callback_date`).
+- Backend: migrazione `2026_11_19_100000_add_follow_up_date_to_quotes_table` (indice); Quote #[Fillable] + cast `date`
+  (entra nel log automatico); Store/UpdateQuoteRequest `nullable|date_format:Y-m-d`; Create/UpdateQuoteData
+  (`followUpDate`, `followUpDateSubmitted`); QuoteResource; QuotesAuthorization (editabile se si scrive l'offerta);
+  QuoteColumnCatalog colonna `follow_up_date` editabile dopo `next_callback_at`, prima di `alert`; mapRow.
+- Frontend: tipo, schema Zod (`nullable`), default, payload (update solo se cambiata, `null` se svuotata),
+  `QuoteFollowUpDateField` + riga in "Dati offerta" (`quote-record-identity.tsx`), `DateCell` in griglia, i18n
+  `quotes.columns.followUpDate` / `quotes.form.followUpDate` e activity-log `follow_up_date`. Aggiunta in
+  `quotes/column-renderers.tsx` la direttiva `react-refresh/only-export-components` del file gemello di Opportunita'
+  (errore ESLint preesistente su HEAD).
+- Test: `tests/Feature/Quotes/QuoteFollowUpDateTest.php` (AC-001..006); enumerazioni aggiornate (REQUIREMENT CHANGED)
+  in QuoteAuthorizationTest, QuoteGridInlineEditTest, QuoteTableTest; Vitest payload/schema/inline-edit; fixture FE con
+  `follow_up_date: null`. Rosso preesistente: QuoteDocumentPdfTest (LibreOffice assente).
+- Da fare in locale: `php artisan migrate` (non eseguito). Manuale: guida `quotes` IT/EN e Claude Docs (Offerte,
+  dopo "Data offerta") aggiornati; PDF derivato da rigenerare.
 
 ## Assistente AI: interruttori env per finestra flottante e pagina — VERDE, COMMITTATO (2026-11-03, spec 0347 D-16)
 

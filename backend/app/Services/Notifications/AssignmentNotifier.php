@@ -8,6 +8,7 @@ use App\Enums\AssignmentRoleEnum;
 use App\Enums\AssignmentTargetEnum;
 use App\Models\Quote;
 use App\Models\User;
+use App\Models\WorkOrder;
 use App\Notifications\RecordAssignmentNotification;
 use App\Support\Notifications\RecordDetails;
 use Closure;
@@ -18,7 +19,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * The ONE place that turns "these people were just put in charge of this
  * record" into notifications (spec 0081). Shared by RegistryService,
- * OpportunityService and the request-management writers so the exclusion
+ * OpportunityService, QuoteService, WorkOrderService (spec 0351) and the
+ * request-management writers so the exclusion
  * rules, the after-commit timing and the recipient query exist once instead
  * of once per module.
  *
@@ -118,7 +120,7 @@ final class AssignmentNotifier
                 }
             }
 
-            $recipients = $this->recipients($supervisorId, $managerPositions);
+            $recipients = $this->usersById([...array_keys($managerPositions), ...($supervisorId === null ? [] : [$supervisorId])]);
 
             if ($supervisorId !== null) {
                 $recipients->get($supervisorId)?->notify(new RecordAssignmentNotification(
@@ -147,6 +149,61 @@ final class AssignmentNotifier
     }
 
     /**
+     * Spec 0351: the Responsabili and Partecipanti just ADDED to a Commessa.
+     * A Commessa has MANY Responsabili and its Partecipanti slot number is
+     * not part of the message, hence plain id lists instead of notify()'s
+     * single supervisor and position map. Same muting, actor exclusion and
+     * after-commit timing as notify().
+     *
+     * @param  array<int, int>  $supervisorIds  users newly in `work_order_supervisor`
+     * @param  array<int, int>  $participantIds  users newly in `work_order_participant`
+     */
+    public function notifyWorkOrder(WorkOrder $workOrder, ?User $actor, array $supervisorIds, array $participantIds): void
+    {
+        if (self::$muted) {
+            return;
+        }
+
+        // Step 1: drop the actor from both roles.
+        $excluded = $actor === null ? [] : [$actor->id];
+        $supervisorIds = array_values(array_diff(array_unique($supervisorIds), $excluded));
+        $participantIds = array_values(array_diff(array_unique($participantIds), $excluded));
+
+        if ($supervisorIds === [] && $participantIds === []) {
+            return;
+        }
+
+        // Step 2: resolve every fact once, before dispatch.
+        $recordId = (int) $workOrder->getKey();
+        $recordLabel = RecordDetails::labelFor($workOrder);
+        $details = RecordDetails::for($workOrder);
+        $actorName = $actor?->name ?? __('The system');
+
+        // Step 3: one notification per role (D-4), only once the write is durable.
+        DB::afterCommit(function () use ($recordId, $recordLabel, $details, $actorName, $supervisorIds, $participantIds): void {
+            $recipients = $this->usersById([...$supervisorIds, ...$participantIds]);
+            $assignments = [
+                [AssignmentRoleEnum::WorkOrderSupervisor, $supervisorIds],
+                [AssignmentRoleEnum::Participant, $participantIds],
+            ];
+
+            foreach ($assignments as [$role, $userIds]) {
+                foreach ($userIds as $userId) {
+                    $recipients->get($userId)?->notify(new RecordAssignmentNotification(
+                        target: AssignmentTargetEnum::WorkOrder,
+                        role: $role,
+                        recordId: $recordId,
+                        recordLabel: $recordLabel,
+                        position: null,
+                        actorName: $actorName,
+                        details: $details,
+                    ));
+                }
+            }
+        });
+    }
+
+    /**
      * @return array<int, int> the Gestori Account of every Offerta of the Opportunity
      */
     private function offerManagerIds(int $opportunityId): array
@@ -163,17 +220,11 @@ final class AssignmentNotifier
      * Every recipient of this write in ONE query, keyed by id — a deleted or
      * unknown id simply resolves to null at send time instead of throwing.
      *
-     * @param  array<int, int>  $managerPositions
+     * @param  array<int, int>  $ids
      * @return Collection<int, User>
      */
-    private function recipients(?int $supervisorId, array $managerPositions): Collection
+    private function usersById(array $ids): Collection
     {
-        $ids = array_keys($managerPositions);
-
-        if ($supervisorId !== null) {
-            $ids[] = $supervisorId;
-        }
-
         return User::query()
             ->whereIn('id', array_values(array_unique($ids)))
             ->get()

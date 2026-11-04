@@ -29,8 +29,8 @@ const guide: HelpGuide = {
           rows: [
             [
               'Dati offerta',
-              '**Codice**, **Titolo**, **Data offerta**, **Opportunità**',
-              "La data offerta è proposta con la data di oggi. L'opportunità non si cambia dopo la creazione.",
+              '**Codice**, **Titolo**, **Data offerta**, **Data ricontatto**, **Opportunità**',
+              "La data offerta è proposta con la data di oggi. La data ricontatto è facoltativa. L'opportunità non si cambia dopo la creazione.",
             ],
             ['Contesto', '**Fonte**', "Campo dell'offerta: precompilata con la Fonte del lead se l'opportunità ne ha uno, altrimenti vuota; puoi sceglierla o cambiarla."],
             ['Anagrafica e contatti', '**Commerciale**, **Segnalatore** (con i suoi **Buoni**)', "Precompilati dall'opportunità."],
@@ -55,6 +55,10 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: "La **Data offerta** è obbligatoria e si può cambiare anche dal dettaglio. Un'offerta creata da **Gestione Richieste** o dalla conversione di un lead prende la data del giorno in cui viene creata.",
+        },
+        {
+          type: 'note',
+          text: "La **Data ricontatto** è una data facoltativa per segnarti quando riprendere in mano l'offerta: si imposta e si cambia dal dettaglio o dall'elenco, e si svuota cancellando la data. Non invia promemoria ed è diversa dal **Prossimo richiamo**, che si pianifica da **Gestione Richieste**.",
         },
       ],
     },
@@ -122,6 +126,10 @@ const guide: HelpGuide = {
           text: "Nel menu **Altre** l'interruttore **Categorie madri** limita la barra alle sole categorie di primo livello: la tab di una categoria madre raccoglie anche le sottocategorie (un record conta una volta sola). La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria tab e le **preferite** sono separate tra le due modalità. Spegnendolo torni a tutte le categorie.",
         },
         {
+          type: 'paragraph',
+          text: "Scegliendo la tab di una categoria (non **Tutte** e non una tab di **Categorie madri**), in fondo all'elenco compaiono le colonne dei campi flessibili (**Informazioni aggiuntive**) di quella categoria. Puoi filtrarle e ordinarle. Se hai il permesso di modificarle, le cambi direttamente nella cella. I campi di tipo tabella si modificano solo dal dettaglio.",
+        },
+        {
           type: 'note',
           text: "Le preferite sono separate per ogni elenco (Opportunità, Offerte, Contratti, Commesse, Gestione Richieste). La prima volta ti vengono proposte in base alle categorie per cui sei abilitato; appena usi la stellina diventano le tue. L'esportazione non segue la tab: considera sempre tutte le offerte.",
         },
@@ -133,7 +141,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Un clic su una cella modificabile (Titolo, Stato, Commerciale, Segnalatore, Supervisore, Gestori account, Società, Società sede, Sede operativa, Fonte) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
+          text: "Un clic su una cella modificabile (Titolo, Stato, Commerciale, Segnalatore, Supervisore, Gestori account, Società, Società sede, Sede operativa, Fonte, Data ricontatto) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
         },
         {
           type: 'note',
