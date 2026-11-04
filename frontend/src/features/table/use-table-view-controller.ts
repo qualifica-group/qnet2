@@ -13,7 +13,7 @@ import { createSsrmDatasource } from '@/features/table/ssrm-datasource'
 import { useViewportTableHeight } from '@/features/table/use-viewport-table-height'
 import { useTableViewGridState, type TableViewHandle } from '@/features/table/use-table-view-grid-state'
 import { useTableViewFiltersState } from '@/features/table/use-table-view-filters-state'
-import type { TableConfig, TableRowsAggregates } from '@/features/table/types'
+import type { TableConfig, TableRowsAggregates, WorkOrderTypeScope } from '@/features/table/types'
 
 export type { TableViewHandle } from '@/features/table/use-table-view-grid-state'
 
@@ -30,6 +30,8 @@ export interface TableViewControllerArgs extends RowActionsOptions {
   registryId?: number
   /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
   referentId?: number
+  /** Row-set scope to one work order type (spec 0352 D-2); a no-op for every domain but `work-orders`. */
+  workOrderType?: WorkOrderTypeScope
   onRowCountChanged?: (count: number | null) => void
   onAction: RowActionHandler
   getBulkActions?: (selection: TableSelection) => BulkAction[]
@@ -104,6 +106,7 @@ export function useTableViewController(
     forcedFilterModel,
     registryId,
     referentId,
+    workOrderType,
     onRowCountChanged,
     onAction,
     isBusy,
@@ -134,6 +137,7 @@ export function useTableViewController(
       forcedFilterModel,
       registryId,
       referentId,
+      workOrderType,
       onRowCountChanged,
       getBulkActions,
       disableBuiltinDelete,

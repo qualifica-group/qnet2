@@ -174,7 +174,7 @@
     </endpoint>
 
     <endpoint method="POST" path="/api/broadcasting/auth">
-      <request>Standard Laravel Broadcasting (socket_id, channel_name), sessione Sanctum a cookie + CSRF.</request>
+      <request>Standard Laravel Broadcasting (socket_id, channel_name), autenticato col bearer token Sanctum della SPA (come tutte le chiamate di `frontend/src/api/client.ts`; nessun cookie/CSRF). Middleware `api` + `auth:sanctum`, nessun throttle.</request>
       <response status="200">firma Pusher/Reverb per "private-work-orders.{id}.chat"</response>
       <errors>403 se la regola chat (passi 2-4 sopra) nega la lettura</errors>
     </endpoint>

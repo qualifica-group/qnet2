@@ -33,6 +33,12 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->group(base_path('routes/api/api-clients.php'));
         },
     )
+    // Spec 0352: POST /api/broadcasting/auth signs private channel
+    // subscriptions. Same guard as the rest of the API; no throttle.
+    ->withBroadcasting(
+        __DIR__.'/../routes/channels.php',
+        ['prefix' => 'api', 'middleware' => ['api', 'auth:sanctum']],
+    )
     ->withMiddleware(function (Middleware $middleware): void {
         // Fail-closed hard gate for the "Migrazioni" section (spec 0013).
         $middleware->alias([

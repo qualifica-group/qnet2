@@ -3,6 +3,38 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Chat nelle Commesse di Progetto (spec 0352) — PASSO 1 VERDE, IN CORSO (2026-11-04)
+
+- Spec `docs/specs/0352-project-work-order-chat.xml` approvata (commit 7271f43d). D-10 confermata: il super-admin
+  MODERA (modifica/cancella messaggi altrui senza finestra di 15 min; blocco commessa chiusa vale anche per lui),
+  risposta GET con `can_moderate`. Auth SPA = BEARER token (non cookie/CSRF): spec allineata.
+- Passo 1 fatto (B1, B2, F1, F3):
+  - B1: tabelle `work_order_chat_messages` (soft delete, `user_id` nullable nullOnDelete, indice work_order_id+id) e
+    `work_order_chat_reads` (unique work_order_id+user_id, `last_read_message_id` senza FK); model
+    `WorkOrderChatMessage` (LogsModelActivity, morph alias `work_order_chat_message` in AppServiceProvider) e
+    `WorkOrderChatRead`; `WorkOrder::chatMessages()`; factory.
+  - B2: `laravel/reverb ^1.12`, config broadcasting/reverb, `routes/channels.php` VUOTO (lo riempie B3),
+    `withBroadcasting` -> `POST /api/broadcasting/auth` (api + auth:sanctum, no throttle), `reverb:start` in
+    `composer dev`. Test: `phpunit.xml` gia' `BROADCAST_CONNECTION=null`. In locale serve `BROADCAST_CONNECTION=reverb`
+    + `REVERB_*` (il `.env` usa ancora la chiave legacy `BROADCAST_DRIVER`).
+  - F1: `laravel-echo ^2.6.3` + `pusher-js ^8.6.0`; `src/lib/echo.ts` -> `getEcho()`, `onEchoReconnect(cb)` (ritorna
+    unsubscribe, ignora la prima connessione), `resetEcho()` (test), `BROADCAST_AUTH_PATH`; authorizer via `apiClient`.
+    `env.reverb` in `src/config/env.ts`, `VITE_REVERB_*` in `frontend/.env.example`.
+  - F3: pagina/rotta `/project-work-orders` (`ProjectWorkOrdersTable`, `PROJECT_WORK_ORDERS_DOMAIN`), corpo comune
+    `WorkOrdersGrid`; `rowScope.workOrderType` inviato come `work_order_type` (snake_case) nel body righe ed export;
+    pagina Commesse invia `processing`; renderer `chat-unread-cell.tsx` per `chat_unread_count`; i18n
+    `navigation.projectWorkOrders`, `workOrders.columns.chat_unread_count`, namespace `workOrders.chat`
+    (`{it,en}-work-order-chat.ts`, F2 li estende; `en.ts` e' oltre 500 righe, non toccarlo).
+- Verifica: Pest WorkOrderChat 9, WorkOrders 422, ActivityLog 92 verdi; Pint ok; Vitest (lib, work-orders, table,
+  exports, routes, i18n) 1066 verdi; `tsc -b --force` exit 0; ESLint pulito.
+- Prossimo (passo 2): B3 (WorkOrderChatAccess, WorkOrderChatChannel, controller/request/resource, evento, 5 rotte,
+  regola canale, view_chat/write_chat, config/chat.php) | B4 (dominio griglia `project-work-orders`, backend legge
+  `work_order_type` in righe ED export (`ExportController:63` safe()->only + FormRequest), conteggi
+  `CategoryTabGrid::WorkOrders` senza project, voce menu `project-work-orders` label `navigation.projectWorkOrders`
+  permesso `work-orders.view`) | F2 (feature `work-order-chat`, tab Chat). Poi D1 (guide in-app + Claude Docs), verifier.
+- Aperto: il Set Filter (`/tables/{domain}/values`) non invia `work_order_type` -> su Commesse puo' mostrare valori di
+  commesse project. Micro-task da decidere con l'utente.
+
 ## Catalogo: ramo "Progettazione" + seeder per la produzione — VERDE, COMMITTATO 916b8787 (2026-11-03)
 
 - Sorgente: Excel utente "Funzione Aziendale_ Progettazione". `QualificaCatalog\ProjectDesignCatalogue` (radice

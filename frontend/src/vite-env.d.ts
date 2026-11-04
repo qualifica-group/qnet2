@@ -9,6 +9,10 @@ interface ImportMetaEnv {
   readonly VITE_IS_PRODUCTION: string
   readonly VITE_AG_GRID_LICENSE_KEY: string
   readonly VITE_NOTIFICATIONS_POLL_INTERVAL: string
+  readonly VITE_REVERB_APP_KEY: string
+  readonly VITE_REVERB_HOST: string
+  readonly VITE_REVERB_PORT: string
+  readonly VITE_REVERB_SCHEME: string
 }
 
 interface ImportMeta {

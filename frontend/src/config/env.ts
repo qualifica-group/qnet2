@@ -35,4 +35,11 @@ export const env = {
    */
   notificationsPollInterval:
     Number(import.meta.env.VITE_NOTIFICATIONS_POLL_INTERVAL ?? '') || 30000,
+  /** Public Reverb app key (not a secret) and websocket endpoint for the realtime chat. */
+  reverb: {
+    appKey: import.meta.env.VITE_REVERB_APP_KEY ?? '',
+    host: import.meta.env.VITE_REVERB_HOST || 'localhost',
+    port: Number(import.meta.env.VITE_REVERB_PORT ?? '') || 8080,
+    scheme: import.meta.env.VITE_REVERB_SCHEME === 'https' ? 'https' : 'http',
+  },
 } as const

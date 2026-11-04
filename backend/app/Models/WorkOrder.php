@@ -107,6 +107,16 @@ class WorkOrder extends BaseModel
     }
 
     /**
+     * Chat messages of this commessa (spec 0352), soft-deleted ones included.
+     *
+     * @return HasMany<WorkOrderChatMessage, $this>
+     */
+    public function chatMessages(): HasMany
+    {
+        return $this->hasMany(WorkOrderChatMessage::class);
+    }
+
+    /**
      * The commessa's "Stato lavorazione" (spec 0322), a row of the set
      * resolved for it (a workflow's own, or the global default).
      *

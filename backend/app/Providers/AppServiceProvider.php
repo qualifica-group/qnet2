@@ -108,6 +108,7 @@ use App\Models\UserSkill;
 use App\Models\UserTablePreference;
 use App\Models\VatRate;
 use App\Models\WorkOrder;
+use App\Models\WorkOrderChatMessage;
 use App\Models\WorkOrderCost;
 use App\Models\WorkOrderLinePayment;
 use App\Models\WorkOrderPaymentStatus;
@@ -341,6 +342,7 @@ class AppServiceProvider extends ServiceProvider
             // Spec 0093 (work-orders module): WorkOrder uses LogsModelActivity,
             // same reasoning as document_layout above.
             'work_order' => WorkOrder::class,
+            'work_order_chat_message' => WorkOrderChatMessage::class,
             // Spec 0322: both audited (LogsModelActivity), so strict morph map needs them.
             'work_order_workflow' => WorkOrderWorkflow::class,
             'work_order_workflow_status' => WorkOrderWorkflowStatus::class,

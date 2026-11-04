@@ -1,5 +1,5 @@
 import type { AdvancedFilterValues } from '@/features/table/advanced-filters/types'
-import type { FilterRules } from '@/features/table/types'
+import type { FilterRules, WorkOrderTypeScope } from '@/features/table/types'
 
 /**
  * Generic per-table export types (spec 0014). The feature is parametrized on
@@ -61,6 +61,8 @@ export interface CreateExportPayload {
   registryId?: number | null
   /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
   referentId?: number | null
+  /** Row-set scope to one work order type (spec 0352 D-2); snake_case like the rows payload; a no-op for every domain but `work-orders`. */
+  work_order_type?: WorkOrderTypeScope | null
 }
 
 /** The export run resource returned by every endpoint (`ExportRunResource`). */

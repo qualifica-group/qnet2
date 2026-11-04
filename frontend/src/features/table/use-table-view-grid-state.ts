@@ -12,7 +12,7 @@ import type { AdvancedFilterDescriptor, AdvancedFilterValues } from '@/features/
 import { useBulkActionsSlot, type BulkAction, type TableSelection } from '@/features/table/use-bulk-actions-slot'
 import { EMPTY_FILTER_MODEL } from '@/features/table/use-table-layout-persistence'
 import { useCustomFilterState, type UseCustomFilterStateResult } from '@/features/table/custom-filters/use-custom-filter-state'
-import type { TableConfig, TableRowsAggregates } from '@/features/table/types'
+import type { TableConfig, TableRowsAggregates, WorkOrderTypeScope } from '@/features/table/types'
 
 /** Imperative handle exposed by the generic table to its domain adapter. */
 export interface TableViewHandle {
@@ -40,6 +40,8 @@ export interface UseTableViewGridStateArgs {
   registryId?: number
   /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
   referentId?: number
+  /** Row-set scope to one work order type (spec 0352 D-2); a no-op for every domain but `work-orders`. */
+  workOrderType?: WorkOrderTypeScope
   onRowCountChanged?: (count: number | null) => void
   getBulkActions?: (selection: TableSelection) => BulkAction[]
   disableBuiltinDelete?: boolean
@@ -97,6 +99,7 @@ export function useTableViewGridState(
     forcedFilterModel,
     registryId,
     referentId,
+    workOrderType,
     onRowCountChanged,
     getBulkActions,
     disableBuiltinDelete,
@@ -259,6 +262,7 @@ export function useTableViewGridState(
         quoteId,
         registryId,
         referentId,
+        workOrderType,
         onAggregates: setAggregates,
         treeData,
         rowGrouping,
@@ -274,6 +278,7 @@ export function useTableViewGridState(
       quoteId,
       registryId,
       referentId,
+      workOrderType,
       treeData,
       rowGrouping,
     ],

@@ -8,14 +8,17 @@
 import { workOrderContractData } from './en-work-order-contract-data'
 import { workOrderCosts } from './en-work-order-costs'
 import { workOrderInvoices } from './en-work-order-invoices'
+import { workOrderChat } from './en-work-order-chat'
 
 export const workOrders = {
   costs: workOrderCosts,
   invoices: workOrderInvoices,
+  chat: workOrderChat,
   contractData: workOrderContractData,
   title: 'Work Orders',
   subtitle: 'Browse, filter and manage the work orders linked to your offers.',
   forbidden: "You don't have permission to view work orders.",
+  chatUnread: '{{count}} unread chat messages',
   progress: {
     title: 'Work order progress list no. {{code}}',
     action: 'Work order progress',
@@ -58,6 +61,7 @@ export const workOrders = {
     completion_percentage: 'Progress',
     created_at: 'Created at',
     updated_at: 'Updated at',
+    chat_unread_count: 'Unread',
   },
   detail: {
     multiQuoteBadge: 'Multi-offer',

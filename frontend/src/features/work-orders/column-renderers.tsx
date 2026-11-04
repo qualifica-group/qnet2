@@ -2,6 +2,7 @@ import { BooleanBadgeCell, CodeBadgeCell, DateCell, StatusBadgeCell } from '@/fe
 import { UserStackCell } from '@/features/table/user-cell'
 import { DateTimeCell } from '@/features/table/cell-renderers'
 import type { TableRendererMap } from '@/features/table/renderer-registry'
+import { ChatUnreadCell } from '@/features/work-orders/chat-unread-cell'
 import { RegistryCell } from '@/features/work-orders/registry-cell'
 import { WorkOrderProgressCell } from '@/features/work-orders/work-order-progress-cell'
 
@@ -44,6 +45,7 @@ export function buildWorkOrderColumnRenderers(openProgress: (workOrderId: number
     contract_expiry_date: (params) => <DateCell {...params} />,
     supervisors: (params) => <UserStackCell {...params} />,
     completion_percentage: (params) => <WorkOrderProgressCell {...params} onOpen={openProgress} />,
+    chat_unread_count: (params) => <ChatUnreadCell {...params} />,
     created_at: (params) => <DateTimeCell {...params} />,
     updated_at: (params) => <DateTimeCell {...params} />,
   }

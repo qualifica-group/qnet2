@@ -38,7 +38,16 @@ export interface TableRowScope {
   registryId?: number
   /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
   referentId?: number
+  /**
+   * Row-set scope to one work order type (spec 0352 D-2): the "Commesse" page sends `processing`, so
+   * project work orders live only under "Commesse di Progetto". Absent = every type, as before
+   * (Contratto, Anagrafica). A no-op for every domain but `work-orders`.
+   */
+  workOrderType?: WorkOrderTypeScope
 }
+
+/** The work order types a row scope can narrow `work-orders` to (backend `App\Enums\WorkOrderType`). */
+export type WorkOrderTypeScope = 'processing' | 'project'
 
 /** SSRM rows request payload (AG Grid IServerSideGetRowsRequest subset). */
 export interface TableRowsPayload {
@@ -81,6 +90,8 @@ export interface TableRowsPayload {
   registryId?: number | null
   /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
   referentId?: number | null
+  /** Row-set scope to one work order type (spec 0352 D-2), same rule as above; snake_case on the wire, per the spec contract. */
+  work_order_type?: WorkOrderTypeScope | null
   /**
    * Server-side tree data (spec 0157 D-1): `true` requests the domain's tree
    * shape instead of the flat one. Omitted/`false` ⇒ today's flat behavior,

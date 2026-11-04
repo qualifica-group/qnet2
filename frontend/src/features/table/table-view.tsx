@@ -97,6 +97,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
     const quoteId = rowScope?.quoteId
     const registryId = rowScope?.registryId
     const referentId = rowScope?.referentId
+    const workOrderType = rowScope?.workOrderType
     const { data: config, error: configError, isPending, isError, refetch } = useTableConfig(domain, scope)
 
     const view = useTableViewController(
@@ -111,6 +112,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
         forcedFilterModel,
         registryId,
         referentId,
+        workOrderType,
         onRowCountChanged,
         onAction,
         isBusy,
@@ -224,6 +226,7 @@ export const TableView = forwardRef<TableViewHandle, TableViewProps>(
       quoteId,
       registryId,
       referentId,
+      workOrderType,
     })
 
     return (

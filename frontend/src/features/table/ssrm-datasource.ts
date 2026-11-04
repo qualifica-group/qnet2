@@ -3,7 +3,7 @@ import type {
   IServerSideGetRowsParams,
 } from 'ag-grid-community'
 import { fetchTableRows } from '@/features/table/api'
-import type { FilterRules, SsrmSortModelItem, TableRow, TableRowsAggregates } from '@/features/table/types'
+import type { FilterRules, SsrmSortModelItem, TableRow, TableRowsAggregates, WorkOrderTypeScope } from '@/features/table/types'
 import type { AdvancedFilterValues } from '@/features/table/advanced-filters/types'
 import {
   isGroupItem,
@@ -78,6 +78,8 @@ export interface SsrmDatasourceOptions {
   registryId?: number
   /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
   referentId?: number
+  /** Row-set scope to one work order type (spec 0352 D-2); sent as `work_order_type`; a no-op for every domain but `work-orders`. */
+  workOrderType?: WorkOrderTypeScope
   /** Reports each response's `meta.aggregates` (spec 0156 D-3); a no-op for a domain with no `aggregates()` override. */
   onAggregates?: (aggregates: TableRowsAggregates | undefined) => void
   /** Server-side tree data (spec 0157 D-1); a no-op for every domain but `tasks`. */
@@ -113,6 +115,7 @@ export function createSsrmDatasource(
     quoteId,
     registryId,
     referentId,
+    workOrderType,
     onAggregates,
     treeData,
     rowGrouping,
@@ -190,6 +193,7 @@ export function createSsrmDatasource(
         quoteId,
         registryId,
         referentId,
+        workOrderType,
         tree: treeData ?? false,
         treeParentId,
         rowGroupCols,
@@ -214,6 +218,7 @@ export function createSsrmDatasource(
           ...(quoteId != null ? { quoteId } : {}),
           ...(registryId != null ? { registryId } : {}),
           ...(referentId != null ? { referentId } : {}),
+          ...(workOrderType != null ? { work_order_type: workOrderType } : {}),
           ...(grouped ? { rowGroupCols, groupKeys } : {}),
           ...(treeData ? { tree: true } : {}),
           ...(treeParentId != null ? { treeParentId } : {}),

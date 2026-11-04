@@ -55,6 +55,7 @@ const QuotesPage = lazyRoute(() => import('@/pages/quotes-page'))
 const ContractStatusesPage = lazyRoute(() => import('@/pages/contract-statuses-page'))
 const ContractsPage = lazyRoute(() => import('@/pages/contracts-page'))
 const WorkOrdersPage = lazyRoute(() => import('@/pages/work-orders-page'))
+const ProjectWorkOrdersPage = lazyRoute(() => import('@/pages/project-work-orders-page'))
 const TimeEntriesPage = lazyRoute(() => import('@/pages/time-entries-page'))
 const TimeEntryNewPage = lazyRoute(() => import('@/pages/time-entry-new-page'))
 const TimeEntryDetailPage = lazyRoute(() => import('@/pages/time-entry-detail-page'))
@@ -284,6 +285,10 @@ export const APP_CHILD_ROUTES: RouteObject[] = [
   {
     path: 'work-orders',
     element: <WorkOrdersPage />,
+  },
+  {
+    path: 'project-work-orders',
+    element: <ProjectWorkOrdersPage />,
   },
   ...TASK_ROUTES,
   // Segnatempo (spec 0122, D-1): its own top-level item, not part of

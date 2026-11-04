@@ -8,14 +8,17 @@
 import { workOrderContractData } from './it-work-order-contract-data'
 import { workOrderCosts } from './it-work-order-costs'
 import { workOrderInvoices } from './it-work-order-invoices'
+import { workOrderChat } from './it-work-order-chat'
 
 export const workOrders = {
   costs: workOrderCosts,
   invoices: workOrderInvoices,
+  chat: workOrderChat,
   contractData: workOrderContractData,
   title: 'Commesse',
   subtitle: 'Sfoglia, filtra e gestisci le commesse collegate alle offerte.',
   forbidden: 'Non hai i permessi per visualizzare le commesse.',
+  chatUnread: '{{count}} messaggi della chat non letti',
   progress: {
     title: 'Lista avanzamenti commessa n. {{code}}',
     action: 'Avanzamento commessa',
@@ -58,6 +61,7 @@ export const workOrders = {
     completion_percentage: 'Avanzamento',
     created_at: 'Creata il',
     updated_at: 'Aggiornata il',
+    chat_unread_count: 'Non letti',
   },
   detail: {
     multiQuoteBadge: 'Multi-offerta',

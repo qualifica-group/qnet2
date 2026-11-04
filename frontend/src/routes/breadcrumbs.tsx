@@ -98,6 +98,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'contract-statuses': 'navigation.contractStatuses',
   contracts: 'navigation.contracts',
   'work-orders': 'navigation.workOrders',
+  'project-work-orders': 'navigation.projectWorkOrders',
   tasks: 'navigation.tasks',
   'task-statuses': 'navigation.taskStatuses',
   'task-types': 'navigation.taskTypes',

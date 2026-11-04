@@ -240,6 +240,17 @@ describe('createSsrmDatasource', () => {
     expect(fetchRowsMock.mock.calls[1][1]).not.toHaveProperty('registryId')
   })
 
+  // Spec 0352 D-2: the "Commesse" page narrows work-orders; the key is snake_case per the spec contract.
+  it('sends work_order_type when a workOrderType is given, omits it otherwise', async () => {
+    fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)
+
+    await createSsrmDatasource('work-orders', { workOrderType: 'processing' }).getRows(stubParams({}))
+    await createSsrmDatasource('work-orders').getRows(stubParams({}))
+
+    expect(fetchRowsMock.mock.calls[0][1]).toEqual(expect.objectContaining({ work_order_type: 'processing' }))
+    expect(fetchRowsMock.mock.calls[1][1]).not.toHaveProperty('work_order_type')
+  })
+
   // Spec 0157 D-1: server-side tree data (Task's "Sintetica" view).
   it('sends tree:true with no treeParentId at the root (empty groupKeys)', async () => {
     fetchRowsMock.mockResolvedValue(EMPTY_RESPONSE)

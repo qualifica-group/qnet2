@@ -59,6 +59,7 @@ export const navigation = {
   contractStatuses: 'Contract Statuses',
   contracts: 'Contracts',
   workOrders: 'Work orders',
+  projectWorkOrders: 'Project Work Orders',
   workOrderWorkflows: 'Work order status configurator',
   emailTemplates: 'Email templates',
   documentBundles: 'Document bundles',

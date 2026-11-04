@@ -15,7 +15,7 @@ import { buildExportGridState } from '@/features/exports/build-export-grid-state
 import { useExport } from '@/features/exports/use-export'
 import { ExportProgress } from '@/features/exports/export-progress'
 import type { ExportFormat } from '@/features/exports/types'
-import type { FilterRules, TableColumn, TableRow } from '@/features/table/types'
+import type { FilterRules, TableColumn, TableRow, WorkOrderTypeScope } from '@/features/table/types'
 import type { AdvancedFilterValues } from '@/features/table/advanced-filters/types'
 
 /** The two formats enabled by the backend (`config('exports.formats')`). */
@@ -70,6 +70,8 @@ export interface ExportDialogProps {
   registryId?: number | null
   /** Row-set scope to one Referente (spec 0336); a no-op for every domain but `commission-configurations`. */
   referentId?: number | null
+  /** Row-set scope to one work order type (spec 0352 D-2); a no-op for every domain but `work-orders`. */
+  workOrderType?: WorkOrderTypeScope | null
 }
 
 /**
@@ -91,6 +93,7 @@ export function ExportDialog({
   quoteId,
   registryId,
   referentId,
+  workOrderType,
 }: ExportDialogProps) {
   const { t } = useTranslation()
   const exportState = useExport({ domain })
@@ -125,6 +128,7 @@ export function ExportDialog({
       ...(quoteId != null ? { quoteId } : {}),
       ...(registryId != null ? { registryId } : {}),
       ...(referentId != null ? { referentId } : {}),
+      ...(workOrderType != null ? { work_order_type: workOrderType } : {}),
     })
   }
 

@@ -8,7 +8,7 @@ import { SavedViewsSlot } from '@/features/table/saved-views-slot'
 import { RuleBuilderDialog } from '@/features/table/custom-filters/rule-builder-dialog'
 import type { UseTableCustomFiltersResult } from '@/features/table/custom-filters/use-table-custom-filters'
 import type { UseAdvancedFiltersResult } from '@/features/table/advanced-filters/use-advanced-filters'
-import type { TableConfig, TableRow } from '@/features/table/types'
+import type { TableConfig, TableRow, WorkOrderTypeScope } from '@/features/table/types'
 
 interface TableViewSlotsArgs {
   domain: string
@@ -28,6 +28,7 @@ interface TableViewSlotsArgs {
   quoteId?: number
   registryId?: number
   referentId?: number
+  workOrderType?: WorkOrderTypeScope
 }
 
 interface TableViewSlots {
@@ -61,6 +62,7 @@ export function buildTableViewSlots({
   quoteId,
   registryId,
   referentId,
+  workOrderType,
 }: TableViewSlotsArgs): TableViewSlots {
   const savedViewsSlot = (
     <SavedViewsSlot
@@ -105,6 +107,7 @@ export function buildTableViewSlots({
           quoteId={quoteId}
           registryId={registryId}
           referentId={referentId}
+          workOrderType={workOrderType}
         />
       ) : null}
 
