@@ -39,6 +39,11 @@ interface NotesSectionProps {
    * chiama: cambia il testo, non il conteggio.
    */
   onThreadChanged?: () => void
+  /**
+   * Spec 0353: chiamata quando una nota ha aggiunto persone al record (Partecipanti
+   * della commessa, Osservatori del task): l'host ricarica il proprio dettaglio.
+   */
+  onMembersAdded?: () => void
 }
 
 const SKELETON_ROWS = 3
@@ -56,6 +61,7 @@ export function NotesSection({
   showHeader = true,
   lockedQuoteId = null,
   onThreadChanged,
+  onMembersAdded,
 }: NotesSectionProps) {
   const { t } = useTranslation()
   // Spec 0085: lo scope e' stato LOCALE della sezione, non del server — cambiare
@@ -78,6 +84,7 @@ export function NotesSection({
   // che hanno gia' caricato il record ospite. Si leggono dalla PRIMA pagina:
   // le successive descrivono lo stesso record, non un elenco diverso.
   const quotes = data?.pages[0]?.meta.quotes ?? NO_QUOTES
+  const mentionOutside = data?.pages[0]?.meta.mention_outside
 
   const content = (
     <>
@@ -101,6 +108,8 @@ export function NotesSection({
         defaultQuoteId={lockedQuoteId ?? (typeof quoteScope === 'number' ? quoteScope : null)}
         lockQuote={lockedQuoteId !== null}
         onDone={onThreadChanged}
+        mentionOutside={mentionOutside}
+        onMembersAdded={onMembersAdded}
       />
 
       {isLoading ? (
@@ -137,6 +146,8 @@ export function NotesSection({
           isFetchingNextPage={isFetchingNextPage}
           onLoadMore={() => fetchNextPage()}
           onThreadChanged={onThreadChanged}
+          mentionOutside={mentionOutside}
+          onMembersAdded={onMembersAdded}
           // Solo quando il contesto NON e' gia' dato: con un filtro attivo o
           // sul dettaglio Offerta, l'etichetta ripeterebbe cio' che si sa gia'.
           showQuoteBadge={lockedQuoteId === null && quoteScope === 'all' && quotes.length > 0}

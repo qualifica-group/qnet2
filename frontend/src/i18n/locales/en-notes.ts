@@ -48,4 +48,22 @@ export const notes = {
     hint: 'Tab or Enter to insert',
     empty: 'No matching users',
   },
+  mentionOutside: {
+    toggle: 'Mention anyone',
+    noModuleAccess: 'Will be notified but cannot open the record',
+    willJoin: {
+      participant: 'Will be added as Participant',
+      watcher: 'Will be added as Watcher',
+    },
+    summary: {
+      participant_one: 'Will be added as Participant',
+      participant_other: 'Will be added as Participants',
+      watcher_one: 'Will be added as Watcher',
+      watcher_other: 'Will be added as Watchers',
+    },
+    enlisted: {
+      participant: 'Added as Participants: {{names}}',
+      watcher: 'Added as Watchers: {{names}}',
+    },
+  },
 }

@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { MessagesSquare, Paperclip } from 'lucide-react'
 import { Form } from '@/components/ui/form'
@@ -12,7 +13,7 @@ import { NotesSection } from '@/features/notes/notes-section'
 import { useRegistryDocumentsTab } from '@/features/registries/use-registry-documents-tab'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import { useOutboundEmailsTab } from '@/features/outbound-emails/use-outbound-emails-tab'
-import { WORK_ORDER_ATTACHABLE_ALIAS, WORK_ORDERS_DOMAIN } from '@/features/work-orders/api'
+import { WORK_ORDER_ATTACHABLE_ALIAS, WORK_ORDERS_DOMAIN, workOrderDetailQueryKey } from '@/features/work-orders/api'
 import { WorkOrderDetailHeader, WorkOrderDetailStats } from '@/features/work-orders/work-order-detail-header'
 import { WorkOrderDetailSections } from '@/features/work-orders/work-order-detail-sections'
 import { WorkOrderDetailWorkTabs } from '@/features/work-orders/work-order-detail-work-tabs'
@@ -31,7 +32,10 @@ interface WorkOrderDetailViewProps {
  * entirely when unauthorized (spec 0134 D-3; the read-only registry one is
  * spec 0173; Email is spec 0175).
  */
-function useCollaborationTabs(workOrder: WorkOrderDetailWithPermissions): RecordCollaborationTab[] {
+function useCollaborationTabs(
+  workOrder: WorkOrderDetailWithPermissions,
+  onMembersAdded: () => void,
+): RecordCollaborationTab[] {
   const { t } = useTranslation()
   const { can } = useAbilities()
   const registryDocumentsTab = useRegistryDocumentsTab(workOrder.registry?.id)
@@ -53,7 +57,14 @@ function useCollaborationTabs(workOrder: WorkOrderDetailWithPermissions): Record
       value: 'notes',
       label: t('notes.section.title'),
       icon: <MessagesSquare className="size-3.5" aria-hidden="true" />,
-      content: <NotesSection entityType={WORK_ORDERS_DOMAIN} entityId={workOrder.id} showHeader={false} />,
+      content: (
+        <NotesSection
+          entityType={WORK_ORDERS_DOMAIN}
+          entityId={workOrder.id}
+          showHeader={false}
+          onMembersAdded={onMembersAdded}
+        />
+      ),
     })
   }
 
@@ -115,7 +126,11 @@ export function WorkOrderDetailView(props: WorkOrderDetailViewProps) {
 function WorkOrderDetailContent({ workOrder, onChanged }: WorkOrderDetailViewProps) {
   const { t } = useTranslation()
   const editor = useWorkOrderInlineEdit(workOrder, onChanged)
-  const collaborationTabs = useCollaborationTabs(workOrder)
+  const queryClient = useQueryClient()
+  const collaborationTabs = useCollaborationTabs(workOrder, () => {
+    // Spec 0353: una nota puo' aver aggiunto Partecipanti; il dettaglio li rilegge.
+    void queryClient.invalidateQueries({ queryKey: workOrderDetailQueryKey(workOrder.id) })
+  })
   const createdAt = formatDateTime(workOrder.created_at)
   const updatedAt = formatDateTime(workOrder.updated_at)
 

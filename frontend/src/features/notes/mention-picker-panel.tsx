@@ -3,6 +3,7 @@ import { UserAvatar } from '@/components/user-avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import type { ForSelectItem } from '@/features/for-select/types'
+import type { MentionableUser, MentionOutsideRole } from '@/features/notes/types'
 
 export interface MentionPickerPanelProps {
   /** Id shared with the field's `aria-controls`/`aria-activedescendant` wiring. */
@@ -14,6 +15,13 @@ export interface MentionPickerPanelProps {
   onSelect: (item: ForSelectItem) => void
   /** Builds an option's DOM id, so the field can point `aria-activedescendant` at it. */
   optionId: (userId: number) => string
+  /** Spec 0353: ruolo con cui verra' aggiunto chi e' fuori perimetro; senza, nessuna etichetta. */
+  outsideRole?: MentionOutsideRole | null
+}
+
+/** Le voci del for-select puro non portano i flag del perimetro: solo `in_record === false` e' un fuori perimetro. */
+function isOutsider(item: ForSelectItem): item is MentionableUser {
+  return 'in_record' in item && item.in_record === false
 }
 
 /**
@@ -30,6 +38,7 @@ export function MentionPickerPanel({
   onActiveIndexChange,
   onSelect,
   optionId,
+  outsideRole = null,
 }: MentionPickerPanelProps) {
   const { t } = useTranslation()
 
@@ -80,6 +89,16 @@ export function MentionPickerPanel({
                 <span className="truncate font-medium">{item.label}</span>
                 {item.subtitle ? (
                   <span className="truncate text-[10px] text-muted-foreground">{item.subtitle}</span>
+                ) : null}
+                {isOutsider(item) && outsideRole ? (
+                  <span className="text-[10px] font-medium text-primary">
+                    {t(`notes.mentionOutside.willJoin.${outsideRole}`)}
+                  </span>
+                ) : null}
+                {isOutsider(item) && !item.has_module_access ? (
+                  <span className="text-[10px] text-muted-foreground">
+                    {t('notes.mentionOutside.noModuleAccess')}
+                  </span>
                 ) : null}
               </span>
             </div>

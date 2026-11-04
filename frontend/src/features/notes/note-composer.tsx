@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { Loader2, Send } from 'lucide-react'
+import { Loader2, Send, UserPlus } from 'lucide-react'
+import { toast } from 'sonner'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { NoteQuoteScopeSelect } from '@/features/notes/note-quote-scope-select'
@@ -13,9 +14,11 @@ import { RichTextEditor } from '@/components/rich-text/rich-text-editor'
 import { RICH_TEXT_NOTE_TEXT_MAX } from '@/components/rich-text/rich-text-constants'
 import { isPayloadTooLargeError } from '@/components/rich-text/rich-text-errors'
 import { extractMentionIds, getVisibleTextLength } from '@/features/notes/note-rich-text'
+import { MentionOutsideSummary } from '@/features/notes/mention-outside-summary'
+import { mentionsErrorMessage, useMentionOutside } from '@/features/notes/use-mention-outside'
 import { useNoteMentionExtension } from '@/features/notes/use-note-mention-extension'
 import { useCreateNote, useUpdateNote } from '@/features/notes/use-note-mutations'
-import type { Note, NoteQuoteRef } from '@/features/notes/types'
+import type { MentionableUser, MentionOutsideMeta, Note, NoteMutationResult, NoteQuoteRef } from '@/features/notes/types'
 
 /** Below this many characters left the hint gives way to a countdown. */
 const CHARACTER_COUNTER_THRESHOLD = 500
@@ -69,6 +72,10 @@ export interface NoteComposerProps {
   defaultQuoteId?: number | null
   /** Dettaglio Offerta: destinazione fissa, nessuna scelta da offrire. */
   lockQuote?: boolean
+  /** Spec 0353: `meta.mention_outside` del thread; con `allowed` compare l'interruttore "Menziona chiunque". */
+  mentionOutside?: MentionOutsideMeta
+  /** Spec 0353: chiamata dopo un salvataggio che ha aggiunto persone al record, cosi' l'host ricarica il dettaglio. */
+  onMembersAdded?: () => void
 }
 
 /**
@@ -90,6 +97,8 @@ export function NoteComposer({
   quotes = NO_QUOTES,
   defaultQuoteId = null,
   lockQuote = false,
+  mentionOutside,
+  onMembersAdded,
 }: NoteComposerProps) {
   const { t } = useTranslation()
   // Spec 0085 D-4: una reply eredita SEMPRE il contesto della root, quindi qui
@@ -98,7 +107,9 @@ export function NoteComposer({
   const createNote = useCreateNote(entityType, entityId)
   const updateNote = useUpdateNote(entityType, entityId)
   const pending = createNote.isPending || updateNote.isPending
-  const mentionExtension = useNoteMentionExtension({ entityType, entityId })
+  const existingMentionIds = useMemo(() => editingNote?.mentions.map((mention) => mention.id), [editingNote])
+  const outside = useMentionOutside({ entityType, entityId, mentionOutside, existingMentionIds })
+  const mentionExtension = useNoteMentionExtension({ entityType, entityId, source: outside.source })
   const editorContainerRef = useRef<HTMLDivElement | null>(null)
 
   const form = useForm<NoteComposerFormValues>({
@@ -117,6 +128,16 @@ export function NoteComposer({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: focus once, on mount only.
   }, [])
 
+  /** Spec 0353 D-9: toast con i nomi aggiunti e ricarica del dettaglio dell'host. */
+  const announceEnlisted = (enlistedIds: number[], candidates: MentionableUser[]) => {
+    if (enlistedIds.length === 0 || !outside.role) {
+      return
+    }
+    const names = candidates.filter((user) => enlistedIds.includes(user.id)).map((user) => user.label)
+    toast.success(t(`notes.mentionOutside.enlisted.${outside.role}`, { names: names.join(', ') }))
+    onMembersAdded?.()
+  }
+
   const handleSubmit = form.handleSubmit(async (values) => {
     // Step 1: derive the wire body/mentions from what the editor actually holds
     // Step 2: dispatch create or update depending on the composer's mode
@@ -124,11 +145,13 @@ export function NoteComposer({
     // Step 4: on a 422, map it onto the body field with the accessible triad
     const body = values.body ?? ''
     const mentions = extractMentionIds(body)
+    const addedCandidates = outside.outsidersIn(body)
     try {
+      let result: NoteMutationResult | undefined
       if (editingNote) {
-        await updateNote.mutateAsync({ noteId: editingNote.id, payload: { body, mentions } })
+        result = await updateNote.mutateAsync({ noteId: editingNote.id, payload: { body, mentions } })
       } else {
-        await createNote.mutateAsync({
+        result = await createNote.mutateAsync({
           entity_type: entityType,
           entity_id: entityId,
           body,
@@ -143,11 +166,17 @@ export function NoteComposer({
         })
         form.reset({ body: null })
       }
+      announceEnlisted(result?.enlistedUserIds ?? [], addedCandidates)
+      outside.reset()
       onDone?.()
     } catch (error) {
       // The editor content is never reset here (only on success, above): a
       // rejected save — 422, 413 or anything else — leaves the draft (and any
       // pasted image) in place so the user can trim it and retry.
+      const mentionsMessage = mentionsErrorMessage(error)
+      if (mentionsMessage) {
+        form.setError('body', { message: mentionsMessage })
+      }
       if (applyServerValidationErrors(error, form.setError, ['body'])) {
         return
       }
@@ -166,6 +195,7 @@ export function NoteComposer({
   })
 
   const bodyValue = useWatch({ control: form.control, name: 'body' })
+  const outsiders = outside.outsidersIn(bodyValue)
   const remainingCharacters = RICH_TEXT_NOTE_TEXT_MAX - getVisibleTextLength(bodyValue)
 
   return (
@@ -194,6 +224,7 @@ export function NoteComposer({
             </FormItem>
           )}
         />
+        <MentionOutsideSummary outsiders={outsiders} role={outside.role} />
         <div className="flex flex-wrap items-center justify-end gap-2">
           {/* Destinazione: solo sulle root (una reply eredita, D-4) e solo se
               c'e' davvero una scelta da fare (non sul dettaglio Offerta). */}
@@ -218,6 +249,19 @@ export function NoteComposer({
                   defaultValue: 'Digita @ per menzionare un collega',
                 })}
           </p>
+          {outside.allowed ? (
+            <Button
+              type="button"
+              variant={outside.enabled ? 'default' : 'secondary'}
+              size="sm"
+              aria-pressed={outside.enabled}
+              onClick={outside.toggle}
+              disabled={pending}
+            >
+              <UserPlus className="size-3.5" aria-hidden="true" />
+              {t('notes.mentionOutside.toggle')}
+            </Button>
+          ) : null}
           {onCancel ? (
             <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={pending}>
               {t('common.cancel')}

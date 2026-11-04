@@ -3,6 +3,37 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Note: "Menziona chiunque" su commesse e task (spec 0353) — VERDE, NON COMMITTATO (2026-11-04)
+
+- Spec `docs/specs/0353-note-mentions-outside-record.xml` (D-1..D-9, AC-001..AC-018). Decisioni utente: solo
+  `work-orders` e `tasks` (opportunita'/offerte rimandate); sblocca chi ha `can('update', $record)`, nessun permesso
+  nuovo; fuori perimetro -> Partecipante della commessa (prima posizione libera, `ManagerPositions::MAX`) /
+  Osservatore del task; elenco esteso = tutti gli attivi non di servizio, chi non ha la vista del modulo viene
+  aggiunto con avviso; commessa piena = 422 `mentions` tutto o niente; solo `NoteMentionNotification` (testo
+  "ti ha aggiunto come ..."), nessuna notifica di assegnazione; togliere menzione/cancellare nota non toglie nessuno.
+- BE: interfaccia `App\Notes\Contracts\EnlistsMentionedUsers` (implementata da `WorkOrderNotable`, `TaskNotable`;
+  `enlist()` restituisce gli id realmente aggiunti, sul task salta creatore/richiedente/assegnatari per
+  `TaskWatcherOverlapGuard`), `NoteEntityRegistry::enlisterFor()/mentionOutsideFor()`,
+  `Mentions/MentionableUserDirectory` (ex `NoteService::mentionableUsers`, `scope=record|extended`, flag
+  `in_record`/`has_module_access`), `Mentions/MentionEnlistment`. `NoteService::create/update` ora restituiscono
+  `DataObjects\Notes\NoteSaveResult` (`note`, `enlistedUserIds`): ogni chiamante legge `->note`
+  (`DemoTaskNoteSeeder` aggiornato). Contratto: `meta.mention_outside {allowed, role}` su `GET /api/notes`,
+  `meta.enlisted_user_ids` su POST/PATCH.
+- FE: `features/notes/use-mention-outside.ts`, `mention-outside-summary.tsx`, interruttore in `note-composer.tsx`,
+  prop `onMembersAdded` su `NotesSection` (gli host dettaglio commessa/task invalidano il dettaglio; `task-detail.tsx`
+  passa il callback a `useTaskCollaborationTabs`). i18n `notes.mentionOutside`.
+- Manuale: guide in-app IT/EN `general.ts#notes-and-documents`, `work-orders.ts#visibility`,
+  `tasks.ts#collaboration-and-notifications`; manuale Claude Docs (Note, Quali commesse vedi, notifiche task).
+- Verifica: `tests/Feature/Notes` 119/119, `DemoTaskSeederTest` verde, Vitest completo 9880/9880, tsc/eslint/pint
+  puliti. Suite BE completa: fallimenti senza file della feature nelle tracce, da confermare su baseline pulita:
+  AiAssistant AC-012/014/029 (tipi MIME ristretti dall'env), ManagementControl x4 ("array offset on null"),
+  `QualificaOperatorSeederTest` x2 (ruolo `importatore-richieste`), Migration `UsersSource*`/`MigrationPlan*`/
+  `MigrationSourceAvailability`, `SettlementApprovalTest` AC-006 (dipende dalla data), `WorkOrderCategoryTabsTest`
+  (verde da solo), piu' i noti `PermissionCatalogueEndpointTest` AC-004, `TableBulkDeleteTest`, `QuoteDocumentPdfTest`
+  (LibreOffice assente). Vitest: 11 unhandled error `toast.error is not a function` da `vat-rate-form-metadata.test.tsx`.
+- Prossimo passo possibile: estendere a opportunita'/offerte (serve decidere il "partecipante" e la lettura del thread
+  della gestione richieste, oggi solo Operatore GA2 / viewAll / sede / competenza).
+
 ## Commesse: "Richiedi aggiornamento" (spec 0352) — VERDE, NON COMMITTATO (2026-11-04)
 
 - Spec `docs/specs/0352-work-order-update-request.xml` (D-1..D-6, AC-001..AC-016), clone della richiesta del task

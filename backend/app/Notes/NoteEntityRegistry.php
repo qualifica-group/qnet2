@@ -3,6 +3,7 @@
 namespace App\Notes;
 
 use App\Models\User;
+use App\Notes\Contracts\EnlistsMentionedUsers;
 use App\Notes\Contracts\NotableEntity;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -62,6 +63,34 @@ final class NoteEntityRegistry
     public function mentionableUsersQuery(string $entityType, Model $record): Builder
     {
         return $this->entityFor($entityType)->mentionableUsersQuery($record);
+    }
+
+    /**
+     * The capability descriptor of $entityType, or null when its module does
+     * not enlist mentioned outsiders (spec 0353, D-1).
+     */
+    public function enlisterFor(string $entityType): ?EnlistsMentionedUsers
+    {
+        $entity = $this->entityFor($entityType);
+
+        return $entity instanceof EnlistsMentionedUsers ? $entity : null;
+    }
+
+    /**
+     * The `meta.mention_outside` block of the notes index (spec 0353, D-2):
+     * `role` names what the module would make of an outsider even when
+     * $actor may not edit the record, so the client can word the warning.
+     *
+     * @return array{allowed: bool, role: string|null}
+     */
+    public function mentionOutsideFor(User $actor, string $entityType, Model $record): array
+    {
+        $enlister = $this->enlisterFor($entityType);
+
+        return [
+            'allowed' => $enlister?->canEnlist($actor, $record) ?? false,
+            'role' => $enlister?->enlistmentRole(),
+        ];
     }
 
     public function ownsQuote(string $entityType, Model $record, int $quoteId): bool

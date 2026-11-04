@@ -1,9 +1,12 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
-import type { ForSelectItem, PaginatedResponse } from '@/features/for-select/types'
+import type { PaginatedResponse } from '@/features/for-select/types'
 import type {
   CreateNotePayload,
+  MentionableUser,
+  MentionScope,
   Note,
+  NoteMutationResult,
   NoteQuoteScope,
   NotesPage,
   NotesPageMeta,
@@ -52,16 +55,23 @@ export async function fetchNotes({
   return { data: data.data, meta: data.meta }
 }
 
+/** Envelope di create/update (spec 0353): la nota e, in `meta`, gli id aggiunti al record dalle menzioni. */
+type NoteMutationEnvelope = ApiResponse<Note> & { meta?: { enlisted_user_ids?: number[] } }
+
+function toMutationResult(envelope: NoteMutationEnvelope): NoteMutationResult {
+  return { note: envelope.data, enlistedUserIds: envelope.meta?.enlisted_user_ids ?? [] }
+}
+
 /** Creates a root note or a reply (`parent_id`, normalized server-side to the thread root). */
-export async function createNote(payload: CreateNotePayload): Promise<Note> {
-  const { data } = await apiClient.post<ApiResponse<Note>>('/notes', payload)
-  return data.data
+export async function createNote(payload: CreateNotePayload): Promise<NoteMutationResult> {
+  const { data } = await apiClient.post<NoteMutationEnvelope>('/notes', payload)
+  return toMutationResult(data)
 }
 
 /** Edits a note's own body/mentions (author-only, enforced server-side). Sets `edited_at`. */
-export async function updateNote(noteId: number, payload: UpdateNotePayload): Promise<Note> {
-  const { data } = await apiClient.patch<ApiResponse<Note>>(`/notes/${noteId}`, payload)
-  return data.data
+export async function updateNote(noteId: number, payload: UpdateNotePayload): Promise<NoteMutationResult> {
+  const { data } = await apiClient.patch<NoteMutationEnvelope>(`/notes/${noteId}`, payload)
+  return toMutationResult(data)
 }
 
 /** Soft-deletes a note (author-only, enforced server-side). Replies of a deleted root are hidden, not removed. */
@@ -77,6 +87,8 @@ interface FetchMentionableUsersParams {
   limit?: number
   /** Ids of already-selected mentions to hydrate on the first page (edit mode). */
   ids?: number[]
+  /** Spec 0353: `extended` = tutti gli utenti attivi (solo chi puo' modificare il record). Omesso = perimetro del record. */
+  scope?: MentionScope
 }
 
 /**
@@ -94,8 +106,9 @@ export async function fetchMentionableUsers({
   offset = 0,
   limit = NOTES_MENTIONABLE_PAGE_SIZE,
   ids,
-}: FetchMentionableUsersParams): Promise<PaginatedResponse<ForSelectItem>> {
-  const { data } = await apiClient.get<PaginatedResponse<ForSelectItem>>('/notes/mentionable-users', {
+  scope = 'record',
+}: FetchMentionableUsersParams): Promise<PaginatedResponse<MentionableUser>> {
+  const { data } = await apiClient.get<PaginatedResponse<MentionableUser>>('/notes/mentionable-users', {
     params: {
       entity_type: entityType,
       entity_id: entityId,
@@ -103,6 +116,8 @@ export async function fetchMentionableUsers({
       limit,
       ...(search ? { search } : {}),
       ...(ids && ids.length > 0 ? { ids } : {}),
+      // Il default `record` non viaggia: senza interruttore la richiesta resta identica a prima.
+      ...(scope === 'extended' ? { scope } : {}),
     },
     // Serialize `ids` as repeated `ids[]=1&ids[]=2` (Laravel array convention).
     paramsSerializer: { indexes: true },

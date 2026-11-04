@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0353-note-mentions-outside-record" status="approved" owner="utente" date="2026-11-04">
+
+  <goal>
+    Nelle note di commesse e task, chi puo' modificare il record puo' "sbloccare" il menu @ e menzionare
+    anche colleghi che oggi non vedono il record. Il sistema avvisa che la persona verra' aggiunta al record
+    (Partecipante della commessa, Osservatore del task) e al salvataggio della nota la aggiunge davvero, cosi'
+    riceve la notifica e puo' aprire il record.
+  </goal>
+
+  <context>
+    - Componente note agnostico (spec 0052/0128): `App\Services\Notes\NoteService` (create/update/
+      mentionableUsers/syncMentionsAndNotify), `App\Notes\NoteEntityRegistry` (slug -> `NotableEntity` da
+      `config('notes.notable_types')`), `App\Notes\Mentions\MentionValidator` (coerenza D-12 testo/mentions +
+      perimetro D-10), `App\Notes\Mentions\MentionParser`, `App\Notifications\NoteMentionNotification`
+      (database+mail, ShouldQueue, link per destinatario via `deepLinkFor`). Endpoint: `GET /api/notes`
+      (`NoteController::index`, `meta.next_cursor/has_more/quotes`), `POST /api/notes`, `PATCH /api/notes/{note}`,
+      `GET /api/notes/mentionable-users` (`MentionableUserController`, `MentionableUsersRequest`,
+      `NoteMentionableUserResource` su `ForSelectResource`: `id, label, subtitle, avatar_url`).
+    - Perimetro menzionabile oggi = chi puo' leggere il record (`NotableEntity::mentionableUsersQuery`):
+      `WorkOrderNotable` (Responsabili/Partecipanti, `work-orders.viewAll`, `work-orders.viewSite` per sede) e
+      `TaskNotable` (creatore, richiedente, assegnatari, osservatori, `tasks.viewAll`, `tasks.viewSite`,
+      responsabili in organigramma se non privato), sempre + super-admin, solo utenti attivi non di servizio
+      (`User::excludingServiceAccounts()`, `is_active`).
+    - Commessa: `WorkOrder::participants()` (pivot `work_order_participant` con `position`, max
+      `ManagerPositions::MAX` = 12); prima posizione libera con `ManagerPositions::positionsOf()` +
+      `slotsFromIds()` + `syncMap()` + `PositionalPivotSync::sync()` (stesso giro di `WorkOrderService`).
+      Visibilita' `WorkOrderVisibilityScope` (i Partecipanti vedono la commessa se hanno `work-orders.view`).
+    - Task: `Task::watchers()` (pivot `task_watcher`, nessun limite). `TaskVisibilityScope`: gli osservatori
+      vedono il task, anche privato, se hanno `tasks.view`.
+    - Modifica record: `WorkOrderPolicy::update` (permesso + perimetro), `TaskPolicy::update` (permesso +
+      perimetro + matrice ruoli `TaskAbilityResolver::canUpdate`).
+    - Notifiche di aggiunta esistenti (`AssignmentNotifier::notifyWorkOrder`, `TaskNotifier`) partono solo dai
+      writer dei moduli (`WorkOrderService`, `TaskService`): questa feature non li chiama.
+    - FE: `features/notes/` (`note-composer.tsx` 240 righe, `notes-section.tsx`, `use-note-mention-extension.ts`
+      Tiptap Mention, `mention-suggestion-list.tsx`, `mention-picker-panel.tsx`, `api.ts`
+      `fetchMentionableUsers`, `types.ts` `NotesPageMeta`), i18n `i18n/locales/{it,en}-notes.ts`. Host:
+      `work-orders/work-order-detail.tsx` e `tasks/task-collaboration-section.tsx` montano `NotesSection`.
+    - Decisioni utente 2026-11-04: D-1..D-7 sotto.
+  </context>
+
+  <decisions>
+    <decision id="D-1">Solo commesse (`work-orders`) e task (`tasks`). Opportunita', offerte, iscritti,
+      anagrafiche, referenti, RDA e proforma restano esattamente come oggi (nessun interruttore, perimetro
+      invariato). Opportunita'/offerte rimandate: richiedono di decidere chi e' "partecipante" e di estendere la
+      lettura del thread della gestione richieste.</decision>
+    <decision id="D-2">Chi puo' sbloccare: chi puo' MODIFICARE il record (`can('update', $record)`: policy della
+      commessa o del task). Nessun permesso nuovo. Il server lo espone in `meta.mention_outside.allowed` e lo
+      ricontrolla su ogni chiamata.</decision>
+    <decision id="D-3">Ruolo di aggiunta: commessa -> Partecipante (prima posizione libera); task -> Osservatore.
+      Testo UI accurato per modulo ("verra' aggiunto come Partecipante" / "come Osservatore").</decision>
+    <decision id="D-4">Elenco sbloccato = tutti gli utenti attivi non di servizio. Ogni voce indica se e' gia'
+      nel perimetro (`in_record`) e se ha il permesso di vista del modulo (`has_module_access`). Chi non ha il
+      permesso compare con un avviso ("ricevera' la notifica ma non potra' aprire il record"), viene comunque
+      aggiunto al record e la notifica arriva senza link con la frase di accesso mancante gia' esistente.</decision>
+    <decision id="D-5">"Fuori perimetro" = menzionato che NON sta nel `mentionableUsersQuery` corrente del record.
+      Il server lo deduce dal body (nessun campo nuovo nella richiesta). Un fuori perimetro e' ammesso solo se il
+      modulo supporta l'aggiunta (D-1), l'autore puo' modificare il record (D-2) e l'utente e' attivo non di
+      servizio; altrimenti 422 come oggi.</decision>
+    <decision id="D-6">Commessa con Partecipanti al completo (12) e almeno un fuori perimetro da aggiungere:
+      422 su `mentions`, la nota NON viene salvata e nessuno viene aggiunto (tutto o niente, stessa
+      transazione).</decision>
+    <decision id="D-7">Notifiche: chi viene aggiunto riceve SOLO `NoteMentionNotification`, con testo arricchito
+      "[Autore] ti ha menzionato in [record] e ti ha aggiunto come [Partecipante|Osservatore]: [estratto]".
+      Nessuna notifica di assegnazione del modulo per questa aggiunta.</decision>
+    <decision id="D-8">Le stesse regole valgono in modifica nota (PATCH): un fuori perimetro menzionato in quel
+      momento viene aggiunto. Togliere la menzione o cancellare la nota NON toglie mai la persona dal record.</decision>
+    <decision id="D-9">UX: nel composer, solo se `meta.mention_outside.allowed`, un pulsante interruttore
+      "Menziona chiunque" (spento di default, si spegne dopo l'invio). Acceso, il menu @ cerca con
+      `scope=extended`; le voci fuori perimetro hanno l'etichetta "Verra' aggiunto come Partecipante/Osservatore"
+      e, se `has_module_access` e' false, l'avviso di D-4. Sotto l'editor un riepilogo elenca chi verra' aggiunto
+      (calcolato dalle menzioni presenti nel testo). Nessun dialog di conferma. Dopo il salvataggio con
+      `meta.enlisted_user_ids` non vuoto: toast "Aggiunti come Partecipanti: ..." e il dettaglio del record si
+      ricarica (lista Partecipanti/Osservatori aggiornata).</decision>
+  </decisions>
+
+  <scope>
+    <in>
+      <item>BE: interfaccia `App\Notes\Contracts\EnlistsMentionedUsers` (2 implementazioni reali:
+        `WorkOrderNotable`, `TaskNotable`): `enlistmentRole(): string` (`participant`|`watcher`),
+        `canEnlist(User, Model): bool`, `modulePermission(): string`, `enlist(Model, array $userIds): void`
+        (lancia ValidationException su `mentions` se la commessa e' piena).</item>
+      <item>BE: `NoteEntityRegistry::enlisterFor()` + `mentionOutsideFor()` (blocco `meta.mention_outside`).</item>
+      <item>BE: nuove classi in `app/Notes/Mentions/`: `MentionableUserDirectory` (elenco `record`/`extended` con i
+        flag, spostando qui la logica di `NoteService::mentionableUsers`) e `MentionEnlistment` (calcolo fuori
+        perimetro, controllo capacita', aggiunta). `MentionValidator` accetta i fuori perimetro ammessi da D-5.</item>
+      <item>BE: `NoteService` create/update aggiungono i fuori perimetro nella stessa transazione, prima del
+        salvataggio della nota; `NoteMentionNotification` riceve gli id aggiunti e il ruolo (testo D-7).</item>
+      <item>BE: `MentionableUsersRequest` regola `scope`; `NoteMentionableUserResource` campi `in_record`,
+        `has_module_access`; `NoteController` index/store/update con i nuovi `meta`; traduzioni `lang/it.json`.</item>
+      <item>FE: `types.ts`, `api.ts` (`scope`, risposte con `meta`), nuovo hook `use-mention-outside.ts`
+        (interruttore, mappa flag degli utenti scelti, riepilogo), nuovo `mention-outside-summary.tsx`,
+        `use-note-mention-extension.ts` (scope letto a ogni ricerca senza ricreare l'editor),
+        `mention-suggestion-list.tsx`/`mention-picker-panel.tsx` (etichetta + avviso), `note-composer.tsx`
+        (interruttore, riepilogo, toast), `notes-section.tsx` (nuova prop `onMembersAdded`),
+        `work-order-detail.tsx` e `task-collaboration-section.tsx` (invalidano il dettaglio), i18n
+        `{it,en}-notes.ts`.</item>
+      <item>Manuale: guide in-app IT/EN `general.ts` sezione `notes-and-documents`, `work-orders.ts` sezione
+        `visibility`, `tasks.ts` sezione `collaboration-and-notifications` (stessi id); manuale Claude Docs
+        (Note, Commesse, Task).</item>
+      <item>Test Pest (endpoint, validazione, capacita', notifica, authz) e Vitest (composer, menu, riepilogo,
+        toast).</item>
+    </in>
+    <out>
+      <item>Opportunita', offerte, iscritti, anagrafiche, referenti, RDA, proforma: nessun cambiamento.</item>
+      <item>Nessun permesso nuovo, nessuna modifica ai ruoli.</item>
+      <item>Nessuna rimozione automatica dal record (togliere la menzione o cancellare la nota non toglie nessuno).</item>
+      <item>Nessuna aggiunta come Responsabile della commessa o Assegnatario del task.</item>
+      <item>Nessuna concessione automatica del permesso di vista del modulo a chi non ce l'ha.</item>
+      <item>Nessuna notifica di assegnazione del modulo per l'aggiunta (D-7); nessuna voce nuova di activity log.</item>
+      <item>Nessun cambiamento al menu @ quando l'interruttore e' spento (perimetro e risultati identici a oggi).</item>
+      <item>Nessun throttle (backend.md §2).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/notes">
+      <request>invariata (`entity_type`, `entity_id`, `cursor`, `limit`, `quote_scope`).</request>
+      <response status="200">
+        `meta` aggiunge: `"mention_outside": { "allowed": boolean, "role": "participant" | "watcher" | null }`.
+        `role` = ruolo del modulo quando il modulo supporta l'aggiunta (anche se `allowed` e' false), null negli
+        altri moduli. `allowed` = modulo supportato AND `can('update', $record)`.
+      </response>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/notes/mentionable-users">
+      <request>
+        come oggi + `scope`: `"record"` (default) | `"extended"`.
+      </request>
+      <response status="200">
+        stessa paginazione for-select. Ogni item: `{ id, label, subtitle, avatar_url, in_record: boolean,
+        has_module_access: boolean }`. Con `scope=record`: elenco identico a oggi, `in_record` e
+        `has_module_access` sempre true. Con `scope=extended`: tutti gli utenti attivi non di servizio, ordine
+        `name, id`, ricerca su nome/email; `in_record` = sta nel perimetro del record; `has_module_access` =
+        super-admin o permesso `modulePermission()`. `ids[]` idrata dentro lo stesso insieme dello scope.
+      </response>
+      <errors>
+        403 con `scope=extended` su modulo non supportato o autore senza `update` sul record (messaggio
+        "You cannot mention people outside this record."); 403 lettura record come oggi; 422 `scope` non ammesso.
+      </errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/notes">
+      <request>invariata (`entity_type`, `entity_id`, `body`, `parent_id`, `quote_id`, `mentions`).</request>
+      <response status="201">
+        `{ success: true, message, data: NoteResource, meta: { enlisted_user_ids: int[] } }`:
+        gli id aggiunti al record da questa nota (vuoto se nessuno).
+      </response>
+      <errors>
+        422 `errors.mentions`: fuori perimetro non ammesso (messaggio esistente "One or more mentioned users
+        cannot be mentioned on this record."); commessa piena: "The work order's Partecipanti are full (max
+        :max): :users cannot be added." Nessuna nota salvata, nessuna aggiunta.
+      </errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/notes/{note}">
+      <request>invariata (`body`, `mentions`).</request>
+      <response status="200">`{ success: true, message, data: NoteResource, meta: { enlisted_user_ids: int[] } }`.</response>
+      <errors>stessi 422 di POST; nessuna modifica salvata in caso di errore.</errors>
+    </endpoint>
+
+    <notification class="NoteMentionNotification" via="database,mail">
+      Per un destinatario aggiunto: message = ":author mentioned you in :label and added you as :role:
+      :excerpt" (role tradotto: Partecipante / Osservatore), stessa frase di accesso mancante se nessun link.
+      Per gli altri destinatari: testo invariato.
+    </notification>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente con `work-orders.update` nel perimetro della commessa, `GET /api/notes`
+      restituisce `meta.mention_outside = { allowed: true, role: "participant" }`; per un utente che legge ma non
+      puo' modificare `allowed: false`; su un task `role: "watcher"`; su anagrafica/richiesta `{ allowed: false,
+      role: null }`.</criterion>
+    <criterion id="AC-002">`mentionable-users` senza `scope` o con `scope=record` restituisce lo stesso elenco di
+      oggi, con `in_record` e `has_module_access` true su ogni voce.</criterion>
+    <criterion id="AC-003">Con `scope=extended` e diritto di modifica, l'elenco contiene un utente attivo fuori
+      perimetro (`in_record: false`), esclude disattivati e account di servizio, e `has_module_access` e' false
+      per chi non ha `work-orders.view` (o `tasks.view`).</criterion>
+    <criterion id="AC-004">`scope=extended` risponde 403 senza diritto di modifica, su modulo non supportato
+      (es. `registries`) e su record non leggibile; `scope=altro` risponde 422.</criterion>
+    <criterion id="AC-005">POST nota su commessa con un fuori perimetro menzionato da un autore con `update`:
+      201, la persona e' Partecipante nella prima posizione libera, `meta.enlisted_user_ids = [id]`, riceve una
+      sola `NoteMentionNotification` con il testo "ti ha aggiunto come Partecipante" e nessuna notifica di
+      assegnazione.</criterion>
+    <criterion id="AC-006">POST nota su task con un fuori perimetro: la persona diventa Osservatore, riceve la
+      menzione con "ti ha aggiunto come Osservatore", da quel momento legge il task (anche privato) se ha
+      `tasks.view`.</criterion>
+    <criterion id="AC-007">Un fuori perimetro menzionato da un autore SENZA `update` sul record risponde 422 su
+      `mentions`; nessuna nota creata, nessuna aggiunta, nessuna notifica.</criterion>
+    <criterion id="AC-008">Commessa con 12 Partecipanti e un fuori perimetro menzionato: 422 su `mentions` con il
+      nome della persona; nessuna nota creata, Partecipanti invariati, nessuna notifica.</criterion>
+    <criterion id="AC-009">Un fuori perimetro senza `work-orders.view` viene aggiunto come Partecipante; la sua
+      notifica ha `action_url` null e la frase di accesso mancante; la mail non ha il pulsante.</criterion>
+    <criterion id="AC-010">Una menzione di un utente gia' nel perimetro non aggiunge nulla al record
+      (`enlisted_user_ids` vuoto, notifica con testo invariato), con o senza interruttore.</criterion>
+    <criterion id="AC-011">PATCH di una nota che aggiunge un fuori perimetro lo aggiunge al record e lo notifica;
+      un PATCH che toglie una menzione non toglie la persona dal record; la cancellazione della nota non
+      toglie nessuno.</criterion>
+    <criterion id="AC-012">Mention di utente disattivato o account di servizio con interruttore: 422 su
+      `mentions`, nessuna aggiunta.</criterion>
+    <criterion id="AC-013">Moduli non supportati (es. `registries`, `request-management`): un fuori perimetro
+      resta rifiutato con 422 esattamente come oggi; i test esistenti delle note restano verdi senza modifiche.</criterion>
+    <criterion id="AC-014">FE: con `mention_outside.allowed` false l'interruttore non c'e' e il menu @ chiama
+      l'endpoint senza `scope` (comportamento di oggi).</criterion>
+    <criterion id="AC-015">FE: con interruttore acceso il menu @ chiama `scope=extended`; una voce `in_record:
+      false` mostra "Verra' aggiunto come Partecipante" (o Osservatore sul task); con `has_module_access: false`
+      mostra anche l'avviso di accesso mancante. Interruttore accessibile da tastiera, `aria-pressed`.</criterion>
+    <criterion id="AC-016">FE: sotto l'editor il riepilogo elenca i fuori perimetro presenti nel testo; se si
+      cancella la loro menzione dal testo spariscono dal riepilogo.</criterion>
+    <criterion id="AC-017">FE: dopo un salvataggio con `enlisted_user_ids` non vuoto compare il toast con i nomi,
+      `onMembersAdded` viene chiamata (il dettaglio commessa/task si ricarica) e l'interruttore si spegne; un 422
+      su `mentions` mostra il messaggio del server e lascia il testo nel composer.</criterion>
+    <criterion id="AC-018">Guide in-app IT ed EN aggiornate nelle sezioni `notes-and-documents`, `visibility`
+      (commesse), `collaboration-and-notifications` (task); `help-content-parity.test.ts` verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza. Envelope di progetto. Authz server-side su ogni chiamata (`update` ricontrollato
+      dal server, mai fidarsi del flag client).
+    - `app/Notes/` resta agnostico (AC-021 spec 0052): nessun nome di modulo nel core, solo l'interfaccia.
+    - `NoteService` (gia' oltre 300 righe) non deve crescere: la logica nuova vive in
+      `MentionableUserDirectory` e `MentionEnlistment`, con `// Step N` nell'orchestrazione.
+    - Aggiunta e salvataggio nota nella stessa transazione; notifiche dopo il commit (come oggi).
+    - Commessa: posizione via `ManagerPositions` + `PositionalPivotSync`, mai calcolata a mano; limite da
+      `ManagerPositions::MAX`, mai il numero 12 nel codice.
+    - FE: nessun file sopra 300 righe (`note-composer.tsx` e' a 240: logica nel nuovo hook e componente).
+    - Test mirati durante lo sviluppo; a fine feature suite completa BE (`nice -n 10 composer test --
+      --processes=4`) e FE, Pint, ESLint, `npx tsc -b --force`.
+    - Nessun comando distruttivo sul DB di sviluppo.
+  </constraints>
+
+  <microtasks>
+    <task id="MT-01" lane="backend" depends="contratto">Interfaccia, implementazioni commessa/task, registry,
+      `MentionableUserDirectory`, `MentionEnlistment`, `MentionValidator`, `NoteService`, notifica, request,
+      resource, controller, traduzioni IT + test Pest AC-001..AC-013.</task>
+    <task id="MT-02" lane="frontend" depends="contratto">types/api, hook `use-mention-outside`, riepilogo,
+      estensione Mention, menu @, composer, notes-section, host commessa/task, i18n + test Vitest
+      AC-014..AC-017.</task>
+    <task id="MT-03" lane="docs" depends="MT-01,MT-02">Guide in-app IT/EN (AC-018), manuale Claude Docs, HANDOFF.</task>
+    <task id="MT-04" lane="verify" depends="MT-01,MT-02,MT-03">Suite completa BE/FE, lint, typecheck, verifica
+      AC uno per uno.</task>
+  </microtasks>
+</spec>

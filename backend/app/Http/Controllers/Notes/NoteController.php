@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Notes;
 
+use App\DataObjects\Notes\NoteSaveResult;
+use App\Enums\HttpStatusEnum;
 use App\Http\Controllers\Abstract\BaseApiController;
 use App\Http\Requests\Notes\IndexNoteRequest;
 use App\Http\Requests\Notes\StoreNoteRequest;
@@ -58,6 +60,9 @@ class NoteController extends BaseApiController
                     // component (detail tab, grid row dialog, work panel)
                     // renders filter and destination without its own fetch.
                     'quotes' => $page->quoteScopes,
+                    // Spec 0353: whether the composer may unlock mentions of
+                    // people outside the record, and the role they would get.
+                    'mention_outside' => $page->mentionOutside,
                 ],
             ]);
         } catch (Throwable $exception) {
@@ -70,9 +75,9 @@ class NoteController extends BaseApiController
         try {
             $this->authorize('create', Note::class);
 
-            $note = $this->service->create($request->user(), $request->toData());
+            $result = $this->service->create($request->user(), $request->toData());
 
-            return $this->created(new NoteResource($note));
+            return $this->savedResponse($result, 'Created', HttpStatusEnum::CREATED);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__);
         }
@@ -83,9 +88,9 @@ class NoteController extends BaseApiController
         try {
             $this->authorize('update', $note);
 
-            $updated = $this->service->update($request->user(), $note, $request->toData());
+            $result = $this->service->update($request->user(), $note, $request->toData());
 
-            return $this->ok(new NoteResource($updated), 'Updated');
+            return $this->savedResponse($result, 'Updated', HttpStatusEnum::OK);
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['note' => $note->id]);
         }
@@ -102,5 +107,19 @@ class NoteController extends BaseApiController
         } catch (Throwable $exception) {
             return $this->handleControllerException($exception, __FUNCTION__, ['note' => $note->id]);
         }
+    }
+
+    /**
+     * Same envelope as created()/ok() plus `meta.enlisted_user_ids` (spec
+     * 0353): the people this save added to the host record.
+     */
+    private function savedResponse(NoteSaveResult $result, string $message, HttpStatusEnum $status): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'data' => (new NoteResource($result->note))->resolve(request()),
+            'meta' => ['enlisted_user_ids' => $result->enlistedUserIds],
+        ], $status->value);
     }
 }

@@ -418,6 +418,7 @@ const guide: HelpGuide = {
             'un task viene chiuso: la notifica arriva al richiedente e agli osservatori, e agli assegnatari solo se sono più di uno; se il task era in validazione, gli assegnatari ricevono comunque una notifica separata di approvazione;',
             'un task viene riaperto, bloccato o sbloccato;',
             'qualcuno ti chiede un aggiornamento: la ricevono i destinatari scelti, con una copia (**In copia**) agli osservatori quando la richiesta va agli assegnatari.',
+            'qualcuno ti menziona in una nota con **Menziona chiunque** e ti aggiunge come osservatore: ricevi solo la notifica di menzione ("ti ha menzionato e ti ha aggiunto come Osservatore"), non quella di nuovo osservatore.',
           ],
         },
         {

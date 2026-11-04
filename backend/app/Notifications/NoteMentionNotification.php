@@ -48,6 +48,8 @@ class NoteMentionNotification extends Notification implements ShouldQueue
      *                         read back off `$note->notable`: a Notification
      *                         presents facts the caller already holds, it
      *                         does not query for them
+     * @param  array<int, int>  $enlistedUserIds  recipients this save added to the record (spec 0353, D-7)
+     * @param  string|null  $enlistedRole  the role they were given, as named by the host module
      */
     public function __construct(
         private readonly Note $note,
@@ -55,6 +57,8 @@ class NoteMentionNotification extends Notification implements ShouldQueue
         private readonly string $recordLabel,
         private readonly string $entityType,
         private readonly Model $record,
+        private readonly array $enlistedUserIds = [],
+        private readonly ?string $enlistedRole = null,
     ) {}
 
     /**
@@ -74,7 +78,7 @@ class NoteMentionNotification extends Notification implements ShouldQueue
 
         return (new NotificationData(
             title: __('You were mentioned'),
-            message: $this->message($path),
+            message: $this->message($path, $notifiable),
             level: NotificationLevelEnum::Info,
             actionUrl: $path,
         ))->toArray();
@@ -87,7 +91,7 @@ class NoteMentionNotification extends Notification implements ShouldQueue
         $mail = (new MailMessage)
             ->subject(__('You were mentioned'))
             ->greeting(__('Hello :name', ['name' => $notifiable->name]))
-            ->line($this->message($path));
+            ->line($this->message($path, $notifiable));
 
         // No reachable screen, no button: a CTA that lands on a 403 is worse
         // than none, and the message already says what to ask for.
@@ -110,21 +114,26 @@ class NoteMentionNotification extends Notification implements ShouldQueue
             ->deepLinkFor($this->entityType, $this->record, $notifiable, $this->note->quote_id);
     }
 
-    private function message(?string $path): string
+    private function message(?string $path, object $notifiable): string
     {
         $namesById = $this->note->mentionedUsers->pluck('name', 'id')->all();
         $excerpt = MentionParser::excerptWithNames($this->note->body, $namesById, self::EXCERPT_LENGTH);
 
-        $message = __(':author mentioned you in :label: :excerpt', [
-            'author' => $this->author->name,
-            'label' => $this->recordLabel,
-            'excerpt' => $excerpt,
-        ]);
+        $params = ['author' => $this->author->name, 'label' => $this->recordLabel, 'excerpt' => $excerpt];
+
+        $message = $this->wasEnlisted($notifiable)
+            ? __(':author mentioned you in :label and added you as :role: :excerpt', $params + ['role' => __(ucfirst((string) $this->enlistedRole))])
+            : __(':author mentioned you in :label: :excerpt', $params);
 
         if ($path !== null) {
             return $message;
         }
 
         return $message.' '.__('You cannot open this record: ask an administrator to grant you access to the module.');
+    }
+
+    private function wasEnlisted(object $notifiable): bool
+    {
+        return $this->enlistedRole !== null && in_array($notifiable->id, $this->enlistedUserIds, true);
     }
 }

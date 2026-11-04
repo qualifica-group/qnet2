@@ -1,3 +1,5 @@
+import type { ForSelectItem } from '@/features/for-select/types'
+
 /**
  * Domain-agnostic collaborative notes (spec 0052, PARTE B). Mirrors the frozen
  * `Note` shape shared by `GET/POST/PATCH /api/notes`. This feature carries no
@@ -67,6 +69,32 @@ export interface Note {
   replies?: Note[]
 }
 
+/** Ruolo con cui il modulo ospite aggiunge al record chi viene menzionato fuori perimetro (spec 0353 D-3). */
+export type MentionOutsideRole = 'participant' | 'watcher'
+
+/** `meta.mention_outside` di `GET /api/notes` (spec 0353). */
+export interface MentionOutsideMeta {
+  allowed: boolean
+  role: MentionOutsideRole | null
+}
+
+/** `scope` di `GET /api/notes/mentionable-users`: `record` = perimetro attuale, `extended` = tutti gli utenti attivi. */
+export type MentionScope = 'record' | 'extended'
+
+/** Voce del menu @ (spec 0353 D-4): il for-select con i due flag del perimetro. */
+export interface MentionableUser extends ForSelectItem {
+  /** False = la persona non vede il record e verra' aggiunta al salvataggio della nota. */
+  in_record: boolean
+  /** False = non ha il permesso di vista del modulo: ricevera' la notifica ma non potra' aprire il record. */
+  has_module_access: boolean
+}
+
+/** Esito di create/update: la nota e gli id aggiunti al record da quel salvataggio (`meta.enlisted_user_ids`). */
+export interface NoteMutationResult {
+  note: Note
+  enlistedUserIds: number[]
+}
+
 /** Keyset pagination metadata of a notes page (D-13: counts roots, not replies). */
 export interface NotesPageMeta {
   next_cursor: string | null
@@ -78,6 +106,12 @@ export interface NotesPageMeta {
    * mano: assente si comporta come "nessuna Offerta" (nessun selettore).
    */
   quotes?: NoteQuoteRef[]
+  /**
+   * Spec 0353: se chi scrive puo' menzionare anche chi non vede il record (e
+   * con quale ruolo verra' aggiunto). Opzionale per le fixture dei test:
+   * assente equivale a `{ allowed: false, role: null }`.
+   */
+  mention_outside?: MentionOutsideMeta
 }
 
 /** One page as returned in the `GET /api/notes` envelope `data` + `meta`. */

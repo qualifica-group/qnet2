@@ -6,6 +6,7 @@ namespace App\Services\Tasks;
 
 use App\Models\Task;
 use App\Models\User;
+use App\Notes\Contracts\EnlistsMentionedUsers;
 use App\Notes\Contracts\NotableEntity;
 use App\Services\TimeEntries\TimeEntrySubordinateResolver;
 use Illuminate\Database\Eloquent\Builder;
@@ -34,8 +35,10 @@ use Spatie\Permission\Models\Permission;
  * container-resolved object, not a static one: nothing in the
  * `permissions:sync` path ever constructs it.
  */
-final class TaskNotable implements NotableEntity
+final class TaskNotable implements EnlistsMentionedUsers, NotableEntity
 {
+    public const string VIEW_PERMISSION = 'tasks.view';
+
     public function modelClass(): string
     {
         return Task::class;
@@ -50,7 +53,7 @@ final class TaskNotable implements NotableEntity
      */
     public function authorizeRead(User $user, Model $record): bool
     {
-        if (! $user->can('tasks.view')) {
+        if (! $user->can(self::VIEW_PERMISSION)) {
             return false;
         }
 
@@ -89,7 +92,7 @@ final class TaskNotable implements NotableEntity
         /** @var Task $record */
         $memberIds = $this->memberIds($record);
         $siteIds = $this->assigneeSiteIds($record);
-        $viewExists = $this->permissionExists('tasks.view');
+        $viewExists = $this->permissionExists(self::VIEW_PERMISSION);
         $viewAllExists = $this->permissionExists(TaskVisibilityScope::VIEW_ALL_PERMISSION);
         $viewSiteExists = $siteIds !== [] && $this->permissionExists(TaskVisibilityScope::VIEW_SITE_PERMISSION);
         $teamIds = $record->is_private ? [] : $this->assigneeAncestorIds($record);
@@ -101,7 +104,7 @@ final class TaskNotable implements NotableEntity
                 $query->whereHas('roles', fn (Builder $role) => $role->where('name', 'super-admin'))
                     ->when($viewExists, function (Builder $canRead) use ($memberIds, $siteIds, $teamIds, $viewAllExists, $viewSiteExists): void {
                         $canRead->orWhere(function (Builder $reader) use ($memberIds, $siteIds, $teamIds, $viewAllExists, $viewSiteExists): void {
-                            $reader->permission('tasks.view')
+                            $reader->permission(self::VIEW_PERMISSION)
                                 ->where(function (Builder $access) use ($memberIds, $siteIds, $teamIds, $viewAllExists, $viewSiteExists): void {
                                     $access->whereIn('id', $memberIds)
                                         ->when($viewAllExists, function (Builder $tiers): void {
@@ -169,6 +172,37 @@ final class TaskNotable implements NotableEntity
     {
         /** @var Task $record */
         return $this->authorizeRead($recipient, $record) ? '/tasks/'.$record->getKey() : null;
+    }
+
+    public function enlistmentRole(): string
+    {
+        return self::ROLE_WATCHER;
+    }
+
+    public function canEnlist(User $actor, Model $record): bool
+    {
+        return $actor->can('update', $record);
+    }
+
+    public function modulePermission(): string
+    {
+        return self::VIEW_PERMISSION;
+    }
+
+    /**
+     * Osservatori have no cap (spec 0353, D-3). Creator, requester and
+     * assignees are skipped: they already belong to the Task and the two sets
+     * must stay disjoint (TaskWatcherOverlapGuard).
+     */
+    public function enlist(Model $record, array $userIds): array
+    {
+        /** @var Task $record */
+        $reserved = [$record->creator_id, $record->requester_id, ...$record->assignees()->pluck('users.id')->all()];
+        $candidates = array_values(array_diff($userIds, array_map('intval', array_filter($reserved))));
+        $attached = $record->watchers()->syncWithoutDetaching($candidates)['attached'];
+        $record->unsetRelation('watchers');
+
+        return array_map('intval', $attached);
     }
 
     /**
