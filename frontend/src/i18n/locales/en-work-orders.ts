@@ -100,6 +100,23 @@ export const workOrders = {
   },
   /** "Chiusura forzata" as an action of the detail and the grid (user directive 2026-10-06), and its inverse. */
   actions: {
+    requestUpdate: {
+      label: 'Request update',
+      title: 'Request update',
+      description: 'Choose who should receive the request and write a message: they will get an email and a notification.',
+      target: 'Recipients',
+      targetParticipants: 'Participants',
+      targetParticipantsHint: 'Supervisors receive a copy of the request.',
+      targetSupervisors: 'Supervisors',
+      targetAll: 'Participants and supervisors',
+      recipientsEmpty: 'This work order has no participants or supervisors to contact.',
+      message: 'Message',
+      messagePlaceholder: 'Write the message to send to the recipients.',
+      messageTooShort: 'The message must be at least 3 characters long.',
+      messageTooLong: 'The message cannot exceed 2000 characters.',
+      submit: 'Send request',
+      success: 'Update request sent.',
+    },
     forceClose: {
       title: 'Force close the work order',
       description: 'The work order is closed, stating the reason. You can reopen it later.',

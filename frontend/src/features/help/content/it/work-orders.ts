@@ -145,6 +145,29 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'request-update',
+      title: 'Richiesta di aggiornamento',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Con **Richiedi aggiornamento** chiedi notizie sulla commessa: i destinatari ricevono una mail e una notifica con il tuo messaggio e il link alla commessa. Il pulsante è in alto nel dettaglio e tra le azioni di riga della tabella Commesse; compare solo se hai il permesso **Richiedere aggiornamenti** e solo su una commessa Aperta o In lavorazione (non su una Terminata o Chiusa). La commessa non viene modificata.',
+        },
+        {
+          type: 'table',
+          headers: ['Destinatari', 'Chi riceve la richiesta'],
+          rows: [
+            ['Partecipanti', 'Tutti i partecipanti; i responsabili ricevono comunque una copia, contrassegnata **In copia**.'],
+            ['Responsabili', 'Tutti i responsabili della commessa.'],
+            ['Partecipanti e responsabili', 'Entrambi i gruppi, come destinatari diretti.'],
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Il messaggio è **obbligatorio** (da 3 a 2000 caratteri). Un gruppo senza persone non si può scegliere; il numero accanto a ogni gruppo indica quante persone lo ricevono.',
+        },
+      ],
+    },
+    {
       id: 'processing-status',
       title: 'Stato lavorazione',
       blocks: [

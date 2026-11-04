@@ -67,6 +67,8 @@ export const permissions = {
     // on top of BasePolicy's CRUD (`work-orders.viewEmails`/`sendEmail`).
     viewEmails: 'View emails',
     sendEmail: 'Send email',
+    // Spec 0352: "Richiedi aggiornamento" sulla commessa (`work-orders.requestUpdate`).
+    requestUpdate: 'Request updates',
     revealCardNumber: 'Reveal card number',
     collect: 'Record collections',
     // Spec 0243: registered active invoices.

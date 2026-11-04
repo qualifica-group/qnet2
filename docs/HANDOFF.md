@@ -3,6 +3,27 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Commesse: "Richiedi aggiornamento" (spec 0352) — VERDE, NON COMMITTATO (2026-11-04)
+
+- Spec `docs/specs/0352-work-order-update-request.xml` (D-1..D-6, AC-001..AC-016), clone della richiesta del task
+  (spec 0153 D-14). Decisioni utente: gruppi fissi `participants` (Responsabili non partecipanti in copia,
+  `is_cc: true`) / `supervisors` / `all`; nuovo permesso `work-orders.requestUpdate` + perimetro; solo commesse
+  open/in_progress (`WorkOrderStatus::acceptsUpdateRequest()`, unica fonte per service, flag e azione di riga);
+  pulsante nell'header del dettaglio + azione di riga `request_update`.
+- BE: `POST /api/work-orders/{workOrder}/request-update` -> `WorkOrderRequestUpdateController` ->
+  `RequestWorkOrderUpdateRequest` (422 `target` se il gruppo e' vuoto) -> `WorkOrderUpdateRequester::handle()` ->
+  notifica `WorkOrderUpdateRequested` (database+mail, link via `RecordLinkResolver`). Risposta `data: null`
+  (nessuna scrittura sulla commessa). Flag `permissions.actions.request_update`.
+- FE: dialog condiviso `features/shared/request-update-dialog.tsx` (`RequestUpdateDialog<T>`); il dialog del task e'
+  ora un wrapper; nuovo `work-order-request-update-dialog.tsx`, `use-request-work-order-update.ts`; gli host di
+  `useWorkOrderRowActions` (griglia commesse, contratto, anagrafica) montano `requestUpdateDialog`.
+- Manuale: guide in-app IT/EN sezione `request-update`; manuale Claude Docs, paragrafo "Richiedi aggiornamento"
+  dopo "Notifiche" della commessa.
+- Fallimenti preesistenti NON di questa feature: `PermissionCatalogueEndpointTest` AC-004 (`request-management`
+  esposto in due aree, commercial e develop -> 17 duplicati) e `TableBulkDeleteTest` guard ultimo super-admin
+  (`forbidden` invece di `guarded`). `work-order-detail.test.tsx` era gia' oltre 500 righe (585 -> 607).
+- Il permesso nuovo va assegnato ai ruoli dall'editor ruoli (solo super-admin lo ha di default).
+
 ## Contratti: "Programma" anche sui contratti gia' validati in lavorazione — VERDE, NON COMMITTATO (2026-11-04)
 
 - Decisione utente 2026-11-04: `ContractActionAvailability::mayProgram()` = `closed_won` OPPURE (gruppo open/pending

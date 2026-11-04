@@ -145,6 +145,29 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'request-update',
+      title: 'Update request',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'With **Request update** you ask for news on the work order: the recipients get an email and a notification with your message and the link to the work order. The button is at the top of the detail and among the row actions of the Work orders table; it shows only if you hold the **Request updates** permission and only on an Open or In progress work order (not on a Completed or Closed one). The work order is not changed.',
+        },
+        {
+          type: 'table',
+          headers: ['Recipients', 'Who gets the request'],
+          rows: [
+            ['Participants', 'Every participant; the supervisors still get a copy, marked **CC**.'],
+            ['Supervisors', 'Every supervisor of the work order.'],
+            ['Participants and supervisors', 'Both groups, as direct recipients.'],
+          ],
+        },
+        {
+          type: 'note',
+          text: 'The message is **required** (3 to 2000 characters). A group with nobody in it cannot be picked; the number next to each group tells how many people get it.',
+        },
+      ],
+    },
+    {
       id: 'processing-status',
       title: 'Processing status',
       blocks: [

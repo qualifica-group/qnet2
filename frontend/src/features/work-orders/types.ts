@@ -323,3 +323,11 @@ export interface CreateProgressEntryPayload {
   percentage: number
   recorded_on: string
 }
+
+/** The three fixed recipient groups of "Richiedi aggiornamento" (spec 0352 D-1). */
+export type WorkOrderRequestUpdateTarget = 'participants' | 'supervisors' | 'all'
+
+export interface RequestWorkOrderUpdatePayload {
+  target: WorkOrderRequestUpdateTarget
+  message: string
+}
