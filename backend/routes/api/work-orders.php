@@ -86,3 +86,6 @@ require __DIR__.'/work-order-contract-data.php';
 
 // Manual progress entries (spec 0321).
 require __DIR__.'/work-order-progress.php';
+
+// Project work order chat (spec 0352).
+require __DIR__.'/work-order-chat.php';

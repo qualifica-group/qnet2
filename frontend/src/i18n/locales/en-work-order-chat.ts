@@ -1,4 +1,27 @@
-/** English labels (`workOrderChat.*`) of the project work order chat (spec 0352). Extended by the chat feature. */
+/** English labels (`workOrders.chat.*`) of the project work order chat (spec 0352). */
 export const workOrderChat = {
   tab: 'Chat',
+  unreadBadge: '{{count}} unread messages',
+  loading: 'Loading chat',
+  loadError: 'Unable to load the chat.',
+  retry: 'Retry',
+  empty: 'No messages yet. Write the first one.',
+  loadPrevious: 'Load earlier messages',
+  messagesLabel: 'Chat messages',
+  deletedMessage: 'Message deleted',
+  edited: 'edited',
+  unknownAuthor: 'Removed user',
+  readOnly: 'Read-only chat: you cannot send messages.',
+  composerLabel: 'Write a message',
+  composerPlaceholder: 'Write a message...',
+  send: 'Send',
+  save: 'Save',
+  cancel: 'Cancel',
+  edit: 'Edit',
+  delete: 'Delete',
+  actionError: 'The chat operation failed.',
+  validation: {
+    required: 'Write a message.',
+    tooLong: 'The message cannot exceed {{max}} characters.',
+  },
 }

@@ -6,6 +6,7 @@ namespace App\Authorization;
 
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Services\WorkOrders\Chat\WorkOrderChatAccess;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -71,7 +72,7 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'view_emails', 'send_email', 'view_costs', 'view_invoices', 'manage_costs', 'view_contract_data', 'manage_payments', 'force_close', 'reopen'];
+        return ['delete', 'export', 'import', 'view_activity', 'view_documents', 'view_emails', 'send_email', 'view_costs', 'view_invoices', 'manage_costs', 'view_contract_data', 'manage_payments', 'force_close', 'reopen', 'view_chat', 'write_chat'];
     }
 
     /**
@@ -113,6 +114,8 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
      */
     public function actionPermissions(User $actor, ?Model $model): array
     {
+        $chat = app(WorkOrderChatAccess::class);
+
         return [
             // Spec 0243, D-1: not offered once accounting documents hang off it.
             'delete' => $model !== null && $actor->can('work-orders.delete')
@@ -144,6 +147,9 @@ class WorkOrdersAuthorization extends AbstractResourceAuthorization
             // PATCH they send, exactly one of the two by the closure state.
             'force_close' => $this->mayToggleForceClose($actor, $model, false),
             'reopen' => $this->mayToggleForceClose($actor, $model, true),
+            // Spec 0352: the single chat rule, never a Gate ability.
+            'view_chat' => $model instanceof WorkOrder && $chat->canRead($actor, $model),
+            'write_chat' => $model instanceof WorkOrder && $chat->canWrite($actor, $model),
         ];
     }
 

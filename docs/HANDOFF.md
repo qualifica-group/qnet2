@@ -3,7 +3,35 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Chat nelle Commesse di Progetto (spec 0352) — PASSO 1 VERDE, IN CORSO (2026-11-04)
+## Chat nelle Commesse di Progetto (spec 0352) — PASSI 1+2 VERDI, IN CORSO (2026-11-04)
+
+- Passo 2 (B3, B4, F2), verificato:
+  - B3: `App\Services\WorkOrders\Chat\WorkOrderChatAccess` (canRead/canWrite/canModerate/canEditMessage, assertCanRead,
+    assertOpen = 409) e `WorkOrderChatService` (costanti MAX_BODY_LENGTH 2000, DEFAULT_LIMIT 50, MAX_LIMIT 100);
+    `WorkOrderChatChannel::name()`; evento `WorkOrderChatMessageBroadcast` (ShouldBroadcast + ShouldDispatchAfterCommit,
+    broadcastAs `chat.message`, `avatar_url` null nel broadcast per il limite 10 KB di Reverb); controller
+    `WorkOrderChatController` con `guard()` (403 policy -> 404 non project -> 403 team -> 422 -> 409, tutti in envelope);
+    i FormRequest `WorkOrderChat\*` differiscono la validazione (`validateResolved()` no-op, `validatePayload()` nel
+    controller). Rotte in `routes/api/work-order-chat.php` (nomi `work-orders.chat.*`), parametro `{chatMessage}`
+    (scopeBindings su `chatMessages()`). `config/chat.php` (`edit_window_minutes`). `view_chat`/`write_chat` in
+    `WorkOrdersAuthorization` (solo nel dettaglio, la griglia non le calcola per riga).
+  - B4: `App\Tables\WorkOrders\ProjectWorkOrdersTableDefinition` (estende WorkOrdersTableDefinition, `type = project`,
+    colonna `chat_unread_count` subquery; super-admin fuori team conteggiato); `scopeToWorkOrderType()` su
+    `QuoteScopedTableDefinition`, letto in `TableController::rows`, `TableRowsRequest`, export (`ExportController`,
+    `CreateExportRequest`, `ExportService` usa `domain()`); `GridCategoryTabsResolver` esclude project; voce menu
+    `project-work-orders`; alias campi personalizzati `TableRegistry::CUSTOM_FIELD_ENTITY_ALIASES`
+    (`project-work-orders` -> `work-orders`). Helper `tests/Helpers/ProjectWorkOrderHelpers.php`; gli helper commesse di
+    `CategoryTabHelpers` fissano `type = processing`.
+  - F2: `frontend/src/features/work-order-chat/*`; la sottoscrizione al canale vive in `WorkOrderChatTabLabel` (sempre
+    montata, aggiorna il badge anche a tab chiusa); avatar non mostrato; delete senza conferma (soft delete).
+- Verifica passo 2: Pest WorkOrderChat 53, ProjectWorkOrders 18, WorkOrders 422, Tables 62, Exports 43, CustomFields
+  138, Navigation 20, ActivityLog 92 verdi; Vitest 1075 verdi; tsc -b exit 0; ESLint e Pint puliti.
+  `TableController.php` riportato a 497 righe.
+- Rossi PREESISTENTI, fuori scope: `TableBulkDeleteTest` "guards the last super-admin" (policy spec 0310, il test
+  attende `guarded`, riceve `forbidden`); `WorkOrderCategoryTabsTest` AC-024 instabile (ordina per `name` casuale
+  della factory, l'asserzione `toBe` dipende dall'ordine delle chiavi).
+- Ambiente locale per il realtime: `BROADCAST_CONNECTION=reverb` + `REVERB_*` nel backend, `VITE_REVERB_*` nel frontend,
+  `composer dev` (avvia `reverb:start`), riavvio di Vite. Con `QUEUE_CONNECTION=sync` il broadcast gira nella richiesta.
 
 - Spec `docs/specs/0352-project-work-order-chat.xml` approvata (commit 7271f43d). D-10 confermata: il super-admin
   MODERA (modifica/cancella messaggi altrui senza finestra di 15 min; blocco commessa chiusa vale anche per lui),
@@ -27,7 +55,8 @@
     (`{it,en}-work-order-chat.ts`, F2 li estende; `en.ts` e' oltre 500 righe, non toccarlo).
 - Verifica: Pest WorkOrderChat 9, WorkOrders 422, ActivityLog 92 verdi; Pint ok; Vitest (lib, work-orders, table,
   exports, routes, i18n) 1066 verdi; `tsc -b --force` exit 0; ESLint pulito.
-- Prossimo (passo 2): B3 (WorkOrderChatAccess, WorkOrderChatChannel, controller/request/resource, evento, 5 rotte,
+- Prossimo: passo 3 (D1 guide in-app `project-work-orders` nuova + `work-orders` aggiornata IT/EN, `help-guide-keys`,
+  manuale Claude Docs), poi verifier finale con suite completa. Storico del piano passo 2: B3 (WorkOrderChatAccess, WorkOrderChatChannel, controller/request/resource, evento, 5 rotte,
   regola canale, view_chat/write_chat, config/chat.php) | B4 (dominio griglia `project-work-orders`, backend legge
   `work_order_type` in righe ED export (`ExportController:63` safe()->only + FormRequest), conteggi
   `CategoryTabGrid::WorkOrders` senza project, voce menu `project-work-orders` label `navigation.projectWorkOrders`

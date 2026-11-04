@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Table;
 
+use App\Enums\WorkOrderType;
 use App\Services\Table\AdvancedFilterApplier;
 use App\Services\Table\CustomFilterRuleValidator;
 use App\Services\Table\RowGroupQuery;
@@ -139,6 +140,10 @@ class TableRowsRequest extends FormRequest
             // Spec 0336: scopes `commission-configurations` to the rules of one
             // Referente (the Referente detail's card) — a no-op key for every other domain.
             'referentId' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
+
+            // Spec 0352, D-2: restricts `work-orders` to one commessa type (the
+            // "Commesse" page sends `processing`) - a no-op key for every other domain.
+            'work_order_type' => ['sometimes', 'nullable', Rule::enum(WorkOrderType::class)],
 
             // Spec 0157, D-1: tree/hierarchical row scoping (Sintetica) — a
             // domain that does not override supportsTree() 422s either key
@@ -346,6 +351,10 @@ class TableRowsRequest extends FormRequest
 
             if ($definition instanceof QuoteScopedTableDefinition) {
                 $definition->scopeToQuote($this->quoteIdInput());
+            }
+
+            if ($definition instanceof QuoteScopedTableDefinition) {
+                $definition->scopeToWorkOrderType(WorkOrderType::tryFrom((string) $this->input('work_order_type')));
             }
 
             if ($definition instanceof RegistryScopable) {

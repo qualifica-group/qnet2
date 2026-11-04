@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Export;
 
+use App\Enums\WorkOrderType;
 use App\Http\Requests\Table\TableRowsRequest;
 use App\Services\Table\AdvancedFilterApplier;
 use App\Services\Table\CustomFilterRuleValidator;
@@ -98,6 +99,10 @@ class CreateExportRequest extends FormRequest
             // Spec 0336: scopes `commission-configurations` to the rules of one
             // Referente (the Referente detail's card) — a no-op key for every other domain.
             'referentId' => ['sometimes', 'nullable', 'integer', Rule::exists('referents', 'id')],
+
+            // Spec 0352, D-2: restricts a `work-orders` export to one commessa type
+            // (the "Commesse" page sends `processing`) - a no-op key for every other domain.
+            'work_order_type' => ['sometimes', 'nullable', Rule::enum(WorkOrderType::class)],
         ];
     }
 

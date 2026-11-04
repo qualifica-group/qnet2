@@ -60,7 +60,7 @@ class ExportController extends BaseApiController
             // frozen alongside the rest of the grid state so
             // GenerateExportJob can re-apply them — the scope must survive
             // the async hop, it cannot live only on this request.
-            $state = $request->safe()->only(['columns', 'sortModel', 'filterModel', 'advancedFilters', 'customFilterRules', 'search', 'opportunityId', 'quoteId', 'registryId', 'referentId']);
+            $state = $request->safe()->only(['columns', 'sortModel', 'filterModel', 'advancedFilters', 'customFilterRules', 'search', 'opportunityId', 'quoteId', 'registryId', 'referentId', 'work_order_type']);
 
             $run = $this->service->start($actor, $definition, $state, $format);
 

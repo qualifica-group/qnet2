@@ -181,6 +181,10 @@
 
     <broadcast channel="private-work-orders.{workOrderId}.chat" event=".chat.message">
       payload: { action: "created" | "updated" | "deleted", message: ChatMessage }
+      con `message.author.avatar_url` sempre null: l'avatar e' un data URI e supererebbe il limite di
+      dimensione di Reverb (`max_request_size`, default 10.000 byte); il frontend lo tiene dalla cache.
+      Nelle rotte il messaggio e' il parametro `{chatMessage}` (URL invariato, scopeBindings su
+      `WorkOrder::chatMessages()`).
       Inviato in coda, dopo il commit, solo per scritture riuscite. L'autore riceve anche il proprio
       evento; il frontend deduplica per id.
     </broadcast>

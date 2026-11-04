@@ -84,6 +84,7 @@ use App\Tables\UserSkills\UserSkillsTableDefinition;
 use App\Tables\UsersTableDefinition;
 use App\Tables\VatRatesTableDefinition;
 use App\Tables\WorkOrderPaymentStatusesTableDefinition;
+use App\Tables\WorkOrders\ProjectWorkOrdersTableDefinition;
 use App\Tables\WorkOrdersTableDefinition;
 use App\Tables\WorkOrderWorkflowsTableDefinition;
 
@@ -168,6 +169,8 @@ return [
         'quote-workflows' => QuoteWorkflowsTableDefinition::class,
         // spec 0093: le Commesse, collegate a un'offerta e alle sue righe.
         'work-orders' => WorkOrdersTableDefinition::class,
+        // spec 0352: le Commesse di Progetto (type = project) con la colonna dei messaggi chat non letti.
+        'project-work-orders' => ProjectWorkOrdersTableDefinition::class,
         // spec 0201: the configurable payment statuses of a commessa line.
         'work-order-payment-statuses' => WorkOrderPaymentStatusesTableDefinition::class,
         // spec 0322: Configuratore Stati Commessa, twin of quote-workflows.

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Authorization\LegacyIdVisibility;
 use App\Enums\ExportFormat;
 use App\Enums\ExportStatus;
+use App\Enums\WorkOrderType;
 use App\Exports\ExportValueFormatter;
 use App\Exports\ExportWriterFactory;
 use App\Jobs\GenerateExportJob;
@@ -40,17 +41,19 @@ class ExportService
     ) {}
 
     /**
-     * @param  array{columns: array<int, array{colId: string, header: string}>, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, advancedFilters?: array<string, mixed>, customFilterRules?: array<string, mixed>|null, search?: string|null, opportunityId?: int|null, quoteId?: int|null, registryId?: int|null, referentId?: int|null}  $state
+     * @param  array{columns: array<int, array{colId: string, header: string}>, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, advancedFilters?: array<string, mixed>, customFilterRules?: array<string, mixed>|null, search?: string|null, opportunityId?: int|null, quoteId?: int|null, registryId?: int|null, referentId?: int|null, work_order_type?: string|null}  $state
      */
     public function start(User $actor, TableDefinition $definition, array $state, ExportFormat $format): ExportRun
     {
         // Step 1: build the client-facing filename from the domain + today's date.
-        $filename = "{$definition->resource()}-".now()->format('Y-m-d').'.'.$format->extension();
+        $filename = "{$definition->domain()}-".now()->format('Y-m-d').'.'.$format->extension();
 
-        // Step 2: persist the run (frozen state) as `processing`.
+        // Step 2: persist the run (frozen state) as `processing`. Keyed by the grid
+        // DOMAIN, not resource(): a grid may share its permission resource with another
+        // (project-work-orders -> work-orders) and generate() must re-resolve THAT grid.
         /** @var ExportRun $run */
         $run = DB::transaction(fn (): ExportRun => ExportRun::create([
-            'resource' => $definition->resource(),
+            'resource' => $definition->domain(),
             'user_id' => $actor->id,
             'status' => ExportStatus::Processing,
             'format' => $format,
@@ -84,7 +87,7 @@ class ExportService
         // The queue worker forgets the guards after every job.
         Auth::setUser($actor);
 
-        /** @var array{columns: array<int, array{colId: string, header: string}>, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, advancedFilters?: array<string, mixed>, customFilterRules?: array<string, mixed>|null, search?: string|null, opportunityId?: int|null, quoteId?: int|null, registryId?: int|null, referentId?: int|null} $state */
+        /** @var array{columns: array<int, array{colId: string, header: string}>, sortModel?: array<int, array<string, mixed>>, filterModel?: array<string, array<string, mixed>>, advancedFilters?: array<string, mixed>, customFilterRules?: array<string, mixed>|null, search?: string|null, opportunityId?: int|null, quoteId?: int|null, registryId?: int|null, referentId?: int|null, work_order_type?: string|null} $state */
         $state = $run->state;
         $columns = $state['columns'];
 
@@ -98,6 +101,10 @@ class ExportService
 
         if ($definition instanceof QuoteScopedTableDefinition && ($state['quoteId'] ?? null) !== null) {
             $definition->scopeToQuote($state['quoteId']);
+        }
+
+        if ($definition instanceof QuoteScopedTableDefinition && ($state['work_order_type'] ?? null) !== null) {
+            $definition->scopeToWorkOrderType(WorkOrderType::tryFrom($state['work_order_type']));
         }
 
         if ($definition instanceof RegistryScopable && ($state['registryId'] ?? null) !== null) {

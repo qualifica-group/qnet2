@@ -24,5 +24,12 @@ return [
             'route' => '/work-orders',
             'permission' => 'work-orders.view',
         ],
+        [
+            'key' => 'project-work-orders',
+            'label' => 'navigation.projectWorkOrders',
+            'icon' => 'clipboard-list',
+            'route' => '/project-work-orders',
+            'permission' => 'work-orders.view',
+        ],
     ],
 ];

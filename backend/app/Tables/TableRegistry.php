@@ -85,6 +85,17 @@ class TableRegistry
         'commission-configurations' => 'commission_configurations.recipient_type',
     ];
 
+    /**
+     * Grids that show another domain's records and so share ITS custom fields
+     * (spec 0352): domain => custom-fieldable entity type. They never become an
+     * entity of their own in the custom fields configurator.
+     *
+     * @var array<string, string>
+     */
+    private const array CUSTOM_FIELD_ENTITY_ALIASES = [
+        'project-work-orders' => self::WORK_ORDERS_DOMAIN,
+    ];
+
     public function __construct(private readonly Container $container) {}
 
     /**
@@ -160,14 +171,16 @@ class TableRegistry
         /** @var CustomFieldEntityRegistry $entityRegistry */
         $entityRegistry = $this->container->make(CustomFieldEntityRegistry::class);
 
-        if (! $entityRegistry->isCustomFieldable($domain)) {
+        $entityType = self::CUSTOM_FIELD_ENTITY_ALIASES[$domain] ?? $domain;
+
+        if (! $entityRegistry->isCustomFieldable($entityType)) {
             return $definition;
         }
 
         /** @var CustomFieldAwareTableDefinition $wrapped */
         $wrapped = $this->container->make(CustomFieldAwareTableDefinition::class, [
             'inner' => $definition,
-            'entityType' => $domain,
+            'entityType' => $entityType,
         ]);
 
         return $wrapped;
