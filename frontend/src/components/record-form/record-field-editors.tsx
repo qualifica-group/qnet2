@@ -55,6 +55,8 @@ interface RecordRelationEditorProps<TValues extends FieldValues> {
   placeholder: string
   params?: Record<string, string | number>
   required?: boolean
+  renderItem?: RelationProps['renderItem']
+  groupOptions?: RelationProps['groupOptions']
 }
 
 export function RecordRelationEditor<TValues extends FieldValues>({ control, name, ...props }: RecordRelationEditorProps<TValues>) {

@@ -3,11 +3,11 @@ import { useWatch, type Control } from 'react-hook-form'
 import { Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
-import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
+import { AsyncPaginatedSelect, type GroupOptions } from '@/components/ui/async-paginated-select'
 import { Button } from '@/components/ui/button'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { costTypeOptionRenderer } from '@/features/cost-types/cost-type-option-renderer'
+import { COST_SUB_ACCOUNT_SELECT_PROPS } from '@/features/chart-of-accounts/sub-account-select/cost-sub-account'
 import { COST_TYPES_FOR_SELECT_RESOURCE } from '@/features/cost-types/for-select-api'
 import type { ForSelectItem } from '@/features/for-select/types'
 import { fromCents, type AmountsCents } from '@/lib/amounts/line-amounts'
@@ -54,13 +54,14 @@ interface LineSelectProps {
   placeholder: string
   required?: boolean
   renderItem?: (item: ForSelectItem) => ReactNode
+  groupOptions?: GroupOptions
   onItemChange?: (item: ForSelectItem | null) => void
   /** Shows the "+" quick-create; off for the VAT rate, whose amounts need the rate the create result does not carry. */
   quickCreate?: boolean
 }
 
 /** Compact for-select picker of one id of a row, with the accessible error triad via FormControl. */
-function LineSelect({ control, index, name, resource, label, placeholder, required, renderItem, onItemChange, quickCreate = false }: LineSelectProps) {
+function LineSelect({ control, index, name, resource, label, placeholder, required, renderItem, groupOptions, onItemChange, quickCreate = false }: LineSelectProps) {
   const { t } = useTranslation()
   const { renderAction, selectedItemFor } = useQuickCreateAction(resource)
   return (
@@ -80,6 +81,7 @@ function LineSelect({ control, index, name, resource, label, placeholder, requir
               onItemChange={onItemChange}
               selectedItem={selectedItemFor(idToSelectValue(field.value ?? NO_ID))}
               renderItem={renderItem}
+              groupOptions={groupOptions}
               labels={{
                 placeholder,
                 searchPlaceholder: t('purchaseInvoices.editor.select.search'),
@@ -206,7 +208,7 @@ export function PurchaseInvoiceEditorLineRow({
           placeholder={t('purchaseInvoices.editor.lines.selectCostType')}
           required
           quickCreate
-          renderItem={costTypeOptionRenderer}
+          {...COST_SUB_ACCOUNT_SELECT_PROPS}
         />
         <LineSelect
           control={control}

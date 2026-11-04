@@ -92,7 +92,7 @@ describe('AgentFiscalProfileDetailView - in-place editing (spec 0264)', () => {
 
     expect(screen.getByText('Payment method')).toBeInTheDocument()
     expect(screen.getByText('Bank transfer')).toBeInTheDocument()
-    expect(screen.getByText('Cost type')).toBeInTheDocument()
+    expect(screen.getByText('Cost sub-account')).toBeInTheDocument()
     expect(screen.getByText('Agent commissions')).toBeInTheDocument()
   })
 

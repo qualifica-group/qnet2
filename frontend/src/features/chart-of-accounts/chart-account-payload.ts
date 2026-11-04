@@ -58,12 +58,13 @@ export function buildRevenueTypePayload(values: RevenueTypeFormValues): RevenueT
     name: values.name,
     description: descriptionValue(values.description),
     is_active: values.is_active,
+    ...(values.is_institution_commission_default === true ? { is_institution_commission_default: true } : {}),
   }
 }
 
 export function buildUpdateRevenueTypePayload(
   values: RevenueTypeFormValues,
-  original: SavedChartAccount & { chart_account_id?: number },
+  original: SavedChartAccount & { chart_account_id?: number; is_institution_commission_default?: boolean },
 ): UpdateRevenueTypePayload {
   const payload: UpdateRevenueTypePayload = {}
   if (values.code !== original.code) payload.code = values.code
@@ -71,5 +72,8 @@ export function buildUpdateRevenueTypePayload(
   if (descriptionValue(values.description) !== original.description) payload.description = descriptionValue(values.description)
   if (values.is_active !== original.is_active) payload.is_active = values.is_active
   if (values.chart_account_id !== original.chart_account_id) payload.chart_account_id = values.chart_account_id
+  if ((values.is_institution_commission_default ?? false) !== (original.is_institution_commission_default ?? false)) {
+    payload.is_institution_commission_default = values.is_institution_commission_default ?? false
+  }
   return payload
 }

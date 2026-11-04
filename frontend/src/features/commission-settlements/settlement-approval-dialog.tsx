@@ -3,6 +3,7 @@ import { apiErrorMessage } from '@/lib/forbidden-message'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Form } from '@/components/ui/form'
+import { COST_SUB_ACCOUNT_SELECT_PROPS } from '@/features/chart-of-accounts/sub-account-select/cost-sub-account'
 import { COST_TYPES_FOR_SELECT_RESOURCE } from '@/features/cost-types/for-select-api'
 import { FINANCIAL_ACCOUNTS_FOR_SELECT_RESOURCE } from '@/features/financial-accounts/for-select-api'
 import { PAYMENT_METHODS_FOR_SELECT_RESOURCE } from '@/features/payment-methods/for-select-api'
@@ -48,6 +49,7 @@ function ApprovalForm({ settlement, draft, onChanged, onClose }: ApprovalFormPro
             placeholder={placeholder}
             required
             quickCreate
+            {...COST_SUB_ACCOUNT_SELECT_PROPS}
           />
           <ForSelectFormField
             control={form.control}

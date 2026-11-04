@@ -90,6 +90,7 @@ class ChartOfAccountsTreeBuilder
             'is_active' => $type->is_active,
             'nature' => $type->nature?->value,
             'color' => $type->color,
+            'is_institution_commission_default' => false,
         ];
     }
 
@@ -107,6 +108,7 @@ class ChartOfAccountsTreeBuilder
             'is_active' => $type->is_active,
             'nature' => null,
             'color' => null,
+            'is_institution_commission_default' => $type->is_institution_commission_default,
         ];
     }
 

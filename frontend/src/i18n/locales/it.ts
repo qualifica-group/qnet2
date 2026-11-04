@@ -30,6 +30,7 @@ import { sources } from './it-sources'
 import { vatRates } from './it-vat-rates'
 import { unitsOfMeasure } from './it-units-of-measure'
 import { chartOfAccounts } from './it-chart-of-accounts'
+import { revenueTypes } from './it-revenue-types'
 import { costTypes } from './it-cost-types'
 import { hr } from './it-hr'
 import { productTypologies } from './it-product-typologies'
@@ -428,6 +429,7 @@ export const it: TranslationResources = {
   unitsOfMeasure,
   costTypes,
   chartOfAccounts,
+  revenueTypes,
   ...hr,
   ...accounting,
   purchaseRequests,

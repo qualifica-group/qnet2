@@ -149,7 +149,7 @@ describe('PurchaseInvoiceEditorDialog create from scratch (spec 0250 AC-012)', (
     await pick(/^Supplier$/, /Acme/)
     await pick(/^Company$/, /Qualifica/)
     await pick(/^Payment method$/, /Bonifico/)
-    await pick(/Default cost type/, /Collaboratori/)
+    await pick(/Default cost sub-account/, /Collaboratori/)
 
     fireEvent.click(screen.getByRole('button', { name: 'Free' }))
     fireEvent.change(screen.getByLabelText('Free row description'), { target: { value: 'Consulting' } })
@@ -214,7 +214,7 @@ describe('PurchaseInvoiceEditorDialog create from scratch (spec 0250 AC-012)', (
     fireEvent.click(screen.getByRole('button', { name: 'Add row' }))
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
-    expect(await screen.findByText('The cost type is required.')).toBeInTheDocument()
+    expect(await screen.findByText('The cost sub-account is required.')).toBeInTheDocument()
     expect(createMock).not.toHaveBeenCalled()
   })
 })

@@ -92,7 +92,7 @@ const guide: HelpGuide = {
           items: [
             'Tick the **Approved** lines that have a supplier (even from different RDA) and pick **Generate ODA** from the **Actions** menu. The entry is only enabled if you can create purchase orders.',
             'The dialog shows the lines grouped by **supplier** and how many ODA will be created (one per supplier; RDA with a different company or site produce separate ODA).',
-            'Choose the **Cost type** (required), optionally the **Payment method** and the **Order date** (today by default), then confirm with **Generate N ODA**.',
+            'Choose the **Cost sub-account** (required), optionally the **Payment method** and the **Order date** (today by default), then confirm with **Generate N ODA**.',
             'When done the dialog lists the created ODA: each code is a **link** to the order, which is created as a **draft**.',
           ],
         },

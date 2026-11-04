@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spec 0350 — Piano dei conti, fase 2: classificazione dei RICAVI. Ogni riga di fattura/proforma attiva porta un
+  sottoconto di ricavo, proposto dal prodotto (o dalla sua categoria) e memorizzato sulla riga.
+  Fase 1: spec 0348-chart-of-accounts (stesso numero di 0348-request-management-import, collisione nota).
+  Export/import del piano: spec 0349. Fase 3 (prospetto per mastro e societa'): spec separata.
+  Contract-first: backend e frontend lavorano contro il data_contract qui sotto.
+-->
+<spec id="0350-chart-of-accounts-revenue-classification" status="approved" owner="utente" date="2026-11-04">
+
+  <goal>
+    Rendere classificato per piano dei conti ogni ricavo: il prodotto e la categoria prodotto indicano il
+    sottoconto di ricavo predefinito, ogni riga di fattura o proforma attiva memorizza il proprio sottoconto
+    (proposto, modificabile anche dopo l'emissione), e le righe gia' esistenti vengono classificate in automatico.
+  </goal>
+
+  <context>
+    Richiesta utente 2026-11-03/04. Decisioni utente (vincolanti):
+    - D-1 Le righe gia' esistenti si classificano in AUTOMATICO (risposta 2.1).
+    - D-2 Il sottoconto di una riga si puo' cambiare anche su fatture emesse o incassate: e' un dato solo
+      gestionale, non compare sul documento (risposta 2.2).
+    - D-3 Prodotto senza sottoconto: si eredita dalla CATEGORIA prodotto, risalendo l'albero delle categorie
+      (risposta 2.3).
+    - D-4 (fase 3, registrata qui) Il prospetto conta FATTURE E PROFORMA su ENTRAMBI i lati (attivo e passivo)
+      (decisione utente 2026-11-04). Diverge dal Controllo di gestione (spec 0268 D-3, solo fatture attive).
+
+    Fatti verificati nel codice:
+    - `invoice_lines` (migrazione 2026_10_07_100300): `product_id` nullable, `quote_line_id`, importi; nessuna
+      classificazione. Una proforma diventa fattura CAMBIANDO `invoices.type` sullo stesso record
+      (`InvoiceService::updateDetails`, riga 148): le righe restano, quindi il sottoconto resta.
+    - Righe scritte da: `InvoiceService::writeLines()` (delete + createMany, create/update), migrazione legacy
+      `App\Migrations\Sources\InvoicesSource` (righe 159-190), bozza `InvoiceDraftBuilder::line()` (`available_lines`).
+      `InvoiceService::update` e' bloccato su documenti con incassi (`assertNoCollections`).
+    - Richieste proforma Ente: `invoices.proforma_request_id` -> `proforma_requests.kind` (`ProformaRequestKind::Institution`);
+      le righe Ente fatturano la provvigione del fornitore (spec 0288), non la vendita del prodotto.
+    - Prodotti: `products.category_id`, `products.cost_type_id` (spec 0251), assegnazione massiva
+      `POST /api/products/cost-type` (`ProductCostTypeController`, `SetProductsCostTypeRequest`).
+    - Categorie: albero `product_categories.parent_id`; ereditarieta' transitiva gia' usata per la funzione aziendale
+      (`CategoryHierarchy::effectiveBusinessFunction`, spec 0023/0040): stesso modello per il sottoconto.
+    - Sottoconti di ricavo: `revenue_types` (spec 0348), seme `70.03.001 Provvigioni da enti`.
+    - Editor righe fattura: `frontend/src/features/invoices/invoice-editor-*` (aggiunta prodotto via
+      `QuoteProductSelect` del modulo quotes).
+
+    Decisioni tecniche proposte (da validare con l'approvazione del piano):
+    - D-5 Colonne nuove: `invoice_lines.revenue_type_id`, `products.revenue_type_id`,
+      `product_categories.revenue_type_id` (tutte nullable, FK `revenue_types` restrict, indice). Flag
+      `revenue_types.is_institution_commission_default` (bool, al piu' UNO a true), impostato dalla migrazione su
+      `70.03.001` se esiste.
+    - D-6 Proposta (`RevenueTypeResolver`, unica fonte): riga di una fattura Ente -> sottoconto predefinito provvigioni
+      Ente; altrimenti `products.revenue_type_id` del prodotto della riga; altrimenti il sottoconto EFFETTIVO della sua
+      categoria (propria o primo antenato che lo ha); altrimenti NULL = "da classificare". Nessuna query per riga:
+      prodotti e albero categorie caricati una volta per documento/batch.
+    - D-7 Scrittura righe (create/update fattura, legacy): `lines.*.revenue_type_id` OPZIONALE nel payload. Chiave
+      ASSENTE -> il server applica la proposta D-6; chiave PRESENTE (id o null) -> valore dell'utente. La bozza
+      (`available_lines[]`) espone gia' la proposta in `revenue_type_id`, cosi' l'utente la vede prima di salvare;
+      per una riga aggiunta a mano col prodotto la proposta si vede dopo il salvataggio.
+    - D-8 Modifica dopo l'emissione (D-2): endpoint dedicato per la sola classificazione, non `PUT /invoices`
+      (bloccato con incassi). Permesso `invoices.update` verificato sul permesso, non sullo stato del documento.
+      Audit sulla riga (LogsModelActivity su InvoiceLine se gia' presente, altrimenti activity sulla fattura).
+    - D-9 Classificazione automatica (D-1): (a) migrazione dati al rilascio: righe con `revenue_type_id` NULL ->
+      proposta D-6 (all'inizio classifica solo le righe Ente, perche' prodotti e categorie non hanno ancora un
+      sottoconto); (b) ogni volta che si assegna o cambia il sottoconto di ricavo di un prodotto o di una categoria
+      (singolo o massivo), un job in coda classifica le righe ancora NULL dei prodotti interessati. MAI sovrascrivere
+      una riga gia' classificata (anche se classificata a mano). (c) comando `php artisan chart:classify-revenue`
+      idempotente che esegue lo stesso passo su tutte le righe NULL.
+    - D-10 Selezione sottoconto: nuovo `GET /api/revenue-types/for-select` raggruppato mastro > conto, solo voci
+      attive con conto e mastro attivi (+ `ids[]` per l'idratazione, anche se inattive), ricerca su codice e nome.
+      Se e' attivo il lavoro di spec 0349 sugli stessi file, le rotte nuove vanno in un file di rotte nuovo.
+    - D-11 Fuori dalla fase 2 (correzione rispetto all'analisi): costi manuali di commessa e provvigioni agenti hanno
+      gia' un sottoconto di costo (`work_order_costs.cost_type_id`, `agent_fiscal_profiles.cost_type_id` sulle
+      fatture passive degli estratti conto); come trattare le provvigioni MATURATE senza documento e' una regola di
+      calcolo della fase 3 (evitando il doppio conteggio, spec 0268 D-9). Nessuna ereditarieta' da categoria sul
+      lato costi in questa fase.
+    - D-12 ESTENSIONE (decisione utente 2026-11-04, dopo la build, REQUIREMENT CHANGED rispetto allo scope/out):
+      ovunque si sceglie un tipo di costo l'etichetta diventa "Sottoconto costo" (EN "Cost sub-account") e il
+      selettore mostra il piano dei conti come quello di ricavo: voci raggruppate mastro > conto, codice + nome,
+      ricerca per codice o nome, intestazioni non selezionabili, tipi di costo senza conto in un gruppo finale
+      "Da collocare" (restano selezionabili). Il valore mostrato e' codice + nome (percorso come dettaglio). Punti:
+      scheda prodotto e assegnazione massiva, righe ordine di acquisto, generazione ordini da richieste, fattura
+      passiva (testata, righe, dettaglio), costi di commessa, profilo fiscale agente, approvazione estratto conto
+      provvigioni, quick-create catalogo, colonne griglia corrispondenti. `GET /api/cost-types/for-select` si
+      ESTENDE in modo additivo (campi esistenti invariati): ogni item + `code`: string|null, `path`: string|null,
+      `group`: {code, name}|null, `account`: {code, name}|null; ordine: voci collocate per codice naturale, poi le
+      non collocate per nome. Un solo selettore condiviso per costo e ricavo (generalizzazione di
+      `features/revenue-types/revenue-type-select.tsx`). Restano INVARIATI: pagina "Tipi di costo" (Configurazione),
+      Controllo di gestione (etichette e raggruppamenti per tipo di costo), validazioni e payload dei documenti.
+  </context>
+
+  <scope>
+    <in>
+      <item>Migrazione schema D-5 + migrazione dati D-9(a) (reversibile, idempotente).</item>
+      <item>`RevenueTypeResolver` (D-6) usato da InvoiceService, InvoiceDraftBuilder, InvoicesSource, job e comando.</item>
+      <item>Prodotto: campo `revenue_type_id` in scheda (create/update/resource/authorization), colonna in griglia
+        prodotti, assegnazione massiva `POST /api/products/revenue-type` (speculare a cost-type).</item>
+      <item>Categoria prodotto: campo `revenue_type_id` + valore effettivo ereditato mostrato in scheda
+        (proprio / ereditato da "categoria X").</item>
+      <item>Righe fattura/proforma attiva: colonna sottoconto nell'editor e nel dettaglio; proposta nella bozza;
+        modifica dopo l'emissione dal dettaglio (D-8).</item>
+      <item>Job + comando di classificazione automatica (D-9 b/c).</item>
+      <item>`GET /api/revenue-types/for-select` e combobox raggruppata condivisa (D-10).</item>
+      <item>Flag "predefinito provvigioni Ente" sul sottoconto di ricavo, modificabile dal piano dei conti.</item>
+      <item>Guide in-app IT+EN: products, product-categories, invoices, chart-of-accounts; manuale Claude Docs.</item>
+    </in>
+    <out>
+      <item>Prospetto/statistiche per mastro e societa' (fase 3) e criterio proforma D-4.</item>
+      <item>Classificazione di costi manuali di commessa, provvigioni maturate, ereditarieta' categoria sul lato
+        costi (D-11).</item>
+      <item>Modifiche alle VALIDAZIONI e ai payload dei tipi di costo sui documenti (D-12 cambia solo etichetta e
+        selettore).</item>
+      <item>Sottoconto stampato sul documento fiscale o esportato alla contabilita'.</item>
+      <item>Riclassificazione massiva di righe gia' classificate.</item>
+      <item>Le modifiche della spec 0349 (export/import del piano).</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope { success, message, data }. RevenueTypeRef = { id: number, code: string, name: string,
+         path: string ("70 Ricavi delle vendite > 70.01 Prestazioni di servizi"), is_active: boolean } -->
+
+    <endpoint method="GET" path="/api/revenue-types/for-select">
+      <request>search?: string (codice o nome), ids[]?: number[] (idratazione, anche inattivi), offset?, limit?
+        (stessa ForSelectQuery dei tipi di costo).</request>
+      <response status="200">
+        data: { items: Array&lt;RevenueTypeRef &amp; { group: { code, name }, account: { code, name } }&gt;,
+                total: number, offset: number }
+        Ordine: codice naturale. Solo attivi con conto e mastro attivi, salvo `ids[]`.
+      </response>
+      <errors>403 senza `revenue-types.view` ne' `invoices.view` ne' `products.view`.</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST|PUT" path="/api/products[/{product}] (ESTENSIONE)">
+      <request>+ `revenue_type_id`: number|null (sottoconto di ricavo attivo). Omesso = invariato.</request>
+      <response status="200|201">ProductResource + `revenue_type_id`: number|null, `revenue_type`: RevenueTypeRef|null,
+        `effective_revenue_type`: { revenue_type: RevenueTypeRef, inherited: boolean,
+        source_category: { id, name }|null }|null</response>
+      <errors>422 `revenue_type_id` inesistente o inattivo.</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/products/revenue-type">
+      <request>{ ids: number[] (min 1, stessi limiti di products/cost-type), revenue_type_id: number|null (present) }</request>
+      <response status="200">data: { updated: number }. Accoda la classificazione automatica D-9(b).</response>
+      <errors>403 senza `products.update`; 422.</errors>
+    </endpoint>
+
+    <endpoint method="GET|POST|PUT" path="/api/product-categories[/{productCategory}] (ESTENSIONE)">
+      <request>+ `revenue_type_id`: number|null. Omesso = invariato.</request>
+      <response status="200|201">ProductCategoryResource + `revenue_type_id`, `revenue_type`: RevenueTypeRef|null,
+        `effective_revenue_type` (stessa shape del prodotto, `source_category` = antenato da cui eredita).</response>
+      <errors>422 `revenue_type_id` inesistente o inattivo.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/proforma-requests/{proformaRequest}/invoice-draft (ESTENSIONE, spec 0288)">
+      <response status="200">`available_lines[]` + `revenue_type_id`: number|null, `revenue_type`: RevenueTypeRef|null
+        (proposta D-6).</response>
+    </endpoint>
+
+    <endpoint method="POST|PUT" path="/api/invoices[/{invoice}] (ESTENSIONE)">
+      <request>`lines.*.revenue_type_id`: number|null OPZIONALE (D-7: assente = proposta del server; presente = valore
+        dell'utente). Deve essere un sottoconto di ricavo esistente; inattivo ammesso solo se gia' sulla riga.</request>
+      <response status="200|201">InvoiceResource: `lines[]` + `revenue_type_id`, `revenue_type`: RevenueTypeRef|null.</response>
+      <errors>422 `lines.N.revenue_type_id`.</errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/invoices/{invoice}/lines/{invoiceLine}/revenue-type">
+      <request>{ revenue_type_id: number|null (present) }. Route scopeBindings: la riga deve appartenere alla fattura.</request>
+      <response status="200">data: { id, revenue_type_id, revenue_type: RevenueTypeRef|null }. Ammesso su
+        proforma, fattura emessa e fattura con incassi (D-2). Non tocca importi ne' altre righe.</response>
+      <errors>403 senza `invoices.update`; 404 riga di altra fattura; 422 sottoconto inesistente o inattivo.</errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/revenue-types/{revenueType} (ESTENSIONE, spec 0348)">
+      <request>+ `is_institution_commission_default`: boolean. true -> gli altri vengono messi a false nella stessa
+        transazione.</request>
+      <response status="200">RevenueTypeResource + `is_institution_commission_default`. Il tree endpoint lo espone
+        sul SubAccount di ricavo.</response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dopo `migrate`: le tre colonne esistono; `70.03.001` (se presente) ha il flag provvigioni Ente;
+      le righe delle fatture con richiesta Ente e `revenue_type_id` NULL hanno il sottoconto predefinito; nessuna riga
+      gia' classificata cambia; il rollback rimuove colonne e flag.</criterion>
+    <criterion id="AC-002">Resolver: prodotto con sottoconto -> quello; prodotto senza, categoria senza, antenato con
+      sottoconto -> quello dell'antenato; nessuno -> null; riga di fattura Ente -> predefinito provvigioni anche se il
+      prodotto ha un altro sottoconto; numero di query costante al crescere delle righe.</criterion>
+    <criterion id="AC-003">POST /api/invoices senza `revenue_type_id` sulle righe salva la proposta; con un valore
+      esplicito salva quello; con `null` esplicito salva null; un sottoconto inattivo nuovo -> 422.</criterion>
+    <criterion id="AC-004">La bozza della richiesta proforma espone in `available_lines[]` la proposta D-6.</criterion>
+    <criterion id="AC-005">PATCH .../lines/{line}/revenue-type riesce su una fattura con incassi senza cambiare importi
+      o altre righe; riga di un'altra fattura -> 404; senza `invoices.update` -> 403; l'attivita' e' registrata.</criterion>
+    <criterion id="AC-006">Prodotto e categoria accettano e restituiscono `revenue_type_id` e `effective_revenue_type`
+      (proprio vs ereditato con categoria sorgente).</criterion>
+    <criterion id="AC-007">POST /api/products/revenue-type aggiorna i prodotti selezionati e accoda il job; il job
+      classifica solo le righe NULL di quei prodotti e lascia invariate le righe gia' classificate.</criterion>
+    <criterion id="AC-008">Cambiare il sottoconto di una categoria accoda la classificazione delle righe NULL dei
+      prodotti che lo ereditano (non di quelli che hanno un sottoconto proprio).</criterion>
+    <criterion id="AC-009">`php artisan chart:classify-revenue` classifica tutte le righe NULL classificabili ed e'
+      idempotente (secondo giro: 0 righe).</criterion>
+    <criterion id="AC-010">La migrazione legacy delle fatture attive (`InvoicesSource`) scrive la proposta D-6 sulle
+      righe; i test esistenti della migrazione restano verdi.</criterion>
+    <criterion id="AC-011">GET /api/revenue-types/for-select restituisce solo voci selezionabili, raggruppate, con
+      ricerca per codice o nome e idratazione `ids[]`.</criterion>
+    <criterion id="AC-012">Impostare il flag provvigioni Ente su un sottoconto lo toglie dagli altri (al piu' uno).</criterion>
+    <criterion id="AC-013">Frontend: scheda prodotto e categoria mostrano il campo sottoconto ricavo (combobox raggruppata)
+      e, se vuoto, il valore ereditato con la categoria sorgente; griglia prodotti con colonna e azione massiva.</criterion>
+    <criterion id="AC-014">Frontend: editor fattura/proforma mostra la colonna sottoconto con la proposta della bozza,
+      modificabile; il dettaglio di una fattura emessa permette di cambiare il sottoconto della riga anche con incassi;
+      "da classificare" per le righe null; 422/403 mostrati senza perdere lo stato.</criterion>
+    <criterion id="AC-015">Guide in-app IT+EN aggiornate (products, product-categories, invoices, chart-of-accounts),
+      parity test verde.</criterion>
+    <criterion id="AC-016">GET /api/cost-types/for-select restituisce per ogni voce anche code, path, group e account (null
+      per i non collocati), voci collocate per codice naturale e poi le non collocate; i campi esistenti e i test
+      esistenti dei consumatori restano invariati.</criterion>
+    <criterion id="AC-017">In tutti i punti di D-12 l'etichetta e' "Sottoconto costo" e il selettore e' raggruppato mastro >
+      conto con gruppo "Da collocare"; il valore selezionato mostra codice + nome; la selezione invia lo stesso
+      cost_type_id di prima.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza. Layering backend.md §1; job in coda per la classificazione (backend.md §5).</item>
+    <item>Nessuna query per riga: risoluzione in batch (prodotti per id, albero categorie in memoria).</item>
+    <item>Mai sovrascrivere un `revenue_type_id` gia' valorizzato fuori dall'azione esplicita dell'utente.</item>
+    <item>Nessuna modifica ai file in lavorazione della spec 0349 finche' non e' committata; se inevitabile, si
+      sequenzia dopo il suo commit.</item>
+    <item>Test: Pest per ogni endpoint (happy, 403, 404, 422), resolver, job, comando, migrazione; Vitest per
+      combobox, scheda prodotto/categoria, editor e dettaglio fattura.</item>
+    <item>File sotto 300 righe (soft) / 500 (hard); identificatori in inglese, testi i18n IT/EN.</item>
+  </constraints>
+
+</spec>

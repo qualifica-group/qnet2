@@ -22,6 +22,8 @@ export function lineFromAvailable(line: AvailableInvoiceLine): InvoiceLineValues
     quantity: Number(line.quantity),
     unit_price: Number(line.unit_price),
     vat_rate_id: line.vat_rate?.id ?? NO_ID,
+    // The proposal travels as the user's value; with none, the key stays absent (the server proposes again).
+    ...(line.revenue_type_id != null ? { revenue_type_id: line.revenue_type_id } : {}),
   }
 }
 
@@ -77,7 +79,7 @@ const HEADER_FIELDS = [
   'internal_note',
   'invoice_tag_id',
 ] as const
-const LINE_FIELD_PATTERN = /^lines(\.\d+\.(quote_line_id|product_id|description|quantity|unit_price|vat_rate_id))?$/
+const LINE_FIELD_PATTERN = /^lines(\.\d+\.(quote_line_id|product_id|description|quantity|unit_price|vat_rate_id|revenue_type_id))?$/
 
 /** True when a server error key maps onto a field of the form. */
 export function isFormFieldPath(key: string): key is FieldPath<InvoiceWriteFormValues> {

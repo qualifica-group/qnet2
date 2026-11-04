@@ -44,6 +44,7 @@ export function InvoiceEditorLinesSection({
             <span className="text-right">{t('invoiceEditor.lines.quantity')}</span>
             <span className="text-right">{t('invoiceEditor.lines.unitPrice')}</span>
             <span>{t('invoiceEditor.lines.vatRate')}</span>
+            <span>{t('revenueTypes.invoiceLine.column')}</span>
             <span className="text-right">{t('invoiceEditor.lines.net')}</span>
             <span className="text-right">{t('invoiceEditor.lines.total')}</span>
             <span />

@@ -39,6 +39,7 @@ final class ProductRelationColumns
         'unit_of_measure' => ['relation' => 'unitOfMeasure', 'table' => 'units_of_measure', 'fk' => 'unit_of_measure_id'],
         'product_typology' => ['relation' => 'productTypology', 'table' => 'product_typologies', 'fk' => 'product_typology_id'],
         'cost_type' => ['relation' => 'costType', 'table' => 'cost_types', 'fk' => 'cost_type_id'],
+        'revenue_type' => ['relation' => 'revenueType', 'table' => 'revenue_types', 'fk' => 'revenue_type_id'],
     ];
 
     /**

@@ -52,7 +52,7 @@ export const purchaseOrders = {
   },
   lines: {
     description: 'Description',
-    costType: 'Cost type',
+    costType: 'Cost sub-account',
     unit: 'Unit',
     quantity: 'Quantity',
     unitPrice: 'Unit price',

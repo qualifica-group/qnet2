@@ -24,7 +24,6 @@ export interface EditorSource {
   financialAccount: BankAccountRef | null
   companySite: NamedRef | null
   operationalSite: NamedRef | null
-  costType: NamedRef | null
   workOrder: NamedRef | null
 }
 
@@ -66,7 +65,6 @@ export function blankSource(): EditorSource {
     financialAccount: null,
     companySite: null,
     operationalSite: null,
-    costType: null,
     workOrder: null,
   }
 }
@@ -94,7 +92,6 @@ export function sourceFromDraft(draft: PurchaseInvoiceDraft): EditorSource {
     paymentMethod: defaults.payment_method,
     companySite: defaults.company_site,
     operationalSite: defaults.operational_site,
-    costType: defaults.cost_type,
     workOrder: workOrderRef(defaults.work_order),
   }
 }

@@ -24,6 +24,8 @@ export interface SubAccount {
   nature: CostTypeNature | null
   /** Only for `source = cost_type`: a palette token. */
   color: string | null
+  /** Only for `source = revenue_type` (spec 0350): the sub-account Entity commission lines get; at most one. */
+  is_institution_commission_default?: boolean
 }
 
 export interface ChartAccountNode {
@@ -119,6 +121,8 @@ export interface RevenueTypePayload {
   name: string
   description: string | null
   is_active: boolean
+  /** Spec 0350: true takes the flag away from the others, server-side. */
+  is_institution_commission_default?: boolean
 }
 
 export type UpdateRevenueTypePayload = Partial<RevenueTypePayload>

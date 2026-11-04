@@ -11,6 +11,8 @@ use App\Models\UnitOfMeasure;
 use App\Models\VatRate;
 use App\Policies\StockPolicy;
 use App\Products\ProductSupplierPayload;
+use App\Services\ChartOfAccounts\EffectiveRevenueType;
+use App\Services\ChartOfAccounts\RevenueTypeRef;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -75,6 +77,10 @@ class ProductResource extends JsonResource
             // Spec 0251: optional default cost type.
             'cost_type_id' => $this->cost_type_id,
             'cost_type' => $this->costType === null ? null : ['id' => $this->costType->id, 'name' => $this->costType->name, 'color' => $this->costType->color],
+            // Spec 0350: own default revenue sub-account and the effective one (own or inherited from the category).
+            'revenue_type_id' => $this->revenue_type_id,
+            'revenue_type' => RevenueTypeRef::find($this->revenue_type_id),
+            'effective_revenue_type' => app(EffectiveRevenueType::class)->forProduct($this->resource),
             // Read-only, derived from the category (spec 0023): never
             // writable via POST/PATCH (not in $fillable, no FormRequest rule).
             'business_function' => $this->effectiveBusinessFunction,

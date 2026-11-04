@@ -97,6 +97,10 @@ class UpdateProductCategoryRequest extends FormRequest
             'manager_labels' => ['sometimes', 'nullable', 'array'],
             'manager_labels.*' => ['nullable', 'string', 'max:'.ProductCategory::MANAGER_LABEL_MAX_LENGTH],
             'inherits_manager_labels' => ['sometimes', 'boolean'],
+            // Spec 0350: active sub-accounts, or the one the category already has.
+            'revenue_type_id' => ['sometimes', 'nullable', 'integer', Rule::exists('revenue_types', 'id')->where(
+                fn ($types) => $types->where('is_active', true)->orWhere('id', $this->authorizationModel()?->getAttribute('revenue_type_id')),
+            )],
         ];
     }
 

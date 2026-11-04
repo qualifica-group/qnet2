@@ -35,6 +35,7 @@ import { sources } from './en-sources'
 import { vatRates } from './en-vat-rates'
 import { unitsOfMeasure } from './en-units-of-measure'
 import { chartOfAccounts } from './en-chart-of-accounts'
+import { revenueTypes } from './en-revenue-types'
 import { costTypes } from './en-cost-types'
 import { hr } from './en-hr'
 import { productTypologies } from './en-product-typologies'
@@ -442,6 +443,7 @@ export const en = {
   unitsOfMeasure,
   costTypes,
   chartOfAccounts,
+  revenueTypes,
   ...hr,
   ...accounting,
   purchaseRequests,

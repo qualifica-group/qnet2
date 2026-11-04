@@ -185,6 +185,8 @@ describe('invoice record edited in place (spec 0261)', () => {
 })
 
 const SAVED_LINE = { quote_line_id: null, product_id: null, description: 'Consulting', quantity: 1, unit_price: 1000, vat_rate_id: 1 }
+// Spec 0350 (REQUIREMENT CHANGED): a saved line travels with its sub-account explicitly, so saving never re-proposes it.
+const PERSISTED_LINE = { ...SAVED_LINE, revenue_type_id: null }
 
 describe('invoice lines edited in place (spec 0263)', () => {
   it('opens a line in place and saves the whole lines set through the partial PATCH', async () => {
@@ -194,7 +196,7 @@ describe('invoice lines edited in place (spec 0263)', () => {
     fireEvent.change(screen.getByLabelText('Quantity 1'), { target: { value: '3' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
-    await waitFor(() => expect(patchInvoiceMock).toHaveBeenCalledWith(5, { lines: [{ ...SAVED_LINE, quantity: 3 }] }))
+    await waitFor(() => expect(patchInvoiceMock).toHaveBeenCalledWith(5, { lines: [{ ...PERSISTED_LINE, quantity: 3 }] }))
   })
 
   it('adds a free line, opened in place with the VAT of the last line, and saves it', async () => {
@@ -209,7 +211,7 @@ describe('invoice lines edited in place (spec 0263)', () => {
 
     await waitFor(() =>
       expect(patchInvoiceMock).toHaveBeenCalledWith(5, {
-        lines: [SAVED_LINE, { ...SAVED_LINE, description: 'Travel', unit_price: 50 }],
+        lines: [PERSISTED_LINE, { ...SAVED_LINE, description: 'Travel', unit_price: 50 }],
       }),
     )
   })
@@ -221,7 +223,7 @@ describe('invoice lines edited in place (spec 0263)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Delete line 2' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
 
-    await waitFor(() => expect(patchInvoiceMock).toHaveBeenCalledWith(5, { lines: [SAVED_LINE] }))
+    await waitFor(() => expect(patchInvoiceMock).toHaveBeenCalledWith(5, { lines: [PERSISTED_LINE] }))
   })
 
   it('does not offer to delete the only line', async () => {

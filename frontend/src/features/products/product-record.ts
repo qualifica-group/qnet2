@@ -2,6 +2,7 @@ import type { UseFormReturn } from 'react-hook-form'
 import type { RelationFieldRef } from '@/components/form/relation-select-field'
 import type { InlineEdit } from '@/components/record-form/record-inline-field'
 import type { CustomFieldValue } from '@/features/custom-fields/types'
+import type { EffectiveRevenueType, RevenueTypeRef } from '@/features/revenue-types/types'
 import type { EffectiveAttribute } from '@/features/product-categories/types'
 import { DEFAULT_PRODUCT_USAGES } from '@/features/products/product-form-payload'
 import type { SupplierCommission } from '@/features/products/product-suppliers'
@@ -45,6 +46,10 @@ export interface ProductRecordValues {
   product_type: ProductType
   /** Default cost type (spec 0251); the draft carries the colour once the picker has resolved it. */
   cost_type: ProductCostTypeSummary | null
+  /** Default revenue sub-account (spec 0350); the draft carries code and name once the picker has resolved them. */
+  revenue_type: Pick<RevenueTypeRef, 'id' | 'code' | 'name'> | null
+  /** The sub-account the product's lines get: its own, or inherited from the category; `null` on a draft. */
+  effective_revenue_type: EffectiveRevenueType | null
   usages: ProductUsage[]
   vat_rate: RelationFieldRef | null
   /** Spec 0320: default first; on a draft only the rows whose supplier is already picked. */
@@ -84,6 +89,8 @@ export function persistedProductValues(product: ProductDetail): ProductRecordVal
     unit_of_measure: product.unit_of_measure,
     product_type: product.product_type,
     cost_type: product.cost_type ?? null,
+    revenue_type: product.revenue_type ?? null,
+    effective_revenue_type: product.effective_revenue_type ?? null,
     usages: product.usages ?? DEFAULT_PRODUCT_USAGES,
     vat_rate: product.vat_rate,
     suppliers: product.suppliers ?? NO_SUPPLIERS,

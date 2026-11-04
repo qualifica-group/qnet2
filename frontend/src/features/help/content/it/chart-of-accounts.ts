@@ -11,11 +11,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Si trova in **Configurazione › Contabilità › Piano dei conti**. È un piano **gestionale**: serve a classificare costi e ricavi per le analisi interne, **non** è una contabilità generale e non c’è prima nota né voci patrimoniali. I sottoconti saranno le voci che si assegnano ai documenti (prodotti e righe delle fatture attive arriveranno in una fase successiva).',
+          text: 'Si trova in **Configurazione › Contabilità › Piano dei conti**. È un piano **gestionale**: serve a classificare costi e ricavi per le analisi interne, **non** è una contabilità generale e non c’è prima nota né voci patrimoniali. I sottoconti di ricavo sono le voci che si assegnano a prodotti, categorie e righe delle fatture attive.',
         },
         {
           type: 'note',
-          text: 'In questa prima fase si gestisce solo il piano. Il collegamento ai prodotti e alle righe delle fatture attive, il sottoconto predefinito delle provvigioni e le statistiche arrivano nella fase 2 e successive.',
+          text: 'Le statistiche per mastro e società arriveranno in una fase successiva.',
         },
       ],
     },
@@ -46,7 +46,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             'Ogni mastro mostra il badge **Costo** o **Ricavo**; premi la freccia accanto alla voce (o i tasti freccia destra e sinistra) per aprirla e chiuderla.',
-            'Le voci **non attive** sono attenuate e hanno il badge **Non attivo**. In questa fase è solo un’informazione: l’effetto sulle scelte nei documenti arriva con la fase 2.',
+            'Le voci **non attive** sono attenuate e hanno il badge **Non attivo**. Nei selettori dei sottoconti di ricavo non compaiono.',
             '**Espandi tutto** e **Comprimi tutto** aprono o chiudono tutto l’albero.',
             'La **ricerca** per codice o descrizione mostra le voci che corrispondono insieme ai loro mastri e conti, già aperti. Svuotando la ricerca l’albero torna come lo avevi lasciato. Durante la ricerca le frecce di apertura sono bloccate.',
             'Il gruppo **Sottoconti di costo da collocare** compare solo se ci sono tipi di costo senza conto (per esempio arrivati dalla migrazione): da lì si collocano nel piano.',
@@ -138,6 +138,22 @@ const guide: HelpGuide = {
             'L’importazione **non elimina mai**: le voci assenti dal file restano invariate.',
             'È **tutto o niente**: con anche un solo errore non viene scritto nulla.',
             'Creare o aggiornare un tipo di costo richiede anche i permessi sui tipi di costo; se mancano, la riga è segnalata come errore.',
+          ],
+        },
+      ],
+    },
+    {
+      id: 'revenue-link',
+      title: 'Sottoconti di ricavo su prodotti e fatture',
+      blocks: [
+        { type: 'paragraph', text: 'I sottoconti di ricavo si assegnano ai **prodotti** e alle **categorie prodotto** (campo Sottoconto ricavo, con ereditarietà dalla categoria) e vengono proposti sulle **righe delle fatture attive e dei proforma**, dove restano modificabili anche dopo l\'emissione. Le righe senza sottoconto sono **Da classificare**.' },
+        {
+          type: 'list',
+          items: [
+            'Nel form del sottoconto di ricavo l\'interruttore **Predefinito per provvigioni Ente** indica il sottoconto usato per le righe delle richieste Ente. Ne esiste **uno solo**: attivarlo su un sottoconto lo toglie dagli altri.',
+            'Nell\'albero il sottoconto predefinito mostra il badge **Provvigioni Ente**.',
+            'Le righe già esistenti sono classificate in automatico (all\'inizio solo quelle Ente); una riga già classificata non viene mai cambiata in automatico.',
+            'Nei selettori compaiono solo sottoconti **attivi** con conto e mastro attivi.',
           ],
         },
       ],

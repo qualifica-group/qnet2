@@ -11,6 +11,7 @@ import { VAT_RATES_FOR_SELECT_RESOURCE } from '@/features/vat-rates/for-select-a
 import { type VatRefs, type InvoiceLineValues } from '@/features/invoices/invoice-editor-lines'
 import { fromCents, type AmountsCents } from '@/lib/amounts/line-amounts'
 import { idToSelectValue, NO_ID } from '@/features/invoices/invoice-editor-source'
+import { RevenueTypeSelect } from '@/features/revenue-types/revenue-type-select'
 import type { VatRateRef } from '@/features/invoices/types'
 import { formatQuoteAmount } from '@/features/quotes/quote-summary'
 import { cn } from '@/lib/utils'
@@ -21,7 +22,7 @@ interface VatRateForSelectItem extends ForSelectItem {
 }
 
 /** Column template shared by the row and the lines header (lg and up; stacked below). */
-export const LINE_GRID_CLASS = 'lg:grid-cols-[minmax(0,1fr)_5rem_7rem_9rem_6rem_6rem_1.5rem] lg:items-start'
+export const LINE_GRID_CLASS = 'lg:grid-cols-[minmax(0,1fr)_5rem_7rem_9rem_12rem_6rem_6rem_1.5rem] lg:items-start'
 
 /** Any form holding the document lines: the issue editor's and the record's (spec 0263). */
 interface InvoiceLinesFormValues {
@@ -155,6 +156,29 @@ export function InvoiceEditorLineRow<T extends InvoiceLinesFormValues>({
                   triggerLabel: `${t('invoiceEditor.lines.vatRate')} ${n}`,
                   retry: t('common.retry'),
                 }}
+              />
+            </FormControl>
+            <FormMessage className="text-xs" />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={linesControl}
+        name={`lines.${index}.revenue_type_id`}
+        render={({ field }) => (
+          <FormItem className="gap-1">
+            <FormLabel className="text-xs lg:sr-only">
+              {t('revenueTypes.invoiceLine.column')} {n}
+            </FormLabel>
+            <FormControl>
+              <RevenueTypeSelect
+                value={field.value ?? null}
+                onChange={field.onChange}
+                placeholder={
+                  field.value === undefined ? t('revenueTypes.invoiceLine.automatic') : t('revenueTypes.unclassified')
+                }
+                aria-label={`${t('revenueTypes.invoiceLine.column')} ${n}`}
+                className="h-8 min-h-8 text-xs"
               />
             </FormControl>
             <FormMessage className="text-xs" />

@@ -41,6 +41,8 @@ export function buildRevenueTypeSchema(t: TFunction) {
   return z.object({
     ...baseFields(t),
     chart_account_id: z.number({ message: t('chartOfAccounts.form.accountRequired') }).int(),
+    // Spec 0350: optional so a missing key reads as "not the default".
+    is_institution_commission_default: z.boolean().optional(),
   })
 }
 export type RevenueTypeFormValues = z.infer<ReturnType<typeof buildRevenueTypeSchema>>

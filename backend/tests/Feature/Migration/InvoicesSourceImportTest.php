@@ -16,6 +16,7 @@ use App\Models\ProformaRequest;
 use App\Models\Quote;
 use App\Models\QuoteLine;
 use App\Models\Registry;
+use App\Models\RevenueType;
 use App\Models\User;
 use App\Models\VatRate;
 use App\Models\WorkOrder;
@@ -233,4 +234,21 @@ it('AC-007 registers the source in the phase after purchase invoices with its de
             ['users', true], ['companies', true], ['registries', true], ['payment-methods', true], ['vat-rates', true],
             ['work-orders', false], ['quotes', false], ['products', false], ['financial-accounts', false], ['proforma-requests', false],
         ]);
+});
+
+it('AC-010 writes the proposed revenue sub-account on the imported lines', function () {
+    $type = RevenueType::factory()->create();
+    $product = Product::factory()->create(['revenue_type_id' => $type->id]);
+    $product->forceFill(['old_source' => 'services', 'old_id' => 1484])->save();
+
+    runLegacyInvoicesImport([legacyInvoiceRecord([
+        'lines' => [
+            ['product_id' => 1484, 'quote_line_id' => null, 'description' => 'Con prodotto', 'quantity' => 1, 'unit_price' => 100, 'vat_rate_id' => 6],
+            ['product_id' => null, 'quote_line_id' => null, 'description' => 'Libera', 'quantity' => 1, 'unit_price' => 100, 'vat_rate_id' => 6],
+        ],
+    ])]);
+
+    $lines = Invoice::query()->where('old_id', 11030)->sole()->lines()->orderBy('sort_order')->get();
+
+    expect($lines[0]->revenue_type_id)->toBe($type->id)->and($lines[1]->revenue_type_id)->toBeNull();
 });

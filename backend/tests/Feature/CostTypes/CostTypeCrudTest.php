@@ -90,7 +90,8 @@ it('AC-016: the endpoints require authentication', function () {
     $this->getJson('/api/cost-types/1')->assertUnauthorized();
 });
 
-it('AC-016: for-select lists only active types ordered by sort_order then name', function () {
+// REQUIREMENT CHANGED (spec 0350, D-12): unplaced types are now ordered by name, not sort_order.
+it('AC-016: for-select lists only active types, unplaced ones ordered by name', function () {
     Sanctum::actingAs(costTypeUserWith([]));
     CostType::query()->delete();
     CostType::factory()->create(['name' => 'Zeta', 'sort_order' => 1]);
@@ -100,9 +101,9 @@ it('AC-016: for-select lists only active types ordered by sort_order then name',
 
     $this->getJson('/api/cost-types/for-select')
         ->assertOk()
-        ->assertJsonPath('items.0.label', 'Zeta')
-        ->assertJsonPath('items.1.label', 'Alfa')
-        ->assertJsonPath('items.2.label', 'Beta')
+        ->assertJsonPath('items.0.label', 'Alfa')
+        ->assertJsonPath('items.1.label', 'Beta')
+        ->assertJsonPath('items.2.label', 'Zeta')
         ->assertJsonCount(3, 'items');
 
     $this->getJson('/api/cost-types/for-select?search=alf')->assertOk()->assertJsonCount(1, 'items');

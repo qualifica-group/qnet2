@@ -41,6 +41,9 @@ export interface AsyncPaginatedSelectLabels {
   retry: string
 }
 
+/** Lays the loaded options out under headings; see `AsyncPaginatedSelect.groupOptions`. */
+export type GroupOptions = (items: ForSelectItem[], renderRow: (item: ForSelectItem) => ReactNode) => ReactNode
+
 interface AsyncPaginatedSelectProps {
   /** Resource segment of the endpoint, e.g. `users` → `/users/for-select`. */
   resource: string
@@ -135,6 +138,12 @@ interface AsyncPaginatedSelectProps {
    * Omitted, both render exactly as before.
    */
   renderItem?: (item: ForSelectItem) => ReactNode
+  /**
+   * Lays the loaded options out under headings (e.g. chart-of-accounts groups):
+   * receives the options and a row renderer, returns the whole list. Headings
+   * are never options. Omitted, the options render as a flat list.
+   */
+  groupOptions?: GroupOptions
 }
 
 /** Default: no option is ever disabled. Hoisted so its identity is stable. */
@@ -175,6 +184,7 @@ export function AsyncPaginatedSelect({
   params,
   isItemDisabled = noItemDisabled,
   renderItem,
+  groupOptions,
 }: AsyncPaginatedSelectProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -295,6 +305,18 @@ export function AsyncPaginatedSelect({
     onChange(null)
     onItemChange?.(null)
   }
+
+  const renderRow = (item: ForSelectItem) => (
+    <AsyncSelectOptionRow
+      key={item.id}
+      item={item}
+      checked={item.id === value}
+      disabled={isItemDisabled(item)}
+      showAvatar={showAvatar}
+      renderItem={renderItem}
+      onSelect={select}
+    />
+  )
 
   const triggerLabel = selected?.label ?? (value !== null ? `#${value}` : null)
 
@@ -440,17 +462,7 @@ export function AsyncPaginatedSelect({
               </p>
             ) : (
               <>
-                {options.map((item) => (
-                  <AsyncSelectOptionRow
-                    key={item.id}
-                    item={item}
-                    checked={item.id === value}
-                    disabled={isItemDisabled(item)}
-                    showAvatar={showAvatar}
-                    renderItem={renderItem}
-                    onSelect={select}
-                  />
-                ))}
+                {groupOptions ? groupOptions(options, renderRow) : options.map(renderRow)}
                 {isFetchingNextPage ? (
                   <div className="flex items-center justify-center py-2">
                     <Loader2

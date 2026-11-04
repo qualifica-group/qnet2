@@ -25,7 +25,7 @@ export function InvoiceDocumentSections({ invoice, onChanged, lines }: InvoiceDo
       {lines ?? (
         <section className="flex flex-col gap-1.5">
           <h3 className="text-xs font-semibold text-foreground">{t('invoices.detail.lines')}</h3>
-          <InvoiceLinesTable lines={invoice.lines} />
+          <InvoiceLinesTable lines={invoice.lines} invoiceId={invoice.id} />
         </section>
       )}
       <section className="flex flex-col gap-1.5">

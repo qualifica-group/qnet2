@@ -11,11 +11,11 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'It is under **Configuration › Accounting › Chart of accounts**. It is a **management** chart: it classifies costs and revenues for internal analysis, it is **not** a general ledger and there is no journal entry or balance sheet item. Sub-accounts will be the entries assigned to documents (products and active invoice lines will follow in a later phase).',
+          text: 'It is under **Configuration › Accounting › Chart of accounts**. It is a **management** chart: it classifies costs and revenues for internal analysis, it is **not** a general ledger and there is no journal entry or balance sheet item. Revenue sub-accounts are the entries assigned to products, categories and active invoice lines.',
         },
         {
           type: 'note',
-          text: 'This first phase only manages the chart. The link to products and active invoice lines, the default commissions sub-account and the statistics arrive in phase 2 and later.',
+          text: 'Statistics by group and company will arrive in a later phase.',
         },
       ],
     },
@@ -46,7 +46,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             'Each group shows the **Cost** or **Revenue** badge; press the arrow next to an entry (or the right and left arrow keys) to open and close it.',
-            '**Inactive** entries are dimmed and carry the **Inactive** badge. In this phase it is information only: the effect on document pickers arrives in phase 2.',
+            '**Inactive** entries are dimmed and carry the **Inactive** badge. They do not appear in the revenue sub-account pickers.',
             '**Expand all** and **Collapse all** open or close the whole tree.',
             '**Search** by code or description shows the matching entries together with their groups and accounts, already open. Clearing the search brings the tree back as you left it. While searching the open arrows are locked.',
             'The **Cost sub-accounts to place** group appears only when there are cost types without an account (for example coming from the migration): place them in the chart from there.',
@@ -138,6 +138,22 @@ const guide: HelpGuide = {
             'The import **never deletes**: entries missing from the file stay unchanged.',
             'It is **all or nothing**: a single error means nothing is written.',
             'Creating or updating a cost type also requires the cost type permissions; if missing, the row is reported as an error.',
+          ],
+        },
+      ],
+    },
+    {
+      id: 'revenue-link',
+      title: 'Revenue sub-accounts on products and invoices',
+      blocks: [
+        { type: 'paragraph', text: 'Revenue sub-accounts are assigned to **products** and **product categories** (Revenue sub-account field, inherited from the category) and proposed on the **lines of active invoices and proformas**, where they stay editable even after issuing. Lines without a sub-account are **To be classified**.' },
+        {
+          type: 'list',
+          items: [
+            'In the revenue sub-account form the **Default for Entity commissions** switch marks the sub-account used for Entity request lines. There is **only one**: turning it on for a sub-account removes it from the others.',
+            'In the tree the default sub-account shows the **Entity commissions** badge.',
+            'Existing lines are classified automatically (at first only Entity ones); a line already classified is never changed automatically.',
+            'Pickers only list **active** sub-accounts with active account and group.',
           ],
         },
       ],

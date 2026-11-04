@@ -1,3 +1,4 @@
+import type { EffectiveRevenueType, RevenueTypeRef } from '@/features/revenue-types/types'
 import type { ProductCategoryDetail, ProductCategoryTreeNode } from '@/features/product-categories/types'
 import { indexCategoryTree, resolveInheritedBusinessFunction } from '@/features/product-categories/business-function-inheritance'
 import { resolveInheritedContractGenerationFlag } from '@/features/product-categories/contract-generation-inheritance'
@@ -40,7 +41,12 @@ export type ProductCategoryRecordValues = Pick<
   | 'report_columns'
   | 'effective_report_columns'
   | 'report_columns_source_category'
->
+> & {
+  /** Own revenue sub-account (spec 0350); the draft carries code and name once the picker has resolved them. */
+  revenue_type?: Pick<RevenueTypeRef, 'id' | 'code' | 'name'> | null
+  /** Own or inherited sub-account; `null` on a draft (nothing is resolved before the first save). */
+  effective_revenue_type?: EffectiveRevenueType | null
+}
 
 /** The draft fields the record's rows read, as `useWatch` hands them back: every key may still be undefined on the first render. */
 export type ProductCategoryDraft = Partial<
@@ -50,6 +56,7 @@ export type ProductCategoryDraft = Partial<
     | 'parent_id'
     | 'description'
     | 'business_function_id'
+    | 'revenue_type_id'
     | 'requires_quote'
     | 'management_mode'
     | 'single_quote_per_opportunity'

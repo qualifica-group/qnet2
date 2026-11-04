@@ -3,7 +3,41 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Piano dei conti: export e import (spec 0349) — VERDE, NON COMMITTATO (2026-11-04)
+## Piano dei conti fase 2: classificazione ricavi + "Sottoconto costo" (spec 0350) — VERDE, NON COMMITTATO (2026-11-04)
+
+- Spec `docs/specs/0350-chart-of-accounts-revenue-classification.xml` (D-1..D-12, AC-001..AC-017). Decisioni utente:
+  classificazione automatica delle righe vuote, sottoconto modificabile anche dopo emissione/incasso, ereditarieta'
+  dalla categoria prodotto, fase 3 conta fatture E proforma su entrambi i lati (D-4).
+- Schema: `revenue_type_id` su `invoice_lines`, `products`, `product_categories`; flag
+  `revenue_types.is_institution_commission_default` (al piu' uno, migrazione lo mette su 70.03.001). Migrazioni
+  `2026_11_19_100000` (schema) e `2026_11_19_100100` (classifica le righe NULL delle fatture Ente).
+- `App\Services\ChartOfAccounts\RevenueTypeResolver` = UNICA fonte della proposta (Ente -> predefinito provvigioni;
+  prodotto; categoria effettiva risalendo l'albero; altrimenti null), max 3 query. `RevenueLineClassifier` +
+  `ClassifyRevenueLinesJob` (solo righe NULL, mai sovrascrive) accodato quando cambia il sottoconto di prodotto/
+  categoria/assegnazione massiva; comando `php artisan chart:classify-revenue` (idempotente).
+- Fatture: `lines.*.revenue_type_id` chiave ASSENTE = proposta server, PRESENTE (id|null) = utente (il FE invia null
+  esplicito sulle righe salvate). `PATCH /api/invoices/{invoice}/lines/{line}/revenue-type` (permesso
+  `invoices.update`, ammesso con incassi, audit sulla fattura). Bozza: `available_lines[].revenue_type_id`.
+  `InvoicesSource` (legacy) classifica dopo `createMany`. Delete di un sottoconto di ricavo in uso -> 409.
+- Prodotti/categorie: `revenue_type_id`, `revenue_type`, `effective_revenue_type`; `POST /api/products/revenue-type`
+  `{ids, revenue_type_id}`; colonna griglia `revenue_type`. `GET /api/revenue-types/for-select` (file rotte
+  `routes/api/revenue-types.php`).
+- D-12: `GET /api/cost-types/for-select` esteso in modo additivo (`code`, `path`, `group`, `account`; collocati per
+  codice, poi non collocati per nome). FE: etichetta "Sottoconto costo" e selettore raggruppato mastro > conto con
+  gruppo "Da collocare" in prodotti, ordini, generazione ordini, fatture passive, costi commessa, profilo agente,
+  approvazione estratto; codice condiviso in `features/chart-of-accounts/sub-account-select/`, prop `groupOptions`
+  su `components/ui/async-paginated-select.tsx` (484 righe, vicino al limite). Pagina "Tipi di costo" e Controllo
+  di gestione invariati.
+- Verifica: gate verifier su AC-001..015 PASS (nessun rosso nuovo; 1 worker vitest crashato per ambiente, aree 0350
+  verdi 916/916). D-12: backend CostTypes 37/37, frontend 242 file / 1726 test, tsc pulito. Suite completa NON
+  rieseguita dopo D-12.
+- Manuale Claude Docs: NON aggiornato (connettore non disponibile/doc non condiviso). Sezioni da aggiornare: Piano dei
+  conti (fase 1, export/import, flag Ente), Prodotti, Categorie prodotto, Fatture attive (sottoconto riga),
+  Ordini/Fatture passive/Costi commessa/Profilo agente/Estratto provvigioni ("Sottoconto costo").
+- Prossimo: fase 3 = prospetto per mastro > conto > sottoconto, filtri periodo/societa', fatture + proforma su
+  entrambi i lati.
+
+## Piano dei conti: export e import (spec 0349) — VERDE, COMMITTATO fbb91078 (2026-11-04)
 
 - Spec `docs/specs/0349-chart-of-accounts-export-import.xml` (D-1..D-12, AC-001..AC-014, tutti PASS dal verifier).
 - `GET /api/chart-of-accounts/export?format=xlsx|csv` (download sincrono, `ChartOfAccountsExporter` +

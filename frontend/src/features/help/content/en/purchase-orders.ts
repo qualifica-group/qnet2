@@ -83,13 +83,13 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Each line can have a catalogue **Product** or just a free **Description** (required). Choosing a product proposes the **description**, **U.m.**, **price** (the cost of the ODA supplier if it supplies the product, otherwise of the default supplier, otherwise the standard cost) and **VAT rate**: all stay editable. If the product has a default **cost type**, it is proposed only when the line has none yet. Each line can have its own **Work order**, proposed from the header one. Changing the ODA supplier does not reprice the lines already entered.',
+          text: 'Each line can have a catalogue **Product** or just a free **Description** (required). Choosing a product proposes the **description**, **U.m.**, **price** (the cost of the ODA supplier if it supplies the product, otherwise of the default supplier, otherwise the standard cost) and **VAT rate**: all stay editable. If the product has a default **cost sub-account**, it is proposed only when the line has none yet. Each line can have its own **Work order**, proposed from the header one. Changing the ODA supplier does not reprice the lines already entered.',
         },
         {
           type: 'table',
           headers: ['Item', 'Meaning'],
           rows: [
-            ['**Cost type**', '**Required** on every line. It shows in the type’s color in the picker. Types are managed under Configuration › Purchasing › Cost types (see its guide).'],
+            ['**Cost sub-account**', '**Required** on every line. The picker shows code and name, grouped by group and account, and searches by code or name; sub-accounts not yet placed in the chart are in the **To be placed** group. They are managed in the **Chart of accounts** (see its guide) and under Configuration › Purchasing › Cost types.'],
             ['**Taxable / VAT / Total**', 'Computed by the server (quantity × price, then VAT) and read-only; the preview in the form matches the saved result. Header totals are the sum of the lines.'],
             ['**Extract VAT from price**', 'If you only know the VAT-inclusive price, enter it and press the icon: the price goes back to the taxable amount using the line rate (122.00 at 22% becomes 100.00). A rate above zero is needed.'],
             ['**RDA #n badge**', 'Appears on lines generated from a purchase request (see **Link with RDA**).'],

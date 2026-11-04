@@ -35,6 +35,7 @@ class UpdateRevenueTypeRequest extends FormRequest
             'name' => ['sometimes', 'required', 'string', 'max:'.StoreChartAccountRequest::NAME_MAX],
             'description' => ['sometimes', 'nullable', 'string', 'max:'.StoreChartAccountRequest::DESCRIPTION_MAX],
             'is_active' => ['sometimes', 'boolean'],
+            'is_institution_commission_default' => ['sometimes', 'boolean'],
         ];
     }
 

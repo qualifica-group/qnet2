@@ -6,6 +6,7 @@ use App\Http\Controllers\Invoices\InvoiceController;
 use App\Http\Controllers\Invoices\InvoiceForSelectController;
 use App\Http\Controllers\Invoices\InvoiceInstallmentController;
 use App\Http\Controllers\Invoices\InvoiceIssueController;
+use App\Http\Controllers\Invoices\InvoiceLineRevenueTypeController;
 use App\Http\Controllers\Invoices\InvoicePdfController;
 use Illuminate\Support\Facades\Route;
 
@@ -35,6 +36,9 @@ Route::get('invoices/{invoice}', [InvoiceController::class, 'show']);
 Route::match(['put', 'patch'], 'invoices/{invoice}', [InvoiceController::class, 'update']);
 Route::patch('invoices/{invoice}/details', [InvoiceController::class, 'updateDetails']);
 Route::delete('invoices/{invoice}', [InvoiceController::class, 'destroy']);
+
+// spec 0350: classification of one line, allowed on any state (permission invoices.update).
+Route::patch('invoices/{invoice}/lines/{line}/revenue-type', InvoiceLineRevenueTypeController::class)->scopeBindings();
 
 // spec 0197: one installment (the installments module); the collection routes below stay as they are.
 Route::get('invoice-installments/{installment}', [InvoiceInstallmentController::class, 'show']);

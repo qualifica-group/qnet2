@@ -14,7 +14,7 @@ import type { ChartGroup } from '@/features/chart-of-accounts/types'
 import { useEntrySubmit } from '@/features/chart-of-accounts/use-entry-submit'
 
 const FORM_ID = 'revenue-sub-account-form'
-const ERROR_FIELDS = ['code', 'name', 'description', 'chart_account_id', 'is_active'] as const
+const ERROR_FIELDS = ['code', 'name', 'description', 'chart_account_id', 'is_active', 'is_institution_commission_default'] as const
 
 interface RevenueSubAccountSheetProps {
   state: SubAccountSheetState
@@ -24,10 +24,10 @@ interface RevenueSubAccountSheetProps {
 
 function defaultsOf(state: SubAccountSheetState): Partial<RevenueTypeFormValues> {
   if (state.type === 'sub-create') {
-    return { code: '', name: '', description: null, is_active: true, chart_account_id: state.account.id }
+    return { code: '', name: '', description: null, is_active: true, chart_account_id: state.account.id, is_institution_commission_default: false }
   }
-  const { code, name, description, is_active } = state.sub
-  return { code: code ?? '', name, description, is_active, chart_account_id: state.account?.id }
+  const { code, name, description, is_active, is_institution_commission_default } = state.sub
+  return { code: code ?? '', name, description, is_active, chart_account_id: state.account?.id, is_institution_commission_default: is_institution_commission_default ?? false }
 }
 
 /** Create / edit form of a revenue sub-account (spec 0348 D-3). */
@@ -74,6 +74,11 @@ export function RevenueSubAccountSheet({ state, groups, onClose }: RevenueSubAcc
           <EntryTextField<RevenueTypeFormValues> name="name" label={t('chartOfAccounts.form.name')} required />
           <EntryTextField<RevenueTypeFormValues> name="description" label={t('chartOfAccounts.form.description')} multiline />
           <EntrySwitchField<RevenueTypeFormValues> name="is_active" label={t('chartOfAccounts.form.isActive')} />
+          <EntrySwitchField<RevenueTypeFormValues>
+            name="is_institution_commission_default"
+            label={t('revenueTypes.commissionDefault.label')}
+            hint={t('revenueTypes.commissionDefault.hint')}
+          />
         </form>
       </Form>
     </EntrySheet>

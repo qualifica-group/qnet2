@@ -30,6 +30,7 @@ export const chartOfAccounts = {
   unplaced: {
     title: 'Sottoconti di costo da collocare',
   },
+  unplacedGroup: 'Da collocare',
   export: {
     label: 'Esporta',
     excel: 'Excel (.xlsx)',

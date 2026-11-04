@@ -26,6 +26,7 @@ const SERVER_ERROR_FIELDS = [
   'unit_of_measure_id',
   'product_typology_id',
   'cost_type_id',
+  'revenue_type_id',
 ] as const
 
 /** Spec 0320: the 422 keys of each supplier row (`suppliers.N.supplier_id` / `.price` / `.cost`). */

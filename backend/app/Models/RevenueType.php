@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Revenue sub-account of the managerial chart of accounts (spec 0348, D-3):
  * the revenue counterpart of CostType, child of an account under a revenue group.
  */
-#[Fillable(['chart_account_id', 'code', 'name', 'description', 'is_active'])]
+#[Fillable(['chart_account_id', 'code', 'name', 'description', 'is_active', 'is_institution_commission_default'])]
 class RevenueType extends BaseModel
 {
     /** @use HasFactory<RevenueTypeFactory> */
@@ -26,6 +26,7 @@ class RevenueType extends BaseModel
     {
         return [
             'is_active' => 'bool',
+            'is_institution_commission_default' => 'bool',
         ];
     }
 

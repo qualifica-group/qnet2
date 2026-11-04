@@ -104,6 +104,11 @@ export function ChartTreeRow({ row, actions, locked, onToggle, onAction }: Chart
           aria-hidden="true"
         />
       ) : null}
+      {row.type === 'sub' && row.node.is_institution_commission_default === true ? (
+        <Badge variant="secondary" className="shrink-0 text-[11px] font-normal">
+          {t('revenueTypes.commissionDefault.badge')}
+        </Badge>
+      ) : null}
       {inactive ? (
         <Badge variant="outline" className="shrink-0 text-[11px] font-normal">
           {t('chartOfAccounts.inactive')}

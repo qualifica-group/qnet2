@@ -25,6 +25,7 @@ use App\Models\Quote;
 use App\Models\Registry;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Services\ChartOfAccounts\RevenueLineClassifier;
 use Carbon\CarbonImmutable;
 use RuntimeException;
 
@@ -53,6 +54,7 @@ class InvoicesSource extends AbstractMigrationSource
         ExternalApiClient $client,
         private readonly LegacyInvoiceWriter $writer,
         private readonly LegacyDocumentNumberer $numberer,
+        private readonly RevenueLineClassifier $classifier,
     ) {
         parent::__construct($client);
     }
@@ -186,8 +188,9 @@ class InvoicesSource extends AbstractMigrationSource
         ]);
         $invoice->forceFill($this->number($companyId, $documentDate->year, $record, $warnings))->saveQuietly();
 
-        // Step 4: lines, schedule with collections, the request now issued, then the legacy anchors.
+        // Step 4: lines (classified with the proposed revenue sub-account, spec 0350), schedule with collections, the request now issued, then the legacy anchors.
         $invoice->lines()->createMany($computed['lines']);
+        $this->classifier->classifyInvoice($invoice);
         $this->writer->writeSchedule($invoice, (array) ($record['installments'] ?? []), $warnings);
         $this->issueRequest($invoice);
         $this->finalizeLegacyRecord($invoice, $legacyId, $record, ['old_source' => $source]);

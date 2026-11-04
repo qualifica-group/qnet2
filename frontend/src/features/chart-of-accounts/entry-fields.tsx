@@ -1,5 +1,5 @@
 import { useFormContext, type FieldValues, type Path } from 'react-hook-form'
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
@@ -37,7 +37,7 @@ export function EntryTextField<T extends FieldValues>({ name, label, multiline, 
   )
 }
 
-export function EntrySwitchField<T extends FieldValues>({ name, label }: { name: Path<T>; label: string }) {
+export function EntrySwitchField<T extends FieldValues>({ name, label, hint }: { name: Path<T>; label: string; hint?: string }) {
   const { control } = useFormContext<T>()
 
   return (
@@ -46,7 +46,10 @@ export function EntrySwitchField<T extends FieldValues>({ name, label }: { name:
       name={name}
       render={({ field }) => (
         <FormItem className="flex-row items-center justify-between gap-3">
-          <FormLabel>{label}</FormLabel>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <FormLabel>{label}</FormLabel>
+            {hint ? <FormDescription>{hint}</FormDescription> : null}
+          </div>
           <FormControl>
             <Switch checked={field.value === true} onCheckedChange={field.onChange} />
           </FormControl>

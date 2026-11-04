@@ -5,6 +5,7 @@ import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
 import { MetaField } from '@/features/authorization/MetaField'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
 import type { ForSelectItem } from '@/features/for-select/types'
+import type { GroupOptions } from '@/components/ui/async-paginated-select'
 import type { QuickCreatePresets } from '@/features/quick-create/types'
 
 /** A hydrated `{id, name}` relation projection — the shape every module's single-relation ref shares. */
@@ -85,6 +86,8 @@ interface RelationSelectFieldProps<
   isItemDisabled?: (item: ForSelectItem) => boolean
   /** Custom trigger/option content, forwarded verbatim to `AsyncPaginatedSelect.renderItem`. */
   renderItem?: (item: ForSelectItem) => ReactNode
+  /** Groups the options under headings, forwarded verbatim to `AsyncPaginatedSelect.groupOptions`. */
+  groupOptions?: GroupOptions
   /** Widens the popup past the trigger, forwarded verbatim to `AsyncPaginatedSelect.contentClassName`. */
   contentClassName?: string
   /** Initial values the "+" quick-create form starts with (e.g. a supplier-only registry picker). */
@@ -138,6 +141,7 @@ export function RelationSelectField<
   showAvatar = false,
   isItemDisabled,
   renderItem,
+  groupOptions,
   contentClassName,
   quickCreatePresets,
 }: RelationSelectFieldProps<TFieldValues, TName>) {
@@ -176,6 +180,7 @@ export function RelationSelectField<
               disabled={isDisabled}
               isItemDisabled={isItemDisabled}
               renderItem={renderItem}
+              groupOptions={groupOptions}
               contentClassName={contentClassName}
               params={params}
               labels={{

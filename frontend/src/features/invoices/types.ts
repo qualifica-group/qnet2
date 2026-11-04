@@ -6,6 +6,7 @@
 
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { CommissionType } from '@/features/commission-configurations/types'
+import type { RevenueTypeRef } from '@/features/revenue-types/types'
 import type { ProformaRequestKind } from '@/features/proforma-requests/types'
 
 export const INVOICE_TYPES = ['proforma', 'invoice'] as const
@@ -57,6 +58,9 @@ export interface InvoiceLine {
   vat_amount: string
   total_amount: string
   sort_order: number
+  /** Revenue sub-account of the line (spec 0350); null = to be classified. */
+  revenue_type_id?: number | null
+  revenue_type?: RevenueTypeRef | null
 }
 
 export interface InvoiceInstallment {
@@ -113,6 +117,13 @@ export interface InvoiceWithPermissions extends Invoice {
   permissions: ResourcePermissions
 }
 
+/** `data` of PATCH `/invoices/{id}/lines/{line}/revenue-type`. */
+export interface InvoiceLineRevenueTypeResult {
+  id: number
+  revenue_type_id: number | null
+  revenue_type: RevenueTypeRef | null
+}
+
 /** One line of the write payload (POST create / PUT update). */
 export interface InvoiceLinePayload {
   quote_line_id: number | null
@@ -121,6 +132,8 @@ export interface InvoiceLinePayload {
   quantity: number
   unit_price: number
   vat_rate_id: number
+  /** Spec 0350 D-7: absent = the server proposes it; a value or null = the user's choice. */
+  revenue_type_id?: number | null
 }
 
 /** `InvoiceWritePayload`. Totals are never sent: the server recomputes them. */
@@ -174,6 +187,9 @@ export interface AvailableInvoiceLine {
   total_amount: string
   /** Institution requests only (spec 0288): the supplier commission the amounts bill; null on consultancy. */
   commission: AvailableLineCommission | null
+  /** Proposed revenue sub-account (spec 0350 D-6); null when none can be proposed. */
+  revenue_type_id?: number | null
+  revenue_type?: RevenueTypeRef | null
 }
 
 /** The supplier rule applied to a sold line; `type` null = no rule, the line bills zero. */

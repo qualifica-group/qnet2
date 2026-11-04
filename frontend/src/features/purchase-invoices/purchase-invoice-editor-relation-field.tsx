@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { Control } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useQuickCreateAction } from '@/components/form/use-quick-create-action'
-import { AsyncPaginatedSelect } from '@/components/ui/async-paginated-select'
+import { AsyncPaginatedSelect, type GroupOptions } from '@/components/ui/async-paginated-select'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import type { ForSelectItem } from '@/features/for-select/types'
 import type { NamedRef } from '@/features/invoices/types'
@@ -31,6 +31,7 @@ interface PurchaseInvoiceEditorRelationFieldProps {
   disabled?: boolean
   params?: Record<string, string | number>
   renderItem?: (item: ForSelectItem) => ReactNode
+  groupOptions?: GroupOptions
   /** Fired after the user changed the selection (the form value is already updated). */
   onPicked?: () => void
 }
@@ -47,6 +48,7 @@ export function PurchaseInvoiceEditorRelationField({
   disabled = false,
   params,
   renderItem,
+  groupOptions,
   onPicked,
 }: PurchaseInvoiceEditorRelationFieldProps) {
   const { t } = useTranslation()
@@ -74,6 +76,7 @@ export function PurchaseInvoiceEditorRelationField({
               disabled={disabled}
               params={params}
               renderItem={renderItem}
+              groupOptions={groupOptions}
               labels={{
                 placeholder,
                 searchPlaceholder: t('purchaseInvoices.editor.select.search'),

@@ -83,13 +83,13 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: 'Ogni riga può avere un **Prodotto** del catalogo oppure solo una **Descrizione** libera (obbligatoria). Scegliendo un prodotto il form propone **descrizione**, **U.m.**, **prezzo** (il costo del fornitore dell’ODA se fornisce il prodotto, altrimenti quello del fornitore predefinito, altrimenti il costo standard) e **Aliquota IVA**: restano modificabili. Se il prodotto ha un **tipo di costo** predefinito, viene proposto solo se la riga non ne ha già uno. Ogni riga può avere una **Commessa** propria, proposta da quella di testata. Cambiare il fornitore dell’ODA non ricalcola il prezzo delle righe già inserite.',
+          text: 'Ogni riga può avere un **Prodotto** del catalogo oppure solo una **Descrizione** libera (obbligatoria). Scegliendo un prodotto il form propone **descrizione**, **U.m.**, **prezzo** (il costo del fornitore dell’ODA se fornisce il prodotto, altrimenti quello del fornitore predefinito, altrimenti il costo standard) e **Aliquota IVA**: restano modificabili. Se il prodotto ha un **sottoconto costo** predefinito, viene proposto solo se la riga non ne ha già uno. Ogni riga può avere una **Commessa** propria, proposta da quella di testata. Cambiare il fornitore dell’ODA non ricalcola il prezzo delle righe già inserite.',
         },
         {
           type: 'table',
           headers: ['Elemento', 'Significato'],
           rows: [
-            ['**Tipo costo**', '**Obbligatorio** su ogni riga. Nel menu compare con il colore del tipo. I tipi si gestiscono in Configurazione › Acquisti › Tipi di costo (vedi la sua guida).'],
+            ['**Sottoconto costo**', '**Obbligatorio** su ogni riga. Il menu mostra codice e nome, raggruppati per mastro e conto, e si cerca per codice o nome; i sottoconti non ancora collocati nel piano stanno nel gruppo **Da collocare**. Si gestiscono nel **Piano dei conti** (vedi la sua guida) e in Configurazione › Acquisti › Tipi di costo.'],
             ['**Imponibile / IVA / Totale**', 'Calcolati dal server (quantità × prezzo, poi IVA) e in sola lettura; l’anteprima nel form si allinea al salvataggio. I totali della testata sono la somma delle righe.'],
             ['**Scorpora l’IVA dal prezzo**', 'Se conosci solo il prezzo IVA inclusa, inseriscilo e premi l’icona: il prezzo torna all’imponibile con l’aliquota della riga (122,00 al 22% diventa 100,00). Serve un’aliquota maggiore di zero.'],
             ['**Badge RDA #n**', 'Compare sulle righe generate da una richiesta di acquisto (vedi **Collegamento con le RDA**).'],

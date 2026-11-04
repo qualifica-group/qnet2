@@ -25,6 +25,7 @@ class RevenueTypeResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'is_active' => $this->is_active,
+            'is_institution_commission_default' => $this->is_institution_commission_default,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'abilities' => [
