@@ -32,3 +32,17 @@ if (! function_exists('chartUserWith')) {
         return $user;
     }
 }
+
+if (! function_exists('resetChartOfAccounts')) {
+    /**
+     * Empties the chart the migration seeds (cost types are kept, unplaced), so a
+     * test can assert on the exact content it builds.
+     */
+    function resetChartOfAccounts(): void
+    {
+        DB::table('revenue_types')->delete();
+        DB::table('cost_types')->update(['chart_account_id' => null, 'code' => null]);
+        DB::table('chart_accounts')->where('level', 'account')->delete();
+        DB::table('chart_accounts')->delete();
+    }
+}

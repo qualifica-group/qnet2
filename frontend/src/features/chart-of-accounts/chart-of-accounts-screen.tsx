@@ -38,6 +38,8 @@ function ChartTreeView({ tree }: { tree: ChartTree }) {
         onExpandAll={view.expandAll}
         onCollapseAll={view.collapseAll}
         expansionDisabled={view.isSearching}
+        canExport={tree.abilities.chart_accounts.export}
+        canImport={tree.abilities.chart_accounts.import}
       />
       {view.rows.length === 0 ? (
         <p className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">

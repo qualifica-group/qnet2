@@ -101,6 +101,48 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'export-import',
+      title: 'Esporta e importa',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Con **Esporta** (Excel o CSV) scarichi tutto il piano; con **Importa** lo ricarichi da un file con lo **stesso tracciato**, per esempio dopo averlo modificato o per adottare il piano del commercialista. I pulsanti compaiono solo se hai i permessi di esportazione e importazione del piano dei conti. I tipi di costo ancora da collocare non sono nel file.',
+        },
+        {
+          type: 'table',
+          headers: ['Colonna', 'Contenuto'],
+          rows: [
+            ['Livello', 'Mastro, Conto o Sottoconto.'],
+            ['Codice', 'Chiave della riga, univoca in tutto il piano.'],
+            ['Codice padre', 'Vuoto sul mastro; codice del mastro sul conto; codice del conto sul sottoconto.'],
+            ['Nome, Descrizione', 'Testi della voce.'],
+            ['Tipo', 'Costo o Ricavo: solo sul mastro.'],
+            ['Natura, Colore', 'Solo sui sottoconti di costo (Diretto, Indiretto, Generale; il colore è facoltativo).'],
+            ['Attivo', 'Sì o No.'],
+          ],
+        },
+        {
+          type: 'steps',
+          items: [
+            'Premi **Importa** e scegli il file (xlsx o csv): intestazioni e valori in italiano o in inglese sono entrambi accettati.',
+            'Compare subito l’**anteprima**: quante voci verrebbero create e quante aggiornate, per livello. Nulla è ancora salvato.',
+            'Se ci sono errori vedi una tabella con **riga, colonna e messaggio**: **Conferma importazione** resta disabilitato. Correggi il file e caricalo di nuovo.',
+            'Senza errori premi **Conferma importazione**: l’albero si ricarica e compare un messaggio di esito.',
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            'La chiave è il **codice**: un codice nuovo **crea** la voce, un codice esistente la **aggiorna** (non può cambiare livello).',
+            'Un sottoconto di costo con codice nuovo e nome uguale a un tipo di costo esistente lo aggiorna (lo colloca nel piano) senza duplicarlo.',
+            'L’importazione **non elimina mai**: le voci assenti dal file restano invariate.',
+            'È **tutto o niente**: con anche un solo errore non viene scritto nulla.',
+            'Creare o aggiornare un tipo di costo richiede anche i permessi sui tipi di costo; se mancano, la riga è segnalata come errore.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'constraints',
       title: 'Vincoli',
       blocks: [

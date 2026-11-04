@@ -101,6 +101,48 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'export-import',
+      title: 'Export and import',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Use **Export** (Excel or CSV) to download the whole chart; use **Import** to load it back from a file with the **same layout**, for example after editing it or to adopt your accountant’s chart. The buttons only appear if you have the chart of accounts export and import permissions. Cost types still waiting to be placed are not in the file.',
+        },
+        {
+          type: 'table',
+          headers: ['Column', 'Content'],
+          rows: [
+            ['Level', 'Group, Account or Sub-account.'],
+            ['Code', 'Key of the row, unique across the whole chart.'],
+            ['Parent code', 'Empty on a group; the group code on an account; the account code on a sub-account.'],
+            ['Name, Description', 'Texts of the entry.'],
+            ['Type', 'Cost or Revenue: on the group only.'],
+            ['Nature, Color', 'Cost sub-accounts only (Direct, Indirect, General; the color is optional).'],
+            ['Active', 'Yes or No.'],
+          ],
+        },
+        {
+          type: 'steps',
+          items: [
+            'Press **Import** and choose the file (xlsx or csv): headers and values in Italian or English are both accepted.',
+            'The **preview** appears straight away: how many entries would be created and how many updated, per level. Nothing is saved yet.',
+            'If there are errors you see a table with **row, column and message**: **Confirm import** stays disabled. Fix the file and upload it again.',
+            'With no errors press **Confirm import**: the tree reloads and a confirmation message appears.',
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            'The key is the **code**: a new code **creates** the entry, an existing code **updates** it (it cannot change level).',
+            'A cost sub-account with a new code and the same name as an existing cost type updates it (places it in the chart) without duplicating it.',
+            'The import **never deletes**: entries missing from the file stay unchanged.',
+            'It is **all or nothing**: a single error means nothing is written.',
+            'Creating or updating a cost type also requires the cost type permissions; if missing, the row is reported as an error.',
+          ],
+        },
+      ],
+    },
+    {
       id: 'constraints',
       title: 'Constraints',
       blocks: [

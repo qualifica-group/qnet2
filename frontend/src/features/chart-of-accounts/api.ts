@@ -1,9 +1,12 @@
 import { apiClient } from '@/api/client'
 import type { ApiResponse } from '@/api/types'
+import { filenameFromContentDisposition } from '@/lib/download'
 import {
   CHART_ACCOUNTS_DOMAIN,
   REVENUE_TYPES_DOMAIN,
   type ChartAccountResource,
+  type ChartExportFormat,
+  type ChartImportResult,
   type ChartTree,
   type CreateChartAccountPayload,
   type RevenueTypePayload,
@@ -47,4 +50,21 @@ export async function updateRevenueType(id: number, payload: UpdateRevenueTypePa
 
 export async function deleteRevenueType(id: number): Promise<void> {
   await apiClient.delete(`${REVENUE_ENDPOINT}/${id}`)
+}
+
+/** Whole plan as a spreadsheet; the server answers a file download. */
+export async function exportChartOfAccounts(
+  format: ChartExportFormat,
+): Promise<{ blob: Blob; filename: string | null }> {
+  const response = await apiClient.get<Blob>('/chart-of-accounts/export', { params: { format }, responseType: 'blob' })
+  return { blob: response.data, filename: filenameFromContentDisposition(response.headers['content-disposition']) }
+}
+
+/** `dryRun` previews counts and errors without writing; false applies all-or-nothing. */
+export async function importChartOfAccounts(file: File, dryRun: boolean): Promise<ChartImportResult> {
+  const body = new FormData()
+  body.append('file', file)
+  body.append('dry_run', dryRun ? '1' : '0')
+  const { data } = await apiClient.post<ApiResponse<ChartImportResult>>('/chart-of-accounts/import', body)
+  return data.data
 }

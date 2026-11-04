@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0349-chart-of-accounts-export-import" status="approved" owner="utente" date="2026-11-04">
+
+  <goal>
+    Dalla schermata "Piano dei conti" l'utente esporta l'intero piano (mastri, conti, sottoconti di costo e di
+    ricavo) in Excel o CSV e lo reimporta dallo stesso tracciato: le voci nuove vengono create, quelle esistenti
+    aggiornate per codice, con anteprima degli errori e applicazione tutto-o-niente.
+  </goal>
+
+  <context>
+    Estende la spec 0348 (piano dei conti, fase 1), che metteva import/export fuori scope. Nomi reali verificati:
+    - Tabelle/model: `chart_accounts` (`ChartAccount`, `level` group|account, `kind` cost|revenue solo sul mastro,
+      `parent_id`), `revenue_types` (`RevenueType`, `chart_account_id`), `cost_types` (`CostType`, `chart_account_id`,
+      `code`, `nature`, `color`, `name` unique max 100). Enum `ChartAccountLevel`, `ChartAccountKind`,
+      `CostTypeNature`, `ExportFormat`.
+    - Servizi: `ChartAccountService` (create/update), `RevenueTypeService` (create/update), `CostTypeService`
+      (create(CreateCostTypeData)/update(UpdateCostTypeData)), `ChartOfAccountsTreeBuilder`.
+    - Regole: `UniqueChartCode` (MAX_LENGTH 20, FORMAT, univocita' su tre tabelle), `ChartAccountRules` (albero D-9).
+    - Rotte in `backend/routes/api/chart-of-accounts.php`; frontend `features/chart-of-accounts/`
+      (`chart-tree-toolbar.tsx`, `api.ts`, `query-keys.ts`).
+    - Permessi gia' presenti nel catalogo (creati da `permissions:sync` via BasePolicy): `chart-accounts.export`,
+      `chart-accounts.import`, `cost-types.create`, `cost-types.update`.
+    - Precedente di export sincrono con download diretto: `AbsenceBalanceOverviewController::export` +
+      `AbsenceBalanceOverviewExporter` + `ExportWriterFactory` (`CsvExportWriter`/`XlsxExportWriter`), frontend
+      `apiClient.get<Blob>(..., { responseType: 'blob' })`. Lettore file: `App\Imports\Support\SpreadsheetReader`.
+
+    Decisioni:
+    - D-1 Export SINCRONO (download diretto, come absence-balances), non il motore `exports/{domain}`: quello
+      richiede una `TableDefinition` e il piano non ne ha una (spec 0348 D-12). Qualche centinaio di righe.
+    - D-2 Import DEDICATO e sincrono, non il wizard generico `imports/{domain}` (mapping colonne, staging, job): il
+      tracciato e' fisso e coincide con l'export, il volume e' piccolo, e il wizard non supporta l'applicazione
+      tutto-o-niente su tre tabelle legate da un albero.
+    - D-3 Tracciato (una riga per voce, ordine: mastro, poi i suoi conti, ciascuno seguito dai suoi sottoconti,
+      per codice naturale). Colonne nell'ordine: Livello, Codice, Codice padre, Nome, Descrizione, Tipo, Natura,
+      Colore, Attivo.
+        Livello: Mastro | Conto | Sottoconto. Codice padre: vuoto sul mastro, codice del mastro sul conto, codice
+        del conto sul sottoconto. Tipo (Costo|Ricavo): solo sul mastro, vuoto altrove. Natura (Diretto|Indiretto|
+        Generale) e Colore: solo sul sottoconto di costo, vuoti altrove. Attivo: Si'|No.
+      Intestazioni e valori sono scritti nella lingua dell'utente (IT/EN); l'import riconosce intestazioni e valori
+      in ENTRAMBE le lingue, senza distinzione di maiuscole e spazi. Un sottoconto e' di costo o di ricavo secondo
+      il Tipo del mastro del suo conto (nel file o nel piano).
+    - D-4 I tipi di costo "da collocare" (`chart_account_id` NULL) NON sono nell'export: non fanno parte del piano.
+    - D-5 Chiave = Codice, univoco su tutto il piano (`UniqueChartCode`). Riga con codice esistente = AGGIORNA la
+      voce che lo possiede (nome, descrizione, attivo; natura e colore per il costo; padre se cambiato e valido;
+      tipo del mastro con la regola esistente "non cambia se ha conti"). Livello e tabella di una voce esistente
+      NON cambiano: un codice esistente su un livello diverso e' un errore della riga.
+      Codice nuovo = CREA. Sottoconto di costo con codice nuovo ma Nome uguale (case-insensitive) a un tipo di costo
+      esistente = AGGIORNA quel tipo (lo colloca/ricolloca e gli assegna il codice), non lo duplica (`name` unique).
+    - D-6 Nessuna eliminazione: le voci presenti nel piano e assenti dal file restano invariate.
+    - D-7 Tutto-o-niente: la richiesta valida TUTTE le righe (formato, campi obbligatori, valori ammessi, padre
+      esistente nel file o nel piano e del livello giusto, coerenza di tipo, codici duplicati nel file, limiti di
+      colonna, permessi); con almeno un errore non scrive nulla e restituisce l'elenco errori. Senza errori applica
+      in una transazione DB (mastri, poi conti, poi sottoconti) tramite i servizi esistenti.
+    - D-8 Due passi con lo stesso endpoint: `dry_run=true` (anteprima: conteggi crea/aggiorna + errori, nessuna
+      scrittura) e `dry_run=false` (applica; se nel frattempo emergono errori, risponde come l'anteprima).
+    - D-9 Permessi: export richiede `chart-accounts.export`. Import richiede `chart-accounts.import`; inoltre una
+      riga che CREA un tipo di costo richiede `cost-types.create` e una che ne AGGIORNA uno `cost-types.update`
+      (errore di riga se mancano, non 403). Mastri/conti/ricavi sono coperti da `chart-accounts.import`.
+      Il tree endpoint espone `abilities.chart_accounts.export`/`import` per mostrare i pulsanti.
+    - D-10 Colore di un tipo di costo creato senza Colore nel file: costante `DEFAULT_COLOR` (primo valore di
+      `BadgeTokens::colors()`); Colore indicato deve essere in `BadgeTokens::colors()`.
+    - D-11 Limiti: file xlsx/csv, `mimes:` + `extensions:`, max `config('imports.max_file_kb')`; max 2000 righe
+      (costante); celle oltre l'ultima colonna ignorate.
+    - D-12 Audit: le scritture passano dai servizi/model esistenti, quindi `LogsModelActivity` registra ogni
+      creazione/modifica come da UI. Nessun `ImportRun` persistito.
+  </context>
+
+  <scope>
+    <in>
+      <item>Backend: `ChartOfAccountsExporter` (righe del tracciato D-3), endpoint export; `ChartOfAccountsImporter`
+        (parsing, validazione D-7, piano di applicazione, applicazione transazionale), FormRequest, endpoint import;
+        `abilities.chart_accounts.export|import` nel tree endpoint; chiavi di traduzione backend per intestazioni,
+        valori e messaggi d'errore.</item>
+      <item>Frontend: pulsanti "Esporta" (menu Excel/CSV) e "Importa" nella toolbar dell'albero, visibili secondo le
+        abilities; dialog di import: scelta file, anteprima (conteggi + tabella errori riga/colonna/messaggio),
+        conferma, invalidazione della query dell'albero e toast.</item>
+      <item>Guide in-app `chart-of-accounts` IT+EN: nuova sezione "Esporta e importa"; manuale Claude Docs: sezione
+        piano dei conti.</item>
+    </in>
+    <out>
+      <item>Eliminazione di voci tramite import; sincronizzazione "a specchio" del file.</item>
+      <item>Wizard generico di import (mapping colonne, modelli di mapping, staging, job in coda, `ImportRun`).</item>
+      <item>Export/import dei tipi di costo da collocare (D-4).</item>
+      <item>Formati diversi da xlsx/csv; export verso contabilita' esterne con tracciati di terzi.</item>
+      <item>Modifiche alla pagina "Tipi di costo" e ai suoi export.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!-- Envelope di progetto { success, message, data }. -->
+
+    <endpoint method="GET" path="/api/chart-of-accounts/export">
+      <request>query: format: "xlsx"|"csv" (required)</request>
+      <response status="200">
+        File binario (download). Content-Type secondo `ExportFormat::contentType()`; nome
+        `chart-of-accounts-YYYY-MM-DD.{xlsx|csv}`. Contenuto: riga intestazioni + una riga per voce (D-3, D-4).
+      </response>
+      <errors>401; 403 senza `chart-accounts.export`; 422 `format` mancante o non ammesso (envelope JSON).</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/chart-of-accounts/import">
+      <request>
+        multipart/form-data: file (required, xlsx|csv, mimes+extensions, max imports.max_file_kb),
+        dry_run: boolean (required)
+      </request>
+      <response status="200">
+        data: {
+          applied: boolean,               (false se dry_run o se ci sono errori)
+          summary: {
+            rows: number,
+            create: { groups: number, accounts: number, cost_sub_accounts: number, revenue_sub_accounts: number },
+            update: { groups: number, accounts: number, cost_sub_accounts: number, revenue_sub_accounts: number }
+          },
+          errors: Array&lt;{ row: number, column: string|null, message: string }>
+        }
+        `row` = numero di riga del file (intestazione = 1). `column` = intestazione nella lingua dell'utente, null per
+        errori di riga. Con `errors` non vuoto `applied` e' sempre false e nulla e' scritto.
+      </response>
+      <errors>401; 403 senza `chart-accounts.import`; 422 file mancante/formato/dimensione, intestazioni mancanti
+        (chiave `file`, messaggio con le colonne mancanti), righe oltre il limite.</errors>
+    </endpoint>
+
+    <endpoint method="GET" path="/api/chart-of-accounts/tree">
+      <response status="200">
+        Invariato tranne: `abilities.chart_accounts` acquisisce `export: boolean`, `import: boolean`.
+      </response>
+    </endpoint>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un piano con mastri, conti, sottoconti di costo e di ricavo e un tipo di costo da
+      collocare, quando un utente con `chart-accounts.export` chiede l'export xlsx, allora riceve un file con le
+      intestazioni D-3 e una riga per voce nell'ordine albero, senza il tipo da collocare.</criterion>
+    <criterion id="AC-002">L'export csv ha lo stesso contenuto dell'xlsx; con `format` non ammesso risponde 422.</criterion>
+    <criterion id="AC-003">Senza `chart-accounts.export` l'export risponde 403; senza `chart-accounts.import` l'import
+      risponde 403.</criterion>
+    <criterion id="AC-004">Un file esportato e reimportato senza modifiche con dry_run produce 0 creazioni, N
+      aggiornamenti e nessun errore (round-trip).</criterion>
+    <criterion id="AC-005">Dato un file con un mastro, un conto e un sottoconto di ricavo nuovi, dry_run=true
+      restituisce i conteggi di creazione e non scrive nulla; dry_run=false li crea con i padri corretti.</criterion>
+    <criterion id="AC-006">Una riga con codice esistente aggiorna nome, descrizione e attivo della voce; le voci
+      assenti dal file restano invariate (nessuna eliminazione).</criterion>
+    <criterion id="AC-007">Un sottoconto di costo con codice nuovo e nome uguale a un tipo di costo da collocare lo
+      colloca (conto + codice) senza crearne un altro; con nome nuovo crea un tipo di costo con la natura del file e
+      il colore di default se Colore e' vuoto.</criterion>
+    <criterion id="AC-008">Con almeno una riga errata (padre inesistente, codice duplicato nel file, codice gia' usato
+      su un altro livello, Tipo su un conto, Natura mancante su un sottoconto di costo, valore non ammesso) la risposta
+      elenca gli errori con riga e colonna, `applied` e' false e il database e' invariato anche con dry_run=false.</criterion>
+    <criterion id="AC-009">Senza `cost-types.create` una riga che creerebbe un tipo di costo e' un errore di riga; le
+      altre righe non vengono applicate (tutto-o-niente).</criterion>
+    <criterion id="AC-010">Intestazioni e valori in inglese sono accettati come quelli in italiano; intestazioni
+      mancanti danno 422 sulla chiave `file`.</criterion>
+    <criterion id="AC-011">Il tree endpoint restituisce `abilities.chart_accounts.export|import` secondo i permessi.</criterion>
+    <criterion id="AC-012">(FE) La toolbar mostra Esporta/Importa solo con le abilities corrispondenti; Esporta scarica il
+      file nel formato scelto.</criterion>
+    <criterion id="AC-013">(FE) Il dialog di import mostra i conteggi dell'anteprima e la tabella errori; con errori il
+      pulsante Conferma e' disabilitato; dopo la conferma l'albero si ricarica e compare un toast di esito.</criterion>
+    <criterion id="AC-014">Guide in-app IT ed EN aggiornate con gli stessi id di sezione; `help-content-parity.test.ts`
+      verde.</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Nessuna nuova dipendenza: lettura con `SpreadsheetReader`, scrittura con `ExportWriterFactory`.</item>
+    <item>Authz server-side su entrambi gli endpoint (FormRequest `authorize()` sui permessi D-9); creazioni e
+      aggiornamenti SOLO tramite `ChartAccountService`, `RevenueTypeService`, `CostTypeService` (nessuna logica di
+      creazione duplicata); validazione codice con `UniqueChartCode::FORMAT`/`MAX_LENGTH`.</item>
+    <item>Tutto-o-niente: applicazione in `DB::transaction`; nessuna scrittura con errori o con dry_run.</item>
+    <item>Nessun `throttle` sui nuovi endpoint (backend.md §2). Envelope `{ success, message, data }` sugli errori.</item>
+    <item>File sotto 300 righe: importer suddiviso in lettura/validazione (piano) e applicazione.</item>
+    <item>Frontend: TanStack Query (`useMutation` per import), apiClient axios, stringhe i18next, componenti
+      `components/ui/` (Dialog, DropdownMenu, Button con fill su fondo pagina), UI compatta.</item>
+  </constraints>
+
+</spec>

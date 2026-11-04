@@ -1,7 +1,10 @@
-import { ChevronsDownUp, ChevronsUpDown, Search } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronsDownUp, ChevronsUpDown, Search, Upload } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ChartExportMenu } from '@/features/chart-of-accounts/chart-export-menu'
+import { ChartImportDialog } from '@/features/chart-of-accounts/chart-import-dialog'
 
 interface ChartTreeToolbarProps {
   query: string
@@ -10,17 +13,22 @@ interface ChartTreeToolbarProps {
   onCollapseAll: () => void
   /** Expansion is derived from the matches while searching. */
   expansionDisabled: boolean
+  canExport: boolean
+  canImport: boolean
 }
 
-/** Search box plus expand / collapse all. */
+/** Search box, expand / collapse all, and the export / import entry points. */
 export function ChartTreeToolbar({
   query,
   onQueryChange,
   onExpandAll,
   onCollapseAll,
   expansionDisabled,
+  canExport,
+  canImport,
 }: ChartTreeToolbarProps) {
   const { t } = useTranslation()
+  const [importOpen, setImportOpen] = useState(false)
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -46,6 +54,16 @@ export function ChartTreeToolbar({
         <ChevronsDownUp aria-hidden="true" />
         {t('chartOfAccounts.collapseAll')}
       </Button>
+      {canExport ? <ChartExportMenu /> : null}
+      {canImport ? (
+        <>
+          <Button variant="outline" size="sm" className="bg-card" onClick={() => setImportOpen(true)}>
+            <Upload aria-hidden="true" />
+            {t('chartOfAccounts.import.label')}
+          </Button>
+          <ChartImportDialog open={importOpen} onOpenChange={setImportOpen} />
+        </>
+      ) : null}
     </div>
   )
 }

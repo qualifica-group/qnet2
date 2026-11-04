@@ -3,6 +3,31 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Piano dei conti: export e import (spec 0349) — VERDE, NON COMMITTATO (2026-11-04)
+
+- Spec `docs/specs/0349-chart-of-accounts-export-import.xml` (D-1..D-12, AC-001..AC-014, tutti PASS dal verifier).
+- `GET /api/chart-of-accounts/export?format=xlsx|csv` (download sincrono, `ChartOfAccountsExporter` +
+  `ChartOfAccountsLayout` = tracciato e vocabolario IT/EN condivisi); `POST /api/chart-of-accounts/import`
+  (multipart `file` + `dry_run` accettato come 1/0/true/false; tutto-o-niente in `DB::transaction`; scritture solo via
+  `ChartAccountService`/`RevenueTypeService`/`CostTypeService`). Classi in `app/Imports/ChartOfAccounts/`
+  (FileReader, RowParser, Planner, Applier, Importer + value object). Chiave = codice; nessuna eliminazione; un
+  sottoconto di costo con codice nuovo e nome di un tipo esistente lo adotta. Tipi da collocare esclusi dall'export.
+- Permessi `chart-accounts.export|import` (gia' nel catalogo); creare/aggiornare tipi di costo da file richiede anche
+  `cost-types.create|update` (errore di riga). Tree endpoint: `abilities.chart_accounts.export|import`.
+- Lingue: intestazioni/valori/errori seguono `Accept-Language`; l'import accetta IT e EN. Chiavi `chart_accounts.io.*`
+  (backend), `chartOfAccounts.export|import.*` (frontend). Guida in-app sezione `export-import` IT+EN.
+- Test helper `resetChartOfAccounts()` in `tests/Helpers/ChartOfAccountsHelpers.php` (la migrazione semina il piano).
+- Limite noto: `SpreadsheetReader` salta le righe vuote, quindi con righe vuote in mezzo il numero di riga degli
+  errori puo' non coincidere con il file.
+- Manuale Claude Docs: NON aggiornato (doc non condiviso con l'account della sessione) -> aggiungere
+  "Piano dei conti > Esporta e importa".
+- Suite completa: rossi ESTRANEI alla feature (da sistemare a parte): `PermissionCatalogueEndpointTest` AC-004
+  (17 permessi `request-management.*` in due aree di menu, commercial + develop), `SettlementApprovalTest` AC-006
+  (dipende dalla data), `QualificaOperatorSeederTest` (ruolo `importatore-richieste`), `TableBulkDeleteTest:131`,
+  `ManagementControl/*AccessTest` (array offset on null; insieme instabile tra due run). `ApiDocsParityTest` va in
+  fatal con memory_limit 512M; Pint sull'intero progetto crasha (`NameQualifiedTransformer`). Frontend: 11 unhandled
+  `toast.error is not a function` in job-activities/vat-rates test.
+
 ## Piano dei conti gestionale, fase 1 (spec 0348) — VERDE, COMMITTATO 1b8ed70c + fix test guide (2026-11-03)
 
 - Spec `docs/specs/0348-chart-of-accounts.xml` (D-1..D-14, AC-001..AC-015). Piano gestionale a 3 livelli, nessuna

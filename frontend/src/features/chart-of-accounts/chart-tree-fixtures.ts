@@ -3,8 +3,16 @@ import type { ChartTree, ChartTreeAbilities, SubAccount } from '@/features/chart
 const ALL = { create: true, update: true, delete: true, view_activity: true }
 const NONE = { create: false, update: false, delete: false, view_activity: false }
 
-export const ALL_ABILITIES: ChartTreeAbilities = { chart_accounts: ALL, revenue_types: ALL, cost_types: ALL }
-export const NO_ABILITIES: ChartTreeAbilities = { chart_accounts: NONE, revenue_types: NONE, cost_types: NONE }
+export const ALL_ABILITIES: ChartTreeAbilities = {
+  chart_accounts: { ...ALL, export: true, import: true },
+  revenue_types: ALL,
+  cost_types: ALL,
+}
+export const NO_ABILITIES: ChartTreeAbilities = {
+  chart_accounts: { ...NONE, export: false, import: false },
+  revenue_types: NONE,
+  cost_types: NONE,
+}
 
 export function costSub(overrides: Partial<SubAccount> = {}): SubAccount {
   return {

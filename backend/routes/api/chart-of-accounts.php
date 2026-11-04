@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\ChartOfAccounts\ChartAccountController;
+use App\Http\Controllers\ChartOfAccounts\ChartOfAccountsExportController;
+use App\Http\Controllers\ChartOfAccounts\ChartOfAccountsImportController;
 use App\Http\Controllers\ChartOfAccounts\ChartOfAccountsTreeController;
 use App\Http\Controllers\ChartOfAccounts\RevenueTypeController;
 use Illuminate\Support\Facades\Route;
@@ -19,6 +21,8 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('chart-of-accounts/tree', ChartOfAccountsTreeController::class);
+Route::get('chart-of-accounts/export', ChartOfAccountsExportController::class);
+Route::post('chart-of-accounts/import', ChartOfAccountsImportController::class);
 
 Route::get('chart-accounts/{chartAccount}', [ChartAccountController::class, 'show']);
 Route::post('chart-accounts', [ChartAccountController::class, 'store']);

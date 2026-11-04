@@ -52,8 +52,14 @@ export interface ResourceAbilities {
   view_activity: boolean
 }
 
+/** The plan adds the spec 0349 export / import gates to the CRUD abilities. */
+export interface ChartAccountsAbilities extends ResourceAbilities {
+  export: boolean
+  import: boolean
+}
+
 export interface ChartTreeAbilities {
-  chart_accounts: ResourceAbilities
+  chart_accounts: ChartAccountsAbilities
   revenue_types: ResourceAbilities
   cost_types: ResourceAbilities
 }
@@ -116,3 +122,27 @@ export interface RevenueTypePayload {
 }
 
 export type UpdateRevenueTypePayload = Partial<RevenueTypePayload>
+
+export type ChartExportFormat = 'xlsx' | 'csv'
+
+export interface ChartImportCounts {
+  groups: number
+  accounts: number
+  cost_sub_accounts: number
+  revenue_sub_accounts: number
+}
+
+export interface ChartImportError {
+  /** File row number, header = 1. */
+  row: number
+  /** Header in the user's language, null for row-level errors. */
+  column: string | null
+  message: string
+}
+
+/** Envelope `data` of POST /chart-of-accounts/import (spec 0349). */
+export interface ChartImportResult {
+  applied: boolean
+  summary: { rows: number; create: ChartImportCounts; update: ChartImportCounts }
+  errors: ChartImportError[]
+}

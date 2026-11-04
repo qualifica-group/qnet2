@@ -158,7 +158,11 @@ class ChartOfAccountsTreeBuilder
         ];
 
         return [
-            'chart_accounts' => $resolve('chart-accounts'),
+            'chart_accounts' => [
+                ...$resolve('chart-accounts'),
+                'export' => $actor->can('chart-accounts.export'),
+                'import' => $actor->can('chart-accounts.import'),
+            ],
             'revenue_types' => $resolve('revenue-types'),
             'cost_types' => $resolve('cost-types'),
         ];
