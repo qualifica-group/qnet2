@@ -251,6 +251,8 @@ function baseFields(t: TFunction, attributes: ApplicableAttributeSummary[]) {
     title: z.string().max(TITLE_MAX_LENGTH, t('quotes.form.titleMax')),
     // Spec 0228: always set (the create form prefills today), never cleared.
     quote_date: z.string().min(1, t('quotes.form.quoteDateRequired')),
+    // Spec 0349 "Data ricontatto": optional, `null` when empty.
+    follow_up_date: z.string().nullable(),
     // Immutable after create (AC-025); still part of both schemas since the
     // form always displays it (read-only in edit) and the create form must
     // block submit until it is set.

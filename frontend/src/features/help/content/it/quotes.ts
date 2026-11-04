@@ -29,8 +29,8 @@ const guide: HelpGuide = {
           rows: [
             [
               'Dati offerta',
-              '**Codice**, **Titolo**, **Data offerta**, **Opportunità**',
-              "La data offerta è proposta con la data di oggi. L'opportunità non si cambia dopo la creazione.",
+              '**Codice**, **Titolo**, **Data offerta**, **Data ricontatto**, **Opportunità**',
+              "La data offerta è proposta con la data di oggi. La data ricontatto è facoltativa. L'opportunità non si cambia dopo la creazione.",
             ],
             ['Contesto', '**Fonte**', "Campo dell'offerta: precompilata con la Fonte del lead se l'opportunità ne ha uno, altrimenti vuota; puoi sceglierla o cambiarla."],
             ['Anagrafica e contatti', '**Commerciale**, **Segnalatore** (con i suoi **Buoni**)', "Precompilati dall'opportunità."],
@@ -55,6 +55,10 @@ const guide: HelpGuide = {
         {
           type: 'note',
           text: "La **Data offerta** è obbligatoria e si può cambiare anche dal dettaglio. Un'offerta creata da **Gestione Richieste** o dalla conversione di un lead prende la data del giorno in cui viene creata.",
+        },
+        {
+          type: 'note',
+          text: "La **Data ricontatto** è una data facoltativa per segnarti quando riprendere in mano l'offerta: si imposta e si cambia dal dettaglio o dall'elenco, e si svuota cancellando la data. Non invia promemoria ed è diversa dal **Prossimo richiamo**, che si pianifica da **Gestione Richieste**.",
         },
       ],
     },
@@ -133,7 +137,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "Un clic su una cella modificabile (Titolo, Stato, Commerciale, Segnalatore, Supervisore, Gestori account, Società, Società sede, Sede operativa, Fonte) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
+          text: "Un clic su una cella modificabile (Titolo, Stato, Commerciale, Segnalatore, Supervisore, Gestori account, Società, Società sede, Sede operativa, Fonte, Data ricontatto) la modifica **direttamente nell'elenco**, con le **stesse regole del dettaglio**: un valore non valido o un campo che non puoi modificare viene rifiutato con un messaggio e la cella torna al valore di prima.",
         },
         {
           type: 'note',

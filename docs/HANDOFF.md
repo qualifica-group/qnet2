@@ -27,6 +27,26 @@
   Prossime fasi: F2 sottoconto su prodotti e righe fattura attiva (snapshot, provvigioni Ente, backfill),
   F3 prospetto per mastro filtrabile per societa' (decisione utente 2026-11-03: piano unico di gruppo).
 
+## Offerte: "Data ricontatto" (`quotes.follow_up_date`) — VERDE, COMMITTATO (2026-11-04, spec 0349)
+
+- Data facoltativa (`date`, `Y-m-d`) sull'Offerta, nessun promemoria; nome generico per decisione utente (non
+  "backoffice"). Distinta da "Prossimo richiamo" (`next_callback_at`, scritto solo da Gestione Richieste) e dalla
+  "Data richiamo" delle Commesse (`work_orders.callback_date`).
+- Backend: migrazione `2026_11_19_100000_add_follow_up_date_to_quotes_table` (indice); Quote #[Fillable] + cast `date`
+  (entra nel log automatico); Store/UpdateQuoteRequest `nullable|date_format:Y-m-d`; Create/UpdateQuoteData
+  (`followUpDate`, `followUpDateSubmitted`); QuoteResource; QuotesAuthorization (editabile se si scrive l'offerta);
+  QuoteColumnCatalog colonna `follow_up_date` editabile dopo `next_callback_at`, prima di `alert`; mapRow.
+- Frontend: tipo, schema Zod (`nullable`), default, payload (update solo se cambiata, `null` se svuotata),
+  `QuoteFollowUpDateField` + riga in "Dati offerta" (`quote-record-identity.tsx`), `DateCell` in griglia, i18n
+  `quotes.columns.followUpDate` / `quotes.form.followUpDate` e activity-log `follow_up_date`. Aggiunta in
+  `quotes/column-renderers.tsx` la direttiva `react-refresh/only-export-components` del file gemello di Opportunita'
+  (errore ESLint preesistente su HEAD).
+- Test: `tests/Feature/Quotes/QuoteFollowUpDateTest.php` (AC-001..006); enumerazioni aggiornate (REQUIREMENT CHANGED)
+  in QuoteAuthorizationTest, QuoteGridInlineEditTest, QuoteTableTest; Vitest payload/schema/inline-edit; fixture FE con
+  `follow_up_date: null`. Rosso preesistente: QuoteDocumentPdfTest (LibreOffice assente).
+- Da fare in locale: `php artisan migrate` (non eseguito). Manuale: guida `quotes` IT/EN e Claude Docs (Offerte,
+  dopo "Data offerta") aggiornati; PDF derivato da rigenerare.
+
 ## Assistente AI: interruttori env per finestra flottante e pagina — VERDE, COMMITTATO (2026-11-03, spec 0347 D-16)
 
 - Env backend `AI_ASSISTANT_FLOATING_ENABLED` / `AI_ASSISTANT_PAGE_ENABLED` (config `ai-assistant.floating_enabled`

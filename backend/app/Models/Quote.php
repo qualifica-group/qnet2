@@ -105,6 +105,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable([
     'title',
     'quote_date',
+    'follow_up_date',
     'opportunity_id',
     'commercial_id',
     'reporter_id',
@@ -151,6 +152,7 @@ class Quote extends BaseModel
             'is_transferred' => 'boolean',
             'title_is_manual' => 'boolean',
             'quote_date' => 'date',
+            'follow_up_date' => 'date',
         ];
     }
 
