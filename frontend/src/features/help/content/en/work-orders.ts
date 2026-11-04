@@ -79,6 +79,10 @@ const guide: HelpGuide = {
           text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. Turn it off to go back to all the categories.",
         },
         {
+          type: 'paragraph',
+          text: "When you choose a category tab (not **All** and not a **Parent categories** tab), the columns of that category's flexible fields of the **work order** (not those of the quote) appear at the end of the list. You can filter and sort them. If you have permission to edit them, you change them right in the cell. Table-type fields can only be edited from the detail.",
+        },
+        {
           type: 'note',
           text: "Favorites are separate for each list (Opportunities, Quotes, Contracts, Work orders, Request Management). The first time they are suggested from the categories you are enabled for; as soon as you use the star they become yours. The export does not follow the tab: it always covers all the work orders. The **Work orders** tab of a contract's detail has no bar.",
         },

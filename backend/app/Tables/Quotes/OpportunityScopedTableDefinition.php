@@ -4,15 +4,24 @@ declare(strict_types=1);
 
 namespace App\Tables\Quotes;
 
+use App\Models\Quote;
 use App\Models\User;
 use App\Products\ProductCategoryBranches;
+use App\Quotes\QuoteAttributeResolver;
+use App\Tables\CategoryTabs\AttributeColumnsScopable;
+use App\Tables\CategoryTabs\AttributeGridTarget;
+use App\Tables\CategoryTabs\Concerns\AppendsCategoryAttributeColumns;
+use App\Tables\CategoryTabs\Concerns\WritesCategoryAttributeCells;
 use App\Tables\CategoryTabs\RevenueCategoryQuoteIds;
 use App\Tables\CustomFields\DelegatesUnaugmentedTableMethods;
 use App\Tables\ProductCategoryScopable;
 use App\Tables\RegistryScopable;
+use App\Tables\RequestManagement\AttributeColumnBuilder;
+use App\Tables\RequestManagement\AttributeGridColumns;
 use App\Tables\TableDefinition;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -46,10 +55,21 @@ use Illuminate\Support\Facades\DB;
  * And its `ProductCategoryScopable` (spec 0335, D-1): an Offerta shows in the
  * tab of every category of its REVENUE lines' products, with no fallback on
  * the Opportunity's lines (an Offerta without revenue lines is only in "Tutte").
+ *
+ * And the `attr.<code>` columns of the tab's category (spec 0350, D-1): the
+ * Quote-context flexible fields of `quotes.attribute_values`, editable in the
+ * cell, via the two `*CategoryAttribute*` traits.
  */
-class OpportunityScopedTableDefinition implements ProductCategoryScopable, RegistryScopable, TableDefinition
+class OpportunityScopedTableDefinition implements AttributeColumnsScopable, ProductCategoryScopable, RegistryScopable, TableDefinition
 {
-    use DelegatesUnaugmentedTableMethods;
+    use AppendsCategoryAttributeColumns, DelegatesUnaugmentedTableMethods, WritesCategoryAttributeCells {
+        // Both declare editableColumnIds()/updateCell(); the attr.* aware pair
+        // delegates to $this->inner for every other column.
+        WritesCategoryAttributeCells::editableColumnIds insteadof DelegatesUnaugmentedTableMethods;
+        WritesCategoryAttributeCells::updateCell insteadof DelegatesUnaugmentedTableMethods;
+    }
+
+    private readonly AttributeGridColumns $attributeColumns;
 
     private ?int $opportunityScope = null;
 
@@ -62,7 +82,12 @@ class OpportunityScopedTableDefinition implements ProductCategoryScopable, Regis
     public function __construct(
         private readonly TableDefinition $inner,
         private readonly ProductCategoryBranches $branches,
-    ) {}
+        AttributeGridColumns $attributeColumns,
+        private readonly QuoteCellWriter $cellWriter,
+        private readonly QuoteAttributeResolver $attributeResolver,
+    ) {
+        $this->attributeColumns = $attributeColumns->forTarget(AttributeGridTarget::quote());
+    }
 
     /**
      * Narrows `baseQuery()` to one Opportunity's Offerte (null = no scope,
@@ -121,94 +146,18 @@ class OpportunityScopedTableDefinition implements ProductCategoryScopable, Regis
         $this->registryScope = $registryId;
     }
 
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    public function columns(): array
+    protected function writeAttributeValue(Model $row, string $code, mixed $value, User $actor): Model
     {
-        return $this->inner->columns();
+        /** @var Quote $row */
+        return $this->cellWriter->write($row, AttributeColumnBuilder::EDITABLE_FIELD, [$code => $value], $actor, null);
     }
 
     /**
-     * @return array<string, mixed>
+     * @return Collection<int, array<string, mixed>>
      */
-    public function mapRow(User $actor, Model $row): array
+    protected function applicableAttributesOf(Model $row): Collection
     {
-        return $this->inner->mapRow($actor, $row);
-    }
-
-    public function sortableColumnIds(): array
-    {
-        return $this->inner->sortableColumnIds();
-    }
-
-    public function filterableColumnIds(): array
-    {
-        return $this->inner->filterableColumnIds();
-    }
-
-    public function searchableColumnIds(): array
-    {
-        return $this->inner->searchableColumnIds();
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    public function resolveConfig(User $actor): array
-    {
-        return $this->inner->resolveConfig($actor);
-    }
-
-    /**
-     * @return array<string, array{visible: bool, width: int|null, order: int}>
-     */
-    public function defaultColumnLayout(): array
-    {
-        return $this->inner->defaultColumnLayout();
-    }
-
-    /**
-     * @return array<string, array<string, mixed>>
-     */
-    public function filterableColumnMap(): array
-    {
-        return $this->inner->filterableColumnMap();
-    }
-
-    /**
-     * @param  Builder<Model>  $query
-     * @param  array<string, mixed>  $columnConfig
-     * @param  array<string, mixed>  $filter
-     */
-    public function applyDerivedFilter(Builder $query, string $columnId, array $columnConfig, array $filter): bool
-    {
-        return $this->inner->applyDerivedFilter($query, $columnId, $columnConfig, $filter);
-    }
-
-    /**
-     * @param  Builder<Model>  $query
-     */
-    public function applyDerivedSort(Builder $query, string $columnId, string $direction): bool
-    {
-        return $this->inner->applyDerivedSort($query, $columnId, $direction);
-    }
-
-    /**
-     * @param  Builder<Model>  $query
-     * @param  array<string, mixed>  $columnConfig
-     * @return array<int, string>|null
-     */
-    public function distinctValues(User $actor, string $columnId, array $columnConfig, ?string $search, Builder $query, int $limit): ?array
-    {
-        return $this->inner->distinctValues($actor, $columnId, $columnConfig, $search, $query, $limit);
-    }
-
-    /**
-     * @param  Builder<Model>  $query
-     */
-    public function applyDerivedSearch(Builder $query, string $columnId, string $pattern): bool
-    {
-        return $this->inner->applyDerivedSearch($query, $columnId, $pattern);
+        /** @var Quote $row */
+        return $this->attributeColumns->fromApplicable($this->attributeResolver->resolve($row));
     }
 }

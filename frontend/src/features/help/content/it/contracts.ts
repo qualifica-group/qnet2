@@ -144,6 +144,10 @@ const guide: HelpGuide = {
           text: "Nel menu **Altre** l'interruttore **Categorie madri** limita la barra alle sole categorie di primo livello: la tab di una categoria madre raccoglie anche le sottocategorie (un record conta una volta sola). La scelta resta salvata nel browser per questo elenco, ogni modalità ricorda la propria tab e le **preferite** sono separate tra le due modalità. Spegnendolo torni a tutte le categorie.",
         },
         {
+          type: 'paragraph',
+          text: "Scegliendo la tab di una categoria, in fondo all'elenco compaiono le colonne dei campi flessibili dell'**offerta di origine** del contratto, in sola lettura. Puoi filtrarle e ordinarle, ma per modificarle devi aprire l'offerta.",
+        },
+        {
           type: 'note',
           text: "Le preferite sono separate per ogni elenco (Opportunità, Offerte, Contratti, Commesse, Gestione Richieste). La prima volta ti vengono proposte in base alle categorie per cui sei abilitato; appena usi la stellina diventano le tue. L'esportazione non segue la tab: considera sempre tutti i contratti.",
         },

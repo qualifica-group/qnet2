@@ -3,6 +3,37 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Campi flessibili per tab categoria su Offerte, Commesse, Contratti (spec 0350) — VERDE, COMMITTATO (2026-11-04)
+
+- Richiesta utente: "commesse, contratti e offerte come gestione richieste: in base alla categoria escono i campi
+  flessibili; per commessa quelli della commessa". Decisioni utente 2026-11-04: Offerte = contesto Quote su
+  `quotes.attribute_values`, modificabili in cella; Commesse = contesto WorkOrder su `work_orders.attribute_values`,
+  modificabili in cella; Contratti = campi dell'offerta di origine (`contracts.quote_id`), SOLA LETTURA ma
+  filtrabili/ordinabili. Tab "Tutte" e "Categorie madri": nessuna `attr.*`. Supera "niente attr.*" della 0335.
+- Backend (nessuna migrazione, nessun endpoint nuovo, nessuna modifica frontend): `Tables\CategoryTabs\AttributeGridTarget`
+  (colonna JSON + `AttributeContext` + model del gate; `quote()`, `workOrder()`), interfaccia
+  `Tables\CategoryTabs\AttributeColumnsScopable` (`scopeToAllProductCategories()`, sostituisce gli `instanceof
+  RequestManagementScopedTableDefinition` in `TableController`/`TableFilterStateRequest`), trait di lettura
+  `Tables\CategoryTabs\Concerns\AppendsCategoryAttributeColumns` (3 griglie) e di scrittura `WritesCategoryAttributeCells`
+  (quotes/work-orders: CellWriter del modulo con `attribute_values => [code => value]`, poi remap col resolver del record).
+  `AttributeGridColumns::forTarget()`, `AttributeScopeResolver::forContext()` (memo per contesto); Gestione Richieste invariata.
+  Contratti: filtro `whereIn(contracts.quote_id, sottoquery quotes)`, sort con join alias `contract_quote_attrs` solo se
+  si ordina per `attr.*` + `select('contracts.*')`, distinti dalle offerte dei contratti visibili; PATCH `attr.*` -> 422.
+- Attenzione: le commesse risolvono gli attributi dalle righe offerta collegate (`quoteLines`), non da `quote_id`: una
+  commessa senza righe non ha attributi applicabili (scrittura 422), coerente col form.
+- Test: `tests/Feature/CategoryTabs/{Quote,WorkOrder,Contract}CategoryAttributeColumnsTest.php`, helper
+  `tests/Helpers/CategoryTabAttributeHelpers.php`. Verifier: AC-001..AC-011 PASS; Pest CategoryTabs 108/109 (unico rosso
+  `WorkOrderCategoryTabsTest` AC-024, flaky preesistente: fallisce 1/3 anche da solo, ordine chiavi senza ORDER BY in
+  `GridCategoryTabsResolver`, commit beb6a426, non toccato); CategoryTabs+RequestManagement 978/978 prima dei test di
+  copertura aggiunti; suite completa backend 13596/13619 con 22 rossi estranei (PDF/LibreOffice, bulk delete, ManagementControl,
+  Migration, piu' AiAssistant*, SettlementApproval, PermissionCatalogueEndpoint, QualificaOperatorSeeder: non toccano il
+  codice cambiato, preesistenza non provata); Vitest 9818/9818, `tsc -b` 0, ESLint help ok, Pint ok.
+- Manuale: guide in-app IT/EN `quotes|work-orders|contracts#category-tabs`; manuale Claude Docs: paragrafi "Campi
+  flessibili nella tab" in Offerte e Contratti + tabella contesti attributi. Commesse nel manuale resta "in sviluppo"
+  (nessun paragrafo). PDF da rigenerare.
+- Follow-up segnalati (fuori scope): portare `RequestManagementScopedTableDefinition` sul trait condiviso e spostare le
+  classi `attr.*` fuori da `Tables\RequestManagement`; fix del flaky AC-024 (ORDER BY stabile).
+
 ## Notifica di inserimento nel team della Commessa (spec 0351) — VERDE, COMMITTATO (2026-11-04)
 
 - Richiesta utente: notificare chi viene aggiunto a una commessa come Responsabile o Partecipante. Riusa
