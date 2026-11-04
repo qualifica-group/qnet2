@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0352-project-work-order-chat" status="approved" owner="utente" date="2026-11-04">
+
+  <goal>
+    Le commesse di tipo Progetto hanno una voce di menu propria, "Commesse di Progetto", e dentro ogni
+    commessa di progetto c'e' una chat in tempo reale (solo testo, niente file) riservata al team della
+    commessa e ai super-admin. La chat nasce gia' predisposta a un futuro sistema multi-tenant.
+  </goal>
+
+  <context>
+    Decisioni utente 2026-11-04 (chat di pianificazione):
+    - D-1: voce di menu "Commesse di Progetto" (EN "Project Work Orders"), chiave e rotta frontend
+      `project-work-orders`. NON e' una tabella nuova: sono le righe di `work_orders` con
+      `type = project` (`App\Enums\WorkOrderType::Project`). Il modulo `Project` esistente
+      (Progetti/Campagne, spec 0023, voce "Progetti") non si tocca.
+    - D-2 (risposta 1.2): le commesse di progetto ESCONO dalla voce "Commesse", che mostra solo
+      `type = processing`. Ogni commessa sta in un solo elenco del menu. Le sezioni "Commesse" dentro
+      altre schede (Contratto, spec 0095 via `rowScope.quoteId`; Anagrafica, spec 0199) continuano a
+      mostrare TUTTI i tipi: il filtro vale solo per le due pagine del menu.
+    - D-3: la chat e' un canale distinto dalle note (spec 0134), che restano invariate. Messaggi di
+      solo testo, cronologici, senza thread, senza file, senza formattazione, massimo 2.000 caratteri.
+      Presente solo sulle commesse `type = project`.
+    - D-4 (risposta 2): legge e scrive il team della commessa, cioe' i Responsabili
+      (`WorkOrder::supervisors()`, pivot `work_order_supervisor`) e i Partecipanti
+      (`WorkOrder::participants()`, pivot `work_order_participant`), piu' i super-admin ("gli admin
+      hanno sempre la possibilita' di intervenire"). Chi vede la commessa per un altro motivo (viewAll,
+      sede, competenza, spec 0316) NON vede la chat.
+    - D-5 (risposta 3): l'autore modifica o cancella il PROPRIO messaggio entro 15 minuti dall'invio.
+      La cancellazione e' logica: il messaggio resta al suo posto come "Messaggio eliminato", senza testo.
+    - D-6 (risposta 4): nessuna campanella e nessuna email per i messaggi. Solo il contatore dei non
+      letti per utente: badge sulla tab Chat della scheda e colonna nella griglia "Commesse di Progetto".
+      Niente menzioni @.
+    - D-7 (risposta 5): commessa con stato calcolato `completed` o `closed` (`WorkOrderStatus`, che
+      include la chiusura forzata `is_force_closed`): chat leggibile, nessuna scrittura (409, come
+      `WorkOrderClosedGuard`). Commessa che passa da `project` a `processing`: i messaggi restano nel
+      database, la chat non e' piu' accessibile (404); se torna `project` riappare intatta.
+    - D-8 (risposta 6 e decisione precedente 3.A): tempo reale con Laravel Reverb. Dipendenze nuove
+      AUTORIZZATE dall'utente: `laravel/reverb` (backend), `laravel-echo` + `pusher-js` (frontend).
+      In scope: sviluppo locale (`composer dev`), variabili `.env.example`, ripresa automatica (alla
+      riconnessione si ricaricano i messaggi). Fuori scope: configurazione del server di produzione.
+    - D-9: predisposizione multi-tenant (qnet2 oggi non ha tenancy):
+      a. i messaggi sono legati SOLO a `work_order_id`; nessuna colonna `tenant_id` ora;
+      b. ogni accesso (REST e canale) risolve PRIMA la commessa e passa da `WorkOrderPolicy::view`, poi
+         dalla regola chat; nessuna query sui messaggi che non parta da una commessa;
+      c. il nome del canale e' generato in UN solo punto (`WorkOrderChatChannel::name()`), restituito
+         dal backend al frontend, che non lo ricostruisce;
+      d. il broadcast passa solo da eventi `ShouldBroadcast` in coda, dopo il commit;
+      e. nessuno stato globale non prefissato (cache, contatori): tutto parte dalla commessa.
+    - D-10 (confermata in approvazione 2026-11-04): il super-admin scrive come un membro del team e
+      PUO' moderare: modifica o cancella (cancellazione logica, come D-5) anche i messaggi altrui, senza
+      il limite dei 15 minuti. Gli altri utenti restano vincolati a D-5 (solo i propri, entro 15 minuti).
+      Il blocco su commessa chiusa (D-7) vale anche per il super-admin. Ogni moderazione e' tracciata in
+      activitylog come le altre scritture (AC-024).
+
+    Fatti verificati nel codice (2026-11-04):
+    - `backend/app/Models/WorkOrder.php` (`supervisors()`, `participants()`, `LogsModelActivity`,
+      `HasNotes`); `backend/app/Enums/WorkOrderType.php` (`processing`, `project`);
+      `backend/app/Enums/WorkOrderStatus.php` (`open`, `in_progress`, `completed`, `closed`, calcolato
+      da `WorkOrderStatusResolver::progress()`).
+    - `backend/app/Policies/WorkOrderPolicy.php` + `App\Services\WorkOrders\WorkOrderVisibilityScope`
+      (il team vede sempre la propria commessa); `Gate::before` in `AppServiceProvider` concede tutto al
+      ruolo `super-admin`: per questo la regola chat NON e' un'ability di Gate ma un servizio dedicato,
+      altrimenti il super-admin bypasserebbe anche D-5 e D-7.
+    - Azioni per record nel dettaglio: `App\Authorization\WorkOrdersAuthorization` (`view_costs`,
+      `view_invoices`...), consumate da `frontend/src/features/work-orders/work-order-detail-work-tabs.tsx`.
+    - Rotte: `backend/routes/api/work-orders.php` (dentro `auth:sanctum`); envelope `ok()` /
+      `handleControllerException()` come in `WorkOrderCostController`.
+    - Griglia: dominio `work-orders` -> `WorkOrdersTableDefinition` (`config/tables.php`), decorato da
+      `App\Tables\WorkOrders\QuoteScopedTableDefinition` (row scope `quoteId`/`registryId`/categoria).
+      Frontend `TableView` con `rowScope` (`frontend/src/features/table/rows-types.ts`); pagina
+      `frontend/src/pages/work-orders-page.tsx`, adattatore `features/work-orders/work-orders-table.tsx`,
+      striscia categorie `CategoryTabGrid::WorkOrders`.
+    - Menu: `backend/config/navigation/operations.php` (voce `work-orders`, permesso `work-orders.view`);
+      etichette `frontend/src/i18n/locales/{it,en}-navigation.ts`; `frontend/src/routes/breadcrumbs.tsx`;
+      `frontend/src/routes/app-child-routes.tsx`.
+    - Oggi nessun broadcasting: `BROADCAST_CONNECTION=log`, nessun evento `ShouldBroadcast`, nessun
+      `routes/channels.php`. Coda `database`; `composer dev` avvia gia' `queue:listen`.
+    - Guide in-app: `frontend/src/features/help/content/{it,en}/`, chiavi in
+      `frontend/src/features/help/help-guide-keys.ts`, test `help-content-parity.test.ts`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Backend: tabelle `work_order_chat_messages` e `work_order_chat_reads`, model, servizio di accesso, controller, FormRequest, Resource, evento broadcast, canale privato, 5 endpoint del contratto.</item>
+      <item>Backend: installazione Reverb (config broadcasting/reverb, `routes/channels.php`, rotta di autenticazione canale sotto `/api` con `auth:sanctum`), `.env.example`, `reverb:start` in `composer dev`.</item>
+      <item>Backend: nuova voce di menu `project-work-orders`; dominio griglia `project-work-orders` (solo `type = project`, colonna "Non letti"); row scope `work_order_type` sul dominio `work-orders`; conteggi della striscia categorie di "Commesse" senza le commesse di progetto.</item>
+      <item>Backend: azioni per record `view_chat` e `write_chat` in `WorkOrdersAuthorization`.</item>
+      <item>Frontend: pagina e rotta `/project-work-orders`, adattatore griglia, voce di menu IT/EN, breadcrumb; pagina "Commesse" con `rowScope.workOrderType = processing`.</item>
+      <item>Frontend: client Echo (singleton pigro, autenticazione via client axios di progetto), feature `work-order-chat` (api, tipi, chiavi query, schema Zod, hook, pannello, messaggio, compositore), tab "Chat" nella scheda commessa con badge non letti.</item>
+      <item>Test Pest per ogni endpoint, canale ed evento; test Vitest per schema, hook e pannello.</item>
+      <item>Manuale: nuova guida in-app `project-work-orders` IT/EN, aggiornamento guida `work-orders` IT/EN, manuale Claude Docs (sezione Commesse) o segnalazione esplicita se il connettore non c'e'.</item>
+    </in>
+    <out>
+      <item>Caricamento di file, immagini, allegati nella chat.</item>
+      <item>Thread/risposte, reazioni, menzioni @, formattazione rich text, indicatore "sta scrivendo", presenza online.</item>
+      <item>Notifiche (campanella, email, push) per i nuovi messaggi.</item>
+      <item>Moderazione dei messaggi altrui da parte di utenti non super-admin (il super-admin modera, vedi D-10); ruoli di moderatore dedicati.</item>
+      <item>Chat sulle commesse `processing` o su altri moduli.</item>
+      <item>Colonna `tenant_id` e qualunque logica multi-tenant reale.</item>
+      <item>Configurazione del server di produzione per Reverb (supervisor, proxy nginx, TLS).</item>
+      <item>Striscia categorie nella pagina "Commesse di Progetto".</item>
+      <item>Migrazione dal QNet legacy di messaggi chat (non esistono).</item>
+      <item>Modifiche al modulo `Project` (Progetti/Campagne) e alle note (spec 0134).</item>
+      <item>Cancellazione fisica dei messaggi e politiche di conservazione.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <!--
+      Shape comune ChatMessage (identica nelle risposte REST e nel payload broadcast):
+      {
+        id: int,
+        work_order_id: int,
+        author: { id: int, name: string, avatar_url: string|null } | null,   // null se utente rimosso
+        body: string|null,            // null quando is_deleted = true
+        is_deleted: bool,
+        edited_at: string|null,       // ISO 8601
+        created_at: string,           // ISO 8601
+        editable_until: string        // ISO 8601 = created_at + 15 minuti (config chat.edit_window_minutes)
+      }
+      Nessun campo dipendente dall'utente che legge dentro ChatMessage: il frontend calcola "posso
+      modificare/cancellare" come can_write AND NOT is_deleted AND (can_moderate OR
+      (author.id === utente corrente AND now < editable_until)), con `can_moderate` dalla risposta GET
+      (D-10). Il backend ri-autorizza sempre.
+
+      Ordine di autorizzazione su OGNI endpoint (D-9.b):
+        1. route model binding della commessa (404 se non esiste);
+        2. WorkOrderPolicy::view (403 come oggi);
+        3. type != project -> 404 (la chat "non esiste");
+        4. utente non nel team e non super-admin -> 403;
+        5. scrittura su commessa completed/closed -> 409;
+        6. messaggio: Route::scopeBindings() (messaggio di un'altra commessa -> 404).
+    -->
+    <endpoint method="GET" path="/api/work-orders/{workOrder}/chat/messages">
+      <request>
+        query: before_id?: int (paginazione a ritroso, messaggi con id minore), limit?: int (1..100, default 50)
+      </request>
+      <response status="200">
+        { success: true, message: string, data: {
+            messages: ChatMessage[],      // ordine crescente per id
+            has_more: bool,               // esistono messaggi piu' vecchi di messages[0]
+            can_write: bool,              // false se commessa completed/closed
+            can_moderate: bool,           // true solo per super-admin (D-10)
+            unread_count: int,            // messaggi altrui con id > ultimo letto, non cancellati
+            last_read_message_id: int|null,
+            channel: string               // "work-orders.{id}.chat" (senza prefisso "private-")
+        } }
+      </response>
+      <errors>401 · 403 (fuori dal team / senza work-orders.view) · 404 (commessa inesistente o non project) · 422 (limit/before_id non validi)</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/chat/messages">
+      <request>{ body: string } — trim, obbligatorio, 1..2000 caratteri, solo testo (nessun HTML interpretato)</request>
+      <response status="201">{ success: true, message: string, data: ChatMessage }</response>
+      <errors>401 · 403 · 404 · 409 (commessa chiusa) · 422 (body vuoto o oltre 2000)</errors>
+    </endpoint>
+
+    <endpoint method="PATCH" path="/api/work-orders/{workOrder}/chat/messages/{message}">
+      <request>{ body: string } — stesse regole del POST</request>
+      <response status="200">{ success: true, message: string, data: ChatMessage }  // edited_at valorizzato</response>
+      <errors>401 · 403 (messaggio altrui o finestra di 15 minuti scaduta, salvo super-admin; fuori dal team) · 404 (messaggio di un'altra commessa, gia' cancellato) · 409 · 422</errors>
+    </endpoint>
+
+    <endpoint method="DELETE" path="/api/work-orders/{workOrder}/chat/messages/{message}">
+      <request>nessun body</request>
+      <response status="200">{ success: true, message: string, data: ChatMessage }  // is_deleted true, body null</response>
+      <errors>401 · 403 (messaggio altrui o finestra scaduta, salvo super-admin; fuori dal team) · 404 · 409</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/work-orders/{workOrder}/chat/read">
+      <request>{ last_message_id: int } — deve appartenere alla commessa; un valore minore dell'attuale non fa arretrare il segno</request>
+      <response status="200">{ success: true, message: string, data: { last_read_message_id: int, unread_count: int } }</response>
+      <errors>401 · 403 · 404 · 422 (messaggio inesistente o di un'altra commessa)</errors>
+    </endpoint>
+
+    <endpoint method="POST" path="/api/broadcasting/auth">
+      <request>Standard Laravel Broadcasting (socket_id, channel_name), sessione Sanctum a cookie + CSRF.</request>
+      <response status="200">firma Pusher/Reverb per "private-work-orders.{id}.chat"</response>
+      <errors>403 se la regola chat (passi 2-4 sopra) nega la lettura</errors>
+    </endpoint>
+
+    <broadcast channel="private-work-orders.{workOrderId}.chat" event=".chat.message">
+      payload: { action: "created" | "updated" | "deleted", message: ChatMessage }
+      Inviato in coda, dopo il commit, solo per scritture riuscite. L'autore riceve anche il proprio
+      evento; il frontend deduplica per id.
+    </broadcast>
+
+    <grid domain="project-work-orders">
+      Stesse colonne, azioni e allow-list del dominio `work-orders`, righe limitate a `type = project`,
+      piu' la colonna di sola lettura `chat_unread_count` (int, ordinabile, non filtrabile): non letti
+      dell'utente corrente; 0 per chi non e' nel team.
+    </grid>
+
+    <grid domain="work-orders" row_scope="work_order_type">
+      Nuovo row scope opzionale `work_order_type: "processing" | "project"` (frontend
+      `rowScope.workOrderType`). Assente = tutti i tipi, come oggi (Contratto, Anagrafica). La pagina
+      "Commesse" invia `processing`. I conteggi di `CategoryTabGrid::WorkOrders` escludono `project`.
+    </grid>
+
+    <record_actions resource="work-orders">
+      `permissions.actions.view_chat`: bool (type project AND lettore ammesso dalla regola chat).
+      `permissions.actions.write_chat`: bool (view_chat AND stato non completed/closed).
+    </record_actions>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un membro del team (Responsabile o Partecipante) di una commessa project, quando chiama GET .../chat/messages, allora riceve 200 con i messaggi in ordine crescente, `channel` = "work-orders.{id}.chat", `can_write` true. (Pest)</criterion>
+    <criterion id="AC-002">Dato un super-admin non nel team, quando legge e scrive nella chat, allora riceve 200/201. (Pest)</criterion>
+    <criterion id="AC-003">Dato un utente che vede la commessa per viewAll, sede o competenza ma non e' nel team, quando chiama uno qualsiasi dei 5 endpoint, allora riceve 403 e nessuna scrittura avviene. (Pest)</criterion>
+    <criterion id="AC-004">Data una commessa `processing` (anche con messaggi salvati quando era project), quando un membro del team chiama gli endpoint chat, allora riceve 404; riportata a `project`, i messaggi precedenti tornano visibili. (Pest)</criterion>
+    <criterion id="AC-005">Dato un body vuoto, di soli spazi o oltre 2000 caratteri, quando si fa POST o PATCH, allora 422 e nessuna riga creata o modificata. (Pest)</criterion>
+    <criterion id="AC-006">Dato un messaggio inviato, quando il POST riesce, allora viene messo in coda un evento broadcast `.chat.message` con action "created" sul canale privato della commessa e payload ChatMessage; se la scrittura fallisce non parte nessun evento. (Pest, Event::fake / Bus)</criterion>
+    <criterion id="AC-007">Dato il proprio messaggio entro 15 minuti, quando lo si modifica, allora 200, `edited_at` valorizzato, evento "updated"; dopo 15 minuti (tempo simulato) 403. (Pest)</criterion>
+    <criterion id="AC-008">Dato il proprio messaggio entro 15 minuti, quando lo si cancella, allora 200, `is_deleted` true, `body` null, la riga resta nel DB (soft delete), evento "deleted"; il GET lo restituisce come eliminato. (Pest)</criterion>
+    <criterion id="AC-009">Dato il messaggio di un altro utente, quando un membro del team non super-admin fa PATCH o DELETE, allora 403; quando lo fa un super-admin (anche oltre i 15 minuti, su commessa non chiusa), allora 200 con evento "updated"/"deleted" e voce in activitylog col super-admin come autore della modifica; su commessa chiusa 409 anche per lui. (Pest)</criterion>
+    <criterion id="AC-010">Dato un messaggio della commessa A, quando lo si indirizza tramite l'URL della commessa B, allora 404. (Pest)</criterion>
+    <criterion id="AC-011">Data una commessa con stato calcolato completed o closed (incluso is_force_closed), quando un membro del team fa POST/PATCH/DELETE, allora 409; il GET risponde 200 con `can_write` false. (Pest)</criterion>
+    <criterion id="AC-012">Dati 3 messaggi altrui non letti e 1 proprio, quando si legge GET, allora `unread_count` = 3; dopo POST .../chat/read con l'ultimo id, `unread_count` = 0; un last_message_id minore non riporta indietro il segno. (Pest)</criterion>
+    <criterion id="AC-013">Dato POST /api/broadcasting/auth per "private-work-orders.{id}.chat", quando lo chiede un membro del team allora 200; quando lo chiede un utente fuori dal team o per una commessa non project allora 403. (Pest)</criterion>
+    <criterion id="AC-014">Dato il dominio griglia `project-work-orders`, quando un utente lo carica, allora vede solo commesse `type = project` visibili a lui (stesso perimetro di `work-orders`), con colonna `chat_unread_count` corretta per l'utente. (Pest)</criterion>
+    <criterion id="AC-015">Dato il dominio `work-orders` con row scope `work_order_type = processing`, allora nessuna riga project; senza row scope (Contratto, Anagrafica) le righe project ci sono ancora, risposta identica a oggi; i conteggi della striscia categorie escludono le project. (Pest)</criterion>
+    <criterion id="AC-016">Dato il menu, quando un utente con `work-orders.view` lo carica, allora la voce "Commesse di Progetto" / "Project Work Orders" con rotta `/project-work-orders` e' presente accanto a "Commesse"; senza il permesso e' assente. (Pest + Vitest)</criterion>
+    <criterion id="AC-017">Dato il dettaglio di una commessa project con `view_chat` true, quando si apre la scheda, allora c'e' la tab "Chat" con il badge dei non letti; con `view_chat` false o su commessa processing la tab non c'e'. (Vitest)</criterion>
+    <criterion id="AC-018">Dato il pannello chat aperto, quando arriva un evento "created"/"updated"/"deleted" sul canale, allora la lista si aggiorna senza ricaricare la pagina e senza duplicare il messaggio inviato dall'utente stesso. (Vitest, Echo mockato)</criterion>
+    <criterion id="AC-019">Dato il pannello chat, quando la connessione Echo si riconnette, allora la query dei messaggi viene invalidata e ricaricata. (Vitest)</criterion>
+    <criterion id="AC-020">Dato `write_chat` false, allora il compositore non c'e' e compare l'avviso di chat in sola lettura; i pulsanti modifica/elimina compaiono solo sui propri messaggi entro `editable_until`, oppure su tutti i messaggi non cancellati se `can_moderate` e' true. (Vitest)</criterion>
+    <criterion id="AC-021">Dato il compositore, quando il testo e' vuoto o supera 2000 caratteri, allora l'invio e' disabilitato e l'errore e' annunciato (triade aria-describedby / aria-invalid / role=alert). (Vitest)</criterion>
+    <criterion id="AC-022">Dato il pannello chat aperto e visibile, quando i messaggi sono caricati o ne arriva uno nuovo, allora viene chiamato POST .../chat/read con l'ultimo id e il badge torna a 0. (Vitest)</criterion>
+    <criterion id="AC-023">Le guide in-app `project-work-orders` e `work-orders` esistono in IT ed EN con gli stessi id di sezione; `help-content-parity.test.ts` verde. (Vitest)</criterion>
+    <criterion id="AC-024">Ogni creazione, modifica e cancellazione di messaggio scrive una voce in activitylog (WHO/WHAT/WHEN, valore prima e dopo). (Pest)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    <item>Dipendenze nuove AUTORIZZATE solo queste tre: `laravel/reverb`, `laravel-echo`, `pusher-js`. Nessun'altra.</item>
+    <item>Authz server-side su ogni endpoint e sul canale, nell'ordine del data_contract; regola chat in un servizio unico (`WorkOrderChatAccess`) usato da controller, canale e azioni per record. Mai un'ability di Gate per la chat (bypassata da `Gate::before`).</item>
+    <item>Nessuna query sui messaggi che non parta da una commessa gia' autorizzata (D-9.b).</item>
+    <item>Nome canale solo da `WorkOrderChatChannel::name()`; il frontend usa il `channel` ricevuto.</item>
+    <item>Broadcast solo con eventi `ShouldBroadcast` in coda e `afterCommit`; i test non richiedono un server Reverb acceso.</item>
+    <item>Messaggi: solo testo, escape automatico in React, mai `dangerouslySetInnerHTML`; nessun dato sensibile nei log.</item>
+    <item>Nessun throttle sugli endpoint chat (decisione utente 2026-07-15).</item>
+    <item>Finestra di modifica in `config('chat.edit_window_minutes')` (default 15), limite testo in costante; niente magic value.</item>
+    <item>Migrazioni reversibili; indice (`work_order_id`, `id`) su `work_order_chat_messages`; unique (`work_order_id`, `user_id`) su `work_order_chat_reads`.</item>
+    <item>Identificatori in inglese; testi a schermo via i18n IT/EN.</item>
+    <item>File sotto 300 righe (500 tetto); `QuoteScopedTableDefinition` gia' carico: il row scope di tipo va in un decoratore o trait separato se lo spinge oltre.</item>
+    <item>Dati server solo via TanStack Query, client axios di progetto, niente useEffect+fetch; l'iscrizione al canale vive in un custom hook.</item>
+    <item>UI compatta (ui-design.md §2), superfici da token, responsive 375/768/1024.</item>
+    <item>Git: nessun commit senza via libera esplicito (CLAUDE.md §3.6).</item>
+  </constraints>
+
+</spec>
