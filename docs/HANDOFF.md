@@ -3,6 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Notifica di inserimento nel team della Commessa (spec 0351) — VERDE, COMMITTATO (2026-11-04)
+
+- Richiesta utente: notificare chi viene aggiunto a una commessa come Responsabile o Partecipante. Riusa
+  `RecordAssignmentNotification` (database + mail, in coda) con target `WorkOrder` e ruoli nuovi
+  `AssignmentRoleEnum::WorkOrderSupervisor` / `Participant`; dispatch da `AssignmentNotifier::notifyWorkOrder()`
+  (muto, esclude l'attore, afterCommit, una notifica per ruolo). `notify()` invariato; helper `recipients()` -> `usersById()`.
+- `WorkOrderService::create()` (Step 6) e `update()` passano gli `attached` di `supervisors()->sync()` e
+  `PositionalPivotSync::sync()`: solo i nuovi entrati, mai i cambi di slot o le rimozioni. Copre POST/PATCH, cella
+  griglia, Programma e commessa unica. `WorkOrdersSource` chiama il service sotto `AssignmentNotifier::muted()`.
+- `RecordDetails`: etichetta "COM-xxxx - titolo", scheda email titolo/cliente/stato/data inizio/Responsabili/Partecipanti
+  (chiavi `notifications.fields.start_date|supervisors|participants`). Testi IT in `lang/it.json`; in EN il
+  Responsabile si chiama "Supervisor" come nella UI.
+- Test: `tests/Feature/Notifications/WorkOrderAssignmentNotificationTest.php` (6, AC-001..005, 007); AC-006 gia' in
+  `WorkOrdersSourceImportTest` (`assertNothingSent`). Verdi: Notifications, WorkOrders, Contracts, RequestManagement,
+  Imports, Registries, Migration WorkOrder*. In Quotes falliscono solo i 3 test PDF (LibreOffice assente in locale);
+  `DemoOpportunitySeederTest` instabile in parallelo (passa da solo 3/3), non legati.
+- Guida in-app `work-orders#editing-a-work-order` IT/EN (nota notifiche); manuale Claude Docs rev 576 (paragrafo
+  "Notifiche." dopo la visibilita' delle Commesse). Suite completa non eseguita.
+
 ## Piano dei conti gestionale, fase 1 (spec 0348) — VERDE, COMMITTATO 1b8ed70c + fix test guide (2026-11-03)
 
 - Spec `docs/specs/0348-chart-of-accounts.xml` (D-1..D-14, AC-001..AC-015). Piano gestionale a 3 livelli, nessuna

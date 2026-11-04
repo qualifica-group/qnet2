@@ -32,6 +32,10 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
+          text: "Chi viene **aggiunto** come **Responsabile** o **Partecipante**, alla creazione della commessa o dopo (anche dall'elenco), riceve una **notifica** nella campanella e per email con il link alla commessa. Chi c'era già, chi cambia solo posizione tra i Partecipanti e chi viene tolto non riceve nulla; nessuno riceve notifiche per le modifiche che fa lui stesso. Chi è sia Responsabile sia Partecipante riceve una notifica per ciascun ruolo.",
+        },
+        {
+          type: 'note',
           text: 'Un campo senza matita non è modificabile da te: i permessi del tuo ruolo lo rendono in sola lettura, oppure si sceglie solo in creazione (Commessa n., Offerta collegata, Modello di Task). Contratto (codice e titolo) e le sezioni prese dall\'offerta derivano dall\'offerta, come la Scadenza contratto mostrata tra gli indicatori in alto (si modifica sul contratto); Stato e Avanzamento derivano dalle registrazioni di avanzamento (vedi la sezione dedicata).',
         },
         {

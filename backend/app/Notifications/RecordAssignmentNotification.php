@@ -19,7 +19,8 @@ use Illuminate\Notifications\Notification;
 /**
  * Sent to a user who was just put in charge of a record (spec 0081): as
  * Supervisore or as "Gestore Account" of an anagrafica, of an opportunita'
- * or of an Offerta (spec 0186 — the Gestione Richieste rows included). ONE
+ * or of an Offerta (spec 0186 — the Gestione Richieste rows included), or
+ * as Responsabile or Partecipante of a Commessa (spec 0351). ONE
  * class for every combination rather than near-identical ones: target and
  * role are data, not structure — they only pick a sentence and a link.
  *
@@ -112,6 +113,8 @@ class RecordAssignmentNotification extends Notification implements ShouldQueue
         return match ($this->role) {
             AssignmentRoleEnum::Supervisor => __('You were assigned as Supervisor'),
             AssignmentRoleEnum::Manager => __('You were assigned as Account Manager'),
+            AssignmentRoleEnum::WorkOrderSupervisor => __('You were assigned as Work Order Supervisor'),
+            AssignmentRoleEnum::Participant => __('You were assigned as Work Order Participant'),
         };
     }
 
@@ -125,6 +128,14 @@ class RecordAssignmentNotification extends Notification implements ShouldQueue
             AssignmentRoleEnum::Manager => __(':actor assigned you as Account Manager :position on :label.', [
                 'actor' => $this->actorName,
                 'position' => (string) $this->position,
+                'label' => $this->recordLabel,
+            ]),
+            AssignmentRoleEnum::WorkOrderSupervisor => __(':actor assigned you as Supervisor of the work order :label.', [
+                'actor' => $this->actorName,
+                'label' => $this->recordLabel,
+            ]),
+            AssignmentRoleEnum::Participant => __(':actor assigned you as Participant of the work order :label.', [
+                'actor' => $this->actorName,
                 'label' => $this->recordLabel,
             ]),
         };
