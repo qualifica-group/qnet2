@@ -16,7 +16,7 @@ use Throwable;
  * GET /api/contracts/{contract}/programmable-lines (spec 0095, D-6):
  * the offer's REVENUE lines feeding the "Programma" dialog, each carrying
  * the work order that already occupies it (or null). Gate: `contracts.program`
- * AND the contract's ClosedWon-group lifecycle
+ * AND the contract's lifecycle
  * (ContractActionAvailability::mayProgram) — 403 on either, mirroring
  * ContractActionAvailability's own doubled-gate convention (each caller ANDs
  * the availability rule with the actor's ability).
@@ -31,7 +31,7 @@ class ContractProgrammableLinesController extends BaseApiController
     {
         try {
             $this->authorize('program', $contract);
-            abort_unless($this->availability->mayProgram($contract), 403, __('You cannot program this contract: it is not in the Closed won status.'));
+            abort_unless($this->availability->mayProgram($contract), 403, __('You cannot program this contract: it is not validated, or it is suspended or closed negatively.'));
 
             $contract->loadMissing('quote');
 

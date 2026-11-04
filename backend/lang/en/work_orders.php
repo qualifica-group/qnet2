@@ -5,7 +5,7 @@ return [
     'lines_not_offer_revenue' => 'The selected lines must be revenue lines of the selected contracts\' offers.',
     'line_already_programmed' => 'One of the selected lines is already in work order :code: each line can belong to one work order only.',
     'multi_quote' => [
-        'contracts_not_won' => 'These contracts are not in a "Closed (positive)" status and cannot be programmed yet: :codes. Remove them from the selection.',
+        'contracts_not_won' => 'These contracts cannot be programmed yet (not validated, or suspended or closed negatively): :codes. Remove them from the selection.',
         'contracts_not_allowed' => 'These contracts cannot be grouped into a multi-offer work order: :codes. Their offer has no line of a branch with the "Multi-offer work order" setting on: remove them from the selection.',
         'lines_not_allowed' => 'Every selected line must have a product of a branch with the "Multi-offer work order" setting on.',
         'lines_different_branches' => 'The selected lines belong to different branches: a multi-offer work order groups lines of a single branch.',

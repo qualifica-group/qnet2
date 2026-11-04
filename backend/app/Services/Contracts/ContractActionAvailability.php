@@ -12,7 +12,8 @@ use App\Models\Contract;
  * status (user directive 2026-08-31 rev.2, which supersedes the earlier
  * `validated_at`/`terminated_at` reading):
  *
- * - open | pending → "Modifica dati", "Modifica stato", "Valida", "Disdici"
+ * - open | pending → "Modifica dati", "Modifica stato", "Valida", "Disdici";
+ *   also "Programma" once the contract is validated and not suspended
  * - closed_won     → "Disdici", "Programma" (spec 0095: generates work
  *   orders from the offer's lines, no longer sets dates) and "Riapri
  *   contratto", nothing else
@@ -46,13 +47,19 @@ class ContractActionAvailability
     }
 
     /**
-     * "Programma" (spec 0095, D-2): identical rule to the RETIRED
-     * `maySchedule()` it replaces — same status group, same doubled gate
-     * (each caller ANDs this with the actor's `contracts.program` ability).
+     * "Programma" (spec 0095, D-2): a closed_won contract, or a working one
+     * that is already validated and not suspended (user decision 2026-11-04:
+     * the legacy migration lands validated contracts on pending rows such as
+     * "Da programmare", which would otherwise have no way to be programmed).
+     * Each caller ANDs this with the actor's `contracts.program` ability.
      */
     public function mayProgram(Contract $contract): bool
     {
-        return $this->group($contract) === ContractStatusGroup::ClosedWon;
+        if ($this->group($contract) === ContractStatusGroup::ClosedWon) {
+            return true;
+        }
+
+        return $this->isWorking($contract) && ! $contract->isSuspended() && $contract->validated_at !== null;
     }
 
     public function mayTerminate(Contract $contract): bool

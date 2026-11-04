@@ -16,7 +16,7 @@ use Spatie\Permission\Models\Permission;
 /**
  * GET /api/contracts/{contract}/programmable-lines (spec 0095, D-6):
  * AC-020/021/022, plus the doubled gate (`contracts.program` ANDed with the
- * ClosedWon-group lifecycle, ContractActionAvailability::mayProgram()).
+ * contract lifecycle, ContractActionAvailability::mayProgram()).
  */
 uses(RefreshDatabase::class);
 
@@ -119,12 +119,33 @@ it('403 without contracts.program', function () {
     $this->getJson("/api/contracts/{$contract->id}/programmable-lines")->assertForbidden();
 });
 
-it('403 when the contract is not in the ClosedWon group, even with contracts.program', function () {
+it('403 on a working contract never validated, even with contracts.program', function () {
     $contract = Contract::factory()->create([
         'contract_status_id' => ContractStatus::where('name', 'Programmato')->sole()->id,
     ]);
     $actor = programmableLinesActorWith(['program']);
     Sanctum::actingAs($actor);
+
+    $this->getJson("/api/contracts/{$contract->id}/programmable-lines")->assertForbidden();
+});
+
+it('200 on a working contract already validated (legacy "Da programmare", decision 2026-11-04)', function () {
+    $contract = Contract::factory()->create([
+        'contract_status_id' => ContractStatus::where('name', 'Da programmare')->sole()->id,
+        'validated_at' => now()->subMonth(),
+    ]);
+    Sanctum::actingAs(programmableLinesActorWith(['program']));
+
+    $this->getJson("/api/contracts/{$contract->id}/programmable-lines")->assertOk();
+});
+
+it('403 on a suspended contract even if already validated', function () {
+    $contract = Contract::factory()->create([
+        'contract_status_id' => ContractStatus::where('system_key', 'suspended')->sole()->id,
+        'suspended_at' => now(),
+        'validated_at' => now()->subMonth(),
+    ]);
+    Sanctum::actingAs(programmableLinesActorWith(['program']));
 
     $this->getJson("/api/contracts/{$contract->id}/programmable-lines")->assertForbidden();
 });

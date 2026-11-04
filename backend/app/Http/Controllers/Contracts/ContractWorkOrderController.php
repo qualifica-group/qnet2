@@ -46,7 +46,7 @@ class ContractWorkOrderController extends BaseApiController
     {
         try {
             $this->authorize('program', $contract);
-            abort_unless($this->availability->mayProgram($contract), 403, __('You cannot program this contract: it is not in the Closed won status.'));
+            abort_unless($this->availability->mayProgram($contract), 403, __('You cannot program this contract: it is not validated, or it is suspended or closed negatively.'));
 
             $data = CreateWorkOrderData::forContractGeneration(
                 quoteId: $contract->quote_id,

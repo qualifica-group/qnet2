@@ -27,7 +27,7 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Stato attuale', 'Azioni disponibili'],
           rows: [
-            ['Aperto o In attesa', 'Dati modificabili sul posto, **Cambia stato**, **Valida contratto** (solo se non è mai stato validato), **Disdici contratto**'],
+            ['Aperto o In attesa', 'Dati modificabili sul posto, **Cambia stato**, **Valida contratto** (solo se non è mai stato validato), **Programma** (solo se è già validato), **Disdici contratto**'],
             ['Chiuso positivo', '**Programma**, **Disdici contratto**, **Riapri contratto**'],
             ['Chiuso negativo', '**Riapri contratto**'],
             ['Sospeso', '**Riapri contratto**'],
@@ -36,7 +36,7 @@ const guide: HelpGuide = {
         {
           type: 'list',
           items: [
-            '**Valida contratto**: indica la **Data di validazione** (non futura). Non compare su un contratto che ha già una data di validazione, anche se il suo stato è In attesa (per esempio Da programmare, Programmato o In scadenza).',
+            '**Valida contratto**: indica la **Data di validazione** (non futura). Non compare su un contratto che ha già una data di validazione, anche se il suo stato è In attesa (per esempio Da programmare, Programmato o In scadenza): su quei contratti compare invece **Programma**, se non sono sospesi.',
             '**Disdici contratto**: indica **Data di disdetta**, **Motivazione** e **Stato di destinazione**.',
             'Dati del contratto: **Scadenza**, **Rinnovo**, **Note di pagamento** e **Commenti** si modificano direttamente nella scheda, finché il contratto è Aperto o In attesa: premi la matita accanto al campo (o fai clic sul valore), cambia il valore e premi **Salva** (Annulla, Esc o un clic fuori chiudono senza salvare). I Commenti si scrivono dentro il loro riquadro in cima alla scheda.',
             '**Riapri contratto**: riporta il contratto in lavorazione; se era sospeso, torna allo stato precedente. Riaprendo un contratto Chiuso positivo o Chiuso negativo si azzerano anche la data e l\'autore della validazione, così il contratto si può validare di nuovo; i valori precedenti restano in **Cronologia attività**.',
@@ -95,7 +95,7 @@ const guide: HelpGuide = {
         {
           type: 'steps',
           items: [
-            'Nella tabella **Contratti** seleziona da 2 a 50 contratti **Chiusi con esito positivo**.',
+            'Nella tabella **Contratti** seleziona da 2 a 50 contratti **Chiusi con esito positivo** o **già validati** (e non sospesi).',
             'Premi l\'azione **Programma commessa unica** (serve il permesso di programmare).',
             'Nella finestra le righe sono raggruppate per contratto. Sono selezionabili solo le **righe di ricavo** di un ramo con l\'impostazione attiva e **non ancora in una commessa**; le altre restano visibili ma disattivate.',
             'Scegli le righe: devono essere tutte dello **stesso ramo** e provenire da **almeno due offerte** diverse.',
@@ -105,7 +105,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Il salvataggio è **tutto o niente**: se qualcosa non va non viene creata nessuna commessa e l\'errore compare sul campo delle righe. Una riga già in un\'altra commessa non si può riutilizzare. Se tra i contratti selezionati ce n\'è almeno uno non ancora in uno stato **Chiuso positivo** (per esempio **Da validare**) o che non si può cumulare (la sua offerta non ha righe di un ramo con **Commessa multi-offerta** attivo), la finestra si apre comunque e mostra quali contratti, con il cliente, vanno tolti dalla selezione.',
+          text: 'Il salvataggio è **tutto o niente**: se qualcosa non va non viene creata nessuna commessa e l\'errore compare sul campo delle righe. Una riga già in un\'altra commessa non si può riutilizzare. Se tra i contratti selezionati ce n\'è almeno uno che non si può ancora programmare (non validato, per esempio **Da validare**, oppure sospeso) o che non si può cumulare (la sua offerta non ha righe di un ramo con **Commessa multi-offerta** attivo), la finestra si apre comunque e mostra quali contratti, con il cliente, vanno tolti dalla selezione.',
         },
       ],
     },

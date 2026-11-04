@@ -3,6 +3,16 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Contratti: "Programma" anche sui contratti gia' validati in lavorazione — VERDE, NON COMMITTATO (2026-11-04)
+
+- Decisione utente 2026-11-04: `ContractActionAvailability::mayProgram()` = `closed_won` OPPURE (gruppo open/pending
+  AND `validated_at` pieno AND non sospeso). Causa: la migrazione legacy porta i contratti validati su righe pending
+  ("Da programmare" 172, "Programmato" 4729, "In scadenza" 5149) che non avevano ne' "Valida" ne' "Programma".
+- Specchio FE in `contract-lifecycle.ts` (`program`). Vale anche per griglia, endpoint programmable-lines/work-orders
+  e "Programma commessa unica" (`MultiQuoteContractGate`). Messaggi 403/422 aggiornati (it.json, work_orders it/en).
+- Nessun cambio automatico di stato dopo la programmazione (non richiesto). Guida in-app contratti IT/EN aggiornata.
+- Test: Pest `tests/Feature/Contracts` + WorkOrders + Tasks verdi; Vitest contracts+help verdi; tsc -b pulito.
+
 ## Piano dei conti fase 2: classificazione ricavi + "Sottoconto costo" (spec 0350) — VERDE, NON COMMITTATO (2026-11-04)
 
 - Spec `docs/specs/0350-chart-of-accounts-revenue-classification.xml` (D-1..D-12, AC-001..AC-017). Decisioni utente:

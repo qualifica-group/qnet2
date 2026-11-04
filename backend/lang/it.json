@@ -230,7 +230,7 @@
     "A contract cannot be deleted manually.": "Un contratto non può essere eliminato manualmente.",
     "You cannot read the notes of this record.": "Non puoi leggere le note di questo record.",
     "You cannot edit the commissions of this quote.": "Non puoi modificare le commissioni di questo preventivo.",
-    "You cannot program this contract: it is not in the Closed won status.": "Non puoi programmare questo contratto: non è in stato Chiuso vinto.",
+    "You cannot program this contract: it is not validated, or it is suspended or closed negatively.": "Non puoi programmare questo contratto: non è validato, oppure è sospeso o chiuso negativo.",
     "You cannot log time on this task.": "Non puoi registrare ore su questa attività.",
     "You cannot attach files to this absence request.": "Non puoi allegare file a questa richiesta di assenza.",
     "You cannot manage staff trainings.": "Non puoi gestire le formazioni del personale.",
