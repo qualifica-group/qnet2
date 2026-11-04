@@ -396,6 +396,20 @@ const guide: HelpGuide = {
       ],
     },
     {
+      id: 'project-work-orders',
+      title: 'Project work orders and Work Orders',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'The **Work Orders** page shows only **processing** work orders. Work orders of type **Project** live in **Project Work Orders** (same **Operations** group), with the **Unread** column and the **Chat** tab in the detail: see the **Project Work Orders** guide. Inside a **Contract** and a **Registry**, the **Work orders** sections still show work orders of every type.',
+        },
+        {
+          type: 'note',
+          text: "The **Chat** tab exists only on project work orders: processing work orders do not have it.",
+        },
+      ],
+    },
+    {
       id: 'visibility',
       title: "Which work orders you see",
       blocks: [

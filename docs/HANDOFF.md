@@ -3,7 +3,28 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Chat nelle Commesse di Progetto (spec 0352) — PASSI 1+2 VERDI, IN CORSO (2026-11-04)
+## Chat nelle Commesse di Progetto (spec 0352) — COMPLETA E VERDE (2026-11-04)
+
+- Passo 3 (chiusura):
+  - Guide in-app: nuova `project-work-orders` (sezioni overview, unread-column, chat-access, edit-delete,
+    closed-work-orders, chat-badge, no-notifications) e sezione `project-work-orders` in `work-orders`, IT/EN;
+    chiave in `HELP_GUIDE_KEYS` (102: aggiornati `help-guide-keys.test.ts` e `workspaces-help.test.ts`).
+  - Modale di conferma prima di eliminare un messaggio (richiesta utente): `useConfirm()` tono destructive in
+    `work-order-chat-message.tsx`, stringhe `workOrders.chat.confirmDelete.*`.
+  - `WorkOrderChatService::broadcast()` intercetta `BroadcastException` e la passa a `report()`: con
+    `QUEUE_CONNECTION=sync` e Reverb spento la scrittura resta 201 (`ChatBroadcastFailureTest`).
+  - `config/external-api.php`: `broadcasting` negli `excluded_prefixes` (rotta solo dell'app, ApiDocsParityTest).
+  - `QualificaCommercialBackOfficeSeederTest`: il ruolo vede anche `/project-work-orders` (REQUIREMENT CHANGED).
+- Gate finale: Pest completo 13.533 test, rossi solo i 6 PREESISTENTI estranei al ramo (`TableBulkDeleteTest` super-admin,
+  `WorkOrderCategoryTabsTest` AC-024 instabile, `SettlementApprovalTest` AC-006 `not_due`/`overdue` legato alla data,
+  4 test `ManagementControl` che cercano `management-control-section`, rinominata `management-control-group` in
+  `config/navigation/accounting.php`). Vitest completo 9.798 verdi; `tsc -b --force` exit 0.
+- Ambiente suite backend: `composer test` va oltre il timeout di 300 s di Composer e il PHP di Herd ha 512M: usare
+  `PHPRC=<cartella con php.ini memory_limit=2048M> XDEBUG_MODE=off php artisan test --parallel --processes=4`.
+- Manuale Claude Docs (https://claude.ai/artifact/KwvSrXafsGqT9qzZULxJhh): NON aggiornato, il connettore risponde
+  "access" (documento non condiviso con l'account). Sezioni da aggiornare: Commesse (filtro processing) + nuovo
+  capitolo Commesse di Progetto (vedi guide in-app).
+- Aperti: Set Filter di Commesse senza `work_order_type` (decisione utente); avatar non mostrato in chat.
 
 - Passo 2 (B3, B4, F2), verificato:
   - B3: `App\Services\WorkOrders\Chat\WorkOrderChatAccess` (canRead/canWrite/canModerate/canEditMessage, assertCanRead,

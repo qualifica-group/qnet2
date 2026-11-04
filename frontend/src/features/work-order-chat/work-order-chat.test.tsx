@@ -1,6 +1,7 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ConfirmDialogProvider } from '@/components/confirm-dialog'
 import i18n from '@/i18n'
 import { chatMessage, chatThread, OPEN_WINDOW, OWN_AUTHOR } from '@/features/work-order-chat/chat-fixtures'
 import { CHAT_MESSAGE_MAX_LENGTH } from '@/features/work-order-chat/chat-schema'
@@ -11,11 +12,12 @@ import { WorkOrderChatTabLabel } from '@/features/work-order-chat/work-order-cha
 const fetchMock = vi.fn<(id: number, params?: unknown) => Promise<ChatThread>>()
 const sendMock = vi.fn()
 const readMock = vi.fn()
+const deleteMock = vi.fn()
 vi.mock('@/features/work-order-chat/api', () => ({
   fetchChatMessages: (id: number, params?: unknown) => fetchMock(id, params),
   sendChatMessage: (...args: unknown[]) => sendMock(...args),
   editChatMessage: vi.fn(),
-  deleteChatMessage: vi.fn(),
+  deleteChatMessage: (...args: unknown[]) => deleteMock(...args),
   markChatRead: (...args: unknown[]) => readMock(...args),
 }))
 
@@ -49,8 +51,10 @@ function renderChat(writeChat = true) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <WorkOrderChatTabLabel workOrderId={4} />
-      <WorkOrderChatPanel workOrderId={4} canWriteAction={writeChat} />
+      <ConfirmDialogProvider>
+        <WorkOrderChatTabLabel workOrderId={4} />
+        <WorkOrderChatPanel workOrderId={4} canWriteAction={writeChat} />
+      </ConfirmDialogProvider>
     </QueryClientProvider>,
   )
 }
@@ -162,6 +166,28 @@ describe('read-only and actions (AC-020)', () => {
 
     expect(screen.getAllByRole('button', { name: 'Edit' })).toHaveLength(1)
     expect(screen.getAllByRole('button', { name: 'Delete' })).toHaveLength(1)
+  })
+
+  it('asks for confirmation before deleting and deletes only on confirm', async () => {
+    fetchMock.mockResolvedValue(
+      chatThread({ messages: [chatMessage({ id: 11, author: OWN_AUTHOR, editable_until: OPEN_WINDOW })] }),
+    )
+    deleteMock.mockResolvedValue(chatMessage({ id: 11, author: OWN_AUTHOR, body: null, is_deleted: true }))
+    renderChat()
+    await screen.findByText('message 11')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    let dialog = await screen.findByRole('alertdialog', { name: 'Delete this message?' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(deleteMock).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    dialog = await screen.findByRole('alertdialog', { name: 'Delete this message?' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
+
+    await waitFor(() => expect(deleteMock).toHaveBeenCalledTimes(1))
+    expect(deleteMock.mock.calls[0]).toContain(11)
   })
 
   it('shows the actions on every non-deleted message for a moderator', async () => {

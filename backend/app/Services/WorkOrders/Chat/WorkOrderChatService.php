@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\WorkOrder;
 use App\Models\WorkOrderChatMessage;
 use App\Models\WorkOrderChatRead;
+use Illuminate\Broadcasting\BroadcastException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -121,12 +122,21 @@ final class WorkOrderChatService
         abort_unless($this->access->canEditMessage($actor, $workOrder, $message), 403, 'You cannot change this message.');
     }
 
-    /** Hands the message to the event with its author loaded (the resource reads it). */
+    /**
+     * Hands the message to the event with its author loaded (the resource reads it).
+     * A realtime server that is down never fails the saved write: with a sync
+     * queue the broadcast runs inside the request, so its error is only reported;
+     * clients catch up when they reload or reconnect.
+     */
     private function broadcast(WorkOrderChatAction $action, WorkOrderChatMessage $message): WorkOrderChatMessage
     {
         $message->loadMissing('author.avatar');
 
-        WorkOrderChatMessageBroadcast::dispatch($action, $message);
+        try {
+            WorkOrderChatMessageBroadcast::dispatch($action, $message);
+        } catch (BroadcastException $exception) {
+            report($exception);
+        }
 
         return $message;
     }

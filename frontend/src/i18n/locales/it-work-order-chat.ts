@@ -19,6 +19,10 @@ export const workOrderChat = {
   cancel: 'Annulla',
   edit: 'Modifica',
   delete: 'Elimina',
+  confirmDelete: {
+    title: 'Eliminare il messaggio?',
+    description: 'Al suo posto restera\' la scritta "Messaggio eliminato". L\'operazione non si puo\' annullare.',
+  },
   actionError: 'Operazione non riuscita sulla chat.',
   validation: {
     required: 'Scrivi un messaggio.',

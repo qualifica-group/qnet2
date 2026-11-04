@@ -27,6 +27,8 @@
       sede, competenza, spec 0316) NON vede la chat.
     - D-5 (risposta 3): l'autore modifica o cancella il PROPRIO messaggio entro 15 minuti dall'invio.
       La cancellazione e' logica: il messaggio resta al suo posto come "Messaggio eliminato", senza testo.
+      Richiesta utente 2026-11-04: prima della cancellazione compare una modale di conferma
+      (`useConfirm`, tono destructive); Annulla non invia nulla.
     - D-6 (risposta 4): nessuna campanella e nessuna email per i messaggi. Solo il contatore dei non
       letti per utente: badge sulla tab Chat della scheda e colonna nella griglia "Commesse di Progetto".
       Niente menzioni @.

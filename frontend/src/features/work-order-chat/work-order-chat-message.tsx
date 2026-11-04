@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pencil, Trash2 } from 'lucide-react'
+import { useConfirm } from '@/components/confirm-dialog-context'
 import { Button } from '@/components/ui/button'
 import { WorkOrderChatComposer } from '@/features/work-order-chat/work-order-chat-composer'
 import type { ChatMessage } from '@/features/work-order-chat/types'
@@ -18,9 +19,21 @@ interface WorkOrderChatMessageProps {
 /** One chat entry: plain text only (React escapes it), deleted ones are a placeholder. */
 export function WorkOrderChatMessage({ message, isOwn, canManage, isPending, onEdit, onDelete }: WorkOrderChatMessageProps) {
   const { t, i18n } = useTranslation()
+  const confirm = useConfirm()
   const [isEditing, setIsEditing] = useState(false)
   const author = message.author?.name ?? t('workOrders.chat.unknownAuthor')
   const time = new Date(message.created_at).toLocaleString(i18n.language, { dateStyle: 'short', timeStyle: 'short' })
+
+  const confirmDelete = async () => {
+    const confirmed = await confirm({
+      tone: 'destructive',
+      title: t('workOrders.chat.confirmDelete.title'),
+      description: t('workOrders.chat.confirmDelete.description'),
+      confirmLabel: t('workOrders.chat.delete'),
+      cancelLabel: t('workOrders.chat.cancel'),
+    })
+    if (confirmed) onDelete(message.id)
+  }
 
   return (
     <li className={`flex flex-col gap-0.5 ${isOwn ? 'items-end' : 'items-start'}`}>
@@ -68,7 +81,7 @@ export function WorkOrderChatMessage({ message, isOwn, canManage, isPending, onE
                 size="icon-xs"
                 aria-label={t('workOrders.chat.delete')}
                 disabled={isPending}
-                onClick={() => onDelete(message.id)}
+                onClick={() => void confirmDelete()}
               >
                 <Trash2 aria-hidden="true" />
               </Button>

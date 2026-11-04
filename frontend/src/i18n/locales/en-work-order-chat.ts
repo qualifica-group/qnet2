@@ -19,6 +19,10 @@ export const workOrderChat = {
   cancel: 'Cancel',
   edit: 'Edit',
   delete: 'Delete',
+  confirmDelete: {
+    title: 'Delete this message?',
+    description: 'It will be replaced by "Message deleted". This cannot be undone.',
+  },
   actionError: 'The chat operation failed.',
   validation: {
     required: 'Write a message.',
