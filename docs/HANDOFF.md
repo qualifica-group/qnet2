@@ -3,6 +3,19 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Barra categorie: "Categorie madri" acceso di default — VERDE, NON COMMITTATO (2026-11-05)
+
+- Decisione utente 2026-11-05: Opportunita', Commesse, Offerte, Contratti, Gestione Richieste e Gestione Iscritti
+  aprono la barra sul livello `root` (interruttore "Categorie madri" acceso) invece di `all`.
+- Unico punto: `frontend/src/features/category-tabs/category-tab-level.ts` (`DEFAULT_LEVEL = 'root'`). Il localStorage
+  `${key}.category-tab-level` resta la scelta dell'operatore: un `all` gia' salvato viene rispettato; solo chi non ha
+  mai toccato l'interruttore passa a `root`. Spec 0337 D-2 aggiornata.
+- Test (REQUIREMENT CHANGED): i test della barra a categoria singola salvano `all` nel `beforeEach`;
+  `use-category-tab-strip-level.test.tsx` verifica default `root` + `all` salvato rispettato. Vitest 1820/1820 verdi
+  sulle feature toccate, ESLint e `tsc -b --force` puliti.
+- Manuale: guide in-app IT+EN (opportunities, quotes, contracts, work-orders, request-management) e manuale Claude Docs
+  (Opportunita' + Gestione Richieste) aggiornati: "acceso di default".
+
 ## Fix timeout griglia Offerte con tab categoria (es. APL) — VERDE, COMMITTATO (2026-11-05)
 
 - Sintomo: `POST /api/tables/quotes/rows` con `productCategoryBranchId` 26-30 s in produzione (timeout); "Tutte" veloce.

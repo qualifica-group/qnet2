@@ -172,7 +172,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. Turn it off to go back to all the categories.",
+          text: "In the **More** menu the **Parent categories** switch limits the bar to the first-level categories only: the tab of a parent category also gathers its subcategories (a record counts once). The choice is saved in your browser for this list, each mode remembers its own tab, and the **favorites** are separate between the two modes. The switch is on by default: turn it off to see all the categories.",
         },
         {
           type: 'paragraph',
