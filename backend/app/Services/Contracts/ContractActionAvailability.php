@@ -16,9 +16,9 @@ use Illuminate\Support\Facades\DB;
  *
  * - open | pending → "Modifica dati", "Modifica stato", "Valida", "Disdici";
  *   also "Programma" once the contract is validated and not suspended
- * - closed_won     → "Disdici", "Programma" (spec 0095: generates work
- *   orders from the offer's lines, no longer sets dates) and "Riapri
- *   contratto", nothing else
+ * - closed_won     → "Modifica dati" (spec 0360), "Disdici", "Programma" (spec
+ *   0095: generates work orders from the offer's lines, no longer sets
+ *   dates) and "Riapri contratto", nothing else
  * - closed_lost    → "Riapri contratto", nothing else
  *
  * Single source of truth for both surfaces that offer those actions —
@@ -87,10 +87,14 @@ class ContractActionAvailability
         return $this->isWorking($contract) || $this->group($contract) === ContractStatusGroup::ClosedWon;
     }
 
-    /** "Modifica dati": the PATCH-editable fields, only while the contract is still working. */
+    /**
+     * "Modifica dati": the PATCH-editable fields (title, service lines, renewal
+     * and expiry dates, payment notes, comments) while the contract is working
+     * or validated (spec 0360, D-2); a lost closure is read-only until reopened.
+     */
     public function mayEdit(Contract $contract): bool
     {
-        return $this->isWorking($contract);
+        return $this->isWorking($contract) || $this->group($contract) === ContractStatusGroup::ClosedWon;
     }
 
     /** "Modifica stato": moves the contract WITHIN the open/pending groups, never across a closure. */

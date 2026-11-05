@@ -74,6 +74,18 @@ export function useQuoteLineEditor({
 }: UseQuoteLineEditorArgs) {
   const queryClient = useQueryClient()
   const { removeRow, setField, setProduct, setSupplier } = useQuoteLinesField({ value, onChange, variant, rememberVatRatePercent })
+  // Spec 0360 D-4: a persisted row assigned to work orders is locked until they are deleted.
+  const workOrderCodesById = useMemo(
+    () =>
+      new Map(
+        knownLines.flatMap((line) =>
+          line.work_orders && line.work_orders.length > 0 ? [[line.id, line.work_orders.map((order) => order.code)] as const] : [],
+        ),
+      ),
+    [knownLines],
+  )
+  const lockedCodesOf = (row: QuoteLineFormValues): string[] | null =>
+    row.id === undefined ? null : (workOrderCodesById.get(row.id) ?? null)
   const [pickedViews, setPickedViews] = useState<Map<number, QuoteLineProductView>>(() => new Map())
 
   const visibleLines = useMemo<VisibleQuoteLine[]>(
@@ -211,6 +223,9 @@ export function useQuoteLineEditor({
       await addProducts([item])
       return
     }
+    if (lockedCodesOf(value[index])) {
+      return
+    }
     const defaults = commissions ? await commissions.defaultsForReplacement(value[index], item) : undefined
     if (defaults === null) {
       return
@@ -252,6 +267,7 @@ export function useQuoteLineEditor({
     addProducts,
     pickSingle,
     suppliersOf,
+    lockedCodesOf,
     changeSupplier,
     removeRow,
     setField,

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DataObjects\Contracts\UpdateContractData;
+use App\DataObjects\Quotes\UpdateQuoteData;
 use App\Models\Contract;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -16,6 +18,8 @@ use Illuminate\Support\Facades\DB;
  */
 class ContractService
 {
+    public function __construct(private readonly QuoteService $quoteService) {}
+
     /**
      * Relations eager-loaded for the detail read tree (ContractResource), so
      * a single query never N+1s. Covers both the contract's own lifecycle
@@ -42,6 +46,8 @@ class ContractService
         'quote.paymentMethod',
         'quote.offerLines.product.category',
         'quote.offerLines.supplier:id,name',
+        // Spec 0360, D-4: the work orders a REVENUE row is assigned to (frozen row).
+        'quote.offerLines.workOrders:work_orders.id,work_orders.code',
         // Spec 0099, D-5: QuoteLineResource reads the typology live through the
         // product, so it is loaded alongside the category it sits next to.
         'quote.offerLines.product.productTypology',
@@ -68,11 +74,28 @@ class ContractService
      * (partial PATCH); `contract_status_id`'s existence/activeness is
      * already enforced by UpdateContractRequest, so the write here is a
      * plain, unconditional save (mirrors QuoteService::update()).
+     *
+     * Spec 0360, D-3: `title` and `offer_lines` belong to the origin offer and
+     * go through QuoteService::update() (totals, coverage, automatic title,
+     * workflow) in the same transaction, like RequestOfferLineWriter.
      */
-    public function update(Contract $contract, UpdateContractData $data): Contract
+    public function update(Contract $contract, UpdateContractData $data, ?User $actor = null): Contract
     {
-        DB::transaction(function () use ($contract, $data): void {
+        DB::transaction(function () use ($contract, $data, $actor): void {
+            // Step 1: the contract's own columns.
             $contract->fill($data->submittedAttributes())->save();
+
+            // Step 2: the offer-side keys, only when submitted.
+            $quoteAttributes = $data->quoteAttributes();
+
+            if ($quoteAttributes !== []) {
+                // The actor is only needed by the offer write; a data-only update (seeders, tools) has none.
+                $this->quoteService->update(
+                    $contract->quote()->firstOrFail(),
+                    UpdateQuoteData::fromValidated($quoteAttributes),
+                    $actor ?? throw new \InvalidArgumentException('An actor is required to update the offer title or lines.'),
+                );
+            }
         });
 
         return $this->loadDetail($contract->fresh());

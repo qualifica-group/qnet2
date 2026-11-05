@@ -31,6 +31,10 @@ export const contracts = {
     revenueGross: 'Gross',
     alert: 'Alert',
   },
+  form: {
+    title: "Title",
+    offer_lines: "Offer lines",
+  },
   alerts: {
     expiring: 'Expiring soon',
     renewalDue: 'Renewal due',
@@ -68,6 +72,8 @@ export const contracts = {
     expiryDate: 'Expiry',
     terminatedAt: 'Terminated at',
     terminationReason: 'Termination reason',
+    title: 'Title',
+    titleMax: 'The title can be at most 191 characters long.',
     paymentNotes: 'Payment notes',
     comments: 'Comments',
     commentsPlaceholder: 'Write a comment on this contract…',

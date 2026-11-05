@@ -39,7 +39,7 @@ const ROW: QuoteLineFormValues = {
 
 const rememberVatRatePercent = vi.fn()
 
-function renderCard(slots?: QuoteLineCardSlots, row: QuoteLineFormValues = ROW) {
+function renderCard(slots?: QuoteLineCardSlots, row: QuoteLineFormValues = ROW, lockedWorkOrderCodes: string[] | null = null) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
@@ -56,6 +56,7 @@ function renderCard(slots?: QuoteLineCardSlots, row: QuoteLineFormValues = ROW) 
           onChangeField={vi.fn()}
           onRemove={vi.fn()}
           slots={slots}
+          lockedWorkOrderCodes={lockedWorkOrderCodes}
         />
       </ul>
     </QueryClientProvider>,
@@ -118,5 +119,22 @@ describe('QuoteLineCard', () => {
 
     expect(screen.queryByRole('button', { name: 'Commissioni della riga 1' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Descrizione aggiuntiva' })).not.toBeInTheDocument()
+  })
+
+  it('locks a row assigned to work orders: every control disabled, codes shown (spec 0360 AC-014)', () => {
+    renderCard(undefined, { ...ROW, id: 12 }, ['COM-001', 'COM-002'])
+
+    expect(screen.getByText('Assegnata a COM-001, COM-002')).toBeInTheDocument()
+    expect(screen.getByRole('spinbutton', { name: 'Quantità riga 1' })).toBeDisabled()
+    expect(screen.getByRole('spinbutton', { name: 'Prezzo unitario riga 1' })).toBeDisabled()
+    expect(screen.getByRole('combobox', { name: 'Aliquota IVA riga 1' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Rimuovi riga 1' })).toBeDisabled()
+  })
+
+  it('leaves a free row editable', () => {
+    renderCard()
+
+    expect(screen.queryByText(/Assegnata a/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Rimuovi riga 1' })).toBeEnabled()
   })
 })

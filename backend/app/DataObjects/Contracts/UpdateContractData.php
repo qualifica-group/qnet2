@@ -27,6 +27,10 @@ final readonly class UpdateContractData
         public bool $paymentNotesSubmitted = false,
         public ?string $comments = null,
         public bool $commentsSubmitted = false,
+        public ?string $title = null,
+        public bool $titleSubmitted = false,
+        /** @var array<int, array<string, mixed>>|null the raw `offer_lines` rows; null = key absent */
+        public ?array $offerLines = null,
     ) {}
 
     /**
@@ -47,6 +51,9 @@ final readonly class UpdateContractData
             paymentNotesSubmitted: array_key_exists('payment_notes', $data),
             comments: array_key_exists('comments', $data) ? $data['comments'] : null,
             commentsSubmitted: array_key_exists('comments', $data),
+            title: $data['title'] ?? null,
+            titleSubmitted: array_key_exists('title', $data),
+            offerLines: array_key_exists('offer_lines', $data) ? (array) $data['offer_lines'] : null,
         );
     }
 
@@ -78,6 +85,27 @@ final readonly class UpdateContractData
 
         if ($this->commentsSubmitted) {
             $attributes['comments'] = $this->comments;
+        }
+
+        return $attributes;
+    }
+
+    /**
+     * The offer-side keys (spec 0360): `title` and `offer_lines`, only when
+     * submitted, ready for UpdateQuoteData::fromValidated().
+     *
+     * @return array<string, mixed>
+     */
+    public function quoteAttributes(): array
+    {
+        $attributes = [];
+
+        if ($this->titleSubmitted) {
+            $attributes['title'] = $this->title;
+        }
+
+        if ($this->offerLines !== null) {
+            $attributes['offer_lines'] = $this->offerLines;
         }
 
         return $attributes;

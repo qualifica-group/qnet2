@@ -188,13 +188,14 @@ describe('ContractActionsBar — refresh delle azioni dopo un cambio di stato', 
     fireEvent.click(await screen.findByRole('button', { name: 'Validate' }))
 
     // Nuovo gruppo (chiuso positivo): "Programma" compare attivo,
-    // "Valida"/"Modifica stato" e le matite dei dati (spec 0219) spariscono — subito, senza reload.
+    // "Valida"/"Modifica stato" spariscono — subito, senza reload. REQUIREMENT CHANGED (spec 0360 D-2):
+    // le matite dei dati restano su Validato.
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Program' })).toBeEnabled()
     })
     expect(screen.queryByRole('button', { name: 'Validate contract' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Change status' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Edit Expiry' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit Expiry' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Terminate contract' })).toBeInTheDocument()
     // Il badge di stato nell'hero segue lo stesso aggiornamento.
     expect(screen.getByText('Validato')).toBeInTheDocument()

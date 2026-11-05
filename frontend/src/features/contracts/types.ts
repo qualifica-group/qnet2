@@ -8,7 +8,7 @@
 
 import type { ResourcePermissions } from '@/features/authorization/types'
 import type { ProductLine } from '@/features/product-lines/types'
-import type { QuoteLine, QuoteManagerRef } from '@/features/quotes/types'
+import type { QuoteLine, QuoteLineInput, QuoteManagerRef } from '@/features/quotes/types'
 import type { ReferentRef } from '@/features/referents/types'
 import type { RewardAssignmentRef } from '@/features/rewards/types'
 import type { WorkOrderType } from '@/features/work-orders/types'
@@ -154,6 +154,10 @@ export interface ContractDetailWithPermissions extends ContractDetail {
  * the status left the "Modifica dati" form (user directive 2026-08-31).
  */
 export interface UpdateContractPayload {
+  /** `null` = back to the automatic title (spec 0360 D-7). */
+  title?: string | null
+  /** Full replace of the revenue rows, without `commissions` (prohibited on this channel, spec 0360 D-5). */
+  offer_lines?: QuoteLineInput[]
   renewal_date?: string | null
   expiry_date?: string | null
   payment_notes?: string | null

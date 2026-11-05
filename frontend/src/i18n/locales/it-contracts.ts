@@ -31,6 +31,10 @@ export const contracts = {
     revenueGross: 'Totale',
     alert: 'Avviso',
   },
+  form: {
+    title: "Titolo",
+    offer_lines: "Righe dell'offerta",
+  },
   alerts: {
     expiring: 'In scadenza',
     renewalDue: 'Da rinnovare',
@@ -68,6 +72,8 @@ export const contracts = {
     expiryDate: 'Scadenza',
     terminatedAt: 'Disdetta',
     terminationReason: 'Motivazione disdetta',
+    title: 'Titolo',
+    titleMax: 'Il titolo può avere al massimo 191 caratteri.',
     paymentNotes: 'Note di pagamento',
     comments: 'Commenti',
     commentsPlaceholder: 'Scrivi un commento su questo contratto…',

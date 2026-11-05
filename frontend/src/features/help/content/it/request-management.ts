@@ -122,6 +122,7 @@ const guide: HelpGuide = {
             'Senza categorie prodotto scelte il catalogo è disattivato: scegli prima la categoria.',
             'Nelle categorie semplificate la riga mostra solo gli importi: quantità, prezzo e IVA li compila il sistema.',
             'Se la categoria ha un solo prodotto, la riga si crea da sola.',
+            'Una riga **assegnata a una commessa** mostra "Assegnata a COM-..." ed è bloccata: non si modifica né si rimuove finché la commessa non viene eliminata. Se cambi la categoria di una richiesta che ha una riga bloccata, il salvataggio viene rifiutato.',
           ],
         },
       ],

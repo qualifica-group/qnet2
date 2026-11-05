@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { forwardRef, useImperativeHandle, type ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ConfirmContext, type ConfirmFn } from '@/components/confirm-dialog-context'
@@ -8,7 +8,7 @@ import i18n from '@/i18n'
 import { formatDate } from '@/lib/formatting/date-display'
 import { contracts as contractsEn } from '@/i18n/locales/en-contracts'
 import { ContractDetailView } from '@/features/contracts/contract-detail'
-import { NEVER_RENEWED } from '@/features/contracts/contract-renewal-fixtures'
+import { detailViewContract as contract, validatedContract } from '@/features/contracts/contract-renewal-fixtures'
 import type { ContractDetailWithPermissions } from '@/features/contracts/types'
 
 /**
@@ -83,80 +83,6 @@ vi.mock('@/features/table/table-view', () => ({
   }),
 }))
 const confirmMock = vi.fn<ConfirmFn>()
-
-function contract(overrides: Partial<ContractDetailWithPermissions> = {}): ContractDetailWithPermissions {
-  return {
-    id: 1,
-    quote_id: 3,
-    quote: {
-      id: 3,
-      code: 'QUO-0003',
-      title: 'Accordo Acme',
-      created_at: '2026-01-05T00:00:00Z',
-      revenue_net: '1000.00',
-      revenue_vat: '220.00',
-      revenue_gross: '1220.00',
-      cost_net: '400.00',
-      margin_net: '600.00',
-    },
-    registry: { id: 10, name: 'Acme S.p.A.' },
-    referent: { id: 15, name: 'Mario Bianchi', referent_type: { id: 3, name: 'Amministratore' } },
-    opportunity: { id: 20, name: 'Fornitura 2026' },
-    company: null,
-    company_site: null,
-    operational_site: null,
-    commercial: { id: 30, name: 'Luca Verdi' },
-    reporter: { id: 40, name: 'Giulia Neri' },
-    supervisor: { id: 50, name: 'Paolo Blu' },
-    payment_method: null,
-    source: null,
-    product_lines: [],
-    rewards: [],
-    managers: [],
-    manager_labels: {},
-    layout: null,
-    contract_status_id: 1,
-    contract_status: { id: 1, name: 'Da validare', color: 'slate', group: 'open' },
-    accepted_at: '2026-01-10',
-    validated_at: null,
-    renewal_date: null,
-    expiry_date: null,
-    terminated_at: null,
-    termination_reason: null,
-    payment_notes: null,
-    comments: null,
-    validated_by: null,
-    terminated_by: null,
-    suspended_at: null,
-    status_before_suspension: null,
-    is_suspended: false,
-    alert: null,
-    days_to_expiry: null,
-    days_to_renewal: null,
-    offer_lines: [], ...NEVER_RENEWED,
-    summary: {
-      revenue: { net: '1000.00', vat: '220.00', gross: '1220.00' },
-      cost: { net: '400.00', vat: '88.00', gross: '488.00' },
-      margin: { net: '600.00' },
-    },
-    created_at: '2026-01-10T00:00:00Z',
-    updated_at: '2026-01-10T00:00:00Z',
-    permissions: {
-      resource: { view: true, create: false, update: true, delete: false, export: true, import: false },
-      fields: {},
-      actions: {
-        validate: true,
-        program: true,
-        terminate: true,
-        reactivate: true,
-        change_status: true,
-        export: true,
-        view_activity: true,
-      },
-    },
-    ...overrides,
-  }
-}
 
 function renderView(data: ContractDetailWithPermissions) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -265,27 +191,6 @@ describe('ContractDetailView — fields (AC-043, rev. direttiva 2026-08-31)', ()
   })
 })
 
-/** Chiusura positiva: the "Valida" action landed the contract on the `closed_won` "Validato" row. */
-function validatedContract(overrides: Partial<ContractDetailWithPermissions> = {}): ContractDetailWithPermissions {
-  return contract({
-    validated_at: '2026-01-15',
-    contract_status_id: 2,
-    contract_status: { id: 2, name: 'Validato', color: 'emerald', group: 'closed_won' },
-    ...overrides,
-  })
-}
-
-/** Chiusura negativa: "Disdici" stamped the contract and moved it onto "Disdetto". */
-function terminatedContract(overrides: Partial<ContractDetailWithPermissions> = {}): ContractDetailWithPermissions {
-  return validatedContract({
-    terminated_at: '2026-03-01',
-    termination_reason: 'Recesso del cliente',
-    contract_status_id: 8,
-    contract_status: { id: 8, name: 'Disdetto', color: 'red', group: 'closed_lost' },
-    ...overrides,
-  })
-}
-
 describe('ContractDetailView — action gating (AC-044)', () => {
   it('renders the actions the current status group admits when every permission is granted', () => {
     renderView(contract())
@@ -320,125 +225,6 @@ describe('ContractDetailView — action gating (AC-044)', () => {
     renderView(contract({ permissions: { ...contract().permissions, resource: { ...contract().permissions.resource, update: false } } }))
     expect(screen.queryByRole('button', { name: 'Edit Expiry' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit Payment notes' })).not.toBeInTheDocument()
-  })
-})
-
-describe('ContractDetailView — gating per gruppo di stato (direttiva 2026-08-31 rev.2)', () => {
-  it('offre i dati sul posto, Modifica stato, Valida e Disdici su uno stato APERTO', () => {
-    renderView(contract())
-    expect(screen.getByRole('button', { name: 'Validate contract' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Terminate contract' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Change status' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Edit Renewal' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Program' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Reopen contract' })).not.toBeInTheDocument()
-  })
-
-  it('si comporta allo stesso modo su uno stato PENDING', () => {
-    renderView(
-      contract({ contract_status: { id: 3, name: 'Programmato', color: 'blue', group: 'pending' } }),
-    )
-    expect(screen.getByRole('button', { name: 'Validate contract' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Change status' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Program' })).not.toBeInTheDocument()
-  })
-
-  // Decisione utente 2026-11-04: un contratto gia' validato su uno stato
-  // PENDING (migrazione legacy, es. "Da programmare") si programma.
-  it('su PENDING gia validato offre Programma al posto di Valida', () => {
-    renderView(
-      contract({
-        contract_status: { id: 2, name: 'Da programmare', color: 'blue', group: 'pending' },
-        validated_at: '2026-07-14',
-      }),
-    )
-    expect(screen.getByRole('button', { name: 'Program' })).toBeEnabled()
-    expect(screen.queryByRole('button', { name: 'Validate contract' })).not.toBeInTheDocument()
-  })
-
-  it('non offre Programma su un contratto sospeso, anche se gia validato', () => {
-    renderView(contract({ is_suspended: true, suspended_at: '2026-02-01T10:00:00Z', validated_at: '2026-01-15' }))
-    expect(screen.queryByRole('button', { name: 'Program' })).not.toBeInTheDocument()
-  })
-
-  it('su CHIUSO POSITIVO lascia Disdici, Programma (attivo, spec 0095) e Riapri', () => {
-    // Direttiva utente 2026-08-31 rev.3: anche la chiusura positiva si riapre.
-    renderView(validatedContract())
-    expect(screen.getByRole('button', { name: 'Terminate contract' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Program' })).toBeEnabled()
-    expect(screen.getByRole('button', { name: 'Reopen contract' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Validate contract' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Change status' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Edit Expiry' })).not.toBeInTheDocument()
-  })
-
-  it('su CHIUSO POSITIVO la riapertura chiede lo stato di ripartenza, non il confirm inline', async () => {
-    renderView(validatedContract())
-
-    fireEvent.click(screen.getByRole('button', { name: 'Reopen contract' }))
-
-    expect(await screen.findByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('Restart status')).toBeInTheDocument()
-    expect(confirmMock).not.toHaveBeenCalled()
-  })
-
-  it('su CHIUSO NEGATIVO lascia solo Riapri', () => {
-    renderView(terminatedContract())
-    expect(screen.getByRole('button', { name: 'Reopen contract' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Validate contract' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Program' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Terminate contract' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Change status' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Edit Expiry' })).not.toBeInTheDocument()
-    // I due link verso Offerta/Opportunita' non sono gated sul ciclo di vita.
-    expect(screen.getByRole('button', { name: 'Accordo Acme' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Fornitura 2026' })).toBeInTheDocument()
-  })
-
-  it('chiede lo stato di ripartenza riattivando un contratto chiuso, invece del confirm inline', async () => {
-    renderView(terminatedContract())
-
-    fireEvent.click(screen.getByRole('button', { name: 'Reopen contract' }))
-
-    expect(await screen.findByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('Restart status')).toBeInTheDocument()
-    // Il percorso sospeso (confirm inline) non deve scattare qui.
-    expect(confirmMock).not.toHaveBeenCalled()
-  })
-
-  it('omette Riapri su un contratto chiuso senza contracts.reactivate', () => {
-    renderView(
-      terminatedContract({
-        permissions: { ...contract().permissions, actions: { ...contract().permissions.actions, reactivate: false } },
-      }),
-    )
-    expect(screen.queryByRole('button', { name: 'Reopen contract' })).not.toBeInTheDocument()
-  })
-
-  it('omette Modifica stato senza contracts.changeStatus', () => {
-    renderView(
-      contract({
-        permissions: { ...contract().permissions, actions: { ...contract().permissions.actions, change_status: false } },
-      }),
-    )
-    expect(screen.queryByRole('button', { name: 'Change status' })).not.toBeInTheDocument()
-  })
-
-  it('non offre Valida su un contratto sospeso, ma ne offre la riattivazione', () => {
-    renderView(contract({ is_suspended: true, suspended_at: '2026-02-01T10:00:00Z' }))
-    expect(screen.queryByRole('button', { name: 'Validate contract' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Reopen contract' })).toBeInTheDocument()
-  })
-
-  // Direttiva utente 2026-08-31: non piu' bottoni nella barra azioni ma link
-  // SUL campo che nomina il record. Restano `<button>`, non `<a>`: aprono una
-  // modale, non navigano via dal contratto.
-  it('apre Offerta e Opportunita in modale dai rispettivi campi, non da bottoni della barra azioni', () => {
-    renderView(contract())
-    expect(screen.getByRole('button', { name: 'Accordo Acme' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Fornitura 2026' })).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Accordo Acme' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Fornitura 2026' })).not.toBeInTheDocument()
   })
 })
 

@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati contratto** (Offerta, Opportunità, Data offerta) e **Contesto**, poi **Anagrafica e contatti** (Anagrafica, Referente con il suo tipo, Commerciale, Segnalatore) e **Buoni**, poi **Team** (Supervisore e Gestori account dell'offerta) e **Società e sedi**, poi **Documento e pagamento** e **Ciclo di vita**. I dati dell'offerta sono in sola lettura e si modificano dall'offerta; Note di pagamento, Rinnovo, Scadenza e Commenti si modificano qui.",
+          text: "Le schede di Opportunità, Offerte, Contratti e Commesse hanno le stesse sezioni nello stesso posto. Qui trovi **Dati contratto** (Offerta, Opportunità, Data offerta) e **Contesto**, poi **Anagrafica e contatti** (Anagrafica, Referente con il suo tipo, Commerciale, Segnalatore) e **Buoni**, poi **Team** (Supervisore e Gestori account dell'offerta) e **Società e sedi**, poi **Documento e pagamento** e **Ciclo di vita**. I dati dell'offerta sono in sola lettura e si modificano dall'offerta; Titolo, righe dei servizi, Note di pagamento, Rinnovo, Scadenza e Commenti si modificano qui.",
         },
       ],
     },
@@ -27,9 +27,9 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Stato attuale', 'Azioni disponibili'],
           rows: [
-            ['Aperto o In attesa', 'Dati modificabili sul posto, **Cambia stato**, **Valida contratto** (solo se non è mai stato validato), **Programma** e **Rinnova** (solo se è già validato), **Disdici contratto**'],
-            ['Chiuso positivo', '**Programma**, **Rinnova**, **Disdici contratto**, **Riapri contratto**'],
-            ['Chiuso negativo', '**Riapri contratto**'],
+            ['Aperto o In attesa', 'Titolo, righe e dati modificabili sul posto, **Cambia stato**, **Valida contratto** (solo se non è mai stato validato), **Programma** e **Rinnova** (solo se è già validato), **Disdici contratto**'],
+            ['Chiuso positivo', 'Titolo, righe e dati modificabili sul posto, **Programma**, **Rinnova**, **Disdici contratto**, **Riapri contratto**'],
+            ['Chiuso negativo', '**Riapri contratto** (scheda in sola lettura)'],
             ['Sospeso', '**Riapri contratto**'],
           ],
         },
@@ -38,13 +38,42 @@ const guide: HelpGuide = {
           items: [
             '**Valida contratto**: indica la **Data di validazione** (non futura). Non compare su un contratto che ha già una data di validazione, anche se il suo stato è In attesa (per esempio Da programmare, Programmato o In scadenza): su quei contratti compare invece **Programma**, se non sono sospesi.',
             '**Disdici contratto**: indica **Data di disdetta**, **Motivazione** e **Stato di destinazione**.',
-            'Dati del contratto: **Scadenza**, **Rinnovo**, **Note di pagamento** e **Commenti** si modificano direttamente nella scheda, finché il contratto è Aperto o In attesa: premi la matita accanto al campo (o fai clic sul valore), cambia il valore e premi **Salva** (Annulla, Esc o un clic fuori chiudono senza salvare). I Commenti si scrivono dentro il loro riquadro in cima alla scheda.',
+            'Dati del contratto: **Scadenza**, **Rinnovo**, **Note di pagamento** e **Commenti** si modificano direttamente nella scheda, finché il contratto è Aperto, In attesa o Chiuso positivo (Validato): premi la matita accanto al campo (o fai clic sul valore), cambia il valore e premi **Salva** (Annulla, Esc o un clic fuori chiudono senza salvare). I Commenti si scrivono dentro il loro riquadro in cima alla scheda.',
             '**Riapri contratto**: riporta il contratto in lavorazione; se era sospeso, torna allo stato precedente. Riaprendo un contratto Chiuso positivo o Chiuso negativo si azzerano anche la data e l\'autore della validazione, così il contratto si può validare di nuovo; i valori precedenti restano in **Cronologia attività**.',
           ],
         },
         {
           type: 'note',
           text: "L'azione **Programma** crea una o più commesse dalle righe prodotto dell'offerta: vedi la sezione **Programmare le commesse**. L'azione **Rinnova** apre un nuovo periodo dello stesso contratto: vedi la sezione **Rinnovare il contratto**.",
+        },
+      ],
+    },
+    {
+      id: 'edit-contract-in-force',
+      title: 'Modificare il contratto in essere',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "Dalla scheda del contratto puoi cambiare **Titolo** e **Righe** (i servizi) direttamente sul posto, come gli altri dati, anche quando il contratto è **Validato**. Servono il permesso **Modifica** dei Contratti e il campo modificabile per il tuo ruolo: se manca, la matita non compare. Gli stati ammessi sono **Aperto**, **In attesa** e **Validato**; un contratto **Annullato** o **Disdetto** resta in sola lettura finché non lo riapri con **Riapri contratto**.",
+        },
+        {
+          type: 'steps',
+          items: [
+            'Per il titolo premi la matita accanto al titolo in alto, scrivi il nuovo testo e premi **Salva**. Se lo lasci vuoto il contratto torna al titolo automatico.',
+            'Per i servizi premi la matita sul riquadro **Righe dell\'offerta**: scegli altri prodotti dal catalogo per aggiungere righe, cambia quantità, prezzo, IVA e fornitore, oppure rimuovi una riga, poi premi **Salva**.',
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            'Le modifiche si scrivono sull\'offerta di origine: totali e margini si ricalcolano, mentre lo stato del contratto e quello dell\'offerta non cambiano.',
+            'Le **provvigioni** non si modificano da qui: restano quelle impostate nell\'offerta e i loro importi si ricalcolano sulle nuove righe.',
+            'Una riga **assegnata a una commessa** (mostra "Assegnata a COM-...") è bloccata: non si può né modificare né rimuovere finché la commessa non viene eliminata. La stessa regola vale dall\'offerta e da Gestione Richieste.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Se il salvataggio viene rifiutato (per esempio per una riga bloccata) il messaggio compare sulla riga e le tue modifiche restano nella finestra di modifica, così puoi correggerle.',
         },
       ],
     },

@@ -15,7 +15,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'paragraph',
-          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Contract data** (Offer, Opportunity, Offer date) and **Context**, then **Registry and contacts** (Registry, Referent with its type, Commercial, Reporter) and **Rewards**, then **Team** (the quote's Supervisor and Account managers) and **Company and sites**, then **Document and payment** and **Lifecycle**. The quote's data are read only and changed from the quote; Payment notes, Renewal, Expiry and Comments are edited here.",
+          text: "Opportunity, Quote, Contract and Work order records show the same sections in the same place. Here you find **Contract data** (Offer, Opportunity, Offer date) and **Context**, then **Registry and contacts** (Registry, Referent with its type, Commercial, Reporter) and **Rewards**, then **Team** (the quote's Supervisor and Account managers) and **Company and sites**, then **Document and payment** and **Lifecycle**. The quote's data are read only and changed from the quote; Title, service lines, Payment notes, Renewal, Expiry and Comments are edited here.",
         },
       ],
     },
@@ -27,9 +27,9 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Current status', 'Available actions'],
           rows: [
-            ['Open or Pending', 'Data editable in place, **Change status**, **Validate contract** (only if never validated), **Program** and **Renew** (only if already validated), **Terminate contract**'],
-            ['Closed (positive)', '**Program**, **Renew**, **Terminate contract**, **Reopen contract**'],
-            ['Closed (negative)', '**Reopen contract**'],
+            ['Open or Pending', 'Title, lines and data editable in place, **Change status**, **Validate contract** (only if never validated), **Program** and **Renew** (only if already validated), **Terminate contract**'],
+            ['Closed (positive)', 'Title, lines and data editable in place, **Program**, **Renew**, **Terminate contract**, **Reopen contract**'],
+            ['Closed (negative)', '**Reopen contract** (card is read only)'],
             ['"Sospeso"', '**Reopen contract**'],
           ],
         },
@@ -38,13 +38,42 @@ const guide: HelpGuide = {
           items: [
             '**Validate contract**: set the **Validation date** (not in the future). It does not appear on a contract that already has a validation date, even when its status is Pending (for example "Da programmare", "Programmato" or "In scadenza"): those contracts show **Program** instead, unless suspended.',
             '**Terminate contract**: set the **Termination date**, **Reason** and **Destination status**.',
-            'Contract data: **Expiry**, **Renewal**, **Payment notes** and **Comments** are edited straight in the card while the contract is Open or Pending: press the pencil next to the field (or click the value), change it and press **Save** (Cancel, Esc or a click outside close without saving). Comments are written inside their box at the top of the card.',
+            'Contract data: **Expiry**, **Renewal**, **Payment notes** and **Comments** are edited straight in the card while the contract is Open, Pending or Closed (positive) (Validated): press the pencil next to the field (or click the value), change it and press **Save** (Cancel, Esc or a click outside close without saving). Comments are written inside their box at the top of the card.',
             '**Reopen contract**: brings the contract back to working; if it was suspended, it returns to the previous status. Reopening a Closed (positive) or Closed (negative) contract also clears the validation date and author, so the contract can be validated again; the previous values stay in **Activity history**.',
           ],
         },
         {
           type: 'note',
           text: "The **Program** action creates one or more work orders from the offer's product lines: see the **Programming work orders** section. The **Renew** action opens a new period of the same contract: see the **Renewing the contract** section.",
+        },
+      ],
+    },
+    {
+      id: 'edit-contract-in-force',
+      title: 'Editing the contract in force',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "From the contract card you can change the **Title** and the **Lines** (the services) straight in place, like the other data, even when the contract is **Validated**. You need the Contracts **Edit** permission and an editable field for your role: when missing, the pencil does not appear. The allowed statuses are **Open**, **Pending** and **Validated**; a **Cancelled** or **Terminated** contract stays read only until you reopen it with **Reopen contract**.",
+        },
+        {
+          type: 'steps',
+          items: [
+            'For the title, press the pencil next to the title at the top, type the new text and press **Save**. If you leave it empty the contract goes back to the automatic title.',
+            'For the services, press the pencil on the **Offer lines** box: pick more products from the catalogue to add lines, change quantity, price, VAT and supplier, or remove a line, then press **Save**.',
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            'Changes are written to the source quote: totals and margins are recalculated, while the status of the contract and of the quote do not change.',
+            '**Commissions** cannot be edited from here: they stay as set on the quote and their amounts are recalculated on the new lines.',
+            'A line **assigned to a work order** (it shows "Assigned to COM-...") is locked: it cannot be changed or removed until the work order is deleted. The same rule applies from the quote and from Request management.',
+          ],
+        },
+        {
+          type: 'note',
+          text: 'If the save is refused (for example because of a locked line) the message appears on the line and your changes stay in the edit box, so you can fix them.',
         },
       ],
     },

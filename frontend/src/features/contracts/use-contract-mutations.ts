@@ -9,6 +9,7 @@ import {
   updateContract,
   validateContract,
 } from '@/features/contracts/api'
+import { sameLines, toLineInputs } from '@/features/quotes/quote-line-values'
 import type {
   ChangeContractStatusPayload,
   ContractDetailWithPermissions,
@@ -66,11 +67,20 @@ export function buildReactivatePayload(values: ReactivateContractFormValues): Re
 
 /**
  * The PATCH of the in-place detail (spec 0219 D-4): only the fields that
- * changed from the persisted contract, compared as the form holds it. The status is never sent from here
+ * changed from the persisted contract, compared as the form holds it (the rows on their wire shape). The status is never sent from here
  * (user directive 2026-08-31): only the domain actions move it.
  */
 export function buildUpdatePayload(values: EditContractFormValues, original: EditContractFormValues): UpdateContractPayload {
   const payload: UpdateContractPayload = {}
+  // A blank title asks for the automatic one (spec 0360 D-7).
+  const title = (values.title ?? '').trim()
+  if (title !== (original.title ?? '').trim()) {
+    payload.title = title === '' ? null : title
+  }
+  const lines = toLineInputs(values.offer_lines)
+  if (!sameLines(lines, toLineInputs(original.offer_lines))) {
+    payload.offer_lines = lines
+  }
   if (values.renewal_date !== original.renewal_date) {
     payload.renewal_date = values.renewal_date
   }

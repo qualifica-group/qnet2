@@ -160,6 +160,7 @@ export const quotes = {
       totalRevenue: 'Offer total',
       totalCost: 'Cost total',
       productMissing: 'Product no longer available for the chosen categories: remove the row and pick one from the catalogue.',
+      assignedToWorkOrders: 'Assigned to {{codes}}',
     },
   },
   form: {

@@ -146,6 +146,7 @@ export function QuoteLineEditor({
             categoryPath={pathOf(product?.categoryId)}
             knownVatRate={vatRateById(row.vat_rate_id)}
             disabled={disabled}
+            lockedWorkOrderCodes={editor.lockedCodesOf(row)}
             simplified={simplified}
             error={errors?.[index]}
             vatRatePercentFor={vatRatePercentFor}

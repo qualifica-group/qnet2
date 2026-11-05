@@ -3,6 +3,44 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Modifica del contratto in essere come nel legacy (spec 0360) — VERDE, NON COMMITTATO (2026-11-05)
+
+- Decisioni utente 2026-11-05: dal dettaglio contratto si modificano sul posto titolo, righe servizi (aggiungi/
+  modifica/rimuovi) e rinnovo/scadenza/note pagamento/commenti; stati open, pending e closed_won (Validato);
+  closed_lost in sola lettura finche' non si riapre; authz = permesso Contratti (`contracts.update` + perimetro).
+- Riga di RICAVO assegnata a una commessa (`quote_line_work_order`) = bloccata in tutto (prodotto, fornitore,
+  quantita', prezzo, IVA, descrizione aggiuntiva; NON sort_order ne' provvigioni) e non rimovibile finche' la commessa
+  esiste. Regola unica in `App\Services\Quotes\QuoteLineWorkOrderLock`, chiamata da `QuoteLineWriter::sync()`: vale per
+  Offerte, Contratto e Gestione Richieste (il `dropUncovered` del cambio categoria ora da' 422: confermato). Prima la
+  rimozione dall'Offerta cancellava in silenzio il collegamento (FK cascade).
+- API: `PATCH /api/contracts/{c}` accetta anche `title` (null = automatico) e `offer_lines` (regole
+  `ValidatesQuoteLines::offerLinesOnlyRules()`, commissions prohibited, + `requireOfferLineOnUpdate` /
+  `enforceSingleOfferLine`); `ContractService::update($contract, $data, ?User $actor = null)` delega title/offer_lines a
+  `QuoteService::update()` (attore obbligatorio solo per quelle chiavi; i seeder passano senza). 422 `offer_lines`
+  (`quotes.line_removal_blocked_by_work_order`) e `offer_lines.{i}` (`quotes.line_locked_by_work_order`).
+  `QuoteLineResource.work_orders: [{id, code}]` (whenLoaded; eager load in DETAIL relations di Quote e Contract).
+- Stato: `ContractActionAvailability::mayEdit()` = working || closed_won, applicato nel tetto dei permessi di campo di
+  `ContractsAuthorization` (nuove FieldDefinition `title`, `offer_lines`); FE `contract-lifecycle.ts` `edit` specchio.
+  `contract_status_id` via PATCH NON toccato (accettato in ogni stato: fuori scope, segnalato).
+- FE: titolo in place in `contract-detail-header.tsx`; righe = `RecordInlineField` + `RequestOfferLinesField` in
+  `contract-detail.tsx` (form esteso in `use-contract-inline-edit.ts`, payload sparso in `use-contract-mutations.ts`);
+  riga bloccata in `quotes/line-editor/quote-line-card.tsx` (`lockedWorkOrderCodes`, "Assegnata a ..."); etichette
+  permessi di campo `contracts.form.title|offer_lines`. `contract-detail.test.tsx` diviso (nuovo
+  `contract-detail-lifecycle.test.tsx`, fixture in `contract-renewal-fixtures.ts`).
+- Test: Pest `ContractInForceEditingTest` 21, `QuoteLineWorkOrderLockTest` 8; Contracts 217/217, Seeding 235/237;
+  Contracts+Quotes+RequestManagement verdi salvo 3 `QuoteDocumentPdfTest` (manca LibreOffice). Vitest mirato
+  1435/1435, contracts 204/204, help 157/157; `tsc -b --force` ed ESLint puliti. REQUIREMENT CHANGED:
+  `ContractAuthorizationTest` AC-038 (11 campi), `contract-detail.test.tsx`/`contract-actions-refresh.test.tsx` (matita
+  su closed_won), `contract-schema.test.ts`.
+- Suite completa (verifier): rossi NON attribuibili alla 0360, in file non toccati: ManagementControl `*AccessTest`
+  (navigazione, "array offset on null"), `PermissionCatalogueEndpointTest` (694 vs 677), `TableBulkDeleteTest`
+  (super-admin guarded), `QualificaOperatorSeederTest` x2 (`importatore-richieste`), AiAssistant x4,
+  `SettlementApprovalTest` (data); FE 11 unhandled `toast.error is not a function` in form di altre feature.
+- Manuale: guide in-app IT+EN contracts (`edit-contract-in-force`), quotes, request-management; manuale Claude Docs
+  (Contratti: nuova "Modificare il contratto in essere", tabella stati; Offerte: righe assegnate a commessa).
+- Aperti: workflow Offerta dedicato con criteri sulle righe potrebbe riassegnare lo stato al cambio righe (non
+  testato, con il set globale no). `QuoteService.php` a 490 righe (split alla prossima modifica).
+
 ## Pannello "Rinnovi" del contratto ridisegnato e spostato in alto — VERDE, NON COMMITTATO (2026-11-05)
 
 - Decisione utente 2026-11-05: il componente rinnovi "come i migliori CRM", in alto nella scheda sotto i bottoni.

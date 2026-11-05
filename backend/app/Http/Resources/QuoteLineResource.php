@@ -70,6 +70,11 @@ class QuoteLineResource extends JsonResource
             'vat_amount' => $this->vat_amount,
             'total_amount' => $this->total_amount,
             'sort_order' => $this->sort_order,
+            // Spec 0360, D-4: the work orders freezing this row (empty when free).
+            'work_orders' => $this->whenLoaded('workOrders', fn (): array => $this->workOrders
+                ->map(static fn ($workOrder): array => ['id' => $workOrder->id, 'code' => $workOrder->code])
+                ->values()
+                ->all()),
             // Spec 0144, D-2: the REVENUE row this COST row is imputed to —
             // always null on a REVENUE row, and on a generic cost.
             'offer_line_id' => $this->offer_line_id,

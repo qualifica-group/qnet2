@@ -21,6 +21,9 @@ import {
   type ContractWorkOrdersSectionHandle,
 } from '@/features/contracts/contract-work-orders-section'
 import { OPPORTUNITY_ATTACHABLE_ALIAS } from '@/features/opportunities/api'
+import { RecordInlineField } from '@/components/record-form/record-inline-field'
+import type { QuoteLineRowErrors } from '@/features/quotes/quote-line-types'
+import { RequestOfferLinesField } from '@/features/request-management/request-offer-lines-section'
 import { QuoteLinesReadOnlyList } from '@/features/quotes/quote-lines-read-only'
 import { formatDateTime } from '@/features/table/cell-renderers'
 import type { ContractDetailWithPermissions } from '@/features/contracts/types'
@@ -104,6 +107,10 @@ export function ContractDetailView({ contract: initialContract }: ContractDetail
   // Spec 0219: the contract's own fields edit in place while it is still working.
   const editor = useContractInlineEdit(contract, setContract)
   const canEdit = contract.permissions.resource.update && contractLifecycleActions(contract).edit
+  // RHF types an array field's errors as one node, the row editor reads them per index.
+  const offerLineErrors = editor.form.formState.errors.offer_lines as unknown as
+    | (QuoteLineRowErrors | undefined)[]
+    | undefined
 
   // "Programma" lives in the actions bar (a SIBLING of the Commesse tab
   // below), so its success is bubbled here and forwarded through this ref
@@ -112,60 +119,82 @@ export function ContractDetailView({ contract: initialContract }: ContractDetail
 
   return (
     <ResourcePermissionsProvider permissions={contract.permissions}>
-      <RecordCanvas>
-        <RecordBody
-          collaborationTabs={collaborationTabs}
-          header={
-            <>
-              <ContractDetailHeader contract={contract} />
-              <ContractActionsBar
-                contract={contract}
-                onChanged={setContract}
-                onWorkOrderCreated={() => workOrdersRef.current?.refresh()}
-              />
-              {/* Direttiva utente 2026-11-05: il periodo contrattuale si legge in alto, sotto le azioni. */}
-              <ContractRenewalsSection contract={contract} onChanged={setContract} />
-            </>
-          }
-        >
-          {/* Provider only (no DOM): the inline editors share the edit form. */}
-          <Form {...editor.form}>
+      {/* Provider only (no DOM): the inline editors (header, rows, lines) share the edit form. */}
+      <Form {...editor.form}>
+        <RecordCanvas>
+          <RecordBody
+            collaborationTabs={collaborationTabs}
+            header={
+              <>
+                <ContractDetailHeader
+                  contract={contract}
+                  inline={editor.inline}
+                  control={editor.form.control}
+                  canEdit={canEdit}
+                />
+                <ContractActionsBar
+                  contract={contract}
+                  onChanged={setContract}
+                  onWorkOrderCreated={() => workOrdersRef.current?.refresh()}
+                />
+                {/* Direttiva utente 2026-11-05: il periodo contrattuale si legge in alto, sotto le azioni. */}
+                <ContractRenewalsSection contract={contract} onChanged={setContract} />
+              </>
+            }
+          >
             <ContractDetailSections contract={contract} editor={editor} canEdit={canEdit} />
-          </Form>
 
-          {/* Banda di chiusura: le sole righe di ricavo del preventivo
-              (BR-7), read-only. Nessuna strip (qui c'e' una sola collezione,
-              non due come sull'Offerta) e nessun riepilogo economico —
-              ricavi/costi/margine attesi sono usciti dalla scheda per
-              direttiva utente 2026-08-31. */}
-          <div className="min-w-0 border-t p-4">
-            <QuoteLinesReadOnlyList lines={contract.offer_lines} />
-          </div>
-        </RecordBody>
+            {/* Banda di chiusura: le sole righe di ricavo del preventivo
+                (BR-7), modificabili sul posto (spec 0360). Nessuna strip (qui c'e' una sola collezione,
+                non due come sull'Offerta) e nessun riepilogo economico —
+                ricavi/costi/margine attesi sono usciti dalla scheda per
+                direttiva utente 2026-08-31. */}
+            <div className="min-w-0 border-t p-4">
+              <RecordInlineField
+                field="offer_lines"
+                label={t('quotes.form.offerTab.fieldLabel')}
+                layout="block"
+                inline={editor.inline}
+                canEdit={canEdit}
+                editor={
+                  <RequestOfferLinesField
+                    control={editor.form.control}
+                    knownLines={contract.offer_lines}
+                    errors={offerLineErrors}
+                    vatRatePercentFor={editor.vatRatePercentFor}
+                    rememberVatRatePercent={editor.rememberVatRatePercent}
+                  />
+                }
+              >
+                {(editAction) => <QuoteLinesReadOnlyList lines={contract.offer_lines} headerAction={editAction} />}
+              </RecordInlineField>
+            </div>
+          </RecordBody>
 
-        {/*
-          Tab "Commesse" (spec 0095 D-8/D-10): a piena larghezza sotto la
-          griglia a due colonne, non nella card di collaborazione — quella
-          colonna (`minmax(0,4fr)`) e' troppo stretta per una TableView con
-          toolbar + griglia + filtri.
-        */}
-        <ContractWorkOrdersSection ref={workOrdersRef} quoteId={contract.quote_id} />
+          {/*
+            Tab "Commesse" (spec 0095 D-8/D-10): a piena larghezza sotto la
+            griglia a due colonne, non nella card di collaborazione — quella
+            colonna (`minmax(0,4fr)`) e' troppo stretta per una TableView con
+            toolbar + griglia + filtri.
+          */}
+          <ContractWorkOrdersSection ref={workOrdersRef} quoteId={contract.quote_id} />
 
-        <RecordMeta>
-          {createdAt ? (
-            <span>
-              <span className="font-medium">{t('contracts.detail.createdAt')}</span>{' '}
-              <span aria-hidden="true">·</span> {createdAt}
-            </span>
-          ) : null}
-          {updatedAt ? (
-            <span>
-              <span className="font-medium">{t('contracts.detail.updatedAt')}</span>{' '}
-              <span aria-hidden="true">·</span> {updatedAt}
-            </span>
-          ) : null}
-        </RecordMeta>
-      </RecordCanvas>
+          <RecordMeta>
+            {createdAt ? (
+              <span>
+                <span className="font-medium">{t('contracts.detail.createdAt')}</span>{' '}
+                <span aria-hidden="true">·</span> {createdAt}
+              </span>
+            ) : null}
+            {updatedAt ? (
+              <span>
+                <span className="font-medium">{t('contracts.detail.updatedAt')}</span>{' '}
+                <span aria-hidden="true">·</span> {updatedAt}
+              </span>
+            ) : null}
+          </RecordMeta>
+        </RecordCanvas>
+      </Form>
     </ResourcePermissionsProvider>
   )
 }

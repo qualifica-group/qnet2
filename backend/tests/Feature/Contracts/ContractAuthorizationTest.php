@@ -70,7 +70,7 @@ it('AC-010: permissions:sync never prunes the retired contracts.schedule permiss
 // AC-038 — GET /api/meta/contracts field/action catalogue
 // ---------------------------------------------------------------------------
 
-it('AC-038: GET /api/meta/contracts lists the 9 fields and 8 actions', function () {
+it('AC-038: GET /api/meta/contracts lists the 11 fields and 8 actions', function () {
     $actor = contractAuthUserWith(['viewAny']);
     Sanctum::actingAs($actor);
 
@@ -78,8 +78,9 @@ it('AC-038: GET /api/meta/contracts lists the 9 fields and 8 actions', function 
 
     $fieldKeys = collect($response->json('data.fields'))->pluck('key')->all();
 
+    // REQUIREMENT CHANGED (spec 0360 D-1/D-6): `title` and `offer_lines` join the fields, after `contract_status_id`.
     expect($fieldKeys)->toEqual([
-        'contract_status_id', 'accepted_at', 'validated_at', 'renewal_date',
+        'contract_status_id', 'title', 'offer_lines', 'accepted_at', 'validated_at', 'renewal_date',
         'expiry_date', 'terminated_at', 'termination_reason', 'payment_notes', 'comments',
     ]);
 

@@ -122,6 +122,7 @@ const guide: HelpGuide = {
             'With no product category picked the catalogue is disabled: pick the category first.',
             'In simplified categories the row shows only the amounts: quantity, price and VAT are filled in by the system.',
             'If the category has a single product, the row is created automatically.',
+            'A row **assigned to a work order** shows "Assigned to COM-..." and is locked: it cannot be changed or removed until the work order is deleted. If you change the category of a request that has a locked row, the save is refused.',
           ],
         },
       ],
