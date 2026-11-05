@@ -10,7 +10,7 @@ import { undoContractRenewal } from '@/features/contracts/api'
 import { contractWithPermissions, renewalFixture } from '@/features/contracts/contract-renewal-fixtures'
 import type { ContractDetailWithPermissions } from '@/features/contracts/types'
 
-/** Spec 0358 AC-028: history rows, undo only on the latest renewal, confirmation, DELETE. */
+/** Spec 0358 AC-028: period timeline, undo only on the latest renewal, confirmation, DELETE. */
 
 vi.mock('@/features/contracts/api', () => ({
   undoContractRenewal: vi.fn(),
@@ -55,40 +55,72 @@ beforeEach(() => {
   vi.mocked(undoContractRenewal).mockReset()
 })
 
+/** The detail panel of the selected period (a `<dl>` named after it). */
+function periodPanel(title: string) {
+  return within(screen.getByLabelText(title, { selector: 'dl' }))
+}
+
+function selectPeriod(title: string) {
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${title}`) }))
+}
+
+// REQUIREMENT CHANGED (user directive 2026-11-05): the history list became a period
+// timeline under the actions bar; the selected period's facts open in a panel below it.
 describe('ContractRenewalsSection', () => {
-  it('always shows the Initial row, even when the contract was never renewed', () => {
+  it('always shows the Initial period, selected, even when the contract was never renewed', () => {
     renderSection(contractWithPermissions({ renew: true }, { initial_period_work_orders_count: 4 }))
 
-    const rows = screen.getAllByRole('listitem')
-    expect(rows).toHaveLength(1)
-    expect(within(rows[0]).getByText('Initial')).toBeInTheDocument()
-    expect(within(rows[0]).getByText('4')).toBeInTheDocument()
+    const nodes = within(screen.getByRole('list', { name: 'Contract periods' })).getAllByRole('listitem')
+    expect(nodes).toHaveLength(1)
+    expect(within(nodes[0]).getByRole('button', { pressed: true })).toHaveTextContent('Initial')
+    expect(screen.getByText('In force: Initial')).toBeInTheDocument()
+    expect(periodPanel('Initial').getByText('4')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Undo renewal' })).not.toBeInTheDocument()
   })
 
-  it('shows one row per renewal with its dates and work orders count', () => {
+  it('shows one node per period and opens the facts of the one picked', () => {
     renderSection(contractWithPermissions({ renew: true }, { renewals: TWO_RENEWALS, renewal_number: 2 }))
 
-    const rows = screen.getAllByRole('listitem')
-    expect(rows).toHaveLength(3)
-    expect(within(rows[1]).getByText('Renewal 1')).toBeInTheDocument()
-    expect(within(rows[1]).getByText('3')).toBeInTheDocument()
-    expect(within(rows[2]).getByText('Renewal 2')).toBeInTheDocument()
-    expect(within(rows[2]).getByText(`renewal ${formatDate('2027-11-30')}, expiry ${formatDate('2027-12-31')}`)).toBeInTheDocument()
-    expect(within(rows[2]).getAllByText('Ada Alberti')).toHaveLength(1)
+    expect(within(screen.getByRole('list', { name: 'Contract periods' })).getAllByRole('listitem')).toHaveLength(3)
+    expect(screen.getByText('In force: Renewal 2')).toBeInTheDocument()
+    const latest = periodPanel('Renewal 2')
+    expect(latest.getByText(`renewal ${formatDate('2027-11-30')}, expiry ${formatDate('2027-12-31')}`)).toBeInTheDocument()
+    expect(latest.getByText(`Ada Alberti, on ${formatDate('2026-12-01T10:00:00Z')}`)).toBeInTheDocument()
+
+    selectPeriod('Renewal 1')
+    expect(screen.getByRole('button', { name: /^Renewal 1/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(periodPanel('Renewal 1').getByText('3')).toBeInTheDocument()
   })
 
   it('offers "Undo renewal" only on the latest renewal', () => {
     renderSection(contractWithPermissions({ renew: true }, { renewals: TWO_RENEWALS, renewal_number: 2 }))
 
-    const rows = screen.getAllByRole('listitem')
-    expect(within(rows[1]).queryByRole('button', { name: 'Undo renewal' })).not.toBeInTheDocument()
-    expect(within(rows[2]).getByRole('button', { name: 'Undo renewal' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Undo renewal' })).toBeInTheDocument()
+    selectPeriod('Renewal 1')
+    expect(screen.queryByRole('button', { name: 'Undo renewal' })).not.toBeInTheDocument()
   })
 
   it('hides the undo button without the renew permission', () => {
     renderSection(contractWithPermissions({ renew: false }, { renewals: TWO_RENEWALS, renewal_number: 2 }))
     expect(screen.queryByRole('button', { name: 'Undo renewal' })).not.toBeInTheDocument()
+  })
+
+  it('shows the countdowns and the elapsed share of the period in force', () => {
+    renderSection(
+      contractWithPermissions(
+        { renew: true },
+        { accepted_at: '2026-01-01', expiry_date: '2026-01-11', days_to_expiry: 4, renewal_date: '2026-01-05', alert: 'expiring' },
+      ),
+    )
+
+    expect(screen.getByText('Expires in 4 days')).toBeInTheDocument()
+    expect(screen.getByText(`Renew by ${formatDate('2026-01-05')}`)).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: '60% elapsed' })).toBeInTheDocument()
+  })
+
+  it('says how long ago an expired contract expired', () => {
+    renderSection(contractWithPermissions({ renew: true }, { days_to_expiry: -1 }))
+    expect(screen.getByText('Expired 1 day ago')).toBeInTheDocument()
   })
 
   it('asks for confirmation, then sends DELETE and hands the contract back', async () => {

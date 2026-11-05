@@ -123,6 +123,8 @@ export function ContractDetailView({ contract: initialContract }: ContractDetail
                 onChanged={setContract}
                 onWorkOrderCreated={() => workOrdersRef.current?.refresh()}
               />
+              {/* Direttiva utente 2026-11-05: il periodo contrattuale si legge in alto, sotto le azioni. */}
+              <ContractRenewalsSection contract={contract} onChanged={setContract} />
             </>
           }
         >
@@ -140,8 +142,6 @@ export function ContractDetailView({ contract: initialContract }: ContractDetail
             <QuoteLinesReadOnlyList lines={contract.offer_lines} />
           </div>
         </RecordBody>
-
-        <ContractRenewalsSection contract={contract} onChanged={setContract} />
 
         {/*
           Tab "Commesse" (spec 0095 D-8/D-10): a piena larghezza sotto la

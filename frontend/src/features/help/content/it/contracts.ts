@@ -145,12 +145,12 @@ const guide: HelpGuide = {
           items: [
             'Le commesse dei periodi precedenti restano invariate; se modifichi una commessa esistente, le righe che aggiungi entrano nel **suo** periodo.',
             'In ogni commessa la riga si fattura una volta e la sua provvigione matura per intero: lo stesso prodotto si fattura di nuovo nella commessa del rinnovo.',
-            'Nella scheda, la sezione **Rinnovi** mostra il periodo **Iniziale** e ogni rinnovo con **Dal**, **Al**, **Data rinnovo**, **Date precedenti**, **Rinnovato da** e numero di **Commesse**. Nell\'elenco Commesse (e nella scheda Commesse del contratto) la colonna **Periodo** indica Iniziale o Rinnovo N.',
+            'Nella scheda, il pannello **Rinnovi** sta in alto, subito sotto i pulsanti delle azioni: indica il periodo **in corso**, quanti giorni mancano alla scadenza (in rosso se è passata, in ambra se è vicina), la data entro cui rinnovare e una barra con la parte di periodo già trascorsa. Sotto c\'è la linea dei periodi (**Iniziale**, **Rinnovo 1**, **Rinnovo 2**...): clicca un periodo per vederne **Dal**, **Al**, **Data rinnovo**, **Date precedenti**, **Rinnovato da** (chi e quando) e numero di **Commesse**. Nell\'elenco Commesse (e nella scheda Commesse del contratto) la colonna **Periodo** indica Iniziale o Rinnovo N.',
           ],
         },
         {
           type: 'note',
-          text: '**Annulla rinnovo** compare solo sull\'ultimo rinnovo e solo se nel suo periodo non ci sono commesse: dopo la conferma le date del contratto tornano a quelle precedenti al rinnovo.',
+          text: '**Annulla rinnovo** compare solo nel dettaglio dell\'ultimo rinnovo e solo se nel suo periodo non ci sono commesse: dopo la conferma le date del contratto tornano a quelle precedenti al rinnovo.',
         },
       ],
     },

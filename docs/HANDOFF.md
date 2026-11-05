@@ -3,6 +3,25 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Pannello "Rinnovi" del contratto ridisegnato e spostato in alto — VERDE, NON COMMITTATO (2026-11-05)
+
+- Decisione utente 2026-11-05: il componente rinnovi "come i migliori CRM", in alto nella scheda sotto i bottoni.
+  `ContractRenewalsSection` ora e' una banda dentro la record card (header di `RecordBody`, subito dopo
+  `ContractActionsBar`), non piu' una card separata sotto la griglia.
+- Contenuto: periodo "In corso", conto alla rovescia scadenza da `days_to_expiry` del server (rosso se < 0, ambra con
+  `alert === 'expiring'`, nessuna soglia client), "Rinnovo entro il" (`renewal_date`, ambra con `renewal_due`), barra
+  `Progress` del periodo trascorso, timeline dei periodi (`<ol aria-label>` di bottoni `aria-pressed`), dettaglio del
+  periodo selezionato (default = corrente) con "Annulla rinnovo" solo sull'ultimo. Nessun cambio API.
+- Logica pura in `contract-renewal-periods.ts` (`useContractPeriods`, `periodElapsedPercent`, `currentPeriodStart`,
+  `dateOrDash`). Nuove chiavi i18n `contracts.renewals.*` (byValue, timeline, current, currentPeriod, elapsed,
+  expiresIn_one/_other, expiresToday, expiredAgo_one/_other, renewBy).
+- Test: `contract-renewals-section.test.tsx` riscritto (REQUIREMENT CHANGED: lista -> timeline + pannello),
+  nuovo `contract-renewal-periods.test.ts`. Vitest contracts+help 361/361, ESLint e `tsc -b --force` puliti.
+  La sezione non ha `aria-labelledby` di proposito: l'etichetta "Renewals" collideva con `getByLabelText(/^Renewal/)`
+  del campo Rinnovo in `contract-detail-inline-edit.test.tsx`.
+- Manuale: guide in-app IT+EN contracts (`renewal-periods`) e manuale Claude Docs (Contratti, nuova sottosezione
+  "Rinnovi e periodi del contratto") aggiornati. Da verificare a occhio in app (375/768/1024).
+
 ## Barra categorie: "Categorie madri" acceso di default — VERDE, NON COMMITTATO (2026-11-05)
 
 - Decisione utente 2026-11-05: Opportunita', Commesse, Offerte, Contratti, Gestione Richieste e Gestione Iscritti

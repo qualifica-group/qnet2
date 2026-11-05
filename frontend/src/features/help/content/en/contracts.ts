@@ -145,12 +145,12 @@ const guide: HelpGuide = {
           items: [
             'The work orders of the previous periods stay unchanged; when you edit an existing work order, the lines you add go into **its** period.',
             'In each work order the line is invoiced once and its commission accrues in full: the same product is invoiced again in the renewal work order.',
-            'In the detail, the **Renewals** section shows the **Initial** period and each renewal with **From**, **To**, **Renewal date**, **Previous dates**, **Renewed by** and the number of **Work orders**. In the Work orders list (and in the contract Work orders tab) the **Period** column shows Initial or Renewal N.',
+            'In the detail, the **Renewals** panel sits at the top, right under the action buttons: it shows the period **in force**, how many days are left to the expiry (red once it has passed, amber when it is close), the date to renew by and a bar with the share of the period already elapsed. Below it is the line of periods (**Initial**, **Renewal 1**, **Renewal 2**...): click a period to see its **From**, **To**, **Renewal date**, **Previous dates**, **Renewed by** (who and when) and the number of **Work orders**. In the Work orders list (and in the contract Work orders tab) the **Period** column shows Initial or Renewal N.',
           ],
         },
         {
           type: 'note',
-          text: '**Undo renewal** appears only on the latest renewal and only while its period has no work orders: after confirming, the contract dates go back to those before the renewal.',
+          text: '**Undo renewal** appears only in the details of the latest renewal and only while its period has no work orders: after confirming, the contract dates go back to those before the renewal.',
         },
       ],
     },
