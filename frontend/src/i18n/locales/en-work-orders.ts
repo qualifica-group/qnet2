@@ -19,6 +19,10 @@ export const workOrders = {
   subtitle: 'Browse, filter and manage the work orders linked to your offers.',
   forbidden: "You don't have permission to view work orders.",
   chatUnread: '{{count}} unread chat messages',
+  period: {
+    initial: 'Initial',
+    renewal: 'Renewal {{number}}',
+  },
   progress: {
     title: 'Work order progress list no. {{code}}',
     action: 'Work order progress',
@@ -62,6 +66,7 @@ export const workOrders = {
     created_at: 'Created at',
     updated_at: 'Updated at',
     chat_unread_count: 'Unread',
+    renewal_number: 'Period',
   },
   detail: {
     multiQuoteBadge: 'Multi-offer',

@@ -32,6 +32,7 @@ use App\Models\CompanyClosure;
 use App\Models\CompanySite;
 use App\Models\Contact;
 use App\Models\Contract;
+use App\Models\ContractRenewal;
 use App\Models\ContractStatus;
 use App\Models\ContractType;
 use App\Models\CostType;
@@ -339,6 +340,7 @@ class AppServiceProvider extends ServiceProvider
             // Contract is also a HasAttachments owner, so this 'contract'
             // alias must match config('attachments.attachable_types').
             'contract' => Contract::class,
+            'contract_renewal' => ContractRenewal::class,
             'contract_status' => ContractStatus::class,
             // Spec 0078 (field-change-requests module): FieldChangeRequest
             // uses LogsModelActivity, same reasoning as document_layout above.

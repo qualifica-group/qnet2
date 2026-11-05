@@ -71,7 +71,7 @@ final class WorkOrderFigureSources
         $collected = $this->collectedByWorkOrder($workOrderIds);
         $labor = $this->labor->byWorkOrder($workOrderIds);
         $budgetByLine = $this->budgetByRevenueLine($lines->keys()->all());
-        $accrualByLine = $this->committed->centsBy(DB::table('commission_accruals')->whereIn('quote_line_id', $lines->keys()->all()), 'amount', 'quote_line_id');
+        $accrualByWorkOrder = $this->accrualsByWorkOrder($workOrderIds);
 
         // Step 3: assemble the base figures and the function weights per commessa
         $categoryFunctions = $this->categories->effectiveBusinessFunctionSummaries();
@@ -88,7 +88,7 @@ final class WorkOrderFigureSources
                 'cost_committed' => $committed[$id] ?? 0,
                 'cost_invoiced' => $payable[$id] ?? 0,
                 'commission_budget' => (int) $ownLines->sum(fn (QuoteLine $line): int => $this->budgetCommissionCents($line)),
-                'commission_actual' => (int) $ownLines->sum(fn (QuoteLine $line): int => $accrualByLine[$line->id] ?? 0),
+                'commission_actual' => $accrualByWorkOrder[$id] ?? 0,
                 'cost_labor' => $labor[$id]['cents'] ?? 0,
                 'labor_minutes' => $labor[$id]['minutes'] ?? 0,
                 'unpriced_minutes' => $labor[$id]['unpriced_minutes'] ?? 0,
@@ -97,6 +97,39 @@ final class WorkOrderFigureSources
         }
 
         return ['figures' => $figures, 'weights' => $weights];
+    }
+
+    /**
+     * Accrued commissions per commessa (spec 0358, D-9): the ones of its invoices;
+     * movements without an invoice (adjustments) go to the commessa where their
+     * line sits in the earliest renewal period.
+     *
+     * @param  array<int, int>  $workOrderIds
+     * @return array<int, int> cents
+     */
+    private function accrualsByWorkOrder(array $workOrderIds): array
+    {
+        $totals = $this->committed->centsBy(
+            DB::table('commission_accruals')->join('invoices', 'invoices.id', '=', 'commission_accruals.invoice_id')->whereIn('invoices.work_order_id', $workOrderIds),
+            'commission_accruals.amount',
+            'invoices.work_order_id',
+        );
+
+        $orphanByLine = $this->committed->centsBy(
+            DB::table('commission_accruals')->whereNull('invoice_id')->whereNotNull('quote_line_id')
+                ->whereIn('quote_line_id', DB::table('quote_line_work_order')->whereIn('work_order_id', $workOrderIds)->select('quote_line_id')),
+            'amount',
+            'quote_line_id',
+        );
+
+        foreach ($orphanByLine as $lineId => $cents) {
+            $owner = DB::table('quote_line_work_order')->where('quote_line_id', $lineId)->orderBy('renewal_number')->orderBy('work_order_id')->value('work_order_id');
+            if (in_array($owner, $workOrderIds, true)) {
+                $totals[$owner] = ($totals[$owner] ?? 0) + $cents;
+            }
+        }
+
+        return $totals;
     }
 
     /**

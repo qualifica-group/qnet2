@@ -11,6 +11,7 @@ import { useAbilities } from '@/features/auth/use-abilities'
 import { ResourcePermissionsProvider } from '@/features/authorization/permissions'
 import { CONTRACT_ATTACHABLE_ALIAS, CONTRACTS_DOMAIN } from '@/features/contracts/api'
 import { ContractActionsBar } from '@/features/contracts/contract-actions-bar'
+import { ContractRenewalsSection } from '@/features/contracts/contract-renewals-section'
 import { ContractDetailHeader } from '@/features/contracts/contract-detail-header'
 import { ContractDetailSections } from '@/features/contracts/contract-detail-fields'
 import { contractLifecycleActions } from '@/features/contracts/contract-lifecycle'
@@ -139,6 +140,8 @@ export function ContractDetailView({ contract: initialContract }: ContractDetail
             <QuoteLinesReadOnlyList lines={contract.offer_lines} />
           </div>
         </RecordBody>
+
+        <ContractRenewalsSection contract={contract} onChanged={setContract} />
 
         {/*
           Tab "Commesse" (spec 0095 D-8/D-10): a piena larghezza sotto la

@@ -63,7 +63,7 @@ class ContractsAuthorization extends AbstractResourceAuthorization
      */
     public function actions(): array
     {
-        return ['validate', 'terminate', 'program', 'change_status', 'reactivate', 'export', 'view_activity'];
+        return ['validate', 'terminate', 'program', 'renew', 'change_status', 'reactivate', 'export', 'view_activity'];
     }
 
     /**
@@ -96,6 +96,7 @@ class ContractsAuthorization extends AbstractResourceAuthorization
             'validate' => $model instanceof Contract && $this->actionAvailability->mayValidate($model) && $actor->can('contracts.validate'),
             'terminate' => $model instanceof Contract && $this->actionAvailability->mayTerminate($model) && $actor->can('contracts.terminate'),
             'program' => $model instanceof Contract && $this->actionAvailability->mayProgram($model) && $actor->can('contracts.program'),
+            'renew' => $model instanceof Contract && $this->actionAvailability->mayProgram($model) && $actor->can('contracts.program'),
             'change_status' => $model instanceof Contract && $this->actionAvailability->mayChangeStatus($model) && $actor->can('contracts.changeStatus'),
             'reactivate' => $model instanceof Contract && $this->actionAvailability->mayReactivate($model) && $actor->can('contracts.reactivate'),
             'export' => $actor->can('contracts.export'),

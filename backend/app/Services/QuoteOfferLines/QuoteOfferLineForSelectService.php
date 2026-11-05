@@ -8,6 +8,8 @@ use App\DataObjects\Shared\ForSelectQuery;
 use App\DataObjects\Shared\ForSelectResult;
 use App\Enums\QuoteLineType;
 use App\Models\QuoteLine;
+use App\Models\WorkOrder;
+use App\Services\WorkOrders\RenewalPeriodResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -17,8 +19,8 @@ use Illuminate\Support\Collection;
  * `sort_order`, feeding the WorkOrder form's multi-select. COST lines are
  * never eligible (D-7): they are internal costs, not sold products.
  *
- * Spec 0095, D-7: a line already programmed into ANOTHER work order (D-4's
- * "una riga, una sola Commessa") is excluded, except the ones belonging to
+ * Spec 0095, D-7 / spec 0358 D-5: a line already programmed into ANOTHER work
+ * order IN THE SAME renewal period is excluded, except the ones belonging to
  * `exceptWorkOrderId` — the work-order EDIT form's own picker, so it keeps
  * offering the lines that work order already owns.
  *
@@ -28,6 +30,8 @@ use Illuminate\Support\Collection;
  */
 final class QuoteOfferLineForSelectService
 {
+    public function __construct(private readonly RenewalPeriodResolver $periods) {}
+
     public function forSelect(ForSelectQuery $query): ForSelectResult
     {
         /** @var int $quoteId FormRequest guarantees presence (required). */
@@ -55,12 +59,17 @@ final class QuoteOfferLineForSelectService
      */
     private function baseQuery(int $quoteId, ?int $exceptWorkOrderId): Builder
     {
+        $period = $this->periodFor($quoteId, $exceptWorkOrderId);
+
         return QuoteLine::query()
             ->with('product')
             ->where('quote_id', $quoteId)
             ->where('line_type', QuoteLineType::Revenue)
-            ->where(function (Builder $availability) use ($exceptWorkOrderId): void {
-                $availability->whereDoesntHave('workOrders');
+            ->where(function (Builder $availability) use ($exceptWorkOrderId, $period): void {
+                $availability->whereDoesntHave(
+                    'workOrders',
+                    fn (Builder $workOrders) => $workOrders->where('quote_line_work_order.renewal_number', $period),
+                );
 
                 if ($exceptWorkOrderId !== null) {
                     $availability->orWhereHas(
@@ -69,6 +78,17 @@ final class QuoteOfferLineForSelectService
                     );
                 }
             });
+    }
+
+    /**
+     * Spec 0358, D-4: the period of the commessa being edited for this offer,
+     * otherwise the contract's current one.
+     */
+    private function periodFor(int $quoteId, ?int $exceptWorkOrderId): int
+    {
+        $workOrder = $exceptWorkOrderId === null ? new WorkOrder : WorkOrder::query()->find($exceptWorkOrderId);
+
+        return $this->periods->periodForWorkOrderLines($workOrder ?? new WorkOrder, [$quoteId])[$quoteId] ?? 0;
     }
 
     /**

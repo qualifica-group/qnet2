@@ -27,8 +27,8 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Current status', 'Available actions'],
           rows: [
-            ['Open or Pending', 'Data editable in place, **Change status**, **Validate contract** (only if never validated), **Program** (only if already validated), **Terminate contract**'],
-            ['Closed (positive)', '**Program**, **Terminate contract**, **Reopen contract**'],
+            ['Open or Pending', 'Data editable in place, **Change status**, **Validate contract** (only if never validated), **Program** and **Renew** (only if already validated), **Terminate contract**'],
+            ['Closed (positive)', '**Program**, **Renew**, **Terminate contract**, **Reopen contract**'],
             ['Closed (negative)', '**Reopen contract**'],
             ['"Sospeso"', '**Reopen contract**'],
           ],
@@ -44,7 +44,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "The **Program** action creates one or more work orders from the offer's product lines: see the **Programming work orders** section.",
+          text: "The **Program** action creates one or more work orders from the offer's product lines: see the **Programming work orders** section. The **Renew** action opens a new period of the same contract: see the **Renewing the contract** section.",
         },
       ],
     },
@@ -54,7 +54,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "**Program** opens a two-panel window: the **offer lines** on the left, the **work orders to create** (groups) on the right. A single **Create N work orders** saves all the groups together.",
+          text: "**Program** opens a two-panel window: the **offer lines** on the left, the **work orders to create** (groups) on the right. A single **Create N work orders** saves all the groups together. At the top the window shows the **Period** (Initial or Renewal N) the work orders are created in.",
         },
         {
           type: 'steps',
@@ -76,7 +76,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Saving is **all or nothing**: if one group has an error, no work order is created. The group with the error opens and shows the field to fix. Lines already in another work order stay visible but cannot be selected; lines you leave free are not an error. Closing with unsaved groups asks for confirmation. At most 50 work orders at a time.',
+          text: 'Saving is **all or nothing**: if one group has an error, no work order is created. The group with the error opens and shows the field to fix. Lines already in another work order **of the current period** stay visible but cannot be selected (after a renewal they are free again); lines you leave free are not an error. Closing with unsaved groups asks for confirmation. At most 50 work orders at a time.',
         },
         {
           type: 'tip',
@@ -105,7 +105,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Saving is **all or nothing**: if something is wrong no work order is created and the error appears on the lines field. A line already in another work order cannot be reused. If at least one selected contract cannot be programmed yet (not validated, for example **Da validare**, or suspended) or cannot be grouped (its offer has no line of a branch with **Multi-offer work order** on), the window still opens and shows which contracts, with their customer, must be removed from the selection.',
+          text: 'Saving is **all or nothing**: if something is wrong no work order is created and the error appears on the lines field. A line already in another work order in the current period of its contract cannot be reused. If at least one selected contract cannot be programmed yet (not validated, for example **Da validare**, or suspended) or cannot be grouped (its offer has no line of a branch with **Multi-offer work order** on), the window still opens and shows which contracts, with their customer, must be removed from the selection.',
         },
       ],
     },
@@ -120,6 +120,37 @@ const guide: HelpGuide = {
         {
           type: 'tip',
           text: 'Always fill in **Expiry** and **Renewal** in the contract card: without these dates, the alerts never appear.',
+        },
+      ],
+    },
+    {
+      id: 'renewal-periods',
+      title: 'Renewing the contract',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "**Renew** opens a new period of the same contract (Renewal 1, Renewal 2...): with the same offer and the same lines you program more work orders. Prices and commissions stay those of the offer and the offer total does not change. The action is available in the same statuses as **Program**, even when the expiry date has already passed, and requires the same permission.",
+        },
+        {
+          type: 'steps',
+          items: [
+            'Press **Renew** in the contract action bar (or from the row action in the Contracts list).',
+            'Check **New expiry date** (required, later than the current one) and **New renewal date** (optional, not later than the expiry date). They are already proposed by moving the current dates by the length of the period; when the starting dates are missing, an expiry date 12 months from today is proposed.',
+            'Press **Renew**: the contract takes the new dates and the current period becomes the new renewal. The contract status does not change.',
+            'Use **Program** to create the work orders of the new period: in each period an offer line is programmed only once.',
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            'The work orders of the previous periods stay unchanged; when you edit an existing work order, the lines you add go into **its** period.',
+            'In each work order the line is invoiced once and its commission accrues in full: the same product is invoiced again in the renewal work order.',
+            'In the detail, the **Renewals** section shows the **Initial** period and each renewal with **From**, **To**, **Renewal date**, **Previous dates**, **Renewed by** and the number of **Work orders**. In the Work orders list (and in the contract Work orders tab) the **Period** column shows Initial or Renewal N.',
+          ],
+        },
+        {
+          type: 'note',
+          text: '**Undo renewal** appears only on the latest renewal and only while its period has no work orders: after confirming, the contract dates go back to those before the renewal.',
         },
       ],
     },

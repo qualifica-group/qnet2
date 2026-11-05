@@ -289,6 +289,7 @@ class ContractsTableDefinition extends AbstractTableDefinition
 
         if ($this->actionAvailability->mayProgram($row) && Gate::forUser($actor)->allows('program', $row)) {
             $allowed[] = 'program';
+            $allowed[] = 'renew';
         }
 
         if ($this->actionAvailability->mayChangeStatus($row) && Gate::forUser($actor)->allows('changeStatus', $row)) {

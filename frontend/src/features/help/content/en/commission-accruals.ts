@@ -27,7 +27,7 @@ const guide: HelpGuide = {
           type: 'list',
           items: [
             'The commission of a quote line **accrues when the invoice that contains it is collected**, in proportion to what is collected: with half of the invoice collected, half of the commission accrues.',
-            'When the quote line is invoiced across several invoices, each invoice carries its own share; more than **100%** of the line commission never accrues.',
+            'When the quote line is invoiced across several invoices of the same work order, each invoice carries its own share; within a work order more than **100%** of the line commission never accrues. In the work order of a contract renewal the line commission accrues again in full.',
             'When a collection is **cleared**, the system records a **reversal** of the same amount. Movements already recorded are never changed: a correction is always a new movement.',
             'A reversal falls on **today’s date**, even if the cleared collection belonged to a past period.',
             'Commissions of **Commercial, Reporter and Supervisor** accrue; Supplier commissions are excluded.',

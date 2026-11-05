@@ -81,6 +81,23 @@ export const contracts = {
       countLabel: '{{count}} commesse',
     },
   },
+  renewals: {
+    title: 'Rinnovi',
+    initial: 'Iniziale',
+    renewal: 'Rinnovo {{number}}',
+    from: 'Dal',
+    to: 'Al',
+    renewalDate: 'Data rinnovo',
+    previousDates: 'Date precedenti',
+    previousDatesValue: 'rinnovo {{renewal}}, scadenza {{expiry}}',
+    by: 'Rinnovato da',
+    workOrders: 'Commesse',
+    undo: 'Annulla rinnovo',
+    undoConfirm: 'Annulla rinnovo',
+    undoDescription: 'Le date del contratto torneranno a quelle precedenti al rinnovo. Possibile solo se il periodo non ha commesse.',
+    undoSuccess: 'Rinnovo annullato.',
+    undoError: 'Impossibile annullare il rinnovo. Riprova.',
+  },
   actions: {
     // Path PIATTI (stringa), consumati da `features/table/row-actions.tsx`
     // via `t(action.label)` — `ContractColumnCatalog::actions()` (backend)
@@ -89,6 +106,7 @@ export const contracts = {
     // contenuti dei dialog vivono nei sibling `*Dialog` sotto.
     validate: 'Valida contratto',
     program: 'Programma',
+    renew: 'Rinnova',
     terminate: 'Disdici contratto',
     reactivate: 'Riapri contratto',
     changeStatus: 'Cambia stato',
@@ -117,7 +135,21 @@ export const contracts = {
       dateRequired: 'La data di validazione è obbligatoria.',
       dateFuture: 'La data di validazione non può essere futura.',
     },
+    renewDialog: {
+      description: 'Apri un nuovo periodo: le righe dell\'offerta tornano programmabili e le commesse precedenti restano invariate.',
+      expiryDate: 'Nuova scadenza',
+      renewalDate: 'Nuova data di rinnovo',
+      expiryRequired: 'La nuova scadenza è obbligatoria.',
+      renewalAfterExpiry: 'La data di rinnovo non può essere successiva alla scadenza.',
+      confirm: 'Rinnova',
+      saving: 'Rinnovo…',
+      success: 'Contratto rinnovato con successo.',
+      genericError: 'Impossibile rinnovare il contratto. Riprova.',
+    },
     programDialog: {
+      period: 'Periodo: {{period}}',
+      periodInitial: 'Iniziale',
+      periodRenewal: 'Rinnovo {{number}}',
       description: "Raggruppa le righe prodotto dell'offerta in una o più commesse e salvale tutte insieme.",
       linesLabel: "Righe dell'offerta",
       linesLoadError: 'Impossibile caricare le righe prodotto. Riprova.',

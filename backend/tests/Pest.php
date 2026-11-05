@@ -56,6 +56,7 @@ require_once __DIR__.'/Helpers/RewardedReferentHelpers.php';
 require_once __DIR__.'/Helpers/OpportunityHelpers.php';
 require_once __DIR__.'/Helpers/LeadHelpers.php';
 require_once __DIR__.'/Helpers/ContractHelpers.php';
+require_once __DIR__.'/Helpers/ContractRenewalHelpers.php';
 require_once __DIR__.'/Helpers/ImportHelpers.php';
 require_once __DIR__.'/Helpers/UserHelpers.php';
 require_once __DIR__.'/Helpers/WorkOrderHelpers.php';

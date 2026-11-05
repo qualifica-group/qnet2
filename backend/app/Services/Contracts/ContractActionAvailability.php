@@ -6,6 +6,8 @@ namespace App\Services\Contracts;
 
 use App\Enums\ContractStatusGroup;
 use App\Models\Contract;
+use App\Models\ContractRenewal;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Which domain actions a contract admits, driven by the GROUP of its CURRENT
@@ -60,6 +62,24 @@ class ContractActionAvailability
         }
 
         return $this->isWorking($contract) && ! $contract->isSuspended() && $contract->validated_at !== null;
+    }
+
+    /**
+     * "Annulla rinnovo" (spec 0358, D-11): only the latest renewal, and only
+     * while no line of the contract's offer sits in its period. Does not
+     * include the actor's ability nor mayProgram (the caller ANDs them).
+     */
+    public function mayUndoRenewal(Contract $contract, ContractRenewal $renewal): bool
+    {
+        if ($renewal->contract_id !== $contract->id || $renewal->number !== $contract->currentRenewalNumber()) {
+            return false;
+        }
+
+        return ! DB::table('quote_line_work_order')
+            ->join('quote_lines', 'quote_lines.id', '=', 'quote_line_work_order.quote_line_id')
+            ->where('quote_lines.quote_id', $contract->quote_id)
+            ->where('quote_line_work_order.renewal_number', $renewal->number)
+            ->exists();
     }
 
     public function mayTerminate(Contract $contract): bool

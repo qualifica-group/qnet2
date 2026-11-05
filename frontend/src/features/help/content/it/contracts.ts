@@ -27,8 +27,8 @@ const guide: HelpGuide = {
           type: 'table',
           headers: ['Stato attuale', 'Azioni disponibili'],
           rows: [
-            ['Aperto o In attesa', 'Dati modificabili sul posto, **Cambia stato**, **Valida contratto** (solo se non è mai stato validato), **Programma** (solo se è già validato), **Disdici contratto**'],
-            ['Chiuso positivo', '**Programma**, **Disdici contratto**, **Riapri contratto**'],
+            ['Aperto o In attesa', 'Dati modificabili sul posto, **Cambia stato**, **Valida contratto** (solo se non è mai stato validato), **Programma** e **Rinnova** (solo se è già validato), **Disdici contratto**'],
+            ['Chiuso positivo', '**Programma**, **Rinnova**, **Disdici contratto**, **Riapri contratto**'],
             ['Chiuso negativo', '**Riapri contratto**'],
             ['Sospeso', '**Riapri contratto**'],
           ],
@@ -44,7 +44,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: "L'azione **Programma** crea una o più commesse dalle righe prodotto dell'offerta: vedi la sezione **Programmare le commesse**.",
+          text: "L'azione **Programma** crea una o più commesse dalle righe prodotto dell'offerta: vedi la sezione **Programmare le commesse**. L'azione **Rinnova** apre un nuovo periodo dello stesso contratto: vedi la sezione **Rinnovare il contratto**.",
         },
       ],
     },
@@ -54,7 +54,7 @@ const guide: HelpGuide = {
       blocks: [
         {
           type: 'paragraph',
-          text: "**Programma** apre una finestra a due pannelli: a sinistra le **righe dell'offerta**, a destra le **commesse da creare** (gruppi). Con un solo **Crea N commesse** salvi tutti i gruppi insieme.",
+          text: "**Programma** apre una finestra a due pannelli: a sinistra le **righe dell'offerta**, a destra le **commesse da creare** (gruppi). Con un solo **Crea N commesse** salvi tutti i gruppi insieme. In alto la finestra indica il **Periodo** (Iniziale o Rinnovo N) in cui nascono le commesse.",
         },
         {
           type: 'steps',
@@ -76,7 +76,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Il salvataggio è **tutto o niente**: se un gruppo ha un errore non viene creata nessuna commessa. Il gruppo con l\'errore si apre e mostra il campo da correggere. Le righe già in un\'altra commessa restano visibili ma non selezionabili; le righe che lasci libere non sono un errore. Chiudendo con gruppi non salvati ti viene chiesta conferma. Al massimo 50 commesse per volta.',
+          text: 'Il salvataggio è **tutto o niente**: se un gruppo ha un errore non viene creata nessuna commessa. Il gruppo con l\'errore si apre e mostra il campo da correggere. Le righe già in un\'altra commessa **del periodo corrente** restano visibili ma non selezionabili (dopo un rinnovo tornano libere); le righe che lasci libere non sono un errore. Chiudendo con gruppi non salvati ti viene chiesta conferma. Al massimo 50 commesse per volta.',
         },
         {
           type: 'tip',
@@ -105,7 +105,7 @@ const guide: HelpGuide = {
         },
         {
           type: 'note',
-          text: 'Il salvataggio è **tutto o niente**: se qualcosa non va non viene creata nessuna commessa e l\'errore compare sul campo delle righe. Una riga già in un\'altra commessa non si può riutilizzare. Se tra i contratti selezionati ce n\'è almeno uno che non si può ancora programmare (non validato, per esempio **Da validare**, oppure sospeso) o che non si può cumulare (la sua offerta non ha righe di un ramo con **Commessa multi-offerta** attivo), la finestra si apre comunque e mostra quali contratti, con il cliente, vanno tolti dalla selezione.',
+          text: 'Il salvataggio è **tutto o niente**: se qualcosa non va non viene creata nessuna commessa e l\'errore compare sul campo delle righe. Una riga già in un\'altra commessa nel periodo corrente del suo contratto non si può riutilizzare. Se tra i contratti selezionati ce n\'è almeno uno che non si può ancora programmare (non validato, per esempio **Da validare**, oppure sospeso) o che non si può cumulare (la sua offerta non ha righe di un ramo con **Commessa multi-offerta** attivo), la finestra si apre comunque e mostra quali contratti, con il cliente, vanno tolti dalla selezione.',
         },
       ],
     },
@@ -120,6 +120,37 @@ const guide: HelpGuide = {
         {
           type: 'tip',
           text: 'Compila sempre **Scadenza** e **Rinnovo** nella scheda del contratto: senza queste date gli avvisi non compaiono.',
+        },
+      ],
+    },
+    {
+      id: 'renewal-periods',
+      title: 'Rinnovare il contratto',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: "**Rinnova** apre un nuovo periodo dello stesso contratto (Rinnovo 1, Rinnovo 2...): con la stessa offerta e le stesse righe programmi altre commesse. Prezzi e provvigioni restano quelli dell'offerta e il totale dell'offerta non cambia. L'azione è disponibile negli stessi stati di **Programma**, anche se la scadenza è già passata, e richiede lo stesso permesso.",
+        },
+        {
+          type: 'steps',
+          items: [
+            'Premi **Rinnova** nella barra azioni del contratto (o dall\'azione di riga nell\'elenco Contratti).',
+            'Controlla **Nuova scadenza** (obbligatoria, successiva a quella attuale) e **Nuova data di rinnovo** (facoltativa, non successiva alla scadenza). Sono già proposte spostando le date attuali della durata del periodo; se mancano le date di partenza viene proposta una scadenza a 12 mesi da oggi.',
+            'Premi **Rinnova**: il contratto prende le nuove date e il periodo corrente diventa il nuovo rinnovo. Lo stato del contratto non cambia.',
+            'Usa **Programma** per creare le commesse del nuovo periodo: in ogni periodo una riga dell\'offerta si programma una sola volta.',
+          ],
+        },
+        {
+          type: 'list',
+          items: [
+            'Le commesse dei periodi precedenti restano invariate; se modifichi una commessa esistente, le righe che aggiungi entrano nel **suo** periodo.',
+            'In ogni commessa la riga si fattura una volta e la sua provvigione matura per intero: lo stesso prodotto si fattura di nuovo nella commessa del rinnovo.',
+            'Nella scheda, la sezione **Rinnovi** mostra il periodo **Iniziale** e ogni rinnovo con **Dal**, **Al**, **Data rinnovo**, **Date precedenti**, **Rinnovato da** e numero di **Commesse**. Nell\'elenco Commesse (e nella scheda Commesse del contratto) la colonna **Periodo** indica Iniziale o Rinnovo N.',
+          ],
+        },
+        {
+          type: 'note',
+          text: '**Annulla rinnovo** compare solo sull\'ultimo rinnovo e solo se nel suo periodo non ci sono commesse: dopo la conferma le date del contratto tornano a quelle precedenti al rinnovo.',
         },
       ],
     },

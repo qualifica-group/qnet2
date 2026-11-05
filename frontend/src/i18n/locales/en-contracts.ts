@@ -81,6 +81,23 @@ export const contracts = {
       countLabel: '{{count}} work orders',
     },
   },
+  renewals: {
+    title: 'Renewals',
+    initial: 'Initial',
+    renewal: 'Renewal {{number}}',
+    from: 'From',
+    to: 'To',
+    renewalDate: 'Renewal date',
+    previousDates: 'Previous dates',
+    previousDatesValue: 'renewal {{renewal}}, expiry {{expiry}}',
+    by: 'Renewed by',
+    workOrders: 'Work orders',
+    undo: 'Undo renewal',
+    undoConfirm: 'Undo renewal',
+    undoDescription: 'The contract dates will go back to those before the renewal. Only possible while the period has no work orders.',
+    undoSuccess: 'Renewal undone.',
+    undoError: 'Unable to undo the renewal. Please try again.',
+  },
   actions: {
     // FLAT paths (strings), consumed by `features/table/row-actions.tsx`
     // via `t(action.label)` — `ContractColumnCatalog::actions()` (backend)
@@ -89,6 +106,7 @@ export const contracts = {
     // `*Dialog` keys below.
     validate: 'Validate contract',
     program: 'Program',
+    renew: 'Renew',
     terminate: 'Terminate contract',
     reactivate: 'Reopen contract',
     changeStatus: 'Change status',
@@ -117,7 +135,21 @@ export const contracts = {
       dateRequired: 'Validation date is required.',
       dateFuture: 'Validation date cannot be in the future.',
     },
+    renewDialog: {
+      description: 'Open a new period: the offer lines become programmable again and the previous work orders stay untouched.',
+      expiryDate: 'New expiry date',
+      renewalDate: 'New renewal date',
+      expiryRequired: 'The new expiry date is required.',
+      renewalAfterExpiry: 'The renewal date cannot be later than the expiry date.',
+      confirm: 'Renew',
+      saving: 'Renewing…',
+      success: 'Contract renewed successfully.',
+      genericError: 'Unable to renew the contract. Please try again.',
+    },
     programDialog: {
+      period: 'Period: {{period}}',
+      periodInitial: 'Initial',
+      periodRenewal: 'Renewal {{number}}',
       description: "Group the offer's product lines into one or more work orders and save them all together.",
       linesLabel: 'Offer lines',
       linesLoadError: 'Unable to load the product lines. Please try again.',

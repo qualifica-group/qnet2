@@ -8,6 +8,7 @@ import i18n from '@/i18n'
 import { formatDate } from '@/lib/formatting/date-display'
 import { contracts as contractsEn } from '@/i18n/locales/en-contracts'
 import { ContractDetailView } from '@/features/contracts/contract-detail'
+import { NEVER_RENEWED } from '@/features/contracts/contract-renewal-fixtures'
 import type { ContractDetailWithPermissions } from '@/features/contracts/types'
 
 /**
@@ -81,7 +82,6 @@ vi.mock('@/features/table/table-view', () => ({
     return <div>work-orders-table-stub</div>
   }),
 }))
-
 const confirmMock = vi.fn<ConfirmFn>()
 
 function contract(overrides: Partial<ContractDetailWithPermissions> = {}): ContractDetailWithPermissions {
@@ -133,7 +133,7 @@ function contract(overrides: Partial<ContractDetailWithPermissions> = {}): Contr
     alert: null,
     days_to_expiry: null,
     days_to_renewal: null,
-    offer_lines: [],
+    offer_lines: [], ...NEVER_RENEWED,
     summary: {
       revenue: { net: '1000.00', vat: '220.00', gross: '1220.00' },
       cost: { net: '400.00', vat: '88.00', gross: '488.00' },
@@ -231,11 +231,11 @@ describe('ContractDetailView — fields (AC-043, rev. direttiva 2026-08-31)', ()
     // Quote date (quote.created_at), acceptance, validation (+ who), renewal,
     // expiry, termination (+ who) — every lifecycle date AC-043 requires.
     expect(screen.getByText(formatExpectedDate('2026-01-05T00:00:00Z'))).toBeInTheDocument()
-    expect(screen.getByText(formatExpectedDate('2026-01-10'))).toBeInTheDocument()
+    expect(screen.getAllByText(formatExpectedDate('2026-01-10'))).toHaveLength(2) // REQUIREMENT CHANGED (spec 0358): the "Rinnovi" Initial row repeats acceptance and expiry
     expect(screen.getByText(formatExpectedDate('2026-01-15'), { exact: false })).toBeInTheDocument()
     expect(screen.getByText('Elena Conti', { exact: false })).toBeInTheDocument()
     expect(screen.getByText(formatExpectedDate('2026-06-01'))).toBeInTheDocument()
-    expect(screen.getByText(formatExpectedDate('2026-12-31'))).toBeInTheDocument()
+    expect(screen.getAllByText(formatExpectedDate('2026-12-31'))).toHaveLength(2)
     expect(screen.getByText(formatExpectedDate('2027-01-05'), { exact: false })).toBeInTheDocument()
     expect(screen.getByText('Marco Neri', { exact: false })).toBeInTheDocument()
 

@@ -98,6 +98,18 @@ final class WorkOrderColumnCatalog
                 'hasFilterValues' => false,
             ],
             [
+                // MAX(pivot.renewal_number) of the commessa (spec 0358, D-14); WorkOrderRenewalColumn.
+                'id' => 'renewal_number',
+                'label' => 'workOrders.columns.renewal_number',
+                'type' => 'number',
+                'visible' => true,
+                'sortable' => true,
+                'filterable' => true,
+                'filterType' => 'number',
+                'editable' => false,
+                'hasFilterValues' => false,
+            ],
+            [
                 // The client, `{id, name}` through `quote.opportunity.registry`
                 // (WorkOrderRegistryColumn). Read-only: it follows the quote.
                 'id' => 'registry',
@@ -239,6 +251,7 @@ final class WorkOrderColumnCatalog
             ['columnId' => 'contract_number', 'type' => 'text'],
             ['columnId' => 'quote', 'type' => 'text'],
             ['columnId' => 'contract_expiry_date', 'type' => 'date'],
+            ['columnId' => 'renewal_number', 'type' => 'number'],
             ['columnId' => 'registry', 'type' => 'set'],
             ['columnId' => 'type', 'type' => 'set'],
             ['columnId' => 'callback_date', 'type' => 'date'],

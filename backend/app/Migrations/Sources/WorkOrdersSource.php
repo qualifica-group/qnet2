@@ -277,6 +277,7 @@ class WorkOrdersSource extends AbstractMigrationSource
 
         $programmed = DB::table('quote_line_work_order')
             ->whereIn('quote_line_id', $lineIdsByOldId->values())
+            ->where('renewal_number', 0)
             ->pluck('quote_line_id')
             ->map(intval(...))
             ->all();

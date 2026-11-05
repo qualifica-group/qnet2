@@ -15,7 +15,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Loads, in a fixed number of queries, the invoices whose accruals depend on
- * one invoice (the ones sharing a quote line, spec 0212 D-5) and builds their
+ * one invoice (the ones sharing a quote line and a commessa, spec 0212 D-5 / 0358 D-8) and builds their
  * buckets: the current commissions (D-1/D-3) plus the buckets that already
  * have movements (expected 0 when the commission is gone, D-2).
  */
@@ -41,7 +41,10 @@ final class AccrualStateLoader
         // order (no deadlocks) and installments and movements are read with locking reads: two syncs on
         // invoices sharing a quote line serialize here, and under REPEATABLE READ a stale snapshot taken
         // earlier by the caller cannot hide the other sync's movements (duplicate delta).
-        $invoiceLines = InvoiceLine::query()->whereIn('quote_line_id', $lineIds)->get(['invoice_id', 'quote_line_id', 'net_amount']);
+        // Only invoices of the same commessa share the commission (spec 0358, D-8); no commessa = a group of its own.
+        $sameWorkOrder = Invoice::query()->select('id')
+            ->when($invoice->work_order_id === null, fn ($query) => $query->whereNull('work_order_id'), fn ($query) => $query->where('work_order_id', $invoice->work_order_id));
+        $invoiceLines = InvoiceLine::query()->whereIn('quote_line_id', $lineIds)->whereIn('invoice_id', $sameWorkOrder)->get(['invoice_id', 'quote_line_id', 'net_amount']);
         $invoices = $this->lockInvoices($invoiceLines->pluck('invoice_id')->push($invoice->id)->unique()->sort()->values()->all());
 
         // Step 3: buckets of the current commissions, then the ones that only have movements

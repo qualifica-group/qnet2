@@ -30,6 +30,7 @@ import type { ContractDetail, ContractStatusGroupValue } from '@/features/contra
 export interface ContractLifecycleActions {
   validate: boolean
   program: boolean
+  renew: boolean
   terminate: boolean
   edit: boolean
   changeStatus: boolean
@@ -65,10 +66,13 @@ export function isContractClosed(contract: ContractDetail): boolean {
 export function contractLifecycleActions(contract: ContractDetail): ContractLifecycleActions {
   const working = isWorking(contract)
   const closedWon = contract.contract_status.group === 'closed_won'
+  const program = closedWon || (working && !contract.is_suspended && contract.validated_at !== null)
 
   return {
     validate: working && !contract.is_suspended && contract.validated_at === null,
-    program: closedWon || (working && !contract.is_suspended && contract.validated_at !== null),
+    program,
+    // Spec 0358: renewing is gated exactly like programming.
+    renew: program,
     terminate: working || closedWon,
     edit: working,
     changeStatus: working,

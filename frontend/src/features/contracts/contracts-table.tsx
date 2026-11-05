@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { BadgeCheck, Ban, CalendarClock, Layers, RotateCcw, Shuffle } from 'lucide-react'
+import { BadgeCheck, Ban, CalendarClock, Layers, RefreshCw, RotateCcw, Shuffle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/page-header'
@@ -25,11 +25,11 @@ import { CONTRACTS_DOMAIN } from '@/features/contracts/api'
  * on the detail view — never duplicated as a standalone grid dialog. The
  * backend's row-action catalog (spec 0072, MT-04; `program` renamed from
  * `schedule` in spec 0095) advertises them per-row (`change_status`,
- * `validate`, `program`, `terminate`, `reactivate`) so the grid still needs
+ * `validate`, `program`, `renew`, `terminate`, `reactivate`) so the grid still needs
  * to react to a click: it opens the detail, where the actual gated action
  * button/dialog is.
  */
-const ACTIONS_OPENING_DETAIL = new Set(['change_status', 'validate', 'program', 'terminate', 'reactivate'])
+const ACTIONS_OPENING_DETAIL = new Set(['change_status', 'validate', 'program', 'renew', 'terminate', 'reactivate'])
 
 /**
  * The icon names `ContractColumnCatalog::actions()` advertises that the
@@ -41,6 +41,7 @@ const ACTIONS_OPENING_DETAIL = new Set(['change_status', 'validate', 'program', 
 const CONTRACT_ACTION_ICONS: ActionIconMap = {
   'check-circle': BadgeCheck,
   'calendar-clock': CalendarClock,
+  'refresh-cw': RefreshCw,
   shuffle: Shuffle,
   ban: Ban,
   'rotate-ccw': RotateCcw,

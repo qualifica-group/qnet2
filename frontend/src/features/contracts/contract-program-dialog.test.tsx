@@ -81,13 +81,13 @@ const LINES = [
   line(15, 'Supporto', null),
 ]
 
-function renderDialog() {
+function renderDialog(renewalNumber?: number) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const onCreated = vi.fn()
   const onOpenChange = vi.fn()
   render(
     <QueryClientProvider client={client}>
-      <ContractProgramDialog open onOpenChange={onOpenChange} contractId={7} onCreated={onCreated} />
+      <ContractProgramDialog open onOpenChange={onOpenChange} contractId={7} renewalNumber={renewalNumber} onCreated={onCreated} />
     </QueryClientProvider>,
   )
   return { onCreated, onOpenChange }
@@ -121,6 +121,23 @@ beforeEach(() => {
   vi.mocked(toast.success).mockReset()
   vi.mocked(toast.error).mockReset()
   fetchWorkOrderFormContextMock.mockReset()
+})
+
+describe('ContractProgramDialog - period (spec 0358 AC-029)', () => {
+  it.each([
+    [0, 'Period: Initial'],
+    [2, 'Period: Renewal 2'],
+  ])('shows the current period for renewal_number %i', async (renewalNumber, label) => {
+    renderDialog(renewalNumber)
+    await screen.findByText('Consulenza')
+    expect(screen.getByText(label)).toBeInTheDocument()
+  })
+
+  it('hides the period line when the contract period is unknown', async () => {
+    renderDialog()
+    await screen.findByText('Consulenza')
+    expect(screen.queryByText(/^Period:/)).not.toBeInTheDocument()
+  })
 })
 
 describe('ContractProgramDialog - lines (AC-028)', () => {

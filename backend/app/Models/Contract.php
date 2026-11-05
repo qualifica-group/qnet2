@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Contract entity (spec 0072): the additional lifecycle data for a Quote that
@@ -90,6 +91,30 @@ class Contract extends BaseModel
     public function terminatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'terminated_by');
+    }
+
+    /**
+     * The renewal history (spec 0358, D-2), oldest first. The initial period
+     * (0) has no row.
+     *
+     * @return HasMany<ContractRenewal, $this>
+     */
+    public function renewals(): HasMany
+    {
+        return $this->hasMany(ContractRenewal::class)->orderBy('number');
+    }
+
+    /**
+     * The current renewal period (spec 0358, D-1): MAX(number) or 0. Reads the
+     * loaded relation when present, so list/detail rendering stays N+1 free.
+     */
+    public function currentRenewalNumber(): int
+    {
+        if ($this->relationLoaded('renewals')) {
+            return (int) $this->renewals->max('number');
+        }
+
+        return (int) $this->renewals()->reorder()->max('number');
     }
 
     /**

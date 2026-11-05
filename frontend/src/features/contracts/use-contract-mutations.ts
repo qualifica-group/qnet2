@@ -3,7 +3,9 @@ import {
   changeContractStatus,
   contractDetailQueryKey,
   reactivateContract,
+  renewContract,
   terminateContract,
+  undoContractRenewal,
   updateContract,
   validateContract,
 } from '@/features/contracts/api'
@@ -11,10 +13,12 @@ import type {
   ChangeContractStatusPayload,
   ContractDetailWithPermissions,
   ReactivateContractPayload,
+  RenewContractPayload,
   TerminateContractPayload,
   UpdateContractPayload,
   ValidateContractPayload,
 } from '@/features/contracts/types'
+import type { RenewContractFormValues } from '@/features/contracts/contract-renew-schema'
 import type {
   ChangeContractStatusFormValues,
   EditContractFormValues,
@@ -43,6 +47,11 @@ export function buildTerminatePayload(values: TerminateContractFormValues): Term
     termination_reason: values.termination_reason,
     ...omitIfNull('contract_status_id', values.contract_status_id),
   }
+}
+
+/** An empty renewal date is sent as `null` (spec 0358). */
+export function buildRenewPayload(values: RenewContractFormValues): RenewContractPayload {
+  return { renewal_date: values.renewal_date === '' ? null : values.renewal_date, expiry_date: values.expiry_date }
 }
 
 /** `contract_status_id` is validated non-null by the schema before this runs. */
@@ -125,6 +134,15 @@ export function useValidateContract(options: ContractMutationOptions) {
 
 export function useTerminateContract(options: ContractMutationOptions) {
   return useContractMutation(options, terminateContract)
+}
+
+export function useRenewContract(options: ContractMutationOptions) {
+  return useContractMutation(options, renewContract)
+}
+
+/** The payload is the id of the renewal to undo. */
+export function useUndoContractRenewal(options: ContractMutationOptions) {
+  return useContractMutation(options, undoContractRenewal)
 }
 
 /** Empty payload on the suspended path, destination status on the disdetto one. */

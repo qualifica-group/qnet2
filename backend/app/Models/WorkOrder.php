@@ -348,7 +348,7 @@ class WorkOrder extends BaseModel
      */
     public function quoteLines(): BelongsToMany
     {
-        return $this->belongsToMany(QuoteLine::class, 'quote_line_work_order')->orderBy('sort_order');
+        return $this->belongsToMany(QuoteLine::class, 'quote_line_work_order')->withPivot('renewal_number')->orderBy('sort_order');
     }
 
     /**

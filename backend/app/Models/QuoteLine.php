@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * One revenue or cost row against a Quote (spec 0065, D-11): revenue and cost
@@ -122,15 +121,6 @@ class QuoteLine extends BaseModel
     }
 
     /**
-     * The payment data of this line once programmed into a commessa (spec
-     * 0201): at most one, `quote_line_id` is unique.
-     */
-    public function payment(): HasOne
-    {
-        return $this->hasOne(WorkOrderLinePayment::class);
-    }
-
-    /**
      * The REVENUE row this COST row is imputed to (spec 0144, D-2) — NULL on
      * a generic cost or on any REVENUE row (which never sets this column).
      */
@@ -151,15 +141,15 @@ class QuoteLine extends BaseModel
     /**
      * The inverse of WorkOrder::quoteLines() (spec 0095, D-5): the work
      * order(s) this line has been programmed into, via the SAME
-     * `quote_line_work_order` pivot. D-4's `UNIQUE(quote_line_id)` guarantees
-     * this collection never holds more than one row — the relation stays
-     * BelongsToMany (the pivot's own shape), never a BelongsTo, so a future
-     * per-row pivot column stays reachable the same way from either side.
+     * `quote_line_work_order` pivot. `UNIQUE(quote_line_id, renewal_number)`
+     * (spec 0358) guarantees at most one work order PER renewal period, so the
+     * collection holds one row per period the line was programmed in
+     * (`pivot->renewal_number`).
      *
      * @return BelongsToMany<WorkOrder, $this>
      */
     public function workOrders(): BelongsToMany
     {
-        return $this->belongsToMany(WorkOrder::class, 'quote_line_work_order');
+        return $this->belongsToMany(WorkOrder::class, 'quote_line_work_order')->withPivot('renewal_number');
     }
 }

@@ -64,7 +64,13 @@ class UpdateWorkOrderLinePaymentRequest extends FormRequest
         /** @var QuoteLine $quoteLine */
         $quoteLine = $this->route('quoteLine');
 
-        $current = WorkOrderLinePayment::query()->where('quote_line_id', $quoteLine->id)->value('work_order_payment_status_id');
+        /** @var WorkOrder $workOrder */
+        $workOrder = $this->route('workOrder');
+
+        $current = WorkOrderLinePayment::query()
+            ->where('work_order_id', $workOrder->id)
+            ->where('quote_line_id', $quoteLine->id)
+            ->value('work_order_payment_status_id');
 
         return $current === null ? null : (int) $current;
     }

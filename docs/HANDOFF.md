@@ -3,6 +3,46 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Rinnovo contratti a periodi (spec 0358) — VERDE, COMMITTATO (2026-11-05)
+
+- Decisioni utente 2026-11-05: periodi di rinnovo (0 = Iniziale, N = Rinnovo N); dialog Rinnova con nuove date
+  precompilate della stessa durata; stessi prezzi/provvigioni (nessuna copia righe); stessi stati e stesso permesso di
+  Programma (`contracts.program` + `mayProgram`); "Annulla rinnovo" solo sull'ultimo e solo senza commesse nel periodo.
+- Schema: `contract_renewals` (storico: number, starts_on, previous_*/nuove date, renewed_by); periodo sul PIVOT
+  `quote_line_work_order.renewal_number` con UNIQUE(quote_line_id, renewal_number); `work_order_line_payments`
+  UNIQUE(work_order_id, quote_line_id). Migrazioni `2026_11_20_1000xx`, provate su MariaDB (migrate/rollback/migrate,
+  niente errno 1553). Periodo corrente DERIVATO: `Contract::currentRenewalNumber()` (nessuna colonna su contracts).
+- Regola: "una riga, una commessa PER PERIODO". Unico decisore del periodo: `App\Services\WorkOrders\RenewalPeriodResolver`
+  (righe nuove = periodo delle righe della stessa offerta gia' nella commessa, altrimenti il corrente). Usato da
+  WorkOrderLineWriter, programmable-lines, multi-programmable-lines, quote-offer-lines/for-select.
+- A valle: `QuoteLine::payment()` RIMOSSA (pagamenti letti dalla commessa); InvoiceLineGuard/ProformaRequestBillableLines
+  = una riga si fattura una volta PER COMMESSA; AccrualStateLoader raggruppa per (riga, invoices.work_order_id): la
+  provvigione matura per intero in ogni periodo; WorkOrderFigureSources `commission_actual` per fatture della commessa
+  (accrual senza fattura -> commessa col renewal_number piu' basso). Legacy WorkOrdersSource: "gia' programmata" solo
+  sul periodo 0.
+- API: POST `contracts/{c}/renewals` {renewal_date|null, expiry_date}; DELETE `contracts/{c}/renewals/{r}`
+  (scopeBindings) — `ContractRenewalController`, `RenewContractRequest`, `ContractRenewalService`,
+  `ContractPeriodWorkOrderCounter`, `ContractActionAvailability::mayUndoRenewal()`. ContractResource:
+  `renewal_number`, `renewals[]` (work_orders_count, can_undo), `initial_period_work_orders_count`,
+  `permissions.actions.renew`. Row action `renew` (icona `refresh-cw`) nella griglia contratti. Colonna griglia
+  commesse `renewal_number` ("Periodo", MAX del pivot).
+- FE: `contract-renew-dialog.tsx` + `contract-renew-schema.ts` + `contract-renewal-defaults.ts`,
+  `contract-renewals-section.tsx` (sempre visibile, riga Iniziale), periodo nel dialog Programma,
+  `work-orders/renewal-period-cell.tsx`. Guide in-app IT/EN: contracts (`renewal-periods`), work-orders, invoices,
+  commission-accruals.
+- Test: Spec0358 38/38; Contracts 196, WorkOrders 438; Vitest contracts/work-orders/help 662; tsc -b pulito.
+  REQUIREMENT CHANGED dichiarati: ContractAuthorizationTest (8 actions), QuoteLineWorkOrderMigrationTest,
+  WorkOrderTableTest, contract-detail.test.tsx (date ripetute nella riga Iniziale).
+- Suite completa: rossi ESTRANEI alla 0358 (preesistenti/ambiente): ManagementControl x4 (navigazione 0318),
+  SettlementApprovalTest AC-006 (data), PermissionCatalogueEndpointTest (694 vs 677), QualificaOperatorSeederTest x2,
+  TableBulkDeleteTest r.131 (utenti), AiAssistant x4, QuoteDocumentPdfTest x3 (LibreOffice); FE 11 unhandled
+  `toast.error is not a function` da `auth/form-errors.ts` (preesistente, confermato su contract-type-form.test.tsx).
+- Aperti: manuale Claude Docs non accessibile ("access") -> da aggiornare Contratti (Rinnova, periodi, storico,
+  Annulla rinnovo, Programma per periodo), Commesse (colonna Periodo), Fatture (una volta per commessa), Maturato.
+  Fuori scope: mappatura dei cicli di rinnovo legacy sui periodi (lavoro del legacy, backend.md §9),
+  QuoteLineDuplicator resta. `ContractsTableDefinition.php` a 498 righe (vicino al limite 500). `composer test` va in
+  timeout a 300s: serve `COMPOSER_PROCESS_TIMEOUT=0`. HANDOFF.md e' ~1 MB: da archiviare in `docs/handoff-archive/`.
+
 ## Blocco di primo accesso solo in produzione (spec 0359) — VERDE, COMMITTATO (2026-11-05)
 
 - Decisione utente 2026-11-05: il blocco di cambio password (0355 D-2: 403 `password_change_required` + popup)

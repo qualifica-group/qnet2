@@ -287,6 +287,14 @@ final class ContractColumnCatalog
                 'permission' => 'contracts.program',
             ],
             [
+                'key' => 'renew',
+                'label' => 'contracts.actions.renew',
+                'icon' => 'refresh-cw',
+                'type' => 'action',
+                'confirm' => true,
+                'permission' => 'contracts.program',
+            ],
+            [
                 'key' => 'change_status',
                 'label' => 'contracts.actions.changeStatus',
                 'icon' => 'shuffle',

@@ -18,6 +18,7 @@ use App\Tables\Shared\WorkOrderWorkflowStatusOptions;
 use App\Tables\WorkOrders\WorkOrderCellWriter;
 use App\Tables\WorkOrders\WorkOrderColumnCatalog;
 use App\Tables\WorkOrders\WorkOrderDerivedColumns;
+use App\Tables\WorkOrders\WorkOrderRenewalColumn;
 use App\Tables\WorkOrders\WorkOrderWorkflowStatusColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -65,6 +66,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
         private readonly WorkOrderCellWriter $cellWriter,
         private readonly WorkOrderSourceQuotes $sourceQuotes,
         private readonly WorkOrderWorkflowStatusColumn $workflowStatusColumn,
+        private readonly WorkOrderRenewalColumn $renewalColumn,
     ) {}
 
     /**
@@ -269,6 +271,7 @@ class WorkOrdersTableDefinition extends AbstractTableDefinition
             'contract_number' => $sourceQuotes === null ? $row->quote?->code : $this->joinDistinct($sourceQuotes->pluck('code')),
             'quote' => $sourceQuotes === null ? $row->quote?->title : $this->joinDistinct($sourceQuotes->pluck('title')),
             'contract_expiry_date' => $row->quote?->contract?->expiry_date,
+            WorkOrderRenewalColumn::COLUMN => $this->renewalColumn->project($row),
             'registry' => $sourceQuotes === null
                 ? $this->registrySummary($row->quote?->opportunity?->registry)
                 : $this->joinDistinct($sourceQuotes->map(static fn ($quote) => $quote->opportunity?->registry?->name)->sort()),

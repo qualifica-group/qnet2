@@ -37,6 +37,8 @@ vi.mock('@/features/contracts/api', () => ({
   changeContractStatus: vi.fn(),
   terminateContract: vi.fn(),
   reactivateContract: vi.fn(),
+  renewContract: vi.fn(),
+  undoContractRenewal: vi.fn(),
   fetchContractProgrammableLines: vi.fn(),
   createContractWorkOrdersBatch: vi.fn(),
 }))
@@ -131,6 +133,9 @@ function contract(status: ContractStatusRef, actions: Partial<ResourcePermission
     alert: null,
     days_to_expiry: null,
     days_to_renewal: null,
+    renewal_number: 0,
+    renewals: [],
+    initial_period_work_orders_count: 0,
     offer_lines: [],
     summary: {
       revenue: { net: '1000.00', vat: '220.00', gross: '1220.00' },
