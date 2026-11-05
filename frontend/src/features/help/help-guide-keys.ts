@@ -67,6 +67,7 @@ export const HELP_GUIDE_KEYS: readonly string[] = [
   'ledger',
   'treasury-movements',
   'account-statements',
+  'treasury-overview',
   'management-control',
   'management-control-exposure',
   'management-control-cash-flow',

@@ -28,6 +28,7 @@ export const navigation = {
   financialAccounts: 'Gestione Conti',
   treasuryMovements: 'Movimenti di tesoreria',
   accountStatements: 'Estratto conto',
+  treasuryOverview: 'Quadro finanziario',
   managementControl: 'Controllo di gestione',
   incomeStatement: 'Conto economico',
   exposure: 'Scadenzario ed esposizione',

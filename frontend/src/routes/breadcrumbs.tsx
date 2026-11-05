@@ -47,6 +47,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'financial-accounts': 'navigation.financialAccounts',
   'treasury-movements': 'navigation.treasuryMovements',
   'account-statements': 'navigation.accountStatements',
+  'treasury-overview': 'navigation.treasuryOverview',
   'proforma-requests': 'navigation.proformaRequests',
   'purchase-requests': 'navigation.purchaseRequests',
   'purchase-request-lines': 'navigation.purchaseRequestLines',

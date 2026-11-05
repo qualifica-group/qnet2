@@ -27,6 +27,7 @@ export const navigation = {
   financialAccounts: 'Financial accounts',
   treasuryMovements: 'Treasury movements',
   accountStatements: 'Account statements',
+  treasuryOverview: 'Treasury overview',
   managementControl: 'Management control',
   incomeStatement: 'Income statement',
   exposure: 'Schedule and exposure',

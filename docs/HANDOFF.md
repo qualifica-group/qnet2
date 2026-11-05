@@ -3,7 +3,30 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
-## Tesoreria fase B "Abbuono / stralcio" (spec 0361) — VERDE, NON COMMITTATO (2026-11-05)
+## Tesoreria fase C "Quadro finanziario" (spec 0362) — VERDE, NON COMMITTATO (2026-11-05)
+
+- Spec `docs/specs/0362-treasury-overview.xml` (approvata). Decisioni: permesso `treasury-movements.view` (nessuno
+  nuovo); previsione 30/60/90 = liquidita' oggi + rate attive in scadenza da oggi a oggi+N - rate passive, scaduti e
+  ordini impegnati esclusi; crediti/debiti su fatture + proforma; posizione netta = liquidita' + crediti - debiti.
+- Backend: `GET /api/treasury-overview?company_id=` (`TreasuryOverviewController`, `TreasuryOverviewRequest`,
+  `TreasuryOverviewBuilder` + `TreasuryScheduleSnapshot` in `app/Services/Treasury`; riusa
+  `AccountStatementService::balances/unassigned`, `Receivable/PayableScheduleAggregator::scopedInstallments` e
+  `AgingSql`). Rotta in `routes/api/account-statements.php`; menu `treasury-overview` primo in `accounting-finance`.
+  Le date `due_date`/`movement_date` possono avere l'orario in SQLite: limiti superiori ESCLUSIVI (giorno dopo).
+- Frontend: `features/treasury-overview/` (pannello, card, previsione, da verificare, filtro societa' dai conti di
+  `useBalances(null)`), pagina `pages/treasury-overview-page.tsx`, rotta + breadcrumb, i18n
+  `{it,en}-treasury-overview.ts` (namespace `treasuryOverview`) + `navigation.treasuryOverview`. Link senza filtri
+  griglia (non supportati): conto -> `/account-statements?account=<id>`.
+- Guide: nuova `treasury-overview` IT/EN, `HELP_GUIDE_KEYS` 106 -> 107 (REQUIREMENT CHANGED nel test).
+- Verifiche: Pest `tests/Feature/Treasury/TreasuryOverviewTest.php` 6/6; Vitest overview + help + rotte 171 verdi;
+  ESLint e Pint puliti; `tsc -b --force` 0. Suite backend completa (PHPRC con memory_limit 2048M): 13.943 test,
+  rossi solo i 9 PREESISTENTI estranei (TableBulkDelete, catalogo AC-004, 2 QualificaOperatorSeeder,
+  SettlementApproval AC-006, 4 ManagementControl `management-control-section`).
+- Manuale Claude Docs: NON aggiornato. Sezione nuova "Quadro finanziario" (+ quelle arretrate di fase A e B).
+- Prossimo: fase D (spunta/riconciliazione, ricorrenti, compensazioni); eventuali filtri via URL sulle griglie
+  scadenziari per i link del Quadro.
+
+## Tesoreria fase B "Abbuono / stralcio" (spec 0361) — VERDE, COMMITTATO 6f646e9b (2026-11-05)
 
 - Spec `docs/specs/0361-installment-write-off.xml` (approvata). Decisioni: terza scelta del residuo `write_off` su
   incasso (attivo) e pagamento (passivo); motivo `rounding` (Abbuono) / `bad_debt` (Stralcio) + nota; stralcio anche con

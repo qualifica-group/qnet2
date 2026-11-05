@@ -21,6 +21,7 @@ beforeAll(async () => {
 const ROUTES = [
   { path: 'treasury-movements', label: 'Treasury movements' },
   { path: 'account-statements', label: 'Account statements' },
+  { path: 'treasury-overview', label: 'Treasury overview' },
 ]
 
 describe('treasury routes (spec 0360)', () => {
@@ -45,6 +46,8 @@ describe('treasury routes (spec 0360)', () => {
     expect(itNavigation.accountStatements).toBe('Estratto conto')
     expect(enNavigation.treasuryMovements).toBe('Treasury movements')
     expect(enNavigation.accountStatements).toBe('Account statements')
+    expect(itNavigation.treasuryOverview).toBe('Quadro finanziario')
+    expect(enNavigation.treasuryOverview).toBe('Treasury overview')
     for (const p of [itPermissions, enPermissions]) {
       expect(p.resources['treasury-movements']).toBeTruthy()
       expect(p.resources['treasury-types']).toBeTruthy()

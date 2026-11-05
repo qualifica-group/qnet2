@@ -1,0 +1,51 @@
+/** Spec 0362: namespace `treasuryOverview` (pagina Quadro finanziario). */
+export const treasuryOverview = {
+  forbidden: 'Non hai i permessi per vedere il quadro finanziario.',
+  company: 'Società',
+  allCompanies: 'Tutte',
+  loading: 'Caricamento...',
+  loadError: 'Impossibile caricare il quadro finanziario. Riprova.',
+  accountTypes: { bank_account: 'Banca', card: 'Carta', cash: 'Cassa' },
+  liquidity: {
+    title: 'Liquidità',
+    total: 'Totale conti',
+    accounts: 'Conti',
+    noAccounts: 'Nessun conto.',
+  },
+  receivable: { title: 'Crediti verso clienti' },
+  payable: { title: 'Debiti verso fornitori' },
+  schedule: {
+    open: 'Aperto',
+    notDue: 'A scadere',
+    overdue: 'Scaduto',
+    buckets: 'Scaduto per fascia',
+  },
+  buckets: {
+    overdue_1_30: 'Scaduto 1-30 giorni',
+    overdue_31_60: 'Scaduto 31-60 giorni',
+    overdue_61_90: 'Scaduto 61-90 giorni',
+    overdue_over_90: 'Scaduto oltre 90 giorni',
+  },
+  netPosition: {
+    title: 'Posizione netta',
+    hint: 'Liquidità + crediti aperti - debiti aperti.',
+  },
+  forecast: {
+    title: 'Previsione',
+    hint: 'Saldo previsto partendo dalla liquidità di oggi, con le rate in scadenza da oggi alla data indicata. Gli scaduti non sono inclusi.',
+    window: 'Periodo',
+    days: '{{days}} giorni (fino al {{until}})',
+    receivable: 'Incassi attesi',
+    payable: 'Pagamenti attesi',
+    expectedBalance: 'Saldo previsto',
+  },
+  toVerify: {
+    title: 'Da verificare',
+    unassigned_one: '{{count}} incasso/pagamento senza conto',
+    unassigned_other: '{{count}} incassi/pagamenti senza conto',
+    unassignedAmounts: 'Incassi {{collections}} · Pagamenti {{payments}}',
+    adjustments_one: '{{count}} rettifica di saldo nel mese {{month}}',
+    adjustments_other: '{{count}} rettifiche di saldo nel mese {{month}}',
+    adjustmentAmounts: 'Entrate {{inflow}} · Uscite {{outflow}}',
+  },
+}

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Treasury\AccountStatementController;
+use App\Http\Controllers\Treasury\TreasuryOverviewController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -16,3 +17,6 @@ Route::get('account-statements/balances', [AccountStatementController::class, 'b
 Route::get('account-statements/unassigned', [AccountStatementController::class, 'unassigned']);
 Route::get('financial-accounts/{financialAccount}/statement', [AccountStatementController::class, 'statement']);
 Route::get('financial-accounts/{financialAccount}/statement/export', [AccountStatementController::class, 'export']);
+
+// Spec 0362: treasury overview ("Quadro finanziario"), `treasury-movements.view`.
+Route::get('treasury-overview', TreasuryOverviewController::class);

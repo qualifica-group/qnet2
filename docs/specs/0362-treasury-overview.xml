@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<spec id="0362-treasury-overview" status="approved" owner="utente" date="2026-11-05">
+
+  <goal>
+    Tesoreria fase C "Quadro finanziario": una pagina di sola lettura che mostra, per una societa' o per Tutte, quanta
+    liquidita' c'e' su banche, casse e carte, quanto resta da incassare dai clienti e da pagare ai fornitori (con gli
+    scaduti per fascia), la posizione netta, il saldo previsto a 30/60/90 giorni e cosa va verificato. Ogni numero
+    porta all'elenco che lo compone.
+  </goal>
+
+  <context>
+    Prospetto: https://claude.ai/artifact/BA1WMdXoBGC8Y3c6Gjf14y (blocco 5, fase C). Dipende da spec 0360 (fase A,
+    saldi e movimenti) e 0361 (fase B, abbuoni: il `residual_amount` delle rate e' gia' al netto degli abbuoni).
+
+    Decisioni utente 2026-11-05:
+    - D-1 (permesso): la pagina e l'endpoint richiedono `treasury-movements.view`, lo stesso di movimenti ed
+      estratto conto. Nessun permesso nuovo. Il Quadro mostra crediti/debiti anche a chi non ha
+      `management-control.view`.
+    - D-2 (previsione): saldo previsto a N giorni = liquidita' di oggi + residuo delle rate attive con scadenza da
+      oggi a oggi+N (inclusi) - residuo delle rate passive nella stessa finestra. Gli scaduti NON entrano nella
+      previsione (sono mostrati a parte); gli ordini d'acquisto impegnati NON entrano.
+    - D-3 (documenti): crediti e debiti contano fatture E proforma (attive e passive), cioe' `document_type = all`
+      dell'esposizione.
+    - D-4 (posizione netta): liquidita' totale + crediti aperti - debiti aperti. Niente impegni.
+    - D-5: societa' singola o Tutte (prospetto, "Decisioni prese"). Gli incassi senza conto restano nella lista "da
+      verificare" (prospetto). La spunta dei movimenti e' fase D: "movimenti non spuntati" e' fuori scope.
+
+    Fatti verificati nel codice (feature/amministrazione @ 6f646e9b):
+    - Liquidita': `App\Services\Treasury\AccountStatementService::balances(?int $companyId, CarbonImmutable $date)`
+      -> `{date, accounts:[{id,name,type,company:{id,name}|null,balance}], total}`, importi stringa decimale
+      (`AccountStatementFacts::toDecimal`), unica regola di saldo (apertura + fatti dal giorno di apertura).
+      `FinancialAccountType`: bank_account, card, cash. `financial_accounts.company_id` nullable: con filtro societa'
+      i conti senza societa' sono esclusi (comportamento attuale di `balances`).
+    - Incassi/pagamenti senza conto: `AccountStatementService::unassigned(?int $companyId)` ->
+      `{count, rows:[{source: collection|payment, installment_id, document, registry, date, amount}]}`.
+    - Scadenziari e fasce: `App\Services\ManagementControl\Exposure\ReceivableScheduleAggregator` /
+      `PayableScheduleAggregator` (`scopedInstallments(ExposureFilters)` pubblico, colonne via `columns()`), SQL
+      delle fasce in `AgingSql::buckets()` con chiavi `due_0_30, due_31_60, due_over_60, overdue_1_30,
+      overdue_31_60, overdue_61_90, overdue_over_90` (giorni di ritardo = oggi - scadenza). `ExposureFilters`
+      (`companyIds`, `documentType` TYPE_ALL). Importi in centesimi interi (`ExposureSupport::cents`).
+    - Cash flow previsionale (spec 0270, `CashFlowBuilder`) ragiona per mese e include gli impegni: la previsione a
+      giorni del Quadro riusa le stesse sorgenti (rate con `residual_amount > 0`) ma per finestra di giorni, senza
+      impegni (D-2). Non si modifica `CashFlowBuilder`.
+    - Movimenti manuali: tabella `treasury_movements` (`type` income|expense|transfer|adjustment, `direction`
+      in|out per adjustment, `movement_date`, `financial_account_id`, `amount`). Rettifiche del mese = type
+      adjustment con `movement_date` nel mese corrente; filtro societa' via `financial_accounts.company_id`.
+    - Rotte treasury in `backend/routes/api/account-statements.php` (gruppo auth:sanctum), controller
+      `App\Http\Controllers\Treasury\AccountStatementController`, FormRequest in `App\Http\Requests\Treasury`
+      (pattern `BalancesRequest`: `company_id` nullable exists:companies). Envelope `BaseApiController::ok()`.
+    - Menu: `backend/config/navigation/accounting.php` gruppo `accounting-finance` (ledger, financial-accounts,
+      treasury-movements, account-statements). Icona `wallet` presente in `frontend/src/features/navigation/icon-map.ts`.
+    - FE: rotte lazy in `frontend/src/routes/app-child-routes.tsx` + `breadcrumbs.tsx`; pagine in
+      `frontend/src/pages/`; feature `frontend/src/features/account-statements/` (estratto conto, deep link
+      `?account=<id>` gia' supportato, `UnassignedBox`). Esposizione FE linka `/invoice-installments`,
+      `/purchase-invoice-installments`, `/ledger?registry=<id>` senza filtri griglia. i18n treasury in
+      `frontend/src/i18n/locales/{it,en}-account-statements.ts` e `{it,en}-navigation.ts`. Formato euro
+      `formatEuro` da `features/invoices/invoice-format`.
+    - Guide in-app: `HELP_GUIDE_KEYS` in `frontend/src/features/help/help-guide-keys.ts` + `content/{it,en}/<key>.ts`.
+  </context>
+
+  <scope>
+    <in>
+      <item>Endpoint `GET /api/treasury-overview` (sola lettura) con builder `App\Services\Treasury\TreasuryOverviewBuilder` che compone: liquidita' (via `AccountStatementService::balances`), crediti/debiti aperti con scaduti per fascia (via `scopedInstallments` + `AgingSql`), posizione netta, previsione 30/60/90, da verificare (senza conto + rettifiche del mese).</item>
+      <item>FormRequest `TreasuryOverviewRequest` (`treasury-movements.view`, `company_id` nullable).</item>
+      <item>Voce di menu "Quadro finanziario" (`treasury-overview`, `/treasury-overview`, icona `wallet`) PRIMA in Contabilita' > Finanza.</item>
+      <item>Pagina FE `/treasury-overview`: selettore societa' (Tutte o una), schede Liquidita' (con elenco conti), Crediti, Debiti, Posizione netta, tabella Previsione 30/60/90, riquadro Da verificare. Link: conto -> `/account-statements?account=<id>`; liquidita' totale -> `/account-statements`; crediti/scaduti attivi -> `/invoice-installments`; debiti/scaduti passivi -> `/purchase-invoice-installments`; senza conto -> `/account-statements`; rettifiche -> `/treasury-movements`.</item>
+      <item>i18n IT/EN, guida in-app nuova `treasury-overview` (IT+EN) + chiave in `HELP_GUIDE_KEYS`.</item>
+    </in>
+    <out>
+      <item>Spunta/riconciliazione, "movimenti non spuntati", modelli ricorrenti, compensazioni (fase D).</item>
+      <item>Filtri preimpostati via URL sulle griglie scadenziari/movimenti (oggi non supportati): i link aprono l'elenco senza filtro, come l'Esposizione. Da proporre a parte.</item>
+      <item>Ordini d'acquisto impegnati nella previsione e nella posizione netta (D-2, D-4).</item>
+      <item>Grafici, export Excel/PDF del Quadro, confronto con periodi precedenti, cache aggregata.</item>
+      <item>Modifiche a `CashFlowBuilder`, `ExposureBuilder`, `AccountStatementService` oltre al riuso dei metodi pubblici esistenti.</item>
+      <item>Nuovi permessi; filtro per sede o per tipo documento.</item>
+    </out>
+  </scope>
+
+  <data_contract>
+    <endpoint method="GET" path="/api/treasury-overview">
+      <request>
+        company_id: integer|null (opzionale, exists:companies). Assente/null = Tutte.
+      </request>
+      <response status="200">
+        Envelope `{ success: true, message, data }`. Importi = stringhe decimali con 2 cifre ("1234.50", "-12.00"),
+        calcolati in centesimi interi. `today` = data del server.
+        data: {
+          today: "YYYY-MM-DD",
+          company_id: number|null,
+          liquidity: {
+            total: string,
+            by_type: { bank_account: string, card: string, cash: string },
+            accounts: [ { id: number, name: string, type: "bank_account"|"card"|"cash",
+                          company: { id: number, name: string }|null, balance: string } ]
+          },
+          receivable: {
+            open_total: string,          // residuo > 0 delle rate attive (fatture + proforma)
+            not_due_total: string,       // open_total - overdue_total
+            overdue_total: string,       // scadenza &lt; oggi
+            overdue: { overdue_1_30: string, overdue_31_60: string, overdue_61_90: string, overdue_over_90: string }
+          },
+          payable: { stessa shape di receivable, sulle rate passive },
+          net_position: string,          // liquidity.total + receivable.open_total - payable.open_total
+          forecast: [                    // sempre 3 righe, days 30, 60, 90, in quest'ordine, cumulative da oggi
+            { days: 30|60|90, until: "YYYY-MM-DD" (oggi + days),
+              receivable: string,        // residuo rate attive con oggi &lt;= scadenza &lt;= until
+              payable: string,           // idem rate passive
+              expected_balance: string } // liquidity.total + receivable - payable
+          ],
+          to_verify: {
+            unassigned: { count: number, collections: string, payments: string },  // da unassigned(), somme per source
+            adjustments: { month: "YYYY-MM", count: number, inflow: string, outflow: string }  // type=adjustment nel mese corrente
+          }
+        }
+      </response>
+      <errors>
+        401 non autenticato; 403 senza `treasury-movements.view`; 422 `company_id` non intero o inesistente.
+      </errors>
+    </endpoint>
+    <navigation group="accounting-finance">
+      treasury-overview -> /treasury-overview (treasury-movements.view), label navigation.treasuryOverview, icon wallet,
+      primo figlio del gruppo.
+    </navigation>
+  </data_contract>
+
+  <acceptance_criteria>
+    <criterion id="AC-001">Dato un utente senza `treasury-movements.view`, quando chiama GET /api/treasury-overview, allora riceve 403; senza autenticazione 401. (Pest)</criterion>
+    <criterion id="AC-002">Dato `company_id` inesistente o non intero, allora 422 e nessun calcolo. (Pest)</criterion>
+    <criterion id="AC-003">Dati due conti della societa' A (banca e cassa) e uno della societa' B con saldi di apertura e movimenti, quando si chiede il Quadro con company_id=A, allora `liquidity.accounts` contiene solo i conti di A, ciascuno con lo stesso `balance` di `AccountStatementService::balances` a oggi, `by_type` somma per tipo e `total` = somma dei conti; senza company_id ci sono tutti i conti. (Pest)</criterion>
+    <criterion id="AC-004">Date rate attive aperte di fatture e proforma con scadenze a +10, -5, -45, -75, -120 giorni e una rata con abbuono totale, allora `receivable.open_total` somma i residui di tutte tranne quella abbuonata, `overdue` mette ogni scaduto nella sua fascia (1-30, 31-60, 61-90, oltre 90), `overdue_total` = somma fasce e `not_due_total` = open_total - overdue_total. (Pest)</criterion>
+    <criterion id="AC-005">Stesso scenario di AC-004 sulle rate passive -> `payable` con la stessa logica; il filtro company_id restringe crediti e debiti alla societa' del documento. (Pest)</criterion>
+    <criterion id="AC-006">Allora `net_position` = liquidity.total + receivable.open_total - payable.open_total, al centesimo. (Pest)</criterion>
+    <criterion id="AC-007">Date rate attive/passive aperte con scadenza oggi, +30, +31, +90, +91 e una scaduta, allora `forecast` ha 3 righe (30, 60, 90) con `until` = oggi+N; la rata di oggi e quella a +30 entrano gia' nei 30 giorni, +31 dai 60, +90 nei 90, +91 e la scaduta in nessuna; `expected_balance` = liquidity.total + receivable - payable di quella riga. (Pest, data congelata)</criterion>
+    <criterion id="AC-008">Dati un incasso e un pagamento senza conto e due rettifiche (una in entrata, una in uscita) nel mese corrente piu' una del mese precedente, allora `to_verify.unassigned` ha count 2 e le somme per source, `to_verify.adjustments` conta solo le due del mese con inflow/outflow corretti; con company_id i conteggi seguono la societa'. (Pest)</criterion>
+    <criterion id="AC-009">Dato il menu con `treasury-movements.view`, allora compare "Quadro finanziario" come prima voce di Contabilita' > Finanza; senza permesso no. (Pest navigazione)</criterion>
+    <criterion id="AC-010">Dato il payload di fixture, quando si apre /treasury-overview, allora la pagina mostra totale liquidita', elenco conti, crediti, debiti, fasce di scaduto, posizione netta, le 3 righe di previsione e il riquadro Da verificare, con importi formattati in euro. (Vitest)</criterion>
+    <criterion id="AC-011">Quando l'utente cambia societa' nel selettore, allora la query viene rifatta con `company_id` della societa' e "Tutte" la rifa senza parametro. (Vitest)</criterion>
+    <criterion id="AC-012">I link puntano a: conto -> `/account-statements?account=<id>`; crediti/scaduti attivi -> `/invoice-installments`; debiti/scaduti passivi -> `/purchase-invoice-installments`; senza conto -> `/account-statements`; rettifiche -> `/treasury-movements`. (Vitest)</criterion>
+    <criterion id="AC-013">Senza `treasury-movements.view` la pagina mostra il messaggio di accesso negato e non chiama l'API. (Vitest)</criterion>
+    <criterion id="AC-014">Guida in-app `treasury-overview` presente in IT ed EN con gli stessi id di sezione e chiave in `HELP_GUIDE_KEYS`; parity test verde. (Vitest)</criterion>
+  </acceptance_criteria>
+
+  <constraints>
+    - Nessuna nuova dipendenza; nessuna migrazione.
+    - Authz server-side nel FormRequest (`treasury-movements.view`); l'UI nasconde con `Can`, il backend autorizza.
+    - Importi in centesimi interi, uscita con `AccountStatementFacts::toDecimal`. Niente confronti aritmetici su
+      `residual_amount` oltre a `> 0` (SQLite somma REAL, vedi spec 0361).
+    - SQL costante con soli `?` legati (date, ids): nessun input in `selectRaw`.
+    - Numero di query indipendente dal numero di documenti (aggregati SQL); i saldi dei conti riusano `balances()`.
+    - Layering: controller sottile -> FormRequest -> `TreasuryOverviewBuilder::handle()` con `// Step N`; file &lt; 300 righe.
+    - FE: TanStack Query per i dati, componenti `components/ui/`, UI compatta, responsive 375/768/1024, i18n IT/EN.
+    - Manuale (CLAUDE.md §4-bis): guida in-app nuova; manuale Claude Docs: nuova sezione "Quadro finanziario".
+  </constraints>
+
+</spec>

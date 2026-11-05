@@ -6,6 +6,7 @@
 import { agentFiscalProfiles, commissionAccruals, enasarcoParameters } from './it-agent-commissions'
 import { commissionSettlementRuns, commissionSettlements } from './it-commission-settlements'
 import { accountStatements } from './it-account-statements'
+import { treasuryOverview } from './it-treasury-overview'
 import { financialAccounts } from './it-financial-accounts'
 import { invoiceEditor } from './it-invoice-editor'
 import { invoiceInstallments } from './it-invoice-installments'
@@ -26,6 +27,7 @@ export const accounting = {
   financialAccounts,
   treasuryMovements,
   accountStatements,
+  treasuryOverview,
   treasuryCollection,
   writeOff,
   treasuryTypes,

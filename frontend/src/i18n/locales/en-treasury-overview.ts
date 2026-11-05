@@ -1,0 +1,51 @@
+/** Spec 0362: namespace `treasuryOverview` (Treasury overview page). */
+export const treasuryOverview = {
+  forbidden: 'You do not have permission to view the treasury overview.',
+  company: 'Company',
+  allCompanies: 'All',
+  loading: 'Loading...',
+  loadError: 'Unable to load the treasury overview. Try again.',
+  accountTypes: { bank_account: 'Bank', card: 'Card', cash: 'Cash' },
+  liquidity: {
+    title: 'Liquidity',
+    total: 'Accounts total',
+    accounts: 'Accounts',
+    noAccounts: 'No accounts.',
+  },
+  receivable: { title: 'Customer receivables' },
+  payable: { title: 'Supplier payables' },
+  schedule: {
+    open: 'Open',
+    notDue: 'Not yet due',
+    overdue: 'Overdue',
+    buckets: 'Overdue by bucket',
+  },
+  buckets: {
+    overdue_1_30: 'Overdue 1-30 days',
+    overdue_31_60: 'Overdue 31-60 days',
+    overdue_61_90: 'Overdue 61-90 days',
+    overdue_over_90: 'Overdue over 90 days',
+  },
+  netPosition: {
+    title: 'Net position',
+    hint: 'Liquidity + open receivables - open payables.',
+  },
+  forecast: {
+    title: 'Forecast',
+    hint: 'Expected balance from today’s liquidity, with the installments falling due from today to the date shown. Overdue amounts are not included.',
+    window: 'Period',
+    days: '{{days}} days (until {{until}})',
+    receivable: 'Expected collections',
+    payable: 'Expected payments',
+    expectedBalance: 'Expected balance',
+  },
+  toVerify: {
+    title: 'To verify',
+    unassigned_one: '{{count}} collection/payment without account',
+    unassigned_other: '{{count}} collections/payments without account',
+    unassignedAmounts: 'Collections {{collections}} · Payments {{payments}}',
+    adjustments_one: '{{count}} balance adjustment in {{month}}',
+    adjustments_other: '{{count}} balance adjustments in {{month}}',
+    adjustmentAmounts: 'Inflow {{inflow}} · Outflow {{outflow}}',
+  },
+}

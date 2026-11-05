@@ -71,6 +71,13 @@ return [
             'permission' => null,
             'children' => [
                 [
+                    'key' => 'treasury-overview',
+                    'label' => 'navigation.treasuryOverview',
+                    'icon' => 'wallet',
+                    'route' => '/treasury-overview',
+                    'permission' => 'treasury-movements.view',
+                ],
+                [
                     'key' => 'ledger',
                     'label' => 'navigation.ledger',
                     'icon' => 'book-open',

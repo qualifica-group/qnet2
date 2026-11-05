@@ -38,6 +38,7 @@ const UnitsOfMeasurePage = lazyRoute(() => import('@/pages/units-of-measure-page
 const FinancialAccountsPage = lazyRoute(() => import('@/pages/financial-accounts-page'))
 const TreasuryMovementsPage = lazyRoute(() => import('@/pages/treasury-movements-page'))
 const AccountStatementsPage = lazyRoute(() => import('@/pages/account-statements-page'))
+const TreasuryOverviewPage = lazyRoute(() => import('@/pages/treasury-overview-page'))
 const ProformaRequestsPage = lazyRoute(() => import('@/pages/proforma-requests-page'))
 const InvoicesPage = lazyRoute(() => import('@/pages/invoices-page'))
 const ChartOfAccountsPage = lazyRoute(() => import('@/pages/chart-of-accounts-page'))
@@ -207,6 +208,10 @@ export const APP_CHILD_ROUTES: RouteObject[] = [
   {
     path: 'account-statements',
     element: <AccountStatementsPage />,
+  },
+  {
+    path: 'treasury-overview',
+    element: <TreasuryOverviewPage />,
   },
   {
     path: 'proforma-requests',
