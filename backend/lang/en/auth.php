@@ -20,7 +20,7 @@ return [
     'first_password_updated' => 'Password updated.',
     'first_password_same' => 'The new password must be different from the current one.',
     'welcome_resent' => 'Welcome email sent.',
-    'first_access_completed' => 'The user has already completed the first access.',
+    'welcome_not_allowed' => 'The welcome email can only be sent to an active, non-service user other than yourself.',
     'logged_out' => 'Logged out successfully.',
     'profile_updated' => 'Profile updated successfully.',
     'password_updated' => 'Password updated successfully.',

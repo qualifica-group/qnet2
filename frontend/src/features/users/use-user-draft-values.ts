@@ -92,7 +92,7 @@ export function useUserDraftValues(control: Control<UserFormValues>): UserRecord
     email: draft.email ?? '',
     locale: draft.locale ?? 'it',
     is_active: draft.is_active ?? true,
-    password_state: draft.password ? 'temporary' : 'invite',
+    password_state: 'generated',
     roles: refsOf(roles, roleIds),
     is_assignable: employment.is_assignable,
     covers_all_product_categories: employment.covers_all_product_categories,

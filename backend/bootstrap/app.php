@@ -2,6 +2,7 @@
 
 use App\Authorization\Denials\ForbiddenResponse;
 use App\Http\Middleware\CaptureCustomFields;
+use App\Http\Middleware\EnsureFirstPasswordSet;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\LimitStatementDuration;
 use App\Http\Middleware\RecordActorWrite;
@@ -75,6 +76,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // Spec 0210, AC-008: per-client rate limit, only for requests made with
         // a token bound to an API client.
         $middleware->api(append: [ThrottleApiClientRequests::class]);
+
+        // Spec 0355: a user who must still choose the first password can only
+        // reach the allow-listed endpoints.
+        $middleware->api(append: [EnsureFirstPasswordSet::class]);
 
         // Per-session DB statement time limit for web/API requests only.
         $middleware->api(append: [LimitStatementDuration::class]);

@@ -8,7 +8,7 @@ import { ACTOR_AUTH, EDITABLE, READ_ONLY, permissionsFor, userFixture, userWrapp
 import type { UserDetailWithPermissions } from '@/features/users/types'
 
 /**
- * The user record actions bar: resend welcome (spec 0177 AC-020),
+ * The user record actions bar: send welcome email (spec 0177 AC-020, spec 0355),
  * activate/deactivate, impersonate and delete — each present only when it
  * applies, the risky ones behind a confirmation.
  */
@@ -71,15 +71,37 @@ beforeEach(() => {
   impersonateMock.mockResolvedValue(undefined)
 })
 
-describe('UserActionsBar — first access (spec 0177 AC-020)', () => {
-  it('shows the badge and posts the resend with a toast on click', async () => {
+// REQUIREMENT CHANGED (spec 0355 AC-015): the action targets any active user (not only pending ones) and asks first.
+describe('UserActionsBar — send welcome email (spec 0355 AC-015)', () => {
+  it('shows the badge, asks for confirmation and posts only after it, with a toast', async () => {
     renderBar(userFixture({ must_set_password: true }))
 
     expect(screen.getByText('Awaiting first sign-in')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Resend welcome email' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send welcome email' }))
+    const dialog = await screen.findByRole('alertdialog')
+    expect(within(dialog).getByText(/sent to .+\. The current password will stop working/)).toBeInTheDocument()
+    expect(resendWelcomeEmailMock).not.toHaveBeenCalled()
+    await confirmDialog('Send welcome email')
 
     await waitFor(() => expect(resendWelcomeEmailMock).toHaveBeenCalledWith(7))
     await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('Welcome email sent.'))
+  })
+
+  it('does not post when the confirmation is cancelled', async () => {
+    renderBar(userFixture())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send welcome email' }))
+    const dialog = await screen.findByRole('alertdialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(resendWelcomeEmailMock).not.toHaveBeenCalled()
+  })
+
+  it('is offered on an active user whose first access is already complete', () => {
+    renderBar(userFixture({ must_set_password: false }))
+
+    expect(screen.getByRole('button', { name: 'Send welcome email' })).toBeInTheDocument()
   })
 
   it('hides the action without the update permission but keeps the badge', () => {
@@ -87,14 +109,19 @@ describe('UserActionsBar — first access (spec 0177 AC-020)', () => {
     renderBar(userFixture({ must_set_password: true, permissions }))
 
     expect(screen.getByText('Awaiting first sign-in')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Resend welcome email' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Send welcome email' })).not.toBeInTheDocument()
   })
 
-  it('shows neither badge nor action once first access is complete', () => {
-    renderBar(userFixture({ must_set_password: false }))
+  it('hides the action on an inactive user', () => {
+    renderBar(userFixture({ is_active: false }))
 
-    expect(screen.queryByText('Awaiting first sign-in')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Resend welcome email' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Send welcome email' })).not.toBeInTheDocument()
+  })
+
+  it('hides the action on the actor\'s own record', () => {
+    renderBar(userFixture({ id: 1 }))
+
+    expect(screen.queryByRole('button', { name: 'Send welcome email' })).not.toBeInTheDocument()
   })
 })
 

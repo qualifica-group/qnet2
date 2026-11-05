@@ -13,7 +13,6 @@ import { SupportRequestButton } from '@/features/support-requests/support-reques
 import { usePresenceHeartbeat } from '@/features/system-health/use-presence-heartbeat'
 import { useAuth } from '@/features/auth/use-auth'
 import { ImpersonationBanner } from '@/features/auth/impersonation-banner'
-import { FirstAccessDialog } from '@/features/auth/first-access-dialog'
 import { VersionUpdateBanner } from '@/components/version-update-banner'
 import { TopLoadingBar } from '@/components/top-loading-bar'
 import { Separator } from '@/components/ui/separator'
@@ -40,7 +39,6 @@ export function AppLayout() {
     <BreadcrumbTitleProvider>
       <UserDetailSheetProvider>
         <TopLoadingBar />
-        <FirstAccessDialog />
         <SidebarProvider>
           <AppSidebar />
           {/* min-w-0: a flex item cannot shrink below its content's intrinsic width, so a wide

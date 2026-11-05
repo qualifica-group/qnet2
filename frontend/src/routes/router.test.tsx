@@ -32,3 +32,11 @@ describe('router — HR routes', () => {
     expect(matches?.at(-1)?.route.path).toBe(path)
   })
 })
+
+/** Spec 0355 AC-016: the invite-link page is gone; no route declares `/set-password`. */
+describe('router — removed set-password route', () => {
+  it('does not resolve /set-password to a dedicated route', () => {
+    const matches = matchRoutes(router.routes, { pathname: '/set-password' })
+    expect(matches?.some((match) => match.route.path === '/set-password') ?? false).toBe(false)
+  })
+})

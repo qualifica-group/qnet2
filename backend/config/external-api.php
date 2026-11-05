@@ -52,7 +52,6 @@ return [
             'auth/me',
             'auth/forgot-password',
             'auth/reset-password',
-            'auth/set-password',
             'config',
             'system-health',
         ],

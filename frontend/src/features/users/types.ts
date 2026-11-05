@@ -221,7 +221,7 @@ export interface EmploymentPayload {
   iban_holder?: string | null
 }
 
-/** Payload for POST /users (create). Password omitted = invite mode, present = temporary password (spec 0177). */
+/** Payload for POST /users (create). The password is generated server-side and emailed (spec 0355). */
 export interface CreateUserPayload {
   email: string
   locale: UserLocale
@@ -229,8 +229,6 @@ export interface CreateUserPayload {
   is_active: boolean
   /** Role IDS to assign (for-select standard, ADR 0011). */
   roles?: number[]
-  password?: string
-  password_confirmation?: string
   /**
    * The nested personal-data card written atomically with the user (ADR 0012).
    * Required: `users.name` is derived server-side from this card (the user form

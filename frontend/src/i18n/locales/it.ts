@@ -171,12 +171,16 @@ export const it: TranslationResources = {
         label: 'Password',
         set: 'Impostata',
         pending: 'Primo accesso in sospeso',
-        invite: "Invito via email: l'utente sceglierà la password",
-        temporary: 'Password provvisoria impostata',
+        generated: 'Generata dal sistema e inviata per email',
       },
       // Primo accesso (spec 0177).
       pendingFirstAccess: 'In attesa di primo accesso',
-      resendWelcome: 'Reinvia email di benvenuto',
+      resendWelcome: 'Invia email di benvenuto',
+      resendWelcomeConfirm: {
+        title: "Inviare l'email di benvenuto?",
+        description:
+          "Verrà generata una nuova password e inviata a {{email}}. La password attuale non funzionerà più e le sessioni aperte verranno chiuse.",
+      },
       resendWelcomeSuccess: 'Email di benvenuto inviata.',
       resendWelcomeError: "Impossibile inviare l'email di benvenuto. Riprova.",
       // Sezione Rapporto di lavoro in sola lettura (spec 0015).
@@ -201,13 +205,10 @@ export const it: TranslationResources = {
       rolesRemove: 'Rimuovi ruolo',
       is_active: 'Attivo',
       isActiveHint: "Un account non attivo non può accedere.",
-      password: "La password dell'account",
       newPassword: 'Nuova password',
       confirmPassword: 'Ripeti la password',
       passwordEditHint:
-        "Lascia vuoto per mantenere la password attuale. La nuova password sarà provvisoria: al prossimo accesso all'utente verrà consigliato di cambiarla.",
-      passwordCreateHint:
-        "Lascia vuoto: l'utente riceverà un'email con il link per scegliere la password. Se la compili è una password provvisoria: comunicala tu, al primo accesso gli verrà chiesto di cambiarla.",
+        "Lascia vuoto per mantenere la password attuale. La nuova password sarà provvisoria: al prossimo accesso l'utente dovrà sceglierne una nuova.",
       save: 'Salva',
       saving: 'Salvataggio…',
       cancel: 'Annulla',
@@ -391,17 +392,11 @@ export const it: TranslationResources = {
     resetLinkInvalid: 'Questo link di reset non è valido o è scaduto. Richiedine uno nuovo.',
     tooManyRequests: 'Troppe richieste. Attendi un momento e riprova.',
     // Primo accesso (spec 0177).
-    setPasswordTitle: 'Imposta la tua password',
-    setPasswordSubtitle: 'Scegli la password per accedere a QNet.',
     welcomeTitle: 'Benvenuto in QNet, {{name}}!',
-    welcomeText: 'Per motivi di sicurezza ti consigliamo di scegliere una nuova password personale.',
-    firstAccessLater: 'Più tardi',
+    welcomeText: 'Per continuare devi scegliere una nuova password personale.',
     firstAccessSave: 'Salva password',
     firstAccessSaving: 'Salvataggio…',
     firstAccessSaved: 'Password aggiornata.',
-    setPasswordSubmit: 'Imposta password',
-    setPasswordSuccess: 'Password impostata. Ora puoi accedere.',
-    setPasswordLinkInvalid: "Questo link non è valido o è scaduto. Chiedi un nuovo invito all'amministratore o usa Password dimenticata.",
   },
   authorization: {
     loadError: 'Impossibile caricare i permessi. Riprova.',

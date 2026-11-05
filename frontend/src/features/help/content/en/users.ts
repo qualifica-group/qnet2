@@ -25,12 +25,12 @@ const guide: HelpGuide = {
             ['**Avatar**', 'Profile picture (JPEG, PNG, GIF or WebP, up to 10 MB).'],
             ['Personal details', 'Identifying data of the person or company.'],
             ['**Email**', "Address used to sign in. It's required."],
-            ['**Password**', 'Optional. Leave it empty to send an invite; if you fill in **Password** and **Confirm password**, it is a temporary password of at least 8 characters.'],
+            ['**Password**', 'Not filled in: the system generates it and sends it by email (the form row says so).'],
             ['**Roles**', "One or more roles. The user's permissions come from their roles."],
             ['**Active**', 'If turned off, the account cannot sign in.'],
           ],
         },
-        { type: 'paragraph', text: 'On creation the user automatically receives a welcome email. There are two modes: **without a password** the email contains the link to choose the password; **with a temporary password** the email contains the link to sign in and you tell the user the password yourself (it is never sent by email). In both cases the user gets in right away and sees a welcome window recommending they choose their own password; they can postpone it with **Later**.' },
+        { type: 'paragraph', text: 'On creation the system **generates a 12-character password** and sends it to the user in the welcome email, together with a **Sign in** button. You do not have to tell it to them. At first sign-in the user gets in and sees a window asking them to choose a new password: until they save it they cannot use QNet (they can only **Sign out**).' },
         { type: 'tip', text: "If a section doesn't appear, your role does not let you see its fields." },
       ],
     },
@@ -132,7 +132,7 @@ const guide: HelpGuide = {
       title: 'Editing, deactivating and deleting',
       blocks: [
         { type: 'paragraph', text: 'Every row in the list has an actions menu with **View**, **Delete**, **Activity** and **Impersonate**. You only see the actions your role allows.' },
-        { type: 'paragraph', text: 'On the record, under the name, there is the actions bar: **Resend welcome email** (only while the user has not completed the first sign-in), **Deactivate** or **Activate**, **Impersonate** and **Delete**. Only the actions possible for that user and allowed by your role appear; on your own account you find neither **Deactivate**, **Impersonate** nor **Delete**.' },
+        { type: 'paragraph', text: 'On the record, under the name, there is the actions bar: **Send welcome email** (for any active user other than yourself), **Deactivate** or **Activate**, **Impersonate** and **Delete**. Only the actions possible for that user and allowed by your role appear; on your own account you find none of **Send welcome email**, **Deactivate**, **Impersonate** or **Delete**.' },
         { type: 'list', items: ['**Edit:** there is no separate edit page. Open the record with **View**, hover the field and press the **pencil** (or click the value), change the value and press **Save**: only that field is saved. **Cancel** (or Esc, or a click outside) closes without saving. Contacts, addresses and the avatar save on their own.', '**Deactivate:** on the record, press **Deactivate** and confirm (or open the **Active** row and turn it off). The person can no longer sign in, but their record and history remain. **Inactive** appears at the top.', '**Reactivate:** press **Activate**. If the **Terminated at** date has already passed the person stays inactive and a warning appears: remove the date first. An active person must belong to at least one business function, otherwise the activation is refused with the reason.', '**Activate or deactivate several users at once:** in the list tick the rows, open **Actions** and choose **Activate selected** or **Deactivate selected** (deactivation asks for confirmation). The same rules as the record apply, user by user: whoever cannot be changed (your own account when deactivating, a termination date already passed, no business function, an **Active** field your role cannot edit) stays as it was, the others are updated and a single message reports who failed and why. It requires the edit permission on users.', '**Delete:** choose **Delete** (from the row menu or the record) and confirm. From the record, after deleting you go back to the list.', '**Activity:** shows the history of changes made to the record.'] },
         { type: 'warning', text: 'A user with the super-admin role can be edited, deactivated or deleted only by another super-admin: for everyone else their record is read-only. You cannot delete your own account, nor the last user with the super-admin role. Nor can you delete a user who is the operator of leads or the supervisor of opportunities: reassign them first.' },
         { type: 'tip', text: 'If a person leaves the company, deactivate them instead of deleting them. This keeps the history of their work.' },
@@ -143,7 +143,7 @@ const guide: HelpGuide = {
       title: "Resetting a user's password",
       blocks: [
         { type: 'steps', items: ["Open the user's record with **View**.", 'In the **Credentials & access** section, press the pencil of the **Password** row.', 'Type the **New password** and then **Confirm password**.', 'Click **Save**.'] },
-        { type: 'note', text: 'Until you save the row, the current password stays unchanged. A password you set is temporary: at their next sign-in the user will be advised to change it. Alternatively, the person can reset it themselves with **Forgot your password?** on the sign-in page.' },
+        { type: 'note', text: 'Until you save the row, the current password stays unchanged. A password you set is temporary: at their next sign-in the user will have to choose a new one. Alternatively, the person can reset it themselves with **Forgot your password?** on the sign-in page, or you can use **Send welcome email** (see **Welcome email and first sign-in**).' },
       ],
     },
     {
@@ -151,9 +151,9 @@ const guide: HelpGuide = {
       title: 'Welcome email and first sign-in',
       blocks: [
         { type: 'paragraph', text: "Until a user has completed the first sign-in, their record shows the **Awaiting first sign-in** label." },
-        { type: 'steps', items: ["Open the user's record.", 'In the actions bar under the name, click **Resend welcome email** (you need the edit permission on users).', 'The message "Welcome email sent." appears.'] },
-        { type: 'list', items: ['The link in the email is valid for **72 hours**.', 'Every new send invalidates the previous link.', 'Resending always sends the link to choose the password, even if the user was created with a temporary password.', 'While the user postpones the choice, the label stays and the welcome window reappears at every sign-in.', 'Alternatively the user can use **Forgot your password?** on the sign-in page.'] },
-        { type: 'note', text: 'The label and the button disappear once the user chooses their own password.' },
+        { type: 'steps', items: ["Open the user's record.", 'In the actions bar under the name, click **Send welcome email** (you need the edit permission on users; the user must be active and not yourself).', 'Confirm: a new password is generated and sent to the user\'s email.', 'The message "Welcome email sent." appears.'] },
+        { type: 'list', items: ['The previous password stops working and the user\'s open sessions are closed.', 'Every new send makes the user choose their own password again at first sign-in.', 'Users imported from the old QNet must change their password at first sign-in.', 'Alternatively the user can use **Forgot your password?** on the sign-in page.'] },
+        { type: 'note', text: 'The **Awaiting first sign-in** label disappears once the user chooses their own password; the button stays available for resends.' },
       ],
     },
     {

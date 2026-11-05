@@ -12,7 +12,6 @@ import {
 const LoginPage = lazyRoute(() => import('@/pages/login-page'))
 const ForgotPasswordPage = lazyRoute(() => import('@/pages/forgot-password-page'))
 const ResetPasswordPage = lazyRoute(() => import('@/pages/reset-password-page'))
-const SetPasswordPage = lazyRoute(() => import('@/pages/set-password-page'))
 const NotFoundPage = lazyRoute(() => import('@/pages/not-found-page'))
 
 export const router = createBrowserRouter([
@@ -27,10 +26,6 @@ export const router = createBrowserRouter([
   {
     path: '/reset-password',
     element: <ResetPasswordPage />,
-  },
-  {
-    path: '/set-password',
-    element: <SetPasswordPage />,
   },
   {
     element: <ProtectedRoute />,

@@ -26,8 +26,8 @@ interface UserRecordActionCallbacks {
 }
 
 /**
- * Orchestrates the record actions of the user detail: resend the welcome
- * email, activate/deactivate, "Impersona" and delete. Each negative or
+ * Orchestrates the record actions of the user detail: send the welcome
+ * email (new generated password, spec 0355), activate/deactivate, "Impersona" and delete. Each negative or
  * identity-swapping action asks first through the app's `useConfirm`;
  * activation does not (it only restores access). The backend re-authorizes
  * every call: the bar only decides what to offer.
@@ -89,6 +89,17 @@ export function useUserRecordActions(user: UserDetailWithPermissions, callbacks:
     }
   }
 
+  const resendWelcomeEmail = async () => {
+    const confirmed = await confirm({
+      title: t('users.detail.resendWelcomeConfirm.title'),
+      description: t('users.detail.resendWelcomeConfirm.description', { email: user.email }),
+      confirmLabel: t('users.detail.resendWelcome'),
+    })
+    if (confirmed) {
+      resendWelcome.mutate()
+    }
+  }
+
   const impersonateUser = async () => {
     const confirmed = await confirm({
       title: t('users.detail.actions.impersonateConfirm.title', { name: user.name }),
@@ -113,7 +124,7 @@ export function useUserRecordActions(user: UserDetailWithPermissions, callbacks:
   }
 
   return {
-    resendWelcome: () => resendWelcome.mutate(),
+    resendWelcome: () => void resendWelcomeEmail(),
     activate,
     deactivate: () => void deactivate(),
     impersonate: () => void impersonateUser(),

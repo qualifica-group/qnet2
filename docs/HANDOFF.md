@@ -3,6 +3,33 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Benvenuto con password generata + primo accesso obbligatorio (spec 0355, emenda 0177) — VERDE, COMMITTATO (2026-11-05)
+
+- Decisioni utente 2026-11-05: password SEMPRE generata (`Str::password(12, symbols: false)`, `UserOnboardingService::generatePassword()`)
+  e inviata nell'email di benvenuto (`WelcomeUserNotification`, `ShouldBeEncrypted`, link `/login`); cambio al primo
+  accesso OBBLIGATORIO; "Invia email di benvenuto" su ogni utente attivo (non se stessi, non account di servizio) con
+  conferma: nuova password, `must_set_password` true, tutti i token revocati; obbligo di cambio per gli utenti legacy.
+- Rimosso il flusso invito di 0177: `POST /api/auth/set-password`, `SetPasswordRequest`, `AuthService::setPassword`,
+  broker `users_setup`, pagina FE `/set-password`; migrazione `2026_11_19_100200_drop_password_setup_tokens_table`.
+  `StoreUserRequest` non accetta piu' `password` (ignorata). Modifica password di un altro utente da PATCH invariata.
+- Blocco server-side: `App\Http\Middleware\EnsureFirstPasswordSet` nel gruppo `api` (utente via `user('sanctum')`),
+  allow-list METODO+URI (login, logout, refresh, GET me, abilities, first-password, me/password, forgot/reset,
+  client-login, impersonation, stop-impersonation); altrimenti 403 `authorization.reason = "password_change_required"`
+  (`ForbiddenResponse::passwordChangeRequired()`). Impersonificazione mai bloccata.
+- FE: `ProtectedRoute` rende `FirstAccessDialog` (non chiudibile, "Esci" = logout) al posto del layout; evento
+  `PASSWORD_CHANGE_REQUIRED_EVENT` da `api/client.ts` -> `AuthProvider` invalida `authKeys.me`. Chi mocka
+  `@/api/client` deve esportare anche questo evento (vedi `config-gate.integration.test.tsx`).
+- PRODUZIONE, dopo il deploy: `php artisan migrate`, poi `php artisan users:require-legacy-password-change` (una tantum,
+  marca gli utenti con `old_id`, nessuna email). Gli inviti 0177 con link non ancora usato non funzionano piu':
+  reinviare l'email di benvenuto a quegli utenti.
+- Test: Pest `tests/Feature/Spec0355` (4 file, AC-001..010), test 0177 aggiornati con REQUIREMENT CHANGED; Vitest
+  AC-011..016. Pest mirato 534/535 (unico rosso `ApiDocsParityTest`, preesistente: `POST /api/broadcasting/auth` della
+  0352 non documentata), Vitest mirato 620/620, tsc/ESLint/Pint puliti. Suite completa: backend 11 rossi tutti
+  preesistenti (AiAssistant x4, SettlementApproval AC-006, ApiDocsParity, QuoteDocumentPdf, PermissionCatalogue AC-004,
+  QualificaOperatorSeeder x2, TableBulkDelete:131), frontend verde dopo il fix del mock.
+- Manuale: guide in-app IT+EN `users.ts`/`general.ts` aggiornate; Claude Docs "Manuale Utente QNet" aggiornato
+  (Accesso > Primo accesso, Utenti). Da rigenerare il PDF del manuale.
+
 ## Avviso "solo i primi valori" del filtro di colonna: meno rumore — VERDE, NON COMMITTATO (2026-11-05)
 
 - Causa: `POST /tables/{domain}/values` restituisce max 200 valori (`TableValuesRequest::MAX_LIMIT`), `hasMore` sopra;

@@ -82,9 +82,8 @@ function completeProductLines(
 }
 
 /**
- * Builds the create payload, including password + confirmation only when a
- * temporary password was typed (empty = invite mode, spec 0177), plus the
- * nested `personal_data` tree when a card was entered (ADR 0012). The tree omits
+ * Builds the create payload (no password: the system generates it, spec 0355),
+ * plus the nested `personal_data` tree when a card was entered (ADR 0012). The tree omits
  * any scalar field/section `fieldPermission` marks non-editable (spec 0008 D2,
  * defense in depth alongside the backend's CHANGE-based guard).
  */
@@ -99,9 +98,6 @@ export function buildCreatePayload(
     locale: values.locale,
     is_active: values.is_active,
     roles: values.roles,
-    ...(values.password !== ''
-      ? { password: values.password, password_confirmation: values.password_confirmation }
-      : {}),
     personal_data: omitNonEditableFields(draftToPayload(profileDraft), fieldPermission),
     employment: buildEmploymentPayload(values.employment),
     ...(Object.keys(customFields).length > 0 ? { custom_fields: customFields } : {}),
@@ -139,7 +135,7 @@ export function buildUpdatePayload(
   if (!sameRoles(values.roles, original.roles.map((role) => role.id))) {
     payload.roles = values.roles
   }
-  if (values.password !== '') {
+  if (values.password) {
     payload.password = values.password
     payload.password_confirmation = values.password_confirmation
   }

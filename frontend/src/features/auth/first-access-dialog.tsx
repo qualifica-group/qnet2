@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -37,34 +37,31 @@ interface FirstPasswordValues {
 }
 
 /**
- * Welcome window of the first access (spec 0177 rev. 2): recommends replacing
- * the temporary password, never blocks. Dismissal is local state, so it comes
- * back on every sign-in or page reload while `must_set_password` is true.
+ * First-access gate (spec 0355 D-2): a popup that cannot be dismissed (no X,
+ * no Esc, no outside click) rendered by `ProtectedRoute` in place of the app
+ * until the user chooses a new password. Signing out is the only other exit.
  */
 export function FirstAccessDialog() {
-  const { user, impersonator } = useAuth()
-  const [dismissed, setDismissed] = useState(false)
-
-  if (!user || !user.must_set_password || impersonator) {
-    return null
-  }
+  const { user } = useAuth()
 
   return (
-    <Dialog open={!dismissed} onOpenChange={(open) => setDismissed(!open)}>
-      <DialogContent className="max-w-md">
-        <FirstAccessForm name={user.name} onDismiss={() => setDismissed(true)} />
+    <Dialog open>
+      <DialogContent
+        size="sm"
+        showCloseButton={false}
+        onEscapeKeyDown={(event) => event.preventDefault()}
+        onPointerDownOutside={(event) => event.preventDefault()}
+        onInteractOutside={(event) => event.preventDefault()}
+      >
+        <FirstAccessForm name={user?.name ?? ''} />
       </DialogContent>
     </Dialog>
   )
 }
 
-interface FirstAccessFormProps {
-  name: string
-  onDismiss: () => void
-}
-
-function FirstAccessForm({ name, onDismiss }: FirstAccessFormProps) {
+function FirstAccessForm({ name }: { name: string }) {
   const { t, i18n } = useTranslation()
+  const { logout } = useAuth()
   const queryClient = useQueryClient()
 
   const schema = useMemo(
@@ -140,9 +137,9 @@ function FirstAccessForm({ name, onDismiss }: FirstAccessFormProps) {
           )}
         />
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button type="button" variant="secondary" onClick={onDismiss}>
-            {t('auth.firstAccessLater')}
+        <DialogFooter className="gap-2 sm:items-center sm:justify-between">
+          <Button type="button" variant="ghost" onClick={() => void logout()}>
+            {t('auth.signOut')}
           </Button>
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending ? t('auth.firstAccessSaving') : t('auth.firstAccessSave')}

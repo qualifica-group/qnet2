@@ -27,7 +27,8 @@ export function UserActionsBar({ user, onChanged, onLeave }: UserActionsBarProps
   const { resource, fields, actions: allowed } = user.permissions
   const isSelf = currentUser?.id === user.id
 
-  const canResend = user.must_set_password && resource.update
+  // Spec 0355 D-3: any active user but oneself, flag or not. Service accounts never reach this record (404 on the users routes).
+  const canResend = !isSelf && user.is_active && resource.update
   // A field missing from the block resolves permissive, as `useResourcePermissions` does: the PATCH re-authorizes.
   const canToggleActive = !isSelf && resource.update && (fields.is_active?.editable ?? true)
   // Nested impersonation is refused server-side: no "Impersona" while already operating as someone.

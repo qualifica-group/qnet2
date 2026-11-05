@@ -15,14 +15,15 @@ it('keeps the reset link query string unescaped in the plain-text body', functio
     expect($body)->toContain($url)->not->toContain('&amp;');
 });
 
-it('keeps the welcome link query string unescaped in the plain-text body', function () use ($url) {
+// REQUIREMENT CHANGED (spec 0355): the welcome email carries a generated password and a login link.
+it('keeps the welcome link and the password unescaped in the plain-text body', function () {
     $body = view('emails.welcome-user-plain', [
         'appName' => 'QNet',
         'name' => 'Jane',
-        'isInvite' => true,
-        'url' => $url,
-        'expireHours' => 48,
+        'email' => 'jane@example.com',
+        'password' => 'Ab3dEf6hJk9m',
+        'url' => 'http://localhost:5173/login',
     ])->render();
 
-    expect($body)->toContain($url)->not->toContain('&amp;');
+    expect($body)->toContain('http://localhost:5173/login')->toContain('Ab3dEf6hJk9m')->not->toContain('&amp;');
 });

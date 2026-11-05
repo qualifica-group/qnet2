@@ -115,8 +115,6 @@ export function useUserFormDefaults(
       locale: DEFAULT_LOCALE,
       is_active: true,
       roles: [],
-      password: '',
-      password_confirmation: '',
       employment: EMPTY_EMPLOYMENT,
       custom_fields: customFieldDefaults,
     }

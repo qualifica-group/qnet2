@@ -1,6 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <spec id="0177-user-first-access" status="draft" owner="utente" date="2026-09-29">
 
+  <!--
+    EMENDATA DA 0355 (welcome-generated-password, decisioni utente 2026-11-05). Superati:
+    - modalita' INVITO/PASSWORD PROVVISORIA, link /set-password, endpoint POST /api/auth/set-password,
+      tabella password_setup_tokens e broker users_setup: rimossi; la password e' sempre generata dal
+      sistema e inviata nell'email di benvenuto (supera il vincolo "mai la password via email");
+    - rev. 2 (finestra rimandabile, nessun blocco server-side): il cambio al primo accesso e' obbligatorio,
+      con popup non chiudibile e 403 `password_change_required` lato server;
+    - resend-welcome solo per utenti in attesa: ora su ogni utente attivo non di servizio, con nuova
+      password e revoca delle sessioni.
+    AC superati: AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007 (rev. 2), AC-011, AC-016, AC-017,
+    AC-018 ("Piu' tardi"), AC-020 (visibilita' azione). Il resto resta valido.
+  -->
+
   <goal>
     Quando un amministratore crea un utente dal modulo Utenti, l'utente riceve un'email di benvenuto con il
     link per accedere e, al primo accesso, sceglie la propria password. Due modalita' (decisione utente

@@ -152,7 +152,7 @@ class UserService
             // ADR 0013). Seed only a non-null placeholder here to satisfy the
             // constraint at INSERT; writeProfile() below sets the real name.
             $attributes['name'] = '';
-            // Invite mode (spec 0177): unknown random placeholder, never communicated.
+            // No password supplied (legacy migration): unknown random placeholder, never communicated.
             $attributes['password'] ??= Str::password(32);
 
             $user = User::create($attributes);

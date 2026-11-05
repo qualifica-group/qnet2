@@ -15,7 +15,7 @@ return [
     'first_password_updated' => 'Password aggiornata.',
     'first_password_same' => 'La nuova password deve essere diversa da quella attuale.',
     'welcome_resent' => 'Email di benvenuto inviata.',
-    'first_access_completed' => "L'utente ha già completato il primo accesso.",
+    'welcome_not_allowed' => "L'email di benvenuto può essere inviata solo a un utente attivo, non di servizio e diverso da te.",
     'logged_out' => 'Disconnessione effettuata con successo.',
     'profile_updated' => 'Profilo aggiornato con successo.',
     'password_updated' => 'Password aggiornata con successo.',

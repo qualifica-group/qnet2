@@ -9,7 +9,6 @@ return [
     */
 
     'reset' => 'La tua password è stata reimpostata.',
-    'set' => 'Password impostata. Ora puoi accedere.',
     'sent' => 'Ti abbiamo inviato via email il link per reimpostare la password.',
     'throttled' => 'Attendi prima di riprovare.',
     'token' => 'Questo token di reimpostazione password non è valido.',

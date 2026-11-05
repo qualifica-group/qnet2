@@ -153,26 +153,15 @@ function baseFields(t: TFunction) {
 }
 
 /**
- * Create schema: password is optional (spec 0177). Empty = invite mode; when
- * provided it is a temporary password: length rule + matching confirmation.
- * `customFieldsSchema` is the toolbox-built schema for `custom_fields` (spec 0021).
+ * Create schema: no password (spec 0355 D-1): the system generates it and
+ * sends it in the welcome email. `customFieldsSchema` is the toolbox-built
+ * schema for `custom_fields` (spec 0021).
  */
 export function buildCreateUserSchema(t: TFunction, customFieldsSchema: CustomFieldsSchema) {
-  return z
-    .object({
-      ...baseFields(t),
-      password: z
-        .string()
-        .refine((value) => value === '' || value.length >= PASSWORD_MIN_LENGTH, {
-          message: t('users.form.passwordMinLength'),
-        }),
-      password_confirmation: z.string(),
-      custom_fields: asCustomFieldsField(customFieldsSchema),
-    })
-    .refine((values) => values.password === values.password_confirmation, {
-      path: ['password_confirmation'],
-      message: t('users.form.passwordsDontMatch'),
-    })
+  return z.object({
+    ...baseFields(t),
+    custom_fields: asCustomFieldsField(customFieldsSchema),
+  })
 }
 
 /**

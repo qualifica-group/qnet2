@@ -59,8 +59,6 @@ Route::prefix('auth')->group(function () {
     Route::middleware('throttle:6,1')->group(function () {
         Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
         Route::post('reset-password', [AuthController::class, 'resetPassword']);
-        // First access (spec 0177): consumes the invite token of the users_setup broker.
-        Route::post('set-password', [AuthController::class, 'setPassword']);
     });
 
     Route::middleware('auth:sanctum')->group(function () {

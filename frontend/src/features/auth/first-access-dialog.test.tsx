@@ -5,14 +5,14 @@ import { AxiosError, type AxiosResponse } from 'axios'
 import i18n from '@/i18n'
 import { FirstAccessDialog } from '@/features/auth/first-access-dialog'
 
-/** Spec 0177 rev. 2, AC-018 / AC-019. */
+/** Spec 0355 AC-013 (REQUIREMENT CHANGED: the popup is a non-dismissable gate, supersedes 0177 rev. 2). */
 
 const setFirstPasswordMock = vi.fn()
 const toastSuccessMock = vi.fn()
+const logoutMock = vi.fn()
 
 interface AuthState {
   user: { name: string; must_set_password: boolean } | null
-  impersonator: { id: number } | null
 }
 let authState: AuthState
 
@@ -21,15 +21,18 @@ vi.mock('@/features/auth/api', () => ({
 }))
 
 vi.mock('@/features/auth/use-auth', () => ({
-  useAuth: () => authState,
+  useAuth: () => ({ ...authState, logout: logoutMock }),
 }))
 
 vi.mock('sonner', () => ({
   toast: { success: (...args: unknown[]) => toastSuccessMock(...args), error: vi.fn() },
 }))
 
+let invalidateSpy: ReturnType<typeof vi.spyOn>
+
 function renderDialog() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  invalidateSpy = vi.spyOn(client, 'invalidateQueries')
   return render(
     <QueryClientProvider client={client}>
       <FirstAccessDialog />
@@ -51,8 +54,9 @@ describe('FirstAccessDialog', () => {
   beforeEach(() => {
     setFirstPasswordMock.mockReset()
     toastSuccessMock.mockReset()
+    logoutMock.mockReset()
     setFirstPasswordMock.mockResolvedValue(undefined)
-    authState = { user: { name: 'Ada', must_set_password: true }, impersonator: null }
+    authState = { user: { name: 'Ada', must_set_password: true } }
   })
 
   it('opens with the user name when the flag is set', () => {
@@ -61,29 +65,24 @@ describe('FirstAccessDialog', () => {
     expect(screen.getByRole('dialog', { name: 'Welcome to QNet, Ada!' })).toBeInTheDocument()
   })
 
-  it('stays closed without the flag', () => {
-    authState = { user: { name: 'Ada', must_set_password: false }, impersonator: null }
+  it('offers no Later button, no close button, and ignores Escape', async () => {
     renderDialog()
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Later' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
   })
 
-  it('stays closed while impersonating', () => {
-    authState = { user: { name: 'Ada', must_set_password: true }, impersonator: { id: 1 } }
+  it('signs out with the Sign out button', () => {
     renderDialog()
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }))
+
+    expect(logoutMock).toHaveBeenCalledTimes(1)
   })
 
-  it('closes with Later', async () => {
-    renderDialog()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Later' }))
-
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  })
-
-  it('submits a valid pair and shows the toast', async () => {
+  it('submits a valid pair, refreshes the current user and shows the toast', async () => {
     renderDialog()
 
     fill('longenough1', 'longenough1')
@@ -94,6 +93,7 @@ describe('FirstAccessDialog', () => {
         password_confirmation: 'longenough1',
       }),
     )
+    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['auth', 'me'] }))
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith('Password updated.'))
   })
 

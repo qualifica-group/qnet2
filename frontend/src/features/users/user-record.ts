@@ -31,10 +31,9 @@ export const COVERS_ALL_CASCADE_FIELDS = [
 
 /**
  * What the closed Password row says (spec 0222 D-5): on the detail whether the
- * first access is still pending, on create whether the user gets an invite or
- * a temporary password.
+ * first access is still pending, on create that the system generates it (spec 0355).
  */
-export type PasswordState = 'set' | 'pending' | 'invite' | 'temporary'
+export type PasswordState = 'set' | 'pending' | 'generated'
 
 /** What the record's rows show: the persisted user on the detail, the draft (with resolved labels) on create. */
 export interface UserRecordValues {

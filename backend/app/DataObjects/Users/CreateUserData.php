@@ -13,9 +13,9 @@ namespace App\DataObjects\Users;
  * `roles` is null when the client did not submit the key at all (leave roles
  * untouched), versus an explicit list (sync exactly those).
  *
- * `password` is null in INVITE mode (spec 0177): the admin chose no password, the
- * UserService seeds an unknown placeholder and the user picks their own via the
- * emailed link.
+ * `password` is the system-generated one for users created from the CRM
+ * (spec 0355); null when the legacy migration creates the user (the UserService
+ * then seeds an unknown placeholder).
  *
  * `name` is intentionally absent: the client no longer supplies it; it is derived
  * server-side from the nested personal-data card (ADR 0012,
@@ -48,6 +48,11 @@ final readonly class CreateUserData
             is_active: array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
             roles: array_key_exists('roles', $data) ? (array) $data['roles'] : null,
         );
+    }
+
+    public function withPassword(string $password): self
+    {
+        return new self($this->email, $this->locale, $password, $this->is_active, $this->roles);
     }
 
     public function hasRoles(): bool

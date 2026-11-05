@@ -16,6 +16,8 @@ class ForbiddenResponse
 
     public const string REASON_DENIED = 'denied';
 
+    public const string REASON_PASSWORD_CHANGE_REQUIRED = 'password_change_required';
+
     /** The framework default text: it carries no information, so it is not an explicit reason. */
     private const string FRAMEWORK_DEFAULT_MESSAGE = 'This action is unauthorized.';
 
@@ -43,6 +45,16 @@ class ForbiddenResponse
 
         // Step 3: nothing useful is known
         return $this->build(self::REASON_DENIED, null, __('You are not allowed to perform this action.'));
+    }
+
+    /** First access not completed (spec 0355): the user must choose a new password. */
+    public function passwordChangeRequired(): JsonResponse
+    {
+        return $this->build(
+            self::REASON_PASSWORD_CHANGE_REQUIRED,
+            null,
+            __('You must choose a new password before continuing.'),
+        );
     }
 
     private function explicitMessage(Throwable $exception): ?string

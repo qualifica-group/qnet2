@@ -25,12 +25,12 @@ const guide: HelpGuide = {
             ['**Avatar**', 'Immagine del profilo (JPEG, PNG, GIF o WebP, massimo 10 MB).'],
             ['Dati anagrafici', 'Dati identificativi della persona o dell’azienda.'],
             ['**Email**', 'Indirizzo usato per accedere. È obbligatorio.'],
-            ['**Password**', 'Facoltativa. Lasciala vuota per inviare un invito; se compili **La password dell’account** e **Ripeti la password** è una password provvisoria, di almeno 8 caratteri.'],
+            ['**Password**', 'Non si compila: la genera il sistema e la invia per email (nel modulo la riga lo ricorda).'],
             ['**Ruoli**', 'Uno o più ruoli. I permessi dell’utente derivano dai suoi ruoli.'],
             ['**Attivo**', 'Se lo spegni, l’account non può accedere.'],
           ],
         },
-        { type: 'paragraph', text: 'Alla creazione l’utente riceve automaticamente un’email di benvenuto. Le modalità sono due: **senza password** l’email contiene il link per scegliere la password; **con password provvisoria** l’email contiene il link per accedere e la password la comunichi tu all’utente (non viene mai inviata per email). In entrambi i casi, al primo accesso l’utente entra subito e trova una finestra di benvenuto che gli consiglia di scegliere la propria password; può rimandare con **Più tardi**.' },
+        { type: 'paragraph', text: 'Alla creazione il sistema **genera una password** di 12 caratteri e la invia all’utente nell’email di benvenuto, insieme al pulsante **Accedi**. Non devi comunicargliela tu. Al primo accesso l’utente entra e trova una finestra che gli chiede di scegliere una nuova password: finché non la salva non può usare QNet (può solo **Esci**).' },
         { type: 'tip', text: 'Se una sezione non compare, il tuo ruolo non ti permette di vederne i campi.' },
       ],
     },
@@ -132,7 +132,7 @@ const guide: HelpGuide = {
       title: 'Modificare, disattivare ed eliminare',
       blocks: [
         { type: 'paragraph', text: 'Ogni riga dell’elenco ha un menu azioni con **Visualizza**, **Elimina**, **Attività** e **Impersona**. Vedi solo le azioni permesse dal tuo ruolo.' },
-        { type: 'paragraph', text: 'Nella scheda, sotto il nome, c’è la barra delle azioni: **Reinvia email di benvenuto** (solo se l’utente non ha ancora completato il primo accesso), **Disattiva** oppure **Attiva**, **Impersona** ed **Elimina**. Compaiono solo le azioni possibili per quell’utente e permesse dal tuo ruolo; sul tuo stesso account non trovi **Disattiva**, **Impersona** né **Elimina**.' },
+        { type: 'paragraph', text: 'Nella scheda, sotto il nome, c’è la barra delle azioni: **Invia email di benvenuto** (per ogni utente attivo diverso da te), **Disattiva** oppure **Attiva**, **Impersona** ed **Elimina**. Compaiono solo le azioni possibili per quell’utente e permesse dal tuo ruolo; sul tuo stesso account non trovi **Invia email di benvenuto**, **Disattiva**, **Impersona** né **Elimina**.' },
         { type: 'list', items: ['**Modificare:** non esiste una pagina di modifica separata. Apri la scheda con **Visualizza**, passa col mouse sul campo e premi la **matita** (o fai clic sul valore), cambia il valore e premi **Salva**: si salva solo quel campo. **Annulla** (o Esc, o un clic fuori) chiude senza salvare. Contatti, indirizzi e avatar si salvano da soli.', '**Disattivare:** nella scheda premi **Disattiva** e conferma (oppure apri la riga **Attivo** e spegnilo). La persona non può più accedere, ma scheda e storico restano. In alto compare **Non attivo**.', '**Riattivare:** premi **Attiva**. Se la data **Cessato il** è già passata la persona resta non attiva e compare un avviso: togli prima la data. Una persona attiva deve appartenere ad almeno una funzione aziendale, altrimenti l’attivazione viene rifiutata con il motivo.', '**Attivare o disattivare più utenti insieme:** nell’elenco spunta le righe, apri **Azioni** e scegli **Attiva selezionati** oppure **Disattiva selezionati** (la disattivazione chiede conferma). Valgono le stesse regole della scheda, utente per utente: chi non si può cambiare (il tuo stesso account in disattivazione, una cessazione già passata, nessuna funzione aziendale, un campo **Attivo** che il tuo ruolo non può modificare) resta com’era, gli altri vengono aggiornati e un unico messaggio riporta chi non è riuscito e perché. Serve il permesso di modifica sugli utenti.', '**Eliminare:** scegli **Elimina** (dal menu della riga o dalla scheda) e conferma. Dalla scheda, dopo l’eliminazione torni all’elenco.', '**Attività:** mostra lo storico delle modifiche fatte sulla scheda.'] },
         { type: 'warning', text: 'Un utente con ruolo super-admin lo può modificare, disattivare o eliminare solo un altro super-admin: per gli altri la sua scheda è in sola lettura. Non puoi eliminare il tuo stesso account, né l’ultimo utente con ruolo super-admin. Non puoi eliminare nemmeno un utente che è operatore di lead o supervisore di opportunità: riassegnali prima.' },
         { type: 'tip', text: 'Se una persona lascia l’azienda, disattivala invece di eliminarla. Così conservi lo storico del suo lavoro.' },
@@ -143,7 +143,7 @@ const guide: HelpGuide = {
       title: 'Reimpostare la password di un utente',
       blocks: [
         { type: 'steps', items: ['Apri la scheda dell’utente con **Visualizza**.', 'Nella sezione **Credenziali e accesso** premi la matita della riga **Password**.', 'Scrivi la **Nuova password** e poi **Ripeti la password**.', 'Fai clic su **Salva**.'] },
-        { type: 'note', text: 'Finché non salvi la riga, la password attuale resta invariata. La password che imposti tu è provvisoria: al prossimo accesso all’utente verrà consigliato di cambiarla. In alternativa, la persona può reimpostarla da sola con **Password dimenticata?** nella pagina di accesso.' },
+        { type: 'note', text: 'Finché non salvi la riga, la password attuale resta invariata. La password che imposti tu è provvisoria: al prossimo accesso l’utente dovrà sceglierne una nuova. In alternativa, la persona può reimpostarla da sola con **Password dimenticata?** nella pagina di accesso, oppure puoi usare **Invia email di benvenuto** (vedi **Email di benvenuto e primo accesso**).' },
       ],
     },
     {
@@ -151,9 +151,9 @@ const guide: HelpGuide = {
       title: 'Email di benvenuto e primo accesso',
       blocks: [
         { type: 'paragraph', text: 'Finché un utente non ha completato il primo accesso, nella sua scheda compare l’etichetta **In attesa di primo accesso**.' },
-        { type: 'steps', items: ['Apri la scheda dell’utente.', 'Nella barra delle azioni sotto il nome fai clic su **Reinvia email di benvenuto** (serve il permesso di modifica sugli utenti).', 'Compare il messaggio "Email di benvenuto inviata."'] },
-        { type: 'list', items: ['Il link nell’email è valido **72 ore**.', 'Ogni nuovo invio invalida il link precedente.', 'Il reinvio manda sempre il link per scegliere la password, anche se l’utente era stato creato con una password provvisoria.', 'Finché l’utente rimanda la scelta, l’etichetta resta e la finestra di benvenuto ricompare a ogni accesso.', 'In alternativa l’utente può usare **Password dimenticata?** nella pagina di accesso.'] },
-        { type: 'note', text: 'L’etichetta e il pulsante spariscono quando l’utente sceglie la propria password.' },
+        { type: 'steps', items: ['Apri la scheda dell’utente.', 'Nella barra delle azioni sotto il nome fai clic su **Invia email di benvenuto** (serve il permesso di modifica sugli utenti; l’utente deve essere attivo e diverso da te).', 'Conferma: viene generata una nuova password e inviata all’email dell’utente.', 'Compare il messaggio "Email di benvenuto inviata."'] },
+        { type: 'list', items: ['La password precedente smette di funzionare e le sessioni aperte dell’utente vengono chiuse.', 'Ad ogni nuovo invio l’utente deve scegliere di nuovo la propria password al primo accesso.', 'Gli utenti importati dal vecchio QNet devono cambiare la password al primo accesso.', 'In alternativa l’utente può usare **Password dimenticata?** nella pagina di accesso.'] },
+        { type: 'note', text: 'L’etichetta **In attesa di primo accesso** sparisce quando l’utente sceglie la propria password; il pulsante resta disponibile per i reinvii.' },
       ],
     },
     {

@@ -34,10 +34,9 @@ export function UserEmailField({ control }: FieldProps) {
 
 /**
  * "Password" (spec 0177, spec 0222 D-5): the new password and its
- * confirmation in one editor. On create an empty pair means "invite by
- * email"; on the detail it sets a temporary password.
+ * confirmation in one editor, on the detail only (create has none, spec 0355).
  */
-export function UserPasswordFields({ control, isEdit }: FieldProps & { isEdit: boolean }) {
+export function UserPasswordFields({ control }: FieldProps) {
   const { t } = useTranslation()
   return (
     <div className="flex min-w-0 flex-col gap-3">
@@ -45,10 +44,8 @@ export function UserPasswordFields({ control, isEdit }: FieldProps & { isEdit: b
         control={control}
         name="password"
         metaKey="password"
-        label={t(isEdit ? 'users.form.newPassword' : 'users.form.password')}
-        description={
-          <FormDescription>{t(isEdit ? 'users.form.passwordEditHint' : 'users.form.passwordCreateHint')}</FormDescription>
-        }
+        label={t('users.form.newPassword')}
+        description={<FormDescription>{t('users.form.passwordEditHint')}</FormDescription>}
       >
         {({ field, disabled, readOnly }) => (
           <FormControl>
