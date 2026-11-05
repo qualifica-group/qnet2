@@ -122,6 +122,10 @@ use Illuminate\Database\Seeder;
  *                                    tecnica", spec 0334), assigned to the IT
  *                                    contact. Create-only: a type edited from
  *                                    Configurazione is left alone.
+ *  15. QualificaPasswordChangeSeeder — production only: every active user who
+ *                                    never chose their own password must pick
+ *                                    one at the next access (spec 0356). Last,
+ *                                    so every account above already exists.
  *
  * The order is a contract, not a preference:
  *   - step 5 adopts step 2's sources and business functions by name instead
@@ -199,5 +203,6 @@ class QualificaProductionDataSeeder extends Seeder
         $this->call(QualificaLegacyRoleSeeder::class);
         $this->call(QualificaReporterCommissionSeeder::class);
         $this->call(QualificaSupportTopicSeeder::class);
+        $this->call(QualificaPasswordChangeSeeder::class);
     }
 }

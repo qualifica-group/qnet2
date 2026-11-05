@@ -145,6 +145,7 @@ class AuthService
         $user->forceFill([
             'password' => Hash::make($newPassword),
             'must_set_password' => false,
+            'password_changed_at' => now(),
         ])->save();
 
         $user->tokens()
@@ -185,6 +186,7 @@ class AuthService
                 'password' => Hash::make($password),
                 'remember_token' => Str::random(60),
                 'must_set_password' => false,
+                'password_changed_at' => now(),
             ])->save();
 
             $user->tokens()->delete();

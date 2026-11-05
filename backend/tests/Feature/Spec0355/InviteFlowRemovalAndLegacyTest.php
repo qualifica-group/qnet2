@@ -23,25 +23,8 @@ it('AC-008: set-password is gone, the token table is dropped and the migration i
     expect(Schema::hasTable('password_setup_tokens'))->toBeFalse();
 });
 
-it('AC-009: the legacy command flags legacy non-service users once, without emails', function () {
-    Notification::fake();
-    $legacy = User::factory()->create(['old_id' => 501]);
-    $service = User::factory()->create(['old_id' => 502, 'is_service_account' => true]);
-    $native = User::factory()->create();
-
-    $this->artisan('users:require-legacy-password-change')
-        ->expectsOutput('1 utenti legacy dovranno cambiare password al prossimo accesso.')
-        ->assertExitCode(0);
-
-    expect($legacy->fresh()->must_set_password)->toBeTrue()
-        ->and($service->fresh()->must_set_password)->toBeFalse()
-        ->and($native->fresh()->must_set_password)->toBeFalse();
-    Notification::assertNothingSent();
-
-    $this->artisan('users:require-legacy-password-change')
-        ->expectsOutput('0 utenti legacy dovranno cambiare password al prossimo accesso.')
-        ->assertExitCode(0);
-});
+// REQUIREMENT CHANGED (spec 0356): AC-009, the legacy command, is replaced by
+// QualificaPasswordChangeSeeder (tests/Feature/Spec0356).
 
 it('AC-010: admin password edit still flags without email and the self change clears the flag', function () {
     Notification::fake();

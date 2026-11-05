@@ -3,6 +3,22 @@
 > Injected at session start. Update at every green state.
 > Tenere questo file sotto ~50 KB: le voci vecchie vanno in `docs/handoff-archive/`, non cancellate.
 
+## Seeder di produzione: cambio password obbligatorio (spec 0356, emenda 0355) — VERDE, COMMITTATO (2026-11-05)
+
+- Nuova colonna `users.password_changed_at` (migrazione `2026_11_19_100300_...`, cast datetime, NON fillable): la
+  valorizzano SOLO `AuthService::changePassword()` (me/password, me/first-password) e `resetPassword()`. Creazione,
+  reinvio benvenuto e password impostata dall'admin non la toccano.
+- `QualificaPasswordChangeSeeder`: con `config('seeding.require_password_change')` (default true solo con
+  APP_ENV=production, env `SEED_REQUIRE_PASSWORD_CHANGE`) porta `must_set_password` = true su utenti attivi, non di
+  servizio, con `password_changed_at` nullo. Nessuna email, nessuna revoca token, rilanciabile. Ultimo step di
+  `QualificaProductionDataSeeder`. Rimosso il comando `users:require-legacy-password-change` (0355 AC-009).
+- PRODUZIONE, dopo il deploy di 0355+0356: `php artisan migrate`, poi
+  `php artisan db:seed --class=QualificaPasswordChangeSeeder` (o l'intero `QualificaProductionDataSeeder`). Al primo
+  lancio obbliga tutti gli utenti attivi (nessuno ha ancora `password_changed_at`).
+- Test: `tests/Feature/Spec0356` 10/10; set Spec0355/0177/Auth/Users/Mail/ApiClients 544/544; production seeder
+  e staff seeder 7/7. `QualificaOperatorSeederTest` 2 rossi preesistenti. `ApiDocs*` falliscono solo se lanciati
+  nello stesso processo dei test seeder (interferenza tra test, da soli verdi). Manuale: nessun impatto.
+
 ## Benvenuto con password generata + primo accesso obbligatorio (spec 0355, emenda 0177) — VERDE, COMMITTATO (2026-11-05)
 
 - Decisioni utente 2026-11-05: password SEMPRE generata (`Str::password(12, symbols: false)`, `UserOnboardingService::generatePassword()`)
@@ -19,9 +35,9 @@
 - FE: `ProtectedRoute` rende `FirstAccessDialog` (non chiudibile, "Esci" = logout) al posto del layout; evento
   `PASSWORD_CHANGE_REQUIRED_EVENT` da `api/client.ts` -> `AuthProvider` invalida `authKeys.me`. Chi mocka
   `@/api/client` deve esportare anche questo evento (vedi `config-gate.integration.test.tsx`).
-- PRODUZIONE, dopo il deploy: `php artisan migrate`, poi `php artisan users:require-legacy-password-change` (una tantum,
-  marca gli utenti con `old_id`, nessuna email). Gli inviti 0177 con link non ancora usato non funzionano piu':
-  reinviare l'email di benvenuto a quegli utenti.
+- PRODUZIONE, dopo il deploy: `php artisan migrate` (il comando legacy di questa spec e' sostituito dal seeder della
+  0356, vedi sopra). Gli inviti 0177 con link non ancora usato non funzionano piu': reinviare l'email di benvenuto
+  a quegli utenti.
 - Test: Pest `tests/Feature/Spec0355` (4 file, AC-001..010), test 0177 aggiornati con REQUIREMENT CHANGED; Vitest
   AC-011..016. Pest mirato 534/535 (unico rosso `ApiDocsParityTest`, preesistente: `POST /api/broadcasting/auth` della
   0352 non documentata), Vitest mirato 620/620, tsc/ESLint/Pint puliti. Suite completa: backend 11 rossi tutti

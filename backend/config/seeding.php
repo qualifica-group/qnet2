@@ -32,4 +32,17 @@ return [
 
     'force_password_change' => (bool) env('SEED_FORCE_PASSWORD_CHANGE', env('APP_ENV') !== 'staging'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Password change required at next access (spec 0356)
+    |--------------------------------------------------------------------------
+    |
+    | When true, QualificaPasswordChangeSeeder flags every active, non-service
+    | user who never chose their own password (`password_changed_at` null).
+    | User directive 2026-11-05: production only. Override via
+    | SEED_REQUIRE_PASSWORD_CHANGE.
+    |
+    */
+
+    'require_password_change' => (bool) env('SEED_REQUIRE_PASSWORD_CHANGE', env('APP_ENV') === 'production'),
 ];
